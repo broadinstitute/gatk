@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.utils.variant;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Locatable;
-import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.TribbleException;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.Options;
@@ -18,10 +17,11 @@ import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAlleleCounts;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculator;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculators;
 import org.broadinstitute.hellbender.utils.*;
-import org.broadinstitute.hellbender.utils.collections.Permutation;
-import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.io.File;
@@ -1676,6 +1676,91 @@ public final class GATKVariantContextUtils {
 
         // If we have an equal number of bases in the reference and the alternate, we have an ONP:
         return ((refComparable.length() == altComperable.length()) && (!refComparable.equals(altComperable)));
+    }
+
+    /**
+     * TODO: Tests (variant1 as indels), (the same tests as in VCF funcotation factory), (use position)
+     *
+     * Attempt to match allele ref/alt pairs, even if the allele pairs in the given variant contexts are equivalent,
+     *  but not exact.
+     *
+     *  IMPORTANT: Position is not factored into the matching.
+     *
+     * For example, if variant 1 and variant2 have the same position, but
+     * Variant 1: "A", T", "C"
+     * Variant 2: "ACCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT", "TCCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT", "A", "AC"
+     *
+     * Then the returned array would be:  {0, -1}
+     * Since A>T matches in variant1 matches the the first alt allele in variant 2.  And A>C does not match any allele
+     *  in variant 2.
+     *
+     * @param variant1 Never {@code null}
+     * @param variant2 Never {@code null}
+     * @return Returns indexes into the alternate alleles of variant2.  Note that this method assumes that (when biallelic) the variant
+     *  contexts are already trimmed.  See {@link GATKVariantContextUtils#trimAlleles(VariantContext, boolean, boolean)}
+     *  Never {@code null}.  The length will be equal to the number of alternate alleles in variant1.  A value of -1
+     *  indicates no match in variant2.  If the reference alleles do not match, the output array will be populated
+     *  exclusively with -1.
+     */
+    public static int[] matchAlleles(final VariantContext variant1, VariantContext variant2) {
+        Utils.nonNull(variant1);
+        Utils.nonNull(variant2);
+        // Grab the trivial case:
+        if (variant1.isBiallelic() && variant2.isBiallelic()) {
+            if (variant1.getAlternateAllele(0).equals(variant2.getAlternateAllele(0)) &&
+                    (variant1.getReference().equals(variant2.getReference()))) {
+                return new int[]{0};
+            } else {
+                return new int[]{-1};
+            }
+        }
+
+        // Handle the case where one or both of the input VCs are not biallelic.
+        final int[] result = new int[variant1.getAlternateAlleles().size()];
+
+        // First split (and trim) all variant contexts into biallelics.  We are only going ot be interested in the alleles.
+        final List<VariantContext> splitVariants1 = simpleSplitIntoBiallelics(variant1);
+        final List<VariantContext> splitVariants2 = simpleSplitIntoBiallelics(variant2);
+
+        // Second, match on ref and alt.  If match occurs add it to the output list.
+        for (int i = 0; i < splitVariants1.size(); i++) {
+            result[i] = -1;
+            for (int j = 0; j < splitVariants2.size(); j++) {
+                final VariantContext splitVariant1 = splitVariants1.get(i);
+                final VariantContext splitVariant2 = splitVariants2.get(j);
+                if (splitVariant1.getAlternateAllele(0).equals(splitVariant2.getAlternateAllele(0))
+                        && splitVariant1.getReference().equals(splitVariant2.getReference())) {
+                    result[i] = j;
+                }
+            }
+        }
+
+        return result;
+    }
+
+    /** TODO: File an issue for the tool that will do a proper split.
+     * This method is trying to be a bit fast.
+     *
+     * @param vc variant context to split into simple biallelics.  Never {@code null}
+     * @return a list of variant contexts.  Each will be biallelic.  Length will be the number of alt alleles in the input vc.
+     * Note that the variant contexts are usually stripped of attributes and genotypes.  Never {@code null}.  Empty list
+     * if variant context has no alt alleles.
+     */
+    private static List<VariantContext> simpleSplitIntoBiallelics(final VariantContext vc) {
+        Utils.nonNull(vc);
+        final List<VariantContext> result = new ArrayList<>();
+
+        for (final Allele allele : vc.getAlternateAlleles()) {
+            result.add(
+                    (vc.isBiallelic()) ? vc :
+                            GATKVariantContextUtils.trimAlleles(
+                                    new VariantContextBuilder("SimpleSplit", vc.getContig(), vc.getStart(), vc.getEnd(),
+                                            Arrays.asList(vc.getReference(), allele))
+                                            .make(), true, true)
+            );
+        }
+
+        return result;
     }
 }
 
