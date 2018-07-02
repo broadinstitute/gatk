@@ -35,7 +35,7 @@ RUN echo "source activate gatk" > /root/run_unit_tests.sh && \
     echo "export CP_DIR=/gatk/testClasses" /root/run_unit_tests.sh && \
     echo "ln -s /gatkCloneMountPoint/src/ /gatkCloneMountPoint/scripts/docker/src" >> /root/run_unit_tests.sh && \
     echo "ln -s /gatkCloneMountPoint/build/ /gatkCloneMountPoint/scripts/docker/build" >> /root/run_unit_tests.sh && \
-    echo "cd /gatk/ && /gatkCloneMountPoint/gradlew testOnPackagedReleaseJar jacocoTestReportOnPackagedReleaseJar --debug -a -p /gatkCloneMountPoint" >> /root/run_unit_tests.sh
+    echo "cd /gatk/ && /gatkCloneMountPoint/gradlew testOnPackagedReleaseJar jacocoTestReportOnPackagedReleaseJar -a -p /gatkCloneMountPoint" >> /root/run_unit_tests.sh
 
 WORKDIR /root
 RUN cp -r /root/run_unit_tests.sh /gatk
