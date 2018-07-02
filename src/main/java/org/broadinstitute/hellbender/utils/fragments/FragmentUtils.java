@@ -55,8 +55,9 @@ public final class FragmentUtils {
             final byte secondReadBase = secondReadBases[i];
 
             if ( firstReadBase == secondReadBase ) {
-                firstReadQuals[firstReadIndex] = (byte) Math.min(firstReadQuals[firstReadIndex], HALF_OF_DEFAULT_PCR_ERROR_QUAL);
-                secondReadQuals[i] = (byte) Math.min(secondReadQuals[i], HALF_OF_DEFAULT_PCR_ERROR_QUAL);
+                // Do not adjust qualities
+                // firstReadQuals[firstReadIndex] = (byte) Math.min(firstReadQuals[firstReadIndex], HALF_OF_DEFAULT_PCR_ERROR_QUAL);
+                // secondReadQuals[i] = (byte) Math.min(secondReadQuals[i], HALF_OF_DEFAULT_PCR_ERROR_QUAL);
             } else {
                 // TODO -- use the proper statistical treatment of the quals from DiploidSNPGenotypeLikelihoods.java
                 firstReadQuals[firstReadIndex] = 0;
