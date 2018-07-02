@@ -144,11 +144,11 @@ script:
     echo ${TEST_TYPE};
     sudo mkdir -p build/reports/;
     sudo chmod -R a+w build/reports/;
-#    cp scripts/docker/build.gradle .;
+    cp scripts/docker/build.gradle .;
     sudo docker run -v $(pwd):/gatkCloneMountPoint:cached -v $(pwd)/testJars:/jars:cached --rm -e "TEST_VERBOSITY=minimal" -e "TEST_TYPE=${TEST_TYPE}" -t broadinstitute/gatk:${DOCKER_TAG} bash --init-file /gatk/gatkenv.rc /root/run_unit_tests.sh;
     mkdir build/reports/tests/test;
-#    cp -rp build/reports/tests/testOnPackagedReleaseJar/* build/reports/tests/test;
-#    rm -r build/reports/tests/testOnPackagedReleaseJar;
+    cp -rp build/reports/tests/testOnPackagedReleaseJar/* build/reports/tests/test;
+    rm -r build/reports/tests/testOnPackagedReleaseJar;
   else
     ./gatk PrintReads -I src/test/resources/NA12878.chr17_69k_70k.dictFix.bam -O output.bam;
     travis_wait 50 ./gradlew jacocoTestReport;
