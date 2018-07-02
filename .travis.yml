@@ -177,7 +177,7 @@ after_failure:
 after_script:
 - if [[ $TRAVIS_SECURE_ENV_VARS == true && $TRAVIS_EVENT_TYPE != cron ]]; then
     $GCLOUD_HOME/gcloud components -q update gsutil;
-    mv build/reports/tests/testOnPackagedReleaseJar build/reports/tests/test;
+    mv -R build/reports/tests/testOnPackagedReleaseJar build/reports/tests/test;
     $GCLOUD_HOME/gsutil -m cp -z html -z js -z xml -z css -r build/reports/tests gs:/$HELLBENDER_TEST_LOGS$REPORT_PATH/;
     echo "See the test report at https://storage.googleapis.com$HELLBENDER_TEST_LOGS$REPORT_PATH/tests/test/index.html";
   fi
