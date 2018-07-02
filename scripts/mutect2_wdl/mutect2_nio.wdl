@@ -129,6 +129,7 @@ workflow Mutect2 {
     Boolean? filter_funcotations
     Boolean filter_funcotations_or_default = select_first([filter_funcotations, true])
     String? oncotator_extra_args
+    String? funcotator_extra_args
 
     Int? preemptible_attempts
 
@@ -356,7 +357,8 @@ workflow Mutect2 {
                 gatk_override = gatk_override,
                 filter_funcotations = filter_funcotations_or_default,
                 sequencing_center = sequencing_center,
-                sequence_source = sequence_source
+                sequence_source = sequence_source,
+                extra_args = funcotator_extra_args
         }
     }
 
