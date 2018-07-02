@@ -11,6 +11,9 @@ import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.util.FastMath;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.tools.walkers.annotator.StrandArtifact;
+import org.broadinstitute.hellbender.tools.walkers.annotator.StrandBiasBySample;
+import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AFCalculator;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AFCalculatorProvider;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerGenotypingEngine;
@@ -26,6 +29,7 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.*;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -116,6 +120,12 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
             final Map<Allele, List<Haplotype>> alleleMapper = createAlleleMapper(eventsAtThisLoc, mergedVC, loc, haplotypes);
             final ReadLikelihoods<Allele> log10Likelihoods = log10ReadLikelihoods.marginalize(alleleMapper,
                     new SimpleInterval(mergedVC).expandWithinContig(ALLELE_EXTENSION, header.getSequenceDictionary()));
+
+            // Compute read-based (as opposed to fragment-based) annotations before filtering overlapping reads
+            final List<String> readBasedAnnotations = Arrays.asList(StrandBiasBySample.class.getName(), StrandArtifact.class.getName());
+            final Predicate<VariantAnnotation> isReadBasedAnnotation = a -> readBasedAnnotations.contains(a.getClass().getName());
+            final VariantContext readAnnotatedCall =  annotationEngine.annotateContext(mergedVC, featureContext, referenceContext, log10Likelihoods, isReadBasedAnnotation);
+
             filterOverlappingReads(log10Likelihoods, mergedVC.getReference(), loc, false);
 
             final LikelihoodMatrix<Allele> log10TumorMatrix = log10Likelihoods.sampleMatrix(log10Likelihoods.indexOfSample(tumorSample));
@@ -321,8 +331,14 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
                 final ReadLikelihoods<Allele>.BestAllele mate = pair.getRight();
 
                 if (read.allele.equals(mate.allele)) {
-                    // keep the higher-quality read
-                    readsToDiscard.add(read.likelihood < mate.likelihood ? read.read : mate.read);
+                    // keep the higher-quality read, and remember that its mate has been discarded
+                    if (read.likelihood > mate.likelihood){
+                        read.read.setAttribute("MD", 1); // OMD = overlapping mate discarded
+                        readsToDiscard.add(mate.read);
+                    } else {
+                        mate.read.setAttribute("MD", 1);
+                        readsToDiscard.add(read.read);
+                    }
                 } else if (retainMismatches) {
                     // keep the alt read
                     readsToDiscard.add(read.allele.equals(ref) ? read.read : mate.read);

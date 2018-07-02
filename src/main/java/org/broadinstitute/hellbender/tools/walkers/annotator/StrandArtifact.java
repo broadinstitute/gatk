@@ -16,6 +16,7 @@ import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.broadinstitute.hellbender.tools.walkers.annotator.StrandArtifact.ArtifactState.*;
 
@@ -91,10 +92,19 @@ public class StrandArtifact extends GenotypeAnnotation implements StandardMutect
         final Allele altAlelle = vc.getAlternateAllele(indexOfMaxTumorLod);
 
         final Collection<ReadLikelihoods<Allele>.BestAllele> bestAlleles = likelihoods.bestAllelesBreakingTies(g.getSampleName());
-        final int numFwdAltReads = (int) bestAlleles.stream().filter(ba -> !ba.read.isReverseStrand() && ba.isInformative() && ba.allele.equals(altAlelle)).count();
-        final int numRevAltReads = (int) bestAlleles.stream().filter(ba -> ba.read.isReverseStrand() && ba.isInformative() && ba.allele.equals(altAlelle)).count();
-        final int numFwdReads = (int) bestAlleles.stream().filter(ba -> !ba.read.isReverseStrand() && ba.isInformative()).count();
-        final int numRevReads = (int) bestAlleles.stream().filter(ba -> ba.read.isReverseStrand() && ba.isInformative()).count();
+        final Collection<ReadLikelihoods<Allele>.BestAllele> fwdBestAlleles = bestAlleles.stream()
+                .filter(ba -> !ba.read.isReverseStrand() && ba.isInformative()).collect(Collectors.toList());
+        final Collection<ReadLikelihoods<Allele>.BestAllele> revBestAlleles = bestAlleles.stream()
+                .filter(ba -> ba.read.isReverseStrand() && ba.isInformative()).collect(Collectors.toList());
+
+
+        final int numFwdAltReads = (int) fwdBestAlleles.stream().filter(ba -> ba.allele.equals(altAlelle)).count() +
+                (int) revBestAlleles.stream().filter(ba -> ba.allele.equals(altAlelle) && ba.read.getAttributeAsString("MD") != null).count();
+        final int numRevAltReads = (int) revBestAlleles.stream().filter(ba -> ba.allele.equals(altAlelle)).count() +
+                (int) fwdBestAlleles.stream().filter(ba -> ba.allele.equals(altAlelle) && ba.read.getAttributeAsString("MD") != null).count();
+
+        final int numFwdReads = fwdBestAlleles.size() + (int) revBestAlleles.stream().filter(ba -> ba.read.getAttributeAsString("MD") != null).count();
+        final int numRevReads = revBestAlleles.size() + (int) fwdBestAlleles.stream().filter(ba -> ba.read.getAttributeAsString("MD") != null).count();
         final int numAltReads = numFwdAltReads + numRevAltReads;
         final int numReads = numFwdReads + numRevReads;
 

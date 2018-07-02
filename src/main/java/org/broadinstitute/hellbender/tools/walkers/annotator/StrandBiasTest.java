@@ -172,6 +172,11 @@ public abstract class StrandBiasTest extends InfoFieldAnnotation {
             // a normal read with an actual strand
             final boolean isFW = !read.isReverseStrand();
             table[offset + (isFW ? 0 : 1)]++;
+
+            final boolean discardedMate = read.getAttributeAsString("DM") != null;
+            if (discardedMate){
+                table[offset + (isFW ? 1 : 0)]++;
+            }
         }
     }
 

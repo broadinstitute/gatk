@@ -216,4 +216,6 @@ public class StrandArtifactUnitTest {
         Assert.assertNull(posteriorProbabilities);
         Assert.assertNull(mapAlleleFractionEstimates);
     }
+
+
 }
