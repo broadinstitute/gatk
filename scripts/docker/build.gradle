@@ -120,7 +120,7 @@ task testOnPackagedReleaseJar(type: Test){
     String testClassesJar = "$System.env.TEST_JAR"
     String testDependencyJar = "$System.env.TEST_DEPENDENCY_JAR"
     String gatkJar = "$System.env.GATK_JAR"
-    String testClassesUnpacked = "$System.env.TEST_JAR"
+    String testClassesUnpacked = "$System.env.CP_DIR"
 
     description = "A test task intended to be run on the release jar inside the docker image of gatk with dependencies provided as volumes"
 
