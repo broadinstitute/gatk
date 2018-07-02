@@ -22,7 +22,9 @@ repositories {
     }
     mavenLocal()
 }
-final testNGVersion = '6.11'
+
+//Note: the test suite must use the same defaults. If you change system properties in this list you must also update the one in the test task
+applicationDefaultJvmArgs = ["-Dsamjdk.use_async_io_read_samtools=false","-Dsamjdk.use_async_io_write_samtools=true", "-Dsamjdk.use_async_io_write_tribble=false", "-Dsamjdk.compression_level=2"]
 
 tasks.withType(Test) {
     outputs.upToDateWhen { false }  //tests will never be "up to date" so you can always rerun them
