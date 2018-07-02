@@ -1,5 +1,5 @@
 # Using OpenJDK 8
-FROM jamesemery/gakt-nightly:gatkbase-2.0.0
+FROM broadinstitute/gatk:gatkbase-1.2.3
 
 # Location of the unzipped gatk bundle files
 ARG ZIPPATH
@@ -29,13 +29,13 @@ RUN echo "source activate gatk" > /root/run_unit_tests.sh && \
     echo "export TEST_JAR=\$( find /jars -name \"gatk*test.jar\" )" >> /root/run_unit_tests.sh && \
     echo "export TEST_DEPENDENCY_JAR=\$( find /jars -name \"gatk*testDependencies.jar\" )" >> /root/run_unit_tests.sh && \
     echo "export GATK_JAR=$( find /gatk -name "gatk*local.jar" )" >> /root/run_unit_tests.sh && \
-    echo "cp -r /gatkCloneMountPoint /gatk" >> /root/run_unit_tests.sh && \
+    echo "cp -r /gatkCloneMountPoint/src/main/java /gatk/srcdir" >> /root/run_unit_tests.sh && \
     echo "export SOURCE_DIR=/gatk/srcdir" >> /root/run_unit_tests.sh && \
     echo "export GRADLE_OPTS=\"-Xmx1024m -Dorg.gradle.daemon=false\"" /root/run_unit_tests.sh && \
     echo "export CP_DIR=/gatk/testClasses" /root/run_unit_tests.sh && \
     echo "ln -s /gatkCloneMountPoint/src/ /gatkCloneMountPoint/scripts/docker/src" >> /root/run_unit_tests.sh && \
     echo "ln -s /gatkCloneMountPoint/build/ /gatkCloneMountPoint/scripts/docker/build" >> /root/run_unit_tests.sh && \
-    echo "cd /gatk/ && /gatk/gradlew testOnPackagedReleaseJar jacocoTestReport -a " >> /root/run_unit_tests.sh
+    echo "cd /gatk/ && /gatkCloneMountPoint/gradlew testOnPackagedReleaseJar jacocoTestReportOnPackagedReleaseJar -a -p /gatkCloneMountPoint" >> /root/run_unit_tests.sh
 
 WORKDIR /root
 RUN cp -r /root/run_unit_tests.sh /gatk
