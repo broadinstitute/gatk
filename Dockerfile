@@ -29,7 +29,8 @@ RUN echo "source activate gatk" > /root/run_unit_tests.sh && \
     echo "export TEST_JAR=\$( find /jars -name \"gatk*test.jar\" )" >> /root/run_unit_tests.sh && \
     echo "export TEST_DEPENDENCY_JAR=\$( find /jars -name \"gatk*testDependencies.jar\" )" >> /root/run_unit_tests.sh && \
     echo "export GATK_JAR=$( find /gatk -name "gatk*local.jar" )" >> /root/run_unit_tests.sh && \
-    echo "export SOURCE_DIR=/gatkCloneMountPoint/src/main/java" >> /root/run_unit_tests.sh && \
+    echo "cp -r /gatkCloneMountPoint/src/main/java /gatk/srcdir" >> /root/run_unit_tests.sh && \
+    echo "export SOURCE_DIR=/gatk/srcdir" >> /root/run_unit_tests.sh && \
     echo "export GRADLE_OPTS=\"-Xmx1024m -Dorg.gradle.daemon=false\"" /root/run_unit_tests.sh && \
     echo "export CP_DIR=/gatk/testClasses" /root/run_unit_tests.sh && \
     echo "ln -s /gatkCloneMountPoint/src/ /gatkCloneMountPoint/scripts/docker/src" >> /root/run_unit_tests.sh && \
