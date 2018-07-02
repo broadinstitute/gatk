@@ -108,7 +108,7 @@ tasks.withType(Test) {
 
 task unpackTestJar(type: Copy){
     String testClassesJar = "$System.env.TEST_JAR"
-    String testClassesDir = "$System.env.TEST_JAR"
+    String testClassesDir = "$System.env.CP_DIR"
 
     if (testClassesJar != "null"){
         from zipTree(testClassesJar)
