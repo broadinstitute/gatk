@@ -10,6 +10,7 @@ import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.commons.lang.RandomStringUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.tuple.Triple;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
@@ -336,6 +337,9 @@ public class VcfFuncotationFactoryUnitTest extends GATKBaseTest {
         };
     }
 
+    /**
+     * This also tests the VCFFuncotationFactory Caching.
+     */
     @Test(dataProvider = "provideMultiallelicTest")
     public void testQueryIntoMultiallelic(final SimpleInterval variantInterval, final List<String> alleles,
                                           final List<Map<String, String>> gtAttributes) {
@@ -370,5 +374,76 @@ public class VcfFuncotationFactoryUnitTest extends GATKBaseTest {
                         Assert.assertEquals(funcotations.get(j).getField(vcfFuncotationFactory.getName() + k), gtAttributes.get(j).get(k), "Mismatch with " + k)
             )
         );
+
+        Assert.assertEquals(vcfFuncotationFactory.cacheHits, 0);
+        Assert.assertEquals(vcfFuncotationFactory.cacheMisses, 1);  // Should match the number of times createFuncotationOnVariant was called.
+
+        // Funcotate again, so that we should get a cache hit.
+        final List<Funcotation> funcotations2 = vcfFuncotationFactory.createFuncotationsOnVariant(
+                variant,
+                referenceContext,
+                vcfFeatures,
+                Collections.emptyList()
+        );
+        Assert.assertEquals(vcfFuncotationFactory.cacheHits, 1);
+        Assert.assertEquals(vcfFuncotationFactory.cacheMisses, 1);
+        Assert.assertEquals(funcotations, funcotations2, "Even though there was a cache hit, the funcotations are not equal.");
+    }
+
+    @Test
+    public void testCacheOnObjectReference(){
+        // This code is a bit complex, since the cache is based exclusively on object references.  That works great in Funcotator,
+        //  but not as great in the general case (incl. autotests)
+        // We do not care so much about the content of each variant context.  We change the position to control whether
+        //  there is a cache  hit or not.
+
+        // Create dummy data.  Remember that since the cache is based on reference, we always have to index into this list.
+        final List<String> alleles = Arrays.asList("G", "C", "T");
+        final List<Triple<VariantContext, ReferenceContext, List<Feature>>> dummyTriples = IntStream.range(0, VcfFuncotationFactory.LRUCache.MAX_ENTRIES + 1)
+                .boxed().map(i -> createDummyCacheTriples(alleles, i)).collect(Collectors.toList());
+
+        // Create our funcotation factory to test
+        final VcfFuncotationFactory vcfFuncotationFactory =
+                new VcfFuncotationFactory(FACTORY_NAME, FACTORY_VERSION, IOUtils.getPath(EXAC_SNIPPET));
+
+        for (int i = 0; i < VcfFuncotationFactory.LRUCache.MAX_ENTRIES; i++) {
+            funcotateForCacheTest(vcfFuncotationFactory, dummyTriples.get(i));
+            Assert.assertEquals(vcfFuncotationFactory.cacheHits, 0);
+            Assert.assertEquals(vcfFuncotationFactory.cacheMisses, i+1);  // Should match the number of times createFuncotationOnVariant was called.
+        }
+        // We will get one more miss in this loop, since [0] will have been purged from the cache.  We will test this below.
+        for (int i = 0; i < (VcfFuncotationFactory.LRUCache.MAX_ENTRIES + 1); i++) {
+            funcotateForCacheTest(vcfFuncotationFactory, dummyTriples.get(i));
+        }
+        Assert.assertEquals(vcfFuncotationFactory.cacheHits, VcfFuncotationFactory.LRUCache.MAX_ENTRIES);
+
+        // This should be another miss, since the variant at index = 0 should no longer be in the cache.
+        funcotateForCacheTest(vcfFuncotationFactory, dummyTriples.get(0));
+        Assert.assertEquals(vcfFuncotationFactory.cacheMisses, (VcfFuncotationFactory.LRUCache.MAX_ENTRIES + 2));
+    }
+
+    // Performs a dummy funcotation with an offset for controlling the cache.
+    private void funcotateForCacheTest(final VcfFuncotationFactory vcfFuncotationFactory, final Triple<VariantContext, ReferenceContext, List<Feature>> cacheTriple) {
+        vcfFuncotationFactory.createFuncotationsOnVariant(
+                cacheTriple.getLeft(),
+                cacheTriple.getMiddle(),
+                cacheTriple.getRight(),
+                Collections.emptyList()
+        );
+    }
+
+    private Triple<VariantContext, ReferenceContext, List<Feature>> createDummyCacheTriples(final List<String> alleles, final int offset) {
+        final SimpleInterval variantInterval = new SimpleInterval("3", 13372+offset, 13372+offset);
+        final VariantContext vc =  new VariantContextBuilder()
+                .chr(variantInterval.getContig()).start(variantInterval.getStart()).stop(variantInterval.getEnd())
+                .alleles(alleles)
+                .make();
+        final ReferenceContext referenceContext = new ReferenceContext(ReferenceDataSource.of(Paths.get(FuncotatorReferenceTestUtils.retrieveB37Chr3Ref())), variantInterval);
+        final List<Feature> vcfFeatures;
+        try (final VCFFileReader vcfReader = new VCFFileReader(IOUtils.getPath(EXAC_SNIPPET))) {
+            vcfFeatures = vcfReader.query(variantInterval.getContig(), variantInterval.getStart(), variantInterval.getEnd()).stream().collect(Collectors.toList());
+        }
+
+        return Triple.of(vc, referenceContext, vcfFeatures);
     }
 }

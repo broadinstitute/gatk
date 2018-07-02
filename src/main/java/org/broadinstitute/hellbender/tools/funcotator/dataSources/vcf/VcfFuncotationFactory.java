@@ -67,9 +67,15 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
      */
     private final FuncotationMetadata supportedFieldMetadata;
 
+    /**
+     * Cache for speed.  Please note that the cache is done on the reference.
+     */
     private final LRUCache<Triple<VariantContext, ReferenceContext, List<Feature>>, List<Funcotation>> cache = new LRUCache<>();
-    private int cacheHits = 0;
-    private int cacheMisses = 0;
+
+    @VisibleForTesting
+    int cacheHits = 0;
+    @VisibleForTesting
+    int cacheMisses = 0;
 
     //==================================================================================================================
     // Constructors:
@@ -185,7 +191,7 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
 
         final List<Funcotation> outputFuncotations = new ArrayList<>();
 
-        //TODO: Test Caching
+        // TODO: Caching logic can be refactored and shared in other funcotation factories:  https://github.com/broadinstitute/gatk/issues/4974
         final Triple<VariantContext, ReferenceContext, List<Feature>> cacheKey = createCacheKey(variant, referenceContext, featureList);
         final List<Funcotation> cacheResult = cache.get(cacheKey);
         if (cacheResult != null) {
@@ -365,16 +371,17 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
     // Helper Data Types:
 
     // Modifed from https://docs.oracle.com/javase/7/docs/api/java/util/LinkedHashMap.html#removeEldestEntry(java.util.Map.Entry)
-    private class LRUCache<K, V> extends LinkedHashMap<K, V> {
+    class LRUCache<K, V> extends LinkedHashMap<K, V> {
         static final long serialVersionUID = 55337L;
-        private static final int MAX_ENTRIES = 20;
+        @VisibleForTesting
+        static final int MAX_ENTRIES = 20;
         public LRUCache() {
             super(MAX_ENTRIES);
         }
 
         @Override
         protected boolean removeEldestEntry(Map.Entry<K, V> eldest) {
-            return size() >= MAX_ENTRIES;
+            return size() > MAX_ENTRIES;
         }
     }
 }
