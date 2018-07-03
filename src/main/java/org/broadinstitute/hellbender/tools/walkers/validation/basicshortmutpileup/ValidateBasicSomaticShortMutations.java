@@ -17,6 +17,9 @@ import org.broadinstitute.hellbender.engine.VariantWalker;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.validation.Concordance;
+import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceState;
+import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceSummaryRecord;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
@@ -49,6 +52,9 @@ public class ValidateBasicSomaticShortMutations extends VariantWalker {
     public static final String SAMPLE_NAME_VALIDATION_CONTROL = "val-control-sample-name";
     public final static int DEFAULT_MIN_BQ_CUTOFF = 20;
     public final static String CUTOFF_LONG_NAME = "min-base-quality-cutoff";
+    public final static String MIN_POWER_LONG_NAME = "min-power";
+
+    private static final double DEFAULT_MIN_POWER = 0.9;
 
     @Argument(fullName = SAMPLE_NAME_DISCOVERY_VCF_LONG_NAME,
             doc = "sample name for discovery in VCF.")
@@ -58,6 +64,16 @@ public class ValidateBasicSomaticShortMutations extends VariantWalker {
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             doc = "The output file, which will be a validation table (tsv).")
     protected String outputFile;
+
+    @Argument(doc = "A table of summary statistics (true positives, sensitivity, etc.)",
+            fullName = Concordance.SUMMARY_LONG_NAME,
+            optional = true)
+    protected File summary;
+
+    @Argument(doc = "Minimum power for an unvalidated variant to be considered a false positive.",
+            fullName = MIN_POWER_LONG_NAME,
+            optional = true)
+    protected double minPower = DEFAULT_MIN_POWER;
 
     @Argument(fullName = SAMPLE_NAME_VALIDATION_CASE,
             doc = "validation case sample name (in the bam)")
@@ -96,6 +112,11 @@ public class ValidateBasicSomaticShortMutations extends VariantWalker {
             VALIDATION_ALT_COVERAGE, VALIDATION_REF_COVERAGE, MIN_VAL_COUNT, POWER, IS_NOT_NOISE, IS_ENOUGH_VALIDATION_COVERAGE, DISCOVERY_VCF_FILTER};
 
     private List<BasicValidationResult> results = new ArrayList<>();
+
+    private final MutableInt snpTruePositiveCount = new MutableInt(0);
+    private final MutableInt snpFalsePositiveCount = new MutableInt(0);
+    private final MutableInt indelTruePositiveCount = new MutableInt(0);
+    private final MutableInt indelFalsePositiveCount = new MutableInt(0);
 
     @Override
     public List<ReadFilter> getDefaultReadFilters() {
@@ -154,6 +175,23 @@ public class ValidateBasicSomaticShortMutations extends VariantWalker {
                 filterString);
 
         results.add(basicValidationResult);
+
+        final boolean validated = basicValidationResult.isOutOfNoiseFloor();
+        final boolean powered = basicValidationResult.getPower() > minPower;
+
+        if (discoveryVariantContext.isSNP()) {
+            if (validated) {
+                snpTruePositiveCount.increment();
+            } else if (powered) {
+                snpFalsePositiveCount.increment();
+            }
+        } else {
+            if (validated) {
+                indelTruePositiveCount.increment();
+            } else if (powered) {
+                indelFalsePositiveCount.increment();
+            }
+        }
     }
 
     @Override
@@ -182,6 +220,21 @@ public class ValidateBasicSomaticShortMutations extends VariantWalker {
             writer.writeAllRecords(results);
         } catch (final IOException ioe) {
             throw new UserException.CouldNotCreateOutputFile(new File(outputFile), "Could not create file: " + new File(outputFile).getAbsolutePath());
+        }
+
+        if (summary != null) {
+            try (ConcordanceSummaryRecord.Writer concordanceSummaryWriter = ConcordanceSummaryRecord.getWriter(summary)) {
+                concordanceSummaryWriter.writeRecord(new ConcordanceSummaryRecord(VariantContext.Type.SNP,
+                        snpTruePositiveCount.getValue(),
+                        snpFalsePositiveCount.getValue(),
+                      0));
+                concordanceSummaryWriter.writeRecord(new ConcordanceSummaryRecord(VariantContext.Type.INDEL,
+                        indelTruePositiveCount.getValue(),
+                        indelFalsePositiveCount.getValue(),
+                        0));
+            } catch (IOException e) {
+                throw new UserException("Encountered an IO exception writing the concordance summary table", e);
+            }
         }
         return "SUCCESS";
     }
