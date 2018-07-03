@@ -366,6 +366,8 @@ workflow Mutect2 {
                 ref_dict = ref_dict,
                 reference_version = select_first([funco_reference_version, "hg19"]),
                 data_sources_tar_gz = funco_data_sources_tar_gz,
+                case_id = M2.tumor_sample[0],
+                control_id = M2.normal_sample[0],
                 transcript_selection_mode = funco_transcript_selection_mode,
                 transcript_selection_list = funco_transcript_selection_list,
                 annotation_defaults = funco_annotation_defaults,
@@ -994,6 +996,8 @@ task FuncotateMaf {
      String output_format = "MAF"
      String? sequencing_center
      String? sequence_source
+     String case_id
+     String? control_id
 
      File? data_sources_tar_gz
      String? transcript_selection_mode
@@ -1068,6 +1072,10 @@ task FuncotateMaf {
              ${interval_list_arg} ${default="" interval_list} \
              ${"--transcript-selection-mode " + transcript_selection_mode} \
              ${"--transcript-list " + transcript_selection_list} \
+            --annotation-default normal_barcode:${control_id} \
+            --annotation-default tumor_barcode:${case_id} \
+            --annotation-default Center:${default="Unknown" sequencing_center} \
+            --annotation-default source:${default="Unknown" sequence_source} \
              ${annotation_def_arg}${default="" sep=" --annotation-default " annotation_defaults} \
              ${annotation_over_arg}${default="" sep=" --annotation-override " annotation_overrides} \
              ${filter_funcotations_args} \
