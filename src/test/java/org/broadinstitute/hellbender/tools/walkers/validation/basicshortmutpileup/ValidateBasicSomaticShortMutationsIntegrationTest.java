@@ -5,6 +5,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedInterval;
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedIntervalCollection;
+import org.broadinstitute.hellbender.tools.walkers.validation.Concordance;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
@@ -31,6 +32,7 @@ public class ValidateBasicSomaticShortMutationsIntegrationTest extends CommandLi
         // This test is simply running the full tool and making sure that there are no serious errors.
         //  No variants should validate, since the validation bam is not the same one used for calling.
         final File outputFile = IOUtils.createTempFile("basicTest", ".seg");
+        final File summaryFile = IOUtils.createTempFile("summary", ".txt");
         final List<String> arguments = new ArrayList<>();
         arguments.add("--" + ValidateBasicSomaticShortMutations.SAMPLE_NAME_DISCOVERY_VCF_LONG_NAME);
         arguments.add("synthetic.challenge.set1.tumor");
@@ -55,11 +57,14 @@ public class ValidateBasicSomaticShortMutationsIntegrationTest extends CommandLi
 
         arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
         arguments.add(outputFile.getAbsolutePath());
+        arguments.add("-" + Concordance.SUMMARY_LONG_NAME);
+        arguments.add(summaryFile.getAbsolutePath());
         arguments.add("--verbosity");
         arguments.add("INFO");
         runCommandLine(arguments);
 
         Assert.assertTrue(outputFile.exists());
+        Assert.assertTrue(summaryFile.exists());
 
         final List<AnnotatedInterval> variantValidationResults =
                 AnnotatedIntervalCollection.create(outputFile.toPath(), new HashSet<>(Arrays.asList(ValidateBasicSomaticShortMutations.headers))).getRecords();
@@ -86,6 +91,8 @@ public class ValidateBasicSomaticShortMutationsIntegrationTest extends CommandLi
         //  All variants should validate (or be unpowered)
 
         final File outputFile = IOUtils.createTempFile("basicTest", ".seg");
+        final File summaryFile = IOUtils.createTempFile("summary", ".txt");
+
         final List<String> arguments = new ArrayList<>();
         arguments.add("--" + ValidateBasicSomaticShortMutations.SAMPLE_NAME_DISCOVERY_VCF_LONG_NAME);
         arguments.add("IS3.snv.indel.sv");
@@ -112,11 +119,15 @@ public class ValidateBasicSomaticShortMutationsIntegrationTest extends CommandLi
 
         arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
         arguments.add(outputFile.getAbsolutePath());
+        arguments.add("-" + Concordance.SUMMARY_LONG_NAME);
+        arguments.add(summaryFile.getAbsolutePath());
+
         arguments.add("--verbosity");
         arguments.add("INFO");
         runCommandLine(arguments);
 
         Assert.assertTrue(outputFile.exists());
+        Assert.assertTrue(summaryFile.exists());
 
         final List<AnnotatedInterval> variantValidationResults =
                 AnnotatedIntervalCollection.create(outputFile.toPath(), new HashSet<>(Arrays.asList(ValidateBasicSomaticShortMutations.headers))).getRecords();
