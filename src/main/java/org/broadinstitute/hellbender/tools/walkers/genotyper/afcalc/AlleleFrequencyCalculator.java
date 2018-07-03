@@ -101,6 +101,9 @@ public final class AlleleFrequencyCalculator extends AFCalculator {
                 nonVariantIndicesByPloidy.computeIfAbsent(ploidy, p -> genotypeIndicesWithOnlyRefAndSpanDel(p, alleles));
                 final int[] nonVariantIndices = nonVariantIndicesByPloidy.get(ploidy);
                 final double[] nonVariantLog10Posteriors = MathUtils.applyToArray(nonVariantIndices, n -> log10GenotypePosteriors[n]);
+                // when the only alt allele is the spanning deletion the probability that the site is non-variant
+                // may be so close to 1 thatfinite precision error in log10SumLog10 yields a positive value,
+                // which is bogus.  Thus we cap it at 0.
                 log10PNoVariant += Math.min(0,MathUtils.log10SumLog10(nonVariantLog10Posteriors));
             }
 
