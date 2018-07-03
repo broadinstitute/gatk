@@ -1565,7 +1565,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                 GencodeFuncotationFactory.DEFAULT_NAME,
                 TranscriptSelectionMode.CANONICAL,
                 Collections.emptySet(),
-                new LinkedHashMap<>(), true)) {
+                new LinkedHashMap<>())) {
             final List<Funcotation> gencodeFuncotations = funcotationFactory.createFuncotationsOnVariant(vc, referenceContext, gencodeFeatures);
             Assert.assertEquals(gencodeFuncotations.size(), 1);
         }
@@ -1576,7 +1576,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                 GencodeFuncotationFactory.DEFAULT_NAME,
                 TranscriptSelectionMode.BEST_EFFECT,
                 Collections.emptySet(),
-                new LinkedHashMap<>(), true)) {
+                new LinkedHashMap<>())) {
             final List<Funcotation> gencodeFuncotations = funcotationFactory.createFuncotationsOnVariant(vc, referenceContext, gencodeFeatures);
             Assert.assertEquals(gencodeFuncotations.size(), 1);
         }
@@ -1587,7 +1587,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                 GencodeFuncotationFactory.DEFAULT_NAME,
                 TranscriptSelectionMode.ALL,
                 Collections.emptySet(),
-                new LinkedHashMap<>(), true)) {
+                new LinkedHashMap<>())) {
             final List<Funcotation> gencodeFuncotations = funcotationFactory.createFuncotationsOnVariant(vc, referenceContext, gencodeFeatures);
             Assert.assertTrue(gencodeFuncotations.size() > 1);
         }
