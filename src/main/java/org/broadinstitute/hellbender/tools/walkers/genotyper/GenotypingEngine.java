@@ -515,8 +515,8 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         VariantContext vc;
 
         if ( configuration.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES ) {
-            final VariantContext ggaVc = GenotypingGivenAllelesUtils.composeGivenAllelesVariantContextFromRod(features,
-                    rawContext.getLocation(), false, configuration.genotypeFilteredAlleles, configuration.alleles);
+            final VariantContext ggaVc = GenotypingGivenAllelesUtils.composeGivenAllelesVariantContextFromVariantList(features,
+                    rawContext.getLocation(), configuration.genotypeFilteredAlleles, configuration.alleles);
             if (ggaVc == null) {
                 return null;
             }

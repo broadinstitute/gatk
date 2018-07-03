@@ -11,17 +11,13 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
-import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 
 import java.io.Serializable;
 import java.util.*;
-import java.util.function.IntPredicate;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 /**
  * Extract simple VariantContext events from a single haplotype
@@ -396,8 +392,11 @@ public final class EventMap extends TreeMap<Integer, VariantContext> {
         return startPosKeySet;
     }
 
-    public Iterator<VariantContext> getSpanningEvents(final int loc) {
-        return headMap(loc, true).values().stream().filter(v -> v.getEnd() >= loc).iterator();
+    /**
+     * Returns any events in the map that overlap loc, including spanning deletions and events that start at loc.
+     */
+    public List<VariantContext> getOverlappingEvents(final int loc) {
+        return headMap(loc, true).values().stream().filter(v -> v.getEnd() >= loc).collect(Collectors.toList());
     }
 
     private static class VariantContextComparator implements Comparator<VariantContext>, Serializable {

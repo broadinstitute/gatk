@@ -104,9 +104,7 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
         final List<VariantContext> returnCalls = new ArrayList<>();
 
         for( final int loc : startPosKeySet ) {
-            // Note: as above, passing an empty list of activeAllelesToGenotype is the correct behavior even when givenAlleles is
-            // non-empty, for the same reason.  If you don't believe this, check {@code testGivenAllelesMode} in {@link Mutect2IntegrationTest}.
-            final List<VariantContext> eventsAtThisLoc = getVCsAtThisLocation(haplotypes, loc, Collections.emptyList());
+            final List<VariantContext> eventsAtThisLoc = getVariantContextsFromActiveHaplotypes(loc, haplotypes, false);
             final VariantContext mergedVC = AssemblyBasedCallerUtils.makeMergedVariantContext(eventsAtThisLoc);
             if( mergedVC == null ) {
                 continue;
@@ -188,7 +186,7 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
     }
 
     private Set<Allele> getAllelesConsistentWithGivenAlleles(List<VariantContext> givenAlleles, int loc, VariantContext mergedVC) {
-        final List<Pair<Allele, Allele>> givenAltAndRefAllelesInOriginalContext =  getVCsAtThisLocation(Collections.emptyList(), loc, givenAlleles).stream()
+        final List<Pair<Allele, Allele>> givenAltAndRefAllelesInOriginalContext =  getVariantContextsFromGivenAlleles(loc, givenAlleles, false).stream()
                 .flatMap(vc -> vc.getAlternateAlleles().stream().map(allele -> ImmutablePair.of(allele, vc.getReference()))).collect(Collectors.toList());
 
         return mergedVC.getAlternateAlleles().stream()

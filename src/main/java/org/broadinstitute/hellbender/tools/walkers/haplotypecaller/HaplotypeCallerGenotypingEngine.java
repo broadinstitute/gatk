@@ -135,8 +135,15 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
                 continue;
             }
 
+            final List<VariantContext> activeEventVariantContexts;
+            if( activeAllelesToGenotype.isEmpty() ) {
+                activeEventVariantContexts = getVariantContextsFromActiveHaplotypes(loc, haplotypes, true);
+            } else { // we are in GGA mode!
+                activeEventVariantContexts = getVariantContextsFromGivenAlleles(loc, activeAllelesToGenotype, true);
+            }
+
             final List<VariantContext> eventsAtThisLocWithSpanDelsReplaced =
-                    replaceSpanDels(getVCsAtThisLocation(haplotypes, loc, activeAllelesToGenotype, true),
+                    replaceSpanDels(activeEventVariantContexts,
                             Allele.create(ref[loc - refLoc.getStart()], true),
                             loc);
 
