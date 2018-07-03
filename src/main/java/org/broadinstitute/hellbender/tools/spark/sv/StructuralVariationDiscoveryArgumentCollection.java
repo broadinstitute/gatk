@@ -269,11 +269,15 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
 
     public enum SvEvidenceFilterType {DENSITY, XGBOOST}
 
-    public static class DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection implements Serializable {
+    public static class DiscoverVariantsFromContigAlignmentsSparkArgumentCollection implements Serializable {
         private static final long serialVersionUID = 1L;
 
         public static final int GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY = STRUCTURAL_VARIANT_SIZE_LOWER_BOUND; // alignment with gap of size >= 50 will be broken apart.
+
+        // TODO: 7/30/18 the following two values essentially perform the same filtering, except one (CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD) is used in a tool (ContigChimericAlignmentIterativeInterpreter) that is about to be phased out, so move it when the kill switch is flipped
         public static final int CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD = 60;
+        public static final int ASSEMBLY_ALIGNMENT_MQ_FILTER_DEFAULT = 30;
+
         public static final int DEFAULT_MIN_ALIGNMENT_LENGTH = 50; // Minimum flanking alignment length filters used when going through contig alignments.
         public static final int DEFAULT_ASSEMBLED_IMPRECISE_EVIDENCE_OVERLAP_UNCERTAINTY = 100;
         public static final int DEFAULT_IMPRECISE_VARIANT_EVIDENCE_THRESHOLD = 7;
@@ -282,6 +286,9 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
 
         @Argument(doc = "Minimum flanking alignment length", fullName = "min-align-length")
         public Integer minAlignLength = DEFAULT_MIN_ALIGNMENT_LENGTH;
+
+        @Argument(doc = "Minimum mapping quality of evidence assembly contig", shortName = "mq", fullName = "min-mq")
+        public Integer minMQ = ASSEMBLY_ALIGNMENT_MQ_FILTER_DEFAULT;
 
         @Hidden
         @Argument(doc = "VCF containing the true breakpoints used only for evaluation (not generation) of calls",
@@ -307,6 +314,10 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
         @Argument(doc = "Maximum size deletion to call based on imprecise evidence without corroborating read depth evidence",
                 fullName = "max-callable-imprecise-deletion-size", optional=true)
         public int maxCallableImpreciseVariantDeletionSize = DEFAULT_MAX_CALLABLE_IMPRECISE_DELETION_SIZE;
+
+        @Advanced
+        @Argument(doc = "Run interpretation tool in debug mode (more information print to screen)", fullName = "debug-mode", optional = true)
+        public Boolean runInDebugMode = false;
 
         /**
          * Explicit call this method.

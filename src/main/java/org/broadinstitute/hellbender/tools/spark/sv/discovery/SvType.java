@@ -136,10 +136,7 @@ public abstract class SvType {
         final SortedSet<String> knownTypes = new TreeSet<>( EnumUtils.getEnumMap(SimpleSVType.SupportedType.class).keySet() );
 
         knownTypes.add(GATKSVVCFConstants.CPX_SV_SYB_ALT_ALLELE_STR);
-
-        for (final BreakEndVariantType.SupportedType supportedType : BreakEndVariantType.SupportedType.values()) {
-            knownTypes.add(supportedType.name());
-        }
+        knownTypes.add(GATKSVVCFConstants.BREAKEND_STR);
 
         return Collections.unmodifiableSortedSet(knownTypes);
     }

@@ -17,7 +17,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import java.util.List;
 import java.util.Set;
 
-import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection;
+import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigAlignmentsSparkArgumentCollection;
 
 
 public final class SvDiscoveryInputMetaData {
@@ -30,7 +30,7 @@ public final class SvDiscoveryInputMetaData {
         return sampleSpecificData;
     }
 
-    public DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection getDiscoverStageArgs() {
+    public DiscoverVariantsFromContigAlignmentsSparkArgumentCollection getDiscoverStageArgs() {
         return discoverStageArgs;
     }
 
@@ -119,14 +119,14 @@ public final class SvDiscoveryInputMetaData {
 
     private final SampleSpecificData sampleSpecificData;
 
-    private final DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection discoverStageArgs;
+    private final DiscoverVariantsFromContigAlignmentsSparkArgumentCollection discoverStageArgs;
 
     private final Logger toolLogger;
 
     private String outputPath;
 
     public SvDiscoveryInputMetaData(final JavaSparkContext ctx,
-                                    final DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection discoverStageArgs,
+                                    final DiscoverVariantsFromContigAlignmentsSparkArgumentCollection discoverStageArgs,
                                     final String nonCanonicalChromosomeNamesFile,
                                     final String outputPath,
                                     final ReadMetadata readMetadata,

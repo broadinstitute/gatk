@@ -24,8 +24,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Stream;
 
-import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD;
-import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.DEFAULT_MIN_ALIGNMENT_LENGTH;
+import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigAlignmentsSparkArgumentCollection.CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD;
+import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigAlignmentsSparkArgumentCollection.DEFAULT_MIN_ALIGNMENT_LENGTH;
 
 /**
  * This class scans the chimeric alignments of input {@link AlignedContig},
@@ -56,7 +56,7 @@ public class ContigChimericAlignmentIterativeInterpreter {
         final List<SVInterval> assembledIntervals = svDiscoveryInputMetaData.getSampleSpecificData().getAssembledIntervals();
         final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast = svDiscoveryInputMetaData.getSampleSpecificData().getCnvCallsBroadcast();
         final String sampleId = svDiscoveryInputMetaData.getSampleSpecificData().getSampleId();
-        final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection discoverStageArgs = svDiscoveryInputMetaData.getDiscoverStageArgs();
+        final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigAlignmentsSparkArgumentCollection discoverStageArgs = svDiscoveryInputMetaData.getDiscoverStageArgs();
         final Logger toolLogger = svDiscoveryInputMetaData.getToolLogger();
 
         // step 2: extract novel adjacency

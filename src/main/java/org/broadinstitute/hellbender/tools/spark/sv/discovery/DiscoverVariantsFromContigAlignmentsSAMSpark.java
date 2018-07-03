@@ -30,7 +30,7 @@ import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
 
-import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection;
+import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigAlignmentsSparkArgumentCollection;
 
 /**
  * (Internal) Examines aligned contigs from local assemblies and calls structural variants
@@ -93,8 +93,8 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
     private final Logger localLogger = LogManager.getLogger(DiscoverVariantsFromContigAlignmentsSAMSpark.class);
 
     @ArgumentCollection
-    private final DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection discoverStageArgs =
-            new DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection();
+    private final DiscoverVariantsFromContigAlignmentsSparkArgumentCollection discoverStageArgs =
+            new DiscoverVariantsFromContigAlignmentsSparkArgumentCollection();
 
     @Argument(doc = "prefix for discovery (non-genotyped) VCF; sample name will be appended after the provided argument, followed by \"_inv_del_ins.vcf\"",
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,

@@ -41,7 +41,8 @@ public class SVVCFWriter {
 
         final List<VariantContext> sortedVariantsList = sortVariantsByCoordinate(localVariants, referenceSequenceDictionary);
 
-        logNumOfVarByTypes(sortedVariantsList, logger);
+        if (logger != null)
+            logNumOfVarByTypes(sortedVariantsList, logger);
 
         writeVariants(vcfFileName, sortedVariantsList, referenceSequenceDictionary);
     }
@@ -97,6 +98,8 @@ public class SVVCFWriter {
         final Set<VCFHeaderLine> headerLines = new HashSet<>(GATKSVVCFHeaderLines.getSymbAltAlleleLines());
         headerLines.addAll(GATKSVVCFHeaderLines.getInfoLines());
         headerLines.add(VCFStandardHeaderLines.getInfoLine(VCFConstants.END_KEY));
+        headerLines.addAll(GATKSVVCFHeaderLines.getFormatLines());
+        headerLines.addAll(GATKSVVCFHeaderLines.getFilterLines());
         final VCFHeader header = new VCFHeader(new VCFHeader( headerLines ));
         header.setSequenceDictionary(referenceSequenceDictionary);
         return header;

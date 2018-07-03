@@ -1,13 +1,16 @@
 ##fileformat=VCFv4.2
+##ALT=<ID=CPX,Description="Complex rearrangement of reference sequence">
 ##ALT=<ID=DEL,Description="Deletion relative to the reference">
 ##ALT=<ID=DUP,Description="Region of elevated copy number relative to the reference">
 ##ALT=<ID=DUP:INV,Description="Region of elevated copy number relative to the reference, with some copies inverted">
 ##ALT=<ID=INS,Description="Insertion of novel sequence relative to the reference">
 ##ALT=<ID=INV,Description="Inversion of reference sequence">
 ##INFO=<ID=ALIGN_LENGTHS,Number=.,Type=Integer,Description="Minimum lengths of the flanking aligned region from each contig alignment">
+##INFO=<ID=ALT_ARRANGEMENT,Number=.,Type=String,Description="For CPX variants only; specifies how reference segments given in SEGMENTS are re-arranged">
 ##INFO=<ID=CIEND,Number=2,Type=Integer,Description="Confidence interval around END for imprecise variants">
 ##INFO=<ID=CIPOS,Number=2,Type=Integer,Description="Confidence interval around POS for imprecise variants">
 ##INFO=<ID=CONTRACTION,Number=0,Type=Flag,Description="Tandem repeats contraction compared to reference">
+##INFO=<ID=CPX_EVENT,Number=.,Type=String,Description="ID(s) of CPX event(s) from which current simple variant record is extracted">
 ##INFO=<ID=CTG_GOOD_NONCANONICAL_MAPPING,Number=.,Type=String,Description="Good mapping of evidence contigs as listed in CTG_NAMES to non-canonical reference chromosomes that could potentially offer better explanation of the assembly contig without the SV record. One for each evidence assembly contig, if available; otherwise a \".\". If no evidence contig has such mapping, this annotation is omitted for the record.">
 ##INFO=<ID=CTG_NAMES,Number=.,Type=String,Description="Name of local assembly contigs supporting this variant, formatted as \"asm%06d:tig%05d\"">
 ##INFO=<ID=DUP_ANNOTATIONS_IMPRECISE,Number=0,Type=Flag,Description="Whether the duplication annotations are from an experimental optimization procedure">
@@ -33,23 +36,28 @@
 ##INFO=<ID=MATEID,Number=.,Type=String,Description="ID(s) for mate(s) of a BND record">
 ##INFO=<ID=MAX_ALIGN_LENGTH,Number=1,Type=Integer,Description="Maximum of the values listed in ALIGN_LENGTHS">
 ##INFO=<ID=READ_PAIR_SUPPORT,Number=1,Type=Integer,Description="Number of discordant read pairs supporting the variant">
+##INFO=<ID=SEGMENTS,Number=.,Type=String,Description="For CPX variants only; segments of reference that are rearranged">
 ##INFO=<ID=SEQ_ALT_HAPLOTYPE,Number=A,Type=Character,Description="Alt haplotype sequence, one per alt allele">
 ##INFO=<ID=SPLIT_READ_SUPPORT,Number=1,Type=Integer,Description="Number of split read supplementary mappings supporting the variant">
 ##INFO=<ID=SVLEN,Number=.,Type=Integer,Description="Difference in length between REF and ALT alleles">
 ##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant">
 ##INFO=<ID=TOTAL_MAPPINGS,Number=1,Type=Integer,Description="Number of local assembly contigs supporting the variant, i.e. number of entries in CTG_NAMES">
+##FILTER=<ID=LOW_MQ,Description="Assembly evidence based record that whose maximum value specified in MAPPING_QUALITIES is lower than user specified threshold">
+##FILTER=<ID=SHORT_ALN,Description="Assembly evidence based record that whose MAX_ALIGN_LENGTH value is lower than user specified threshold">
+##FORMAT=<ID=CN,Number=1,Type=Integer,Description="Copy number genotype for imprecise events">
+##FORMAT=<ID=CNQ,Number=1,Type=Float,Description="Copy number genotype quality for imprecise events">
 ##contig=<ID=chr20,length=64444167,assembly=38>
 ##contig=<ID=chr21,length=46709983,assembly=38>
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
-chr20	12558793	INS_chr20_12558793_12558809_CPX_DERIVED	AAAAAAAAAAAAAAAAA	<INS>	.	.	CPX_EVENT=CPX_chr20:12558793-12558810;CTG_NAMES=asm027960:tig00003;END=12558809;SVLEN=133;SVTYPE=INS
-chr20	18675720	INS_chr20_18675720_18675720_CPX_DERIVED	A	<INS>	.	.	CPX_EVENT=CPX_chr20:18675721-18675877;CTG_NAMES=asm028012:tig00004;END=18675720;SVLEN=408;SVTYPE=INS
-chr20	20269131	DEL_chr20_20269131_20269198_CPX_DERIVED	A	<DEL>	.	.	CPX_EVENT=CPX_chr20:20269131-20269199;CTG_NAMES=asm028026:tig00000;END=20269198;SVLEN=-67;SVTYPE=DEL
-chr20	28561412	INS_chr20_28561412_28561412_CPX_DERIVED	A	<INS>	.	.	CPX_EVENT=CPX_chr20:28561412-28561576;CTG_NAMES=asm008294:tig00014;END=28561412;SVLEN=75;SVTYPE=INS
-chr20	28561575	INS_chr20_28561575_28561575_CPX_DERIVED	A	<INS>	.	.	CPX_EVENT=CPX_chr20:28561412-28561576;CTG_NAMES=asm008294:tig00014;END=28561575;SVLEN=75;SVTYPE=INS
-chr20	51740560	INS_chr20_51740560_51740560_CPX_DERIVED	A	<INS>	.	.	CPX_EVENT=CPX_chr20:51740560-51740561;CTG_NAMES=asm028558:tig00002,asm028558:tig00003;END=51740560;SVLEN=549;SVTYPE=INS
-chr20	51740560	INS_chr20_51740560_51740560_CPX_DERIVED	A	<INS>	.	.	CPX_EVENT=CPX_chr20:51740560-51741035;CTG_NAMES=asm028558:tig00000,asm028558:tig00001;END=51740560;SVLEN=549;SVTYPE=INS
-chr20	51741034	INS_chr20_51741034_51741034_CPX_DERIVED	T	<INS>	.	.	CPX_EVENT=CPX_chr20:51740560-51741035;CTG_NAMES=asm028558:tig00000,asm028558:tig00001;END=51741034;SVLEN=50;SVTYPE=INS
-chr20	54849491	INS_chr20_54849491_54849491_CPX_DERIVED	C	<INS>	.	.	CPX_EVENT=CPX_chr20:54849491-54849615;CTG_NAMES=asm028586:tig00000;END=54849491;SVLEN=140;SVTYPE=INS
-chr20	54849491	DEL_chr20_54849491_54849614_CPX_DERIVED	C	<DEL>	.	.	CPX_EVENT=CPX_chr20:54849491-54849615;CTG_NAMES=asm028586:tig00000;END=54849614;SVLEN=-123;SVTYPE=DEL
-chr20	58695019	INS_chr20_58695019_58695019_CPX_DERIVED	G	<INS>	.	.	CPX_EVENT=CPX_chr20:58695019-58695020;CTG_NAMES=asm028638:tig00002;END=58695019;SVLEN=549;SVTYPE=INS
-chr20	64097041	INS_chr20_64097041_64097041_CPX_DERIVED	A	<INS>	.	.	CPX_EVENT=CPX_chr20:64096905-64097041;CTG_NAMES=asm028821:tig00001;END=64097041;SVLEN=318;SVTYPE=INS
+chr20	12558793	INS_chr20_12558793_12558809_CPX_DERIVED	AAAAAAAAAAAAAAAAA	<INS>	.	.	CPX_EVENT=CPX_chr20:12558793-12558810;CTG_NAMES=asm027960:tig00003;END=12558809;MAPPING_QUALITIES=60;MAX_ALIGN_LENGTH=597;SVLEN=133;SVTYPE=INS
+chr20	18675720	INS_chr20_18675720_18675720_CPX_DERIVED	A	<INS>	.	.	CPX_EVENT=CPX_chr20:18675721-18675877;CTG_NAMES=asm028012:tig00004;END=18675720;MAPPING_QUALITIES=60;MAX_ALIGN_LENGTH=564;SVLEN=408;SVTYPE=INS
+chr20	20269131	DEL_chr20_20269131_20269198_CPX_DERIVED	A	<DEL>	.	.	CPX_EVENT=CPX_chr20:20269131-20269199;CTG_NAMES=asm028026:tig00000;END=20269198;MAPPING_QUALITIES=60;MAX_ALIGN_LENGTH=40;SVLEN=-67;SVTYPE=DEL
+chr20	28561412	INS_chr20_28561412_28561412_CPX_DERIVED	A	<INS>	.	.	CPX_EVENT=CPX_chr20:28561412-28561576;CTG_NAMES=asm008294:tig00014;END=28561412;MAPPING_QUALITIES=60;MAX_ALIGN_LENGTH=416;SVLEN=75;SVTYPE=INS
+chr20	28561575	INS_chr20_28561575_28561575_CPX_DERIVED	A	<INS>	.	.	CPX_EVENT=CPX_chr20:28561412-28561576;CTG_NAMES=asm008294:tig00014;END=28561575;MAPPING_QUALITIES=60;MAX_ALIGN_LENGTH=416;SVLEN=75;SVTYPE=INS
+chr20	51740560	INS_chr20_51740560_51740560_CPX_DERIVED	A	<INS>	.	.	CPX_EVENT=CPX_chr20:51740560-51740561;CTG_NAMES=asm028558:tig00002,asm028558:tig00003;END=51740560;MAPPING_QUALITIES=60,60;MAX_ALIGN_LENGTH=1104;SVLEN=549;SVTYPE=INS
+chr20	51740560	INS_chr20_51740560_51740560_CPX_DERIVED	A	<INS>	.	.	CPX_EVENT=CPX_chr20:51740560-51741035;CTG_NAMES=asm028558:tig00000,asm028558:tig00001;END=51740560;MAPPING_QUALITIES=60,60;MAX_ALIGN_LENGTH=895;SVLEN=549;SVTYPE=INS
+chr20	51741034	INS_chr20_51741034_51741034_CPX_DERIVED	T	<INS>	.	.	CPX_EVENT=CPX_chr20:51740560-51741035;CTG_NAMES=asm028558:tig00000,asm028558:tig00001;END=51741034;MAPPING_QUALITIES=60,60;MAX_ALIGN_LENGTH=895;SVLEN=50;SVTYPE=INS
+chr20	54849491	INS_chr20_54849491_54849491_CPX_DERIVED	C	<INS>	.	.	CPX_EVENT=CPX_chr20:54849491-54849615;CTG_NAMES=asm028586:tig00000;END=54849491;MAPPING_QUALITIES=60;MAX_ALIGN_LENGTH=88;SVLEN=140;SVTYPE=INS
+chr20	54849491	DEL_chr20_54849491_54849614_CPX_DERIVED	C	<DEL>	.	.	CPX_EVENT=CPX_chr20:54849491-54849615;CTG_NAMES=asm028586:tig00000;END=54849614;MAPPING_QUALITIES=60;MAX_ALIGN_LENGTH=88;SVLEN=-123;SVTYPE=DEL
+chr20	58695019	INS_chr20_58695019_58695019_CPX_DERIVED	G	<INS>	.	.	CPX_EVENT=CPX_chr20:58695019-58695020;CTG_NAMES=asm028638:tig00002;END=58695019;MAPPING_QUALITIES=60;MAX_ALIGN_LENGTH=82;SVLEN=549;SVTYPE=INS
+chr20	64097041	INS_chr20_64097041_64097041_CPX_DERIVED	A	<INS>	.	.	CPX_EVENT=CPX_chr20:64096905-64097041;CTG_NAMES=asm028821:tig00001;END=64097041;MAPPING_QUALITIES=54;MAX_ALIGN_LENGTH=166;SVLEN=318;SVTYPE=INS
