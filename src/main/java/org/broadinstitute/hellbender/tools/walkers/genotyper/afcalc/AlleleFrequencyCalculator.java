@@ -101,7 +101,7 @@ public final class AlleleFrequencyCalculator extends AFCalculator {
                 nonVariantIndicesByPloidy.computeIfAbsent(ploidy, p -> genotypeIndicesWithOnlyRefAndSpanDel(p, alleles));
                 final int[] nonVariantIndices = nonVariantIndicesByPloidy.get(ploidy);
                 final double[] nonVariantLog10Posteriors = MathUtils.applyToArray(nonVariantIndices, n -> log10GenotypePosteriors[n]);
-                log10PNoVariant += MathUtils.log10SumLog10(nonVariantLog10Posteriors);
+                log10PNoVariant += Math.min(0,MathUtils.log10SumLog10(nonVariantLog10Posteriors));
             }
 
             // per allele non-log space probabilities of zero counts for this sample
