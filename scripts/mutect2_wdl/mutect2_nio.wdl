@@ -144,6 +144,7 @@ workflow Mutect2 {
 
     # If no tar is provided, the task downloads one from broads ftp server
     Int onco_tar_size = if defined(onco_ds_tar_gz) then ceil(size(onco_ds_tar_gz, "GB") * 3) else 100
+    Int funco_tar_size = if defined(funco_data_sources_tar_gz) then ceil(size(funco_data_sources_tar_gz, "GB") * 3) else 100
     Int gatk_override_size = if defined(gatk_override) then ceil(size(gatk_override, "GB")) else 0
 
     # This is added to every task as padding, should increase if systematically you need more disk for every call
@@ -360,6 +361,7 @@ workflow Mutect2 {
                 filter_funcotations = filter_funcotations_or_default,
                 sequencing_center = sequencing_center,
                 sequence_source = sequence_source,
+                disk_space_gb = ceil(size(funcotate_vcf_input, "GB") * large_input_to_output_multiplier) + onco_tar_size + disk_pad,
                 extra_args = funcotator_extra_args
         }
     }
