@@ -129,6 +129,8 @@ else
     docker build -t ${REPO_PRJ}:${GITHUB_TAG} --build-arg ZIPPATH=./unzippedJar .
 fi
 
+rm -r build/bundle-files-collected
+
 if [ -z "${IS_NOT_RUN_UNIT_TESTS}" ] ; then
 
 	# Run unit tests
