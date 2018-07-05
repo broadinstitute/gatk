@@ -253,7 +253,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     }
 
     // this is particular to our particular artificial MNP bam -- we extract a method in order to use it for HaplotypeCaller
-    public static void checkMnpOutput(int maxMnpDistance, File outputVcf) {
+    private static void checkMnpOutput(int maxMnpDistance, File outputVcf) {
         // note that for testing HaplotypeCaller GVCF mode we will always have the symbolic <NON REF> allele
         final Map<Integer, List<String>> alleles = StreamSupport.stream(new FeatureDataSource<VariantContext>(outputVcf).spliterator(), false)
                 .collect(Collectors.toMap(VariantContext::getStart, vc -> vc.getAlternateAlleles().stream().filter(a -> !a.isSymbolic()).map(Allele::getBaseString).collect(Collectors.toList())));
