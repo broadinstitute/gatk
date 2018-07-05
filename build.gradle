@@ -423,7 +423,7 @@ test {
         } else if (TEST_TYPE == "all"){
             //include everything
         } else {
-            excludeGroups "cloud", "bucket", "python", "funcotatorValidation", "variantcalling"
+            excludeGroups "cloud", "bucket", "python", "funcotatorValidation"
         }
     }
 
