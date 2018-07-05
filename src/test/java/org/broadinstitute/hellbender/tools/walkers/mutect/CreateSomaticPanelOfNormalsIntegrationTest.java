@@ -20,6 +20,7 @@ import static org.testng.Assert.*;
 /**
  * Created by David Benjamin on 2/17/17.
  */
+@Test(groups = {"variantcalling"})
 public class CreateSomaticPanelOfNormalsIntegrationTest extends CommandLineProgramTest {
 
     private static final File PON_VCFS_DIR = new File(toolsTestDir, "mutect/createpon/");

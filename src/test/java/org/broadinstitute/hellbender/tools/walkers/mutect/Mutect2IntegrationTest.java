@@ -34,6 +34,7 @@ import java.util.stream.StreamSupport;
 /**
  * Created by davidben on 9/1/16.
  */
+@Test(groups = {"variantcalling"})
 public class Mutect2IntegrationTest extends CommandLineProgramTest {
     // positions 10,000,000 - 11,000,000 of chr 20 and with most annotations removed
     private static final File GNOMAD = new File(largeFileTestDir, "very-small-gnomad.vcf");

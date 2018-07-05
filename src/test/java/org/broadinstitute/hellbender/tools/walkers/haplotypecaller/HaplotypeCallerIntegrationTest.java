@@ -44,6 +44,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+@Test(groups = {"variantcalling"})
 public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
 
     public static final String TEST_FILES_DIR = toolsTestDir + "haplotypecaller/";
