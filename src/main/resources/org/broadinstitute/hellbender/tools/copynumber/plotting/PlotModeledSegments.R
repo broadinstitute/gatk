@@ -56,7 +56,7 @@ WriteModeledSegmentsPlot = function(sample_name, allelic_counts_file, denoised_c
         PlotCopyRatiosWithModeledSegments(denoised_copy_ratios_df, modeled_segments_df, contig_names, contig_starts)
     }
 
-    if (file.exists(allelic_counts_file) && denoised_copy_ratios_file!="null") {
+    if (file.exists(allelic_counts_file) && allelic_counts_file!="null") {
         allelic_counts_df = ReadTSV(allelic_counts_file)
 
         SetUpPlot(sample_name, "alternate-allele fraction", 0, 1.0, "contig", contig_names, contig_starts, contig_ends, TRUE)
