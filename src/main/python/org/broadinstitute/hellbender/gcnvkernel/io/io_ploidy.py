@@ -117,7 +117,6 @@ class SamplePloidyWriter:
                                   sample_ploidy_metadata: SamplePloidyMetadata,
                                   sample_index: int):
         fig, axarr = plt.subplots(2, 1, figsize=(12, 8), gridspec_kw = {'height_ratios':[3, 1]})
-        plt.title(sample_ploidy_metadata.sample_name)
         si = sample_index
         for i, contig_tuple in enumerate(ploidy_workspace.contig_tuples):
             for contig in contig_tuple:
@@ -139,6 +138,7 @@ class SamplePloidyWriter:
         axarr[0].set_ylim([1 / np.max(np.sum(ploidy_workspace.hist_sjm[si] * ploidy_workspace.hist_mask_sjm[si],
                                              axis=-1)),
                            1])
+        axarr[0].set_title(sample_ploidy_metadata.sample_name, fontsize=16)
         axarr[0].set_xlabel('count', size=14)
         axarr[0].set_ylabel('density', size=14)
         axarr[0].legend(loc='upper right')

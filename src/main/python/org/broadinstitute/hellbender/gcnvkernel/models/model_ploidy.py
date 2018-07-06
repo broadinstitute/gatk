@@ -226,7 +226,7 @@ class PloidyWorkspace:
     @staticmethod
     def _construct_mask(hist_sjm):
         mask_sjm = np.full(np.shape(hist_sjm), True)
-        # mask_sjm[hist_sjm < 10] = False
+        mask_sjm[hist_sjm < 10] = False
         # mask_sjm[:, :, :50] = False
         return mask_sjm
 
