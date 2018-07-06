@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.genomicsdb;
 
-import com.intel.genomicsdb.GenomicsDBImporter;
+import com.intel.genomicsdb.importer.GenomicsDBImporter;
 import htsjdk.tribble.FeatureReader;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -100,12 +100,5 @@ public class GenomicsDBImportUnitTest extends GATKBaseTest {
         final Map<String, Path> actual = GenomicsDBImport.loadSampleNameMapFileInSortedOrder(sampleFile.toPath());
         Assert.assertEquals(actual, expected);
         Assert.assertEquals(actual.keySet().iterator().next(), "Sample1");
-    }
-
-    @Test(expectedExceptions = IllegalArgumentException.class)
-    public void testNullFeatureReadersToFail() {
-        final Map<String, FeatureReader<VariantContext>> sampleToReaderMap = new LinkedHashMap<>();
-        sampleToReaderMap.put("Sample1", null);
-        GenomicsDBImporter.generateSortedCallSetMap(sampleToReaderMap, true, true, 0L);
     }
 }

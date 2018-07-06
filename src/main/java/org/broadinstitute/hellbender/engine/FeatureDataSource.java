@@ -1,11 +1,13 @@
 package org.broadinstitute.hellbender.engine;
 
-import com.intel.genomicsdb.GenomicsDBFeatureReader;
+import com.intel.genomicsdb.model.GenomicsDBExportConfiguration;
+import com.intel.genomicsdb.reader.GenomicsDBFeatureReader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.tribble.*;
 import htsjdk.variant.bcf2.BCF2Codec;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.GenotypeLikelihoods;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -23,9 +25,12 @@ import org.broadinstitute.hellbender.utils.nio.SeekableByteChannelPrefetcher;
 import java.io.File;
 import java.io.IOException;
 import java.nio.channels.SeekableByteChannel;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Function;
 
 /**
@@ -379,24 +384,58 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
             IOUtils.canReadFile(callsetJson);
             IOUtils.canReadFile(vidmapJson);
             IOUtils.canReadFile(vcfHeader);
-        }
-        catch ( UserException.CouldNotReadInputFile e ) {
+        } catch ( UserException.CouldNotReadInputFile e ) {
             throw new UserException("Couldn't connect to GenomicsDB because the vidmap, callset JSON files, or gVCF Header (" +
                     GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME + "," + GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME + "," +
                     GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME + ") could not be read from GenomicsDB workspace " + workspace.getAbsolutePath(), e);
         }
 
+        final GenomicsDBExportConfiguration.ExportConfiguration exportConfigurationBuilder =
+                createExportConfiguration(reference, workspace, callsetJson, vidmapJson, vcfHeader);
+
         try {
-            return new GenomicsDBFeatureReader<>(vidmapJson.getAbsolutePath(),
-                                                 callsetJson.getAbsolutePath(),
-                                                 workspace.getAbsolutePath(),
-                                                 GenomicsDBConstants.DEFAULT_ARRAY_NAME,
-                                                 reference.getAbsolutePath(),
-                                                 vcfHeader.getAbsolutePath(),
-                                                 new BCF2Codec());
+            return new GenomicsDBFeatureReader<>(exportConfigurationBuilder, new BCF2Codec(), Optional.empty());
         } catch (final IOException e) {
             throw new UserException("Couldn't create GenomicsDBFeatureReader", e);
         }
+    }
+
+    private static GenomicsDBExportConfiguration.ExportConfiguration createExportConfiguration(final File reference, final File workspace,
+                                                                                               final File callsetJson, final File vidmapJson,
+                                                                                               final File vcfHeader) {
+        GenomicsDBExportConfiguration.ExportConfiguration.Builder exportConfigurationBuilder =
+                GenomicsDBExportConfiguration.ExportConfiguration.newBuilder()
+                        .setWorkspace(workspace.getAbsolutePath())
+                        .setReferenceGenome(reference.getAbsolutePath())
+                        .setVidMappingFile(vidmapJson.getAbsolutePath())
+                        .setCallsetMappingFile(callsetJson.getAbsolutePath())
+                        .setVcfHeaderFilename(vcfHeader.getAbsolutePath())
+                        .setProduceGTField(false)
+                        .setProduceGTWithMinPLValueForSpanningDeletions(false)
+                        .setSitesOnlyQuery(false)
+                        .setMaxDiploidAltAllelesThatCanBeGenotyped(GenotypeLikelihoods.MAX_DIPLOID_ALT_ALLELES_THAT_CAN_BE_GENOTYPED);
+        Path arrayFolder = Paths.get(workspace.getAbsolutePath(), GenomicsDBConstants.DEFAULT_ARRAY_NAME).toAbsolutePath();
+
+        // For the multi-interval support, we create multiple arrays (directories) in a single workspace -
+        // one per interval. So, if you wish to import intervals ("chr1", [ 1, 100M ]) and ("chr2", [ 1, 100M ]),
+        // you end up with 2 directories named chr1$1$100M and chr2$1$100M. So, the array names depend on the
+        // partition bounds.
+
+        // During the read phase, the user only supplies the workspace. The array names are obtained by scanning
+        // the entries in the workspace and reading the right arrays. For example, if you wish to read ("chr2",
+        // 50, 50M), then only the second array is queried.
+
+        // In the previous version of the tool, the array name was a constant - genomicsdb_array. The new version
+        // will be backward compatible with respect to reads. Hence, if a directory named genomicsdb_array is found,
+        // the array name is passed to the GenomicsDBFeatureReader otherwise the array names are generated from the
+        // directory entries.
+        if (Files.exists(arrayFolder)) {
+            exportConfigurationBuilder.setArrayName(GenomicsDBConstants.DEFAULT_ARRAY_NAME);
+        } else {
+            exportConfigurationBuilder.setGenerateArrayNameFromPartitionBounds(true);
+        }
+
+        return exportConfigurationBuilder.build();
     }
 
     /**
