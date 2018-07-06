@@ -178,8 +178,6 @@ public class AlleleFrequencyCalculatorUnitTest extends GATKBaseTest {
         final AlleleFrequencyCalculator afCalc = new AlleleFrequencyCalculator(1, 0.1, 0.1, ploidy);
         final List<Allele> alleles = Arrays.asList(A, B, Allele.SPAN_DEL);
 
-        //{AA}, {AB}, {BB}, {AC}, {BC}, {CC}
-
         // some pls that have high likelihood for span del allele but not for the SNP (B)
         final int[] spanDelPls = new int[] {50, 100, 100, 0, 100, 100};
 
@@ -244,6 +242,19 @@ public class AlleleFrequencyCalculatorUnitTest extends GATKBaseTest {
         final double log10PVariantWithoutSpanDel = afCalc.getLog10PNonRef(vcWithoutSpanDel).getLog10LikelihoodOfAFGT0();
         final double log10PVariantWithSpanDel = afCalc.getLog10PNonRef(vcWithSpanDel).getLog10LikelihoodOfAFGT0();
         Assert.assertEquals(log10PVariantWithoutSpanDel, log10PVariantWithSpanDel, 0.0001);
+    }
+
+    // test that a finite precision bug for span del sites with a very unlikely alt allele doesn't occur
+    @Test
+    public void testSpanningDeletionWithVeryUnlikelyAltAllele() {
+        final int ploidy = 4;
+        final AlleleFrequencyCalculator afCalc = new AlleleFrequencyCalculator(1, 0.1, 0.1, ploidy);
+        final List<Allele> alleles = Arrays.asList(A, Allele.SPAN_DEL, B);
+
+        // make PLs that don't support the alt allele
+        final List<int[]> pls = Arrays.asList(new int[] {0,10000,10000,10000,10000, 10000,10000,10000,10000,10000,10000,10000,10000,10000,10000});
+        final VariantContext vc = makeVC(alleles, pls.stream().map(pl -> makeGenotype(ploidy, pl)).collect(Collectors.toList()));
+        final double log10PVariant = afCalc.getLog10PNonRef(vc).getLog10LikelihoodOfAFGT0();
     }
 
     // make PLs that correspond to an obvious call i.e. one PL is relatively big and the rest are zero
