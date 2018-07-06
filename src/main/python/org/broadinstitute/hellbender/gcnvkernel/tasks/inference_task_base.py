@@ -320,6 +320,7 @@ class HybridInferenceTask(InferenceTask):
         self.elbo_hist: List[float] = []
         self.rls_elbo_hist: List[float] = []
         self.snr_hist: List[float] = []
+        self.temperature_hist: List[float] = []
         self.i_epoch = 1
         self.i_advi = 1
         self.calling_hist: List[Tuple[int, bool, bool]] = []
@@ -375,8 +376,8 @@ class HybridInferenceTask(InferenceTask):
         return too_few_epochs or still_in_annealing
 
     def _create_param_tracker(self):
-        assert all([param_name in self.continuous_model.vars or
-                    param_name in self.continuous_model.deterministics
+        assert all([param_name in {var.name for var in self.continuous_model.vars} or
+                    param_name in {var.name for var in self.continuous_model.deterministics}
                     for param_name in self.hybrid_inference_params.param_tracker_config.var_names]),\
             "Some of the parameters chosen to be tracker are not present in the model"
         return VariationalParameterTracker(self.hybrid_inference_params.param_tracker_config)
@@ -407,6 +408,8 @@ class HybridInferenceTask(InferenceTask):
                     elbo_variance = self.advi_convergence_tracker.variance
                     if snr is not None:
                         self.snr_hist.append(snr)
+                    if not self.hybrid_inference_params.disable_annealing:
+                        self.temperature_hist.append(self.temperature.get_value())
                     self.elbo_hist.append(-loss)
                     self.rls_elbo_hist.append(elbo_mean)
                     progress_bar.set_description("({0} epoch {1}) ELBO: {2}, SNR: {3}, T: {4:.2f}".format(
@@ -540,6 +543,9 @@ class HybridInferenceTask(InferenceTask):
 
     def save_elbo_history(self, output_file):
         io_commons.write_ndarray_to_tsv(output_file, np.asarray(self.elbo_hist), write_shape_info=False)
+
+    def save_temperature_history(self, output_file):
+        io_commons.write_ndarray_to_tsv(output_file, np.asarray(self.temperature_hist), write_shape_info=False)
 
 
 class HybridInferenceParameters:

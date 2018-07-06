@@ -224,3 +224,8 @@ if __name__ == "__main__":
 
         elbo_hist_file = os.path.join(args.output_tracking_path, "elbo_history.tsv")
         task.save_elbo_history(elbo_hist_file)
+
+        if not args.disable_annealing:
+
+            temperature_hist_file = os.path.join(args.output_tracking_path, "temperature_history.tsv")
+            task.save_temperature_history(temperature_hist_file)
