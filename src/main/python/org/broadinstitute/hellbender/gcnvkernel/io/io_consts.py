@@ -57,7 +57,7 @@ default_ploidy_config_json_filename = "ploidy_config.json"
 default_gcnvkernel_version_json_filename = "gcnvkernel_version.json"
 
 default_interval_list_filename = "interval_list.tsv"
-default_contig_ploidy_prior_tsv_filename = "contig_ploidy_prior.tsv"
+default_ploidy_state_prior_tsv_filename = "ploidy_state_prior.tsv"
 
 default_adamax_m_filename = "adamax_m.npy"
 default_adamax_u_filename = "adamax_u.npy"

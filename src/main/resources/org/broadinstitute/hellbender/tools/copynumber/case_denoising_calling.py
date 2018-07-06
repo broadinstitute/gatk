@@ -102,7 +102,7 @@ gcnvkernel.HybridInferenceParameters.expose_args(parser)
 def update_args_dict_from_saved_model(input_model_path: str,
                                       _args_dict: Dict[str, Any]):
     logging.info("Loading denoising model configuration from the provided model...")
-    with open(os.path.join(input_model_path, "denoising_config.json"), 'r') as fp:
+    with open(os.path.join(input_model_path, gcnvkernel.io_consts.default_denoising_config_json_filename), 'r') as fp:
         loaded_denoising_config_dict = json.load(fp)
 
     # boolean flags

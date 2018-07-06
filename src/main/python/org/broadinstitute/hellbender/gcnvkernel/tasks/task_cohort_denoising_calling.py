@@ -192,7 +192,7 @@ class CohortDenoisingAndCallingMainTask(HybridInferenceTask):
             # temperature
             self.temperature.set_value(warm_up_task.temperature.get_value())
 
-            # meanfield parameters
+            # mean-field parameters
             for main_param, warm_up_param in zip(self.continuous_model_approx.params,
                                                  warm_up_task.continuous_model_approx.params):
                 main_param.set_value(warm_up_param.get_value())
