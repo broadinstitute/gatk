@@ -567,11 +567,12 @@ class DenoisingCallingWorkspace:
                            num_copy_number_classes: int,
                            class_probs_k: np.ndarray) -> np.ndarray:
         """Calculates the log transition probability between copy number classes."""
-        class_stay_prob_t = np.exp(-dist_t / class_coherence_length)
-        class_not_stay_prob_t = np.ones_like(class_stay_prob_t) - class_stay_prob_t
+        delta_silent_k = np.asarray([1, 0], dtype=types.floatX)
+        class_stay_prob_tk = np.exp(-dist_t / class_coherence_length)[:, None] * delta_silent_k[None, :]
+        class_not_stay_prob_tk = np.ones_like(class_stay_prob_tk) - class_stay_prob_tk
         delta_kl = np.eye(num_copy_number_classes, dtype=types.floatX)
-        trans_tkl = (class_not_stay_prob_t[:, None, None] * class_probs_k[None, None, :]
-                     + class_stay_prob_t[:, None, None] * delta_kl[None, :, :])
+        trans_tkl = (class_not_stay_prob_tk[:, :, None] * class_probs_k[None, None, :]
+                     + class_stay_prob_tk[:, :, None] * delta_kl[None, :, :])
         return np.log(trans_tkl)
 
     @staticmethod
@@ -962,7 +963,19 @@ class HHMMClassAndCopyNumberBasicCaller:
                 calling_config.num_copy_number_states,
                 calling_config.p_alt,
                 shared_workspace.baseline_copy_number_sj[si, :])[:, :, :]
-        self.pi_sjkc: types.TensorSharedVariable = th.shared(pi_sjkc, name='pi_sjkc', borrow=config.borrow_numpy)
+        self.pi_sjkc: types.TensorSharedVariable = th.shared(
+            pi_sjkc, name='pi_sjkc', borrow=config.borrow_numpy)
+
+        # generate reference state kronecker delta function
+        delta_ref_sjc = np.zeros((shared_workspace.num_samples,
+                                  shared_workspace.num_contigs,
+                                  calling_config.num_copy_number_states), dtype=types.floatX)
+        for si in range(shared_workspace.num_samples):
+            delta_ref_sjc[si, :, :] = self.get_baseline_state_kronecker_delta_for_sample_jc(
+                calling_config.num_copy_number_states,
+                shared_workspace.baseline_copy_number_sj[si, :])[:, :]
+        self.delta_ref_sjc: types.TensorSharedVariable = th.shared(
+            delta_ref_sjc, name='delta_ref_sjc', borrow=config.borrow_numpy)
 
         # compiled function for forward-backward updates of copy number posterior
         self._hmm_q_copy_number = TheanoForwardBackward(
@@ -1020,6 +1033,25 @@ class HHMMClassAndCopyNumberBasicCaller:
 
         return pi_jkc
 
+    @staticmethod
+    def get_baseline_state_kronecker_delta_for_sample_jc(num_copy_number_states: int,
+                                                         baseline_copy_number_j: np.ndarray) -> np.ndarray:
+        """Returns a matrix matrix of delta(baseline_copy_number_j, c)
+
+        Args:
+            num_copy_number_states: total number of copy-number states
+            baseline_copy_number_j: baseline copy-number state for each contig
+
+        Returns:
+            a 2d ndarray
+        """
+        delta_ref_jc = np.zeros((len(baseline_copy_number_j), num_copy_number_states), dtype=types.floatX)
+        for j, baseline_state in enumerate(baseline_copy_number_j):
+            # the silent class
+            delta_ref_jc[j, baseline_state] = 1
+
+        return delta_ref_jc
+
     def call(self,
              copy_number_update_summary_statistic_reducer,
              class_update_summary_statistic_reducer) -> Tuple[np.ndarray, np.ndarray, float, float]:
@@ -1067,8 +1099,10 @@ class HHMMClassAndCopyNumberBasicCaller:
             pi_jkc = self.pi_sjkc.get_value(borrow=True)[_sample_index, ...]
             cnv_stay_prob_t = self.shared_workspace.cnv_stay_prob_t.get_value(borrow=True)
             log_q_tau_tk = self.shared_workspace.log_q_tau_tk.get_value(borrow=True)
+            delta_ref_jc = self.delta_ref_sjc.get_value(borrow=True)[_sample_index, ...]
             t_to_j_map = self.shared_workspace.t_to_j_map.get_value(borrow=True)
-            hmm_spec = self._get_copy_number_hmm_specs_theano_func(pi_jkc, cnv_stay_prob_t, log_q_tau_tk, t_to_j_map)
+            hmm_spec = self._get_copy_number_hmm_specs_theano_func(
+                pi_jkc, cnv_stay_prob_t, log_q_tau_tk, delta_ref_jc, t_to_j_map)
             log_prior_c = hmm_spec[0]
             log_trans_tcc = hmm_spec[1]
 
@@ -1143,6 +1177,7 @@ class HHMMClassAndCopyNumberBasicCaller:
             pi_jkc: a 3d tensor containing copy-number priors for each contig (j) and each class (k)
             cnv_stay_prob_t: probability of staying on the same copy-number state at interval `t`
             log_q_tau_tk: log probability of copy-number classes at interval `t`
+            delta_ref_jc: kronecker delta function that picks out the reference (baseline) state
             t_to_j_map: a mapping from interval indices (t) to contig indices (j); it is used to unpack
                 `pi_jkc` to `pi_tkc` (see below)
 
@@ -1159,6 +1194,7 @@ class HHMMClassAndCopyNumberBasicCaller:
         pi_jkc = tt.tensor3(name='pi_jkc')
         cnv_stay_prob_t = tt.vector(name='cnv_stay_prob_t')
         log_q_tau_tk = tt.matrix(name='log_q_tau_tk')
+        delta_ref_jc = tt.matrix(name='delta_ref_jc')
         t_to_j_map = tt.vector(name='t_to_j_map', dtype=tt.scal.uint32)
 
         # log prior probability for the first interval
@@ -1166,7 +1202,8 @@ class HHMMClassAndCopyNumberBasicCaller:
         log_prior_c_first_interval -= pm.logsumexp(log_prior_c_first_interval)
 
         # log transition matrix
-        cnv_not_stay_prob_t = tt.ones_like(cnv_stay_prob_t) - cnv_stay_prob_t
+        cnv_stay_prob_ta = cnv_stay_prob_t.dimshuffle(0, 'x') * delta_ref_jc[t_to_j_map[:-1], :]
+        cnv_not_stay_prob_ta = tt.ones_like(cnv_stay_prob_ta) - cnv_stay_prob_ta
         num_copy_number_states = pi_jkc.shape[2]
         delta_ab = tt.eye(num_copy_number_states)
 
@@ -1175,13 +1212,14 @@ class HHMMClassAndCopyNumberBasicCaller:
 
         # calculate normalized log transition matrix
         # todo use logaddexp
-        log_trans_tkab = tt.log(cnv_not_stay_prob_t.dimshuffle(0, 'x', 'x', 'x') * pi_tkc.dimshuffle(0, 1, 'x', 2)
-                                + cnv_stay_prob_t.dimshuffle(0, 'x', 'x', 'x') * delta_ab.dimshuffle('x', 'x', 0, 1))
+        log_trans_tkab = tt.log(
+            cnv_not_stay_prob_ta.dimshuffle(0, 'x', 1, 'x') * pi_tkc.dimshuffle(0, 1, 'x', 2)
+            + cnv_stay_prob_ta.dimshuffle(0, 'x', 1, 'x') * delta_ab.dimshuffle('x', 'x', 0, 1))
         q_tau_tkab = tt.exp(log_q_tau_tk[1:, :]).dimshuffle(0, 1, 'x', 'x')
         log_trans_tab = tt.sum(q_tau_tkab * log_trans_tkab, axis=1)
         log_trans_tab -= pm.logsumexp(log_trans_tab, axis=2)
 
-        inputs = [pi_jkc, cnv_stay_prob_t, log_q_tau_tk, t_to_j_map]
+        inputs = [pi_jkc, cnv_stay_prob_t, log_q_tau_tk, delta_ref_jc, t_to_j_map]
         outputs = [log_prior_c_first_interval, log_trans_tab]
 
         return th.function(inputs=inputs, outputs=outputs)
@@ -1207,11 +1245,11 @@ class HHMMClassAndCopyNumberBasicCaller:
         cnv_stay_prob_t = self.shared_workspace.cnv_stay_prob_t
         q_c_stc = tt.exp(self.shared_workspace.log_q_c_stc)
         pi_sjkc = self.pi_sjkc
+        delta_ref_sjc = self.delta_ref_sjc
         t_to_j_map = self.shared_workspace.t_to_j_map
         num_copy_number_states = self.calling_config.num_copy_number_states
 
         # log copy number transition matrix for each class
-        cnv_not_stay_prob_t = tt.ones_like(cnv_stay_prob_t) - cnv_stay_prob_t
         delta_ab = tt.eye(num_copy_number_states)
 
         # calculate log class emission by reducing over samples; see below
@@ -1219,12 +1257,13 @@ class HHMMClassAndCopyNumberBasicCaller:
                                                   self.calling_config.num_copy_number_classes),
                                                  dtype=types.floatX)
 
-        def inc_log_class_emission_tk_except_for_first_interval(pi_jkc, q_c_tc, cum_sum_tk):
+        def inc_log_class_emission_tk_except_for_first_interval(pi_jkc, q_c_tc, delta_ref_jc, cum_sum_tk):
             """Adds the contribution of a given sample to the log class emission (symbolically).
 
             Args:
                 pi_jkc: copy number prior inventory for the sample
                 q_c_tc: copy number posteriors for the sample
+                delta_ref_jc: baseline state kronecker delta function
                 cum_sum_tk: current cumulative sum of log class emission
 
             Returns:
@@ -1233,17 +1272,21 @@ class HHMMClassAndCopyNumberBasicCaller:
             # map contigs to targets (starting from the second interval)
             pi_tkc = pi_jkc[t_to_j_map[1:], :, :]
 
+            cnv_stay_prob_ta = cnv_stay_prob_t.dimshuffle(0, 'x') * delta_ref_jc[t_to_j_map[:-1], :]
+            cnv_not_stay_prob_ta = tt.ones_like(cnv_stay_prob_ta) - cnv_stay_prob_ta
+
+            # calculate normalized log transition matrix
             # todo use logaddexp
             log_trans_tkab = tt.log(
-                cnv_not_stay_prob_t.dimshuffle(0, 'x', 'x', 'x') * pi_tkc.dimshuffle(0, 1, 'x', 2)
-                + cnv_stay_prob_t.dimshuffle(0, 'x', 'x', 'x') * delta_ab.dimshuffle('x', 'x', 0, 1))
+                cnv_not_stay_prob_ta.dimshuffle(0, 'x', 1, 'x') * pi_tkc.dimshuffle(0, 1, 'x', 2)
+                + cnv_stay_prob_ta.dimshuffle(0, 'x', 1, 'x') * delta_ab.dimshuffle('x', 'x', 0, 1))
             xi_tab = q_c_tc[:-1, :].dimshuffle(0, 1, 'x') * q_c_tc[1:, :].dimshuffle(0, 'x', 1)
             current_log_class_emission_tk = tt.sum(tt.sum(
                 xi_tab.dimshuffle(0, 'x', 1, 2) * log_trans_tkab, axis=-1), axis=-1)
             return cum_sum_tk + current_log_class_emission_tk
 
         reduce_output = th.reduce(inc_log_class_emission_tk_except_for_first_interval,
-                                  sequences=[pi_sjkc, q_c_stc],
+                                  sequences=[pi_sjkc, q_c_stc, delta_ref_sjc],
                                   outputs_info=[log_class_emission_cum_sum_tk])
         log_class_emission_tk_except_for_first_interval = reduce_output[0]
 

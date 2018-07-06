@@ -46,9 +46,9 @@ def load_read_counts_tsv_file(read_counts_tsv_file: str,
     if return_interval_list:
         interval_list_pd = counts_pd[list(interval_dtypes_dict.keys())]
         interval_list = _convert_interval_list_pandas_to_gcnv_interval_list(interval_list_pd, read_counts_tsv_file)
-        return sample_name, counts_pd[io_consts.count_column_name].as_matrix(), interval_list
+        return sample_name, counts_pd[io_consts.count_column_name].values, interval_list
     else:
-        return sample_name, counts_pd[io_consts.count_column_name].as_matrix(), None
+        return sample_name, counts_pd[io_consts.count_column_name].values, None
 
 
 def load_interval_list_tsv_file(interval_list_tsv_file: str,
@@ -135,8 +135,8 @@ def load_counts_in_the_modeling_zone(read_count_file_list: List[str],
     return sample_names, n_st
 
 
-def _convert_interval_list_pandas_to_gcnv_interval_list(interval_list_pd: pd.DataFrame,
-                                                        input_tsv_file: str) -> List[Interval]:
+def _convert_interval_list_pandas_to_gcnv_interval_list(
+        interval_list_pd: pd.DataFrame, input_tsv_file: str) -> List[Interval]:
     """Converts a pandas dataframe of intervals to list(Interval). Annotations will be parsed
     and added to the intervals as well.
 
