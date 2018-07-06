@@ -2,79 +2,106 @@ package org.broadinstitute.hellbender.tools.copynumber.arguments;
 
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.tools.copynumber.DetermineGermlineContigPloidy;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 /**
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
+ * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public final class GermlineContigPloidyModelArgumentCollection implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    public static final String MEAN_BIAS_STANDARD_DEVIATION_LONG_NAME = "mean-bias-standard-deviation";
-    public static final String MAPPING_ERROR_RATE_LONG_NAME = "mapping-error-rate";
-    public static final String GLOBAL_PSI_SCALE_LONG_NAME = "global-psi-scale";
-    public static final String SAMPLE_PSI_SCALE_LONG_NAME = "sample-psi-scale";
+    public static final String PLOIDY_CONCENTRATION_SCALE_LONG_NAME = "ploidy-concentration-scale";
+    public static final String DEPTH_UPPER_BOUND_LONG_NAME = "depth-upper-bound";
+    public static final String ERROR_RATE_UPPER_BOUND_LONG_NAME = "error-rate-upper-bound";
+    public static final String CONTIG_BIAS_LOWER_BOUND_LONG_NAME = "contig-bias-lower-bound";
+    public static final String CONTIG_BIAS_UPPER_BOUND_LONG_NAME = "contig-bias-upper-bound";
+    public static final String CONTIG_BIAS_SCALE_LONG_NAME = "contig-bias-scale";
 
     @Argument(
-            doc = "Prior standard deviation of the contig-level mean coverage bias.  If a single sample is provided, " +
-                    "this input will be ignored.",
-            fullName = MEAN_BIAS_STANDARD_DEVIATION_LONG_NAME,
+            doc = "Scale factor for the concentration parameters of the per-contig-set Dirichlet prior on ploidy states.  " +
+                    "The relative probabilities given by the ploidy-state priors are normalized and multiplied by this factor " +
+                    "to yield the concentration parameters.",
+            fullName = PLOIDY_CONCENTRATION_SCALE_LONG_NAME,
             minValue = 0.,
             optional = true
     )
-    private double meanBiasStandardDeviation = 0.01;
+    private double ploidyConcentrationScale = 0.01;
 
     @Argument(
-            doc = "Typical mapping error rate.",
-            fullName = MAPPING_ERROR_RATE_LONG_NAME,
+            doc = "Upper bound of the uniform prior on the per-sample depth.",
+            fullName = DEPTH_UPPER_BOUND_LONG_NAME,
             minValue = 0.,
             optional = true
     )
-    private double mappingErrorRate = 0.01;
+    private double depthUpperBound = 1000.;
 
     @Argument(
-            doc = "Prior scale of contig coverage unexplained variance.  If a single sample is provided, " +
-                    "this input will be ignored.",
-            fullName = GLOBAL_PSI_SCALE_LONG_NAME,
+            doc = "Upper bound of the uniform prior on the error rate.",
+            fullName = ERROR_RATE_UPPER_BOUND_LONG_NAME,
             minValue = 0.,
             optional = true
     )
-    private double globalPsiScale = 0.001;
+    private double errorRateUpperBound = 0.1;
 
     @Argument(
-            doc = "Prior scale of the sample-specific correction to the coverage unexplained variance.",
-            fullName = SAMPLE_PSI_SCALE_LONG_NAME,
+            doc = "Lower bound of the Gamma prior on the per-contig bias.",
+            fullName = CONTIG_BIAS_LOWER_BOUND_LONG_NAME,
             minValue = 0.,
             optional = true
     )
-    private double samplePsiScale = 0.0001;
+    private double contigBiasLowerBound = 0.1;
+
+    @Argument(
+            doc = "Upper bound of the Gamma prior on the per-contig bias.",
+            fullName = CONTIG_BIAS_UPPER_BOUND_LONG_NAME,
+            minValue = 0.,
+            optional = true
+    )
+    private double contigBiasUpperBound = 2.;
+
+    @Argument(
+            doc = "Scale factor for the Gamma prior on the per-contig bias.  " +
+                    "Both alpha and beta hyperparameters for the Gamma prior will be set to this factor.",
+            fullName = CONTIG_BIAS_SCALE_LONG_NAME,
+            minValue = 0.,
+            optional = true
+    )
+    private double contigBiasScale = 10.;
 
     public List<String> generatePythonArguments(final DetermineGermlineContigPloidy.RunMode runMode) {
-        final List<String> arguments = new ArrayList<>(Arrays.asList(
-                String.format("--mapping_error_rate=%e", mappingErrorRate),
-                String.format("--psi_s_scale=%e", samplePsiScale)));
         if (runMode == DetermineGermlineContigPloidy.RunMode.COHORT) {
-            arguments.addAll(Arrays.asList(
-                    String.format("--mean_bias_sd=%e", meanBiasStandardDeviation),
-                    String.format("--psi_j_scale=%e", globalPsiScale)));
+            return Arrays.asList(
+                    String.format("--ploidy_concentration_scale=%e", ploidyConcentrationScale),
+                    String.format("--depth_upper_bound=%e", depthUpperBound),
+                    String.format("--error_rate_upper_bound=%e", errorRateUpperBound),
+                    String.format("--contig_bias_lower_bound=%e", contigBiasLowerBound),
+                    String.format("--contig_bias_upper_bound=%e", contigBiasUpperBound),
+                    String.format("--contig_bias_scale=%e", contigBiasScale));
         }
-        return arguments;
+        return Collections.emptyList();
     }
 
     public void validate() {
-        ParamUtils.isPositive(meanBiasStandardDeviation,
-                "Prior standard deviation of the contig-level mean coverage bias must be positive.");
-        ParamUtils.isPositive(mappingErrorRate,
-                "Typical mapping error rate must be positive.");
-        ParamUtils.isPositive(globalPsiScale,
-                "Prior scale of contig coverage unexplained variance must be positive.");
-        ParamUtils.isPositive(samplePsiScale,
-                "Prior scale of the sample-specific correction to the coverage unexplained variance " +
-                        "must be positive.");
+        ParamUtils.isPositive(ploidyConcentrationScale,
+                "Ploidy concentration scale must be positive.");
+        ParamUtils.isPositive(depthUpperBound,
+                "Upper bound of the per-sample depth must be positive.");
+        ParamUtils.isPositive(errorRateUpperBound,
+                "Upper bound of the error rate must be positive.");
+        ParamUtils.isPositive(contigBiasLowerBound,
+                "Lower bound of the per-contig bias must be positive.");
+        ParamUtils.isPositive(contigBiasUpperBound,
+                "Upper bound of the per-contig bias must be positive.");
+        ParamUtils.isPositive(contigBiasScale,
+                "Scale of the per-contig bias must be positive.");
+        Utils.validateArg(contigBiasLowerBound < contigBiasUpperBound,
+                "Lower bound of the per-contig bias must be less than the upper bound.");
     }
 }

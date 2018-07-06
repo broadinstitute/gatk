@@ -1,5 +1,6 @@
 import logging
 import os
+from collections import defaultdict, OrderedDict
 from typing import List, Dict
 
 import numpy as np
@@ -32,7 +33,7 @@ class PloidyModelWriter:
         self.ploidy_model_approx = ploidy_model_approx
         self.output_path = output_path
         (self._approx_var_set, self._approx_mu_map,
-         self._approx_std_map) = io_commons.extract_meanfield_posterior_parameters(self.ploidy_model_approx)
+         self._approx_std_map) = io_commons.extract_mean_field_posterior_parameters(self.ploidy_model_approx)
 
     def __call__(self):
         # write gcnvkernel version
@@ -42,7 +43,7 @@ class PloidyModelWriter:
         io_commons.write_dict_to_json_file(
             os.path.join(self.output_path, io_consts.default_ploidy_config_json_filename),
             self.ploidy_config.__dict__,
-            {'contig_ploidy_prior_map', 'contig_set', 'num_ploidy_states'})
+            {'ploidy_state_priors_map'})
 
         # write global variables in the posterior
         for var_name in self.ploidy_model.global_var_registry:
@@ -71,7 +72,7 @@ class SamplePloidyWriter:
         self.ploidy_model_approx = ploidy_model_approx
         self.output_path = output_path
         (self._approx_var_set, self._approx_mu_map,
-         self._approx_std_map) = io_commons.extract_meanfield_posterior_parameters(self.ploidy_model_approx)
+         self._approx_std_map) = io_commons.extract_mean_field_posterior_parameters(self.ploidy_model_approx)
 
     @staticmethod
     def _write_sample_contig_ploidy(sample_posterior_path: str,
@@ -119,9 +120,9 @@ class SamplePloidyWriter:
             # find best contig ploidy calls and calculate ploidy genotyping quality
             ploidy_j = np.zeros((self.ploidy_workspace.num_contigs,), dtype=types.small_uint)
             ploidy_genotyping_quality_j = np.zeros((self.ploidy_workspace.num_contigs,), dtype=types.floatX)
-            log_q_ploidy_jk = self.ploidy_workspace.log_q_ploidy_sjk.get_value(borrow=True)[si, :, :]
+            log_q_ploidy_jl = self.ploidy_workspace.log_q_ploidy_sjl[si, :, :]
             for j in range(self.ploidy_workspace.num_contigs):
-                ploidy_j[j], ploidy_genotyping_quality_j[j] = model_commons.perform_genotyping(log_q_ploidy_jk[j, :])
+                ploidy_j[j], ploidy_genotyping_quality_j[j] = model_commons.perform_genotyping(log_q_ploidy_jl[j, :])
 
             # generate sample ploidy metadata
             sample_ploidy_metadata = SamplePloidyMetadata(
@@ -146,7 +147,7 @@ class SamplePloidyWriter:
             io_commons.write_sample_name_to_txt_file(sample_posterior_path, sample_name)
 
             # write sample-specific posteriors in the approximation
-            io_commons.write_meanfield_sample_specific_params(
+            io_commons.write_mean_field_sample_specific_params(
                 si, sample_posterior_path, self._approx_var_set, self._approx_mu_map, self._approx_std_map,
                 self.ploidy_model, sample_name_comment_line)
 
@@ -171,29 +172,58 @@ class PloidyModelReader:
         io_commons.check_gcnvkernel_version_from_path(self.input_path)
 
         # read model params
-        io_commons.read_meanfield_global_params(self.input_path, self.ploidy_model_approx, self.ploidy_model)
+        io_commons.read_mean_field_global_params(self.input_path, self.ploidy_model_approx, self.ploidy_model)
 
 
-def get_contig_ploidy_prior_map_from_tsv_file(input_path: str,
+def get_ploidy_state_priors_map_from_tsv_file(input_path: str,
                                               comment=io_consts.default_comment_char,
-                                              delimiter=io_consts.default_delimiter_char) -> Dict[str, np.ndarray]:
-    contig_ploidy_prior_pd = pd.read_csv(input_path, delimiter=delimiter, comment=comment)
-    columns = [str(x) for x in contig_ploidy_prior_pd.columns.values]
-    assert len(columns) > 1
-    assert columns[0] == io_consts.ploidy_prior_contig_name_column
-    contig_list = [str(x) for x in contig_ploidy_prior_pd['CONTIG_NAME'].values]
-    assert all([len(column) > len(io_consts.ploidy_prior_prefix)
-                and column[:len(io_consts.ploidy_prior_prefix)] == io_consts.ploidy_prior_prefix
-                for column in columns[1:]])
-    ploidy_values = [int(column[len(io_consts.ploidy_prior_prefix):]) for column in columns[1:]]
-    num_ploidy_states = np.max(ploidy_values) + 1
-    contig_ploidy_prior_map: Dict[str, np.ndarray] = dict()
-    for contig in contig_list:
-        contig_ploidy_prior_map[contig] = np.zeros((num_ploidy_states,), dtype=types.floatX)
-    for ploidy in range(num_ploidy_states):
-        column_name = io_consts.ploidy_prior_prefix + str(ploidy)
-        if column_name in columns:
-            values = [float(x) for x in contig_ploidy_prior_pd[column_name].values]
-            for j, contig in enumerate(contig_list):
-                contig_ploidy_prior_map[contig][ploidy] = values[j]
-    return contig_ploidy_prior_map
+                                              delimiter=io_consts.default_delimiter_char) \
+        -> Dict[List[str], Dict[List[int], float]]:
+    """Reads the ploidy-state priors from a file.
+
+    Returns:
+        A map of the ploidy-state priors. This is a defaultdict(OrderedDict).
+        The keys of the defaultdict are the contig tuples.
+        The keys of the OrderedDict are the ploidy states, and
+        the values of the OrderedDict are the normalized prior probabilities.
+    """
+    ploidy_state_priors_pd = pd.read_csv(input_path, delimiter=delimiter, comment=comment,
+                                         dtype={'CONTIG_TUPLE': str,
+                                                'PLOIDY_STATE': str,
+                                                'RELATIVE_PROBABILITY': float})
+    columns = [str(x) for x in ploidy_state_priors_pd.columns.values]
+    assert columns == ['CONTIG_TUPLE', 'PLOIDY_STATE', 'RELATIVE_PROBABILITY']
+
+    # read in the relative (unnormalized) probabilities
+    raw_ploidy_state_priors_map = defaultdict(dict)
+
+    for _, row in ploidy_state_priors_pd.iterrows():
+        contig_tuple = tuple(contig for contig in row['CONTIG_TUPLE'][1:-1].split(','))
+        contig_tuple_set = set(contig_tuple)
+        assert len(contig_tuple_set) == len(contig_tuple), \
+            "Contig tuples cannot contain duplicate contigs."
+        ploidy_state = tuple(int(x) for x in row['PLOIDY_STATE'][1:-1].split(','))
+        assert len(contig_tuple) == len(ploidy_state)
+        relative_prob = row['RELATIVE_PROBABILITY']
+        assert relative_prob > 0, \
+            "Relative probabilities must be positive.  " \
+            "Ploidy states with zero probability should not be included in the priors file."
+        assert ploidy_state not in raw_ploidy_state_priors_map[contig_tuple], \
+            "Relative probability should be specified only once for each contig-tuple--ploidy-state combination."
+        raw_ploidy_state_priors_map[contig_tuple][ploidy_state] = relative_prob
+
+    contig_set = set()
+    for i, contig_tuple in enumerate(raw_ploidy_state_priors_map.keys()):
+        for j, contig in enumerate(contig_tuple):
+            assert contig not in contig_set, "Contig tuples must be disjoint."
+            contig_set.add(contig)
+
+    # normalize the probabilities
+    ploidy_state_priors_map = defaultdict(OrderedDict)
+    for contig_tuple in raw_ploidy_state_priors_map:
+        normalizing_factor = sum(raw_ploidy_state_priors_map[contig_tuple].values())
+        for ploidy_state, relative_prob in raw_ploidy_state_priors_map[contig_tuple].items():
+            ploidy_state_priors_map[contig_tuple][ploidy_state] = \
+                raw_ploidy_state_priors_map[contig_tuple][ploidy_state] / normalizing_factor
+
+    return ploidy_state_priors_map
