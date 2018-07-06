@@ -17,7 +17,7 @@ public final class IntegerCopyNumberState implements Comparable<IntegerCopyNumbe
 
     public IntegerCopyNumberState(final int copyNumber) {
         this.copyNumber = ParamUtils.isPositiveOrZero(copyNumber, "The integer copy number state" +
-                " must be non-negative");
+                " must be non-negative.");
     }
 
     public int getCopyNumber() { return copyNumber; }
