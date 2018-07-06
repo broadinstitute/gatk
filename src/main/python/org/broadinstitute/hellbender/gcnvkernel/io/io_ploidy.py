@@ -6,6 +6,8 @@ from typing import List, Dict
 import numpy as np
 import pandas as pd
 import pymc3 as pm
+import matplotlib.pyplot as plt
+from scipy.stats import nbinom
 
 from . import io_commons
 from . import io_consts
@@ -109,6 +111,57 @@ class SamplePloidyWriter:
             f.write(delimiter.join([repr(sample_read_depth_metadata.global_read_depth),
                                     repr(sample_read_depth_metadata.average_ploidy)]) + '\n')
 
+    @staticmethod
+    def _write_sample_ploidy_plot(sample_posterior_path: str,
+                                  ploidy_workspace: PloidyWorkspace,
+                                  sample_ploidy_metadata: SamplePloidyMetadata,
+                                  sample_index: int):
+        fig, axarr = plt.subplots(2, 1, figsize=(12, 8), gridspec_kw = {'height_ratios':[3, 1]})
+        plt.title(sample_ploidy_metadata.sample_name)
+        si = sample_index
+        for i, contig_tuple in enumerate(ploidy_workspace.contig_tuples):
+            for contig in contig_tuple:
+                j = ploidy_workspace.contig_to_index_map[contig]
+                hist_mask_m = np.logical_not(ploidy_workspace.hist_mask_sjm[si, j])
+                counts_m = ploidy_workspace.counts_m
+                hist_norm_m = ploidy_workspace.hist_sjm[si, j] / \
+                              np.sum(ploidy_workspace.hist_sjm[si, j] * ploidy_workspace.hist_mask_sjm[si, j])
+                axarr[0].semilogy(counts_m, hist_norm_m, c='k', alpha=0.25,
+                                  label='masked data' if j == 0 else None)
+                axarr[0].semilogy(counts_m, np.ma.array(hist_norm_m, mask=hist_mask_m), c='b', alpha=0.5,
+                                  label='data' if j == 0 else None)
+                mu = ploidy_workspace.fit_mu_sj[si, j]
+                alpha = ploidy_workspace.fit_alpha_sj[si, j]
+                pdf_m = nbinom.pmf(k=counts_m, n=alpha, p=alpha / (mu + alpha))
+                axarr[0].semilogy(counts_m, np.ma.array(pdf_m, mask=hist_mask_m), c='g', lw=2,
+                                  label='histogram model' if j == 0 else None)
+                axarr[0].set_xlim([0, ploidy_workspace.num_counts])
+        axarr[0].set_ylim([1 / np.max(np.sum(ploidy_workspace.hist_sjm[si] * ploidy_workspace.hist_mask_sjm[si],
+                                             axis=-1)),
+                           1])
+        axarr[0].set_xlabel('count', size=14)
+        axarr[0].set_ylabel('density', size=14)
+        axarr[0].legend(loc='upper right')
+
+        d = np.mean(ploidy_workspace.ploidy_model_approx_trace['d_s'][:, si])
+        b_j_norm = np.mean(ploidy_workspace.ploidy_model_approx_trace['b_j_norm'], axis=0)
+        j = np.arange(ploidy_workspace.num_contigs)
+
+        axarr[1].errorbar(j, ploidy_workspace.fit_mu_sj[si] / (d * b_j_norm),
+                          yerr=ploidy_workspace.fit_mu_sd_sj[si] / (d * b_j_norm),
+                          c='g', fmt='o', elinewidth=2, alpha=0.5, label='histogram model')
+        axarr[1].scatter(j, sample_ploidy_metadata.ploidy_j, c='r', label='ploidy model')
+        axarr[1].set_xticks(j)
+        axarr[1].set_xticklabels(ploidy_workspace.contigs)
+        axarr[1].set_xlabel('contig', size=14)
+        axarr[1].set_ylabel('ploidy', size=14)
+        axarr[1].set_ylim([0, ploidy_workspace.num_ploidies])
+        axarr[1].legend(loc='upper right')
+
+        fig.tight_layout(pad=0.5)
+        fig.savefig(os.path.join(sample_posterior_path, io_consts.default_sample_ploidy_plot_svg_filename))
+
+
     def __call__(self):
         for si, sample_name in enumerate(self.ploidy_workspace.sample_names):
             sample_name_comment_line = [io_consts.sample_name_sam_header_prefix + sample_name]
@@ -150,6 +203,10 @@ class SamplePloidyWriter:
             io_commons.write_mean_field_sample_specific_params(
                 si, sample_posterior_path, self._approx_var_set, self._approx_mu_map, self._approx_std_map,
                 self.ploidy_model, sample_name_comment_line)
+
+            # write ploidy plot
+            self._write_sample_ploidy_plot(
+                sample_posterior_path, self.ploidy_workspace, sample_ploidy_metadata, si)
 
 
 class PloidyModelReader:
