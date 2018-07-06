@@ -57,7 +57,7 @@ class DenoisingModelWriter:
             self.output_path, self.denoising_calling_workspace.log_q_tau_tk.get_value(borrow=True))
 
         # write global variables in the posterior
-        io_commons.write_meanfield_global_params(
+        io_commons.write_mean_field_global_params(
             self.output_path, self.denoising_model_approx, self.denoising_model)
 
 
@@ -88,7 +88,7 @@ class DenoisingModelReader:
             borrow=config.borrow_numpy)
 
         # read global posterior parameters
-        io_commons.read_meanfield_global_params(
+        io_commons.read_mean_field_global_params(
             self.input_path, self.denoising_model_approx, self.denoising_model)
 
 
@@ -147,8 +147,8 @@ class SampleDenoisingAndCallingPosteriorsWriter:
             os.path.join(self.output_path, io_consts.default_calling_config_json_filename),
             self.calling_config.__dict__, set())
 
-        # extract meanfield parameters
-        approx_var_set, approx_mu_map, approx_std_map = io_commons.extract_meanfield_posterior_parameters(
+        # extract mean-field parameters
+        approx_var_set, approx_mu_map, approx_std_map = io_commons.extract_mean_field_posterior_parameters(
             self.denoising_model_approx)
 
         for si, sample_name in enumerate(self.denoising_calling_workspace.sample_names):
@@ -159,7 +159,7 @@ class SampleDenoisingAndCallingPosteriorsWriter:
             io_commons.assert_output_path_writable(sample_posterior_path, try_creating_output_path=True)
 
             # write sample-specific posteriors in the approximation
-            io_commons.write_meanfield_sample_specific_params(
+            io_commons.write_mean_field_sample_specific_params(
                 si, sample_posterior_path, approx_var_set, approx_mu_map, approx_std_map,
                 self.denoising_model, sample_name_comment_line)
 
@@ -259,7 +259,7 @@ class SampleDenoisingAndCallingPosteriorsReader:
             assert os.path.exists(sample_posterior_path)
 
             # read sample-specific posteriors and update approximation
-            io_commons.read_meanfield_sample_specific_params(
+            io_commons.read_mean_field_sample_specific_params(
                 sample_posterior_path, si, self.denoising_calling_workspace.sample_names[si],
                 self.denoising_model_approx, self.denoising_model)
 

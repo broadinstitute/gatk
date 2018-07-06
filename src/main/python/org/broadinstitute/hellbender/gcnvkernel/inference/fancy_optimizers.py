@@ -155,7 +155,7 @@ class FancyAdamax(FancyStochasticOptimizer):
 
         # indices of sample-specific vars
         if sample_specific_only:
-            vmap_list = io_commons.get_var_map_list_from_meanfield_approx(approx)
+            vmap_list = io_commons.get_var_map_list_from_mean_field_approx(approx)
             sample_specific_indices = []
             for vmap in vmap_list:
                 if vmap.var in model.sample_specific_var_registry:
