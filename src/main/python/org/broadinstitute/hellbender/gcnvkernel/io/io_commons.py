@@ -82,12 +82,12 @@ def assert_output_path_writable(output_path: str,
     """
     if os.path.exists(output_path):
         if not os.path.isdir(output_path):
-            raise IOError("The provided output path \"{0}\" is not a directory")
+            raise IOError("The provided output path \"{0}\" is not a directory".format(output_path))
     elif try_creating_output_path:
         try:
             os.makedirs(output_path)
         except IOError:
-            raise IOError("The provided output path \"{0}\" does not exist and can not be created")
+            raise IOError("The provided output path \"{0}\" does not exist and can not be created".format(output_path))
     tmp_prefix = "write_tester"
     count = 0
     filename = os.path.join(output_path, tmp_prefix)
@@ -195,7 +195,7 @@ def read_ndarray_from_tsv(input_file: str,
     return np.vstack(rows).reshape(make_tuple(shape))
 
 
-def get_var_map_list_from_meanfield_approx(approx: pm.MeanField) -> List[pm.blocking.VarMap]:
+def get_var_map_list_from_mean_field_approx(approx: pm.MeanField) -> List[pm.blocking.VarMap]:
     """Extracts the variable-to-linear-array of a PyMC3 mean-field approximation.
 
     Args:
@@ -212,7 +212,7 @@ def get_var_map_list_from_meanfield_approx(approx: pm.MeanField) -> List[pm.bloc
         raise Exception("Unsupported PyMC3 version")
 
 
-def extract_meanfield_posterior_parameters(approx: pm.MeanField)\
+def extract_mean_field_posterior_parameters(approx: pm.MeanField)\
         -> Tuple[Set[str], Dict[str, np.ndarray], Dict[str, np.ndarray]]:
     """Extracts mean-field posterior parameters in the right shape and dtype from an instance
     of PyMC3 mean-field approximation.
@@ -230,7 +230,7 @@ def extract_meanfield_posterior_parameters(approx: pm.MeanField)\
     mu_map = dict()
     std_map = dict()
     var_set = set()
-    for vmap in get_var_map_list_from_meanfield_approx(approx):
+    for vmap in get_var_map_list_from_mean_field_approx(approx):
         var_set.add(vmap.var)
         mu_map[vmap.var] = mu_flat_view[vmap.slc].reshape(vmap.shp).astype(vmap.dtyp)
         std_map[vmap.var] = std_flat_view[vmap.slc].reshape(vmap.shp).astype(vmap.dtyp)
@@ -292,7 +292,7 @@ def _get_singleton_slice_along_axis(array: np.ndarray, axis: int, index: int):
     return slc
 
 
-def write_meanfield_sample_specific_params(sample_index: int,
+def write_mean_field_sample_specific_params(sample_index: int,
                                            sample_posterior_path: str,
                                            approx_var_name_set: Set[str],
                                            approx_mu_map: Dict[str, np.ndarray],
@@ -314,7 +314,7 @@ def write_meanfield_sample_specific_params(sample_index: int,
     sample_specific_var_registry = model.sample_specific_var_registry
     for var_name, var_sample_axis in sample_specific_var_registry.items():
         assert var_name in approx_var_name_set, "A model variable named \"{0}\" could not be found in the " \
-                                                "meanfield posterior while trying to write sample-specific " \
+                                                "mean-field posterior while trying to write sample-specific " \
                                                 "variables to disk".format(var_name)
         mu_all = approx_mu_map[var_name]
         std_all = approx_std_map[var_name]
@@ -328,7 +328,7 @@ def write_meanfield_sample_specific_params(sample_index: int,
         write_ndarray_to_tsv(std_out_file_name, std_slice, extra_comment_lines=extra_comment_lines)
 
 
-def write_meanfield_global_params(output_path: str,
+def write_mean_field_global_params(output_path: str,
                                   approx: pm.MeanField,
                                   model: GeneralizedContinuousModel):
     """Writes global parameters contained in an instance of PyMC3 mean-field approximation to disk.
@@ -338,12 +338,12 @@ def write_meanfield_global_params(output_path: str,
         approx: an instance of PyMC3 mean-field approximation
         model: the generalized model corresponding to the provided mean-field approximation
     """
-    # parse meanfield posterior parameters
-    approx_var_set, approx_mu_map, approx_std_map = extract_meanfield_posterior_parameters(approx)
+    # parse mean-field posterior parameters
+    approx_var_set, approx_mu_map, approx_std_map = extract_mean_field_posterior_parameters(approx)
 
     for var_name in model.global_var_registry:
         assert var_name in approx_var_set, "A model variable named \"{0}\" could not be found in the " \
-                                           "meanfield posterior while trying to write global variables " \
+                                           "mean-field posterior while trying to write global variables " \
                                            "to disk".format(var_name)
         _logger.info("Writing {0}...".format(var_name))
         var_mu = approx_mu_map[var_name]
@@ -355,7 +355,7 @@ def write_meanfield_global_params(output_path: str,
         write_ndarray_to_tsv(var_std_out_path, var_std)
 
 
-def read_meanfield_global_params(input_model_path: str,
+def read_mean_field_global_params(input_model_path: str,
                                  approx: pm.MeanField,
                                  model: GeneralizedContinuousModel) -> None:
     """Reads global parameters of a given model from saved mean-field posteriors and injects them
@@ -367,7 +367,7 @@ def read_meanfield_global_params(input_model_path: str,
         model: the generalized model corresponding to the provided mean-field approximation and the saved
             instance
     """
-    vmap_list = get_var_map_list_from_meanfield_approx(approx)
+    vmap_list = get_var_map_list_from_mean_field_approx(approx)
 
     def _update_param_inplace(param, slc, dtype, new_value):
         param[slc] = new_value.astype(dtype).flatten()
@@ -404,7 +404,7 @@ def read_meanfield_global_params(input_model_path: str,
                     model_rho.get_value(borrow=True), vmap.slc, vmap.dtyp, var_rho), borrow=True)
 
 
-def read_meanfield_sample_specific_params(input_sample_calls_path: str,
+def read_mean_field_sample_specific_params(input_sample_calls_path: str,
                                           sample_index: int,
                                           sample_name: str,
                                           approx: pm.MeanField,
@@ -430,7 +430,7 @@ def read_meanfield_sample_specific_params(input_sample_calls_path: str,
         "task correspond to the same datasets and with the same order/name of samples.".format(
             input_sample_calls_path, sample_index, path_sample_name, sample_name)
 
-    vmap_list = get_var_map_list_from_meanfield_approx(approx)
+    vmap_list = get_var_map_list_from_mean_field_approx(approx)
 
     def _update_param_inplace(_param: np.ndarray,
                               _var_slice: slice,
@@ -460,7 +460,7 @@ def read_meanfield_sample_specific_params(input_sample_calls_path: str,
             sample_specific_var, _var_sample_axis, _sample_index)] = _sample_specific_loaded_value[:]
         return _param
 
-    # reference to meanfield posterior mu and rho
+    # reference to mean-field posterior mu and rho
     model_mu = approx.params[0]
     model_rho = approx.params[1]
 

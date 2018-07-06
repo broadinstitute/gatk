@@ -804,7 +804,7 @@ public abstract class GATKTool extends CommandLineProgram {
 
         if (createOutputVariantIndex) {
             if (null == sequenceDictionary) {
-                logger.warn("An variant index will not be created - a sequence dictionary is required to create an output index");
+                logger.warn("A variant index will not be created - a sequence dictionary is required to create an output index");
                 // fall through and create without an index
             } else {
                 options.add(Options.INDEX_ON_THE_FLY);

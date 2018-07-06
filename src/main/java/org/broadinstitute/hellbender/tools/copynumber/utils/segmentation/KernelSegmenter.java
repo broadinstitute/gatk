@@ -275,7 +275,7 @@ public final class KernelSegmenter<DATA> {
         }
 
         if (changepointCandidates.isEmpty()) {
-            logger.warn("No changepoint candidates were found.  The specified window sizes may be inappropriate, or there may be insufficient data points");
+            logger.warn("No changepoint candidates were found.  The specified window sizes may be inappropriate, or there may be insufficient data points.");
         }
 
         return changepointCandidates;
