@@ -61,7 +61,6 @@ def update_args_dict_from_saved_model(input_model_path: str,
     with open(os.path.join(input_model_path, gcnvkernel.io_consts.default_ploidy_config_json_filename), 'r') as fp:
         _args_dict = json.load(fp)
 
-
 if __name__ == "__main__":
 
     # parse arguments
