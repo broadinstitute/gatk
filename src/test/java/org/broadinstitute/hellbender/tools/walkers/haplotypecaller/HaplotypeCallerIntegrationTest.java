@@ -44,6 +44,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+@Test(groups = {"variantcalling"})
 public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
 
     public static final String TEST_FILES_DIR = toolsTestDir + "haplotypecaller/";
@@ -398,7 +399,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         innerTestBamoutProducesReasonablySizedOutput(bamOutput);
     }
 
-    public void innerTestBamoutProducesReasonablySizedOutput(Path bamOutput) {
+    private void innerTestBamoutProducesReasonablySizedOutput(Path bamOutput) {
         Utils.resetRandomGenerator();
 
         // We will test that when running with -bamout over the testInterval, we produce
@@ -767,7 +768,50 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                     "-" + HaplotypeCallerArgumentCollection.MAX_MNP_DISTANCE_SHORT_NAME, Integer.toString(maxMnpDistance));
             runCommandLine(args);
 
-            Mutect2IntegrationTest.checkMnpOutput(maxMnpDistance, outputVcf);
+            checkMnpOutput(maxMnpDistance, outputVcf);
+        }
+    }
+
+    // this is particular to our particular artificial MNP bam -- we extract a method in order to use it for HaplotypeCaller
+    private static void checkMnpOutput(int maxMnpDistance, File outputVcf) {
+        // note that for testing HaplotypeCaller GVCF mode we will always have the symbolic <NON REF> allele
+        final Map<Integer, List<String>> alleles = StreamSupport.stream(new FeatureDataSource<VariantContext>(outputVcf).spliterator(), false)
+                .collect(Collectors.toMap(VariantContext::getStart, vc -> vc.getAlternateAlleles().stream().filter(a -> !a.isSymbolic()).map(Allele::getBaseString).collect(Collectors.toList())));
+
+        // phased, two bases apart
+        if (maxMnpDistance < 2) {
+            Assert.assertEquals(alleles.get(10019968), Arrays.asList("G"));
+            Assert.assertEquals(alleles.get(10019970), Arrays.asList("G"));
+        } else {
+            Assert.assertEquals(alleles.get(10019968), Arrays.asList("GAG"));
+            Assert.assertTrue(!alleles.containsKey(10019970));
+        }
+
+        // adjacent and out of phase
+        Assert.assertEquals(alleles.get(10020229), Arrays.asList("A"));
+        Assert.assertEquals(alleles.get(10020230), Arrays.asList("G"));
+
+        // 4-substitution MNP w/ spacings 2, 3, 4
+        if (maxMnpDistance < 2) {
+            Assert.assertEquals(alleles.get(10020430), Arrays.asList("G"));
+            Assert.assertEquals(alleles.get(10020432), Arrays.asList("G"));
+            Assert.assertEquals(alleles.get(10020435), Arrays.asList("G"));
+            Assert.assertEquals(alleles.get(10020439), Arrays.asList("G"));
+        } else if (maxMnpDistance < 3) {
+            Assert.assertEquals(alleles.get(10020430), Arrays.asList("GAG"));
+            Assert.assertEquals(alleles.get(10020435), Arrays.asList("G"));
+            Assert.assertEquals(alleles.get(10020439), Arrays.asList("G"));
+        } else if (maxMnpDistance < 4) {
+            Assert.assertEquals(alleles.get(10020430), Arrays.asList("GAGTTG"));
+            Assert.assertEquals(alleles.get(10020439), Arrays.asList("G"));
+        } else {
+            Assert.assertEquals(alleles.get(10020430), Arrays.asList("GAGTTGTCTG"));
+        }
+
+        // two out of phase DNPs that overlap and have a base in common
+        if (maxMnpDistance > 0) {
+            Assert.assertEquals(alleles.get(10020680), Arrays.asList("TA"));
+            Assert.assertEquals(alleles.get(10020681), Arrays.asList("AT"));
         }
     }
 

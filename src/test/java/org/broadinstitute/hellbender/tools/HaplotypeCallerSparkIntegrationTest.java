@@ -24,6 +24,7 @@ import java.util.Collections;
 
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerIntegrationTest;
 
+@Test(groups = {"variantcalling"})
 public class HaplotypeCallerSparkIntegrationTest extends CommandLineProgramTest {
 
     private  static final String TEST_FILES_DIR = toolsTestDir + "haplotypecaller/";

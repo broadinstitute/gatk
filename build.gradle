@@ -408,13 +408,16 @@ test {
             includeGroups 'cloud', 'bucket'
         } else if (TEST_TYPE == "integration"){
             include "**/*IntegrationTest.class"
-            excludeGroups "cloud", "bucket", "python", "funcotatorValidation"
+            excludeGroups "cloud", "bucket", "python", "funcotatorValidation", "variantcalling"
         } else if (TEST_TYPE == "unit") {
             exclude "**/*IntegrationTest.class"
+            excludeGroups "cloud", "bucket", "python", "funcotatorValidation", "variantcalling"
+        } else if (TEST_TYPE == "variantcalling") {
+            includeGroups "variantcalling"
             excludeGroups "cloud", "bucket", "python", "funcotatorValidation"
         } else if (TEST_TYPE == "spark") {
             includeGroups "spark"
-            excludeGroups "cloud", "bucket", "python", "funcotatorValidation"
+            excludeGroups "cloud", "bucket", "python", "funcotatorValidation", "variantcalling"
         } else if (TEST_TYPE == "python") {
             includeGroups "python"
         } else if (TEST_TYPE == "all"){
