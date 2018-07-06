@@ -87,8 +87,7 @@ gcnvkernel.DenoisingModelConfig.expose_args(parser)
 gcnvkernel.CopyNumberCallingConfig.expose_args(parser)
 
 # override some inference parameters
-gcnvkernel.HybridInferenceParameters.expose_args(
-    parser)
+gcnvkernel.HybridInferenceParameters.expose_args(parser)
 
 if __name__ == "__main__":
 
@@ -203,3 +202,12 @@ if __name__ == "__main__":
 
         main_elbo_hist_file = os.path.join(args.output_tracking_path, "main_elbo_history.tsv")
         main_task.save_elbo_history(main_elbo_hist_file)
+
+        if not args.disable_annealing:
+
+            warm_up_temperature_hist_file = os.path.join(args.output_tracking_path, "warm_up_temperature_history.tsv")
+            warm_up_task.save_temperature_history(warm_up_temperature_hist_file)
+
+            main_temperature_hist_file = os.path.join(args.output_tracking_path, "main_temperature_history.tsv")
+            main_task.save_temperature_history(main_temperature_hist_file)
+
