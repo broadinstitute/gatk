@@ -22,14 +22,18 @@ import java.util.Set;
 public class FilterFuncotationsIntegrationTest extends CommandLineProgramTest {
 
     private static final Path TEST_DATA_DIR = getTestDataDir().toPath().resolve("FilterFuncotations");
-    
+
+    private static final Set<String> ALL_FILTERS = new HashSet<>(Arrays.asList("CLINVAR", "LMM", "LOF"));
+
     @DataProvider(name = "uniformVcfProvider")
     public Object[][] uniformVcfProvider() {
         return new Object[][]{
                 {"clinvar.vcf", 19, Collections.emptySet(), Collections.singleton("CLINVAR")},
                 {"lmm.vcf", 38, Collections.emptySet(), Collections.singleton("LMM")},
                 {"lof.vcf", 19, Collections.emptySet(), Collections.singleton("LOF")},
-                {"all.vcf", 38, Collections.emptySet(), new HashSet<>(Arrays.asList("CLINVAR", "LMM", "LOF"))},
+                {"all.vcf", 38, Collections.emptySet(), ALL_FILTERS},
+                {"multi-transcript.vcf", 38, Collections.emptySet(), ALL_FILTERS},
+                {"multi-allelic.vcf", 38, Collections.emptySet(), ALL_FILTERS},
                 {"none.vcf", 38, Collections.singleton(FilterFuncotations.NOT_CLINSIG_FILTER), Collections.singleton("NONE")}
         };
     }
