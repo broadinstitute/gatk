@@ -25,6 +25,8 @@ public class FuncotatorArgumentDefinitions {
 
     public static final String OUTPUT_FORMAT_LONG_NAME = "output-file-format";
 
+    public static final String CONFIG_FILE_ARG_LONG_NAME = "configuration-file";
+
     // ------------------------------------------------------------
     // Definitions for optional arguments:
 
@@ -51,10 +53,13 @@ public class FuncotatorArgumentDefinitions {
     public static final String HG19_REFERENCE_VERSION_STRING = "hg19";
     public static final String HG38_REFERENCE_VERSION_STRING = "hg38";
 
-    public static final String LOOKAHEAD_CACHE_IN_BP_NAME = "lookahead-cache-bp";
-    public static final int LOOKAHEAD_CACHE_IN_BP_DEFAULT_VALUE = VariantWalkerBase.FEATURE_CACHE_LOOKAHEAD;
+    public static final String LOOKAHEAD_CACHE_IN_BP_ARG_NAME      = "lookahead-cache-bp";
+    public static final int    LOOKAHEAD_CACHE_IN_BP_DEFAULT_VALUE = VariantWalkerBase.FEATURE_CACHE_LOOKAHEAD;
 
     public static final String FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION = "force-b37-to-hg19-reference-contig-conversion";
+
+    public static final boolean REMOVE_FILTERED_VARIANTS_DEFAULT_VALUE = false;
+
 
     // ------------------------------------------------------------
     // Helper Types:

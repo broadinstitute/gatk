@@ -165,7 +165,7 @@ public class ConfigIntegrationTest extends CommandLineProgramTest {
             }
 
             // Create a config object to compare with the properties:
-            final GATKConfig config = ConfigFactory.getInstance().createConfigFromFile(configFilePath.toString(), GATKConfig.class);
+            final GATKConfig config = ConfigFactory.getInstance().createConfigFromFile(configFilePath.toString(), GATKConfig.class, GATKConfig.CONFIG_FILE_VARIABLE_FILE_NAME);
 
             // Get the config properties:
             final LinkedHashMap<String, Object> configMap = ConfigFactory.getConfigMap(config, false);

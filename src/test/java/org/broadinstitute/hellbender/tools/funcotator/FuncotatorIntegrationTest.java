@@ -27,10 +27,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -1052,6 +1049,175 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         arguments.addBooleanArgument(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
 
         runCommandLine(arguments);
+    }
+
+    @DataProvider
+    public Iterator<Object[]> provideForTestConfigFileAndArgsDoTheSameThing() {
+
+        final ArrayList<Object[]> testArgs = new ArrayList<>();
+
+        final ArrayList<Object> baseArgs = new ArrayList<>();
+        baseArgs.add(PIK3CA_VCF_HG19);
+        baseArgs.add(b37Chr3Ref);
+        baseArgs.add(DS_PIK3CA_DIR);
+        baseArgs.add(FuncotatorTestConstants.REFERENCE_VERSION_HG19);
+
+        final List<List<String>> annotationDefaults = new ArrayList<>();
+        annotationDefaults.add( new ArrayList<>() );
+        annotationDefaults.add( Arrays.asList("Grumby:Truffles", "GameBoy:Arkanoid") );
+
+        final List<List<String>> annotationOverrides = new ArrayList<>();
+        annotationOverrides.add( new ArrayList<>() );
+        annotationOverrides.add( Arrays.asList("dummy_ClinVar_VCF_AC:ZORK99", "dummy_ClinVar_VCF_AF:SNAPOW67") );
+
+        final Set<Set<String>> transcriptLists = new HashSet<>();
+        transcriptLists.add( new HashSet<>() );
+        transcriptLists.add( new HashSet<>(Collections.singletonList("ENST00000263967.3")) );
+
+        for ( final FuncotatorArgumentDefinitions.OutputFormatType outType : FuncotatorArgumentDefinitions.OutputFormatType.values() ) {
+            for ( final TranscriptSelectionMode mode : TranscriptSelectionMode.values() ) {
+                for ( final boolean removeFilteredVariants : new boolean[]{true, false} ) {
+                    for ( final List<String> annotationDefaultsList : annotationDefaults ) {
+                        for ( final List<String> annotationOverridesList : annotationOverrides ) {
+                            for ( final Set<String> transcriptList : transcriptLists ) {
+                                final ArrayList<Object> args = new ArrayList<>(baseArgs);
+
+                                args.add(4, removeFilteredVariants);
+                                args.add(5, mode);
+                                args.add(6, transcriptList);
+                                args.add(7, annotationDefaultsList);
+                                args.add(8, annotationOverridesList);
+                                args.add(outType);
+
+                                testArgs.add(args.toArray());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return testArgs.iterator();
+    }
+
+    private File populateConfigFile(final String dataSourcesPath,
+                                    final boolean removeFilteredVariants,
+                                    final TranscriptSelectionMode transcriptSelectionMode,
+                                    final Set<String> selectedTranscriptsList,
+                                    final List<String> annotationDefaults,
+                                    final List<String> annotationOverrides,
+                                    final FuncotatorArgumentDefinitions.OutputFormatType outputFormatType) {
+        final File configFile = getSafeNonExistentFile("funcotatorConfigFile");
+
+        try {
+            try ( final PrintWriter writer = new PrintWriter(configFile) ) {
+                writer.println(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME + "=" + dataSourcesPath);
+                writer.println(FuncotatorArgumentDefinitions.REMOVE_FILTERED_VARIANTS_LONG_NAME + "=" + removeFilteredVariants);
+                writer.println(FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME + "=" + transcriptSelectionMode);
+                writer.println(FuncotatorArgumentDefinitions.TRANSCRIPT_LIST_LONG_NAME + "=" + selectedTranscriptsList.stream().collect(Collectors.joining(",")));
+                writer.println(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME + "=" + annotationDefaults.stream().collect(Collectors.joining(",")));
+                writer.println(FuncotatorArgumentDefinitions.ANNOTATION_OVERRIDES_LONG_NAME + "=" + annotationOverrides.stream().collect(Collectors.joining(",")));
+                writer.println(FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME + "=" + outputFormatType);
+                writer.println();
+            }
+        }
+        catch (final IOException ex){
+            throw new UserException("Could not create temporary config file!", ex);
+        }
+
+        return configFile;
+    }
+
+    @Test(dataProvider = "provideForTestConfigFileAndArgsDoTheSameThing")
+    public void testConfigFileAndArgsDoTheSameThing(final String variantFileName,
+                                                    final String referenceFileName,
+                                                    final String dataSourcesPath,
+                                                    final String refVer,
+                                                    final boolean removeFilteredVariants,
+                                                    final TranscriptSelectionMode transcriptSelectionMode,
+                                                    final Set<String> selectedTranscriptsList,
+                                                    final List<String> annotationDefaults,
+                                                    final List<String> annotationOverrides,
+                                                    final FuncotatorArgumentDefinitions.OutputFormatType outputFormatType) {
+
+        // First run Funcotator with the args specified on the "command line":
+        final File outputFile = getOutputFile("Funcotator_cmd_line_output", outputFormatType.toString().toLowerCase());
+
+        final ArgumentsBuilder cmdLineArgs = createBaselineArgumentsForFuncotator(
+                variantFileName,
+                outputFile,
+                referenceFileName,
+                dataSourcesPath,
+                refVer,
+                outputFormatType,
+                false);
+
+        cmdLineArgs.addArgument(FuncotatorArgumentDefinitions.REMOVE_FILTERED_VARIANTS_LONG_NAME, "" + removeFilteredVariants);
+        cmdLineArgs.addArgument(FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME, transcriptSelectionMode.toString());
+        if( selectedTranscriptsList.size() != 0 ) {
+            cmdLineArgs.addArgument(FuncotatorArgumentDefinitions.TRANSCRIPT_LIST_LONG_NAME, selectedTranscriptsList.stream().collect(Collectors.joining(",")));
+        }
+        if( annotationDefaults.size() != 0 ) {
+            for ( final String annotationDefault : annotationDefaults ) {
+                cmdLineArgs.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_DEFAULTS_LONG_NAME, annotationDefault);
+            }
+        }
+        if( annotationOverrides.size() != 0 ) {
+            for ( final String annotationOverride : annotationOverrides ) {
+                cmdLineArgs.addArgument(FuncotatorArgumentDefinitions.ANNOTATION_OVERRIDES_LONG_NAME, annotationOverride);
+            }
+        }
+
+        runCommandLine(cmdLineArgs);
+
+        // ----------------------------------
+
+        // Now run Funcotator with the args in a config file:
+        final File cfOutFile = getOutputFile("Funcotator_config_file_output", outputFormatType.toString().toLowerCase());
+
+        // Create the configuration file:
+        final File configFile = populateConfigFile(dataSourcesPath,
+                removeFilteredVariants,
+                transcriptSelectionMode,
+                selectedTranscriptsList,
+                annotationDefaults,
+                annotationOverrides,
+                outputFormatType);
+
+        final ArgumentsBuilder cfArgs = new ArgumentsBuilder();
+        cfArgs.addOutput(cfOutFile);
+        cfArgs.addVCF(new File(variantFileName));
+        cfArgs.addReference(new File(referenceFileName));
+        cfArgs.addArgument(FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME, refVer);
+        cfArgs.addArgument(FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME, outputFormatType.toString());
+        cfArgs.addArgument(FuncotatorArgumentDefinitions.CONFIG_FILE_ARG_LONG_NAME, configFile.getAbsolutePath());
+
+        // Disable the sequence dictionary check for the tests:
+        cfArgs.addBooleanArgument(StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, true);
+
+        runCommandLine(cfArgs);
+
+        // ----------------------------------
+
+        // Now compare the output files:
+        if (outputFormatType.equals(FuncotatorArgumentDefinitions.OutputFormatType.VCF)) {
+            final List<VariantContext> argVariants    = VariantContextTestUtils.readEntireVCFIntoMemory(FuncotatorTestConstants.DBSNP_HG19_SNIPPET_FILE_PATH).getRight();
+            final List<VariantContext> configVariants = VariantContextTestUtils.readEntireVCFIntoMemory(FuncotatorTestConstants.DBSNP_HG19_SNIPPET_FILE_PATH).getRight();
+
+            Assert.assertEquals(argVariants.size(), configVariants.size(), "Detected a different number of command-line arguments variants and config variants!");
+
+            for ( int i = 0 ; i < argVariants.size(); ++i ){
+                VariantContextTestUtils.assertVariantContextsAreEqual(argVariants.get(i), configVariants.get(i), new ArrayList<>());
+            }
+        }
+        else {
+            try {
+                IntegrationTestSpec.assertEqualTextFiles(cfOutFile, outputFile, "#");
+            }
+            catch (final IOException ex ) {
+                throw new UserException("Could not compare output files!", ex);
+            }
+        }
     }
 }
 
