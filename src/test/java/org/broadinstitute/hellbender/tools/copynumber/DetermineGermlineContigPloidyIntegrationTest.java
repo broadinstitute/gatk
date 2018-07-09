@@ -259,7 +259,7 @@ public final class DetermineGermlineContigPloidyIntegrationTest extends CommandL
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
         ANEUPLOIDY_COUNT_FILES.subList(0, 20).forEach(argsBuilder::addInput);
 //        ANEUPLOIDY_COUNT_FILES.forEach(argsBuilder::addInput);
-        argsBuilder.addFileArgument(DetermineGermlineContigPloidy.CONTIG_PLOIDY_PRIORS_FILE_LONG_NAME, new File("/home/slee/working/gatk/test_files/hg38_contig_ploidy_priors.tsv"))
+        argsBuilder.addFileArgument(DetermineGermlineContigPloidy.CONTIG_PLOIDY_PRIORS_FILE_LONG_NAME, new File("/home/slee/working/gatk/test_files/hg38_contig_ploidy_prior.tsv"))
                 .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, "/home/slee/working/gatk/test_files")
                 .addArgument(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, "master-test-aneuploidy-cohort-full")
                 .addArgument(StandardArgumentDefinitions.VERBOSITY_NAME, "DEBUG");
@@ -282,11 +282,9 @@ public final class DetermineGermlineContigPloidyIntegrationTest extends CommandL
     public void testSFARICohortFullPrior() {
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
         SFARI_COUNT_FILES.forEach(argsBuilder::addInput);
-        argsBuilder.addFileArgument(DetermineGermlineContigPloidy.CONTIG_PLOIDY_PRIORS_FILE_LONG_NAME, new File("/home/slee/working/gatk/test_files/ploidy_state_priors.tsv"))
+        argsBuilder.addFileArgument(DetermineGermlineContigPloidy.CONTIG_PLOIDY_PRIORS_FILE_LONG_NAME, new File("/home/slee/working/gatk/test_files/contig_ploidy_prior.tsv"))
                 .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, "/home/slee/working/gatk/test_files")
-                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, "/home/slee/working/gatk/test_files/NimbleGenEZ2Tiled_hg19_v2.preprocessed.mapp_gt_0.99.interval_list")
                 .addArgument(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, "master-test-sfari-cohort-full")
-                .addArgument(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString())
                 .addArgument(StandardArgumentDefinitions.VERBOSITY_NAME, "DEBUG");
         runCommandLine(argsBuilder);
     }
