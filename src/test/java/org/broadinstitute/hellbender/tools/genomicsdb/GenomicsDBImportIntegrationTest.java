@@ -38,6 +38,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Test(groups = {"variantcalling"})
 public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTest {
     private static final String HG_00096 = largeFileTestDir + "gvcfs/HG00096.g.vcf.gz";
     private static final String HG_00268 = largeFileTestDir + "gvcfs/HG00268.g.vcf.gz";
