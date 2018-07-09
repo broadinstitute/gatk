@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.engine.spark;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.vcf.VCFHeaderLine;
-import htsjdk.variant.vcf.VCFSimpleHeaderLine;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -14,12 +13,12 @@ import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationPluginDesc
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.*;
+import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.engine.TraversalParameters;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
-import org.broadinstitute.hellbender.engine.FeatureDataSource;
-import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
@@ -34,6 +33,7 @@ import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.IOException;
 import java.time.ZonedDateTime;
@@ -410,7 +410,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
         return Collections.emptyList();
     }
 
-    // TODO: 7/3/18 the two functions below are copy-pasted from GATKTool, and probably some refactoring can be done
+    // TODO: 7/9/18 the two function below (including the todo in comment) are copy-pasted from GATKTool, and probably some refactoring can be done
     /**
      * @return An abbreviated name of the toolkit for this tool. Subclasses may override to provide
      *         a custom toolkit name.
@@ -425,17 +425,13 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      * date and command line, otherwise an empty set.
      */
     protected Set<VCFHeaderLine> getDefaultToolVCFHeaderLines() {
-        final Set<VCFHeaderLine> gatkToolHeaderLines = new HashSet<>();
         if (addOutputVCFCommandLine) {
-            final Map<String, String> simpleHeaderLineMap = new HashMap<>(4);
-            simpleHeaderLineMap.put("ID", this.getClass().getSimpleName());
-            simpleHeaderLineMap.put("Version", getVersion());
-            simpleHeaderLineMap.put("Date", Utils.getDateTimeForDisplay((ZonedDateTime.now())));
-            simpleHeaderLineMap.put("CommandLine", getCommandLine());
-            gatkToolHeaderLines.add(new VCFHeaderLine("source", this.getClass().getSimpleName()));
-            gatkToolHeaderLines.add(new VCFSimpleHeaderLine(String.format("%sCommandLine", getToolkitShortName()), simpleHeaderLineMap));
+            return GATKVariantContextUtils
+                    .getDefaultVCFHeaderLines(getToolkitShortName(), this.getClass().getSimpleName(),
+                            getVersion(), Utils.getDateTimeForDisplay((ZonedDateTime.now())), getCommandLine());
+        } else {
+            return new HashSet<>();
         }
-        return gatkToolHeaderLines;
     }
 
     /**

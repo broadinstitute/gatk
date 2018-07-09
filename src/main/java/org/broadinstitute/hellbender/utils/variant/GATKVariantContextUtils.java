@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.utils.variant;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Locatable;
-import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.TribbleException;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.Options;
@@ -11,6 +10,7 @@ import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeaderLine;
+import htsjdk.variant.vcf.VCFSimpleHeaderLine;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.ArrayUtils;
@@ -18,10 +18,11 @@ import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAlleleCounts;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculator;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculators;
 import org.broadinstitute.hellbender.utils.*;
-import org.broadinstitute.hellbender.utils.collections.Permutation;
-import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.io.File;
@@ -47,6 +48,23 @@ public final class GATKVariantContextUtils {
 
     public static boolean isInformative(final double[] gls) {
         return MathUtils.sum(gls) < GATKVariantContextUtils.SUM_GL_THRESH_NOCALL;
+    }
+
+    /**
+     * @return A set of VCF header lines containing the tool name, version, date and command line.
+     */
+    public static Set<VCFHeaderLine> getDefaultVCFHeaderLines(final String toolkitShortName, final String toolName,
+                                                              final String versionString, final String dataTime,
+                                                              final String cmdLine) {
+        final Set<VCFHeaderLine> defaultVCFHeaderLines = new HashSet<>();
+        final Map<String, String> simpleHeaderLineMap = new HashMap<>(4);
+        simpleHeaderLineMap.put("ID", toolName);
+        simpleHeaderLineMap.put("Version", versionString);
+        simpleHeaderLineMap.put("Date", dataTime);
+        simpleHeaderLineMap.put("CommandLine", cmdLine);
+        defaultVCFHeaderLines.add(new VCFHeaderLine("source", toolName));
+        defaultVCFHeaderLines.add(new VCFSimpleHeaderLine(String.format("%sCommandLine", toolkitShortName), simpleHeaderLineMap));
+        return defaultVCFHeaderLines;
     }
 
     /**
