@@ -1182,7 +1182,7 @@ public final class GATKVariantContextUtils {
         return indexOflastSharedBase;
     }
 
-    protected static class AlleleMapper {
+    public static class AlleleMapper {
         private VariantContext vc = null;
         private Map<Allele, Allele> map = null;
         public AlleleMapper(VariantContext vc)          { this.vc = vc; }
