@@ -38,9 +38,10 @@ import java.util.*;
  *
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Existence of a de novo mutation in at least one of the given families (hiConfDeNovo, loConfDeNovo)")
-public final class PossibleDeNovo extends InfoFieldAnnotation {
+public final class PossibleDeNovo extends PedigreeAnnotation {
 
     public PossibleDeNovo(final Set<Trio> trios, final double minGenotypeQualityP) {
+        super();
         this.trios = Collections.unmodifiableSet(new LinkedHashSet<>(trios));
         mendelianViolation = new MendelianViolation(minGenotypeQualityP);
     }

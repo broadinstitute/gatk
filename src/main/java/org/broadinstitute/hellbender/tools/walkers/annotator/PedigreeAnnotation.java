@@ -4,6 +4,7 @@ import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.utils.samples.PedigreeValidationType;
 import org.broadinstitute.hellbender.utils.samples.SampleDBBuilder;
+import org.broadinstitute.hellbender.utils.samples.Trio;
 
 import java.io.File;
 import java.util.*;
@@ -23,8 +24,7 @@ public abstract class PedigreeAnnotation extends InfoFieldAnnotation {
 
     protected GenotypesContext getFounderGenotypes(VariantContext vc) {
         if ((pedigreeFile!= null) && (!hasAddedPedigreeFounders)) {
-            founderIds.addAll(initializeSampleDB(pedigreeFile));
-            hasAddedPedigreeFounders=true;
+            initializeSampleDBAndSetFounders(pedigreeFile);
         }
         return (founderIds == null || founderIds.isEmpty()) ? vc.getGenotypes() : vc.getGenotypes(new HashSet<>(founderIds));
     }
@@ -37,17 +37,35 @@ public abstract class PedigreeAnnotation extends InfoFieldAnnotation {
     public PedigreeAnnotation(final File pedigreeFile){
         //If available, get the founder IDs and cache them. the IC will only be computed on founders then.
         this.pedigreeFile = pedigreeFile;
-        founderIds = initializeSampleDB(pedigreeFile);
+        initializeSampleDBAndSetFounders(pedigreeFile);
+    }
+
+    /**
+     * Entry-point function to initialize the founders database from input data
+     */
+    private void initializeSampleDBAndSetFounders(File pedigreeFile) {
+        final SampleDBBuilder sampleDBBuilder = new SampleDBBuilder(PedigreeValidationType.STRICT);
+        sampleDBBuilder.addSamplesFromPedigreeFiles(Collections.singletonList(pedigreeFile));
+
+        Set<String> founderIdsToAdd = sampleDBBuilder.getFinalSampleDB().getFounderIds();
+        if (this.founderIds == null || this.founderIds.isEmpty()) {
+            this.founderIds = founderIdsToAdd;
+        } else {
+            this.founderIds.addAll(founderIdsToAdd);
+        }
         hasAddedPedigreeFounders = true;
     }
 
     /**
-     * Entry-point function to initialize the samples database from input data
+     * Computes the trios from the provided pedigree file
      */
-    private Set<String> initializeSampleDB(File pedigreeFile) {
-        final SampleDBBuilder sampleDBBuilder = new SampleDBBuilder(PedigreeValidationType.STRICT);
-        sampleDBBuilder.addSamplesFromPedigreeFiles(Collections.singletonList(pedigreeFile));
-        return sampleDBBuilder.getFinalSampleDB().getFounderIds();
+    protected Set<Trio> getTrios() {
+        if (pedigreeFile!= null) {
+            final SampleDBBuilder sampleDBBuilder = new SampleDBBuilder(PedigreeValidationType.STRICT);
+            sampleDBBuilder.addSamplesFromPedigreeFiles(Collections.singletonList(pedigreeFile));
+            return sampleDBBuilder.getFinalSampleDB().getTrios();
+        }
+        return Collections.emptySet();
     }
 
     /**
