@@ -680,42 +680,20 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
         final int sampleCount = samples.numberOfSamples();
         final int[][] result = new int[sampleCount][];
         final IntArrayList buffer = new IntArrayList(200);
-        final String contig = overlap.getContig();
-        final int overlapStart = overlap.getStart();
-        final int overlapEnd = overlap.getEnd();
+
         for (int s = 0; s < sampleCount; s++) {
             buffer.clear();
             final GATKRead[] sampleReads = readsBySampleIndex[s];
             final int sampleReadCount = sampleReads.length;
             buffer.ensureCapacity(sampleReadCount);
             for (int r = 0; r < sampleReadCount; r++) {
-                if (unclippedReadOverlapsRegion(sampleReads[r], contig, overlapStart, overlapEnd)) {
+                if (sampleReads[r].overlaps(overlap)) {
                     buffer.add(r);
                 }
             }
             result[s] = buffer.toIntArray();
         }
         return result;
-    }
-
-    public static boolean unclippedReadOverlapsRegion(final GATKRead read, final Locatable region) {
-        return unclippedReadOverlapsRegion(read, region.getContig(), region.getStart(), region.getEnd());
-    }
-
-    private static boolean unclippedReadOverlapsRegion(final GATKRead sampleRead, final String contig, final int start, final int end) {
-        final String readReference = sampleRead.getContig();
-        if (!Objects.equals(readReference, contig)) {
-            return false;
-        }
-
-        final int readStart = sampleRead.getUnclippedStart();
-        if (readStart > end) {
-            return false;
-        }
-
-        final int readEnd = sampleRead.isUnmapped() ? sampleRead.getUnclippedEnd()
-                : Math.max(sampleRead.getUnclippedEnd(), sampleRead.getUnclippedStart());
-        return readEnd >= start;
     }
 
     // Calculate the marginal likelihoods considering the old -> new allele index mapping.
@@ -1151,20 +1129,16 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
      *
      * @throws IllegalArgumentException the location cannot be {@code null} nor unmapped.
      */
-    public void filterToOnlyOverlappingUnclippedReads(final SimpleInterval location) {
+    public void filterToOnlyOverlappingReads(final SimpleInterval location) {
         Utils.nonNull(location, "the location cannot be null");
 
         final int sampleCount = samples.numberOfSamples();
-
-        final String locContig = location.getContig();
-        final int locStart = location.getStart();
-        final int locEnd = location.getEnd();
 
         final int alleleCount = alleles.numberOfAlleles();
         for (int s = 0; s < sampleCount; s++) {
             final GATKRead[] sampleReads = readsBySampleIndex[s];
             final List<Integer> removeIndices = new IndexRange(0, sampleReads.length)
-                    .filter(r -> !unclippedReadOverlapsRegion(sampleReads[r], locContig, locStart, locEnd));
+                    .filter(r -> !sampleReads[r].overlaps(location));
             removeSampleReads(s, removeIndices, alleleCount);
         }
     }

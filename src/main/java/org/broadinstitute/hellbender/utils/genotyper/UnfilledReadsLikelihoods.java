@@ -134,7 +134,7 @@ public class UnfilledReadsLikelihoods<A extends Allele> extends ReadLikelihoods<
     }
 
     @Override
-    public void filterToOnlyOverlappingUnclippedReads(final SimpleInterval location) {
+    public void filterToOnlyOverlappingReads(final SimpleInterval location) {
         throw new UnsupportedOperationException("Cannot alter reads in UnfilledReadsLikelihoods object or cached pileups may be rendered inaccurate, please use a normal ReadsLikelihoods object");
     }
 }

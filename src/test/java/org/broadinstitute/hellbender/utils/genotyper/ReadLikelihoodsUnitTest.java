@@ -182,7 +182,7 @@ public final class ReadLikelihoodsUnitTest {
         final SimpleInterval evenReadOverlap = new SimpleInterval(SAM_HEADER.getSequenceDictionary().getSequences().get(0).getSequenceName(), EVEN_READ_START, EVEN_READ_START);
         fillWithRandomLikelihoods(samples,alleles,original);
         final ReadLikelihoods<Allele> result = original.copy();
-        result.filterToOnlyOverlappingUnclippedReads(evenReadOverlap);
+        result.filterToOnlyOverlappingReads(evenReadOverlap);
         final double[][][] newLikelihoods = new double[samples.length][alleles.length][];
         for (int s = 0; s < samples.length ; s++)
             for (int a = 0; a < alleles.length; a++) {

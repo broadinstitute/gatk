@@ -569,7 +569,7 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
 
         //check that annotations from both specified groups are present
         Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass().getSimpleName().equals(Coverage.class.getSimpleName())));
-        Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass().getSimpleName().equals(ClippingRankSumTest.class.getSimpleName())));
+        Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass().getSimpleName().equals(DepthPerSampleHC.class.getSimpleName())));
     }
 
     @DataProvider
