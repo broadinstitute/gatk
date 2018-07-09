@@ -289,7 +289,7 @@ public class CpxVariantInterpreterUnitTest extends GATKBaseTest {
         final CpxVariantCanonicalRepresentation cpxVariantCanonicalRepresentation = new CpxVariantCanonicalRepresentation(tig13846_3);
         final Tuple2<CpxVariantCanonicalRepresentation, Iterable<CpxVariantInducingAssemblyContig>> tuple2 =
                 new Tuple2<>(cpxVariantCanonicalRepresentation, Arrays.asList(tig13846_3, tig28220_5));
-        final byte[] refBases = TestUtilsForAssemblyBasedSVDiscovery.b38_reference_chr20_chr21.getReferenceBases(new SimpleInterval("chr20", 54849491, 54849615)).getBases();
+        final byte[] refBases = TestUtilsForAssemblyBasedSVDiscovery.b38_reference_chr20_chr21.getReferenceBases(new SimpleInterval("chr20", 54849491, 54849491)).getBases();
 
         final VariantContextBuilder baseVariantContextBuilder = cpxVariantCanonicalRepresentation.toVariantContext(refBases);
         baseVariantContextBuilder.attribute(GATKSVVCFConstants.TOTAL_MAPPINGS, 2);
