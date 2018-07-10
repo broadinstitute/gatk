@@ -221,9 +221,8 @@ class PloidyWorkspace:
 
     @staticmethod
     def _construct_mask(hist_sjm):
-        mask_sjm = np.full(np.shape(hist_sjm), True)
-        # mask_sjm[hist_sjm < 10] = False
-        # mask_sjm[:, :, :min_count] = False
+        mask_sjm = np.ones(np.shape(hist_sjm))
+        # mask_sjm[hist_sjm < 5] = 0
         return mask_sjm
 
     def update_ploidy_model_approx_trace(self, ploidy_model_approx, num_trace_samples):
