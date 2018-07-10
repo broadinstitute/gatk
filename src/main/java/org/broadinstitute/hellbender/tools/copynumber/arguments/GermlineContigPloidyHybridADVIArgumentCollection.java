@@ -20,7 +20,7 @@ public final class GermlineContigPloidyHybridADVIArgumentCollection extends Hybr
         defaultValue.put(HybridADVIArgument.MAX_ADVI_ITER_SUBSEQUENT_EPOCHS, 10000);
         defaultValue.put(HybridADVIArgument.MIN_TRAINING_EPOCHS, 1);
         defaultValue.put(HybridADVIArgument.MAX_TRAINING_EPOCHS, 10);
-        defaultValue.put(HybridADVIArgument.INITIAL_TEMPERATURE, 2.0);
+        defaultValue.put(HybridADVIArgument.INITIAL_TEMPERATURE, 1.0);
         defaultValue.put(HybridADVIArgument.NUM_THERMAL_ADVI_ITERS, 5000);
         defaultValue.put(HybridADVIArgument.CONVERGENCE_SNR_AVERAGING_WINDOW, 1000);
         defaultValue.put(HybridADVIArgument.CONVERGENCE_SNR_TRIGGER_THRESHOLD, 0.1);
@@ -29,7 +29,7 @@ public final class GermlineContigPloidyHybridADVIArgumentCollection extends Hybr
         defaultValue.put(HybridADVIArgument.CALLER_UPDATE_CONVERGENCE_THRESHOLD, 0.01);
         defaultValue.put(HybridADVIArgument.CALLER_INTERNAL_ADMIXING_RATE, 0.75);
         defaultValue.put(HybridADVIArgument.CALLER_EXTERNAL_ADMIXING_RATE, 0.75);
-        defaultValue.put(HybridADVIArgument.DISABLE_ANNEALING, false);
+        defaultValue.put(HybridADVIArgument.DISABLE_ANNEALING, true);
         defaultValue.put(HybridADVIArgument.DISABLE_CALLER, false);
         defaultValue.put(HybridADVIArgument.DISABLE_SAMPLER, false);
     }
