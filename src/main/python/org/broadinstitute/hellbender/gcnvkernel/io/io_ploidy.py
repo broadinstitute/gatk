@@ -165,6 +165,7 @@ class SamplePloidyWriter:
 
         fig.tight_layout(pad=0.5)
         fig.savefig(os.path.join(sample_posterior_path, io_consts.default_sample_ploidy_plot_svg_filename))
+        plt.close()
 
 
     def __call__(self):
