@@ -4,6 +4,9 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.variantcontext.writer.VariantContextWriter;
+import htsjdk.variant.vcf.*;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -17,6 +20,9 @@ import org.broadinstitute.hellbender.engine.VariantWalker;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.mutect.FilterMutectCalls;
+import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2Engine;
+import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2FilteringEngine;
 import org.broadinstitute.hellbender.tools.walkers.validation.Concordance;
 import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceState;
 import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceSummaryRecord;
@@ -26,14 +32,16 @@ import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
+
+import static org.broadinstitute.hellbender.utils.variant.GATKVCFConstants.ALLELE_BALANCE_HET_KEY;
 
 @CommandLineProgramProperties(
         summary = "Bare-bones implementation heavily inspired by MutationValidator from Broad CGA group.\n" +
@@ -47,6 +55,7 @@ import java.util.stream.Collectors;
 @ExperimentalFeature
 @DocumentedFeature
 public class ValidateBasicSomaticShortMutations extends VariantWalker {
+    public static final String ANNOTATED_VCF_LONG_NAME = "annotated-vcf";
     public static final String SAMPLE_NAME_DISCOVERY_VCF_LONG_NAME = "discovery-sample-name";
     public static final String SAMPLE_NAME_VALIDATION_CASE = "val-case-sample-name";
     public static final String SAMPLE_NAME_VALIDATION_CONTROL = "val-control-sample-name";
@@ -64,6 +73,11 @@ public class ValidateBasicSomaticShortMutations extends VariantWalker {
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             doc = "The output file, which will be a validation table (tsv).")
     protected String outputFile;
+
+    @Argument(fullName = ANNOTATED_VCF_LONG_NAME,
+            doc = "Optional output vcf containing original variants annotated with validation info.",
+            optional = true)
+    protected File annotatedVcf;
 
     @Argument(doc = "A table of summary statistics (true positives, sensitivity, etc.)",
             fullName = Concordance.SUMMARY_LONG_NAME,
@@ -88,11 +102,14 @@ public class ValidateBasicSomaticShortMutations extends VariantWalker {
             optional = true)
     public int minBqCutoff = DEFAULT_MIN_BQ_CUTOFF;
 
+    private VariantContextWriter vcfWriter;
+
     @Override
     public boolean requiresReference() {
         return true;
     }
 
+    // for the table
     public final static String CONTIG = "CONTIG";
     public final static String START = "START";
     public final static String END = "END";
@@ -107,6 +124,26 @@ public class ValidateBasicSomaticShortMutations extends VariantWalker {
     public final static String IS_NOT_NOISE = "validated";
     public final static String IS_ENOUGH_VALIDATION_COVERAGE = "sufficient_tv_alt_coverage";
     public final static String DISCOVERY_VCF_FILTER = "discovery_vcf_filter";
+
+    // for the optional vcf
+    public final static String POWER_INFO_FIELD_KEY = "POWER";
+    public final static String VALIDATION_AD_INFO_FIELD_KEY = "VAL_AD";
+    public final static String JUDGMENT_INFO_FIELD_KEY = "JUDGMENT";
+
+    public final VCFInfoHeaderLine POWER_HEADER_LINE = new VCFInfoHeaderLine(POWER_INFO_FIELD_KEY, 1, VCFHeaderLineType.Float,
+            "Power to validate variant in validation bam.");
+
+    public final VCFInfoHeaderLine VALIDATION_AD_HEADER_LINE = new VCFInfoHeaderLine(VALIDATION_AD_INFO_FIELD_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Integer,
+            "Ref and alt allele count in validation bam.");
+
+    public final VCFInfoHeaderLine JUDGMENT_HEADER_LINE = new VCFInfoHeaderLine(JUDGMENT_INFO_FIELD_KEY, 1, VCFHeaderLineType.String,
+            "Validation judgment: validated, unvalidated, or skipped.");
+
+
+    public static enum Judgment {
+        VALIDATED, UNVALIDATED, SKIPPED;
+    }
+
 
     public static String[] headers = {CONTIG, START, END, REF, ALT, DISCOVERY_ALT_COVERAGE, DISCOVERY_REF_COVERAGE,
             VALIDATION_ALT_COVERAGE, VALIDATION_REF_COVERAGE, MIN_VAL_COUNT, POWER, IS_NOT_NOISE, IS_ENOUGH_VALIDATION_COVERAGE, DISCOVERY_VCF_FILTER};
@@ -131,6 +168,19 @@ public class ValidateBasicSomaticShortMutations extends VariantWalker {
     public boolean requiresReads() {return true;}
 
     @Override
+    public void onTraversalStart() {
+        if (annotatedVcf != null) {
+            final VCFHeader inputHeader = getHeaderForVariants();
+            final Set<VCFHeaderLine> headerLines = new HashSet<>(inputHeader.getMetaDataInSortedOrder());
+            headerLines.addAll(Arrays.asList(POWER_HEADER_LINE, VALIDATION_AD_HEADER_LINE, JUDGMENT_HEADER_LINE));
+            headerLines.addAll(getDefaultToolVCFHeaderLines());
+            final VCFHeader vcfHeader = new VCFHeader(headerLines, inputHeader.getGenotypeSamples());
+            vcfWriter = createVCFWriter(annotatedVcf);
+            vcfWriter.writeHeader(vcfHeader);
+        }
+    }
+
+    @Override
     public void apply(VariantContext discoveryVariantContext, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext) {
 
         final Genotype genotype = discoveryVariantContext.getGenotype(discoverySampleInVcf);
@@ -145,6 +195,9 @@ public class ValidateBasicSomaticShortMutations extends VariantWalker {
         // If we cannot validate this genotype, we should simply skip it.
         final boolean isAbleToValidate = BasicSomaticShortMutationValidator.isAbleToValidateGenotype(genotype, referenceAllele);
         if (!isAbleToValidate) {
+            if (annotatedVcf != null) {
+                vcfWriter.add(new VariantContextBuilder(discoveryVariantContext).attribute(JUDGMENT_INFO_FIELD_KEY, Judgment.SKIPPED).make());
+            }
             return;
         }
 
@@ -192,6 +245,13 @@ public class ValidateBasicSomaticShortMutations extends VariantWalker {
                 indelFalsePositiveCount.increment();
             }
         }
+
+        if (annotatedVcf != null) {
+            vcfWriter.add(new VariantContextBuilder(discoveryVariantContext)
+                    .attribute(JUDGMENT_INFO_FIELD_KEY, validated ? Judgment.VALIDATED : Judgment.UNVALIDATED)
+                    .attribute(POWER_INFO_FIELD_KEY, basicValidationResult.getPower())
+                    .attribute(VALIDATION_AD_INFO_FIELD_KEY, new int[] {validationTumorRefCount, validationTumorAltCount}).make());
+        }
     }
 
     @Override
@@ -237,5 +297,12 @@ public class ValidateBasicSomaticShortMutations extends VariantWalker {
             }
         }
         return "SUCCESS";
+    }
+
+    @Override
+    public void closeTool() {
+        if ( vcfWriter != null ) {
+            vcfWriter.close();
+        }
     }
 }
