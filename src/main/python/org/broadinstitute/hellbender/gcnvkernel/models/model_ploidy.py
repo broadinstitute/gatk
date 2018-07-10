@@ -211,9 +211,8 @@ class PloidyWorkspace:
         self.fit_alpha_sd_sj = None
 
         self.ploidy_model_approx_trace = None
-
         self.log_q_ploidy_sjl = None
-
+        self.read_depth_s = None
 
     @staticmethod
     def _get_contig_set_from_interval_list(interval_list: List[Interval]) -> Set[str]:
@@ -255,6 +254,9 @@ class PloidyWorkspace:
                 axes=(1, 0, 2)) # sjl
 
         self.log_q_ploidy_sjl = log_ploidy_emission_sjl - logsumexp(log_ploidy_emission_sjl, axis=2)[:, :, np.newaxis]
+
+    def update_read_depth_s(self):
+        self.read_depth_s = np.mean(self.ploidy_model_approx_trace['d_s'], axis=0)
 
 
 class HistogramModel(GeneralizedContinuousModel):

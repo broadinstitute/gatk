@@ -68,8 +68,6 @@ class SampleCoverageMetadata:
         # per-contig count distribution
         self.contig_hist_m = contig_hist_m
         self.max_count = max_count
-        self.n_total = np.sum([hist_m * np.arange(self.max_count + 1)
-                               for hist_m in contig_hist_m.values()])
 
     def _assert_contig_exists(self, contig: str):
         assert contig in self.contig_hist_m, \
@@ -178,6 +176,7 @@ class SamplePloidyMetadata:
 
 class SampleReadDepthMetadata:
     """Represents global read depth and average ploidy metadata for a sample."""
+    epsilon: float = 1E-10
 
     mandatory_tsv_columns = {
         io_consts.global_read_depth_column_name,
@@ -197,24 +196,19 @@ class SampleReadDepthMetadata:
     def get_global_read_depth(self):
         return self.global_read_depth
 
-    def get_average_ploidy(self):
-        return self.average_ploidy
-
     @staticmethod
-    def generate_sample_read_depth_metadata(sample_coverage_metadata: SampleCoverageMetadata,
+    def generate_sample_read_depth_metadata(read_depth: float,
                                             sample_ploidy_metadata: SamplePloidyMetadata,
                                             interval_list_metadata: IntervalListMetadata) -> 'SampleReadDepthMetadata':
-        assert sample_coverage_metadata.sample_name == sample_ploidy_metadata.sample_name
         assert interval_list_metadata.ordered_contig_list == sample_ploidy_metadata.contig_list
 
         sample_name = sample_ploidy_metadata.sample_name
-        n_total = sample_coverage_metadata.n_total
         t_j = interval_list_metadata.t_j
         ploidy_j = sample_ploidy_metadata.ploidy_j
 
+        global_read_depth = read_depth
         effective_total_copies = float(np.sum(t_j * ploidy_j))
-        global_read_depth = float(n_total) / effective_total_copies
-        average_ploidy = effective_total_copies / float(np.sum(t_j))
+        average_ploidy = effective_total_copies / float(np.sum(t_j) + SampleReadDepthMetadata.epsilon)
 
         return SampleReadDepthMetadata(sample_name, global_read_depth, average_ploidy)
 
