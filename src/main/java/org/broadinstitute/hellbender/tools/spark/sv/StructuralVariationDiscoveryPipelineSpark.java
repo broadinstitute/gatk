@@ -137,9 +137,9 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
     private String variantsOutDir;
 
     @Advanced
-    @Argument(doc = "flag to signal that user wants to run experimental interpretation tool as well",
-            fullName = "exp-interpret", optional = true)
-    private Boolean expInterpret = false;
+    @Argument(doc = "flag to signal that user wants to run legacy interpretation tool as well",
+            fullName = "legacy", optional = true)
+    private Boolean runLegacyInterpretation = false;
 
     @Override
     public boolean requiresReads()
@@ -171,32 +171,13 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
         // todo: when we call imprecise variants don't return here
         if (assembledEvidenceResults.getAlignedAssemblyOrExcuseList().isEmpty()) return;
 
-        // parse the contig alignments and extract necessary information
-        final JavaRDD<AlignedContig> parsedAlignments =
-                new InMemoryAlignmentParser(ctx, assembledEvidenceResults.getAlignedAssemblyOrExcuseList(), headerForReads)
-                        .getAlignedContigs();
-
-        // todo: when we call imprecise variants don't return here
-        if(parsedAlignments.isEmpty()) return;
-
         final SvDiscoveryInputMetaData svDiscoveryInputMetaData = getSvDiscoveryInputData(ctx, headerForReads, assembledEvidenceResults);
 
-        // TODO: 1/14/18 this is to be phased-out: old way of calling precise variants
-        List<VariantContext> assemblyBasedVariants =
-                ContigChimericAlignmentIterativeInterpreter
-                        .discoverVariantsFromChimeras(svDiscoveryInputMetaData, parsedAlignments);
+        makeInterpretationFromAssemblyEvidence(ctx, assembledEvidenceResults, svDiscoveryInputMetaData);
 
-        final List<VariantContext> annotatedVariants = processEvidenceTargetLinks(assemblyBasedVariants, svDiscoveryInputMetaData);
-
-        final String outputPath = svDiscoveryInputMetaData.getOutputPath();
-        final SAMSequenceDictionary refSeqDictionary = svDiscoveryInputMetaData.getReferenceData().getReferenceSequenceDictionaryBroadcast().getValue();
-        final Set<VCFHeaderLine> defaultToolVCFHeaderLines = svDiscoveryInputMetaData.getDefaultToolVCFHeaderLines();
-        final Logger toolLogger = svDiscoveryInputMetaData.getToolLogger();
-        SVVCFWriter.writeVCF(annotatedVariants, outputPath + "inv_del_ins.vcf", refSeqDictionary, defaultToolVCFHeaderLines, toolLogger);
-
-        // TODO: 1/14/18 this is the next version of precise variant calling
-        if ( expInterpret != null ) {
-            experimentalInterpretation(ctx, assembledEvidenceResults, svDiscoveryInputMetaData);
+        if (runLegacyInterpretation) {
+            runLegacyAssemblyBasedInterpretationTool(ctx, assembledEvidenceResults.getAlignedAssemblyOrExcuseList(),
+                    svDiscoveryInputMetaData);
         }
     }
 
@@ -274,23 +255,48 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
 
     // interpretation: assembly-based ==================================================================================
 
-    private static void experimentalInterpretation(final JavaSparkContext ctx,
-                                                   final FindBreakpointEvidenceSpark.AssembledEvidenceResults assembledEvidenceResults,
-                                                   final SvDiscoveryInputMetaData svDiscoveryInputMetaData) {
+    private static void makeInterpretationFromAssemblyEvidence(final JavaSparkContext ctx,
+                                                               final FindBreakpointEvidenceSpark.AssembledEvidenceResults assembledEvidenceResults,
+                                                               final SvDiscoveryInputMetaData svDiscoveryInputMetaData) {
 
         final JavaRDD<GATKRead> assemblyRawAlignments = getContigRawAlignments(ctx, assembledEvidenceResults, svDiscoveryInputMetaData);
-
-        final String updatedOutputPath = svDiscoveryInputMetaData.getOutputPath() + "experimentalInterpretation_";
-        svDiscoveryInputMetaData.updateOutputPath(updatedOutputPath);
 
         SvDiscoverFromLocalAssemblyContigAlignmentsSpark.AssemblyContigsClassifiedByAlignmentSignatures contigsByPossibleRawTypes
                 = SvDiscoverFromLocalAssemblyContigAlignmentsSpark.preprocess(svDiscoveryInputMetaData, assemblyRawAlignments);
 
-        final List<VariantContext> variants = SvDiscoverFromLocalAssemblyContigAlignmentsSpark
+        final List<VariantContext> assemblyBasedVariants = SvDiscoverFromLocalAssemblyContigAlignmentsSpark
                 .dispatchJobs(ctx, contigsByPossibleRawTypes, svDiscoveryInputMetaData, assemblyRawAlignments, true);
         contigsByPossibleRawTypes.unpersist();
 
-        SvDiscoverFromLocalAssemblyContigAlignmentsSpark.filterAndWriteMergedVCF(updatedOutputPath, variants, svDiscoveryInputMetaData);
+        final List<VariantContext> annotatedVariants = processEvidenceTargetLinks(assemblyBasedVariants, svDiscoveryInputMetaData);
+
+        SvDiscoverFromLocalAssemblyContigAlignmentsSpark.filterAndWriteMergedVCF(svDiscoveryInputMetaData.getOutputPath(),
+                annotatedVariants, svDiscoveryInputMetaData);
+    }
+
+    private void runLegacyAssemblyBasedInterpretationTool(final JavaSparkContext ctx,
+                                                          final List<AlignedAssemblyOrExcuse> alignedAssemblyOrExcuseList,
+                                                          final SvDiscoveryInputMetaData svDiscoveryInputMetaData) {
+        final SAMFileHeader headerForReads = svDiscoveryInputMetaData.getSampleSpecificData().getHeaderBroadcast().getValue();
+        // parse the contig alignments and extract necessary information
+        final JavaRDD<AlignedContig> parsedAlignments =
+                new InMemoryAlignmentParser(ctx, alignedAssemblyOrExcuseList, headerForReads)
+                        .getAlignedContigs();
+
+        // todo: when we call imprecise variants and run legacy interpretation tool, don't return here
+        if(parsedAlignments.isEmpty()) return;
+
+        List<VariantContext> assemblyBasedVariants =
+                ContigChimericAlignmentIterativeInterpreter
+                        .discoverVariantsFromChimeras(svDiscoveryInputMetaData, parsedAlignments);
+
+        final List<VariantContext> annotatedVariants = processEvidenceTargetLinks(assemblyBasedVariants, svDiscoveryInputMetaData);
+
+        final String outputPath = svDiscoveryInputMetaData.getOutputPath();
+        final SAMSequenceDictionary refSeqDictionary = svDiscoveryInputMetaData.getReferenceData().getReferenceSequenceDictionaryBroadcast().getValue();
+        final Set<VCFHeaderLine> defaultToolVCFHeaderLines = svDiscoveryInputMetaData.getDefaultToolVCFHeaderLines();
+        final Logger toolLogger = svDiscoveryInputMetaData.getToolLogger();
+        SVVCFWriter.writeVCF(annotatedVariants, outputPath + "legacy_inv_del_ins.vcf", refSeqDictionary, defaultToolVCFHeaderLines, toolLogger);
     }
 
     private static JavaRDD<GATKRead> getContigRawAlignments(final JavaSparkContext ctx,
