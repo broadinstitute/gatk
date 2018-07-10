@@ -31,3 +31,4 @@ class CohortPloidyInferenceTask(HybridInferenceTask):
         self.ploidy_workspace.update_ploidy_model_approx_trace(
             self.continuous_model_approx, self.hybrid_inference_params.log_emission_samples_per_round)
         self.ploidy_workspace.update_log_q_ploidy_sjl()
+        self.ploidy_workspace.update_read_depth_s()

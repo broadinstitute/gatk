@@ -189,8 +189,9 @@ class SamplePloidyWriter:
                 self.ploidy_workspace.interval_list_metadata.ordered_contig_list)
 
             # generate sample read depth metadata
+            read_depth = self.ploidy_workspace.read_depth_s[si]
             sample_read_depth_metadata = SampleReadDepthMetadata.generate_sample_read_depth_metadata(
-                self.ploidy_workspace.sample_metadata_collection.get_sample_coverage_metadata(sample_name),
+                read_depth,
                 sample_ploidy_metadata,
                 self.ploidy_workspace.interval_list_metadata)
 
