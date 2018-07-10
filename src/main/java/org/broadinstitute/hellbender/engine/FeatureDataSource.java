@@ -1,7 +1,5 @@
 package org.broadinstitute.hellbender.engine;
 
-import com.intel.genomicsdb.model.GenomicsDBExportConfiguration;
-import com.intel.genomicsdb.reader.GenomicsDBFeatureReader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.tribble.*;
@@ -22,6 +20,11 @@ import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.nio.SeekableByteChannelPrefetcher;
 
+import com.intel.genomicsdb.model.GenomicsDBExportConfiguration;
+import com.intel.genomicsdb.reader.GenomicsDBFeatureReader;
+import com.googlecode.protobuf.format.JsonFormat;
+import com.intel.genomicsdb.model.GenomicsDBVidMapProto;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.channels.SeekableByteChannel;
@@ -32,23 +35,26 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
+import java.io.FileReader;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Enables traversals and queries over sources of Features, which are metadata associated with a location
  * on the genome in a format supported by our file parsing framework, Tribble. Examples of Features are
  * VCF records and hapmap records.
- *
+ * <p>
  * Two basic operations are available on this data source:
- *
+ * <p>
  * -Iteration over all Features in this data source, optionally restricted to Features overlapping
- *  a set of intervals if intervals are provided via {@link #setIntervalsForTraversal(List)}. Traversal
- *  by a set of intervals requires the file to have been indexed using the bundled tool IndexFeatureFile.
- *  The set of intervals provided MUST be non-overlapping and sorted in increasing order of start position.
- *
+ * a set of intervals if intervals are provided via {@link #setIntervalsForTraversal(List)}. Traversal
+ * by a set of intervals requires the file to have been indexed using the bundled tool IndexFeatureFile.
+ * The set of intervals provided MUST be non-overlapping and sorted in increasing order of start position.
+ * <p>
  * -Targeted queries by one interval at a time. This also requires the file to have been indexed using
- *  the bundled tool IndexFeatureFile. Targeted queries by one interval at a time are unaffected by
- *  any intervals for full traversal set via {@link #setIntervalsForTraversal(List)}.
- *
+ * the bundled tool IndexFeatureFile. Targeted queries by one interval at a time are unaffected by
+ * any intervals for full traversal set via {@link #setIntervalsForTraversal(List)}.
+ * <p>
  * To improve performance in the case of targeted queries by one interval at a time, this class uses a caching
  * scheme that is optimized for the common access pattern of multiple separate queries over intervals with
  * gradually increasing start positions. It optimizes for this use case by pre-fetching records immediately
@@ -117,7 +123,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
 
     /**
      * True if this datasource supports efficient random access queries.
-     *
+     * <p>
      * For a file, this is the same as {@link #hasIndex}, but there are non-file data sources (eg., GenomicsDB)
      * that don't have a separate index file but do support random access.
      */
@@ -159,7 +165,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
      * that produce cache misses.
      *
      * @param featureFile file containing Features
-     * @param name logical name for this data source (may be null)
+     * @param name        logical name for this data source (may be null)
      */
     public FeatureDataSource(final File featureFile, final String name) {
         this(featureFile, name, DEFAULT_QUERY_LOOKAHEAD_BASES);
@@ -169,22 +175,22 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
      * Creates a FeatureDataSource backed by the provided File and assigns this data source the specified logical
      * name. We will look ahead the specified number of bases during queries that produce cache misses.
      *
-     * @param featureFile file containing Features
-     * @param name logical name for this data source (may be null)
+     * @param featureFile         file containing Features
+     * @param name                logical name for this data source (may be null)
      * @param queryLookaheadBases look ahead this many bases during queries that produce cache misses
      */
-    public FeatureDataSource(final File featureFile, final String name, final int queryLookaheadBases){
+    public FeatureDataSource(final File featureFile, final String name, final int queryLookaheadBases) {
         this(Utils.nonNull(featureFile).getAbsolutePath(), name, queryLookaheadBases, null);
     }
 
     /**
      * Creates a FeatureDataSource backed by the resource at the provided path.
      *
-     * @param featurePath path to file or GenomicsDB url containing features
-     * @param name logical name for this data source (may be null)
+     * @param featurePath         path to file or GenomicsDB url containing features
+     * @param name                logical name for this data source (may be null)
      * @param queryLookaheadBases look ahead this many bases during queries that produce cache misses
-     * @param targetFeatureType When searching for a {@link FeatureCodec} for this data source, restrict the search to codecs
-     *                          that produce this type of Feature. May be null, which results in an unrestricted search.
+     * @param targetFeatureType   When searching for a {@link FeatureCodec} for this data source, restrict the search to codecs
+     *                            that produce this type of Feature. May be null, which results in an unrestricted search.
      */
     public FeatureDataSource(final String featurePath, final String name, final int queryLookaheadBases, final Class<? extends Feature> targetFeatureType) {
         this(new FeatureInput<>(featurePath, name != null ? name : featurePath), queryLookaheadBases, targetFeatureType);
@@ -194,10 +200,10 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
      * Creates a FeatureDataSource backed by the provided FeatureInput. We will look ahead the specified number of bases
      * during queries that produce cache misses.
      *
-     * @param featureInput a FeatureInput specifying a source of Features
+     * @param featureInput        a FeatureInput specifying a source of Features
      * @param queryLookaheadBases look ahead this many bases during queries that produce cache misses
-     * @param targetFeatureType When searching for a {@link FeatureCodec} for this data source, restrict the search to codecs
-     *                          that produce this type of Feature. May be null, which results in an unrestricted search.
+     * @param targetFeatureType   When searching for a {@link FeatureCodec} for this data source, restrict the search to codecs
+     *                            that produce this type of Feature. May be null, which results in an unrestricted search.
      */
     public FeatureDataSource(final FeatureInput<T> featureInput, final int queryLookaheadBases, final Class<? extends Feature> targetFeatureType) {
         this(featureInput, queryLookaheadBases, targetFeatureType, 0, 0);
@@ -206,16 +212,16 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
     /**
      * Creates a FeatureDataSource backed by the resource at the provided path.
      *
-     * @param featurePath path to file or GenomicsDB url containing features
-     * @param name logical name for this data source (may be null)
-     * @param queryLookaheadBases look ahead this many bases during queries that produce cache misses
-     * @param targetFeatureType When searching for a {@link FeatureCodec} for this data source, restrict the search to codecs
-     *                          that produce this type of Feature. May be null, which results in an unrestricted search.
-     * @param cloudPrefetchBuffer  MB size of caching/prefetching wrapper for the data, if on Google Cloud (0 to disable).
+     * @param featurePath              path to file or GenomicsDB url containing features
+     * @param name                     logical name for this data source (may be null)
+     * @param queryLookaheadBases      look ahead this many bases during queries that produce cache misses
+     * @param targetFeatureType        When searching for a {@link FeatureCodec} for this data source, restrict the search to codecs
+     *                                 that produce this type of Feature. May be null, which results in an unrestricted search.
+     * @param cloudPrefetchBuffer      MB size of caching/prefetching wrapper for the data, if on Google Cloud (0 to disable).
      * @param cloudIndexPrefetchBuffer MB size of caching/prefetching wrapper for the index, if on Google Cloud (0 to disable).
      */
     public FeatureDataSource(final String featurePath, final String name, final int queryLookaheadBases, final Class<? extends Feature> targetFeatureType,
-                             final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer ) {
+                             final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer) {
         this(new FeatureInput<>(featurePath, name != null ? name : featurePath), queryLookaheadBases, targetFeatureType, cloudPrefetchBuffer, cloudIndexPrefetchBuffer);
     }
 
@@ -223,34 +229,34 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
      * Creates a FeatureDataSource backed by the provided FeatureInput. We will look ahead the specified number of bases
      * during queries that produce cache misses.
      *
-     * @param featureInput a FeatureInput specifying a source of Features
-     * @param queryLookaheadBases look ahead this many bases during queries that produce cache misses
-     * @param targetFeatureType When searching for a {@link FeatureCodec} for this data source, restrict the search to codecs
-     *                          that produce this type of Feature. May be null, which results in an unrestricted search.
-     * @param cloudPrefetchBuffer  MB size of caching/prefetching wrapper for the data, if on Google Cloud (0 to disable).
+     * @param featureInput             a FeatureInput specifying a source of Features
+     * @param queryLookaheadBases      look ahead this many bases during queries that produce cache misses
+     * @param targetFeatureType        When searching for a {@link FeatureCodec} for this data source, restrict the search to codecs
+     *                                 that produce this type of Feature. May be null, which results in an unrestricted search.
+     * @param cloudPrefetchBuffer      MB size of caching/prefetching wrapper for the data, if on Google Cloud (0 to disable).
      * @param cloudIndexPrefetchBuffer MB size of caching/prefetching wrapper for the index, if on Google Cloud (0 to disable).
      */
     public FeatureDataSource(final FeatureInput<T> featureInput, final int queryLookaheadBases, final Class<? extends Feature> targetFeatureType,
                              final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer) {
         this(featureInput, queryLookaheadBases, targetFeatureType, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
-             null);
+                null);
     }
 
     /**
      * Creates a FeatureDataSource backed by the provided FeatureInput. We will look ahead the specified number of bases
      * during queries that produce cache misses.
      *
-     * @param featureInput a FeatureInput specifying a source of Features
-     * @param queryLookaheadBases look ahead this many bases during queries that produce cache misses
-     * @param targetFeatureType When searching for a {@link FeatureCodec} for this data source, restrict the search to codecs
-     *                          that produce this type of Feature. May be null, which results in an unrestricted search.
-     * @param cloudPrefetchBuffer  MB size of caching/prefetching wrapper for the data, if on Google Cloud (0 to disable).
+     * @param featureInput             a FeatureInput specifying a source of Features
+     * @param queryLookaheadBases      look ahead this many bases during queries that produce cache misses
+     * @param targetFeatureType        When searching for a {@link FeatureCodec} for this data source, restrict the search to codecs
+     *                                 that produce this type of Feature. May be null, which results in an unrestricted search.
+     * @param cloudPrefetchBuffer      MB size of caching/prefetching wrapper for the data, if on Google Cloud (0 to disable).
      * @param cloudIndexPrefetchBuffer MB size of caching/prefetching wrapper for the index, if on Google Cloud (0 to disable).
-     * @param reference Path to a reference. May be null. Needed only for reading from GenomicsDB.
+     * @param reference                Path to a reference. May be null. Needed only for reading from GenomicsDB.
      */
     public FeatureDataSource(final FeatureInput<T> featureInput, final int queryLookaheadBases, final Class<? extends Feature> targetFeatureType,
                              final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer, final Path reference) {
-        Utils.validateArg( queryLookaheadBases >= 0, "Query lookahead bases must be >= 0");
+        Utils.validateArg(queryLookaheadBases >= 0, "Query lookahead bases must be >= 0");
         this.featureInput = Utils.nonNull(featureInput, "featureInput must not be null");
 
         final Function<SeekableByteChannel, SeekableByteChannel> cloudWrapper = (cloudPrefetchBuffer > 0 ? is -> SeekableByteChannelPrefetcher.addPrefetcher(cloudPrefetchBuffer, is) : Function.identity());
@@ -273,7 +279,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         // Due to a bug in HTSJDK, unindexed block compressed input files may fail to parse completely. For safety,
         // these files have been disabled. See https://github.com/broadinstitute/gatk/issues/4224 for discussion
         if (!hasIndex && IOUtil.hasBlockCompressedExtension(featureInput.getFeaturePath())) {
-            throw new UserException.MissingIndex(featureInput.toString(),"Support for unindexed block-compressed files has been temporarily disabled. Try running IndexFeatureFile on the input.");
+            throw new UserException.MissingIndex(featureInput.toString(), "Support for unindexed block-compressed files has been temporarily disabled. Try running IndexFeatureFile on the input.");
         }
 
         this.currentIterator = null;
@@ -302,15 +308,15 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
                 }
                 try {
                     final File referenceAsFile = reference.toFile();
-                    return (FeatureReader<T>)getGenomicsDBFeatureReader(featureInput.getFeaturePath(), referenceAsFile);
-                } catch (final UnsupportedOperationException e){
+                    return (FeatureReader<T>) getGenomicsDBFeatureReader(featureInput.getFeaturePath(), referenceAsFile);
+                } catch (final UnsupportedOperationException e) {
                     throw new UserException.BadInput("GenomicsDB requires that the reference be a local file.", e);
                 }
             } catch (final ClassCastException e) {
                 throw new UserException("GenomicsDB inputs can only be used to provide VariantContexts.", e);
             }
         } else {
-            FeatureCodec<T, ?> codec = getCodecForFeatureInput(featureInput, targetFeatureType);
+            final FeatureCodec<T, ?> codec = getCodecForFeatureInput(featureInput, targetFeatureType);
             return getTribbleFeatureReader(featureInput, codec, cloudWrapper, cloudIndexWrapper);
         }
     }
@@ -325,25 +331,24 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
     @SuppressWarnings("unchecked")
     private static <T extends Feature> FeatureCodec<T, ?> getCodecForFeatureInput(final FeatureInput<T> featureInput,
                                                                                   final Class<? extends Feature> targetFeatureType) {
-        FeatureCodec<T, ?> codec;
+        final FeatureCodec<T, ?> codec;
         final Class<FeatureCodec<T, ?>> codecClass = featureInput.getFeatureCodecClass();
         if (codecClass == null) {
             final Path featurePath = IOUtils.getPath(featureInput.getFeaturePath());
             IOUtils.assertFileIsReadable(featurePath);
             codec = (FeatureCodec<T, ?>) FeatureManager.getCodecForFile(featurePath, targetFeatureType);
-            featureInput.setFeatureCodecClass((Class<FeatureCodec<T, ?>>)codec.getClass());
+            featureInput.setFeatureCodecClass((Class<FeatureCodec<T, ?>>) codec.getClass());
         } else {
             try {
                 codec = codecClass.newInstance();
-            }
-            catch ( InstantiationException | IllegalAccessException e ) {
+            } catch (final InstantiationException | IllegalAccessException e) {
                 throw new GATKException("Unable to automatically instantiate codec " + codecClass.getName());
             }
         }
         return codec;
     }
 
-    private static <T extends Feature> AbstractFeatureReader<T, ?> getTribbleFeatureReader(final FeatureInput<T> featureInput, final FeatureCodec<T, ?> codec, Function<SeekableByteChannel, SeekableByteChannel> cloudWrapper, Function<SeekableByteChannel, SeekableByteChannel> cloudIndexWrapper) {
+    private static <T extends Feature> AbstractFeatureReader<T, ?> getTribbleFeatureReader(final FeatureInput<T> featureInput, final FeatureCodec<T, ?> codec, final Function<SeekableByteChannel, SeekableByteChannel> cloudWrapper, final Function<SeekableByteChannel, SeekableByteChannel> cloudIndexWrapper) {
         Utils.nonNull(codec);
         try {
             final String absolutePath = IOUtils.getPath(featureInput.getFeaturePath()).toAbsolutePath().toUri().toString();
@@ -353,19 +358,18 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
             final boolean requireIndex = false;
 
             // Only apply the wrappers if the feature input is on Google Cloud Storage
-            if ( BucketUtils.isCloudStorageUrl(absolutePath) ) {
+            if (BucketUtils.isCloudStorageUrl(absolutePath)) {
                 return AbstractFeatureReader.getFeatureReader(absolutePath, null, codec, requireIndex, cloudWrapper, cloudIndexWrapper);
             } else {
                 return AbstractFeatureReader.getFeatureReader(absolutePath, null, codec, requireIndex, Function.identity(), Function.identity());
             }
-        }
-        catch ( final TribbleException e ) {
-            throw new GATKException("Error initializing feature reader for path " +  featureInput.getFeaturePath(), e);
+        } catch (final TribbleException e) {
+            throw new GATKException("Error initializing feature reader for path " + featureInput.getFeaturePath(), e);
         }
     }
 
     private static FeatureReader<VariantContext> getGenomicsDBFeatureReader(final String path, final File reference) {
-        if( !isGenomicsDBPath(path) ) {
+        if (!isGenomicsDBPath(path)) {
             throw new IllegalArgumentException("Trying to create a GenomicsDBReader from a non-GenomicsDB input");
         }
 
@@ -375,7 +379,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         final File vidmapJson = new File(noheader, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME);
         final File vcfHeader = new File(noheader, GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME);
 
-        if ( ! workspace.exists() || ! workspace.canRead() || ! workspace.isDirectory() ) {
+        if (!workspace.exists() || !workspace.canRead() || !workspace.isDirectory()) {
             throw new UserException("GenomicsDB workspace " + workspace.getAbsolutePath() + " does not exist, " +
                     " is not readable, or is not a directory");
         }
@@ -384,17 +388,17 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
             IOUtils.canReadFile(callsetJson);
             IOUtils.canReadFile(vidmapJson);
             IOUtils.canReadFile(vcfHeader);
-        } catch ( UserException.CouldNotReadInputFile e ) {
+        } catch (final UserException.CouldNotReadInputFile e) {
             throw new UserException("Couldn't connect to GenomicsDB because the vidmap, callset JSON files, or gVCF Header (" +
                     GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME + "," + GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME + "," +
                     GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME + ") could not be read from GenomicsDB workspace " + workspace.getAbsolutePath(), e);
         }
 
-        final GenomicsDBExportConfiguration.ExportConfiguration exportConfigurationBuilder =
+        final GenomicsDBExportConfiguration.ExportConfiguration exportConfiguration =
                 createExportConfiguration(reference, workspace, callsetJson, vidmapJson, vcfHeader);
 
         try {
-            return new GenomicsDBFeatureReader<>(exportConfigurationBuilder, new BCF2Codec(), Optional.empty());
+            return new GenomicsDBFeatureReader<>(exportConfiguration, new BCF2Codec(), Optional.empty());
         } catch (final IOException e) {
             throw new UserException("Couldn't create GenomicsDBFeatureReader", e);
         }
@@ -403,7 +407,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
     private static GenomicsDBExportConfiguration.ExportConfiguration createExportConfiguration(final File reference, final File workspace,
                                                                                                final File callsetJson, final File vidmapJson,
                                                                                                final File vcfHeader) {
-        GenomicsDBExportConfiguration.ExportConfiguration.Builder exportConfigurationBuilder =
+        final GenomicsDBExportConfiguration.ExportConfiguration.Builder exportConfigurationBuilder =
                 GenomicsDBExportConfiguration.ExportConfiguration.newBuilder()
                         .setWorkspace(workspace.getAbsolutePath())
                         .setReferenceGenome(reference.getAbsolutePath())
@@ -414,7 +418,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
                         .setProduceGTWithMinPLValueForSpanningDeletions(false)
                         .setSitesOnlyQuery(false)
                         .setMaxDiploidAltAllelesThatCanBeGenotyped(GenotypeLikelihoods.MAX_DIPLOID_ALT_ALLELES_THAT_CAN_BE_GENOTYPED);
-        Path arrayFolder = Paths.get(workspace.getAbsolutePath(), GenomicsDBConstants.DEFAULT_ARRAY_NAME).toAbsolutePath();
+        final Path arrayFolder = Paths.get(workspace.getAbsolutePath(), GenomicsDBConstants.DEFAULT_ARRAY_NAME).toAbsolutePath();
 
         // For the multi-interval support, we create multiple arrays (directories) in a single workspace -
         // one per interval. So, if you wish to import intervals ("chr1", [ 1, 100M ]) and ("chr2", [ 1, 100M ]),
@@ -435,7 +439,112 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
             exportConfigurationBuilder.setGenerateArrayNameFromPartitionBounds(true);
         }
 
+        //Sample code snippet to show how combine operations for INFO fields can be specified using the Protobuf
+        //API
+        //
+        //References
+        //GenomicsDB Protobuf structs: https://github.com/Intel-HLS/GenomicsDB/blob/master/src/resources/genomicsdb_vid_mapping.proto
+        //Protobuf generated Java code guide:
+        //https://developers.google.com/protocol-buffers/docs/javatutorial#the-protocol-buffer-api
+        //https://developers.google.com/protocol-buffers/docs/reference/java-generated
+
+        //Parse the vid json and create an in-memory Protobuf structure representing the
+        //information in the JSON file
+        GenomicsDBVidMapProto.VidMappingPB vidMapPB;
+        try {
+            vidMapPB = getProtobufVidMappingFromJsonFile(vidmapJson);
+        } catch (final IOException e) {
+            throw new UserException("Could not open vid json file " + vidmapJson, e);
+        }
+
+        //In vidMapPB, fields is a list of GenomicsDBVidMapProto.GenomicsDBFieldInfo objects
+        //Each GenomicsDBFieldInfo object contains information about a specific field in the TileDB/GenomicsDB store
+        //We iterate over the list and create a field name to list index map
+        final HashMap<String, Integer> fieldNameToIndexInVidFieldsList =
+                getFieldNameToListIndexInProtobufVidMappingObject(vidMapPB);
+
+        //Example: set MQ combine operation to median (default is also median, but this is just an example)
+        vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
+                "MQ", "median");
+        if (vidMapPB != null) {
+            //Use rebuilt vidMap in exportConfiguration
+            //NOTE: this does NOT update the JSON file, the vidMapPB is a temporary structure that's passed to
+            //C++ modules of GenomicsDB for this specific query. Other queries will continue to use the information
+            //in the JSON file
+            exportConfigurationBuilder.setVidMapping(vidMapPB);
+        }
+
         return exportConfigurationBuilder.build();
+    }
+
+    /**
+     * Parse the vid json and create an in-memory Protobuf structure representing the
+     * information in the JSON file
+     *
+     * @param vidmapJson vid JSON file
+     * @return Protobuf object
+     */
+    public static GenomicsDBVidMapProto.VidMappingPB getProtobufVidMappingFromJsonFile(final File vidmapJson)
+            throws IOException {
+        final GenomicsDBVidMapProto.VidMappingPB.Builder vidMapBuilder = GenomicsDBVidMapProto.VidMappingPB.newBuilder();
+        try (final FileReader reader = new FileReader(vidmapJson)) {
+            JsonFormat.merge(reader, vidMapBuilder);
+        }
+        return vidMapBuilder.build();
+    }
+
+    /**
+     * In vidMapPB, fields is a list of GenomicsDBVidMapProto.GenomicsDBFieldInfo objects
+     * Each GenomicsDBFieldInfo object contains information about a specific field in the TileDB/GenomicsDB store
+     * We iterate over the list and create a field name to list index map
+     *
+     * @param vidMapPB Protobuf vid mapping object
+     * @return map from field name to index in vidMapPB.fields list
+     */
+    public static HashMap<String, Integer> getFieldNameToListIndexInProtobufVidMappingObject(
+            final GenomicsDBVidMapProto.VidMappingPB vidMapPB) {
+        final HashMap<String, Integer> fieldNameToIndexInVidFieldsList = new HashMap<>();
+        for (int fieldIdx = 0; fieldIdx < vidMapPB.getFieldsCount(); ++fieldIdx) {
+            fieldNameToIndexInVidFieldsList.put(vidMapPB.getFields(fieldIdx).getName(), fieldIdx);
+        }
+        return fieldNameToIndexInVidFieldsList;
+    }
+
+    /**
+     * Update vid Protobuf object with new combine operation for field
+     *
+     * @param vidMapPB                        input vid object
+     * @param fieldNameToIndexInVidFieldsList name to index in list
+     * @param fieldName                       INFO field name
+     * @param newCombineOperation             combine op ("sum", "median")
+     * @return updated vid Protobuf object if field exists, else null
+     */
+    public static GenomicsDBVidMapProto.VidMappingPB updateINFOFieldCombineOperation(
+            final GenomicsDBVidMapProto.VidMappingPB vidMapPB,
+            final Map<String, Integer> fieldNameToIndexInVidFieldsList,
+            final String fieldName,
+            final String newCombineOperation) {
+        final int fieldIdx = fieldNameToIndexInVidFieldsList.containsKey(fieldName)
+                ? fieldNameToIndexInVidFieldsList.get(fieldName) : -1;
+        if (fieldIdx >= 0) {
+            //Would need to rebuild vidMapPB - so get top level builder first
+            final GenomicsDBVidMapProto.VidMappingPB.Builder updatedVidMapBuilder = vidMapPB.toBuilder();
+            //To update the list element corresponding to fieldName, we get the builder for that specific list element
+            final GenomicsDBVidMapProto.GenomicsDBFieldInfo.Builder fieldBuilder =
+                    updatedVidMapBuilder.getFieldsBuilder(fieldIdx);
+            //And update its combine operation
+            fieldBuilder.setVCFFieldCombineOperation(newCombineOperation);
+
+            //Shorter way of writing the same operation
+            /*
+            updatedVidMapBuilder.getFieldsBuilder(fieldIdx)
+                .setVCFFieldCombineOperation(newCombineOperation);
+            */
+
+            //Rebuild full vidMap
+            return updatedVidMapBuilder.build();
+        }
+        return null;
     }
 
     /**
@@ -463,22 +572,22 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
      * Restricts traversals of this data source via {@link #iterator} to only return Features that overlap the provided
      * intervals. Calls to {@link #query(SimpleInterval)} and/or {@link #queryAndPrefetch(SimpleInterval)} are not
      * affected by these intervals.
-     *
+     * <p>
      * Intervals MUST be non-overlapping and sorted in order of increasing start position, otherwise traversal
      * results will be incorrect.
-     *
+     * <p>
      * Passing in a null or empty interval List clears the intervals for traversal, making future iterations
      * over this data source unrestricted by intervals.
      *
      * @param intervals Our next full traversal will return only Features overlapping these intervals
      */
-    public void setIntervalsForTraversal( final List<SimpleInterval> intervals ) {
+    public void setIntervalsForTraversal(final List<SimpleInterval> intervals) {
         // Treat null and empty interval lists the same
         intervalsForTraversal = (intervals != null && !intervals.isEmpty()) ? intervals : null;
 
-        if ( intervalsForTraversal != null && ! supportsRandomAccess ) {
+        if (intervalsForTraversal != null && !supportsRandomAccess) {
             throw new UserException("Input " + featureInput.getFeaturePath() + " must support random access to enable traversal by intervals. " +
-                                    "If it's a file, please index it using the bundled tool " + IndexFeatureFile.class.getSimpleName());
+                    "If it's a file, please index it using the bundled tool " + IndexFeatureFile.class.getSimpleName());
         }
     }
 
@@ -486,7 +595,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
     /**
      * Gets an iterator over all Features in this data source, restricting traversal to Features
      * overlapping our intervals if intervals were provided via {@link #setIntervalsForTraversal(List)}
-     *
+     * <p>
      * Calling this method invalidates (closes) any previous iterator obtained from this method.
      *
      * @return an iterator over all Features in this data source, limited to Features that overlap the intervals supplied via {@link #setIntervalsForTraversal(List)} (if intervals were provided)
@@ -499,26 +608,25 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
 
         try {
             // Save the iterator returned so that we can close it properly later
-            currentIterator = intervalsForTraversal != null ? new FeatureIntervalIterator<T>(intervalsForTraversal, featureReader, featureInput.getFeaturePath())
-                                                            : featureReader.iterator();
+            currentIterator = intervalsForTraversal != null ? new FeatureIntervalIterator<>(intervalsForTraversal, featureReader, featureInput.getFeaturePath())
+                    : featureReader.iterator();
             return currentIterator;
-        }
-        catch ( IOException e ) {
+        } catch (final IOException e) {
             throw new GATKException("Error creating iterator over file " + featureInput.getFeaturePath(), e);
         }
     }
 
     /**
      * Gets an iterator over all Features in this data source that overlap the provided interval.
-     *
+     * <p>
      * This operation is not affected by intervals provided via {@link #setIntervalsForTraversal(List)}.
-     *
+     * <p>
      * Requires the backing file to have been indexed using the IndexFeatureFile tool, and to
      * be sorted in increasing order of start position for each contig.
-     *
+     * <p>
      * Query results are cached to improve the performance of future queries during typical access
      * patterns. See notes to the class as a whole for a description of the caching strategy.
-     *
+     * <p>
      * Calling this method potentially invalidates (closes) any other open iterator obtained
      * from this data source via a call to {@link #iterator}
      *
@@ -526,37 +634,37 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
      * @return an iterator over all Features in this data source that overlap the provided interval
      */
     @Override
-    public Iterator<T> query( final SimpleInterval interval ) {
+    public Iterator<T> query(final SimpleInterval interval) {
         return queryAndPrefetch(interval).iterator();
     }
 
     /**
      * Returns a List of all Features in this data source that overlap the provided interval.
-     *
+     * <p>
      * This operation is not affected by intervals provided via {@link #setIntervalsForTraversal(List)}.
-     *
+     * <p>
      * Requires the backing file to have been indexed using the IndexFeatureFile tool, and to
      * be sorted in increasing order of start position for each contig.
-     *
+     * <p>
      * Query results are cached to improve the performance of future queries during typical access
      * patterns. See notes to the class as a whole for a description of the caching strategy.
-     *
+     * <p>
      * Calling this method potentially invalidates (closes) any other open iterator obtained
      * from this data source via a call to {@link #iterator}
      *
      * @param interval retrieve all Features overlapping this interval
      * @return a List of all Features in this data source that overlap the provided interval
      */
-    public List<T> queryAndPrefetch( final SimpleInterval interval ) {
-        if ( ! supportsRandomAccess ) {
+    public List<T> queryAndPrefetch(final SimpleInterval interval) {
+        if (!supportsRandomAccess) {
             throw new UserException("Input " + featureInput.getFeaturePath() + " must support random access to enable queries by interval. " +
-                                    "If it's a file, please index it using the bundled tool " + IndexFeatureFile.class.getSimpleName());
+                    "If it's a file, please index it using the bundled tool " + IndexFeatureFile.class.getSimpleName());
         }
 
         // If the query can be satisfied using existing cache contents, prepare for retrieval
         // by discarding all Features at the beginning of the cache that end before the start
         // of our query interval.
-        if ( queryCache.cacheHit(interval) ) {
+        if (queryCache.cacheHit(interval)) {
             queryCache.trimToNewStartPosition(interval.getStart());
         }
         // Otherwise, we have a cache miss, so go to disk to refill our cache.
@@ -572,13 +680,13 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
      * Refill our cache from disk after a cache miss. Will prefetch Features overlapping an additional
      * queryLookaheadBases bases after the end of the provided interval, in addition to those overlapping
      * the interval itself.
-     *
+     * <p>
      * Calling this has the side effect of invalidating (closing) any currently-open iteration over
      * this data source.
      *
      * @param interval the query interval that produced a cache miss
      */
-    private void refillQueryCache( final SimpleInterval interval ) {
+    private void refillQueryCache(final SimpleInterval interval) {
         // Tribble documentation states that having multiple iterators open simultaneously over the same FeatureReader
         // results in undefined behavior
         closeOpenIterationIfNecessary();
@@ -592,10 +700,9 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         final SimpleInterval queryInterval = new SimpleInterval(interval.getContig(), interval.getStart(), Math.addExact(interval.getEnd(), queryLookaheadBases));
 
         // Query iterator over our reader will be immediately closed after re-populating our cache
-        try ( CloseableTribbleIterator<T> queryIter = featureReader.query(queryInterval.getContig(), queryInterval.getStart(), queryInterval.getEnd()) ) {
+        try (final CloseableTribbleIterator<T> queryIter = featureReader.query(queryInterval.getContig(), queryInterval.getStart(), queryInterval.getEnd())) {
             queryCache.fill(queryIter, queryInterval);
-        }
-        catch ( IOException e ) {
+        } catch (final IOException e) {
             throw new GATKException("Error querying file " + featureInput + " over interval " + interval, e);
         }
     }
@@ -630,11 +737,10 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         queryCache.printCacheStatistics();
 
         try {
-            if ( featureReader != null ) {
+            if (featureReader != null) {
                 featureReader.close();
             }
-        }
-        catch ( IOException e ) {
+        } catch (final IOException e) {
             throw new GATKException("Error closing Feature reader for input " + featureInput);
         }
     }
@@ -643,7 +749,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
      * Close the iterator currently open over this data source, if there is one.
      */
     private void closeOpenIterationIfNecessary() {
-        if ( currentIterator != null ) {
+        if (currentIterator != null) {
             currentIterator.close();
             currentIterator = null;
         }

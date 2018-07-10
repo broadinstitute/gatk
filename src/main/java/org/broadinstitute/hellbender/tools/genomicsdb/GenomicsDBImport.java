@@ -6,6 +6,7 @@ import com.intel.genomicsdb.importer.model.ChromosomeInterval;
 import com.intel.genomicsdb.model.Coordinates;
 import com.intel.genomicsdb.model.GenomicsDBCallsetsMapProto;
 import com.intel.genomicsdb.model.GenomicsDBImportConfiguration;
+import com.intel.genomicsdb.GenomicsDBUtils;
 import com.intel.genomicsdb.model.ImportConfig;
 import com.intel.genomicsdb.model.BatchCompletionCallbackFunctionArgument;
 import htsjdk.samtools.SAMSequenceDictionary;
@@ -14,6 +15,7 @@ import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.CloseableTribbleIterator;
 import htsjdk.tribble.FeatureReader;
 import htsjdk.tribble.TribbleException;
+import htsjdk.tribble.readers.LineIterator;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFCodec;
 import htsjdk.variant.vcf.VCFHeader;
@@ -44,6 +46,8 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.net.URI;
+import java.net.URISyntaxException;
 
 
 /**
@@ -285,7 +289,7 @@ public final class GenomicsDBImport extends GATKTool {
     // each imported batch is then sorted, so if we have an unsorted list we'll end up with different global vs batch
     // sorting.
     // We preemptively sort here so we will have consistent sorting.
-    private SortedMap<String, Path> sampleNameToVcfPath = new TreeMap<>();
+    private SortedMap<String, URI> sampleNameToVcfPath = new TreeMap<>();
 
     // Needed as smartMergeHeaders() returns a set of VCF header lines
     private Set<VCFHeaderLine> mergedHeaderLines = null;
@@ -345,10 +349,15 @@ public final class GenomicsDBImport extends GATKTool {
                 headers.add(header);
 
                 final String sampleName = header.getGenotypeSamples().get(0);
-                final Path previousPath = sampleNameToVcfPath.put(sampleName, variantPath);
-                if (previousPath != null) {
-                    throw new UserException("Duplicate sample: " + sampleName + ". Sample was found in both "
-                                                    + variantPath.toUri() + " and " + previousPath.toUri() + ".");
+                try {
+                    final URI previousPath = sampleNameToVcfPath.put(sampleName, new URI(variantPathString));
+                    if (previousPath != null) {
+                        throw new UserException("Duplicate sample: " + sampleName + ". Sample was found in both "
+                                + variantPath.toUri() + " and " + previousPath + ".");
+                    }
+                }
+                catch(final URISyntaxException e) {
+                    throw new UserException("Malformed URI "+e.toString(), e);
                 }
             }
             mergedHeaderLines = VCFUtils.smartMergeHeaders(headers, true);
@@ -361,7 +370,7 @@ public final class GenomicsDBImport extends GATKTool {
             //the resulting database will have incorrect sample names
             //see https://github.com/broadinstitute/gatk/issues/3682 for more information
             sampleNameToVcfPath = loadSampleNameMapFileInSortedOrder(IOUtils.getPath(sampleNameMapFile));
-            final Path firstHeaderPath = sampleNameToVcfPath.entrySet().iterator().next().getValue();
+            final Path firstHeaderPath = IOUtils.getPath(sampleNameToVcfPath.entrySet().iterator().next().getValue().toString());
             final VCFHeader header = getHeaderFromPath(firstHeaderPath);
             //getMetaDataInInputOrder() returns an ImmutableSet - LinkedHashSet is mutable and preserves ordering
             mergedHeaderLines = new LinkedHashSet<VCFHeaderLine>(header.getMetaDataInInputOrder());
@@ -408,14 +417,14 @@ public final class GenomicsDBImport extends GATKTool {
      * @param sampleToFileMapPath path to the mapping file
      * @return map of sample name to corresponding file, the map will be ordered according to the order in the input file
      */
-    public static LinkedHashMap<String, Path> loadSampleNameMapFile(final Path sampleToFileMapPath) {
+    public static LinkedHashMap<String, URI> loadSampleNameMapFile(final Path sampleToFileMapPath) {
         try {
             final List<String> lines = Files.readAllLines(sampleToFileMapPath);
             if (lines.isEmpty()) {
                 throw new UserException.BadInput( "At least 1 sample is required but none were found in the sample mapping file");
             }
 
-            final LinkedHashMap<String, Path> sampleToFilename = new LinkedHashMap<>();
+            final LinkedHashMap<String, URI> sampleToFilename = new LinkedHashMap<>();
             for ( final String line : lines) {
                 final String[] split = line.split("\\t",-1);
                 if (split.length != 2) {
@@ -428,9 +437,14 @@ public final class GenomicsDBImport extends GATKTool {
                 }
                 final String sample = split[0];
                 final String path = split[1].trim();
-                final Path oldPath = sampleToFilename.put(sample, IOUtils.getPath(path));
-                if (oldPath != null){
-                    throw new UserException.BadInput("Found two mappings for the same sample: " + sample + "\n" + path + "\n" + oldPath.toUri() );
+                try {
+                    final URI oldPath = sampleToFilename.put(sample, new URI(path));
+                    if (oldPath != null){
+                        throw new UserException.BadInput("Found two mappings for the same sample: " + sample + "\n" + path + "\n" + oldPath );
+                    }
+                }
+                catch(final URISyntaxException e) {
+                    throw new UserException("Malformed URI "+e.toString());
                 }
             }
             return sampleToFilename;
@@ -451,7 +465,7 @@ public final class GenomicsDBImport extends GATKTool {
      * @param sampleToFileMapPath path to the mapping file
      * @return map of sample name to corresponding file, sorted by sample name
      */
-    public static SortedMap<String, Path> loadSampleNameMapFileInSortedOrder(final Path sampleToFileMapPath){
+    public static SortedMap<String, URI> loadSampleNameMapFileInSortedOrder(final Path sampleToFileMapPath){
         return new TreeMap<>(loadSampleNameMapFile(sampleToFileMapPath));
     }
 
@@ -489,10 +503,10 @@ public final class GenomicsDBImport extends GATKTool {
     }
 
     private Map<String, FeatureReader<VariantContext>> createSampleToReaderMap(
-            final Map<String, Path> sampleNameToVcfPath, final int batchSize, final int index) {
+            final Map<String, URI> sampleNameToVcfPath, final int batchSize, final int index) {
         // TODO: fix casting since it's really ugly
         return inputPreloadExecutorService != null ?
-                getFeatureReadersInParallel((SortedMap<String, Path>) sampleNameToVcfPath, batchSize, index)
+                getFeatureReadersInParallel((SortedMap<String, URI>) sampleNameToVcfPath, batchSize, index)
                 : getFeatureReadersSerially(sampleNameToVcfPath, batchSize, index);
     }
 
@@ -587,7 +601,7 @@ public final class GenomicsDBImport extends GATKTool {
      * @return  Feature readers to be imported in the current batch, sorted by sample name
      */
     private SortedMap<String, FeatureReader<VariantContext>> getFeatureReadersInParallel(
-            final SortedMap<String, Path> sampleNametoPath, final int batchSize, final int lowerSampleIndex) {
+            final SortedMap<String, URI> sampleNametoPath, final int batchSize, final int lowerSampleIndex) {
         final SortedMap<String, FeatureReader<VariantContext>> sampleToReaderMap = new TreeMap<>();
         logger.info("Starting batch input file preload");
         final Map<String, Future<FeatureReader<VariantContext>>> futures = new LinkedHashMap<>();
@@ -595,7 +609,7 @@ public final class GenomicsDBImport extends GATKTool {
         for(int i = lowerSampleIndex; i < sampleNametoPath.size() && i < lowerSampleIndex+batchSize; ++i) {
             final String sampleName = sampleNames.get(i);
             futures.put(sampleName, inputPreloadExecutorService.submit(() -> {
-                final Path variantPath = sampleNametoPath.get(sampleName);
+                final Path variantPath = IOUtils.getPath(sampleNametoPath.get(sampleName).toString());
                 try {
                     return new InitializedQueryWrapper(getReaderFromPath(variantPath), intervals.get(0));
                 } catch (final IOException e) {
@@ -618,13 +632,13 @@ public final class GenomicsDBImport extends GATKTool {
         return sampleToReaderMap;
     }
 
-    private SortedMap<String, FeatureReader<VariantContext>> getFeatureReadersSerially(final Map<String, Path> sampleNameToPath,
+    private SortedMap<String, FeatureReader<VariantContext>> getFeatureReadersSerially(final Map<String, URI> sampleNameToPath,
                                                                                  final int batchSize, final int lowerSampleIndex){
         final SortedMap<String, FeatureReader<VariantContext>> sampleToReaderMap = new TreeMap<>();
         final List<String> sampleNames = new ArrayList<>(sampleNameToPath.keySet());
         for(int i = lowerSampleIndex; i < sampleNameToPath.size() && i < lowerSampleIndex+batchSize; ++i) {
             final String sampleName = sampleNames.get(i);
-            final FeatureReader<VariantContext> reader = getReaderFromPath(sampleNameToPath.get(sampleName));
+            final FeatureReader<VariantContext> reader = getReaderFromPath(IOUtils.getPath(sampleNameToPath.get(sampleName).toString()));
             sampleToReaderMap.put(sampleName, reader);
         }
         logger.info("Importing batch " + this.batchCount + " with " + sampleToReaderMap.size() + " samples");
@@ -706,7 +720,7 @@ public final class GenomicsDBImport extends GATKTool {
         }
 
         if (!workspaceDir.exists()) {
-            final int ret = GenomicsDBImporter.createTileDBWorkspace(workspaceDir.getAbsolutePath());
+            final int ret = GenomicsDBUtils.createTileDBWorkspace(workspaceDir.getAbsolutePath(), false);
             if (ret > 0) {
                 checkIfValidWorkspace(workspaceDir);
                 logger.info("Importing data to GenomicsDB workspace: " + workspaceDir);
