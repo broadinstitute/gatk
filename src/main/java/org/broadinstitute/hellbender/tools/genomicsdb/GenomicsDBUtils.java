@@ -90,6 +90,9 @@ public class GenomicsDBUtils {
         vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
                 GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY, "element_wise_sum");
 
+        vidMapPB = updateAlleleSpecificINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
+                "AS_RAW_MQ", "element_wise_float_sum");
+
 
         if (vidMapPB != null) {
             //Use rebuilt vidMap in exportConfiguration
@@ -159,6 +162,58 @@ public class GenomicsDBUtils {
                     updatedVidMapBuilder.getFieldsBuilder(fieldIdx);
             //And update its combine operation
             fieldBuilder.setVCFFieldCombineOperation(newCombineOperation);
+
+            //Rebuild full vidMap
+            return updatedVidMapBuilder.build();
+        }
+        return null;
+    }
+
+    /**
+     * Update vid Protobuf object with a new variable length descriptor, as for allele-specific annotations
+     * @param vidMapPB input vid object
+     * @param fieldNameToIndexInVidFieldsList name to index in list
+     * @param fieldName INFO field name
+     * @param newCombineOperation combine op ("histogram_sum", "element_wise_float_sum", "strand_bias_table")
+     * @return updated vid Protobuf object if field exists, else null
+     */
+    public static GenomicsDBVidMapProto.VidMappingPB updateAlleleSpecificINFOFieldCombineOperation(
+            final GenomicsDBVidMapProto.VidMappingPB vidMapPB,
+            final Map<String, Integer> fieldNameToIndexInVidFieldsList,
+            final String fieldName,
+            final String newCombineOperation)
+    {
+        int fieldIdx = fieldNameToIndexInVidFieldsList.containsKey(fieldName)
+                ? fieldNameToIndexInVidFieldsList.get(fieldName) : -1;
+        if(fieldIdx >= 0) {
+            //Would need to rebuild vidMapPB - so get top level builder first
+            GenomicsDBVidMapProto.VidMappingPB.Builder updatedVidMapBuilder = vidMapPB.toBuilder();
+            //To update the list element corresponding to fieldName, we get the builder for that specific list element
+            GenomicsDBVidMapProto.GenomicsDBFieldInfo.Builder infoBuilder =
+                    updatedVidMapBuilder.getFieldsBuilder(fieldIdx);
+
+            GenomicsDBVidMapProto.FieldLengthDescriptorComponentPB.Builder lengthDescriptorComponentBuilder =
+                    GenomicsDBVidMapProto.FieldLengthDescriptorComponentPB.newBuilder();
+            lengthDescriptorComponentBuilder.setVariableLengthDescriptor("R");
+            infoBuilder.addLength(lengthDescriptorComponentBuilder.build());
+            lengthDescriptorComponentBuilder.setVariableLengthDescriptor("var"); //ignored - can set anything here
+            infoBuilder.addLength(lengthDescriptorComponentBuilder.build());
+            infoBuilder.addVcfDelimiter("|");
+            infoBuilder.addVcfDelimiter(",");
+
+            if (newCombineOperation.equals("histogram_sum")) {
+                //Each element of the vector is a tuple <float, int>
+                infoBuilder.addType("float");
+                infoBuilder.addType("int");
+                infoBuilder.setVCFFieldCombineOperation("histogram_sum");
+            } else {
+                infoBuilder.setVCFFieldCombineOperation("element_wise_sum");
+                if (newCombineOperation.equals("element_wise_float_sum")) {
+                    infoBuilder.addType("float");
+                } else if (newCombineOperation.equals("strand_bias_table")) {
+                    infoBuilder.addType("int");
+                }
+            }
 
             //Rebuild full vidMap
             return updatedVidMapBuilder.build();
