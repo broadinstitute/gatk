@@ -261,6 +261,20 @@ public class Mutect2FilteringEngine {
         }
     }
 
+    private void applyBBStrandFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final VariantContextBuilder vcb) {
+        final Genotype tumorGenotype = vc.getGenotype(tumorSample);
+
+        if (!tumorGenotype.hasExtendedAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY)) {
+            return;
+        }
+
+        final int[] strandBiasCounts = GATKProtectedVariantContextUtils.getAttributeAsIntArray(tumorGenotype, GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY, ()->null, -1);
+
+        if ( strandBiasCounts[2] == 0 || strandBiasCounts[3] == 0) {
+            vcb.filter(GATKVCFConstants.BB_STRAND_BIAS_FILTER_NAME);
+        }
+    }
+
     public void applyFilters(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final VariantContextBuilder vcb) {
         vcb.filters(new HashSet<>());
         applyInsufficientEvidenceFilter(MTFAC, vc, vcb);
@@ -277,6 +291,7 @@ public class Mutect2FilteringEngine {
         applyMedianMappingQualityDifferenceFilter(MTFAC, vc, vcb);
         applyMedianFragmentLengthDifferenceFilter(MTFAC, vc, vcb);
         applyReadPositionFilter(MTFAC, vc, vcb);
+        applyBBStrandFilter(MTFAC, vc, vcb);
     }
 
     private int[] getIntArrayTumorField(final VariantContext vc, final String key) {
