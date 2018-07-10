@@ -69,8 +69,15 @@ public class ApplyPhasing extends VariantWalker {
         tagsToFind.add(VCFConstants.PHASE_QUALITY_KEY);
         tagsToFind.addAll(additionalTags);
 
+        final List<String> genotypeSamples = header.getGenotypeSamples();
+        final HashSet<String> genotypeSampleSet = new HashSet<>(genotypeSamples);
         for (final FeatureInput<VariantContext> phasedVariantInput : phased) {
             final VCFHeader headerForFeatures = (VCFHeader) getHeaderForFeatures(phasedVariantInput);
+            for (final String phasedSample : headerForFeatures.getGenotypeSamples()) {
+                if (! genotypeSampleSet.contains(phasedSample)) {
+                    logger.warn("input VCF does not contain phased sample " + phasedSample + ", ignoring that sample");
+                }
+            }
             for (Iterator<String> tagIterator = tagsToFind.iterator(); tagIterator.hasNext(); ) {
                 String tag = tagIterator.next();
                 if (headerForFeatures.hasFormatLine(tag)) {
@@ -85,7 +92,7 @@ public class ApplyPhasing extends VariantWalker {
             throw new GATKException("Phased variant file does not contain a header line for requested genotype tags " + tagsToFind);
         }
 
-        vcfWriter.writeHeader(new VCFHeader(headerLines, header.getGenotypeSamples()));
+        vcfWriter.writeHeader(new VCFHeader(headerLines, genotypeSamples));
 
         if (missingAllelesReport != null) {
             missingAllelesReportWriter = new PrintWriter(BucketUtils.createFile(missingAllelesReport));
@@ -155,6 +162,11 @@ public class ApplyPhasing extends VariantWalker {
 
             concordanceSummary.concordantAlleles(variant);
             for (Genotype phasedVariantGenotype : phasedVariant.getGenotypes()) {
+                final String sampleName = phasedVariantGenotype.getSampleName();
+                if (! genotypesContext.containsSample(sampleName)) {
+                    continue;
+                }
+
                 if (!phasedVariantGenotype.isCalled()) {
                     continue;
                 }
@@ -171,7 +183,6 @@ public class ApplyPhasing extends VariantWalker {
                     continue;
                 }
 
-                final String sampleName = phasedVariantGenotype.getSampleName();
                 final Genotype variantGenotype = genotypesContext.get(sampleName);
                 if (!isConcordant(variantGenotype, phasedVariantGenotype, alleleMapping, phasedVariantRefLonger)) {
                     concordanceSummary.discordantGenotype(variant);
