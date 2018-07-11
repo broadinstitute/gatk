@@ -371,12 +371,12 @@ public class MarkDuplicatesSparkUtils {
         }
 
         final Pair bestPair = pairs.stream()
+                .peek(pair -> finder.addLocationInformation(pair.getName(), pair))
                 .max(PAIRED_ENDS_SCORE_COMPARATOR)
                 .orElseThrow(() -> new GATKException.ShouldNeverReachHereException("There was no best pair because the stream was empty, but it shouldn't have been empty."));
 
         // Split by orientation and count duplicates in each group separately.
         final Map<Byte, List<Pair>> groupByOrientation = pairs.stream()
-                .peek(pair -> finder.addLocationInformation(pair.getName(), pair))//TODO this needs me to handle the name better
                 .collect(Collectors.groupingBy(Pair::getOrientationForOpticalDuplicates));
         final int numOpticalDuplicates;
         //todo do we not have to split the reporting of these by orientation?
