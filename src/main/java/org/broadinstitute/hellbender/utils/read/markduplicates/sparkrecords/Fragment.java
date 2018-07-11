@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.utils.read.markduplicates.LibraryIdGenerato
 import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesScoringStrategy;
 import org.broadinstitute.hellbender.utils.read.markduplicates.ReadEnds;
 import org.broadinstitute.hellbender.utils.read.markduplicates.ReadsKey;
+import picard.sam.util.PhysicalLocation;
 
 import java.util.Map;
 
@@ -17,7 +18,7 @@ import java.util.Map;
  * This class holds onto as little information as possible in an attempt to prevent excessive serialization of
  * during the processing step of MarkDuplicatesSpark
  */
-public class Fragment extends PairedEnds {
+public class Fragment extends TransientFieldPhysicalLocation {
     protected transient ReadsKey key;
 
     private final int firstStartPosition;
