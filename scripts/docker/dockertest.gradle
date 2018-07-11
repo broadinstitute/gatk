@@ -172,9 +172,9 @@ task jacocoTestReportOnPackagedReleaseJar(type: JacocoReport) {
     dependsOn testOnPackagedReleaseJar
     executionData testOnPackagedReleaseJar
 
-    jacoco {
-        reportsDir = file("$System.env.SOURCE_DIR/build/reports/")
-    }
+//    jacoco {
+//        reportsDir = file("$System.env.SOURCE_DIR/build/reports/")
+//    }
 
     sourceDirectories = files(sourceFiles)
     classDirectories =  files("testClasses")
