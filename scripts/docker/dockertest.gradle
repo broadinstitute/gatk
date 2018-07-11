@@ -184,8 +184,8 @@ task jacocoTestReportOnPackagedReleaseJar(type: JacocoReport) {
 
     reports {
         xml.enabled = true
-        xml.destination "${buildDir}/reports/jacoco/report.xml"
+        xml.destination "${buildDir}/reports/jacoco/test"
         html.enabled = true
-        html.destination "${buildDir}/reports/jacoco/report.html"
+        html.destination "${buildDir}/reports/jacoco/test"
     }
 }
