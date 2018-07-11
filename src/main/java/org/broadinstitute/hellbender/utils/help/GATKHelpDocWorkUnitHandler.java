@@ -1,10 +1,16 @@
 package org.broadinstitute.hellbender.utils.help;
 
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.NamedArgumentDefinition;
 import org.broadinstitute.barclay.help.DefaultDocWorkUnitHandler;
 import org.broadinstitute.barclay.help.DocWorkUnit;
 
 import org.broadinstitute.barclay.help.HelpDoclet;
+import org.broadinstitute.hellbender.cmdline.ReadFilterArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * The GATK Documentation work unit handler class that is the companion to GATKHelpDoclet.
@@ -58,4 +64,27 @@ public class GATKHelpDocWorkUnitHandler extends DefaultDocWorkUnitHandler {
         }
     }
 
+//    @Override
+//    protected String processNamedArgument(
+//            final Map<String, Object> argBindings,
+//            final NamedArgumentDefinition argDef,
+//            final String fieldCommentText) {
+//        final String argKind = super.processNamedArgument(argBindings, argDef, fieldCommentText);
+//        // TODO: this fix requires an updated version of Barclay
+//        // for the --read-filters and --annotations arguments, we need to artificially present the default
+//        // values that are programmatically set by tools as if they were "default" values for the corresponding
+//        // descriptor arguments so they show up in the doc
+//        System.out.println("Argdef: " + argDef.getLongName());
+//        if (argDef.getLongName().equals(ReadFilterArgumentDefinitions.READ_FILTER_LONG_NAME) ||
+//                 argDef.getLongName().equals(StandardArgumentDefinitions.ANNOTATION_LONG_NAME)) {
+//            // add the default instances as default values for --disable-read-filter
+//            System.out.println("descriptor owned: " + argDef.getLongName());
+//            argBindings.put("defaultValue",
+//                            argDef.getDescriptorForControllingPlugin().getDefaultInstances()
+//                                    .stream()
+//                                    .map(rf -> rf.getClass().getSimpleName())
+//                                    .collect(Collectors.joining(",")));
+//        }
+//        return argKind;
+//    }
 }
