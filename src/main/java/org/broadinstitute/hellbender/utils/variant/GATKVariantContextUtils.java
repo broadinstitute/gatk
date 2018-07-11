@@ -916,29 +916,33 @@ public final class GATKVariantContextUtils {
      * @return a non-null mapping of original alleles to new (extended) ones
      */
     public static Map<Allele, Allele> createAlleleMapping(final Allele refAllele,
-                                                           final VariantContext oneVC,
-                                                           final Collection<Allele> currentAlleles) {
+                                                          final VariantContext oneVC,
+                                                          final Collection<Allele> currentAlleles) {
         final Allele myRef = oneVC.getReference();
         Utils.validate(refAllele.length() > myRef.length(), () -> "BUG: myRef="+myRef+" is longer than refAllele="+refAllele);
         final byte[] extraBases = Arrays.copyOfRange(refAllele.getBases(), myRef.length(), refAllele.length());
 
         final Map<Allele, Allele> map = new LinkedHashMap<>();
         for ( final Allele a : oneVC.getAlternateAlleles() ) {
-            if ( isUsableAlternateAllele(a) ) {
+            if ( isNonSymbolicExtendableAllele(a) ) {
                 Allele extended = Allele.extend(a, extraBases);
                 for ( final Allele b : currentAlleles )
                     if ( extended.equals(b) )
                         extended = b;
                 map.put(a, extended);
+            } else if (a.equals(Allele.SPAN_DEL)) {
+                map.put(a, a);
             }
+
         }
 
         return map;
     }
 
-    private static boolean isUsableAlternateAllele(final Allele allele) {
-        return ! (allele.isReference() || allele.isSymbolic() );
+    private static boolean isNonSymbolicExtendableAllele(final Allele allele) {
+        return ! (allele.isReference() || allele.isSymbolic() || allele.equals(Allele.SPAN_DEL));
     }
+
 
     public static List<VariantContext> sortVariantContextsByPriority(Collection<VariantContext> unsortedVCs, List<String> priorityListOfVCs, GenotypeMergeType mergeOption ) {
         if ( mergeOption == GenotypeMergeType.PRIORITIZE && priorityListOfVCs == null )
