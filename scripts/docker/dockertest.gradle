@@ -170,7 +170,8 @@ task jacocoTestReportOnPackagedReleaseJar(type: JacocoReport) {
     String sourceFiles = "$System.env.SOURCE_DIR"
 
     dependsOn testOnPackagedReleaseJar
-    executionData testOnPackagedReleaseJar
+//    executionData testOnPackagedReleaseJar
+    executionData "${buildDir}/jacoco/testOnPackagedReleaseJar.exec"
 
     additionalSourceDirs = files(sourceSets.main.allJava.srcDirs)
 
