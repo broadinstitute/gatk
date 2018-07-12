@@ -172,6 +172,8 @@ task jacocoTestReportOnPackagedReleaseJar(type: JacocoReport) {
     dependsOn testOnPackagedReleaseJar
     executionData testOnPackagedReleaseJar
 
+    additionalSourceDirs = files(sourceSets.main.allJava.srcDirs)
+
     jacoco {
         reportsDir = file("$System.env.SOURCE_DIR/build/reports/")
     }
@@ -186,6 +188,5 @@ task jacocoTestReportOnPackagedReleaseJar(type: JacocoReport) {
         xml.enabled = true
         xml.destination "${buildDir}/reports/jacoco/test"
         html.enabled = true
-        html.destination "${buildDir}/reports/jacoco/test"
     }
 }
