@@ -76,22 +76,23 @@ public final class CallModeledSegments extends CommandLineProgram {
 
     // Arugments given by the user
     private static final String SEGMENT_CALLER_PYTHON_SCRIPT = "modeled_segments_caller_cli.py";
-    public static final String LOAD_COPY_RATIO_LONG_NAME = "load-copy-ratio";
-    public static final String LOAD_ALLELE_FRACTION_LONG_NAME = "load-allele-fraction";
-    public static final String LOG_LONG_NAME = "log";
     public static final String OUTPUT_PREFIX_LONG_NAME = "output-prefix";
     public static final String OUTPUT_IMAGE_SUFFIX_LONG_NAME = "output-image-suffix";
     public static final String OUTPUT_CALLS_SUFFIX_LONG_NAME = "output-calls-suffix";
-    public static final String NORMAL_MINOR_ALLELE_FRACTION_THRESHOLD = "normal-minor-allele-fraction-threshold";
-    public static final String COPY_RATIO_PEAK_MIN_WEIGHT = "copy-ratio-peak-min-weight";
-    public static final String MIN_WEIGHT_FIRST_CR_PEAK_CR_DATA_ONLY = "min-weight-first-cr-peak-cr-data-only";
-    public static final String MIN_FRACTION_OF_POINTS_IN_NORMAL_ALLELE_FRACTION_REGION = "min-fraction-of-points-in-normal-allele-fraction-region";
+    public static final String LOAD_COPY_RATIO_LONG_NAME = "load-copy-ratio";
+    public static final String LOAD_ALLELE_FRACTION_LONG_NAME = "load-allele-fraction";
+    public static final String LOG_LONG_NAME = "log";
     public static final String INTERACTIVE_RUN_LONG_NAME = "interactive";
     private static final String INTERACTIVE_OUTPUT_CALLS_IMAGE_SUFFIX = "interactive-output-calls-image-suffix";
     private static final String INTERACTIVE_OUTPUT_SUMMARY_PLOT_SUFFIX = "interactive-output-summary-plot-suffix";
     private static final String INTERACTIVE_OUTPUT_ALLELE_FRACTION_PLOT_SUFFIX = "interactive-output-allele-fraction-plot-suffix";
     private static final String INTERACTIVE_OUTPUT_COPY_RATIO_PLOT_SUFFIX = "interactive_output_copy_ratio_suffix";
     private static final String INTERACTIVE_OUTPUT_COPY_RATIO_CLUSTERING_SUFFIX = "interactive-output-copy-ratio-clustering-suffix";
+    public static final String NORMAL_MINOR_ALLELE_FRACTION_THRESHOLD = "normal-minor-allele-fraction-threshold";
+    public static final String COPY_RATIO_PEAK_MIN_RELATIVE_HEIGHT = "copy-ratio-peak-min-relative-height";
+    public static final String COPY_RATIO_KERNEL_DENSITY_BANDWIDTH = "copy-ratio-kernel-density-bandwidth";
+    public static final String MIN_WEIGHT_FIRST_CR_PEAK_CR_DATA_ONLY = "min-weight-first-cr-peak-cr-data-only";
+    public static final String MIN_FRACTION_OF_POINTS_IN_NORMAL_ALLELE_FRACTION_REGION = "min-fraction-of-points-in-normal-allele-fraction-region";
 
     // Adiditional arguments and variables
     public static final String OUTPUT_IMAGE_SUFFIX_DEFAULT_VALUE = ".png";
@@ -176,12 +177,20 @@ public final class CallModeledSegments extends CommandLineProgram {
     private double normalMinorAlleleFractionThreshold=0.475;
 
     @Argument(
-            doc = "During the copy ratio clustering, peaks with weights smaller than this ratio are not taken into " +
-                    "account.",
-            fullName = COPY_RATIO_PEAK_MIN_WEIGHT,
+            doc = "During the copy ratio clustering, peaks with weights smaller than this ratio are not "
+                    + "taken into account.",
+            fullName = COPY_RATIO_PEAK_MIN_RELATIVE_HEIGHT,
             optional = true
     )
-    private double copyRatioPeakMinWeight=0.03;
+    private double copyRatioPeakMinRelativeHeight=0.05;
+
+    @Argument(
+            doc = "During the copy ratio clustering, we smoothen the data using a Gaussian kernel of "
+                    + "this bandwidth.",
+            fullName = COPY_RATIO_KERNEL_DENSITY_BANDWIDTH,
+            optional = true
+    )
+    private double copyRatioKernelDensityBandwidth=0.05;
 
     @Argument(
             doc = "If only copy ratio data is taken into account, and we find more than one cluster in the "
@@ -210,7 +219,7 @@ public final class CallModeledSegments extends CommandLineProgram {
     protected Object doWork() {
         Utils.validateArg(0.0 <= normalMinorAlleleFractionThreshold && normalMinorAlleleFractionThreshold <= 0.5,
                 "Minor allele fraction threshold for normal peaks has to be between 0 and 0.5.");
-        Utils.validateArg(0.0 <= copyRatioPeakMinWeight && copyRatioPeakMinWeight <= 1.0 ,
+        Utils.validateArg(0.0 <= copyRatioPeakMinRelativeHeight && copyRatioPeakMinRelativeHeight <= 1.0 ,
                 "Weight threshold for copy ratio peaks considered to be normal needs to be between 0 and 1.");
         Utils.validateArg(0.0 <= minFractionOfPointsInNormalAlleleFractionRegion &&
                         minFractionOfPointsInNormalAlleleFractionRegion <= 1.0,
@@ -265,7 +274,8 @@ public final class CallModeledSegments extends CommandLineProgram {
                 "--" + INTERACTIVE_OUTPUT_COPY_RATIO_PLOT_SUFFIX.replace('-','_') + "=" + INTERACTIVE_OUTPUT_COPY_RATIO_PLOT_SUFFIX_DEFAULT_VALUE,
                 "--" + INTERACTIVE_OUTPUT_COPY_RATIO_CLUSTERING_SUFFIX.replace('-','_') + "=" + INTERACTIVE_OUTPUT_COPY_RATIO_CLUSTERING_SUFFIX_DEFAULT_VALUE,
                 "--" + NORMAL_MINOR_ALLELE_FRACTION_THRESHOLD.replace('-','_') + "=" + String.valueOf(normalMinorAlleleFractionThreshold),
-                "--" + COPY_RATIO_PEAK_MIN_WEIGHT.replace('-','_') + "=" + String.valueOf(copyRatioPeakMinWeight),
+                "--" + COPY_RATIO_PEAK_MIN_RELATIVE_HEIGHT.replace('-','_') + "=" + String.valueOf(copyRatioPeakMinRelativeHeight),
+                "--" + COPY_RATIO_KERNEL_DENSITY_BANDWIDTH.replace('-', '_') + "=" + String.valueOf(copyRatioKernelDensityBandwidth),
                 "--" + MIN_WEIGHT_FIRST_CR_PEAK_CR_DATA_ONLY.replace('-','_') + "=" + String.valueOf(minWeightFirstCrPeakCrDataOnly),
                 "--" + MIN_FRACTION_OF_POINTS_IN_NORMAL_ALLELE_FRACTION_REGION.replace('-','_') + "=" + String.valueOf(minFractionOfPointsInNormalAlleleFractionRegion)));
 
