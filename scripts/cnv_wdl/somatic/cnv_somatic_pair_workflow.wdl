@@ -675,7 +675,9 @@ task CallModeledSegments {
             --output ${output_dir_} \
             --output-prefix ${output_prefix_} \
             --normal-minor-allele-fraction-threshold ${default="0.475" normal_minor_allele_fraction_threshold} \
-            --copy-ratio-peak-min-weight ${default="0.03" copy_ratio_peak_min_weight} \
+            --copy-ratio-peak-min-relative-height ${default="0.05" copy_ratio_peak_min_relative_height} \
+            --copy-ratio-kernel-density-bandwidth ${default="0.05" copy_ratio_kernel_density_bandwidth} \
+            --min-weight-first-cr-peak-cr-data-only ${default="0.35" min_weight_first_cr_peak_cr_data_only} \
             --min-fraction-of-points-in-normal-allele-fraction-region ${default="0.15" min_fraction_of_points_in_normal_allele_fraction_region}
     >>>
 
