@@ -58,7 +58,7 @@
 
 \section{Introduction}\label{introduction}
 
-We begin where \code{HaplotypeCaller} has decided which alleles to consider and has calculated likelihoods of each possible genotype.  Let $\ell_{sg} \equiv P({\rm reads}_s | g)$ be the likelihood of genotype $g$ in sample $s$.  Then a simple model for the genotypes and observed reads is
+The variant quality model is used in both \code{HaplotypeCaller} and \code{GenotypeGVCFs}.  We begin, in \code{HaplotypeCaller}, after deciding which alleles to consider and calculating likelihoods of each possible genotype, or, in \code{GenotypeGVCFs}, after merging input GVCFs, harmonizing their allele representations, and deciding which alleles to keep. Let $\ell_{sg} \equiv P({\rm reads}_s | g)$ be the likelihood of genotype $g$ in sample $s$.  Then a simple model for the genotypes and observed reads is
 \begin{equation}
 P({\rm reads}, \vz) = \prod_s P(\vz_s) \prod_g \ell_{sg}^{z_{sg}}, \label{likelihood}
 \end{equation}
@@ -69,7 +69,7 @@ P(\vz_s| \vpi) = \prod_g \left[ C_g \prod_a \left( \pi_a \right)^{n_{ga}} \right
 \end{equation}
 where $C_g = {\rm ploidy}! / \left(\prod_a n_{ga}! \right)$ is the number of phased genotypes corresponding to unphased genotype $g$.  For example, $C_{AAB} = 3$ because $AAB$, $ABA$, and $BAA$ are distinct phased genotypes, while $C_{AAA} = 1$.
 
-Because sites vary in their allele frequencies, $\vpi$ is not a constant.  Rather, it is a random variable whose prior distribution should have the correct mean alt allele frequency (roughly 1 in 1000 for SNPs) and roughly the correct standard deviation.  That is, the prior probabilities that a site has a rare alt with, say $\pi_B = 10^{-5}$ or a common alt with $\pi_B = 0.25$ should be match the empirical distribution of allele frequencies.  Note that the old model essentially assumed that every site had an alt allele with a constant allele frequency of 1/1000.  We can achieve this by setting $\vpi \sim {\rm Dir}(\valpha)$, where $\valpha$ is a vector with one component per allele, and $\valpha_a$ is a prior pseudocount for allele $a$.  We can set these pseudocounts separately for the ref allele, SNPs, and indels\footnote{In principle we could have a complicated model for prior pseudocounts depending on context.  Furthermore, if we have a call set like ExAC, the prior pseudocounts are simply the allele counts from that call set.} to obtain the desired mean and standard deviation of allele frequencies.  Unlike previous approaches which shoehorned multiallelic sites into  biallelic model, this method is naturally multiallelic.  Since $\valpha$ is not a random variable we can ignore the normalization constant of the Dirichlet, which depends only on $\valpha$, to obtain $P(\vpi | \valpha) \propto  \prod_a \pi_a^{\alpha_a}$.  This, combined with Equations \ref{likelihood} and \ref{indicator}, gives the joint posterior distribution
+Because sites vary in their allele frequencies, $\vpi$ is not a constant.  Rather, it is a random variable whose prior distribution should have the correct mean alt allele frequency (roughly 1 in 1000 for SNPs) and roughly the correct standard deviation.  That is, the prior probabilities that a site has a rare alt with, say $\pi_B = 10^{-5}$ or a common alt with $\pi_B = 0.25$ should match the empirical distribution of allele frequencies.  Note that the old model essentially assumed that every site had an alt allele with a constant allele frequency of 1/1000.  We can achieve this by setting $\vpi \sim {\rm Dir}(\valpha)$, where $\valpha$ is a vector with one component per allele, and $\valpha_a$ is a prior pseudocount for allele $a$.  We can set these pseudocounts separately for the ref allele, SNPs, and indels\footnote{In principle we could have a complicated model for prior pseudocounts depending on context.  Furthermore, if we have a big call set like gnomAD, the prior pseudocounts are simply the allele counts from that call set.} to obtain the desired mean and standard deviation of allele frequencies.  Unlike previous approaches which shoehorned multiallelic sites into  biallelic model, this method extends naturally to multiallelic sites.  Since $\valpha$ is not a random variable we can ignore the normalization constant of the Dirichlet, which depends only on $\valpha$, to obtain $P(\vpi | \valpha) \propto  \prod_a \pi_a^{\alpha_a}$.  This, combined with Equations \ref{likelihood} and \ref{indicator}, gives the joint posterior distribution
 \begin{equation}
 P(\vpi, \vz) \propto \left( \prod_a \pi_a^{\alpha_a} \right) \prod_{sg} \left[ C_g \ell_{sg} \prod_a \pi_a^{n_{ga}} \right]^{z_{sg}}
 \end{equation}
@@ -92,7 +92,7 @@ E_{q(\vz)}[z_{sg}] = \frac{C_g \ell_{sg} \prod_a e^{ E[\ln \pi_a] n_{ga}}}{\rm n
 \end{align}
 where the constant of normalization is chosen so that $\sum_g E_{q(\vz)}[z_{sg}] = 1$.  Learning this model is just a matter of iterating Equations \ref{M} and \ref{E}.
 
-Once our iteration converges, we can extract several interesting things, some of which we already calculate and some of which we do not yet but perhaps should.  First, we have the Dirichlet posterior $q(\vpi)$ on allele frequencies.  Letting $N_a \equiv \alpha_a + \sum_{sg} E[z_{sg}] n_{ga}$ be the prior plus observed pseudocounts for allele $a$, we have
+Once our iteration converges, we can extract several interesting things, some of which we already report and some of which we do not.  First, we have the Dirichlet posterior $q(\vpi)$ on allele frequencies.  Letting $N_a \equiv \alpha_a + \sum_{sg} E[z_{sg}] n_{ga}$ be the prior plus observed pseudocounts for allele $a$, we have
 \begin{equation}
 \vpi \sim {\rm Dir}(N_0, N_1 \ldots)
 \end{equation}
@@ -100,7 +100,7 @@ If we want a univariate allele frequency for a single allele (i.e. not the joint
 \begin{equation}
 \pi_a \sim {\rm Beta}(N_a, \sum_{a^\prime \ne a} N_{a^\prime})
 \end{equation}
-From this we can get the mean posterior allele frequency, which is $\bar{\pi_a} = N_a / \sum_{a^\prime} N_a$, but we also have error bars on this estimate.
+From this we can get the mean posterior allele frequency, which is $\bar{\pi}_a = N_a / \sum_{a^\prime} N_a$, but we also have error bars on this estimate.
 
 We can also obtain the variant quality score trivially.  The probability that no variant exists among the samples is (we use the convention that $g=0$ for the hom ref genotype)
 \begin{equation}
