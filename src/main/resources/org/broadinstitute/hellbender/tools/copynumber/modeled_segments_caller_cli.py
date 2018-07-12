@@ -103,12 +103,19 @@ group.add_argument("--normal_minor_allele_fraction_threshold",
                    help="If the allele fraction value of a peak fitted to the data is above this threshold and its "
                         "copy ratio value is within the appropriate region, then the peak is considered normal.")
 
-group.add_argument("--copy_ratio_peak_min_weight",
+group.add_argument("--copy_ratio_peak_min_relative_height",
                    type=float,
                    required=False,
                    default=0.03,
                    help="During the copy ratio clustering, peaks with weights smaller than this ratio are not "
                         "taken into account.")
+
+group.add_argument("--copy_ratio_kernel_density_bandwidth",
+                   type=float,
+                   required=False,
+                   default=None,
+                   help="During the copy ratio clustering, we smoothen the data using a Gaussian kernel of "
+                        "this bandwidth.")
 
 group.add_argument("--min_weight_first_cr_peak_cr_data_only",
                    type=float,
@@ -143,7 +150,9 @@ if __name__ == "__main__":
                                 load_af=str2bool(args.load_allele_fraction),
                                 output_log_dir=args.output,
                                 output_log_prefix=args.output_prefix,
-                                do_logging=args.log
+                                do_logging=args.log,
+                                cr_weight_ratio_max=args.cr_weight_ratio_max,
+                                af_weight_ratio_max=args.af_weight_ratio_max
                                 )
 
     # Run the caller
@@ -161,7 +170,8 @@ if __name__ == "__main__":
                                    interactive_output_copy_ratio_suffix=args.interactive_output_copy_ratio_suffix,
                                    interactive_output_copy_ratio_clustering_suffix=args.interactive_output_copy_ratio_clustering_suffix,
                                    normal_minor_allele_fraction_threshold=args.normal_minor_allele_fraction_threshold,
-                                   copy_ratio_peak_min_weight=args.copy_ratio_peak_min_weight,
+                                   copy_ratio_peak_min_relative_height=args.copy_ratio_peak_min_relative_height,
+                                   copy_ratio_kernel_density_bandwidth=args.copy_ratio_kernel_density_bandwidth,
                                    min_weight_first_cr_peak_cr_data_only=args.min_weight_first_cr_peak_cr_data_only,
                                    min_fraction_of_points_in_normal_allele_fraction_region=args.min_fraction_of_points_in_normal_allele_fraction_region
                                    )
