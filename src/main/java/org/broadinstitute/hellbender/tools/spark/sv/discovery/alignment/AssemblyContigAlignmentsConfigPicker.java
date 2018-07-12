@@ -593,6 +593,8 @@ public class AssemblyContigAlignmentsConfigPicker {
             else
                 nonCanonicalMapping.add(alignment);
         }
+        if ( canonicalMappings.isEmpty() )
+            return null;
         if ( nonCanonicalMapping.size() == 1 &&
                 (canonicalMappings.size() > 1 || canonicalMappings.get(0).containsGapOfEqualOrLargerSize(GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY)) ) {
             final double canonicalScore = computeScoreOfConfiguration(canonicalMappings, canonicalChromosomes, maxCanonicalChrAlignerScore);
