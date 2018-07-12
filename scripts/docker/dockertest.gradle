@@ -179,6 +179,7 @@ task jacocoTestReportOnPackagedReleaseJar(type: JacocoReport) {
 //    }
 
     sourceDirectories = files(sourceFiles)
+    sourceSets it.sourceSets.main
     classDirectories =  files("testClasses")
 
     group = "Reporting"
