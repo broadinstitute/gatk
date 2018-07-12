@@ -157,11 +157,11 @@ task testOnPackagedReleaseJar(type: Test){
             throw new GradleException("Environment variable 'TEST_JAR' not specified")
         }
         logger.lifecycle("The classpath used for this test:")
-        classpath.each {println it}
     }
 
     classpath = files( gatkJar, testDependencyJar, testClassesJar)
     testClassesDir = file(testClassesUnpacked)
+    finalizedBy jacocoTestReportOnPackagedReleaseJar
 }
 
 // Task intended to collect coverage data from testOnPackagedReleaseJar executed inside the docker image
@@ -172,6 +172,7 @@ task jacocoTestReportOnPackagedReleaseJar(type: JacocoReport) {
     dependsOn testOnPackagedReleaseJar
 //    executionData testOnPackagedReleaseJar
     executionData "${buildDir}/jacoco/testOnPackagedReleaseJar.exec"
+    print "${buildDir}/jacoco/testOnPackagedReleaseJar.exec"
 
     additionalSourceDirs = files(sourceSets.main.allJava.srcDirs)
 
