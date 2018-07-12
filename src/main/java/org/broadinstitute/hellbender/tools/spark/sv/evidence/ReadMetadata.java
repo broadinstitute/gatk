@@ -502,7 +502,7 @@ public class ReadMetadata {
                 final String libraryName = readGroupToLibraryMap.get(mappedRead.getReadGroup());
                 final boolean isTestable = filter.isTemplateLenTestable(mappedRead);
                 int summedQuals = 0;
-                for ( final byte qual : mappedRead.getBaseQualities() ) {
+                for ( final byte qual : mappedRead.getBaseQualitiesNoCopy() ) {
                     summedQuals += qual;
                 }
                 libraryNameToStatisticsMap

@@ -91,7 +91,7 @@ public class SVKmerLong extends SVKmer implements Comparable<SVKmerLong>  {
      * Returns a new SVKmerLong that's the reverse-complement of this one.
      * E.g., if kmer.toString(5) is "ACTGA", then kmer.rc(5).toString(5) is "TCAGT".
      */
-    public final SVKmerLong reverseComplement( final int kSize ) {
+    public SVKmerLong reverseComplement( final int kSize ) {
         // bit hack to make a long value with the kSize least significant bits set to 1
         final long mask = (1L << kSize) - 1L;
         // number of unused bits at the top

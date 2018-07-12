@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.sv.evidence;
 
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.FermiLiteCoverageInterpreter;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFastqUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAligner;
@@ -37,19 +38,23 @@ public class ReviseAssemblyUnitTest extends GATKBaseTest {
         };
         final FermiLiteAssembly assembly = new FermiLiteAssembly(
             Arrays.stream(testSeqs)
-                .map(seq -> new Contig(seq.getBytes(), null, 1))
+                .map(seq -> new Contig(seq.getBytes(), perBaseCoverage(seq.getBytes().length), 1))
                 .collect(SVUtils.arrayListCollector(testSeqs.length)));
         final FermiLiteAssembly unshadowedAssembly = FermiLiteAssemblyHandler.removeShadowedContigs(assembly);
         Assert.assertEquals(unshadowedAssembly.getContigs(), assembly.getContigs().subList(0, 4));
     }
 
+    private static byte[] perBaseCoverage( final int len ) {
+        return new FermiLiteCoverageInterpreter(len).getBytes();
+    }
+
     @Test(groups = "sv")
     void testRemoveUnbranched() {
         // test assembly has graph structure A->C, B->C, C->D.  C and D can be replaced with CD.
-        final Contig tigA = new Contig("ACACTTTT".getBytes(), null, 1);
-        final Contig tigB = new Contig("TGTGTTTT".getBytes(), null, 1);
-        final Contig tigC = new Contig("TTTTAAAA".getBytes(), null, 1);
-        final Contig tigD = new Contig("AAAAGCGC".getBytes(), null, 1);
+        final Contig tigA = new Contig("ACACTTTT".getBytes(), perBaseCoverage(8), 1);
+        final Contig tigB = new Contig("TGTGTTTT".getBytes(), perBaseCoverage(8), 1);
+        final Contig tigC = new Contig("TTTTAAAA".getBytes(), perBaseCoverage(8), 1);
+        final Contig tigD = new Contig("AAAAGCGC".getBytes(), perBaseCoverage(8), 1);
         tigA.setConnections(Collections.singletonList(new Connection(tigC, 4, false, false)));
         tigB.setConnections(Collections.singletonList(new Connection(tigC, 4, false, false)));
         final List<Connection> tigCConnections = new ArrayList<>(3);
@@ -71,7 +76,7 @@ public class ReviseAssemblyUnitTest extends GATKBaseTest {
         Assert.assertEquals(new String(noUnbranchedAssembly.getContig(2).getSequence()), "TTTTAAAAGCGC");
 
         // now add another contig E->D and make sure we don't create CD (since D now has multiple predecessors)
-        final Contig tigE = new Contig("GAGAAAAA".getBytes(), null, 1);
+        final Contig tigE = new Contig("GAGAAAAA".getBytes(), perBaseCoverage(8), 1);
         tigE.setConnections(Collections.singletonList(new Connection(tigD, 4, false, false)));
         tigList.add(tigE);
         final List<Connection> tigDConnections = new ArrayList<>(2);
@@ -86,11 +91,11 @@ public class ReviseAssemblyUnitTest extends GATKBaseTest {
     @Test(groups = "sv")
     void testNoCrossingUnphasedContigs() {
         // test assembly has the structure A->C, B->C, C->D, C->E.  expanded contigs should be AC, BC, CD, and CE.
-        final Contig tigA = new Contig("ACACTTTT".getBytes(), null, 1);
-        final Contig tigB = new Contig("TGTGTTTT".getBytes(), null, 1);
-        final Contig tigC = new Contig("TTTTAAAA".getBytes(), null, 1);
-        final Contig tigD = new Contig("AAAAGCGC".getBytes(), null, 1);
-        final Contig tigE = new Contig("AAAATATA".getBytes(), null, 1);
+        final Contig tigA = new Contig("ACACTTTT".getBytes(), perBaseCoverage(8), 1);
+        final Contig tigB = new Contig("TGTGTTTT".getBytes(), perBaseCoverage(8), 1);
+        final Contig tigC = new Contig("TTTTAAAA".getBytes(), perBaseCoverage(8), 1);
+        final Contig tigD = new Contig("AAAAGCGC".getBytes(), perBaseCoverage(8), 1);
+        final Contig tigE = new Contig("AAAATATA".getBytes(), perBaseCoverage(8), 1);
         tigA.setConnections(Collections.singletonList(new Connection(tigC, 4, false, false)));
         tigB.setConnections(Collections.singletonList(new Connection(tigC, 4, false, false)));
         tigD.setConnections(Collections.singletonList(new Connection(tigC, 4, true, true)));
@@ -119,8 +124,8 @@ public class ReviseAssemblyUnitTest extends GATKBaseTest {
     @Test(groups = "sv")
     void testCycleResolution() {
         // test assembly has the structure A->B, B->B.  expanded contig should be ABB.
-        final Contig tigA = new Contig("ACACTTTT".getBytes(), null, 1);
-        final Contig tigB = new Contig("TTTTTTTT".getBytes(), null, 1);
+        final Contig tigA = new Contig("ACACTTTT".getBytes(), perBaseCoverage(8), 1);
+        final Contig tigB = new Contig("TTTTTTTT".getBytes(), perBaseCoverage(8), 1);
         tigA.setConnections(Collections.singletonList(new Connection(tigB, 4, false, false)));
         final List<Connection> tigBConnections = new ArrayList<>(3);
         tigBConnections.add(new Connection(tigA, 4, true, true));
@@ -139,9 +144,9 @@ public class ReviseAssemblyUnitTest extends GATKBaseTest {
     @Test(groups = "sv")
     void testCycleResolutionAcrossPhasing() {
         // test assembly has the structure A->B, B->B, B->C.  expanded contigs should be AB, BB and BC.
-        final Contig tigA = new Contig("ACACTTTT".getBytes(), null, 1);
-        final Contig tigB = new Contig("TTTTTTTT".getBytes(), null, 1);
-        final Contig tigC = new Contig("TTTTGTGT".getBytes(), null, 1);
+        final Contig tigA = new Contig("ACACTTTT".getBytes(), perBaseCoverage(8), 1);
+        final Contig tigB = new Contig("TTTTTTTT".getBytes(), perBaseCoverage(8), 1);
+        final Contig tigC = new Contig("TTTTGTGT".getBytes(), perBaseCoverage(8), 1);
         tigA.setConnections(Collections.singletonList(new Connection(tigB, 4, false, false)));
         tigC.setConnections(Collections.singletonList(new Connection(tigB, 4, true, true)));
         final List<Connection> tigBConnections = new ArrayList<>(4);

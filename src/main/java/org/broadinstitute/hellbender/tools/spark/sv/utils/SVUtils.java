@@ -121,7 +121,7 @@ public final class SVUtils {
     // =================================================================================================================
 
     //Workaround for seed 14695981039346656037 that doesn't fit in a signed long
-    private static final long FNV64_DEFAULT_SEED = new BigInteger("14695981039346656037").longValue();
+    public static final long FNV64_DEFAULT_SEED = new BigInteger("14695981039346656037").longValue();
 
     /**
      * 64-bit FNV-1a hash for long's

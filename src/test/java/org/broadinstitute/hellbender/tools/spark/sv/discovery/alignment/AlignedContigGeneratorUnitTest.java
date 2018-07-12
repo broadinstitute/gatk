@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoverFromLoca
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.AlignedAssemblyOrExcuse;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.ContigScorer;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.ContigScorer.ContigScore;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.FermiLiteCoverageInterpreter;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
@@ -124,23 +125,24 @@ public class AlignedContigGeneratorUnitTest extends GATKBaseTest {
 
         // produce test assembly and alignment
         final byte[] dummyContigSequence = SVDiscoveryTestUtilsAndCommonDataProvider.makeDummySequence(1000, (byte)'T');
-        final byte[] dummyContigSequenceQuals = SVDiscoveryTestUtilsAndCommonDataProvider.makeDummySequence(1000, (byte)'A');
+        final byte[] dummyContigSequenceCoverage =
+                new FermiLiteCoverageInterpreter(dummyContigSequence.length).getBytes();
         final List<FermiLiteAssembly.Connection> dummyConnections = Collections.emptyList();
 
-        final FermiLiteAssembly.Contig unmappedContig = new FermiLiteAssembly.Contig(dummyContigSequence, dummyContigSequenceQuals, 100); // totally random 100 supporting reads
+        final FermiLiteAssembly.Contig unmappedContig = new FermiLiteAssembly.Contig(dummyContigSequence, dummyContigSequenceCoverage, 100); // totally random 100 supporting reads
         unmappedContig.setConnections(dummyConnections);
         final BwaMemAlignment unmappedContigAlignment = new BwaMemAlignment(4, -1, -1, -1, -1, -1, -1, -1, 0, 0, "", "", "", -1, -1, 0);
 
-        final FermiLiteAssembly.Contig contigWithAmbiguousMapping = new FermiLiteAssembly.Contig(dummyContigSequence, dummyContigSequenceQuals, 100);
+        final FermiLiteAssembly.Contig contigWithAmbiguousMapping = new FermiLiteAssembly.Contig(dummyContigSequence, dummyContigSequenceCoverage, 100);
         contigWithAmbiguousMapping.setConnections(dummyConnections);
         final BwaMemAlignment firstAmbiguousMapping = new BwaMemAlignment(256, dummyRefId, 1000000, 1001000, 0, 1000, 0, 20, 100, 100, "800M50I100M50D50M", "", "", -1, -1, 0); // technically not correct but doesn't matter for this case
         final BwaMemAlignment secondAmbiguousMapping = new BwaMemAlignment(272, dummyRefId, 2000000, 2001000, 0, 1000, 0, 50, 100, 100, "700M50I200M50D50M", "", "", -1, -1, 0);
 
-        final FermiLiteAssembly.Contig cleanContig = new FermiLiteAssembly.Contig(dummyContigSequence, dummyContigSequenceQuals, 100);
+        final FermiLiteAssembly.Contig cleanContig = new FermiLiteAssembly.Contig(dummyContigSequence, dummyContigSequenceCoverage, 100);
         cleanContig.setConnections(dummyConnections);
         final BwaMemAlignment cleanAlignment = new BwaMemAlignment(0, dummyRefId, 1000000, 1001000, 0, 1000, 60, 0, 100, 0, "1000M", "", "", -1, -1, 0);
 
-        final FermiLiteAssembly.Contig contigWithGapInAlignment = new FermiLiteAssembly.Contig(dummyContigSequence, dummyContigSequenceQuals, 100);
+        final FermiLiteAssembly.Contig contigWithGapInAlignment = new FermiLiteAssembly.Contig(dummyContigSequence, dummyContigSequenceCoverage, 100);
         contigWithGapInAlignment.setConnections(dummyConnections);
         final BwaMemAlignment gappedAlignment = new BwaMemAlignment(0, dummyRefId,1000000, 1001000, 0, 1000, 60, 0, 100, 0, "700M50I200M50D50M", "", "", -1, -1, 0);
 

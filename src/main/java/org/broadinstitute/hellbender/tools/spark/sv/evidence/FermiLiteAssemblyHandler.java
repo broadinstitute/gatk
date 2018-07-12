@@ -24,7 +24,9 @@ import java.util.*;
 /** LocalAssemblyHandler that uses FermiLite. */
 public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpark.LocalAssemblyHandler {
     private static final long serialVersionUID = 1L;
+
     private static final int assemblyKmerSize = 31;
+
     private final String alignerIndexFile;
     private final int maxFastqSize;
     private final String fastqDir;
@@ -362,26 +364,35 @@ public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpa
                         .mapToInt(conn -> conn.getTarget().getSequence().length - conn.getOverlapLen())
                         .reduce(firstContig.getSequence().length, Integer::sum);
         final byte[] sequence = new byte[newContigLen];
+        final FermiLiteCoverageInterpreter coverageInterpreter = new FermiLiteCoverageInterpreter(newContigLen);
         int destinationOffset = firstContig.getSequence().length;
         System.arraycopy(firstContig.getSequence(), 0, sequence, 0, destinationOffset);
-        if ( path.get(0).isRC() )
+        if ( !path.get(0).isRC() ) {
+            coverageInterpreter.sumCoverage(new FermiLiteCoverageInterpreter(firstContig.getPerBaseCoverage()), 0);
+        } else {
             SequenceUtil.reverseComplement(sequence, 0, destinationOffset);
+            coverageInterpreter.sumCoverageReverse(new FermiLiteCoverageInterpreter(firstContig.getPerBaseCoverage()), 0);
+        }
         for ( final Connection conn : path ) {
             final byte[] contigSequence = conn.getTarget().getSequence();
+            final FermiLiteCoverageInterpreter contigCoverageInterpreter =
+                    new FermiLiteCoverageInterpreter(conn.getTarget().getPerBaseCoverage());
             final int len = contigSequence.length - conn.getOverlapLen();
+            final int coverageOffset = destinationOffset - conn.getOverlapLen();
             if ( !conn.isTargetRC() ) {
                 System.arraycopy(contigSequence, conn.getOverlapLen(), sequence, destinationOffset, len);
+                coverageInterpreter.sumCoverage(contigCoverageInterpreter, coverageOffset);
             } else {
                 System.arraycopy(contigSequence, 0, sequence, destinationOffset, len);
                 SequenceUtil.reverseComplement(sequence, destinationOffset, len);
+                coverageInterpreter.sumCoverageReverse(contigCoverageInterpreter, coverageOffset);
             }
             destinationOffset += len;
         }
-        return new Contig(sequence, null, nSupportingReads);
+        return new Contig(sequence, coverageInterpreter.getBytes(), nSupportingReads);
     }
 
     // walk the graph to trace out all paths, breaking only at cycles and at contigs that require phasing
-    // N.B.: the per-base-coverage info is stripped away when contigs are joined.
     @VisibleForTesting
     static FermiLiteAssembly expandAssemblyGraph(final FermiLiteAssembly assembly) {
         final int nContigs = assembly.getNContigs();
@@ -618,9 +629,9 @@ public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpa
     }
 
     private static ContigScore[] scoreAssembly(final List<FastqRead> readsList,
-                                       final FermiLiteAssembly assembly,
-                                       final String assemblyName,
-                                       final String fastqDir) {
+                                               final FermiLiteAssembly assembly,
+                                               final String assemblyName,
+                                               final String fastqDir) {
         final String fastaFile = String.format("%s/%s.fasta", fastqDir, assemblyName);
         final String imageFile;
         final List<Contig> contigs = assembly.getContigs();
@@ -692,31 +703,37 @@ public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpa
         final String bamFile = String.format("%s/%s.bam", fastqDir, assemblyName);
         SVFileUtils.writeSAMFile(bamFile, samReads.iterator(), header, true);
 
-        final int[] nSplits = new int[nContigs];
-        final int[] nBases = new int[nContigs];
-        for ( int readIdx = 0; readIdx != nReads; ++readIdx ) {
-            final List<BwaMemAlignment> readAlignments = alignments.get(readIdx);
-            if ( !readAlignments.isEmpty() ) {
-                BwaMemAlignment primaryLine = readAlignments.get(0);
-                final int contigId = primaryLine.getRefId();
-                if ( contigId >= 0 ) {
-                    final FastqRead read = readsList.get(readIdx);
-                    final byte[] quals = read.getQuals();
-                    final Cigar cigar = TextCigarCodec.decode(primaryLine.getCigar());
-                    if ( SoftClippingChecker.isClipped(cigar.getCigarElements(), quals) ) {
-                        nSplits[contigId] += 1;
+        List<int[]> coverages = new ArrayList<>(nContigs);
+        contigs.forEach(tig -> coverages.add(new int[tig.getSequence().length]));
+        alignments.forEach(alns -> alns.forEach(aln -> {
+            final int contigIdx = aln.getRefId();
+            if ( contigIdx >= 0 ) {
+                final int[] coverage = coverages.get(aln.getRefId());
+                int contigOffset = aln.getRefStart();
+                for ( final CigarElement ele : TextCigarCodec.decode(aln.getCigar()).getCigarElements() ) {
+                    if ( ele.getOperator().consumesReferenceBases() ) {
+                        int nnn = ele.getLength();
+                        while ( nnn-- > 0 ) {
+                            coverage[contigOffset++] += 1;
+                        }
                     }
-                    nBases[contigId] += CigarUtils.countAlignedBases(cigar);
                 }
             }
-        }
+        }));
 
         final ContigScore[] contigScores = new ContigScore[nContigs];
         for ( int contigIdx = 0; contigIdx != nContigs; ++contigIdx ) {
-            final int contigLength = contigs.get(contigIdx).getSequence().length;
-            final double splits = (double)nSplits[contigIdx];
-            final double coverage = (double)nBases[contigIdx]/contigLength;
-            contigScores[contigIdx] = new ContigScore(splits, coverage);
+            int[] coverage = coverages.get(contigIdx);
+            int totCoverage = 0;
+            int maxBump = 0;
+            int lastCount = coverage[0];
+            for ( final int count : coverage ) {
+                totCoverage += count;
+                maxBump = Math.max(maxBump, Math.abs(count - lastCount));
+                lastCount = count;
+            }
+            double meanCoverage = (double)totCoverage/contigs.get(contigIdx).getSequence().length;
+            contigScores[contigIdx] = new ContigScore(maxBump, meanCoverage);
         }
         return contigScores;
     }

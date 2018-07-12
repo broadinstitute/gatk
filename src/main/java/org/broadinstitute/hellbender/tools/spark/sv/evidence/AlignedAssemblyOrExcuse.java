@@ -7,10 +7,7 @@ import com.esotericsoftware.kryo.io.Output;
 import htsjdk.samtools.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.ContigScorer.ContigScore;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFileUtils;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.*;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
@@ -158,10 +155,12 @@ public final class AlignedAssemblyOrExcuse {
         final int sequenceLen = input.readInt();
         final byte[] sequence = new byte[sequenceLen];
         input.readBytes(sequence);
-        byte[] perBaseCoverage = null;
+        byte[] perBaseCoverage;
         if ( input.readBoolean() ) {
             perBaseCoverage = new byte[sequenceLen];
             input.readBytes(perBaseCoverage);
+        } else {
+            perBaseCoverage = new FermiLiteCoverageInterpreter(sequenceLen).getBytes();
         }
         final int nSupportingReads = input.readInt();
         return new Contig(sequence, perBaseCoverage, nSupportingReads);

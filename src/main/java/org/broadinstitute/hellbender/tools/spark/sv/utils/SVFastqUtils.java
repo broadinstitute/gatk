@@ -220,8 +220,8 @@ public class SVFastqUtils {
 
         public FastqRead( final GATKRead read, final boolean includeMappingLocation ) {
             this.header = composeHeaderLine(read, includeMappingLocation);
-            this.bases = read.getBases();
-            this.quals = read.getBaseQualities();
+            this.bases = read.getBasesNoCopy();
+            this.quals = read.getBaseQualitiesNoCopy();
             if (!read.isUnmapped() && read.isReverseStrand()) {
                 SequenceUtil.reverseComplement(this.bases);
                 SequenceUtil.reverseQualities(this.quals);

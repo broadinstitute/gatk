@@ -30,7 +30,7 @@ public final class KmerCounter {
         final HopscotchMap<SVKmer, Integer, KmerAndCount> counts = new HopscotchMap<>(kmersPerPartitionGuess);
         while ( readItr.hasNext() ) {
             final GATKRead read = readItr.next();
-            SVKmerizer.canonicalStream(read.getBases(), kSize, new SVKmerLong())
+            SVKmerizer.canonicalStream(read.getBasesNoCopy(), kSize, new SVKmerLong())
                     .forEach(kmer -> {
                         if ( kmerMap.contains(kmer) ) {
                             final KmerAndCount kmerAndCount = counts.find(kmer);

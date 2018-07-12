@@ -6,7 +6,6 @@ import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.utils.IntHistogram;
-import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 
 import java.io.*;
@@ -17,19 +16,19 @@ public class ContigScorer implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private final int nDivisions;
-    private final double stepSplits;
+    private final double stepCoverageBump;
     private final double stepCoverage;
     private final double maxBin; // number of counts in histogram bin having the maximum number of counts as a double
     private final IntHistogram histogram;
 
     public ContigScorer( final List<AlignedAssemblyOrExcuse> assemblies, final double genomicCoverage ) {
-        double maxSplits = 0.;
+        double maxBump = 0.;
         double maxCoverage = 0.;
         int nContigs = 0;
         for ( final AlignedAssemblyOrExcuse alignedAssemblyOrExcuse : assemblies ) {
             if ( alignedAssemblyOrExcuse.isNotFailure() ) {
                 for ( final ContigScore contigScore : alignedAssemblyOrExcuse.getContigScores() ) {
-                    maxSplits = Math.max(maxSplits, contigScore.getSplitReadsPerBase());
+                    maxBump = Math.max(maxBump, contigScore.getMaxBumpSize());
                     maxCoverage = Math.max(maxCoverage, contigScore.getMeanCoverage());
                     nContigs += 1;
                 }
@@ -38,14 +37,14 @@ public class ContigScorer implements Serializable {
 
         // cap coverage -- sometimes there are crazy high values
         maxCoverage = Math.min(maxCoverage, 3.*genomicCoverage);
-        maxSplits = Math.min(maxSplits, 3.*genomicCoverage);
+        maxBump /= 2; // uninteresting long tail
 
         // an average of 20 counts per division, but no fewer than 2 nor more than 50
         nDivisions = Math.max(50, Math.min(2, nContigs / 20));
-        stepSplits = getStep(maxSplits, nDivisions);
+        stepCoverageBump = getStep(maxBump, nDivisions);
         stepCoverage = getStep(maxCoverage, nDivisions);
         // allocate an extra row for coverage overflow counts
-        histogram = new IntHistogram(nDivisions *(nDivisions +1));
+        histogram = new IntHistogram(nDivisions * nDivisions);
 
         for ( final AlignedAssemblyOrExcuse alignedAssemblyOrExcuse : assemblies ) {
             if ( alignedAssemblyOrExcuse.isNotFailure() ) {
@@ -56,13 +55,14 @@ public class ContigScorer implements Serializable {
         }
 
         maxBin = histogram.getMaxNObservations();
+
         try ( final BufferedWriter writer =
                       new BufferedWriter(new OutputStreamWriter(BucketUtils.createFile("hdfs://svdev-tws-m:8020/user/tsharpe/wgs1/contigScorer.txt"))) ) {
             writer.write("nContigs = " + nContigs); writer.newLine();
-            writer.write( "maxSplits = " + maxSplits); writer.newLine();
+            writer.write( "maxBump = " + maxBump); writer.newLine();
             writer.write("maxCoverage = " + maxCoverage); writer.newLine();
             writer.write("nDivisions = " + nDivisions); writer.newLine();
-            writer.write("stepSplits = " + stepSplits); writer.newLine();
+            writer.write("stepCoverageBump = " + stepCoverageBump); writer.newLine();
             writer.write("stepCoverage = " + stepCoverage); writer.newLine();
             writer.write( "maxBin = " + maxBin); writer.newLine();
             for ( int idx = 0; idx != histogram.getMaximumTrackedValue(); ++idx ) {
@@ -77,7 +77,7 @@ public class ContigScorer implements Serializable {
 
     public ContigScorer( final Kryo kryo, final Input input ) {
         nDivisions = input.readInt();
-        stepSplits = input.readDouble();
+        stepCoverageBump = input.readDouble();
         stepCoverage = input.readDouble();
         maxBin = input.readDouble();
         final IntHistogram.Serializer intHistogramSerializer = new IntHistogram.Serializer();
@@ -86,7 +86,7 @@ public class ContigScorer implements Serializable {
 
     public void serialize( final Kryo kryo, final Output output ) {
         output.writeInt(nDivisions);
-        output.writeDouble(stepSplits);
+        output.writeDouble(stepCoverageBump);
         output.writeDouble(stepCoverage);
         output.writeDouble(maxBin);
         final IntHistogram.Serializer intHistogramSerializer = new IntHistogram.Serializer();
@@ -97,7 +97,7 @@ public class ContigScorer implements Serializable {
         if ( maxBin == 0. ) {
             throw new GATKException("there are no observations to score against");
         }
-        if ( contigScore.getSplitReadsPerBase() < 0. || contigScore.getMeanCoverage() < 0. ) {
+        if ( contigScore.getMaxBumpSize() < 0. || contigScore.getMeanCoverage() < 0. ) {
             throw new GATKException("contigScore out of bounds");
         }
         return (float)(histogram.getNObservations(getBin(contigScore))/maxBin);
@@ -114,8 +114,8 @@ public class ContigScorer implements Serializable {
     }
 
     private int getBin( final ContigScore contigScore ) {
-        final int column = Math.min((int)(contigScore.getSplitReadsPerBase() / stepSplits), nDivisions-1);
-        final int row = Math.min(nDivisions, (int)(contigScore.getMeanCoverage() / stepCoverage));
+        final int column = Math.min((int)(contigScore.getMaxBumpSize() / stepCoverageBump), nDivisions-1);
+        final int row = Math.min((int)(contigScore.getMeanCoverage() / stepCoverage), nDivisions - 1);
         return nDivisions * row + column;
     }
 
@@ -133,24 +133,24 @@ public class ContigScorer implements Serializable {
 
     @DefaultSerializer(ContigScore.Serializer.class)
     public static class ContigScore {
-        private final double splitReadsPerBase;
+        private final double maxBumpSize;
         private final double meanCoverage;
 
-        public ContigScore( final double splitReadsPerBase, final double meanCoverage ) {
-            this.splitReadsPerBase = splitReadsPerBase;
+        public ContigScore(final double maxBumpSize, final double meanCoverage ) {
+            this.maxBumpSize = maxBumpSize;
             this.meanCoverage = meanCoverage;
         }
 
         public ContigScore( final Kryo kryo, final Input input ) {
-            splitReadsPerBase = input.readDouble();
+            maxBumpSize = input.readDouble();
             meanCoverage = input.readDouble();
         }
 
-        public double getSplitReadsPerBase() { return splitReadsPerBase; }
+        public double getMaxBumpSize() { return maxBumpSize; }
         public double getMeanCoverage() { return meanCoverage; }
 
         public void serialize( final Kryo kryo, final Output output ) {
-            output.writeDouble(splitReadsPerBase);
+            output.writeDouble(maxBumpSize);
             output.writeDouble(meanCoverage);
         }
 
