@@ -161,7 +161,6 @@ task testOnPackagedReleaseJar(type: Test){
 
     classpath = files( gatkJar, testDependencyJar, testClassesJar)
     testClassesDir = file(testClassesUnpacked)
-    finalizedBy jacocoTestReportOnPackagedReleaseJar
 }
 
 // Task intended to collect coverage data from testOnPackagedReleaseJar executed inside the docker image
