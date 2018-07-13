@@ -153,9 +153,10 @@ script:
   fi
 
 after_success:
-- bash <(curl -s https://codecov.io/bash) | bash -s - -s '$pwd'/build/reports/jacoco/jacocoTestReportOnPackagedReleaseJar -f /home/travis/build/reports/jacoco/jacocoTestReportOnPackagedReleaseJar/jacocoTestReportOnPackagedReleaseJar.xml
+- bash <(curl -s https://codecov.io/bash) | bash -s - -s '$pwd'/build/reports/jacoco/jacocoTestReportOnPackagedReleaseJar -f /home/travis/gatk/build/reports/jacoco/jacocoTestReportOnPackagedReleaseJar/jacocoTestReportOnPackagedReleaseJar.xml
 - find $(pwd)/build
-- cat /home/travis/build/reports/jacoco/jacocoTestReportOnPackagedReleaseJar/jacocoTestReportOnPackagedReleaseJar.xml
+- cat /home/travis/build/broadinstitute/gatk/build/reports/jacoco/jacocoTestReportOnPackagedReleaseJar/jacocoTestReportOnPackagedReleaseJar.xml
+
 - if [[ $TRAVIS_BRANCH == master && $UPLOAD == true ]]; then ./gradlew uploadArchives; fi
 # if this is actually a commit to master and not a pull request build into master, then publish master-snapshot
 - if [[ $TRAVIS_BRANCH == master && $TRAVIS_PULL_REQUEST == false && $UPLOAD == true ]]; then
