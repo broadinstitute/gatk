@@ -93,8 +93,8 @@ task AnnotateIntervals {
 
 task CollectCounts {
     File intervals
-    File bam
-    File bam_idx
+    String bam
+    String bam_idx
     File ref_fasta
     File ref_fasta_fai
     File ref_fasta_dict
@@ -145,8 +145,8 @@ task CollectCounts {
 
 task CollectAllelicCounts {
     File common_sites
-    File bam
-    File bam_idx
+    String bam
+    String bam_idx
     File ref_fasta
     File ref_fasta_fai
     File ref_fasta_dict
