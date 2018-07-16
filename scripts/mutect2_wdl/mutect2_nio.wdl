@@ -361,7 +361,7 @@ workflow Mutect2 {
                 filter_funcotations = filter_funcotations_or_default,
                 sequencing_center = sequencing_center,
                 sequence_source = sequence_source,
-                disk_space_gb = ceil(size(funcotate_vcf_input, "GB") * large_input_to_output_multiplier) + onco_tar_size + disk_pad,
+                disk_space_gb = ceil(size(funcotate_vcf_input, "GB") * large_input_to_output_multiplier) + funco_tar_size + disk_pad,
                 extra_args = funcotator_extra_args
         }
     }
@@ -983,8 +983,6 @@ task FuncotateMaf {
      String annotation_def_arg = if defined(annotation_defaults) then " --annotation-default " else ""
      String annotation_over_arg = if defined(annotation_overrides) then " --annotation-override " else ""
      String filter_funcotations_args = if (filter_funcotations) then " --remove-filtered-variants " else ""
-     String interval_list_arg = if defined(interval_list) then " -L " else ""
-     String extra_args_arg = select_first([extra_args, ""])
      String final_output_filename = basename(input_vcf, ".vcf") + ".maf.annotated"
      # ==============
 
@@ -1000,8 +998,7 @@ task FuncotateMaf {
      Boolean use_ssd = false
 
      # This should be updated when a new version of the data sources is released
-     # TODO: Make this dynamically chosen in the command.
-     String default_datasources_version = "funcotator_dataSources.v1.3.20180531"
+     String default_datasources_version = "funcotator_dataSources.v1.4.20180615"
 
      # You may have to change the following two parameter values depending on the task requirements
      Int default_ram_mb = 3000
@@ -1038,7 +1035,7 @@ task FuncotateMaf {
              -R ${ref_fasta} \
              -V ${input_vcf} \
              -O ${final_output_filename} \
-             ${interval_list_arg} ${default="" interval_list} \
+             ${"-L " + interval_list} \
              ${"--transcript-selection-mode " + transcript_selection_mode} \
              ${"--transcript-list " + transcript_selection_list} \
             --annotation-default normal_barcode:${control_id} \
@@ -1048,7 +1045,7 @@ task FuncotateMaf {
              ${annotation_def_arg}${default="" sep=" --annotation-default " annotation_defaults} \
              ${annotation_over_arg}${default="" sep=" --annotation-override " annotation_overrides} \
              ${filter_funcotations_args} \
-             ${extra_args_arg}
+             ${extra_args}
      >>>
 
      runtime {

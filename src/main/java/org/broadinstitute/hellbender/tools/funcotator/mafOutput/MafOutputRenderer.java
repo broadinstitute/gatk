@@ -221,8 +221,10 @@ public class MafOutputRenderer extends OutputRenderer {
     @Override
     public void close() {
         if (!hasWrittenHeader) {
-            final LinkedHashMap<String, String> mafCompliantOutputMap = createMafCompliantOutputMap(Allele.create("AT"), Collections.emptyList());
-            writeHeader(new ArrayList<>(mafCompliantOutputMap.keySet()));
+            // The alt allele can be anything here.  We just need to write the header, not any actual funcotations.
+            final String dummyAltAllele = "AT";
+            final LinkedHashMap<String, String> dummyMafCompliantOutputMap = createMafCompliantOutputMap(Allele.create(dummyAltAllele), Collections.emptyList());
+            writeHeader(new ArrayList<>(dummyMafCompliantOutputMap.keySet()));
         }
         if ( printWriter != null ) {
             printWriter.flush();
