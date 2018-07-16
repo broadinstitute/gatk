@@ -419,7 +419,7 @@ workflow CNVSomaticPairWorkflow {
     output {
         File preprocessed_intervals = PreprocessIntervals.preprocessed_intervals
 
-        File read_counts_entity_id_tumor = CollectCountsTumor.entity_id
+        String read_counts_entity_id_tumor = CollectCountsTumor.entity_id
         File read_counts_tumor = CollectCountsTumor.counts
         File allelic_counts_entity_id_tumor = CollectAllelicCountsTumor.entity_id
         File allelic_counts_tumor = CollectAllelicCountsTumor.allelic_counts
@@ -443,7 +443,7 @@ workflow CNVSomaticPairWorkflow {
         File scaled_delta_MAD_tumor = PlotDenoisedCopyRatiosTumor.scaled_delta_MAD
         File modeled_segments_plot_tumor = PlotModeledSegmentsTumor.modeled_segments_plot
 
-        File? read_counts_entity_id_normal = CollectCountsNormal.entity_id
+        String? read_counts_entity_id_normal = CollectCountsNormal.entity_id
         File? read_counts_normal = CollectCountsNormal.counts
         File? allelic_counts_entity_id_normal = CollectAllelicCountsNormal.entity_id
         File? allelic_counts_normal = CollectAllelicCountsNormal.allelic_counts
