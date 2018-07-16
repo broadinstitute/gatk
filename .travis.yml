@@ -153,8 +153,7 @@ script:
   fi
 
 after_success:
-- bash <(curl -s https://codecov.io/bash) | bash -s - -s '$pwd'/build/reports/jacoco/jacocoTestReportOnPackagedReleaseJar -f /home/travis/gatk/build/reports/jacoco/jacocoTestReportOnPackagedReleaseJar/jacocoTestReportOnPackagedReleaseJar.xml
-- find $(pwd)/build
+- bash <(curl -s https://codecov.io/bash) 
 - cat /home/travis/build/broadinstitute/gatk/build/reports/jacoco/jacocoTestReportOnPackagedReleaseJar/jacocoTestReportOnPackagedReleaseJar.xml
 
 - if [[ $TRAVIS_BRANCH == master && $UPLOAD == true ]]; then ./gradlew uploadArchives; fi
