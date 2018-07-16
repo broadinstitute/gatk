@@ -2,9 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.variantutils;
 
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
-import htsjdk.variant.vcf.VCFConstants;
-import htsjdk.variant.vcf.VCFHeader;
-import htsjdk.variant.vcf.VCFHeaderLine;
+import htsjdk.variant.vcf.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -28,6 +26,9 @@ import java.util.stream.Collectors;
 )
 @DocumentedFeature
 public class ApplyPhasing extends VariantWalker {
+
+    public static final String DISCORDANT_GENTOYPES_INFO_KEY = "PhasedDiscordantGTs";
+    public static final String CONCORDANT_GENOTYPE_FILTER_STRINGS_KEY = "PhasedConcordantFiltered";
 
     @Argument(fullName="phased-variants-file", doc="the phased VCF file", optional=false)
     private List<FeatureInput<VariantContext>> phased;
@@ -92,6 +93,8 @@ public class ApplyPhasing extends VariantWalker {
             throw new GATKException("Phased variant file does not contain a header line for requested genotype tags " + tagsToFind);
         }
 
+        headerLines.add(new VCFInfoHeaderLine(DISCORDANT_GENTOYPES_INFO_KEY, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Samples in which the phased VCF had a discordant genotype"));
+        headerLines.add(new VCFInfoHeaderLine(CONCORDANT_GENOTYPE_FILTER_STRINGS_KEY, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Filter strings for samples that had concordant genotypes with filters"));
         vcfWriter.writeHeader(new VCFHeader(headerLines, genotypeSamples));
 
         if (missingAllelesReport != null) {
@@ -130,13 +133,14 @@ public class ApplyPhasing extends VariantWalker {
         VariantContextBuilder newVariantBuilder = new VariantContextBuilder(variant);
         final GenotypesContext genotypesContext = GenotypesContext.copy(variant.getGenotypes());
 
-//        newVariantBuilder.ge
+        final Map<String, String> sampleFilterStrings = new HashMap<>();
+        final Set<String> discordantSamples = new HashSet<>();
 
         boolean foundMatch = false;
         for (final VariantContext phasedVariant : phasedVariantsWithSameStart) {
-            if (phasedVariant.isFiltered()) {
-                continue;
-            }
+//            if (phasedVariant.isFiltered()) {
+//                continue;
+//            }
 
             if (! foundMatch) {
                 concordanceSummary.variantSiteMatch(variant);
@@ -154,13 +158,15 @@ public class ApplyPhasing extends VariantWalker {
                 alleleMapping = GATKVariantContextUtils.resolveIncompatibleAlleles(variant.getReference(), phasedVariant, new LinkedHashSet<>());
             }
 
-//            if (! variant.getAlleles().containsAll(phasedVariant.getAlleles().stream().map(alleleMapping::remap).collect(Collectors.toList()))) {
+//            if ((phasedVariantRefLonger &&  ! variant.getAlleles().stream().map(alleleMapping::remap).collect(Collectors.toList()).containsAll(phasedVariant.getAlleles())) ||
+//                    ! variant.getAlleles().containsAll(phasedVariant.getAlleles().stream().map(alleleMapping::remap).collect(Collectors.toList()))) {
 //                concordanceSummary.mismatchedAlleles(variant);
-//                missingAllelesReportWriter.print(variant.getContig() + "\t" + variant.getStart() + "\t" + variant.getAlleles() + "\t" + phasedVariant.getAlleles() + "\n");
+//                if (missingAllelesReportWriter != null) {
+//                    missingAllelesReportWriter.print(variant.getContig() + "\t" + variant.getStart() + "\t" + variant.getAlleles() + "\t" + phasedVariant.getAlleles() + "\n");
+//                }
 //                continue;
 //            }
 
-            concordanceSummary.concordantAlleles(variant);
             for (Genotype phasedVariantGenotype : phasedVariant.getGenotypes()) {
                 final String sampleName = phasedVariantGenotype.getSampleName();
                 if (! genotypesContext.containsSample(sampleName)) {
@@ -168,6 +174,10 @@ public class ApplyPhasing extends VariantWalker {
                 }
 
                 if (!phasedVariantGenotype.isCalled()) {
+                    continue;
+                }
+
+                if (! phasedVariantGenotype.isPhased()) {
                     continue;
                 }
 
@@ -180,6 +190,7 @@ public class ApplyPhasing extends VariantWalker {
                                 phasedVariantGenotype.getSampleName() + "\t" +
                                 (phasedVariantRefLonger ? phasedVariant.getAlleles() : phasedVariantGenotype.getAlleles().stream().map(alleleMapping::remap).collect(Collectors.toList())));
                     }
+                    discordantSamples.add(sampleName);
                     continue;
                 }
 
@@ -201,12 +212,14 @@ public class ApplyPhasing extends VariantWalker {
                                 "\t" + phasedVariantGenotype.getGQ() +
                                 "\t" + phasedVariantGenotype.getDP());
                     }
+                    discordantSamples.add(sampleName);
                     continue;
                 }
 
                 concordanceSummary.concordantGenotype(variant);
 
-                if (! phasedVariantGenotype.isPhased()) {
+                if (phasedVariant.isFiltered()) {
+                    sampleFilterStrings.put(sampleName, phasedVariant.getFilters().stream().collect(Collectors.joining("-")));
                     continue;
                 }
 
@@ -224,6 +237,15 @@ public class ApplyPhasing extends VariantWalker {
         }
 
         newVariantBuilder = newVariantBuilder.genotypes(genotypesContext);
+        if (! discordantSamples.isEmpty()) {
+            newVariantBuilder = newVariantBuilder.attribute(DISCORDANT_GENTOYPES_INFO_KEY,
+                    discordantSamples.stream().collect(Collectors.joining(",")));
+        }
+
+        if (! sampleFilterStrings.isEmpty()) {
+            newVariantBuilder = newVariantBuilder.attribute(CONCORDANT_GENOTYPE_FILTER_STRINGS_KEY,
+                    sampleFilterStrings.entrySet().stream().map(e -> e.getKey() + ":" + e.getValue()).collect(Collectors.joining(",")));
+        }
         vcfWriter.add(newVariantBuilder.make());
 
     }
@@ -288,31 +310,28 @@ public class ApplyPhasing extends VariantWalker {
     }
 
     static class ConcordanceSummary {
-        int variants;
-        int snpVariants;
-        int indelVariants;
+        private int variants;
+        private int snpVariants;
+        private int indelVariants;
 
-        int matchedVariants;
-        int matchedSnpVariants;
-        int matchedIndelVariants;
+        private int matchedVariants;
+        private int matchedSnpVariants;
+        private int matchedIndelVariants;
 
-        int genotypeAllelesMatched;
-        int genotypeAllelesMismatched;
+        private int genotypeAllelesMismatched;
 
-        int snpGenotypeAllelesMatched;
-        int snpGenotypeAllelesMismatched;
+        private int snpGenotypeAllelesMismatched;
 
-        int indelGenotypeAllelesMatched;
-        int indelGenotypeAllelesMismatched;
+        private int indelGenotypeAllelesMismatched;
 
-        int genotypesConcordant;
-        int genotypesDiscordant;
+        private int genotypesConcordant;
+        private int genotypesDiscordant;
 
-        int snpGenotypesConcordant;
-        int snpGenotypesDiscordant;
+        private int snpGenotypesConcordant;
+        private int snpGenotypesDiscordant;
 
-        int indelGenotypesConcordant;
-        int indelGenotypesDiscordant;
+        private int indelGenotypesConcordant;
+        private int indelGenotypesDiscordant;
 
         public void sawVariant(final VariantContext variant) {
             variants++;
@@ -346,17 +365,6 @@ public class ApplyPhasing extends VariantWalker {
 
         }
 
-        public void concordantAlleles(final VariantContext variant) {
-            genotypeAllelesMatched++;
-            if (variant.isSNP()) {
-                snpGenotypeAllelesMatched++;
-            }
-            if (variant.isIndel()|| variant.isMixed()) {
-                indelGenotypeAllelesMatched++;
-            }
-
-        }
-
         public void discordantGenotype(final VariantContext variant) {
             genotypesDiscordant++;
             if (variant.isSNP()) {
@@ -382,7 +390,6 @@ public class ApplyPhasing extends VariantWalker {
             concordanceSummaryReportWriter.println("TYPE\tTOTAL\tSNP\tINDEL");
             concordanceSummaryReportWriter.println("VARIANTS\t" + variants + "\t" + snpVariants + "\t" + indelVariants);
             concordanceSummaryReportWriter.println("VARIANTS_MATCHED\t" + matchedVariants + "\t" + matchedSnpVariants + "\t" + matchedIndelVariants);
-            concordanceSummaryReportWriter.println("GT_ALLELES_MATCHED\t" + genotypeAllelesMatched + "\t" + snpGenotypeAllelesMatched + "\t" + indelGenotypeAllelesMatched);
             concordanceSummaryReportWriter.println("GT_ALLELES_MISMATCHED\t" + genotypeAllelesMismatched + "\t" + snpGenotypeAllelesMismatched + "\t" + indelGenotypeAllelesMismatched);
             concordanceSummaryReportWriter.println("GT_CONCORDANT\t" + genotypesConcordant + "\t" + snpGenotypesConcordant + "\t" + indelGenotypesConcordant);
             concordanceSummaryReportWriter.println("GT_DISCORDANT\t" + genotypesDiscordant + "\t" + snpGenotypesDiscordant + "\t" + indelGenotypesDiscordant);
