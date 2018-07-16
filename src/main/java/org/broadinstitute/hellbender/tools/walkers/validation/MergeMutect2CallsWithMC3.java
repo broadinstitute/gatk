@@ -24,8 +24,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @CommandLineProgramProperties(
-        summary = "Merge M2 (eval) calls with MC3 (truth)",
-        oneLineSummary = "Merge M2 calls with MC",
+        summary = "UNSUPPORTED.  FOR EVALUATION ONLY. Merge M2 (eval) calls with MC3 (truth)",
+        oneLineSummary = "UNSUPPORTED.  FOR EVALUATION ONLY. Merge M2 calls with MC",
         programGroup = VariantEvaluationProgramGroup.class
 )
 @ExperimentalFeature
