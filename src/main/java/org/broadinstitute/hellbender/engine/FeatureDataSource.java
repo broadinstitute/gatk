@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.engine;
 
+import com.intel.genomicsdb.GenomicsDBUtils;
 import com.intel.genomicsdb.model.GenomicsDBExportConfiguration;
 import com.intel.genomicsdb.reader.GenomicsDBFeatureReader;
 import htsjdk.samtools.SAMSequenceDictionary;
@@ -24,6 +25,8 @@ import org.broadinstitute.hellbender.utils.nio.SeekableByteChannelPrefetcher;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -370,28 +373,23 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         }
 
         final String noheader = path.replace(GENOMIC_DB_URI_SCHEME, "");
-        final File workspace = new File(noheader);
-        final File callsetJson = new File(noheader, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME);
-        final File vidmapJson = new File(noheader, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME);
-        final File vcfHeader = new File(noheader, GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME);
 
-        if ( ! workspace.exists() || ! workspace.canRead() || ! workspace.isDirectory() ) {
-            throw new UserException("GenomicsDB workspace " + workspace.getAbsolutePath() + " does not exist, " +
-                    " is not readable, or is not a directory");
-        }
-
-        try {
-            IOUtils.canReadFile(callsetJson);
-            IOUtils.canReadFile(vidmapJson);
-            IOUtils.canReadFile(vcfHeader);
-        } catch ( UserException.CouldNotReadInputFile e ) {
-            throw new UserException("Couldn't connect to GenomicsDB because the vidmap, callset JSON files, or gVCF Header (" +
-                    GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME + "," + GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME + "," +
-                    GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME + ") could not be read from GenomicsDB workspace " + workspace.getAbsolutePath(), e);
-        }
+        final URI workspace;
+	try {
+	    if (noheader.endsWith("/")) {
+		workspace = new URI(noheader);
+	    } else {
+		workspace = new URI(noheader + "/");
+	    }
+	} catch (URISyntaxException e) {
+	    throw new UserException("GenomicsDB workspace " + path + " is not valid URI");
+	}
+        final URI callsetJson = workspace.resolve(GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME);
+        final URI vidmapJson = workspace.resolve(GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME);
+        final URI vcfHeader = workspace.resolve(GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME);
 
         final GenomicsDBExportConfiguration.ExportConfiguration exportConfigurationBuilder =
-                createExportConfiguration(reference, workspace, callsetJson, vidmapJson, vcfHeader);
+           createExportConfiguration(reference, workspace, callsetJson, vidmapJson, vcfHeader);
 
         try {
             return new GenomicsDBFeatureReader<>(exportConfigurationBuilder, new BCF2Codec(), Optional.empty());
@@ -400,21 +398,20 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         }
     }
 
-    private static GenomicsDBExportConfiguration.ExportConfiguration createExportConfiguration(final File reference, final File workspace,
-                                                                                               final File callsetJson, final File vidmapJson,
-                                                                                               final File vcfHeader) {
+    private static GenomicsDBExportConfiguration.ExportConfiguration createExportConfiguration(final File reference, final URI workspace,
+                                                                                               final URI callsetJson, final URI vidmapJson,
+                                                                                               final URI vcfHeader) {
         GenomicsDBExportConfiguration.ExportConfiguration.Builder exportConfigurationBuilder =
                 GenomicsDBExportConfiguration.ExportConfiguration.newBuilder()
-                        .setWorkspace(workspace.getAbsolutePath())
+                        .setWorkspace(workspace.toString())
                         .setReferenceGenome(reference.getAbsolutePath())
-                        .setVidMappingFile(vidmapJson.getAbsolutePath())
-                        .setCallsetMappingFile(callsetJson.getAbsolutePath())
-                        .setVcfHeaderFilename(vcfHeader.getAbsolutePath())
+                        .setVidMappingFile(vidmapJson.toString())
+                        .setCallsetMappingFile(callsetJson.toString())
+                        .setVcfHeaderFilename(vcfHeader.toString())
                         .setProduceGTField(false)
                         .setProduceGTWithMinPLValueForSpanningDeletions(false)
                         .setSitesOnlyQuery(false)
                         .setMaxDiploidAltAllelesThatCanBeGenotyped(GenotypeLikelihoods.MAX_DIPLOID_ALT_ALLELES_THAT_CAN_BE_GENOTYPED);
-        Path arrayFolder = Paths.get(workspace.getAbsolutePath(), GenomicsDBConstants.DEFAULT_ARRAY_NAME).toAbsolutePath();
 
         // For the multi-interval support, we create multiple arrays (directories) in a single workspace -
         // one per interval. So, if you wish to import intervals ("chr1", [ 1, 100M ]) and ("chr2", [ 1, 100M ]),
@@ -429,7 +426,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         // will be backward compatible with respect to reads. Hence, if a directory named genomicsdb_array is found,
         // the array name is passed to the GenomicsDBFeatureReader otherwise the array names are generated from the
         // directory entries.
-        if (Files.exists(arrayFolder)) {
+        if (GenomicsDBUtils.isGenomicsDBArray(workspace.toString(), GenomicsDBConstants.DEFAULT_ARRAY_NAME)) {
             exportConfigurationBuilder.setArrayName(GenomicsDBConstants.DEFAULT_ARRAY_NAME);
         } else {
             exportConfigurationBuilder.setGenerateArrayNameFromPartitionBounds(true);
