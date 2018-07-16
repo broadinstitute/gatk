@@ -157,6 +157,7 @@ task testOnPackagedReleaseJar(type: Test){
             throw new GradleException("Environment variable 'TEST_JAR' not specified")
         }
         logger.lifecycle("The classpath used for this test:")
+        classpath.each {println it}
     }
 
     classpath = files( gatkJar, testDependencyJar, testClassesJar)
