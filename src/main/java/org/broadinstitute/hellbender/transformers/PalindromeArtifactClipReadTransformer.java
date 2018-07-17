@@ -100,15 +100,13 @@ public final class PalindromeArtifactClipReadTransformer implements ReadTransfor
 
         if (numMatch.doubleValue() / numBasesToCompare >= MIN_FRACTION_OF_MATCHING_BASES) {
             final ReadClipper readClipper = new ReadClipper(read);
-            final ClippingOp clippingOp = readIsUpstreamOfMate ? new ClippingOp(0, potentialArtifactBaseCount) :
+            final ClippingOp clippingOp = readIsUpstreamOfMate ? new ClippingOp(0, potentialArtifactBaseCount - 1) :
                     new ClippingOp(read.getLength() - potentialArtifactBaseCount, read.getLength());
             readClipper.addOp(clippingOp);
             return readClipper.clipRead(ClippingRepresentation.HARDCLIP_BASES);
         } else {
             return read;
         }
-
-
     }
 }
 

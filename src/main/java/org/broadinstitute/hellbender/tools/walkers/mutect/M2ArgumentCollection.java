@@ -31,7 +31,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public static final String NORMAL_LOD_LONG_NAME = "normal-lod";
     public static final String MAX_MNP_DISTANCE_LONG_NAME = "max-mnp-distance";
     public static final String MAX_MNP_DISTANCE_SHORT_NAME = "mnp-dist";
-    public static final String DONT_CLIP_ITR_ARTIFACTS_LONG_NAME = "dont-clip-itr-artifacts";
+    public static final String IGNORE_ITR_ARTIFACTS_LONG_NAME = "ignore-itr-artifacts";
 
 
     public static final double DEFAULT_AF_FOR_TUMOR_ONLY_CALLING = 5e-8;
@@ -149,7 +149,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      * during library prep.  By default, Mutect2 identifies and clips these artifacts, which are especially prevalent when
      * DNA is damaged as in the case of FFPE samples and ancient DNA.
      */
-    @Argument(fullName= DONT_CLIP_ITR_ARTIFACTS_LONG_NAME, doc="Turn off read transformer that clips artifacts associated with end repair insertions near inverted tandem repeats.", optional = true)
+    @Argument(fullName= IGNORE_ITR_ARTIFACTS_LONG_NAME, doc="Turn off read transformer that clips artifacts associated with end repair insertions near inverted tandem repeats.", optional = true)
     public boolean dontClipITRArtifacts = false;
 
 }
