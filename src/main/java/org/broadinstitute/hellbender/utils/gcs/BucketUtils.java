@@ -82,14 +82,21 @@ public final class BucketUtils {
     }
 
     /**
-     * Appends path to the given dir/folder. java.nio.Path is used to append to dir with a scheme, otherwise java.io.File is used.
+     * Appends path to the given dir/folder.
      * @param dir the folder to append the path to
-     * @param path the path
+     * @param path the path relative to dir
      * @return the appended path as a String.
      */
     public static String appendPathToDir(String dir, String path) {
+	if (path.startsWith("/")) { // Not a relative path
+	    return path;
+	}
 	if (isCloudStorageUrl(dir) || isHadoopUrl(dir) || isFileUrl(dir)){
-	    return IOUtils.getPath(dir).resolve(path).toUri().toString();
+	    if (dir.endsWith("/")) {
+		return dir+path;
+	    } else {
+		return dir+'/'+path;
+	    }
 	} else {
 	    return new File(dir, path).getPath();
 	}
