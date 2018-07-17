@@ -264,11 +264,18 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         return funcotationList;
     }
 
-    private List<GencodeFuncotation> createAndFilterGencodeFuncotationsByTranscript(final VariantContext variant, final ReferenceContext referenceContext, final Allele altAllele, final GencodeGtfGeneFeature feature) {
-        // By this point we know the feature type is correct, so we cast it:
-        final List<GencodeFuncotation> gencodeFuncotationList = createFuncotationsHelper(variant, altAllele, feature, referenceContext);
+    private List<GencodeFuncotation> createAndFilterGencodeFuncotationsByTranscripts(final VariantContext variant, final ReferenceContext referenceContext, final Allele altAllele, final List<GencodeGtfGeneFeature> gencodeGtfGeneFeatures) {
+
+        // If the variant overlaps more than one gene, we need to create a flat list of the transcripts in all genes.
+        final List<GencodeFuncotation> gencodeFuncotationList = gencodeGtfGeneFeatures.stream()
+                .map(f -> createFuncotationsHelper(variant, altAllele, f, referenceContext))
+                .flatMap(List::stream).collect(Collectors.toList());
+
+        // Sort and filter the transcript list
         sortAndFilterInPlace(gencodeFuncotationList);
 
+        // Grab the best choice in the case of transcript selection modes other than ALL.  The selection will be the first
+        //  transcript in the list.
         if ((this.transcriptSelectionMode != TranscriptSelectionMode.ALL) && (gencodeFuncotationList.size() > 0)) {
             return Collections.singletonList(gencodeFuncotationList.get(0));
         }
@@ -304,27 +311,32 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             g.setOtherTranscripts(otherTranscriptStrings);
         }
     }
-    @Override
+
     /**
      * Attempts to treat the given features as {@link GencodeGtfFeature} objects in order to
      * create funcotations for the given variant and reference.
+     *
+     * This is the entry point into the Factory
      */
-    protected List<Funcotation> createFuncotationsOnVariant(final VariantContext variant, final ReferenceContext referenceContext, final List<Feature> featureList) {
+    @Override
+    protected List<Funcotation> createFuncotationsOnVariant(final VariantContext variant, final ReferenceContext referenceContext, final List<Feature> geneFeatureList) {
         final List<Funcotation> outputFuncotations = new ArrayList<>();
 
         // If we have features we need to annotate, go through them and create annotations:
-        if ( featureList.size() > 0 ) {
+        if ( geneFeatureList.size() > 0 ) {
             for ( final Allele altAllele : variant.getAlternateAlleles() ) {
-                for ( final Feature feature : featureList ) {
 
-                    if ( (feature != null) ) {
-                        // By this point we know the feature type is correct, so we cast it:
-                        final List<GencodeFuncotation> gencodeFuncotationList = createAndFilterGencodeFuncotationsByTranscript(variant, referenceContext, altAllele, (GencodeGtfGeneFeature) feature);
+                // At this point we know the feature list is composed of GTF Gene Features
+                final List<GencodeGtfGeneFeature> gencodeGtfGeneFeatures = geneFeatureList.stream()
+                    .filter(g -> g != null)
+                    .map(g -> (GencodeGtfGeneFeature) g)
+                    .collect(Collectors.toList());
 
-                        // Add the filtered funcotations here:
-                        outputFuncotations.addAll(gencodeFuncotationList);
-                    }
-                }
+                // By this point we know the feature type is correct, so we cast it:
+                final List<GencodeFuncotation> gencodeFuncotationList = createAndFilterGencodeFuncotationsByTranscripts(variant, referenceContext, altAllele, gencodeGtfGeneFeatures);
+
+                // Add the filtered funcotations here:
+                outputFuncotations.addAll(gencodeFuncotationList);
             }
         }
         else {

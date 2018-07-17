@@ -16,6 +16,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedIntervalCollection;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.xsv.SimpleKeyXsvFuncotationFactory;
+import org.broadinstitute.hellbender.tools.funcotator.mafOutput.CustomMafFuncotationCreator;
 import org.broadinstitute.hellbender.tools.funcotator.mafOutput.MafOutputRenderer;
 import org.broadinstitute.hellbender.tools.funcotator.mafOutput.MafOutputRendererConstants;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
@@ -73,6 +74,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     private static final String MAF_TEST_CONFIG          = toolsTestDir + "funcotator" + File.separator + "maf.config";
     private static final String XSV_CLINVAR_COL_TEST_VCF = toolsTestDir + "funcotator" + File.separator + "clinvar_hg19_column_test.vcf";
     private static final String DS_XSV_CLINVAR_COL_TEST  = largeFileTestDir + "funcotator" + File.separator + "small_ds_clinvar_hg19" + File.separator;
+    private static final String EMPTY_VCF  = publicTestDir + File.separator + "empty.vcf";
 
     private static String hg38Chr3Ref;
     private static String b37Chr3Ref;
@@ -1052,6 +1054,32 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         arguments.addBooleanArgument(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
 
         runCommandLine(arguments);
+    }
+
+    @Test
+    public void testNoVariantsProduceMaf() {
+        // Make sure that a MAF is actually produced (not a blank file).  Testing https://github.com/broadinstitute/gatk/issues/4937
+        final FuncotatorArgumentDefinitions.OutputFormatType outputFormatType = FuncotatorArgumentDefinitions.OutputFormatType.MAF;
+        final File outputFile = getOutputFile(outputFormatType);
+
+        final ArgumentsBuilder arguments = new ArgumentsBuilder();
+
+        arguments.addVCF(new File(EMPTY_VCF));
+        arguments.addOutput(outputFile);
+        arguments.addReference(new File(b37Chr3Ref));
+        arguments.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, DS_PIK3CA_DIR);
+        arguments.addArgument(FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME, FuncotatorTestConstants.REFERENCE_VERSION_HG19);
+        arguments.addArgument(FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME, outputFormatType.toString());
+        arguments.addArgument(FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME, TranscriptSelectionMode.CANONICAL.toString());
+        arguments.addBooleanArgument(StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, true);
+        runCommandLine(arguments);
+
+        final AnnotatedIntervalCollection maf = AnnotatedIntervalCollection.create(outputFile.toPath(), null);
+        Assert.assertEquals(maf.getRecords().size(),  0);
+
+        // Double-check that the custom MAF fields are present.
+        Assert.assertTrue(CustomMafFuncotationCreator.COUNT_FIELD_NAMES.stream()
+                .allMatch(f -> maf.getAnnotations().contains(f)));
     }
 }
 

@@ -325,12 +325,13 @@ public final class CpxVariantInterpreter {
         return rawVariantContextBuilder.make();
     }
 
-    // TODO: 6/22/18 this leads to unnecessarily large file size, next PR trim it down to a single base like the case for DEL
     private static byte[] getRefBases(final ReferenceMultiSource reference, final CpxVariantCanonicalRepresentation cpxVariantCanonicalRepresentation)
             throws IOException {
         final SimpleInterval affectedRefRegion = cpxVariantCanonicalRepresentation.getAffectedRefRegion();
+        SimpleInterval refBase = new SimpleInterval(affectedRefRegion.getContig(), affectedRefRegion.getStart(),
+                                                                                   affectedRefRegion.getStart());
         return reference
-                .getReferenceBases(affectedRefRegion)
+                .getReferenceBases(refBase)
                 .getBases();
     }
 

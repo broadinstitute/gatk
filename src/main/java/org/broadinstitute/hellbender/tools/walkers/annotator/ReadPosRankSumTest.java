@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
+import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -62,12 +63,20 @@ public final class ReadPosRankSumTest extends RankSumTest implements StandardAnn
             return OptionalDouble.of(INVALID_ELEMENT_FROM_READ);
         }
 
-        int readPos = AlignmentUtils.calcAlignmentByteArrayOffset(read.getCigar(), offset, false, 0, 0);
+        // hard clips at this point in the code are perfectly good bases that were clipped to make the read fit the assembly region
+        final Cigar cigar = read.getCigar();
+        final CigarElement firstElement = cigar.getFirstCigarElement();
+        final CigarElement lastElement = cigar.getLastCigarElement();
+        final int leadingHardClips = firstElement.getOperator() == CigarOperator.HARD_CLIP ? firstElement.getLength() : 0;
+        final int trailingHardClips = lastElement.getOperator() == CigarOperator.HARD_CLIP ? lastElement.getLength() : 0;
+
+        int readPos = leadingHardClips + AlignmentUtils.calcAlignmentByteArrayOffset(read.getCigar(), offset, false, 0, 0);
         final int numAlignedBases = AlignmentUtils.getNumAlignedBasesCountingSoftClips( read );
+        final int numOriginalBases = numAlignedBases + leadingHardClips + trailingHardClips;
 
         //After the middle of the read, we compute the postion from the end of the read.
-        if (readPos > numAlignedBases / 2) {
-            readPos = numAlignedBases - (readPos + 1);
+        if (readPos > numOriginalBases / 2) {
+            readPos = numOriginalBases - (readPos + 1);
         }
         return OptionalDouble.of(readPos);
     }

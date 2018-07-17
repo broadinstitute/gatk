@@ -42,7 +42,6 @@ Optional arguments:  \n \
 	exit 1
 fi
 
-
 # -z is like "not -n"
 if [ -z ${IS_NOT_LATEST} ] && [ -n "${IS_HASH}" ] && [ -n "${IS_PUSH}" ]; then
 	echo -e "\n##################"
@@ -113,8 +112,22 @@ if [ -n "${IS_PUSH}" ]; then
 else
     RELEASE=false
 fi
+./gradlew clean collectBundleIntoDir shadowTestClassJar shadowTestJar -Drelease=$RELEASE
+ZIPPATHGATK=$( find ./build -name "*bundle-files-collected" )
+mv ${ZIPPATHGATK} ./unzippedJar
+ZIPPATHPYTHON=$( find ./unzippedJar -name "gatkPython*.zip" )
+unzip -o -j ${ZIPPATHPYTHON} -d ./unzippedJar/scripts
+
+mkdir ${STAGING_ABSOLUTE_PATH:-.}/testJars
+mv $( find ./build/libs/ -name "gatk*test.jar" ) ${STAGING_ABSOLUTE_PATH:-.}/testJars
+mv $( find ./build/libs/ -name "gatk*testDependencies.jar" ) ${STAGING_ABSOLUTE_PATH:-.}/testJars
+
 echo "Building image to tag ${REPO_PRJ}:${GITHUB_TAG}..."
-docker build -t ${REPO_PRJ}:${GITHUB_TAG} --build-arg DRELEASE=$RELEASE .
+if [ -n "${IS_PUSH}" ]; then
+    docker build -t ${REPO_PRJ}:${GITHUB_TAG} --squash --build-arg ZIPPATH=./unzippedJar .
+else
+    docker build -t ${REPO_PRJ}:${GITHUB_TAG} --build-arg ZIPPATH=./unzippedJar .
+fi
 
 if [ -z "${IS_NOT_RUN_UNIT_TESTS}" ] ; then
 
@@ -128,9 +141,13 @@ if [ -z "${IS_NOT_RUN_UNIT_TESTS}" ] ; then
 	git lfs pull
     chmod -R a+w ${STAGING_ABSOLUTE_PATH}/src/test/resources
 
-	echo docker run ${REMOVE_CONTAINER_STRING} -v ${STAGING_ABSOLUTE_PATH}/src/test/resources:/testdata -t ${REPO_PRJ}:${GITHUB_TAG} bash /root/run_unit_tests.sh
-	docker run ${REMOVE_CONTAINER_STRING} -v ${STAGING_ABSOLUTE_PATH}/src/test/resources:/testdata -t ${REPO_PRJ}:${GITHUB_TAG} bash /root/run_unit_tests.sh
+    cp build.gradle build.gradle.backup
+    cp /scripts/docker/dockertest.gradle .
+
+	echo docker run ${REMOVE_CONTAINER_STRING} -v  ${STAGING_ABSOLUTE_PATH}:/gatkCloneMountPoint -v  ${STAGING_ABSOLUTE_PATH}/testJars:/jars -t ${REPO_PRJ}:${GITHUB_TAG} bash /root/run_unit_tests.sh
+    docker run ${REMOVE_CONTAINER_STRING} -v  ${STAGING_ABSOLUTE_PATH}:/gatkCloneMountPoint -v  ${STAGING_ABSOLUTE_PATH}/testJars:/jars -t ${REPO_PRJ}:${GITHUB_TAG} bash /root/run_unit_tests.sh
 	echo " Unit tests passed..."
+	mv build.gradle.backup build.gradle
 fi
 
 ## Push

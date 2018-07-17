@@ -174,19 +174,6 @@ configurations.all {
     all*.exclude group: 'junit', module: 'junit'
 }
 
-
-jacocoTestReport {
-    dependsOn test
-    group = "Reporting"
-    description = "Generate Jacoco coverage reports after running tests."
-    additionalSourceDirs = files(sourceSets.main.allJava.srcDirs)
-
-    reports {
-        xml.enabled = true
-        html.enabled = true
-    }
-}
-
 //NOTE: we ignore contracts for now
 compileJava {
   options.compilerArgs = ['-proc:none', '-Xlint:all', '-Werror', '-Xdiags:verbose']
@@ -268,7 +255,6 @@ dependencies {
 
     compile 'it.unimi.dsi:fastutil:7.0.6'
 
-    compile 'com.github.wendykierp:JTransforms:3.1'
     compile 'org.broadinstitute:hdf5-java-bindings:1.1.0-hdf5_2.11.0'
     compile 'org.broadinstitute:gatk-native-bindings:1.0.0'
 
@@ -379,7 +365,6 @@ version = (isRelease ? gitVersion() : gitVersion() + "-SNAPSHOT").replaceAll(".d
 logger.info("build for version:" + version)
 group = 'org.broadinstitute'
 
-
 tasks.withType(Jar) {
     manifest {
         attributes 'Implementation-Title': 'The Genome Analysis Toolkit (GATK)',
@@ -390,7 +375,33 @@ tasks.withType(Jar) {
     }
 }
 
-test {
+task wrapper(type: Wrapper) {
+    gradleVersion = '3.1'
+}
+
+tasks.withType(ShadowJar) {
+    from(project.sourceSets.main.output)
+    baseName = project.name + '-package'
+    mergeServiceFiles()
+    relocate 'com.google.common', 'org.broadinstitute.hellbender.relocated.com.google.common'
+    zip64 true
+    exclude 'log4j.properties' // from adam jar as it clashes with hellbender's log4j2.xml
+    exclude '**/*.SF' // these are Manifest signature files and
+    exclude '**/*.RSA' // keys which may accidentally be imported from other signed projects and then fail at runtime
+
+    // Suggested by the akka devs to make sure that we do not get the spark configuration error.
+    // http://doc.akka.io/docs/akka/snapshot/general/configuration.html#When_using_JarJar__OneJar__Assembly_or_any_jar-bundler
+    transform(com.github.jengelman.gradle.plugins.shadow.transformers.AppendingTransformer) {
+        resource = 'reference.conf'
+    }
+}
+
+//============================================================================================================================
+// WARNING
+//============================================================================================================================
+// This is duplicated code with the build script in scripts/docker/dockertest.gradle. If you alter the tests in any way
+// please make sure to alter this test method there as well.
+tasks.withType(Test) {
     outputs.upToDateWhen { false }  //tests will never be "up to date" so you can always rerun them
     String TEST_VERBOSITY = "$System.env.TEST_VERBOSITY"
 
@@ -401,7 +412,11 @@ test {
      * anything else             : run the non-cloud tests
      */
     String TEST_TYPE = "$System.env.TEST_TYPE"
-
+//============================================================================================================================
+// WARNING
+//============================================================================================================================
+// This is duplicated code with the build script in scripts/docker/dockertest.gradle. If you alter the tests in any way
+// please make sure to alter this test method there as well.
     useTestNG {
         if (TEST_TYPE == "cloud") {
             // run only the cloud tests
@@ -473,28 +488,11 @@ test {
             }
         }
     }
-}
-
-
-task wrapper(type: Wrapper) {
-    gradleVersion = '3.1'
-}
-
-tasks.withType(ShadowJar) {
-    from(project.sourceSets.main.output)
-    baseName = project.name + '-package'
-    mergeServiceFiles()
-    relocate 'com.google.common', 'org.broadinstitute.hellbender.relocated.com.google.common'
-    zip64 true
-    exclude 'log4j.properties' // from adam jar as it clashes with hellbender's log4j2.xml
-    exclude '**/*.SF' // these are Manifest signature files and
-    exclude '**/*.RSA' // keys which may accidentally be imported from other signed projects and then fail at runtime
-
-    // Suggested by the akka devs to make sure that we do not get the spark configuration error.
-    // http://doc.akka.io/docs/akka/snapshot/general/configuration.html#When_using_JarJar__OneJar__Assembly_or_any_jar-bundler
-    transform(com.github.jengelman.gradle.plugins.shadow.transformers.AppendingTransformer) {
-        resource = 'reference.conf'
-    }
+//============================================================================================================================
+// WARNING
+//============================================================================================================================
+// This is duplicated code with the build script in scripts/docker/dockertest.gradle. If you alter the tests in any way
+// please make sure to alter this test method there as well.
 }
 
 shadowJar {
@@ -524,7 +522,27 @@ task sparkJar(type: ShadowJar) {
     }
 }
 
-task bundle(type: Zip) {
+// A jar that only contains the test classes and resources (to be extracted for testing)
+task shadowTestClassJar(type: ShadowJar){
+    group = "Shadow"
+    from sourceSets.test.output
+    description = "Create a jar that packages the compiled test classes"
+    classifier = "test"
+}
+
+// A minimal jar that only contains the extra dependencies needed for running the tests
+task shadowTestJar(type: ShadowJar){
+    group = "Shadow"
+    description = " A minimal jar that only contains the extra dependencies needed for running the tests that arent packaged in the main shadow jar"
+    from {
+        (project.configurations.testRuntime - project.configurations.runtime ).collect {
+            it.isDirectory() ? it : it.getName().endsWith(".jar") ? zipTree(it) : it
+        }
+    }
+    classifier = "testDependencies"
+}
+
+task collectBundleIntoDir(type: Copy) {
     dependsOn shadowJar, sparkJar, 'condaEnvironmentDefinition', 'gatkTabComplete', 'gatkDoc'
 
     doFirst {
@@ -533,10 +551,6 @@ task bundle(type: Zip) {
         assert file("$docBuildDir/tabCompletion/gatk-completion.sh").exists()
         assert file("src/main/resources/org/broadinstitute/hellbender/utils/config/GATKConfig.properties").exists()
     }
-
-    baseName = project.name + "-" + project.version
-    destinationDir file("$buildDir")
-    archiveName baseName + ".zip"
 
     from(shadowJar.archivePath)
     from(sparkJar.archivePath)
@@ -552,10 +566,37 @@ task bundle(type: Zip) {
     from("$buildDir/$pythonPackageArchiveName")
     from("$buildDir/$gatkCondaYML")
     from("$buildDir/$gatkCondaIntelYML")
+    from("scripts/sv", { into("scripts/sv") })
+    from("scripts/cnv_wdl/", { into("scripts/cnv_wdl") })
+    from("scripts/mutect2_wdl/", { into("scripts/mutect2_wdl") })
+    into "$buildDir/bundle-files-collected"
+}
+
+task bundle(type: Zip) {
+    dependsOn collectBundleIntoDir
+
+    baseName = project.name + "-" + project.version
+    destinationDir file("$buildDir")
+    archiveName baseName + ".zip"
+
+    from("$buildDir/bundle-files-collected")
     into(baseName)
 
     doLast {
         logger.lifecycle("Created GATK distribution in ${destinationDir}/${archiveName}")
+    }
+}
+
+jacocoTestReport {
+    dependsOn test
+
+    group = "Reporting"
+    description = "Generate Jacoco coverage reports after running tests."
+    additionalSourceDirs = files(sourceSets.main.allJava.srcDirs)
+
+    reports {
+        xml.enabled = true
+        html.enabled = true
     }
 }
 

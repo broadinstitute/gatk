@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoverFromLoca
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoveryInputMetaData;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -679,7 +680,7 @@ public abstract class SegmentedCpxVariantSimpleVariantExtractor implements Seria
                 }
 
                 // head and tail insertions only
-                extractFrontAndRearInsertions(complexVC, refSegments, altArrangement, result);
+                extractFrontAndRearInsertions(complexVC, refSegments, altArrangement, reference, result);
             }
 
             final String sourceID = complexVC.getID();
@@ -737,8 +738,8 @@ public abstract class SegmentedCpxVariantSimpleVariantExtractor implements Seria
             }
             if ( idx + refSegments.size() - 1 < altArrangement.size() - 1 ) { // e.g. there's more after 1,2,3,4,..., there could be (that is, if long enough) front insertion
                 final SimpleInterval insertionPos = new SimpleInterval(complexVC.getContig(), complexVC.getEnd(), complexVC.getEnd());
-                final byte[] refBases = complexVC.getReference().getBases();
-                final Allele anchorBaseRefAlleleRear = Allele.create(refBases[refBases.length - 1], true);
+                final byte[] refBases = getReferenceBases(insertionPos, reference);
+                final Allele anchorBaseRefAlleleRear = Allele.create(refBases, true);
                 final VariantContextBuilder rearIns = getInsFromOneEnd(false, idx + refSegments.size() - 1, insertionPos,
                         anchorBaseRefAlleleRear, refSegmentLengths, altArrangement, true);
                 if (rearIns != null) result.add(rearIns);
@@ -805,9 +806,8 @@ public abstract class SegmentedCpxVariantSimpleVariantExtractor implements Seria
         }
 
         private void extractFrontAndRearInsertions(final VariantContext complexVC, final List<SimpleInterval> refSegmentIntervals,
-                                                   final List<String> altArrangement,
+                                                   final List<String> altArrangement, final ReferenceMultiSource reference,
                                                    final List<VariantContextBuilder> result) {
-            final byte[] refBases = complexVC.getReference().getBases();
             final List<Integer> refSegmentLengths = refSegmentIntervals.stream().map(SimpleInterval::size).collect(Collectors.toList());
             // index pointing to first appearance of ref segment (inverted or not) in altArrangement, from either side
             int firstRefSegmentIdx = 0; // first front
@@ -819,8 +819,8 @@ public abstract class SegmentedCpxVariantSimpleVariantExtractor implements Seria
                 }
             }
             if (firstRefSegmentIdx > 0) {
-                final Allele anchorBaseRefAlleleFront = Allele.create(refBases[0], true);
                 final SimpleInterval startAndStop = makeOneBpInterval(complexVC.getContig(), complexVC.getStart());
+                final Allele anchorBaseRefAlleleFront = Allele.create(getReferenceBases(startAndStop, reference), true);
                 final VariantContextBuilder frontIns = getInsFromOneEnd(true, firstRefSegmentIdx, startAndStop, anchorBaseRefAlleleFront, refSegmentLengths, altArrangement, true);
                 if (frontIns != null) result.add( frontIns );
             }
@@ -835,9 +835,10 @@ public abstract class SegmentedCpxVariantSimpleVariantExtractor implements Seria
             }
 
             if (firstRefSegmentIdx != altArrangement.size() - 1) {
-                final Allele anchorBaseRefAlleleRear = Allele.create(refBases[refBases.length - 2], true);
-                final SimpleInterval startAndStop = makeOneBpInterval(complexVC.getContig(), complexVC.getEnd());
-                final VariantContextBuilder rearIns = getInsFromOneEnd(false, firstRefSegmentIdx, startAndStop, anchorBaseRefAlleleRear, refSegmentLengths, altArrangement, true);
+                final int pos = complexVC.getEnd();
+                final SimpleInterval insertionPos = makeOneBpInterval(complexVC.getContig(), pos);
+                final Allele anchorBaseRefAlleleRear = Allele.create(getReferenceBases(insertionPos, reference), true);
+                final VariantContextBuilder rearIns = getInsFromOneEnd(false, firstRefSegmentIdx, insertionPos, anchorBaseRefAlleleRear, refSegmentLengths, altArrangement, true);
                 if (rearIns != null) result.add( rearIns );
             }
         }

@@ -9,7 +9,6 @@
 ##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">
 ##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">
 ##INFO=<ID=BaseQRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt Vs. Ref base qualities">
-##INFO=<ID=ClippingRankSum,Number=1,Type=Float,Description="Z-score From Wilcoxon rank sum test of Alt vs. Ref number of hard clipped bases">
 ##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
 ##INFO=<ID=DS,Number=0,Type=Flag,Description="Were any of the samples downsampled?">
 ##INFO=<ID=ExcessHet,Number=1,Type=Float,Description="Phred-scaled p-value for exact test of excess heterozygosity">
@@ -26,9 +25,9 @@
 ##contig=<ID=20,length=63025520>
 ##contig=<ID=21,length=48129895>
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA12878
-20	10000694	.	G	A	1008.77	.	AC=1;AF=0.500;AN=2;BaseQRankSum=3.599;ClippingRankSum=0.000;DP=82;ExcessHet=3.0103;FS=1.822;MLEAC=1;MLEAF=0.500;MQ=48.66;MQRankSum=-5.114;QD=12.30;ReadPosRankSum=0.182;SOR=0.566	GT:AD:DP:GQ:PL	0/1:45,37:82:99:1037,0,1601
-20	10001436	.	A	AAGGCT	2302.73	.	AC=2;AF=1.00;AN=2;DP=56;ExcessHet=3.0103;FS=0.000;MLEAC=2;MLEAF=1.00;MQ=40.88;QD=25.36;SOR=3.442	GT:AD:DP:GQ:PL	1/1:0,50:50:99:2340,156,0
+20	10000694	.	G	A	1008.77	.	AC=1;AF=0.500;AN=2;BaseQRankSum=3.599;DP=82;ExcessHet=3.0103;FS=1.822;MLEAC=1;MLEAF=0.500;MQ=48.66;MQRankSum=-5.114;QD=12.30;ReadPosRankSum=0.657;SOR=0.566	GT:AD:DP:GQ:PL	0/1:45,37:82:99:1037,0,1601
+20	10001436	.	A	AAGGCT	2302.73	.	AC=2;AF=1.00;AN=2;DP=55;ExcessHet=3.0103;FS=0.000;MLEAC=2;MLEAF=1.00;MQ=41.07;QD=25.36;SOR=3.442	GT:AD:DP:GQ:PL	1/1:0,50:50:99:2340,156,0
 20	10001661	.	T	C	3606.77	.	AC=2;AF=1.00;AN=2;DP=81;ExcessHet=3.0103;FS=0.000;MLEAC=2;MLEAF=1.00;MQ=58.33;QD=28.73;SOR=1.193	GT:AD:DP:GQ:PL	1/1:0,81:81:99:3635,249,0
 20	10004094	.	A	T	0	LowQual	DP=53;FS=0.000;MLEAC=0;MLEAF=NaN;MQ=52.75;SOR=0.693	GT	./.
-20	10004769	.	TAAAACTATGC	T	980.73	.	AC=1;AF=0.500;AN=2;BaseQRankSum=1.603;ClippingRankSum=0.000;DP=79;ExcessHet=3.0103;FS=3.758;MLEAC=1;MLEAF=0.500;MQ=52.37;MQRankSum=-6.625;QD=15.32;ReadPosRankSum=2.215;SOR=1.306	GT:AD:DP:GQ:PL	0/1:37,27:64:99:1018,0,1471
+20	10004769	.	TAAAACTATGC	T	980.73	.	AC=1;AF=0.500;AN=2;BaseQRankSum=1.603;DP=79;ExcessHet=3.0103;FS=3.758;MLEAC=1;MLEAF=0.500;MQ=52.37;MQRankSum=-6.625;QD=15.32;ReadPosRankSum=1.879;SOR=1.306	GT:AD:DP:GQ:PL	0/1:37,27:64:99:1018,0,1471
 20	10006819	.	AAAAC	T	0	LowQual	AC=0;AF=0.00;AN=2;DP=75;ExcessHet=3.0103;FS=0.000;MLEAC=0;MLEAF=0.00;MQ=61.14;SOR=0.572	GT:AD:DP:GQ:PL	0/0:75,0:75:99:0,244,2147483647
