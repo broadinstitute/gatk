@@ -25,8 +25,6 @@ import org.broadinstitute.hellbender.utils.nio.SeekableByteChannelPrefetcher;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -372,21 +370,10 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
             throw new IllegalArgumentException("Trying to create a GenomicsDBReader from a non-GenomicsDB input");
         }
 
-        final String noheader = path.replace(GENOMIC_DB_URI_SCHEME, "");
-
-        final URI workspace;
-	try {
-	    if (noheader.endsWith("/")) {
-		workspace = new URI(noheader);
-	    } else {
-		workspace = new URI(noheader + "/");
-	    }
-	} catch (URISyntaxException e) {
-	    throw new UserException("GenomicsDB workspace " + path + " is not valid URI");
-	}
-        final URI callsetJson = workspace.resolve(GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME);
-        final URI vidmapJson = workspace.resolve(GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME);
-        final URI vcfHeader = workspace.resolve(GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME);
+        final String workspace = path.replace(GENOMIC_DB_URI_SCHEME, "");
+        final String callsetJson = BucketUtils.appendPathToDir(workspace, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME);
+        final String vidmapJson = BucketUtils.appendPathToDir(workspace, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME);
+        final String vcfHeader = BucketUtils.appendPathToDir(workspace, GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME);
 
         final GenomicsDBExportConfiguration.ExportConfiguration exportConfigurationBuilder =
            createExportConfiguration(reference, workspace, callsetJson, vidmapJson, vcfHeader);
@@ -398,16 +385,16 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         }
     }
 
-    private static GenomicsDBExportConfiguration.ExportConfiguration createExportConfiguration(final File reference, final URI workspace,
-                                                                                               final URI callsetJson, final URI vidmapJson,
-                                                                                               final URI vcfHeader) {
+    private static GenomicsDBExportConfiguration.ExportConfiguration createExportConfiguration(final File reference, final String workspace,
+                                                                                               final String callsetJson, final String vidmapJson,
+                                                                                               final String vcfHeader) {
         GenomicsDBExportConfiguration.ExportConfiguration.Builder exportConfigurationBuilder =
                 GenomicsDBExportConfiguration.ExportConfiguration.newBuilder()
-                        .setWorkspace(workspace.toString())
+                        .setWorkspace(workspace)
                         .setReferenceGenome(reference.getAbsolutePath())
-                        .setVidMappingFile(vidmapJson.toString())
-                        .setCallsetMappingFile(callsetJson.toString())
-                        .setVcfHeaderFilename(vcfHeader.toString())
+                        .setVidMappingFile(vidmapJson)
+                        .setCallsetMappingFile(callsetJson)
+                        .setVcfHeaderFilename(vcfHeader)
                         .setProduceGTField(false)
                         .setProduceGTWithMinPLValueForSpanningDeletions(false)
                         .setSitesOnlyQuery(false)

@@ -33,13 +33,12 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.nio.SeekableByteChannelPrefetcher;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -293,13 +292,13 @@ public final class GenomicsDBImport extends GATKTool {
     private SAMSequenceDictionary mergedHeaderSequenceDictionary;
 
     // Path to vidmap file to be written by GenomicsDBImporter
-    private URI vidMapJSONFile;
+    private String vidMapJSONFile;
 
     // Path to callsetmap file to be written by GenomicsDBImporter
-    private URI callsetMapJSONFile;
+    private String callsetMapJSONFile;
 
     // Path to combined VCF header file to be written by GenomicsDBImporter
-    private URI vcfHeaderFile;
+    private String vcfHeaderFile;
 
     // GenomicsDB callset map protobuf structure containing all callset names
     // used to write the callset json file on traversal success
@@ -461,16 +460,15 @@ public final class GenomicsDBImport extends GATKTool {
     @Override
     public void onTraversalStart() {
 
-        final URI workspaceDir = overwriteOrCreateWorkspace();
+        String workspaceDir = overwriteOrCreateWorkspace();
 
-        vidMapJSONFile = workspaceDir.resolve(GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME);
-        callsetMapJSONFile = workspaceDir.resolve(GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME);
-        vcfHeaderFile = workspaceDir.resolve(GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME);
+        vidMapJSONFile = BucketUtils.appendPathToDir(workspaceDir, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME);
+        callsetMapJSONFile = BucketUtils.appendPathToDir(workspaceDir, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME);
+        vcfHeaderFile = BucketUtils.appendPathToDir(workspaceDir, GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME);
 
         logger.info("Vid Map JSON file will be written to " + vidMapJSONFile);
         logger.info("Callset Map JSON file will be written to " + callsetMapJSONFile);
         logger.info("Complete VCF Header will be written to " + vcfHeaderFile);
-        logger.info("Importing to array - " + workspace + "/" + GenomicsDBConstants.DEFAULT_ARRAY_NAME);
 
         initializeInputPreloadExecutorService();
     }
@@ -532,9 +530,9 @@ public final class GenomicsDBImport extends GATKTool {
         importConfigurationBuilder.setConsolidateTiledbArrayAfterLoad(doConsolidation);
         ImportConfig importConfig = new ImportConfig(importConfigurationBuilder.build(), validateSampleToReaderMap, true,
                 batchSize, mergedHeaderLines, sampleNameToVcfPath, this::createSampleToReaderMap);
-        importConfig.setOutputCallsetmapJsonFile(callsetMapJSONFile.toString());
-        importConfig.setOutputVidmapJsonFile(vidMapJSONFile.toString());
-        importConfig.setOutputVcfHeaderFile(vcfHeaderFile.toString());
+        importConfig.setOutputCallsetmapJsonFile(callsetMapJSONFile);
+        importConfig.setOutputVidmapJsonFile(vidMapJSONFile);
+        importConfig.setOutputVcfHeaderFile(vcfHeaderFile);
         importConfig.setUseSamplesInOrder(true);
         importConfig.setFunctionToCallOnBatchCompletion(this::logMessageOnBatchCompletion);
         return importConfig;
@@ -652,24 +650,12 @@ public final class GenomicsDBImport extends GATKTool {
      *
      * @return  The workspace directory
      */
-    private URI overwriteOrCreateWorkspace() {
-        URI workspaceURI;
-
-	try {
-	    if (workspace.endsWith("/")) {
-		workspaceURI = new URI(workspace);
-	    } else {
-		workspaceURI = new URI(workspace + "/");
-	    }
-	} catch (URISyntaxException e) {
-	    throw new UnableToCreateGenomicsDBWorkspace("Specified workspace " + workspace + " is not valid URI");
-	}
-
-	if (GenomicsDBUtils.createTileDBWorkspace(workspaceURI.toString(), overwriteExistingWorkspace) < 0) {
+    private String overwriteOrCreateWorkspace() {
+	String workspaceDir = BucketUtils.makeFilePathAbsolute(workspace);
+	if (GenomicsDBUtils.createTileDBWorkspace(workspaceDir, overwriteExistingWorkspace) < 0) {
 	    throw new UnableToCreateGenomicsDBWorkspace("Error creating GenomicsDB workspace: " + workspace);
 	}
-
-	return workspaceURI;
+	return workspaceDir;
     }
 
     static class UnableToCreateGenomicsDBWorkspace extends UserException {

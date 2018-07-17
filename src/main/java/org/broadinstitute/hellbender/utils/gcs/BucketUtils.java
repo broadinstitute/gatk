@@ -82,6 +82,20 @@ public final class BucketUtils {
     }
 
     /**
+     * Appends path to the given dir/folder. java.nio.Path is used to append to dir with a scheme, otherwise java.io.File is used.
+     * @param dir the folder to append the path to
+     * @param path the path
+     * @return the appended path as a String.
+     */
+    public static String appendPathToDir(String dir, String path) {
+	if (isCloudStorageUrl(dir) || isHadoopUrl(dir) || isFileUrl(dir)){
+	    return IOUtils.getPath(dir).resolve(path).toUri().toString();
+	} else {
+	    return new File(dir, path).getPath();
+	}
+    }
+
+    /**
      * Open a file for reading regardless of whether it's on GCS, HDFS or local disk.
      *
      * If the file ends with .gz will attempt to wrap it in an appropriate unzipping stream

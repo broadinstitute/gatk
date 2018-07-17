@@ -34,6 +34,7 @@ public final class BucketUtilsTest extends GATKBaseTest {
 
         // this does not throw NullPointerException.
         String x = "" + null + "://";
+
     }
 
     @Test
@@ -55,6 +56,14 @@ public final class BucketUtilsTest extends GATKBaseTest {
         Assert.assertTrue(BucketUtils.isFileUrl("file:///somefile/something"));
         Assert.assertTrue(BucketUtils.isFileUrl("file:/something"));
         Assert.assertFalse(BucketUtils.isFileUrl("gs://abucket"));
+    }
+
+    @Test
+    public void testAppendPathToDir() {
+	Assert.assertEquals(BucketUtils.appendPathToDir("dir", "file"), "dir/file");
+	Assert.assertEquals(BucketUtils.appendPathToDir("/path/to/dir", "anotherdir/file"), "/path/to/dir/anotherdir/file");
+	Assert.assertEquals(BucketUtils.appendPathToDir("hdfs://namenode:9000/dir", "file"), "hdfs://namenode:9000/dir/file");
+	Assert.assertEquals(BucketUtils.appendPathToDir("gs://abucket/dir", "file"), "gs://abucket/dir/file");
     }
 
     @Test
