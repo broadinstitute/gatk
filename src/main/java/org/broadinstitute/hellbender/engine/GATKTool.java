@@ -158,7 +158,7 @@ public abstract class GATKTool extends CommandLineProgram {
      * Walker base classes (ReadWalker, etc.) are responsible for hooking these intervals up to
      * their particular driving data source.
      */
-    List<SimpleInterval> intervalsForTraversal;
+    List<SimpleInterval> userIntervals;
 
     /**
      * Progress meter to print out traversal statistics. Subclasses must invoke
@@ -443,7 +443,7 @@ public abstract class GATKTool extends CommandLineProgram {
                         "via the -R argument or you can run the tool UpdateVCFSequenceDictionary on your vcf.");
             }
 
-            intervalsForTraversal = intervalArgumentCollection.getIntervals(sequenceDictionary);
+            userIntervals = intervalArgumentCollection.getIntervals(sequenceDictionary);
         }
     }
 
@@ -477,10 +477,10 @@ public abstract class GATKTool extends CommandLineProgram {
     /**
      * Are sources of intervals available?
      *
-     * @return true if intervals are available, otherwise false
+     * @return true if user-supplied intervals are available, otherwise false
      */
-    public final boolean hasIntervals() {
-        return intervalsForTraversal != null;
+    public final boolean hasUserSuppliedIntervals() {
+        return userIntervals != null;
     }
 
     /**
@@ -715,7 +715,7 @@ public abstract class GATKTool extends CommandLineProgram {
         }
 
         // we don't currently have access to seqdicts from intervals
-        //if (hasIntervals()) {}
+        //if (hasUserSuppliedIntervals()) {}
     }
 
     /**
@@ -933,8 +933,8 @@ public abstract class GATKTool extends CommandLineProgram {
      * Returns the list of intervals to iterate, either limited to the user-supplied intervals or the entire reference genome if none were specified.
      * If no reference was supplied, null is returned
      */
-    public List<SimpleInterval> getEffectiveIntervals() {
-        return hasIntervals() ? intervalsForTraversal : hasReference() ? IntervalUtils.getAllIntervalsForReference(getReferenceDictionary()) : null;
+    public List<SimpleInterval> getTraversalIntervals() {
+        return hasUserSuppliedIntervals() ? userIntervals : hasReference() ? IntervalUtils.getAllIntervalsForReference(getReferenceDictionary()) : null;
     }
 
     /**

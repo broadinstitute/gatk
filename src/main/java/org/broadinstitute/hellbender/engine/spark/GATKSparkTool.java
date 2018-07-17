@@ -52,7 +52,7 @@ import java.util.List;
  *  as appropriate to indicate required inputs.
  *
  * -Tools can query whether certain inputs are present via {@link #hasReference}, {@link #hasReads}, and
- *  {@link #hasIntervals}.
+ *  {@link #hasUserSuppliedIntervals}.
  *
  * -Tools can load the reads via {@link #getReads}, access the reference via {@link #getReference}, and
  *  access the intervals via {@link #getIntervals}. Any intervals specified are automatically applied
@@ -179,7 +179,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      *
      * @return true if intervals are available, otherwise false
      */
-    public final boolean hasIntervals() {
+    public final boolean hasUserSuppliedIntervals() {
         return intervals != null;
     }
 
@@ -256,7 +256,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
         TraversalParameters traversalParameters;
         if ( intervalArgumentCollection.intervalsSpecified() ) {
             traversalParameters = intervalArgumentCollection.getTraversalParameters(getHeaderForReads().getSequenceDictionary());
-        } else if ( hasIntervals() ) { // intervals may have been supplied by editIntervals
+        } else if ( hasUserSuppliedIntervals() ) { // intervals may have been supplied by editIntervals
             traversalParameters = new TraversalParameters(getIntervals(), false);
         } else {
             traversalParameters = null; // no intervals were specified so return all reads (mapped and unmapped)

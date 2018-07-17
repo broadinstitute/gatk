@@ -88,7 +88,7 @@ public class SplitIntervals extends GATKTool {
         // to use the sequence dict from a bam or vcf is also supported
         final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
 
-        final List<SimpleInterval> intervals = hasIntervals() ? intervalArgumentCollection.getIntervals(sequenceDictionary)
+        final List<SimpleInterval> intervals = hasUserSuppliedIntervals() ? intervalArgumentCollection.getIntervals(sequenceDictionary)
                 : IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
 
         final IntervalList intervalList = new IntervalList(sequenceDictionary);

@@ -111,7 +111,7 @@ public final class CompareDuplicatesSpark extends GATKSparkTool {
 
         ReadsSparkSource readsSource2 = new ReadsSparkSource(ctx, readArguments.getReadValidationStringency());
         TraversalParameters traversalParameters;
-        if ( hasIntervals() ) {
+        if ( hasUserSuppliedIntervals() ) {
             traversalParameters = intervalArgumentCollection.getTraversalParameters(getHeaderForReads().getSequenceDictionary());
         } else {
             traversalParameters = null;

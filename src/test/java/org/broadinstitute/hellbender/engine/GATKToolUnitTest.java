@@ -986,7 +986,7 @@ public final class GATKToolUnitTest extends GATKBaseTest {
             final TestIntervalWalker tool = new TestIntervalWalker();
             tool.instanceMain(args.toArray(new String[args.size()]));
 
-            Assert.assertEquals(tool.getEffectiveIntervals() == null ? null : tool.getEffectiveIntervals().size(), expected);
+            Assert.assertEquals(tool.getTraversalIntervals() == null ? null : tool.getTraversalIntervals().size(), expected);
         }
         catch (UserException e) {
             if (!expectUserException) {

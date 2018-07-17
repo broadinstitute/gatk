@@ -103,9 +103,9 @@ public abstract class AbstractConcordanceWalker extends GATKTool {
         initializeTruthVariantsIfNecessary();
         evalVariants = new FeatureDataSource<>(new FeatureInput<>(evalVariantsFile, "eval"), CACHE_LOOKAHEAD, VariantContext.class);
 
-        if ( hasIntervals() ) {
-            truthVariants.setIntervalsForTraversal(intervalsForTraversal);
-            evalVariants.setIntervalsForTraversal(intervalsForTraversal);
+        if ( hasUserSuppliedIntervals() ) {
+            truthVariants.setIntervalsForTraversal(userIntervals);
+            evalVariants.setIntervalsForTraversal(userIntervals);
         }
         dict = getBestAvailableSequenceDictionary();
         variantContextComparator = new VariantContextComparator(dict);
