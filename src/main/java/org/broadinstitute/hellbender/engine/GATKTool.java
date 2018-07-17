@@ -862,15 +862,6 @@ public abstract class GATKTool extends CommandLineProgram {
     }
 
     /**
-     * @return An abbreviated name of the toolkit for this tool. Subclasses may override to provide
-     *         a custom toolkit name.
-     *
-     * TODO: This should be refactored and moved up into CommandLineProgram, with this value
-     * TODO: stored in the jar manifest, like {@link CommandLineProgram#getToolkitName}
-     */
-    protected String getToolkitShortName() { return "GATK"; }
-
-    /**
      * Call {@link GATKTool#addFeatureInputsAfterInitialization(String, String, Class, int)} with no caching.
      *
      * @param filePath See {@link #addFeatureInputsAfterInitialization(String, String, Class, int)}

@@ -410,16 +410,6 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
         return Collections.emptyList();
     }
 
-    // TODO: 7/9/18 the two function below (including the todo in comment) are copy-pasted from GATKTool, and probably some refactoring can be done
-    /**
-     * @return An abbreviated name of the toolkit for this tool. Subclasses may override to provide
-     *         a custom toolkit name.
-     *
-     * TODO: This should be refactored and moved up into CommandLineProgram, with this value
-     * TODO: stored in the jar manifest, like {@link CommandLineProgram#getToolkitName}
-     */
-    protected String getToolkitShortName() { return "GATK"; }
-
     /**
      * @return If addOutputVCFCommandLine is true, a set of VCF header lines containing the tool name, version,
      * date and command line, otherwise an empty set.
