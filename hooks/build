@@ -1,0 +1,4 @@
+#!/bin/bash
+## This is a dockerhub hook and is separate from a .git hook, which lives elsewhere.
+## This file ensures that docker automated
+docker build --squash --build-arg ZIPPATH=./unzippedJar .
