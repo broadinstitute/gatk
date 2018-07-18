@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
+import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.downsampling.MutectDownsampler;
 import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsampler;
 
@@ -161,6 +162,11 @@ public final class Mutect2 extends AssemblyRegionWalker {
     @Override
     public List<ReadFilter> getDefaultReadFilters() {
         return Mutect2Engine.makeStandardMutect2ReadFilters();
+    }
+
+    @Override
+    public ReadTransformer makePostReadFilterTransformer() {
+        return super.makePostReadFilterTransformer().andThen(Mutect2Engine.makeStandardMutect2PostFilterReadTransformer(referenceArguments.getReferencePath(), true));
     }
 
     @Override

@@ -1,15 +1,12 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
-import breeze.stats.distributions.Bernoulli;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
 import org.apache.commons.math.special.Beta;
 import org.apache.commons.math.special.Gamma;
-import org.apache.commons.math3.distribution.BetaDistribution;
 import org.apache.commons.math3.util.FastMath;
-import org.apache.commons.math3.util.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.*;
@@ -22,6 +19,8 @@ import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypingGivenAlle
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypingOutputMode;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.*;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
+import org.broadinstitute.hellbender.transformers.PalindromeArtifactClipReadTransformer;
+import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileState;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
@@ -39,6 +38,7 @@ import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
+import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -58,6 +58,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     public static final int INDEL_CONTINUATION_QUAL = 10;
     public static final double MAX_ALT_FRACTION_IN_NORMAL = 0.3;
     public static final int MAX_NORMAL_QUAL_SUM = 100;
+    public static final int MIN_PALINDROME_SIZE = 5;
 
     private M2ArgumentCollection MTAC;
     private SAMFileHeader header;
@@ -124,6 +125,11 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
                 new ReadLengthReadFilter(MIN_READ_LENGTH, Integer.MAX_VALUE),
                 ReadFilterLibrary.GOOD_CIGAR,
                 new WellformedReadFilter());
+    }
+
+    public static ReadTransformer makeStandardMutect2PostFilterReadTransformer(final Path referencePath, boolean clipITRArtifacts) {
+        return !clipITRArtifacts ? ReadTransformer.identity() :
+                new PalindromeArtifactClipReadTransformer(new ReferenceFileSource(referencePath), MIN_PALINDROME_SIZE);
     }
 
     /**
