@@ -224,7 +224,7 @@ public class ReadsPipelineSpark extends GATKSparkTool {
         final ReadFilter hcReadFilter = ReadFilter.fromList(HaplotypeCallerEngine.makeStandardHCReadFilters(), header);
         final JavaRDD<GATKRead> filteredReadsForHC = finalReads.filter(read -> hcReadFilter.test(read));
         filteredReadsForHC.persist(StorageLevel.DISK_ONLY()); // without caching, computations are run twice as a side effect of finding partition boundaries for sorting
-        final List<SimpleInterval> intervals = hasIntervals() ? getIntervals() : IntervalUtils.getAllIntervalsForReference(header.getSequenceDictionary());
+        final List<SimpleInterval> intervals = hasUserSuppliedIntervals() ? getIntervals() : IntervalUtils.getAllIntervalsForReference(header.getSequenceDictionary());
         HaplotypeCallerSpark.callVariantsWithHaplotypeCallerAndWriteOutput(ctx, filteredReadsForHC, header, getReference(), intervals, hcArgs, shardingArgs, numReducers, output, makeVariantAnnotations());
 
         if (bwaEngine != null) {

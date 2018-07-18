@@ -672,7 +672,7 @@ public final class SelectVariants extends VariantWalker {
      */
     private SortedSet<String> createSampleNameInclusionList(Map<String, VCFHeader> vcfHeaders) {
         final SortedSet<String> vcfSamples = VcfUtils.getSortedSampleSet(vcfHeaders, GATKVariantContextUtils.GenotypeMergeType.REQUIRE_UNIQUE);
-        final Collection<String> samplesFromExpressions = matchSamplesExpressions(vcfSamples, sampleExpressions);
+        final Collection<String> samplesFromExpressions = Utils.filterCollectionByExpressions(vcfSamples, sampleExpressions, false);
 
         // first, find any samples that were listed on the command line but which don't exist in in the header
         final Set<String> samplesNotInHeader = new LinkedHashSet<>(samplesFromExpressions.size()+sampleNames.size());
@@ -707,7 +707,7 @@ public final class SelectVariants extends VariantWalker {
         }
 
         // Exclude samples take precedence over include - remove any excluded samples
-        final Collection<String> XLsamplesFromExpressions = matchSamplesExpressions(vcfSamples, XLsampleExpressions);
+        final Collection<String> XLsamplesFromExpressions = Utils.filterCollectionByExpressions(vcfSamples, XLsampleExpressions, false);
         samples.removeAll(XLsampleNames);
         samples.removeAll(XLsamplesFromExpressions);
         noSamplesSpecified = noSamplesSpecified &&
@@ -783,63 +783,6 @@ public final class SelectVariants extends VariantWalker {
         return sampleDBBuilder.getFinalSampleDB();
     }
 
-    /**
-     * Given a collection of samples and a collection of regular expressions, generates the set of samples that match
-     * each expression
-     * @param originalSamples list of samples to select samples from
-     * @param sampleExpressions list of expressions to use for matching samples
-     * @return the set of samples from originalSamples that satisfy at least one of the expressions in sampleExpressions
-     */
-    private static Collection<String> matchSamplesExpressions(Collection<String> originalSamples, Collection<String> sampleExpressions) {
-        return sampleExpressions == null ?
-                Collections.emptySet() :
-                includeMatching(originalSamples, sampleExpressions, false);
-    }
-
-    /**
-     * Returns a new set of values including only values listed by filters/expressions
-     * <p/>
-     *
-     * @param sourceValues     Values to match against
-     * @param filterExpressions    Filters/expressions
-     * @param exactMatch If true match filters exactly, otherwise use as both exact and regular expressions
-     * @return entries from values, filtered by filters
-     */
-    protected static Set<String> includeMatching(
-            final Collection<String> sourceValues,
-            final Collection<String> filterExpressions,
-            final boolean exactMatch) {
-        Utils.nonNull(sourceValues);
-        Utils.nonNull(filterExpressions);
-
-        final Set<String> filteredValues = new LinkedHashSet<>();
-
-        Collection<Pattern> patterns = null;
-        if (!exactMatch) {
-            patterns = compilePatterns(filterExpressions);
-        }
-        for (final String value : sourceValues) {
-            if (filterExpressions.contains(value)) {
-                filteredValues.add(value);
-            } else if (!exactMatch) {
-                for (final Pattern pattern : patterns) {
-                    if (pattern.matcher(value).find()) {
-                        filteredValues.add(value);
-                    }
-                }
-            }
-        }
-
-        return filteredValues;
-    }
-
-    private static Collection<Pattern> compilePatterns(final Collection<String> filters) {
-        final Collection<Pattern> patterns = new ArrayList<Pattern>();
-        for (final String filter: filters) {
-            patterns.add(Pattern.compile(filter));
-        }
-        return patterns;
-    }
 
     /**
      * Invert logic if specified

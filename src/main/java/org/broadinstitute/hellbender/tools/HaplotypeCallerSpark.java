@@ -157,7 +157,7 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
         logger.info("For evaluation only.");
         logger.info("Use the non-spark HaplotypeCaller if you care about the results. ");
         logger.info("********************************************************************************");
-        final List<SimpleInterval> intervals = hasIntervals() ? getIntervals() : IntervalUtils.getAllIntervalsForReference(getHeaderForReads().getSequenceDictionary());
+        final List<SimpleInterval> intervals = hasUserSuppliedIntervals() ? getIntervals() : IntervalUtils.getAllIntervalsForReference(getHeaderForReads().getSequenceDictionary());
         callVariantsWithHaplotypeCallerAndWriteOutput(ctx, getReads(), getHeaderForReads(), getReference(), intervals, hcArgs, shardingArgs, numReducers, output, makeVariantAnnotations());
     }
 

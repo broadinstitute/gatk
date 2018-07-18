@@ -134,7 +134,7 @@ public final class PreprocessIntervals extends GATKTool {
         final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
 
         final List<SimpleInterval> inputIntervals;
-        if (hasIntervals()) {
+        if (hasUserSuppliedIntervals()) {
             CopyNumberArgumentValidationUtils.validateIntervalArgumentCollection(intervalArgumentCollection);
             inputIntervals = intervalArgumentCollection.getIntervals(sequenceDictionary);
         } else {

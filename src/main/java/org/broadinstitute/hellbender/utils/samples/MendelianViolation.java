@@ -14,12 +14,20 @@ import java.util.*;
  * - Or using the static methods to directly get information about mendelian violation in a family at a given locus
  *
  */
-public final class MendelianViolation {
+public class MendelianViolation {
+    //List of families with violations
+    private List<String> violationFamilies = new ArrayList<>();
+
+    //Call information
+    private int noCall = 0;
+    private int familyCalled = 0;
+    private int varFamilyCalled = 0;
+    private int lowQual = 0;
 
     //Stores occurrences of inheritance
     private EnumMap<GenotypeType, EnumMap<GenotypeType,EnumMap<GenotypeType,Integer>>> inheritance;
 
-    private int violations_total=0;
+    private int violations_total = 0;
 
     private final boolean allCalledOnly;
     private final double minGenotypeQuality;
@@ -49,14 +57,32 @@ public final class MendelianViolation {
         return inheritance.get(GenotypeType.HOM_REF).get(GenotypeType.HOM_REF).get(GenotypeType.HET);
     }
 
-    public boolean isViolation(final Sample mother, final Sample father, final Sample child, final VariantContext vc){
-        violations_total=0;
+    private void resetCounts() {
+        noCall = 0;
+        lowQual = 0;
+        familyCalled = 0;
+        varFamilyCalled = 0;
+        violations_total = 0;
+        violationFamilies.clear();
+
         clearInheritanceMap();
-        updateViolations(mother.getFamilyID(), mother.getID(), father.getID(), child.getID(),vc);
-        return violations_total>0;
     }
 
-    private void updateViolations(final String familyId, final String motherId, final String fatherId, final String childId, final VariantContext vc){
+    /**
+     * Tests whether there is a mendelian violation between the supplied samples.  Note: this will reset any accumulated stats.
+     * @param mother
+     * @param father
+     * @param child
+     * @param vc
+     * @return Whether a violation is present
+     */
+    public boolean isViolation(final Sample mother, final Sample father, final Sample child, final VariantContext vc){
+        resetCounts();
+        updateViolations(mother.getFamilyID(), mother.getID(), father.getID(), child.getID(),vc);
+        return violations_total > 0;
+    }
+
+    protected void updateViolations(final String familyId, final String motherId, final String fatherId, final String childId, final VariantContext vc){
         final Genotype gMom = vc.getGenotype(motherId);
         final Genotype gDad = vc.getGenotype(fatherId);
         final Genotype gChild = vc.getGenotype(childId);
@@ -69,12 +95,13 @@ public final class MendelianViolation {
                 return;
             }
         }
+
         //Count No calls
         if(allCalledOnly && (!gMom.isCalled() || !gDad.isCalled() || !gChild.isCalled())){
-            //no call
+            noCall++;
         }
         else if (!gMom.isCalled() && !gDad.isCalled() || !gChild.isCalled()){
-            //no call
+            noCall++;
         }
         //Count lowQual. Note that if min quality is set to 0, even values with no quality associated are returned
         else if (minGenotypeQuality > 0 && (
@@ -82,9 +109,18 @@ public final class MendelianViolation {
             gDad.getGQ()   < minGenotypeQuality ||
             gChild.getGQ() < minGenotypeQuality )) {
             //no call
+            lowQual++;
         }
         else {
+            //Count all families per loci called
+            familyCalled++;
+
+            if (!(gMom.isHomRef() && gDad.isHomRef() && gChild.isHomRef())) {
+                varFamilyCalled++;
+            }
+
             if(isViolation(gMom, gDad, gChild)){
+                violationFamilies.add(familyId);
                 violations_total++;
             }
             final int count = inheritance.get(gMom.getType()).get(gDad.getType()).get(gChild.getType());
@@ -93,15 +129,15 @@ public final class MendelianViolation {
     }
 
     /**
+     * Counts the number of mendelian violations in the provided sample DB.  Note: this method resets any stats accumulated prior to calling it.
      * @param sampleDB contains the database of samples containing samples for families to be checked for Mendelian violations
      * @param sampleIDs ids of the subset of the samples contained in <code>sampleDB</code> who's family's violations will be checked
      * @param vc the variant context to extract the genotypes and alleles for mom, dad and child.
      * @return whether or not there is a mendelian violation at the site.
      */
     public int countFamilyViolations(SampleDB sampleDB, Set<String> sampleIDs, VariantContext vc) {
-        violations_total =0 ;
+        resetCounts();
         Map<String, Set<Sample>> families = sampleDB.getFamilies(sampleIDs);
-        clearInheritanceMap();
 
         for (final Set<Sample> family : families.values()) {
             final Iterator<Sample> sampleIterator = family.iterator();
@@ -166,5 +202,44 @@ public final class MendelianViolation {
                 }
             }
         }
+    }
+
+    /**
+     * @return Number of families with genotype information for all members
+     */
+    public int getFamilyCalledCount(){
+        return familyCalled;
+    }
+
+    /**
+     * @return Number of families where at least one member is not homozygous ref
+     */
+    public int getVarFamilyCalledCount(){
+        return varFamilyCalled;
+    }
+
+    /**
+     * @return Number of families missing genotypes for one or more of their members
+     */
+    public int getFamilyNoCallCount(){
+        return noCall;
+    }
+
+    /**
+     * @return Number of families with genotypes below the set quality threshold
+     */
+    public int getFamilyLowQualsCount(){
+        return lowQual;
+    }
+
+    /**
+     * @return Number of violations identified
+     */
+    public int getViolationsCount(){
+        return violations_total;
+    }
+
+    protected EnumMap<GenotypeType, EnumMap<GenotypeType, EnumMap<GenotypeType, Integer>>> getInheritance() {
+        return inheritance;
     }
 }

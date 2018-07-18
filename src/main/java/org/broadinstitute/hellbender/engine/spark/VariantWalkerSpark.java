@@ -118,7 +118,7 @@ public abstract class VariantWalkerSpark extends GATKSparkTool {
      */
     public JavaRDD<VariantWalkerContext> getVariants(JavaSparkContext ctx) {
         SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
-        List<SimpleInterval> intervals = hasIntervals() ? getIntervals() : IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
+        List<SimpleInterval> intervals = hasUserSuppliedIntervals() ? getIntervals() : IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
         // use unpadded shards (padding is only needed for reference bases)
         final List<ShardBoundary> intervalShards = intervals.stream()
                 .flatMap(interval -> Shard.divideIntervalIntoShards(interval, variantShardSize, 0, sequenceDictionary).stream())

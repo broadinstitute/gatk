@@ -48,8 +48,8 @@ public abstract class FeatureWalker<F extends Feature> extends GATKTool {
     protected final void onStartup() {
         super.onStartup();
         // set the intervals for the feature here, because they are not initialized when initialize features is set
-        if ( hasIntervals() ) {
-            drivingFeatures.setIntervalsForTraversal(intervalsForTraversal);
+        if ( hasUserSuppliedIntervals() ) {
+            drivingFeatures.setIntervalsForTraversal(userIntervals);
         }
     }
 

@@ -3,32 +3,36 @@ package org.broadinstitute.hellbender.utils.samples;
 import htsjdk.variant.variantcontext.*;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
 
 import java.util.*;
 
 public final class MendelianViolationUnitTest extends GATKBaseTest {
 
     private static final int GQ30 = 30;
+    private static final int GQ25 = 25;
+
+    private static final Allele refAllele = Allele.create("A", true);
+    private static final Allele altAllele = Allele.create("T");
+    private static final Allele noCallAllele = Allele.NO_CALL;
+
+    private static final List<Allele> homRef = Arrays.asList(refAllele, refAllele);
+    private static final List<Allele> homVar = Arrays.asList(altAllele, altAllele);
+    private static final List<Allele> het = Arrays.asList(refAllele, altAllele);
+    private static final List<Allele> notCall = Arrays.asList(noCallAllele, noCallAllele);
+
+    private static final Genotype g00 = new GenotypeBuilder("2", homRef).DP(10).AD(new int[]{10,0}).GQ(GQ30).make();
+    private static final Genotype g01 = new GenotypeBuilder("1", het).DP(10).AD(new int[]{5, 5}).GQ(GQ25).make();
+    private static final Genotype g11 = new GenotypeBuilder("3", homVar).DP(10).AD(new int[]{0, 10}).GQ(GQ30).make();
+    private static final Genotype gNo = new GenotypeBuilder("4", notCall).make();
+
+    private static final Sample sMom = new Sample("mom", "fam", null, null, Sex.FEMALE);
+    private static final Sample sDad = new Sample("dad",     sMom.getFamilyID(), null, null, Sex.MALE);
+    private static final Sample sChild = new Sample("child", sMom.getFamilyID(), sDad.getID(), sMom.getID(), Sex.MALE);
 
     @DataProvider(name = "isViolation")
     public Object[][] isViolation() {
         final List<Object[]> tests = new ArrayList<>();
-
-        final Allele refAllele = Allele.create("A", true);
-        final Allele altAllele = Allele.create("T");
-        final Allele noCallAllele = Allele.NO_CALL;
-
-        final List<Allele> homRef = Arrays.asList(refAllele, refAllele);
-        final List<Allele> homVar = Arrays.asList(altAllele, altAllele);
-        final List<Allele> het = Arrays.asList(refAllele, altAllele);
-        final List<Allele> notCall = Arrays.asList(noCallAllele, noCallAllele);
-
-        final Genotype g00 = new GenotypeBuilder("2", homRef).DP(10).AD(new int[]{10,0}).GQ(GQ30).make();
-        final Genotype g01 = new GenotypeBuilder("1", het).DP(10).AD(new int[]{5, 5}).GQ(GQ30).make();
-        final Genotype g11 = new GenotypeBuilder("3", homVar).DP(10).AD(new int[]{0, 10}).GQ(GQ30).make();
-        final Genotype gNo = new GenotypeBuilder("4", notCall).make();
 
         tests.add(new Object[]{g00, g00, g00, false});
         tests.add(new Object[]{g00, g00, g01, true});
@@ -122,16 +126,29 @@ public final class MendelianViolationUnitTest extends GATKBaseTest {
         Assert.assertEquals(expected, actual);
     }
 
-    @Test(dataProvider = "isViolation")
-    public void testIsViolationFromSamples(final Genotype gMom, final Genotype gDad, final Genotype gChild, final boolean expected) throws Exception {
+    @DataProvider(name = "isViolationWithSample")
+    private Iterator<Object[]> isViolationWithSample() {
+        List<Object[]> ret = new ArrayList<>();
+        for (Object[] o : isViolation()) {
+            ret.add(getIsViolationWithSampleTestCase((Genotype)o[0], (Genotype)o[1], (Genotype)o[2], (boolean)o[3], 0));
+            ret.add(getIsViolationWithSampleTestCase((Genotype)o[0], (Genotype)o[1], (Genotype)o[2], (boolean)o[3], GQ25+1));
+            ret.add(getIsViolationWithSampleTestCase((Genotype)o[0], (Genotype)o[1], (Genotype)o[2], false, GQ30+1));
+        }
 
-        final Sample sMom = new Sample("mom", "fam", null, null, Sex.FEMALE);
-        final Sample sDad = new Sample("dad",     sMom.getFamilyID(), null, null, Sex.MALE);
-        final Sample sChild = new Sample("child", sMom.getFamilyID(), sDad.getID(), sMom.getID(), Sex.MALE);
+        return ret.iterator();
+    }
 
-        final Allele refAllele = Allele.create("A", true);
-        final Allele noCallAllele = Allele.NO_CALL;
+    private Object[] getIsViolationWithSampleTestCase(final Genotype gMom, final Genotype gDad, final Genotype gChild, final boolean originalExpected, final int minGenotypeQuality) {
+        final boolean isLowQual = minGenotypeQuality > 0 && (gMom.getGQ() < minGenotypeQuality || gDad.getGQ() < minGenotypeQuality || gChild.getGQ() < minGenotypeQuality);
+        final boolean expectedWithQual = !isLowQual && originalExpected;
+        return new Object[]{gMom, gDad, gChild, minGenotypeQuality, expectedWithQual, isLowQual};
+    }
 
+    private boolean isNoCall(Genotype gMom, Genotype gDad, Genotype gChild) {
+        return (!gMom.isCalled() && !gDad.isCalled() || !gChild.isCalled());
+    }
+
+    private VariantContext getVC(final Genotype gMom, final Genotype gDad, final Genotype gChild) {
         final ArrayList<Genotype> genotypes = new ArrayList<>(Arrays.<Genotype>asList(gMom, gDad, gChild));
         final Map<String, Integer> sampleNameToOffset= new LinkedHashMap<>(3);
         sampleNameToOffset.put("mom", 0);
@@ -146,15 +163,44 @@ public final class MendelianViolationUnitTest extends GATKBaseTest {
         alleles.addAll(gChild.getAlleles());
         alleles.add(refAllele);
         alleles.remove(noCallAllele);
-        final VariantContext vc = new VariantContextBuilder("test", "20", 10, 10, alleles).genotypes(context).make();
 
-        final MendelianViolation mv = new MendelianViolation(0, false, false);
-        final boolean actual = mv.isViolation(sMom, sDad, sChild, vc);
-        Assert.assertEquals(expected, actual);
-        Assert.assertEquals(gMom.isHomRef() && gDad.isHomRef() && gChild.isHet(), mv.getParentsRefRefChildHet() > 0);
+        return new VariantContextBuilder("test", "20", 10, 10, alleles).genotypes(context).make();
+    }
 
-        final boolean actualFiltered = new MendelianViolation(GQ30+1, false, false).isViolation(sMom, sDad, sChild, vc);
-        Assert.assertEquals(false, actualFiltered);
+    @Test(dataProvider = "isViolationWithSample")
+    public void testParentsRefRefChildHet(final Genotype gMom, final Genotype gDad, final Genotype gChild, final int minGenotypeQuality, final boolean expected, final boolean isLowQual) throws Exception {
+        final MendelianViolation mv = new MendelianViolation(minGenotypeQuality, false, false);
+        final boolean actual = mv.isViolation(sMom, sDad, sChild, getVC(gMom, gDad, gChild));
+        Assert.assertEquals(actual, expected);
+        Assert.assertEquals(mv.getViolationsCount() > 0, expected);
 
+        Assert.assertEquals(mv.getParentsRefRefChildHet() > 0, !isLowQual && (gMom.isHomRef() && gDad.isHomRef() && gChild.isHet()));
+    }
+
+    @Test(dataProvider = "isViolationWithSample")
+    public void testFamilyNoCallCount(final Genotype gMom, final Genotype gDad, final Genotype gChild, final int minGenotypeQuality, final boolean expected, final boolean isLowQual) throws Exception {
+        final MendelianViolation mv = new MendelianViolation(minGenotypeQuality, false, false);
+        final boolean actual = mv.isViolation(sMom, sDad, sChild, getVC(gMom, gDad, gChild));
+        Assert.assertEquals(actual, expected);
+
+        Assert.assertEquals(mv.getFamilyCalledCount() > 0, !isLowQual && !isNoCall(gMom, gDad, gChild));
+    }
+
+    @Test(dataProvider = "isViolationWithSample")
+    public void testFamilyLowQualsCount(final Genotype gMom, final Genotype gDad, final Genotype gChild, final int minGenotypeQuality, final boolean expected, final boolean isLowQual) throws Exception {
+        final MendelianViolation mv = new MendelianViolation(minGenotypeQuality, false, false);
+        final boolean actual = mv.isViolation(sMom, sDad, sChild, getVC(gMom, gDad, gChild));
+        Assert.assertEquals(actual, expected);
+
+        Assert.assertEquals(mv.getFamilyLowQualsCount() > 0, !isNoCall(gMom, gDad, gChild) && isLowQual);
+    }
+
+    @Test(dataProvider = "isViolationWithSample")
+    public void testVarFamilyCalledCount(final Genotype gMom, final Genotype gDad, final Genotype gChild, final int minGenotypeQuality, final boolean expected, final boolean isLowQual) throws Exception {
+        final MendelianViolation mv = new MendelianViolation(minGenotypeQuality, false, false);
+        final boolean actual = mv.isViolation(sMom, sDad, sChild, getVC(gMom, gDad, gChild));
+        Assert.assertEquals(actual, expected);
+
+        Assert.assertEquals(mv.getVarFamilyCalledCount() == 0, (isLowQual || isNoCall(gMom, gDad, gChild) || (gMom.isHomRef() && gDad.isHomRef() && gChild.isHomRef())));
     }
 }

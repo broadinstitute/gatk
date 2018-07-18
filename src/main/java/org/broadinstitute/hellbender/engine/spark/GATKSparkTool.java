@@ -52,7 +52,7 @@ import java.util.List;
  *  as appropriate to indicate required inputs.
  *
  * -Tools can query whether certain inputs are present via {@link #hasReference}, {@link #hasReads}, and
- *  {@link #hasIntervals}.
+ *  {@link #hasUserSuppliedIntervals}.
  *
  * -Tools can load the reads via {@link #getReads}, access the reference via {@link #getReference}, and
  *  access the intervals via {@link #getIntervals}. Any intervals specified are automatically applied
@@ -113,7 +113,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     private String readInput;
     private ReferenceMultiSource referenceSource;
     private SAMSequenceDictionary referenceDictionary;
-    private List<SimpleInterval> intervals;
+    private List<SimpleInterval> userIntervals;
     protected FeatureManager features;
 
     /**
@@ -179,8 +179,8 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      *
      * @return true if intervals are available, otherwise false
      */
-    public final boolean hasIntervals() {
-        return intervals != null;
+    public final boolean hasUserSuppliedIntervals() {
+        return userIntervals != null;
     }
 
     /**
@@ -256,7 +256,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
         TraversalParameters traversalParameters;
         if ( intervalArgumentCollection.intervalsSpecified() ) {
             traversalParameters = intervalArgumentCollection.getTraversalParameters(getHeaderForReads().getSequenceDictionary());
-        } else if ( hasIntervals() ) { // intervals may have been supplied by editIntervals
+        } else if ( hasUserSuppliedIntervals() ) { // intervals may have been supplied by editIntervals
             traversalParameters = new TraversalParameters(getIntervals(), false);
         } else {
             traversalParameters = null; // no intervals were specified so return all reads (mapped and unmapped)
@@ -431,7 +431,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      * @return our intervals, or null if no intervals were specified
      */
     public List<SimpleInterval> getIntervals() {
-        return intervals;
+        return userIntervals;
     }
 
     @Override
@@ -511,9 +511,9 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
                 throw new UserException("We require at least one input source that has a sequence dictionary (reference or reads) when intervals are specified");
             }
 
-            intervals = intervalArgumentCollection.getIntervals(intervalDictionary);
+            userIntervals = intervalArgumentCollection.getIntervals(intervalDictionary);
         }
-        intervals = editIntervals(intervals);
+        userIntervals = editIntervals(userIntervals);
     }
 
     /**

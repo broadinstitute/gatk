@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.samples;
 
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -51,6 +52,21 @@ public class SampleDBBuilder {
         } catch ( FileNotFoundException e ) {
             throw new UserException.CouldNotReadInputFile(sampleFile, e);
         }
+    }
+
+    /**
+     * Integrates the collection of sample names with the samples already present
+     */
+    public SampleDBBuilder addSamplesFromSampleNames(final Collection<String> sampleNames) {
+        Utils.nonNull(sampleNames);
+        for (final String sampleName : sampleNames) {
+            if (sampleDB.getSample(sampleName) == null) {
+                final Sample newSample = new Sample(sampleName, null, null, null, Sex.UNKNOWN);
+                sampleDB.addSample(newSample);
+                samplesFromDataSources.add(newSample); // keep track of data source samples
+            }
+        }
+        return this;
     }
 
     private Collection<Sample> addSamplesFromPedigreeArgument(final String string) {

@@ -257,4 +257,23 @@ public final class FeatureInputUnitTest extends GATKBaseTest {
         Assert.assertEquals(namelessGenomicsDB.toString(), "gendb://" + new File("file1").getAbsolutePath(), "String representation of nameless FeatureInput with genomicsDB path incorrect");
         Assert.assertEquals(namedGenomicsDB.toString(), "name:gendb://" + new File("file1").getAbsolutePath(), "String representation of named FeatureInput with genomicsDB path incorrect");
     }
+
+    @DataProvider(name = "HasUserSuppliedNameData")
+    public Object[][] hasUserSuppliedNameData() {
+        return new Object[][] {
+                {"hdfs://localhost/user/my.vcf", false},
+                {"myname:hdfs://localhost/user/my.vcf", true},
+                {"myname,key1=value1:hdfs://localhost/user/my.vcf", true},
+                {"myname//:hdfs://localhost/user/my.vcf", true},
+                {"myname//:/user/my.vcf", true},
+                {"/user/my.vcf", false},
+        };
+    }
+
+    @Test(dataProvider = "HasUserSuppliedNameData")
+    public void testHasUserSuppliedName(final String inputString, final boolean isUserSupplied) {
+        final FeatureInput<VariantContext> input = new FeatureInput<>(inputString);
+        Assert.assertEquals(input.hasUserSuppliedName(), isUserSupplied);
+    }
+
 }
