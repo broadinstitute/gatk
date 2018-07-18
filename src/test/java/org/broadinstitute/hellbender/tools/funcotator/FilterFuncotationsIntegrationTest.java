@@ -5,6 +5,9 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.tools.funcotator.filtrationRules.ClinVarFilter;
+import org.broadinstitute.hellbender.tools.funcotator.filtrationRules.LmmFilter;
+import org.broadinstitute.hellbender.tools.funcotator.filtrationRules.LofFilter;
 import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -23,18 +26,20 @@ public class FilterFuncotationsIntegrationTest extends CommandLineProgramTest {
 
     private static final Path TEST_DATA_DIR = getTestDataDir().toPath().resolve("FilterFuncotations");
 
-    private static final Set<String> ALL_FILTERS = new HashSet<>(Arrays.asList("CLINVAR", "LMM", "LOF"));
+    private static final Set<String> ALL_FILTERS = new HashSet<>(Arrays.asList(
+            ClinVarFilter.CLINSIG_INFO_VALUE, LofFilter.CLINSIG_INFO_VALUE, LmmFilter.CLINSIG_INFO_VALUE));
 
     @DataProvider(name = "uniformVcfProvider")
     public Object[][] uniformVcfProvider() {
         return new Object[][]{
-                {"clinvar.vcf", 19, Collections.emptySet(), Collections.singleton("CLINVAR")},
-                {"lmm.vcf", 38, Collections.emptySet(), Collections.singleton("LMM")},
-                {"lof.vcf", 19, Collections.emptySet(), Collections.singleton("LOF")},
+                {"clinvar.vcf", 19, Collections.emptySet(), Collections.singleton(ClinVarFilter.CLINSIG_INFO_VALUE)},
+                {"lmm.vcf", 38, Collections.emptySet(), Collections.singleton(LmmFilter.CLINSIG_INFO_VALUE)},
+                {"lof.vcf", 19, Collections.emptySet(), Collections.singleton(LofFilter.CLINSIG_INFO_VALUE)},
                 {"all.vcf", 38, Collections.emptySet(), ALL_FILTERS},
                 {"multi-transcript.vcf", 38, Collections.emptySet(), ALL_FILTERS},
                 {"multi-allelic.vcf", 38, Collections.emptySet(), ALL_FILTERS},
-                {"none.vcf", 38, Collections.singleton(FilterFuncotations.NOT_CLINSIG_FILTER), Collections.singleton("NONE")}
+                {"none.vcf", 38, Collections.singleton(FilterFuncotationsConstants.NOT_CLINSIG_FILTER),
+                        Collections.singleton(FilterFuncotationsConstants.CLINSIG_INFO_NOT_SIGNIFICANT)}
         };
     }
 
@@ -59,7 +64,7 @@ public class FilterFuncotationsIntegrationTest extends CommandLineProgramTest {
             Assert.assertEquals(variant.getFilters(), expectedFilters);
 
             final List<String> clinsigAnnotations = variant.getCommonInfo()
-                    .getAttributeAsStringList(FilterFuncotations.CLINSIG_RULE_KEY, "");
+                    .getAttributeAsStringList(FilterFuncotationsConstants.CLINSIG_INFO_KEY, "");
             Assert.assertEquals(new HashSet<>(clinsigAnnotations), expectedAnnotations);
         });
     }
