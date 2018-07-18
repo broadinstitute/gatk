@@ -86,8 +86,8 @@ workflow Mutect2 {
     File? realignment_index_bundle
     String? realignment_extra_args
     Boolean? run_orientation_bias_filter
-    Boolean run_ob_filter = select_first([run_orientation_bias_filter, true])
     Array[String]? artifact_modes
+    Boolean run_ob_filter = select_first([run_orientation_bias_filter, true]) && (length(artifact_modes) > 0)
     File? tumor_sequencing_artifact_metrics
     String? m2_extra_args
     String? m2_extra_filtering_args
@@ -768,8 +768,8 @@ task FilterByOrientationBias {
     File pre_adapter_metrics
     Array[String]? artifact_modes
 
-    # TODO: Do not pass artifact_modes as an empty array [].  https://github.com/broadinstitute/gatk/issues/5025
-    Array[String] final_artifact_modes = if (defined(artifact_modes)) then artifact_modes else ["G/T", "C/T"]
+    # If artifact modes is passed in to the task as [], this task will fail.
+    Array[String] final_artifact_modes = select_first([artifact_modes, ["G/T", "C/T"]])
 
     # runtime
     Int? preemptible_attempts
