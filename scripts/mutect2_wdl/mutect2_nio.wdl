@@ -25,7 +25,7 @@
 ## artifact_modes: types of artifacts to consider in the orientation bias filter (optional)
 ## m2_extra_args, m2_extra_filtering_args: additional arguments for Mutect2 calling and filtering (optional)
 ## split_intervals_extra_args: additional arguments for splitting intervals before scattering (optional)
-## run_orientation_bias_filter: if true, run the orientation bias filter post-processing step (optional, false by default)
+## run_orientation_bias_filter: if true, run the orientation bias filter post-processing step (optional, true by default)
 ## run_oncotator: if true, annotate the M2 VCFs using oncotator (to produce a TCGA MAF).  Important:  This requires a
 ##                   docker image and should  not be run in environments where docker is unavailable (e.g. SGE cluster on
 ##                   a Broad on-prem VM).  Access to docker hub is also required, since the task downloads a public docker image.
@@ -768,6 +768,9 @@ task FilterByOrientationBias {
     File pre_adapter_metrics
     Array[String]? artifact_modes
 
+    # TODO: Do not pass artifact_modes as an empty array [].  https://github.com/broadinstitute/gatk/issues/5025
+    Array[String] final_artifact_modes = if (defined(artifact_modes)) then artifact_modes else ["G/T", "C/T"]
+
     # runtime
     Int? preemptible_attempts
     String gatk_docker
@@ -787,7 +790,7 @@ task FilterByOrientationBias {
 
         gatk --java-options "-Xmx${command_mem}m" FilterByOrientationBias \
             -V ${input_vcf} \
-            -AM ${sep=" -AM " artifact_modes} \
+            -AM ${sep=" -AM " final_artifact_modes} \
             -P ${pre_adapter_metrics} \
             -O ${output_vcf}
     }
