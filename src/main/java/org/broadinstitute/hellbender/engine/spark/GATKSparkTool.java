@@ -113,7 +113,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     private String readInput;
     private ReferenceMultiSource referenceSource;
     private SAMSequenceDictionary referenceDictionary;
-    private List<SimpleInterval> intervals;
+    private List<SimpleInterval> userIntervals;
     protected FeatureManager features;
 
     /**
@@ -180,7 +180,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      * @return true if intervals are available, otherwise false
      */
     public final boolean hasUserSuppliedIntervals() {
-        return intervals != null;
+        return userIntervals != null;
     }
 
     /**
@@ -431,7 +431,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      * @return our intervals, or null if no intervals were specified
      */
     public List<SimpleInterval> getIntervals() {
-        return intervals;
+        return userIntervals;
     }
 
     @Override
@@ -511,9 +511,9 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
                 throw new UserException("We require at least one input source that has a sequence dictionary (reference or reads) when intervals are specified");
             }
 
-            intervals = intervalArgumentCollection.getIntervals(intervalDictionary);
+            userIntervals = intervalArgumentCollection.getIntervals(intervalDictionary);
         }
-        intervals = editIntervals(intervals);
+        userIntervals = editIntervals(userIntervals);
     }
 
     /**

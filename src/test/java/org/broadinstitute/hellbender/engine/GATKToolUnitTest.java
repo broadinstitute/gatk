@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.engine;
 
-import com.sun.istack.Nullable;
 import htsjdk.samtools.*;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import htsjdk.tribble.Feature;
@@ -30,6 +29,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import javax.annotation.Nullable;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
@@ -941,7 +941,7 @@ public final class GATKToolUnitTest extends GATKBaseTest {
 
     final String baseVariants = packageRootTestDir + "engine/feature_data_source_test.vcf";
 
-    @CommandLineProgramProperties(programGroup = TestProgramGroup.class, oneLineSummary = "GATKTool Intervals Test Walker", summary = "This is a test walker for GATKTool getIntervals")
+    @CommandLineProgramProperties(programGroup = TestProgramGroup.class, oneLineSummary = "GATKTool Intervals Test Walker", summary = "This is a test walker for GATKTool getTraversalIntervals")
     private static class TestIntervalWalker extends GATKTool {
         @Argument(fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME, shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME, doc = "A VCF file containing variants", common = false, optional = false)
         public String drivingVariantFile;
@@ -956,18 +956,27 @@ public final class GATKToolUnitTest extends GATKBaseTest {
         }
     }
 
-    @DataProvider(name = "TestGetIntervalsProvider")
-    public Object[][] getTestGetIntervalsProvider() {
+    @Test(expectedExceptions = UserException.class)
+    public void testSequenceDictionaryRequiredForIntervalQuery() throws Exception {
+        //This should have failed because no dictionary is provided
+        final TestIntervalWalker tool = new TestIntervalWalker();
+        tool.instanceMain(new String[]{
+                "-V", baseVariants,
+                "-L", "1:21-21"
+        });
+    }
+
+    @DataProvider(name = "TestGetTraversalIntervalsProvider")
+    public Object[][] getTestGetTraversalIntervalsProvider() {
         return new Object[][]{
-                {"1:21-21", 1, hg19MiniReference, false},
-                {null, 4, hg19MiniReference, false},
-                {"1:21-21", 1, null, true},  //this will fail with an error
-                {null, null, null, false}
+                {"1:21-21", 1, hg19MiniReference},
+                {null, 4, hg19MiniReference},
+                {null, null, null}
         };
     }
 
-    @Test(dataProvider = "TestGetIntervalsProvider")
-    public void testGetIntervals(@Nullable String intervals, Integer expected, String ref, boolean expectUserException) {
+    @Test(dataProvider = "TestGetTraversalIntervalsProvider")
+    public void testGetTraversalIntervals(@Nullable String intervals, Integer expected, String ref) {
         List<String> args = new ArrayList<>(Arrays.asList(
                 "-V", baseVariants
         ));
@@ -982,16 +991,9 @@ public final class GATKToolUnitTest extends GATKBaseTest {
             args.add(intervals);
         }
 
-        try {
-            final TestIntervalWalker tool = new TestIntervalWalker();
-            tool.instanceMain(args.toArray(new String[args.size()]));
+        final TestIntervalWalker tool = new TestIntervalWalker();
+        tool.instanceMain(args.toArray(new String[args.size()]));
 
-            Assert.assertEquals(tool.getTraversalIntervals() == null ? null : tool.getTraversalIntervals().size(), expected);
-        }
-        catch (UserException e) {
-            if (!expectUserException) {
-                throw e;
-            }
-        }
+        Assert.assertEquals(tool.getTraversalIntervals() == null ? null : tool.getTraversalIntervals().size(), expected);
     }
 }
