@@ -25,7 +25,7 @@
 ## artifact_modes: types of artifacts to consider in the orientation bias filter (optional)
 ## m2_extra_args, m2_extra_filtering_args: additional arguments for Mutect2 calling and filtering (optional)
 ## split_intervals_extra_args: additional arguments for splitting intervals before scattering (optional)
-## run_orientation_bias_filter: if true, run the orientation bias filter post-processing step (optional, false by default)
+## run_orientation_bias_filter: if true, run the orientation bias filter post-processing step (optional, true by default)
 ## run_oncotator: if true, annotate the M2 VCFs using oncotator (to produce a TCGA MAF).  Important:  This requires a
 ##                   docker image and should  not be run in environments where docker is unavailable (e.g. SGE cluster on
 ##                   a Broad on-prem VM).  Access to docker hub is also required, since the task downloads a public docker image.
@@ -86,8 +86,8 @@ workflow Mutect2 {
     File? realignment_index_bundle
     String? realignment_extra_args
     Boolean? run_orientation_bias_filter
-    Boolean run_ob_filter = select_first([run_orientation_bias_filter, false])
     Array[String]? artifact_modes
+    Boolean run_ob_filter = select_first([run_orientation_bias_filter, true]) && (length(select_first([artifact_modes, ["G/T", "C/T"]])) > 0)
     File? tumor_sequencing_artifact_metrics
     String? m2_extra_args
     String? m2_extra_filtering_args
@@ -768,6 +768,9 @@ task FilterByOrientationBias {
     File pre_adapter_metrics
     Array[String]? artifact_modes
 
+    # If artifact modes is passed in to the task as [], this task will fail.
+    Array[String] final_artifact_modes = select_first([artifact_modes, ["G/T", "C/T"]])
+
     # runtime
     Int? preemptible_attempts
     String gatk_docker
@@ -787,7 +790,7 @@ task FilterByOrientationBias {
 
         gatk --java-options "-Xmx${command_mem}m" FilterByOrientationBias \
             -V ${input_vcf} \
-            -AM ${sep=" -AM " artifact_modes} \
+            -AM ${sep=" -AM " final_artifact_modes} \
             -P ${pre_adapter_metrics} \
             -O ${output_vcf}
     }
