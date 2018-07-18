@@ -87,7 +87,7 @@ workflow Mutect2 {
     String? realignment_extra_args
     Boolean? run_orientation_bias_filter
     Array[String]? artifact_modes
-    Boolean run_ob_filter = select_first([run_orientation_bias_filter, true]) && (length(artifact_modes) > 0)
+    Boolean run_ob_filter = select_first([run_orientation_bias_filter, true]) && (length(select_first([artifact_modes, []])) > 0)
     File? tumor_sequencing_artifact_metrics
     String? m2_extra_args
     String? m2_extra_filtering_args
