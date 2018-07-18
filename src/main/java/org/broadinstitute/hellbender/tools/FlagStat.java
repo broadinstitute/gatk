@@ -28,7 +28,7 @@ import java.text.NumberFormat;
  *
  * <h3>Example Usage</h3>
  * <pre>
- *   gatk FlagStat /
+ *   gatk FlagStat \
  *     -I input.bam
  * </pre>
  */
