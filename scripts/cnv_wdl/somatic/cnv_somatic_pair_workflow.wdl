@@ -28,6 +28,7 @@ workflow CNVSomaticPairWorkflow {
     ##################################
     File common_sites
     File intervals
+    File? blacklist_intervals
     File tumor_bam
     File tumor_bam_idx
     File? normal_bam
@@ -126,7 +127,7 @@ workflow CNVSomaticPairWorkflow {
 
     Int gatk4_override_size = if defined(gatk4_jar_override) then ceil(size(gatk4_jar_override, "GB")) else 0
     # This is added to every task as padding, should increase if systematically you need more disk for every call
-    Int disk_pad = 20 + ceil(size(intervals, "GB")) + ceil(size(common_sites, "GB")) + gatk4_override_size + select_first([emergency_extra_disk,0])
+    Int disk_pad = 20 + ceil(size(intervals, "GB")) + ceil(size(common_sites, "GB")) + gatk4_override_size + select_first([emergency_extra_disk, 0])
 
     File final_normal_bam = select_first([normal_bam, "null"])
     File final_normal_bam_idx = select_first([normal_bam_idx, "null"])
@@ -135,6 +136,7 @@ workflow CNVSomaticPairWorkflow {
     call CNVTasks.PreprocessIntervals {
         input:
             intervals = intervals,
+            blacklist_intervals = blacklist_intervals,
             ref_fasta = ref_fasta,
             ref_fasta_fai = ref_fasta_fai,
             ref_fasta_dict = ref_fasta_dict,

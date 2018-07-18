@@ -21,6 +21,7 @@ workflow CNVGermlineCaseWorkflow {
     #### required basic arguments ####
     ##################################
     File intervals
+    File? blacklist_intervals
     File bam
     File bam_idx
     File contig_ploidy_model_tar
@@ -98,6 +99,7 @@ workflow CNVGermlineCaseWorkflow {
     call CNVTasks.PreprocessIntervals {
         input:
             intervals = intervals,
+            blacklist_intervals = blacklist_intervals,
             ref_fasta = ref_fasta,
             ref_fasta_fai = ref_fasta_fai,
             ref_fasta_dict = ref_fasta_dict,

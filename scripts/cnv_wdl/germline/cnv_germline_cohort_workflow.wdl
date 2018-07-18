@@ -21,6 +21,7 @@ workflow CNVGermlineCohortWorkflow {
     #### required basic arguments ####
     ##################################
     File intervals
+    File? blacklist_intervals
     Array[String] normal_bams
     Array[String] normal_bais
     String cohort_entity_id
@@ -120,6 +121,7 @@ workflow CNVGermlineCohortWorkflow {
     call CNVTasks.PreprocessIntervals {
         input:
             intervals = intervals,
+            blacklist_intervals = blacklist_intervals,
             ref_fasta = ref_fasta,
             ref_fasta_fai = ref_fasta_fai,
             ref_fasta_dict = ref_fasta_dict,

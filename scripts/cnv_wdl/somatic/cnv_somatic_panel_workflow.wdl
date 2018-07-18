@@ -23,6 +23,7 @@ workflow CNVSomaticPanelWorkflow {
     #### required basic arguments ####
     ##################################
     File intervals
+    File? blacklist_intervals
     Array[String] normal_bams
     Array[String] normal_bais
     String pon_entity_id
@@ -76,6 +77,7 @@ workflow CNVSomaticPanelWorkflow {
     call CNVTasks.PreprocessIntervals {
         input:
             intervals = intervals,
+            blacklist_intervals = blacklist_intervals,
             ref_fasta = ref_fasta,
             ref_fasta_fai = ref_fasta_fai,
             ref_fasta_dict = ref_fasta_dict,
