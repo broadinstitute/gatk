@@ -71,7 +71,7 @@ import java.util.List;
  *   -I gs://my-gcs-bucket/unaligned_reads.bam \
  *   -R gs://my-gcs-bucket/reference.fasta \
  *   --known-sites gs://my-gcs-bucket/sites_of_variation.vcf \
- *   -align
+ *   --align
  *   -O gs://my-gcs-bucket/output.vcf \
  *   -- \
  *   --sparkRunner GCS \
