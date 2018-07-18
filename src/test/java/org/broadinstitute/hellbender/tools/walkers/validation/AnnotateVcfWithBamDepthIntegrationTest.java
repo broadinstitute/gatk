@@ -4,6 +4,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -36,10 +37,9 @@ public class AnnotateVcfWithBamDepthIntegrationTest extends CommandLineProgramTe
 
         runCommandLine(arguments);
 
-        final List<VariantContext> input = StreamSupport.stream(new FeatureDataSource<VariantContext>(vcf).spliterator(), false)
+        final List<VariantContext> input = Utils.streamVcf(vcf)
                 .collect(Collectors.toList());
-        final List<VariantContext> output = StreamSupport.stream(new FeatureDataSource<VariantContext>(outputVcf).spliterator(), false)
-                .collect(Collectors.toList());
+        final List<VariantContext> output = Utils.streamVcf(outputVcf).collect(Collectors.toList());
 
         Assert.assertEquals(input.size(), output.size());
 

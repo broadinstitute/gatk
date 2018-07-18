@@ -5,6 +5,7 @@ import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -69,9 +70,7 @@ public class CreateSomaticPanelOfNormalsIntegrationTest extends CommandLineProgr
 
         runCommandLine(args);
 
-        final List<VariantContext> ponVariants =
-                StreamSupport.stream(new FeatureDataSource<VariantContext>(outputVcf).spliterator(), false)
-                .collect(Collectors.toList());
+        final List<VariantContext> ponVariants = Utils.streamVcf(outputVcf).collect(Collectors.toList());
 
         Assert.assertEquals(ponVariants.size(), 5);
         final VariantContext vc1 = ponVariants.get(0);

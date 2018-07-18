@@ -5,6 +5,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.tools.walkers.validation.RemoveNearbyIndels;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -57,7 +58,7 @@ public class RemoveNearbyIndelsIntegrationTest extends CommandLineProgramTest {
 
         runCommandLine(arguments);
 
-        final List<VariantContext> output = StreamSupport.stream(new FeatureDataSource<VariantContext>(outputVcf).spliterator(), false)
+        final List<VariantContext> output = Utils.streamVcf(outputVcf)
                 .collect(Collectors.toList());
 
         final List<Integer> outputPositions = output.stream().map(VariantContext::getStart).collect(Collectors.toList());
