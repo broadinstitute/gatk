@@ -1704,7 +1704,7 @@ public final class GATKVariantContextUtils {
      *  indicates no match in variant2.  If the reference alleles do not match, the output array will be populated
      *  exclusively with -1.
      */
-    public static int[] matchAllelesOnly(final VariantContext variant1, VariantContext variant2) {
+    public static int[] matchAllelesOnly(final VariantContext variant1, final VariantContext variant2) {
         Utils.nonNull(variant1);
         Utils.nonNull(variant2);
 
@@ -1747,7 +1747,7 @@ public final class GATKVariantContextUtils {
      *  VariantContext to better leverage existing code in
      *  {@link GATKVariantContextUtils#trimAlleles(VariantContext, boolean, boolean)}
      *
-     * This method is trying to be fast.
+     * This method is trying to be fast, otherwise.
      *
      * @param vc variant context to split into simple biallelics.  Never {@code null}
      * @return a list of variant contexts.  Each will be biallelic.  Length will be the number of alt alleles in the input vc.
@@ -1758,13 +1758,17 @@ public final class GATKVariantContextUtils {
         Utils.nonNull(vc);
         final List<VariantContext> result = new ArrayList<>();
 
-        for (final Allele allele : vc.getAlternateAlleles()) {
-            result.add(
-                    (vc.isBiallelic()) ? vc :
-                            GATKVariantContextUtils.trimAlleles(
-                                    new VariantContextBuilder("SimpleSplit", vc.getContig(), vc.getStart(), vc.getEnd(),
-                                            Arrays.asList(vc.getReference(), allele))
-                                            .make(), true, true)
+        if (vc.isBiallelic()) {
+            return Collections.singletonList(vc);
+        } else {
+            // Since variant context builders are slow to keep re-creating.  Just create one and spew variant contexts from it, since
+            //  the only difference will be the alternate allele.  Initialize the VCB with a dummy alternate allele,
+            //  since it will be overwritten in all cases.
+            final VariantContextBuilder vcb = new VariantContextBuilder("SimpleSplit", vc.getContig(), vc.getStart(), vc.getEnd(),
+                    Arrays.asList(vc.getReference(), Allele.NO_CALL));
+            vc.getAlternateAlleles().forEach(allele -> result.add(GATKVariantContextUtils.trimAlleles(
+                    vcb.alleles(Arrays.asList(vc.getReference(), allele)).make(true), true, true)
+                    )
             );
         }
 

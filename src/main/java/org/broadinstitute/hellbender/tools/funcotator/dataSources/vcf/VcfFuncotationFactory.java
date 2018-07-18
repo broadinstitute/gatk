@@ -214,6 +214,9 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
 
             // TODO: What happens if there is a duplicate pos,ref,alt in the datasource?  See (https://github.com/broadinstitute/gatk/issues/4972)
             for ( final VariantContext funcotationFactoryVariant : funcotationFactoryVariants ) {
+
+                // matchIndices length will always be the same as the number of alt alleles in the variant (first parameter)
+                //  Note that this is not the same length as the funcotationFactoryVariant.
                 final int[] matchIndices = GATKVariantContextUtils.matchAllelesOnly(variant, funcotationFactoryVariant);
 
                 for (int i = 0; i < matchIndices.length; i++) {
@@ -250,7 +253,7 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
             final VCFHeaderLineCount countType = supportedFieldMetadata.retrieveHeaderInfo(createFinalFieldName(this.name, attributeName)).getCountType();
 
             if (funcotationFactoryVariant.isBiallelic() && queryVariant.isBiallelic()) {
-                valueString = objectList.stream().map(Object::toString).collect(Collectors.joining(","));
+                valueString = objectList.stream().map(Object::toString).collect(Collectors.joining(String.valueOf(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR_CHAR)));
             } else {
                 valueString = determineValueStringFromMultiallelicAttributeList(funcotationFactoryAltAlleleIndex, objectList, countType);
             }
@@ -279,10 +282,10 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
 
             case R:
                 final Object referenceAlleleValue = attributeEntryValues.toArray()[0];
-                return referenceAlleleValue.toString() + "," + attributeEntryValues.toArray()[funcotationFactoryAltAlleleIndex+1].toString();
+                return referenceAlleleValue.toString() + VCFConstants.INFO_FIELD_ARRAY_SEPARATOR_CHAR + attributeEntryValues.toArray()[funcotationFactoryAltAlleleIndex+1].toString();
 
             default:
-                return attributeEntryValues.stream().map(Object::toString).collect(Collectors.joining(","));
+                return attributeEntryValues.stream().map(Object::toString).collect(Collectors.joining(String.valueOf(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR_CHAR)));
         }
     }
 

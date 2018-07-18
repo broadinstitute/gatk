@@ -385,9 +385,17 @@ public class VcfFuncotationFactoryUnitTest extends GATKBaseTest {
                 vcfFeatures,
                 Collections.emptyList()
         );
+
         Assert.assertEquals(vcfFuncotationFactory.cacheHits, 1);
         Assert.assertEquals(vcfFuncotationFactory.cacheMisses, 1);
         Assert.assertEquals(funcotations, funcotations2, "Even though there was a cache hit, the funcotations are not equal.");
+
+        // Sanity check that we get the same funcotations whether we use the three parameter or the four parameter
+        //  version of createFuncotationsOnVariant.
+        Assert.assertEquals(vcfFuncotationFactory.createFuncotationsOnVariant(
+                variant,
+                referenceContext,
+                vcfFeatures), funcotations);
     }
 
     @Test
@@ -395,7 +403,9 @@ public class VcfFuncotationFactoryUnitTest extends GATKBaseTest {
         // This code is a bit complex, since the cache is based exclusively on object references.  That works great in Funcotator,
         //  but not as great in the general case (incl. autotests)
         // We do not care so much about the content of each variant context.  We change the position to control whether
-        //  there is a cache  hit or not.
+        //  there is a cache hit or not.
+        // Please note that this test does not actually test the content of the funcotations.  Just whether the cache
+        //  was set to the appropriate size and that the hit/miss counters are being maintained properly.
 
         // Create dummy data.  Remember that since the cache is based on reference, we always have to index into this list.
         final List<String> alleles = Arrays.asList("G", "C", "T");
@@ -432,7 +442,12 @@ public class VcfFuncotationFactoryUnitTest extends GATKBaseTest {
         );
     }
 
+    // Creates dummy triples for testing the cache.  If offset is zero, and ref="G" and alt(s) are in {"C", "T"}, there
+    //  will be a hit on the exac snippet.  This is to make sure that one of the dummy triplets was a hit in a VCF
+    //  funcotation factory.
     private Triple<VariantContext, ReferenceContext, List<Feature>> createDummyCacheTriples(final List<String> alleles, final int offset) {
+
+        // Create an interval for a variant that overlaps an entry in the exac snippet test file when offset = 0.
         final SimpleInterval variantInterval = new SimpleInterval("3", 13372+offset, 13372+offset);
         final VariantContext vc =  new VariantContextBuilder()
                 .chr(variantInterval.getContig()).start(variantInterval.getStart()).stop(variantInterval.getEnd())
