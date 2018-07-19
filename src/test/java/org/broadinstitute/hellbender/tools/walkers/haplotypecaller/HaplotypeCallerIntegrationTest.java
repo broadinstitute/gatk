@@ -732,7 +732,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         Utils.resetRandomGenerator();
         runCommandLine(args);
 
-        final Map<Integer, Allele> altAllelesByPosition = Utils.streamVcf(outputVcf)
+        final Map<Integer, Allele> altAllelesByPosition = VariantContextTestUtils.streamVcf(outputVcf)
                 .collect(Collectors.toMap(VariantContext::getStart, vc -> vc.getAlternateAllele(0)));
 
         final Map<Integer, Allele> expectedMnps = ImmutableMap.of(
@@ -770,7 +770,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
     // this is particular to our particular artificial MNP bam -- we extract a method in order to use it for HaplotypeCaller
     private static void checkMnpOutput(int maxMnpDistance, File outputVcf) {
         // note that for testing HaplotypeCaller GVCF mode we will always have the symbolic <NON REF> allele
-        final Map<Integer, List<String>> alleles = Utils.streamVcf(outputVcf)
+        final Map<Integer, List<String>> alleles = VariantContextTestUtils.streamVcf(outputVcf)
                 .collect(Collectors.toMap(VariantContext::getStart, vc -> vc.getAlternateAlleles().stream().filter(a -> !a.isSymbolic()).map(Allele::getBaseString).collect(Collectors.toList())));
 
         // phased, two bases apart

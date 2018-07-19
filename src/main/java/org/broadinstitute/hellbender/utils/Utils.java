@@ -1101,10 +1101,6 @@ public final class Utils {
         return stream(() -> iterator);
     }
 
-    public static Stream<VariantContext> streamVcf(final File vcf) {
-        return StreamSupport.stream(new FeatureDataSource<VariantContext>(vcf).spliterator(), false);
-    }
-
     /**
      * Like Guava's {@link Iterators#transform(Iterator, com.google.common.base.Function)}, but runs a fixed number
      * ({@code numThreads}) of transformations in parallel, while maintaining ordering of the output iterator.
