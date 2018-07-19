@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.funcotator.dataSources.vcf;
 
+import com.google.common.collect.ImmutableMap;
 import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -9,6 +10,7 @@ import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.commons.lang.RandomStringUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.tuple.Triple;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
@@ -25,8 +27,10 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Class to test the {@link VcfFuncotationFactory}.
@@ -39,6 +43,7 @@ public class VcfFuncotationFactoryUnitTest extends GATKBaseTest {
 
     private static final String FACTORY_NAME = "TestFactory";
     private static final String FACTORY_VERSION = "TEST_VERSION";
+    private static final String EXAC_SNIPPET = toolsTestDir + "funcotator/test_exac.vcf";
 
     //==================================================================================================================
     // Private Members:
@@ -285,5 +290,175 @@ public class VcfFuncotationFactoryUnitTest extends GATKBaseTest {
         Assert.assertEquals(metadataFields, headerInfoLines);
         Assert.assertEquals(metadataFields, vcfFuncotationFactory.getSupportedFuncotationFields());
         Assert.assertEquals(funcotations.get(0).getMetadata().retrieveAllHeaderInfo(), gtOutputVcfInfoHeaderLines);
+    }
+
+    @DataProvider
+    public Object[][] provideMultiallelicTest() {
+        // These were chosen to correspond to test cases in the test exac datasource VCF.
+        return new Object[][] {
+                // 3	69521	.	T	A,C AC_AMR=2,0; AC_Het=0,3,0 AC=2,3 -- DP_HIST=4891|699|176|41|7229|10522|4675|4512|4936|3378|1833|885|500|250|131|64|34|24|15|139,0|0|0|0|0|0|0|0|0|1|0|0|0|0|0|0|0|0|0|0,0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|3;
+                //  Note that AC Het is of type=., so we should test that we return the entire string.
+                {new SimpleInterval("3", 69521, 69521), Arrays.asList("T", "C"),
+                        Collections.singletonList(ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "0,3,0", "_AC", "3", "_DP_HIST", "4891|699|176|41|7229|10522|4675|4512|4936|3378|1833|885|500|250|131|64|34|24|15|139,0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|3"))},
+                {new SimpleInterval("3", 69521, 69521), Arrays.asList("T", "A"),
+                        Collections.singletonList(ImmutableMap.of("_AC_AMR", "2", "_AC_Het", "0,3,0", "_AC", "2","_DP_HIST", "4891|699|176|41|7229|10522|4675|4512|4936|3378|1833|885|500|250|131|64|34|24|15|139,0|0|0|0|0|0|0|0|0|1|0|0|0|0|0|0|0|0|0|0"))},
+                // 3	69552	rs55874132	G	T,A,C  AC_AMR=3,0,0 AC_Het=1,1,0,0,0,0 AC=3,3,5  4764|1048|70|7|7472|10605|4702|4511|4937|3377|1835|886|500|250|128|63|35|22|13|117,0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|1|0|0|1,0|0|0|0|0|0|0|0|0|0|0|1|0|0|0|0|0|0|0|1,3|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0
+                {new SimpleInterval("3", 69552, 69552), Arrays.asList("G", "A"),
+                        Collections.singletonList(ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "1,1,0,0,0,0", "_AC", "3","_DP_HIST", "4764|1048|70|7|7472|10605|4702|4511|4937|3377|1835|886|500|250|128|63|35|22|13|117,0|0|0|0|0|0|0|0|0|0|0|1|0|0|0|0|0|0|0|1"))},
+                {new SimpleInterval("3", 69552, 69552), Arrays.asList("G", "T"),
+                        Collections.singletonList(ImmutableMap.of("_AC_AMR", "3", "_AC_Het", "1,1,0,0,0,0", "_AC", "3","_DP_HIST", "4764|1048|70|7|7472|10605|4702|4511|4937|3377|1835|886|500|250|128|63|35|22|13|117,0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|1|0|0|1"))},
+                {new SimpleInterval("3", 69552, 69552), Arrays.asList("G", "C"),
+                        Collections.singletonList(ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "1,1,0,0,0,0", "_AC", "5","_DP_HIST", "4764|1048|70|7|7472|10605|4702|4511|4937|3377|1835|886|500|250|128|63|35|22|13|117,3|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0"))},
+                // 3	324682	.	ACCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT	TCCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT,A  AC=7,2; AC_AMR=0,0 ;AC_Het=1,0,0  DP_HIST=428|427|186|183|1953|705|127|19|1|2|1|0|0|0|0|0|0|0|0|0,0|0|1|0|1|1|0|1|0|0|0|0|0|0|0|0|0|0|0|0,0|1|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0;
+                {new SimpleInterval("3", 324682, 324714), Arrays.asList("ACCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT", "A"),
+                        Collections.singletonList(ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "1,0,0", "_AC", "2","_DP_HIST", "428|427|186|183|1953|705|127|19|1|2|1|0|0|0|0|0|0|0|0|0,0|1|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0"))},
+                {new SimpleInterval("3", 324682, 324714), Arrays.asList("ACCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT", "TCCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT", "A"),
+                        Arrays.asList(ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "1,0,0", "_AC", "7","_DP_HIST", "428|427|186|183|1953|705|127|19|1|2|1|0|0|0|0|0|0|0|0|0,0|0|1|0|1|1|0|1|0|0|0|0|0|0|0|0|0|0|0|0"),
+                                ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "1,0,0", "_AC", "2","_DP_HIST", "428|427|186|183|1953|705|127|19|1|2|1|0|0|0|0|0|0|0|0|0,0|1|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0"))},
+                //HARD!!  Same as the previous test
+                {new SimpleInterval("3", 324682, 324682), Arrays.asList("A", "T"),
+                        Collections.singletonList(ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "1,0,0", "_AC", "7","_DP_HIST", "428|427|186|183|1953|705|127|19|1|2|1|0|0|0|0|0|0|0|0|0,0|0|1|0|1|1|0|1|0|0|0|0|0|0|0|0|0|0|0|0"))},
+
+                // Control case (no multiallelics)
+                //3	13372	.	G	C AC=3; AC_AMR=0 AC_Het=0 DP_HIST=14728|2455|2120|518|121|499|534|314|111|21|10|2|2|0|0|0|0|0|0|0,1|0|0|0|1|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0
+                {new SimpleInterval("3", 13372, 13372), Arrays.asList("G", "C"),
+                        Collections.singletonList(ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "0", "_AC", "3","_DP_HIST", "14728|2455|2120|518|121|499|534|314|111|21|10|2|2|0|0|0|0|0|0|0,1|0|0|0|1|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0"))},
+
+                // Control case (no multiallelics in datasource, but multiallelic query) -- Should produce a funcotation for both alleles, but second one should be blank
+                //3	13372	.	G	C AC=3; AC_AMR=0 AC_Het=0 DP_HIST=14728|2455|2120|518|121|499|534|314|111|21|10|2|2|0|0|0|0|0|0|0,1|0|0|0|1|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0
+                {new SimpleInterval("3", 13372, 13372), Arrays.asList("G", "C", "T"),
+                        Arrays.asList(ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "0", "_AC", "3","_DP_HIST", "14728|2455|2120|518|121|499|534|314|111|21|10|2|2|0|0|0|0|0|0|0,1|0|0|0|1|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0"),
+                                ImmutableMap.of("_AC_AMR", "", "_AC_Het", "", "_AC", "","_DP_HIST", ""))},
+                // Control case (no multiallelics in datasource, but multiallelic query) -- Should produce a funcotation for both alleles, but first one should be blank
+                //3	13372	.	G	C AC=3; AC_AMR=0 AC_Het=0 DP_HIST=14728|2455|2120|518|121|499|534|314|111|21|10|2|2|0|0|0|0|0|0|0,1|0|0|0|1|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0
+                {new SimpleInterval("3", 13372, 13372), Arrays.asList("G", "T", "C"),
+                        Arrays.asList(ImmutableMap.of("_AC_AMR", "", "_AC_Het", "", "_AC", "","_DP_HIST", ""),
+                                ImmutableMap.of("_AC_AMR", "0", "_AC_Het", "0", "_AC", "3","_DP_HIST", "14728|2455|2120|518|121|499|534|314|111|21|10|2|2|0|0|0|0|0|0|0,1|0|0|0|1|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0"))},
+        };
+    }
+
+    /**
+     * This also tests the VCFFuncotationFactory Caching.
+     */
+    @Test(dataProvider = "provideMultiallelicTest")
+    public void testQueryIntoMultiallelic(final SimpleInterval variantInterval, final List<String> alleles,
+                                          final List<Map<String, String>> gtAttributes) {
+
+        // Make the factory
+        final VcfFuncotationFactory vcfFuncotationFactory =
+                new VcfFuncotationFactory(FACTORY_NAME, FACTORY_VERSION, IOUtils.getPath(EXAC_SNIPPET));
+
+        final ReferenceContext referenceContext = new ReferenceContext(ReferenceDataSource.of(Paths.get(FuncotatorReferenceTestUtils.retrieveB37Chr3Ref())), variantInterval);
+
+        final List<Feature> vcfFeatures;
+        try (final VCFFileReader vcfReader = new VCFFileReader(IOUtils.getPath(EXAC_SNIPPET))) {
+            vcfFeatures = vcfReader.query(variantInterval.getContig(), variantInterval.getStart(), variantInterval.getEnd()).stream().collect(Collectors.toList());
+        }
+
+        final VariantContext variant = new VariantContextBuilder()
+                .chr(variantInterval.getContig()).start(variantInterval.getStart()).stop(variantInterval.getEnd())
+                .alleles(alleles)
+                .make();
+
+        final List<Funcotation> funcotations = vcfFuncotationFactory.createFuncotationsOnVariant(
+                variant,
+                referenceContext,
+                vcfFeatures,
+                Collections.emptyList()
+        );
+        Assert.assertEquals(funcotations.size(), alleles.size() - 1);
+        Assert.assertEquals(funcotations.size(), gtAttributes.size());
+
+        IntStream.range(0, funcotations.size()).forEach( j ->
+                gtAttributes.get(j).keySet().forEach(k ->
+                        Assert.assertEquals(funcotations.get(j).getField(vcfFuncotationFactory.getName() + k), gtAttributes.get(j).get(k), "Mismatch with " + k)
+            )
+        );
+
+        Assert.assertEquals(vcfFuncotationFactory.cacheHits, 0);
+        Assert.assertEquals(vcfFuncotationFactory.cacheMisses, 1);  // Should match the number of times createFuncotationOnVariant was called.
+
+        // Funcotate again, so that we should get a cache hit.
+        final List<Funcotation> funcotations2 = vcfFuncotationFactory.createFuncotationsOnVariant(
+                variant,
+                referenceContext,
+                vcfFeatures,
+                Collections.emptyList()
+        );
+
+        Assert.assertEquals(vcfFuncotationFactory.cacheHits, 1);
+        Assert.assertEquals(vcfFuncotationFactory.cacheMisses, 1);
+        Assert.assertEquals(funcotations, funcotations2, "Even though there was a cache hit, the funcotations are not equal.");
+
+        // Sanity check that we get the same funcotations whether we use the three parameter or the four parameter
+        //  version of createFuncotationsOnVariant.
+        Assert.assertEquals(vcfFuncotationFactory.createFuncotationsOnVariant(
+                variant,
+                referenceContext,
+                vcfFeatures), funcotations);
+    }
+
+    @Test
+    public void testCacheOnObjectReference(){
+        // This code is a bit complex, since the cache is based exclusively on object references.  That works great in Funcotator,
+        //  but not as great in the general case (incl. autotests)
+        // We do not care so much about the content of each variant context.  We change the position to control whether
+        //  there is a cache hit or not.
+        // Please note that this test does not actually test the content of the funcotations.  Just whether the cache
+        //  was set to the appropriate size and that the hit/miss counters are being maintained properly.
+
+        // Create dummy data.  Remember that since the cache is based on reference, we always have to index into this list.
+        final List<String> alleles = Arrays.asList("G", "C", "T");
+        final List<Triple<VariantContext, ReferenceContext, List<Feature>>> dummyTriples = IntStream.range(0, VcfFuncotationFactory.LRUCache.MAX_ENTRIES + 1)
+                .boxed().map(i -> createDummyCacheTriples(alleles, i)).collect(Collectors.toList());
+
+        // Create our funcotation factory to test
+        final VcfFuncotationFactory vcfFuncotationFactory =
+                new VcfFuncotationFactory(FACTORY_NAME, FACTORY_VERSION, IOUtils.getPath(EXAC_SNIPPET));
+
+        for (int i = 0; i < VcfFuncotationFactory.LRUCache.MAX_ENTRIES; i++) {
+            funcotateForCacheTest(vcfFuncotationFactory, dummyTriples.get(i));
+            Assert.assertEquals(vcfFuncotationFactory.cacheHits, 0);
+            Assert.assertEquals(vcfFuncotationFactory.cacheMisses, i+1);  // Should match the number of times createFuncotationOnVariant was called.
+        }
+        // We will get one more miss in this loop, since [0] will have been purged from the cache.  We will test this below.
+        for (int i = 0; i < (VcfFuncotationFactory.LRUCache.MAX_ENTRIES + 1); i++) {
+            funcotateForCacheTest(vcfFuncotationFactory, dummyTriples.get(i));
+        }
+        Assert.assertEquals(vcfFuncotationFactory.cacheHits, VcfFuncotationFactory.LRUCache.MAX_ENTRIES);
+
+        // This should be another miss, since the variant at index = 0 should no longer be in the cache.
+        funcotateForCacheTest(vcfFuncotationFactory, dummyTriples.get(0));
+        Assert.assertEquals(vcfFuncotationFactory.cacheMisses, (VcfFuncotationFactory.LRUCache.MAX_ENTRIES + 2));
+    }
+
+    // Performs a dummy funcotation with an offset for controlling the cache.
+    private void funcotateForCacheTest(final VcfFuncotationFactory vcfFuncotationFactory, final Triple<VariantContext, ReferenceContext, List<Feature>> cacheTriple) {
+        vcfFuncotationFactory.createFuncotationsOnVariant(
+                cacheTriple.getLeft(),
+                cacheTriple.getMiddle(),
+                cacheTriple.getRight(),
+                Collections.emptyList()
+        );
+    }
+
+    // Creates dummy triples for testing the cache.  If offset is zero, and ref="G" and alt(s) are in {"C", "T"}, there
+    //  will be a hit on the exac snippet.  This is to make sure that one of the dummy triplets was a hit in a VCF
+    //  funcotation factory.
+    private Triple<VariantContext, ReferenceContext, List<Feature>> createDummyCacheTriples(final List<String> alleles, final int offset) {
+
+        // Create an interval for a variant that overlaps an entry in the exac snippet test file when offset = 0.
+        final SimpleInterval variantInterval = new SimpleInterval("3", 13372+offset, 13372+offset);
+        final VariantContext vc =  new VariantContextBuilder()
+                .chr(variantInterval.getContig()).start(variantInterval.getStart()).stop(variantInterval.getEnd())
+                .alleles(alleles)
+                .make();
+        final ReferenceContext referenceContext = new ReferenceContext(ReferenceDataSource.of(Paths.get(FuncotatorReferenceTestUtils.retrieveB37Chr3Ref())), variantInterval);
+        final List<Feature> vcfFeatures;
+        try (final VCFFileReader vcfReader = new VCFFileReader(IOUtils.getPath(EXAC_SNIPPET))) {
+            vcfFeatures = vcfReader.query(variantInterval.getContig(), variantInterval.getStart(), variantInterval.getEnd()).stream().collect(Collectors.toList());
+        }
+
+        return Triple.of(vc, referenceContext, vcfFeatures);
     }
 }
