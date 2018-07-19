@@ -7,6 +7,7 @@ RUN apt-get update && \
     apt-get upgrade -y && \
     apt-get install -y python && \
     apt-get install -y wget \
+    apt-get install -y bzip2 \
     curl \
     unzip \
     less \
