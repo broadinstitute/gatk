@@ -44,7 +44,7 @@ public final class CollectInsertSizeMetricsSparkIntegrationTest extends CommandL
     // these same tests are included in in InsertSizeMetricsCollectorSparkUnitTest, using the
     // InsertSizeMetricsCollectorSpark object directly, where a repartition on the RDD is used to
     // force the code to run on more than one partition and execute the combine/reduce code.
-    @Test(dataProvider="metricsInputFiles", groups = "spark")
+    @Test(dataProvider="metricsInputFiles", groups = {"python", "spark"})
     public void test(
             final String fileName,
             final String referenceName,
