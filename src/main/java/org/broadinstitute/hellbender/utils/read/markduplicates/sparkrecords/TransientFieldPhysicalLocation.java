@@ -3,7 +3,10 @@ package org.broadinstitute.hellbender.utils.read.markduplicates.sparkrecords;
 import picard.sam.util.PhysicalLocation;
 
 /**
- * A common interface for holding the fields in PhysicalLocation
+ * A common class for holding the fields in PhysicalLocation that we don't want to be serialized by kryo.
+ *
+ * NOTE: readGroupIndex is not transient as the readgroup is needed in several stages of MarkDuplicatesSpark, but is still
+ *       contained in this class to mirror {@link PhysicalLocation}
  */
 public abstract class TransientFieldPhysicalLocation extends PairedEnds implements PhysicalLocation {
     // Information used to detect optical dupes
