@@ -1,5 +1,5 @@
 # Using OpenJDK 8
-FROM broadinstitute/gatk:gatkbase-2.0.0
+FROM broadinstitute/gatk:gatkbase-2.1.0
 
 # Location of the unzipped gatk bundle files
 ARG ZIPPATH
@@ -40,7 +40,6 @@ RUN echo "source activate gatk" > /root/run_unit_tests.sh && \
 WORKDIR /root
 RUN cp -r /root/run_unit_tests.sh /gatk
 RUN cp -r gatk.jar /gatk
-RUN cp -r install_R_packages.R /gatk
 
 # Start GATK Python environment
 

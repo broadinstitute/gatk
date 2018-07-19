@@ -74,8 +74,9 @@ releases of the toolkit.
    docker client, which can be found on the [docker website](https://www.docker.com/get-docker).
 * Python Dependencies:<a name="python"></a>
     * GATK4 uses the [Conda](https://conda.io/docs/index.html) package manager to establish and manage the
-      Python environment and dependencies required by GATK tools that have a Python dependency. There are two different
-      conda environments that can be used:
+      Python environment and dependencies required by GATK tools that have a Python dependency. This environment also 
+      includes the R  dependencies used for plotting in some of the tools. There are two different conda environments 
+      that can be used:
         * The ```gatk``` environment, which has no special hardware requirements. The GATK Docker image comes with the
           "gatk" environment pre-configured.
         * The ```gatk-intel``` environment, which requires and uses Intel (AVX2 or AVX-512) hardware acceleration to
@@ -301,25 +302,7 @@ You can download and run pre-built versions of GATK4 from the following places:
 * Note: Some GATK Spark tools by default require the reference file to be in 2bit format (notably `BaseRecalibratorSpark`,`BQSRPipelineSpark` and `ReadsPipelineSpark`). You can convert your fasta to 2bit by using the `faToTwoBit` utility from [UCSC](http://hgdownload.soe.ucsc.edu/admin/exe/) - see also the [documentation for `faToTwoBit`](https://genome.ucsc.edu/goldenpath/help/blatSpec.html#faToTwoBitUsage).
 
 #### <a name="R">Using R to generate plots</a>
-Certain GATK tools may optionally generate plots if R is installed.  We recommend **R v3.2.5** if you want to produce plots.  If you are uninterested in plotting, R is still required by several of the unit tests.  Plotting is currently untested and should be viewed as a convenience rather than a primary output.
-
-R installation is not part of the gradle build.  See http://cran.r-project.org/ for general information on installing R for your system.
-* for ubuntu see these [ubuntu specific instructions](http://cran.r-project.org/bin/linux/ubuntu/README)
-* for OSX we recommend installation through [homebrew](http://brew.sh/)
-```
-brew tap homebrew/science
-brew install R
-```
-
-The plotting R scripts require certain R packages to be installed. You can install these by running `scripts/docker/gatkbase/install_R_packages.R`.  Either run it as superuser to force installation into the sites library or run interactively and create a local library.
-```
-sudo Rscript scripts/docker/gatkbase/install_R_packages.R
-```
-**or**
-```
-R 
-source("scripts/docker/gatkbase/install_R_packages.R")
-```
+Certain GATK tools may optionally generate plots using the R installation provided within the conda environment.  If you are uninterested in plotting, R is still required by several of the unit tests.  Plotting is currently untested and should be viewed as a convenience rather than a primary output.
 
 #### <a name="tab_completion">Bash Command-line Tab Completion (BETA)</a>
 

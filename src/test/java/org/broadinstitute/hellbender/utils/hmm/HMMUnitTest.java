@@ -69,19 +69,12 @@ public final class HMMUnitTest extends GATKBaseTest {
 
     private static List<Pair<List<TestHMM.State>, List<TestHMM.Datum>>> TEST_SEQUENCES;
 
-    private static File TEST_SEQUENCE_FILE;
-
-    private static File TEST_R_RESULTS_FILE;
+    private static final File TEST_R_RESULTS_FILE = new File(packageRootTestDir, "utils/hmm/hmm-unit-test-truth.tsv");
 
     private static List<ExpectedResult> TEST_EXPECTED_RESULTS;
 
-    @Test
-    public void testSetup() throws IOException {
-        setUp();
-    }
-
     /**
-     * This method runs the Test models and sequences against R's HMM package to
+     * This method runs the Test models and sequences against results generated using R's HMM package to
      * obtain independent estimates for the expected values for the Viterbi and Forward-Backward
      * algorithm.
      * <p>
@@ -101,25 +94,6 @@ public final class HMMUnitTest extends GATKBaseTest {
         TEST_SEQUENCES = TEST_MODELS.stream().map(m -> m.generate(positions, RANDOM))
                 .collect(Collectors.toList());
 
-        TEST_SEQUENCE_FILE = createTempFile("sequences", ".seq");
-        final PrintWriter writer = new PrintWriter(new FileWriter(TEST_SEQUENCE_FILE));
-        TEST_SEQUENCES.forEach(s -> {
-            final StringBuilder builder = new StringBuilder(TEST_PATH_LENGTH);
-            s.getSecond().forEach(c -> {
-                builder.append(c.toString());
-                builder.append(',');
-            });
-            builder.setLength(builder.length() - 1);
-            writer.println(builder.toString());
-        });
-        writer.close();
-        TEST_R_RESULTS_FILE = createTempFile("r-output", ".tab");
-        RScriptExecutor rExecutor = new RScriptExecutor();
-        final File script = composeRScriptFile();
-        rExecutor.addScript(script);
-        if (!rExecutor.exec()) {
-            Assert.fail("could not obtain expected results from R");
-        }
         @SuppressWarnings({"rawtypes", "unchecked"})
         final List<RResultRecord>[][] recordsByModelAndSequence = (List<RResultRecord>[][]) new List[TEST_MODELS.size()][TEST_SEQUENCES.size()];
         try (final RResultReader reader = new RResultReader(TEST_R_RESULTS_FILE)) {
@@ -158,47 +132,6 @@ public final class HMMUnitTest extends GATKBaseTest {
 
         return new ExpectedResult(TEST_MODELS.get(modelIndex), TEST_SEQUENCES.get(sequenceIndex).getSecond(), bestPath,
                 logForwardProbs, logBackwardProbs, logProbabilities);
-    }
-
-    private File composeRScriptFile() throws IOException {
-        final File script = createTempFile("r-script", ".R");
-        try (final PrintWriter scriptWriter = new PrintWriter(new FileWriter(script))) {
-            scriptWriter.println(TestHMM.toHMMInstallRString());
-            scriptWriter.println("outfile = \"" + TEST_R_RESULTS_FILE.getAbsolutePath() + '"');
-            scriptWriter.println("sequences = strsplit(readLines(\"" + TEST_SEQUENCE_FILE.getPath() + "\"), ',')");
-            scriptWriter.println("sequences.n = length(sequences)");
-            scriptWriter.println();
-            scriptWriter.println("models = " + TestHMM.toHMMModelDeclarationRString(TEST_MODELS));
-            scriptWriter.println("models.n = length(models)");
-            scriptWriter.println("write(x = paste('SEQUENCE', 'MODEL', 'POSITION', 'BEST_PATH'," +
-                    " 'FW_A', 'FW_B', 'FW_C'," +
-                    " 'BW_A', 'BW_B', 'BW_C'," +
-                    " 'PP_A', 'PP_B', 'PP_C', sep ='\\t'), file = outfile, append = F)");
-            scriptWriter.println("for (i in 1:models.n) {");
-            scriptWriter.println("    for (j in 1:sequences.n) {");
-            scriptWriter.println("        best_path = viterbi(models[[i]], sequences[[j]])");
-            scriptWriter.println("        fw = forward(models[[i]], sequences[[j]])");
-            scriptWriter.println("        bw = backward(models[[i]], sequences[[j]])");
-            scriptWriter.println("        pp = log(posterior(models[[i]], sequences[[j]]))");
-            scriptWriter.println("        for (k in 1:length(best_path)) {");
-            scriptWriter.println("            write(x = paste(j - 1, i - 1, k - 1, best_path[k]," +
-                    " fw['A', k], fw['B', k], fw['C', k]," +
-                    " bw['A', k], bw['B', k], bw['C', k]," +
-                    " pp['A', k], pp['B', k], pp['C', k], sep = '\\t'), file = outfile, append = T)");
-            scriptWriter.println("}}}");
-        }
-        return script;
-    }
-
-    @SuppressWarnings("all")
-    @AfterClass
-    private void tearDown() {
-        if (TEST_SEQUENCE_FILE != null) {
-            TEST_SEQUENCE_FILE.delete();
-        }
-        if (TEST_R_RESULTS_FILE != null) {
-            TEST_R_RESULTS_FILE.delete();
-        }
     }
 
     @Test(dataProvider = "testViterbiData")

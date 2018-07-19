@@ -76,18 +76,6 @@ before_install:
     ssh -T git@github.com;
     echo "Done testing github authentication";
   fi
-#install R
-- if [[ $TEST_DOCKER != true ]]; then
-   sudo mkdir -p /usr/local/lib/R/;
-   sudo mkdir -p site-library;
-   sudo ln -sFv ~/site-library /usr/local/lib/R/site-library;
-   sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E084DAB9;
-   sudo add-apt-repository "deb http://cran.rstudio.com/bin/linux/ubuntu trusty/";
-   sudo apt-get update;
-   sudo apt-get install -y --force-yes r-base-dev=3.1.3-1trusty;
-   sudo apt-get install -y --force-yes r-base-core=3.1.3-1trusty;
-   sudo Rscript scripts/docker/gatkbase/install_R_packages.R;
-  fi
 # Download Cromwell jar -- if you change the version, please change the CROMWELL_JAR env variable above, too.
 - if [[ $RUN_CNV_GERMLINE_WDL == true || $RUN_CNV_SOMATIC_WDL == true || $RUN_M2_WDL == true ]]; then
     wget -O $CROMWELL_JAR https://github.com/broadinstitute/cromwell/releases/download/30.2/cromwell-30.2.jar;
