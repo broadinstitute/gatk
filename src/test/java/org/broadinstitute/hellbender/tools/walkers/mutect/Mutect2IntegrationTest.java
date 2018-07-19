@@ -17,6 +17,7 @@ import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceSummary
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
+import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -103,7 +104,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         // also check that alleles have been properly clipped after dropping any non-called alleles, i.e. if we had AAA AA A
         // and A got dropped, we need AAA AA -> AA A.  The condition we don't want is that all alleles share a common first base
         // and no allele has length 1.
-        StreamSupport.stream(new FeatureDataSource<VariantContext>(unfilteredVcf).spliterator(), false)
+        VariantContextTestUtils.streamVcf(unfilteredVcf)
                 .forEach(vc -> {
                     final Genotype tumorGenotype = vc.getGenotype(tumorSample);
                     final int[] f1r2 = OrientationBiasUtils.getF1R2(tumorGenotype);
@@ -166,7 +167,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         // run FilterMutectCalls
         new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-V", unfilteredVcf.getAbsolutePath(), "-O", filteredVcf.getAbsolutePath()), FilterMutectCalls.class.getSimpleName()));
 
-        final long numVariants = StreamSupport.stream(new FeatureDataSource<VariantContext>(filteredVcf).spliterator(), false)
+        final long numVariants = VariantContextTestUtils.streamVcf(filteredVcf)
                 .filter(vc -> vc.getFilters().isEmpty()).count();
 
         Assert.assertEquals(numVariants, 0);
@@ -196,7 +197,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         };
 
         runCommandLine(args);
-        final long numVariants = StreamSupport.stream(new FeatureDataSource<VariantContext>(outputVcf).spliterator(), false).count();
+        final long numVariants = VariantContextTestUtils.streamVcf(outputVcf).count();
         Assert.assertTrue(numVariants < 4);
     }
 
@@ -218,9 +219,9 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         // run FilterMutectCalls
         new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-V", unfilteredVcf.getAbsolutePath(), "-O", filteredVcf.getAbsolutePath()), "FilterMutectCalls"));
 
-        final long numVariantsBeforeFiltering = StreamSupport.stream(new FeatureDataSource<VariantContext>(unfilteredVcf).spliterator(), false).count();
+        final long numVariantsBeforeFiltering = VariantContextTestUtils.streamVcf(unfilteredVcf).count();
 
-        final long numVariantsPassingFilters = StreamSupport.stream(new FeatureDataSource<VariantContext>(filteredVcf).spliterator(), false)
+        final long numVariantsPassingFilters = VariantContextTestUtils.streamVcf(filteredVcf)
                 .filter(vc -> vc.getFilters().isEmpty()).count();
 
         // just a sanity check that this bam has some germline variants on this interval so that our test doesn't pass trivially!
@@ -255,7 +256,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     // this is particular to our particular artificial MNP bam -- we extract a method in order to use it for HaplotypeCaller
     private static void checkMnpOutput(int maxMnpDistance, File outputVcf) {
         // note that for testing HaplotypeCaller GVCF mode we will always have the symbolic <NON REF> allele
-        final Map<Integer, List<String>> alleles = StreamSupport.stream(new FeatureDataSource<VariantContext>(outputVcf).spliterator(), false)
+        final Map<Integer, List<String>> alleles = VariantContextTestUtils.streamVcf(outputVcf)
                 .collect(Collectors.toMap(VariantContext::getStart, vc -> vc.getAlternateAlleles().stream().filter(a -> !a.isSymbolic()).map(Allele::getBaseString).collect(Collectors.toList())));
 
         // phased, two bases apart
@@ -310,7 +311,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "--alleles", givenAllelesVcf.getAbsolutePath());
         runCommandLine(args);
 
-        final Map<Integer, List<Allele>> altAllelesByPosition = StreamSupport.stream(new FeatureDataSource<VariantContext>(unfilteredVcf).spliterator(), false)
+        final Map<Integer, List<Allele>> altAllelesByPosition = VariantContextTestUtils.streamVcf(unfilteredVcf)
                 .collect(Collectors.toMap(vc -> vc.getStart(), vc-> vc.getAlternateAlleles()));
         for (final VariantContext vc : new FeatureDataSource<VariantContext>(givenAllelesVcf)) {
             final List<Allele> altAllelesAtThisLocus = altAllelesByPosition.get(vc.getStart());
@@ -344,24 +345,24 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
 
         final Set<VariantContext> variantsFilteredAtZeroPct =
-                StreamSupport.stream(new FeatureDataSource<VariantContext>(filteredVcfNoContamination).spliterator(), false)
-                .filter(vc -> vc.getFilters().contains(GATKVCFConstants.CONTAMINATION_FILTER_NAME))
-                .collect(Collectors.toSet());
+                VariantContextTestUtils.streamVcf(filteredVcfNoContamination)
+                        .filter(vc -> vc.getFilters().contains(GATKVCFConstants.CONTAMINATION_FILTER_NAME))
+                        .collect(Collectors.toSet());
 
         final Set<VariantContext> variantsFilteredAtFivePct =
-                StreamSupport.stream(new FeatureDataSource<VariantContext>(filteredVcfFivePctContamination).spliterator(), false)
+                VariantContextTestUtils.streamVcf(filteredVcfFivePctContamination)
                         .filter(vc -> vc.getFilters().contains(GATKVCFConstants.CONTAMINATION_FILTER_NAME))
                         .collect(Collectors.toSet());
 
         final Set<VariantContext> variantsFilteredAtTenPct =
-                StreamSupport.stream(new FeatureDataSource<VariantContext>(filteredVcfTenPctContamination).spliterator(), false)
+                VariantContextTestUtils.streamVcf(filteredVcfTenPctContamination)
                         .filter(vc -> vc.getFilters().contains(GATKVCFConstants.CONTAMINATION_FILTER_NAME))
                         .collect(Collectors.toSet());
 
         Assert.assertTrue(variantsFilteredAtZeroPct.isEmpty());
         Assert.assertTrue(variantsFilteredAtFivePct.size() < variantsFilteredAtTenPct.size());
 
-        final List<VariantContext> missedObviousVariantsAtTenPercent = StreamSupport.stream(new FeatureDataSource<VariantContext>(filteredVcfTenPctContamination).spliterator(), false)
+        final List<VariantContext> missedObviousVariantsAtTenPercent = VariantContextTestUtils.streamVcf(filteredVcfTenPctContamination)
                 .filter(vc -> !vc.getFilters().contains(GATKVCFConstants.CONTAMINATION_FILTER_NAME))
                 .filter(VariantContext::isBiallelic)
                 .filter(vc -> {
@@ -372,7 +373,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(missedObviousVariantsAtTenPercent.isEmpty());
 
         // If the filter is smart, it won't filter variants with allele fraction much higher than the contamination
-        final List<VariantContext> highAlleleFractionFilteredVariantsAtFivePercent = StreamSupport.stream(new FeatureDataSource<VariantContext>(filteredVcfFivePctContamination).spliterator(), false)
+        final List<VariantContext> highAlleleFractionFilteredVariantsAtFivePercent = VariantContextTestUtils.streamVcf(filteredVcfFivePctContamination)
                 .filter(vc -> vc.getFilters().contains(GATKVCFConstants.CONTAMINATION_FILTER_NAME))
                 .filter(VariantContext::isBiallelic)
                 .filter(vc -> {
@@ -552,11 +553,11 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
     //TODO: bring this to HaplotypeCallerIntegrationTest
     private Pair<Double, Double> calculateConcordance(final File outputVcf, final File truthVcf ) {
-        final Set<String> outputKeys = StreamSupport.stream(new FeatureDataSource<VariantContext>(outputVcf).spliterator(), false)
+        final Set<String> outputKeys = VariantContextTestUtils.streamVcf(outputVcf)
                 .filter(vc -> vc.getFilters().isEmpty())
                 .filter(vc -> ! vc.isSymbolicOrSV())
                 .map(vc -> keyForVariant(vc)).collect(Collectors.toSet());
-        final Set<String> truthKeys = StreamSupport.stream(new FeatureDataSource<VariantContext>(truthVcf).spliterator(), false)
+        final Set<String> truthKeys = VariantContextTestUtils.streamVcf(truthVcf)
                 .filter(vc -> vc.getFilters().isEmpty())
                 .filter(vc -> ! vc.isSymbolicOrSV())
                 .map(vc -> keyForVariant(vc)).collect(Collectors.toSet());

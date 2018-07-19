@@ -28,9 +28,12 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.testng.Assert;
 
+import java.io.File;
 import java.io.PrintStream;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 public final class VariantContextTestUtils {
 
@@ -517,5 +520,10 @@ public final class VariantContextTestUtils {
     private static List<Annotation> instantiateAnnotations(final CommandLineParser clp) {
         GATKAnnotationPluginDescriptor annotationPlugin = clp.getPluginDescriptor(GATKAnnotationPluginDescriptor.class);
         return annotationPlugin.getResolvedInstances();
+    }
+
+    public static Stream<VariantContext> streamVcf(final File vcf) {
+        final FeatureDataSource<VariantContext> featureDataSource = new FeatureDataSource<>(vcf);
+        return StreamSupport.stream(featureDataSource.spliterator(), false).onClose(() -> featureDataSource.close());
     }
 }
