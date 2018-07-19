@@ -40,10 +40,9 @@ public class ClinVarFilter extends FuncotationFilter {
     @Override
     List<FuncotationFiltrationRule> getRules() {
         return Arrays.asList(
-                (variant, prunedTranscriptFuncotations) ->
-                        prunedTranscriptFuncotations.containsKey(ACMG_DISEASE_FUNCOTATION),
-                (variant, prunedTranscriptFuncotations) -> {
-                    final String significance = prunedTranscriptFuncotations.getOrDefault(CLINVAR_SIGNIFICANCE_FUNCOTATION, "");
+                funcotations -> funcotations.containsKey(ACMG_DISEASE_FUNCOTATION),
+                funcotations -> {
+                    final String significance = funcotations.getOrDefault(CLINVAR_SIGNIFICANCE_FUNCOTATION, "");
                     return significance.contains("Pathogenic") || significance.contains("Likely_pathogenic");
                 },
                 FilterFuncotationsExacUtils.buildExacMaxMafRule(0.05));

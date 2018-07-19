@@ -146,7 +146,7 @@ public class FilterFuncotations extends VariantWalker {
 
             transcriptFuncotations.forEach(funcotations -> {
                 final Set<String> matches = funcotationFilters.stream()
-                        .filter(f -> f.checkFilter(variant, funcotations))
+                        .filter(f -> f.checkFilter(funcotations))
                         .map(FuncotationFilter::getFilterName)
                         .collect(Collectors.toSet());
                 matchingFilters.addAll(matches);

@@ -28,7 +28,6 @@ public class LmmFilter extends FuncotationFilter {
 
     @Override
     List<FuncotationFiltrationRule> getRules() {
-        return Collections.singletonList((variant, prunedTranscriptFuncotations) ->
-                Boolean.valueOf(prunedTranscriptFuncotations.getOrDefault(LMM_FLAGGED, "false")));
+        return Collections.singletonList(funcotations -> Boolean.valueOf(funcotations.getOrDefault(LMM_FLAGGED, "false")));
     }
 }

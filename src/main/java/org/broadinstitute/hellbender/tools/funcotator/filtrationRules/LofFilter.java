@@ -52,12 +52,11 @@ public class LofFilter extends FuncotationFilter {
     @Override
     List<FuncotationFiltrationRule> getRules() {
         return Arrays.asList(
-                (variant, prunedTranscriptFuncotations) -> {
-                    final String classification = prunedTranscriptFuncotations.getOrDefault(classificationFuncotation, "");
+                funcotations -> {
+                    final String classification = funcotations.getOrDefault(classificationFuncotation, "");
                     return classification.startsWith(FRAME_SHIFT_PREFIX) || CONSTANT_LOF_CLASSIFICATIONS.contains(classification);
                 },
-                (variant, prunedTranscriptFuncotations) ->
-                        prunedTranscriptFuncotations.getOrDefault(LOF_GENE_FUNCOTATION, "NO").equals("YES"),
+                funcotations -> funcotations.getOrDefault(LOF_GENE_FUNCOTATION, "").equals("YES"),
                 FilterFuncotationsExacUtils.buildExacMaxMafRule(0.01));
     }
 }
