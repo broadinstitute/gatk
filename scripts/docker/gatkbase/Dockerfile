@@ -42,12 +42,5 @@ ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64/
 
 RUN java -version
 
-RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E084DAB9 && \
-    add-apt-repository "deb http://cran.rstudio.com/bin/linux/ubuntu xenial/" && \
-    apt-get update && \
-    apt-get -y clean && \
-    apt-get -y autoremove && \
-    apt-get  -y autoclean
-
 # Deleting unneeded caches
 RUN rm -rf /var/lib/apt/lists/*
