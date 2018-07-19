@@ -432,7 +432,7 @@ tasks.withType(Test) {
             excludeGroups "cloud", "bucket", "python", "funcotatorValidation"
         } else if (TEST_TYPE == "spark") {
             includeGroups "spark"
-            excludeGroups "cloud", "bucket", "funcotatorValidation", "variantcalling"   // some tests are also in the python group
+            excludeGroups "cloud", "bucket", "python", "funcotatorValidation", "variantcalling"
         } else if (TEST_TYPE == "python") {
             includeGroups "python"
         } else if (TEST_TYPE == "all"){
