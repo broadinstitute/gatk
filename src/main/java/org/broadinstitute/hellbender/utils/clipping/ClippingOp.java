@@ -69,7 +69,7 @@ public final class ClippingOp {
 
             case HARDCLIP_BASES: {
                 //Note: passing the original read here because the read is copied right away inside the method
-                return applyHardclipBases(originalRead, start, stop);
+                return applyHardClipBases(originalRead, start, stop);
             }
 
             case SOFTCLIP_BASES: {
@@ -171,7 +171,7 @@ public final class ClippingOp {
             // once before the hard clip (to reset the alignment stop / read length in read implementations
             // that cache these values, such as SAMRecord), and again after the hard clip.
             unclipped.setPosition(unclipped.getContig(), 1);
-            unclipped = applyHardclipBases(unclipped, 0, - newStart);
+            unclipped = applyHardClipBases(unclipped, 0, - newStart);
             
             // Reset the position to 1 again only if we didn't end up with an empty, unmapped read after hard clipping.
             // See https://github.com/broadinstitute/gatk/issues/3845
@@ -361,7 +361,7 @@ public final class ClippingOp {
      * @param stop a stop >= 0 and < read.length.
      * @return a cloned version of read that has been properly trimmed down
      */
-    private GATKRead applyHardclipBases(final GATKRead read, final int start, final int stop) {
+    private GATKRead applyHardClipBases(final GATKRead read, final int start, final int stop) {
         // If the read is unmapped there is no Cigar string and neither should we create a new cigar string
 
         final Cigar cigar = read.getCigar();//Get the cigar once to avoid multiple calls because each makes a copy of the cigar
@@ -423,7 +423,7 @@ public final class ClippingOp {
                 if (cigarElementIterator.hasNext()) {
                     cigarElement = cigarElementIterator.next();
                 } else {
-                    throw new GATKException("Read is entirely hardclipped, shouldn't be trying to clip it's cigar string");
+                    throw new GATKException("Read is entirely hard-clipped, shouldn't be trying to clip it's cigar string");
                 }
             }
             // keep clipping until we hit stop
