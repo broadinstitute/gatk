@@ -25,25 +25,10 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
     private final int targetSampleSize;
 
     /**
-     * if true, this downsampler will be optimized for the case
-     * where most of the time we won't fill up anything like the
-     * targetSampleSize elements.  If this is false, we will allocate
-     * internal buffers to targetSampleSize initially, which minimizes
-     * the cost of allocation if we often use targetSampleSize or more
-     * elements.
-     */
-    private final boolean expectFewOverflows;
-
-    /**
      * At times this can be a linked list or an array list, depending on how we're accessing the
      * data and whether or not we're expecting few overflows
      */
     private List<GATKRead> reservoir;
-
-    /**
-     * Are we currently using a linked list for the reservoir?
-     */
-    private boolean isLinkedList;
 
     /**
      * Count of the number of reads seen. Used by the reservoir downsampling
@@ -54,35 +39,19 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
 
     /**
      * Construct a ReservoirDownsampler
+     *  @param targetSampleSize Size of the reservoir used by this downsampler.
      *
-     * @param targetSampleSize Size of the reservoir used by this downsampler.
      *
-     * @param expectFewOverflows if true, this downsampler will be optimized for the case
-     *                           where most of the time we won't fill up anything like the
-     *                           targetSampleSize elements.  If this is false, we will allocate
-     *                           internal buffers to targetSampleSize initially, which minimizes
-     *                           the cost of allocation if we often use targetSampleSize or more
-     *                           elements.
      */
-    public ReservoirDownsampler(final int targetSampleSize, final boolean expectFewOverflows ) {
+    public ReservoirDownsampler(final int targetSampleSize) {
         if ( targetSampleSize <= 0 ) {
             throw new IllegalArgumentException("Cannot do reservoir downsampling with a sample size <= 0");
         }
 
         this.targetSampleSize = targetSampleSize;
-        this.expectFewOverflows = expectFewOverflows;
+        reservoir = new ArrayList<>(targetSampleSize);
         clearItems();
         resetStats();
-    }
-
-    /**
-     * Construct a ReservoirDownsampler
-     *
-     * @param targetSampleSize Size of the reservoir used by this downsampler. Number of items retained
-     *                         after downsampling will be min(totalReads, targetSampleSize)
-     */
-    public ReservoirDownsampler(final int targetSampleSize ) {
-        this(targetSampleSize, false);
     }
 
     @Override
@@ -95,11 +64,6 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
         if ( totalReadsSeen <= targetSampleSize ) {
             reservoir.add(newRead);
         } else {
-            if ( isLinkedList ) {
-                reservoir = new ArrayList<>(reservoir);
-                isLinkedList = false;
-            }
-
             final int randomSlot = Utils.getRandomGenerator().nextInt(totalReadsSeen);
             if ( randomSlot < targetSampleSize ) {
                 reservoir.set(randomSlot, newRead);
@@ -116,8 +80,11 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
     @Override
     public List<GATKRead> consumeFinalizedItems() {
         if (hasFinalizedItems()) {
-            // pass reservoir by reference rather than make a copy, for speed
-            final List<GATKRead> downsampledItems = reservoir;
+            // one could either:
+            // 1) return copy the reservoir and then clear (but not reallocate) in clearItems, or
+            // 2) return the reservoir by reference and reallocate a new ArrayList in clearItems
+            // 2) is worse because it always reallocates the target sample size, instead of just the reads that are present
+            final List<GATKRead> downsampledItems = new ArrayList<>(reservoir);
             clearItems();
             return downsampledItems;
         } else {
@@ -156,11 +123,7 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
      */
     @Override
     public void clearItems() {
-        // if we aren't expecting many overflows, allocate a linked list not an arraylist
-        reservoir = expectFewOverflows ? new LinkedList<>() : new ArrayList<>(targetSampleSize);
-
-        // it's a linked list if we allocate one
-        isLinkedList = expectFewOverflows;
+        reservoir.clear();
 
         // an internal stat used by the downsampling process, so not cleared by resetStats() below
         totalReadsSeen = 0;

@@ -64,7 +64,7 @@ final class SamplePartitioner {
      */
     private Downsampler<GATKRead> createDownsampler(final LIBSDownsamplingInfo LIBSDownsamplingInfo) {
         return LIBSDownsamplingInfo.isPerformDownsampling()
-                ? new ReservoirDownsampler(LIBSDownsamplingInfo.getToCoverage(), true)
+                ? new ReservoirDownsampler(LIBSDownsamplingInfo.getToCoverage())
                 : new PassThroughDownsampler();
     }
 
