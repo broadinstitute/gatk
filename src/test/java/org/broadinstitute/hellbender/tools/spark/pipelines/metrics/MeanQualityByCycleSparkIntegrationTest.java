@@ -33,7 +33,7 @@ public final class MeanQualityByCycleSparkIntegrationTest extends CommandLinePro
                 {"first5000a.cram", b37_reference_20_21}
         };
     }
-    @Test(dataProvider="filenames", groups = {"R", "spark"})
+    @Test(dataProvider="filenames", groups = {"python", "spark"})
     public void test(final String inputFile, final String referenceName) throws IOException {
         final File input = new File(TEST_DATA_DIR, inputFile);
         final File expectedFile = new File(TEST_DATA_DIR, "meanqualbycycle.txt");

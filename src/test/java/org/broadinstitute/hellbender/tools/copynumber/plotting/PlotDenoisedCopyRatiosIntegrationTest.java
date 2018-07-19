@@ -31,7 +31,7 @@ public final class PlotDenoisedCopyRatiosIntegrationTest extends CommandLineProg
     private static final int THRESHOLD_PLOT_FILE_SIZE_IN_BYTES = 50000;  //test that data points are plotted (not just background/axes)
 
     //checks that output files with reasonable file sizes are generated, but correctness of output is not checked
-    @Test
+    @Test(groups = {"python"})
     public void testPlotting() {
         final File outputDir = createTempDir("testDir");
         final String[] arguments = {

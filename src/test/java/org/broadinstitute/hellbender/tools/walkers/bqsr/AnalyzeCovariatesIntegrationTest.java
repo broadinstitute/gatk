@@ -114,7 +114,7 @@ public final class AnalyzeCovariatesIntegrationTest extends CommandLineProgramTe
      * @param useAfterFile  whether to include the -after input file.
      * @throws java.io.IOException never thrown, unless there is a problem with the testing environment.
      */
-    @Test(groups = {"R"}, dataProvider="alternativeInOutAbsenceCombinations")
+    @Test(groups = {"python"}, dataProvider="alternativeInOutAbsenceCombinations")
     public void testInOutAbsence(final boolean useCsvFile, final boolean usePdfFile,
             final boolean useBQSRFile, final boolean useBeforeFile, final boolean useAfterFile)
             throws IOException {

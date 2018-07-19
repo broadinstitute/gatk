@@ -36,7 +36,7 @@ public final class PlotModeledSegmentsIntegrationTest extends CommandLineProgram
     private static final int THRESHOLD_PLOT_FILE_SIZE_IN_BYTES = 50000;  //test that data points are plotted (not just background/axes)
 
     //checks that output files with reasonable file sizes are generated, but correctness of output is not checked
-    @Test
+    @Test(groups = {"python"})
     public void testPlotting() {
         final File outputDir = createTempDir("testDir");
         final String[] arguments = {
@@ -52,7 +52,7 @@ public final class PlotModeledSegmentsIntegrationTest extends CommandLineProgram
         Assert.assertTrue(new File(outputDir, OUTPUT_PREFIX + ".modeled.png").length() > THRESHOLD_PLOT_FILE_SIZE_IN_BYTES);
     }
 
-    @Test
+    @Test(groups = {"python"})
     public void testPlottingDenoisedCopyRatiosOnly() {
         final File outputDir = createTempDir("testDir");
         final String[] arguments = {
@@ -67,7 +67,7 @@ public final class PlotModeledSegmentsIntegrationTest extends CommandLineProgram
         Assert.assertTrue(new File(outputDir, OUTPUT_PREFIX + ".modeled.png").length() > THRESHOLD_PLOT_FILE_SIZE_IN_BYTES / 2);    //copy-ratio-only plot is half the size
     }
 
-    @Test
+    @Test(groups = {"python"})
     public void testPlottingAllelicCountsOnly() {
         final File outputDir = createTempDir("testDir");
         final String[] arguments = {

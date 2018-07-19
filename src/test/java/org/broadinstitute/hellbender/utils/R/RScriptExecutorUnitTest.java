@@ -17,17 +17,17 @@ public final class RScriptExecutorUnitTest extends GATKBaseTest {
     private static final String HELLO_WORLD_SCRIPT = "print('hello, world')";
     private static final String GSALIB_LOADED_SCRIPT = "if (!'package:gsalib' %in% search()) stop('gsalib not loaded')";
 
-    @Test(groups = {"R"})
+    @Test(groups = {"python"})
     public void testRscriptExists() {
         Assert.assertTrue(new RScriptExecutor().externalExecutableExists(), "Rscript not found in environment ${PATH}");
     }
 
-    @Test(groups = {"R"})
+    @Test(groups = {"python"})
     public void testRscriptEnsureExists() {
         Assert.assertNotNull(new RScriptExecutor(true), "Rscript not found in environment ${PATH}");
     }
 
-    @Test(groups = {"R"}, dependsOnMethods = "testRscriptExists")
+    @Test(groups = {"python"}, dependsOnMethods = "testRscriptExists")
     public void testExistingScript() {
         File script = writeScript(HELLO_WORLD_SCRIPT);
         try {
@@ -39,14 +39,14 @@ public final class RScriptExecutorUnitTest extends GATKBaseTest {
         }
     }
 
-    @Test(groups = {"R"}, dependsOnMethods = "testRscriptExists", expectedExceptions = RScriptExecutorException.class)
+    @Test(groups = {"python"}, dependsOnMethods = "testRscriptExists", expectedExceptions = RScriptExecutorException.class)
     public void testNonExistentScriptException() {
         RScriptExecutor executor = new RScriptExecutor();
         executor.addScript(BaseTest.getSafeNonExistentFile("does_not_exists.R"));
         executor.exec();
     }
 
-    @Test(groups = {"R"}, dependsOnMethods = "testRscriptExists")
+    @Test(groups = {"python"}, dependsOnMethods = "testRscriptExists")
     public void testNonExistentScriptNoException() {
         logger.warn("Testing that warning is printed an no exception thrown for missing script.");
         RScriptExecutor executor = new RScriptExecutor();
@@ -55,7 +55,7 @@ public final class RScriptExecutorUnitTest extends GATKBaseTest {
         Assert.assertFalse(executor.exec(), "Exec should have returned false when the job failed");
     }
 
-    @Test(groups = {"R"}, dependsOnMethods = "testRscriptExists")
+    @Test(groups = {"python"}, dependsOnMethods = "testRscriptExists")
     public void testLibrary() {
         File script = writeScript(GSALIB_LOADED_SCRIPT);
         try {
@@ -68,7 +68,7 @@ public final class RScriptExecutorUnitTest extends GATKBaseTest {
         }
     }
 
-    @Test(groups = {"R"}, dependsOnMethods = "testRscriptExists", expectedExceptions = RScriptExecutorException.class)
+    @Test(groups = {"python"}, dependsOnMethods = "testRscriptExists", expectedExceptions = RScriptExecutorException.class)
     public void testLibraryMissing() {
         File script = writeScript(GSALIB_LOADED_SCRIPT);
         try {
