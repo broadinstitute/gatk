@@ -50,34 +50,34 @@ public final class ClippingOp {
             //   because you're not guaranteed to get a pointer to the actual array of bytes in the GATKRead
             case WRITE_NS: {
                 final GATKRead readCopied = originalRead.copy();
-                applyWRITE_NS(readCopied);
+                applyWriteNs(readCopied);
                 return readCopied;
             }
 
             case WRITE_Q0S: {
                 final GATKRead readCopied = originalRead.copy();
-                applyWRITE_Q0S(readCopied);
+                applyWriteQ0s(readCopied);
                 return readCopied;
             }
 
             case WRITE_NS_Q0S: {
                 final GATKRead readCopied = originalRead.copy();
-                applyWRITE_NS(readCopied);
-                applyWRITE_Q0S(readCopied);
+                applyWriteNs(readCopied);
+                applyWriteQ0s(readCopied);
                 return readCopied;
             }
 
             case HARDCLIP_BASES: {
                 //Note: passing the original read here because the read is copied right away inside the method
-                return applyHARDCLIP_BASES(originalRead, start, stop);
+                return applyHardClipBases(originalRead, start, stop);
             }
 
             case SOFTCLIP_BASES: {
-                return applySOFTCLIP_BASES(originalRead.copy(), runAsserts);
+                return applySoftClipBases(originalRead.copy(), runAsserts);
             }
 
             case REVERT_SOFTCLIPPED_BASES: {
-                return applyREVERT_SOFTCLIPPED_BASES(originalRead.copy());
+                return applyRevertSoftClippedBases(originalRead.copy());
             }
 
             default: {
@@ -86,7 +86,7 @@ public final class ClippingOp {
         }
     }
 
-    private GATKRead applySOFTCLIP_BASES(final GATKRead readCopied, final boolean runAsserts) {
+    private GATKRead applySoftClipBases(final GATKRead readCopied, final boolean runAsserts) {
         if (readCopied.isUnmapped()) {
             // we can't process unmapped reads
             throw new UserException("Read Clipper cannot soft clip unmapped reads");
@@ -121,13 +121,13 @@ public final class ClippingOp {
         return readCopied;
     }
 
-    private void applyWRITE_Q0S(final GATKRead readCopied) {
+    private void applyWriteQ0s(final GATKRead readCopied) {
         final byte[] newQuals = readCopied.getBaseQualities(); //this makes a copy so we can modify in place
         overwriteFromStartToStop(newQuals, (byte)0);
         readCopied.setBaseQualities(newQuals);
     }
 
-    private void applyWRITE_NS(final GATKRead readCopied) {
+    private void applyWriteNs(final GATKRead readCopied) {
         final byte[] newBases = readCopied.getBases();       //this makes a copy so we can modify in place
         overwriteFromStartToStop(newBases, (byte)'N');
         readCopied.setBases(newBases);
@@ -137,7 +137,7 @@ public final class ClippingOp {
         Arrays.fill(arr, start, Math.min(arr.length, stop+1), newVal);
     }
 
-    private GATKRead applyREVERT_SOFTCLIPPED_BASES(final GATKRead read) {
+    private GATKRead applyRevertSoftClippedBases(final GATKRead read) {
         GATKRead unclipped = read.copy();
 
         final Cigar unclippedCigar = new Cigar();
@@ -171,7 +171,7 @@ public final class ClippingOp {
             // once before the hard clip (to reset the alignment stop / read length in read implementations
             // that cache these values, such as SAMRecord), and again after the hard clip.
             unclipped.setPosition(unclipped.getContig(), 1);
-            unclipped = applyHARDCLIP_BASES(unclipped, 0, - newStart);
+            unclipped = applyHardClipBases(unclipped, 0, - newStart);
             
             // Reset the position to 1 again only if we didn't end up with an empty, unmapped read after hard clipping.
             // See https://github.com/broadinstitute/gatk/issues/3845
@@ -361,7 +361,7 @@ public final class ClippingOp {
      * @param stop a stop >= 0 and < read.length.
      * @return a cloned version of read that has been properly trimmed down
      */
-    private GATKRead applyHARDCLIP_BASES(final GATKRead read, final int start, final int stop) {
+    private GATKRead applyHardClipBases(final GATKRead read, final int start, final int stop) {
         // If the read is unmapped there is no Cigar string and neither should we create a new cigar string
 
         final Cigar cigar = read.getCigar();//Get the cigar once to avoid multiple calls because each makes a copy of the cigar
@@ -423,7 +423,7 @@ public final class ClippingOp {
                 if (cigarElementIterator.hasNext()) {
                     cigarElement = cigarElementIterator.next();
                 } else {
-                    throw new GATKException("Read is entirely hardclipped, shouldn't be trying to clip it's cigar string");
+                    throw new GATKException("Read is entirely hard-clipped, shouldn't be trying to clip it's cigar string");
                 }
             }
             // keep clipping until we hit stop

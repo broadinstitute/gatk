@@ -464,7 +464,7 @@ public final class CigarUtilsUnitTest {
     public Object[][] allClipFunkyCigars() {
         final Object[][] randomValidCigars = randomValidCigars();
         final List<Object[]> result = new ArrayList<>(randomValidCigars.length + 10);
-        result.add(new Object[] {TextCigarCodec.decode("10S20S30S")}); // all softclips.
+        result.add(new Object[] {TextCigarCodec.decode("10S20S30S")}); // all soft-clips.
         result.add(new Object[] {TextCigarCodec.decode("10H10S")}); // H and S.
         result.add(new Object[] {TextCigarCodec.decode("10H10S30H")}); // H, S and H.
         result.add(new Object[] {TextCigarCodec.decode("10S30H")}); // S and H.

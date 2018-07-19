@@ -380,7 +380,7 @@ public final class ReadClipperUnitTest extends GATKBaseTest {
     }
 
     @Test
-    public void testRevertEntirelySoftclippedReads() {
+    public void testRevertEntirelySoftClippedReads() {
         GATKRead read = ReadClipperTestUtils.makeReadFromCigar("2H1S3H");
         GATKRead clippedRead = ReadClipper.revertSoftClippedBases(read);
         Assert.assertEquals(clippedRead.getStart(), getSoftStart(read));

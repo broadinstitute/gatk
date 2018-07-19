@@ -113,7 +113,7 @@ public class SVFastqUtilsUnitTest extends GATKBaseTest {
     }
 
     @Test(expectedExceptions = GATKException.class, groups = "sv")
-    public void testNonPrimaryAlignmentWithSAWhereFirstElementHasHardclips() {
+    public void testNonPrimaryAlignmentWithSAWhereFirstElementHasHardClips() {
         final SAMFileHeader header;
         final SAMRecord samRecord;
         final GATKRead read;
