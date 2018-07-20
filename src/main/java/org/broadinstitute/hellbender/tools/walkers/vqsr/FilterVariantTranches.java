@@ -11,11 +11,14 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 
+import htsjdk.variant.vcf.VCFInfoHeaderLine;
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.barclay.argparser.ExperimentalFeature;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -41,7 +44,7 @@ import picard.cmdline.programgroups.VariantFilteringProgramGroup;
  * <h3>Usage example</h3>
  *
  *
- * <h4>Apply tranche filters based on CNN_1D scores</h4>
+ * <h4>Apply tranche filters based on the scores in the info field with key CNN_1D.</h4>
  * <pre>
  * gatk FilterVariantTranches \
  *   -V input.vcf.gz \
@@ -67,11 +70,21 @@ public class FilterVariantTranches extends TwoPassVariantWalker {
             doc = "Output VCF file")
     private String outputVcf = null;
 
-    @Argument(fullName="tranche",
-            shortName="t",
-            doc="The levels of truth sensitivity at which to slice the data. (in percents, i.e. 99.9 for 99.9 percent and 1.0 for 1 percent)",
+    @Argument(fullName="snp-tranche",
+            shortName="snp-tranche",
+            doc="The level(s) of sensitivity to SNPs in the resource VCFs at which to filter SNPs. " +
+                    "Higher numbers mean more desired sensitivity and thus less stringent filtering." +
+                    "Specified in percents, i.e. 99.9 for 99.9 percent and 1.0 for 1 percent.",
             optional=true)
-    private List<Double> tranches = new ArrayList<>(Arrays.asList(99.9, 99.99));
+    private List<Double> snpTranches = new ArrayList<>(Arrays.asList(99.9, 99.99));
+
+    @Argument(fullName="indel-tranche",
+            shortName="indel-tranche",
+            doc="The level(s) of sensitivity to indels in the resource VCFs at which to filter indels. " +
+                    "Higher numbers mean more desired sensitivity and thus less stringent filtering." +
+                    "Specified in percents, i.e. 99.9 for 99.9 percent and 1.0 for 1 percent.",
+            optional=true)
+    private List<Double> indelTranches = new ArrayList<>(Arrays.asList(99.0, 99.5));
 
     @Argument(fullName="resource",
             shortName = "resource",
@@ -82,10 +95,15 @@ public class FilterVariantTranches extends TwoPassVariantWalker {
     @Argument(fullName = "info-key", shortName = "info-key", doc = "The key must be in the INFO field of the input VCF.")
     private String infoKey = GATKVCFConstants.CNN_2D_KEY;
 
+    @Argument(fullName = StandardArgumentDefinitions.INVALIDATE_PREVIOUS_FILTERS_LONG_NAME,
+            doc = "Remove all filters that already exist in the VCF.",
+            optional=true)
+    private boolean removeOldFilters = false;
+
     private VariantContextWriter vcfWriter;
-    private List<Double> snpScores = new ArrayList<>();
+    private List<Double> resourceSNPScores = new ArrayList<>();
     private List<Double> snpCutoffs = new ArrayList<>();
-    private List<Double> indelScores = new ArrayList<>();
+    private List<Double> resourceIndelScores = new ArrayList<>();
     private List<Double> indelCutoffs = new ArrayList<>();
 
     private int scoredSnps = 0;
@@ -93,13 +111,13 @@ public class FilterVariantTranches extends TwoPassVariantWalker {
     private int scoredIndels = 0;
     private int filteredIndels = 0;
 
+    private static String SNPString = "SNP";
+    private static String INDELString = "INDEL";
+
     @Override
     public void onTraversalStart() {
-        if (tranches.size() < 1 || tranches.stream().anyMatch(d -> d < 0 || d >= 100.0)){
-            throw new GATKException("At least 1 tranche value must be given and all tranches must be greater than 0 and less than 100.");
-        }
-        tranches = tranches.stream().distinct().collect(Collectors.toList());
-        tranches.sort(Double::compareTo);
+        snpTranches = validateTranches(snpTranches);
+        indelTranches = validateTranches(indelTranches);
         vcfWriter = createVCFWriter(new File(outputVcf));
         writeVCFHeader(vcfWriter);
     }
@@ -118,12 +136,12 @@ public class FilterVariantTranches extends TwoPassVariantWalker {
             for (VariantContext v : featureContext.getValues(featureSource)) {
                 if (variant.isSNP()){
                     if(variant.getAlternateAlleles().stream().anyMatch(v.getAlternateAlleles()::contains)) {
-                        snpScores.add(Double.parseDouble((String) variant.getAttribute(infoKey)));
+                        resourceSNPScores.add(Double.parseDouble((String) variant.getAttribute(infoKey)));
                         return;
                     }
                 } else if (variant.isIndel()){
                     if(variant.getAlternateAlleles().stream().anyMatch(v.getAlternateAlleles()::contains)){
-                        indelScores.add(Double.parseDouble((String)variant.getAttribute(infoKey)));
+                        resourceIndelScores.add(Double.parseDouble((String)variant.getAttribute(infoKey)));
                         return;
                     }
                 }
@@ -133,21 +151,24 @@ public class FilterVariantTranches extends TwoPassVariantWalker {
 
     @Override
     public void afterFirstPass() {
-        logger.info(String.format("Found %d SNPs %d indels with INFO score key:%s.", scoredSnps, scoredIndels, infoKey));
-        logger.info(String.format("Found %d SNPs %d indels in the resources.", snpScores.size(), indelScores.size()));
+        logger.info(String.format("Found %d SNPs and %d indels with INFO score key:%s.", scoredSnps, scoredIndels, infoKey));
+        logger.info(String.format("Found %d SNPs and %d indels in the resources.", resourceSNPScores.size(), resourceIndelScores.size()));
 
-        if (scoredSnps == 0 || scoredIndels == 0 || snpScores.size() == 0 || indelScores.size() == 0){
-            throw new GATKException("VCF must contain SNPs and indels with scores and resources must contain matching SNPs and indels.");
+        if (scoredSnps == 0 || scoredIndels == 0 || resourceSNPScores.size() == 0 || resourceIndelScores.size() == 0){
+            throw new UserException("VCF must contain SNPs and indels with scores and resources must contain matching SNPs and indels.");
         }
 
-        Collections.sort(snpScores, Collections.reverseOrder());
-        Collections.sort(indelScores, Collections.reverseOrder());
+        Collections.sort(resourceSNPScores, Collections.reverseOrder());
+        Collections.sort(resourceIndelScores, Collections.reverseOrder());
 
-        for(double t : tranches) {
-            int snpIndex = (int)((t/100.0)*(double)(snpScores.size()-1));
-            snpCutoffs.add(snpScores.get(snpIndex));
-            int indelIndex = (int)((t/100.0)*(double)(indelScores.size()-1));
-            indelCutoffs.add(indelScores.get(indelIndex));
+        for(double t : snpTranches) {
+            int snpIndex = (int)((t/100.0)*(double)(resourceSNPScores.size()-1));
+            snpCutoffs.add(resourceSNPScores.get(snpIndex));
+        }
+
+        for(double t : indelTranches) {
+            int indelIndex = (int)((t/100.0)*(double)(resourceIndelScores.size()-1));
+            indelCutoffs.add(resourceIndelScores.get(indelIndex));
         }
 
     }
@@ -155,14 +176,16 @@ public class FilterVariantTranches extends TwoPassVariantWalker {
     @Override
     protected void secondPassApply(VariantContext variant, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext) {
         final VariantContextBuilder builder = new VariantContextBuilder(variant);
-
+        if (removeOldFilters) {
+            builder.unfiltered();
+        }
         if (variant.hasAttribute(infoKey)) {
             final double score = Double.parseDouble((String) variant.getAttribute(infoKey));
             if (variant.isSNP() && isTrancheFiltered(score, snpCutoffs)) {
-                builder.filter(filterStringFromScore(score, snpCutoffs));
+                builder.filter(filterStringFromScore(SNPString, score, snpTranches, snpCutoffs));
                 filteredSnps++;
             } else if (variant.isIndel() && isTrancheFiltered(score, indelCutoffs)) {
-                builder.filter(filterStringFromScore(score, indelCutoffs));
+                builder.filter(filterStringFromScore(INDELString, score, indelTranches, indelCutoffs));
                 filteredIndels++;
             }
         }
@@ -183,19 +206,22 @@ public class FilterVariantTranches extends TwoPassVariantWalker {
     private void writeVCFHeader(VariantContextWriter vcfWriter) {
         // setup the header fields
         final VCFHeader inputHeader = getHeaderForVariants();
-        final Set<VCFHeaderLine> inputHeaders = inputHeader.getMetaDataInSortedOrder();
-        final Set<VCFHeaderLine> hInfo = new HashSet<>(inputHeaders);
+        Set<VCFHeaderLine> hInfo = new LinkedHashSet<VCFHeaderLine>();
+        hInfo.addAll(inputHeader.getMetaDataInSortedOrder());
 
-        if( tranches.size() >= 2 ) {
-            for(int i = 0; i < tranches.size() - 1; i++) {
-                String filterKey = filterKeyFromTranches(infoKey, tranches.get(i), tranches.get(i+1));
-                String filterDescription = filterDescriptionFromTranches(infoKey, tranches.get(i), tranches.get(i+1));
-                hInfo.add(new VCFFilterHeaderLine(filterKey, filterDescription));
-            }
+        boolean hasInfoKey = hInfo.stream().anyMatch(
+                x -> x instanceof VCFInfoHeaderLine && ((VCFInfoHeaderLine) x).getID().equals(infoKey));
+        if (!hasInfoKey){
+            throw new UserException(String.format("Input VCF does not contain a header line for specified info key:%s", infoKey));
         }
-        String filterKey = filterKeyFromTranches(infoKey, tranches.get(tranches.size()-1), 100.0);
-        String filterDescription = filterDescriptionFromTranches(infoKey, tranches.get(tranches.size()-1), 100.0);
-        hInfo.add(new VCFFilterHeaderLine(filterKey, filterDescription));
+
+        if (removeOldFilters){
+            hInfo.removeIf(x -> x instanceof VCFFilterHeaderLine);
+        }
+
+        addTrancheHeaderFields(SNPString, snpTranches, hInfo);
+        addTrancheHeaderFields(INDELString, indelTranches, hInfo);
+
         final TreeSet<String> samples = new TreeSet<>();
         samples.addAll(inputHeader.getGenotypeSamples());
         hInfo.addAll(getDefaultToolVCFHeaderLines());
@@ -203,27 +229,49 @@ public class FilterVariantTranches extends TwoPassVariantWalker {
         vcfWriter.writeHeader(vcfHeader);
     }
 
-    private String filterKeyFromTranches(String infoKey, double t1, double t2){
-        return String.format("%s_Tranche_%.2f_%.2f", infoKey, t1, t2);
+    private void addTrancheHeaderFields(String type, List<Double> tranches, Set<VCFHeaderLine> hInfo){
+        if( tranches.size() >= 2 ) {
+            for(int i = 0; i < tranches.size() - 1; i++) {
+                String filterKey = filterKeyFromTranches(type, infoKey, tranches.get(i), tranches.get(i+1));
+                String filterDescription = filterDescriptionFromTranches(type, infoKey, tranches.get(i), tranches.get(i+1));
+                hInfo.add(new VCFFilterHeaderLine(filterKey, filterDescription));
+            }
+        }
+        String filterKey = filterKeyFromTranches(type, infoKey, tranches.get(tranches.size()-1), 100.0);
+        String filterDescription = filterDescriptionFromTranches(type, infoKey, tranches.get(tranches.size()-1), 100.0);
+        hInfo.add(new VCFFilterHeaderLine(filterKey, filterDescription));
+    }
+
+    private String filterKeyFromTranches(String type, String infoKey, double t1, double t2){
+        return String.format("%s_%s_Tranche_%.2f_%.2f", infoKey, type, t1, t2);
     }
     
-    private String filterDescriptionFromTranches(String infoKey, double t1, double t2){
-        return String.format("Truth sensitivity between %.2f and %.2f for info key %s", t1, t2, infoKey);
+    private String filterDescriptionFromTranches(String type, String infoKey, double t1, double t2){
+        return String.format("%s truth resource sensitivity between %.2f and %.2f for info key %s", type, t1, t2, infoKey);
     }
 
     private boolean isTrancheFiltered(double score, List<Double> cutoffs) {
         return score <= cutoffs.get(0);
     }
 
-    private String filterStringFromScore(double score, List<Double> cutoffs){
+    private String filterStringFromScore(String type, double score, List<Double> tranches, List<Double> cutoffs){
         for (int i = 0; i < cutoffs.size(); i++){
             if (score > cutoffs.get(i) && i == 0){
                 throw new GATKException("Trying to add a filter to a passing variant.");
             } else if (score > cutoffs.get(i)){
-                return filterKeyFromTranches(infoKey, tranches.get(i-1), tranches.get(i));
+                return filterKeyFromTranches(type, infoKey, tranches.get(i-1), tranches.get(i));
             }
         }
-        return filterKeyFromTranches(infoKey, tranches.get(tranches.size()-1), 100.0);
+        return filterKeyFromTranches(type, infoKey, tranches.get(tranches.size()-1), 100.0);
+    }
+
+    private List<Double> validateTranches(List<Double> tranches){
+        if (tranches.size() < 1 || tranches.stream().anyMatch(d -> d < 0 || d >= 100.0)){
+            throw new CommandLineException("At least 1 tranche value must be given and all tranches must be greater than 0 and less than 100.");
+        }
+        List<Double> newTranches = tranches.stream().distinct().collect(Collectors.toList());
+        newTranches.sort(Double::compareTo);
+        return newTranches;
     }
 
 }
