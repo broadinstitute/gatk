@@ -126,8 +126,8 @@ public class SVKmerLong extends SVKmer implements Comparable<SVKmerLong>  {
         return reverseComplement(kSize);
     }
 
-    public final Base firstBase( final int kSize ) { return Base.values()[(int)(valHigh >> (kSize-2))]; }
-    public final Base lastBase() { return Base.values()[(int)(valLow & 3)]; }
+    public final Base firstBase( final int kSize ) { return baseValues[(int)(valHigh >> (kSize-2))]; }
+    public final Base lastBase() { return baseValues[(int)(valLow & 3)]; }
     public final int firstTrimer(final int kSize ) { return (int)(valHigh >>> (kSize-6)); }
     public final int lastTrimer() { return (int)valLow & 0x3F; }
 

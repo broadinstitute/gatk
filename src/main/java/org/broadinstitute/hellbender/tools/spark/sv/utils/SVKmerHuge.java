@@ -94,12 +94,12 @@ public final class SVKmerHuge extends SVKmer implements Comparable<SVKmerHuge> {
 
     @Override
     public Base firstBase( final int kSize ) {
-        return Base.values()[(int)((vals[vals.length-1] >>> (((kSize - 1) & 0x1f) << 1)) & 0x3L)];
+        return baseValues[(int)((vals[vals.length-1] >>> (((kSize - 1) & 0x1f) << 1)) & 0x3L)];
     }
 
     @Override
     public Base lastBase() {
-        return Base.values()[(int)(vals[0] & 0x3L)];
+        return baseValues[(int)(vals[0] & 0x3L)];
     }
 
     @Override

@@ -14,8 +14,10 @@ public abstract class SVKmer {
 
         Base(final long value) { this.value = value; }
 
-        public Base complement() { return values()[3 - ordinal()]; }
+        public Base complement() { return baseValues[3 - ordinal()]; }
     }
+
+    protected static final Base[] baseValues = Base.values();
 
     // Lookup table for reverse-complementing each possible byte value.
     // Each pair of bits represents a base, so you have to reverse bits pairwise and then invert all bits.

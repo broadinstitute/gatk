@@ -24,6 +24,8 @@ public class SVKmerAdjacencies extends SVKmerLong {
         this.adjacentKmers = adjacentKmers;
     }
 
+    public int getAdjacencies() { return adjacentKmers; }
+
     @Override
     public SVKmerAdjacencies reverseComplement( final int kSize ) {
         return new SVKmerAdjacencies(super.reverseComplement(kSize), reverseComplementAdjacencies(adjacentKmers));
@@ -74,7 +76,7 @@ public class SVKmerAdjacencies extends SVKmerLong {
         for ( int baseIdx = 0; baseIdx != 4; ++baseIdx ) {
             if ( (predecessorBits & (1 << baseIdx)) != 0 ) {
                 final Integer contigId =
-                        contigEnds.get(predecessor(Base.values()[baseIdx], kSize).reverseComplement(kSize));
+                        contigEnds.get(predecessor(baseValues[baseIdx], kSize).reverseComplement(kSize));
                 if ( contigId == null ) {
                     throw new GATKException("can't find predecessor contig");
                 }
@@ -91,7 +93,7 @@ public class SVKmerAdjacencies extends SVKmerLong {
         final int successorBits = adjacentKmers & 0x0f;
         for ( int baseIdx = 0; baseIdx != 4; ++baseIdx ) {
             if ( (successorBits & (1 << baseIdx)) != 0 ) {
-                final Integer contigId = contigEnds.get(successor(Base.values()[baseIdx], kSize));
+                final Integer contigId = contigEnds.get(successor(baseValues[baseIdx], kSize));
                 if ( contigId == null ) {
                     throw new GATKException("can't find successor contig");
                 }
