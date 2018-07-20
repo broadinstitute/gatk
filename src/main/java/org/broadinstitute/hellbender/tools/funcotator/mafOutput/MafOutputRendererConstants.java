@@ -4,6 +4,8 @@ import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.Gencod
 
 import java.util.*;
 
+import static org.broadinstitute.hellbender.tools.funcotator.mafOutput.CustomMafFuncotationCreator.MAF_DBSNP_VAL_STATUS_FIELD;
+
 /**
  * Class to hold all the constants required for the {@link MafOutputRenderer}.
  * Designed to be a simple container class with no methods.
@@ -61,7 +63,8 @@ public class MafOutputRendererConstants {
     /**
      * Used for creating funcotations while rendering the MAF.
      */
-    static final String MAF_RENDERING_DATASOURCE_DUMMY_NAME = "MAF_OUTPUT";
+    static final String MAF_COUNT_RENDERING_DATASOURCE_DUMMY_NAME = "MAF_COUNT_OUTPUT";
+    static final String MAF_DBSNP_RENDERING_DATASOURCE_DUMMY_NAME = "MAF_DBSNP_OUTPUT";
 
     //==================================================================================================================
     // Specific Field Values:
@@ -152,6 +155,18 @@ public class MafOutputRendererConstants {
     public static final String FieldName_n_alt_count                            = "n_alt_count";
     public static final String FieldName_n_ref_count                            = "n_ref_count";
 
+
+    // db SNP specific
+    /**
+     * The funcotation factory name that must be specified in the config for the custom MAF renderer to recognize it as a dbSNP annotation.
+     */
+    static final String DBSNP_DS_NAME = "dbSNP";
+
+    /**
+     * The funcotation factory result we should expect for the dbsnp validation flag.
+     */
+    static final String DBSNP_VLD_NAME = DBSNP_DS_NAME + "_VLD";
+
     // Field Values:
     static final String FieldValue_Strand                  = "+";
     static final String OTHER_TRANSCRIPT_DELIMITER         = "|";
@@ -179,7 +194,7 @@ public class MafOutputRendererConstants {
     static final List<String> OutputFieldNameMap_Tumor_Seq_Allele1                      = Arrays.asList(FieldName_Tumor_Seq_Allele1, "Gencode_19_tumorSeqAllele1", "Gencode_27_tumorSeqAllele1", "Gencode_28_tumorSeqAllele1", "ref", "ref_allele", "reference_allele");
     static final List<String> OutputFieldNameMap_Tumor_Seq_Allele2                      = Arrays.asList(FieldName_Tumor_Seq_Allele2, "Gencode_19_tumorSeqAllele2", "Gencode_27_tumorSeqAllele2", "Gencode_28_tumorSeqAllele2", "alt", "alt_allele", "alt2", "alt_allele2", "alternate_allele2", "observed_allele2", "alternate_allele", "observed_allele", "alt1", "alt_allele1", "alternate_allele1", "observed_allele1");
     static final List<String> OutputFieldNameMap_dbSNP_RS                               = Arrays.asList(FieldName_dbSNP_RS, "dbsnp_rs", "dbSNP_RSPOS");
-    static final List<String> OutputFieldNameMap_dbSNP_Val_Status                       = Arrays.asList(FieldName_dbSNP_Val_Status, "dbsnp_val_status", "dbSNP_VLD");
+    static final List<String> OutputFieldNameMap_dbSNP_Val_Status                       = Arrays.asList(FieldName_dbSNP_Val_Status, MAF_DBSNP_VAL_STATUS_FIELD, "dbsnp_val_status", DBSNP_VLD_NAME);
     static final List<String> OutputFieldNameMap_Tumor_Sample_Barcode                   = Arrays.asList(FieldName_Tumor_Sample_Barcode, "tumor_barcode", "tumor_id", "case_barcode", "case_id", "tumor_name");
     static final List<String> OutputFieldNameMap_Matched_Norm_Sample_Barcode            = Arrays.asList(FieldName_Matched_Norm_Sample_Barcode, "normal_barcode", "normal_id", "control_barcode", "control_id", "normal_name", "sample_name");
     static final List<String> OutputFieldNameMap_Match_Norm_Seq_Allele1                 = Arrays.asList(FieldName_Match_Norm_Seq_Allele1, "Match_Norm_Seq_Allele1");

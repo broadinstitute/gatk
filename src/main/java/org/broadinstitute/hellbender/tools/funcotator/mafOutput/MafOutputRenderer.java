@@ -240,8 +240,8 @@ public class MafOutputRenderer extends OutputRenderer {
         }
 
         // Add the generated funcotations necessary for a MAF output rendering.
-        final List<Funcotation> customMafFuncotations = CustomMafFuncotationCreator.createCustomMafCountFields(variant, tnPairs);
-        txToFuncotationMap.getTranscriptList().forEach(txId -> txToFuncotationMap.add(txId, customMafFuncotations));
+        final List<Funcotation> customMafCountFuncotations = CustomMafFuncotationCreator.createCustomMafCountFields(variant, tnPairs);
+        txToFuncotationMap.getTranscriptList().forEach(txId -> txToFuncotationMap.add(txId, customMafCountFuncotations));
 
         // Loop through each alt allele in our variant:
         for ( final Allele altAllele : variant.getAlternateAlleles() ) {

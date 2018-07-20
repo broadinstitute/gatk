@@ -50,6 +50,19 @@ public interface Funcotation {
     String getField(final String fieldName);
 
     /**
+     * Get the value of a field in this {@link Funcotation}.
+     * @return The {@link String} value of a field in this {@link Funcotation}.  If the field name is not present,
+     * return the default value.
+     */
+    default String getFieldOrDefault(final String fieldName, final String defaultValue){
+        if (hasField(fieldName)) {
+            return getField(fieldName);
+        } else {
+            return defaultValue;
+        }
+    }
+
+    /**
      * Override fields with values as specified by the input map (for when it comes time to serialize and write this {@link Funcotation}).
      * If the given overrides map is null, will not override any field.
      * If the given overrides map is not null and if the given {@code field} is not contained in this {@link Funcotation} then a {@link org.broadinstitute.hellbender.exceptions.UserException} will be thrown.
