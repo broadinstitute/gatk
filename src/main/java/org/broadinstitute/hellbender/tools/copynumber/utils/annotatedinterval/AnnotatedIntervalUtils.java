@@ -84,11 +84,12 @@ public class AnnotatedIntervalUtils {
     /**
      *  Return a merged annotation value for the two regions and given annotation name.  Automatically solves conflicts.
      *
-     * @param annotationName the annotation to determine
-     * @param region1 first region to merge
-     * @param region2 second region to merge
-     * @param conflictFunction the function to run to solve conflicts
-     * @return string with the new, merged value of the annotation.
+     * @param annotationName the annotation to determine.
+     * @param region1 first region to merge.
+     * @param region2 second region to merge.
+     * @param conflictFunction the function to run to solve conflicts.
+     * @return string with the new, merged value of the annotation.  Returns {@code null} if the annotation name
+     * does not exist in either region.
      */
     private static String mergeAnnotationValue(final String annotationName, final AnnotatedInterval region1,
                                                final AnnotatedInterval region2, final BiFunction<String, String, String> conflictFunction) {

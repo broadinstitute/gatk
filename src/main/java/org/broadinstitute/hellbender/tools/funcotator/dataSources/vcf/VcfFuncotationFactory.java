@@ -16,11 +16,14 @@ import org.broadinstitute.hellbender.tools.funcotator.FuncotatorArgumentDefiniti
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetadata;
+import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetadataUtils;
 import org.broadinstitute.hellbender.tools.funcotator.metadata.VcfFuncotationMetadata;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.nio.file.Path;
 import java.util.*;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 /**
@@ -215,6 +218,9 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
             // TODO: What happens if there is a duplicate pos,ref,alt in the datasource?  See (https://github.com/broadinstitute/gatk/issues/4972)
             for ( final VariantContext funcotationFactoryVariant : funcotationFactoryVariants ) {
 
+                // The funcotationFactoryVariants already overlap the query variant in position, now get which
+                //  match in ref/alt as well.  And make sure to handle multiallelics in both the query variant and the
+                //  funcotation factory variant.
                 // matchIndices length will always be the same as the number of alt alleles in the variant (first parameter)
                 //  Note that this is not the same length as the funcotationFactoryVariant.
                 final int[] matchIndices = GATKVariantContextUtils.matchAllelesOnly(variant, funcotationFactoryVariant);
@@ -230,10 +236,12 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
                             populateAnnotationMap(funcotationFactoryVariant, variant, matchIndex, annotations, entry);
                         }
 
-                        outputOrderedMap.put(queryAltAllele, TableFuncotation.create(annotations, queryAltAllele, name, supportedFieldMetadata));
+                        final TableFuncotation newFuncotation = TableFuncotation.create(annotations, queryAltAllele, name, supportedFieldMetadata);
+                        outputOrderedMap.merge(queryAltAllele, newFuncotation, VcfFuncotationFactory::mergeDuplicateFuncotationFactoryVariant);
                     }
                 }
             }
+            // TODO: Get rid of the default creation in line 219 and stream over the alt alleles in the query variant. Something like:  forEach(f -> outputFuncotations.add(outputOrderedMap.computeIfAbsent(f, createDefaultFuncotation))
             outputOrderedMap.keySet().forEach(f -> outputFuncotations.add(outputOrderedMap.get(f)));
         }
         cacheMisses++;
@@ -241,6 +249,59 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
 
         // The output number of funcotations should equal to the variant.getAlternateAlleles().size()
         return outputFuncotations;
+    }
+
+    /**
+     *
+     * @param funcotation1 Must have same alt allele and datasource name as other funcotation.
+     * @param funcotation2 Must have same alt allele and datasource name as other funcotation.
+     * @return a funcotation that contains the merged fields.
+     */
+    private static Funcotation mergeDuplicateFuncotationFactoryVariant(final Funcotation funcotation1, final Funcotation funcotation2) {
+        Utils.validateArg(funcotation1.getAltAllele().equals(funcotation2.getAltAllele()), "Merge called on funcotations that have differing alt alleles.");
+        Utils.validateArg(funcotation1.getDataSourceName().equals(funcotation2.getDataSourceName()), "Merge called on funcotations that have differing datasource names.");
+
+        final LinkedHashSet<String> allFieldNames = funcotation1.getFieldNames();
+        allFieldNames.addAll(funcotation2.getFieldNames());
+
+        final Map<String, Object> mergedFieldsMap = allFieldNames.stream()
+                .collect(Collectors.toMap(f -> f, f -> mergeFuncotationValue(f, funcotation1, funcotation2, VcfFuncotationFactory::renderFieldConflicts)));
+        return TableFuncotation.create(mergedFieldsMap, funcotation1.getAltAllele(), funcotation1.getDataSourceName(),
+                FuncotationMetadataUtils.merge(funcotation1.getMetadata(), funcotation2.getMetadata()));
+    }
+
+    /**
+     *  Return a merged annotation value for the two regions and given annotation name.  Automatically solves conflicts.
+     *
+     * @param fieldName the annotation to determine.
+     * @param funcotation1 first region to merge.
+     * @param funcotation2 second region to merge.
+     * @param conflictFunction the function to run to solve conflicts.
+     * @return string with the new, merged value of the annotation.  Returns {@code null} if the annotation name
+     * does not exist in either region.
+     */
+    private static String mergeFuncotationValue(final String fieldName, final Funcotation funcotation1,
+                                                final Funcotation funcotation2, final BiFunction<String, String, String> conflictFunction) {
+        final boolean doesRegion1ContainAnnotation = funcotation1.hasField(fieldName);
+        final boolean doesRegion2ContainAnnotation = funcotation2.hasField(fieldName);
+
+        if (doesRegion1ContainAnnotation && doesRegion2ContainAnnotation) {
+
+            // Both regions contain an annotation and presumably these are of different values.
+            return conflictFunction.apply(funcotation1.getField(fieldName),
+                    funcotation2.getField(fieldName));
+        } else if (doesRegion1ContainAnnotation) {
+            return funcotation1.getField(fieldName);
+        } else if (doesRegion2ContainAnnotation) {
+            return funcotation2.getField(fieldName);
+        }
+
+        return null;
+    }
+
+    private static String renderFieldConflicts(final String value1, final String value2) {
+        //TODO fix magic constant.
+        return value1 + "|" + value2;
     }
 
     private void populateAnnotationMap(final VariantContext funcotationFactoryVariant, final VariantContext queryVariant, final int funcotationFactoryAltAlleleIndex, final LinkedHashMap<String, Object> annotations, final Map.Entry<String, Object> attributeEntry) {
@@ -387,4 +448,5 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
             return size() > MAX_ENTRIES;
         }
     }
+
 }

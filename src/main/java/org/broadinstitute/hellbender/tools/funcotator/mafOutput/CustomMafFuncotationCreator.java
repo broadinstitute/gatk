@@ -153,8 +153,9 @@ public class CustomMafFuncotationCreator {
      *
      * Relies on the datasource name to determine which funcotations are from dbSNP.
      *
-     * @param funcotations
-     * @return list of the custom dbSNP values.  Empty list if input is empty or null.
+     * @param funcotations Never {@code null}
+     * @return list of the custom dbSNP values.  If input is empty,  {@code null}, or contains no discernible
+     *  dbSNP funcotations, return an empty list.
      */
     public static List<Funcotation> createCustomMafDbSnpFields(final List<Funcotation> funcotations) {
         Utils.nonNull(funcotations);
@@ -172,14 +173,14 @@ public class CustomMafFuncotationCreator {
                 .collect(Collectors.toList());
     }
 
-    private static Funcotation createDbSnpCustomFuncotation(final Funcotation funcotation) {
+    private static Funcotation createDbSnpCustomFuncotation(final Funcotation dbSnpFuncotation) {
         return TableFuncotation.create(
                 Collections.singletonList(MAF_DBSNP_VAL_STATUS_FIELD),
                 Collections.singletonList(DBSNP_VALIDATION_VALUE_MAP.entrySet().stream()
-                    .filter(e -> funcotation.getFieldOrDefault(e.getKey(), "").toLowerCase().equals("true"))
+                    .filter(e -> dbSnpFuncotation.getFieldOrDefault(e.getKey(), "").toLowerCase().contains("true"))
                     .map(e -> DBSNP_VALIDATION_VALUE_MAP.getOrDefault(e.getKey(), ""))
                     .collect(Collectors.joining(MAF_DBSNP_VAL_STATUS_DELIMITER))),
-                funcotation.getAltAllele(),
+                dbSnpFuncotation.getAltAllele(),
                 MAF_DBSNP_RENDERING_DATASOURCE_DUMMY_NAME,
                 createCustomMafDbSnpFieldsMetadata());
     }

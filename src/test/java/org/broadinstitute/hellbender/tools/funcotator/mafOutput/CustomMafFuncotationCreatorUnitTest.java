@@ -165,7 +165,6 @@ public class CustomMafFuncotationCreatorUnitTest extends GATKBaseTest {
         Assert.assertEquals(customDbSnpFuncotations.stream().map(f -> f.getField(MAF_DBSNP_VAL_STATUS_FIELD)).collect(Collectors.toList()),
                 Collections.singletonList(gtDbSnpValStatusField));
 
-        // TODO: Finish this test
         // TODO: Test with funcotations that are not dbSNP
         // TODO: Implement a test to see if any of the funcotations are from dbSNP in the MafOutpputRenderer and issue a warning if none are found.  Use the same string that used by the CustomMafFuncotationCreator
     }
