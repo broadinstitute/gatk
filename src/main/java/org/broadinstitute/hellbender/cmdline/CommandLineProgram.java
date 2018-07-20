@@ -60,7 +60,7 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
     // abstract, this is fine (as long as no logging has to happen statically in this class).
     protected final Logger logger = LogManager.getLogger(this.getClass());
 
-    public static final String DEFAULT_TOOLKIT_SHORT_NAME = "GATK";
+    private static final String DEFAULT_TOOLKIT_SHORT_NAME = "GATK";
 
     @Argument(fullName = StandardArgumentDefinitions.TMP_DIR_NAME, common=true, optional=true)
     public List<File> TMP_DIR = new ArrayList<>();
@@ -350,10 +350,11 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
     /**
      * @return An abbreviated name of the toolkit for this tool. Subclasses may override to provide
      *         a custom toolkit name.
-     *
-     * TODO: stored in the jar manifest, like {@link CommandLineProgram#getToolkitName}
      */
-    protected String getToolkitShortName() { return DEFAULT_TOOLKIT_SHORT_NAME; }
+    protected String getToolkitShortName() {
+        // TODO: stored in the jar manifest, like {@link CommandLineProgram#getToolkitName}
+        return DEFAULT_TOOLKIT_SHORT_NAME;
+    }
 
     /**
      * @return the version of this tool. It is the version stored in the manifest of the jarfile
