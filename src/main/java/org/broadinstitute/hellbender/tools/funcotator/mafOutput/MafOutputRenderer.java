@@ -239,9 +239,19 @@ public class MafOutputRenderer extends OutputRenderer {
             logger.warn("MAF typically does not support multiple transcripts per variant, though this should be able to render (grouped by transcript).  No user action needed.");
         }
 
-        // Add the generated funcotations necessary for a MAF output rendering.
+        // Add the generated count funcotations necessary for a MAF output rendering.
         final List<Funcotation> customMafCountFuncotations = CustomMafFuncotationCreator.createCustomMafCountFields(variant, tnPairs);
         txToFuncotationMap.getTranscriptList().forEach(txId -> txToFuncotationMap.add(txId, customMafCountFuncotations));
+
+        // Add the custom dbSNP funcotations (e.g. dbSNP validation field) to populate the MAF correctly
+        for (final String txId : txToFuncotationMap.getTranscriptList()) {
+            final List<Funcotation> customDbSnpFuncotations = CustomMafFuncotationCreator.createCustomMafDbSnpFields(txToFuncotationMap.get(txId));
+            if (customDbSnpFuncotations.size() == 0) {
+                logger.warn("No dbSNP annotations exist for this variant.  Cannot render the dbSNP fields in the MAF.  These fields will not be correct.  " + variant);
+            } else {
+                txToFuncotationMap.add(txId, customDbSnpFuncotations);
+            }
+        }
 
         // Loop through each alt allele in our variant:
         for ( final Allele altAllele : variant.getAlternateAlleles() ) {

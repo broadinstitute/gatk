@@ -1081,5 +1081,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(CustomMafFuncotationCreator.COUNT_FIELD_NAMES.stream()
                 .allMatch(f -> maf.getAnnotations().contains(f)));
     }
+
+    // TODO: add a test that makes sure we populate the db snp val status field in a MAF correctly.
 }
 

@@ -75,6 +75,11 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
      */
     private final LRUCache<Triple<VariantContext, ReferenceContext, List<Feature>>, List<Funcotation>> cache = new LRUCache<>();
 
+    /**
+     * If the VCF has multiple lines with the same position, ref, and alt.
+     */
+    private final static String DUPLICATE_RECORD_DELIMITER = "|";
+
     @VisibleForTesting
     int cacheHits = 0;
     @VisibleForTesting
@@ -213,9 +218,7 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
             // Create a map that will keep the final outputs.  Default it to default funcotations for each alt allele in the
             //  query variant.
             final Map<Allele, Funcotation> outputOrderedMap = new LinkedHashMap<>();
-            variant.getAlternateAlleles().forEach(a -> outputOrderedMap.put(a, createDefaultFuncotation(a)));
 
-            // TODO: What happens if there is a duplicate pos,ref,alt in the datasource?  See (https://github.com/broadinstitute/gatk/issues/4972)
             for ( final VariantContext funcotationFactoryVariant : funcotationFactoryVariants ) {
 
                 // The funcotationFactoryVariants already overlap the query variant in position, now get which
@@ -241,8 +244,7 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
                     }
                 }
             }
-            // TODO: Get rid of the default creation in line 219 and stream over the alt alleles in the query variant. Something like:  forEach(f -> outputFuncotations.add(outputOrderedMap.computeIfAbsent(f, createDefaultFuncotation))
-            outputOrderedMap.keySet().forEach(f -> outputFuncotations.add(outputOrderedMap.get(f)));
+            variant.getAlternateAlleles().forEach(a -> outputFuncotations.add(outputOrderedMap.computeIfAbsent(a, allele -> createDefaultFuncotation(allele))));
         }
         cacheMisses++;
         cache.put(cacheKey, outputFuncotations);
@@ -300,8 +302,7 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
     }
 
     private static String renderFieldConflicts(final String value1, final String value2) {
-        //TODO fix magic constant.
-        return value1 + "|" + value2;
+        return value1 + DUPLICATE_RECORD_DELIMITER + value2;
     }
 
     private void populateAnnotationMap(final VariantContext funcotationFactoryVariant, final VariantContext queryVariant, final int funcotationFactoryAltAlleleIndex, final LinkedHashMap<String, Object> annotations, final Map.Entry<String, Object> attributeEntry) {

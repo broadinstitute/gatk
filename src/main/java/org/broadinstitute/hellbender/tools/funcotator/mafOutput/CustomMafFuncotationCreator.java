@@ -149,13 +149,13 @@ public class CustomMafFuncotationCreator {
     }
 
     /**
-     * TODO: Docs
+     * Creates a list of funcotations for each input dbSNP funcotation.  Input funcotations that are not dbSNP are ignored.
      *
-     * Relies on the datasource name to determine which funcotations are from dbSNP.
+     * Note that the determination is by using a default dbSNP name {@link MafOutputRendererConstants#DBSNP_DS_NAME}
      *
      * @param funcotations Never {@code null}
-     * @return list of the custom dbSNP values.  If input is empty,  {@code null}, or contains no discernible
-     *  dbSNP funcotations, return an empty list.
+     * @return list of the custom dbSNP values.  If input is empty,  {@code null}, or input contains no discernible
+     *  dbSNP funcotations, return an empty list.  The alt allele will be the same as the corresponding input funcotation.
      */
     public static List<Funcotation> createCustomMafDbSnpFields(final List<Funcotation> funcotations) {
         Utils.nonNull(funcotations);
