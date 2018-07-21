@@ -14,10 +14,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.AnnotatedVariantPr
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoveryInputMetaData;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoveryUtils;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedContig;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.StrandSwitch;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.*;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
 import scala.Tuple2;
@@ -148,6 +145,8 @@ public class ContigChimericAlignmentIterativeInterpreter {
             final AlignmentInterval next = iterator.next();
             if (filterAlignmentByMqOrLength) {
                 if (firstAlignmentIsTooShort(current, next, uniqueRefSpanThreshold)) {
+                    continue;
+                } else if (AssemblyContigAlignmentsConfigPicker.simpleChimeraWithStichableAlignments(current, next)) {
                     continue;
                 } else if (nextAlignmentMayBeInsertion(current, next, mapQualThresholdInclusive, uniqueRefSpanThreshold, filterWhollyContainedAlignments)) {
                     if (iterator.hasNext()) {

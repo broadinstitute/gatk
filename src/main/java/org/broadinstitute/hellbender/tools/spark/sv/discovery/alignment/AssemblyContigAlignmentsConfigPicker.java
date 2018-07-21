@@ -571,14 +571,25 @@ public class AssemblyContigAlignmentsConfigPicker {
             return bestConfigurations.stream()
                     .map(mappings -> splitGaps(mappings, false))
                     .map(mappings -> removeNonUniqueMappings(mappings, ALIGNMENT_MQ_THRESHOLD, ALIGNMENT_LOW_READ_UNIQUENESS_THRESHOLD))
+                    .filter(mappings -> alignmentShouldNotBeStitchedTogether(mappings.goodMappings))
                     .map(mappings -> createContigGivenClassifiedAlignments(contigName, contigSeq, mappings, true))
                     .sorted(getConfigurationComparator())
                     .iterator();
         } else {
             final GoodAndBadMappings intermediate = splitGaps(bestConfigurations.get(0), false);
             final GoodAndBadMappings result = removeNonUniqueMappings(intermediate, ALIGNMENT_MQ_THRESHOLD, ALIGNMENT_LOW_READ_UNIQUENESS_THRESHOLD);
-            return Collections.singletonList(createContigGivenClassifiedAlignments(contigName, contigSeq, result, false)).iterator();
+            if (alignmentShouldNotBeStitchedTogether(result.goodMappings))
+                return Collections.singletonList(createContigGivenClassifiedAlignments(contigName, contigSeq, result, false)).iterator();
+            else {
+                return Collections.emptyIterator();
+            }
         }
+    }
+
+    private static boolean alignmentShouldNotBeStitchedTogether(final List<AlignmentInterval> alignments) {
+        return alignments.size() != 2
+                ||
+                ! simpleChimeraWithStichableAlignments(alignments.get(0), alignments.get(1));
     }
 
     private static AssemblyContigWithFineTunedAlignments createContigGivenClassifiedAlignments(final String contigName, final byte[] contigSeq,
@@ -630,7 +641,8 @@ public class AssemblyContigAlignmentsConfigPicker {
      *  2) drop the gap-split child alignments whose read spans are contained in other alignment spans
      * TODO: based on evaluation done on 2018-06-30, making either choice has small effect on the final call set; one could further evaluate options when making improvements.
      */
-    private static GoodAndBadMappings splitGaps(final GoodAndBadMappings configuration, final boolean keepSplitChildrenTogether) {
+    @VisibleForTesting
+    static GoodAndBadMappings splitGaps(final GoodAndBadMappings configuration, final boolean keepSplitChildrenTogether) {
         return keepSplitChildrenTogether ? splitGapsAndKeepChildrenTogether(configuration) : splitGapsAndDropAlignmentContainedByOtherOnRead(configuration);
     }
 
@@ -691,6 +703,7 @@ public class AssemblyContigAlignmentsConfigPicker {
                 bad.addAll( Lists.newArrayList(pair._2) );
             }
         }
+        good.sort(AlignedContig.getAlignmentIntervalComparator());
         return new GoodAndBadMappings(good, bad, configuration.goodMappingToNonCanonicalChromosome);
     }
 
@@ -725,6 +738,7 @@ public class AssemblyContigAlignmentsConfigPicker {
             }
         }
         gapSplit.removeAll(bad);
+        gapSplit.sort(AlignedContig.getAlignmentIntervalComparator());
         return new GoodAndBadMappings(gapSplit, bad, configuration.goodMappingToNonCanonicalChromosome);
     }
 
@@ -857,7 +871,8 @@ public class AssemblyContigAlignmentsConfigPicker {
      * Extract the max overlap information, front and back, for each alignment in {@code configuration}.
      * For each alignment, the corresponding tuple2 has the max (front, rear) overlap base counts.
      */
-    private static Map<AlignmentInterval, Tuple2<Integer, Integer>> getMaxOverlapPairs(final List<AlignmentInterval> configuration) {
+    @VisibleForTesting
+    static Map<AlignmentInterval, Tuple2<Integer, Integer>> getMaxOverlapPairs(final List<AlignmentInterval> configuration) {
 
         final List<TempMaxOverlapInfo> intermediateResult =
                 new ArrayList<>(Collections.nCopies(configuration.size(), new TempMaxOverlapInfo()));
@@ -903,5 +918,37 @@ public class AssemblyContigAlignmentsConfigPicker {
         }
 
         return maxOverlapMap;
+    }
+
+    /**
+     * See the funny alignment signature described in ticket 4951 on GATK github
+     * @param intervalOne assumed to start no later   than {@code intervalTwo} on the read
+     * @param intervalTwo assumed to start no earlier than {@code intervalOne} on the read
+     * @return true if the two given intervals can be stitched together
+     * @throws IllegalArgumentException if the two intervals are not sorted according to their {@link AlignmentInterval#startInAssembledContig}
+     */
+    public static boolean simpleChimeraWithStichableAlignments(final AlignmentInterval intervalOne, final AlignmentInterval intervalTwo) {
+        if ( intervalOne.startInAssembledContig > intervalTwo.startInAssembledContig )
+            throw new IllegalArgumentException("Assumption that input intervals are sorted by their starts on read is violated.\tFirst: " +
+                    intervalOne.toPackedString() + "\tSecond: " + intervalTwo.toPackedString());
+        if ( ! intervalOne.referenceSpan.getContig().equals(intervalTwo.referenceSpan.getContig()))
+            return false;
+        if (intervalOne.forwardStrand != intervalTwo.forwardStrand)
+            return false;
+        if ( intervalOne.containsOnRead(intervalTwo) || intervalTwo.containsOnRead(intervalOne) )
+            return false;
+        if ( intervalOne.containsOnRef(intervalTwo) || intervalTwo.containsOnRef(intervalOne) )
+            return false;
+        final boolean refOrderSwap = intervalOne.forwardStrand != (intervalOne.referenceSpan.getStart() < intervalTwo.referenceSpan.getStart());
+        if (refOrderSwap)
+            return false;
+        final int overlapOnContig = AlignmentInterval.overlapOnContig(intervalOne, intervalTwo);
+        final int overlapOnRefSpan = AlignmentInterval.overlapOnRefSpan(intervalOne, intervalTwo);
+        if (overlapOnContig == 0 && overlapOnRefSpan == 0) {
+            final boolean canBeStitched = intervalTwo.referenceSpan.getStart() - intervalOne.referenceSpan.getEnd() == 1
+                    && intervalTwo.startInAssembledContig - intervalOne.endInAssembledContig == 1 ;
+            return canBeStitched;
+        } else
+            return overlapOnContig == overlapOnRefSpan;
     }
 }

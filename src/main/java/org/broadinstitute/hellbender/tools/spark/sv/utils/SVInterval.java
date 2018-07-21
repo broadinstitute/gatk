@@ -58,6 +58,10 @@ public final class SVInterval implements Comparable<SVInterval> {
         return this.contig < that.contig || (this.contig == that.contig && this.end <= that.start);
     }
 
+    public boolean contains( final SVInterval that ) {
+        return this.contig == that.contig && this.start <= that.start && this.end >= that.end;
+    }
+
     public int gapLen( final SVInterval that ) {
         if ( this.contig != that.contig ) return Integer.MAX_VALUE;
         return that.start - this.end;
