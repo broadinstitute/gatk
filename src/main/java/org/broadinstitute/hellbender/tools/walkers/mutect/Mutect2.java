@@ -166,7 +166,7 @@ public final class Mutect2 extends AssemblyRegionWalker {
 
     @Override
     public ReadTransformer makePostReadFilterTransformer() {
-        return super.makePostReadFilterTransformer().andThen(Mutect2Engine.makeStandardMutect2PostFilterReadTransformer(referenceArguments.getReferencePath(), true));
+        return super.makePostReadFilterTransformer().andThen(Mutect2Engine.makeStandardMutect2PostFilterReadTransformer(referenceArguments.getReferencePath(), !MTAC.dontClipITRArtifacts));
     }
 
     @Override

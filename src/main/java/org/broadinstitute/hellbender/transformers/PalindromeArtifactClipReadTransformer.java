@@ -81,12 +81,19 @@ public final class PalindromeArtifactClipReadTransformer implements ReadTransfor
         final int potentialArtifactBaseCount = readIsUpstreamOfMate ? cigar.getFirstCigarElement().getLength() :
                 cigar.getLastCigarElement().getLength();
 
+
         final int numBasesToCompare = Math.min(potentialArtifactBaseCount + minPalindromeSize, read.getLength());
-        final SimpleInterval refInterval = readIsUpstreamOfMate ?
-                new SimpleInterval(read.getContig(), adaptorBoundary - numBasesToCompare, adaptorBoundary - 1) :
-                new SimpleInterval(read.getContig(), adaptorBoundary + 1, adaptorBoundary + numBasesToCompare);
 
+        // the reference position of bases that are the reverse complement of the suspected artifact
+        final int refStart = readIsUpstreamOfMate ? adaptorBoundary - numBasesToCompare : adaptorBoundary + 1;
+        final int refEnd = readIsUpstreamOfMate ? adaptorBoundary - 1 : adaptorBoundary + numBasesToCompare;
 
+        // if the reference bases overlap the soft-clipped bases, it's not an artifact.  Note that read.getStart() is the unclipped start
+        // this can happen, for a read with a huge soft-clip that overlaps its mate significantly.
+        if ( (readIsUpstreamOfMate && refStart < read.getStart()) || (!readIsUpstreamOfMate && read.getEnd() < refEnd)) {
+            return read;
+        }
+        final SimpleInterval refInterval = new SimpleInterval(read.getContig(), refStart, refEnd);
         final MutableInt numMatch = new MutableInt(0);
 
         // we traverse the reference in the forward direction, hence the read in the reverse direction
