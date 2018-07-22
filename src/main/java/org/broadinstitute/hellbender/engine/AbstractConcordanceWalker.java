@@ -262,6 +262,9 @@ public abstract class AbstractConcordanceWalker extends GATKTool {
             return eval.get();
         }
 
+        public boolean hasTruth() {return truth.isPresent(); }
+        public boolean hasEval() { return eval.isPresent(); }
+
         public VariantContext getTruthIfPresentElseEval() { return truth.orElseGet(() -> eval.get()); }
 
         public String getContig() { return getTruthIfPresentElseEval().getContig(); }
