@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.tools.funcotator.filtrationRules;
 
+import org.broadinstitute.hellbender.utils.Utils;
+
 import java.util.List;
 import java.util.Map;
 
@@ -27,9 +29,13 @@ public abstract class FuncotationFilter {
     /**
      * Check all of this filter's rules against a set of Funcotations.
      *
+     * @param prunedTranscriptFuncotations Funcotation values of a single transcript. Assumed to have
+     *                                     been "pruned" to remove null / empty values. Never {@code null}
      * @return true if the Funcotations match all of this filter's rules, and false otherwise
      */
     public Boolean checkFilter(final Map<String, String> prunedTranscriptFuncotations) {
+        Utils.nonNull(prunedTranscriptFuncotations);
+
         return getRules().stream()
                 .map(rule -> rule.checkRule(prunedTranscriptFuncotations))
                 .reduce(Boolean::logicalAnd)

@@ -63,6 +63,11 @@ public class FilterFuncotations extends VariantWalker {
             "\n  * Exome Aggregation Consortium (ExAC) (http://exac.broadinstitute.org/)" +
             "\n  * Laboratory for Molecular Medicine (LMM) (http://personalizedmedicine.partners.org/laboratory-for-molecular-medicine/)";
 
+    /**
+     * The version of the Human Genome reference which was used when Funcotating the input VCF.
+     *
+     * Used to derive names of Gencode Funcotations.
+     */
     public enum ReferenceVersion {
         hg19(19), hg38(27);
 
@@ -91,7 +96,7 @@ public class FilterFuncotations extends VariantWalker {
 
     private VariantContextWriter outputVcfWriter;
     private String[] funcotationKeys;
-    private List<FuncotationFilter> funcotationFilters = new ArrayList<>();
+    private final List<FuncotationFilter> funcotationFilters = new ArrayList<>();
 
     @Override
     public void onTraversalStart() {
@@ -169,19 +174,19 @@ public class FilterFuncotations extends VariantWalker {
      */
     private VariantContext applyFilters(final VariantContext variant, final Set<String> matchingFilters) {
         final VariantContextBuilder variantContextBuilder = new VariantContextBuilder(variant);
+        final boolean isSignificant = !matchingFilters.isEmpty();
 
-        // Mark the individual filters that make the variant significant.
-        final String clinicalSignificance = matchingFilters.isEmpty() ?
-                FilterFuncotationsConstants.CLINSIG_INFO_NOT_SIGNIFICANT :
-                String.join(",", matchingFilters);
+        // Mark the individual filters that make the variant significant, if any.
+        final String clinicalSignificance =
+                isSignificant ? String.join(",", matchingFilters) : FilterFuncotationsConstants.CLINSIG_INFO_NOT_SIGNIFICANT;
         variantContextBuilder.attribute(FilterFuncotationsConstants.CLINSIG_INFO_KEY, clinicalSignificance);
 
         // Also set the filter field for insignificant variants, to make it easier for
         // downstream tools to extract out the interesting data.
-        if (matchingFilters.isEmpty()) {
-            variantContextBuilder.filter(FilterFuncotationsConstants.NOT_CLINSIG_FILTER);
-        } else {
+        if (isSignificant) {
             variantContextBuilder.passFilters();
+        } else {
+            variantContextBuilder.filter(FilterFuncotationsConstants.NOT_CLINSIG_FILTER);
         }
 
         return variantContextBuilder.make();

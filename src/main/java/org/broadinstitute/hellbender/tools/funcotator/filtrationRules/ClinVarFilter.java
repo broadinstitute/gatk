@@ -33,6 +33,16 @@ public class ClinVarFilter extends FuncotationFilter {
      */
     private static final String CLINVAR_SIGNIFICANCE_FUNCOTATION = "ClinVar_VCF_CLNSIG";
 
+    /**
+     * Clinically-significant values to check for within the {@value CLINVAR_SIGNIFICANCE_FUNCOTATION} Funcotation.
+     */
+    private static final List<String> CLINVAR_SIGNIFICANCE_MATCHING_VALUES = Arrays.asList("Pathogenic", "Likely_pathogenic");
+
+    /**
+     * Maximum MAF a variant can have in ExAC to pass this rule.
+     */
+    private static final double CLINVAR_MAX_MAF = 0.05;
+
     public ClinVarFilter() {
         super(CLINSIG_INFO_VALUE);
     }
@@ -43,8 +53,8 @@ public class ClinVarFilter extends FuncotationFilter {
                 funcotations -> funcotations.containsKey(ACMG_DISEASE_FUNCOTATION),
                 funcotations -> {
                     final String significance = funcotations.getOrDefault(CLINVAR_SIGNIFICANCE_FUNCOTATION, "");
-                    return significance.contains("Pathogenic") || significance.contains("Likely_pathogenic");
+                    return CLINVAR_SIGNIFICANCE_MATCHING_VALUES.stream().anyMatch(significance::contains);
                 },
-                FilterFuncotationsExacUtils.buildExacMaxMafRule(0.05));
+                FilterFuncotationsExacUtils.buildExacMaxMafRule(CLINVAR_MAX_MAF));
     }
 }

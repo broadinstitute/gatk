@@ -22,8 +22,12 @@ public class FilterFuncotationsExacUtils {
     private static String EXAC_ALLELE_NUMBER_PREFIX = "ExAC_AN_";
 
     /**
-     * Build a {@link FuncotationFiltrationRule} matching Funcotations with a MAF less than
-     * the given value across all sub-populations of ExAC.
+     * Build a {@link FuncotationFiltrationRule} matching Funcotations from variants with a
+     * maximum MAF less than some threshold.
+     *
+     * @param maxMaf the MAF threshold to check in the rule
+     * @return a {@link FuncotationFiltrationRule} matching Funcotations with a MAF (AC/AN)
+     *         less than {@code maxMaf} across all sub-populations of ExAC
      */
     public static FuncotationFiltrationRule buildExacMaxMafRule(final double maxMaf) {
         return funcotations -> getMaxMinorAlleleFreq(funcotations) <= maxMaf;

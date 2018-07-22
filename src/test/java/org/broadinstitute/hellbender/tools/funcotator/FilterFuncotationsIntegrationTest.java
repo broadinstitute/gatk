@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
-import htsjdk.samtools.util.IOUtil;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.lang3.tuple.Pair;
@@ -13,8 +12,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.IOException;
-import java.nio.file.Files;
+import java.io.File;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
@@ -47,10 +45,9 @@ public class FilterFuncotationsIntegrationTest extends CommandLineProgramTest {
     public void testFilterUniform(final String vcfName,
                                   final int build,
                                   final Set<String> expectedFilters,
-                                  final Set<String> expectedAnnotations) throws IOException {
+                                  final Set<String> expectedAnnotations) {
 
-        final Path tmpOut = Files.createTempFile(vcfName + ".filtered", ".vcf");
-        IOUtil.deleteOnExit(tmpOut);
+        final File tmpOut = createTempFile(vcfName + ".filtered", ".vcf");
 
         final List<String> args = Arrays.asList(
                 "-V", TEST_DATA_DIR.resolve(vcfName).toString(),
