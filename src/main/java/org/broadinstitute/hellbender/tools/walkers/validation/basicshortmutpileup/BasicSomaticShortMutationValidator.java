@@ -70,13 +70,12 @@ public class BasicSomaticShortMutationValidator {
                                                                        int validationTumorAltCount, int validationTumorTotalCount,
                                                                        int minBaseQualityCutoff, final SimpleInterval interval, final String filters) {
 
-        if (!isAbleToValidateGenotype(genotype, referenceAllele)){
+        if (!isAbleToValidateGenotype(genotype, referenceAllele) || validationNormalPileup == null){
             return null;
         }
 
         Utils.nonNull(referenceAllele);
         Utils.nonNull(genotype);
-        Utils.nonNull(validationNormalPileup);
         Utils.nonNull(interval);
         Utils.nonNull(filters);
         ParamUtils.isPositiveOrZero(validationTumorAltCount, "Validation alt count must be >= 0");
@@ -87,6 +86,10 @@ public class BasicSomaticShortMutationValidator {
                 referenceAllele, minBaseQualityCutoff);
         final int discoveryTumorAltCount = genotype.getAD()[1];
         final int discoveryTumorTotalCount = genotype.getAD()[0] + discoveryTumorAltCount;
+
+        if (Double.isNaN(maxAltRatioSeenInNormalValidation) || discoveryTumorTotalCount == 0) {
+            return null;
+        }
 
         final int minCountForSignal = PowerCalculationUtils.calculateMinCountForSignal(validationTumorTotalCount, maxAltRatioSeenInNormalValidation);
         final double power = PowerCalculationUtils.calculatePower(validationTumorTotalCount, discoveryTumorAltCount, discoveryTumorTotalCount, minCountForSignal);

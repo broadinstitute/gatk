@@ -227,10 +227,12 @@ public class ValidateBasicSomaticShortMutations extends VariantWalker {
                 new SimpleInterval(discoveryVariantContext.getContig(), discoveryVariantContext.getStart(), discoveryVariantContext.getEnd()),
                 filterString);
 
-        results.add(basicValidationResult);
+        if (basicValidationResult != null) {
+            results.add(basicValidationResult);
+        }
 
-        final boolean validated = basicValidationResult.isOutOfNoiseFloor();
-        final boolean powered = basicValidationResult.getPower() > minPower;
+        final boolean validated = basicValidationResult != null && basicValidationResult.isOutOfNoiseFloor();
+        final boolean powered = basicValidationResult != null && basicValidationResult.getPower() > minPower;
 
         if (discoveryVariantContext.isSNP()) {
             if (validated) {
@@ -249,7 +251,7 @@ public class ValidateBasicSomaticShortMutations extends VariantWalker {
         if (annotatedVcf != null) {
             vcfWriter.add(new VariantContextBuilder(discoveryVariantContext)
                     .attribute(JUDGMENT_INFO_FIELD_KEY, validated ? Judgment.VALIDATED : Judgment.UNVALIDATED)
-                    .attribute(POWER_INFO_FIELD_KEY, basicValidationResult.getPower())
+                    .attribute(POWER_INFO_FIELD_KEY, basicValidationResult == null ? 0 : basicValidationResult.getPower())
                     .attribute(VALIDATION_AD_INFO_FIELD_KEY, new int[] {validationTumorRefCount, validationTumorAltCount}).make());
         }
     }

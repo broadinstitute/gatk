@@ -180,4 +180,49 @@ public class ValidateBasicSomaticShortMutationsIntegrationTest extends CommandLi
                         discoveryAltCoverage, discoveryAltCoverage + discoveryRefCoverage,
                         minCount));
     }
+
+
+    //TODO delete this!!!!
+    @Test
+    public void DEBUG() {
+        // This test is simply running the full tool and making sure that there are no serious errors.
+        //  No variants should validate, since the validation bam is not the same one used for calling.
+        final File outputFile = IOUtils.createTempFile("basicTest", ".seg");
+        final File annotatedVcf = IOUtils.createTempFile("annotated", ".vcf");
+        final File summaryFile = IOUtils.createTempFile("summary", ".txt");
+        final List<String> arguments = new ArrayList<>();
+        arguments.add("--" + ValidateBasicSomaticShortMutations.SAMPLE_NAME_DISCOVERY_VCF_LONG_NAME);
+        arguments.add("H_LS-A1-A0SM-01A-11D-A099-09");
+        arguments.add("-" + ValidateBasicSomaticShortMutations.SAMPLE_NAME_VALIDATION_CASE);
+        arguments.add("H_LS-A1-A0SM-01A-11D-A19H-09");
+        arguments.add("-" + ValidateBasicSomaticShortMutations.SAMPLE_NAME_VALIDATION_CONTROL);
+        arguments.add("H_LS-A1-A0SM-10A-02D-A099-09");
+
+        arguments.add("-" + StandardArgumentDefinitions.VARIANT_SHORT_NAME);
+        arguments.add("/Users/davidben/Desktop/mc3_debug/merged.vcf");
+
+        arguments.add("-" + StandardArgumentDefinitions.INPUT_SHORT_NAME);
+        arguments.add("/Users/davidben/Desktop/mc3_debug/tumor.bam");
+        arguments.add("-" + StandardArgumentDefinitions.INPUT_SHORT_NAME);
+        arguments.add("/Users/davidben/Desktop/mc3_debug/normal.bam");
+
+        //arguments.add("-XL");
+        //arguments.add("1");
+        arguments.add("-L");
+        arguments.add("/Users/davidben/Desktop/mc3_debug/bitgt.interval_list");
+
+        arguments.add("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME);
+        arguments.add("/Users/davidben/Desktop/mc3_debug/Homo_sapiens_assembly19.fasta");
+
+        arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
+        arguments.add(outputFile.getAbsolutePath());
+        arguments.add("-" + Concordance.SUMMARY_LONG_NAME);
+        arguments.add(summaryFile.getAbsolutePath());
+
+        arguments.add("--" + ValidateBasicSomaticShortMutations.ANNOTATED_VCF_LONG_NAME);
+        arguments.add(annotatedVcf.getAbsolutePath());
+
+        runCommandLine(arguments);
+        int h = 9;
+    }
 }
