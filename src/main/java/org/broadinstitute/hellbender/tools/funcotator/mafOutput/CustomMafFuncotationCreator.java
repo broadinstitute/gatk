@@ -34,17 +34,18 @@ public class CustomMafFuncotationCreator {
             MafOutputRendererConstants.FieldName_tumor_f);
 
     public final static String MAF_DBSNP_VAL_STATUS_FIELD = "custom_dbsnp_val_status";
-    private final static String BY1KG = "by1000genomes";
+    public final static String BY_FREQ = "byFrequency";
+    public final static String BY_1KG = "by1000genomes";
     public final static Map<String, String> DBSNP_VALIDATION_VALUE_MAP =
             ImmutableMap.<String,String>builder()
-                    .put(DBSNP_DS_NAME + "_VLD", "byFrequency")
-                    .put(DBSNP_DS_NAME + "_KGVAL", BY1KG)
-                    .put(DBSNP_DS_NAME + "_KGPROD", BY1KG)
-                    .put(DBSNP_DS_NAME + "_KGPilot1", BY1KG)
-                    .put(DBSNP_DS_NAME + "_KGPilot123", BY1KG)
-                    .put(DBSNP_DS_NAME + "_KGPilot3", BY1KG)
-                    .put(DBSNP_DS_NAME + "_KGPhase1", BY1KG)
-                    .put(DBSNP_DS_NAME + "_KGPhase3", BY1KG)
+                    .put(DBSNP_DS_NAME + "_VLD", BY_FREQ)
+                    .put(DBSNP_DS_NAME + "_KGVAL", BY_1KG)
+                    .put(DBSNP_DS_NAME + "_KGPROD", BY_1KG)
+                    .put(DBSNP_DS_NAME + "_KGPilot1", BY_1KG)
+                    .put(DBSNP_DS_NAME + "_KGPilot123", BY_1KG)
+                    .put(DBSNP_DS_NAME + "_KGPilot3", BY_1KG)
+                    .put(DBSNP_DS_NAME + "_KGPhase1", BY_1KG)
+                    .put(DBSNP_DS_NAME + "_KGPhase3", BY_1KG)
                     .build();
     public static final String MAF_DBSNP_VAL_STATUS_DELIMITER = ";";
 
@@ -179,6 +180,7 @@ public class CustomMafFuncotationCreator {
                 Collections.singletonList(DBSNP_VALIDATION_VALUE_MAP.entrySet().stream()
                     .filter(e -> dbSnpFuncotation.getFieldOrDefault(e.getKey(), "").toLowerCase().contains("true"))
                     .map(e -> DBSNP_VALIDATION_VALUE_MAP.getOrDefault(e.getKey(), ""))
+                    .distinct()
                     .collect(Collectors.joining(MAF_DBSNP_VAL_STATUS_DELIMITER))),
                 dbSnpFuncotation.getAltAllele(),
                 MAF_DBSNP_RENDERING_DATASOURCE_DUMMY_NAME,

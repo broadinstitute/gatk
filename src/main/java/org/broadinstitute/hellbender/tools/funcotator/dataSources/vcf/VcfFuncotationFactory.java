@@ -16,7 +16,6 @@ import org.broadinstitute.hellbender.tools.funcotator.FuncotatorArgumentDefiniti
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetadata;
-import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetadataUtils;
 import org.broadinstitute.hellbender.tools.funcotator.metadata.VcfFuncotationMetadata;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
@@ -269,7 +268,19 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
         final Map<String, Object> mergedFieldsMap = allFieldNames.stream()
                 .collect(Collectors.toMap(f -> f, f -> mergeFuncotationValue(f, funcotation1, funcotation2, VcfFuncotationFactory::renderFieldConflicts)));
         return TableFuncotation.create(mergedFieldsMap, funcotation1.getAltAllele(), funcotation1.getDataSourceName(),
-                FuncotationMetadataUtils.merge(funcotation1.getMetadata(), funcotation2.getMetadata()));
+                merge(funcotation1.getMetadata(), funcotation2.getMetadata()));
+    }
+
+    /**
+     * Given two FuncotationMetadata, create a new one with merged content.  This is basically a set union.
+     *
+     * No checking is done to make sure that you don't have metadata that are equivalent, but not exact.  All merging
+     *  is done on exact match.
+     */
+    private static FuncotationMetadata merge(final FuncotationMetadata funcotationMetadata1, final FuncotationMetadata funcotationMetadata2) {
+        final LinkedHashSet<VCFInfoHeaderLine> rawMetadata = new LinkedHashSet<>(funcotationMetadata1.retrieveAllHeaderInfo());
+        rawMetadata.addAll(funcotationMetadata2.retrieveAllHeaderInfo());
+        return VcfFuncotationMetadata.create(new ArrayList<>(rawMetadata));
     }
 
     /**
