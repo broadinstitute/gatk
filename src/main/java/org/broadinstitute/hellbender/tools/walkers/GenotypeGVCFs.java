@@ -61,7 +61,8 @@ import java.util.*;
  * gatk --java-options "-Xmx4g" GenotypeGVCFs \
  *   -R Homo_sapiens_assembly38.fasta \
  *   -V gendb://my_database \
- *   -O output.vcf.gz
+ *   -O output.vcf.gz \
+ *   --TMP-DIR=path/to/other/tmp
  * </pre>
  *
  * <h3>Caveats</h3>
@@ -70,6 +71,7 @@ import java.util.*;
  * programs produce files that they call GVCFs but those lack some important information (accurate genotype likelihoods
  * for every position) that GenotypeGVCFs requires for its operation.</li>
  *   <li>Cannot take multiple GVCF files in one command.</li>
+ *   <li>Reading from a GenomicsDB workspace can fill up /tmp by default, causing confusing errors when scattering across many intervals. It is recommended to specify a `--TMP-DIR` if running this tool in combination with GenomicsDBImport.</li>
  * </ul>
  *
  * <h3>Special note on ploidy</h3>
