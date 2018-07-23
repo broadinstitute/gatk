@@ -2,20 +2,23 @@ package org.broadinstitute.hellbender.engine.spark;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.variant.vcf.VCFHeaderLine;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
+import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.*;
+import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.engine.TraversalParameters;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
-import org.broadinstitute.hellbender.engine.FeatureDataSource;
-import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
@@ -25,16 +28,16 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import java.time.ZonedDateTime;
+import java.util.*;
 
 /**
  * Base class for GATK spark tools that accept standard kinds of inputs (reads, reference, and/or intervals).
@@ -90,6 +93,9 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
 
     @ArgumentCollection
     protected SequenceDictionaryValidationArgumentCollection sequenceDictionaryValidationArguments = getSequenceDictionaryValidationArgumentCollection();
+
+    @Argument(fullName = StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, shortName = StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, doc = "If true, adds a command line header line to created VCF files.", optional=true, common = true)
+    public boolean addOutputVCFCommandLine = true;
 
     @Argument(doc = "For tools that write an output, write the output in multiple pieces (shards)",
             fullName = SHARDED_OUTPUT_LONG_NAME,
@@ -402,6 +408,20 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      */
     public List<Class<? extends Annotation>> getDefaultVariantAnnotationGroups() {
         return Collections.emptyList();
+    }
+
+    /**
+     * @return If addOutputVCFCommandLine is true, a set of VCF header lines containing the tool name, version,
+     * date and command line, otherwise an empty set.
+     */
+    protected Set<VCFHeaderLine> getDefaultToolVCFHeaderLines() {
+        if (addOutputVCFCommandLine) {
+            return GATKVariantContextUtils
+                    .getDefaultVCFHeaderLines(getToolkitShortName(), this.getClass().getSimpleName(),
+                            getVersion(), Utils.getDateTimeForDisplay((ZonedDateTime.now())), getCommandLine());
+        } else {
+            return new HashSet<>();
+        }
     }
 
     /**

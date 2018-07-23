@@ -10,6 +10,7 @@ import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeaderLine;
+import htsjdk.variant.vcf.VCFSimpleHeaderLine;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.ArrayUtils;
@@ -47,6 +48,30 @@ public final class GATKVariantContextUtils {
 
     public static boolean isInformative(final double[] gls) {
         return MathUtils.sum(gls) < GATKVariantContextUtils.SUM_GL_THRESH_NOCALL;
+    }
+
+    /**
+     * A method that constructs a mutable set of VCF header lines containing the tool name, version, date and command line,
+     * and return to the requesting tool.
+     * @param toolkitShortName  short name for the tool kit, e.g. "gatk"
+     * @param toolName          name of the tool
+     * @param versionString     version of the tool
+     * @param dateTime          date and time at invocation of the tool
+     * @param cmdLine           command line (e.g. options, flags) when the tool is invoked.
+     * @return A mutable set of VCF header lines containing the tool name, version, date and command line.
+     */
+    public static Set<VCFHeaderLine> getDefaultVCFHeaderLines(final String toolkitShortName, final String toolName,
+                                                              final String versionString, final String dateTime,
+                                                              final String cmdLine) {
+        final Set<VCFHeaderLine> defaultVCFHeaderLines = new HashSet<>();
+        final Map<String, String> simpleHeaderLineMap = new HashMap<>(4);
+        simpleHeaderLineMap.put("ID", toolName);
+        simpleHeaderLineMap.put("Version", versionString);
+        simpleHeaderLineMap.put("Date", dateTime);
+        simpleHeaderLineMap.put("CommandLine", cmdLine);
+        defaultVCFHeaderLines.add(new VCFHeaderLine("source", toolName));
+        defaultVCFHeaderLines.add(new VCFSimpleHeaderLine(String.format("%sCommandLine", toolkitShortName), simpleHeaderLineMap));
+        return defaultVCFHeaderLines;
     }
 
     /**

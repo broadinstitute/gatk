@@ -9,7 +9,6 @@ import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeaderLine;
-import htsjdk.variant.vcf.VCFSimpleHeaderLine;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
@@ -837,17 +836,13 @@ public abstract class GATKTool extends CommandLineProgram {
      * date and command line, otherwise an empty set.
      */
     protected Set<VCFHeaderLine> getDefaultToolVCFHeaderLines() {
-        final Set<VCFHeaderLine> gatkToolHeaderLines = new HashSet<>();
         if (addOutputVCFCommandLine) {
-            final Map<String, String> simpleHeaderLineMap = new HashMap<>(4);
-            simpleHeaderLineMap.put("ID", this.getClass().getSimpleName());
-            simpleHeaderLineMap.put("Version", getVersion());
-            simpleHeaderLineMap.put("Date", Utils.getDateTimeForDisplay((ZonedDateTime.now())));
-            simpleHeaderLineMap.put("CommandLine", getCommandLine());
-            gatkToolHeaderLines.add(new VCFHeaderLine("source", this.getClass().getSimpleName()));
-            gatkToolHeaderLines.add(new VCFSimpleHeaderLine(String.format("%sCommandLine", getToolkitShortName()), simpleHeaderLineMap));
+            return GATKVariantContextUtils
+                    .getDefaultVCFHeaderLines(getToolkitShortName(), this.getClass().getSimpleName(),
+                            getVersion(), Utils.getDateTimeForDisplay((ZonedDateTime.now())), getCommandLine());
+        } else {
+            return new HashSet<>();
         }
-        return gatkToolHeaderLines;
     }
 
     /**
@@ -866,15 +861,6 @@ public abstract class GATKTool extends CommandLineProgram {
         }
         return pgID;
     }
-
-    /**
-     * @return An abbreviated name of the toolkit for this tool. Subclasses may override to provide
-     *         a custom toolkit name.
-     *
-     * TODO: This should be refactored and moved up into CommandLineProgram, with this value
-     * TODO: stored in the jar manifest, like {@link CommandLineProgram#getToolkitName}
-     */
-    protected String getToolkitShortName() { return "GATK"; }
 
     /**
      * Call {@link GATKTool#addFeatureInputsAfterInitialization(String, String, Class, int)} with no caching.
