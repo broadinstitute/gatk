@@ -460,5 +460,4 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
             return size() > MAX_ENTRIES;
         }
     }
-
 }
