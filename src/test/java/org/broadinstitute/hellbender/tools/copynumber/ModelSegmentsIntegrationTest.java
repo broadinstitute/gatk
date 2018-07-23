@@ -36,8 +36,6 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
             "model-segments-wes-tumor-denoised-copy-ratios-with-sample-name-mismatch.denoisedCR.tsv");
     private static final File NORMAL_ALLELIC_COUNTS_FILE_WITH_MISSING_SITES = new File(TEST_SUB_DIR,
             "model-segments-wes-normal-allelic-counts-with-missing-sites.allelicCounts.tsv");
-    private static final File NORMAL_ALLELIC_COUNTS_FILE_WITH_SEQUENCE_DICTIONARY_MISMATCH = new File(TEST_SUB_DIR,
-            "model-segments-wes-normal-allelic-counts-with-sequence-dictionary-mismatch.allelicCounts.tsv");
 
     private static final SampleLocatableMetadata EXPECTED_METADATA = new CopyRatioCollection(TUMOR_DENOISED_COPY_RATIOS_FILE).getMetadata();
 
@@ -127,6 +125,13 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
         final CopyRatioSegmentCollection copyRatioSegments = new CopyRatioSegmentCollection(new File(outputDir,
                 outputPrefix + ModelSegments.COPY_RATIO_SEGMENTS_FOR_CALLER_FILE_SUFFIX));
         Assert.assertEquals(EXPECTED_METADATA, copyRatioSegments.getMetadata());
+
+        final File copyRatioLegacySegmentsFile = new File(outputDir,
+                outputPrefix + ModelSegments.COPY_RATIO_LEGACY_SEGMENTS_FILE_SUFFIX);
+        Assert.assertTrue(copyRatioLegacySegmentsFile.exists());
+        final File alleleFractionLegacySegmentsFile = new File(outputDir,
+                outputPrefix + ModelSegments.ALLELE_FRACTION_LEGACY_SEGMENTS_FILE_SUFFIX);
+        Assert.assertTrue(alleleFractionLegacySegmentsFile.exists());
 
         AllelicCountCollection hetAllelicCounts = null;
         AllelicCountCollection hetNormalAllelicCounts = null;

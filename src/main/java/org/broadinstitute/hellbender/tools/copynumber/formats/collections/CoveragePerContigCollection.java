@@ -46,7 +46,7 @@ public final class CoveragePerContigCollection extends AbstractRecordCollection<
     }
 
     @Override
-    protected Metadata.Type getMetadataType() {
+    Metadata.Type getMetadataType() {
         return Metadata.Type.LOCATABLE;
     }
 }
