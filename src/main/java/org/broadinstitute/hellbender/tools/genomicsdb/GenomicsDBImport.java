@@ -119,7 +119,7 @@ import java.util.stream.Collectors;
  *     <li>At least one interval must be provided</li>
  *     <li>Input GVCFs cannot contain multiple entries for a single genomic position</li>
  *     <li>The --genomicsdb-workspace-path must point to a non-existent or empty directory.</li>
- *     <li>GenomicsDBImport makes greedy use of /tmp by default, if your /tmp space is limited this will cause errors once /tmp has filled up. This happens quickly if the tools is running many intervals. It is therefore recommended to specify a different `--TMP-DIR`.</li>
+ *     <li>GenomicsDBImport makes greedy use of /tmp by default, if your /tmp space is limited this will cause errors once /tmp has filled up. This happens quickly if the tool is running many intervals. It is therefore recommended to specify a different `--TMP-DIR`.</li>
  * </ul>
  *
  * <h3>Developer Note</h3>
