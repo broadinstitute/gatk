@@ -20,11 +20,7 @@ import org.broadinstitute.hellbender.engine.VariantWalker;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.walkers.mutect.FilterMutectCalls;
-import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2Engine;
-import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2FilteringEngine;
 import org.broadinstitute.hellbender.tools.walkers.validation.Concordance;
-import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceState;
 import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceSummaryRecord;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -32,16 +28,12 @@ import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
-
-import static org.broadinstitute.hellbender.utils.variant.GATKVCFConstants.ALLELE_BALANCE_HET_KEY;
 
 @CommandLineProgramProperties(
         summary = "Bare-bones implementation heavily inspired by MutationValidator from Broad CGA group.\n" +
@@ -140,7 +132,7 @@ public class ValidateBasicSomaticShortMutations extends VariantWalker {
             "Validation judgment: validated, unvalidated, or skipped.");
 
 
-    public static enum Judgment {
+    public enum Judgment {
         VALIDATED, UNVALIDATED, SKIPPED;
     }
 
