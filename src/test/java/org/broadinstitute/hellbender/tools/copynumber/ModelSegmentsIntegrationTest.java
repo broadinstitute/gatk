@@ -243,4 +243,9 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
                 .addArgument(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix);
         runCommandLine(argsBuilder);
     }
+
+    @Test
+    public void testIgvFileGeneration() {
+
+    }
 }

@@ -28,7 +28,6 @@ import org.broadinstitute.hellbender.tools.copynumber.segmentation.AlleleFractio
 import org.broadinstitute.hellbender.tools.copynumber.segmentation.CopyRatioKernelSegmenter;
 import org.broadinstitute.hellbender.tools.copynumber.segmentation.MultidimensionalKernelSegmenter;
 import org.broadinstitute.hellbender.tools.copynumber.utils.segmentation.KernelSegmenter;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
@@ -220,6 +219,7 @@ public final class ModelSegments extends CommandLineProgram {
     public static final String COPY_RATIO_MODEL_PARAMETER_FILE_SUFFIX = ".cr.param";
     public static final String ALLELE_FRACTION_MODEL_PARAMETER_FILE_SUFFIX = ".af.param";
     public static final String COPY_RATIO_SEGMENTS_FOR_CALLER_FILE_SUFFIX = ".cr" + SEGMENTS_FILE_SUFFIX;
+    public static final String LEGACY_COPY_RATIO_SEGMENTS_FOR_CALLER_FILE_SUFFIX = ".igv.cr" + SEGMENTS_FILE_SUFFIX;
 
     //het genotyping argument names
     public static final String MINIMUM_TOTAL_ALLELE_COUNT_LONG_NAME = "minimum-total-allele-count";
