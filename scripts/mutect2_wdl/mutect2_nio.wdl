@@ -441,7 +441,7 @@ task SplitIntervals {
         memory: machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 10])
-        maxRetries: select_first([max_retries, 3])
+        maxRetries: select_first([max_retries, 0])
         cpu: select_first([cpu, 1])
     }
 
@@ -519,7 +519,7 @@ task M2 {
         memory: machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 10])
-        maxRetries: select_first([max_retries, 3])
+        maxRetries: select_first([max_retries, 0])
         cpu: select_first([cpu, 1])
     }
 
@@ -570,7 +570,7 @@ task MergeVCFs {
         memory: machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 10])
-        maxRetries: select_first([max_retries, 3])
+        maxRetries: select_first([max_retries, 0])
         cpu: select_first([cpu, 1])
     }
 
@@ -626,7 +626,7 @@ task MergeBamOuts {
         memory: machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 10])
-        maxRetries: select_first([max_retries, 3])
+        maxRetries: select_first([max_retries, 0])
         cpu: select_first([cpu, 1])
     }
 
@@ -671,7 +671,7 @@ task CollectSequencingArtifactMetrics {
         memory: machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 10])
-        maxRetries: select_first([max_retries, 3])
+        maxRetries: select_first([max_retries, 0])
         cpu: select_first([cpu, 1])
     }
 
@@ -721,7 +721,7 @@ task CalculateContamination {
         memory: command_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + " HDD"
         preemptible: select_first([preemptible_attempts, 10])
-        maxRetries: select_first([max_retries, 3])
+        maxRetries: select_first([max_retries, 0])
     }
 
     output {
@@ -776,7 +776,7 @@ task Filter {
         memory: machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 10])
-        maxRetries: select_first([max_retries, 3])
+        maxRetries: select_first([max_retries, 0])
         cpu: select_first([cpu, 1])
     }
 
@@ -831,7 +831,7 @@ task FilterByOrientationBias {
         memory: command_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 10])
-        maxRetries: select_first([max_retries, 3])
+        maxRetries: select_first([max_retries, 0])
         cpu: select_first([cpu, 1])
     }
 
@@ -885,7 +885,7 @@ task FilterAlignmentArtifacts {
         memory: command_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 10])
-        maxRetries: select_first([max_retries, 3])
+        maxRetries: select_first([max_retries, 0])
         cpu: select_first([cpu, 1])
     }
 
@@ -963,7 +963,7 @@ task oncotate_m2 {
         bootDiskSizeGb: 12
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 10])
-        maxRetries: select_first([max_retries, 3])
+        maxRetries: select_first([max_retries, 0])
         cpu: select_first([cpu, 1])
     }
 
@@ -992,7 +992,7 @@ task SumFloats {
         docker: "python:2.7"
         disks: "local-disk " + 10 + " HDD"
         preemptible: select_first([preemptible_attempts, 10])
-        maxRetries: select_first([max_retries, 3])
+        maxRetries: select_first([max_retries, 0])
     }
 }
 
@@ -1095,7 +1095,7 @@ task FuncotateMaf {
          memory: machine_mem + " MB"
          disks: "local-disk " + select_first([disk_space_gb, default_disk_space_gb]) + if use_ssd then " SSD" else " HDD"
          preemptible: select_first([preemptible_attempts, 3])
-         maxRetries: select_first([max_retries, 3])
+         maxRetries: select_first([max_retries, 0])
          cpu: select_first([cpu, 1])
      }
 

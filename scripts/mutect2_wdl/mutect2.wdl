@@ -457,7 +457,7 @@ task SplitIntervals {
         memory: machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 10])
-        maxRetries: select_first([max_retries, 3])
+        maxRetries: select_first([max_retries, 0])
         cpu: select_first([cpu, 1])
     }
 
