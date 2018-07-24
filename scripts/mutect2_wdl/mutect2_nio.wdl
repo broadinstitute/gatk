@@ -15,6 +15,7 @@
 ## ** Runtime ** 
 ## gatk_docker, oncotator_docker: docker images to use for GATK 4 Mutect2 and for Oncotator
 ## preemptible_attempts: how many preemptions to tolerate before switching to a non-preemptible machine (on Google)
+## max_retries: how many times to retry failed tasks -- very important on the cloud when there are transient errors
 ## gatk_override: (optional) local file or Google bucket path to a GATK 4 java jar file to be used instead of the GATK 4 jar
 ##                in the docker image.  This must be supplied when running in an environment that does not support docker
 ##                (e.g. SGE cluster on a Broad on-prem VM)
@@ -132,6 +133,7 @@ workflow Mutect2 {
     String? funcotator_extra_args
 
     Int? preemptible_attempts
+    Int? max_retries
 
     # Use as a last resort to increase the disk given to every task in case of ill behaving data
     Int? emergency_extra_disk
@@ -179,6 +181,7 @@ workflow Mutect2 {
             gatk_override = gatk_override,
             gatk_docker = gatk_docker,
             preemptible_attempts = preemptible_attempts,
+            max_retries = max_retries,
             disk_space = ref_size + ceil(size(intervals, "GB") * small_input_to_output_multiplier) + disk_pad
     }
 
@@ -192,6 +195,7 @@ workflow Mutect2 {
                 pon = pon,
                 gnomad = gnomad,
                 preemptible_attempts = preemptible_attempts,
+                max_retries = max_retries,
                 m2_extra_args = m2_extra_args,
                 make_bamout = make_bamout_or_default,
                 compress = compress,
@@ -208,7 +212,8 @@ workflow Mutect2 {
     call SumFloats as SumSubVcfs {
         input:
             sizes = sub_vcf_size,
-            preemptible_attempts = preemptible_attempts
+            preemptible_attempts = preemptible_attempts,
+            max_retries = max_retries
     }
 
     call MergeVCFs {
@@ -220,6 +225,7 @@ workflow Mutect2 {
             gatk_override = gatk_override,
             gatk_docker = gatk_docker,
             preemptible_attempts = preemptible_attempts,
+            max_retries = max_retries,
             disk_space = ceil(SumSubVcfs.total_size * large_input_to_output_multiplier) + disk_pad
     }
 
@@ -227,7 +233,8 @@ workflow Mutect2 {
         call SumFloats as SumSubBamouts {
             input:
                 sizes = sub_bamout_size,
-                preemptible_attempts = preemptible_attempts
+                preemptible_attempts = preemptible_attempts,
+                max_retries = max_retries
         }
 
         call MergeBamOuts {
@@ -239,7 +246,8 @@ workflow Mutect2 {
                 output_vcf_name = basename(MergeVCFs.merged_vcf, ".vcf"),
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
-                disk_space = ceil(SumSubBamouts.total_size * large_input_to_output_multiplier) + disk_pad
+                disk_space = ceil(SumSubBamouts.total_size * large_input_to_output_multiplier) + disk_pad,
+                max_retries = max_retries
         }
     }
 
@@ -250,6 +258,7 @@ workflow Mutect2 {
                 ref_fasta = ref_fasta,
                 ref_fai = ref_fai,
                 preemptible_attempts = preemptible_attempts,
+                max_retries = max_retries,
                 tumor_bam = tumor_bam,
                 tumor_bai = tumor_bai,
                 gatk_override = gatk_override,
@@ -264,6 +273,7 @@ workflow Mutect2 {
                 intervals = intervals,
                 ref_fasta = ref_fasta,
                 preemptible_attempts = preemptible_attempts,
+                max_retries = max_retries,
                 gatk_docker = gatk_docker,
                 tumor_bam = tumor_bam,
                 normal_bam = normal_bam,
@@ -281,6 +291,7 @@ workflow Mutect2 {
             output_name = filtered_name,
             compress = compress,
             preemptible_attempts = preemptible_attempts,
+            max_retries = max_retries,
             contamination_table = CalculateContamination.contamination_table,
             maf_segments = CalculateContamination.maf_segments,
             m2_extra_filtering_args = m2_extra_filtering_args,
@@ -299,6 +310,7 @@ workflow Mutect2 {
                 compress = compress,
                 gatk_docker = gatk_docker,
                 preemptible_attempts = preemptible_attempts,
+                max_retries = max_retries,
                 pre_adapter_metrics = input_artifact_metrics,
                 artifact_modes = artifact_modes,
                 disk_space = ceil(size(Filter.filtered_vcf, "GB") * small_input_to_output_multiplier) + ceil(size(input_artifact_metrics, "GB")) + disk_pad
@@ -314,6 +326,7 @@ workflow Mutect2 {
                 realignment_index_bundle = select_first([realignment_index_bundle]),
                 realignment_extra_args = realignment_extra_args,
                 gatk_docker = gatk_docker,
+                max_retries = max_retries,
                 compress = compress,
                 output_name = filtered_name,
                 input_vcf = realignment_filter_input
@@ -334,6 +347,7 @@ workflow Mutect2 {
                 control_id = M2.normal_sample[0],
                 oncotator_docker = oncotator_docker_or_default,
                 preemptible_attempts = preemptible_attempts,
+                max_retries = max_retries,
                 disk_space = ceil(size(oncotate_vcf_input, "GB") * large_input_to_output_multiplier) + onco_tar_size + disk_pad,
                 filter_maf = filter_oncotator_maf_or_default,
                 oncotator_extra_args = oncotator_extra_args
@@ -362,6 +376,7 @@ workflow Mutect2 {
                 sequencing_center = sequencing_center,
                 sequence_source = sequence_source,
                 disk_space_gb = ceil(size(funcotate_vcf_input, "GB") * large_input_to_output_multiplier) + funco_tar_size + disk_pad,
+                max_retries = max_retries,
                 extra_args = funcotator_extra_args
         }
     }
@@ -397,6 +412,7 @@ task SplitIntervals {
     String gatk_docker
     Int? mem
     Int? preemptible_attempts
+    Int? max_retries
     Int? disk_space
     Int? cpu
     Boolean use_ssd = false
@@ -425,6 +441,7 @@ task SplitIntervals {
         memory: machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 10])
+        maxRetries: select_first([max_retries, 3])
         cpu: select_first([cpu, 1])
     }
 
@@ -456,6 +473,7 @@ task M2 {
     String gatk_docker
     Int? mem
     Int? preemptible_attempts
+    Int? max_retries
     Int? disk_space
     Int? cpu
     Boolean use_ssd = false
@@ -501,6 +519,7 @@ task M2 {
         memory: machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 10])
+        maxRetries: select_first([max_retries, 3])
         cpu: select_first([cpu, 1])
     }
 
@@ -528,6 +547,7 @@ task MergeVCFs {
     String gatk_docker
     Int? mem
     Int? preemptible_attempts
+    Int? max_retries
     Int? disk_space
     Int? cpu
     Boolean use_ssd = false
@@ -550,6 +570,7 @@ task MergeVCFs {
         memory: machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 10])
+        maxRetries: select_first([max_retries, 3])
         cpu: select_first([cpu, 1])
     }
 
@@ -573,6 +594,7 @@ task MergeBamOuts {
     String gatk_docker
     Int? mem
     Int? preemptible_attempts
+    Int? max_retries
     Int? disk_space
     Int? cpu
     Boolean use_ssd = false
@@ -604,6 +626,7 @@ task MergeBamOuts {
         memory: machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 10])
+        maxRetries: select_first([max_retries, 3])
         cpu: select_first([cpu, 1])
     }
 
@@ -626,6 +649,7 @@ task CollectSequencingArtifactMetrics {
     String gatk_docker
     Int? mem
     Int? preemptible_attempts
+    Int? max_retries
     Int? disk_space
     Int? cpu
     Boolean use_ssd = false
@@ -647,6 +671,7 @@ task CollectSequencingArtifactMetrics {
         memory: machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 10])
+        maxRetries: select_first([max_retries, 3])
         cpu: select_first([cpu, 1])
     }
 
@@ -667,6 +692,7 @@ task CalculateContamination {
 
     # runtime
     Int? preemptible_attempts
+    Int? max_retries
     String gatk_docker
     Int? disk_space
     Int? mem
@@ -695,6 +721,7 @@ task CalculateContamination {
         memory: command_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + " HDD"
         preemptible: select_first([preemptible_attempts, 10])
+        maxRetries: select_first([max_retries, 3])
     }
 
     output {
@@ -722,6 +749,7 @@ task Filter {
     String gatk_docker
     Int? mem
     Int? preemptible_attempts
+    Int? max_retries
     Int? disk_space
     Int? cpu
     Boolean use_ssd = false
@@ -748,6 +776,7 @@ task Filter {
         memory: machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 10])
+        maxRetries: select_first([max_retries, 3])
         cpu: select_first([cpu, 1])
     }
 
@@ -773,6 +802,7 @@ task FilterByOrientationBias {
 
     # runtime
     Int? preemptible_attempts
+    Int? max_retries
     String gatk_docker
     Int? disk_space
     Int? mem
@@ -801,6 +831,7 @@ task FilterByOrientationBias {
         memory: command_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 10])
+        maxRetries: select_first([max_retries, 3])
         cpu: select_first([cpu, 1])
     }
 
@@ -826,6 +857,7 @@ task FilterAlignmentArtifacts {
     String gatk_docker
     Int? mem
     Int? preemptible_attempts
+    Int? max_retries
     Int? disk_space
     Int? cpu
     Boolean use_ssd = false
@@ -853,6 +885,7 @@ task FilterAlignmentArtifacts {
         memory: command_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 10])
+        maxRetries: select_first([max_retries, 3])
         cpu: select_first([cpu, 1])
     }
 
@@ -879,6 +912,7 @@ task oncotate_m2 {
     String oncotator_docker
     Int? mem
     Int? preemptible_attempts
+    Int? max_retries
     Int? disk_space
     Int? cpu
     Boolean use_ssd = false
@@ -929,6 +963,7 @@ task oncotate_m2 {
         bootDiskSizeGb: 12
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 10])
+        maxRetries: select_first([max_retries, 3])
         cpu: select_first([cpu, 1])
     }
 
@@ -943,6 +978,7 @@ task SumFloats {
 
     # Runtime parameters
     Int? preemptible_attempts
+    Int? max_retries
 
     command <<<
         python -c "print ${sep="+" sizes}"
@@ -956,6 +992,7 @@ task SumFloats {
         docker: "python:2.7"
         disks: "local-disk " + 10 + " HDD"
         preemptible: select_first([preemptible_attempts, 10])
+        maxRetries: select_first([max_retries, 3])
     }
 }
 
@@ -995,6 +1032,7 @@ task FuncotateMaf {
      File? gatk_override
      Int? mem
      Int? preemptible_attempts
+     Int? max_retries
      Int? disk_space_gb
      Int? cpu
 
@@ -1057,6 +1095,7 @@ task FuncotateMaf {
          memory: machine_mem + " MB"
          disks: "local-disk " + select_first([disk_space_gb, default_disk_space_gb]) + if use_ssd then " SSD" else " HDD"
          preemptible: select_first([preemptible_attempts, 3])
+         maxRetries: select_first([max_retries, 3])
          cpu: select_first([cpu, 1])
      }
 

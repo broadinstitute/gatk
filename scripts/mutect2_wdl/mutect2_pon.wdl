@@ -34,6 +34,7 @@ workflow Mutect2_Panel {
     # runtime
     String gatk_docker
     Int? preemptible_attempts
+    Int? max_retries
 
     Array[Pair[File,File]] normal_bam_pairs = zip(normal_bams, normal_bais)
 
@@ -53,7 +54,8 @@ workflow Mutect2_Panel {
                 m2_extra_args = m2_extra_args,
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
-                preemptible_attempts = preemptible_attempts
+                preemptible_attempts = preemptible_attempts,
+                max_retries = max_retries
         }
     }
 
@@ -65,6 +67,7 @@ workflow Mutect2_Panel {
             output_vcf_name = pon_name,
             gatk_override = gatk_override,
             preemptible_attempts = preemptible_attempts,
+            max_retries = max_retries,
             gatk_docker = gatk_docker
     }
 
@@ -89,6 +92,7 @@ task CreatePanel {
     String gatk_docker
     Int? mem
     Int? preemptible_attempts
+    Int? max_retries
     Int? disk_space
     Int? cpu
     Boolean use_ssd = false
@@ -108,6 +112,7 @@ task CreatePanel {
         memory: machine_mem + " GB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 3])
+        maxRetries: select_first([max_retries, 3])
         cpu: select_first([cpu, 1])
     }
 
