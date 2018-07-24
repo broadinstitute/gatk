@@ -16,10 +16,7 @@ import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgume
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStandardArgument;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.*;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
-import org.broadinstitute.hellbender.tools.copynumber.formats.records.AllelicCount;
-import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyRatio;
-import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyRatioSegment;
-import org.broadinstitute.hellbender.tools.copynumber.formats.records.MultidimensionalSegment;
+import org.broadinstitute.hellbender.tools.copynumber.formats.records.*;
 import org.broadinstitute.hellbender.tools.copynumber.models.AlleleFractionModeller;
 import org.broadinstitute.hellbender.tools.copynumber.models.AlleleFractionPrior;
 import org.broadinstitute.hellbender.tools.copynumber.models.CopyRatioModeller;
@@ -28,7 +25,6 @@ import org.broadinstitute.hellbender.tools.copynumber.segmentation.AlleleFractio
 import org.broadinstitute.hellbender.tools.copynumber.segmentation.CopyRatioKernelSegmenter;
 import org.broadinstitute.hellbender.tools.copynumber.segmentation.MultidimensionalKernelSegmenter;
 import org.broadinstitute.hellbender.tools.copynumber.utils.segmentation.KernelSegmenter;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
@@ -145,6 +141,17 @@ import java.util.stream.Stream;
  *         It contains the segments from the .modelFinal.seg file converted to a format suitable for input to {@link CallCopyRatioSegments}.
  *     </li>
  *     <li>
+ *         CBS-formatted .cr.igv.seg and .af.igv.seg files (compatible with IGV).
+ *         These are tab-separated values (TSV) files with CBS-format column headers
+ *         (see <a href="http://software.broadinstitute.org/cancer/software/genepattern/file-formats-guide#CBS">
+ *             http://software.broadinstitute.org/cancer/software/genepattern/file-formats-guide#CBS</a>)
+ *         and the corresponding entry rows that can be plotted using IGV (see
+ *         <a href="https://software.broadinstitute.org/software/igv/SEG">
+ *             https://software.broadinstitute.org/software/igv/SEG</a>).
+ *         The posterior medians of the copy ratio and minor-allele fraction are given in the SEGMENT_MEAN
+ *         columns in the .cr.igv.seg and .af.igv.seg files, respectively.
+ *     </li>
+ *     <li>
  *         (Optional) Allelic-counts file containing the counts at sites genotyped as heterozygous in the case sample (.hets.tsv).
  *         This is a tab-separated values (TSV) file with a SAM-style header containing a read group sample name, a sequence dictionary,
  *         a row specifying the column headers contained in {@link AllelicCountCollection.AllelicCountTableColumn},
@@ -220,6 +227,8 @@ public final class ModelSegments extends CommandLineProgram {
     public static final String COPY_RATIO_MODEL_PARAMETER_FILE_SUFFIX = ".cr.param";
     public static final String ALLELE_FRACTION_MODEL_PARAMETER_FILE_SUFFIX = ".af.param";
     public static final String COPY_RATIO_SEGMENTS_FOR_CALLER_FILE_SUFFIX = ".cr" + SEGMENTS_FILE_SUFFIX;
+    public static final String COPY_RATIO_LEGACY_SEGMENTS_FILE_SUFFIX = ".cr.igv" + SEGMENTS_FILE_SUFFIX;
+    public static final String ALLELE_FRACTION_LEGACY_SEGMENTS_FILE_SUFFIX = ".af.igv" + SEGMENTS_FILE_SUFFIX;
 
     //het genotyping argument names
     public static final String MINIMUM_TOTAL_ALLELE_COUNT_LONG_NAME = "minimum-total-allele-count";
@@ -525,6 +534,28 @@ public final class ModelSegments extends CommandLineProgram {
                         .collect(Collectors.toList()));
         writeSegments(copyRatioSegmentsFinal, COPY_RATIO_SEGMENTS_FOR_CALLER_FILE_SUFFIX);
 
+        //write IGV-compatible files
+        final LegacySegmentCollection copyRatioLegacySegments = new LegacySegmentCollection(
+                metadata,
+                modeller.getModeledSegments().getRecords().stream()
+                        .map(s -> new LegacySegment(
+                                metadata.getSampleName(),
+                                s.getInterval(),
+                                s.getNumPointsCopyRatio(),
+                                Math.pow(2., s.getLog2CopyRatioSimplePosteriorSummary().getDecile50())))
+                        .collect(Collectors.toList()));
+        final LegacySegmentCollection alleleFractionLegacySegments = new LegacySegmentCollection(
+                metadata,
+                modeller.getModeledSegments().getRecords().stream()
+                        .map(s -> new LegacySegment(
+                                metadata.getSampleName(),
+                                s.getInterval(),
+                                s.getNumPointsAlleleFraction(),
+                                s.getMinorAlleleFractionSimplePosteriorSummary().getDecile50()))
+                        .collect(Collectors.toList()));
+        writeSegments(copyRatioLegacySegments, COPY_RATIO_LEGACY_SEGMENTS_FILE_SUFFIX);
+        writeSegments(alleleFractionLegacySegments, ALLELE_FRACTION_LEGACY_SEGMENTS_FILE_SUFFIX);
+
         logger.info("SUCCESS: ModelSegments run complete.");
 
         return "SUCCESS";
@@ -718,7 +749,7 @@ public final class ModelSegments extends CommandLineProgram {
         modeller.writeModelParameterFiles(copyRatioParameterFile, alleleFractionParameterFile);
     }
 
-    private void writeSegments(final AbstractSampleLocatableCollection<?> segments,
+    private void writeSegments(final AbstractRecordCollection<?, ?> segments,
                                final String fileSuffix) {
         final File segmentsFile = new File(outputDir, outputPrefix + fileSuffix);
         segments.write(segmentsFile);
