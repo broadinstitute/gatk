@@ -2,12 +2,19 @@
 #
 # Notes:
 #
-# - The interval-list file is required for both WGS and WES workflows and should be a Picard or GATK-style interval list.
+# - The intervals argument is required for both WGS and WES workflows and accepts formats compatible with the
+#   GATK -L argument (see https://gatkforums.broadinstitute.org/gatk/discussion/11009/intervals-and-interval-lists).
 #   These intervals will be padded on both sides by the amount specified by PreprocessIntervals.padding (default 250)
 #   and split into bins of length specified by PreprocessIntervals.bin_length (default 1000; specify 0 to skip binning,
-#   e.g. for WES).  For WGS, the intervals should simply cover the autosomal chromosomes (sex chromosomes may be
+#   e.g., for WES).  For WGS, the intervals should simply cover the autosomal chromosomes (sex chromosomes may be
 #   included, but care should be taken to 1) avoid creating panels of mixed sex, and 2) denoise case samples only
 #   with panels containing only individuals of the same sex as the case samples).
+#
+# - Intervals can be blacklisted from coverage collection and all downstream steps by using the blacklist_intervals
+#   argument, which accepts formats compatible with the GATK -XL argument
+#   (see https://gatkforums.broadinstitute.org/gatk/discussion/11009/intervals-and-interval-lists).
+#   This may be useful for excluding centromeric regions, etc. from analysis.  Alternatively, these regions may
+#   be manually filtered from the final callset.
 #
 # - The sites file (common_sites) should be a Picard or GATK-style interval list.  This is a list of sites
 #   of known variation at which allelic counts will be collected for use in modeling minor-allele fractions.
@@ -28,6 +35,7 @@ workflow CNVSomaticPairWorkflow {
     ##################################
     File common_sites
     File intervals
+    File? blacklist_intervals
     File tumor_bam
     File tumor_bam_idx
     File? normal_bam
@@ -126,7 +134,7 @@ workflow CNVSomaticPairWorkflow {
 
     Int gatk4_override_size = if defined(gatk4_jar_override) then ceil(size(gatk4_jar_override, "GB")) else 0
     # This is added to every task as padding, should increase if systematically you need more disk for every call
-    Int disk_pad = 20 + ceil(size(intervals, "GB")) + ceil(size(common_sites, "GB")) + gatk4_override_size + select_first([emergency_extra_disk,0])
+    Int disk_pad = 20 + ceil(size(intervals, "GB")) + ceil(size(common_sites, "GB")) + gatk4_override_size + select_first([emergency_extra_disk, 0])
 
     File final_normal_bam = select_first([normal_bam, "null"])
     File final_normal_bam_idx = select_first([normal_bam_idx, "null"])
@@ -135,6 +143,7 @@ workflow CNVSomaticPairWorkflow {
     call CNVTasks.PreprocessIntervals {
         input:
             intervals = intervals,
+            blacklist_intervals = blacklist_intervals,
             ref_fasta = ref_fasta,
             ref_fasta_fai = ref_fasta_fai,
             ref_fasta_dict = ref_fasta_dict,

@@ -1,5 +1,6 @@
 task PreprocessIntervals {
     File? intervals
+    File? blacklist_intervals
     File ref_fasta
     File ref_fasta_fai
     File ref_fasta_dict
@@ -28,6 +29,7 @@ task PreprocessIntervals {
 
         gatk --java-options "-Xmx${command_mem_mb}m" PreprocessIntervals \
             ${"-L " + intervals} \
+            ${"-XL " + blacklist_intervals} \
             --sequence-dictionary ${ref_fasta_dict} \
             --reference ${ref_fasta} \
             --padding ${default="250" padding} \
