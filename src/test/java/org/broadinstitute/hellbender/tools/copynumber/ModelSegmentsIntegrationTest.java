@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.copynumber;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStandardArgument;
@@ -32,6 +33,10 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
             "model-segments-wes-tumor-allelic-counts-SM-74P4M-v1-chr20-downsampled.deduplicated.allelicCounts.tsv");
     private static final File NORMAL_ALLELIC_COUNTS_FILE = new File(TEST_SUB_DIR,
             "model-segments-wes-normal-allelic-counts-SM-74NEG-v1-chr20-downsampled.deduplicated.allelicCounts.tsv");
+    private static final File TUMOR_ONLY_VCF_FILE = new File(TEST_SUB_DIR,
+            "model-segments-wes-tumor-allelic-counts-SM-74P4M-v1-chr20-downsampled.deduplicated.allelicCounts.tsv");
+    private static final File TUMOR_AND_NORMAL_VCF_FILE = new File(TEST_SUB_DIR,
+            "model-segments-wes-tumor-allelic-counts-SM-74P4M-v1-chr20-downsampled.deduplicated.allelicCounts.tsv");
     private static final File TUMOR_DENOISED_COPY_RATIOS_WITH_SAMPLE_NAME_MISMATCH_FILE = new File(TEST_SUB_DIR,
             "model-segments-wes-tumor-denoised-copy-ratios-with-sample-name-mismatch.denoisedCR.tsv");
     private static final File NORMAL_ALLELIC_COUNTS_FILE_WITH_MISSING_SITES = new File(TEST_SUB_DIR,
@@ -233,6 +238,19 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addArgument(CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, TUMOR_DENOISED_COPY_RATIOS_FILE.getAbsolutePath())
                 .addArgument(CopyNumberStandardArgument.NORMAL_ALLELIC_COUNTS_FILE_LONG_NAME, NORMAL_ALLELIC_COUNTS_FILE.getAbsolutePath())
+                .addOutput(outputDir)
+                .addArgument(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix);
+        runCommandLine(argsBuilder);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testAllelicCountsAndVCFFiles() {
+        final File outputDir = createTempDir("testDir");
+        final String outputPrefix = "test";
+        final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
+                .addArgument(CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, TUMOR_DENOISED_COPY_RATIOS_FILE.getAbsolutePath())
+                .addArgument(CopyNumberStandardArgument.ALLELIC_COUNTS_FILE_LONG_NAME, TUMOR_ALLELIC_COUNTS_FILE.getAbsolutePath())
+                .addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, TUMOR_ONLY_VCF_FILE.getAbsolutePath())
                 .addOutput(outputDir)
                 .addArgument(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix);
         runCommandLine(argsBuilder);

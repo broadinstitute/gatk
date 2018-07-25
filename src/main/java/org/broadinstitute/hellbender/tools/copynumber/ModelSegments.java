@@ -279,6 +279,22 @@ public final class ModelSegments extends CommandLineProgram {
     private File inputNormalAllelicCountsFile = null;
 
     @Argument(
+            doc = "Input VCF file containing genotypes and allelic depths for the case and/or matched normal " +
+                    " (can be provided instead of " + CopyNumberStandardArgument.ALLELIC_COUNTS_FILE_LONG_NAME +
+                    " and/or " + CopyNumberStandardArgument.NORMAL_ALLELIC_COUNTS_FILE_LONG_NAME + "arguments).  " +
+                    "For matched-normal mode, the VCF should only contain two samples, " +
+                    "the first of which should be the matched normal; otherwise, " +
+                    "the VCF should only contain the case sample.  Only biallelic variants will be used and the " +
+                    "cutoff given by " + MINIMUM_TOTAL_ALLELE_COUNT_LONG_NAME + " will be applied, " +
+                    "but no additional genotyping will be performed and the corresponding parameters " +
+                    "will be ignored.",
+            fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME,
+            optional = true
+    )
+    private File inputVCFFile = null;
+
+    @Argument(
             doc = "Prefix for output files.",
             fullName =  CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME
     )
@@ -301,7 +317,8 @@ public final class ModelSegments extends CommandLineProgram {
 
     @Argument(
             doc = "Log-ratio threshold for genotyping and filtering homozygous allelic counts, if available.  " +
-                    "Increasing this value will increase the number of sites assumed to be heterozygous for modeling.",
+                    "Increasing this value will increase the number of sites assumed to be heterozygous for modeling.  " +
+                    "(Ignored if a VCF is provided.)",
             fullName = GENOTYPING_HOMOZYGOUS_LOG_RATIO_THRESHOLD_LONG_NAME,
             optional = true
     )
@@ -311,7 +328,8 @@ public final class ModelSegments extends CommandLineProgram {
             doc = "Maximum base-error rate for genotyping and filtering homozygous allelic counts, if available.  " +
                     "The likelihood for an allelic count to be generated from a homozygous site will be integrated " +
                     "from zero base-error rate up to this value.  Decreasing this value will increase " +
-                    "the number of sites assumed to be heterozygous for modeling.",
+                    "the number of sites assumed to be heterozygous for modeling.  " +
+                    "(Ignored if a VCF is provided.)",
             fullName = GENOTYPING_BASE_ERROR_RATE_LONG_NAME,
             optional = true
     )
@@ -563,10 +581,12 @@ public final class ModelSegments extends CommandLineProgram {
 
     private void validateArguments() {
         Utils.nonNull(outputPrefix);
-        Utils.validateArg(!(inputDenoisedCopyRatiosFile == null && inputAllelicCountsFile == null),
-                "Must provide at least a denoised-copy-ratios file or an allelic-counts file.");
+        Utils.validateArg(!(inputDenoisedCopyRatiosFile == null && inputAllelicCountsFile == null && inputVCFFile == null),
+                "Must provide at least a denoised-copy-ratios file, allelic-counts file, or a VCF file.");
         Utils.validateArg(!(inputAllelicCountsFile == null && inputNormalAllelicCountsFile != null),
                 "Must provide an allelic-counts file for the case sample to run in matched-normal mode.");
+        Utils.validateArg(!((inputAllelicCountsFile != null || inputNormalAllelicCountsFile != null) && inputVCFFile != null),
+                "Cannot provide a VCF file in addition to allelic-counts file(s).");
         if (inputDenoisedCopyRatiosFile != null) {
             IOUtils.canReadFile(inputDenoisedCopyRatiosFile);
         }
@@ -575,6 +595,9 @@ public final class ModelSegments extends CommandLineProgram {
         }
         if (inputNormalAllelicCountsFile != null) {
             IOUtils.canReadFile(inputNormalAllelicCountsFile);
+        }
+        if (inputVCFFile != null) {
+            IOUtils.canReadFile(inputVCFFile);
         }
         if (!new File(outputDir).exists()) {
             throw new UserException(String.format("Output directory %s does not exist.", outputDir));
