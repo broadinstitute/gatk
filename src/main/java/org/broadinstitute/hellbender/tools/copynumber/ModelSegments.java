@@ -1,7 +1,14 @@
 package org.broadinstitute.hellbender.tools.copynumber;
 
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.LinkedHashMultiset;
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.util.IntervalList;
 import htsjdk.samtools.util.OverlapDetector;
+import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFConstants;
+import htsjdk.variant.vcf.VCFFileReader;
+import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.math3.special.Beta;
 import org.apache.commons.math3.util.FastMath;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -16,6 +23,7 @@ import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgume
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStandardArgument;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.*;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.*;
 import org.broadinstitute.hellbender.tools.copynumber.models.AlleleFractionModeller;
 import org.broadinstitute.hellbender.tools.copynumber.models.AlleleFractionPrior;
@@ -25,8 +33,10 @@ import org.broadinstitute.hellbender.tools.copynumber.segmentation.AlleleFractio
 import org.broadinstitute.hellbender.tools.copynumber.segmentation.CopyRatioKernelSegmenter;
 import org.broadinstitute.hellbender.tools.copynumber.segmentation.MultidimensionalKernelSegmenter;
 import org.broadinstitute.hellbender.tools.copynumber.utils.segmentation.KernelSegmenter;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.io.File;
 import java.util.*;
@@ -488,10 +498,13 @@ public final class ModelSegments extends CommandLineProgram {
         CopyRatioCollection denoisedCopyRatios = readOptionalFileOrNull(inputDenoisedCopyRatiosFile, CopyRatioCollection::new);
         final AllelicCountCollection allelicCounts = readOptionalFileOrNull(inputAllelicCountsFile, AllelicCountCollection::new);
         final AllelicCountCollection normalAllelicCounts = readOptionalFileOrNull(inputNormalAllelicCountsFile, AllelicCountCollection::new);
-        final SampleLocatableMetadata metadata = getValidatedMetadata(denoisedCopyRatios, allelicCounts);
+        final AllelicCountCollection hetAllelicCountsFromVCF = readOptionalFileOrNull(inputVCFFile, getHetAllelicCountsFromVCFFile);
+        final SampleLocatableMetadata metadata = getValidatedMetadata(denoisedCopyRatios, allelicCounts, hetAllelicCountsFromVCF);
 
         //genotype hets (return empty collection containing only metadata if no allelic counts available)
-        final AllelicCountCollection hetAllelicCounts = genotypeHets(metadata, denoisedCopyRatios, allelicCounts, normalAllelicCounts);
+        final AllelicCountCollection hetAllelicCounts = hetAllelicCountsFromVCF != null
+                ? hetAllelicCountsFromVCF
+                : genotypeHets(metadata, denoisedCopyRatios, allelicCounts, normalAllelicCounts);
 
         //if denoised copy ratios are still null at this point, we assign an empty collection containing only metadata
         if (denoisedCopyRatios == null) {
@@ -587,17 +600,11 @@ public final class ModelSegments extends CommandLineProgram {
                 "Must provide an allelic-counts file for the case sample to run in matched-normal mode.");
         Utils.validateArg(!((inputAllelicCountsFile != null || inputNormalAllelicCountsFile != null) && inputVCFFile != null),
                 "Cannot provide a VCF file in addition to allelic-counts file(s).");
-        if (inputDenoisedCopyRatiosFile != null) {
-            IOUtils.canReadFile(inputDenoisedCopyRatiosFile);
-        }
-        if (inputAllelicCountsFile != null) {
-            IOUtils.canReadFile(inputAllelicCountsFile);
-        }
-        if (inputNormalAllelicCountsFile != null) {
-            IOUtils.canReadFile(inputNormalAllelicCountsFile);
-        }
-        if (inputVCFFile != null) {
-            IOUtils.canReadFile(inputVCFFile);
+        for (final File file : Arrays.asList(
+                inputDenoisedCopyRatiosFile, inputAllelicCountsFile, inputNormalAllelicCountsFile, inputVCFFile)) {
+            if (file != null) {
+                IOUtils.canReadFile(file);
+            }
         }
         if (!new File(outputDir).exists()) {
             throw new UserException(String.format("Output directory %s does not exist.", outputDir));
@@ -613,9 +620,43 @@ public final class ModelSegments extends CommandLineProgram {
         return read.apply(file);
     }
 
+    private AllelicCountCollection getHetAllelicCountsFromVCFFile(final File vcfFile) {
+        final VCFFileReader reader = new VCFFileReader(vcfFile, false);
+        final VCFHeader header = reader.getFileHeader();
+        final SAMSequenceDictionary sequenceDictionary = header.getSequenceDictionary();
+        Utils.nonNull(sequenceDictionary);
+        final List<String> sampleNames = header.getGenotypeSamples();
+        Utils.validateArg(sampleNames.size() <= 2, "VCF cannot contain more than two samples.");
+        final SampleLocatableMetadata metadata = new SimpleSampleLocatableMetadata(
+                sampleNames.get(sampleNames.size() - 1),
+                sequenceDictionary);
+
+        // translate variants in the case that pass certain criteria to allele counts
+        final IntervalList intervals = reader.toIntervalList();
+        final int numTotalVariants = intervals.size();
+        int numSNPHets = 0;
+        int numIndelHets = 0;
+        final Iterator<VariantContext> iterator = reader.iterator();
+        final Map<SimpleInterval, Integer> startToHighestDepthMap = new HashMap<>(numTotalVariants);
+        final List<VariantContext> hets = new ArrayList<>(numTotalVariants);
+        while (iterator.hasNext()) {
+            final VariantContext vc = reader.iterator().next();
+            if (!(vc.isBiallelic() && vc.) {
+                continue;
+            }
+            numSNPHets += vc.isSNP() ? 1 : 0;
+            numIndelHets += vc.isIndel() ? 1 : 0;
+            if (seenStarts.contains(vc.)) {
+
+            }
+            seenIntervals.add(vc);
+        }
+    }
+
     private SampleLocatableMetadata getValidatedMetadata(final CopyRatioCollection denoisedCopyRatios,
-                                                         final AllelicCountCollection allelicCounts) {
-        final Set<SampleLocatableMetadata> metadataSet = Stream.of(denoisedCopyRatios, allelicCounts)
+                                                         final AllelicCountCollection allelicCounts,
+                                                         final AllelicCountCollection hetAllelicCountsFromVCF) {
+        final Set<SampleLocatableMetadata> metadataSet = Stream.of(denoisedCopyRatios, allelicCounts, hetAllelicCountsFromVCF)
                 .filter(Objects::nonNull)
                 .map(AbstractRecordCollection::getMetadata)
                 .collect(Collectors.toSet());
