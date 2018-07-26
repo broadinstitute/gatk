@@ -661,10 +661,12 @@ public final class ModelSegments extends CommandLineProgram {
                 if (vc.isBiallelic() && !isHet.keySet().contains(start) && vc.hasGenotypes() && vc.hasAttribute(VCFConstants.GENOTYPE_ALLELE_DEPTHS)) {
                     final int caseRefCount = vc.();
                     final int caseAltCount = vc.();
+                    allelicCountsList.add(new AllelicCount(start, caseRefCount, caseAltCount));
                     isHet.put(start, vc.getGenotype(caseSampleName).isHet());
                     if (isMatchedNormalMode) {
                         final int normalRefCount = vc.();
                         final int normalAltCount = vc.();
+                        normalAllelicCountsList.add(new AllelicCount(start, normalRefCount, normalAltCount));
                         normalIsHet.put(start, vc.getGenotype(genotypingSampleName).isHet());
                     }
                     numSNPs += vc.isSNP() ? 1 : 0;
