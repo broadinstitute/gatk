@@ -5,6 +5,7 @@ import com.google.common.collect.LinkedHashMultiset;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.IntervalList;
 import htsjdk.samtools.util.OverlapDetector;
+import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFFileReader;
@@ -496,17 +497,11 @@ public final class ModelSegments extends CommandLineProgram {
 
         //read input files (return null if not available) and validate metadata
         CopyRatioCollection denoisedCopyRatios = readOptionalFileOrNull(inputDenoisedCopyRatiosFile, CopyRatioCollection::new);
-        AllelicCountCollection allelicCounts = null;
-        AllelicCountCollection normalAllelicCounts = null;
-        Map<SimpleInterval, Boolean> isHet = null;
-        Map<SimpleInterval, Boolean> normalIsHet = null;
-        readAllelicData(inputAllelicCountsFile, inputNormalAllelicCountsFile, inputVCFFile,
-                allelicCounts, normalAllelicCounts, isHet, normalIsHet);
-        final SampleLocatableMetadata metadata = getValidatedMetadata(denoisedCopyRatios, allelicCounts);
+        final AllelicData allelicData = readAllelicData(inputAllelicCountsFile, inputNormalAllelicCountsFile, inputVCFFile);
+        final SampleLocatableMetadata metadata = getValidatedMetadata(denoisedCopyRatios, allelicData.allelicCounts);
 
         //genotype hets (return empty collection containing only metadata if no allelic counts available)
-        final AllelicCountCollection hetAllelicCounts =
-                genotypeHets(metadata, denoisedCopyRatios, allelicCounts, normalAllelicCounts, isHet, normalIsHet);
+        final AllelicCountCollection hetAllelicCounts = genotypeHets(metadata, denoisedCopyRatios, allelicData);
 
         //if denoised copy ratios are still null at this point, we assign an empty collection containing only metadata
         if (denoisedCopyRatios == null) {
@@ -622,19 +617,34 @@ public final class ModelSegments extends CommandLineProgram {
         return read.apply(file);
     }
 
-    private void readAllelicData(final File inputAllelicCountsFile,
-                                 final File inputNormalAllelicCountsFile,
-                                 final File inputVCFFile,
-                                 AllelicCountCollection allelicCounts,
-                                 AllelicCountCollection normalAllelicCounts,
-                                 Map<SimpleInterval, Boolean> isHet,
-                                 Map<SimpleInterval, Boolean> normalIsHet) {
+    private static final class AllelicData {
+        private final AllelicCountCollection allelicCounts;
+        private final AllelicCountCollection normalAllelicCounts;
+        private final Map<SimpleInterval, Boolean> isHet;
+        private final Map<SimpleInterval, Boolean> normalIsHet;
+
+        public AllelicData(final AllelicCountCollection allelicCounts,
+                           final AllelicCountCollection normalAllelicCounts,
+                           final Map<SimpleInterval, Boolean> isHet,
+                           final Map<SimpleInterval, Boolean> normalIsHet) {
+            this.allelicCounts = allelicCounts;
+            this.normalAllelicCounts = normalAllelicCounts;
+            this.isHet = isHet;
+            this.normalIsHet = normalIsHet;
+        }
+    }
+
+    private AllelicData readAllelicData(final File inputAllelicCountsFile,
+                                        final File inputNormalAllelicCountsFile,
+                                        final File inputVCFFile) {
         if (inputVCFFile == null) {
-            allelicCounts = readOptionalFileOrNull(inputAllelicCountsFile, AllelicCountCollection::new);
-            normalAllelicCounts = readOptionalFileOrNull(inputNormalAllelicCountsFile, AllelicCountCollection::new);
-            isHet = null;
-            normalIsHet = null;
+            final AllelicCountCollection allelicCounts = readOptionalFileOrNull(inputAllelicCountsFile, AllelicCountCollection::new);
+            final AllelicCountCollection normalAllelicCounts = readOptionalFileOrNull(inputNormalAllelicCountsFile, AllelicCountCollection::new);
+            final Map<SimpleInterval, Boolean> isHet = null;
+            final Map<SimpleInterval, Boolean> normalIsHet = null;
+            return new AllelicData(allelicCounts, normalAllelicCounts, isHet, normalIsHet);
         } else {
+            logger.info(String.format("Reading file (%s)...", inputVCFFile));
             final VCFFileReader reader = new VCFFileReader(inputVCFFile, false);
             final VCFHeader header = reader.getFileHeader();
             final SAMSequenceDictionary sequenceDictionary = header.getSequenceDictionary();
@@ -646,26 +656,36 @@ public final class ModelSegments extends CommandLineProgram {
             final Boolean isMatchedNormalMode = sampleNames.size() == 2;
 
             // translate first biallelic variants seen at a given start to allele counts
-            final IntervalList intervals = reader.toIntervalList();
+            final IntervalList intervals = reader.toIntervalList(true);
             final int numTotalVariants = intervals.size();
             int numSNPs = 0;
             int numIndels = 0;
             final Iterator<VariantContext> iterator = reader.iterator();
             final List<AllelicCount> allelicCountsList = new ArrayList<>(numTotalVariants);
             final List<AllelicCount> normalAllelicCountsList = new ArrayList<>(numTotalVariants);
-            isHet = new HashMap<>(numTotalVariants);
-            normalIsHet = isMatchedNormalMode ? new HashMap<>(numTotalVariants) : null;
+            final Map<SimpleInterval, Boolean> isHet = new HashMap<>(numTotalVariants);
+            final Map<SimpleInterval, Boolean> normalIsHet = isMatchedNormalMode ? new HashMap<>(numTotalVariants) : null;
             while (iterator.hasNext()) {
-                final VariantContext vc = reader.iterator().next();
+                final VariantContext vc = iterator.next();
                 final SimpleInterval start = new SimpleInterval(vc.getContig(), vc.getStart(), vc.getStart());
-                if (vc.isBiallelic() && !isHet.keySet().contains(start) && vc.hasGenotypes() && vc.hasAttribute(VCFConstants.GENOTYPE_ALLELE_DEPTHS)) {
-                    final int caseRefCount = vc.();
-                    final int caseAltCount = vc.();
+                if (vc.isBiallelic() && !isHet.keySet().contains(start) && vc.hasGenotypes()) {
+                    final Genotype caseGenotype = vc.getGenotype(caseSampleName);
+                    final int[] caseAD = caseGenotype.getAD();
+                    if (caseAD == null) {
+                        continue;
+                    }
+                    final int caseRefCount = caseAD[0];
+                    final int caseAltCount = caseAD[1];
                     allelicCountsList.add(new AllelicCount(start, caseRefCount, caseAltCount));
                     isHet.put(start, vc.getGenotype(caseSampleName).isHet());
                     if (isMatchedNormalMode) {
-                        final int normalRefCount = vc.();
-                        final int normalAltCount = vc.();
+                        final Genotype normalGenotype = vc.getGenotype(genotypingSampleName);
+                        final int[] normalAD = normalGenotype.getAD();
+                        if (normalAD == null) {
+                            throw new UserException.BadInput("AD is present for case sample but not for normal sample.");
+                        }
+                        final int normalRefCount = normalAD[0];
+                        final int normalAltCount = normalAD[1];
                         normalAllelicCountsList.add(new AllelicCount(start, normalRefCount, normalAltCount));
                         normalIsHet.put(start, vc.getGenotype(genotypingSampleName).isHet());
                     }
@@ -678,11 +698,15 @@ public final class ModelSegments extends CommandLineProgram {
             logger.info(String.format("Retained %d biallelic indels / %d total variants in VCF...",
                     numIndels, numTotalVariants));
             final SampleLocatableMetadata metadata = new SimpleSampleLocatableMetadata(caseSampleName, sequenceDictionary);
-            allelicCounts = new AllelicCountCollection(metadata, allelicCountsList);
+            final AllelicCountCollection allelicCounts = new AllelicCountCollection(metadata, allelicCountsList);
+            final AllelicCountCollection normalAllelicCounts;
             if (isMatchedNormalMode) {
                 final SampleLocatableMetadata normalMetadata = new SimpleSampleLocatableMetadata(genotypingSampleName, sequenceDictionary);
                 normalAllelicCounts = new AllelicCountCollection(normalMetadata, normalAllelicCountsList);
+            } else {
+                normalAllelicCounts = null;
             }
+            return new AllelicData(allelicCounts, normalAllelicCounts, isHet, normalIsHet);
         }
     }
 
@@ -707,10 +731,11 @@ public final class ModelSegments extends CommandLineProgram {
 
     private AllelicCountCollection genotypeHets(final SampleLocatableMetadata metadata,
                                                 final CopyRatioCollection denoisedCopyRatios,
-                                                final AllelicCountCollection allelicCounts,
-                                                final AllelicCountCollection normalAllelicCounts,
-                                                final Map<SimpleInterval, Boolean> isHet,
-                                                final Map<SimpleInterval, Boolean> normalIsHet) {
+                                                final AllelicData allelicData) {
+        final AllelicCountCollection allelicCounts = allelicData.allelicCounts;
+        final AllelicCountCollection normalAllelicCounts = allelicData.normalAllelicCounts;
+        final Map<SimpleInterval, Boolean> isHet = allelicData.isHet;
+        final Map<SimpleInterval, Boolean> normalIsHet = allelicData.normalIsHet;
         if (allelicCounts == null) {
             return new AllelicCountCollection(metadata, Collections.emptyList());
         }

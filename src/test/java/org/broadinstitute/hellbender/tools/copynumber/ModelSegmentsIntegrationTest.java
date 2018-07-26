@@ -27,16 +27,26 @@ import java.util.Arrays;
  */
 public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
     private static final File TEST_SUB_DIR = new File(toolsTestDir, "copynumber");
-    private static final File TUMOR_DENOISED_COPY_RATIOS_FILE = new File(TEST_SUB_DIR,
-            "model-segments-wes-tumor-denoised-copy-ratios-SM-74P4M-v1-chr20-downsampled.deduplicated.denoisedCR.tsv");
-    private static final File TUMOR_ALLELIC_COUNTS_FILE = new File(TEST_SUB_DIR,
-            "model-segments-wes-tumor-allelic-counts-SM-74P4M-v1-chr20-downsampled.deduplicated.allelicCounts.tsv");
-    private static final File NORMAL_ALLELIC_COUNTS_FILE = new File(TEST_SUB_DIR,
-            "model-segments-wes-normal-allelic-counts-SM-74NEG-v1-chr20-downsampled.deduplicated.allelicCounts.tsv");
-    private static final File TUMOR_ONLY_VCF_FILE = new File(TEST_SUB_DIR,
-            "model-segments-wes-tumor-allelic-counts-SM-74P4M-v1-chr20-downsampled.deduplicated.allelicCounts.tsv");
-    private static final File TUMOR_AND_NORMAL_VCF_FILE = new File(TEST_SUB_DIR,
-            "model-segments-wes-tumor-allelic-counts-SM-74P4M-v1-chr20-downsampled.deduplicated.allelicCounts.tsv");
+//    private static final File TUMOR_DENOISED_COPY_RATIOS_FILE = new File(TEST_SUB_DIR,
+//            "model-segments-wes-tumor-denoised-copy-ratios-SM-74P4M-v1-chr20-downsampled.deduplicated.denoisedCR.tsv");
+//    private static final File TUMOR_ALLELIC_COUNTS_FILE = new File(TEST_SUB_DIR,
+//            "model-segments-wes-tumor-allelic-counts-SM-74P4M-v1-chr20-downsampled.deduplicated.allelicCounts.tsv");
+//    private static final File NORMAL_ALLELIC_COUNTS_FILE = new File(TEST_SUB_DIR,
+//            "model-segments-wes-normal-allelic-counts-SM-74NEG-v1-chr20-downsampled.deduplicated.allelicCounts.tsv");
+//    private static final File TUMOR_ONLY_VCF_FILE = new File(TEST_SUB_DIR,
+//            "model-segments-wes-tumor-allelic-counts-SM-74P4M-v1-chr20-downsampled.deduplicated.allelicCounts.tsv");
+//    private static final File TUMOR_AND_NORMAL_VCF_FILE = new File(TEST_SUB_DIR,
+//            "model-segments-wes-tumor-allelic-counts-SM-74P4M-v1-chr20-downsampled.deduplicated.allelicCounts.tsv");
+    private static final File TUMOR_DENOISED_COPY_RATIOS_FILE = new File(
+            "/home/BROAD.MIT.EDU/slee/working/gatk/test_files/tumor.denoisedCR.tsv");
+    private static final File TUMOR_ALLELIC_COUNTS_FILE = new File(
+            "/home/BROAD.MIT.EDU/slee/working/gatk/test_files/tumor.allelicCounts.tsv");
+    private static final File NORMAL_ALLELIC_COUNTS_FILE = new File(
+            "/home/BROAD.MIT.EDU/slee/working/gatk/test_files/normal.allelicCounts.tsv");
+    private static final File TUMOR_ONLY_VCF_FILE = new File(
+            "/home/BROAD.MIT.EDU/slee/working/gatk/test_files/tumor-only.vcf");
+    private static final File TUMOR_AND_NORMAL_VCF_FILE = new File(
+            "/home/BROAD.MIT.EDU/slee/working/gatk/test_files/tumor-normal.vcf");
     private static final File TUMOR_DENOISED_COPY_RATIOS_WITH_SAMPLE_NAME_MISMATCH_FILE = new File(TEST_SUB_DIR,
             "model-segments-wes-tumor-denoised-copy-ratios-with-sample-name-mismatch.denoisedCR.tsv");
     private static final File NORMAL_ALLELIC_COUNTS_FILE_WITH_MISSING_SITES = new File(TEST_SUB_DIR,
@@ -54,6 +64,20 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
                 .addArgument(CopyNumberStandardArgument.NORMAL_ALLELIC_COUNTS_FILE_LONG_NAME, NORMAL_ALLELIC_COUNTS_FILE.getAbsolutePath())
                 .addOutput(outputDir)
                 .addArgument(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix);
+        runCommandLine(argsBuilder);
+        assertOutputFiles(outputDir, outputPrefix, true, true);
+    }
+
+    @Test
+    public void testAllInputsAvailableVCF() {
+        final File outputDir = createTempDir("testDir");
+        final String outputPrefix = "test";
+        final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
+                .addArgument(CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, TUMOR_DENOISED_COPY_RATIOS_FILE.getAbsolutePath())
+                .addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, TUMOR_AND_NORMAL_VCF_FILE.getAbsolutePath())
+                .addOutput(outputDir)
+                .addArgument(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix)
+                .addArgument(StandardArgumentDefinitions.VERBOSITY_NAME, "INFO");
         runCommandLine(argsBuilder);
         assertOutputFiles(outputDir, outputPrefix, true, true);
     }
