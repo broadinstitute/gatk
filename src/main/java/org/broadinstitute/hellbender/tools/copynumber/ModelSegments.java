@@ -643,7 +643,7 @@ public final class ModelSegments extends CommandLineProgram {
             final String genotypingSampleName = sampleNames.get(0);                 // = case in case-only mode, normal in matched-normal mode
             final String caseSampleName = sampleNames.get(sampleNames.size() - 1);  // = case in case-only mode, case in matched-normal mode
             Utils.validateArg(sampleNames.size() <= 2, "VCF cannot contain more than two samples.");
-            final Boolean isMatchedNormal = sampleNames.size() == 2;
+            final Boolean isMatchedNormalMode = sampleNames.size() == 2;
 
             // translate first biallelic variants seen at a given start to allele counts
             final IntervalList intervals = reader.toIntervalList();
@@ -654,21 +654,30 @@ public final class ModelSegments extends CommandLineProgram {
             final List<AllelicCount> allelicCountsList = new ArrayList<>(numTotalVariants);
             final List<AllelicCount> normalAllelicCountsList = new ArrayList<>(numTotalVariants);
             isHet = new HashMap<>(numTotalVariants);
-            normalIsHet = new HashMap<>(numTotalVariants);
+            normalIsHet = isMatchedNormalMode ? new HashMap<>(numTotalVariants) : null;
             while (iterator.hasNext()) {
                 final VariantContext vc = reader.iterator().next();
                 final SimpleInterval start = new SimpleInterval(vc.getContig(), vc.getStart(), vc.getStart());
                 if (vc.isBiallelic() && !isHet.keySet().contains(start) && vc.hasGenotypes() && vc.hasAttribute(VCFConstants.GENOTYPE_ALLELE_DEPTHS)) {
-                    final int caseRefCount = vc.get();
-                    final int caseAltCount = vc.get();
-                    isHet.put(start);
+                    final int caseRefCount = vc.();
+                    final int caseAltCount = vc.();
+                    isHet.put(start, vc.getGenotype(caseSampleName).isHet());
+                    if (isMatchedNormalMode) {
+                        final int normalRefCount = vc.();
+                        final int normalAltCount = vc.();
+                        normalIsHet.put(start, vc.getGenotype(genotypingSampleName).isHet());
+                    }
                     numSNPs += vc.isSNP() ? 1 : 0;
                     numIndels += vc.isIndel() ? 1 : 0;
                 }
             }
+            logger.info(String.format("Retained %d biallelic SNPs / %d total variants in VCF...",
+                    numSNPs, numTotalVariants));
+            logger.info(String.format("Retained %d biallelic indels / %d total variants in VCF...",
+                    numIndels, numTotalVariants));
             final SampleLocatableMetadata metadata = new SimpleSampleLocatableMetadata(caseSampleName, sequenceDictionary);
             allelicCounts = new AllelicCountCollection(metadata, allelicCountsList);
-            if (isMatchedNormal) {
+            if (isMatchedNormalMode) {
                 final SampleLocatableMetadata normalMetadata = new SimpleSampleLocatableMetadata(genotypingSampleName, sequenceDictionary);
                 normalAllelicCounts = new AllelicCountCollection(normalMetadata, normalAllelicCountsList);
             }
@@ -742,6 +751,7 @@ public final class ModelSegments extends CommandLineProgram {
                 logger.info(String.format("Retained %d / %d sites after testing for heterozygosity...",
                         hetAllelicCounts.size(), allelicCounts.size()));
             } else {
+                logger.info("Filtering homozygous allelic counts using genotypes from VCF...");
                 hetAllelicCounts = new AllelicCountCollection(
                         metadata,
                         filteredAllelicCounts.getRecords().stream()
@@ -797,6 +807,7 @@ public final class ModelSegments extends CommandLineProgram {
                                 .filter(ac -> calculateHomozygousLogRatio(ac, genotypingBaseErrorRate) < genotypingHomozygousLogRatioThreshold)
                                 .collect(Collectors.toList()));
             } else {
+                logger.info("Filtering homozygous allelic counts in matched normal using genotypes from VCF...");
                 hetNormalAllelicCounts = new AllelicCountCollection(
                         normalMetadata,
                         filteredNormalAllelicCounts.getRecords().stream()
