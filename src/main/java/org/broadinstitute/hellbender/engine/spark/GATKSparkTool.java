@@ -281,7 +281,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
                 throw new UserException.MissingReference("A reference file is required when using CRAM files.");
             }
             final String refPath = hasReference() ?  referenceArguments.getReferenceFileName() : null;
-            return readsSource.getParallelReads(readInput, refPath, traversalParameters, bamPartitionSplitSize);
+            return readsSource.getParallelReads(readInput, refPath, traversalParameters, bamPartitionSplitSize, !useJdkInflater, !useJdkDeflater);
         }
     }
 

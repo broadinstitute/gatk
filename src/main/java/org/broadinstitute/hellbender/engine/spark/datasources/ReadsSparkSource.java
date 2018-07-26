@@ -69,7 +69,7 @@ public final class ReadsSparkSource implements Serializable {
      * @return RDD of (SAMRecord-backed) GATKReads from the file.
      */
     public JavaRDD<GATKRead> getParallelReads(final String readFileName, final String referencePath, final TraversalParameters traversalParameters) {
-        return getParallelReads(readFileName, referencePath, traversalParameters, 0);
+        return getParallelReads(readFileName, referencePath, traversalParameters, 0, false, false);
     }
 
 
@@ -107,9 +107,11 @@ public final class ReadsSparkSource implements Serializable {
      * @param traversalParameters parameters controlling which reads to include. If <code>null</code> then all the reads (both mapped and unmapped) will be returned.
      * @param splitSize maximum bytes of bam file to read into a single partition, increasing this will result in fewer partitions. A value of zero means
      *                  use the default split size (determined by the Hadoop input format, typically the size of one HDFS block).
+     * @param useIntelInflater whether to use the Intel inflater to decompress DEFLATE streams
+     * @param useIntelDeflater whether to use the Intel deflater to compress DEFLATE streams
      * @return RDD of (SAMRecord-backed) GATKReads from the file.
      */
-    public JavaRDD<GATKRead> getParallelReads(final String readFileName, final String referencePath, final TraversalParameters traversalParameters, final long splitSize) {
+    public JavaRDD<GATKRead> getParallelReads(final String readFileName, final String referencePath, final TraversalParameters traversalParameters, final long splitSize, boolean useIntelInflater, boolean useIntelDeflater) {
         SAMFileHeader header = getHeader(readFileName, referencePath);
 
         // use the Hadoop configuration attached to the Spark context to maintain cumulative settings
@@ -120,7 +122,7 @@ public final class ReadsSparkSource implements Serializable {
 
         final JavaPairRDD<LongWritable, SAMRecordWritable> rdd2;
 
-        setHadoopBAMConfigurationProperties(readFileName, referencePath);
+        setHadoopBAMConfigurationProperties(readFileName, referencePath, useIntelInflater, useIntelDeflater);
 
         boolean isBam = IOUtils.isBamFileName(readFileName);
         if (isBam) {
@@ -175,7 +177,7 @@ public final class ReadsSparkSource implements Serializable {
      * @return RDD of (SAMRecord-backed) GATKReads from the file.
      */
     public JavaRDD<GATKRead> getParallelReads(final String readFileName, final String referencePath, int splitSize) {
-        return getParallelReads(readFileName, referencePath, null /* all reads */, splitSize);
+        return getParallelReads(readFileName, referencePath, null /* all reads */, splitSize, false, false);
     }
 
     /**
@@ -233,7 +235,7 @@ public final class ReadsSparkSource implements Serializable {
                 }
                 path = bamFiles[0].getPath(); // Hadoop-BAM writes the same header to each shard, so use the first one
             }
-            setHadoopBAMConfigurationProperties(filePath, referencePath);
+            setHadoopBAMConfigurationProperties(filePath, referencePath, false, false);
             return SAMHeaderReader.readSAMHeaderFrom(path, ctx.hadoopConfiguration());
         } catch (IOException | IllegalArgumentException e) {
             throw new UserException("Failed to read bam header from " + filePath + "\n Caused by:" + e.getMessage(), e);
@@ -252,10 +254,22 @@ public final class ReadsSparkSource implements Serializable {
      *     from passing a stale value through to htsjdk when multiple read calls are made serially
      *     with different inputs but the same Spark context
      */
-    private void setHadoopBAMConfigurationProperties(final String inputName, final String referenceName) {
+    private void setHadoopBAMConfigurationProperties(final String inputName, final String referenceName, final boolean useIntelInflater, final boolean useIntelDeflater) {
         // use the Hadoop configuration attached to the Spark context to maintain cumulative settings
         final Configuration conf = ctx.hadoopConfiguration();
         conf.set(SAMHeaderReader.VALIDATION_STRINGENCY_PROPERTY, validationStringency.name());
+
+        if (useIntelInflater) {
+            conf.setBoolean(BAMInputFormat.USE_INTEL_INFLATER_PROPERTY, true);
+        } else {
+            conf.unset(BAMInputFormat.USE_INTEL_INFLATER_PROPERTY);
+        }
+
+        if (useIntelDeflater) {
+            conf.setBoolean(BAMOutputFormat.USE_INTEL_DEFLATER_PROPERTY, true);
+        } else {
+            conf.unset(BAMOutputFormat.USE_INTEL_DEFLATER_PROPERTY);
+        }
 
         if (!IOUtils.isCramFileName(inputName)) {
             // only set the reference for CRAM input
