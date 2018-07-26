@@ -1,0 +1,4 @@
+jdk:
+  - openjdk8
+before_install:
+  - ./scripts/prepareJitpackEnvironment.sh
