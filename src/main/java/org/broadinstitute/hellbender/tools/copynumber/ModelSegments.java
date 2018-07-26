@@ -496,15 +496,17 @@ public final class ModelSegments extends CommandLineProgram {
 
         //read input files (return null if not available) and validate metadata
         CopyRatioCollection denoisedCopyRatios = readOptionalFileOrNull(inputDenoisedCopyRatiosFile, CopyRatioCollection::new);
-        final AllelicCountCollection allelicCounts = readOptionalFileOrNull(inputAllelicCountsFile, AllelicCountCollection::new);
-        final AllelicCountCollection normalAllelicCounts = readOptionalFileOrNull(inputNormalAllelicCountsFile, AllelicCountCollection::new);
-        final AllelicCountCollection hetAllelicCountsFromVCF = readOptionalFileOrNull(inputVCFFile, getHetAllelicCountsFromVCFFile);
-        final SampleLocatableMetadata metadata = getValidatedMetadata(denoisedCopyRatios, allelicCounts, hetAllelicCountsFromVCF);
+        AllelicCountCollection allelicCounts = null;
+        AllelicCountCollection normalAllelicCounts = null;
+        Map<SimpleInterval, Boolean> isHet = null;
+        Map<SimpleInterval, Boolean> normalIsHet = null;
+        readAllelicData(inputAllelicCountsFile, inputNormalAllelicCountsFile, inputVCFFile,
+                allelicCounts, normalAllelicCounts, isHet, normalIsHet);
+        final SampleLocatableMetadata metadata = getValidatedMetadata(denoisedCopyRatios, allelicCounts);
 
         //genotype hets (return empty collection containing only metadata if no allelic counts available)
-        final AllelicCountCollection hetAllelicCounts = hetAllelicCountsFromVCF != null
-                ? hetAllelicCountsFromVCF
-                : genotypeHets(metadata, denoisedCopyRatios, allelicCounts, normalAllelicCounts);
+        final AllelicCountCollection hetAllelicCounts =
+                genotypeHets(metadata, denoisedCopyRatios, allelicCounts, normalAllelicCounts, isHet, normalIsHet);
 
         //if denoised copy ratios are still null at this point, we assign an empty collection containing only metadata
         if (denoisedCopyRatios == null) {
@@ -620,43 +622,62 @@ public final class ModelSegments extends CommandLineProgram {
         return read.apply(file);
     }
 
-    private AllelicCountCollection getHetAllelicCountsFromVCFFile(final File vcfFile) {
-        final VCFFileReader reader = new VCFFileReader(vcfFile, false);
-        final VCFHeader header = reader.getFileHeader();
-        final SAMSequenceDictionary sequenceDictionary = header.getSequenceDictionary();
-        Utils.nonNull(sequenceDictionary);
-        final List<String> sampleNames = header.getGenotypeSamples();
-        Utils.validateArg(sampleNames.size() <= 2, "VCF cannot contain more than two samples.");
-        final SampleLocatableMetadata metadata = new SimpleSampleLocatableMetadata(
-                sampleNames.get(sampleNames.size() - 1),
-                sequenceDictionary);
+    private void readAllelicData(final File inputAllelicCountsFile,
+                                 final File inputNormalAllelicCountsFile,
+                                 final File inputVCFFile,
+                                 AllelicCountCollection allelicCounts,
+                                 AllelicCountCollection normalAllelicCounts,
+                                 Map<SimpleInterval, Boolean> isHet,
+                                 Map<SimpleInterval, Boolean> normalIsHet) {
+        if (inputVCFFile == null) {
+            allelicCounts = readOptionalFileOrNull(inputAllelicCountsFile, AllelicCountCollection::new);
+            normalAllelicCounts = readOptionalFileOrNull(inputNormalAllelicCountsFile, AllelicCountCollection::new);
+            isHet = null;
+            normalIsHet = null;
+        } else {
+            final VCFFileReader reader = new VCFFileReader(inputVCFFile, false);
+            final VCFHeader header = reader.getFileHeader();
+            final SAMSequenceDictionary sequenceDictionary = header.getSequenceDictionary();
+            Utils.nonNull(sequenceDictionary);
+            final List<String> sampleNames = header.getGenotypeSamples();
+            final String genotypingSampleName = sampleNames.get(0);                 // = case in case-only mode, normal in matched-normal mode
+            final String caseSampleName = sampleNames.get(sampleNames.size() - 1);  // = case in case-only mode, case in matched-normal mode
+            Utils.validateArg(sampleNames.size() <= 2, "VCF cannot contain more than two samples.");
+            final Boolean isMatchedNormal = sampleNames.size() == 2;
 
-        // translate variants in the case that pass certain criteria to allele counts
-        final IntervalList intervals = reader.toIntervalList();
-        final int numTotalVariants = intervals.size();
-        int numSNPHets = 0;
-        int numIndelHets = 0;
-        final Iterator<VariantContext> iterator = reader.iterator();
-        final Map<SimpleInterval, Integer> startToHighestDepthMap = new HashMap<>(numTotalVariants);
-        final List<VariantContext> hets = new ArrayList<>(numTotalVariants);
-        while (iterator.hasNext()) {
-            final VariantContext vc = reader.iterator().next();
-            if (!(vc.isBiallelic() && vc.) {
-                continue;
+            // translate first biallelic variants seen at a given start to allele counts
+            final IntervalList intervals = reader.toIntervalList();
+            final int numTotalVariants = intervals.size();
+            int numSNPs = 0;
+            int numIndels = 0;
+            final Iterator<VariantContext> iterator = reader.iterator();
+            final List<AllelicCount> allelicCountsList = new ArrayList<>(numTotalVariants);
+            final List<AllelicCount> normalAllelicCountsList = new ArrayList<>(numTotalVariants);
+            isHet = new HashMap<>(numTotalVariants);
+            normalIsHet = new HashMap<>(numTotalVariants);
+            while (iterator.hasNext()) {
+                final VariantContext vc = reader.iterator().next();
+                final SimpleInterval start = new SimpleInterval(vc.getContig(), vc.getStart(), vc.getStart());
+                if (vc.isBiallelic() && !isHet.keySet().contains(start) && vc.hasGenotypes() && vc.hasAttribute(VCFConstants.GENOTYPE_ALLELE_DEPTHS)) {
+                    final int caseRefCount = vc.get();
+                    final int caseAltCount = vc.get();
+                    isHet.put(start);
+                    numSNPs += vc.isSNP() ? 1 : 0;
+                    numIndels += vc.isIndel() ? 1 : 0;
+                }
             }
-            numSNPHets += vc.isSNP() ? 1 : 0;
-            numIndelHets += vc.isIndel() ? 1 : 0;
-            if (seenStarts.contains(vc.)) {
-
+            final SampleLocatableMetadata metadata = new SimpleSampleLocatableMetadata(caseSampleName, sequenceDictionary);
+            allelicCounts = new AllelicCountCollection(metadata, allelicCountsList);
+            if (isMatchedNormal) {
+                final SampleLocatableMetadata normalMetadata = new SimpleSampleLocatableMetadata(genotypingSampleName, sequenceDictionary);
+                normalAllelicCounts = new AllelicCountCollection(normalMetadata, normalAllelicCountsList);
             }
-            seenIntervals.add(vc);
         }
     }
 
     private SampleLocatableMetadata getValidatedMetadata(final CopyRatioCollection denoisedCopyRatios,
-                                                         final AllelicCountCollection allelicCounts,
-                                                         final AllelicCountCollection hetAllelicCountsFromVCF) {
-        final Set<SampleLocatableMetadata> metadataSet = Stream.of(denoisedCopyRatios, allelicCounts, hetAllelicCountsFromVCF)
+                                                         final AllelicCountCollection allelicCounts) {
+        final Set<SampleLocatableMetadata> metadataSet = Stream.of(denoisedCopyRatios, allelicCounts)
                 .filter(Objects::nonNull)
                 .map(AbstractRecordCollection::getMetadata)
                 .collect(Collectors.toSet());
@@ -676,7 +697,9 @@ public final class ModelSegments extends CommandLineProgram {
     private AllelicCountCollection genotypeHets(final SampleLocatableMetadata metadata,
                                                 final CopyRatioCollection denoisedCopyRatios,
                                                 final AllelicCountCollection allelicCounts,
-                                                final AllelicCountCollection normalAllelicCounts) {
+                                                final AllelicCountCollection normalAllelicCounts,
+                                                final Map<SimpleInterval, Boolean> isHet,
+                                                final Map<SimpleInterval, Boolean> normalIsHet) {
         if (allelicCounts == null) {
             return new AllelicCountCollection(metadata, Collections.emptyList());
         }
@@ -709,21 +732,28 @@ public final class ModelSegments extends CommandLineProgram {
         if (normalAllelicCounts == null) {
             //filter on homozygosity in case sample
             logger.info("No matched normal was provided, not running in matched-normal mode...");
-            logger.info("Performing binomial testing and filtering homozygous allelic counts...");
-            hetAllelicCounts = new AllelicCountCollection(
-                    metadata,
-                    filteredAllelicCounts.getRecords().stream()
-                            .filter(ac -> calculateHomozygousLogRatio(ac, genotypingBaseErrorRate) < genotypingHomozygousLogRatioThreshold)
-                            .collect(Collectors.toList()));
+            if (isHet == null) {
+                logger.info("Performing binomial testing and filtering homozygous allelic counts...");
+                hetAllelicCounts = new AllelicCountCollection(
+                        metadata,
+                        filteredAllelicCounts.getRecords().stream()
+                                .filter(ac -> calculateHomozygousLogRatio(ac, genotypingBaseErrorRate) < genotypingHomozygousLogRatioThreshold)
+                                .collect(Collectors.toList()));
+                logger.info(String.format("Retained %d / %d sites after testing for heterozygosity...",
+                        hetAllelicCounts.size(), allelicCounts.size()));
+            } else {
+                hetAllelicCounts = new AllelicCountCollection(
+                        metadata,
+                        filteredAllelicCounts.getRecords().stream()
+                                .filter(ac -> isHet.get(ac.getInterval()))
+                                .collect(Collectors.toList()));
+            }
             final File hetAllelicCountsFile = new File(outputDir, outputPrefix + HET_ALLELIC_COUNTS_FILE_SUFFIX);
             hetAllelicCounts.write(hetAllelicCountsFile);
-            logger.info(String.format("Retained %d / %d sites after testing for heterozygosity...",
-                    hetAllelicCounts.size(), allelicCounts.size()));
             logger.info(String.format("Heterozygous allelic counts written to %s.", hetAllelicCountsFile));
         } else {
             //use matched normal
             logger.info("Matched normal was provided, running in matched-normal mode...");
-            logger.info("Performing binomial testing and filtering homozygous allelic counts in matched normal...");
             if (!normalAllelicCounts.getIntervals().equals(allelicCounts.getIntervals())) {
                 throw new UserException.BadInput("Allelic-count sites in case sample and matched normal do not match. " +
                         "Run CollectAllelicCounts using the same interval list of sites for both samples.");
@@ -757,12 +787,22 @@ public final class ModelSegments extends CommandLineProgram {
                         filteredNormalAllelicCounts.size(), normalAllelicCounts.size()));
             }
 
-            //filter on homozygosity in matched normal
-            final AllelicCountCollection hetNormalAllelicCounts = new AllelicCountCollection(
-                    normalMetadata,
-                    filteredNormalAllelicCounts.getRecords().stream()
-                            .filter(ac -> calculateHomozygousLogRatio(ac, genotypingBaseErrorRate) < genotypingHomozygousLogRatioThreshold)
-                            .collect(Collectors.toList()));
+            final AllelicCountCollection hetNormalAllelicCounts;
+            if (normalIsHet == null) {
+                //filter on homozygosity in matched normal
+                logger.info("Performing binomial testing and filtering homozygous allelic counts in matched normal...");
+                hetNormalAllelicCounts = new AllelicCountCollection(
+                        normalMetadata,
+                        filteredNormalAllelicCounts.getRecords().stream()
+                                .filter(ac -> calculateHomozygousLogRatio(ac, genotypingBaseErrorRate) < genotypingHomozygousLogRatioThreshold)
+                                .collect(Collectors.toList()));
+            } else {
+                hetNormalAllelicCounts = new AllelicCountCollection(
+                        normalMetadata,
+                        filteredNormalAllelicCounts.getRecords().stream()
+                                .filter(ac -> normalIsHet.get(ac.getInterval()))
+                                .collect(Collectors.toList()));
+            }
             final File hetNormalAllelicCountsFile = new File(outputDir, outputPrefix + NORMAL_HET_ALLELIC_COUNTS_FILE_SUFFIX);
             hetNormalAllelicCounts.write(hetNormalAllelicCountsFile);
             logger.info(String.format("Retained %d / %d sites in matched normal after testing for heterozygosity...",
