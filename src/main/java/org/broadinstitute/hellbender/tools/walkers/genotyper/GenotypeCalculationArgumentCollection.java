@@ -162,7 +162,7 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
      * f) If user-defined values add to more than one, an error will be produced.
      *
      * If user wants completely flat priors, then user should specify the same value (=1/(2*N+1)) 2*N times,e.g.
-     *   -inputPrior 0.33 -inputPrior 0.33
+     *   --input-prior 0.33 --input-prior 0.33
      * for the single-sample diploid case.
      */
     @Advanced

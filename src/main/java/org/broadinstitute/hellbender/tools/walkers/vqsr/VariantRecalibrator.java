@@ -244,7 +244,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
     private List<Double> TS_TRANCHES = new ArrayList<Double>(Arrays.asList(100.0, 99.9, 99.0, 90.0));
 
     /**
-     * For this to work properly, the -ignoreFilter argument should also be applied to the ApplyRecalibration command.
+     * For this to work properly, the --ignore-filter argument should also be applied to the ApplyRecalibration command.
      */
     @Argument(fullName="ignore-filter",
             doc="If specified, the variant recalibrator will also use variants marked as filtered by the specified filter name in the input VCF file",
@@ -293,7 +293,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
      */
     @Argument(fullName="sample-every-Nth-variant",
             shortName = "sample-every",
-            doc="If specified, the variant recalibrator will use (and output) only a subset of variants consisting of every Nth variant where N is specified by this argument; for use with -outputModel -- see argument details",
+            doc="If specified, the variant recalibrator will use (and output) only a subset of variants consisting of every Nth variant where N is specified by this argument; for use with --output-model -- see argument details",
             optional=true)
     @Hidden
     private int sampleMod = 1;
