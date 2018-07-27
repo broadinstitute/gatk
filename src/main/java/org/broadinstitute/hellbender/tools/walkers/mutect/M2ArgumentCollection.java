@@ -35,7 +35,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
 
 
     public static final double DEFAULT_AF_FOR_TUMOR_ONLY_CALLING = 5e-8;
-    public static final double DEFAULT_AF_FOR_TUMOR_NORMAL_CALLING = 1e-5;
+    public static final double DEFAULT_AF_FOR_TUMOR_NORMAL_CALLING = 1e-6;
 
     //TODO: HACK ALERT HACK ALERT HACK ALERT
     //TODO: GATK4 does not yet have a way to tag inputs, eg -I:tumor tumor.bam -I:normal normal.bam,
