@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.tools.funcotator.filtrationRules;
 
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
+
 import java.util.Arrays;
 import java.util.Map;
 
@@ -25,11 +27,12 @@ public class FilterFuncotationsExacUtils {
      * Build a {@link FuncotationFiltrationRule} matching Funcotations from variants with a
      * maximum MAF less than some threshold.
      *
-     * @param maxMaf the MAF threshold to check in the rule
+     * @param maxMaf the MAF threshold to check in the rule. Must be in the range [0, 1]
      * @return a {@link FuncotationFiltrationRule} matching Funcotations with a MAF (AC/AN)
      *         less than {@code maxMaf} across all sub-populations of ExAC
      */
     public static FuncotationFiltrationRule buildExacMaxMafRule(final double maxMaf) {
+        ParamUtils.inRange(maxMaf, 0, 1, "MAF must be between 0 and 1");
         return funcotations -> getMaxMinorAlleleFreq(funcotations) <= maxMaf;
     }
 
