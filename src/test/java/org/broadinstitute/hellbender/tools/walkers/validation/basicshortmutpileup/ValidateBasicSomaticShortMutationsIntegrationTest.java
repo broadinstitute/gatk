@@ -80,12 +80,14 @@ public class ValidateBasicSomaticShortMutationsIntegrationTest extends CommandLi
         Assert.assertEquals(variantValidationResults.get(0).getAnnotations().get(VALIDATION_REF_COVERAGE), "18");
         Assert.assertEquals(variantValidationResults.get(0).getAnnotations().get(IS_NOT_NOISE), "false");
         Assert.assertEquals(variantValidationResults.get(0).getAnnotations().get(DISCOVERY_VCF_FILTER), "");
+        Assert.assertEquals(variantValidationResults.get(0).getAnnotations().get(NUM_ALT_READS_IN_VALIDATION_NORMAL), "0");
 
         Assert.assertEquals(variantValidationResults.get(1).getInterval(), new SimpleInterval("20", 10080550, 10080550));
         Assert.assertEquals(variantValidationResults.get(1).getAnnotations().get(VALIDATION_ALT_COVERAGE), "0");
         Assert.assertEquals(variantValidationResults.get(1).getAnnotations().get(VALIDATION_REF_COVERAGE), "16");
         Assert.assertEquals(variantValidationResults.get(1).getAnnotations().get(IS_NOT_NOISE), "false");
         Assert.assertEquals(variantValidationResults.get(1).getAnnotations().get(DISCOVERY_VCF_FILTER), "artifact_in_normal;germline_risk;t_lod");
+        Assert.assertEquals(variantValidationResults.get(1).getAnnotations().get(NUM_ALT_READS_IN_VALIDATION_NORMAL), "0");
     }
 
     @Test
@@ -137,26 +139,27 @@ public class ValidateBasicSomaticShortMutationsIntegrationTest extends CommandLi
 
         Assert.assertEquals(variantValidationResults.size(), 336);
 
-
         // DEL: 20	1330646	.	CCTTGGCTTATTCCA	C
         // INS1: 20	3076247	.	AT	ATT
         // INS2: 20	3076299	.	A	AAGAAGCATGC
 
         assertValidationResult(variantValidationResults, new SimpleInterval("20", 1330646, 1330646),
                 "CCTTGGCTTATTCCA", "C", 7, 21, 10,
-                26);
+                26, 0);
+
+        // TODO: This next one actually has an incorrect gtNumAltReadsInValidationNormal, since the validator thinks of this as AT<insT>.  There are supporting reads in the validation normal for A<insT>T.  See https://github.com/broadinstitute/gatk/issues/5061
         assertValidationResult(variantValidationResults, new SimpleInterval("20", 3076247, 3076247),
                 "AT", "ATT", 4, 33, 4,
-                25);
+                25,0);
         assertValidationResult(variantValidationResults, new SimpleInterval("20", 3076299, 3076299),
                 "A", "AAGAAGCATGC", 9, 41, 12,
-                37);  // One read has low BQ in the insertion, so 9, instead of 10
+                37, 0);  // One read has low BQ in the insertion, so 9, instead of 10
     }
 
     private void assertValidationResult(final List<AnnotatedInterval> variantValidationResults,
                                         final SimpleInterval firstBaseInVariant, final String refString,
                                         final String altString, int gtValidationAltCoverage, int gtValidationRefCoverage,
-                                        int gtDiscoveryAltCoverage, int gtDiscoveryRefCoverage) {
+                                        int gtDiscoveryAltCoverage, int gtDiscoveryRefCoverage, int gtNumAltReadsInValidationNormal) {
         final OverlapDetector<AnnotatedInterval> overlapDetector = OverlapDetector.create(variantValidationResults);
         final AnnotatedInterval indel = overlapDetector.getOverlaps(firstBaseInVariant).iterator().next();
         final SortedMap<String, String> indelAnnotations = indel.getAnnotations();
@@ -170,6 +173,7 @@ public class ValidateBasicSomaticShortMutationsIntegrationTest extends CommandLi
         final int discoveryRefCoverage = Integer.parseInt(indelAnnotations.get(ValidateBasicSomaticShortMutations.DISCOVERY_REF_COVERAGE));
         final double power = Double.parseDouble(indelAnnotations.get(ValidateBasicSomaticShortMutations.POWER));
         final int minCount = Integer.parseInt(indelAnnotations.get(ValidateBasicSomaticShortMutations.MIN_VAL_COUNT));
+        final int numSupportingAltReadsInValidationNormal = Integer.parseInt(indelAnnotations.get(ValidateBasicSomaticShortMutations.NUM_ALT_READS_IN_VALIDATION_NORMAL));
 
         Assert.assertEquals(validationAltCoverage, gtValidationAltCoverage);
         Assert.assertEquals(validationRefCoverage, gtValidationRefCoverage);
@@ -179,5 +183,6 @@ public class ValidateBasicSomaticShortMutationsIntegrationTest extends CommandLi
                 PowerCalculationUtils.calculatePower(validationAltCoverage + validationRefCoverage,
                         discoveryAltCoverage, discoveryAltCoverage + discoveryRefCoverage,
                         minCount));
+        Assert.assertEquals(numSupportingAltReadsInValidationNormal, gtNumAltReadsInValidationNormal, "Discordance in alt count in validation normal at " + firstBaseInVariant);
     }
 }

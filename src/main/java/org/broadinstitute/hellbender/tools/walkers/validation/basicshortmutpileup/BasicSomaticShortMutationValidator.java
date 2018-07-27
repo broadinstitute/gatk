@@ -54,6 +54,8 @@ public class BasicSomaticShortMutationValidator {
 
     /** Perform basic somatic pileup validation and return a result instance.
      *
+     * NOTE: This only looks at the first alternate allele.  Multiallelics are not supported.
+     *
      * @param genotype given genotype to validate.  Never {@code null}
      * @param referenceAllele Never {@code null}
      * @param validationNormalPileup Pileup for the coresponding location of the genotype in the validation normal.  Never {@code null}
@@ -98,10 +100,11 @@ public class BasicSomaticShortMutationValidator {
         boolean isEnoughValidationCoverageToValidate = validationTumorAltCount >= 2;
 
         final String genotypeFilters = genotype.getFilters() == null ? "" : genotype.getFilters();
-
+        final long numReadsSupportingAltInValidationNormal = PowerCalculationUtils.calculateNumReadsSupportingAllele(validationNormalPileup,
+                genotype.getAllele(0), genotype.getAllele(1), minBaseQualityCutoff);
         return new BasicValidationResult(interval, minCountForSignal, isEnoughValidationCoverageToValidate,
                 isNotNoise, power, validationTumorAltCount, validationTumorTotalCount-validationTumorAltCount,
                 discoveryTumorAltCount, discoveryTumorTotalCount-discoveryTumorAltCount, referenceAllele,
-                genotype.getAllele(1), filters + genotypeFilters);
+                genotype.getAllele(1), filters + genotypeFilters, numReadsSupportingAltInValidationNormal);
     }
 }
