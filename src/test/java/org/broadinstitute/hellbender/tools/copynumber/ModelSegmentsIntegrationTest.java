@@ -38,15 +38,15 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
 //    private static final File TUMOR_AND_NORMAL_VCF_FILE = new File(TEST_SUB_DIR,
 //            "model-segments-wes-tumor-allelic-counts-SM-74P4M-v1-chr20-downsampled.deduplicated.allelicCounts.tsv");
     private static final File TUMOR_DENOISED_COPY_RATIOS_FILE = new File(
-            "/home/BROAD.MIT.EDU/slee/working/gatk/test_files/tumor.denoisedCR.tsv");
+            "/home/slee/working/gatk/test_files/tumor.denoisedCR.tsv");
     private static final File TUMOR_ALLELIC_COUNTS_FILE = new File(
-            "/home/BROAD.MIT.EDU/slee/working/gatk/test_files/tumor.allelicCounts.tsv");
+            "/home/slee/working/gatk/test_files/tumor.allelicCounts.tsv");
     private static final File NORMAL_ALLELIC_COUNTS_FILE = new File(
-            "/home/BROAD.MIT.EDU/slee/working/gatk/test_files/normal.allelicCounts.tsv");
+            "/home/slee/working/gatk/test_files/normal.allelicCounts.tsv");
     private static final File TUMOR_ONLY_VCF_FILE = new File(
-            "/home/BROAD.MIT.EDU/slee/working/gatk/test_files/tumor-only.vcf");
+            "/home/slee/working/gatk/test_files/tumor-only.vcf");
     private static final File TUMOR_AND_NORMAL_VCF_FILE = new File(
-            "/home/BROAD.MIT.EDU/slee/working/gatk/test_files/tumor-normal.vcf");
+            "/home/slee/working/gatk/test_files/tumor-normal.vcf");
     private static final File TUMOR_DENOISED_COPY_RATIOS_WITH_SAMPLE_NAME_MISMATCH_FILE = new File(TEST_SUB_DIR,
             "model-segments-wes-tumor-denoised-copy-ratios-with-sample-name-mismatch.denoisedCR.tsv");
     private static final File NORMAL_ALLELIC_COUNTS_FILE_WITH_MISSING_SITES = new File(TEST_SUB_DIR,
@@ -63,7 +63,8 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
                 .addArgument(CopyNumberStandardArgument.ALLELIC_COUNTS_FILE_LONG_NAME, TUMOR_ALLELIC_COUNTS_FILE.getAbsolutePath())
                 .addArgument(CopyNumberStandardArgument.NORMAL_ALLELIC_COUNTS_FILE_LONG_NAME, NORMAL_ALLELIC_COUNTS_FILE.getAbsolutePath())
                 .addOutput(outputDir)
-                .addArgument(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix);
+                .addArgument(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix)
+                .addArgument(StandardArgumentDefinitions.VERBOSITY_NAME, "INFO");;
         runCommandLine(argsBuilder);
         assertOutputFiles(outputDir, outputPrefix, true, true);
     }
@@ -83,14 +84,31 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
+    public void testAllInputsAvailableVCFTumorOnly() {
+//        final File outputDir = createTempDir("testDir");
+        final File outputDir = new File("/home/slee/working/gatk/test_files");
+        final String outputPrefix = "test-vcf";
+        final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
+                .addArgument(CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, TUMOR_DENOISED_COPY_RATIOS_FILE.getAbsolutePath())
+                .addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, TUMOR_ONLY_VCF_FILE.getAbsolutePath())
+                .addOutput(outputDir)
+                .addArgument(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix)
+                .addArgument(StandardArgumentDefinitions.VERBOSITY_NAME, "INFO");
+        runCommandLine(argsBuilder);
+        assertOutputFiles(outputDir, outputPrefix, true, true);
+    }
+
+    @Test
     public void testNoNormalAllelicCounts() {
-        final File outputDir = createTempDir("testDir");
+//        final File outputDir = createTempDir("testDir");
+        final File outputDir = new File("/home/slee/working/gatk/test_files");
         final String outputPrefix = "test";
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addArgument(CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, TUMOR_DENOISED_COPY_RATIOS_FILE.getAbsolutePath())
                 .addArgument(CopyNumberStandardArgument.ALLELIC_COUNTS_FILE_LONG_NAME, TUMOR_ALLELIC_COUNTS_FILE.getAbsolutePath())
                 .addOutput(outputDir)
-                .addArgument(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix);
+                .addArgument(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix)
+                .addArgument(StandardArgumentDefinitions.VERBOSITY_NAME, "INFO");;
         runCommandLine(argsBuilder);
         assertOutputFiles(outputDir, outputPrefix, true, false);
     }

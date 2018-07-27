@@ -768,7 +768,7 @@ public final class ModelSegments extends CommandLineProgram {
         if (normalAllelicCounts == null) {
             //filter on homozygosity in case sample
             logger.info("No matched normal was provided, not running in matched-normal mode...");
-            if (isHet == null) {
+//            if (isHet == null) {
                 logger.info("Performing binomial testing and filtering homozygous allelic counts...");
                 hetAllelicCounts = new AllelicCountCollection(
                         metadata,
@@ -777,14 +777,14 @@ public final class ModelSegments extends CommandLineProgram {
                                 .collect(Collectors.toList()));
                 logger.info(String.format("Retained %d / %d sites after testing for heterozygosity...",
                         hetAllelicCounts.size(), allelicCounts.size()));
-            } else {
-                logger.info("Filtering homozygous allelic counts using genotypes from VCF...");
-                hetAllelicCounts = new AllelicCountCollection(
-                        metadata,
-                        filteredAllelicCounts.getRecords().stream()
-                                .filter(ac -> isHet.get(ac.getInterval()))
-                                .collect(Collectors.toList()));
-            }
+//            } else {
+//                logger.info("Filtering homozygous allelic counts using genotypes from VCF...");
+//                hetAllelicCounts = new AllelicCountCollection(
+//                        metadata,
+//                        filteredAllelicCounts.getRecords().stream()
+//                                .filter(ac -> isHet.get(ac.getInterval()))
+//                                .collect(Collectors.toList()));
+//            }
             final File hetAllelicCountsFile = new File(outputDir, outputPrefix + HET_ALLELIC_COUNTS_FILE_SUFFIX);
             hetAllelicCounts.write(hetAllelicCountsFile);
             logger.info(String.format("Heterozygous allelic counts written to %s.", hetAllelicCountsFile));
@@ -825,7 +825,7 @@ public final class ModelSegments extends CommandLineProgram {
             }
 
             final AllelicCountCollection hetNormalAllelicCounts;
-            if (normalIsHet == null) {
+//            if (normalIsHet == null) {
                 //filter on homozygosity in matched normal
                 logger.info("Performing binomial testing and filtering homozygous allelic counts in matched normal...");
                 hetNormalAllelicCounts = new AllelicCountCollection(
@@ -833,14 +833,14 @@ public final class ModelSegments extends CommandLineProgram {
                         filteredNormalAllelicCounts.getRecords().stream()
                                 .filter(ac -> calculateHomozygousLogRatio(ac, genotypingBaseErrorRate) < genotypingHomozygousLogRatioThreshold)
                                 .collect(Collectors.toList()));
-            } else {
-                logger.info("Filtering homozygous allelic counts in matched normal using genotypes from VCF...");
-                hetNormalAllelicCounts = new AllelicCountCollection(
-                        normalMetadata,
-                        filteredNormalAllelicCounts.getRecords().stream()
-                                .filter(ac -> normalIsHet.get(ac.getInterval()))
-                                .collect(Collectors.toList()));
-            }
+//            } else {
+//                logger.info("Filtering homozygous allelic counts in matched normal using genotypes from VCF...");
+//                hetNormalAllelicCounts = new AllelicCountCollection(
+//                        normalMetadata,
+//                        filteredNormalAllelicCounts.getRecords().stream()
+//                                .filter(ac -> normalIsHet.get(ac.getInterval()))
+//                                .collect(Collectors.toList()));
+//            }
             final File hetNormalAllelicCountsFile = new File(outputDir, outputPrefix + NORMAL_HET_ALLELIC_COUNTS_FILE_SUFFIX);
             hetNormalAllelicCounts.write(hetNormalAllelicCountsFile);
             logger.info(String.format("Retained %d / %d sites in matched normal after testing for heterozygosity...",
