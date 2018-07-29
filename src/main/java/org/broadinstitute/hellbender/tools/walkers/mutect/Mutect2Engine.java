@@ -61,6 +61,8 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     public static final int MIN_PALINDROME_SIZE = 5;
 
     // after trimming to fit the assembly window, throw away read stubs shorter than this length
+    // if we don't, the several bases left of reads that end just within the assembly window can
+    // get realigned incorrectly.  See https://github.com/broadinstitute/gatk/issues/5060
     public static final int MINIMUM_READ_LENGTH_AFTER_TRIMMING = 10;
 
     private M2ArgumentCollection MTAC;
