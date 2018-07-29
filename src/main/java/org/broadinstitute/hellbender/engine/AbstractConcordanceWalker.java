@@ -103,9 +103,9 @@ public abstract class AbstractConcordanceWalker extends GATKTool {
         initializeTruthVariantsIfNecessary();
         evalVariants = new FeatureDataSource<>(new FeatureInput<>(evalVariantsFile, "eval"), CACHE_LOOKAHEAD, VariantContext.class);
 
-        if ( hasIntervals() ) {
-            truthVariants.setIntervalsForTraversal(intervalsForTraversal);
-            evalVariants.setIntervalsForTraversal(intervalsForTraversal);
+        if ( hasUserSuppliedIntervals() ) {
+            truthVariants.setIntervalsForTraversal(userIntervals);
+            evalVariants.setIntervalsForTraversal(userIntervals);
         }
         dict = getBestAvailableSequenceDictionary();
         variantContextComparator = new VariantContextComparator(dict);
@@ -261,6 +261,9 @@ public abstract class AbstractConcordanceWalker extends GATKTool {
             Utils.validateArg(eval.isPresent(), () -> "This is a " + concordanceState.toString() + " and has no eval VariantContext.");
             return eval.get();
         }
+
+        public boolean hasTruth() {return truth.isPresent(); }
+        public boolean hasEval() { return eval.isPresent(); }
 
         public VariantContext getTruthIfPresentElseEval() { return truth.orElseGet(() -> eval.get()); }
 

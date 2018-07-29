@@ -57,7 +57,7 @@ import java.util.stream.Collectors;
  * <pre>
  * gatk FilterMutectCalls \
  *   -V somatic.vcf.gz \
- *   -contamination-table contamination.table \
+ *   --contamination-table contamination.table \
  *   -O filtered.vcf.gz
  * </pre>
  *

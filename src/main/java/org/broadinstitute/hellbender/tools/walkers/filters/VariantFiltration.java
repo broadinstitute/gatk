@@ -50,8 +50,8 @@ import static java.util.Collections.singleton;
  *   -R reference.fasta \
  *   -V input.vcf.gz \
  *   -O output.vcf.gz \
- *   --filterExpression "AB < 0.2 || MQ0 > 50" \
- *   --filterName "my_filters"
+ *   --filter-expression "AB < 0.2 || MQ0 > 50" \
+ *   --filter-name "my_filters"
  * </pre>
  *
  * <h3>Note</h3>
@@ -99,7 +99,7 @@ public final class VariantFiltration extends VariantWalker {
 
     /**
      * VariantFiltration accepts any number of JEXL expressions (so you can have two named filters by using
-     * --filterName One --filterExpression "X < 1" --filterName Two --filterExpression "X > 2").
+     * --filter-name One --filter-expression "X < 1" --filter-name Two --filter-expression "X > 2").
      */
     @Argument(fullName=FILTER_EXPRESSION_LONG_NAME, shortName="filter", doc="One or more expression used with INFO fields to filter", optional=true)
     public List<String> filterExpressions = new ArrayList<>();
@@ -176,13 +176,13 @@ public final class VariantFiltration extends VariantWalker {
     /**
      * Invert the selection criteria for --filter-expression
      */
-    @Argument(fullName=INVERT_LONG_NAME, shortName="invfilter", doc="Invert the selection criteria for --filterExpression", optional=true)
+    @Argument(fullName=INVERT_LONG_NAME, shortName="invfilter", doc="Invert the selection criteria for --filter-expression", optional=true)
     public boolean invertFilterExpression = false;
 
     /**
      * Invert the selection criteria for --genotype-filter-expression
      */
-    @Argument(fullName=INVERT_GT_LONG_NAME, shortName="invG-filter", doc="Invert the selection criteria for --genotypeFilterExpression", optional=true)
+    @Argument(fullName=INVERT_GT_LONG_NAME, shortName="invG-filter", doc="Invert the selection criteria for --genotype-filter-expression", optional=true)
     public boolean invertGenotypeFilterExpression = false;
 
     /**

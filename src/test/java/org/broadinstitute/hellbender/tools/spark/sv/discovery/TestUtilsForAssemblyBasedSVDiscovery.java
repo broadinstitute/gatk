@@ -126,15 +126,22 @@ public final class TestUtilsForAssemblyBasedSVDiscovery {
         }
     }
 
+    /**
+     * @param primarySAMRecord      input primary line SAM record,
+     *                              assumed to have no ambiguity, i.e. no two combinations of its alignments offers equally good story of SV
+     */
     public static AssemblyContigWithFineTunedAlignments makeContigAnalysisReady(final String primarySAMRecord,
                                                                                 final Set<String> canonicalChromosomes) {
         final AlignedContig alignedContig = fromPrimarySAMRecordString(primarySAMRecord, true);
 
+        final List<AssemblyContigAlignmentsConfigPicker.GoodAndBadMappings> goodAndBadMappings =
+                AssemblyContigAlignmentsConfigPicker
+                        .pickBestConfigurations(alignedContig, canonicalChromosomes, 0.0);
+
         return
                 AssemblyContigAlignmentsConfigPicker.reConstructContigFromPickedConfiguration(
                         new Tuple2<>(new Tuple2<>(alignedContig.getContigName(), alignedContig.getContigSequence()),
-                                AssemblyContigAlignmentsConfigPicker.pickBestConfigurations(alignedContig, canonicalChromosomes,
-                                        0.0)))
-                        .next();
+                        goodAndBadMappings))
+                .next();
     }
 }

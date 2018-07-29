@@ -9,7 +9,6 @@ import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeaderLine;
-import htsjdk.variant.vcf.VCFSimpleHeaderLine;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
@@ -26,6 +25,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -157,7 +157,7 @@ public abstract class GATKTool extends CommandLineProgram {
      * Walker base classes (ReadWalker, etc.) are responsible for hooking these intervals up to
      * their particular driving data source.
      */
-    List<SimpleInterval> intervalsForTraversal;
+    List<SimpleInterval> userIntervals;
 
     /**
      * Progress meter to print out traversal statistics. Subclasses must invoke
@@ -442,7 +442,7 @@ public abstract class GATKTool extends CommandLineProgram {
                         "via the -R argument or you can run the tool UpdateVCFSequenceDictionary on your vcf.");
             }
 
-            intervalsForTraversal = intervalArgumentCollection.getIntervals(sequenceDictionary);
+            userIntervals = intervalArgumentCollection.getIntervals(sequenceDictionary);
         }
     }
 
@@ -476,10 +476,10 @@ public abstract class GATKTool extends CommandLineProgram {
     /**
      * Are sources of intervals available?
      *
-     * @return true if intervals are available, otherwise false
+     * @return true if user-supplied intervals are available, otherwise false
      */
-    public final boolean hasIntervals() {
-        return intervalsForTraversal != null;
+    public final boolean hasUserSuppliedIntervals() {
+        return userIntervals != null;
     }
 
     /**
@@ -714,7 +714,7 @@ public abstract class GATKTool extends CommandLineProgram {
         }
 
         // we don't currently have access to seqdicts from intervals
-        //if (hasIntervals()) {}
+        //if (hasUserSuppliedIntervals()) {}
     }
 
     /**
@@ -836,17 +836,13 @@ public abstract class GATKTool extends CommandLineProgram {
      * date and command line, otherwise an empty set.
      */
     protected Set<VCFHeaderLine> getDefaultToolVCFHeaderLines() {
-        final Set<VCFHeaderLine> gatkToolHeaderLines = new HashSet<>();
         if (addOutputVCFCommandLine) {
-            final Map<String, String> simpleHeaderLineMap = new HashMap<>(4);
-            simpleHeaderLineMap.put("ID", this.getClass().getSimpleName());
-            simpleHeaderLineMap.put("Version", getVersion());
-            simpleHeaderLineMap.put("Date", Utils.getDateTimeForDisplay((ZonedDateTime.now())));
-            simpleHeaderLineMap.put("CommandLine", getCommandLine());
-            gatkToolHeaderLines.add(new VCFHeaderLine("source", this.getClass().getSimpleName()));
-            gatkToolHeaderLines.add(new VCFSimpleHeaderLine(String.format("%sCommandLine", getToolkitShortName()), simpleHeaderLineMap));
+            return GATKVariantContextUtils
+                    .getDefaultVCFHeaderLines(getToolkitShortName(), this.getClass().getSimpleName(),
+                            getVersion(), Utils.getDateTimeForDisplay((ZonedDateTime.now())), getCommandLine());
+        } else {
+            return new HashSet<>();
         }
-        return gatkToolHeaderLines;
     }
 
     /**
@@ -865,15 +861,6 @@ public abstract class GATKTool extends CommandLineProgram {
         }
         return pgID;
     }
-
-    /**
-     * @return An abbreviated name of the toolkit for this tool. Subclasses may override to provide
-     *         a custom toolkit name.
-     *
-     * TODO: This should be refactored and moved up into CommandLineProgram, with this value
-     * TODO: stored in the jar manifest, like {@link CommandLineProgram#getToolkitName}
-     */
-    protected String getToolkitShortName() { return "GATK"; }
 
     /**
      * Call {@link GATKTool#addFeatureInputsAfterInitialization(String, String, Class, int)} with no caching.
@@ -926,6 +913,14 @@ public abstract class GATKTool extends CommandLineProgram {
      */
     public String getToolName() {
         return String.format("%s %s", getToolkitShortName(), getClass().getSimpleName());
+    }
+
+    /**
+     * Returns the list of intervals to iterate, either limited to the user-supplied intervals or the entire reference genome if none were specified.
+     * If no reference was supplied, null is returned
+     */
+    public List<SimpleInterval> getTraversalIntervals() {
+        return hasUserSuppliedIntervals() ? userIntervals : hasReference() ? IntervalUtils.getAllIntervalsForReference(getReferenceDictionary()) : null;
     }
 
     /**

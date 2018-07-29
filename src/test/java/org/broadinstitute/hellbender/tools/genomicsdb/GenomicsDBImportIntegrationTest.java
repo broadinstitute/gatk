@@ -134,6 +134,16 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         testGenomicsDBImporter(LOCAL_GVCFS, MULTIPLE_INTERVALS, COMBINED_MULTI_INTERVAL, b38_reference_20_21, true);
     }
 
+    private void testGenomicsDBImportWith1000Intervals() throws IOException {
+        final String workspace = createTempDir("genomicsdb-tests-").getAbsolutePath() + "/workspace";
+        LinkedList<SimpleInterval> intervals= new LinkedList<SimpleInterval>();
+        //[ 17960187, 17981445 ]
+        int base = 17960187;
+        for(int i=0;i<1000;++i)
+            intervals.add(new SimpleInterval("chr20", base+20*i, base+20*i+10)); //intervals of size 10 separated by 10
+        writeToGenomicsDB(new ArrayList<String>(Arrays.asList(LOCAL_GVCFS.get(0))), intervals, workspace, 0, false, 0, 1);
+    }
+
     @Test
     public void testGenomicsDBImportFileInputsAgainstCombineGVCF() throws IOException {
         testGenomicsDBAgainstCombineGVCFs(LOCAL_GVCFS, INTERVAL, b38_reference_20_21, new String[0]);

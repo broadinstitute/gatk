@@ -168,16 +168,14 @@ task testOnPackagedReleaseJar(type: Test){
 // the classpath for these tests is set at execution time for testOnPackagedReleaseJar
 task jacocoTestReportOnPackagedReleaseJar(type: JacocoReport) {
     String sourceFiles = "$System.env.SOURCE_DIR"
+    String testClassesUnpacked = "$System.env.CP_DIR"
 
     dependsOn testOnPackagedReleaseJar
     executionData testOnPackagedReleaseJar
-
-    jacoco {
-        reportsDir = file("$System.env.SOURCE_DIR/build/reports/")
-    }
+    additionalSourceDirs = files(sourceSets.main.allJava.srcDirs)
 
     sourceDirectories = files(sourceFiles)
-    classDirectories =  files("testClasses")
+    classDirectories =  files(testClassesUnpacked)
 
     group = "Reporting"
     description = "Generate Jacoco coverage reports after running tests inside the docker image."

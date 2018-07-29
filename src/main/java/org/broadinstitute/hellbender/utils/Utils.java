@@ -5,12 +5,14 @@ import com.google.common.collect.Iterators;
 import com.google.common.primitives.Ints;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.tribble.util.ParsingUtils;
+import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.math3.random.RandomDataGenerator;
 import org.apache.commons.math3.random.Well19937c;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
 import javax.annotation.Nullable;
@@ -33,6 +35,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -1303,5 +1306,69 @@ public final class Utils {
         }
 
         return result;
+    }
+
+    /**
+     * Convenience function that formats a percentage as a %.2f string
+     *
+     * @param x number of objects part of total that meet some criteria
+     * @param total count of all objects, including x
+     * @return a String percent rate, or NA if total == 0
+     */
+    public static String formattedPercent(final long x, final long total) {
+        return total == 0 ? "NA" : String.format("%.2f", (100.0*x) / total);
+    }
+
+    /**
+     * Convenience function that formats a ratio as a %.2f string
+     *
+     * @param num  number of observations in the numerator
+     * @param denom number of observations in the denumerator
+     * @return a String formatted ratio, or NA if all == 0
+     */
+    public static String formattedRatio(final long num, final long denom) {
+        return denom == 0 ? "NA" : String.format("%.2f", num / (1.0 * denom));
+    }
+
+    /**
+     * Given a collection of strings and a collection of regular expressions, generates the set of strings that match
+     * any expression
+     * @param sourceValues collection of strings from which to to select
+     * @param filterExpressions list of expressions to use for matching
+     * @param exactMatch If true match filters exactly, otherwise use as both exact and regular expressions
+     * @return A new set strings from sourceValues that satisfy at least one of the expressions in sampleExpressions
+     */
+    public static Set<String> filterCollectionByExpressions(final Collection<String> sourceValues, final Collection<String> filterExpressions, final boolean exactMatch) {
+        Utils.nonNull(filterExpressions);
+        Utils.nonNull(sourceValues);
+
+        final Set<String> filteredValues = new LinkedHashSet<>();
+
+        Collection<Pattern> patterns = null;
+        if (!exactMatch) {
+            patterns = compilePatterns(filterExpressions);
+        }
+        for (final String value : sourceValues) {
+            if (filterExpressions.contains(value)) {
+                filteredValues.add(value);
+            } else if (!exactMatch) {
+                for (final Pattern pattern : patterns) {
+                    if (pattern.matcher(value).find()) {
+                        filteredValues.add(value);
+                        break;
+                    }
+                }
+            }
+        }
+
+        return filteredValues;
+    }
+
+    private static Collection<Pattern> compilePatterns(final Collection<String> filters) {
+        final Collection<Pattern> patterns = new ArrayList<Pattern>();
+        for (final String filter: filters) {
+            patterns.add(Pattern.compile(filter));
+        }
+        return patterns;
     }
 }

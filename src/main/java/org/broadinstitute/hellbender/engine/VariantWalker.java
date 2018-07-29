@@ -41,8 +41,8 @@ public abstract class VariantWalker extends VariantWalkerBase {
     @Override
     protected final void onStartup() {
         super.onStartup();
-        if ( hasIntervals() ) {
-            drivingVariants.setIntervalsForTraversal(intervalsForTraversal);
+        if ( hasUserSuppliedIntervals() ) {
+            drivingVariants.setIntervalsForTraversal(userIntervals);
         }
     }
 

@@ -3,8 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.validation;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.engine.FeatureDataSource;
-import org.broadinstitute.hellbender.tools.walkers.validation.RemoveNearbyIndels;
+import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -12,7 +11,6 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 /**
  * Created by davidben on 1/31/17.
@@ -57,7 +55,7 @@ public class RemoveNearbyIndelsIntegrationTest extends CommandLineProgramTest {
 
         runCommandLine(arguments);
 
-        final List<VariantContext> output = StreamSupport.stream(new FeatureDataSource<VariantContext>(outputVcf).spliterator(), false)
+        final List<VariantContext> output = VariantContextTestUtils.streamVcf(outputVcf)
                 .collect(Collectors.toList());
 
         final List<Integer> outputPositions = output.stream().map(VariantContext::getStart).collect(Collectors.toList());

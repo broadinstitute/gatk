@@ -16,6 +16,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -102,11 +103,27 @@ public class BreakpointEvidence {
     }
 
     //* slicing equality -- just tests for equal fields */
-    public boolean equalFields( final BreakpointEvidence that ) {
+    @VisibleForTesting boolean equalFields( final BreakpointEvidence that ) {
         return location.equals(that.location) && weight == that.weight && validated == that.validated;
     }
 
-    protected void serialize( final Kryo kryo, final Output output ) {
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof BreakpointEvidence)) return false;
+        BreakpointEvidence evidence = (BreakpointEvidence) o;
+        return weight == evidence.weight &&
+                validated == evidence.validated &&
+                Objects.equals(location, evidence.location);
+    }
+
+    @Override
+    public int hashCode() {
+
+        return Objects.hash(location, weight, validated);
+    }
+
+    protected void serialize(final Kryo kryo, final Output output ) {
         intervalSerializer.write(kryo, output, location);
         output.writeInt(weight);
         output.writeBoolean(validated);
@@ -195,6 +212,21 @@ public class BreakpointEvidence {
             return super.stringRep(readMetadata, minEvidenceMapq) + "\t" + readCount;
         }
 
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (!(o instanceof TemplateSizeAnomaly)) return false;
+            if (!super.equals(o)) return false;
+            TemplateSizeAnomaly that = (TemplateSizeAnomaly) o;
+            return readCount == that.readCount;
+        }
+
+        @Override
+        public int hashCode() {
+
+            return Objects.hash(super.hashCode(), readCount);
+        }
+
         public final static class Serializer extends com.esotericsoftware.kryo.Serializer<TemplateSizeAnomaly> {
             @Override
             public void write( final Kryo kryo, final Output output, final TemplateSizeAnomaly templateSizeAnomaly ) {
@@ -206,6 +238,8 @@ public class BreakpointEvidence {
                 return new TemplateSizeAnomaly(kryo, input);
             }
         }
+
+        public Integer getReadCount() {return readCount;}
     }
 
     @DefaultSerializer(ReadEvidence.Serializer.class)
@@ -217,6 +251,7 @@ public class BreakpointEvidence {
         private final String cigarString;
         private final int mappingQuality;
         private final int templateSize;
+        private final String readGroup;
 
         /**
          * evidence offset and width is set to "the rest of the fragment" not covered by this read
@@ -230,6 +265,7 @@ public class BreakpointEvidence {
             this.cigarString = read.getCigar().toString();
             this.mappingQuality = read.getMappingQuality();
             this.templateSize = read.getFragmentLength();
+            this.readGroup = read.getReadGroup();
         }
 
         /**
@@ -246,13 +282,17 @@ public class BreakpointEvidence {
             this.cigarString = read.getCigar().toString();
             this.mappingQuality = read.getMappingQuality();
             this.templateSize = read.getFragmentLength();
+            this.readGroup = read.getReadGroup();
         }
 
+        /**
+         * Directly construct ReadEvidence by supplying all fields. Used by testing
+         */
         @VisibleForTesting ReadEvidence( final SVInterval interval, final int weight,
                                          final String templateName, final TemplateFragmentOrdinal fragmentOrdinal,
                                          final boolean validated, final boolean forwardStrand,
                                          final String cigarString, final int mappingQuality,
-                                         final int templateSize) {
+                                         final int templateSize, final String readGroup) {
             super(interval, weight, validated);
             this.templateName = templateName;
             this.fragmentOrdinal = fragmentOrdinal;
@@ -260,6 +300,7 @@ public class BreakpointEvidence {
             this.cigarString = cigarString;
             this.mappingQuality = mappingQuality;
             this.templateSize = templateSize;
+            this.readGroup = readGroup;
         }
 
         /**
@@ -275,6 +316,7 @@ public class BreakpointEvidence {
             this.cigarString = input.readString();
             this.mappingQuality = input.readInt();
             this.templateSize = input.readInt();
+            this.readGroup = input.readString();
         }
 
         @Override
@@ -286,7 +328,10 @@ public class BreakpointEvidence {
             output.writeString(cigarString);
             output.writeInt(mappingQuality);
             output.writeInt(templateSize);
+            output.writeString(readGroup);
         }
+
+        public boolean getForwardStrand() { return forwardStrand; }
 
         public String getTemplateName() {
             return templateName;
@@ -301,6 +346,8 @@ public class BreakpointEvidence {
         public int getMappingQuality() { return mappingQuality; }
 
         public int getTemplateSize() { return templateSize; }
+
+        public String getReadGroup() { return readGroup; }
 
         @Override
         public Boolean isEvidenceUpstreamOfBreakpoint() {
@@ -322,6 +369,28 @@ public class BreakpointEvidence {
             return super.stringRep(readMetadata, minEvidenceMapq) + "\t" + templateName + fragmentOrdinal
                     + "\t" + (forwardStrand ? "1" : "0") + "\t" + templateSize + "\t" + cigarString
                     + "\t" + mappingQuality;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (!(o instanceof ReadEvidence)) return false;
+            if (!super.equals(o)) return false;
+            ReadEvidence that = (ReadEvidence) o;
+            return forwardStrand == that.forwardStrand &&
+                    mappingQuality == that.mappingQuality &&
+                    templateSize == that.templateSize &&
+                    Objects.equals(templateName, that.templateName) &&
+                    fragmentOrdinal == that.fragmentOrdinal &&
+                    Objects.equals(cigarString, that.cigarString) &&
+                    Objects.equals(readGroup, that.readGroup);
+        }
+
+        @Override
+        public int hashCode() {
+
+            return Objects.hash(super.hashCode(), templateName, fragmentOrdinal, forwardStrand, cigarString,
+                    mappingQuality, templateSize, readGroup);
         }
 
         public static final class Serializer extends com.esotericsoftware.kryo.Serializer<ReadEvidence> {
@@ -383,22 +452,22 @@ public class BreakpointEvidence {
 
     @DefaultSerializer(SplitRead.Serializer.class)
     public static final class SplitRead extends ReadEvidence {
-        private static final int UNCERTAINTY = 3;
+        @VisibleForTesting static final int UNCERTAINTY = 3;
         private static final String SA_TAG_NAME = "SA";
         private static final int SPLIT_READ_WEIGHT = ReadEvidence.SINGLE_READ_WEIGHT;
-        private final String cigar;
         private final String tagSA;
-        private final boolean primaryAlignmentForwardStrand;
         private boolean primaryAlignmentClippedAtStart;
+        private boolean primaryAlignmentForwardStrand;
         private final List<SAMapping> saMappings;
 
         public SplitRead( final GATKRead read, final ReadMetadata metadata, final boolean primaryAlignmentClippedAtAlignmentStart ) {
             // todo: if reads have multiple SA tags.. we should have two pieces of evidence with the right strands
             super(read, metadata, primaryAlignmentClippedAtAlignmentStart ? read.getStart() : read.getEnd(),
                   UNCERTAINTY, !primaryAlignmentClippedAtAlignmentStart, SPLIT_READ_WEIGHT);
-            cigar = read.getCigar().toString();
             this.primaryAlignmentForwardStrand = !read.isReverseStrand();
-            if ( cigar.isEmpty() ) throw new GATKException("Read has no cigar string.");
+            if ( getCigarString() == null || getCigarString().isEmpty() ) {
+                throw new GATKException("Read has no cigar string.");
+            }
             this.primaryAlignmentClippedAtStart = primaryAlignmentClippedAtAlignmentStart;
             if (read.hasAttribute(SA_TAG_NAME)) {
                 tagSA = read.getAttributeAsString(SA_TAG_NAME);
@@ -410,25 +479,57 @@ public class BreakpointEvidence {
 
         private SplitRead( final Kryo kryo, final Input input ) {
             super(kryo, input);
-            cigar = input.readString();
             tagSA = input.readString();
-            primaryAlignmentForwardStrand = input.readBoolean();
             primaryAlignmentClippedAtStart = input.readBoolean();
             saMappings = parseSATag(tagSA);
+        }
+
+        /**
+         * Directly construct SplitRead by supplying all fields. Used by testing
+         */
+        @VisibleForTesting SplitRead(final SVInterval interval, final int weight,
+                          final String templateName, final TemplateFragmentOrdinal fragmentOrdinal,
+                          final boolean validated, final boolean forwardStrand,
+                          final String cigarString, final int mappingQuality,
+                          final int templateSize, final String readGroup,
+                          final boolean primaryAlignmentClippedAtStart, boolean primaryAlignmentForwardStrand,
+                          final String tagSA) {
+            super(interval, weight, templateName, fragmentOrdinal, validated, forwardStrand, cigarString,
+                    mappingQuality, templateSize, readGroup);
+            this.primaryAlignmentClippedAtStart = primaryAlignmentClippedAtStart;
+            this.primaryAlignmentForwardStrand = primaryAlignmentForwardStrand;
+            this.tagSA = tagSA;
+            this.saMappings = parseSATag(tagSA);
         }
 
         @Override
         protected void serialize( final Kryo kryo, final Output output ) {
             super.serialize(kryo, output);
-            output.writeString(cigar);
             output.writeString(tagSA);
-            output.writeBoolean(primaryAlignmentForwardStrand);
             output.writeBoolean(primaryAlignmentClippedAtStart);
         }
 
         @Override
         public String toString() {
-            return super.toString()+"\tSplit\t"+cigar+"\t"+(tagSA == null ? " SA: None" : (" SA: " + tagSA));
+            return super.toString()+"\tSplit\t"+getCigarString()+"\t"+(tagSA == null ? " SA: None" : (" SA: " + tagSA));
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (!(o instanceof SplitRead)) return false;
+            if (!super.equals(o)) return false;
+            SplitRead splitRead = (SplitRead) o;
+            return primaryAlignmentClippedAtStart == splitRead.primaryAlignmentClippedAtStart &&
+                    primaryAlignmentForwardStrand == splitRead.primaryAlignmentForwardStrand &&
+                    Objects.equals(tagSA, splitRead.tagSA) &&
+                    Objects.equals(saMappings, splitRead.saMappings);
+        }
+
+        @Override
+        public int hashCode() {
+
+            return Objects.hash(super.hashCode(), tagSA, primaryAlignmentClippedAtStart, primaryAlignmentForwardStrand, saMappings);
         }
 
         private List<SAMapping> parseSATag(final String tagSA) {
@@ -514,12 +615,12 @@ public class BreakpointEvidence {
                 final List<StrandedInterval> supplementaryAlignments = new ArrayList<>(saMappings.size());
                 for (final SAMapping saMapping : saMappings) {
                     final int mapQ = saMapping.getMapq();
-                    final SVInterval saInterval = saMappingToSVInterval(readMetadata, saMapping,
-                            calculateDistalTargetStrand(saMapping, !primaryAlignmentClippedAtStart, primaryAlignmentForwardStrand));
+                    final boolean strand = calculateDistalTargetStrand(saMapping, !primaryAlignmentClippedAtStart,
+                                                                       primaryAlignmentForwardStrand);
+                    final SVInterval saInterval = saMappingToSVInterval(readMetadata, saMapping, strand);
                     if (! isHighQualityMapping(readMetadata, mapQ, saInterval, minEvidenceMapq)) {
                         continue;
                     }
-                    final boolean strand = calculateDistalTargetStrand(saMapping, !primaryAlignmentClippedAtStart, primaryAlignmentForwardStrand);
                     supplementaryAlignments.add(new StrandedInterval(saInterval, strand));
                 }
                 return supplementaryAlignments;
@@ -615,29 +716,41 @@ public class BreakpointEvidence {
     @DefaultSerializer(LargeIndel.Serializer.class)
     public static final class LargeIndel extends ReadEvidence {
         private static final int UNCERTAINTY = 4;
-        private final String cigar;
         private static final int LARGE_INDEL_WEIGHT = ReadEvidence.SINGLE_READ_WEIGHT;
 
         LargeIndel( final GATKRead read, final ReadMetadata metadata, final int contigOffset ) {
             super(read, metadata, contigOffset, UNCERTAINTY, true, LARGE_INDEL_WEIGHT);
-            cigar = read.getCigar().toString();
-            if ( cigar == null ) throw new GATKException("Read has no cigar string.");
+            if ( getCigarString() == null || getCigarString().isEmpty() )
+                throw new GATKException("Read has no cigar string.");
         }
 
         private LargeIndel( final Kryo kryo, final Input input ) {
             super(kryo, input);
-            cigar = input.readString();
+        }
+
+        /**
+         * Directly construct LargeIndel by supplying all fields. Used by testing
+         */
+        @VisibleForTesting LargeIndel(final SVInterval interval, final int weight,
+                             final String templateName, final TemplateFragmentOrdinal fragmentOrdinal,
+                             final boolean validated, final boolean forwardStrand,
+                             final String cigarString, final int mappingQuality,
+                             final int templateSize, final String readGroup) {
+            super(interval, weight, templateName, fragmentOrdinal, validated, forwardStrand, cigarString,
+                    mappingQuality, templateSize, readGroup);
         }
 
         @Override
         protected void serialize( final Kryo kryo, final Output output ) {
             super.serialize(kryo, output);
-            output.writeString(cigar);
         }
 
         @Override
-        public String toString() {
-            return super.toString() + "\tIndel\t" + cigar;
+        public String toString() {return super.toString() + "\tIndel\t" + getCigarString();}
+
+        @Override
+        public boolean equals(Object o) {
+            return (this == o) || ((o instanceof LargeIndel) && super.equals(o));
         }
 
         public static final class Serializer extends com.esotericsoftware.kryo.Serializer<LargeIndel> {
@@ -663,9 +776,26 @@ public class BreakpointEvidence {
 
         private MateUnmapped( final Kryo kryo, final Input input ) { super(kryo, input); }
 
+        /**
+         * Directly construct MateUnmapped by supplying all fields. Used by testing
+         */
+        @VisibleForTesting MateUnmapped(final SVInterval interval, final int weight,
+                             final String templateName, final TemplateFragmentOrdinal fragmentOrdinal,
+                             final boolean validated, final boolean forwardStrand,
+                             final String cigarString, final int mappingQuality,
+                             final int templateSize, final String readGroup) {
+            super(interval, weight, templateName, fragmentOrdinal, validated, forwardStrand, cigarString,
+                    mappingQuality, templateSize, readGroup);
+        }
+
         @Override
         public String toString() {
             return super.toString() + "\tUnmappedMate";
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            return (this == o) || ((o instanceof MateUnmapped) && super.equals(o));
         }
 
         public static final class Serializer extends com.esotericsoftware.kryo.Serializer<MateUnmapped> {
@@ -709,12 +839,45 @@ public class BreakpointEvidence {
             targetQuality = input.readInt();
         }
 
+        /**
+         * Directly construct DiscordantReadPairEvidence by supplying all fields. Used by testing
+         */
+        private DiscordantReadPairEvidence(final SVInterval interval, final int weight,
+                                  final String templateName, final TemplateFragmentOrdinal fragmentOrdinal,
+                                  final boolean validated, final boolean forwardStrand,
+                                  final String cigarString, final int mappingQuality,
+                                  final int templateSize, final String readGroup,
+                                  final SVInterval target, final boolean targetForwardStrand, final int targetQuality) {
+            super(interval, weight, templateName, fragmentOrdinal, validated, forwardStrand, cigarString,
+                    mappingQuality, templateSize, readGroup);
+            this.target = target;
+            this.targetForwardStrand = targetForwardStrand;
+            this.targetQuality = targetQuality;
+        }
+
         @Override
         protected void serialize(final Kryo kryo, final Output output) {
             super.serialize(kryo, output);
             intervalSerializer.write(kryo, output, target);
             output.writeBoolean(targetForwardStrand);
             output.writeInt(targetQuality);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (!(o instanceof DiscordantReadPairEvidence)) return false;
+            if (!super.equals(o)) return false;
+            DiscordantReadPairEvidence that = (DiscordantReadPairEvidence) o;
+            return targetForwardStrand == that.targetForwardStrand &&
+                    targetQuality == that.targetQuality &&
+                    Objects.equals(target, that.target);
+        }
+
+        @Override
+        public int hashCode() {
+
+            return Objects.hash(super.hashCode(), target, targetForwardStrand, targetQuality);
         }
 
         @Override
@@ -804,9 +967,28 @@ public class BreakpointEvidence {
             super(kryo, input);
         }
 
+        /**
+         * Directly construct InterContigPair by supplying all fields. Used by testing
+         */
+        @VisibleForTesting InterContigPair(final SVInterval interval, final int weight,
+                                final String templateName, final TemplateFragmentOrdinal fragmentOrdinal,
+                                final boolean validated, final boolean forwardStrand,
+                                final String cigarString, final int mappingQuality,
+                                final int templateSize, final String readGroup,
+                                final SVInterval target, final boolean targetForwardStrand, final int targetQuality) {
+            super(interval, weight, templateName, fragmentOrdinal, validated, forwardStrand, cigarString,
+                  mappingQuality, templateSize, readGroup, target, targetForwardStrand, targetQuality);
+        }
+
         @Override
         public String toString() {
             return super.toString() + "\tIntercontigPair\t" + target;
+        }
+
+
+        @Override
+        public boolean equals(Object o) {
+            return (this == o) || ((o instanceof InterContigPair) && super.equals(o));
         }
 
         public static final class Serializer extends com.esotericsoftware.kryo.Serializer<InterContigPair> {
@@ -834,6 +1016,18 @@ public class BreakpointEvidence {
             super(kryo, input);
         }
 
+        /**
+         * Directly construct OutiesPair by supplying all fields. Used by testing
+         */
+        @VisibleForTesting OutiesPair(final SVInterval interval, final int weight,
+                           final String templateName, final TemplateFragmentOrdinal fragmentOrdinal,
+                           final boolean validated, final boolean forwardStrand,
+                           final String cigarString, final int mappingQuality,
+                           final int templateSize, final String readGroup,
+                           final SVInterval target, final boolean targetForwardStrand, final int targetQuality) {
+            super(interval, weight, templateName, fragmentOrdinal, validated, forwardStrand, cigarString,
+                    mappingQuality, templateSize, readGroup, target, targetForwardStrand, targetQuality);
+        }
 
         @Override
         protected void serialize( final Kryo kryo, final Output output ) {
@@ -843,6 +1037,11 @@ public class BreakpointEvidence {
         @Override
         public String toString() {
             return super.toString() + "\tOutiesPair\t" + target;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            return (this == o) || ((o instanceof OutiesPair) && super.equals(o));
         }
 
         public static final class Serializer extends com.esotericsoftware.kryo.Serializer<OutiesPair> {
@@ -870,9 +1069,27 @@ public class BreakpointEvidence {
             super(kryo, input);
         }
 
+        /**
+         * Directly construct SameStrandPair by supplying all fields. Used by testing
+         */
+        @VisibleForTesting SameStrandPair(final SVInterval interval, final int weight,
+                               final String templateName, final TemplateFragmentOrdinal fragmentOrdinal,
+                               final boolean validated, final boolean forwardStrand,
+                               final String cigarString, final int mappingQuality,
+                               final int templateSize, final String readGroup,
+                               final SVInterval target, final boolean targetForwardStrand, final int targetQuality) {
+            super(interval, weight, templateName, fragmentOrdinal, validated, forwardStrand, cigarString,
+                    mappingQuality, templateSize, readGroup, target, targetForwardStrand, targetQuality);
+        }
+
         @Override
         public String toString() {
             return super.toString() + "\tSameStrandPair\t" + target;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            return (this == o) || ((o instanceof SameStrandPair) && super.equals(o));
         }
 
         public static final class Serializer extends com.esotericsoftware.kryo.Serializer<SameStrandPair> {
@@ -906,6 +1123,21 @@ public class BreakpointEvidence {
             mateReverseStrand = input.readBoolean();
         }
 
+        /**
+         * Directly construct WeirdTemplateSize by supplying all fields. Used by testing
+         */
+        @VisibleForTesting WeirdTemplateSize(final SVInterval interval, final int weight,
+                                  final String templateName, final TemplateFragmentOrdinal fragmentOrdinal,
+                                  final boolean validated, final boolean forwardStrand,
+                                  final String cigarString, final int mappingQuality,
+                                  final int templateSize, final String readGroup,
+                                  final SVInterval target, final boolean targetForwardStrand, final int targetQuality) {
+            super(interval, weight, templateName, fragmentOrdinal, validated, forwardStrand, cigarString,
+                    mappingQuality, templateSize, readGroup, target, targetForwardStrand, targetQuality);
+            mateStartPosition = target.getStart();
+            mateReverseStrand = !targetForwardStrand;
+        }
+
         @Override
         protected void serialize( final Kryo kryo, final Output output ) {
             super.serialize(kryo, output);
@@ -916,6 +1148,22 @@ public class BreakpointEvidence {
         @Override
         public String toString() {
             return super.toString() + "\tTemplateSize\t" + target + "\t" + getTemplateSize();
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (!(o instanceof WeirdTemplateSize)) return false;
+            if (!super.equals(o)) return false;
+            WeirdTemplateSize that = (WeirdTemplateSize) o;
+            return mateStartPosition == that.mateStartPosition &&
+                    mateReverseStrand == that.mateReverseStrand;
+        }
+
+        @Override
+        public int hashCode() {
+
+            return Objects.hash(super.hashCode(), mateStartPosition, mateReverseStrand);
         }
 
         public static final class Serializer extends com.esotericsoftware.kryo.Serializer<WeirdTemplateSize> {

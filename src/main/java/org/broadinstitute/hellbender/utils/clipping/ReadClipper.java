@@ -468,7 +468,7 @@ public class ReadClipper {
             return read;
         }
         if ((clippingOp == ClippingRepresentation.SOFTCLIP_BASES) && read.isUnmapped()) {
-            throw new GATKException("Cannot softclip read "+read.commonToString()+" by reference coordinates because it is unmapped");
+            throw new GATKException("Cannot soft-clip read "+read.commonToString()+" by reference coordinates because it is unmapped");
         }
 
         final int start;

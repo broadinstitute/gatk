@@ -14,10 +14,10 @@ import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
 import org.apache.commons.lang3.tuple.Pair;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
 import org.broadinstitute.hellbender.utils.*;
-import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
@@ -28,7 +28,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
 
@@ -2198,5 +2197,77 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
     @Test(dataProvider = "provideDataForIsTransition")
     public void testIsTransition(final VariantContext vc, final boolean isTransition) {
         Assert.assertEquals(GATKVariantContextUtils.isTransition(vc), isTransition);
+    }
+
+
+    @DataProvider
+    public Object[][] provideMatchAlleles() {
+        // These were chosen to correspond to test cases in the test exac datasource VCF.
+        return new Object[][] {
+                {new SimpleInterval("3", 69521, 69521), Arrays.asList("T", "C"),
+                        new SimpleInterval("3", 69521, 69521), Arrays.asList("T", "A", "C"),
+                        new int[]{1}},
+                {new SimpleInterval("3", 69521, 69521), Arrays.asList("T", "A"),
+                        new SimpleInterval("3", 69521, 69521), Arrays.asList("T", "A", "C"),
+                        new int[]{0}},
+                {new SimpleInterval("3", 69521, 69521), Arrays.asList("T", "C", "A"),
+                        new SimpleInterval("3", 69521, 69521), Arrays.asList("T", "A", "C"),
+                        new int[]{1, 0}},
+                {new SimpleInterval("3", 69521, 69521), Arrays.asList("T", "C", "A", "G"),
+                        new SimpleInterval("3", 69521, 69521), Arrays.asList("T", "A", "C"),
+                        new int[]{1, 0, -1}},
+                {new SimpleInterval("3", 69552, 69552), Arrays.asList("G", "A"),
+                        new SimpleInterval("3", 69521, 69521), Arrays.asList("G", "T", "A", "C"),
+                        new int[]{1}},
+                {new SimpleInterval("3", 69552, 69552), Arrays.asList("G", "T"),
+                        new SimpleInterval("3", 69521, 69521), Arrays.asList("G", "T", "A", "C"),
+                        new int[]{0}},
+                {new SimpleInterval("3", 69552, 69552), Arrays.asList("G", "C"),
+                        new SimpleInterval("3", 69521, 69521), Arrays.asList("G", "T", "A", "C"),
+                        new int[]{2}},
+                {new SimpleInterval("3", 324682, 324714), Arrays.asList("ACCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT", "A"),
+                        new SimpleInterval("3", 324682, 324714), Arrays.asList("ACCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT", "TCCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT", "A"),
+                        new int[]{1}},
+                {new SimpleInterval("3", 324682, 324714), Arrays.asList("ACCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT", "TCCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT", "A"),
+                        new SimpleInterval("3", 324682, 324714), Arrays.asList("ACCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT", "TCCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT", "A"),
+                        new int[]{0, 1}},
+                //HARD!!  Same as the previous test
+                {new SimpleInterval("3", 324682, 324682), Arrays.asList("A", "T"),
+                        new SimpleInterval("3", 324682, 324714), Arrays.asList("ACCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT", "TCCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT", "A"),
+                        new int[]{0}},
+                {new SimpleInterval("3", 324683, 324683), Arrays.asList("C", "T"), //(See second base in ref and alt)
+                        new SimpleInterval("3", 324682, 324714), Arrays.asList("TCCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT", "TTCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT", "A"),
+                        new int[]{0}},
+                {new SimpleInterval("3", 13372, 13372), Arrays.asList("G", "C"),
+                        new SimpleInterval("3", 13372, 13372), Arrays.asList("G", "C"),
+                        new int[]{0}},
+                {new SimpleInterval("3", 13372, 13372), Arrays.asList("G", "C", "T"),
+                        new SimpleInterval("3", 13372, 13372), Arrays.asList("G", "C"),
+                        new int[]{0, -1}},
+                {new SimpleInterval("3", 13372, 13372), Arrays.asList("G", "T", "C"),
+                        new SimpleInterval("3", 13372, 13372), Arrays.asList("G", "C"),
+                        new int[]{-1, 0}},
+                {new SimpleInterval("3", 13372, 13372), Arrays.asList("G", "GTT", "GT"),
+                        new SimpleInterval("3", 13371, 13372), Arrays.asList("AG", "AC", "AGTT"),
+                        new int[]{1, -1}},
+
+        };
+    }
+    @Test(dataProvider = "provideMatchAlleles")
+    public void testMatchAlleles(final SimpleInterval variant1Interval, final List<String> variant1Alleles,
+                                 final SimpleInterval variant2Interval, final List<String> variant2Alleles,
+                                 final int[] gtMatch) {
+        final VariantContext variant1 = new VariantContextBuilder()
+                .chr(variant1Interval.getContig()).start(variant1Interval.getStart()).stop(variant1Interval.getEnd())
+                .alleles(variant1Alleles)
+                .make();
+
+        final VariantContext variant2 = new VariantContextBuilder()
+                .chr(variant1Interval.getContig()).start(variant2Interval.getStart()).stop(variant2Interval.getEnd())
+                .alleles(variant2Alleles)
+                .make();
+
+        final int[] matches = GATKVariantContextUtils.matchAllelesOnly(variant1, variant2);
+        Assert.assertTrue(Arrays.equals(matches, gtMatch), "Failed");
     }
 }

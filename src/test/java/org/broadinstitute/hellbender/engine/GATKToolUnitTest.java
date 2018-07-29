@@ -1,12 +1,7 @@
 package org.broadinstitute.hellbender.engine;
 
+import htsjdk.samtools.*;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
-import htsjdk.samtools.SAMFormatException;
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.ValidationStringency;
 import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -16,12 +11,12 @@ import htsjdk.variant.vcf.VCFFileReader;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFIDHeaderLine;
-import org.apache.commons.io.output.NullOutputStream;
 import org.broadinstitute.barclay.argparser.*;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.ClippingRankSumTest;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Coverage;
@@ -30,15 +25,14 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import javax.annotation.Nullable;
 import java.io.File;
-import java.io.PrintStream;
-import java.util.*;
 import java.io.IOException;
+import java.util.*;
 
 public final class GATKToolUnitTest extends GATKBaseTest {
 
@@ -945,4 +939,61 @@ public final class GATKToolUnitTest extends GATKBaseTest {
         writer.add(vc);
     }
 
+    final String baseVariants = packageRootTestDir + "engine/feature_data_source_test.vcf";
+
+    @CommandLineProgramProperties(programGroup = TestProgramGroup.class, oneLineSummary = "GATKTool Intervals Test Walker", summary = "This is a test walker for GATKTool getTraversalIntervals")
+    private static class TestIntervalWalker extends GATKTool {
+        @Argument(fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME, shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME, doc = "A VCF file containing variants", common = false, optional = false)
+        public String drivingVariantFile;
+
+        public TestIntervalWalker() {
+
+        }
+
+        @Override
+        public void traverse() {
+
+        }
+    }
+
+    @Test(expectedExceptions = UserException.class)
+    public void testSequenceDictionaryRequiredForIntervalQuery() throws Exception {
+        //This should have failed because no dictionary is provided
+        final TestIntervalWalker tool = new TestIntervalWalker();
+        tool.instanceMain(new String[]{
+                "-V", baseVariants,
+                "-L", "1:21-21"
+        });
+    }
+
+    @DataProvider(name = "TestGetTraversalIntervalsProvider")
+    public Object[][] getTestGetTraversalIntervalsProvider() {
+        return new Object[][]{
+                {"1:21-21", 1, hg19MiniReference},
+                {null, 4, hg19MiniReference},
+                {null, null, null}
+        };
+    }
+
+    @Test(dataProvider = "TestGetTraversalIntervalsProvider")
+    public void testGetTraversalIntervals(@Nullable String intervals, Integer expected, String ref) {
+        List<String> args = new ArrayList<>(Arrays.asList(
+                "-V", baseVariants
+        ));
+
+        if (ref != null) {
+            args.add("-R");
+            args.add(ref);
+        }
+
+        if (intervals != null) {
+            args.add("-L");
+            args.add(intervals);
+        }
+
+        final TestIntervalWalker tool = new TestIntervalWalker();
+        tool.instanceMain(args.toArray(new String[args.size()]));
+
+        Assert.assertEquals(tool.getTraversalIntervals() == null ? null : tool.getTraversalIntervals().size(), expected);
+    }
 }

@@ -33,21 +33,21 @@ public final class OverclippedReadFilter extends ReadFilter{
             doc = "Allow a read to be filtered out based on having only 1 soft-clipped block. By default, both ends must " +
                     "have a soft-clipped block, setting this flag requires only 1 soft-clipped block",
             optional = true)
-    public boolean doNotRequireSoftclipsOnBothEnds;
+    public boolean doNotRequireSoftClipsOnBothEnds;
 
     // Command line parser requires a no-arg constructor
     public OverclippedReadFilter() {}
 
-    public OverclippedReadFilter(final int minimumSequenceLength, final boolean doNotRequireSoftclipsOnBothEnds) {
+    public OverclippedReadFilter(final int minimumSequenceLength, final boolean doNotRequireSoftClipsOnBothEnds) {
         this.minimumSequenceLength = minimumSequenceLength;
-        this.doNotRequireSoftclipsOnBothEnds = doNotRequireSoftclipsOnBothEnds;
+        this.doNotRequireSoftClipsOnBothEnds = doNotRequireSoftClipsOnBothEnds;
     }
 
     @Override
     public boolean test(final GATKRead read) {
         int alignedLength = 0;
         int softClipBlocks = 0;
-        int minSoftClipBlocks = doNotRequireSoftclipsOnBothEnds ? 1 : 2;
+        int minSoftClipBlocks = doNotRequireSoftClipsOnBothEnds ? 1 : 2;
         CigarOperator prevOperator = null;
 
         for ( final CigarElement element : read.getCigarElements() ) {

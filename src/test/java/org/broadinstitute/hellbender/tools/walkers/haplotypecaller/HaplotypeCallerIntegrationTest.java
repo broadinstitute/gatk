@@ -5,7 +5,6 @@ import htsjdk.samtools.SamFiles;
 import htsjdk.tribble.Tribble;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
-import htsjdk.variant.variantcontext.GenotypeLikelihoods;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
@@ -20,10 +19,6 @@ import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.AlleleSubsettingUtils;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
-import org.broadinstitute.hellbender.tools.walkers.variantutils.CalculateGenotypePosteriors;
-import org.broadinstitute.hellbender.tools.walkers.variantutils.PosteriorProbabilitiesUtils;
-import org.broadinstitute.hellbender.tools.walkers.mutect.M2ArgumentCollection;
-import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2IntegrationTest;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
@@ -737,7 +732,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         Utils.resetRandomGenerator();
         runCommandLine(args);
 
-        final Map<Integer, Allele> altAllelesByPosition = StreamSupport.stream(new FeatureDataSource<VariantContext>(outputVcf).spliterator(), false)
+        final Map<Integer, Allele> altAllelesByPosition = VariantContextTestUtils.streamVcf(outputVcf)
                 .collect(Collectors.toMap(VariantContext::getStart, vc -> vc.getAlternateAllele(0)));
 
         final Map<Integer, Allele> expectedMnps = ImmutableMap.of(
@@ -775,7 +770,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
     // this is particular to our particular artificial MNP bam -- we extract a method in order to use it for HaplotypeCaller
     private static void checkMnpOutput(int maxMnpDistance, File outputVcf) {
         // note that for testing HaplotypeCaller GVCF mode we will always have the symbolic <NON REF> allele
-        final Map<Integer, List<String>> alleles = StreamSupport.stream(new FeatureDataSource<VariantContext>(outputVcf).spliterator(), false)
+        final Map<Integer, List<String>> alleles = VariantContextTestUtils.streamVcf(outputVcf)
                 .collect(Collectors.toMap(VariantContext::getStart, vc -> vc.getAlternateAlleles().stream().filter(a -> !a.isSymbolic()).map(Allele::getBaseString).collect(Collectors.toList())));
 
         // phased, two bases apart

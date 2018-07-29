@@ -22,6 +22,9 @@ public class BreakpointDensityFilterTest extends GATKBaseTest {
             ArtificialReadUtils.createArtificialSamHeaderWithGroups(2, 1, 1000000, 1);
     private static final ReadMetadata readMetadata = initMetadata();
     private static final PartitionCrossingChecker emptyCrossingChecker = new PartitionCrossingChecker();
+    private static final double MIN_WEIGHT_PER_COVERAGE = 5.0 / readMetadata.getCoverage();
+    private static final double MIN_WEIGHT_PER_COVERAGE_EASY = 3.0 / readMetadata.getCoverage();
+    private static final double MIN_COHERENT_PER_COVERAGE = 3.0 / readMetadata.getCoverage();
 
     private static ReadMetadata initMetadata() {
         final ReadMetadata.PartitionBounds[] partitionBounds = new ReadMetadata.PartitionBounds[3];
@@ -70,8 +73,8 @@ public class BreakpointDensityFilterTest extends GATKBaseTest {
     public void testGetBreakpointClusters(final List<BreakpointEvidence> evidenceList) {
 
         final BreakpointDensityFilter breakpointDensityFilter =
-                new BreakpointDensityFilter(evidenceList.iterator(), readMetadata, 3,
-                        3, emptyCrossingChecker, 20);
+                new BreakpointDensityFilter(evidenceList.iterator(), readMetadata, MIN_WEIGHT_PER_COVERAGE_EASY,
+                        MIN_COHERENT_PER_COVERAGE, emptyCrossingChecker, 20);
 
         Assert.assertFalse(breakpointDensityFilter.hasEnoughOverlappers(evidenceList.get(0).getLocation()));
         Assert.assertFalse(breakpointDensityFilter.hasEnoughOverlappers(evidenceList.get(1).getLocation()));
@@ -92,8 +95,8 @@ public class BreakpointDensityFilterTest extends GATKBaseTest {
     public void testGetBreakpointClustersWithCoherentEvidence(final List<BreakpointEvidence> evidenceList) {
 
         final BreakpointDensityFilter breakpointDensityFilter =
-                new BreakpointDensityFilter(evidenceList.iterator(), readMetadata, 5,
-                        3, emptyCrossingChecker, 20);
+                new BreakpointDensityFilter(evidenceList.iterator(), readMetadata, MIN_WEIGHT_PER_COVERAGE,
+                        MIN_COHERENT_PER_COVERAGE, emptyCrossingChecker, 20);
 
         Assert.assertFalse(breakpointDensityFilter.hasEnoughOverlappers(evidenceList.get(0).getLocation()));
         Assert.assertFalse(breakpointDensityFilter.hasEnoughOverlappers(evidenceList.get(1).getLocation()));
@@ -185,8 +188,8 @@ public class BreakpointDensityFilterTest extends GATKBaseTest {
         allPartitions.addAll(actualList1Clustered);
         allPartitions.addAll(actualList2Clustered);
         final BreakpointDensityFilter breakpointDensityFilter =
-                new BreakpointDensityFilter(allPartitions.iterator(), readMetadata, 3,
-                        3, emptyCrossingChecker, 20);
+                new BreakpointDensityFilter(allPartitions.iterator(), readMetadata, MIN_WEIGHT_PER_COVERAGE_EASY,
+                        MIN_COHERENT_PER_COVERAGE, emptyCrossingChecker, 20);
         final List<BreakpointEvidence> actualAllPartitions = new ArrayList<>();
         while ( breakpointDensityFilter.hasNext() ) {
             actualAllPartitions.add(breakpointDensityFilter.next());
@@ -227,8 +230,8 @@ public class BreakpointDensityFilterTest extends GATKBaseTest {
         final PartitionCrossingChecker crossingChecker =
                 new PartitionCrossingChecker(partitionIdx, readMetadata, readMetadata.getMaxMedianFragmentSize());
         final BreakpointDensityFilter breakpointDensityFilter =
-                new BreakpointDensityFilter(inputList.iterator(), readMetadata, 3,
-                        3, crossingChecker, 20);
+                new BreakpointDensityFilter(inputList.iterator(), readMetadata, MIN_WEIGHT_PER_COVERAGE_EASY,
+                        MIN_COHERENT_PER_COVERAGE, crossingChecker, 20);
         final List<BreakpointEvidence> actualList = new ArrayList<>();
         while ( breakpointDensityFilter.hasNext() ) {
             actualList.add(breakpointDensityFilter.next());
@@ -239,6 +242,6 @@ public class BreakpointDensityFilterTest extends GATKBaseTest {
     private BreakpointEvidence.ReadEvidence makeEvidence( final int start ) {
         return new BreakpointEvidence.ReadEvidence(new SVInterval(0,start,start+100),1,
                 "Test", TemplateFragmentOrdinal.UNPAIRED,false, true,
-                "151M", 60, 365);
+                "151M", 60, 365, "Pond-0");
     }
 }

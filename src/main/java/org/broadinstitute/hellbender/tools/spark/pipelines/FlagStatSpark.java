@@ -38,8 +38,8 @@ import java.io.PrintStream;
  *
  * <h3>Example Usage</h3>
  * <pre>
- *   gatk FlagStatSpark /
- *     -I input.bam /
+ *   gatk FlagStatSpark \
+ *     -I input.bam \
  *     -O statistics.txt
  * </pre>
  */

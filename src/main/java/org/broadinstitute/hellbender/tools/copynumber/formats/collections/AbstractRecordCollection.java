@@ -93,7 +93,7 @@ public abstract class AbstractRecordCollection<METADATA extends Metadata, RECORD
      * Subclasses should add an enum to {@link Metadata.Type}, a corresponding switch case statement
      * to {@link MetadataUtils#fromHeader(SAMFileHeader, Metadata.Type)}, and implement this method accordingly.
      */
-    protected abstract Metadata.Type getMetadataType();
+    abstract Metadata.Type getMetadataType();
 
     public METADATA getMetadata() {
         return metadata;
@@ -162,11 +162,11 @@ public abstract class AbstractRecordCollection<METADATA extends Metadata, RECORD
         return CopyNumberFormatsUtils.formatDouble(value);
     }
 
-    private final class RecordCollectionReader extends TableReader<RECORD> {
+    final class RecordCollectionReader extends TableReader<RECORD> {
         private static final String COMMENT_PREFIX = "@";   //SAMTextHeaderCodec.HEADER_LINE_START; we need TableReader to treat SAM header as comment lines
         private final File file;
 
-        private RecordCollectionReader(final File file) throws IOException {
+        RecordCollectionReader(final File file) throws IOException {
             super(file);
             this.file = file;
         }
@@ -188,8 +188,8 @@ public abstract class AbstractRecordCollection<METADATA extends Metadata, RECORD
         }
     }
 
-    private final class RecordWriter extends TableWriter<RECORD> {
-        private RecordWriter(final Writer writer) throws IOException {
+    final class RecordWriter extends TableWriter<RECORD> {
+        RecordWriter(final Writer writer) throws IOException {
             super(writer, mandatoryColumns);
         }
 

@@ -37,8 +37,8 @@ import java.util.stream.Collectors;
  *
  * <h3>Example Usage</h3>
  * <pre>
- *   gatk GetSampleName /
- *     -I input.bam /
+ *   gatk GetSampleName \
+ *     -I input.bam \
  *     -O sample_name.txt
  * </pre>
  */

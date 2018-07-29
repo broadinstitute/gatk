@@ -291,7 +291,7 @@ public class OverhangFixingManager {
      * @param read                  the read bases
      * @param readStartIndex        where to start on the read
      * @param readLength            the length of the read according to the reference, used to prevent overclipping
-     *                              softclipped output from SplitNCigarReads)
+     *                              soft-clipped output from SplitNCigarReads)
      * @param reference             the reference bases
      * @param referenceStartIndex   where to start on the reference
      * @param spanToTest            how many bases to test

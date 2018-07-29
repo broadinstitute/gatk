@@ -56,7 +56,7 @@ public abstract class IntervalWalker extends GATKTool {
     @Override
     public void traverse() {
         final ReadFilter readFilter = makeReadFilter();
-        for ( final SimpleInterval interval : intervalsForTraversal ) {
+        for ( final SimpleInterval interval : userIntervals ) {
             apply(interval,
                   new ReadsContext(reads, interval, readFilter),
                   new ReferenceContext(reference, interval),

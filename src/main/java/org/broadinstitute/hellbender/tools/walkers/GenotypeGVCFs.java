@@ -145,11 +145,11 @@ public final class GenotypeGVCFs extends VariantWalker {
         final VCFHeader inputVCFHeader = getHeaderForVariants();
 
         if(onlyOutputCallsStartingInIntervals) {
-            if( !hasIntervals()) {
+            if( !hasUserSuppliedIntervals()) {
                 throw new CommandLineException.MissingArgument("-L or -XL", "Intervals are required if --" + ONLY_OUTPUT_CALLS_STARTING_IN_INTERVALS_FULL_NAME + " was specified.");
             }
         }
-        intervals = hasIntervals() ? intervalArgumentCollection.getIntervals(getBestAvailableSequenceDictionary()) :
+        intervals = hasUserSuppliedIntervals() ? intervalArgumentCollection.getIntervals(getBestAvailableSequenceDictionary()) :
                 Collections.emptyList();
 
         final SampleList samples = new IndexedSampleList(inputVCFHeader.getGenotypeSamples()); //todo should this be getSampleNamesInOrder?

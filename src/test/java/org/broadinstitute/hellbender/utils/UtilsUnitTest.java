@@ -933,4 +933,49 @@ public final class UtilsUnitTest extends GATKBaseTest {
     public <T,U> void testGetReverseValueToListMap(final Map<T, List<U>> input,  final Map<U, Set<T>> gtOutput) {
         Assert.assertEquals(Utils.getReverseValueToListMap(input), gtOutput);
     }
+
+    @DataProvider
+    public Iterator<Object[]> provideDataForTestUtilsFormatting() {
+        final List<Object[]> testCases = new ArrayList<>();
+        testCases.addAll(Arrays.asList(
+                new Object[]{1, 2, "50.00", "0.50"},
+                new Object[]{0, 3, "0.00", "0.00"},
+                new Object[]{1, 3, "33.33", "0.33"},
+                new Object[]{50, 3000, "1.67", "0.02"},
+                new Object[]{50, 0, "NA", "NA"},
+                new Object[]{0, 0, "NA", "NA"}
+        ));
+
+        return testCases.iterator();
+    }
+
+    @Test(dataProvider = "provideDataForTestUtilsFormatting")
+    public void testFormattedPctAndRatio(final long input1, final long input2, final String formattedPct, final String formattedRatio) {
+        Assert.assertEquals(Utils.formattedPercent(input1, input2), formattedPct);
+        Assert.assertEquals(Utils.formattedRatio(input1, input2), formattedRatio);
+    }
+
+    @DataProvider(name="provideDataForTestFilterCollectionByExpressions")
+    public Object[][] provideDataForTestFilterCollectionByExpressions() {
+        return new Object[][] {
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("a"), true, new LinkedHashSet<>(Arrays.asList("a")) },
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("a"), false, new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")) },
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("b"), true, Collections.EMPTY_SET },
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("b"), false, new LinkedHashSet<>(Arrays.asList("ab", "abc")) },
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("a", "b"), true, new LinkedHashSet<>(Arrays.asList("a")) },
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("a", "b"), false, new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")) },
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("a", "ab"), true, new LinkedHashSet<>(Arrays.asList("a", "ab")) },
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("a", "ab"), false, new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")) },
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList(".*b.*"), true, Collections.EMPTY_SET },
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList(".*b.*"), false, new LinkedHashSet<>(Arrays.asList("ab", "abc") )},
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList(".*"), true, Collections.EMPTY_SET },
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList(".*"), false, new LinkedHashSet<>(Arrays.asList("a", "ab", "abc") )}
+        };
+    }
+
+    @Test(dataProvider = "provideDataForTestFilterCollectionByExpressions")
+    public void testTestFilterCollectionByExpressions(Set<String> values, Collection<String> filters, boolean exactMatch, Set<String> expected) {
+        Set<String> actual = Utils.filterCollectionByExpressions(values, filters, exactMatch);
+        Assert.assertEquals(actual, expected);
+    }
 }

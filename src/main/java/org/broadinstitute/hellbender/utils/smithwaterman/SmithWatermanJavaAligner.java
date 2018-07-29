@@ -343,7 +343,7 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
         // post-process the last segment we are still keeping;
         // NOTE: if reads "overhangs" the ref on the left (i.e. if p2>0) we are counting
         // those extra bases sticking out of the ref into the first cigar element if DO_SOFTCLIP is false;
-        // otherwise they will be softclipped. For instance,
+        // otherwise they will be soft-clipped. For instance,
         // if read length is 5 and alignment starts at offset -2 (i.e. read starts before the ref, and only
         // last 3 bases of the read overlap with/align to the ref), the cigar will be still 5M if
         // DO_SOFTCLIP is false or 2S3M if DO_SOFTCLIP is true.

@@ -71,11 +71,11 @@ public class TableFuncotation implements Funcotation {
         }
 
         // Validate that the metadata is okay.
-        final Sets.SetView<String> differenceMetadataFields = Sets.symmetricDifference(this.metadata.retrieveAllHeaderInfo().stream().map(f -> f.getID()).collect(Collectors.toSet()),
-                new HashSet<>(fieldNames));
-        if (differenceMetadataFields.size() > 0) {
+        final Set<String> metadataFieldNames = this.metadata.retrieveAllHeaderInfo().stream().map(f -> f.getID()).collect(Collectors.toSet());
+        final HashSet<String> funcotationFieldNames = new HashSet<>(fieldNames);
+        if (!metadataFieldNames.equals(funcotationFieldNames)) {
             throw new UserException.BadInput("Metadata was not valid for the given field names.  Unmatched fields: " +
-                    differenceMetadataFields.stream().collect(Collectors.joining(", ")));
+                    Sets.symmetricDifference(metadataFieldNames, funcotationFieldNames).stream().collect(Collectors.joining(", ")));
         }
     }
 

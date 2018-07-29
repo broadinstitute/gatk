@@ -106,7 +106,7 @@ public class ReadMetadata {
     @VisibleForTesting
     ReadMetadata( final Set<Integer> crossContigIgnoreSet, final SAMFileHeader header,
                   final LibraryStatistics stats, final PartitionBounds[] partitionBounds,
-                  final long nReads, final long maxReadsInPartition, final int coverage ) {
+                  final long nReads, final long maxReadsInPartition, final float coverage ) {
         this.crossContigIgnoreSet = crossContigIgnoreSet;
         contigNameToID = buildContigNameToIDMap(header.getSequenceDictionary());
         contigIDToName = buildContigIDToNameArray(contigNameToID);

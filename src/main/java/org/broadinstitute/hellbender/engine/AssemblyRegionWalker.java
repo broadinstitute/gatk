@@ -171,7 +171,7 @@ public abstract class AssemblyRegionWalker extends GATKTool {
             throw new CommandLineException.BadArgumentValue("maxReadsPerAlignmentStart must be >= 0");
         }
 
-        final List<SimpleInterval> intervals = hasIntervals() ? intervalsForTraversal : IntervalUtils.getAllIntervalsForReference(getHeaderForReads().getSequenceDictionary());
+        final List<SimpleInterval> intervals = hasUserSuppliedIntervals() ? userIntervals : IntervalUtils.getAllIntervalsForReference(getHeaderForReads().getSequenceDictionary());
         readShards = makeReadShards(intervals);
 
         initializeAssemblyRegionOutputStreams();

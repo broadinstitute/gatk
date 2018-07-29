@@ -49,11 +49,11 @@ import java.util.stream.Collectors;
  * <h3>Usage Example</h3>
  * <h4>Split reads in BAM file by sample name, read group and library name</h4>
  * <pre>
- *   gatk SplitReads /
- *     -I input.bam /
- *     -O outputDirectory /
- *     --split-sample /
- *     --split-read-group /
+ *   gatk SplitReads \
+ *     -I input.bam \
+ *     -O outputDirectory \
+ *     --split-sample \
+ *     --split-read-group \
  *     --split-library-name
  * </pre>
  */
