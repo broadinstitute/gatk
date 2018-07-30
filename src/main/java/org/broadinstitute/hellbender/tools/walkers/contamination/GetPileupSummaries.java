@@ -2,16 +2,14 @@ package org.broadinstitute.hellbender.tools.walkers.contamination;
 
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
+import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CoverageAnalysisProgramGroup;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.MultiVariantWalker;
-import org.broadinstitute.hellbender.engine.ReadsContext;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
@@ -55,6 +53,7 @@ import java.util.List;
  * gatk GetPileupSummaries \
  *   -I tumor.bam \
  *   -V common_biallelic.vcf.gz \
+ *   -V common_biallelic.vcf.gz \
  *   -O pileups.table
  * </pre>
  *
@@ -62,7 +61,7 @@ import java.util.List;
  * gatk GetPileupSummaries \
  *   -I normal.bam \
  *   -V common_biallelic.vcf.gz \
- *   -L chr1 \
+ *   -L common_biallelic.vcf.gz \
  *   -O pileups.table
  * </pre>
  *
@@ -94,7 +93,7 @@ import java.util.List;
         programGroup = CoverageAnalysisProgramGroup.class)
 @BetaFeature
 @DocumentedFeature
-public class GetPileupSummaries extends MultiVariantWalker {
+public class GetPileupSummaries extends LocusWalker {
 
     public static final String MAX_SITE_AF_LONG_NAME = "maximum-population-allele-frequency";
     public static final String MIN_SITE_AF_LONG_NAME = "minimum-population-allele-frequency";
@@ -112,6 +111,9 @@ public class GetPileupSummaries extends MultiVariantWalker {
             doc="The output table", optional=false)
     private File outputTable;
 
+    @Argument(fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME, shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME, doc = "A VCF file containing variants and allele frequencies")
+    public FeatureInput<VariantContext> variants;
+
     @Argument(fullName = MIN_SITE_AF_LONG_NAME,
             shortName = MIN_SITE_AF_SHORT_NAME,
             doc = "Minimum population allele frequency of sites to consider.  A low value increases accuracy at the expense of speed.", optional = true)
@@ -127,8 +129,6 @@ public class GetPileupSummaries extends MultiVariantWalker {
 
     private final List<PileupSummary> pileupSummaries = new ArrayList<>();
 
-    private VariantContext lastVariant = null;
-
     private boolean sawVariantsWithoutAlleleFrequency = false;
     private boolean sawVariantsWithAlleleFrequency = false;
 
@@ -140,6 +140,16 @@ public class GetPileupSummaries extends MultiVariantWalker {
     @Override
     public boolean requiresReference() {
         return false;
+    }
+
+    @Override
+    public boolean requiresIntervals() {
+        return true;
+    }
+
+    @Override
+    public boolean requiresFeatures() {
+        return true;
     }
 
     @Override
@@ -160,7 +170,7 @@ public class GetPileupSummaries extends MultiVariantWalker {
 
     @Override
     public void onTraversalStart() {
-        final boolean alleleFrequencyInHeader = getHeaderForVariants().getInfoHeaderLines().stream()
+        final boolean alleleFrequencyInHeader = ((VCFHeader) getHeaderForFeatures(variants)).getInfoHeaderLines().stream()
                 .anyMatch(line -> line.getID().equals(VCFConstants.ALLELE_FREQUENCY_KEY));
         if (!alleleFrequencyInHeader) {
             throw new UserException.BadInput("Population vcf does not have an allele frequency (AF) info field in its header.");
@@ -168,16 +178,18 @@ public class GetPileupSummaries extends MultiVariantWalker {
     }
 
     @Override
-    public void apply(final VariantContext vc, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext ) {
-        // if we input multiple sources of variants, ignore repeats
-        if (lastVariant != null && vc.getStart() == lastVariant.getStart()) {
+    public void apply(AlignmentContext alignmentContext, ReferenceContext referenceContext, FeatureContext featureContext) {
+        final List<VariantContext> vcs = featureContext.getValues(variants);
+        if (vcs.isEmpty()) {
             return;
-        } else if ( vc.isBiallelic() && vc.isSNP() && alleleFrequencyInRange(vc) ) {
-            final ReadPileup pileup = GATKProtectedVariantContextUtils.getPileup(vc, readsContext)
+        }
+        final VariantContext vc = vcs.get(0);
+
+        if ( vc.isBiallelic() && vc.isSNP() && alleleFrequencyInRange(vc) ) {
+            final ReadPileup pileup = alignmentContext.getBasePileup()
                     .makeFilteredPileup(pe -> pe.getRead().getMappingQuality() >= minMappingQuality);
             pileupSummaries.add(new PileupSummary(vc, pileup));
         }
-        lastVariant = vc;
     }
 
     @Override

@@ -725,7 +725,7 @@ task CalculateContamination {
     Int? mem
 
     # Mem is in units of GB but our command and memory runtime values are in MB
-    Int machine_mem = if defined(mem) then mem * 1000 else 7000
+    Int machine_mem = if defined(mem) then mem * 1000 else 3000
     Int command_mem = machine_mem - 500
 
     command {
@@ -734,11 +734,13 @@ task CalculateContamination {
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
 
         if [[ -f "${normal_bam}" ]]; then
-            gatk --java-options "-Xmx${command_mem}m" GetPileupSummaries -I ${normal_bam} ${"-L " + intervals} -V ${variants_for_contamination} -O normal_pileups.table
+            gatk --java-options "-Xmx${command_mem}m" GetPileupSummaries -I ${normal_bam} ${"--interval-set-rule INTERSECTION -L " + intervals} \
+                -V ${variants_for_contamination} -L ${variants_for_contamination} -O normal_pileups.table
             NORMAL_CMD="-matched normal_pileups.table"
         fi
 
-        gatk --java-options "-Xmx${command_mem}m" GetPileupSummaries -R ${ref_fasta} -I ${tumor_bam} ${"-L " + intervals} -V ${variants_for_contamination} -O pileups.table
+        gatk --java-options "-Xmx${command_mem}m" GetPileupSummaries -R ${ref_fasta} -I ${tumor_bam} ${"--interval-set-rule INTERSECTION -L " + intervals} \
+            -V ${variants_for_contamination} -L ${variants_for_contamination} -O pileups.table
         gatk --java-options "-Xmx${command_mem}m" CalculateContamination -I pileups.table -O contamination.table --tumor-segmentation segments.table $NORMAL_CMD
     }
 

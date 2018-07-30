@@ -22,6 +22,7 @@ public class GetPileupSummariesIntegrationTest extends CommandLineProgramTest {
         final String[] args = {
                 "-I", NA12878.getAbsolutePath(),
                 "-V", thousandGenomes.getAbsolutePath(),
+                "-L", thousandGenomes.getAbsolutePath(),
                 "-O", output.getAbsolutePath(),
                 "-" + GetPileupSummaries.MAX_SITE_AF_SHORT_NAME, "0.9"
         };
@@ -66,6 +67,7 @@ public class GetPileupSummariesIntegrationTest extends CommandLineProgramTest {
         final String[] args = {
                 "-I", NA12878.getAbsolutePath(),
                 "-V", vcfWithoutAF.getAbsolutePath(),
+                "-L", vcfWithoutAF.getAbsolutePath(),
                 "-O", output.getAbsolutePath(),
         };
         runCommandLine(args);
