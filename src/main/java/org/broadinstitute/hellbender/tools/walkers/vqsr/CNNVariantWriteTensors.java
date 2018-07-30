@@ -47,10 +47,10 @@ import java.util.List;
  * gatk CNNVariantWriteTensors \
  *   -R reference.fasta \
  *   -V input.vcf.gz \
- *   -truth-vcf platinum-genomes.vcf \
- *   -truth-bed platinum-confident-region.bed \
- *   -tensor-name reference \
- *   -output-tensor-dir my-tensor-folder
+ *   --truth-vcf platinum-genomes.vcf \
+ *   --truth-bed platinum-confident-region.bed \
+ *   --tensor-type reference \
+ *   --output-tensor-dir my-tensor-folder
  * </pre>
  *
  * <h4>Write Read Tensors</h4>
@@ -58,11 +58,11 @@ import java.util.List;
  * gatk CNNVariantWriteTensors \
  *   -R reference.fasta \
  *   -V input.vcf.gz \
- *   -truth-vcf platinum-genomes.vcf \
- *   -truth-bed platinum-confident-region.bed \
- *   -tensor-name read_tensor \
- *   -bam-file input.bam \
- *   -output-tensor-dir my-tensor-folder
+ *   --truth-vcf platinum-genomes.vcf \
+ *   --truth-bed platinum-confident-region.bed \
+ *   --tensor-type read_tensor \
+ *   --bam-file input.bam \
+ *   --output-tensor-dir my-tensor-folder
  * </pre>
  *
  */

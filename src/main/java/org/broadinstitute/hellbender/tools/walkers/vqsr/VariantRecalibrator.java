@@ -102,7 +102,7 @@ import java.util.*;
  *   --resource dbsnp,known=true,training=false,truth=false,prior=2.0:Homo_sapiens_assembly38.dbsnp138.vcf.gz \
  *   -an QD -an MQ -an MQRankSum -an ReadPosRankSum -an FS -an SOR \
  *   -mode SNP \
- *   --recal-file output.recal \
+ *   -O output.recal \
  *   --tranches-file output.tranches \
  *   --rscript-file output.plots.R
  * </pre>
@@ -119,7 +119,7 @@ import java.util.*;
  *   --resource dbsnp,known=true,training=false,truth=false,prior=2.0:Homo_sapiens_assembly38.dbsnp138.vcf.gz \
  *   -an QD -an MQ -an MQRankSum -an ReadPosRankSum -an FS -an SOR \
  *   -mode SNP \
- *   --recal-file output.AS.recal \
+ *   -O output.AS.recal \
  *   --tranches-file output.AS.tranches \
  *   --rscript-file output.plots.AS.R
  * </pre>
