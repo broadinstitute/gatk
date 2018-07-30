@@ -246,7 +246,7 @@ public class ApplyVQSR extends MultiVariantWalker {
         if( TS_FILTER_LEVEL != null ) {
             // if the user specifies both ts_filter_level and lodCutoff then throw a user error
             if( VQSLOD_CUTOFF != null ) {
-                throw new UserException("Arguments --ts_filter_level and --lodCutoff are mutually exclusive. Please only specify one option.");
+                throw new UserException("Arguments --truth-sensitivity-filter-level and --lod-score-cutoff are mutually exclusive. Please only specify one option.");
             }
 
             if( tranches.size() >= 2 ) {

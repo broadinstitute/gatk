@@ -107,7 +107,7 @@ public final class PSScorer {
         } else if (unpairedReads != null) {
             groupedReads = unpairedReads.map(Collections::singletonList);
         } else {
-            throw new UserException.BadInput("No reads were loaded. Ensure --pairedInput and/or --unpairedInput are set and valid.");
+            throw new UserException.BadInput("No reads were loaded. Ensure --paired-input and/or --unpaired-input are set and valid.");
         }
         return groupedReads;
     }

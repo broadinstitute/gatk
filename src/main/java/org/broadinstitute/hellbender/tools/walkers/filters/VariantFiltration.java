@@ -215,7 +215,7 @@ public final class VariantFiltration extends VariantWalker {
     }
 
     /**
-     * Prepend inverse phrase to description if --invertFilterExpression
+     * Prepend inverse phrase to description if --invert-filter-expression
      *
      * @param description the description
      * @return the description with inverse prepended if --invert_filter_expression

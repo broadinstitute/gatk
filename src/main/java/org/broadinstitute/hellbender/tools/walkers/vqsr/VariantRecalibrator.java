@@ -632,7 +632,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
 
                     if (badModel.failedToConverge || goodModel.failedToConverge) {
                         throw new UserException(
-                                "NaN LOD value assigned. Clustering with this few variants and these annotations is unsafe. Please consider " + (badModel.failedToConverge ? "raising the number of variants used to train the negative model (via --minNumBadVariants 5000, for example)." : "lowering the maximum number of Gaussians allowed for use in the model (via --maxGaussians 4, for example)."));
+                                "NaN LOD value assigned. Clustering with this few variants and these annotations is unsafe. Please consider " + (badModel.failedToConverge ? "raising the number of variants used to train the negative model (via --minimum-bad-variants 5000, for example)." : "lowering the maximum number of Gaussians allowed for use in the model (via --max-gaussians 4, for example)."));
                     }
                 }
 

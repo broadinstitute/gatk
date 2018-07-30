@@ -291,10 +291,10 @@ public final class PSFilterArgumentCollection implements Serializable {
         for (final ReadFilter filter : readFilters) {
             if (filter.getClass().isAssignableFrom(AmbiguousBaseReadFilter.class)) {
                 logger.warn("Detected the use of AmbiguousBaseReadFilter, which is applied before the PathSeq " +
-                        "base masking steps. Did you mean to use --maxMaskedBases, which is applied after masking?");
+                        "base masking steps. Did you mean to use --max-masked-bases, which is applied after masking?");
             } else if (filter.getClass().isAssignableFrom(ReadLengthReadFilter.class)) {
                 logger.warn("Detected the use of ReadLengthReadFilter, which is applied before the PathSeq " +
-                        "clipping steps. Did you mean to use --minClippedReadLength, which is applied after clipping?");
+                        "clipping steps. Did you mean to use --min-clipped-read-length, which is applied after clipping?");
             }
         }
     }

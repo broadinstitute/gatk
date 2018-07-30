@@ -93,7 +93,7 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
      * span across a given genomic position (e.g. when scatter-gathering jobs across a compute farm).  The option below enables users to break bands at
      * pre-defined positions.  For example, a value of 10,000 would mean that we would ensure that no bands span across chr1:10000, chr1:20000, etc.
      *
-     * Note that the --convertToBasePairResolution argument is just a special case of this argument with a value of 1.
+     * Note that the --convert-to-base-pair-resolution argument is just a special case of this argument with a value of 1.
      */
     @Argument(fullName=BREAK_BANDS_LONG_NAME, doc = "If > 0, reference bands will be broken up at genomic positions that are multiples of this number", optional=true)
     protected int multipleAtWhichToBreakBands = 0;
