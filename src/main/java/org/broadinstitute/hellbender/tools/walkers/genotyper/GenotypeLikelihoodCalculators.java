@@ -275,12 +275,11 @@ public final class GenotypeLikelihoodCalculators {
      * @param requestedMaximumAllele the new requested maximum allele maximum.
      * @param requestedMaximumPloidy the new requested ploidy maximum.
      */
-    private void ensureCapacity(final int requestedMaximumAllele, final int requestedMaximumPloidy) {
+    private synchronized void ensureCapacity(final int requestedMaximumAllele, final int requestedMaximumPloidy) {
 
         final boolean needsToExpandAlleleCapacity = requestedMaximumAllele > maximumAllele;
         final boolean needsToExpandPloidyCapacity = requestedMaximumPloidy > maximumPloidy;
 
-        // Double check with the lock on to avoid double work.
         if (!needsToExpandAlleleCapacity && !needsToExpandPloidyCapacity) {
             return;
         }
@@ -383,9 +382,7 @@ public final class GenotypeLikelihoodCalculators {
 
     private int calculateGenotypeCountUsingTables(int ploidy, int alleleCount) {
         checkPloidyAndMaximumAllele(ploidy, alleleCount);
-        if (ploidy > maximumPloidy || alleleCount > maximumAllele) {
-            ensureCapacity(alleleCount, ploidy);
-        }
+        ensureCapacity(alleleCount, ploidy);
         return alleleFirstGenotypeOffsetByPloidy[ploidy][alleleCount];
     }
 }
