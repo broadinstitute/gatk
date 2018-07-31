@@ -44,9 +44,9 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
     private static final File NORMAL_ALLELIC_COUNTS_FILE = new File(
             "/home/slee/working/gatk/test_files/normal.allelicCounts.tsv");
     private static final File TUMOR_ONLY_VCF_FILE = new File(
-            "/home/slee/working/gatk/test_files/tumor-only.vcf");
+            "/home/slee/working/gatk/test_files/mouse/normal.HC.snps.indels.vcf");
     private static final File TUMOR_AND_NORMAL_VCF_FILE = new File(
-            "/home/slee/working/gatk/test_files/tumor-normal.vcf");
+            "/home/slee/working/gatk/test_files/mouse/LLC-8.M2.filter.vcf");
     private static final File TUMOR_DENOISED_COPY_RATIOS_WITH_SAMPLE_NAME_MISMATCH_FILE = new File(TEST_SUB_DIR,
             "model-segments-wes-tumor-denoised-copy-ratios-with-sample-name-mismatch.denoisedCR.tsv");
     private static final File NORMAL_ALLELIC_COUNTS_FILE_WITH_MISSING_SITES = new File(TEST_SUB_DIR,
@@ -56,7 +56,8 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
 
     @Test
     public void testAllInputsAvailable() {
-        final File outputDir = createTempDir("testDir");
+//        final File outputDir = createTempDir("testDir");
+        final File outputDir = new File("/home/slee/working/gatk/test_files");
         final String outputPrefix = "test";
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addArgument(CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, TUMOR_DENOISED_COPY_RATIOS_FILE.getAbsolutePath())
@@ -64,30 +65,33 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
                 .addArgument(CopyNumberStandardArgument.NORMAL_ALLELIC_COUNTS_FILE_LONG_NAME, NORMAL_ALLELIC_COUNTS_FILE.getAbsolutePath())
                 .addOutput(outputDir)
                 .addArgument(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix)
-                .addArgument(StandardArgumentDefinitions.VERBOSITY_NAME, "INFO");;
+                .addArgument(StandardArgumentDefinitions.VERBOSITY_NAME, "INFO");
         runCommandLine(argsBuilder);
-        assertOutputFiles(outputDir, outputPrefix, true, true);
+//        assertOutputFiles(outputDir, outputPrefix, true, true);
     }
 
     @Test
     public void testAllInputsAvailableVCF() {
-        final File outputDir = createTempDir("testDir");
+//        final File outputDir = createTempDir("testDir");
+        final File outputDir = new File("/home/slee/working/gatk/test_files/mouse");
         final String outputPrefix = "test";
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addArgument(CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, TUMOR_DENOISED_COPY_RATIOS_FILE.getAbsolutePath())
                 .addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, TUMOR_AND_NORMAL_VCF_FILE.getAbsolutePath())
+                .addArgument(ModelSegments.MINIMUM_TOTAL_ALLELE_COUNT_LONG_NAME, "20")
+                .addArgument(ModelSegments.GENOTYPING_HOMOZYGOUS_LOG_RATIO_THRESHOLD_LONG_NAME, "10.0")
                 .addOutput(outputDir)
                 .addArgument(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix)
                 .addArgument(StandardArgumentDefinitions.VERBOSITY_NAME, "INFO");
         runCommandLine(argsBuilder);
-        assertOutputFiles(outputDir, outputPrefix, true, true);
+//        assertOutputFiles(outputDir, outputPrefix, true, true);
     }
 
     @Test
     public void testAllInputsAvailableVCFTumorOnly() {
 //        final File outputDir = createTempDir("testDir");
-        final File outputDir = new File("/home/slee/working/gatk/test_files");
-        final String outputPrefix = "test-vcf";
+        final File outputDir = new File("/home/slee/working/gatk/test_files/mouse");
+        final String outputPrefix = "test";
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addArgument(CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, TUMOR_DENOISED_COPY_RATIOS_FILE.getAbsolutePath())
                 .addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, TUMOR_ONLY_VCF_FILE.getAbsolutePath())
@@ -95,7 +99,21 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
                 .addArgument(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix)
                 .addArgument(StandardArgumentDefinitions.VERBOSITY_NAME, "INFO");
         runCommandLine(argsBuilder);
-        assertOutputFiles(outputDir, outputPrefix, true, true);
+//        assertOutputFiles(outputDir, outputPrefix, true, true);
+    }
+
+    @Test
+    public void testVCFTumorOnly() {
+//        final File outputDir = createTempDir("testDir");
+        final File outputDir = new File("/home/slee/working/gatk/test_files/mouse");
+        final String outputPrefix = "test";
+        final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
+                .addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, TUMOR_ONLY_VCF_FILE.getAbsolutePath())
+                .addOutput(outputDir)
+                .addArgument(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix)
+                .addArgument(StandardArgumentDefinitions.VERBOSITY_NAME, "INFO");
+        runCommandLine(argsBuilder);
+//        assertOutputFiles(outputDir, outputPrefix, true, true);
     }
 
     @Test
