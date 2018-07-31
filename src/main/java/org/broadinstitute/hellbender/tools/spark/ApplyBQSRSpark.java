@@ -42,7 +42,8 @@ import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
  * gatk ApplyBQSRSpark \
  * -I gs://my-gcs-bucket/input.bam \
  * -bqsr gs://my-gcs-bucket/recalibration.table \
- * -SQQ 10 -SQQ 20 -SQQ 30 -SQQ 40 \
+ * --static-quantized-quals 10 --static-quantized-quals 20 \
+ * --static-quantized-quals 30 --static-quantized-quals 40 \
  * -O gs://my-gcs-bucket/output.bam \
  * -- \
  * --sparkRunner GCS \
