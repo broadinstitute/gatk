@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -11,7 +11,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-public final class HaplotypeSizeAndBaseComparatorUnitTest extends BaseTest {
+public final class HaplotypeSizeAndBaseComparatorUnitTest extends GATKBaseTest {
     @Test
     public void testComparison() {
         // desired ordering is by size first, subordered by lexacographic relationship between bases

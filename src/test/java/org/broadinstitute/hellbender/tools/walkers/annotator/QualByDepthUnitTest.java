@@ -8,7 +8,8 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_Q
 import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.ArtificialAnnotationUtils;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.testng.Assert;
@@ -19,7 +20,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public class QualByDepthUnitTest extends BaseTest {
+public class QualByDepthUnitTest extends GATKBaseTest {
     private static final Allele REF = Allele.create("A", true);
     private static final Allele ALT = Allele.create("C");
 
@@ -37,6 +38,7 @@ public class QualByDepthUnitTest extends BaseTest {
         final List<Allele> ACG = Arrays.asList(A, C, G);
 
         final Genotype gAC = new GenotypeBuilder("1", AC).DP(10).AD(new int[]{5,5}).make();
+        final Genotype gACNoADNoDP = new GenotypeBuilder("1", AC).AD(new int[]{0,0}).make();
         final Genotype gACNoAD = new GenotypeBuilder("1", AC).DP(10).AD(new int[]{0,0}).make();
         final Genotype gAA = new GenotypeBuilder("2", AA).DP(10).AD(new int[]{10,0}).make();
         final Genotype gACerror = new GenotypeBuilder("3", AC).DP(10).AD(new int[]{9,1}).make();
@@ -46,8 +48,9 @@ public class QualByDepthUnitTest extends BaseTest {
         final double log10PError = -5;
         final double qual = -10.0 * log10PError;
         tests.add(new Object[]{new VariantContextBuilder("test", "20", 10, 10, AC).log10PError(log10PError).genotypes(Arrays.asList(gAC)).make(), qual / 10});   //het
-        tests.add(new Object[]{new VariantContextBuilder("test", "20", 10, 10, AC).log10PError(log10PError).genotypes(Arrays.asList(gACNoAD)).make(), 0.0});   // No AD
-        tests.add(new Object[]{new VariantContextBuilder("test", "20", 10, 10, ACG).log10PError(log10PError).genotypes(Arrays.asList(gAC, gACNoAD)).make(), qual / 10});   // No AD
+        tests.add(new Object[]{new VariantContextBuilder("test", "20", 10, 10, AC).log10PError(log10PError).genotypes(Arrays.asList(gACNoADNoDP)).make(), 0.0});   // No AD
+        tests.add(new Object[]{new VariantContextBuilder("test", "20", 10, 10, AC).log10PError(log10PError).genotypes(Arrays.asList(gACNoAD)).make(), qual / 10});   // No AD but present DP, expect it to default to the DP
+        tests.add(new Object[]{new VariantContextBuilder("test", "20", 10, 10, ACG).log10PError(log10PError).genotypes(Arrays.asList(gAC, gACNoADNoDP)).make(), qual / 10});   // No AD
 
         tests.add(new Object[]{new VariantContextBuilder("test", "20", 10, 10, AC).log10PError(log10PError).genotypes(Arrays.asList(gACerror)).make(), qual / 10});       //het but use 1+X if AD=1,X
         tests.add(new Object[]{new VariantContextBuilder("test", "20", 10, 10, AC).log10PError(log10PError).genotypes(Arrays.asList(gAA, gAC)).make(), qual / 10});       //het, skip hom
@@ -109,7 +112,7 @@ public class QualByDepthUnitTest extends BaseTest {
                 .mapToObj(n -> ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode("10M"))).collect(Collectors.toList());
 
         final ReadLikelihoods<Allele> likelihoods =
-                AnnotationArtificialData.makeLikelihoods(sample1, reads, -100.0, REF, ALT);
+                ArtificialAnnotationUtils.makeLikelihoods(sample1, reads, -100.0, REF, ALT);
 
         final VariantContext vc = new VariantContextBuilder("test", "20", 10, 10, ALLELES).log10PError(log10PError).genotypes(Arrays.asList(gAC)).make();
         final Map<String, Object> annotatedMap = new QualByDepth().annotate(null, vc, likelihoods);

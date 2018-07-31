@@ -22,7 +22,8 @@ import java.io.PrintStream;
 @CommandLineProgramProperties(
         summary = "Example tool that prints variants supplied to the specified output file (stdout if none provided), along with overlapping reads/reference bases/variants (if provided)",
         oneLineSummary = "Example tool that prints variants with optional contextual data",
-        programGroup = ExampleProgramGroup.class
+        programGroup = ExampleProgramGroup.class,
+        omitFromCommandLine = true
 )
 public final class ExampleVariantWalkerSpark extends VariantWalkerSpark {
     private static final long serialVersionUID = 1L;
@@ -32,8 +33,6 @@ public final class ExampleVariantWalkerSpark extends VariantWalkerSpark {
 
     @Argument(fullName="auxiliaryVariants", shortName="av", doc="Auxiliary set of variants", optional=true)
     private FeatureInput<VariantContext> auxiliaryVariants;
-
-    private PrintStream outputStream = null;
 
     @Override
     protected void processVariants(JavaRDD<VariantWalkerContext> rdd, JavaSparkContext ctx) {
@@ -48,7 +47,7 @@ public final class ExampleVariantWalkerSpark extends VariantWalkerSpark {
             FeatureContext featureContext = context.getFeatureContext();
 
             StringBuilder sb = new StringBuilder();
-            sb.append(String.format("Current variant: " + variant));
+            sb.append("Current variant: " + variant);
             sb.append("\n");
 
             if ( referenceContext.hasBackingDataSource() ) {

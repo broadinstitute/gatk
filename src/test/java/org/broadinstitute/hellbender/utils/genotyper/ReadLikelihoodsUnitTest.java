@@ -2,10 +2,10 @@ package org.broadinstitute.hellbender.utils.genotyper;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.variant.variantcontext.Allele;
+import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.SkipException;
 import org.testng.annotations.DataProvider;
@@ -63,6 +63,8 @@ public final class ReadLikelihoodsUnitTest {
         final ReadLikelihoods<Allele> original = new ReadLikelihoods<>(new IndexedSampleList(samples), new IndexedAlleleList<>(alleles), reads);
         fillWithRandomLikelihoods(samples,alleles,original);
         final int numberOfAlleles = alleles.length;
+        final int refIndex = original.indexOfReference();
+        final Allele refAllele = refIndex >= 0 ? original.getAllele(refIndex) : null;
         for (int s = 0; s < samples.length; s++) {
             final int sampleReadCount = original.sampleReadCount(s);
             final LikelihoodMatrix<Allele> sampleMatrix = original.sampleMatrix(s);
@@ -87,13 +89,15 @@ public final class ReadLikelihoodsUnitTest {
                 confidenceArray[r] = bestAlleleLk - secondBestAlleleLk;
                 bestIndexArray[r] = bestindexOfAllele;
             }
-            final Collection<ReadLikelihoods<Allele>.BestAllele> bestAlleles = original.bestAlleles();
+            final Collection<ReadLikelihoods<Allele>.BestAllele> bestAlleles = original.bestAllelesBreakingTies();
             for (final ReadLikelihoods<Allele>.BestAllele bestAllele : bestAlleles) {
                 final int readIndex = original.readIndex(s,bestAllele.read);
                 if (readIndex == -1) continue;
-                Assert.assertEquals(bestLkArray[readIndex], bestAllele.likelihood);
-                Assert.assertEquals(bestAllele.allele, alleles[bestIndexArray[readIndex]]);
-                Assert.assertEquals(bestAllele.confidence, confidenceArray[readIndex], EPSILON);
+                final double refLikelihood = refIndex >= 0 ? sampleMatrix.get(refIndex, readIndex) : Double.NEGATIVE_INFINITY;
+                final boolean refOverride = refIndex >= 0 && refIndex !=bestIndexArray[readIndex] && bestLkArray[readIndex] - refLikelihood < ReadLikelihoods.BestAllele.INFORMATIVE_THRESHOLD;
+                Assert.assertEquals(refOverride ? refLikelihood : bestLkArray[readIndex], bestAllele.likelihood);
+                Assert.assertEquals(bestAllele.allele, refOverride ? refAllele : alleles[bestIndexArray[readIndex]]);
+                Assert.assertEquals(bestAllele.confidence, refOverride ? refLikelihood - bestLkArray[readIndex] : confidenceArray[readIndex], EPSILON);
             }
         }
     }
@@ -178,7 +182,7 @@ public final class ReadLikelihoodsUnitTest {
         final SimpleInterval evenReadOverlap = new SimpleInterval(SAM_HEADER.getSequenceDictionary().getSequences().get(0).getSequenceName(), EVEN_READ_START, EVEN_READ_START);
         fillWithRandomLikelihoods(samples,alleles,original);
         final ReadLikelihoods<Allele> result = original.copy();
-        result.filterToOnlyOverlappingUnclippedReads(evenReadOverlap);
+        result.filterToOnlyOverlappingReads(evenReadOverlap);
         final double[][][] newLikelihoods = new double[samples.length][alleles.length][];
         for (int s = 0; s < samples.length ; s++)
             for (int a = 0; a < alleles.length; a++) {
@@ -396,9 +400,9 @@ public final class ReadLikelihoodsUnitTest {
         final ReadLikelihoods<Allele> original = new ReadLikelihoods<>(new IndexedSampleList(samples), new IndexedAlleleList<>(alleles), reads);
         final double[][][] originalLikelihoods = fillWithRandomLikelihoods(samples,alleles,original);
         final ReadLikelihoods<Allele> result = original.copy();
-        result.addNonReferenceAllele(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE);
+        result.addNonReferenceAllele(Allele.NON_REF_ALLELE);
         Assert.assertEquals(result.numberOfAlleles(), original.numberOfAlleles() + 1);
-        Assert.assertEquals(result.indexOfAllele(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE), result.numberOfAlleles() - 1);
+        Assert.assertEquals(result.indexOfAllele(Allele.NON_REF_ALLELE), result.numberOfAlleles() - 1);
         final double[][][] newLikelihoods = new double[originalLikelihoods.length][][];
         for (int s = 0; s < samples.length; s++) {
             newLikelihoods[s] = Arrays.copyOf(originalLikelihoods[s], originalLikelihoods[s].length + 1);
@@ -406,6 +410,8 @@ public final class ReadLikelihoodsUnitTest {
             final int ordinarynumberOfAlleles = originalLikelihoods[s].length;
             newLikelihoods[s][ordinarynumberOfAlleles] = new double[sampleReadCount];
             for (int r = 0; r < sampleReadCount; r++) {
+
+                //TODO secondBestLk is totaly irrelevant, and this code is really just a MathUtils.max to get bestLk
                 double bestLk = newLikelihoods[s][0][r];
                 double secondBestLk = Double.NEGATIVE_INFINITY;
                 for (int a = 1; a < ordinarynumberOfAlleles; a++) {
@@ -417,14 +423,24 @@ public final class ReadLikelihoodsUnitTest {
                         secondBestLk = lk;
                     }
                 }
-                final double expectedNonRefLk = Double.isInfinite(secondBestLk) ? bestLk : secondBestLk;
+                final Median median = new Median();
+                final List<Double> qualifylingLikelihoods = new ArrayList<>();
+                for (int a = 0; a < ordinarynumberOfAlleles; a++) {
+                    if (originalLikelihoods[s][a][r] >= bestLk) continue;
+                    qualifylingLikelihoods.add(originalLikelihoods[s][a][r]);
+                }
+                final double medianLikelihood = median.evaluate(qualifylingLikelihoods.stream().mapToDouble(d -> d).toArray());
+                // NaN is returned in cases whether there is no elements in qualifyingLikelihoods.
+                // In such case we set the NON-REF likelihood to -Inf.
+                final double expectedNonRefLk = !Double.isNaN(medianLikelihood) ? medianLikelihood
+                        : ordinarynumberOfAlleles <= 1 ? Double.NaN : bestLk;
                 newLikelihoods[s][ordinarynumberOfAlleles][r] = expectedNonRefLk;
             }
         }
         testLikelihoodMatrixQueries(samples,result,newLikelihoods);
     }
 
-    private void testLikelihoodMatrixQueries(String[] samples, ReadLikelihoods<Allele> result, final double[][][] likelihoods) {
+    private void testLikelihoodMatrixQueries(final String[] samples, final ReadLikelihoods<Allele> result, final double[][][] likelihoods) {
         for (final String sample : samples) {
             final int indexOfSample = result.indexOfSample(sample);
             final int sampleReadCount = result.sampleReadCount(indexOfSample);
@@ -432,9 +448,14 @@ public final class ReadLikelihoodsUnitTest {
             Assert.assertEquals(result.numberOfAlleles(), numberOfAlleles);
             for (int a = 0; a < numberOfAlleles; a++) {
                 Assert.assertEquals(result.sampleReadCount(indexOfSample), sampleReadCount);
-                for (int r = 0; r < sampleReadCount; r++)
-                    Assert.assertEquals(result.sampleMatrix(indexOfSample).get(a, r),
-                            likelihoods == null ? 0.0 : likelihoods[indexOfSample][a][r], EPSILON);
+                for (int r = 0; r < sampleReadCount; r++) {
+                    if (Double.isNaN(result.sampleMatrix(indexOfSample).get(a, r))) {
+                        Assert.assertTrue(likelihoods != null && Double.isNaN(likelihoods[indexOfSample][a][r]));
+                    } else {
+                        Assert.assertEquals(result.sampleMatrix(indexOfSample).get(a, r),
+                                likelihoods == null ? 0.0 : likelihoods[indexOfSample][a][r], EPSILON);
+                    }
+                }
             }
         }
     }

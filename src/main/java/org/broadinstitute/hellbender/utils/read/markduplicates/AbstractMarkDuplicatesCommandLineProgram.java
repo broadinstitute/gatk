@@ -10,6 +10,8 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
+import picard.sam.markduplicates.util.OpticalDuplicateFinder;
+import picard.sam.util.PhysicalLocation;
 
 import java.io.File;
 import java.util.*;
@@ -30,7 +32,8 @@ public abstract class AbstractMarkDuplicatesCommandLineProgram extends AbstractO
             doc = "The output file to write marked records to")
     public File OUTPUT;
 
-    @Argument(shortName = "M",
+    @Argument(shortName = StandardArgumentDefinitions.METRICS_FILE_SHORT_NAME,
+            fullName = StandardArgumentDefinitions.METRICS_FILE_LONG_NAME,
             doc = "File to write duplication metrics to")
     public File METRICS_FILE;
 
@@ -39,7 +42,7 @@ public abstract class AbstractMarkDuplicatesCommandLineProgram extends AbstractO
                     "PG record creation.  This string may have a suffix appended to avoid collision with other " +
                     "program record IDs.",
             optional = true)
-    public String PROGRAM_RECORD_ID = "MarkDuplicates";
+    public String PROGRAM_RECORD_ID = "MarkDuplicatesGATK";
 
     @Argument(shortName = "PG_VERSION",
             doc = "Value of VN tag of PG record to be created. If not specified, the version will be detected automatically.",
@@ -67,7 +70,9 @@ public abstract class AbstractMarkDuplicatesCommandLineProgram extends AbstractO
             doc = "If true, assume that the input file is coordinate sorted even if the header says otherwise.")
     public boolean ASSUME_SORTED = false;
 
-    @Argument(shortName = "DS", doc = "The scoring strategy for choosing the non-duplicate among candidates.")
+    @Argument(shortName = StandardArgumentDefinitions.DUPLICATE_SCORING_STRATEGY_SHORT_NAME,
+            fullName = StandardArgumentDefinitions.DUPLICATE_SCORING_STRATEGY_LONG_NAME,
+            doc = "The scoring strategy for choosing the non-duplicate among candidates.")
     public DuplicateScoringStrategy.ScoringStrategy DUPLICATE_SCORING_STRATEGY = ScoringStrategy.TOTAL_MAPPED_REFERENCE_LENGTH;
 
     /** The program groups that have been seen during the course of examining the input records. */
@@ -112,17 +117,17 @@ public abstract class AbstractMarkDuplicatesCommandLineProgram extends AbstractO
      */
     protected void finalizeAndWriteMetrics(final LibraryIdGenerator libraryIdGenerator) {
         //We want to sort libraries by name
-        final SortedMap<String, DuplicationMetrics> metricsByLibrary = new TreeMap<>(Utils.COMPARE_STRINGS_NULLS_FIRST);
+        final SortedMap<String, GATKDuplicationMetrics> metricsByLibrary = new TreeMap<>(Utils.COMPARE_STRINGS_NULLS_FIRST);
         metricsByLibrary.putAll(libraryIdGenerator.getMetricsByLibraryMap());
 
         final Histogram<Short> opticalDuplicatesByLibraryId = libraryIdGenerator.getOpticalDuplicatesByLibraryIdMap();
         final Map<String, Short> libraryIds = libraryIdGenerator.getLibraryIdsMap();
 
         // Write out the metrics
-        final MetricsFile<DuplicationMetrics, Double> file = getMetricsFile();
-        for (final Map.Entry<String, DuplicationMetrics> entry : metricsByLibrary.entrySet()) {
+        final MetricsFile<GATKDuplicationMetrics, Double> file = getMetricsFile();
+        for (final Map.Entry<String, GATKDuplicationMetrics> entry : metricsByLibrary.entrySet()) {
             final String libraryName = entry.getKey();
-            final DuplicationMetrics metrics = entry.getValue();
+            final GATKDuplicationMetrics metrics = entry.getValue();
 
             metrics.READ_PAIRS_EXAMINED = metrics.READ_PAIRS_EXAMINED / 2;
             metrics.READ_PAIR_DUPLICATES = metrics.READ_PAIR_DUPLICATES / 2;
@@ -136,7 +141,7 @@ public abstract class AbstractMarkDuplicatesCommandLineProgram extends AbstractO
                     metrics.READ_PAIR_OPTICAL_DUPLICATES = (long) bin.getValue();
                 }
             }
-            metrics.calculateDerivedMetrics();
+            metrics.calculateDerivedFields();
             file.addMetric(metrics);
         }
 
@@ -239,6 +244,7 @@ public abstract class AbstractMarkDuplicatesCommandLineProgram extends AbstractO
      * in fact optical duplicates, and stores the data in the instance level histogram.
      */
     public static void trackOpticalDuplicates(List<? extends ReadEnds> ends,
+                                              final ReadEnds keeper,
                                               final OpticalDuplicateFinder opticalDuplicateFinder,
                                               final LibraryIdGenerator libraryIdGenerator) {
         boolean hasFR = false, hasRF = false;
@@ -270,10 +276,10 @@ public abstract class AbstractMarkDuplicatesCommandLineProgram extends AbstractO
             }
 
             // track the duplicates
-            trackOpticalDuplicates(trackOpticalDuplicatesF, opticalDuplicateFinder, libraryIdGenerator.getOpticalDuplicatesByLibraryIdMap());
-            trackOpticalDuplicates(trackOpticalDuplicatesR, opticalDuplicateFinder, libraryIdGenerator.getOpticalDuplicatesByLibraryIdMap());
+            trackOpticalDuplicates(trackOpticalDuplicatesF, opticalDuplicateFinder, libraryIdGenerator.getOpticalDuplicatesByLibraryIdMap(), keeper);
+            trackOpticalDuplicates(trackOpticalDuplicatesR, opticalDuplicateFinder, libraryIdGenerator.getOpticalDuplicatesByLibraryIdMap(), keeper);
         } else { // No need to partition
-            AbstractMarkDuplicatesCommandLineProgram.trackOpticalDuplicates(ends, opticalDuplicateFinder, libraryIdGenerator.getOpticalDuplicatesByLibraryIdMap());
+            AbstractMarkDuplicatesCommandLineProgram.trackOpticalDuplicates(ends, opticalDuplicateFinder, libraryIdGenerator.getOpticalDuplicatesByLibraryIdMap(), keeper);
         }
     }
 
@@ -281,10 +287,11 @@ public abstract class AbstractMarkDuplicatesCommandLineProgram extends AbstractO
      * Looks through the set of reads and identifies how many of the duplicates are
      * in fact optical duplicates, and stores the data in the instance level histogram.
      */
-    private static void trackOpticalDuplicates(final List<? extends OpticalDuplicateFinder.PhysicalLocation> list,
+    private static void trackOpticalDuplicates(final List<? extends PhysicalLocation> list,
                                                final OpticalDuplicateFinder opticalDuplicateFinder,
-                                               final Histogram<Short> opticalDuplicatesByLibraryId) {
-        final boolean[] opticalDuplicateFlags = opticalDuplicateFinder.findOpticalDuplicates(list);
+                                               final Histogram<Short> opticalDuplicatesByLibraryId,
+                                               final ReadEnds keeper) {
+        final boolean[] opticalDuplicateFlags = opticalDuplicateFinder.findOpticalDuplicates(list, keeper);
 
         int opticalDuplicates = 0;
         for (final boolean b : opticalDuplicateFlags) if (b) ++opticalDuplicates;

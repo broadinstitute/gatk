@@ -12,7 +12,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -25,7 +25,7 @@ import static org.broadinstitute.hellbender.utils.read.ReadConstants.NO_MAPPING_
 /**
  * Test routines for read-backed pileup.
  */
-public final class ReadPileupUnitTest extends BaseTest {
+public final class ReadPileupUnitTest extends GATKBaseTest {
     private static SAMFileHeader header;
     private Locatable loc;
 
@@ -143,33 +143,6 @@ public final class ReadPileupUnitTest extends BaseTest {
         final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "nullRG", 0, 1, 10);
         final ReadPileup pileup = new ReadPileup(loc, Collections.singletonList(read), 1);
         final Map<String, ReadPileup> error = pileup.splitBySample(header, null);
-    }
-
-    @Test(expectedExceptions = IllegalArgumentException.class)
-    public void testNullConstructorParametersReads() {
-        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(1, 1, 1000);
-
-        ArtificialReadUtils.createArtificialRead(header,"read1",0,1,10);
-
-        new ReadPileup(loc, null, Arrays.asList(1));
-    }
-
-    @Test(expectedExceptions = IllegalArgumentException.class)
-    public void testNullConstructorParametersOffsets() {
-        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(1, 1, 1000);
-
-        final GATKRead read1 = ArtificialReadUtils.createArtificialRead(header, "read1", 0, 1, 10);
-
-        new ReadPileup(loc, Arrays.asList(read1), null);
-    }
-
-    @Test(expectedExceptions = IllegalArgumentException.class)
-    public void testNullConstructorParametersLoc() {
-        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(1, 1, 1000);
-
-        final GATKRead read1 = ArtificialReadUtils.createArtificialRead(header,"read1",0,1,10);
-
-        new ReadPileup(null, Arrays.asList(read1), Arrays.asList(1));
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)

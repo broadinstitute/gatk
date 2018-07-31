@@ -2,8 +2,8 @@ package org.broadinstitute.hellbender.utils.recalibration;
 
 
 import org.apache.commons.collections.CollectionUtils;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.QualityUtils;

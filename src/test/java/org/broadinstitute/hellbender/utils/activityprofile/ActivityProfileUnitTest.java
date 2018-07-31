@@ -5,7 +5,8 @@ import htsjdk.samtools.reference.ReferenceSequenceFile;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -15,7 +16,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.*;
 
-public class ActivityProfileUnitTest extends BaseTest {
+public class ActivityProfileUnitTest extends GATKBaseTest {
     private GenomeLocParser genomeLocParser;
     private GenomeLoc startLoc;
     private SAMFileHeader header;
@@ -26,7 +27,7 @@ public class ActivityProfileUnitTest extends BaseTest {
     @BeforeClass
     public void init() throws FileNotFoundException {
         // sequence
-        ReferenceSequenceFile seq = new CachingIndexedFastaSequenceFile(new File(b37_reference_20_21));
+        ReferenceSequenceFile seq = new CachingIndexedFastaSequenceFile(IOUtils.getPath(b37_reference_20_21));
         genomeLocParser = new GenomeLocParser(seq);
         startLoc = genomeLocParser.createGenomeLoc("20", 0, 1, 100);
         header = new SAMFileHeader();

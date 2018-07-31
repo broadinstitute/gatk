@@ -10,7 +10,6 @@ import htsjdk.samtools.util.zip.DeflaterFactory;
 import htsjdk.samtools.util.zip.InflaterFactory;
 import org.broadinstitute.hellbender.utils.NativeUtils;
 import org.broadinstitute.hellbender.utils.RandomDNA;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
 import org.testng.Assert;
 import org.testng.SkipException;
@@ -88,13 +87,13 @@ public class IntelInflaterDeflaterIntegrationTest extends CommandLineProgramTest
         }
 
         final File ORIG_BAM = new File(largeFileTestDir, INPUT_FILE);
-        final File outFile = BaseTest.createTempFile(INPUT_FILE, ".bam");
+        final File outFile = GATKBaseTest.createTempFile(INPUT_FILE, ".bam");
 
         final ArrayList<String> args = new ArrayList<>();
         args.add("--input"); args.add(ORIG_BAM.getAbsolutePath());
         args.add("--output"); args.add(outFile.getAbsolutePath());
-        args.add("--use_jdk_inflater"); args.add(String.valueOf(use_jdk_inflater));
-        args.add("--use_jdk_deflater"); args.add(String.valueOf(use_jdk_deflater));
+        args.add("--use-jdk-inflater"); args.add(String.valueOf(use_jdk_inflater));
+        args.add("--use-jdk-deflater"); args.add(String.valueOf(use_jdk_deflater));
 
         // store current default factories, so they can be restored later
         InflaterFactory currentInflaterFactory = BlockGunzipper.getDefaultInflaterFactory();

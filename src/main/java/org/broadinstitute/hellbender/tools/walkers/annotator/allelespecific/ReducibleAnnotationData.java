@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific;
 
 import htsjdk.variant.variantcontext.Allele;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 
 import java.util.*;
 
@@ -76,5 +77,21 @@ public class ReducibleAnnotationData<T> {
      * Get the stored raw per-allele data
      */
     public Map<Allele, T> getAttributeMap() {return Collections.unmodifiableMap(attributeMap);}
+
+    public void validateAllelesList() {
+        boolean foundRef = false;
+        for (final Allele a : this.getAlleles()) {
+            if (a.isReference()) {
+                if (foundRef) {
+                    throw new GATKException("ERROR: multiple reference alleles found in annotation data\n");
+                }
+                foundRef = true;
+            }
+        }
+        if (!foundRef) {
+            throw new GATKException("ERROR: no reference alleles found in annotation data\n");
+        }
+    }
+
 
 }

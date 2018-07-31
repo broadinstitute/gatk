@@ -1,16 +1,11 @@
 package org.broadinstitute.hellbender.engine;
 
-import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
-import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
+import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
-import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
-import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 
@@ -61,7 +56,7 @@ public abstract class ReadWalker extends GATKTool {
      * Initialize traversal bounds if intervals are specified
      */
     void setReadTraversalBounds() {
-        if ( hasIntervals() ) {
+        if ( hasUserSuppliedIntervals() ) {
             reads.setTraversalBounds(intervalArgumentCollection.getTraversalParameters(getHeaderForReads().getSequenceDictionary()));
         }
     }

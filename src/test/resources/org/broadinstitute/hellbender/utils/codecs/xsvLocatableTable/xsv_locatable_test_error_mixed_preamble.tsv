@@ -1,0 +1,8 @@
+@HD	VN:1.5
+@SQ	SN:1	LN:1000000
+@RG	ID:GATKCopyNumber	SM:sample_cars
+#	Cars, cars, and cars
+#	No "family cars" in this list.
+Car_Maker	chr	start	Tire_Maker	end	Parent_Company
+Lamborghini	chr3	178866310	Michelin	178957882	Audi
+Ferrari	chr19	8959519	Pirelli	9092018	Fiat

@@ -4,7 +4,7 @@ import htsjdk.samtools.metrics.MetricBase;
 import htsjdk.samtools.metrics.MetricsFile;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.MiniClusterUtils;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
@@ -15,7 +15,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 
-public class MetricsUtilsTest extends BaseTest {
+public class MetricsUtilsTest extends GATKBaseTest {
     private MiniDFSCluster cluster;
     private String hdfsWorkingDir;
 
@@ -44,7 +44,7 @@ public class MetricsUtilsTest extends BaseTest {
         public Integer value2 = 0;
     }
 
-    @Test(dataProvider = "metricsPaths", groups = "cloud")
+    @Test(dataProvider = "metricsPaths", groups = "bucket")
     public void testSaveMetrics(String destinationPrefix) throws IOException {
         final String outputPath = BucketUtils.getTempFilePath(destinationPrefix, ".txt");
         TestMetric testMetric = new TestMetric();

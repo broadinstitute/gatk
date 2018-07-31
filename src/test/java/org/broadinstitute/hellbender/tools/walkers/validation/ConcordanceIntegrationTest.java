@@ -2,16 +2,14 @@ package org.broadinstitute.hellbender.tools.walkers.validation;
 
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.AbstractConcordanceWalker;
-import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 /**
  * Created by Takuto Sato on 1/31/17.
@@ -21,15 +19,15 @@ public class ConcordanceIntegrationTest extends CommandLineProgramTest{
 
     @Test
     public void testSimple() throws Exception {
-        final String testDir =  publicTestDir + "org/broadinstitute/hellbender/tools/concordance/";
+        final String testDir =  toolsTestDir + "concordance/";
         final File evalVcf = new File(testDir, "gatk4-dream3-mini.vcf");
         final File truthVcf = new File(testDir, "gatk3-dream3-mini.vcf");
         final File summary = createTempFile("summary", ".txt");
 
         final String[] args = {
-                "-" + AbstractConcordanceWalker.EVAL_VARIANTS_SHORT_NAME, evalVcf.toString(),
-                "-" + AbstractConcordanceWalker.TRUTH_VARIANTS_SHORT_NAME, truthVcf.toString(),
-                "-" + Concordance.SUMMARY_SHORT_NAME, summary.toString(),
+                "--" + AbstractConcordanceWalker.EVAL_VARIANTS_LONG_NAME, evalVcf.toString(),
+                "--" + AbstractConcordanceWalker.TRUTH_VARIANTS_LONG_NAME, truthVcf.toString(),
+                "--" + Concordance.SUMMARY_LONG_NAME, summary.toString(),
         };
         runCommandLine(args);
 
@@ -55,7 +53,7 @@ public class ConcordanceIntegrationTest extends CommandLineProgramTest{
     // Test going from an integer chromosome (22) to a character chromosome (X)
     @Test
     public void testt22X() throws Exception {
-        final String testDir = publicTestDir + "org/broadinstitute/hellbender/tools/concordance/";
+        final String testDir = toolsTestDir + "concordance/";
         final File truthVcf = new File(testDir, "gatk3-dream3-x.vcf");
         final File evalVcf = new File(testDir, "gatk4-dream3-x.vcf");
         final File tpfp = createTempFile("tpfp", ".vcf");
@@ -64,12 +62,12 @@ public class ConcordanceIntegrationTest extends CommandLineProgramTest{
         final File summary = createTempFile("summary", ".txt");
 
         final String[] args = {
-                "-" + AbstractConcordanceWalker.EVAL_VARIANTS_SHORT_NAME, evalVcf.toString(),
-                "-" + AbstractConcordanceWalker.TRUTH_VARIANTS_SHORT_NAME, truthVcf.toString(),
-                "-" + Concordance.SUMMARY_SHORT_NAME, summary.toString(),
-                "-" + Concordance.TRUE_POSITIVES_AND_FALSE_NEGATIVES_SHORT_NAME, tpfn.getAbsolutePath(),
-                "-" + Concordance.TRUE_POSITIVES_AND_FALSE_POSITIVES_SHORT_NAME, tpfp.getAbsolutePath(),
-                "-" + Concordance.FILTERED_TRUE_NEGATIVES_AND_FALSE_NEGATIVES_SHORT_NAME, ftnfn.getAbsolutePath()
+                "--" + AbstractConcordanceWalker.EVAL_VARIANTS_LONG_NAME, evalVcf.toString(),
+                "--" + AbstractConcordanceWalker.TRUTH_VARIANTS_LONG_NAME, truthVcf.toString(),
+                "--" + Concordance.SUMMARY_LONG_NAME, summary.toString(),
+                "--" + Concordance.TRUE_POSITIVES_AND_FALSE_NEGATIVES_LONG_NAME, tpfn.getAbsolutePath(),
+                "--" + Concordance.TRUE_POSITIVES_AND_FALSE_POSITIVES_LONG_NAME, tpfp.getAbsolutePath(),
+                "--" + Concordance.FILTERED_TRUE_NEGATIVES_AND_FALSE_NEGATIVES_LONG_NAME, ftnfn.getAbsolutePath()
         };
         runCommandLine(args);
         ConcordanceSummaryRecord.Reader summaryReader = new ConcordanceSummaryRecord.Reader(summary);
@@ -87,12 +85,8 @@ public class ConcordanceIntegrationTest extends CommandLineProgramTest{
         Assert.assertEquals(indelRecord.getFalseNegatives(), 0);
 
         // Test the output vcfs
-        final List<VariantContext> truePositivesAndFalseNegatives =
-                StreamSupport.stream(new FeatureDataSource<VariantContext>(tpfn).spliterator(), false)
-                .collect(Collectors.toList());
-        final List<VariantContext> truePositivesAndFalsePositives =
-                StreamSupport.stream(new FeatureDataSource<VariantContext>(tpfp).spliterator(), false)
-                        .collect(Collectors.toList());
+        final List<VariantContext> truePositivesAndFalseNegatives = VariantContextTestUtils.streamVcf(tpfn).collect(Collectors.toList());
+        final List<VariantContext> truePositivesAndFalsePositives = VariantContextTestUtils.streamVcf(tpfp).collect(Collectors.toList());
 
         Assert.assertEquals(truePositivesAndFalseNegatives.size(), 10);
         Assert.assertEquals(truePositivesAndFalsePositives.size(), 10);
@@ -109,15 +103,15 @@ public class ConcordanceIntegrationTest extends CommandLineProgramTest{
     // The truth file only contains the PASS sites; should get 100% sensitivity and specificity.
     @Test
     public void testPerfectMatchVcf() throws Exception {
-        final String testDir = publicTestDir + "org/broadinstitute/hellbender/tools/concordance/";
+        final String testDir = toolsTestDir + "concordance/";
         final File truthVcf = new File(testDir, "same-truth.vcf");
         final File evalVcf = new File(testDir, "same-eval.vcf");
         final File summary = createTempFile("summary", ".txt");
 
         final String[] args = {
-                "-" + AbstractConcordanceWalker.EVAL_VARIANTS_SHORT_NAME, evalVcf.toString(),
-                "-" + AbstractConcordanceWalker.TRUTH_VARIANTS_SHORT_NAME, truthVcf.toString(),
-                "-" + Concordance.SUMMARY_SHORT_NAME, summary.toString(),
+                "--" + AbstractConcordanceWalker.EVAL_VARIANTS_LONG_NAME, evalVcf.toString(),
+                "--" + AbstractConcordanceWalker.TRUTH_VARIANTS_LONG_NAME, truthVcf.toString(),
+                "--" + Concordance.SUMMARY_LONG_NAME, summary.toString(),
         };
 
         runCommandLine(args);
@@ -137,16 +131,60 @@ public class ConcordanceIntegrationTest extends CommandLineProgramTest{
     }
 
     @Test
+    public void testFilterAnalysis() throws Exception {
+        final String testDir = toolsTestDir + "concordance/";
+        final File truthVcf = new File(testDir, "filter-analysis-truth.vcf");
+        final File evalVcf = new File(testDir, "filter-analysis-eval.vcf");
+        final File summary = createTempFile("summary", ".txt");
+        final File filterAnalysis = createTempFile("filter-analysis", ".txt");
+
+        final String[] args = {
+                "--" + AbstractConcordanceWalker.EVAL_VARIANTS_LONG_NAME, evalVcf.getAbsolutePath(),
+                "--" + AbstractConcordanceWalker.TRUTH_VARIANTS_LONG_NAME, truthVcf.getAbsolutePath(),
+                "--" + Concordance.SUMMARY_LONG_NAME, summary.getAbsolutePath(),
+                "--" + Concordance.FILTER_ANALYSIS_LONG_NAME, filterAnalysis.getAbsolutePath()
+        };
+
+        runCommandLine(args);
+        final List<FilterAnalysisRecord> filterAnalysisRecords = FilterAnalysisRecord.readFromFile(filterAnalysis);
+        Assert.assertEquals(filterAnalysisRecords.size(), 3);
+
+        // this ensures that the first record is average_filter, then bad_filter, then good_filter
+        Collections.sort(filterAnalysisRecords, Comparator.comparing(FilterAnalysisRecord::getFilter));
+        final FilterAnalysisRecord average = filterAnalysisRecords.get(0);
+        final FilterAnalysisRecord bad = filterAnalysisRecords.get(1);
+        final FilterAnalysisRecord good = filterAnalysisRecords.get(2);
+
+        Assert.assertEquals(average.getFalseNegativeCount(),1);
+        Assert.assertEquals(average.getUniqueFalseNegativeCount(),0);
+        Assert.assertEquals(average.getTrueNegativeCount(), 2);
+        Assert.assertEquals(average.getUniqueTrueNegativeCount(), 1);
+
+        Assert.assertEquals(bad.getFalseNegativeCount(),4);
+        Assert.assertEquals(bad.getUniqueFalseNegativeCount(),3);
+        Assert.assertEquals(bad.getTrueNegativeCount(), 0);
+        Assert.assertEquals(bad.getUniqueTrueNegativeCount(), 0);
+
+        Assert.assertEquals(good.getFalseNegativeCount(),0);
+        Assert.assertEquals(good.getUniqueFalseNegativeCount(),0);
+        Assert.assertEquals(good.getTrueNegativeCount(), 5);
+        Assert.assertEquals(good.getUniqueTrueNegativeCount(), 4);
+
+
+
+    }
+
+    @Test
     public void testDreamSensitivity() throws Exception {
-        final String testDir = publicTestDir + "org/broadinstitute/hellbender/tools/concordance/";
+        final String testDir = toolsTestDir + "concordance/";
         final File evalVcf = new File(testDir, "dream3-chr21.vcf");
         final File truthVcf = new File(testDir, "dream3-truth-minus-SV-chr21.vcf");
         final File summary = createTempFile("summary", ".txt");
 
         final String[] args = {
-                "-" + AbstractConcordanceWalker.EVAL_VARIANTS_SHORT_NAME, evalVcf.toString(),
-                "-" + AbstractConcordanceWalker.TRUTH_VARIANTS_SHORT_NAME, truthVcf.toString(),
-                "-" + Concordance.SUMMARY_SHORT_NAME, summary.toString(),
+                "--" + AbstractConcordanceWalker.EVAL_VARIANTS_LONG_NAME, evalVcf.toString(),
+                "--" + AbstractConcordanceWalker.TRUTH_VARIANTS_LONG_NAME, truthVcf.toString(),
+                "--" + Concordance.SUMMARY_LONG_NAME, summary.toString(),
         };
 
         runCommandLine(args);

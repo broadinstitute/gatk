@@ -4,7 +4,8 @@ package org.broadinstitute.hellbender.tools.walkers.rnaseq;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
+import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.cmdline.programgroups.CoverageAnalysisProgramGroup;
 import org.broadinstitute.hellbender.engine.AlignmentContext;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.LocusWalker;
@@ -25,11 +26,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Calculate read counts per allele for allele-specific expression analysis
+ * Calculate read counts per allele for allele-specific expression analysis of RNAseq data
  * <p>
  * <p>
  * This tool calculates allele counts at a set of positions after applying filters that are tuned for enabling
- * allele-specific expression (ASE) analysis. The filters operate on mapping quality, base quality, depth of coverage,
+ * allele-specific expression (ASE) analysis of RNAseq data. The filters operate on mapping quality, base quality, depth of coverage,
  * overlapping paired reads and deletions overlapping the position. All thresholds and options are controlled by
  * command-line arguments.
  * </p>
@@ -45,6 +46,14 @@ import java.util.List;
  * A table of allele counts at the given sites. By default, it is formatted as a tab-delimited text file
  * that is readable by R and compatible with <a href="http://www.well.ox.ac.uk/~rivas/mamba/">Mamba</a>,
  * a downstream tool developed for allele-specific expression analysis.
+ * </p>
+ * <h3>Usage Example</h3>
+ * <p>
+ *     gatk ASEReadCounter \
+ *     -R Homo_sapiens_assembly38.fasta \
+ *     -I input.bam \
+ *     -V sites.vcf.gz \
+ *     -O output.table
  * </p>
  * <p>
  * <h3>Note</h3>
@@ -65,10 +74,11 @@ import java.util.List;
  *
  * @author Ami Levy Moonshine
  */
+@DocumentedFeature
 @CommandLineProgramProperties(
         summary = "Counts filtered reads at het sites for allele specific expression estimate",
         oneLineSummary = "Generates table of filtered base counts at het sites for allele specific expression",
-        programGroup = ReadProgramGroup.class
+        programGroup = CoverageAnalysisProgramGroup.class
 )
 public class ASEReadCounter extends LocusWalker {
 
@@ -82,33 +92,33 @@ public class ASEReadCounter extends LocusWalker {
      * If this argument is enabled, loci with total depth lower than this threshold after all filters have been applied
      * will be skipped. This can be set to -1 by default to disable the evaluation and ignore this threshold.
      */
-    @Argument(fullName = "minDepthOfNonFilteredBase", shortName = "minDepth", doc = "Minimum number of bases that pass filters", optional = true)
+    @Argument(fullName = "min-depth-of-non-filtered-base", shortName = "min-depth", doc = "Minimum number of bases that pass filters", optional = true)
     public int minDepthOfNonFilteredBases = -1;
 
     /**
      * If this argument is enabled, reads with mapping quality values lower than this threshold will not be counted.
      * This can be set to -1 by default to disable the evaluation and ignore this threshold.
      */
-    @Argument(fullName = "minMappingQuality", shortName = "mmq", doc = "Minimum read mapping quality", optional = true)
+    @Argument(fullName = "min-mapping-quality", shortName = "mmq", doc = "Minimum read mapping quality", optional = true)
     public int minMappingQuality = 0;
 
     /**
      * If this argument is enabled, bases with quality scores lower than this threshold will not be counted.
      * This can be set to -1 by default to disable the evaluation and ignore this threshold.
      */
-    @Argument(fullName = "minBaseQuality", shortName = "mbq", doc = "Minimum base quality", optional = true)
+    @Argument(fullName = "min-base-quality", shortName = "mbq", doc = "Minimum base quality", optional = true)
     public byte minBaseQuality = 0;
 
     /**
      * These options modify how the tool deals with overlapping read pairs. The default value is COUNT_FRAGMENTS_REQUIRE_SAME_BASE.
      */
-    @Argument(fullName = "countOverlapReadsType", shortName = "overlap", doc = "Handling of overlapping reads from the same fragment", optional = true)
+    @Argument(fullName = "count-overlap-reads-handling", shortName = "overlap", doc = "Handling of overlapping reads from the same fragment", optional = true)
     public CountPileupType countType = CountPileupType.COUNT_FRAGMENTS_REQUIRE_SAME_BASE;
 
     /**
      * Available options are csv, table, rtable. By default, the format is rtable (an r-readable table).
      */
-    @Argument(fullName = "outputFormat", doc = "Format of the output file", optional = true)
+    @Argument(fullName = "output-format", doc = "Format of the output file", optional = true)
     public OUTPUT_FORMAT outputFormat = OUTPUT_FORMAT.RTABLE;
 
     public String separator = "\t";

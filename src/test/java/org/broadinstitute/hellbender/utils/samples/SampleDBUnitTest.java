@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.utils.samples;
 
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -10,7 +10,7 @@ import java.io.File;
 import java.util.*;
 
 
-public class SampleDBUnitTest extends BaseTest {
+public class SampleDBUnitTest extends GATKBaseTest {
     private static SampleDBBuilder builder;
     // all the test sample files are located here
     private File testPED = new File(getToolTestDataDir() +  "testtrio.ped");
@@ -112,6 +112,15 @@ public class SampleDBUnitTest extends BaseTest {
     }
 
     @Test()
+    public void testAddSamplesFromSampleNames() {
+        List<String> names = new ArrayList<>();
+        testSAMSamples.forEach(s -> names.add(s.getID()));
+        builder.addSamplesFromSampleNames(names);
+        SampleDB db = builder.getFinalSampleDB();
+        Assert.assertEquals(db.getSamples(), testSAMSamples);
+    }
+
+    @Test()
     public void loadDuplicateData() {
         builder.addSamplesFromPedigreeFiles(Arrays.asList(testPED));
         builder.addSamplesFromPedigreeFiles(Arrays.asList(testPED));
@@ -121,9 +130,9 @@ public class SampleDBUnitTest extends BaseTest {
 
     @Test(expectedExceptions = UserException.class)
     public void loadNonExistentFile() {
-        builder.addSamplesFromPedigreeFiles(Arrays.asList(BaseTest.getSafeNonExistentFile("non-existence-file.txt")));
+        builder.addSamplesFromPedigreeFiles(Arrays.asList(GATKBaseTest.getSafeNonExistentFile("non-existence-file.txt")));
         SampleDB db = builder.getFinalSampleDB();
-        Assert.assertEquals(testSAMSamples, db.getSamples());
+        Assert.assertEquals(db.getSamples(), testSAMSamples);
     }
 
     @Test(expectedExceptions = UserException.class)

@@ -8,15 +8,14 @@ import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.GATKReadWriter;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-import static org.mockito.Mockito.*;
 
 import java.util.*;
 
-public final class OverhangFixingManagerUnitTest extends BaseTest {
+public final class OverhangFixingManagerUnitTest extends GATKBaseTest {
 
     private SAMFileHeader getHG19Header() {
         final SAMFileHeader header = new SAMFileHeader();

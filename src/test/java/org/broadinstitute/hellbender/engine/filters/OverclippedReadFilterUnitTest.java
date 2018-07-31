@@ -5,7 +5,7 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.TextCigarCodec;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -15,7 +15,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 
-public class OverclippedReadFilterUnitTest extends BaseTest {
+public class OverclippedReadFilterUnitTest extends GATKBaseTest {
 
     private static final int CHR_COUNT = 1;
     private static final int CHR_START = 1;
@@ -26,10 +26,10 @@ public class OverclippedReadFilterUnitTest extends BaseTest {
 
 
     @Test(dataProvider= "OverclippedDataProvider")
-    public void testOverclippedFilter(final String cigarString, boolean doNotRequireSoftclipsOnBothEnds, final boolean expectedResult) {
+    public void testOverclippedFilter(final String cigarString, boolean doNotRequireSoftClipsOnBothEnds, final boolean expectedResult) {
 
         final OverclippedReadFilter filter = new OverclippedReadFilter(30, false);
-        filter.doNotRequireSoftclipsOnBothEnds = doNotRequireSoftclipsOnBothEnds;
+        filter.doNotRequireSoftClipsOnBothEnds = doNotRequireSoftClipsOnBothEnds;
         final GATKRead read = buildSAMRead(cigarString);
         Assert.assertEquals(filter.test(read), expectedResult, cigarString);
     }

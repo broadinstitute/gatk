@@ -3,59 +3,31 @@ package org.broadinstitute.hellbender.utils.io;
 import org.apache.logging.log4j.core.util.FileUtils;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.MiniClusterUtils;
 import org.testng.Assert;
 import org.testng.SkipException;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Random;
 
-public final class IOUtilsUnitTest extends BaseTest {
+public final class IOUtilsUnitTest extends GATKBaseTest {
 
     @Test
     public void testTempDir() {
-        File tempDir = IOUtils.tempDir("Q-Unit-Test", "", new File("queueTempDirToDelete"));
+        File tempDir = IOUtils.createTempDir("Q-Unit-Test");
         Assert.assertTrue(tempDir.exists());
         Assert.assertFalse(tempDir.isFile());
         Assert.assertTrue(tempDir.isDirectory());
         boolean deleted = IOUtils.tryDelete(tempDir);
         Assert.assertTrue(deleted);
         Assert.assertFalse(tempDir.exists());
-    }
-
-    @Test
-    public void testAbsolute() {
-        File dir = IOUtils.absolute(new File("/path/./to/./directory/."));
-        Assert.assertEquals(dir, new File("/path/to/directory"));
-
-        dir = IOUtils.absolute(new File("/"));
-        Assert.assertEquals(dir, new File("/"));
-
-        dir = IOUtils.absolute(new File("/."));
-        Assert.assertEquals(dir, new File("/"));
-
-        dir = IOUtils.absolute(new File("/././."));
-        Assert.assertEquals(dir, new File("/"));
-
-        dir = IOUtils.absolute(new File("/./directory/."));
-        Assert.assertEquals(dir, new File("/directory"));
-
-        dir = IOUtils.absolute(new File("/./directory/./"));
-        Assert.assertEquals(dir, new File("/directory"));
-
-        dir = IOUtils.absolute(new File("/./directory./"));
-        Assert.assertEquals(dir, new File("/directory."));
-
-        dir = IOUtils.absolute(new File("/./.directory/"));
-        Assert.assertEquals(dir, new File("/.directory"));
     }
 
     @Test
@@ -114,7 +86,7 @@ public final class IOUtilsUnitTest extends BaseTest {
 
     @Test( expectedExceptions = UserException.CouldNotReadInputFile.class )
     public void testReadNonExistentFileIntoByteArray() {
-        File nonExistentFile = BaseTest.getSafeNonExistentFile("djfhsdkjghdfk");
+        File nonExistentFile = GATKBaseTest.getSafeNonExistentFile("djfhsdkjghdfk");
         Assert.assertFalse(nonExistentFile.exists());
 
         IOUtils.readFileIntoByteArray(nonExistentFile);
@@ -142,7 +114,7 @@ public final class IOUtilsUnitTest extends BaseTest {
         //It runs at jvm shutdown so there isn't a good way to test it properly.
         //If you see a directory in the hellbender main folder called
 
-        final File dir = new File(BaseTest.publicTestDir + "I_SHOULD_HAVE_BEEN_DELETED");
+        final File dir = new File(GATKBaseTest.publicTestDir + "I_SHOULD_HAVE_BEEN_DELETED");
         IOUtils.deleteRecursivelyOnExit(dir);
 
         FileUtils.mkdir(dir, true);
@@ -176,6 +148,16 @@ public final class IOUtilsUnitTest extends BaseTest {
         innerTestGetPath(getGCPTestInputPath() + "large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam");
         innerTestGetPath("file://" + NA12878_20_21_WGS_bam);
         innerTestGetPath(NA12878_20_21_WGS_bam);
+    }
+
+    @Test
+    public void testGetPathHandlesIntervals() throws IOException {
+        // Make sure we don't crash if passing intervals to getPath.
+        // Also, it shouldn't crash when we check whether the file exists.
+        Assert.assertFalse(Files.exists(IOUtils.getPath("chr1:10-11")));
+        Assert.assertFalse(Files.exists(IOUtils.getPath("chr1:10")));
+        Assert.assertFalse(Files.exists(IOUtils.getPath("1:10-11")));
+        Assert.assertFalse(Files.exists(IOUtils.getPath("1:10")));
     }
 
     private void innerTestGetPath(String s) throws IOException {
@@ -224,4 +206,87 @@ public final class IOUtilsUnitTest extends BaseTest {
         }
         IOUtils.canReadFile(file);
     }
+
+    @Test
+    public void testCreateDirectory() throws IOException {
+
+        // hdfs
+        Path tempPath = IOUtils.getPath(MiniClusterUtils.getWorkingDir(MiniClusterUtils.getMiniCluster()).toUri().toString())
+                .resolve("temp");
+        IOUtils.createDirectory(tempPath.toUri().toString());
+        Assert.assertTrue(java.nio.file.Files.exists(tempPath));
+
+        // local
+        tempPath = IOUtils.getPath(BaseTest.createTempDir("xxx").getAbsolutePath().concat("/sub"));
+        IOUtils.createDirectory(tempPath.toUri().toString());
+        Assert.assertTrue(java.nio.file.Files.exists(tempPath));
+    }
+
+    @DataProvider(name="urlEncodeDecode")
+    public Object[][] urlEncodeDecode() {
+        return new Object[][]{
+                // string, url encoding
+                { "string", "string"},
+                { "string.", "string."},
+                { "string1", "string1"},
+                { "string with space", "string+with+space"},
+                { "string://", "string%3A%2F%2F"},
+        };
+    }
+
+    @Test(dataProvider = "urlEncodeDecode")
+    public void testUrlEncodeDecode(final String string, final String encoded) {
+        Assert.assertEquals(IOUtils.urlEncode(string), encoded);
+        Assert.assertEquals(string, IOUtils.urlDecode(encoded));
+    }
+
+    @DataProvider(name="resourcePaths")
+    public Object[][] getResourcePaths() {
+        final String testResourceContents = "this is a test resource file";
+        return new Object[][] {
+                { Resource.LARGE_RUNTIME_RESOURCES_PATH + "/testResourceFile.txt", null , testResourceContents},
+                { "testResourceFile.txt", IOUtils.class , testResourceContents},
+        };
+    }
+
+    @Test(dataProvider = "resourcePaths")
+    public void testWriteTempResource(
+            final String resourcePath, final Class<?> relativeClass, final String expectedFirstLine) throws IOException
+    {
+        final Resource largeResource = new Resource(resourcePath, relativeClass);
+        final File resourceFile = IOUtils.writeTempResource(largeResource);
+        final String resourceContentsFirstLine = getFirstLineAndDeleteTempFile(resourceFile);
+        Assert.assertEquals(resourceContentsFirstLine, expectedFirstLine);
+    }
+
+    @Test(dataProvider = "resourcePaths")
+    public void testWriteTempResourceFromPath(
+            final String resourcePath, final Class<?> relativeClass, final String expectedFirstLine) throws IOException
+    {
+        final File resourceFile = IOUtils.writeTempResourceFromPath(resourcePath, relativeClass);
+        final String resourceContentsFirstLine = getFirstLineAndDeleteTempFile(resourceFile);
+        Assert.assertEquals(resourceContentsFirstLine, expectedFirstLine);
+    }
+
+    @Test
+    public void testCreateTempFileInDirectory() {
+        final File tempDir = createTempDir("testCreateTempFileInDirectory");
+        final File tempFile = IOUtils.createTempFileInDirectory("testCreateTempFileInDirectory", ".txt", tempDir);
+        Assert.assertTrue(tempFile.exists(), "file was not written to temp file: " + tempFile);
+        Assert.assertEquals(tempFile.getParentFile().getAbsolutePath(), (tempDir.getAbsolutePath()),
+                "file was not written to temp file: " + tempFile + " in dir: " + tempDir);
+    }
+
+    private String getFirstLineAndDeleteTempFile(final File tempResourceFile) throws IOException {
+        String resourceContentsFirstLine = "";
+        try (final FileReader fr = new FileReader(tempResourceFile);
+             final BufferedReader br = new BufferedReader(fr)) {
+            resourceContentsFirstLine = br.readLine();
+        }
+        finally {
+            tempResourceFile.delete();
+        }
+        return resourceContentsFirstLine;
+    }
+
 }

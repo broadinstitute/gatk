@@ -3,8 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.mutect;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.Main;
-import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -13,16 +12,14 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
-
-import static org.testng.Assert.*;
 
 /**
  * Created by David Benjamin on 2/17/17.
  */
+@Test(groups = {"variantcalling"})
 public class CreateSomaticPanelOfNormalsIntegrationTest extends CommandLineProgramTest {
 
-    private static final File PON_VCFS_DIR = new File(publicTestDir, "org/broadinstitute/hellbender/tools/mutect/createpon/");
+    private static final File PON_VCFS_DIR = new File(toolsTestDir, "mutect/createpon/");
 
     /**
      * In the following test, we have sample1.vcf:
@@ -56,20 +53,19 @@ public class CreateSomaticPanelOfNormalsIntegrationTest extends CommandLineProgr
         final File vcf1 = new File(PON_VCFS_DIR, "sample1.vcf");
         final File vcf2 = new File(PON_VCFS_DIR, "sample2.vcf");
 
-        final File vcfInputFile = createTempFile("vcfs", ".list");
+        final File vcfInputFile = createTempFile("vcfs", ".args");
         FileUtils.writeLines(vcfInputFile, Arrays.asList(vcf1.getAbsolutePath(), vcf2.getAbsolutePath()));
 
         final File outputVcf = createTempFile("pon", ".vcf");
         final String[] args = {
                 "-" + CreateSomaticPanelOfNormals.INPUT_VCFS_LIST_SHORT_NAME, vcfInputFile.getAbsolutePath(),
-                "-O", outputVcf.getAbsolutePath()
+                "-O", outputVcf.getAbsolutePath(),
+                "--duplicate-sample-strategy", "ALLOW_ALL",
         };
 
         runCommandLine(args);
 
-        final List<VariantContext> ponVariants =
-                StreamSupport.stream(new FeatureDataSource<VariantContext>(outputVcf).spliterator(), false)
-                .collect(Collectors.toList());
+        final List<VariantContext> ponVariants = VariantContextTestUtils.streamVcf(outputVcf).collect(Collectors.toList());
 
         Assert.assertEquals(ponVariants.size(), 5);
         final VariantContext vc1 = ponVariants.get(0);
@@ -81,5 +77,4 @@ public class CreateSomaticPanelOfNormalsIntegrationTest extends CommandLineProgr
         Assert.assertEquals(vc5.getNAlleles(), 2);
         Assert.assertTrue(vc5.getAlternateAllele(0).basesMatch("C"));
     }
-
 }

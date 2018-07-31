@@ -2,15 +2,17 @@ package org.broadinstitute.hellbender;
 
 import com.google.cloud.storage.StorageException;
 import htsjdk.samtools.util.StringUtil;
-import org.broadinstitute.barclay.argparser.BetaFeature;
-import org.broadinstitute.hellbender.cmdline.ClassFinder;
-import org.broadinstitute.barclay.argparser.CommandLineException;
-import org.broadinstitute.barclay.argparser.CommandLineProgramGroup;
-import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
+import org.broadinstitute.hellbender.cmdline.DeprecatedToolsRegistry;
+import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgramExecutor;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.exceptions.PicardNonZeroExitException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.ClassUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.config.ConfigFactory;
+import org.broadinstitute.hellbender.utils.runtime.RuntimeUtils;
 
 import java.io.PrintStream;
 import java.io.Serializable;
@@ -28,6 +30,7 @@ import java.util.*;
  * - {@link #getCommandLineName()} for the name of the toolkit.
  * - {@link #handleResult(Object)} for handle the result of the tool.
  * - {@link #handleNonUserException(Exception)} for handle non {@link UserException}.
+ * - {@link #parseArgsForConfigSetup(String[])} for pulling command-line configuration options out and initializing the {@link org.broadinstitute.hellbender.utils.config.GATKConfig}
  *
  * Note: If any of the previous methods was overrided, {@link #main(String[])} should be implemented to instantiate your class
  * and call {@link #mainEntry(String[])} to make the changes effective.
@@ -40,6 +43,10 @@ public class Main {
          * to think about number formatting issues.
          */
         Utils.forceJVMLocaleToUSEnglish();
+
+        // Turn off the Picard legacy parser and opt in to Barclay syntax for Picard tools. This should be replaced
+        // with a config setting once PR https://github.com/broadinstitute/gatk/pull/3447 is merged.
+        System.setProperty("picard.useLegacyParser", "false");
     }
 
     /**
@@ -59,9 +66,14 @@ public class Main {
     private static final int COMMANDLINE_EXCEPTION_EXIT_VALUE = 1;
 
     /**
-     * exit value when an unrecoverable {@link UserException} occurs
+     * Exit value when an unrecoverable {@link UserException} occurs.
      */
-    private static final int USER_EXCEPTION_EXIT_VALUE = 2;
+    public static final int USER_EXCEPTION_EXIT_VALUE = 2;
+
+    /**
+     * Exit value used when a Picard tool returns a non-zero exit code (the actual value is displayed on the command line)
+     */
+    public static final int PICARD_TOOL_EXCEPTION = 4;
 
     /**
      * exit value when any unrecoverable exception other than {@link UserException} occurs
@@ -88,7 +100,23 @@ public class Main {
     protected List<String> getPackageList() {
         final List<String> packageList = new ArrayList<>();
         packageList.addAll(Arrays.asList("org.broadinstitute.hellbender"));
+        packageList.addAll(Arrays.asList("picard"));
         return packageList;
+    }
+
+
+    /**
+     * Reads from the given command-line arguments, pulls out configuration options,
+     * and initializes the configuration for this instance of Main.
+     *
+     * Suggested use for this is to handle downstream project configuration options and overrides.
+     * For example this would allow:
+     *
+     *      Custom command-line arguments for use in tools
+     *      Custom config file loading and initialization
+     */
+    protected void parseArgsForConfigSetup(final String[] args) {
+        ConfigFactory.getInstance().initializeConfigurationsFromCommandLineArgs(args, "--" + StandardArgumentDefinitions.GATK_CONFIG_FILE_OPTION);
     }
 
     /**
@@ -113,22 +141,43 @@ public class Main {
      *
      */
     public Object instanceMain(final String[] args, final List<String> packageList, final List<Class<? extends CommandLineProgram>> classList, final String commandLineName) {
-        final CommandLineProgram program = extractCommandLineProgram(args, packageList, classList, commandLineName);
+
+        final CommandLineProgram program = setupConfigAndExtractProgram(args, packageList, classList, commandLineName);
         return runCommandLineProgram(program, args);
     }
 
     /**
      * Run the given command line program with the raw arguments from the command line
-     * @param rawArgs thes are the raw arguments from the command line, the first will be stripped off
+     * @param rawArgs these are the raw arguments from the command line, the first will be stripped off
      * @return the result of running  {program} with the given args, possibly null
      */
-    protected static Object runCommandLineProgram(CommandLineProgram program, String[] rawArgs) {
+    protected static Object runCommandLineProgram(final CommandLineProgram program, final String[] rawArgs) {
 
         if (null == program) return null; // no program found!  This will happen if help was specified with no other arguments
         // we can lop off the first two arguments but it requires an array copy or alternatively we could update CLP to remove them
         // in the constructor do the former in this implementation.
         final String[] mainArgs = Arrays.copyOfRange(rawArgs, 1, rawArgs.length);
         return program.instanceMain(mainArgs);
+    }
+
+    /**
+     * Set up the configuration file store and create the {@link CommandLineProgram} to run.
+     * @param args Argument array passed into this invocation of {@link Main}.
+     * @param packageList List of packages to include in the command-line.
+     * @param classList List of single classes to include in the command-line.
+     * @param commandLineName The command-line name as it appears in the usage.
+     * @return The {@link CommandLineProgram} to run from this invocation of {@link Main}.
+     */
+    protected CommandLineProgram setupConfigAndExtractProgram(final String[] args,
+                                                              final List<String> packageList,
+                                                              final List<Class<? extends CommandLineProgram>> classList,
+                                                              final String commandLineName ){
+        // Parse our config file path from our arguments and initialize the configuration file.
+        // Note: this must be here because the command-line invocation inserts into here:
+        parseArgsForConfigSetup(args);
+
+        // Get our command-line program:
+        return extractCommandLineProgram(args, packageList, classList, commandLineName);
     }
 
     /**
@@ -147,15 +196,23 @@ public class Main {
      * Note: this is the only method that is allowed to call System.exit (because gatk tools may be run from test harness etc)
      */
     protected final void mainEntry(final String[] args) {
-        final CommandLineProgram program = extractCommandLineProgram(args, getPackageList(), getClassList(), getCommandLineName());
+
+        CommandLineProgram program = null;
         try {
+            program = setupConfigAndExtractProgram(args, getPackageList(), getClassList(), getCommandLineName());
             final Object result = runCommandLineProgram(program, args);
             handleResult(result);
-            System.exit(0);
+            //no explicit System.exit(0) since that causes issues when running in Yarn containers
         } catch (final CommandLineException e){
-            System.err.println(program.getUsage());
+            if (program != null) {
+                System.err.println(program.getUsage());
+            }
             handleUserException(e);
             System.exit(COMMANDLINE_EXCEPTION_EXIT_VALUE);
+        } catch (final PicardNonZeroExitException e) {
+            // a Picard tool returned a non-zero exit code
+            handleResult(e.getToolReturnCode());
+            System.exit(PICARD_TOOL_EXCEPTION);
         } catch (final UserException e){
             handleUserException(e);
             System.exit(USER_EXCEPTION_EXIT_VALUE);
@@ -167,7 +224,6 @@ public class Main {
             System.exit(ANY_OTHER_EXCEPTION_EXIT_VALUE);
         }
     }
-
 
 
     /**
@@ -195,7 +251,10 @@ public class Main {
         if(printStackTraceOnUserExceptions()) {
             e.printStackTrace();
         } else {
-            System.err.println("Use -D" + STACK_TRACE_ON_USER_EXCEPTION_PROPERTY + "to print the stack trace.");
+            System.err.println(String.format(
+                    "Set the system property %s (--java-options '-D%s=true') to print the stack trace.",
+                    STACK_TRACE_ON_USER_EXCEPTION_PROPERTY,
+                    STACK_TRACE_ON_USER_EXCEPTION_PROPERTY));
         }
     }
 
@@ -213,15 +272,15 @@ public class Main {
      */
     protected void handleStorageException(final StorageException exception) {
         // HTTP error code
-        System.out.println("code:      " + exception.getCode());
+        System.err.println("code:      " + exception.getCode());
         // user-friendly message
-        System.out.println("message:   " + exception.getMessage());
+        System.err.println("message:   " + exception.getMessage());
         // short reason code, eg. "invalidArgument"
-        System.out.println("reason:    " + exception.getReason());
+        System.err.println("reason:    " + exception.getReason());
         // eg. the name of the argument that was invalid
-        System.out.println("location:  " + exception.getLocation());
+        System.err.println("location:  " + exception.getLocation());
         // true indicates the server thinks the same request may succeed later
-        System.out.println("retryable: " + exception.isRetryable());
+        System.err.println("retryable: " + exception.isRetryable());
         exception.printStackTrace();
     }
 
@@ -237,10 +296,14 @@ public class Main {
     /**
      * Returns the command line program specified, or prints the usage and exits with exit code 1 *
      */
-    private static CommandLineProgram extractCommandLineProgram(final String[] args, final List<String> packageList, final List<Class<? extends CommandLineProgram>> classList, final String commandLineName) {
+    private CommandLineProgram extractCommandLineProgram( final String[] args,
+                                                          final List<String> packageList,
+                                                          final List<Class<? extends CommandLineProgram>> classList,
+                                                          final String commandLineName ) {
         /** Get the set of classes that are our command line programs **/
         final ClassFinder classFinder = new ClassFinder();
         for (final String pkg : packageList) {
+            classFinder.find(pkg, picard.cmdline.CommandLineProgram.class);
             classFinder.find(pkg, CommandLineProgram.class);
         }
         String missingAnnotationClasses = "";
@@ -248,6 +311,9 @@ public class Main {
         toCheck.addAll(classList);
         final Map<String, Class<?>> simpleNameToClass = new LinkedHashMap<>();
         for (final Class<?> clazz : toCheck) {
+            if (clazz.equals(PicardCommandLineProgramExecutor.class)) {
+                continue;
+            }
             // No interfaces, synthetic, primitive, local, or abstract classes.
             if (ClassUtils.canMakeInstances(clazz)) {
                 final CommandLineProgramProperties property = getProgramProperty(clazz);
@@ -255,9 +321,9 @@ public class Main {
                 if (null == property) {
                     if (missingAnnotationClasses.isEmpty()) missingAnnotationClasses += clazz.getSimpleName();
                     else missingAnnotationClasses += ", " + clazz.getSimpleName();
-                } else if (!property.omitFromCommandLine()) { /** We should check for missing annotations later **/
+                } else { /** We should check for missing annotations later **/
                     if (simpleNameToClass.containsKey(clazz.getSimpleName())) {
-                        throw new RuntimeException("Simple class name collision: " + clazz.getSimpleName());
+                        throw new RuntimeException("Simple class name collision: " + clazz.getName());
                     }
                     simpleNameToClass.put(clazz.getSimpleName(), clazz);
                 }
@@ -270,23 +336,23 @@ public class Main {
         final Set<Class<?>> classes = new LinkedHashSet<>();
         classes.addAll(simpleNameToClass.values());
 
-        if (args.length < 1) {
-            printUsage(classes, commandLineName);
+        if (args.length < 1 || args[0].equals("-h") || args[0].equals("--help")) {
+            printUsage(System.out, classes, commandLineName);
         } else {
-            if (args[0].equals("-h") || args[0].equals("--help")) {
-                printUsage(classes, commandLineName);
-            } else {
-                if (simpleNameToClass.containsKey(args[0])) {
-                    final Class<?> clazz = simpleNameToClass.get(args[0]);
-                    try {
-                        return (CommandLineProgram) clazz.newInstance();
-                    } catch (final InstantiationException | IllegalAccessException e) {
-                        throw new RuntimeException(e);
-                    }
+            if (simpleNameToClass.containsKey(args[0])) {
+                final Class<?> clazz = simpleNameToClass.get(args[0]);
+                try {
+                    final Object commandLineProgram = clazz.newInstance();
+                    // wrap Picard CommandLinePrograms in a PicardCommandLineProgramExecutor
+                    return commandLineProgram instanceof picard.cmdline.CommandLineProgram ?
+                            new PicardCommandLineProgramExecutor((picard.cmdline.CommandLineProgram) commandLineProgram) :
+                            (CommandLineProgram) commandLineProgram;
+                } catch (final InstantiationException | IllegalAccessException e) {
+                    throw new RuntimeException(e);
                 }
-                printUsage(classes, commandLineName);
-                throw new UserException(getUnknownCommandMessage(classes, args[0]));
             }
+            printUsage(System.err, classes, commandLineName);
+            throw new UserException(getUnknownCommandMessage(classes, args[0]));
         }
         return null;
     }
@@ -300,11 +366,11 @@ public class Main {
 
         @Override
         public int compare(final Class<?> aClass, final Class<?> bClass) {
-            return aClass.getSimpleName().compareTo(bClass.getSimpleName());
+            return RuntimeUtils.toolDisplayName(aClass).compareTo(RuntimeUtils.toolDisplayName(bClass));
         }
     }
 
-    private static void printUsage(final Set<Class<?>> classes, final String commandLineName) {
+    private void printUsage(final PrintStream destinationStream, final Set<Class<?>> classes, final String commandLineName) {
         final StringBuilder builder = new StringBuilder();
         builder.append(BOLDRED + "USAGE: " + commandLineName + " " + GREEN + "<program name>" + BOLDRED + " [-h]\n\n" + KNRM)
                 .append(BOLDRED + "Available Programs:\n" + KNRM);
@@ -318,24 +384,25 @@ public class Main {
             final CommandLineProgramProperties property = getProgramProperty(clazz);
             if (null == property) {
                 throw new RuntimeException(String.format("The class '%s' is missing the required CommandLineProgramProperties annotation.", clazz.getSimpleName()));
-            }
-            programsToProperty.put(clazz, property);
-            // Get the command line program group for the command line property
-            // NB: we want to minimize the number of times we make a new instance, hence programGroupClassToProgramGroupInstance
-            CommandLineProgramGroup programGroup = programGroupClassToProgramGroupInstance.get(property.programGroup());
-            if (null == programGroup) {
-                try {
-                    programGroup = property.programGroup().newInstance();
-                } catch (final InstantiationException | IllegalAccessException e) {
-                    throw new RuntimeException(e);
+            } else if (!property.omitFromCommandLine()) { // only if they are not omit from the command line
+                programsToProperty.put(clazz, property);
+                // Get the command line program group for the command line property
+                // NB: we want to minimize the number of times we make a new instance, hence programGroupClassToProgramGroupInstance
+                CommandLineProgramGroup programGroup = programGroupClassToProgramGroupInstance.get(property.programGroup());
+                if (null == programGroup) {
+                    try {
+                        programGroup = property.programGroup().newInstance();
+                    } catch (final InstantiationException | IllegalAccessException e) {
+                        throw new RuntimeException(e);
+                    }
+                    programGroupClassToProgramGroupInstance.put(property.programGroup(), programGroup);
                 }
-                programGroupClassToProgramGroupInstance.put(property.programGroup(), programGroup);
+                List<Class<?>> programs = programsByGroup.get(programGroup);
+                if (null == programs) {
+                    programsByGroup.put(programGroup, programs = new ArrayList<>());
+                }
+                programs.add(clazz);
             }
-            List<Class<?>> programs = programsByGroup.get(programGroup);
-            if (null == programs) {
-                programsByGroup.put(programGroup, programs = new ArrayList<>());
-            }
-            programs.add(clazz);
         }
 
         /** Print out the programs in each group **/
@@ -350,26 +417,74 @@ public class Main {
             Collections.sort(sortedClasses, new SimpleNameComparator());
 
             for (final Class<?> clazz : sortedClasses) {
-                final CommandLineProgramProperties property = programsToProperty.get(clazz);
-                if (null == property) {
+                final CommandLineProgramProperties clpProperties = programsToProperty.get(clazz);
+                if (null == clpProperties) {
                     throw new RuntimeException(String.format("Unexpected error: did not find the CommandLineProgramProperties annotation for '%s'", clazz.getSimpleName()));
                 }
-
-                final BetaFeature betaFeature = clazz.getAnnotation(BetaFeature.class);
-                final String summaryLine =
-                        betaFeature == null ?
-                                String.format("%s%s", CYAN, property.oneLineSummary()) :
-                                String.format("%s%s %s%s", RED, "(BETA Tool)", CYAN, property.oneLineSummary());
-                if (clazz.getSimpleName().length() >= 45) {
-                    builder.append(String.format("%s    %s    %s%s\n", GREEN, clazz.getSimpleName(), summaryLine, KNRM));
-                } else {
-                    builder.append(String.format("%s    %-45s%s%s\n", GREEN, clazz.getSimpleName(), summaryLine, KNRM));
-                }
+                builder.append(getDisplaySummaryForTool(clazz, clpProperties));
             }
             builder.append(String.format("\n"));
         }
         builder.append(WHITE + "--------------------------------------------------------------------------------------\n" + KNRM);
-        System.err.println(builder.toString());
+        destinationStream.println(builder.toString());
+    }
+
+    /**
+     * Return a summary string for a command line tool suitable for display.
+     * @param toolClass tool class
+     * @param clpProperties {@CommandLineProgramProperties} for the tool
+     * @return
+     */
+    protected String getDisplaySummaryForTool(final Class<?> toolClass, final CommandLineProgramProperties clpProperties) {
+        final BetaFeature betaFeature = toolClass.getAnnotation(BetaFeature.class);
+        final ExperimentalFeature experimentalFeature = toolClass.getAnnotation(ExperimentalFeature.class);
+
+        final StringBuilder builder = new StringBuilder();
+        final String summaryLine;
+
+        if (experimentalFeature != null) {
+            summaryLine = String.format("%s%s %s%s", RED, "(EXPERIMENTAL Tool)", CYAN, clpProperties.oneLineSummary());
+        } else if (betaFeature != null) {
+            summaryLine = String.format("%s%s %s%s", RED, "(BETA Tool)", CYAN, clpProperties.oneLineSummary());
+        } else {
+            summaryLine = String.format("%s%s", CYAN, clpProperties.oneLineSummary());
+        }
+        final String annotatedToolName = getDisplayNameForToolClass(toolClass);
+        if (toolClass.getSimpleName().length() >= 45) {
+            builder.append(String.format("%s    %s    %s%s\n", GREEN, annotatedToolName, summaryLine, KNRM));
+        } else {
+            builder.append(String.format("%s    %-45s%s%s\n", GREEN, annotatedToolName, summaryLine, KNRM));
+        }
+        return builder.toString();
+    }
+
+    /**
+     * @return A display name to be used for the tool who's class is {@code clazz}.
+     */
+    protected String getDisplayNameForToolClass(final Class<?> clazz) {
+        return RuntimeUtils.toolDisplayName(clazz);
+    }
+
+    /**
+     * Get deprecation message for a tool
+     * @param toolName command specified by the user
+     * @return deprecation message string, or null if none
+     */
+    public String getToolDeprecationMessage(final String toolName) {
+        return DeprecatedToolsRegistry.getToolDeprecationInfo(toolName);
+    }
+
+    /**
+     * When a command does not match any known command, searches for a deprecation message, if any, or for similar
+     * commands.
+     * @return returns an error message including the closes match if relevant.
+     */
+    public String getUnknownCommandMessage(final Set<Class<?>> classes, final String command) {
+        final String deprecationMessage = getToolDeprecationMessage(command);
+        if (deprecationMessage != null) {
+            return deprecationMessage;
+        }
+        return getSuggestedAlternateCommand(classes, command);
     }
 
     /**
@@ -382,7 +497,7 @@ public class Main {
      * When a command does not match any known command, searches for similar commands, using the same method as GIT *
      * @return returns an error message including the closes match if relevant.
      */
-    public static String getUnknownCommandMessage(final Set<Class<?>> classes, final String command) {
+    public String getSuggestedAlternateCommand(final Set<Class<?>> classes, final String command) {
         final Map<Class<?>, Integer> distances = new LinkedHashMap<>();
 
         int bestDistance = Integer.MAX_VALUE;

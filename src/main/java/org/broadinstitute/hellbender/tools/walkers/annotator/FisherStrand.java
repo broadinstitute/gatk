@@ -4,12 +4,13 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.vcf.VCFInfoHeaderLine;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.utils.FisherExactTest;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.help.HelpConstants;
+import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
 import java.util.Collections;
 import java.util.List;
@@ -37,10 +38,12 @@ import java.util.Map;
  * </ul>
  *
  */
+@DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Strand bias estimated using Fisher's exact test (FS)")
 public final class FisherStrand extends StrandBiasTest implements StandardAnnotation {
 
     static final double MIN_PVALUE = 1E-320;
     private static final int MIN_COUNT = ARRAY_DIM;
+    private static final int MIN_QUAL_FOR_FILTERED_TEST = 17;
 
     // how large do we want the normalized table to be? (ie, sum of all entries must be smaller that this)
     private static final double TARGET_TABLE_SIZE = 200.0;
@@ -51,14 +54,17 @@ public final class FisherStrand extends StrandBiasTest implements StandardAnnota
     }
 
     @Override
-    public List<VCFInfoHeaderLine> getDescriptions() {
-        return Collections.singletonList(GATKVCFHeaderLines.getInfoLine(getKeyNames().get(0)));
-    }
-
-    @Override
     protected Map<String, Object> calculateAnnotationFromGTfield(final GenotypesContext genotypes){
         final int[][] tableFromPerSampleAnnotations = getTableFromSamples(genotypes, MIN_COUNT);
         return ( tableFromPerSampleAnnotations != null )? annotationForOneTable(pValueForContingencyTable(tableFromPerSampleAnnotations)) : null;
+    }
+
+    @Override
+    protected Map<String, Object> calculateAnnotationFromStratifiedContexts(final Map<String, List<PileupElement>> stratifiedContexts,
+                                                                            final VariantContext vc){
+        final int[][] tableNoFiltering = getPileupContingencyTable(stratifiedContexts, vc.getReference(), vc.getAlternateAlleles(), -1, MIN_COUNT);
+        final int[][] tableFiltering = getPileupContingencyTable(stratifiedContexts, vc.getReference(), vc.getAlternateAlleles(), MIN_QUAL_FOR_FILTERED_TEST, MIN_COUNT);
+        return annotationForOneTable(Math.max(pValueForContingencyTable(tableFiltering), pValueForContingencyTable(tableNoFiltering)));
     }
 
     @Override

@@ -7,30 +7,26 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
+import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
-
-@CommandLineProgramProperties(
-        summary = "Count PASS (false positive) variants in a vcf file for Mutect2 NA12878 normal-normal evaluation",
-        oneLineSummary = "Count PASS variants",
-        programGroup = VariantProgramGroup.class
-)
-
 /**
+ * Count variants which were not filtered in a VCF.
+ * This is used to count false positives for Mutect2 normal-normal evaluation.
+ *
  *
  * <h3>Example</h3>
  *
  * <pre>
- * gatk-launch --javaOptions "-Xmx4g" CountFalsePositives \
+ * gatk --java-options "-Xmx4g" CountFalsePositives \
  *   -V filtered.vcf.gz \
  *   -R ref_fasta.fa \
  *   -O false-positives.txt
@@ -38,9 +34,19 @@ import java.util.List;
  *
  * Created by Takuto Sato on 12/28/16.
  */
+
+@CommandLineProgramProperties(
+        summary = CountFalsePositives.USAGE_SUMMARY,
+        oneLineSummary = CountFalsePositives.USAGE_ONE_LINE_SUMMARY,
+        programGroup = VariantEvaluationProgramGroup.class
+)
+
 @DocumentedFeature
 @BetaFeature
 public class CountFalsePositives extends VariantWalker {
+    static final String USAGE_ONE_LINE_SUMMARY = "Count PASS variants";
+    static final String USAGE_SUMMARY = "Count PASS (false positive) variants in a vcf file for Mutect2 NA12878 normal-normal evaluation";
+
     @Argument(
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -75,7 +81,7 @@ public class CountFalsePositives extends VariantWalker {
     @Override
     public Object onTraversalSuccess() {
         final List<SimpleInterval> intervals =  intervalArgumentCollection.getIntervals(getReferenceDictionary());
-        final long targetTerritory = intervals.stream().mapToInt(i -> i.size()).sum();
+        final long targetTerritory = intervals.stream().mapToLong(i -> i.size()).sum();
 
         try ( FalsePositiveTableWriter writer = new FalsePositiveTableWriter(outputFile) ) {
             FalsePositiveRecord falsePositiveRecord = new FalsePositiveRecord(id, snpFalsePositiveCount, indelFalsePositiveCount, targetTerritory);

@@ -4,7 +4,8 @@ import htsjdk.variant.variantcontext.*;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.ArtificialAnnotationUtils;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -12,7 +13,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class DepthPerSampleHCUnitTest extends BaseTest {
+public class DepthPerSampleHCUnitTest extends GATKBaseTest {
 
     @Test
     public void testNoReads() {
@@ -27,7 +28,7 @@ public class DepthPerSampleHCUnitTest extends BaseTest {
         final Genotype g = gb.make();
         final List<GATKRead> reads = new ArrayList<>();
         final ReadLikelihoods<Allele> likelihoods =
-                AnnotationArtificialData.makeLikelihoods("sample", reads, -100.0, Aref, C);
+                ArtificialAnnotationUtils.makeLikelihoods("sample", reads, -100.0, Aref, C);
         final VariantContext vc = new VariantContextBuilder("test", "20", 10, 10, AC).genotypes(Arrays.asList(g)).make();
 
         new DepthPerSampleHC().annotate(rc, vc, g, gb, likelihoods);

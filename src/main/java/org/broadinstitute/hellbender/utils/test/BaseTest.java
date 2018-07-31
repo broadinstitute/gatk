@@ -1,26 +1,28 @@
 package org.broadinstitute.hellbender.utils.test;
 
-import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.Log;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.GenomeLoc;
-import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
-import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.runtime.ProcessController;
+import org.broadinstitute.hellbender.utils.runtime.ProcessOutput;
+import org.broadinstitute.hellbender.utils.runtime.ProcessSettings;
 import org.testng.Assert;
 import org.testng.Reporter;
-import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeSuite;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.file.FileSystem;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -36,6 +38,42 @@ public abstract class BaseTest {
         // set properties for the local Spark runner
         System.setProperty("dataflow.spark.test.reuseSparkContext", "true");
         SparkContextFactory.enableTestSparkContext();
+        System.setProperty("picard.useLegacyParser", "false");
+    }
+
+    /**
+     * run an external process and assert that it finishes with exit code 0
+     * @param processController a ProcessController to use
+     * @param command command to run, the 0th element must be the executable name
+     */
+    public static void runProcess(final ProcessController processController, final String[] command) {
+        runProcess(processController, command, "Process exited with non-zero value. Command: "+ Arrays.toString(command) + "\n");
+    }
+
+    /**
+     * run an external process and assert that it finishes with exit code 0
+     * @param processController a ProcessController to use
+     * @param command command to run, the 0th element must be the executable name
+     * @param message error message to display on failure
+     */
+    public static void runProcess(final ProcessController processController, final String[] command, final String message) {
+        runProcess(processController, command, null, message);
+    }
+
+    /**
+     * run an external process and assert that it finishes with exit code 0
+     * @param processController a ProcessController to use
+     * @param command command to run, the 0th element must be the executable name
+     * @param environment what to use as the process environment variables
+     * @param message error message to display on failure
+     */
+    public static void runProcess(final ProcessController processController, final String[] command, final Map<String, String> environment, final String message) {
+        final ProcessSettings prs = new ProcessSettings(command);
+        prs.getStderrSettings().printStandard(true);
+        prs.getStdoutSettings().printStandard(true);
+        prs.setEnvironment(environment);
+        final ProcessOutput output = processController.exec(prs);
+        Assert.assertEquals(output.getExitValue(), 0, message);
     }
 
     @BeforeSuite
@@ -44,76 +82,6 @@ public abstract class BaseTest {
     }
 
     public static final Logger logger = LogManager.getLogger("org.broadinstitute.gatk");
-
-    private static final String CURRENT_DIRECTORY = System.getProperty("user.dir");
-    public static final String gatkDirectory = System.getProperty("gatkdir", CURRENT_DIRECTORY) + "/";
-
-    private static final String publicTestDirRelative = "src/test/resources/";
-    public static final String publicTestDir = new File(gatkDirectory, publicTestDirRelative).getAbsolutePath() + "/";
-    public static final String publicTestDirRoot = publicTestDir.replace(publicTestDirRelative, "");
-
-    public static final String packageRootTestDir = publicTestDir + "org/broadinstitute/hellbender/";
-    public static final String toolsTestDir = packageRootTestDir + "tools/";
-
-    public static final String GCS_GATK_TEST_RESOURCES = "gs://hellbender/test/resources/";
-
-    public static final String GCS_b37_REFERENCE_2BIT = GCS_GATK_TEST_RESOURCES + "benchmark/human_g1k_v37.2bit";
-    public static final String GCS_b37_CHR20_21_REFERENCE_2BIT = GCS_GATK_TEST_RESOURCES + "human_g1k_v37.20.21.2bit";
-
-    /**
-     * LARGE FILES FOR TESTING (MANAGED BY GIT LFS)
-     */
-    public static final String largeFileTestDir = new File(publicTestDir, "large").getAbsolutePath() + "/";
-
-    // All of chromosomes 20 and 21 from the b37 reference
-    public static final String b37_reference_20_21 = largeFileTestDir + "human_g1k_v37.20.21.fasta";
-
-    public static final String b37_2bit_reference_20_21 = largeFileTestDir + "human_g1k_v37.20.21.2bit";
-
-    // All of chromosomes 20 and 21 from the b38 reference
-    public static final String b38_reference_20_21 = largeFileTestDir + "Homo_sapiens_assembly38.20.21.fasta";
-
-    // ~600,000 reads from chromosomes 20 and 21 of an NA12878 WGS bam aligned to b37, plus ~50,000 unmapped reads
-    public static final String NA12878_20_21_WGS_bam = largeFileTestDir + "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam";
-
-    // Variants from a DBSNP 138 VCF overlapping the reads in NA12878_20_21_WGS_bam
-    public static final String dbsnp_138_b37_20_21_vcf = largeFileTestDir + "dbsnp_138.b37.20.21.vcf";
-
-    // Variants from a DBSNP 138 VCF form the first 65Mb of chr1
-    public static final String dbsnp_138_b37_1_65M_vcf = largeFileTestDir + "dbsnp_138.b37.1.1-65M.vcf";
-
-    public static final String WGS_B37_CH20_1M_1M1K_BAM = "CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.bam";
-    public static final String DBSNP_138_B37_CH20_1M_1M1K_VCF = "dbsnp_138.b37.excluding_sites_after_129.ch20.1m-1m1k.vcf";
-
-    /**
-     * END OF LARGE FILES FOR TESTING
-     */
-
-    public static final String NA12878_chr17_1k_BAM = publicTestDir + "NA12878.chr17_69k_70k.dictFix.bam";
-    public static final String NA12878_chr17_1k_CRAM = publicTestDir + "NA12878.chr17_69k_70k.dictFix.cram";
-    public static final String v37_chr17_1Mb_Reference = publicTestDir + "human_g1k_v37.chr17_1Mb.fasta";
-
-    public static final String hg19_chr1_1M_Reference = publicTestDir + "Homo_sapiens_assembly19_chr1_1M.fasta";
-    public static final String hg19_chr1_1M_dbSNP = publicTestDir + "Homo_sapiens_assembly19.dbsnp135.chr1_1M.exome_intervals.vcf";
-
-    // the following file has been modified such that the first chromosome length is 1M; this is sometimes
-    // required due to sequence dictionary validation, since a reference FASTA with only 1M bases is used
-    public static final String hg19_chr1_1M_dbSNP_modified = publicTestDir + "HSA19.dbsnp135.chr1_1M.exome_intervals.modified.vcf";
-
-    public static final String hg19_chr1_1M_exampleVCF = publicTestDir + "joint_calling.chr1_1M.1kg_samples.10samples.noINFO.vcf";
-    public static final String hg19MiniReference = publicTestDir + "hg19mini.fasta";
-    // Micro reference is the same as hg19mini, but contains only chromosomes 1 and 2
-    public static final String hg19MicroReference = publicTestDir + "hg19micro.fasta";
-
-    public static final String exampleFASTA = publicTestDir + "exampleFASTA.fasta";
-    public static final String exampleReference = hg19MiniReference;
-    public static final String hg19MiniIntervalFile = publicTestDir + "hg19mini.interval_list";
-
-    public CachingIndexedFastaSequenceFile hg19ReferenceReader;
-    public GenomeLocParser hg19GenomeLocParser;
-
-    // used to seed the genome loc parser with a sequence dictionary
-    protected SAMFileHeader hg19Header;
 
     /**
      * name of the google cloud project that stores the data and will run the code
@@ -124,15 +92,8 @@ public abstract class BaseTest {
     }
 
     /**
-     * API key for HELLBENDER_TEST_PROJECT
-     * @return HELLBENDER_TEST_APIKEY env. var if defined, throws otherwise.
-     */
-    public static String getGCPTestApiKey() {
-        return getNonNullEnvironmentVariable("HELLBENDER_TEST_APIKEY");
-    }
-
-    /**
-     * A writable GCS path where java files can be cached and temporary test files can be written
+     * A writable GCS path where java files can be cached and temporary test files can be written,
+     * of the form gs://bucket/, or gs://bucket/path/.
      * @return HELLBENDER_TEST_STAGING env. var if defined, throws otherwise.
      */
     public static String getGCPTestStaging() {
@@ -151,6 +112,17 @@ public abstract class BaseTest {
     }
 
     /**
+     *  A path where the test inputs for the Funcotator LargeDataValidationTest are stored.
+     *
+     *  The value of FUNCOTATOR_LARGE_TEST_INPUTS should end in a "/" (for example, "gs://hellbender/funcotator/test/resources/")
+     *
+     *  @return FUNCOTATOR_LARGE_TEST_INPUTS env. var if defined, throws otherwise.
+     */
+    public static String getFuncotatorLargeDataValidationTestInputPath() {
+        return getNonNullEnvironmentVariable("FUNCOTATOR_LARGE_TEST_INPUTS");
+    }
+
+    /**
      * A local path where the service account credentials are stored
      * @return GOOGLE_APPLICATION_CREDENTIALS env. var if defined, throws otherwise.
      */
@@ -164,25 +136,6 @@ public abstract class BaseTest {
             throw new UserException("For this test, please define environment variable \""+envVarName+"\"");
         }
         return value;
-    }
-
-    @BeforeClass
-    public void initGenomeLocParser() throws FileNotFoundException {
-        hg19ReferenceReader = new CachingIndexedFastaSequenceFile(new File(hg19MiniReference));
-        hg19Header = new SAMFileHeader();
-        hg19Header.setSequenceDictionary(hg19ReferenceReader.getSequenceDictionary());
-        hg19GenomeLocParser = new GenomeLocParser(hg19ReferenceReader);
-    }
-
-    protected List<GenomeLoc> intervalStringsToGenomeLocs( String... intervals) {
-        return intervalStringsToGenomeLocs(Arrays.asList(intervals));
-    }
-
-    protected List<GenomeLoc> intervalStringsToGenomeLocs( List<String> intervals ) {
-        List<GenomeLoc> locs = new ArrayList<>();
-        for (String interval: intervals)
-            locs.add(hg19GenomeLocParser.parseGenomeLoc(interval));
-        return Collections.unmodifiableList(locs);
     }
 
     /**
@@ -318,9 +271,7 @@ public abstract class BaseTest {
      * @return an empty directory starting with prefix which will be deleted after the program exits
      */
     public static File createTempDir(final String prefix){
-        final File dir = IOUtils.tempDir(prefix, "");
-        IOUtils.deleteRecursivelyOnExit(dir);
-        return dir;
+        return IOUtils.createTempDir(prefix);
     }
 
     /**
@@ -448,5 +399,92 @@ public abstract class BaseTest {
         }
     }
 
+    /**
+     * assert that the iterable is sorted according to the comparator
+     */
+    public static <T> void assertSorted(Iterable<T> iterable, Comparator<T> comparator){
+        final Iterator<T> iter = iterable.iterator();
+        assertSorted(iter, comparator);
+    }
+
+    /**
+     * assert that the iterator is sorted according to the comparator
+     */
+    public static <T> void assertSorted(Iterator<T> iterator, Comparator<T> comparator){
+        assertSorted(iterator, comparator, null);
+    }
+
+
+    /**
+     * assert that the iterator is sorted according to the comparator
+     */
+    public static <T> void assertSorted(Iterable<T> iterable, Comparator<T> comparator, String message){
+       assertSorted(iterable.iterator(), comparator, message);
+    }
+
+
+    /**
+     * assert that the iterator is sorted according to the comparator
+     */
+    public static <T> void assertSorted(Iterator<T> iterator, Comparator<T> comparator, String message){
+        T previous = null;
+        while(iterator.hasNext()){
+            T current = iterator.next();
+            if( previous != null) {
+                Assert.assertTrue(comparator.compare(previous, current) <= 0, "Expected " + previous + " to be <= " + current + (message == null ? "" : "\n"+message));
+            }
+            previous = current;
+        }
+    }
+
+    /**
+     * Get a FileSystem that uses the explicit credentials instead of the default
+     * credentials.
+     *
+     * @param bucket the name of the bucket to access.
+     *
+     * @return A FileSystem for that bucket on GCS, using explicit credentials.
+     *
+     * @throws IOException
+     */
+    protected FileSystem getAuthenticatedGcs(final String bucket) throws IOException {
+        final byte[] creds = Files.readAllBytes(Paths.get(getGoogleServiceAccountKeyPath()));
+        return BucketUtils.getAuthenticatedGcs(getGCPTestProject(), bucket, creds);
+    }
+
+    /**
+     * Print information to the console that helps understand which credentials are in use
+     * (are they the ones you meant to use?).
+     */
+    protected void helpDebugAuthError() {
+        final String key = "GOOGLE_APPLICATION_CREDENTIALS";
+        String credsFile = System.getenv(key);
+        if (null == credsFile) {
+            System.err.println("$" + key + " is not defined.");
+            return;
+        }
+        System.err.println("$" + key + " = " + credsFile);
+        Path credsPath = Paths.get(credsFile);
+        boolean exists = Files.exists(credsPath);
+        System.err.println("File exists: " + exists);
+        if (exists) {
+            try {
+                System.err.println("Key lines from file:");
+                printKeyLines(credsPath, "\"type\"", "\"project_id\"", "\"client_email\"");
+            } catch (IOException x2) {
+                System.err.println("Unable to read: " + x2.getMessage());
+            }
+        }
+    }
+
+    private void printKeyLines(Path path, String... keywords) throws IOException {
+        for (String line : Files.readAllLines(path)) {
+            for (String keyword : keywords) {
+                if (line.contains(keyword)) {
+                    System.err.println(line);
+                }
+            }
+        }
+    }
 }
 

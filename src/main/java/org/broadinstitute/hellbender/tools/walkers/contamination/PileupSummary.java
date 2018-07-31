@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.contamination;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
+import org.apache.commons.math3.util.FastMath;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
@@ -83,10 +84,14 @@ public class PileupSummary implements Locatable {
     public double getAltFraction() {
         return totalCount == 0 ? 0 : (double) altCount / totalCount;
     }
+    public double getMinorAlleleFraction() {
+        final double altFraction = getAltFraction();
+        return FastMath.min(altFraction, 1 - altFraction);
+    }
 
 
     //----- The following two public static methods read and write pileup summary files
-    public static void writePileupSummaries(final List<PileupSummary> records, final File outputTable) {
+    public static void writeToFile(final List<PileupSummary> records, final File outputTable) {
         try ( PileupSummaryTableWriter writer = new PileupSummaryTableWriter(outputTable) ) {
             writer.writeAllRecords(records);
         } catch (IOException e){
@@ -94,7 +99,7 @@ public class PileupSummary implements Locatable {
         }
     }
 
-    public static List<PileupSummary> readPileupSummaries(final File tableFile) {
+    public static List<PileupSummary> readFromFile(final File tableFile) {
         try( PileupSummaryTableReader reader = new PileupSummaryTableReader(tableFile) ) {
             return reader.toList();
         } catch (IOException e){

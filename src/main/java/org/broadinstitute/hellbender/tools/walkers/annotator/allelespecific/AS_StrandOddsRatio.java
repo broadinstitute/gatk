@@ -2,11 +2,14 @@ package org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific;
 
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StrandOddsRatio;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -54,6 +57,7 @@ import java.util.Map;
  * </ul>
  *
  */
+@DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Allele-specific strand bias estimated by the symmetric odds ratio test (AS_SOR)")
 public final class AS_StrandOddsRatio extends AS_StrandBiasTest implements AS_StandardAnnotation {
 
     @Override
@@ -69,4 +73,19 @@ public final class AS_StrandOddsRatio extends AS_StrandBiasTest implements AS_St
         final double ratio = StrandOddsRatio.calculateSOR(table);
         return Collections.singletonMap(getKeyNames().get(0), StrandOddsRatio.formattedValue(ratio));
     }
+
+    @Override
+    protected Map<Allele,Double> calculateReducedData(AlleleSpecificAnnotationData<List<Integer>> combinedData) {
+        final Map<Allele,Double> annotationMap = new HashMap<>();
+        final Map<Allele, List<Integer>> perAlleleData = combinedData.getAttributeMap();
+        final List<Integer> refStrandCounts = perAlleleData.get(combinedData.getRefAllele());
+        for (final Allele a : perAlleleData.keySet()) {
+            List<Integer> altStrandCounts = perAlleleData.get(a);
+            int[][] refAltTable = new int[][] {new int[]{refStrandCounts.get(FORWARD),refStrandCounts.get(REVERSE)},
+                    new int[]{altStrandCounts.get(FORWARD),altStrandCounts.get(REVERSE)}};
+            annotationMap.put(a,StrandOddsRatio.calculateSOR(refAltTable));
+        }
+        return annotationMap;
+    }
+
 }

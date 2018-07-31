@@ -1,16 +1,19 @@
 package org.broadinstitute.hellbender.engine;
 
 import htsjdk.tribble.Feature;
+import htsjdk.tribble.FeatureCodec;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFCodec;
 import org.broadinstitute.barclay.argparser.CommandLineException;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.File;
+import java.io.*;
 
-public final class FeatureInputUnitTest extends BaseTest {
+public final class FeatureInputUnitTest extends GATKBaseTest {
+    private static final String FEATURE_INPUT_TEST_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/";
 
     @DataProvider(name = "InvalidFeatureArgumentValuesDataProvider")
     public Object[][] getInvalidFeatureArgumentValues() {
@@ -200,6 +203,49 @@ public final class FeatureInputUnitTest extends BaseTest {
     }
 
     @Test
+    public void testFeatureCodecCache() {
+        Assert.assertEquals(getVariantFeatureInputWithCachedCodec().getFeatureCodecClass(), VCFCodec.class);
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testFeatureCodecCacheSerialization() throws IOException, ClassNotFoundException {
+        FeatureInput<VariantContext> featureInput = getVariantFeatureInputWithCachedCodec();
+
+        // serialize
+        byte[] serializedFeatureInput;
+        try (final ByteArrayOutputStream bos = new ByteArrayOutputStream();
+             final ObjectOutputStream oos = new ObjectOutputStream(bos)) {
+            oos.writeObject(featureInput);
+            serializedFeatureInput = bos.toByteArray();
+        }
+        Assert.assertNotNull(serializedFeatureInput);
+
+        // deserialize
+        FeatureInput<VariantContext> roundTrippedFeatureInput;
+        try (final ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(serializedFeatureInput))) {
+            roundTrippedFeatureInput = (FeatureInput<VariantContext>) ois.readObject();
+        }
+        Assert.assertNotNull(roundTrippedFeatureInput);
+
+        // we expect to lose the cached feature codec class on serialization, but retain the feature path
+        Assert.assertNull(roundTrippedFeatureInput.getFeatureCodecClass());
+        Assert.assertEquals(featureInput.getFeaturePath(), roundTrippedFeatureInput.getFeaturePath());
+    }
+
+    @SuppressWarnings("unchecked")
+    private FeatureInput<VariantContext> getVariantFeatureInputWithCachedCodec() {
+        final File inputVCFFile = new File(FEATURE_INPUT_TEST_DIRECTORY, "minimal_vcf4_file.vcf");
+        final FeatureInput<VariantContext> featureInput = new FeatureInput<>(inputVCFFile.getAbsolutePath());
+        Assert.assertNull(featureInput.getFeatureCodecClass());
+
+        final FeatureCodec<? extends Feature, ?> codec = FeatureManager.getCodecForFile(new File(featureInput.getFeaturePath()));
+        featureInput.setFeatureCodecClass((Class<FeatureCodec<VariantContext, ?>>)codec.getClass());
+
+        return featureInput;
+    }
+
+    @Test
     public void testToString() {
         final FeatureInput<Feature> namelessFeatureInput = new FeatureInput<>("file1");
         final FeatureInput<Feature> namedFeatureInput = new FeatureInput<>("name:file1");
@@ -211,4 +257,23 @@ public final class FeatureInputUnitTest extends BaseTest {
         Assert.assertEquals(namelessGenomicsDB.toString(), "gendb://" + new File("file1").getAbsolutePath(), "String representation of nameless FeatureInput with genomicsDB path incorrect");
         Assert.assertEquals(namedGenomicsDB.toString(), "name:gendb://" + new File("file1").getAbsolutePath(), "String representation of named FeatureInput with genomicsDB path incorrect");
     }
+
+    @DataProvider(name = "HasUserSuppliedNameData")
+    public Object[][] hasUserSuppliedNameData() {
+        return new Object[][] {
+                {"hdfs://localhost/user/my.vcf", false},
+                {"myname:hdfs://localhost/user/my.vcf", true},
+                {"myname,key1=value1:hdfs://localhost/user/my.vcf", true},
+                {"myname//:hdfs://localhost/user/my.vcf", true},
+                {"myname//:/user/my.vcf", true},
+                {"/user/my.vcf", false},
+        };
+    }
+
+    @Test(dataProvider = "HasUserSuppliedNameData")
+    public void testHasUserSuppliedName(final String inputString, final boolean isUserSupplied) {
+        final FeatureInput<VariantContext> input = new FeatureInput<>(inputString);
+        Assert.assertEquals(input.hasUserSuppliedName(), isUserSupplied);
+    }
+
 }

@@ -6,16 +6,14 @@ import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.util.MathArrays;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.MathUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
-import org.junit.Assert;
+import org.broadinstitute.hellbender.GATKBaseTest;
+import org.testng.Assert;
 import org.testng.annotations.Test;
-
-import static org.testng.Assert.*;
 
 /**
  * Created by David Benjamin on 3/9/17.
  */
-public class SomaticLikelihoodsEngineUnitTest extends BaseTest {
+public class SomaticLikelihoodsEngineUnitTest extends GATKBaseTest {
     @Test
     public void testAlleleFractionsPosterior() {
 
@@ -29,7 +27,7 @@ public class SomaticLikelihoodsEngineUnitTest extends BaseTest {
         final double[] expectedCounts1 = new double[] {4, 0};
 
         final double expectedPosterior1[] = MathArrays.ebeAdd(prior1, expectedCounts1);
-        Assert.assertArrayEquals(posterior1, expectedPosterior1, 1.0e-6);
+        assertEqualsDoubleArray(posterior1, expectedPosterior1, 1.0e-6);
 
         //prior is extremely strong and outweighs ambiguous likelihoods
         final double[] prior2 = new double[] {1e8, 1};
@@ -40,7 +38,7 @@ public class SomaticLikelihoodsEngineUnitTest extends BaseTest {
         final double[] expectedCounts2 = new double[] {4, 0};
 
         final double expectedPosterior2[] = MathArrays.ebeAdd(prior2, expectedCounts2);
-        Assert.assertArrayEquals(posterior2, expectedPosterior2, 1.0e-6);
+        assertEqualsDoubleArray(posterior2, expectedPosterior2, 1.0e-6);
 
         //prior is extremely weak and likelihoods speak for themselves
         final double[] prior3 = new double[] {1e-6, 1e-6};
@@ -51,7 +49,7 @@ public class SomaticLikelihoodsEngineUnitTest extends BaseTest {
         final double[] expectedCounts3 = new double[] {3, 1};
 
         final double expectedPosterior3[] = MathArrays.ebeAdd(prior3, expectedCounts3);
-        Assert.assertArrayEquals(posterior3, expectedPosterior3, 1.0e-6);
+        assertEqualsDoubleArray(posterior3, expectedPosterior3, 1.0e-6);
 
         // test convergence
         final double[] prior4 = new double[] {0.2, 1.7};
@@ -60,7 +58,7 @@ public class SomaticLikelihoodsEngineUnitTest extends BaseTest {
         mat4.setRow(1, new double[] {2.6, 0.6, 0.5, 0.4});
         final double[] posterior4 = SomaticLikelihoodsEngine.alleleFractionsPosterior(mat4, prior4);
         final double[] counts4 = MathArrays.ebeSubtract(posterior4, prior4);
-        Assert.assertArrayEquals(counts4, SomaticLikelihoodsEngine.getEffectiveCounts(mat4, posterior4), 1.0e-3);
+        assertEqualsDoubleArray(counts4, SomaticLikelihoodsEngine.getEffectiveCounts(mat4, posterior4), 1.0e-3);
     }
 
     @Test

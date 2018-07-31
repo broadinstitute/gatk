@@ -1,0 +1,27 @@
+{
+  "CNVGermlineCohortWorkflow.cohort_entity_id": "wgs-do-gc",
+  "CNVGermlineCohortWorkflow.contig_ploidy_priors": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/contig_ploidy_priors_chr20xy.tsv",
+  "CNVGermlineCohortWorkflow.do_explicit_gc_correction": "true",
+  "CNVGermlineCohortWorkflow.gatk_docker": "__GATK_DOCKER__",
+  "CNVGermlineCohortWorkflow.allosomal_contigs": ["X", "Y"],
+  "CNVGermlineCohortWorkflow.ref_copy_number_autosomal_contigs": 2,
+  "CNVGermlineCohortWorkflow.gcnv_disable_annealing": true,
+  "CNVGermlineCohortWorkflow.gcnv_initial_temperature": 1.0,
+  "CNVGermlineCohortWorkflow.gcnv_max_training_epochs": 1,
+  "CNVGermlineCohortWorkflow.gcnv_min_training_epochs": 1,
+  "CNVGermlineCohortWorkflow.gcnv_num_thermal_advi_iters": 1,
+  "CNVGermlineCohortWorkflow.intervals": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/chr20xy.interval_list",
+  "CNVGermlineCohortWorkflow.normal_bais": [
+    "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/SM-74NEG_20xy-downsampled.bam.bai",
+    "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/SM-74P2T_20xy-downsampled.bam.bai",
+    "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/SM-74P35_20xy-downsampled.bam.bai"],
+  "CNVGermlineCohortWorkflow.normal_bams": [
+    "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/SM-74NEG_20xy-downsampled.bam",
+    "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/SM-74P2T_20xy-downsampled.bam",
+    "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/SM-74P35_20xy-downsampled.bam"],
+  "CNVGermlineCohortWorkflow.num_intervals_per_scatter": "50",
+  "CNVGermlineCohortWorkflow.bin_length": "20000",
+  "CNVGermlineCohortWorkflow.ref_fasta_dict": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/Homo_sapiens_assembly19.truncated.dict",
+  "CNVGermlineCohortWorkflow.ref_fasta_fai": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/Homo_sapiens_assembly19.truncated.fasta.fai",
+  "CNVGermlineCohortWorkflow.ref_fasta": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/Homo_sapiens_assembly19.truncated.fasta"
+}

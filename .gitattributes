@@ -1,1 +1,2 @@
 src/test/resources/large/** filter=lfs diff=lfs merge=lfs -text
+src/main/resources/large/** filter=lfs diff=lfs merge=lfs -text

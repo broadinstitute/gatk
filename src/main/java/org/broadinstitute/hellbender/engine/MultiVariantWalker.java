@@ -3,11 +3,12 @@ package org.broadinstitute.hellbender.engine;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
-import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.MultiVariantInputArgumentCollection;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.SortedSet;
 import java.util.Spliterator;
 
 /**
@@ -20,11 +21,8 @@ import java.util.Spliterator;
  */
 public abstract class MultiVariantWalker extends VariantWalkerBase {
 
-    // NOTE: using File rather than FeatureInput<VariantContext> here so that we can keep this driving source
-    //       of variants separate from any other potential sources of Features
-    @Argument(fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME, shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME,
-                doc = "One or more VCF files containing variants", common = false, optional = false)
-    public List<String> drivingVariantFiles = new ArrayList<>();
+    @ArgumentCollection
+    protected MultiVariantInputArgumentCollection multiVariantInputArgumentCollection = getMultiVariantInputArgumentCollection();
 
     // NOTE: keeping the driving source of variants separate from other, supplementary FeatureInputs in our FeatureManager
     // in GATKTool we do add the driving source to the Feature manager but we do need to treat it differently and thus this
@@ -44,14 +42,23 @@ public abstract class MultiVariantWalker extends VariantWalkerBase {
     @Override
     protected final void onStartup() {
         super.onStartup();
-        if ( hasIntervals() ) {
-            drivingVariants.setIntervalsForTraversal(intervalsForTraversal);
+
+        if ( hasUserSuppliedIntervals() ) {
+            drivingVariants.setIntervalsForTraversal(userIntervals);
         }
+    }
+
+    /**
+     * Return an argument collection that provides the driving variants.  This allows subclasses to override and use a different
+     * argument pattern besides the default -V
+     */
+    protected MultiVariantInputArgumentCollection getMultiVariantInputArgumentCollection() {
+        return new MultiVariantInputArgumentCollection.DefaultMultiVariantInputArgumentCollection();
     }
 
     @Override
     protected void initializeDrivingVariants() {
-        drivingVariantFiles.stream().forEach(
+        multiVariantInputArgumentCollection.getDrivingVariantPaths().stream().forEach(
                 f -> {
                     FeatureInput<VariantContext> featureInput = new FeatureInput<>(f);
                     if (drivingVariantsFeatureInputs.contains(featureInput)) {
@@ -100,5 +107,14 @@ public abstract class MultiVariantWalker extends VariantWalkerBase {
         if (drivingVariants != null) {
             drivingVariants.close();
         }
+    }
+
+    /**
+     * Get in name-sorted order a list of samples merged from the driving variants files.
+     *
+     * @return SampleSet merged requiring unique names from the drivingVariants
+     */
+    public final SortedSet<String> getSamplesForVariants() {
+        return drivingVariants.getSamples();
     }
 }

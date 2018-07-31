@@ -2,17 +2,17 @@ package org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter;
 
 import htsjdk.samtools.metrics.MetricsFile;
 import org.apache.commons.math3.linear.RealMatrix;
-import org.broadinstitute.hellbender.tools.picard.analysis.artifacts.SequencingArtifactMetrics;
-import org.broadinstitute.hellbender.tools.picard.analysis.artifacts.Transition;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.artifacts.Transition;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+import picard.analysis.artifacts.SequencingArtifactMetrics;
 
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.Map;
 
-public class PreAdapterOrientationScorerUnitTest extends BaseTest {
+public class PreAdapterOrientationScorerUnitTest extends GATKBaseTest {
 
     public static final String testPreAdapterDetailsMetrics = publicTestDir + "picard_metrics_test.pre_adapter_detail_metrics";
 

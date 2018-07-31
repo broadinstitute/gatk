@@ -53,7 +53,12 @@ public class LoggingUtils {
         return loggingLevelNamespaceMap.inverse().get(log4jLevel);
     }
 
-    private static Level levelToLog4jLevel(Log.LogLevel picardLevel) {
+    /**
+     * Converts a picard log level to a log4j log level.
+     * @param picardLevel Picard {@link Log.LogLevel} to convert to a Log4J {@link Level}.
+     * @return The {@link Level} that corresponds to the given {@code picardLevel}.
+     */
+    public static Level levelToLog4jLevel(Log.LogLevel picardLevel) {
         return loggingLevelNamespaceMap.get(picardLevel);
     }
 

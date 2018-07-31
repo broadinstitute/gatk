@@ -1,7 +1,10 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.help.HelpConstants;
+import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -24,17 +27,25 @@ import java.util.OptionalDouble;
  * <p>The base quality rank sum test can not be calculated for sites without a mixture of reads showing both the reference and alternate alleles.</p>
  *
  */
+@DocumentedFeature(groupName= HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Rank sum test of REF versus ALT base quality scores (BaseQRankSum)")
 public final class BaseQualityRankSumTest extends RankSumTest implements StandardAnnotation {
 
     @Override
     public List<String> getKeyNames() { return Collections.singletonList(GATKVCFConstants.BASE_QUAL_RANK_SUM_KEY); }
 
     @Override
-    public List<VCFInfoHeaderLine> getDescriptions() { return Collections.singletonList(GATKVCFHeaderLines.getInfoLine(getKeyNames().get(0))); }
-
-    @Override
     protected OptionalDouble getElementForRead(final GATKRead read, final int refLoc) {
+        return getReadBaseQuality(read, refLoc);
+    }
+
+    public static OptionalDouble getReadBaseQuality(final GATKRead read, final int refLoc) {
         Utils.nonNull(read);
         return OptionalDouble.of(read.getBaseQuality(ReadUtils.getReadCoordinateForReferenceCoordinateUpToEndOfRead(read, refLoc, ReadUtils.ClippingTail.RIGHT_TAIL)));
+    }
+
+    @Override
+    // When we have a pileupe element we only need its underlying read in order to com
+    protected OptionalDouble getElementForPileupElement(final PileupElement p, final int refLoc) {
+        return OptionalDouble.of(p.getQual());
     }
 }

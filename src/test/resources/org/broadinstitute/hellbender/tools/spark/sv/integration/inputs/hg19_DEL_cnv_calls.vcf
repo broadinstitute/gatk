@@ -1,0 +1,14 @@
+##fileformat=VCFv4.2
+##ALT=<ID=CNV,Description="Copy number polymorphism">
+##INFO=<ID=END,Number=1,Type=Integer,Description="End coordinate of this variant">
+##FORMAT=<ID=CN,Number=1,Type=Integer,Description="Copy number genotype for imprecise events">
+##FORMAT=<ID=CNF,Number=1,Type=Float,Description="Estimate of fractional copy number">
+##FORMAT=<ID=CNL,Number=.,Type=Float,Description="Copy number likelihoods with no frequency prior">
+##FORMAT=<ID=CNP,Number=.,Type=Float,Description="Copy number likelihoods">
+##FORMAT=<ID=CNQ,Number=1,Type=Float,Description="Copy number genotype quality for imprecise events">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##contig=<ID=20,length=63025520>
+##contig=<ID=21,length=48129895>
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	sample
+21	43350200	CNV_21_43350200_43353400	T	<CNV>	.	PASS	END=43353400;SVTYPE=CNV	GT:CN:CNQ	.:1:80
+21	50000000	CNV_21_50000000_50001000	T	<CNV>	.	PASS	END=50001000;SVTYPE=CNV	GT:CN:CNQ	.:0:99

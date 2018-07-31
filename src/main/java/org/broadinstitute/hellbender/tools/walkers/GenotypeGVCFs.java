@@ -8,7 +8,7 @@ import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_RMSMappingQuality;
@@ -29,15 +29,16 @@ import java.util.*;
  * Perform joint genotyping on one or more samples pre-called with HaplotypeCaller
  *
  * <p>
- * This tool is designed to perform joint genotyping on multiple samples pre-called with HaplotypeCaller to produce a
- * multi-sample callset in a highly scalable manner. However it can also be run on a single sample at a time to produce
- * a single-sample callset. In any case, the input samples must possess genotype likelihoods produced by HaplotypeCaller
- * with `-ERC GVCF` or `-ERC BP_RESOLUTION`.
+ * This tool is designed to perform joint genotyping on a single input, which may contain one or many samples. In any
+ * case, the input samples must possess genotype likelihoods produced by HaplotypeCaller with `-ERC GVCF` or
+ * `-ERC BP_RESOLUTION`.
+ *
  *
  * <h3>Input</h3>
  * <p>
- * One or more GVCFs produced by in HaplotypeCaller with the `-ERC GVCF` or `-ERC BP_RESOLUTION` settings, containing
- * the samples to joint-genotype.
+ * The GATK4 GenotypeGVCFs tool can take only one input track.  Options are 1) a single single-sample GVCF 2) a single
+ * multi-sample GVCF created by CombineGVCFs or 3) a GenomicsDB workspace created by GenomicsDBImport.
+ * A sample-level GVCF is produced by HaplotypeCaller with the `-ERC GVCF` setting.
  * </p>
  *
  * <h3>Output</h3>
@@ -47,73 +48,56 @@ import java.util.*;
  *
  * <h3>Usage example</h3>
  *
- * <h4>Perform joint genotyping on a set of GVCFs enumerated in the command line</h4>
+ * <h4>Perform joint genotyping on a singular sample by providing a single-sample GVCF or on a cohort by providing a combined multi-sample GVCF</h4>
  * <pre>
- * gatk-launch --javaOptions "-Xmx4g" GenotypeGVCFs \
- *   -R reference.fasta \
- *   -V input1.g.vcf \
- *   -V input2.g.vcf \
- *   -V input3.g.vcf \
- *   -O output.vcf
+ * gatk --java-options "-Xmx4g" GenotypeGVCFs \
+ *   -R Homo_sapiens_assembly38.fasta \
+ *   -V input.g.vcf.gz \
+ *   -O output.vcf.gz
  * </pre>
  *
- * <h4>Perform joint genotyping on a set of GVCFs listed in a text file, one per line</h4>
+ * <h4>Perform joint genotyping on GenomicsDB workspace created with GenomicsDBImport</h4>
  * <pre>
- * gatk-launch --javaOptions "-Xmx4g" GenotypeGVCFs \
- *   -R reference.fasta \
- *   -V input_gvcfs.list \
- *   -O output.vcf
+ * gatk --java-options "-Xmx4g" GenotypeGVCFs \
+ *   -R Homo_sapiens_assembly38.fasta \
+ *   -V gendb://my_database \
+ *   -O output.vcf.gz
  * </pre>
  *
- * <h3>Caveat</h3>
- * <p>Only GVCF files produced by HaplotypeCaller (or CombineGVCFs) can be used as input for this tool. Some other
+ * <h3>Caveats</h3>
+ * <ul>
+ *   <li>Only GVCF files produced by HaplotypeCaller (or CombineGVCFs) can be used as input for this tool. Some other
  * programs produce files that they call GVCFs but those lack some important information (accurate genotype likelihoods
- * for every position) that GenotypeGVCFs requires for its operation.</p>
+ * for every position) that GenotypeGVCFs requires for its operation.</li>
+ *   <li>Cannot take multiple GVCF files in one command.</li>
+ * </ul>
  *
  * <h3>Special note on ploidy</h3>
  * <p>This tool is able to handle any ploidy (or mix of ploidies) intelligently; there is no need to specify ploidy
  * for non-diploid organisms.</p>
  *
  */
-@CommandLineProgramProperties(summary = "Perform joint genotyping on one or more samples pre-called with HaplotypeCaller", oneLineSummary = "Perform joint genotyping on one or more samples pre-called with HaplotypeCaller", programGroup = VariantProgramGroup.class)
+@CommandLineProgramProperties(summary = "Perform joint genotyping on a single-sample GVCF from HaplotypeCaller or a multi-sample GVCF from CombineGVCFs or GenomicsDBImport",
+        oneLineSummary = "Perform joint genotyping on one or more samples pre-called with HaplotypeCaller",
+        programGroup = ShortVariantDiscoveryProgramGroup.class)
 @DocumentedFeature
 public final class GenotypeGVCFs extends VariantWalker {
 
     public static final String PHASED_HOM_VAR_STRING = "1|1";
-    public static final String ONLY_OUTPUT_CALLS_STARTING_IN_INTERVALS_FULL_NAME = "onlyOutputCallsStartingInIntervals";
+    public static final String ONLY_OUTPUT_CALLS_STARTING_IN_INTERVALS_FULL_NAME = "only-output-calls-starting-in-intervals";
+    public static final String ALL_SITES_LONG_NAME = "include-non-variant-sites";
     private static final String GVCF_BLOCK = "GVCFBlock";
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc="File to which variants should be written", optional=false)
     private File outputFile;
 
-    //@Argument(fullName="includeNonVariantSites", shortName="allSites", doc="Include loci found to be non-variant after genotyping", optional=true)
+    //@Argument(fullName=ALL_SITES_LONG_NAME, shortName="allSites", doc="Include loci found to be non-variant after genotyping", optional=true)
     //TODO This option is currently not supported.
     private boolean includeNonVariants = false;
 
     @ArgumentCollection
     private GenotypeCalculationArgumentCollection genotypeArgs = new GenotypeCalculationArgumentCollection();
-
-    /**
-     * Which annotations to recompute for the combined output VCF file.
-     */
-    @Advanced
-    @Argument(fullName="annotation", shortName="A", doc="One or more specific annotations to recompute", optional=true)
-    private List<String> annotationsToUse = new ArrayList<>();
-
-
-    @Advanced
-    @Argument(fullName="annotationsToExclude", shortName="AX", doc="One or more specific annotations to exclude from recomputation", optional=true)
-    private List<String> annotationsToExclude = new ArrayList<>();
-
-    /**
-     * This argument controls which groups of annotations to add to the output VCF file. Not recommended for normal
-     * operation of the tool because it obscures the specific requirements of individual annotations. Any requirements
-     * that are not met (e.g. failing to provide a pedigree file for a pedigree-based annotation) may cause the run to fail.
-     */
-    @Advanced
-    @Argument(fullName="group", shortName="G", doc="One or more classes/groups of annotations to apply to variant calls", optional=true)
-    private List<String> annotationGroupsToUse = new ArrayList<>(Arrays.asList(new String[]{StandardAnnotation.class.getSimpleName()}));
 
     /**
      * This option can only be activated if intervals are specified.
@@ -140,12 +124,7 @@ public final class GenotypeGVCFs extends VariantWalker {
 
     private VariantContextWriter vcfWriter;
 
-    //todo: remove this when the reducible annotation framework is in place
-    //this is ok because RMS_MAPPING is stateless, but it needs to be instantiated in order to call its
-    //overridden instance methods
-    private static final RMSMappingQuality RMS_MAPPING_QUALITY = new RMSMappingQuality();
-
-    //these are used when {@link #onlyOutputCallsStartingInIntervals) is true
+    /** these are used when {@link #onlyOutputCallsStartingInIntervals) is true */
     private List<SimpleInterval> intervals;
 
     @Override
@@ -154,24 +133,33 @@ public final class GenotypeGVCFs extends VariantWalker {
     }
 
     @Override
+    public boolean useVariantAnnotations() { return true;}
+
+    @Override
+    public List<Class<? extends Annotation>> getDefaultVariantAnnotationGroups() {
+        return Arrays.asList(StandardAnnotation.class);
+    }
+
+    @Override
     public void onTraversalStart() {
         final VCFHeader inputVCFHeader = getHeaderForVariants();
 
         if(onlyOutputCallsStartingInIntervals) {
-            if( !hasIntervals()) {
+            if( !hasUserSuppliedIntervals()) {
                 throw new CommandLineException.MissingArgument("-L or -XL", "Intervals are required if --" + ONLY_OUTPUT_CALLS_STARTING_IN_INTERVALS_FULL_NAME + " was specified.");
             }
         }
-        intervals = hasIntervals() ? intervalArgumentCollection.getIntervals(getBestAvailableSequenceDictionary()) :
+        intervals = hasUserSuppliedIntervals() ? intervalArgumentCollection.getIntervals(getBestAvailableSequenceDictionary()) :
                 Collections.emptyList();
 
         final SampleList samples = new IndexedSampleList(inputVCFHeader.getGenotypeSamples()); //todo should this be getSampleNamesInOrder?
 
-        genotypingEngine = new MinimalGenotypingEngine(createUAC(), samples, new GeneralPloidyFailOverAFCalculatorProvider(genotypeArgs));
+        annotationEngine = new VariantAnnotatorEngine(makeVariantAnnotations(), dbsnp.dbsnp, Collections.emptyList(), false);
 
-        annotationEngine = VariantAnnotatorEngine.ofSelectedMinusExcluded(annotationGroupsToUse, annotationsToUse, annotationsToExclude, dbsnp.dbsnp, Collections.emptyList());
+        // We only want the engine to generate the AS_QUAL key if we are using AlleleSpecific annotations.
+        genotypingEngine = new MinimalGenotypingEngine(createUAC(), samples, new GeneralPloidyFailOverAFCalculatorProvider(genotypeArgs), annotationEngine.isRequestedReducibleRawKey(GATKVCFConstants.AS_QUAL_KEY));
 
-        merger = new ReferenceConfidenceVariantContextMerger();
+        merger = new ReferenceConfidenceVariantContextMerger(annotationEngine, getHeaderForVariants());
 
         setupVCFWriter(inputVCFHeader, samples);
     }
@@ -187,7 +175,7 @@ public final class GenotypeGVCFs extends VariantWalker {
         // Remove GCVFBlocks
         headerLines.removeIf(vcfHeaderLine -> vcfHeaderLine.getKey().startsWith(GVCF_BLOCK));
 
-        headerLines.addAll(annotationEngine.getVCFAnnotationDescriptions());
+        headerLines.addAll(annotationEngine.getVCFAnnotationDescriptions(false));
         headerLines.addAll(genotypingEngine.getAppropriateVCFInfoHeaders());
 
         // add headers for annotations added by this tool
@@ -225,7 +213,7 @@ public final class GenotypeGVCFs extends VariantWalker {
      * Re-genotype (and re-annotate) a combined genomic VC
      * @return a new VariantContext or null if the site turned monomorphic and we don't want such sites
      */
-    private VariantContext regenotypeVC(final VariantContext originalVC, final ReferenceContext ref, final FeatureContext features, boolean includeNonVariants) {
+    private VariantContext  regenotypeVC(final VariantContext originalVC, final ReferenceContext ref, final FeatureContext features, boolean includeNonVariants) {
         Utils.nonNull(originalVC);
 
         final VariantContext result;
@@ -233,10 +221,12 @@ public final class GenotypeGVCFs extends VariantWalker {
             // only re-genotype polymorphic sites
             final VariantContext regenotypedVC = calculateGenotypes(originalVC);
             if (isProperlyPolymorphic(regenotypedVC)) {
-                final VariantContext allelesTrimmed = GATKVariantContextUtils.reverseTrimAlleles(regenotypedVC);
-                final VariantContext withAnnotations = addGenotypingAnnotations(originalVC.getAttributes(), allelesTrimmed);
-                //TODO: remove this when proper support for reducible annotations is added
-                result = RMS_MAPPING_QUALITY.finalizeRawMQ(withAnnotations);
+                // Note that reversetrimAlleles must be performed after the annotations are finalized because the reducible annotation data maps
+                // were generated and keyed on the un reverseTrimmed alleles from the starting VariantContexts. Thus reversing the order will make
+                // it difficult to recover the data mapping due to the keyed alleles no longer being present in the variant context.
+                final VariantContext withGenotypingAnnotations = addGenotypingAnnotations(originalVC.getAttributes(), regenotypedVC);
+                final VariantContext withAnnotations = annotationEngine.finalizeAnnotations(withGenotypingAnnotations, originalVC);
+                result = GATKVariantContextUtils.reverseTrimAlleles(withAnnotations);
             } else if (includeNonVariants) {
                 result = originalVC;
             } else {
@@ -310,12 +300,15 @@ public final class GenotypeGVCFs extends VariantWalker {
      * @return a non-null VC
      */
     private VariantContext addGenotypingAnnotations(final Map<String, Object> originalAttributes, final VariantContext newVC) {
-        // we want to carry forward the attributes from the original VC but make sure to add the MLE-based annotations
+        // we want to carry forward the attributes from the original VC but make sure to add the MLE-based annotations and any other annotations generated by the genotyper.
         final Map<String, Object> attrs = new LinkedHashMap<>(originalAttributes);
         attrs.put(GATKVCFConstants.MLE_ALLELE_COUNT_KEY, newVC.getAttribute(GATKVCFConstants.MLE_ALLELE_COUNT_KEY));
         attrs.put(GATKVCFConstants.MLE_ALLELE_FREQUENCY_KEY, newVC.getAttribute(GATKVCFConstants.MLE_ALLELE_FREQUENCY_KEY));
         if (newVC.hasAttribute(GATKVCFConstants.NUMBER_OF_DISCOVERED_ALLELES_KEY)) {
             attrs.put(GATKVCFConstants.NUMBER_OF_DISCOVERED_ALLELES_KEY, newVC.getAttribute(GATKVCFConstants.NUMBER_OF_DISCOVERED_ALLELES_KEY));
+        }
+        if (newVC.hasAttribute(GATKVCFConstants.AS_QUAL_KEY)) {
+            attrs.put(GATKVCFConstants.AS_QUAL_KEY, newVC.getAttribute(GATKVCFConstants.AS_QUAL_KEY));
         }
         return new VariantContextBuilder(newVC).attributes(attrs).make();
     }

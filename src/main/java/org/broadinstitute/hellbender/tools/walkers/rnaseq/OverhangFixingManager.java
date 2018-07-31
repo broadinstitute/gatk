@@ -291,7 +291,7 @@ public class OverhangFixingManager {
      * @param read                  the read bases
      * @param readStartIndex        where to start on the read
      * @param readLength            the length of the read according to the reference, used to prevent overclipping
-     *                              softclipped output from SplitNCigarReads)
+     *                              soft-clipped output from SplitNCigarReads)
      * @param reference             the reference bases
      * @param referenceStartIndex   where to start on the reference
      * @param spanToTest            how many bases to test
@@ -393,7 +393,7 @@ public class OverhangFixingManager {
             if ( ! read.isEmpty() ) {
                 this.read = read;
                 if ( ! read.isUnmapped() ) {
-                    unclippedLoc = genomeLocParser.createGenomeLoc(read.getContig(), ReadUtils.getSoftStart(read), ReadUtils.getSoftEnd(read));
+                    unclippedLoc = genomeLocParser.createGenomeLoc(read.getContig(), read.getSoftStart(), read.getSoftEnd());
                 }
             }
         }

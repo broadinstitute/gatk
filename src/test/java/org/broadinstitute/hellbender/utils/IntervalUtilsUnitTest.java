@@ -1,7 +1,10 @@
 package org.broadinstitute.hellbender.utils;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
-
+import com.google.common.collect.Sets;
+import com.google.common.jimfs.Configuration;
+import com.google.common.jimfs.Jimfs;
 import htsjdk.samtools.QueryInterval;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
@@ -11,17 +14,25 @@ import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.SimpleFeature;
+import htsjdk.variant.utils.SAMSequenceDictionaryExtractor;
+import htsjdk.variant.vcf.VCFFileReader;
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.barclay.argparser.CommandLineException;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.nio.file.FileSystem;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -30,9 +41,10 @@ import java.util.stream.Stream;
 /**
  * test out the interval utility methods
  */
-public final class IntervalUtilsUnitTest extends BaseTest {
+public final class IntervalUtilsUnitTest extends GATKBaseTest {
     public static final String INTERVAL_TEST_DATA = publicTestDir + "org/broadinstitute/hellbender/utils/interval/";
-    public static final String emptyIntervals = BaseTest.publicTestDir + "empty_intervals.list";
+    public static final String emptyIntervals = publicTestDir + "empty_intervals.list";
+    public static final String FULL_HG19_DICT = publicTestDir + "Homo_sapiens_assembly19.dict";
     private List<GenomeLoc> hg19ReferenceLocs;
     private List<GenomeLoc> hg19exomeIntervals;
 
@@ -77,6 +89,47 @@ public final class IntervalUtilsUnitTest extends BaseTest {
         Assert.assertTrue(IntervalUtils.compareLocatables(chr2_1_100, chr1_1_100, dict) > 0);
         Assert.assertTrue(IntervalUtils.compareLocatables(chr2_1_100, chr1_5_100, dict) > 0);
         Assert.assertTrue(IntervalUtils.compareLocatables(chr1_5_100, chr1_1_100, dict) > 0);
+    }
+
+    @DataProvider
+    public Object[][] testLocatableOrderingData() {
+        final SAMSequenceDictionary dict = new SAMSequenceDictionary();
+        dict.addSequence(new SAMSequenceRecord("1", 1000));
+        dict.addSequence(new SAMSequenceRecord("2", 1000));
+
+        return new Object[][] {
+                // first, second, dictionary, expectedIsBefore, expectedIsAfter, expectedContigComparison
+                { new SimpleInterval("1", 1, 100), new SimpleInterval("1", 200, 300), dict, true, false, 0 },
+                { new SimpleInterval("1", 1, 100), new SimpleInterval("1", 101, 200), dict, true, false, 0 },
+                { new SimpleInterval("1", 1, 100), new SimpleInterval("1", 100, 200), dict, false, false, 0 },
+                { new SimpleInterval("1", 1, 100), new SimpleInterval("1", 99, 200), dict, false, false, 0 },
+
+                { new SimpleInterval("1", 200, 300), new SimpleInterval("1", 1, 100), dict, false, true, 0 },
+                { new SimpleInterval("1", 101, 200), new SimpleInterval("1", 1, 100), dict, false, true, 0 },
+                { new SimpleInterval("1", 100, 200), new SimpleInterval("1", 1, 100), dict, false, false, 0 },
+                { new SimpleInterval("1", 99, 200), new SimpleInterval("1", 1, 100), dict, false, false, 0 },
+
+                { new SimpleInterval("1", 1, 100), new SimpleInterval("2", 1, 100), dict, true, false, -1 },
+                { new SimpleInterval("1", 1, 100), new SimpleInterval("2", 101, 200), dict, true, false, -1 },
+                { new SimpleInterval("1", 101, 200), new SimpleInterval("2", 1, 100), dict, true, false, -1 },
+                { new SimpleInterval("2", 1, 100), new SimpleInterval("1", 1, 100), dict, false, true, 1 },
+                { new SimpleInterval("2", 101, 200), new SimpleInterval("1", 1, 100), dict, false, true, 1 },
+                { new SimpleInterval("2", 1, 100), new SimpleInterval("1", 101, 200), dict, false, true, 1 }
+        };
+    }
+
+    @Test(dataProvider = "testLocatableOrderingData")
+    public void testLocatableOrdering(final SimpleInterval first, final SimpleInterval second, final SAMSequenceDictionary dict, final boolean expectedIsBefore, final boolean expectedIsAfter, final int expectedContigComparison) {
+        Assert.assertEquals(IntervalUtils.isBefore(first, second, dict), expectedIsBefore, "Wrong return value from IntervalUtils.isBefore()");
+        Assert.assertEquals(IntervalUtils.isAfter(first, second, dict), expectedIsAfter, "Wrong return value from IntervalUtils.isAfter()");
+
+        if ( expectedContigComparison < 0 ) {
+            Assert.assertTrue(IntervalUtils.compareContigs(first, second, dict) < 0, "Wrong return value from IntervalUtils.compareContigs()");
+        } else if ( expectedContigComparison > 0 ) {
+            Assert.assertTrue(IntervalUtils.compareContigs(first, second, dict) > 0, "Wrong return value from IntervalUtils.compareContigs()");
+        } else {
+            Assert.assertTrue(IntervalUtils.compareContigs(first, second, dict) == 0, "Wrong return value from IntervalUtils.compareContigs()");
+        }
     }
 
     @Test
@@ -379,7 +432,7 @@ public final class IntervalUtilsUnitTest extends BaseTest {
 
     @Test
     public void testGetContigLengths() {
-        Map<String, Integer> lengths = IntervalUtils.getContigSizes(new File(BaseTest.exampleReference));
+        Map<String, Integer> lengths = IntervalUtils.getContigSizes(IOUtils.getPath(GATKBaseTest.exampleReference));
         Assert.assertEquals((long)lengths.get("1"), 16000);
         Assert.assertEquals((long)lengths.get("2"), 16000);
         Assert.assertEquals((long) lengths.get("3"), 16000);
@@ -391,6 +444,203 @@ public final class IntervalUtilsUnitTest extends BaseTest {
         Assert.assertEquals(hg19ReferenceLocs.size(), 4);
         Assert.assertEquals(intervalStringsToGenomeLocs("1", "2", "3").size(), 3);
         Assert.assertEquals(intervalStringsToGenomeLocs("1:1-2", "1:4-5", "2:1-1", "3:2-2").size(), 4);
+    }
+
+    private SAMSequenceDictionary getAmbiguousSequenceDictionary() {
+        // The following strings represent a set of valid contig names, each of which can also be interpreted
+        // as a valid interval query against some *other* contig in the same list (except the last one). That
+        // is, each is comprised of a prefix that appears as another contig in the list, followed by a suffix
+        // that is a valid query against that prefix.
+        //
+        // Given a sequence dictionary containing all of these contigs, each contig name, when used as an
+        // interval query, should be rejected as ambiguous.
+        List<String> ambiguousContigNames = Arrays.asList(
+                "HLA-A*01:02:03:04",    // prefix: HLA-A*01:02:03       suffix: :04
+                "HLA-A*01:02:03:04+",   // prefix: HLA-A*01:02:03       suffix: :04+
+                "HLA-A*01:02:03:04:99", // prefix: HLA-A*01:02:03:04    suffix: :99
+                "HLA-A*01:02:03:04-99", // prefix: HLA-A*01:02:03       suffix: :04-99
+                "HLA-A*01:02:03",       // prefix: HLA-A*01:02          suffix: :03
+                "HLA-A*01:02",          // prefix: HLA-A*01             suffix: :02
+
+                "HLA-A*01"              // no valid prefix
+        );
+
+        final SAMSequenceDictionary ambiguousContigDictionary = new SAMSequenceDictionary();
+        ambiguousContigNames.forEach(s -> ambiguousContigDictionary.addSequence(new SAMSequenceRecord(s, 99)));
+        return ambiguousContigDictionary;
+    }
+
+    @DataProvider(name = "ambiguousIntervalQueries")
+    public Object[][] getAmbiguousIntervalQueries() {
+        return new Object[][]{
+                // query interval string, expected ambiguous intervals
+
+                // query intervals with more than one interpretation
+                { "HLA-A*01:02:03:04",
+                        Arrays.asList(
+                            new SimpleInterval("HLA-A*01:02:03:04", 1, 99),
+                            new SimpleInterval("HLA-A*01:02:03", 4, 4)) },
+                { "HLA-A*01:02:03:04+",
+                        Arrays.asList(
+                                new SimpleInterval("HLA-A*01:02:03:04+", 1, 99),
+                                new SimpleInterval("HLA-A*01:02:03", 4, 99)) },
+                { "HLA-A*01:02:03:04:99",
+                        Arrays.asList(
+                                new SimpleInterval("HLA-A*01:02:03:04:99", 1, 99),
+                                new SimpleInterval("HLA-A*01:02:03:04", 99, 99)) },
+                { "HLA-A*01:02:03:04-99",
+                        Arrays.asList(
+                                new SimpleInterval("HLA-A*01:02:03:04-99", 1, 99),
+                                new SimpleInterval("HLA-A*01:02:03", 4, 99)) },
+                { "HLA-A*01:02:03",
+                        Arrays.asList(
+                                new SimpleInterval("HLA-A*01:02:03", 1, 99),
+                                new SimpleInterval("HLA-A*01:02", 3, 3)) },
+                { "HLA-A*01:02",
+                        Arrays.asList(
+                                new SimpleInterval("HLA-A*01:02", 1, 99),
+                                new SimpleInterval("HLA-A*01", 2, 2)) },
+
+                { "HLA:02", Collections.EMPTY_LIST},  // embedded :, but no valid prefix
+                { "HLA-A*01",
+                        Arrays.asList(new SimpleInterval("HLA-A*01", 1, 99)) }
+        };
+    }
+
+    @Test(dataProvider = "ambiguousIntervalQueries")
+    public void testAmbiguousIntervalQueries(final String ambiguousQuery, final List<String> expectedAmbiguousContigs) {
+        final SAMSequenceDictionary sd = getAmbiguousSequenceDictionary();
+        Assert.assertEquals(new HashSet<>(IntervalUtils.getResolvedIntervals(ambiguousQuery, sd)), new HashSet<>(expectedAmbiguousContigs));
+    }
+
+    @Test(expectedExceptions = NumberFormatException.class)
+    public void testMalformedQueryFail() {
+        final SAMSequenceDictionary sd = getAmbiguousSequenceDictionary();
+        sd.addSequence(new SAMSequenceRecord("contig:1-10", 99));
+        sd.addSequence(new SAMSequenceRecord("contig", 99));
+        IntervalUtils.getResolvedIntervals("contig:abc-dce", sd);
+    }
+
+    @Test
+    public void testMalformedAmbiguousQuerySucceeds() {
+        final SAMSequenceDictionary sd = getAmbiguousSequenceDictionary();
+        final String queryString = "contig:abc-dce";
+
+        sd.addSequence(new SAMSequenceRecord("contig", 99));
+        sd.addSequence(new SAMSequenceRecord(queryString, 99));
+
+        // the query string matches as a full contig, but also has a prefix that matches the contig "contig". When
+        // viewed as the latter, however, the start-end positions fail to parse as numbers. This resolves as a query
+        // against the longer contig "contig:abc-dce", and logs a warning
+        HashSet<SimpleInterval> expectedIntervals = new HashSet<>();
+        expectedIntervals.add(new SimpleInterval(queryString, 1, 99));
+        Assert.assertEquals(
+                new HashSet<>(IntervalUtils.getResolvedIntervals(queryString, sd)),
+                new HashSet<>(expectedIntervals));
+    }
+
+    @Test
+    public void testUseAllHG38ContigsInIntervalQuery() {
+        SAMSequenceDictionary sd;
+
+        final File testFile = new File ("src/test/resources/org/broadinstitute/hellbender/engine/Homo_sapiens_assembly38.headerOnly.vcf.gz");
+        try (VCFFileReader vcfReader = new VCFFileReader(testFile, false)) {
+            sd = vcfReader.getFileHeader().getSequenceDictionary();
+        }
+
+        // Pull each contig from hg38 and validate that it can be used as a interval string without
+        // being rejected as ambiguous.
+        sd.getSequences().stream().forEach(
+                hg38Contig -> {
+                    // query using just the raw contig name
+                    assertValidUniqueInterval(
+                            sd,
+                            hg38Contig.getSequenceName(),
+                            new SimpleInterval(hg38Contig.getSequenceName(), 1, hg38Contig.getSequenceLength())
+                    );
+
+                    // query using the format "name:1"
+                    assertValidUniqueInterval(
+                            sd,
+                            hg38Contig.getSequenceName() + ":1",
+                            new SimpleInterval(hg38Contig.getSequenceName(), 1, 1)
+                    );
+
+                    // query using the format "name:1+"
+                    assertValidUniqueInterval(
+                            sd,
+                            hg38Contig.getSequenceName() + ":1+",
+                            new SimpleInterval(hg38Contig.getSequenceName(), 1, hg38Contig.getSequenceLength())
+                    );
+
+                    // query using the format "name:1-end"
+                    assertValidUniqueInterval(
+                            sd,
+                            new SimpleInterval(hg38Contig.getSequenceName(), 1, hg38Contig.getSequenceLength()).toString(),
+                            new SimpleInterval(hg38Contig.getSequenceName(), 1, hg38Contig.getSequenceLength())
+                    );
+                }
+        );
+    }
+
+    @Test
+    public void testResolveAmbiguousIntervalQueryUsingBEDFormat() throws IOException {
+        // For the rare case where an interval query is ambiguous, make sure it can be resolved by using a bed file.
+        final SAMSequenceDictionary ambiguousSequenceDictionary = getAmbiguousSequenceDictionary();
+
+        // use a test interval that has more than one interpretation
+        // "HLA-A*01:02:03:04",
+        //      -> new SimpleInterval("HLA-A*01:02:03:04", 1, 99)
+        //      -> new SimpleInterval("HLA-A*01:02:03", 4, 4)
+        final File bedFile = createTempFile("testAmbiguousInterval", ".bed");
+
+        final int BED_START = 1;
+        final int BED_END = 99;
+        final String TARGET_CONTIG = "HLA-A*01:02:03:04";
+        try (FileWriter bedWriter = new FileWriter(bedFile)) {
+            bedWriter.write(String.format("%s\t%d\t%d", TARGET_CONTIG, BED_START, BED_END));
+        }
+        final GenomeLocParser genomeLocParser = new GenomeLocParser(ambiguousSequenceDictionary);
+
+        // first, make sure we're using a query that is actually ambiguous
+        Assert.assertThrows(UserException.MalformedGenomeLoc.class, () -> IntervalUtils.parseIntervalArguments(genomeLocParser, TARGET_CONTIG));
+
+        // now use the bed file
+        final List<GenomeLoc> intervalList = IntervalUtils.parseIntervalArguments(genomeLocParser, bedFile.getAbsolutePath());
+
+        // validate the (translated from Bed) interval coordinates
+        Assert.assertEquals(intervalList.size(), 1);
+        Assert.assertEquals(intervalList.get(0).getContig(), TARGET_CONTIG);
+        Assert.assertEquals(intervalList.get(0).getStart(), BED_START + 1);
+        Assert.assertEquals(intervalList.get(0).getEnd(), BED_END);
+    }
+
+    private void assertValidUniqueInterval(
+            final SAMSequenceDictionary sequenceDictionary,
+            final String queryString,
+            final SimpleInterval expectedInterval) {
+        final List<SimpleInterval> ambiguousIntervals = IntervalUtils.getResolvedIntervals(queryString, sequenceDictionary);
+        Assert.assertNotNull(ambiguousIntervals);
+        Assert.assertEquals(ambiguousIntervals.size(), 1);
+        Assert.assertEquals(ambiguousIntervals.get(0), expectedInterval);
+    }
+
+    @Test
+    public void testTerminatingPlusSign() {
+        // special case test for a query "prefix:+", where "prefix:" is a valid contig
+        final SAMSequenceDictionary sd = getAmbiguousSequenceDictionary();
+        final String contigPrefix = "prefix:";
+        sd.addSequence(new SAMSequenceRecord(contigPrefix, 99));
+        Assert.assertEquals(
+                new HashSet<>(IntervalUtils.getResolvedIntervals(contigPrefix + "+", sd)),
+                new HashSet<>());
+
+        sd.addSequence(new SAMSequenceRecord(contigPrefix + "+", 99));
+        HashSet<SimpleInterval> expectedIntervals = new HashSet<>();
+        expectedIntervals.add(new SimpleInterval("prefix:+", 1, 99));
+        Assert.assertEquals(
+                new HashSet<>(IntervalUtils.getResolvedIntervals(contigPrefix + "+", sd)),
+                expectedIntervals);
     }
 
     @Test
@@ -431,7 +681,7 @@ public final class IntervalUtilsUnitTest extends BaseTest {
 
     @Test(expectedExceptions = UserException.CouldNotReadInputFile.class)
     public void testMissingIntervalFile() {
-        IntervalUtils.isIntervalFile(BaseTest.publicTestDir + "no_such_intervals.list");
+        IntervalUtils.isIntervalFile(GATKBaseTest.publicTestDir + "no_such_intervals.list");
     }
 
     @Test
@@ -945,7 +1195,7 @@ public final class IntervalUtilsUnitTest extends BaseTest {
     }
 
     private File createTempFile( String tempFilePrefix, String tempFileExtension, String... lines ) throws Exception {
-        File tempFile = BaseTest.createTempFile(tempFilePrefix, tempFileExtension);
+        File tempFile = GATKBaseTest.createTempFile(tempFilePrefix, tempFileExtension);
         FileUtils.writeLines(tempFile, Arrays.asList(lines));
         return tempFile;
     }
@@ -1000,8 +1250,19 @@ public final class IntervalUtilsUnitTest extends BaseTest {
 
     @Test(dataProvider = "loadIntervalsFromFeatureFileData")
     public void testLoadIntervalsFromFeatureFile( final File featureFile, final List<GenomeLoc> expectedIntervals ) {
-        final GenomeLocSortedSet actualIntervals = IntervalUtils.loadIntervals(Arrays.asList(featureFile.getAbsolutePath()), IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, hg19GenomeLocParser);
+        final GenomeLocSortedSet actualIntervals = IntervalUtils.loadIntervals(Collections.singletonList(featureFile.getAbsolutePath()), IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, hg19GenomeLocParser);
         Assert.assertEquals(actualIntervals, expectedIntervals, "Wrong intervals loaded from Feature file " + featureFile.getAbsolutePath());
+    }
+
+    @Test(dataProvider = "loadIntervalsFromFeatureFileData")
+    public void testLoadIntervalsFromFeatureFileInJimfs( final File featureFile, final List<GenomeLoc> expectedIntervals ) throws IOException {
+        try(final FileSystem fs = Jimfs.newFileSystem(Configuration.unix())){
+            final Path jimfsRootPath = fs.getRootDirectories().iterator().next();
+            final Path jimfsCopy = Files.copy(featureFile.toPath(), jimfsRootPath.resolve(featureFile.getName()));
+            final String jimfsPathString = jimfsCopy.toAbsolutePath().toUri().toString();
+            final GenomeLocSortedSet actualIntervals = IntervalUtils.loadIntervals(Collections.singletonList(jimfsPathString), IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, hg19GenomeLocParser);
+            Assert.assertEquals(actualIntervals, expectedIntervals, "Wrong intervals loaded from Feature file " + jimfsPathString);
+        }
     }
 
     // Note: because the file does not exist and all characters are allowed in contig names,
@@ -1009,7 +1270,7 @@ public final class IntervalUtilsUnitTest extends BaseTest {
     // So we'll blow up with MalformedGenomeLoc and not anything related to files
     @Test(expectedExceptions = UserException.MalformedGenomeLoc.class)
     public void testLoadIntervalsFromNonExistentFile() {
-        IntervalUtils.loadIntervals(Arrays.asList(BaseTest.getSafeNonExistentFile("non_existent_file.vcf").getAbsolutePath()), IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, hg19GenomeLocParser);
+        IntervalUtils.loadIntervals(Arrays.asList(GATKBaseTest.getSafeNonExistentFile("non_existent_file.vcf").getAbsolutePath()), IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, hg19GenomeLocParser);
     }
 
     @Test(expectedExceptions = UserException.CouldNotReadInputFile.class)
@@ -1344,5 +1605,536 @@ public final class IntervalUtilsUnitTest extends BaseTest {
     public void testToGatkIntervalString(){
             final SimpleInterval interval = new SimpleInterval("1",1,100);
             Assert.assertEquals(IntervalUtils.locatableToString(interval), "1:1-100");
+    }
+
+    @DataProvider(name = "combineIntervalsTesting")
+    public Object [][] combineIntervalsTesting() {
+
+        // Overlap where one fits in another and an interval that is totally disconnected
+        final List<Locatable> input1_1 = new ArrayList<>();
+        final List<Locatable> input1_2 = new ArrayList<>();
+        final List<Locatable> output1 = new ArrayList<>();
+        input1_1.add(new SimpleInterval("1", 1000, 2000));
+        input1_2.add(new SimpleInterval("1", 500, 2500));
+        input1_2.add(new SimpleInterval("1", 2501, 3000));
+        input1_2.add(new SimpleInterval("1", 4000, 5000));
+        output1.add(new SimpleInterval("1", 500, 999));
+        output1.add(new SimpleInterval("1", 1000, 2000));
+        output1.add(new SimpleInterval("1", 2001, 2500));
+        output1.add(new SimpleInterval("1", 2501, 3000));
+        output1.add(new SimpleInterval("1", 4000, 5000));
+
+        // One is empty
+        final List<Locatable> input2_1 = new ArrayList<>();
+        final List<Locatable> input2_2 = new ArrayList<>();
+        final List<Locatable> output2 = new ArrayList<>();
+        input2_1.add(new SimpleInterval("1", 1000, 2000));
+        output2.add(input2_1.get(0));
+
+        // Other is empty
+        final List<Locatable> input3_1 = new ArrayList<>();
+        final List<Locatable> input3_2 = new ArrayList<>();
+        final List<Locatable> output3 = new ArrayList<>();
+        input3_2.add(new SimpleInterval("1", 1000, 2000));
+        output3.add(input3_2.get(0));
+
+        // Simple overlap
+        final List<Locatable> input4_1 = new ArrayList<>();
+        final List<Locatable> input4_2 = new ArrayList<>();
+        final List<Locatable> output4 = new ArrayList<>();
+        input4_1.add(new SimpleInterval("1", 500, 1000));
+        input4_2.add(new SimpleInterval("1", 750, 1500));
+        output4.add(new SimpleInterval("1", 500, 749));
+        output4.add(new SimpleInterval("1", 750, 1000));
+        output4.add(new SimpleInterval("1", 1001, 1500));
+
+        // No overlap
+        final List<Locatable> input5_1 = new ArrayList<>();
+        final List<Locatable> input5_2 = new ArrayList<>();
+        final List<Locatable> output5 = new ArrayList<>();
+        input5_1.add(new SimpleInterval("1", 500, 1000));
+        input5_2.add(new SimpleInterval("1", 2000, 3000));
+        output5.add(input5_1.get(0));
+        output5.add(input5_2.get(0));
+
+        // One is null
+        final List<Locatable> input6_1 = new ArrayList<>();
+        final List<Locatable> input6_2 = null;
+        final List<Locatable> output6 = new ArrayList<>();
+        input6_1.add(new SimpleInterval("1", 1000, 2000));
+        output6.add(input6_1.get(0));
+
+        // Other is null
+        final List<Locatable> input7_1 = null;
+        final List<Locatable> input7_2 = new ArrayList<>();
+        final List<Locatable> output7 = new ArrayList<>();
+        input7_2.add(new SimpleInterval("1", 1000, 2000));
+        output7.add(input7_2.get(0));
+
+        // single bp overlap at start
+        final List<Locatable> input8_1 = new ArrayList<>();
+        final List<Locatable> input8_2 = new ArrayList<>();
+        final List<Locatable> output8 = new ArrayList<>();
+        input8_1.add(new SimpleInterval("1", 500, 500));
+        input8_2.add(new SimpleInterval("1", 500, 3000));
+        output8.add(new SimpleInterval("1", 500, 500));
+        output8.add(new SimpleInterval("1", 501, 3000));
+
+        // single bp overlap at end
+        final List<Locatable> input9_1 = new ArrayList<>();
+        final List<Locatable> input9_2 = new ArrayList<>();
+        final List<Locatable> output9 = new ArrayList<>();
+        input9_1.add(new SimpleInterval("1", 3000, 3000));
+        input9_2.add(new SimpleInterval("1", 500, 3000));
+        output9.add(new SimpleInterval("1", 500, 2999));
+        output9.add(new SimpleInterval("1", 3000, 3000));
+
+        // single bp overlap in middle
+        final List<Locatable> input10_1 = new ArrayList<>();
+        final List<Locatable> input10_2 = new ArrayList<>();
+        final List<Locatable> output10 = new ArrayList<>();
+        input10_1.add(new SimpleInterval("1", 2000, 2000));
+        input10_2.add(new SimpleInterval("1", 500, 3000));
+        output10.add(new SimpleInterval("1", 500, 1999));
+        output10.add(new SimpleInterval("1", 2000, 2000));
+        output10.add(new SimpleInterval("1", 2001, 3000));
+
+        // One interval overlaps two entirely
+        final List<Locatable> input11_1 = new ArrayList<>();
+        final List<Locatable> input11_2 = new ArrayList<>();
+        final List<Locatable> output11 = new ArrayList<>();
+        input11_1.add(new SimpleInterval("1", 2000, 2000));
+        input11_1.add(new SimpleInterval("1", 2100, 2200));
+        input11_2.add(new SimpleInterval("1", 500, 3000));
+        output11.add(new SimpleInterval("1", 500, 1999));
+        output11.add(new SimpleInterval("1", 2000, 2000));
+        output11.add(new SimpleInterval("1", 2001, 2099));
+        output11.add(new SimpleInterval("1", 2100, 2200));
+        output11.add(new SimpleInterval("1", 2201, 3000));
+
+        // One interval overlaps two partly
+        final List<Locatable> input12_1 = new ArrayList<>();
+        final List<Locatable> input12_2 = new ArrayList<>();
+        final List<Locatable> output12 = new ArrayList<>();
+        input12_1.add(new SimpleInterval("1", 1000, 2000));
+        input12_1.add(new SimpleInterval("1", 3000, 4000));
+        input12_2.add(new SimpleInterval("1", 1500, 3500));
+        output12.add(new SimpleInterval("1", 1000, 1499));
+        output12.add(new SimpleInterval("1", 1500, 2000));
+        output12.add(new SimpleInterval("1", 2001, 2999));
+        output12.add(new SimpleInterval("1", 3000, 3500));
+        output12.add(new SimpleInterval("1", 3501, 4000));
+
+        // Two nulls going in should yield an empty list.
+        final List<Locatable> input13_1 = null;
+        final List<Locatable> input13_2 = null;
+        final List<Locatable> output13 = new ArrayList<>();
+
+        // One interval overlaps two partly then an empty space then a single bp interval
+        final List<Locatable> input14_1 = new ArrayList<>();
+        final List<Locatable> input14_2 = new ArrayList<>();
+        final List<Locatable> output14 = new ArrayList<>();
+        input14_1.add(new SimpleInterval("1", 1000, 2000));
+        input14_1.add(new SimpleInterval("1", 3000, 4000));
+        input14_1.add(new SimpleInterval("1", 5000, 5000));
+        input14_2.add(new SimpleInterval("1", 1500, 3500));
+        output14.add(new SimpleInterval("1", 1000, 1499));
+        output14.add(new SimpleInterval("1", 1500, 2000));
+        output14.add(new SimpleInterval("1", 2001, 2999));
+        output14.add(new SimpleInterval("1", 3000, 3500));
+        output14.add(new SimpleInterval("1", 3501, 4000));
+        output14.add(new SimpleInterval("1", 5000, 5000));
+
+        // One interval overlaps two partly, but not really, since different contig.
+        final List<Locatable> input15_1 = new ArrayList<>();
+        final List<Locatable> input15_2 = new ArrayList<>();
+        final List<Locatable> output15 = new ArrayList<>();
+        input15_1.add(new SimpleInterval("1", 1000, 2000));
+        input15_1.add(new SimpleInterval("1", 3000, 4000));
+        input15_1.add(new SimpleInterval("2", 5000, 5000));
+        input15_2.add(new SimpleInterval("2", 1500, 3500));
+        output15.addAll(input15_1.subList(0,2));
+        output15.addAll(input15_2);
+        output15.add(input15_1.get(2));
+
+        // Multiple contigs
+        final List<Locatable> input16_1 = new ArrayList<>();
+        final List<Locatable> input16_2 = new ArrayList<>();
+        final List<Locatable> output16 = new ArrayList<>();
+        input16_1.add(new SimpleInterval("1", 1000, 2000));
+        input16_1.add(new SimpleInterval("1", 3000, 4000));
+        input16_1.add(new SimpleInterval("2", 5000, 5000));
+        input16_1.add(new SimpleInterval("2", 15000, 16000));
+
+        input16_2.add(new SimpleInterval("1", 3500, 4500));
+        input16_2.add(new SimpleInterval("2", 1500, 3500));
+        input16_2.add(new SimpleInterval("2", 15000, 35000));
+
+        output16.addAll(input16_1.subList(0,1));
+        output16.add(new SimpleInterval("1", 3000, 3499));
+        output16.add(new SimpleInterval("1", 3500, 4000));
+        output16.add(new SimpleInterval("1", 4001, 4500));
+
+        output16.add(input16_2.get(1));
+        output16.add(input16_1.get(2));
+        output16.add(new SimpleInterval("2", 15000, 16000));
+        output16.add(new SimpleInterval("2", 16001, 35000));
+
+
+        // Trivial to combine but has a lot of contigs
+        final List<Locatable> input17_1 = Lists.newArrayList(
+                new SimpleInterval("1", 1000, 2000),
+                new SimpleInterval("1", 5000, 6000),
+                new SimpleInterval("1", 7000, 8000),
+                new SimpleInterval("1", 10000, 11000),
+                new SimpleInterval("1", 12000, 14000),
+                new SimpleInterval("10", 1000, 2000),
+                new SimpleInterval("10", 5000, 6000),
+                new SimpleInterval("10", 7000, 8000),
+                new SimpleInterval("10", 10000, 11000),
+                new SimpleInterval("10", 12000, 14000),
+                new SimpleInterval("11", 1000, 2000),
+                new SimpleInterval("11", 5000, 6000),
+                new SimpleInterval("11", 7000, 8000),
+                new SimpleInterval("11", 10000, 11000),
+                new SimpleInterval("11", 12000, 14000),
+                new SimpleInterval("3", 1000, 2000),
+                new SimpleInterval("3", 5000, 6000),
+                new SimpleInterval("3", 7000, 8000),
+                new SimpleInterval("3", 10000, 11000),
+                new SimpleInterval("3", 12000, 14000),
+                new SimpleInterval("2", 1000, 2000),
+                new SimpleInterval("2", 5000, 6000),
+                new SimpleInterval("2", 7000, 8000),
+                new SimpleInterval("2", 10000, 11000),
+                new SimpleInterval("2", 12000, 14000));
+        final List<Locatable> input17_2 = Lists.newArrayList(
+                new SimpleInterval("10", 1000, 2000),
+                new SimpleInterval("10", 5000, 6000),
+                new SimpleInterval("10", 7000, 8000),
+                new SimpleInterval("10", 10000, 10500),
+                new SimpleInterval("10", 12000, 14000),
+                new SimpleInterval("2", 1000, 2000),
+                new SimpleInterval("2", 5000, 6000),
+                new SimpleInterval("2", 7000, 8000),
+                new SimpleInterval("2", 10000, 11000),
+                new SimpleInterval("2", 12000, 14000),
+                new SimpleInterval("3", 1000, 2000),
+                new SimpleInterval("3", 5000, 6000),
+                new SimpleInterval("3", 7000, 8000),
+                new SimpleInterval("3", 10000, 11000),
+                new SimpleInterval("3", 12000, 14000));
+        final List<Locatable> output17 = Lists.newArrayList(
+                new SimpleInterval("1", 1000, 2000),
+                new SimpleInterval("1", 5000, 6000),
+                new SimpleInterval("1", 7000, 8000),
+                new SimpleInterval("1", 10000, 11000),
+                new SimpleInterval("1", 12000, 14000),
+                new SimpleInterval("2", 1000, 2000),
+                new SimpleInterval("2", 5000, 6000),
+                new SimpleInterval("2", 7000, 8000),
+                new SimpleInterval("2", 10000, 11000),
+                new SimpleInterval("2", 12000, 14000),
+                new SimpleInterval("3", 1000, 2000),
+                new SimpleInterval("3", 5000, 6000),
+                new SimpleInterval("3", 7000, 8000),
+                new SimpleInterval("3", 10000, 11000),
+                new SimpleInterval("3", 12000, 14000),
+                new SimpleInterval("10", 1000, 2000),
+                new SimpleInterval("10", 5000, 6000),
+                new SimpleInterval("10", 7000, 8000),
+                new SimpleInterval("10", 10000, 10500),
+                new SimpleInterval("10", 10501, 11000),
+                new SimpleInterval("10", 12000, 14000),
+                new SimpleInterval("11", 1000, 2000),
+                new SimpleInterval("11", 5000, 6000),
+                new SimpleInterval("11", 7000, 8000),
+                new SimpleInterval("11", 10000, 11000),
+                new SimpleInterval("11", 12000, 14000)
+                );
+
+        return new Object[][]{
+                {input1_1, input1_2, output1},
+                {input2_1, input2_2, output2},
+                {input3_1, input3_2, output3},
+                {input4_1, input4_2, output4},
+                {input5_1, input5_2, output5},
+                {input6_1, input6_2, output6},
+                {input7_1, input7_2, output7},
+                {input8_1, input8_2, output8},
+                {input9_1, input9_2, output9},
+                {input10_1, input10_2, output10},
+                {input11_1, input11_2, output11},
+                {input12_1, input12_2, output12},
+                {input13_1, input13_2, output13},
+                {input14_1, input14_2, output14},
+                {input15_1, input15_2, output15},
+                {input16_1, input16_2, output16},
+                {input17_1, input17_2, output17},
+        };
+    }
+
+    @Test(expectedExceptions = UserException.BadInput.class)
+    public void testCombineIntervalsErrorOverlapping() {
+        final List<Locatable> input1_1 = new ArrayList<>();
+        final List<Locatable> input1_2 = new ArrayList<>();
+        input1_1.add(new SimpleInterval("1", 1000, 2000));
+        input1_1.add(new SimpleInterval("1", 2000, 3000));
+        input1_2.add(new SimpleInterval("1", 500, 2500));
+        input1_2.add(new SimpleInterval("1", 2501, 3000));
+        input1_2.add(new SimpleInterval("1", 4000, 5000));
+        IntervalUtils.combineAndSortBreakpoints(input1_1, input1_2, getSamSequenceDictionaryForCombineIntervalTests());
+    }
+
+    @Test(expectedExceptions = UserException.BadInput.class)
+    public void testCombineIntervalsErrorOverlapping2() {
+        final List<Locatable> input1_1 = new ArrayList<>();
+        final List<Locatable> input1_2 = new ArrayList<>();
+        input1_1.add(new SimpleInterval("1", 1000, 2000));
+        input1_2.add(new SimpleInterval("1", 500, 2500));
+        input1_2.add(new SimpleInterval("1", 2501, 3000));
+        input1_2.add(new SimpleInterval("1", 4000, 5000));
+        input1_2.add(new SimpleInterval("1", 4000, 5000));
+        IntervalUtils.combineAndSortBreakpoints(input1_1, input1_2, getSamSequenceDictionaryForCombineIntervalTests());
+    }
+
+    /**
+     * Tests the sorting as well when using combining intervals
+     */
+    @Test(dataProvider = "combineIntervalsTesting")
+    public void testCombineIntervalsWithShuffling(List<Locatable> locatables1, List<Locatable> locatables2, List<Locatable> gtOutput) {
+
+        if (locatables1 != null) {
+            Collections.shuffle(locatables1, new Random(4040));
+        }
+        if (locatables2 != null) {
+            Collections.shuffle(locatables2, new Random(4040));
+        }
+
+        final SAMSequenceDictionary dictionary = getSamSequenceDictionaryForCombineIntervalTests();
+
+        final List<Locatable> outputs = IntervalUtils.combineAndSortBreakpoints(locatables1, locatables2, dictionary);
+        Assert.assertEquals(outputs.size(), gtOutput.size());
+        Assert.assertEquals(outputs, gtOutput);
+    }
+
+    private SAMSequenceDictionary getSamSequenceDictionaryForCombineIntervalTests() {
+        return new SAMSequenceDictionary(
+                Arrays.asList(new SAMSequenceRecord("1", 500000),
+                        new SAMSequenceRecord("2", 500000),
+                        new SAMSequenceRecord("3", 500000),
+                        new SAMSequenceRecord("4", 500000),
+                        new SAMSequenceRecord("10", 500000),
+                        new SAMSequenceRecord("11", 500000)));
+    }
+
+    @DataProvider(name = "overlappingData")
+    public Object [][] createOverlappingData() {
+        final List<SimpleInterval> k = Arrays.asList(new SimpleInterval("1", 100, 500));
+        final List<SimpleInterval> k3 = Arrays.asList(new SimpleInterval("1", 100, 500),
+                new SimpleInterval("2", 100, 500));
+        final List<SimpleInterval> k4 = Arrays.asList(new SimpleInterval("1", 100, 500),
+                new SimpleInterval("1", 800, 800),
+                new SimpleInterval("2", 300, 500));
+        final List<SimpleInterval> k5 = Arrays.asList(new SimpleInterval("1", 100, 300),
+                new SimpleInterval("1", 301, 400));
+
+        final List<SimpleInterval> k6 = Arrays.asList(
+                new SimpleInterval("1",10001,10500),
+                new SimpleInterval("1", 52500, 109750),
+                new SimpleInterval("1", 109751, 230500),
+                new SimpleInterval("1", 230501, 258500));
+
+        final List<SimpleInterval> vs = Arrays.asList(
+                new SimpleInterval("1", 100, 200),
+                new SimpleInterval("1", 300, 800)
+        );
+        final List<SimpleInterval> vs2 = Arrays.asList(
+                new SimpleInterval("1", 100, 200),
+                new SimpleInterval("1", 700, 800)
+        );
+        final List<SimpleInterval> vs3 = Arrays.asList(
+                new SimpleInterval("1", 800, 1200),
+                new SimpleInterval("2", 100, 800)
+        );
+        final List<SimpleInterval> vs5 = Arrays.asList(
+                new SimpleInterval("1", 100, 200),
+                new SimpleInterval("1", 201, 500)
+        );
+        final List<SimpleInterval> vs6 = Arrays.asList(
+                new SimpleInterval("1",5000, 60000),
+                new SimpleInterval("1",70000, 100000),
+                new SimpleInterval("1",120000, 220000),
+                new SimpleInterval("1",230000, 300000)
+        );
+
+        final List<SimpleInterval> vs7 = Arrays.asList(
+                new SimpleInterval("1",50, 200)
+        );
+
+        return new Object[][]{
+                // The new ArrayList calls are to preserve order since we may shuffle inputs.
+                // Simple tests
+                {k, vs, ImmutableMap.of(k.get(0), new ArrayList<>(vs))},
+                {k, vs2, ImmutableMap.of(k.get(0), new ArrayList<>(vs2).subList(0,1))},
+                {k, vs3, ImmutableMap.of(k.get(0), Collections.emptyList())},
+
+                // Slightly more sophisticated tests.
+                {k3, vs, ImmutableMap.of(k3.get(0), new ArrayList<>(vs), k3.get(1), Collections.emptyList())},
+                {k4, vs, ImmutableMap.of(k4.get(0), new ArrayList<>(vs), k4.get(1), new ArrayList<>(vs).subList(1,2), k4.get(2), Collections.emptyList())},
+                {k5, vs5, ImmutableMap.of(k5.get(0), new ArrayList<>(vs5), k5.get(1), new ArrayList<>(vs5).subList(1,2))},
+                {k6, vs6, ImmutableMap.of(k6.get(0), new ArrayList<>(vs6).subList(0,1), k6.get(1), new ArrayList<>(vs6).subList(0,2),
+                        k6.get(2), new ArrayList<>(vs6).subList(2,4), k6.get(3), new ArrayList<>(vs6).subList(3,4))},
+                {k, vs7, ImmutableMap.of(k.get(0), new ArrayList<>(vs7))},
+        };
+    }
+
+    @Test(dataProvider = "overlappingData")
+    public void testCreateOverlapMap(List<Locatable> locatables1, List<Locatable> locatables2, Map<Locatable, List<Locatable>> gtOutput) {
+        assertCreateOverlapMap(locatables1, locatables2, gtOutput);
+    }
+
+    @Test(dataProvider = "overlappingData")
+    public void testCreateOverlapMapUnsorted(List<Locatable> locatables1, List<Locatable> locatables2, Map<Locatable, List<Locatable>> gtOutput) {
+
+        if (locatables1 != null) {
+            Collections.shuffle(locatables1, new Random(1234));
+        }
+        if (locatables2 != null) {
+            Collections.shuffle(locatables2, new Random(4311));
+        }
+
+        assertCreateOverlapMap(locatables1, locatables2, gtOutput);
+    }
+
+    private void assertCreateOverlapMap(List<Locatable> locatables1, List<Locatable> locatables2, Map<Locatable, List<Locatable>> gtOutput) {
+        final Map<Locatable, List<Locatable>> outputs = IntervalUtils.createOverlapMap(locatables1, locatables2,
+                getSamSequenceDictionaryForCombineIntervalTests());
+        Assert.assertEquals(outputs.size(), gtOutput.size());
+        Assert.assertEquals(outputs.keySet().size(), new HashSet<>(locatables1).size());
+        Assert.assertTrue(Sets.difference(outputs.keySet(), gtOutput.keySet()).size() == 0);
+
+        for (final Map.Entry<Locatable, List<Locatable>> overlap : outputs.entrySet()) {
+            Assert.assertEquals(overlap.getValue(), gtOutput.get(overlap.getKey()));
+        }
+    }
+
+    @Test(dataProvider = "genomicSortingTests")
+    public void testBasicGenomicSortOfLocatable(final List<Locatable> testList, final List<Locatable> gtList) throws IOException {
+
+        final SAMSequenceDictionary dictionary = SAMSequenceDictionaryExtractor.extractDictionary(new File(FULL_HG19_DICT).toPath());
+        testList.sort(IntervalUtils.getDictionaryOrderComparator(dictionary));
+        Assert.assertEquals(testList, gtList);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testBasicGenomicSortOfLocatableErrorContigNotInDictionary() throws IOException {
+        final List<Locatable> testList = Arrays.asList(
+               new SimpleInterval("2", 1500, 2000),
+               new SimpleInterval("11", 1000, 2000),
+               new SimpleInterval("1", 1500, 2000),
+               new SimpleInterval("10", 1500, 2000),
+               new SimpleInterval("10", 2500, 3000),
+               new SimpleInterval("X", 2500, 3000),
+               new SimpleInterval("X", 3500, 4000),
+               new SimpleInterval("MT", 3500, 4000),
+               new SimpleInterval("AL1234.123NOT_IN_DICT", 3500, 4000),
+               new SimpleInterval("GL000207.1", 3500, 4000),
+               new SimpleInterval("Y", 3500, 4000),
+               new SimpleInterval("GL1234.123NOT_IN_DICT", 3700, 4000),
+               new SimpleInterval("GL1234.123NOT_IN_DICT", 3500, 4000)
+        );
+
+        final SAMSequenceDictionary dictionary = SAMSequenceDictionaryExtractor.extractDictionary(new File(FULL_HG19_DICT).toPath());
+        testList.sort(IntervalUtils.getDictionaryOrderComparator(dictionary));
+    }
+
+    @DataProvider(name = "genomicSortingTests")
+    public Object[][] createGenomicSortTests() {
+        final List<Locatable> list1 = Arrays.asList(
+                new SimpleInterval("2", 1500, 2000),
+                new SimpleInterval("1", 1000, 2000),
+                new SimpleInterval("1", 1500, 2000),
+                new SimpleInterval("10", 1500, 2000)
+        );
+        final List<Locatable> gtList1 = Arrays.asList(
+                list1.get(1), list1.get(2), list1.get(0), list1.get(3));
+
+        final List<Locatable> list2 = Arrays.asList(
+                new SimpleInterval("2", 1500, 2000),
+                new SimpleInterval("11", 1000, 2000),
+                new SimpleInterval("1", 1500, 2000),
+                new SimpleInterval("10", 1500, 2000),
+                new SimpleInterval("10", 2500, 3000),
+                new SimpleInterval("X", 2500, 3000),
+                new SimpleInterval("X", 3500, 4000),
+                new SimpleInterval("MT", 3500, 4000),
+                new SimpleInterval("GL000207.1", 3500, 4000),
+                new SimpleInterval("Y", 3500, 4000)
+        );
+        final List<Locatable> gtList2 = Arrays.asList(
+                list2.get(2), list2.get(0), list2.get(3), list2.get(4), list2.get(1), list2.get(5),
+                list2.get(6), list2.get(9), list2.get(7), list2.get(8));
+
+        return new Object[][]{
+                {list1, gtList1},
+                {list2, gtList2}
+        };
+    }
+
+    @DataProvider
+    public Object[][] createGetIntervalsWithFlanksData() {
+        final SAMSequenceDictionary dictionary = ArtificialReadUtils.createArtificialSamHeader().getSequenceDictionary();
+
+        return new Object[][] {
+                // input intervals, padding, dictionary, expected output intervals
+                { Arrays.asList(new SimpleInterval("1", 1, 100), new SimpleInterval("1", 150, 200), new SimpleInterval("1", 300, 400), new SimpleInterval("2", 50, 150), new SimpleInterval("2", 175, 250)),
+                  0, dictionary,
+                  Arrays.asList(new SimpleInterval("1", 1, 100), new SimpleInterval("1", 150, 200), new SimpleInterval("1", 300, 400), new SimpleInterval("2", 50, 150), new SimpleInterval("2", 175, 250))
+                },
+                { Arrays.asList(new SimpleInterval("1", 1, 100), new SimpleInterval("1", 150, 200), new SimpleInterval("1", 300, 400), new SimpleInterval("2", 50, 150), new SimpleInterval("2", 175, 250)),
+                  20, dictionary,
+                  Arrays.asList(new SimpleInterval("1", 1, 120), new SimpleInterval("1", 130, 220), new SimpleInterval("1", 280, 420), new SimpleInterval("2", 30, 270))
+                },
+                { Arrays.asList(new SimpleInterval("1", 1, 100), new SimpleInterval("1", 150, 200), new SimpleInterval("1", 300, 400), new SimpleInterval("2", 50, 150), new SimpleInterval("2", 175, 250)),
+                  25, dictionary,
+                  Arrays.asList(new SimpleInterval("1", 1, 225), new SimpleInterval("1", 275, 425), new SimpleInterval("2", 25, 275))
+                },
+                { Arrays.asList(new SimpleInterval("1", 1, 100), new SimpleInterval("1", 150, 200), new SimpleInterval("1", 300, 400), new SimpleInterval("2", 50, 150), new SimpleInterval("2", 175, 250)),
+                  50, dictionary,
+                  Arrays.asList(new SimpleInterval("1", 1, 450), new SimpleInterval("2", 1, 300))
+                }
+        };
+    }
+
+    @Test(dataProvider = "createGetIntervalsWithFlanksData")
+    public void testGetIntervalsWithFlanks(final List<SimpleInterval> inputIntervals, final int padding, final SAMSequenceDictionary dictionary, final List<SimpleInterval> expectedIntervals) {
+        final List<SimpleInterval> result = IntervalUtils.getIntervalsWithFlanks(inputIntervals, padding, dictionary);
+        Assert.assertEquals(result, expectedIntervals);
+    }
+
+    @DataProvider
+    public Object[][] createGroupIntervalsByContigTestData() {
+        return new Object[][] {
+                // input intervals, expected output
+                { Arrays.asList(new SimpleInterval("1", 1, 100), new SimpleInterval("1", 150, 200), new SimpleInterval("1", 300, 400), new SimpleInterval("2", 50, 150), new SimpleInterval("2", 175, 250)),
+                  Arrays.asList(Arrays.asList(new SimpleInterval("1", 1, 100), new SimpleInterval("1", 150, 200), new SimpleInterval("1", 300, 400)), Arrays.asList(new SimpleInterval("2", 50, 150), new SimpleInterval("2", 175, 250)))
+                },
+                { Arrays.asList(new SimpleInterval("1", 1, 100), new SimpleInterval("2", 150, 200), new SimpleInterval("3", 300, 400), new SimpleInterval("5", 50, 150), new SimpleInterval("6", 175, 250)),
+                  Arrays.asList(Arrays.asList(new SimpleInterval("1", 1, 100)), Arrays.asList(new SimpleInterval("2", 150, 200)), Arrays.asList(new SimpleInterval("3", 300, 400)), Arrays.asList(new SimpleInterval("5", 50, 150)), Arrays.asList(new SimpleInterval("6", 175, 250)))
+                },
+                { Arrays.asList(new SimpleInterval("1", 1, 100), new SimpleInterval("1", 150, 200)),
+                  Arrays.asList(Arrays.asList(new SimpleInterval("1", 1, 100), new SimpleInterval("1", 150, 200)))
+                },
+                { Arrays.asList(new SimpleInterval("1", 1, 100)),
+                  Arrays.asList(Arrays.asList(new SimpleInterval("1", 1, 100)))
+                },
+        };
+    }
+
+    @Test(dataProvider = "createGroupIntervalsByContigTestData")
+    public void testGroupIntervalsByContig(final List<SimpleInterval> inputIntervals, final List<List<SimpleInterval>> expectedResult) {
+        final List<List<SimpleInterval>> result = IntervalUtils.groupIntervalsByContig(inputIntervals);
+        Assert.assertEquals(result, expectedResult);
     }
 }

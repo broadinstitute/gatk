@@ -13,8 +13,6 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.broadinstitute.hellbender.utils.read.ReadUtils.*;
-
 /**
  * A comprehensive clipping tool.
  *
@@ -388,9 +386,9 @@ public class ReadClipper {
      * @return a new read without adaptor sequence
      */
     private GATKRead hardClipAdaptorSequence () {
-        final int adaptorBoundary = getAdaptorBoundary(read);
+        final int adaptorBoundary = read.getAdaptorBoundary();
 
-        if (adaptorBoundary == CANNOT_COMPUTE_ADAPTOR_BOUNDARY || !isInsideRead(read, adaptorBoundary)) {
+        if (adaptorBoundary == ReadUtils.CANNOT_COMPUTE_ADAPTOR_BOUNDARY || !ReadUtils.isInsideRead(read, adaptorBoundary)) {
             return read;
         }
 
@@ -470,7 +468,7 @@ public class ReadClipper {
             return read;
         }
         if ((clippingOp == ClippingRepresentation.SOFTCLIP_BASES) && read.isUnmapped()) {
-            throw new GATKException("Cannot softclip read "+read.commonToString()+" by reference coordinates because it is unmapped");
+            throw new GATKException("Cannot soft-clip read "+read.commonToString()+" by reference coordinates because it is unmapped");
         }
 
         final int start;

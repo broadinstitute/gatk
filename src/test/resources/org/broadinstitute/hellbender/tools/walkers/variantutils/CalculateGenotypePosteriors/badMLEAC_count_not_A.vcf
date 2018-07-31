@@ -1,0 +1,6 @@
+##fileformat=VCFv4.2
+##INFO=<ID=MLEAC,Number=R,Type=Integer,Description="Maximum likelihood expectation (MLE) for the allele counts (not necessarily the same as the AC), for each ALT allele, in the same order as listed">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##contig=<ID=chr1,length=248956422>
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	USH_C1	USH_F1	USH_M1
+chr1	3872413	.	AG	A	400.09	PASS	MLEAC=1	GT	0/0	0/0	0/1

@@ -10,7 +10,7 @@ import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.OrientationBiasFilterConstants;
 import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.OrientationBiasUtils;
 import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.OrientationSampleTransitionSummary;
-import org.broadinstitute.hellbender.tools.picard.analysis.artifacts.Transition;
+import org.broadinstitute.hellbender.utils.artifacts.Transition;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -20,7 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class FilterByOrientationBiasIntegrationTest extends CommandLineProgramTest {
-    private static final File TEST_RESOURCE_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/exome/orientationbiasvariantfilter/");
+    private static final File TEST_RESOURCE_DIR = new File(toolsTestDir, "exome/orientationbiasvariantfilter/");
     public static final String emptyVcf = TEST_RESOURCE_DIR.getAbsolutePath() + "/empty.vcf";
     public static final String emptyVcfNoSamples = TEST_RESOURCE_DIR.getAbsolutePath() + "/empty_and_no_samples.vcf";
     public static final String smallM2VcfMore = TEST_RESOURCE_DIR.getAbsolutePath() + "/small_m2_more_variants.vcf";
@@ -87,6 +87,8 @@ public class FilterByOrientationBiasIntegrationTest extends CommandLineProgramTe
         Assert.assertEquals(summaries.stream().filter(s -> s.getSample().equals("TUMOR")).map(s -> s.getArtifactModeComplement()).filter(am -> am.equals(Transition.CtoA)).count(), 1);
         Assert.assertEquals(summaries.stream().filter(s -> s.getArtifactModeComplement().equals(s.getArtifactMode().complement())).count(), summaries.size());
         Assert.assertEquals(summaries.stream().filter(s -> s.getSample().equals("TUMOR")).map(s -> s.getArtifactModeComplement()).filter(am -> am.equals(Transition.CtoA)).count(), 1);
+        Assert.assertEquals(summaries.stream().mapToLong(s -> s.getNumArtifactModeFiltered()).sum(), 4);
+
     }
 
     @Test

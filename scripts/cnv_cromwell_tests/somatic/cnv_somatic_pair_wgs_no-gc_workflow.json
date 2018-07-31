@@ -1,0 +1,14 @@
+{
+  "CNVSomaticPairWorkflow.common_sites": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_somatic_workflows_test_files/common_snps_sample-chr20.interval_list",
+  "CNVSomaticPairWorkflow.gatk_docker": "__GATK_DOCKER__",
+  "CNVSomaticPairWorkflow.intervals": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_somatic_workflows_test_files/chr20.interval_list",
+  "CNVSomaticPairWorkflow.normal_bam": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_somatic_workflows_test_files/HCC1143_BL-n1-chr20-downsampled.deduplicated.bam",
+  "CNVSomaticPairWorkflow.normal_bam_idx": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_somatic_workflows_test_files/HCC1143_BL-n1-chr20-downsampled.deduplicated.bam.bai",
+  "CNVSomaticPairWorkflow.bin_length": "10000",
+  "CNVSomaticPairWorkflow.read_count_pon": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_somatic_workflows_test_files/wgs-no-gc.pon.hdf5",
+  "CNVSomaticPairWorkflow.ref_fasta_dict": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_somatic_workflows_test_files/human_g1k_v37.chr-20.truncated.dict",
+  "CNVSomaticPairWorkflow.ref_fasta_fai": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_somatic_workflows_test_files/human_g1k_v37.chr-20.truncated.fasta.fai",
+  "CNVSomaticPairWorkflow.ref_fasta": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_somatic_workflows_test_files/human_g1k_v37.chr-20.truncated.fasta",
+  "CNVSomaticPairWorkflow.tumor_bam": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_somatic_workflows_test_files/HCC1143-t1-chr20-downsampled.deduplicated.bam",
+  "CNVSomaticPairWorkflow.tumor_bam_idx": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_somatic_workflows_test_files/HCC1143-t1-chr20-downsampled.deduplicated.bam.bai"
+}

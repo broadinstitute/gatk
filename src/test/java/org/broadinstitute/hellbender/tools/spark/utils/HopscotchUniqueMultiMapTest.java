@@ -1,11 +1,11 @@
 package org.broadinstitute.hellbender.tools.spark.utils;
 
 import org.broadinstitute.hellbender.tools.spark.utils.HopscotchMapTest.IntPair;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-public class HopscotchUniqueMultiMapTest extends BaseTest {
+public class HopscotchUniqueMultiMapTest extends GATKBaseTest {
     // a HopscotchUniqueMultiMap is just like a HopscotchMultiMap, which is tested separately, except that it
     // cannot contain multiple equivalent entries.
     // multiple entries for a given key, yes.  multiple entries equal to each other, no.

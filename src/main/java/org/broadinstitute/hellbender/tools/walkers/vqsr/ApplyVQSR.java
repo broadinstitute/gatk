@@ -11,7 +11,7 @@ import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
+import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.ReadsContext;
@@ -20,7 +20,6 @@ import org.broadinstitute.hellbender.engine.MultiVariantWalker;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
-import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -56,9 +55,9 @@ import java.util.regex.Pattern;
  * assigned a score and filter status.</p>
  *
  * <p>VQSR is probably the hardest part of the Best Practices to get right, so be sure to read the
- * <a href='https://www.broadinstitute.org/gatk/guide/article?id=39'>method documentation</a>,
- * <a href='https://www.broadinstitute.org/gatk/guide/article?id=1259'>parameter recommendations</a> and
- * <a href='https://www.broadinstitute.org/gatk/guide/article?id=2805'>tutorial</a> to really understand what these
+ * <a href='https://software.broadinstitute.org/gatk/guide/article?id=39'>method documentation</a>,
+ * <a href='https://software.broadinstitute.org/gatk/guide/article?id=1259'>parameter recommendations</a> and
+ * <a href='https://software.broadinstitute.org/gatk/guide/article?id=2805'>tutorial</a> to really understand what these
  * tools do and how to use them for best results on your own data.</p>
  *
  * <h3>Inputs</h3>
@@ -76,28 +75,28 @@ import java.util.regex.Pattern;
  *
  * <h3>Usage examples</h3>
  *
- * <h4>Applying rcelibration/filtering to SNPs</h4>
+ * <h4>Applying recalibration/filtering to SNPs</h4>
  * <pre>
- * ./gatk-launch ApplyVQSR \
- *   -R reference.fasta \
- *   -V input.vcf \
- *   -O output.vcf \
- *   --ts_filter_level 99.0 \
- *   -tranchesFile output.tranches \
- *   --recalFile output.recal \
+ * gatk ApplyVQSR \
+ *   -R Homo_sapiens_assembly38.fasta \
+ *   -V input.vcf.gz \
+ *   -O output.vcf.gz \
+ *   --truth-sensitivity-filter-level 99.0 \
+ *   --tranches-file output.tranches \
+ *   --recal-file output.recal \
  *   -mode SNP
  * </pre>
  *
  * <h4>Allele-specific version of the SNP filtering (beta)</h4>
  * <pre>
- * ./gatk-launch ApplyVQSR \
- *   -R reference.fasta \
- *   -V input.vcf \
- *   -O output.vcf \
+ * gatk ApplyVQSR \
+ *   -R Homo_sapiens_assembly38.fasta \
+ *   -V input.vcf.gz \
+ *   -O output.vcf.gz \
  *   -AS \
- *   --ts_filter_level 99.0 \
- *   -tranchesFile output.AS.tranches \
- *   --recalFile output.AS.recal \
+ *   --truth-sensitivity-filter-level 99.0 \
+ *   --tranches-file output.AS.tranches \
+ *   --recal-file output.AS.recal \
  *   -mode SNP 
  * </pre>
  * <p>Note that the tranches and recalibration files must have been produced by an allele-specific run of
@@ -125,7 +124,7 @@ import java.util.regex.Pattern;
 @CommandLineProgramProperties(
         summary = "Apply a score cutoff to filter variants based on a recalibration table",
         oneLineSummary = " Apply a score cutoff to filter variants based on a recalibration table",
-        programGroup = VariantProgramGroup.class
+        programGroup = VariantFilteringProgramGroup.class
 )
 @DocumentedFeature
 public class ApplyVQSR extends MultiVariantWalker {
@@ -139,10 +138,10 @@ public class ApplyVQSR extends MultiVariantWalker {
     /////////////////////////////
     // Inputs
     /////////////////////////////
-    @Argument(fullName="recal_file", shortName="recalFile", doc="The input recal file used by ApplyRecalibration", optional=false)
+    @Argument(fullName="recal-file", doc="The input recal file used by ApplyRecalibration", optional=false)
     private FeatureInput<VariantContext> recal;
 
-    @Argument(fullName="tranches_file", shortName="tranchesFile", doc="The input tranches file describing where to cut the data", optional=true)
+    @Argument(fullName="tranches-file", doc="The input tranches file describing where to cut the data", optional=true)
     private File TRANCHES_FILE;
 
     /////////////////////////////
@@ -157,30 +156,30 @@ public class ApplyVQSR extends MultiVariantWalker {
     /////////////////////////////
     // Command Line Arguments
     /////////////////////////////
-    @Argument(fullName="ts_filter_level", shortName="ts_filter_level", doc="The truth sensitivity level at which to start filtering", optional=true)
+    @Argument(fullName="truth-sensitivity-filter-level", shortName="ts-filter-level", doc="The truth sensitivity level at which to start filtering", optional=true)
     private Double TS_FILTER_LEVEL = null;
 
     /**
      *  Filter the input file based on allele-specific recalibration data.  See tool docs for site-level and allele-level filtering details.
      *  Requires a .recal file produced using an allele-specific run of VariantRecalibrator.
      */
-    @Argument(fullName="useAlleleSpecificAnnotations", shortName="AS", doc="If specified, the tool will attempt to apply a filter to each allele based on the input tranches and allele-specific .recal file.", optional=true)
+    @Argument(fullName="use-allele-specific-annotations", shortName="AS", doc="If specified, the tool will attempt to apply a filter to each allele based on the input tranches and allele-specific .recal file.", optional=true)
     private boolean useASannotations = false;
 
     @Advanced
-    @Argument(fullName="lodCutoff", shortName="lodCutoff", doc="The VQSLOD score below which to start filtering", optional=true)
+    @Argument(fullName="lod-score-cutoff", doc="The VQSLOD score below which to start filtering", optional=true)
     protected Double VQSLOD_CUTOFF = null;
 
     /**
      * For this to work properly, the -ignoreFilter argument should also be applied to the VariantRecalibration command.
      */
-    @Argument(fullName="ignore_filter", shortName="ignoreFilter", doc="If specified, the recalibration will be applied to variants marked as filtered by the specified filter name in the input VCF file", optional=true)
+    @Argument(fullName="ignore-filter", doc="If specified, the recalibration will be applied to variants marked as filtered by the specified filter name in the input VCF file", optional=true)
     private List<String> IGNORE_INPUT_FILTERS = new ArrayList<>();
 
-    @Argument(fullName="ignore_all_filters", shortName="ignoreAllFilters", doc="If specified, the variant recalibrator will ignore all input filters. Useful to rerun the VQSR from a filtered output file.", optional=true)
+    @Argument(fullName="ignore-all-filters", doc="If specified, the variant recalibrator will ignore all input filters. Useful to rerun the VQSR from a filtered output file.", optional=true)
     private boolean IGNORE_ALL_FILTERS = false;
 
-    @Argument(fullName="excludeFiltered", shortName="ef", doc="Don't output filtered loci after applying the recalibration", optional=true)
+    @Argument(fullName="exclude-filtered", doc="Don't output filtered loci after applying the recalibration", optional=true)
     private boolean EXCLUDE_FILTERED = false;
 
     @Argument(fullName = "mode", shortName = "mode", doc = "Recalibration mode to employ: 1.) SNP for recalibrating only SNPs (emitting indels untouched in the output VCF); 2.) INDEL for indels; and 3.) BOTH for recalibrating both SNPs and indels simultaneously.", optional=true)
@@ -190,7 +189,7 @@ public class ApplyVQSR extends MultiVariantWalker {
     // Private Member Variables
     /////////////////////////////
     private VariantContextWriter vcfWriter;
-    final private List<Tranche> tranches = new ArrayList<>();
+    final private List<TruthSensitivityTranche> tranches = new ArrayList<>();
     final private Set<String> ignoreInputFilterSet = new TreeSet<>();
     final static private String listPrintSeparator = ",";
     final static private String trancheFilterString = "VQSRTranche";
@@ -209,7 +208,7 @@ public class ApplyVQSR extends MultiVariantWalker {
     public void onTraversalStart() {
         if( TS_FILTER_LEVEL != null ) {
             try {
-                for (final Tranche t : Tranche.readTranches(TRANCHES_FILE)) {
+                for (final TruthSensitivityTranche t : TruthSensitivityTranche.readTranches(TRANCHES_FILE)) {
                     if (t.targetTruthSensitivity >= TS_FILTER_LEVEL) {
                         tranches.add(t);
                     }
@@ -252,7 +251,7 @@ public class ApplyVQSR extends MultiVariantWalker {
 
             if( tranches.size() >= 2 ) {
                 for( int iii = 0; iii < tranches.size() - 1; iii++ ) {
-                    final Tranche t = tranches.get(iii);
+                    final TruthSensitivityTranche t = tranches.get(iii);
                     hInfo.add(new VCFFilterHeaderLine(t.name, String.format("Truth sensitivity tranche level for " + t.model.toString() + " model at VQS Lod: " + t.minVQSLod + " <= x < " + tranches.get(iii+1).minVQSLod)));
                 }
             }
@@ -444,7 +443,7 @@ public class ApplyVQSR extends MultiVariantWalker {
         String filterString = null;
         if( TS_FILTER_LEVEL != null ) {
             for( int i = tranches.size() - 1; i >= 0; i-- ) {
-                final Tranche tranche = tranches.get(i);
+                final TruthSensitivityTranche tranche = tranches.get(i);
                 if( lod >= tranche.minVQSLod ) {
                     if( i == tranches.size() - 1 ) {
                         filterString = VCFConstants.PASSES_FILTERS_v4;

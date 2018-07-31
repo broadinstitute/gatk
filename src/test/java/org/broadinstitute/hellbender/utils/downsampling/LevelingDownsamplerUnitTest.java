@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.utils.downsampling;
 
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -11,7 +11,7 @@ import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 
-public final class LevelingDownsamplerUnitTest extends BaseTest {
+public final class LevelingDownsamplerUnitTest extends GATKBaseTest {
 
     private static final class LevelingDownsamplerUniformStacksTest extends TestDataProvider {
         public enum DataStructure { LINKED_LIST, ARRAY_LIST }

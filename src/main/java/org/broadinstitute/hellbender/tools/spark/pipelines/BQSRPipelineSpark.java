@@ -11,7 +11,6 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.SparkPipelineProgramGroup;
 import org.broadinstitute.hellbender.engine.ReadContextData;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.AddContextDataToReadSpark;
@@ -29,22 +28,53 @@ import org.broadinstitute.hellbender.utils.recalibration.BaseRecalibrationEngine
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationReport;
 import org.broadinstitute.hellbender.utils.variant.GATKVariant;
+import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 
 import java.util.List;
 
 /**
- * BQSR. The final result is analysis-ready reads.
+ * The full BQSR pipeline in one tool to run on Spark.
+ * The final result is analysis-ready reads.
+ * This runs BaseRecalibrator and then ApplyBQSR to give a BAM with recalibrated base qualities.
+ *
+ *
+ * <h3>Input</h3>
+ * <ul>
+ *     <li>A BAM or CRAM file containing input read data</li>
+ *     <li> A database of known polymorphic sites to skip over.</li>
+ * </ul>
+ *
+ * <h3>Output</h3>
+ * <p> A BAM or CRAM file containing the recalibrated read data</p>
+ *
+ * <h3>Usage example</h3>
+ * <pre>
+ * gatk BQSRPipelineSpark \
+ *   -R gs://my-gcs-bucket/reference.fasta \
+ *   -I gs://my-gcs-bucket/input.bam \
+ *   --known-sites gs://my-gcs-bucket/sites_of_variation.vcf \
+ *   --known-sites gs://my-gcs-bucket/another/optional/setOfSitesToMask.vcf \
+ *   -O gs://my-gcs-bucket/output.bam \
+ *   -- \
+ *   --sparkRunner GCS \
+ *   --cluster my-dataproc-cluster
+ * </pre>
  */
 @CommandLineProgramProperties(
-        summary = "This tools performs 2 steps of BQSR - creation of recalibration tables and rewriting of the bam, without writing the tables to disk. ",
-        oneLineSummary = "Both steps of BQSR (BaseRecalibrator and ApplyBQSR) on Spark",
-        usageExample = "BQSRPipelineSpark -I in.bam --knownSites in.vcf -O out.bam",
-        programGroup = SparkPipelineProgramGroup.class
+        summary = BQSRPipelineSpark.USAGE_SUMMARY,
+        oneLineSummary = BQSRPipelineSpark.USAGE_ONE_LINE_SUMMARY,
+        usageExample = "BQSRPipelineSpark -I in.bam --known-sites in.vcf -O out.bam",
+        programGroup = ReadDataManipulationProgramGroup.class
 )
 @DocumentedFeature
 @BetaFeature
 public final class BQSRPipelineSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
+
+    static final String USAGE_ONE_LINE_SUMMARY = "Both steps of BQSR (BaseRecalibrator and ApplyBQSR) on Spark";
+    static final String USAGE_SUMMARY = "This tools performs 2 steps of BQSR - " +
+            "creation of recalibration tables and rewriting of the bam, " +
+            "without writing the tables to disk. ";
 
     @Override
     public boolean requiresReads() { return true; }
@@ -52,14 +82,14 @@ public final class BQSRPipelineSpark extends GATKSparkTool {
     @Override
     public boolean requiresReference() { return true; }
 
-    @Argument(doc = "the known variants", shortName = "knownSites", fullName = "knownSites", optional = false)
+    @Argument(doc = "the known variants", fullName = BaseRecalibrator.KNOWN_SITES_ARG_FULL_NAME, optional = false)
     protected List<String> baseRecalibrationKnownVariantPaths;
 
     @Argument(doc = "the output bam", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, optional = false)
     protected String output;
 
-    @Argument(doc = "the join strategy for reference bases and known variants", shortName = "joinStrategy", fullName = "joinStrategy", optional = true)
+    @Argument(doc = "the join strategy for reference bases and known variants", fullName = "join-strategy", optional = true)
     private JoinStrategy joinStrategy = JoinStrategy.BROADCAST;
 
     /**
@@ -68,10 +98,10 @@ public final class BQSRPipelineSpark extends GATKSparkTool {
     @ArgumentCollection(doc = "all the command line arguments for BQSR and its covariates")
     private final RecalibrationArgumentCollection bqsrArgs = new RecalibrationArgumentCollection();
 
-    @Argument(fullName="readShardSize", shortName="readShardSize", doc = "Maximum size of each read shard, in bases. Only applies when using the OVERLAPS_PARTITIONER join strategy.", optional = true)
+    @Argument(fullName="read-shard-size", doc = "Maximum size of each read shard, in bases. Only applies when using the OVERLAPS_PARTITIONER join strategy.", optional = true)
     public int readShardSize = 10000;
 
-    @Argument(fullName="readShardPadding", shortName="readShardPadding", doc = "Each read shard has this many bases of extra context on each side. Only applies when using the OVERLAPS_PARTITIONER join strategy.", optional = true)
+    @Argument(fullName="read-shard-padding", doc = "Each read shard has this many bases of extra context on each side. Only applies when using the OVERLAPS_PARTITIONER join strategy.", optional = true)
     public int readShardPadding = 1000;
 
     /**

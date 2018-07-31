@@ -1,0 +1,116 @@
+\documentclass[nofootinbib,amssymb,amsmath]{revtex4}
+\usepackage{mathtools}
+\usepackage{amsthm}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{lmodern}
+\usepackage{graphicx}
+\usepackage{color}
+
+%Put an averaged random variable between brackets
+\newcommand{\ave}[1]{\left\langle #1 \right\rangle}
+
+\newcommand{\vzero}{{\bf 0}}
+\newcommand{\vI}{{\bf I}}
+\newcommand{\vb}{{\bf b}}
+\newcommand{\vd}{{\bf d}}
+\newcommand{\vc}{{\bf c}}
+\newcommand{\vv}{{\bf v}}
+\newcommand{\vz}{{\bf z}}
+\newcommand{\vn}{{\bf n}}
+\newcommand{\vm}{{\bf m}}
+\newcommand{\vG}{{\bf G}}
+\newcommand{\vQ}{{\bf Q}}
+\newcommand{\vM}{{\bf M}}
+\newcommand{\vW}{{\bf W}}
+\newcommand{\vX}{{\bf X}}
+\newcommand{\vPsi}{{\bf \Psi}}
+\newcommand{\vSigma}{{\bf \Sigma}}
+\newcommand{\vlambda}{{\bf \lambda}}
+\newcommand{\vpi}{{\bf \pi}}
+\newcommand{\valpha}{{\bf \alpha}}
+\newcommand{\vLambda}{{\bf \Lambda}}
+\newcommand{\vA}{{\bf A}}
+
+\newcommand{\code}[1]{\texttt{#1}}
+
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}{Corollary}
+
+\def\SL#1{{\color [rgb]{0,0,0.8} [SL: #1]}}
+\def\DB#1{{\color [rgb]{0,0.8,0} [DB: #1]}}
+
+\newcommand{\HOM}{$\mathsf{Hom}$}
+\newcommand{\HET}{$\mathsf{Het}$}
+\newcommand{\REF}{$\mathsf{Ref}$}
+\newcommand{\epss}{\varepsilon}
+
+\begin{document}
+
+\title{GATK variant quality score model}
+\author{David Benjamin}
+\email{davidben@broadinstitute.org}
+\affiliation{Broad Institute, 75 Ames Street, Cambridge, MA 02142}
+
+\date{\today}
+
+\maketitle
+
+\section{Introduction}\label{introduction}
+
+The variant quality model is used in both \code{HaplotypeCaller} and \code{GenotypeGVCFs}.  In \code{HaplotypeCaller} the model is applied we have decided which alleles to consider and calculated the likelihoods of each possible genotype.   In \code{GenotypeGVCFs} the model is applied after merging input GVCFs and harmonizing their allele representations, and the resulting score is used to decide which variants to emit. Let $\ell_{sg} \equiv P({\rm reads}_s | g)$ be the likelihood of genotype $g$ in sample $s$.  Then a simple model for the genotypes and observed reads is
+\begin{equation}
+P({\rm reads}, \vz) = \prod_s P(\vz_s) \prod_g \ell_{sg}^{z_{sg}}, \label{likelihood}
+\end{equation}
+where $z_{sg}$ is a binary indicator variable for sample $s$ exhibiting genotype $g$.  We can represent $P(\vz_s)$ in terms of a latent vector $\vpi$ of population allele frequencies.  Assuming independent alleles, the probability $P(\vz_s | \vpi)$ of a genotype $g$ containing $n_{ga}$ copies of allele $a$ (i.e. for tetraploid genotype AABC, $n_A = 2$, $n_B = n_C = 1$) is 
+\begin{equation}
+P(\vz_s| \vpi) = \prod_g \left[ C_g \prod_a \left( \pi_a \right)^{n_{ga}} \right]^{z_{sg}},
+\label{indicator}
+\end{equation}
+where $C_g = {\rm ploidy}! / \left(\prod_a n_{ga}! \right)$ is the number of phased genotypes corresponding to unphased genotype $g$.  For example, $C_{AAB} = 3$ because $AAB$, $ABA$, and $BAA$ are distinct phased genotypes, while $C_{AAA} = 1$.
+
+Because sites vary in their allele frequencies, $\vpi$ is not a constant.  Rather, it is a random variable whose prior distribution should have the correct mean alt allele frequency (roughly 1 in 1000 for SNPs) and roughly the correct standard deviation.  That is, the prior probabilities that a site has a rare alt with, say $\pi_B = 10^{-5}$ or a common alt with $\pi_B = 0.25$ should match the empirical distribution of allele frequencies.  Note that the old model essentially assumed that every site had an alt allele with a constant allele frequency of 1/1000.  We can achieve this by setting $\vpi \sim {\rm Dir}(\valpha)$, where $\valpha$ is a vector with one component per allele, and $\valpha_a$ is a prior pseudocount for allele $a$.  We can set these pseudocounts separately for the ref allele, SNPs, and indels\footnote{In principle we could have a complicated model for prior pseudocounts depending on context.  Furthermore, if we have a big call set like gnomAD, the best prior pseudocounts are simply the allele counts from that call set.  \code{HaplotypeCaller} and \code{GenotypeGVCFs} do not currently exploit gnomAD for this.} to obtain the desired mean and standard deviation of allele frequencies.  Unlike previous approaches which shoehorned multiallelic sites into  biallelic model, this method extends naturally to multiallelic sites.  Since $\valpha$ is not a random variable we can ignore the normalization constant of the Dirichlet, which depends only on $\valpha$, to obtain $P(\vpi | \valpha) \propto  \prod_a \pi_a^{\alpha_a}$.  This, combined with Equations \ref{likelihood} and \ref{indicator}, gives the joint posterior distribution
+\begin{equation}
+P(\vpi, \vz) \propto \left( \prod_a \pi_a^{\alpha_a} \right) \prod_{sg} \left[ C_g \ell_{sg} \prod_a \pi_a^{n_{ga}} \right]^{z_{sg}}
+\end{equation}
+
+We perform mean-field variational Bayesian inference on this posterior.  In this framework we posit a factorized approximation: $P(\vpi, \vz) \approx q(\vpi) q(\vz)$ and iterate, alternating between the following two updates:
+\begin{align}
+q(\vpi) \propto& \exp E_{q(\vz)}[\ln P(\vpi, \vz)] \propto \prod_a \pi_a^{\alpha_a + \sum_{sg} E[z_{sg}] n_{ga}} \label{M}\\
+q(\vz) \propto& \exp E_{q(\vpi)}[\ln P(\vpi, \vz)] \propto \prod_g \left[ C_g \ell_{sg} \prod_a e^{ E[\ln \pi_a] n_{ga}} \right]^{z_{sg}} \label{E}
+\end{align}
+The expectations required have analytic expressions.  Using a well-known (i.e. see the Wikipedia entry for Dirichlet distribution) result:
+\begin{align}
+E_{q(\vpi)} [ \ln \pi_a ] =& \psi( \alpha_a + \sum_{sg} E[z_{sg}] n_{ga}) - \psi (\sum_a \alpha_a + \sum_{sg} E[z_{sg}]  \sum_a n_{ga}) \\
+=& \psi( \alpha_a + \sum_{sg} E[z_{sg}] n_{ga}) - \psi (\sum_a \alpha_a + {\rm total~ploidy~of~all~samples}),
+\label{pi_update}
+\end{align}
+where $\psi$ is the digamma function, and
+\begin{align}
+E_{q(\vz)}[z_{sg}] = \frac{C_g \ell_{sg} \prod_a e^{ E[\ln \pi_a] n_{ga}}}{\rm normalizing~constant},
+\label{z_update}
+\end{align}
+where the constant of normalization is chosen so that $\sum_g E_{q(\vz)}[z_{sg}] = 1$.  Learning this model is just a matter of iterating Equations \ref{M} and \ref{E}.
+
+Once our iteration converges, we can extract several interesting things, some of which we already report and some of which we do not.  First, we have the Dirichlet posterior $q(\vpi)$ on allele frequencies.  Letting $N_a \equiv \alpha_a + \sum_{sg} E[z_{sg}] n_{ga}$ be the prior plus observed pseudocounts for allele $a$, we have
+\begin{equation}
+\vpi \sim {\rm Dir}(N_0, N_1 \ldots)
+\end{equation}
+If we want a univariate allele frequency for a single allele (i.e. not the joint Dirichlet posterior on all allele frequencies) we simply marginalize, which is arithmetically easy:
+\begin{equation}
+\pi_a \sim {\rm Beta}(N_a, \sum_{a^\prime \ne a} N_{a^\prime})
+\end{equation}
+From this we can get the mean posterior allele frequency, which is $\bar{\pi}_a = N_a / \sum_{a^\prime} N_a$, but we also have error bars on this estimate.
+
+We can also obtain the variant quality score trivially.  The probability that no variant exists among the samples is (we use the convention that $g=0$ for the hom ref genotype)
+\begin{equation}
+P({\rm no~variants}) = \prod_s P(z_{sg} = 0) = \prod_s E_{q(\vz)}[z_{s, g=0}] 
+\end{equation}
+
+We can easily extend this to a per-allele variant quality score by considering not just the hom ref genotype, but all genotypes in which that allele is absent:
+\begin{equation}
+P({\rm no~allele}~a) = \prod_s \left( \sum_{g : n_{ga} = 0} E_{q(\vz)}[z_{s, g}] \right)
+\end{equation}
+
+Let's now consider the run time of this algorithm.  Suppose there are $S$ samples, $G$ genotypes, and $A$ alleles.  The cost of calculating Equation \ref{pi_update} for all values of $a$ is $O(S G A)$.  The cost of calculating Equation \ref{z_update} for all $s$ and $g$ is also $O(S G A)$.  These things usually converge in not too many iterations so we have an $O(S G A)$ algorithm that yields genotype calls, genotype quals (these are the posteriors $E[z_{sg}])$, allele frequencies, per-site variant quality scores, and per-allele variant quality scores.  The algorithm has two equations to learn the model and one equation to translate that into a variant quality score.
+\end{document}

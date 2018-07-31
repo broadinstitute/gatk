@@ -1,0 +1,3 @@
+bin	chrom	chromStart	chromEnd	ix	n	size	type	bridge
+0	1	12453	14253	1271	N	2000	heterochromatin	no
+23	1	121535	124535	1270	N	3000	centromere	no

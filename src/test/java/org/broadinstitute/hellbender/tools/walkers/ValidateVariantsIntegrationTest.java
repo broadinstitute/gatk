@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers;
 
+import htsjdk.tribble.TribbleException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
@@ -14,22 +15,22 @@ import static org.broadinstitute.hellbender.tools.walkers.variantutils.ValidateV
 public final class ValidateVariantsIntegrationTest extends CommandLineProgramTest {
 
     public String baseTestString(final boolean sharedFile, final String file, final boolean exclude, final ValidateVariants.ValidationType type) {
-        final String defaultRegion = "1:1-1000000";
 
-        return baseTestString(sharedFile, file, exclude, type, defaultRegion, hg19_chr1_1M_Reference);
+        return baseTestString(sharedFile, file, exclude, type, null, hg19_chr1_1M_Reference);
     }
 
     public String baseTestString(boolean sharedFile, String file, boolean exclude, ValidateVariants.ValidationType type, String region, String reference) {
         final String filePath = sharedFile ? file: getToolTestDataDir() + file;
-        final String typeArgString = exclude ? " --validationTypeToExclude " + type.name() : excludeValidationTypesButString(type);
-        final String intervals = "";//TODO enable this: " -L " + region;
+        final String typeArgString = exclude ? " --validation-type-to-exclude " + type.name() : excludeValidationTypesButString(type);
+        final String intervals = region == null ? "" : " -L " + region;
+        final String referenceString = reference == null ? "" : " -R " + reference;
 
-        return "-R " + reference + intervals + " --variant " + filePath + typeArgString;
+        return referenceString + intervals + " --variant " + filePath + typeArgString;
     }
 
     public String baseTestStringWithoutReference(boolean sharedFile, String file, boolean exclude, ValidateVariants.ValidationType type) {
         final String filePath = sharedFile ? file: getToolTestDataDir() + file;
-        final String typeArgString = exclude ? " --validationTypeToExclude " + type.name() : excludeValidationTypesButString(type);
+        final String typeArgString = exclude ? " --validation-type-to-exclude " + type.name() : excludeValidationTypesButString(type);
         return " --variant " + filePath + typeArgString;
     }
 
@@ -40,7 +41,7 @@ public final class ValidateVariantsIntegrationTest extends CommandLineProgramTes
         final StringBuilder sbuilder = new StringBuilder();
         for (final ValidateVariants.ValidationType t : CONCRETE_TYPES) {
             if (t != type) {
-                sbuilder.append(" --validationTypeToExclude ").append(t.toString());
+                sbuilder.append(" --validation-type-to-exclude ").append(t.toString());
             }
         }
         return sbuilder.toString();
@@ -227,5 +228,71 @@ public final class ValidateVariantsIntegrationTest extends CommandLineProgramTes
         IntegrationTestSpec spec = new IntegrationTestSpec(
                 baseTestString(false, "validationUnusedAllelesBugFix.vcf", false, ALLELES,"1:1-739000",hg19_chr1_1M_Reference),0, UserException.FailsStrictValidation.class);
         spec.executeTest("test unused allele bug fix", this);
+    }
+
+    @Test
+    public void testGoodGvcf() throws IOException {
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString(false, "NA12891.AS.chr20snippet.g.vcf", false, ALL, "20:10433000-10437000", b37_reference_20_21) + " -gvcf ",
+                Collections.emptyList());
+        spec.executeTest("tests correct gvcf", this);
+    }
+
+    @Test
+    public void testGoodGvcfExcludingAlleles() throws IOException  {
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString(false, "NA12891.AS.chr20snippet.g.vcf", true, ALLELES, "20:10433000-10437000", b37_reference_20_21) + " --gvcf ",
+                Collections.emptyList());
+        spec.executeTest("tests correct gvcf", this);
+    }
+
+    @Test
+    public void testNoIntervalFullGenomeGVCF() throws IOException  {
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString(false, "NA12891.AS.chr20snippet.g.vcf", true, REF, null, null) + " --gvcf ",
+                0,
+                UserException.class);
+        spec.executeTest("tests gvcf that doesnt cover full genome but doesnt give an interval", this);
+    }
+
+    @Test
+    public void testNoIntervalShortenedHeaderDict() throws IOException  {
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString(false, "NA12891.AS.fullchr20_with_chr20_dict_only.g.vcf", true, REF, null, null) + " --gvcf ",
+                Collections.emptyList());
+        spec.executeTest("tests gvcf that has a header dictionary of just chr20 and doesn't give an interval", this);
+    }
+
+    @Test
+    public void testBadGvcfMissingNON_REF() throws IOException  {
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString(false, "NA12891.AS.chr20snippet.BAD_MISSING_NON_REF.g.vcf", true, ALLELES, "20:10433000-10437000", b37_reference_20_21) + " -gvcf ",
+                0, UserException.class);
+        spec.executeTest("tests capture of missing NON_REF allele", this);
+    }
+
+    //need to find file for this test
+    @Test()
+    public void testBadGvcfRegions() throws IOException {
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString(false, "NA12891.AS.chr20snippet.missingrefblock.g.vcf", true, ALLELES, "20:10433000-10437000", b37_reference_20_21) + " -gvcf  ",
+                0, UserException.class);
+        spec.executeTest("tests capture of a gvcf missing a reference block", this);
+    }
+
+    @Test()
+    public void testNonOverlappingRegions() throws IOException {
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString(false, "NA12891.AS.chr20snippet_BAD_INCOMPLETE_REGION.g.vcf", true, ALLELES, "Y:4966254-4967190", b37_reference_20_21) + " -gvcf ",
+                0, UserException.class);
+        spec.executeTest("tests capture of non-complete region", this);
+    }
+
+    @Test
+    public void testNonOverlappingRegionsBP_RESOLUTION() throws IOException {
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString(false, "gvcf.basepairResolution.vcf", true, ALLELES, "20:10000000-10002158", b37_reference_20_21) + " -gvcf ",
+                Collections.emptyList());
+        spec.executeTest("tests capture of non-complete region, on BP_RESOLUTION gvcf", this);
     }
 }

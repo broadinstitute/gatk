@@ -1,0 +1,9 @@
+# SAMPLE1
+#_ContigHeader=Chromosome
+#_StartHeader=Start
+#_EndHeader=End
+Sample	Chromosome	Start	End	Num_Probes	Segment_Mean
+SAMPLE1	1	30000	12000000	110	1.00
+SAMPLE1	1	13000000	13600000	12	0.81
+SAMPLE1	1	13700000	16900000	103	0.99
+SAMPLE1	1	16903226	17266840	203	1.23

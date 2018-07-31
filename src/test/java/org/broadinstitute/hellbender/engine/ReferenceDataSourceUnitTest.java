@@ -2,41 +2,42 @@ package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequence;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.File;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
-public final class ReferenceDataSourceUnitTest extends BaseTest {
+public final class ReferenceDataSourceUnitTest extends GATKBaseTest {
 
-    private static final File TEST_REFERENCE = new File(hg19MiniReference);
+    private static final Path TEST_REFERENCE = IOUtils.getPath(hg19MiniReference);
 
     @Test(expectedExceptions = UserException.class)
     public void testNonExistentReference() {
-        new ReferenceFileSource(BaseTest.getSafeNonExistentFile("nonexistent.fasta"));
+        new ReferenceFileSource(GATKBaseTest.getSafeNonExistentPath("nonexistent.fasta"));
     }
 
     @Test(expectedExceptions = UserException.MissingReferenceFaiFile.class)
     public void testReferenceWithMissingFaiFile() {
-        ReferenceDataSource refDataSource = new ReferenceFileSource(new File(publicTestDir + "fastaWithoutFai.fasta"));
+        ReferenceDataSource refDataSource = new ReferenceFileSource(IOUtils.getPath(publicTestDir + "fastaWithoutFai.fasta"));
     }
 
     @Test(expectedExceptions = UserException.MissingReferenceDictFile.class)
     public void testReferenceWithMissingDictFile() {
-        ReferenceDataSource refDataSource = new ReferenceFileSource(new File(publicTestDir + "fastaWithoutDict.fasta"));
+        ReferenceDataSource refDataSource = new ReferenceFileSource(IOUtils.getPath(publicTestDir + "fastaWithoutDict.fasta"));
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testNullReference() {
-        ReferenceDataSource refDataSource = new ReferenceFileSource(null);
+        ReferenceDataSource refDataSource = new ReferenceFileSource((Path)null);
     }
 
     @Test

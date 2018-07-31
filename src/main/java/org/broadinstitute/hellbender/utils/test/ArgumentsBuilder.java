@@ -38,13 +38,23 @@ public final class ArgumentsBuilder {
     public ArgumentsBuilder add(String arg){
         List<String> chunks = Arrays.asList(StringUtils.split(arg.trim()));
         for (String chunk : chunks){
-            if(chunk.contains("=")){
-                String tmp = "--"+chunk;
-                args.addAll(Arrays.asList(tmp.split("=")));
-            }
-            else{
-                args.add(chunk);
-            }
+            addRaw(chunk);
+        }
+        return this;
+    }
+
+    /**
+     * Add a string to the arguments list without processing the string itself.
+     * @param arg A string representing one or more arguments
+     * @return the ArgumentsBuilder
+     */
+    public ArgumentsBuilder addRaw(final String arg){
+        if(arg.contains("=")){
+            final String tmp = "--"+arg;
+            args.addAll(Arrays.asList(tmp.split("=")));
+        }
+        else{
+            args.add(arg);
         }
         return this;
     }
@@ -72,6 +82,7 @@ public final class ArgumentsBuilder {
         addFileArgument(StandardArgumentDefinitions.REFERENCE_LONG_NAME, reference);
         return this;
     }
+
 
     /**
      * add a vcf file argument using {@link StandardArgumentDefinitions#VARIANT_LONG_NAME}
@@ -114,6 +125,18 @@ public final class ArgumentsBuilder {
     }
 
     /**
+     * Add an argument with a given value to this builder without splitting the value string into multiple arguments at whitespace.
+     * This is specifically to allow arguments with values that contain whitespace.
+     */
+    public ArgumentsBuilder addArgumentWithValueThatIncludesWhitespace(final String argumentName, final String argumentValue) {
+        Utils.nonNull(argumentValue);
+        Utils.nonNull(argumentName);
+        add("--" + argumentName);
+        addRaw(argumentValue);
+        return this;
+    }
+
+    /**
      * add a positional argument to this builder
      */
     public ArgumentsBuilder addPositionalArgument(final String argumentName) {
@@ -152,4 +175,8 @@ public final class ArgumentsBuilder {
         return String.join(" ", args);
     }
 
+    @Override
+    public String toString(){
+        return getString();
+    }
 }

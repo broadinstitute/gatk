@@ -9,8 +9,8 @@ import org.apache.commons.math3.random.RandomDataGenerator;
 import org.broadinstitute.hdf5.HDF5File;
 import org.broadinstitute.hdf5.HDF5LibException;
 import org.broadinstitute.hdf5.HDF5Library;
-import org.broadinstitute.hellbender.tools.pon.PoNTestUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
@@ -25,9 +25,10 @@ import java.util.Arrays;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public final class HDF5LibraryUnitTest {
-    private static final File TEST_RESOURCE_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/exome");
-    private static final File TEST_PON = new File(TEST_RESOURCE_DIR, "test_creation_of_panel.pon");
+public final class HDF5LibraryUnitTest extends GATKBaseTest {
+    private static final File TEST_PON = new File(packageRootTestDir, "utils/hdf5/wes-no-gc.pon.hdf5");
+
+    private static final double DOUBLE_MATRIX_TOLERANCE = 1E-8;
 
     @BeforeClass
     public void testIsSupported() {
@@ -48,7 +49,7 @@ public final class HDF5LibraryUnitTest {
 
     @Test()
     public void testCreateHDF5File() {
-        final File testFile = BaseTest.createTempFile("hdf5", ".hd5");
+        final File testFile = GATKBaseTest.createTempFile("hdf5", ".hd5");
         testFile.delete();
         final HDF5File file = new HDF5File(testFile, HDF5File.OpenMode.CREATE);
         file.close();
@@ -56,7 +57,7 @@ public final class HDF5LibraryUnitTest {
 
     @Test(dependsOnMethods = {"testCreateGroup", "testMakeDouble"})
     public void testIsPresent() {
-        final File testFile = BaseTest.createTempFile("hdf5", ".hd5");
+        final File testFile = GATKBaseTest.createTempFile("hdf5", ".hd5");
         final HDF5File file = new HDF5File(testFile, HDF5File.OpenMode.CREATE);
         Assert.assertFalse(file.isPresent("test-group"));
         Assert.assertFalse(file.isPresent("test-group/lola-run"));
@@ -86,7 +87,7 @@ public final class HDF5LibraryUnitTest {
 
     @Test()
     public void testCreateGroup() {
-        final File testFile = BaseTest.createTempFile("hdf5", ".hd5");
+        final File testFile = GATKBaseTest.createTempFile("hdf5", ".hd5");
         final HDF5File file = new HDF5File(testFile, HDF5File.OpenMode.CREATE);
         Assert.assertTrue(file.makeGroup("test-group/lola-run"));
 
@@ -102,7 +103,6 @@ public final class HDF5LibraryUnitTest {
         HDF5File file = new HDF5File(testFile, HDF5File.OpenMode.CREATE);
         file.makeGroup("test-group/double-group");
         Assert.assertTrue(file.makeDouble("test-group/double-group/my-double", 1.1));
-        System.err.println(testFile);
         file.close();
         final long time = System.currentTimeMillis();
         Assert.assertTrue(testFile.length() > 0);
@@ -119,7 +119,6 @@ public final class HDF5LibraryUnitTest {
         HDF5File file = new HDF5File(testFile, HDF5File.OpenMode.CREATE);
         file.makeGroup("test-group/double-group");
         Assert.assertTrue(file.makeDouble("test-group/double-group/my-double", Double.NaN));
-        System.err.println(testFile);
         file.close();
         final long time = System.currentTimeMillis();
         Assert.assertTrue(testFile.length() > 0);
@@ -137,7 +136,6 @@ public final class HDF5LibraryUnitTest {
         file.makeGroup("test-group/double-group");
         final double[] testValues = new double[] { 1.1 , -2.2, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, 0.0111e10-10 };
         Assert.assertTrue(file.makeDoubleArray("test-group/double-group/my-double", testValues));
-        System.err.println(testFile);
         file.close();
         final long time = System.currentTimeMillis();
         Assert.assertTrue(testFile.length() > 0);
@@ -157,7 +155,6 @@ public final class HDF5LibraryUnitTest {
         final double[] testValues2 = new double[] { 11.1 , -22.2, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, 1.0111e10-10 };
 
         Assert.assertTrue(file.makeDoubleArray("test-group/double-group/my-double", testValues1));
-        System.err.println(testFile);
         file.close();
         final long time = System.currentTimeMillis();
         Assert.assertTrue(testFile.length() > 0);
@@ -181,7 +178,6 @@ public final class HDF5LibraryUnitTest {
                 new double[] { 1.1 , -2.2, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, 0.0111e10-10 },
                 new double[] { -1.1, 2.2, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, -0.01111e10-10 }};
         Assert.assertTrue(file.makeDoubleMatrix("test-group/double-group/my-double", testValues));
-        System.err.println(testFile);
         file.close();
         final long time = System.currentTimeMillis();
         Assert.assertTrue(testFile.length() > 0);
@@ -201,7 +197,6 @@ public final class HDF5LibraryUnitTest {
         final String[] testValues = new String[] { "0", "1", "absdsd12 sdsad121 sdasadsad 1212sdasdas",
                 StringUtils.repeat("x", 2000) };
         Assert.assertTrue(file.makeStringArray("test-group/double-group/my-double", testValues));
-        System.err.println(testFile);
         file.close();
         FileUtils.copyFile(testFile, new File("/tmp/3.hd5"));
         final long time = System.currentTimeMillis();
@@ -236,7 +231,7 @@ public final class HDF5LibraryUnitTest {
         Assert.assertTrue(resultAsRealMatrix.getRowDimension() == numRows);
         Assert.assertTrue(resultAsRealMatrix.getColumnDimension() == numCols);
         final RealMatrix readMatrix = new Array2DRowRealMatrix(result);
-        PoNTestUtils.assertEqualsMatrix(readMatrix, bigCounts, false);
+        assertEqualsMatrix(readMatrix, bigCounts);
     }
 
     private RealMatrix createMatrixOfGaussianValues(int numRows, int numCols, final double mean, final double sigma) {
@@ -250,5 +245,22 @@ public final class HDF5LibraryUnitTest {
             }
         });
         return bigCounts;
+    }
+
+    /**
+     * Test whether two matrices are equal (within 1e-4)
+     * @param left never {@code null}
+     * @param right never {@code null}
+     */
+    private static void assertEqualsMatrix(final RealMatrix left, final RealMatrix right) {
+        Assert.assertEquals(left.getRowDimension(), right.getRowDimension());
+        Assert.assertEquals(left.getColumnDimension(), right.getColumnDimension());
+        for (int i = 0; i < left.getRowDimension(); i++) {
+            final double[] leftRow = left.getRow(i);
+            final double[] rightRow = right.getRow(i);
+            for (int j = 0; j < leftRow.length; j++) {
+                Assert.assertEquals(leftRow[j], rightRow[j], DOUBLE_MATRIX_TOLERANCE);
+            }
+        }
     }
 }

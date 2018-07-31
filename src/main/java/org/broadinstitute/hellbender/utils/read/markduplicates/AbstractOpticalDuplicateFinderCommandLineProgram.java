@@ -5,6 +5,7 @@ import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OpticalDuplicatesArgumentCollection;
+import picard.sam.markduplicates.util.OpticalDuplicateFinder;
 
 /**
  * Abstract class that holds parameters and methods common to classes that optical duplicate detection.  We put them here so that
@@ -24,7 +25,7 @@ public abstract class AbstractOpticalDuplicateFinderCommandLineProgram extends P
     // Needed for testing
     public void setupOpticalDuplicateFinder() {
         this.opticalDuplicateFinder = new OpticalDuplicateFinder(opticalDuplicatesArgumentCollection.READ_NAME_REGEX,
-            opticalDuplicatesArgumentCollection.OPTICAL_DUPLICATE_PIXEL_DISTANCE, logger);
+            opticalDuplicatesArgumentCollection.OPTICAL_DUPLICATE_PIXEL_DISTANCE,null);//TODO logger firgure out, logger);
     }
 
     @Override

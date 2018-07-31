@@ -10,10 +10,10 @@ import java.io.IOException;
 
 public final class ExampleReadWalkerWithReferenceSparkIntegrationTest extends CommandLineProgramTest {
     private static final String TEST_DATA_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/";
-    private static final String TEST_OUTPUT_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/tools/examples/";
+    private static final String TEST_OUTPUT_DIRECTORY = exampleTestDir;
 
     @Test
-    public void testExampleIntervalWalker() throws IOException {
+    public void testExampleReadWalkerWithReferenceSpark() throws IOException {
         final File out = File.createTempFile("out", ".txt");
         out.delete();
         out.deleteOnExit();

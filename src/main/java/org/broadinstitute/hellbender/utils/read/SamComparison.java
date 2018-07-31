@@ -8,6 +8,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+// TODO: this class should be removed and replaced with the Picard version once
+// https://github.com/broadinstitute/picard/pull/913 is merged into Picard and picked up by GATK
+
 /**
  * Rudimentary SAM comparer. Compares headers, and if headers are compatible enough, compares SAMRecords,
  * looking only at basic alignment info. Summarizes the number of alignments that match, mismatch, are missing, etc.

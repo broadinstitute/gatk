@@ -8,7 +8,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 
 public class ExampleAssemblyRegionWalkerSparkIntegrationTest extends CommandLineProgramTest {
-    private static final String TEST_OUTPUT_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/tools/examples/";
+    private static final String TEST_OUTPUT_DIRECTORY = exampleTestDir;
 
     // DISABLED until https://github.com/broadinstitute/gatk/issues/2349 is resolved
     @Test(enabled = false)

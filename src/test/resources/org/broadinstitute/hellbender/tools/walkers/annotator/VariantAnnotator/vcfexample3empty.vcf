@@ -1,0 +1,18 @@
+##fileformat=VCFv4.1
+##FORMAT=<ID=GQ,Number=1,Type=Float,Description="Genotype Quality">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=RD,Number=1,Type=Integer,Description="Read Depth (only filtered reads used for calling)">
+##source=UnifiedGenotyper
+##reference=human_b36_both.fasta
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA12878	
+20	10001292	.	G	A	42.220	.	.	GT:RD:GQ	1/0:23:19.28
+20	10002963	.	C	G	42.220	.	.	GT:RD:GQ	0/1:30:33.07
+20	10005008	.	A	T	123.780	.	.	GT:RD:GQ	1/1:30:8.26
+20	10006296	.	C	T	42.230	.	.	GT:RD:GQ	0/1:7:2.91
+20	10023478	.	G	C	84.230	.	.	GT:RD:GQ	1/1:27:4.03
+20	10029362	.	T	C	42.220	.	.	GT:RD:GQ	1/0:44:36.62
+20	10042312	.	G	C	31.810	.	.	GT:RD:GQ	1/0:24:5.85
+20	10044557	.	C	T	42.220	.	.	GT:RD:GQ	0/1:31:15.01
+20	10045603	.	A	G	40.260	.	.	GT:RD:GQ	0/1:15:7.94
+20	10048142	.	A	G	126.810	.	.	GT:RD:GQ	1/1:36:9.14
+20	10048580	.	T	A	42.220	.	.	GT:RD:GQ	1/0:33:23.49

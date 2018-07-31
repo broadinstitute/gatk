@@ -2,24 +2,30 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
+import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
-import org.broadinstitute.barclay.argparser.BetaFeature;
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.ReferenceInputArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
-import java.io.File;
 import java.io.FileNotFoundException;
+import java.util.*;
+import java.util.ArrayList;
 import java.util.List;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
+import java.nio.file.Path;
 
 
 /**
@@ -37,27 +43,27 @@ import java.util.List;
  * <h3>How HaplotypeCaller works</h3>
  *
  * <br />
- * <h4><a href='https://software.broadinstitute.org/gatk/documentation/article?id=4147'>1. Define active regions </h4>
+ * <h4><a href='https://software.broadinstitute.org/gatk/documentation/article?id=4147'>1. Define active regions </a></h4>
  *
  * <p>The program determines which regions of the genome it needs to operate on (active regions), based on the presence of
  * evidence for variation.
  *
  * <br />
- * <h4><a href='https://software.broadinstitute.org/gatk/documentation/article?id=4146'>2. Determine haplotypes by assembly of the active region </h4>
+ * <h4><a href='https://software.broadinstitute.org/gatk/documentation/article?id=4146'>2. Determine haplotypes by assembly of the active region </a></h4>
  *
  * <p>For each active region, the program builds a De Bruijn-like graph to reassemble the active region and identifies
  * what are the possible haplotypes present in the data. The program then realigns each haplotype against the reference
  * haplotype using the Smith-Waterman algorithm in order to identify potentially variant sites. </p>
  *
  * <br />
- * <h4><a href='https://software.broadinstitute.org/gatk/documentation/article?id=4441'>3. Determine likelihoods of the haplotypes given the read data </h4>
+ * <h4><a href='https://software.broadinstitute.org/gatk/documentation/article?id=4441'>3. Determine likelihoods of the haplotypes given the read data </a></h4>
  *
  * <p>For each active region, the program performs a pairwise alignment of each read against each haplotype using the
  * PairHMM algorithm. This produces a matrix of likelihoods of haplotypes given the read data. These likelihoods are
  * then marginalized to obtain the likelihoods of alleles for each potentially variant site given the read data.   </p>
  *
  * <br />
- * <h4><a href='https://software.broadinstitute.org/gatk/documentation/article?id=4442'>4. Assign sample genotypes </h4>
+ * <h4><a href='https://software.broadinstitute.org/gatk/documentation/article?id=4442'>4. Assign sample genotypes </a></h4>
  *
  * <p>For each potentially variant site, the program applies Bayes' rule, using the likelihoods of alleles given the
  * read data to calculate the likelihoods of each genotype per sample given the read data observed for that
@@ -82,19 +88,19 @@ import java.util.List;
  * <br />
  * <h4>Single-sample GVCF calling (outputs intermediate GVCF)</h4>
  * <pre>
- * gatk-launch --javaOptions "-Xmx4g" HaplotypeCaller  \
- *   -R reference.fasta \
+ * gatk --java-options "-Xmx4g" HaplotypeCaller  \
+ *   -R Homo_sapiens_assembly38.fasta \
  *   -I input.bam \
- *   -O output.g.vcf \
+ *   -O output.g.vcf.gz \
  *   -ERC GVCF
  * </pre>
  *
  * <h4>Single-sample GVCF calling with <a href='https://software.broadinstitute.org/gatk/documentation/article?id=9622'>allele-specific annotations</a></h4>
  * <pre>
- * gatk-launch --javaOptions "-Xmx4g" HaplotypeCaller  \
- *   -R reference.fasta \
+ * gatk --java-options "-Xmx4g" HaplotypeCaller  \
+ *   -R Homo_sapiens_assembly38.fasta \
  *   -I input.bam \
- *   -O output.g.vcf \
+ *   -O output.g.vcf.gz \
  *   -ERC GVCF \
  *   -G Standard \
  *   -G AS_Standard
@@ -102,10 +108,10 @@ import java.util.List;
  *
  * <h4>Variant calling with <a href='https://software.broadinstitute.org/gatk/documentation/article?id=5484'>bamout</a> to show realigned reads</h4>
  * <pre>
- * gatk-launch --javaOptions "-Xmx4g" HaplotypeCaller  \
- *   -R reference.fasta \
+ * gatk --java-options "-Xmx4g" HaplotypeCaller  \
+ *   -R Homo_sapiens_assembly38.fasta \
  *   -I input.bam \
- *   -O output.vcf \
+ *   -O output.vcf.gz \
  *   -bamout bamout.bam
  * </pre>
  *
@@ -133,14 +139,12 @@ import java.util.List;
 @CommandLineProgramProperties(
         summary = "Call germline SNPs and indels via local re-assembly of haplotypes",
         oneLineSummary = "Call germline SNPs and indels via local re-assembly of haplotypes",
-        programGroup = VariantProgramGroup.class
+        programGroup = ShortVariantDiscoveryProgramGroup.class
 )
 @DocumentedFeature
-@BetaFeature
 public final class HaplotypeCaller extends AssemblyRegionWalker {
 
-    public static final int DEFAULT_READSHARD_SIZE = 5000;
-    public static final int DEFAULT_READSHARD_PADDING = 100;
+    //NOTE: many of these settings are referenced by HaplotypeCallerSpark
     public static final int DEFAULT_MIN_ASSEMBLY_REGION_SIZE = 50;
     public static final int DEFAULT_MAX_ASSEMBLY_REGION_SIZE = 300;
     public static final int DEFAULT_ASSEMBLY_REGION_PADDING = 100;
@@ -161,12 +165,6 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
     private HaplotypeCallerEngine hcEngine;
 
     @Override
-    protected int defaultReadShardSize() { return DEFAULT_READSHARD_SIZE; }
-
-    @Override
-    protected int defaultReadShardPadding() { return DEFAULT_READSHARD_PADDING; }
-
-    @Override
     protected int defaultMinAssemblyRegionSize() { return DEFAULT_MIN_ASSEMBLY_REGION_SIZE; }
 
     @Override
@@ -185,8 +183,32 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
     protected int defaultMaxProbPropagationDistance() { return DEFAULT_MAX_PROB_PROPAGATION_DISTANCE; }
 
     @Override
+    protected boolean includeReadsWithDeletionsInIsActivePileups() { return true; }
+
+    @Override
     public List<ReadFilter> getDefaultReadFilters() {
         return HaplotypeCallerEngine.makeStandardHCReadFilters();
+    }
+
+    @Override
+    public List<Class<? extends Annotation>> getDefaultVariantAnnotationGroups() { return HaplotypeCallerEngine.getStandardHaplotypeCallerAnnotationGroups();}
+
+    @Override
+    public boolean useVariantAnnotations() { return true;}
+
+    /**
+     * If we are in reference confidence mode we want to filter the annotations as there are certain annotations in the standard
+     * HaplotypeCaller set which are no longer relevant, thus we filter them out before constructing the
+     * VariantAnnotationEngine because the user args will have been parsed by that point.
+     *
+     * @see GATKTool#makeVariantAnnotations()
+     * @return a collection of annotation arguments with alterations depending on hcArgs.emitReferenceConfidence
+     */
+    @Override
+    public Collection<Annotation> makeVariantAnnotations() {
+        final boolean confidenceMode = hcArgs.emitReferenceConfidence != ReferenceConfidenceMode.NONE;
+        final Collection<Annotation> annotations = super.makeVariantAnnotations();
+        return confidenceMode? HaplotypeCallerEngine.filterReferenceConfidenceAnnotations(annotations): annotations;
     }
 
     @Override
@@ -196,18 +218,23 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
 
     @Override
     public void onTraversalStart() {
+        if (hcArgs.emitReferenceConfidence == ReferenceConfidenceMode.GVCF && hcArgs.maxMnpDistance > 0) {
+            throw new CommandLineException.BadArgumentValue("Non-zero maxMnpDistance is incompatible with GVCF mode.");
+        }
         final ReferenceSequenceFile referenceReader = getReferenceReader(referenceArguments);
-        hcEngine = new HaplotypeCallerEngine(hcArgs, getHeaderForReads(), referenceReader);
+        final VariantAnnotatorEngine variantAnnotatorEngine = new VariantAnnotatorEngine(makeVariantAnnotations(),
+                hcArgs.dbsnp.dbsnp, hcArgs.comps,  hcArgs.emitReferenceConfidence != ReferenceConfidenceMode.NONE);
+        hcEngine = new HaplotypeCallerEngine(hcArgs, createOutputBamIndex, createOutputBamMD5, getHeaderForReads(), referenceReader, variantAnnotatorEngine);
 
         // The HC engine will make the right kind (VCF or GVCF) of writer for us
         final SAMSequenceDictionary sequenceDictionary = getHeaderForReads().getSequenceDictionary();
-        vcfWriter = hcEngine.makeVCFWriter(outputVCF, sequenceDictionary);
+        vcfWriter = hcEngine.makeVCFWriter(outputVCF, sequenceDictionary, createOutputVariantIndex, createOutputVariantMD5, outputSitesOnlyVCFs);
         hcEngine.writeHeader(vcfWriter, sequenceDictionary, getDefaultToolVCFHeaderLines());
     }
 
     private static CachingIndexedFastaSequenceFile getReferenceReader(ReferenceInputArgumentCollection referenceArguments) {
         final CachingIndexedFastaSequenceFile referenceReader;
-        final File reference = new File(referenceArguments.getReferenceFileName());
+        final Path reference = IOUtils.getPath(referenceArguments.getReferenceFileName());
         try {
             referenceReader = new CachingIndexedFastaSequenceFile(reference);
         } catch (FileNotFoundException e) {
@@ -218,11 +245,7 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
 
     @Override
     public void apply(final AssemblyRegion region, final ReferenceContext referenceContext, final FeatureContext featureContext ) {
-        hcEngine.callRegion(region, featureContext).stream()
-                // Only include calls that start within the current read shard (as opposed to the padded regions around it).
-                // This is critical to avoid duplicating events that span shard boundaries!
-                .filter(call -> getCurrentReadShardBounds().contains(new SimpleInterval(call.getContig(), call.getStart(), call.getStart())))
-                .forEach(vcfWriter::add);
+        hcEngine.callRegion(region, featureContext).forEach(vcfWriter::add);
     }
 
     @Override

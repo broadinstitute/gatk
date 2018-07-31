@@ -11,6 +11,9 @@ public final class ExomeStandardArgumentDefinitions {
     public static final String TARGET_FILE_LONG_NAME = "targets";
     public static final String TARGET_FILE_SHORT_NAME = "T";
 
+    public static final String BAITS_FILE_LONG_NAME = "baits";
+    public static final String BAITS_FILE_SHORT_NAME = "B";
+
     public static final String LEGACY_SEG_FILE_LONG_NAME = "legacy";
     public static final String LEGACY_SEG_FILE_SHORT_NAME = "LEG";
 

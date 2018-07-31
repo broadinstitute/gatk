@@ -10,6 +10,7 @@ import org.testng.annotations.Test;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 
 public final class CountVariantsSparkIntegrationTest extends CommandLineProgramTest {
 
@@ -28,7 +29,7 @@ public final class CountVariantsSparkIntegrationTest extends CommandLineProgramT
         args.addOutput(outputTxt);
         this.runCommandLine(args.getArgsArray());
 
-        final String readIn = FileUtils.readFileToString(outputTxt.getAbsoluteFile());
+        final String readIn = FileUtils.readFileToString(outputTxt.getAbsoluteFile(), StandardCharsets.UTF_8);
         Assert.assertEquals((int)Integer.valueOf(readIn), expected);
     }
 
@@ -78,7 +79,7 @@ public final class CountVariantsSparkIntegrationTest extends CommandLineProgramT
 
             this.runCommandLine(args.getArgsArray());
 
-            final String readIn = FileUtils.readFileToString(outputTxt.getAbsoluteFile());
+            final String readIn = FileUtils.readFileToString(outputTxt.getAbsoluteFile(), StandardCharsets.UTF_8);
             Assert.assertEquals((int)Integer.valueOf(readIn), expected);
             String errString = baosErr.toString();
             Assert.assertFalse(errString.contains("Warning: using GzipCodec, which is not splittable,"), errString);

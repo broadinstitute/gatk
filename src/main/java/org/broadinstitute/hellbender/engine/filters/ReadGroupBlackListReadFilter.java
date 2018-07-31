@@ -5,6 +5,7 @@ import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.SAMTag;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.cmdline.ReadFilterArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -18,9 +19,10 @@ import java.util.*;
 
 /**
  * Keep records not matching the read group tag and exact match string.
- * For example, this filter value:
- *   PU:1000G-mpimg-080821-1_1
- * would filter out a read with the read group PU:1000G-mpimg-080821-1_1
+ *
+ * <p>For example, this filter value:
+ *   <code>PU:1000G-mpimg-080821-1_1</code>
+ * would filter out a read with the read group PU:1000G-mpimg-080821-1_1</p>
  */
 @DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
 public final class ReadGroupBlackListReadFilter extends ReadFilter implements Serializable {
@@ -28,7 +30,7 @@ public final class ReadGroupBlackListReadFilter extends ReadFilter implements Se
     public static final String COMMENT_START = "#";
     public static final String FILTER_ENTRY_SEPARATOR = ":";
 
-    @Argument(fullName="blackList", doc="", shortName="blackList", optional=false)
+    @Argument(fullName= ReadFilterArgumentDefinitions.READ_GROUP_BLACK_LIST_LONG_NAME, doc="The name of the read group to filter out", optional=false)
     public List<String> blackList = new ArrayList<>();
 
     //most of the collection Entry classes are not serializable so just use a Map
@@ -37,14 +39,15 @@ public final class ReadGroupBlackListReadFilter extends ReadFilter implements Se
     // Command line parser requires a no-arg constructor
     public ReadGroupBlackListReadFilter() {};
 
-        /**
-         * Creates a filter using the lists of files with blacklisted read groups.
-         * Any entry can be a path to a file (ending with "list" or "txt" which
-         * will load blacklist from that file. This scheme works recursively
-         * (ie the file may contain names of further files etc).
-         */
+    /**
+     * Creates a filter using the lists of files with blacklisted read groups.
+     * Any entry can be a path to a file (ending with "list" or "txt" which
+     * will load blacklist from that file. This scheme works recursively
+     * (ie the file may contain names of further files etc).
+     */
     public ReadGroupBlackListReadFilter(final List<String> blackLists, final SAMFileHeader header) {
         super.setHeader(header);
+        this.blackList.addAll(blackLists);
         final Map<String, Collection<String>> filters = new TreeMap<>();
         for (String blackList : blackLists) {
             try {

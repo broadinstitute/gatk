@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.utils.tsv;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -23,7 +23,7 @@ import java.util.stream.Stream;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public class TableReaderUnitTest extends BaseTest {
+public class TableReaderUnitTest extends GATKBaseTest {
 
     private static TestTuple[] ORDINARY_VALUE_TEST_TUPLES = new TestTuple[]{
             new TestTuple("str1", 1, 1.1),

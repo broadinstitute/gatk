@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.variantcontext.*;
-import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -32,6 +31,8 @@ public final class AlleleSubsettingUtils {
 
     /**
      * Create the new GenotypesContext with the subsetted PLs and ADs
+     *
+     * Will reorder subsetted alleles according to the ordering provided by the list allelesToKeep
      *
      * @param originalGs               the original GenotypesContext
      * @param originalAlleles          the original alleles
@@ -64,16 +65,30 @@ public final class AlleleSubsettingUtils {
             final int expectedNumLikelihoods = GenotypeLikelihoods.numLikelihoods(originalAlleles.size(), ploidy);
             // create the new likelihoods array from the alleles we are allowed to use
             double[] newLikelihoods = null;
+            double newLog10GQ = -1;
             if (g.hasLikelihoods()) {
                 final double[] originalLikelihoods = g.getLikelihoods().getAsVector();
                 newLikelihoods = originalLikelihoods.length == expectedNumLikelihoods ?
                         MathUtils.scaleLogSpaceArrayForNumericalStability(Arrays.stream(subsettedLikelihoodIndices)
                                 .mapToDouble(idx -> originalLikelihoods[idx]).toArray()) : null;
+                if (newLikelihoods != null) {
+                    final int PLindex = MathUtils.maxElementIndex(newLikelihoods);
+                    newLog10GQ = GenotypeLikelihoods.getGQLog10FromLikelihoods(PLindex, newLikelihoods);
+                }
+
             }
 
             final boolean useNewLikelihoods = newLikelihoods != null && (depth != 0 || GATKVariantContextUtils.isInformative(newLikelihoods));
-            final GenotypeBuilder gb = useNewLikelihoods ? new GenotypeBuilder(g).PL(newLikelihoods) : new GenotypeBuilder(g).noPL();
-
+            final GenotypeBuilder gb = new GenotypeBuilder(g);
+            if (useNewLikelihoods) {
+                final Map<String, Object> attributes = new HashMap<>(g.getExtendedAttributes());
+                gb.PL(newLikelihoods).log10PError(newLog10GQ);
+                attributes.remove(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY);
+                gb.noAttributes().attributes(attributes);
+            }
+            else {
+                gb.noPL().noGQ();
+            }
             GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(), gb, assignmentMethod, newLikelihoods, allelesToKeep);
 
             // restrict SAC to the new allele subset
@@ -179,7 +194,7 @@ public final class AlleleSubsettingUtils {
      *
      * @param vc target variant context.
      * @param numAltAllelesToKeep number of alt alleles to keep.
-     * @return the list of alleles to keep, including the reference and {@link GATKVCFConstants#NON_REF_SYMBOLIC_ALLELE} if present
+     * @return the list of alleles to keep, including the reference and {@link Allele#NON_REF_ALLELE} if present
      *
      */
     public static List<Allele> calculateMostLikelyAlleles(final VariantContext vc, final int defaultPloidy,
@@ -188,7 +203,7 @@ public final class AlleleSubsettingUtils {
         Utils.validateArg(defaultPloidy > 0, () -> "default ploidy must be > 0 but defaultPloidy=" + defaultPloidy);
         Utils.validateArg(numAltAllelesToKeep > 0, () -> "numAltAllelesToKeep must be > 0, but numAltAllelesToKeep=" + numAltAllelesToKeep);
 
-        final boolean hasSymbolicNonRef = vc.hasAllele(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE);
+        final boolean hasSymbolicNonRef = vc.hasAllele(Allele.NON_REF_ALLELE);
         final int numberOfAllelesThatArentProperAlts = hasSymbolicNonRef ? 2 : 1; 
         final int numberOfProperAltAlleles = vc.getNAlleles() - numberOfAllelesThatArentProperAlts;
 
@@ -202,13 +217,13 @@ public final class AlleleSubsettingUtils {
 
 
     /**
-     * @return a list of the best proper alt alleles based on the likelihood sums, keeping the reference allele and {@link GATKVCFConstants#NON_REF_SYMBOLIC_ALLELE}
+     * @return a list of the best proper alt alleles based on the likelihood sums, keeping the reference allele and {@link Allele#NON_REF_ALLELE}
      * the list will include no more than {@code numAltAllelesToKeep + 2} alleles and will maintain the order of the original alleles in {@code vc}
      *
      */
     @VisibleForTesting
     static List<Allele> filterToMaxNumberOfAltAllelesBasedOnScores(int numAltAllelesToKeep, List<Allele> alleles, double[] likelihoodSums) {
-        final int nonRefAltAlleleIndex = alleles.indexOf(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE);
+        final int nonRefAltAlleleIndex = alleles.indexOf(Allele.NON_REF_ALLELE);
         final int numAlleles = alleles.size();
         final Set<Integer> properAltIndexesToKeep = IntStream.range(1, numAlleles).filter(n -> n != nonRefAltAlleleIndex).boxed()
                                                              .sorted(Comparator.comparingDouble((Integer n) -> likelihoodSums[n]).reversed())
@@ -231,12 +246,13 @@ public final class AlleleSubsettingUtils {
     static double[] calculateLikelihoodSums(final VariantContext vc, final int defaultPloidy) {
         final double[] likelihoodSums = new double[vc.getNAlleles()];
         for ( final Genotype genotype : vc.getGenotypes().iterateInSampleNameOrder() ) {
-            final double[] gls = genotype.getLikelihoods().getAsVector();
+            final GenotypeLikelihoods gls = genotype.getLikelihoods();
             if (gls == null) {
                 continue;
             }
-            final int indexOfMostLikelyGenotype = MathUtils.maxElementIndex(gls);
-            final double GLDiffBetweenRefAndBest = gls[indexOfMostLikelyGenotype] - gls[PL_INDEX_OF_HOM_REF];
+            final double[] glsVector = gls.getAsVector();
+            final int indexOfMostLikelyGenotype = MathUtils.maxElementIndex(glsVector);
+            final double GLDiffBetweenRefAndBest = glsVector[indexOfMostLikelyGenotype] - glsVector[PL_INDEX_OF_HOM_REF];
             final int ploidy = genotype.getPloidy() > 0 ? genotype.getPloidy() : defaultPloidy;
 
             final int[] alleleCounts = new GenotypeLikelihoodCalculators()
@@ -264,7 +280,7 @@ public final class AlleleSubsettingUtils {
      * @param newAlleles            New alleles -- must be a subset of {@code originalAlleles}
      * @return                      old PL indices of new genotypes
      */
-    private static int[] subsettedPLIndices(final int ploidy, final List<Allele> originalAlleles, final List<Allele> newAlleles) {
+    public static int[] subsettedPLIndices(final int ploidy, final List<Allele> originalAlleles, final List<Allele> newAlleles) {
         final int[] result = new int[GenotypeLikelihoods.numLikelihoods(newAlleles.size(), ploidy)];
         final Permutation<Allele> allelePermutation = new IndexedAlleleList<>(originalAlleles).permutation(new IndexedAlleleList<>(newAlleles));
 

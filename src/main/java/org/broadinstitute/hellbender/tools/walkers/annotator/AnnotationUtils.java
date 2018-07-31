@@ -1,6 +1,13 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
+import htsjdk.samtools.Cigar;
+import htsjdk.samtools.CigarElement;
+import htsjdk.samtools.CigarOperator;
+import htsjdk.samtools.SAMRecord;
 import org.apache.commons.lang.StringUtils;
+import org.broadinstitute.hellbender.utils.pairhmm.PairHMM;
+import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.ArrayList;
 import java.util.List;

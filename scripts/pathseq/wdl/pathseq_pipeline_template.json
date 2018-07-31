@@ -1,0 +1,19 @@
+{
+  "PathSeqPipelineWorkflow.sample_name": "sample",
+  "PathSeqPipelineWorkflow.input_bam": "gs://my-bucket/sample.bam",
+
+  "PathSeqPipelineWorkflow.is_host_aligned": false,
+  "PathSeqPipelineWorkflow.min_clipped_read_length": 60,
+  "PathSeqPipelineWorkflow.filter_duplicates": true,
+  "PathSeqPipelineWorkflow.min_score_identity": 0.90,
+  "PathSeqPipelineWorkflow.identity_margin": 0.02,
+  "PathSeqPipelineWorkflow.divide_by_genome_length": true,
+
+  "PathSeqPipelineWorkflow.filter_bwa_image": "gs://my-bucket/references/pathseq_host.fa.img",
+  "PathSeqPipelineWorkflow.kmer_file": "gs://my-bucket/references/pathseq_host.bfi",
+  "PathSeqPipelineWorkflow.microbe_bwa_image": "gs://my-bucket/references/pathseq_microbe.fa.img",
+  "PathSeqPipelineWorkflow.microbe_fasta": "gs://my-bucket/references/pathseq_microbe.fa",
+  "PathSeqPipelineWorkflow.microbe_fasta_dict": "gs://my-bucket/references/pathseq_microbe.dict",
+  "PathSeqPipelineWorkflow.taxonomy_file": "gs://my-bucket/references/pathseq_taxonomy.db",
+  "PathSeqPipelineWorkflow.gatk_docker": "broadinstitute/gatk:4.0.0.0"
+}

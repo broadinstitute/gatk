@@ -11,7 +11,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.*;
 import org.broadinstitute.hellbender.utils.report.GATKReport;
 import org.broadinstitute.hellbender.utils.report.GATKReportTable;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -21,9 +21,9 @@ import java.io.File;
 import java.io.PrintStream;
 import java.util.*;
 
-public final class RecalibrationReportUnitTest extends BaseTest {
+public final class RecalibrationReportUnitTest extends GATKBaseTest {
 
-    private static final String testDir = BaseTest.publicTestDir + "/org/broadinstitute/hellbender/utils/recalibration/";
+    private static final String testDir = GATKBaseTest.publicTestDir + "/org/broadinstitute/hellbender/utils/recalibration/";
     private static final File recal1 = new File(testDir + "HiSeq.1mb.1RG.sg1.table");
     private static final File recal2 = new File(testDir + "HiSeq.1mb.1RG.sg2.table");
     private static final File recal3 = new File(testDir + "HiSeq.1mb.1RG.sg3.table");
@@ -55,7 +55,7 @@ public final class RecalibrationReportUnitTest extends BaseTest {
     }
 
     public static void testGatherReports(List<File> inputFiles, File expectedResult) {
-        final File output = BaseTest.createTempFile("BQSRgathererTest", ".table");
+        final File output = GATKBaseTest.createTempFile("BQSRgathererTest", ".table");
         RecalibrationReport.gatherReportsIntoOneFile(inputFiles, output);
 
         final GATKReport originalReport = new GATKReport(expectedResult);
@@ -144,7 +144,7 @@ public final class RecalibrationReportUnitTest extends BaseTest {
 
     @Test(expectedExceptions = UserException.class)
     public void testUnsupportedCovariates(){
-        File file = new File(publicTestDir + "org/broadinstitute/hellbender/tools/" + "unsupported-covariates.table.gz");
+        File file = new File(toolsTestDir + "unsupported-covariates.table.gz");
         new RecalibrationReport(file);
     }
 

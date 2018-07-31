@@ -14,27 +14,28 @@ import java.io.Serializable;
  */
 public final class LikelihoodEngineArgumentCollection implements Serializable {
     private static final long serialVersionUID = 1L;
+
     @Hidden
     @Advanced
-    @Argument(fullName = "likelihoodCalculationEngine", shortName = "likelihoodEngine",
+    @Argument(fullName = "likelihood-calculation-engine",
             doc= "What likelihood calculation engine to use to calculate the relative likelihood of reads vs haplotypes", optional = true)
     public ReadLikelihoodCalculationEngine.Implementation likelihoodEngineImplementation = ReadLikelihoodCalculationEngine.Implementation.PairHMM;
 
     /**
      * Bases with a quality below this threshold will reduced to the minimum usable qualiy score (6).
      */
-    @Argument(fullName = "base_quality_score_threshold", shortName = "bqst", doc = "Base qualities below this threshold will be reduced to the minimum (" + QualityUtils.MIN_USABLE_Q_SCORE + ")", optional = true)
+    @Argument(fullName = "base-quality-score-threshold", doc = "Base qualities below this threshold will be reduced to the minimum (" + QualityUtils.MIN_USABLE_Q_SCORE + ")", optional = true)
     public byte BASE_QUALITY_SCORE_THRESHOLD = PairHMM.BASE_QUALITY_SCORE_THRESHOLD;
 
     @Advanced
-    @Argument(fullName="gcpHMM", shortName="gcpHMM", doc="Flat gap continuation penalty for use in the Pair HMM", optional = true)
+    @Argument(fullName="pair-hmm-gap-continuation-penalty", doc="Flat gap continuation penalty for use in the Pair HMM", optional = true)
     public int gcpHMM = 10;
 
     /**
      * The PairHMM implementation to use for genotype likelihood calculations. The various implementations balance a tradeoff of accuracy and runtime.
      */
-    @Hidden
-    @Argument(fullName = "pair_hmm_implementation", shortName = "pairHMM", doc = "The PairHMM implementation to use for genotype likelihood calculations", optional = true)
+    @Advanced
+    @Argument(fullName = "pair-hmm-implementation", shortName = "pairHMM", doc = "The PairHMM implementation to use for genotype likelihood calculations", optional = true)
     public PairHMM.Implementation pairHMM = PairHMM.Implementation.FASTEST_AVAILABLE;
 
     /**
@@ -47,7 +48,7 @@ public final class LikelihoodEngineArgumentCollection implements Serializable {
      * definitely recommend setting this argument to NONE</b>.
      */
     @Advanced
-    @Argument(fullName = "pcr_indel_model", shortName = "pcrModel", doc = "The PCR indel model to use", optional = true)
+    @Argument(fullName = "pcr-indel-model", doc = "The PCR indel model to use", optional = true)
     public PairHMMLikelihoodCalculationEngine.PCRErrorModel pcrErrorModel = PairHMMLikelihoodCalculationEngine.PCRErrorModel.CONSERVATIVE;
 
 
@@ -64,7 +65,7 @@ public final class LikelihoodEngineArgumentCollection implements Serializable {
      * Set this term to any negative number to turn off the global mapping rate.
      */
     @Advanced
-    @Argument(fullName="phredScaledGlobalReadMismappingRate", shortName="globalMAPQ", doc="The global assumed mismapping rate for reads", optional = true)
+    @Argument(fullName="phred-scaled-global-read-mismapping-rate", doc="The global assumed mismapping rate for reads", optional = true)
     public int phredScaledGlobalReadMismappingRate = 45;
 
     @ArgumentCollection

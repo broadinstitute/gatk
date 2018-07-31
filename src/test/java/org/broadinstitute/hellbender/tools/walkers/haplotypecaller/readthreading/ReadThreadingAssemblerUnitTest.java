@@ -8,6 +8,7 @@ import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
+import java.nio.file.Paths;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyResultSet;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.KBestHaplotype;
@@ -20,7 +21,8 @@ import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanJavaAligner;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -30,7 +32,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.*;
 
-public final class ReadThreadingAssemblerUnitTest extends BaseTest {
+public final class ReadThreadingAssemblerUnitTest extends GATKBaseTest {
 
     private static final boolean DEBUG = false;
 
@@ -39,7 +41,7 @@ public final class ReadThreadingAssemblerUnitTest extends BaseTest {
 
     @BeforeClass
     public void setup() throws FileNotFoundException {
-        seq = new CachingIndexedFastaSequenceFile(new File(hg19_chr1_1M_Reference));
+        seq = new CachingIndexedFastaSequenceFile(Paths.get(hg19_chr1_1M_Reference));
         header = ArtificialReadUtils.createArtificialSamHeader(seq.getSequenceDictionary());
     }
 
@@ -169,7 +171,8 @@ public final class ReadThreadingAssemblerUnitTest extends BaseTest {
         final AssemblyRegion activeRegion = new AssemblyRegion(loc, null, true, 0, header);
         activeRegion.addAll(reads);
 //        logger.warn("Assembling " + activeRegion + " with " + engine);
-        final AssemblyResultSet assemblyResultSet =  assembler.runLocalAssembly(activeRegion, refHaplotype, refBases, loc, Collections.<VariantContext>emptyList(), null, header);
+        final AssemblyResultSet assemblyResultSet =  assembler.runLocalAssembly(activeRegion, refHaplotype, refBases, loc, Collections.<VariantContext>emptyList(), null, header,
+                                                                                SmithWatermanJavaAligner.getInstance());
         return assemblyResultSet.getHaplotypeList();
     }
 
@@ -251,7 +254,8 @@ public final class ReadThreadingAssemblerUnitTest extends BaseTest {
             assembler.setRecoverDanglingBranches(false); // needed to pass some of the tests
             assembler.setDebugGraphTransformations(true);
             assembler.setDebugGraphOutputPath(createTempDir("debugGraphs"));
-            final SeqGraph graph = assembler.assemble(reads, refHaplotype, Collections.<Haplotype>emptyList(), header).get(0).getGraph();
+            final SeqGraph graph = assembler.assemble(reads, refHaplotype, Collections.emptyList(), header, SmithWatermanJavaAligner
+                    .getInstance()).get(0).getGraph();
             if ( DEBUG ) graph.printGraph(new File("test.dot"), 0);
             return graph;
         }

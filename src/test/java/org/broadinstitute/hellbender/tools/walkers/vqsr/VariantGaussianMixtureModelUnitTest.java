@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.vqsr;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -10,7 +10,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.util.*;
 
-public final class VariantGaussianMixtureModelUnitTest extends BaseTest {
+public final class VariantGaussianMixtureModelUnitTest extends GATKBaseTest {
     private static int N_VARIANTS = 100;
     private VariantDatum[] variantData1 = new VariantDatum[N_VARIANTS];
 
@@ -42,7 +42,7 @@ public final class VariantGaussianMixtureModelUnitTest extends BaseTest {
 
     @Test(expectedExceptions = {UserException.MalformedFile.class})
     public final void readBadFormat() throws java.io.FileNotFoundException, java.io.IOException {
-        Tranche.readTranches(QUAL_DATA);
+        TruthSensitivityTranche.readTranches(QUAL_DATA);
     }
 
     @Test
@@ -55,17 +55,17 @@ public final class VariantGaussianMixtureModelUnitTest extends BaseTest {
         read(EXPECTED_TRANCHES_OLD);
     }
 
-    public final List<Tranche> read(File f) throws java.io.FileNotFoundException, java.io.IOException {
-        return Tranche.readTranches(f);
+    public final List<TruthSensitivityTranche> read(File f) throws java.io.FileNotFoundException, java.io.IOException {
+        return TruthSensitivityTranche.readTranches(f);
     }
 
-    private static void assertTranchesAreTheSame(List<Tranche> newFormat, List<Tranche> oldFormat, boolean completeP, boolean includeName) {
+    private static void assertTranchesAreTheSame(List<TruthSensitivityTranche> newFormat, List<TruthSensitivityTranche> oldFormat, boolean completeP, boolean includeName) {
         Assert.assertEquals(oldFormat.size(), newFormat.size());
         Collections.sort(oldFormat, new Tranche.TrancheTruthSensitivityComparator());
         Collections.sort(newFormat, new Tranche.TrancheTruthSensitivityComparator());
         for ( int i = 0; i < newFormat.size(); i++ ) {
-            Tranche n = newFormat.get(i);
-            Tranche o = oldFormat.get(i);
+            TruthSensitivityTranche n = newFormat.get(i);
+            TruthSensitivityTranche o = oldFormat.get(i);
             Assert.assertEquals(n.targetTruthSensitivity, o.targetTruthSensitivity, 1e-3);
             Assert.assertEquals(n.numNovel, o.numNovel);
             Assert.assertEquals(n.novelTiTv, o.novelTiTv, 1e-3);
@@ -78,7 +78,7 @@ public final class VariantGaussianMixtureModelUnitTest extends BaseTest {
         }
     }
 
-    private static List<Tranche> findMyTranches(ArrayList<VariantDatum> vd, List<Double> tranches) {
+    private static List<TruthSensitivityTranche> findMyTranches(ArrayList<VariantDatum> vd, List<Double> tranches) {
         final int nCallsAtTruth = TrancheManager.countCallsAtTruth( vd, Double.NEGATIVE_INFINITY );
         final TrancheManager.SelectionMetric metric = new TrancheManager.TruthSensitivityMetric( nCallsAtTruth );
         return TrancheManager.findTranches(vd, tranches, metric, VariantRecalibratorArgumentCollection.Mode.SNP);
@@ -87,7 +87,7 @@ public final class VariantGaussianMixtureModelUnitTest extends BaseTest {
     @Test
     public final void testFindTranches1() throws java.io.FileNotFoundException, java.io.IOException {
         ArrayList<VariantDatum> vd = readData();
-        List<Tranche> tranches = findMyTranches(vd, TRUTH_SENSITIVITY_CUTS);
+        List<TruthSensitivityTranche> tranches = findMyTranches(vd, TRUTH_SENSITIVITY_CUTS);
 
         assertTranchesAreTheSame(read(EXPECTED_TRANCHES_NEW), tranches, true, false);
     }

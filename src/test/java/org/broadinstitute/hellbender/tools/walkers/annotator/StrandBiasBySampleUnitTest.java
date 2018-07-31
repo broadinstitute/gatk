@@ -1,13 +1,13 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class StrandBiasBySampleUnitTest extends BaseTest {
+public class StrandBiasBySampleUnitTest extends GATKBaseTest {
 
     @Test
     public void testGetContingencyArray() throws Exception {

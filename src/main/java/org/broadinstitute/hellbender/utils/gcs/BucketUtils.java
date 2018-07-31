@@ -1,12 +1,16 @@
 package org.broadinstitute.hellbender.utils.gcs;
 
+import com.google.cloud.http.HttpTransportOptions;
+import com.google.cloud.storage.StorageOptions;
+import com.google.cloud.storage.contrib.nio.CloudStorageConfiguration;
 import com.google.cloud.storage.contrib.nio.CloudStorageFileSystem;
+import com.google.cloud.storage.contrib.nio.CloudStorageFileSystemProvider;
 import com.google.common.io.ByteStreams;
+import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.RuntimeIOException;
 import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.Tribble;
 import htsjdk.tribble.util.TabixUtils;
-import java.nio.file.Files;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -15,17 +19,16 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.config.ConfigFactory;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import shaded.cloud_nio.com.google.auth.oauth2.GoogleCredentials;
 import shaded.cloud_nio.com.google.api.gax.retrying.RetrySettings;
+import shaded.cloud_nio.com.google.auth.oauth2.GoogleCredentials;
 import shaded.cloud_nio.org.threeten.bp.Duration;
 
 import java.io.*;
+import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.UUID;
-import com.google.cloud.storage.StorageOptions;
-import com.google.cloud.http.HttpTransportOptions;
-import com.google.cloud.storage.contrib.nio.CloudStorageConfiguration;
 
 /**
  * Utilities for dealing with google buckets.
@@ -36,10 +39,6 @@ public final class BucketUtils {
 
     // slashes omitted since hdfs paths seem to only have 1 slash which would be weirder to include than no slashes
     public static final String FILE_PREFIX = "file:";
-
-    // if the channel errors out, re-open up to this many times
-    public static final int NIO_MAX_REOPENS = 20;
-
 
     public static final Logger logger = LogManager.getLogger("org.broadinstitute.hellbender.utils.gcs");
 
@@ -105,7 +104,7 @@ public final class BucketUtils {
                 inputStream = new FileInputStream(path);
             }
 
-            if(AbstractFeatureReader.hasBlockCompressedExtension(path)){
+            if(IOUtil.hasBlockCompressedExtension(path)){
                 return IOUtils.makeZippedInputStream(new BufferedInputStream(inputStream));
             } else {
                 return inputStream;
@@ -176,11 +175,11 @@ public final class BucketUtils {
 
     /**
      * Get a temporary file path based on the prefix and extension provided.
-     * This file (and possible indexes associated with it will be scheduled for deleton on shutdown
+     * This file (and possible indexes associated with it) will be scheduled for deletion on shutdown
      *
      * @param prefix a prefix for the file name
      *               for remote paths this should be a valid URI to root the temporary file in (ie. gcs://hellbender/staging/)
-     *               there is no guarantee that this will be used as the root of the tmp file name, a local prefix may be placed in the tmp folder for exapmle
+     *               there is no guarantee that this will be used as the root of the tmp file name, a local prefix may be placed in the tmp folder for example
      * @param extension and extension for the temporary file path, the resulting path will end in this
      * @return a path to use as a temporary file, on remote file systems which don't support an atomic tmp file reservation a path is chosen with a long randomized name
      *
@@ -192,6 +191,7 @@ public final class BucketUtils {
             deleteOnExit(path + Tribble.STANDARD_INDEX_EXTENSION);
             deleteOnExit(path + TabixUtils.STANDARD_INDEX_EXTENSION);
             deleteOnExit(path + ".bai");
+            deleteOnExit(path + ".md5");
             deleteOnExit(path.replaceAll(extension + "$", ".bai")); //if path ends with extension, replace it with .bai
             return path;
         } else {
@@ -291,6 +291,9 @@ public final class BucketUtils {
             // GCS case (would work with local too)
             if (isCloudStorageUrl(path)) {
                 java.nio.file.Path p = getPathOnGcs(path);
+                if (Files.isRegularFile(p)) {
+                    return Files.size(p);
+                }
                 return Files.list(p).mapToLong(
                     q -> {
                         try {
@@ -346,6 +349,18 @@ public final class BucketUtils {
     }
 
     /**
+     * Sets NIO_MAX_REOPENS and generous timeouts as the global default.
+     * These will apply even to library code that creates its own paths to access with NIO.
+     */
+    public static void setGlobalNIODefaultOptions() {
+        setGlobalNIODefaultOptions(ConfigFactory.getInstance().getGATKConfig().gcsMaxRetries());
+    }
+    public static void setGlobalNIODefaultOptions(int maxReopens) {
+        CloudStorageFileSystemProvider.setDefaultCloudStorageConfiguration(getCloudStorageConfiguration(maxReopens));
+        CloudStorageFileSystemProvider.setStorageOptions(setGenerousTimeouts(StorageOptions.newBuilder()).build());
+    }
+
+    /**
      * String -> Path. This *should* not be necessary (use Paths.get(URI.create(...)) instead) , but it currently is
      * on Spark because using the fat, shaded jar breaks the registration of the GCS FilesystemProvider.
      * To transform other types of string URLs into Paths, use IOUtils.getPath instead.
@@ -355,12 +370,15 @@ public final class BucketUtils {
         final String[] split = gcsUrl.split("/", -1);
         final String BUCKET = split[2];
         final String pathWithoutBucket = String.join("/", Arrays.copyOfRange(split, 3, split.length));
-        CloudStorageConfiguration cloudConfig = CloudStorageConfiguration.builder()
+        return CloudStorageFileSystem.forBucket(BUCKET).getPath(pathWithoutBucket);
+    }
+
+    /** The config we want to use. **/
+    public static CloudStorageConfiguration getCloudStorageConfiguration(int maxReopens) {
+        return CloudStorageConfiguration.builder()
             // if the channel errors out, re-open up to this many times
-            .maxChannelReopens(NIO_MAX_REOPENS)
+            .maxChannelReopens(maxReopens)
             .build();
-        StorageOptions sopt = setGenerousTimeouts(StorageOptions.newBuilder()).build();
-        return CloudStorageFileSystem.forBucket(BUCKET, cloudConfig, sopt).getPath(pathWithoutBucket);
     }
 
     private static StorageOptions.Builder setGenerousTimeouts(StorageOptions.Builder builder) {

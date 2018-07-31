@@ -10,12 +10,14 @@ import htsjdk.tribble.SimpleFeature;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.vcf.VCFFileReader;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -34,7 +36,7 @@ import static org.testng.Assert.assertFalse;
 /**
  * Test out the functionality of the new genome loc parser
  */
-public final class GenomeLocParserUnitTest extends BaseTest {
+public final class GenomeLocParserUnitTest extends GATKBaseTest {
     private GenomeLocParser genomeLocParser;
     private SAMFileHeader header;
 
@@ -435,7 +437,7 @@ public final class GenomeLocParserUnitTest extends BaseTest {
 
     @Test
     public void testcreateGenomeLocOnContig() throws FileNotFoundException {
-        final CachingIndexedFastaSequenceFile seq = new CachingIndexedFastaSequenceFile(new File(exampleReference));
+        final CachingIndexedFastaSequenceFile seq = new CachingIndexedFastaSequenceFile(IOUtils.getPath(exampleReference));
         final SAMSequenceDictionary dict = seq.getSequenceDictionary();
         final GenomeLocParser genomeLocParser = new GenomeLocParser(dict);
 
@@ -501,6 +503,48 @@ public final class GenomeLocParserUnitTest extends BaseTest {
         Assert.assertEquals(padded.getContig(), input.getContig());
         Assert.assertEquals(padded.getStart(), Math.max(input.getStart() - pad, 1));
         Assert.assertEquals(padded.getStop(), Math.min(input.getStop() + pad, contigLength));
+    }
+
+    @Test
+    public void testQueryAllHG38Intervals() {
+        SAMSequenceDictionary sd;
+        final File testFile = new File (publicTestDir, "org/broadinstitute/hellbender/engine/Homo_sapiens_assembly38.headerOnly.vcf.gz");
+
+        try (VCFFileReader vcfReader = new VCFFileReader(testFile, false)) {
+            sd = vcfReader.getFileHeader().getSequenceDictionary();
+        }
+
+        // Test that we can use any contig from hg38 as a query against a VCF with an hg38 sequence dictionary, in any
+        // query format, without ambiguity.
+        final GenomeLocParser localGenomeLocParser = new GenomeLocParser(sd);
+        sd.getSequences().stream().forEach(
+                hg38Contig -> {
+                    assertValidUniqueInterval(
+                            localGenomeLocParser,
+                            hg38Contig.getSequenceName(),
+                            new SimpleInterval(hg38Contig.getSequenceName(), 1, hg38Contig.getSequenceLength()));
+                    assertValidUniqueInterval(
+                            localGenomeLocParser,
+                            hg38Contig.getSequenceName() + ":1",
+                            new SimpleInterval(hg38Contig.getSequenceName(), 1, 1));
+                    assertValidUniqueInterval(
+                            localGenomeLocParser,
+                            hg38Contig.getSequenceName() + ":1+",
+                            new SimpleInterval(hg38Contig.getSequenceName(), 1, hg38Contig.getSequenceLength()));
+                    assertValidUniqueInterval(
+                            localGenomeLocParser,
+                            hg38Contig.getSequenceName() + ":1-1",
+                            new SimpleInterval(hg38Contig.getSequenceName(), 1, 1));
+                }
+        );
+    }
+
+    private void assertValidUniqueInterval(
+            final GenomeLocParser localGenomeLocParser,
+            final String queryString,
+            final SimpleInterval expectedInterval) {
+        final SimpleInterval actualInterval = new SimpleInterval(localGenomeLocParser.parseGenomeLoc(queryString));
+        Assert.assertEquals(actualInterval, expectedInterval);
     }
 
 }

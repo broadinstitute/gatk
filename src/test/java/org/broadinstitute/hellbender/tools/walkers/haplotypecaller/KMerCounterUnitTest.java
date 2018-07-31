@@ -1,12 +1,12 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.util.*;
 
-public final class KMerCounterUnitTest extends BaseTest {
+public final class KMerCounterUnitTest extends GATKBaseTest {
     @Test
 	public void testMyData() {
         final KMerCounter counter = new KMerCounter(3);

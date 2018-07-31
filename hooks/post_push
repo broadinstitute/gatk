@@ -1,0 +1,19 @@
+#!/bin/bash
+## This is a dockerhub hook and is separate from a .git hook, which lives elsewhere.
+## This file ensures that dockerhub builds of the GATK are tagged with an appropriate name after they are built.
+set -e
+
+# Parse image name for repo name
+tagStart=$(expr index "$IMAGE_NAME" :)  
+repoName=${IMAGE_NAME:0:tagStart-1}
+DATE=`date +%Y-%m-%d`
+# Grabbing the commit tag for master
+git clone https://github.com/broadinstitute/gatk.git tmp
+cd tmp
+git checkout $SOURCE_COMMIT
+NAME=$(git describe)"-SNAPSHOT"
+cd ..
+
+# Tag and push image for each additional tag
+docker tag $IMAGE_NAME ${repoName}:${DATE}-${NAME}
+docker push ${repoName}:${DATE}-${NAME}

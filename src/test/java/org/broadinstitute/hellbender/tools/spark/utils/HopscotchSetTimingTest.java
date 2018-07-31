@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.utils;
 
-import org.broadinstitute.hellbender.tools.spark.sv.SVUtils;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 
 import java.util.*;
 

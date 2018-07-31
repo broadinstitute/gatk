@@ -5,7 +5,7 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -13,7 +13,7 @@ import org.testng.annotations.Test;
 import java.util.Arrays;
 import java.util.Iterator;
 
-public class ReadFilteringIteratorUnitTest extends BaseTest {
+public class ReadFilteringIteratorUnitTest extends GATKBaseTest {
 
     private Iterator<GATKRead> makeReadsIterator() {
         return Arrays.asList(

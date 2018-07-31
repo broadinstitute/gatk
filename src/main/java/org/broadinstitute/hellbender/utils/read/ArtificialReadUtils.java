@@ -1,12 +1,12 @@
 package org.broadinstitute.hellbender.utils.read;
 
-import com.google.api.services.genomics.model.LinearAlignment;
-import com.google.api.services.genomics.model.Position;
-import com.google.api.services.genomics.model.Read;
 import htsjdk.samtools.*;
-import htsjdk.samtools.util.StringUtil;
+import htsjdk.variant.variantcontext.Allele;
+import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
+import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 
 import java.util.*;
 
@@ -298,26 +298,6 @@ public final class ArtificialReadUtils {
     }
 
     /**
-     * Creates an artificial GATKRead backed by a Google Genomics read.
-     *
-     * The read will consist of the specified number of Q30 'A' bases, and will be
-     * mapped to the specified contig at the specified start position.
-     *
-     * @param name name of the new read
-     * @param contig contig the new read is mapped to
-     * @param start start position of the new read
-     * @param length number of bases in the new read
-     * @return an artificial GATKRead backed by a Google Genomics read.
-     */
-    public static GATKRead createGoogleBackedRead( final String name, final String contig, final int start, final int length ) {
-        final byte[] bases = Utils.dupBytes((byte) 'A', length);
-        final byte[] quals = Utils.dupBytes((byte) 30, length);
-
-        final Read googleRead = createArtificialGoogleGenomicsRead(name, contig, start, bases, quals, length + "M");
-        return new GoogleGenomicsReadToGATKReadAdapter(googleRead);
-    }
-
-    /**
      * Create an artificial SAMRecord based on the parameters.  The cigar string will be *M, where * is the length of the read
      *
      * @param header         the SAM header to associate the read with
@@ -451,40 +431,13 @@ public final class ArtificialReadUtils {
         return createArtificialSAMRecord(header, cigar, UUID.randomUUID().toString());
     }
 
-    public static Read createArtificialGoogleGenomicsRead( final String name, final String contig, final int start, final byte[] bases, final byte[] quals, final String cigar ) {
-        Read googleRead = new Read();
-
-        googleRead.setFragmentName(name);
-        googleRead.setAlignment(new LinearAlignment());
-        googleRead.getAlignment().setPosition(new Position());
-        googleRead.getAlignment().getPosition().setReferenceName(contig);
-        googleRead.getAlignment().getPosition().setPosition((long) start - 1);
-        googleRead.setAlignedSequence(StringUtil.bytesToString(bases));
-        googleRead.getAlignment().setCigar(CigarConversionUtils.convertSAMCigarToCigarUnitList(TextCigarCodec.decode(cigar)));
-
-        List<Integer> convertedQuals = new ArrayList<>();
-        for ( byte b : quals ) {
-            convertedQuals.add((int)b);
-        }
-        googleRead.setAlignedQuality(convertedQuals);
-
-        // Create a fully formed read that can be wrapped by a GATKRead and have a valid
-        // SAMString without GATKRead throwing missing field exceptions.
-        googleRead.setFailedVendorQualityChecks(false);
-        googleRead.setSecondaryAlignment(false);
-        googleRead.setSupplementaryAlignment(false);
-        googleRead.setDuplicateFragment(false);
-
-        Position matePos = new Position();
-        matePos.setReverseStrand(false);
-        googleRead.setNextMatePosition(matePos);
-
-        return googleRead;
+    public static List<GATKRead> createPair(SAMFileHeader header, String name, int readLen, int leftStart, int rightStart, boolean leftIsFirst, boolean leftIsNegative) {
+        return createPair(header, name, readLen, 0, leftStart, rightStart, leftIsFirst, leftIsNegative);
     }
 
-    public static List<GATKRead> createPair(SAMFileHeader header, String name, int readLen, int leftStart, int rightStart, boolean leftIsFirst, boolean leftIsNegative) {
-        GATKRead left = createArtificialRead(header, name, 0, leftStart, readLen);
-        GATKRead right = createArtificialRead(header, name, 0, rightStart, readLen);
+    public static List<GATKRead> createPair(SAMFileHeader header, String name, int readLen, int refIndex, int leftStart, int rightStart, boolean leftIsFirst, boolean leftIsNegative) {
+        GATKRead left = createArtificialRead(header, name, refIndex, leftStart, readLen);
+        GATKRead right = createArtificialRead(header, name, refIndex, rightStart, readLen);
 
         left.setIsPaired(true);
         right.setIsPaired(true);
@@ -506,8 +459,8 @@ public final class ArtificialReadUtils {
         right.setIsReverseStrand(!leftIsNegative);
         right.setMateIsReverseStrand(leftIsNegative);
 
-        left.setMatePosition(header.getSequence(0).getSequenceName(), right.getStart());
-        right.setMatePosition(header.getSequence(0).getSequenceName(), left.getStart());
+        left.setMatePosition(header.getSequence(refIndex).getSequenceName(), right.getStart());
+        right.setMatePosition(header.getSequence(refIndex).getSequenceName(), left.getStart());
 
         int isize = rightStart + readLen - leftStart;
         left.setFragmentLength(isize);
@@ -651,5 +604,128 @@ public final class ArtificialReadUtils {
         header.setSortOrder(SAMFileHeader.SortOrder.coordinate);
         header.setSequenceDictionary(dict);
         return header;
+    }
+
+    /**
+     * Create a pileupElement with the given insertion added to the bases.
+     *
+     * Assumes the insertion is prepended with one "reference" base.
+     *
+     * @param offsetIntoRead the offset into the read where the insertion Allele should appear.  As a reminder, the
+     *                       insertion allele should have a single ref base prepend.  Must be 0 - (lengthOfRead-1)
+     * @param insertionAllele the allele as you would see in a VCF for the insertion.  So, it is prepended with a ref base.  Never {@code null}
+     * @param lengthOfRead the length of the artificial read.  Does not include any length differences due to the spliced indel.  Must be greater than zero.
+     * @return pileupElement with an artificial read containing the insertion.
+     */
+    public static PileupElement createSplicedInsertionPileupElement(int offsetIntoRead, final Allele insertionAllele, final int lengthOfRead) {
+
+        ParamUtils.isPositive(lengthOfRead, "length of read is invalid for creating an artificial read, must be greater than 0.");
+        ParamUtils.inRange(offsetIntoRead, 0, lengthOfRead-1, "offset into read is invalid for creating an artificial read, must be 0-" + (lengthOfRead-1) + ".");
+        Utils.nonNull(insertionAllele);
+
+        int remainingReadLength = lengthOfRead - ((offsetIntoRead + 1) + (insertionAllele.getBases().length - 1));
+        String cigarString = (offsetIntoRead + 1) + "M" + (insertionAllele.getBases().length - 1) + "I";
+        if (remainingReadLength > 0) {
+            cigarString += (remainingReadLength + "M");
+        }
+
+        final Cigar cigar = TextCigarCodec.decode(cigarString);
+        final GATKRead gatkRead = ArtificialReadUtils.createArtificialRead(cigar);
+        final PileupElement pileupElement = PileupElement.createPileupForReadAndOffset(gatkRead, offsetIntoRead);
+
+        // Splice in that insertion.
+        final byte[] bases = gatkRead.getBases();
+        final int newReadLength = lengthOfRead + insertionAllele.getBases().length - 1;
+        final byte[] destBases = new byte[newReadLength];
+        final byte[] basesToInsert = ArrayUtils.subarray(insertionAllele.getBases(), 1, insertionAllele.getBases().length);
+        System.arraycopy(bases, 0, destBases, 0, offsetIntoRead);
+
+        // Make sure that the one prepended "reference base" matches the input.
+        destBases[offsetIntoRead] = insertionAllele.getBases()[0];
+
+        System.arraycopy(basesToInsert, 0, destBases, offsetIntoRead+1, basesToInsert.length);
+
+        if ((offsetIntoRead + 1) < lengthOfRead) {
+            System.arraycopy(bases, offsetIntoRead + 1, destBases, offsetIntoRead + basesToInsert.length + 1, bases.length - 1 - offsetIntoRead);
+        }
+
+        gatkRead.setBases(destBases);
+
+        return pileupElement;
+    }
+
+    /** See {@link ArtificialReadUtils#createSplicedInsertionPileupElement}, except that this method returns a
+     * pileup element containing the specified deletion.
+     *
+     * @param offsetIntoRead See {@link ArtificialReadUtils#createSplicedInsertionPileupElement}
+     * @param referenceAllele  the reference allele as you would see in a VCF for the deletion.
+     *                         In other words, it is the deletion prepended with a single ref base.  Never {@code null}
+     * @param lengthOfRead See {@link ArtificialReadUtils#createSplicedInsertionPileupElement}
+     * @return pileupElement with an artificial read containing the deletion.
+     */
+    public static PileupElement createSplicedDeletionPileupElement(int offsetIntoRead, final Allele referenceAllele, final int lengthOfRead) {
+        ParamUtils.isPositive(lengthOfRead, "length of read is invalid for creating an artificial read, must be greater than 0.");
+        ParamUtils.inRange(offsetIntoRead, 0, lengthOfRead-1, "offset into read is invalid for creating an artificial read, must be 0-" + (lengthOfRead-1) + ".");
+        Utils.nonNull(referenceAllele);
+
+        // Do not include the prepended "ref"
+        final int numberOfSpecifiedBasesToDelete = referenceAllele.getBases().length - 1;
+        final int numberOfBasesToActuallyDelete = Math.min(numberOfSpecifiedBasesToDelete, lengthOfRead - offsetIntoRead - 1);
+
+        final int newReadLength = lengthOfRead - numberOfBasesToActuallyDelete;
+
+        String cigarString = (offsetIntoRead + 1) + "M";
+
+        if (numberOfBasesToActuallyDelete > 0) {
+            cigarString += numberOfBasesToActuallyDelete + "D";
+        }
+        final int remainingBases = lengthOfRead - (offsetIntoRead + 1) - numberOfBasesToActuallyDelete;
+        if (remainingBases > 0) {
+            cigarString += remainingBases + "M";
+        }
+
+        final Cigar cigar = TextCigarCodec.decode(cigarString);
+        final GATKRead gatkRead = ArtificialReadUtils.createArtificialRead(cigar);
+        final PileupElement pileupElement = PileupElement.createPileupForReadAndOffset(gatkRead, offsetIntoRead);
+
+        // The Cigar string has basically already told the initial generation of a read to delete bases.
+        final byte[] bases = gatkRead.getBases();
+
+        // Make sure that the one prepended "reference base" matches the input.
+        bases[offsetIntoRead] = referenceAllele.getBases()[0];
+
+        gatkRead.setBases(bases);
+
+        return pileupElement;
+    }
+
+    /**
+     * See {@link ArtificialReadUtils#createSplicedInsertionPileupElement}, except that this method returns a
+     * pileup element containing base-by-base replacement.  As a result, the length of the read will not change.
+     *
+     * @param offsetIntoRead See {@link ArtificialReadUtils#createSplicedInsertionPileupElement}
+     * @param newAllele The new bases that should be in the read at the specified position.  If this allele causes the
+     *                  replacement to extend beyond the end of the read
+     *                  (i.e. offsetIntoRead + length(newAllele) is greater than length of read),
+     *                  the replacement will be truncated.
+     * @param lengthOfRead See {@link ArtificialReadUtils#createSplicedInsertionPileupElement}
+     * @return pileupElement with an artificial read containing the new bases specified by te given allele.
+     */
+    public static PileupElement createNonIndelPileupElement(final int offsetIntoRead, final Allele newAllele, final int lengthOfRead) {
+        ParamUtils.isPositive(lengthOfRead, "length of read is invalid for creating an artificial read, must be greater than 0.");
+        ParamUtils.inRange(offsetIntoRead, 0, lengthOfRead-1, "offset into read is invalid for creating an artificial read, must be 0-" + (lengthOfRead-1) + ".");
+        Utils.nonNull(newAllele);
+
+        final String cigarString = lengthOfRead + "M";
+
+        final Cigar cigar = TextCigarCodec.decode(cigarString);
+        final GATKRead gatkRead = ArtificialReadUtils.createArtificialRead(cigar);
+        final byte[] newBases = gatkRead.getBases();
+        final int upperBound = Math.min(offsetIntoRead + newAllele.getBases().length, lengthOfRead);
+        for (int i = offsetIntoRead; i < upperBound; i++) {
+            newBases[i] = newAllele.getBases()[i - offsetIntoRead];
+        }
+        gatkRead.setBases(newBases);
+        return PileupElement.createPileupForReadAndOffset(gatkRead, offsetIntoRead);
     }
 }

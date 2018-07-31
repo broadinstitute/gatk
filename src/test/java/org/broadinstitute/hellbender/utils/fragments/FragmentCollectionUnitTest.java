@@ -7,8 +7,8 @@ import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
-import org.junit.Assert;
+import org.broadinstitute.hellbender.GATKBaseTest;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;
@@ -18,7 +18,7 @@ import java.util.Map;
 /**
  * @author Daniel Gomez-Sanchez (magicDGS)
  */
-public class FragmentCollectionUnitTest extends BaseTest {
+public class FragmentCollectionUnitTest extends GATKBaseTest {
 
     @Test
     public void createFromMultiSamplePileup() throws Exception {

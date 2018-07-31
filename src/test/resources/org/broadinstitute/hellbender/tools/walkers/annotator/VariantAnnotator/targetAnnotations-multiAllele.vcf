@@ -1,0 +1,8 @@
+##fileformat=VCFv4.0
+##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">
+##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	
+20	10001292	rs1	GACCC	TACCC,AACCC,C	42.22	.	AF=0.60,0.10,0.10;AC=6,1,1
+20	10002963	.	C	G	42.22	.	AF=0.30;AC=3
+20	10005008	rs2	A	G,T	123.78	.	AF=0.1,0.5;AC=1,5
+20	10005200	.	GTGTG	G	100	.	AF=0.2;AC=2

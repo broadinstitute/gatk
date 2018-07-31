@@ -4,7 +4,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramGroup;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 
 /**
- * only for testing
+ * Program group for use with internal test CommandLinePrograms only.
  */
 public final class TestProgramGroup implements CommandLineProgramGroup {
     @Override

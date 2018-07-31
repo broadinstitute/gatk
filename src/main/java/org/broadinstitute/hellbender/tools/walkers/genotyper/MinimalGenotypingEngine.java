@@ -20,8 +20,20 @@ public final class MinimalGenotypingEngine extends GenotypingEngine<UnifiedArgum
      * @param samples list of samples
      */
     public MinimalGenotypingEngine(final UnifiedArgumentCollection configuration, final SampleList samples,
-                                    final AFCalculatorProvider afCalculatorProvider ) {
-        super(configuration, samples, afCalculatorProvider);
+                                   final AFCalculatorProvider afCalculatorProvider) {
+        this(configuration, samples, afCalculatorProvider, false);
+    }
+
+    /**
+     * Creates a new unified genotyping given the UG configuration parameters and the targeted set of samples
+     *
+     * @param configuration the UG configuration.
+     * @param samples list of samples
+     * @param doAlleleSpecificCalcs Whether to calculate genotyping annotations needed for allele specific annotations
+     */
+    public MinimalGenotypingEngine(final UnifiedArgumentCollection configuration, final SampleList samples,
+                                    final AFCalculatorProvider afCalculatorProvider, boolean doAlleleSpecificCalcs ) {
+        super(configuration, samples, afCalculatorProvider, doAlleleSpecificCalcs);
 
         if ( configuration.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES ) {
             throw new UserException("GENOTYPE_GIVEN_ALLELES mode not supported in the MinimalGenotypingEngine");

@@ -5,7 +5,7 @@ import htsjdk.variant.variantcontext.*;
 import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -15,7 +15,7 @@ import java.util.*;
 /**
  * Created by davidben on 3/23/17.
  */
-public class ReadPositionUnitTest extends BaseTest {
+public class ReadPositionUnitTest extends GATKBaseTest {
     final static private String SAMPLE = "SAMPLE";
     final static private Genotype DUMMY_GENOTYPE = new GenotypeBuilder(SAMPLE).make();
 
@@ -68,10 +68,9 @@ public class ReadPositionUnitTest extends BaseTest {
         rp.annotate(null, vc, DUMMY_GENOTYPE, gb, likelihoods);
         final Genotype g = gb.make();
 
-        final int[] medianRefAndAltPositions = (int[]) g.getExtendedAttribute(ReadPosition.KEY);
+        final int[] medianAltPositions = (int[]) g.getExtendedAttribute(ReadPosition.KEY);
 
-        Assert.assertEquals( medianRefAndAltPositions[0], 2);
-        Assert.assertEquals(medianRefAndAltPositions[1], 1);
+        Assert.assertEquals(medianAltPositions[0], 1);
     }
 
 }

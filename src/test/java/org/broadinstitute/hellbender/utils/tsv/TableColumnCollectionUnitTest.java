@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.utils.tsv;
 
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -13,7 +13,7 @@ import java.util.Arrays;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public class TableColumnCollectionUnitTest extends BaseTest {
+public class TableColumnCollectionUnitTest extends GATKBaseTest {
 
     private static int[] COUNT_TEST = new int[]{1, 3, 10, 101};
 

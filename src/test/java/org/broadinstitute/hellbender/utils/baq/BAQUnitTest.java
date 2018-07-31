@@ -6,14 +6,16 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.SAMUtils;
 import htsjdk.samtools.util.Locatable;
+import java.nio.file.Path;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.engine.ReferenceFileSource;
 import org.broadinstitute.hellbender.engine.ReferenceMemorySource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -23,7 +25,7 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class BAQUnitTest extends BaseTest {
+public final class BAQUnitTest extends GATKBaseTest {
 
     private static final int START_CHR = 1;
     private static final int NUM_CHR = 2;
@@ -174,8 +176,8 @@ public final class BAQUnitTest extends BaseTest {
 
     @Test
     public void testBAQOverwritesExistingTagWithNull() {
-        final File referenceFile = new File(hg19_chr1_1M_Reference);
-        final ReferenceDataSource rds = new ReferenceFileSource(referenceFile);
+        final Path reference = IOUtils.getPath(hg19_chr1_1M_Reference);
+        final ReferenceDataSource rds = new ReferenceFileSource(reference);
 
         // create a read with a single base off the end of the contig, which cannot be BAQed
         final GATKRead read = ArtificialReadUtils.createArtificialRead(createHeader(), "foo", 0, rds.getSequenceDictionary().getSequence("1").getSequenceLength() + 1, 1);

@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.spark;
 
-import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.common.base.Stopwatch;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
@@ -9,13 +8,11 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
-import org.broadinstitute.barclay.argparser.BetaFeature;
+import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.*;
-import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
-import org.broadinstitute.hellbender.engine.AuthHolder;
 import org.broadinstitute.hellbender.engine.ContextShard;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.datasources.VariantsSource;
@@ -36,6 +33,7 @@ import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCo
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationTables;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCovariateList;
 import org.broadinstitute.hellbender.utils.variant.GATKVariant;
+import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 
 import java.io.File;
 import java.io.IOException;
@@ -43,16 +41,60 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Experimental sharded spark implementation of the first pass of the base quality score recalibration.
+ * Generates a recalibration table based on various covariates.
+ * The default covariates are read group, reported quality score, machine cycle, and nucleotide context.
+ *
+ *
+ * <h3>Input</h3>
+ * <p>
+ * The input read data whose base quality scores need to be assessed.
+ * <p>
+ * A database of known polymorphic sites to skip over.
+ * </p>
+ * <p>
+ * <h3>Output</h3>
+ * <p>
+ * A GATK Report file with many tables:
+ * <ol>
+ * <li>The list of arguments</li>
+ * <li>The quantized qualities table</li>
+ * <li>The recalibration table by read group</li>
+ * <li>The recalibration table by quality score</li>
+ * <li>The recalibration table for all the optional covariates</li>
+ * </ol>
+ * <p>
+ * The GATK Report is intended to be easy to read by humans or computers. Check out the documentation of the GATKReport to learn how to manipulate this table.
+ * </p>
+ * <p>
+ * <h3>Examples</h3>
+ * <pre>
+ * gatk BaseRecalibratorSparkSharded \
+ *   -I gs://my-gcs-bucket/my_reads.bam \
+ *   -R gs://my-gcs-bucket/reference.fasta \
+ *   --known-sites gs://my-gcs-bucket/sites_of_variation.vcf \
+ *   --known-sites gs://my-gcs-bucket/another/optional/setOfSitesToMask.vcf \
+ *   -O gs://my-gcs-bucket/recal_data.table \
+ *   -- \
+ *   --sparkRunner GCS \
+ *   --cluster my-dataproc-cluster
+ * </pre>
+ */
+
 @CommandLineProgramProperties(
-        summary = "Base Quality Score Recalibration (BQSR) -- Generates recalibration table based on various user-specified covariates (such as read group, reported quality score, machine cycle, and nucleotide context).",
-        oneLineSummary = "BaseRecalibrator on Spark (experimental sharded implementation)",
-        programGroup = SparkProgramGroup.class
+        summary = BaseRecalibratorSparkSharded.USAGE_SUMMARY,
+        oneLineSummary = BaseRecalibratorSparkSharded.USAGE_ONE_LINE_SUMMARY,
+        programGroup = ReadDataManipulationProgramGroup.class
 )
 @DocumentedFeature
-@BetaFeature
+@ExperimentalFeature
 public class BaseRecalibratorSparkSharded extends SparkCommandLineProgram {
     private static final long serialVersionUID = 1L;
-
+    static final String USAGE_ONE_LINE_SUMMARY = "BaseRecalibrator on Spark (experimental sharded implementation)";
+    static final String USAGE_SUMMARY = "Experimental sharded implementation of the first pass of the Base Quality Score Recalibration (BQSR)" +
+            " -- Generates recalibration table based on various user-specified covariates " +
+            "(such as read group, reported quality score, machine cycle, and nucleotide context).";
     /**
      * all the command line arguments for BQSR and its covariates
      */
@@ -69,16 +111,13 @@ public class BaseRecalibratorSparkSharded extends SparkCommandLineProgram {
     @ArgumentCollection
     private final ReferenceInputArgumentCollection referenceArguments = new RequiredReferenceInputArgumentCollection();
 
-    @Argument(doc = "the known variants. Must be local.", shortName = "knownSites", fullName = "knownSites", optional = false)
+    @Argument(doc = "the known variants. Must be local.", fullName = BaseRecalibrator.KNOWN_SITES_ARG_FULL_NAME, optional = false)
     private List<String> knownVariants;
 
     // output can be local or GCS.
     @Argument(doc = "Path to save the final recalibration tables to.",
               shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, optional = false)
     private String outputTablesPath = null;
-
-
-    private AuthHolder auth;
 
     @Override
     protected void runPipeline( JavaSparkContext ctx ) {
@@ -88,9 +127,7 @@ public class BaseRecalibratorSparkSharded extends SparkCommandLineProgram {
         final String bam = readArguments.getReadFilesNames().get(0);
         final String referenceURL = referenceArguments.getReferenceFileName();
 
-        auth = getAuthHolder();
-
-        final ReferenceMultiSource rds = new ReferenceMultiSource(auth, referenceURL, BaseRecalibrationEngine.BQSR_REFERENCE_WINDOW_FUNCTION);
+        final ReferenceMultiSource rds = new ReferenceMultiSource(referenceURL, BaseRecalibrationEngine.BQSR_REFERENCE_WINDOW_FUNCTION);
 
         SAMFileHeader readsHeader = new ReadsSparkSource(ctx, readArguments.getReadValidationStringency()).getHeader(bam, referenceURL);
         final SAMSequenceDictionary readsDictionary = readsHeader.getSequenceDictionary();
@@ -126,7 +163,7 @@ public class BaseRecalibratorSparkSharded extends SparkCommandLineProgram {
         BaseRecalibrationEngine.finalizeRecalibrationTables(table);
 
         try {
-            BaseRecalibratorEngineSparkWrapper.saveTextualReport(outputTablesPath, readsHeader, table, bqsrArgs, auth);
+            BaseRecalibratorEngineSparkWrapper.saveTextualReport(outputTablesPath, readsHeader, table, bqsrArgs);
         } catch (IOException e) {
             throw new UserException.CouldNotCreateOutputFile(new File(outputTablesPath), e);
         }
@@ -146,7 +183,6 @@ public class BaseRecalibratorSparkSharded extends SparkCommandLineProgram {
                     copied=true;
                 }
                 // this only works with the API_KEY, but then again it's a hack so there's no point in polishing it. Please don't make me.
-                PipelineOptions popts = auth.asPipelineOptionsDeprecated();
                 String d = IOUtils.createTempFile("knownVariants-"+i,".vcf").getAbsolutePath();
                 try {
                     BucketUtils.copyFile(v, d);

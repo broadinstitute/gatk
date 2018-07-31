@@ -5,12 +5,13 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.math3.stat.descriptive.moment.Mean;
 import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -47,7 +48,7 @@ import java.util.stream.Collectors;
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class GibbsSamplerCopyRatioUnitTest extends BaseTest {
+public final class GibbsSamplerCopyRatioUnitTest extends GATKBaseTest {
     private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/utils/mcmc/";
 
     private static final File COVERAGES_FILE =
@@ -92,7 +93,7 @@ public final class GibbsSamplerCopyRatioUnitTest extends BaseTest {
     //Loads test data from file
     private static <T> List<T> loadList(final File file, final Function<String, T> parse) {
         try {
-            return FileUtils.readLines(file).stream().map(parse).collect(Collectors.toList());
+            return FileUtils.readLines(file, StandardCharsets.UTF_8).stream().map(parse).collect(Collectors.toList());
         } catch (final IOException e) {
             throw new UserException.CouldNotReadInputFile(file, e);
         }

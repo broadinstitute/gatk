@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.engine;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.IOUtil;
@@ -447,10 +448,23 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
             headers.add(readerEntry.getKey().getFileHeader());
         }
 
-        // TODO: don't require coordinate ordering
-        SamFileHeaderMerger headerMerger = new SamFileHeaderMerger(SAMFileHeader.SortOrder.coordinate, headers, true);
+        SamFileHeaderMerger headerMerger = new SamFileHeaderMerger(identifySortOrder(headers), headers, true);
         return headerMerger;
     }
+
+    @VisibleForTesting
+    static SAMFileHeader.SortOrder identifySortOrder(final List<SAMFileHeader> headers){
+        final Set<SAMFileHeader.SortOrder> sortOrders = headers.stream().map(SAMFileHeader::getSortOrder).collect(Collectors.toSet());
+        final SAMFileHeader.SortOrder order;
+        if (sortOrders.size() == 1) {
+            order = sortOrders.iterator().next();
+        } else {
+            order = SAMFileHeader.SortOrder.unsorted;
+            logger.warn("Inputs have different sort orders. Assuming {} sorted reads for all of them.", order);
+        }
+        return order;
+    }
+
 
     /**
      * Shut down this data source permanently, closing all iterations and readers.

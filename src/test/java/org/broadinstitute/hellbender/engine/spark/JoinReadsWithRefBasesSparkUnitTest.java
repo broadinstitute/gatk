@@ -1,18 +1,16 @@
 package org.broadinstitute.hellbender.engine.spark;
 
-import com.google.api.services.genomics.model.Read;
-import com.google.cloud.dataflow.sdk.options.PipelineOptions;
-import com.google.cloud.dataflow.sdk.values.KV;
 import htsjdk.samtools.SAMRecord;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
+import org.broadinstitute.hellbender.utils.KV;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.FakeReferenceSource;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -20,18 +18,17 @@ import org.testng.annotations.Test;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.*;
 
-public class JoinReadsWithRefBasesSparkUnitTest extends BaseTest {
+public class JoinReadsWithRefBasesSparkUnitTest extends GATKBaseTest {
     @DataProvider(name = "bases")
     public Object[][] bases(){
-        Object[][] data = new Object[2][];
-        List<Class<?>> classes = Arrays.asList(Read.class, SAMRecord.class);
+        List<Class<?>> classes = Collections.singletonList(SAMRecord.class);
+        Object[][] data = new Object[classes.size()][];
         for (int i = 0; i < classes.size(); ++i) {
             Class<?> c = classes.get(i);
             ReadsPreprocessingPipelineSparkTestData testData = new ReadsPreprocessingPipelineSparkTestData(c);
@@ -53,7 +50,7 @@ public class JoinReadsWithRefBasesSparkUnitTest extends BaseTest {
 
         ReferenceMultiSource mockSource = mock(ReferenceMultiSource.class, withSettings().serializable());
         for (SimpleInterval i : intervals) {
-            when(mockSource.getReferenceBases(any(PipelineOptions.class), eq(i))).thenReturn(FakeReferenceSource.bases(i));
+            when(mockSource.getReferenceBases(eq(i))).thenReturn(FakeReferenceSource.bases(i));
         }
         when(mockSource.getReferenceWindowFunction()).thenReturn(ReferenceWindowFunctions.IDENTITY_FUNCTION);
 
@@ -76,7 +73,7 @@ public class JoinReadsWithRefBasesSparkUnitTest extends BaseTest {
 
         ReferenceMultiSource mockSource = mock(ReferenceMultiSource.class, withSettings().serializable());
         for (SimpleInterval i : intervals) {
-            when(mockSource.getReferenceBases(any(PipelineOptions.class), eq(i))).thenReturn(FakeReferenceSource.bases(i));
+            when(mockSource.getReferenceBases(eq(i))).thenReturn(FakeReferenceSource.bases(i));
         }
         when(mockSource.getReferenceWindowFunction()).thenReturn(ReferenceWindowFunctions.IDENTITY_FUNCTION);
 

@@ -7,7 +7,7 @@ import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.RandomGeneratorFactory;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class PosteriorSummaryUtilsUnitTest extends BaseTest {
+public final class PosteriorSummaryUtilsUnitTest extends GATKBaseTest {
     private static final int RANDOM_SEED = 42;
     private static final RandomGenerator rng = RandomGeneratorFactory.createRandomGenerator(new Random(RANDOM_SEED));
 
@@ -37,7 +37,7 @@ public final class PosteriorSummaryUtilsUnitTest extends BaseTest {
     private static final List<Double> betaSamplesMAF = Arrays.stream(ArrayUtils.addAll(
             new BetaDistribution(rng, 10, 6).sample(1000),
             new BetaDistribution(rng, 6, 10).sample(1000)))
-            .boxed().filter(d -> d <= 0.5).collect(Collectors.toList());    //mimics ACNV minor-allele-fraction posterior
+            .boxed().filter(d -> d <= 0.5).collect(Collectors.toList());    //mimics minor-allele-fraction posterior
 
     private static final List<Double> identicalSamples = Collections.nCopies(1000, 1.);
     private static final List<Double> withNaNSamples = toList(new double[]{Double.NEGATIVE_INFINITY, 0., 1.});

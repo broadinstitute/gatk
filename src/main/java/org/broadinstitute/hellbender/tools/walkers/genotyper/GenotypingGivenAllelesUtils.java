@@ -27,6 +27,7 @@ public final class GenotypingGivenAllelesUtils {
      * @param tracker the meta data tracker.
      * @param loc the query location.
      * @param snpsOnly whether we only should consider SNP variation.
+     * @param keepFiltered whether to include filtered variants
      * @param logger where to output warnings.
      * @param allelesBinding the target variation context binding containing the given alleles.
      * @return never {@code null}
@@ -34,6 +35,7 @@ public final class GenotypingGivenAllelesUtils {
     public static VariantContext composeGivenAllelesVariantContextFromRod(final FeatureContext tracker,
                                                                           final Locatable loc,
                                                                           final boolean snpsOnly,
+                                                                          final boolean keepFiltered,
                                                                           final Logger logger,
                                                                           final FeatureInput<VariantContext> allelesBinding) {
         Utils.nonNull(tracker, "tracker may not be null");
@@ -43,7 +45,7 @@ public final class GenotypingGivenAllelesUtils {
 
         // search for usable record
         for ( final VariantContext rodVc : tracker.getValues(allelesBinding, new SimpleInterval(loc)) ) {
-            if ( rodVc != null && ! rodVc.isFiltered() && (! snpsOnly || rodVc.isSNP() )) {
+            if ( rodVc != null && (keepFiltered || rodVc.isNotFiltered()) && (! snpsOnly || rodVc.isSNP() )) {
                 if ( vc == null ) {
                     vc = rodVc;
                 } else {

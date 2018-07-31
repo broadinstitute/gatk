@@ -3,16 +3,16 @@ package org.broadinstitute.hellbender.tools.walkers.variantutils;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.*;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.Utils;
 
-public class SelectVariantsUnitTest extends BaseTest {
+public class SelectVariantsUnitTest extends GATKBaseTest {
 
     ///////////////////////////////////////////////////////////
     // Tests for maxIndelSize and minIndelSize functionality //
@@ -55,29 +55,4 @@ public class SelectVariantsUnitTest extends BaseTest {
         final boolean hasIndelTooLargeOrSmall = SelectVariants.containsIndelLargerOrSmallerThan(vc, max, min);
         Assert.assertEquals(hasIndelTooLargeOrSmall, size > max || size < min);
     }
-
-    @DataProvider(name="includeMatchingTests")
-    public Object[][] getIncludeMatchingTests() {
-        return new Object[][] {
-                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("a"), true, new LinkedHashSet<>(Arrays.asList("a")) },
-                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("a"), false, new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")) },
-                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("b"), true, Collections.EMPTY_SET },
-                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("b"), false, new LinkedHashSet<>(Arrays.asList("ab", "abc")) },
-                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("a", "b"), true, new LinkedHashSet<>(Arrays.asList("a")) },
-                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("a", "b"), false, new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")) },
-                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("a", "ab"), true, new LinkedHashSet<>(Arrays.asList("a", "ab")) },
-                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("a", "ab"), false, new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")) },
-                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList(".*b.*"), true, Collections.EMPTY_SET },
-                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList(".*b.*"), false, new LinkedHashSet<>(Arrays.asList("ab", "abc") )},
-                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList(".*"), true, Collections.EMPTY_SET },
-                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList(".*"), false, new LinkedHashSet<>(Arrays.asList("a", "ab", "abc") )}
-        };
-    }
-
-    @Test(dataProvider = "includeMatchingTests")
-    public void testIncludeMatching(Set<String> values, Collection<String> filters, boolean exactMatch, Set<String> expected) {
-        Set<String> actual = SelectVariants.includeMatching(values, filters, exactMatch);
-        Assert.assertEquals(actual, expected);
-    }
-
 }

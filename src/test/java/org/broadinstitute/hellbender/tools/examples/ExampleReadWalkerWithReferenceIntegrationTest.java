@@ -10,10 +10,10 @@ import java.util.Arrays;
 public final class ExampleReadWalkerWithReferenceIntegrationTest extends CommandLineProgramTest {
 
     private static final String TEST_DATA_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/";
-    private static final String TEST_OUTPUT_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/tools/examples/";
+    private static final String TEST_OUTPUT_DIRECTORY = exampleTestDir;
 
     @Test
-    public void testExampleVariantWalker() throws IOException {
+    public void testExampleReadWalkerWithReference() throws IOException {
         final IntegrationTestSpec testSpec = new IntegrationTestSpec(
                 " -R " + hg19MiniReference +
                 " -I " + TEST_DATA_DIRECTORY + "reads_data_source_test1.bam" +

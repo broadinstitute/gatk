@@ -2,23 +2,24 @@ package org.broadinstitute.hellbender.utils;
 
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.common.primitives.Ints;
 import htsjdk.samtools.util.Log.LogLevel;
 import org.apache.commons.io.FileUtils;
 import org.apache.logging.log4j.Level;
-import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
-import org.testng.SkipException;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static java.util.Arrays.asList;
 import static org.testng.Assert.assertEquals;
@@ -27,7 +28,7 @@ import static org.testng.Assert.assertEquals;
  * Testing framework for general purpose utilities class.
  *
  */
-public final class UtilsUnitTest extends BaseTest {
+public final class UtilsUnitTest extends GATKBaseTest {
 
     @Test
     public void testForceJVMLocaleToUSEnglish() {
@@ -351,7 +352,7 @@ public final class UtilsUnitTest extends BaseTest {
         final byte[] sourceBytes = IOUtils.readFileIntoByteArray(source);
         Assert.assertEquals(Utils.calcMD5(sourceBytes), sourceMD5);
 
-        final String sourceString = FileUtils.readFileToString(source);
+        final String sourceString = FileUtils.readFileToString(source, StandardCharsets.UTF_8);
         Assert.assertEquals(Utils.calcMD5(sourceString), sourceMD5);
 
         Assert.assertEquals(Utils.calculateFileMD5(source), sourceMD5);
@@ -732,5 +733,249 @@ public final class UtilsUnitTest extends BaseTest {
     public void testGetDuplicatedItems(final Collection<?> collection, final Set<?> duplicated) {
         final Set<?> result = Utils.getDuplicatedItems(collection);
         Assert.assertEquals(result, duplicated);
+    }
+
+    @DataProvider
+    public Iterator<Object[]> provideDataForTestUtilsSplitString() {
+
+        final String stringData = "The quick fox jumped over the lazy brown dog.  " +
+                "Arma virumque cano, Troiae qui primus ab oris " +
+                "Italiam, fato profugus, Laviniaque venit " +
+                "litora, multum ille et terris iactatus et alto " +
+                "vi superum saevae memorem Iunonis ob iram; " +
+                "multa quoque et bello passus, testConfigurationSorting conderet urbem, " +
+                "inferretque deos Latio, genus unde Latinum, " +
+                "Albanique patres, atque altae moenia Romae.  " +
+                "Musa, mihi causas memora, quo numine laeso, " +
+                "quidve dolens, regina deum tot volvere casus " +
+                "insignem pietate virum, tot adire labores " +
+                "impulerit. Tantaene animis caelestibus irae9";
+
+        final List<String> wordsToSplitOn = Arrays.stream(stringData.split(" "))
+                .map(ssss -> (ssss.contains("?")) ? ssss.replace("?", "\\?") : ssss)
+                .collect(Collectors.toList());
+
+        final List<String> repeatedSubstringsToSplitOn = Arrays.asList( "us", "is", "it", "et", " et", " et ", "que ", " mult" );
+
+        final String allDelimiterTestString = "::::::::::::::::::::::::::::::";
+        final String frontDelimiterTestString = "::::::::::1:23::::::::::456:7890";
+        final String middleDelimiterTestString = "1:23::::::::::456:7890";
+        final String backDelimiterTestString = "1:23::::::::::456:7890::::::::::";
+        final String fullDelimiterTestString = "::::::::::1:23::::::::::456:7890::::::::::";
+
+        final List<Object[]> testCases = new ArrayList<>();
+        testCases.addAll(
+            Arrays.asList(
+                new Object[] { "", "" },
+                new Object[] { ":", "" },
+                new Object[] { "SOME MORE TESTS", "" },
+                new Object[] { ":", ":" },
+                new Object[] { stringData, ""  },
+                new Object[] { stringData, "1" },
+                new Object[] { stringData, "a" },
+                new Object[] { stringData, "b" },
+                new Object[] { stringData, "c" },
+                new Object[] { stringData, "d" },
+                new Object[] { stringData, "e" },
+                new Object[] { stringData, "f" },
+                new Object[] { stringData, "g" },
+                new Object[] { stringData, "h" },
+                new Object[] { stringData, "i" },
+                new Object[] { stringData, "j" },
+                new Object[] { stringData, "k" },
+                new Object[] { stringData, "l" },
+                new Object[] { stringData, "m" },
+                new Object[] { stringData, "n" },
+                new Object[] { stringData, "o" },
+                new Object[] { stringData, "p" },
+                new Object[] { stringData, "q" },
+                new Object[] { stringData, "r" },
+                new Object[] { stringData, "s" },
+                new Object[] { stringData, "t" },
+                new Object[] { stringData, "u" },
+                new Object[] { stringData, "v" },
+                new Object[] { stringData, "w" },
+                new Object[] { stringData, "x" },
+                new Object[] { stringData, "y" },
+                new Object[] { stringData, "z" },
+                new Object[] { stringData, " " },
+                new Object[] { stringData, "T" },
+                new Object[] { stringData, "9" },
+                new Object[] { allDelimiterTestString,    ":" },
+                new Object[] { frontDelimiterTestString,  ":" },
+                new Object[] { middleDelimiterTestString, ":" },
+                new Object[] { backDelimiterTestString ,  ":" },
+                new Object[] { fullDelimiterTestString ,  ":" },
+                new Object[] { allDelimiterTestString.replace(":", "TS"),    "TS" },
+                new Object[] { frontDelimiterTestString.replace(":", "TS"),  "TS" },
+                new Object[] { middleDelimiterTestString.replace(":", "TS"), "TS" },
+                new Object[] { backDelimiterTestString.replace(":", "TS") ,  "TS" },
+                new Object[] { fullDelimiterTestString.replace(":", "TS") ,  "TS" }
+            )
+        );
+
+        // Create test cases for words:
+        for ( final String delim : wordsToSplitOn ) {
+            testCases.add( new Object[] { stringData, delim } );
+        }
+
+        // Create test cases for repeated substrings:
+        for ( final String delim : repeatedSubstringsToSplitOn ) {
+            testCases.add( new Object[] { stringData, delim } );
+        }
+
+        return testCases.iterator();
+    }
+
+    @DataProvider
+    private Iterator<Object[]> provideDataForTestUtilsSplitStringExhaustively() {
+
+        // Length that we want to test through:
+        final int maxStringLength = 7;
+
+        // Create single character delimiter strings:
+        final String singleCharDelimiter = "o";
+        final List<String> singleCharTestStrings = Arrays.asList("X", singleCharDelimiter);
+        final List<List<String>> exhaustiveListsForSingleChar = Utils.makePermutations( singleCharTestStrings, maxStringLength, true );
+
+        // Create multi-character delimiter strings:
+        final String multiCharDelimiter = "oz";
+
+        // Must include the individual characters of the multi-char delimiter here
+        // so we can pass them into Utils.makePermutations to create the permutations of strings to split.
+        final List<String> multiCharTestStrings = Arrays.asList("X", "o", "z", multiCharDelimiter);
+        final List<List<String>> exhaustiveListsForMultiChar = Utils.makePermutations( multiCharTestStrings, maxStringLength, true );
+
+        final List<Object[]> testCases = new ArrayList<>();
+
+        // Add single-char cases:
+        for ( final List<String> testCase : exhaustiveListsForSingleChar ) {
+            testCases.add( new Object[] { String.join( "", testCase ), singleCharDelimiter } );
+        }
+
+        // Add multi-char cases:
+        for ( final List<String> testCase : exhaustiveListsForMultiChar ) {
+            testCases.add( new Object[] { String.join( "", testCase ), multiCharDelimiter } );
+        }
+
+        return testCases.iterator();
+    }
+
+    private void exhaustiveStringSplitHelper(final String str,
+                                             final String delimiter) {
+        List<String> splitStrings;
+        if ( delimiter.length() == 1 ) {
+            splitStrings = Utils.split( str, delimiter.charAt(0) );
+            Assert.assertEquals( splitStrings, Arrays.asList(str.split(delimiter)) );
+        }
+
+        splitStrings = Utils.split(str, delimiter);
+        Assert.assertEquals( splitStrings, Arrays.asList(str.split(delimiter)) );
+    }
+
+    @Test(dataProvider = "provideDataForTestUtilsSplitString")
+    public void testUtilsSplitString( final String str, final String delimiter ) {
+        exhaustiveStringSplitHelper(str, delimiter);
+    }
+
+    @Test(dataProvider = "provideDataForTestUtilsSplitStringExhaustively")
+    public void testUtilsSplitStringExhaustively( final String str, final String delimiter ) {
+        exhaustiveStringSplitHelper(str, delimiter);
+    }
+
+    @DataProvider
+    public Object[][] provideGetReverseValueToListMap() {
+        return new Object[][]{
+                {ImmutableMap.of("Foo", Arrays.asList(1, 2, 3)),
+                        ImmutableMap.of(1, Sets.newHashSet("Foo"), 2, Sets.newHashSet("Foo"), 3, Sets.newHashSet("Foo"))},
+                {ImmutableMap.of("Foo", Arrays.asList(1, 2, 3), "Baz", Arrays.asList(1, 2)),
+                        ImmutableMap.of(1, Sets.newHashSet("Foo", "Baz"), 2, Sets.newHashSet("Foo", "Baz"), 3, Sets.newHashSet("Foo"))},
+
+                // Let's throw in some nulls
+                {Collections.unmodifiableMap(Stream.of(
+                    new AbstractMap.SimpleEntry<>(null, Arrays.asList("one", "two", "three")),
+                    new AbstractMap.SimpleEntry<>("two", Arrays.asList("one", "two")))
+                    .collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue))),
+                 Collections.unmodifiableMap(Stream.of(
+                    new AbstractMap.SimpleEntry<>("one", Sets.newHashSet(null, "two")),
+                    new AbstractMap.SimpleEntry<>("two", Sets.newHashSet(null, "two")),
+                    new AbstractMap.SimpleEntry<>("three", Sets.newHashSet((Object) null)))
+                    .collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue)))},
+
+                // Let's throw in some nulls again
+                {Collections.unmodifiableMap(Stream.of(
+                    new AbstractMap.SimpleEntry<>(null, Arrays.asList(null, "two", "three")),
+                    new AbstractMap.SimpleEntry<>("two", Arrays.asList("one", "two")))
+                    .collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue))),
+                 Collections.unmodifiableMap(Stream.of(
+                    new AbstractMap.SimpleEntry<>("one", Sets.newHashSet( "two")),
+                    new AbstractMap.SimpleEntry<>("two", Sets.newHashSet(null, "two")),
+                    new AbstractMap.SimpleEntry<>("three", Sets.newHashSet((Object) null)),
+                    new AbstractMap.SimpleEntry<>(null, Sets.newHashSet((Object) null)))
+                    .collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue)))},
+
+                    // Let's throw in some nulls again and a non-string
+                {Collections.unmodifiableMap(Stream.of(
+                    new AbstractMap.SimpleEntry<>(null, Arrays.asList(null, 2, "three")),
+                    new AbstractMap.SimpleEntry<>("two", Arrays.asList("one", "two")))
+                    .collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue))),
+                 Collections.unmodifiableMap(Stream.of(
+                    new AbstractMap.SimpleEntry<>("one", Sets.newHashSet( "two")),
+                    new AbstractMap.SimpleEntry<>("two", Sets.newHashSet( "two")),
+                    new AbstractMap.SimpleEntry<>("three", Sets.newHashSet((Object) null)),
+                    new AbstractMap.SimpleEntry<>(null, Sets.newHashSet((Object) null)),
+                    new AbstractMap.SimpleEntry<>(2, Sets.newHashSet((Object) null)))
+                    .collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue)))}
+        };
+    }
+
+    @Test(dataProvider = "provideGetReverseValueToListMap")
+    public <T,U> void testGetReverseValueToListMap(final Map<T, List<U>> input,  final Map<U, Set<T>> gtOutput) {
+        Assert.assertEquals(Utils.getReverseValueToListMap(input), gtOutput);
+    }
+
+    @DataProvider
+    public Iterator<Object[]> provideDataForTestUtilsFormatting() {
+        final List<Object[]> testCases = new ArrayList<>();
+        testCases.addAll(Arrays.asList(
+                new Object[]{1, 2, "50.00", "0.50"},
+                new Object[]{0, 3, "0.00", "0.00"},
+                new Object[]{1, 3, "33.33", "0.33"},
+                new Object[]{50, 3000, "1.67", "0.02"},
+                new Object[]{50, 0, "NA", "NA"},
+                new Object[]{0, 0, "NA", "NA"}
+        ));
+
+        return testCases.iterator();
+    }
+
+    @Test(dataProvider = "provideDataForTestUtilsFormatting")
+    public void testFormattedPctAndRatio(final long input1, final long input2, final String formattedPct, final String formattedRatio) {
+        Assert.assertEquals(Utils.formattedPercent(input1, input2), formattedPct);
+        Assert.assertEquals(Utils.formattedRatio(input1, input2), formattedRatio);
+    }
+
+    @DataProvider(name="provideDataForTestFilterCollectionByExpressions")
+    public Object[][] provideDataForTestFilterCollectionByExpressions() {
+        return new Object[][] {
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("a"), true, new LinkedHashSet<>(Arrays.asList("a")) },
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("a"), false, new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")) },
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("b"), true, Collections.EMPTY_SET },
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("b"), false, new LinkedHashSet<>(Arrays.asList("ab", "abc")) },
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("a", "b"), true, new LinkedHashSet<>(Arrays.asList("a")) },
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("a", "b"), false, new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")) },
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("a", "ab"), true, new LinkedHashSet<>(Arrays.asList("a", "ab")) },
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("a", "ab"), false, new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")) },
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList(".*b.*"), true, Collections.EMPTY_SET },
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList(".*b.*"), false, new LinkedHashSet<>(Arrays.asList("ab", "abc") )},
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList(".*"), true, Collections.EMPTY_SET },
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList(".*"), false, new LinkedHashSet<>(Arrays.asList("a", "ab", "abc") )}
+        };
+    }
+
+    @Test(dataProvider = "provideDataForTestFilterCollectionByExpressions")
+    public void testTestFilterCollectionByExpressions(Set<String> values, Collection<String> filters, boolean exactMatch, Set<String> expected) {
+        Set<String> actual = Utils.filterCollectionByExpressions(values, filters, exactMatch);
+        Assert.assertEquals(actual, expected);
     }
 }

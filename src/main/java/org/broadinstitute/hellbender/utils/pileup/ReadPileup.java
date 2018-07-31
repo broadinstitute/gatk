@@ -1,19 +1,15 @@
 package org.broadinstitute.hellbender.utils.pileup;
 
-import com.google.api.services.genomics.model.Read;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.Locatable;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.walkers.qc.Pileup;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.fragments.FragmentCollection;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
-import org.broadinstitute.hellbender.engine.AlignmentContext;
 
 import java.util.*;
 import java.util.function.Predicate;
@@ -24,7 +20,7 @@ import java.util.stream.Stream;
 /**
  * Represents a pileup of reads at a given position.
  */
-public final class ReadPileup implements Iterable<PileupElement> {
+public class ReadPileup implements Iterable<PileupElement> {
     private final Locatable loc;
     private final List<PileupElement> pileupElements;
 
@@ -37,8 +33,6 @@ public final class ReadPileup implements Iterable<PileupElement> {
      * Note: This constructor keeps an alias to the given list.
      */
     public ReadPileup(final Locatable loc, final List<PileupElement> pileup) {
-        Utils.nonNull(loc, "loc is null");
-        Utils.nonNull(pileup, "element list is null");
         this.loc = loc;
         this.pileupElements = pileup;
     }
@@ -48,14 +42,22 @@ public final class ReadPileup implements Iterable<PileupElement> {
      * Note: the current implementation of ReadPileup does not efficiently retrieve the stratified pileup
      */
     public ReadPileup(final Locatable loc, final Map<String, ReadPileup> stratifiedPileup) {
-        this(loc, stratifiedPileup.values().stream().flatMap(ReadPileup::getElementStream).collect(Collectors.toList()));
+        // NOTE: this bit of code is a potential performance hotspot for the HaplotypeCaller.
+        // This straightforward loop outperforms the equivalent streaming expression by over 2x.
+        List<PileupElement> allElements = new ArrayList<>(stratifiedPileup.size() * 1000);
+        for ( final Map.Entry<String, ReadPileup> pileupEntry : stratifiedPileup.entrySet() ) {
+            allElements.addAll(pileupEntry.getValue().pileupElements);
+        }
+
+        this.loc = loc;
+        this.pileupElements = allElements;
     }
 
     /**
      * Create a new pileup without any aligned reads
      */
     public ReadPileup(final Locatable loc) {
-        this(loc, Collections.emptyList());
+        this(loc, new ArrayList<>());
     }
 
     /**
@@ -87,8 +89,6 @@ public final class ReadPileup implements Iterable<PileupElement> {
      * Helper routine for converting reads and offset lists to a PileupElement list.
      */
     private static List<PileupElement> readsOffsetsToPileup(final List<GATKRead> reads, final List<Integer> offsets) {
-        Utils.nonNull(reads, "Illegal null read list in UnifiedReadBackedPileup");
-        Utils.nonNull(offsets, "Illegal null offsets list in UnifiedReadBackedPileup");
         if (reads.size() != offsets.size()) {
             throw new IllegalArgumentException("Reads and offset lists have different sizes!");
         }
@@ -105,8 +105,18 @@ public final class ReadPileup implements Iterable<PileupElement> {
      * Helper routine for converting reads and a single offset to a PileupElement list.
      */
     private static List<PileupElement> readsOffsetsToPileup(final List<GATKRead> reads, final int offset) {
-        Utils.nonNull(reads, "Illegal null read list");
         return reads.stream().map(r -> PileupElement.createPileupForReadAndOffset(r, offset)).collect(Collectors.toList());
+    }
+
+    /**
+     * Helper routine for converting reads and a single offset to a PileupElement list.
+     */
+    public static List<PileupElement> locToReadsPileup(final List<GATKRead> reads, final Locatable loc) {
+        Utils.nonNull(reads, "Illegal null read list");
+        return reads.stream().filter(r -> !r.isUnmapped())
+                .filter(r -> r.getStart()<=loc.getStart() && r.getEnd()>=loc.getEnd() )
+                .map(r -> PileupElement.createPileupForReadAndGenomeLoc(r, loc))
+                .collect(Collectors.toList());
     }
 
     /**
@@ -114,7 +124,6 @@ public final class ReadPileup implements Iterable<PileupElement> {
      * NOTE: the new pileup will not be independent of the old one (no deep copy of the underlying data is performed).
      */
     public ReadPileup makeFilteredPileup(final Predicate<PileupElement> filter) {
-        Utils.nonNull(filter);
         return new ReadPileup(loc, getElementStream().filter(filter).collect(Collectors.toList()));
     }
 
@@ -201,7 +210,26 @@ public final class ReadPileup implements Iterable<PileupElement> {
      */
     @Override
     public Iterator<PileupElement> iterator() {
-        return Collections.unmodifiableList(pileupElements).iterator();
+        // Profiling has determined that returning a custom unmodifiable iterator is faster than
+        // Collections.unmodifiableList(pileupElements).iterator()
+        return new Iterator<PileupElement>() {
+            private final Iterator<PileupElement> wrappedIterator = pileupElements.iterator();
+
+            @Override
+            public boolean hasNext() {
+                return wrappedIterator.hasNext();
+            }
+
+            @Override
+            public PileupElement next() {
+                return wrappedIterator.next();
+            }
+
+            @Override
+            public void remove() {
+                throw new UnsupportedOperationException("Cannot remove from a pileup element iterator");
+            }
+        };
     }
 
     /**

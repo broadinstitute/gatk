@@ -48,7 +48,7 @@ public class ReadsIterable implements Iterable<SAMRecord>, Serializable {
             // set high-level retries to deal with servers that might be temporarily overloaded
             // while we're reading a very long file from them.
             SeekableByteChannelPrefetcher chan = new SeekableByteChannelPrefetcher(
-                Files.newByteChannel(fpath, CloudStorageOptions.withChannelReopen(BucketUtils.NIO_MAX_REOPENS)), BUFSIZE);
+                Files.newByteChannel(fpath), BUFSIZE);
             ChannelAsSeekableStream bamOverNIO = new ChannelAsSeekableStream(chan, path);
             bam = SamReaderFactory.makeDefault()
                     .validationStringency(ValidationStringency.LENIENT)

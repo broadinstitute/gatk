@@ -6,17 +6,18 @@ import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;
 
 /**
+ * Unit tests for {@link Pileup}.
+ *
  * @author Daniel Gomez-Sanchez (magicDGS)
  */
-public final class PileupUnitTest extends BaseTest {
-
+public final class PileupUnitTest extends GATKBaseTest {
 
     @Test
     public void testInsertLengthOutput() throws Exception {

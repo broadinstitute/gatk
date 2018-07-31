@@ -4,7 +4,7 @@ import htsjdk.variant.variantcontext.*;
 import org.broadinstitute.hellbender.utils.samples.Sample;
 import org.broadinstitute.hellbender.utils.samples.Sex;
 import org.broadinstitute.hellbender.utils.samples.Trio;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.testng.Assert;
@@ -13,7 +13,7 @@ import org.testng.annotations.Test;
 
 import java.util.*;
 
-public final class PossibleDeNovoUnitTest extends BaseTest {
+public final class PossibleDeNovoUnitTest extends GATKBaseTest {
 
     private static final int GQ30 = 30;
 

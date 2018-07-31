@@ -5,18 +5,19 @@ import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-public final class ProcessControllerUnitTest extends BaseTest {
+public final class ProcessControllerUnitTest extends GATKBaseTest {
     private static final String NL = String.format("%n");
 
     @Test
@@ -125,17 +126,16 @@ public final class ProcessControllerUnitTest extends BaseTest {
 
     @Test
     public void testWriteStdOut() {
-        ProcessSettings job = new ProcessSettings(new String[] {"echo", "Testing to stdout"});
-        // Not going to call the System.setOut() for now. Just running a basic visual test.
+        final String testInput = "Testing to stdout";
+        final ProcessSettings job = new ProcessSettings(new String[] {"echo", testInput});
         job.getStdoutSettings().printStandard(true);
+        job.getStdoutSettings().setBufferSize(-1);
         job.setRedirectErrorStream(true);
 
-//        System.out.println("testWriteStdOut: Writing two lines to std out...");
-        ProcessController controller = new ProcessController();
-        controller.exec(job);
-        job.setCommand(new String[]{"cat", "non_existent_file"});
-        controller.exec(job);
-//        System.out.println("testWriteStdOut: ...two lines should have been printed to std out");
+        final ProcessController controller = new ProcessController();
+        ProcessOutput processOutput = controller.exec(job);
+        Assert.assertEquals(processOutput.getExitValue(), 0);
+        Assert.assertEquals(processOutput.getStdout().getBufferString(), testInput + NL);
     }
 
     @Test
@@ -143,8 +143,8 @@ public final class ProcessControllerUnitTest extends BaseTest {
         File outFile = null;
         File errFile = null;
         try {
-            outFile = BaseTest.createTempFile("temp", "");
-            errFile = BaseTest.createTempFile("temp", "");
+            outFile = GATKBaseTest.createTempFile("temp", "");
+            errFile = GATKBaseTest.createTempFile("temp", "");
 
             ProcessSettings job = new ProcessSettings(new String[]{"cat", "non_existent_file"});
             job.getStdoutSettings().setOutputFile(outFile);
@@ -160,7 +160,7 @@ public final class ProcessControllerUnitTest extends BaseTest {
 
             String fileString, bufferString;
 
-            fileString = FileUtils.readFileToString(outFile);
+            fileString = FileUtils.readFileToString(outFile, StandardCharsets.UTF_8);
             Assert.assertTrue(fileString.length() > 0, "Out file was length 0");
 
             bufferString = result.getStdout().getBufferString();
@@ -169,7 +169,7 @@ public final class ProcessControllerUnitTest extends BaseTest {
             Assert.assertFalse(result.getStdout().isBufferTruncated(), "Out buffer was truncated");
             Assert.assertEquals(bufferString.length(), fileString.length(), "Out buffer length did not match file length");
 
-            fileString = FileUtils.readFileToString(errFile);
+            fileString = FileUtils.readFileToString(errFile, StandardCharsets.UTF_8);
             Assert.assertEquals(fileString, "", "Unexpected output to err file");
 
             bufferString = result.getStderr().getBufferString();
@@ -185,8 +185,8 @@ public final class ProcessControllerUnitTest extends BaseTest {
         File outFile = null;
         File errFile = null;
         try {
-            outFile = BaseTest.createTempFile("temp", "");
-            errFile = BaseTest.createTempFile("temp", "");
+            outFile = GATKBaseTest.createTempFile("temp", "");
+            errFile = GATKBaseTest.createTempFile("temp", "");
 
             ProcessSettings job = new ProcessSettings(new String[]{"cat", "non_existent_file"});
             job.getStdoutSettings().setOutputFile(outFile);
@@ -202,7 +202,7 @@ public final class ProcessControllerUnitTest extends BaseTest {
 
             String fileString, bufferString;
 
-            fileString = FileUtils.readFileToString(errFile);
+            fileString = FileUtils.readFileToString(errFile, StandardCharsets.UTF_8);
             Assert.assertTrue(fileString.length() > 0, "Err file was length 0");
 
             bufferString = result.getStderr().getBufferString();
@@ -211,7 +211,7 @@ public final class ProcessControllerUnitTest extends BaseTest {
             Assert.assertFalse(result.getStderr().isBufferTruncated(), "Err buffer was truncated");
             Assert.assertEquals(bufferString.length(), fileString.length(), "Err buffer length did not match file length");
 
-            fileString = FileUtils.readFileToString(outFile);
+            fileString = FileUtils.readFileToString(outFile, StandardCharsets.UTF_8);
             Assert.assertEquals(fileString, "", "Unexpected output to out file");
 
             bufferString = result.getStdout().getBufferString();
@@ -295,7 +295,7 @@ public final class ProcessControllerUnitTest extends BaseTest {
     public void testEcho(EchoCommand script) throws IOException {
         File outputFile = null;
         try {
-            outputFile = BaseTest.createTempFile("temp", "");
+            outputFile = GATKBaseTest.createTempFile("temp", "");
 
             ProcessSettings job = new ProcessSettings(script.command);
             if (script.output != null) {
@@ -311,7 +311,7 @@ public final class ProcessControllerUnitTest extends BaseTest {
 
             if (script.output != null) {
 
-                String fileString = FileUtils.readFileToString(outputFile);
+                String fileString = FileUtils.readFileToString(outputFile, StandardCharsets.UTF_8);
                 Assert.assertEquals(fileString, script.output,
                         String.format("Output file didn't match (%d vs %d): %s",
                                 fileString.length(), script.output.length(), script));
@@ -363,7 +363,7 @@ public final class ProcessControllerUnitTest extends BaseTest {
         File outputFile = null;
         try {
             scriptFile = writeScript(script.content);
-            outputFile = BaseTest.createTempFile("temp", "");
+            outputFile = GATKBaseTest.createTempFile("temp", "");
 
             ProcessSettings job = new ProcessSettings(new String[]{"sh", scriptFile.getAbsolutePath()});
             if (script.output != null) {
@@ -379,7 +379,7 @@ public final class ProcessControllerUnitTest extends BaseTest {
 
             if (script.output != null) {
 
-                String fileString = FileUtils.readFileToString(outputFile);
+                String fileString = FileUtils.readFileToString(outputFile, StandardCharsets.UTF_8);
                 Assert.assertEquals(fileString, script.output,
                         String.format("Output file didn't match (%d vs %d): %s",
                                 fileString.length(), script.output.length(), script));
@@ -411,11 +411,11 @@ public final class ProcessControllerUnitTest extends BaseTest {
 
     private static File writeScript(String contents) {
         try {
-            File file = BaseTest.createTempFile("temp", "");
-            FileUtils.writeStringToFile(file, contents);
+            File file = GATKBaseTest.createTempFile("temp", "");
+            FileUtils.writeStringToFile(file, contents, StandardCharsets.UTF_8);
             return file;
         } catch (IOException e) {
-            throw new UserException.BadTmpDir(e.getMessage());
+            throw new UserException.BadTempDir(e.getMessage(), e);
         }
     }
 

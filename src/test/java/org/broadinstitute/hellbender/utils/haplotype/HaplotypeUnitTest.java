@@ -8,7 +8,7 @@ import htsjdk.samtools.TextCigarCodec;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.UnvalidatingGenomeLoc;
 import org.testng.Assert;
@@ -21,7 +21,7 @@ import java.util.List;
 /**
  * Basic unit test for Haplotype Class
  */
-public final class HaplotypeUnitTest extends BaseTest {
+public final class HaplotypeUnitTest extends GATKBaseTest {
     @Test
     public void testSimpleInsertionAllele() {
         final String bases = "ACTGGTCAACTGGTCAACTGGTCAACTGGTCA";

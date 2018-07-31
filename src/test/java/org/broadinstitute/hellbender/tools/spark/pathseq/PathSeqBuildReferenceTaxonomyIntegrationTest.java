@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.testng.Assert;
 import org.testng.annotations.BeforeTest;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -15,11 +16,9 @@ import java.io.IOException;
 
 public class PathSeqBuildReferenceTaxonomyIntegrationTest extends CommandLineProgramTest {
 
-    private File expectedFile;
-    private File referenceFile;
-    private File catalogFile;
+    private File refseqReferenceFile;
+    private File genbankReferenceFile;
     private File taxdumpFile;
-    private File outputFile;
 
     @Override
     public String getTestedClassName() {
@@ -27,24 +26,42 @@ public class PathSeqBuildReferenceTaxonomyIntegrationTest extends CommandLinePro
     }
 
     @BeforeTest
-    public void before() {
-        expectedFile = getTestFile("tax.db");
-        referenceFile = getTestFile("test.fasta");
-        catalogFile = getTestFile("catalog.txt.gz");
+    public void before() { 
+        refseqReferenceFile = getTestFile("test.fasta");
+        genbankReferenceFile = getTestFile("genbank_test.fasta");
         taxdumpFile = getTestFile("taxdump.tar.gz");
-        outputFile = createTempFile("test", ".db");
     }
 
+    @DataProvider(name = "buildTaxonomyData")
+    public Object[][] getTaxonomyBuilderData() {
+        return new Object[][]{
+                {"catalog.txt.gz", null, 0, "tax.db"},
+                {"catalog.txt.gz", null, 50, "tax_min50.db"},
+                {null, "genbank.txt.gz", 0, "tax_genbank.db"}
+        };
+    }
 
-    @Test
-    public void test() throws Exception {
+    @Test(dataProvider = "buildTaxonomyData")
+    public void test(final String refseqFilename, final String genbankFilename, final int minLength, final String expectedDatabaseFilename) throws Exception {
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addReference(referenceFile);
-        args.addFileArgument("refseqCatalogPath", catalogFile);
-        args.addFileArgument("taxdumpPath", taxdumpFile);
+        if (refseqFilename != null) {
+            final File catalogFile = getTestFile(refseqFilename);
+            args.addFileArgument(PathSeqBuildReferenceTaxonomy.REFSEQ_CATALOG_LONG_NAME, catalogFile);
+            args.addReference(refseqReferenceFile);
+        } else if (genbankFilename != null) {
+            final File catalogFile = getTestFile(genbankFilename);
+            args.addFileArgument(PathSeqBuildReferenceTaxonomy.GENBANK_CATALOG_LONG_NAME, catalogFile);
+            args.addReference(genbankReferenceFile);
+        }
+        args.addFileArgument(PathSeqBuildReferenceTaxonomy.TAX_DUMP_LONG_NAME, taxdumpFile);
+        args.addArgument(PathSeqBuildReferenceTaxonomy.MIN_NON_VIRUS_CONTIG_LENGTH_LONG_NAME, Integer.toString(minLength));
+        final File outputFile = createTempFile("test_out", ".db");
         args.addOutput(outputFile);
+
         this.runCommandLine(args.getArgsArray());
+
+        final File expectedFile = getTestFile(expectedDatabaseFilename);
 
         try {
             final Kryo kryo = new Kryo();
@@ -61,28 +78,16 @@ public class PathSeqBuildReferenceTaxonomyIntegrationTest extends CommandLinePro
         }
     }
 
-    @Test
-    public void testGenBank() {
-
-        //Test with Genbank catalog file
-        final File genbank = getTestFile("genbank.txt.gz");
-        final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addReference(referenceFile);
-        args.addFileArgument("genbankCatalogPath", genbank);
-        args.addFileArgument("taxdumpPath", taxdumpFile);
-        args.addOutput(outputFile);
-        this.runCommandLine(args.getArgsArray());
-    }
-
     @Test(expectedExceptions = Exception.class)
     public void testBadCatalog() {
 
         //Try with invalid catalog file
         final File catalog_bad = getSafeNonExistentFile("bad.gz");
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addReference(referenceFile);
-        args.addFileArgument("refseqCatalogPath", catalog_bad);
-        args.addFileArgument("taxdumpPath", taxdumpFile);
+        args.addReference(refseqReferenceFile);
+        args.addFileArgument(PathSeqBuildReferenceTaxonomy.REFSEQ_CATALOG_LONG_NAME, catalog_bad);
+        args.addFileArgument(PathSeqBuildReferenceTaxonomy.TAX_DUMP_LONG_NAME, taxdumpFile);
+        final File outputFile = createTempFile("test_bad_catalog", ".db");
         args.addOutput(outputFile);
         this.runCommandLine(args.getArgsArray());
     }
@@ -93,9 +98,10 @@ public class PathSeqBuildReferenceTaxonomyIntegrationTest extends CommandLinePro
         //Try with invalid taxonomy dump file
         final File taxdump_bad = getSafeNonExistentFile("bad.tar.gz");
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addReference(referenceFile);
-        args.addFileArgument("refseqCatalogPath", catalogFile);
-        args.addFileArgument("taxdumpPath", taxdump_bad);
+        args.addReference(refseqReferenceFile);
+        args.addFileArgument(PathSeqBuildReferenceTaxonomy.REFSEQ_CATALOG_LONG_NAME, getTestFile("tax.db"));
+        args.addFileArgument(PathSeqBuildReferenceTaxonomy.TAX_DUMP_LONG_NAME, taxdump_bad);
+        final File outputFile = createTempFile("test_bad_dump", ".db");
         args.addOutput(outputFile);
         this.runCommandLine(args.getArgsArray());
 

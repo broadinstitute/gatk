@@ -11,14 +11,14 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
+import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.MetricsReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.metrics.MetricsUtils;
-import org.broadinstitute.hellbender.tools.picard.analysis.QualityScoreDistribution;
 import org.broadinstitute.hellbender.utils.R.RScriptExecutor;
 import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -34,11 +34,12 @@ import java.util.List;
  *
  * This is the spark version of the tool.
  */
+@DocumentedFeature
 @CommandLineProgramProperties(
         summary = "Program to chart " +
                 "quality score distributions in a SAM/BAM file.",
         oneLineSummary = "QualityScoreDistribution on Spark",
-        programGroup = SparkProgramGroup.class
+        programGroup = DiagnosticsAndQCProgramGroup.class
 )
 @BetaFeature
 public final class QualityScoreDistributionSpark extends GATKSparkTool {
@@ -177,9 +178,19 @@ public final class QualityScoreDistributionSpark extends GATKSparkTool {
             //out is the metrics file
             //chartOutput is the pdf file with the graph
             final RScriptExecutor executor = new RScriptExecutor();
-            executor.addScript(new Resource(QualityScoreDistribution.R_SCRIPT, QualityScoreDistribution.class));
+            executor.addScript(getQualityScoreDistributionRScriptResource());
             executor.addArgs(out, chartOutput.getAbsolutePath(), inputFileName, plotSubtitle);
             executor.exec();
         }
     }
+
+    /**
+     * Return the R Script resource used by this class
+     */
+    @VisibleForTesting
+    static Resource getQualityScoreDistributionRScriptResource() {
+        final String R_SCRIPT = "qualityScoreDistribution.R";
+        return new Resource(R_SCRIPT, QualityScoreDistributionSpark.class);
+    }
+
 }

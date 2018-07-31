@@ -4,10 +4,10 @@ import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineArgumentParser;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineParser;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.annotations.Test;
 
-public final class FeatureInputArgumentCollectionTest extends BaseTest{
+public final class FeatureInputArgumentCollectionTest extends GATKBaseTest {
 
     @Test(expectedExceptions = CommandLineException.class)
     public void testRequiredIsRequired(){

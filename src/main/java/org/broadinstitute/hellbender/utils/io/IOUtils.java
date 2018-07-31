@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.utils.io;
 
-import com.google.cloud.storage.StorageException;
 import com.google.cloud.storage.contrib.nio.CloudStorageFileSystem;
 import htsjdk.samtools.BamFileIoUtils;
 import htsjdk.samtools.cram.build.CramIO;
@@ -14,25 +13,17 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.GetSampleName;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 
-import java.io.BufferedInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.PrintStream;
-import java.io.Reader;
+import java.io.*;
 import java.net.URI;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 import java.util.zip.ZipException;
@@ -51,6 +42,13 @@ public final class IOUtils {
     /**
      * Returns true if the file's extension is CRAM.
      */
+    public static boolean isCramFile(final Path path) {
+        return isCramFileName(path.getFileName().toString());
+    }
+
+    /**
+     * Returns true if the file's extension is CRAM.
+     */
     public static boolean isCramFileName(final String inputFileName) {
         return CramIO.CRAM_FILE_EXTENSION.equalsIgnoreCase("." + FilenameUtils.getExtension(inputFileName));
     }
@@ -63,38 +61,25 @@ public final class IOUtils {
     }
 
     /**
-     * Creates a temp directory with the prefix and optional suffix.
+     * Creates a temp directory with the given prefix.
+     *
+     * The directory and any contents will be automatically deleted at shutdown.
+     *
+     * This will not work if the temp dir is not representable as a File.
      *
      * @param prefix       Prefix for the directory name.
-     * @param suffix       Optional suffix for the directory name.
      * @return The created temporary directory.
      */
-    public static File tempDir(String prefix, String suffix) {
-        return tempDir(prefix, suffix, null);
-    }
-
-    /**
-     * Creates a temp directory with the prefix and optional suffix.
-     *
-     * @param prefix        Prefix for the directory name.
-     * @param suffix        Optional suffix for the directory name.
-     * @param tempDirParent Parent directory for the temp directory.
-     * @return The created temporary directory.
-     */
-    public static File tempDir(String prefix, String suffix, File tempDirParent) {
+    public static File createTempDir(String prefix) {
         try {
-            if (tempDirParent == null)
-                tempDirParent = FileUtils.getTempDirectory();
-            if (!tempDirParent.exists() && !tempDirParent.mkdirs())
-                throw new UserException.BadTmpDir("Could not create temp directory: " + tempDirParent);
-            File temp = File.createTempFile(prefix, suffix, tempDirParent);
-            if (!temp.delete())
-                throw new UserException.BadTmpDir("Could not delete sub file: " + temp.getAbsolutePath());
-            if (!temp.mkdir())
-                throw new UserException.BadTmpDir("Could not create sub directory: " + temp.getAbsolutePath());
-            return absolute(temp);
-        } catch (IOException e) {
-            throw new UserException.BadTmpDir(e.getMessage());
+            final File tmpDir = Files.createTempDirectory(prefix)
+                    .normalize()
+                    .toFile();
+            deleteRecursivelyOnExit(tmpDir);
+
+            return tmpDir;
+        } catch (final IOException | SecurityException e) {
+            throw new UserException.BadTempDir(e.getMessage(), e);
         }
     }
 
@@ -121,11 +106,11 @@ public final class IOUtils {
      */
     public static File writeTempFile(String content, String prefix, String suffix, File directory) {
         try {
-            File tempFile = absolute(File.createTempFile(prefix, suffix, directory));
-            FileUtils.writeStringToFile(tempFile, content);
+            File tempFile = File.createTempFile(prefix, suffix, directory).toPath().normalize().toFile();
+            FileUtils.writeStringToFile(tempFile, content, StandardCharsets.UTF_8);
             return tempFile;
         } catch (IOException e) {
-            throw new UserException.BadTmpDir(e.getMessage());
+            throw new UserException.BadTempDir(e.getMessage(), e);
         }
     }
 
@@ -159,74 +144,33 @@ public final class IOUtils {
     }
 
     /**
-     * A mix of getCanonicalFile and getAbsoluteFile that returns the
-     * absolute path to the file without deferencing symbolic links.
-     *
-     * @param file the file.
-     * @return the absolute path to the file.
+     * Writes an embedded resource to a temporary file. The temporary file is automatically scheduled for deletion
+     * on exit.
+     * @param resource Embedded resource.
+     * @return the temporary file containing the contents of the resource, which is automatically scheduled for
+     * deletion on exit.
      */
-    public static File absolute(File file) {
-        return replacePath(file, absolutePath(file));
-    }
-
-    private static String absolutePath(File file) {
-        File fileAbs = file.getAbsoluteFile();
-        LinkedList<String> names = new LinkedList<>();
-        while (fileAbs != null) {
-            String name = fileAbs.getName();
-            fileAbs = fileAbs.getParentFile();
-
-            if (".".equals(name)) {
-                /* skip */
-
-                /* TODO: What do we do for ".."?
-              } else if (name == "..") {
-
-                CentOS tcsh says use getCanonicalFile:
-                ~ $ mkdir -p test1/test2
-                ~ $ ln -s test1/test2 test3
-                ~ $ cd test3/..
-                ~/test1 $
-
-                Mac bash says keep going with getAbsoluteFile:
-                ~ $ mkdir -p test1/test2
-                ~ $ ln -s test1/test2 test3
-                ~ $ cd test3/..
-                ~ $
-
-                For now, leave it and let the shell figure it out.
-                */
-            } else {
-                names.add(0, name);
-            }
-        }
-
-        return ("/" + StringUtils.join(names, "/"));
-    }
-
-    private static File replacePath(File file, String path) {
-        if (file instanceof FileExtension)
-            return ((FileExtension)file).withPath(path);
-        if (!File.class.equals(file.getClass()))
-            throw new GATKException("Sub classes of java.io.File must also implement FileExtension");
-        return new File(path);
+    public static File writeTempResource(final Resource resource) {
+        final File tempFile = createTempFile(
+                FilenameUtils.getBaseName(resource.getPath()) + ".",
+                "." + FilenameUtils.getExtension(resource.getPath()));
+        writeResource(resource, tempFile);
+        return tempFile;
     }
 
     /**
-     * Writes the an embedded resource to a temp file.
-     * File is not scheduled for deletion and must be cleaned up by the caller.
-     * @param resource Embedded resource.
-     * @return Path to the temp file with the contents of the resource.
+     * Create a resource from a path and a relative class, and write it to a temporary file.
+     * If the relative class is null then the system classloader will be used and the path must be absolute.
+     * The temporary file is automatically scheduled for deletion on exit.
+     * @param resourcePath Relative or absolute path to the class.
+     * @param relativeClass Relative class to use as a class loader and for a relative package.
+     * @return a temporary file containing the contents of the resource, which is automatically scheduled
+     * for deletion on exit.
      */
-    public static File writeTempResource(Resource resource) {
-        File temp;
-        try {
-            temp = File.createTempFile(FilenameUtils.getBaseName(resource.getPath()) + ".", "." + FilenameUtils.getExtension(resource.getPath()));
-        } catch (IOException e) {
-            throw new UserException.BadTmpDir(e.getMessage());
-        }
-        writeResource(resource, temp);
-        return temp;
+    public static File writeTempResourceFromPath(final String resourcePath, final Class<?> relativeClass) {
+        Utils.nonNull(resourcePath, "A resource path must be provided");
+        final Resource resource = new Resource(resourcePath, relativeClass);
+        return writeTempResource(resource);
     }
 
     /**
@@ -458,14 +402,33 @@ public final class IOUtils {
      * @return A file in the temporary directory starting with name, ending with extension, which will be deleted after the program exits.
      */
     public static File createTempFile(String name, String extension) {
+        return createTempFileInDirectory(name, extension, null);
+    }
+
+    /**
+     * Creates a temp file in a target directory that will be deleted on exit
+     *
+     * This will also mark the corresponding Tribble/Tabix/BAM indices matching the temp file for deletion.
+     * @param name Prefix of the file.
+     * @param extension Extension to concat to the end of the file name.
+     * @param targetDir Directory in which to create the temp file. If null, the default temp directory is used.
+     * @return A file in the temporary directory starting with name, ending with extension, which will be deleted after the program exits.
+     */
+    public static File createTempFileInDirectory(final String name, String extension, final File targetDir) {
         try {
-            final File file = File.createTempFile(name, extension);
+
+            if ( !extension.startsWith(".") ) {
+                extension = "." + extension;
+            }
+
+            final File file = File.createTempFile(name, extension, targetDir);
             file.deleteOnExit();
 
             // Mark corresponding indices for deletion on exit as well just in case an index is created for the temp file:
             new File(file.getAbsolutePath() + Tribble.STANDARD_INDEX_EXTENSION).deleteOnExit();
             new File(file.getAbsolutePath() + TabixUtils.STANDARD_INDEX_EXTENSION).deleteOnExit();
             new File(file.getAbsolutePath() + ".bai").deleteOnExit();
+            new File(file.getAbsolutePath() + ".md5").deleteOnExit();
             new File(file.getAbsolutePath().replaceAll(extension + "$", ".bai")).deleteOnExit();
 
             return file;
@@ -473,7 +436,6 @@ public final class IOUtils {
             throw new GATKException("Cannot create temp file: " + ex.getMessage(), ex);
         }
     }
-
 
     /**
      * @param extension a file extension, may include 0 or more leading dots which will be replaced with a single dot
@@ -512,13 +474,21 @@ public final class IOUtils {
      * to load the filesystem provider using the thread context classloader. This is needed when the filesystem
      * provider is loaded using a URL classloader (e.g. in spark-submit).
      *
-     * @param uriString the URI to convert
+     * Also makes an attempt to interpret the argument as a file name if it's not a URI.
+     *
+     * @param uriString the URI to convert.
      * @return the resulting {@code Path}
      * @throws UserException if an I/O error occurs when creating the file system
      */
     public static Path getPath(String uriString) {
         Utils.nonNull(uriString);
-        URI uri = URI.create(uriString);
+        URI uri;
+        try {
+            uri = URI.create(uriString);
+        } catch (IllegalArgumentException x) {
+            // not a valid URI. Caller probably just gave us a file name.
+            return Paths.get(uriString);
+        }
         try {
             // special case GCS, in case the filesystem provider wasn't installed properly but is available.
             if (CloudStorageFileSystem.URI_SCHEME.equals(uri.getScheme())) {
@@ -532,6 +502,10 @@ public final class IOUtils {
                     throw e;
                 }
                 return FileSystems.newFileSystem(uri, new HashMap<>(), cl).provider().getPath(uri);
+            }
+            catch (ProviderNotFoundException x) {
+                // not a valid URI. Caller probably just gave us a file name or "chr1:1-2".
+                return Paths.get(uriString);
             }
             catch ( IOException io ) {
                 throw new UserException(uriString + " is not a supported path", io);
@@ -590,6 +564,31 @@ public final class IOUtils {
             } else if (!file.canRead()) {
                 throw new UserException.CouldNotReadInputFile(file.getAbsolutePath(), "The input file cannot be read.  Check the permissions.");
             }
+        }
+    }
+
+    /**
+     * Creates a directory, in local FS, HDFS, or Google buckets to write individual files in.
+     */
+    public static void createDirectory(final String pathString) throws IOException {
+        Utils.nonNull(pathString);
+
+        Files.createDirectory(getPath(pathString));
+    }
+
+    public static final String urlEncode(final String string) {
+        try {
+            return URLEncoder.encode(string, GetSampleName.STANDARD_ENCODING);
+        } catch (final UnsupportedEncodingException ex) {
+            throw new UserException("Could not encode sample name", ex);
+        }
+    }
+
+    public static final String urlDecode(final String string) {
+        try {
+            return URLDecoder.decode(string, GetSampleName.STANDARD_ENCODING);
+        } catch (final UnsupportedEncodingException ex) {
+            throw new UserException("Could not decode sample name", ex);
         }
     }
 }

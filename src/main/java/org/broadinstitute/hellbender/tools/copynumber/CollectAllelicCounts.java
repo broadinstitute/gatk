@@ -1,167 +1,154 @@
 package org.broadinstitute.hellbender.tools.copynumber;
 
-import htsjdk.samtools.ValidationStringency;
-import htsjdk.samtools.util.IntervalList;
+import htsjdk.samtools.SAMSequenceDictionary;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.ArgumentCollection;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
-import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.ReferenceInputArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredReferenceInputArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
-import org.broadinstitute.hellbender.tools.copynumber.allelic.alleliccount.AllelicCountCollection;
-import org.broadinstitute.hellbender.tools.copynumber.allelic.alleliccount.AllelicCountCollector;
-import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.param.ParamUtils;
-import org.broadinstitute.hellbender.utils.read.ReadConstants;
+import org.broadinstitute.hellbender.cmdline.programgroups.CoverageAnalysisProgramGroup;
+import org.broadinstitute.hellbender.engine.AlignmentContext;
+import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.LocusWalker;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
+import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils;
+import org.broadinstitute.hellbender.tools.copynumber.datacollection.AllelicCountCollector;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AllelicCountCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.Metadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.MetadataUtils;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
+import org.broadinstitute.hellbender.utils.Nucleotide;
 
 import java.io.File;
+import java.util.List;
 
 /**
- * Collects reference/alternate allele counts at sites.  The alt count is defined as the total count minus the ref count,
- * and the alt nucleotide is defined as the non-ref base with the highest count, with ties broken by the order of the
- * bases in {@link AllelicCountCollector#BASES}.
+ * Collects reference and alternate allele counts at specified sites. The alt count is defined as the
+ * total count minus the ref count, and the alt nucleotide is defined as the non-ref base with the highest count,
+ * with ties broken by the order of the bases in {@link AllelicCountCollector#BASES}. Only reads that pass the
+ * specified read filters and bases that exceed the specified {@code minimum-base-quality} will be counted.
  *
- * <h3>Example</h3>
+ * <h3>Inputs</h3>
  *
- * <pre>
- * gatk-launch --javaOptions "-Xmx4g" CollectAllelicCounts \
- *   --input sample.bam \
- *   --reference ref_fasta.fa \
- *   --siteIntervals sites.interval_list \
- *   --output allelic_counts.tsv
- * </pre>
+ * <ul>
+ *     <li>
+ *         SAM format read data
+ *     </li>
+ *     <li>
+ *         Reference FASTA file
+ *     </li>
+ *     <li>
+ *         Sites at which allelic counts will be collected
+ *     </li>
+ * </ul>
  *
- * <p>
- *     The --siteIntervals is a Picard-style interval list, e.g.:
- * </p>
  *
- * <pre>
- *     @HD	VN:1.4	SO:unsorted
- *     @SQ	SN:1	LN:16000	M5:8c0c38e352d8f3309eabe4845456f274
- *     @SQ	SN:2	LN:16000	M5:5f8388fe3fb34aa38375ae6cf5e45b89
- *      1	10736	10736	+	normal
- *      1	11522	11522	+	normal
- *      1	12098	12098	+	normal
- *      1	12444	12444	+	normal
- *      1	13059	13059	+	normal
- *      1	14630	14630	+	normal
- *      1	15204	15204	+	normal
- *      2	14689	14689	+	normal
- *      2	14982	14982	+	normal
- *      2	15110	15110	+	normal
- *      2	15629	15629	+	normal
- * </pre>
+ * <h3>Output</h3>
  *
- * <p>
- *     The resulting table counts the reference versus alternate allele and indicates the alleles. For example:
- * </p>
+ * <ul>
+ *     <li>
+ *         Allelic-counts file.
+ *         This is a tab-separated values (TSV) file with a SAM-style header containing a read group sample name, a sequence dictionary,
+ *         a row specifying the column headers contained in {@link AllelicCountCollection.AllelicCountTableColumn},
+ *         and the corresponding entry rows.
+ *     </li>
+ * </ul>
+ *
+ * <h3>Usage example</h3>
  *
  * <pre>
- *     CONTIG	POSITION	REF_COUNT	ALT_COUNT	REF_NUCLEOTIDE	ALT_NUCLEOTIDE
- *     1	10736	0	0	G	A
- *     1	11522	7	4	G	C
- *     1	12098	8	6	G	A
- *     1	12444	0	18	T	A
- *     1	13059	0	8	C	G
- *     1	14630	9	8	T	A
- *     1	15204	4	4	C	G
- *     2	14689	6	9	T	A
- *     2	14982	6	5	G	A
- *     2	15110	6	0	G	A
- *     2	15629	5	3	T	C
+ *     gatk CollectAllelicCounts \
+ *          -I sample.bam \
+ *          -R reference.fa \
+ *          -L sites.interval_list \
+ *          -O sample.allelicCounts.tsv
  * </pre>
  *
+ * @author Lee Lichtenstein &lt;lichtens@broadinstitute.org&gt;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        summary = "Collects ref/alt counts at sites.",
-        oneLineSummary = "Collects ref/alt counts at sites",
-        programGroup = CopyNumberProgramGroup.class
+        summary = "Collects reference and alternate allele counts at specified sites",
+        oneLineSummary = "Collects reference and alternate allele counts at specified sites",
+        programGroup = CoverageAnalysisProgramGroup.class
 )
 @DocumentedFeature
-public final class CollectAllelicCounts extends CommandLineProgram {
+@BetaFeature
+public final class CollectAllelicCounts extends LocusWalker {
+    private static final Logger logger = LogManager.getLogger(CollectAllelicCounts.class);
 
-    @ArgumentCollection
-    protected final ReferenceInputArgumentCollection referenceArguments = new RequiredReferenceInputArgumentCollection();
+    private static final int DEFAULT_MINIMUM_MAPPING_QUALITY = 30;
 
-    @Argument(
-            doc = "Input BAM file.",
-            fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
-            shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
-            optional = false
-    )
-    protected File inputBAMFile;
+    public static final String MINIMUM_BASE_QUALITY_LONG_NAME = "minimum-base-quality";
 
     @Argument(
-            doc = "Interval-list file of sites.",
-            fullName = ExomeStandardArgumentDefinitions.SITES_FILE_LONG_NAME,
-            shortName = ExomeStandardArgumentDefinitions.SITES_FILE_SHORT_NAME,
-            optional = false
-    )
-    protected File inputSiteIntervalsFile;
-
-    @Argument(
-            doc = "Output allelic-counts file.",
+            doc = "Output file for allelic counts.",
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
-            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-            optional = false
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
     )
-    protected File outputAllelicCountsFile;
+    private File outputAllelicCountsFile;
 
     @Argument(
-            doc = "Minimum mapping quality; reads with lower quality will be filtered out of pileup.",
-            fullName  = "minimumMappingQuality",
-            shortName = "minMQ",
+            doc = "Minimum base quality.  Base calls with lower quality will be filtered out of pileups.",
+            fullName = MINIMUM_BASE_QUALITY_LONG_NAME,
+            minValue = 0,
             optional = true
     )
-    protected int minimumMappingQuality = 30;
+    private int minimumBaseQuality = 20;
 
-    @Argument(
-            doc = "Minimum base quality; base calls with lower quality will be filtered out of pileup.",
-            fullName = "minimumBaseQuality",
-            shortName = "minBQ",
-            optional = true
-    )
-    protected int minimumBaseQuality = 20;
-
-    @Argument(
-            doc = "Validation stringency for all SAM/BAM/CRAM/SRA files read by this program.  The default stringency value SILENT " +
-                    "can improve performance when processing a BAM file in which variable-length data (read, qualities, tags) " +
-                    "do not otherwise need to be decoded.",
-            fullName = StandardArgumentDefinitions.READ_VALIDATION_STRINGENCY_LONG_NAME,
-            shortName = StandardArgumentDefinitions.READ_VALIDATION_STRINGENCY_SHORT_NAME,
-            common = true,
-            optional = true
-    )
-    protected ValidationStringency readValidationStringency = ReadConstants.DEFAULT_READ_VALIDATION_STRINGENCY;
+    private AllelicCountCollector allelicCountCollector;
 
     @Override
-    protected Object doWork() {
-        validateArguments();
-
-        final File referenceFile = referenceArguments.getReferenceFile();
-        final IntervalList siteIntervals = IntervalList.fromFile(inputSiteIntervalsFile);
-
-        final AllelicCountCollector allelicCountCollector = new AllelicCountCollector(referenceFile, readValidationStringency);
-
-        logger.info("Collecting allelic counts...");
-        final AllelicCountCollection allelicCounts = allelicCountCollector.collect(inputBAMFile, siteIntervals, minimumMappingQuality, minimumBaseQuality);
-        allelicCounts.write(outputAllelicCountsFile);
-        logger.info("Allelic counts written to " + outputAllelicCountsFile.toString());
-
-        return "SUCCESS";
+    public boolean emitEmptyLoci() {
+        return true;
     }
 
-    private void validateArguments() {
-        IOUtils.canReadFile(inputBAMFile);
-        IOUtils.canReadFile(inputSiteIntervalsFile);
-        IOUtils.canReadFile(referenceArguments.getReferenceFile());
-        ParamUtils.isPositiveOrZero(minimumMappingQuality, "Mapping-quality threshold must be greater than or equal to zero.");
-        ParamUtils.isPositiveOrZero(minimumBaseQuality, "Base-quality threshold must be greater than or equal to zero.");
+    @Override
+    public boolean requiresReference() {
+        return true;
+    }
+
+    @Override
+    public boolean requiresIntervals() {
+        return true;
+    }
+
+    @Override
+    public void onTraversalStart() {
+        final SampleLocatableMetadata metadata = MetadataUtils.fromHeader(getHeaderForReads(), Metadata.Type.SAMPLE_LOCATABLE);
+        final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
+        if (!CopyNumberArgumentValidationUtils.isSameDictionary(metadata.getSequenceDictionary(), sequenceDictionary)) {
+            logger.warn("Sequence dictionary in BAM does not match the master sequence dictionary.");
+        }
+        allelicCountCollector = new AllelicCountCollector(metadata);
+        logger.info("Collecting allelic counts...");
+    }
+
+    @Override
+    public List<ReadFilter> getDefaultReadFilters() {
+        final List<ReadFilter> filters = super.getDefaultReadFilters();
+        filters.add(ReadFilterLibrary.MAPPED);
+        filters.add(ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT);
+        filters.add(ReadFilterLibrary.NOT_DUPLICATE);
+        filters.add(new MappingQualityReadFilter(DEFAULT_MINIMUM_MAPPING_QUALITY));
+        return filters;
+    }
+
+    @Override
+    public Object onTraversalSuccess() {
+        allelicCountCollector.getAllelicCounts().write(outputAllelicCountsFile);
+        logger.info("Allelic counts written to " + outputAllelicCountsFile);
+        return("SUCCESS");
+    }
+
+    @Override
+    public void apply(AlignmentContext alignmentContext, ReferenceContext referenceContext, FeatureContext featureContext) {
+        final byte refAsByte = referenceContext.getBase();
+        allelicCountCollector.collectAtLocus(Nucleotide.valueOf(refAsByte), alignmentContext.getBasePileup(), alignmentContext.getLocation(), minimumBaseQuality);
     }
 }

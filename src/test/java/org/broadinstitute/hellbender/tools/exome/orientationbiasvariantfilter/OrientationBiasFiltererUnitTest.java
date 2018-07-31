@@ -4,9 +4,10 @@ import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.lang3.tuple.Pair;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
-import org.broadinstitute.hellbender.tools.picard.analysis.artifacts.Transition;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.UniqueIDWrapper;
+import org.broadinstitute.hellbender.utils.artifacts.Transition;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -14,8 +15,8 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.util.*;
 
-public class OrientationBiasFiltererUnitTest extends BaseTest {
-    private static final File TEST_RESOURCE_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/exome/orientationbiasvariantfilter/");
+public class OrientationBiasFiltererUnitTest extends GATKBaseTest {
+    private static final File TEST_RESOURCE_DIR = new File(toolsTestDir, "exome/orientationbiasvariantfilter/");
     public static final String smallM2Vcf = TEST_RESOURCE_DIR.getAbsolutePath() + "/small_m2.vcf";
     public static final String smallM2VcfMore = TEST_RESOURCE_DIR.getAbsolutePath() + "/small_m2_more_variants.vcf";
     public static final String smallM2HighPloidy = TEST_RESOURCE_DIR.getAbsolutePath() + "/high_ploidy.vcf";
@@ -155,7 +156,7 @@ public class OrientationBiasFiltererUnitTest extends BaseTest {
         final List<String> sampleNames = updatedVariants.get(0).getSampleNamesOrderedByName();
 
         // Create a mapping from sample name to a genotype->variant context map
-        final Map<String, SortedMap<Genotype, VariantContext>> sampleNameToVariants = OrientationBiasFilterer.createSampleToGenotypeVariantContextSortedMap(sampleNames, updatedVariants);
+        final Map<String, SortedMap<UniqueIDWrapper<Genotype>, VariantContext>> sampleNameToVariants = OrientationBiasFilterer.createSampleToGenotypeVariantContextSortedMap(sampleNames, updatedVariants);
     }
 
 
@@ -194,7 +195,7 @@ public class OrientationBiasFiltererUnitTest extends BaseTest {
 
         // Do the test
         // Create a mapping from sample name to a genotype->variant context map with the second map sorted by p_artifact (i.e. OrientationBiasFilterConstants.P_ARTIFACT_FIELD_NAME)
-        final Map<String, SortedMap<Genotype, VariantContext>> sampleNameToVariants = OrientationBiasFilterer.createSampleToGenotypeVariantContextSortedMap(sampleNames, updatedVariants);
+        final Map<String, SortedMap<UniqueIDWrapper<Genotype>, VariantContext>> sampleNameToVariants = OrientationBiasFilterer.createSampleToGenotypeVariantContextSortedMap(sampleNames, updatedVariants);
         Assert.assertEquals(sampleNameToVariants.keySet().size(), 2);
         Assert.assertTrue(sampleNameToVariants.keySet().contains("TUMOR"));
         Assert.assertTrue(sampleNameToVariants.keySet().contains("NORMAL"));
@@ -206,7 +207,8 @@ public class OrientationBiasFiltererUnitTest extends BaseTest {
 
         // Check that the sorted map is getting smaller (or same) values of p_artifact and not staying put.
         double previousPArtifact = Double.POSITIVE_INFINITY;
-        for (final Genotype genotypeTumor : sampleNameToVariants.get("TUMOR").keySet()) {
+        for (final UniqueIDWrapper<Genotype> genotypeTumorWrapped : sampleNameToVariants.get("TUMOR").keySet()) {
+            final Genotype genotypeTumor = genotypeTumorWrapped.getWrapped();
             final Double pArtifact = OrientationBiasUtils.getGenotypeDouble(genotypeTumor, OrientationBiasFilterConstants.P_ARTIFACT_FIELD_NAME, Double.POSITIVE_INFINITY);
             Assert.assertNotNull(pArtifact);
             Assert.assertTrue(pArtifact <= previousPArtifact);

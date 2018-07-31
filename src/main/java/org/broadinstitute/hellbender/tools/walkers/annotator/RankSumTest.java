@@ -4,31 +4,23 @@ import com.google.common.primitives.Doubles;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
-import org.apache.commons.lang.ArrayUtils;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.MannWhitneyU;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 
 /**
  * Abstract root for all RankSum based annotations
  */
-public abstract class RankSumTest extends InfoFieldAnnotation {
-    protected static double INVALID_ELEMENT_FROM_READ = Double.NEGATIVE_INFINITY;
-    private boolean useDithering = true;
-
-    public RankSumTest(final boolean useDithering){
-        this.useDithering = useDithering;
-    }
-
-    public RankSumTest(){
-        this(false);
-    }
+public abstract class RankSumTest extends InfoFieldAnnotation implements Annotation {
+    protected final static double INVALID_ELEMENT_FROM_READ = Double.NEGATIVE_INFINITY;
 
     @Override
     public Map<String, Object> annotate(final ReferenceContext ref,
@@ -47,17 +39,21 @@ public abstract class RankSumTest extends InfoFieldAnnotation {
         final int refLoc = vc.getStart();
 
         if( likelihoods != null) {
-            for (final ReadLikelihoods<Allele>.BestAllele bestAllele : likelihoods.bestAlleles()) {
-                final GATKRead read = bestAllele.read;
-                final Allele allele = bestAllele.allele;
-                if (bestAllele.isInformative() && isUsableRead(read, refLoc)) {
-                    final OptionalDouble value = getElementForRead(read, refLoc, bestAllele);
-                    // Bypass read if the clipping goal is not reached or the refloc is inside a spanning deletion
-                    if (value.isPresent() && value.getAsDouble() != INVALID_ELEMENT_FROM_READ) {
-                        if (allele.isReference()) {
-                            refQuals.add(value.getAsDouble());
-                        } else if (vc.hasAllele(allele)) {
-                            altQuals.add(value.getAsDouble());
+            if (likelihoods.hasFilledLikelihoods()) {
+                // Default to using the likelihoods to calculate the rank sum
+                fillQualsFromLikelihood(vc, likelihoods, refQuals, altQuals, refLoc);
+
+            // Use the pileup to stratify otherwise
+            } else {
+                for (final PileupElement p : likelihoods.getStratifiedPileups(vc).values().stream().flatMap(Collection::stream).collect(Collectors.toList())) {
+                    if (PileupElement.isUsableBaseForAnnotation(p)) {
+                        final OptionalDouble value = getElementForPileupElement(p, refLoc);
+                        if (value.isPresent() && value.getAsDouble() != INVALID_ELEMENT_FROM_READ) {
+                            if (vc.getReference().equals(Allele.create(p.getBase(), true))) {
+                                refQuals.add(value.getAsDouble());
+                            } else if (vc.hasAllele(Allele.create(p.getBase()))) {
+                                altQuals.add(value.getAsDouble());
+                            }
                         }
                     }
                 }
@@ -79,6 +75,24 @@ public abstract class RankSumTest extends InfoFieldAnnotation {
             return Collections.emptyMap();
         } else {
             return Collections.singletonMap(getKeyNames().get(0), String.format("%.3f", zScore));
+        }
+    }
+
+    protected void fillQualsFromLikelihood(VariantContext vc, ReadLikelihoods<Allele> likelihoods, List<Double> refQuals, List<Double> altQuals, int refLoc) {
+        for (final ReadLikelihoods<Allele>.BestAllele bestAllele : likelihoods.bestAllelesBreakingTies()) {
+            final GATKRead read = bestAllele.read;
+            final Allele allele = bestAllele.allele;
+            if (bestAllele.isInformative() && isUsableRead(read, refLoc)) {
+                final OptionalDouble value = getElementForRead(read, refLoc, bestAllele);
+                // Bypass read if the clipping goal is not reached or the refloc is inside a spanning deletion
+                if (value.isPresent() && value.getAsDouble() != INVALID_ELEMENT_FROM_READ) {
+                    if (allele.isReference()) {
+                        refQuals.add(value.getAsDouble());
+                    } else if (vc.hasAllele(allele)) {
+                        altQuals.add(value.getAsDouble());
+                    }
+                }
+            }
         }
     }
 
@@ -112,7 +126,17 @@ public abstract class RankSumTest extends InfoFieldAnnotation {
      */
     protected boolean isUsableRead(final GATKRead read, final int refLoc) {
         Utils.nonNull(read);
-        return !( read.getMappingQuality() == 0 ||
-                read.getMappingQuality() == QualityUtils.MAPPING_QUALITY_UNAVAILABLE );
+        return read.getMappingQuality() != 0 && read.getMappingQuality() != QualityUtils.MAPPING_QUALITY_UNAVAILABLE;
     }
+
+    /**
+     * Get the element for the given read at the given reference position
+     *
+     * This can return an OptionalDouble.empty() if the annotation should not be computed based on the pileups.
+     *
+     * @param p        the pileup element
+     * @return a Double representing the element to be used in the rank sum test, or null if it should not be used
+     */
+    protected abstract OptionalDouble getElementForPileupElement(final PileupElement p, final int refLoc);
+
 }

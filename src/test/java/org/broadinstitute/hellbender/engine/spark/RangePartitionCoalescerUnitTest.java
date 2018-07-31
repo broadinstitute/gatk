@@ -5,7 +5,7 @@ import org.apache.spark.Partition;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.rdd.PartitionGroup;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 import scala.collection.JavaConversions;
@@ -14,7 +14,7 @@ import java.util.List;
 
 import static org.testng.Assert.assertEquals;
 
-public class RangePartitionCoalescerUnitTest extends BaseTest {
+public class RangePartitionCoalescerUnitTest extends GATKBaseTest {
     private JavaRDD<String> rdd;
     private Partition[] partitions;
 

@@ -25,7 +25,8 @@ import java.io.Serializable;
 @CommandLineProgramProperties(
         summary = "Example AssemblyRegionWalker that prints out the bounds of each assembly region with and without padding, as well as the number of reads in each region",
         oneLineSummary = "Example AssemblyRegionWalker",
-        programGroup = ExampleProgramGroup.class
+        programGroup = ExampleProgramGroup.class,
+        omitFromCommandLine = true
 )
 public final class ExampleAssemblyRegionWalkerSpark extends AssemblyRegionWalkerSpark {
     private static final long serialVersionUID = 1L;
@@ -59,6 +60,11 @@ public final class ExampleAssemblyRegionWalkerSpark extends AssemblyRegionWalker
 
     @Override
     protected int defaultMaxProbPropagationDistance() { return 50; }
+
+    @Override
+    protected boolean includeReadsWithDeletionsInIsActivePileups() {
+        return true;
+    }
 
     @Override
     public AssemblyRegionEvaluator assemblyRegionEvaluator() {

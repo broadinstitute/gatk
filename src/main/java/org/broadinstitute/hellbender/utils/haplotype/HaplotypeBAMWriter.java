@@ -6,6 +6,7 @@ import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMTag;
 
 import htsjdk.samtools.util.Locatable;
+import java.nio.file.Path;
 import org.broadinstitute.hellbender.utils.read.*;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
@@ -25,7 +26,9 @@ public abstract class HaplotypeBAMWriter implements AutoCloseable {
      */
     private long uniqueNameCounter = 1;
 
-    private static final String DEFAULT_HAPLOTYPE_READ_GROUP_ID = "ArtificialHaplotypeRG";
+    public static final String DEFAULT_HAPLOTYPE_READ_GROUP_ID = "ArtificialHaplotypeRG";
+    // For read filters that need backwards compatibility with the GATK3 artificial haplotype
+    public static final String DEFAULT_GATK3_HAPLOTYPE_READ_GROUP_ID = "ArtificialHaplotype";
     private static final int bestHaplotypeMQ = 60;
     private static final int otherMQ = 0;
 
@@ -66,16 +69,23 @@ public abstract class HaplotypeBAMWriter implements AutoCloseable {
      * Create a new HaplotypeBAMWriter of type "type" for writing SAMRecords to an output file
      *
      * @param type the type of the writer we want to create, must not be null
-     * @param outputFile the destination, must not be null
+     * @param outputPath the destination, must not be null
+     * @param createBamOutIndex true to create an index for the bamout
+     * @param createBamOutMD5 true to create an MD5 file for the bamout
      * @param sourceHeader the header of the input BAMs used to make calls, must not be null.
      * @return a new HaplotypeBAMWriter
      */
-    public static HaplotypeBAMWriter create(final WriterType type, final File outputFile, final SAMFileHeader sourceHeader) {
+    public static HaplotypeBAMWriter create(
+            final WriterType type,
+            final Path outputPath,
+            final boolean createBamOutIndex,
+            final boolean createBamOutMD5,
+            final SAMFileHeader sourceHeader) {
         Utils.nonNull(type, "type cannot be null");
-        Utils.nonNull(outputFile, "outputFile cannot be null");
+        Utils.nonNull(outputPath, "outputPath cannot be null");
         Utils.nonNull(sourceHeader, "sourceHeader cannot be null");
 
-        return create(type, new SAMFileDestination(outputFile, sourceHeader, DEFAULT_HAPLOTYPE_READ_GROUP_ID));
+        return create(type, new SAMFileDestination(outputPath, createBamOutIndex, createBamOutMD5, sourceHeader, DEFAULT_HAPLOTYPE_READ_GROUP_ID));
     }
 
     /**

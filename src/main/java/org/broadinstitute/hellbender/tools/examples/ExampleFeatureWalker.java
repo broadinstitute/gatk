@@ -22,7 +22,8 @@ import java.io.PrintStream;
 @CommandLineProgramProperties(
         summary = "Example tool that prints features supplied to the specified output file (stdout if none provided), along with overlapping reads/reference bases/variants (if provided)",
         oneLineSummary = "Example tool that prints features with optional contextual data",
-        programGroup = ExampleProgramGroup.class
+        programGroup = ExampleProgramGroup.class,
+        omitFromCommandLine = true
 )
 public final class ExampleFeatureWalker extends FeatureWalker<BEDFeature> {
 

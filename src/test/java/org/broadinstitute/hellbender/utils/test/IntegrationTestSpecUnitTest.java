@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.test;
 
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.PrintReadsIntegrationTest;
@@ -13,7 +14,7 @@ import java.util.Arrays;
 /**
  * Testing the test infrastructure
  */
-public final class IntegrationTestSpecUnitTest extends BaseTest {
+public final class IntegrationTestSpecUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions = AssertionError.class)
     public void compareTextFiles() throws IOException {
@@ -54,7 +55,7 @@ public final class IntegrationTestSpecUnitTest extends BaseTest {
 
     @Test(expectedExceptions = GATKException.class)
     public void testSpec_misspecified() throws IOException {
-        final File getTestDataDir = new File("src/test/resources/org/broadinstitute/hellbender/tools/");
+        final File getTestDataDir = new File(toolsTestDir);
         final File samWithOneMalformedRead = new File(getTestDataDir, "print_reads_one_malformed_read.sam");
         final File outBam = createTempFile("print_reads_testReadFiltering", ".bam");
 

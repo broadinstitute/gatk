@@ -1,17 +1,17 @@
 package org.broadinstitute.hellbender.utils.codecs.sampileup;
 
+import htsjdk.samtools.util.IOUtil;
 import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.readers.LineIteratorImpl;
 import htsjdk.tribble.readers.LineReader;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
 import static org.broadinstitute.hellbender.utils.BaseUtils.Base.*;
@@ -19,7 +19,7 @@ import static org.broadinstitute.hellbender.utils.BaseUtils.Base.*;
 /**
  * @author Daniel Gomez-Sanchez (magicDGS)
  */
-public class SAMPileupCodecUnitTest extends BaseTest {
+public class SAMPileupCodecUnitTest extends GATKBaseTest {
 
     private final static SAMPileupCodec CODEC = new SAMPileupCodec();
 
@@ -52,7 +52,7 @@ public class SAMPileupCodecUnitTest extends BaseTest {
         final String EXTRA_CHAR = "1";
         for(final String ext: SAMPileupCodec.SAM_PILEUP_FILE_EXTENSIONS) {
             testCanDecodeExtension(ext);
-            for (final String bcExt: AbstractFeatureReader.BLOCK_COMPRESSED_EXTENSIONS) {
+            for (final String bcExt: IOUtil.BLOCK_COMPRESSED_EXTENSIONS) {
                 testCanDecodeExtension(ext + bcExt);
             }
         }

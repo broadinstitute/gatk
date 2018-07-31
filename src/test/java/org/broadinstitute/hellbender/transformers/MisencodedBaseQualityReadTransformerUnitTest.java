@@ -5,7 +5,7 @@ import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -13,7 +13,7 @@ import org.testng.annotations.Test;
 /**
  * Basic unit test for misencoded quals
  */
-public final class MisencodedBaseQualityReadTransformerUnitTest extends BaseTest {
+public final class MisencodedBaseQualityReadTransformerUnitTest extends GATKBaseTest {
 
     private SAMFileHeader header;
 

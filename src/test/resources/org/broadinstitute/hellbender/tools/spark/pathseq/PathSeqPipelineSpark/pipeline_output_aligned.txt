@@ -1,0 +1,12 @@
+tax_id	taxonomy	type	name	kingdom	score	score_normalized	reads	unambiguous	reference_length
+561	root|cellular_organisms|Bacteria|Proteobacteria|Gammaproteobacteria|Enterobacterales|Enterobacteriaceae|Escherichia	genus	Escherichia	Bacteria	1993.0	100.0	1993	1993	0
+1	root	root	root	root	1993.0	100.0	1993	1993	0
+2	root|cellular_organisms|Bacteria	superkingdom	Bacteria	Bacteria	1993.0	100.0	1993	1993	0
+91347	root|cellular_organisms|Bacteria|Proteobacteria|Gammaproteobacteria|Enterobacterales	order	Enterobacterales	Bacteria	1993.0	100.0	1993	1993	0
+562	root|cellular_organisms|Bacteria|Proteobacteria|Gammaproteobacteria|Enterobacterales|Enterobacteriaceae|Escherichia|Escherichia_coli	species	Escherichia_coli	Bacteria	1993.0	100.0	1993	1993	0
+83333	root|cellular_organisms|Bacteria|Proteobacteria|Gammaproteobacteria|Enterobacterales|Enterobacteriaceae|Escherichia|Escherichia_coli|Escherichia_coli_K-12	no_rank	Escherichia_coli_K-12	Bacteria	1993.0	100.0	1993	1993	0
+1236	root|cellular_organisms|Bacteria|Proteobacteria|Gammaproteobacteria	class	Gammaproteobacteria	Bacteria	1993.0	100.0	1993	1993	0
+1224	root|cellular_organisms|Bacteria|Proteobacteria	phylum	Proteobacteria	Bacteria	1993.0	100.0	1993	1993	0
+131567	root|cellular_organisms	no_rank	cellular_organisms	root	1993.0	100.0	1993	1993	0
+511145	root|cellular_organisms|Bacteria|Proteobacteria|Gammaproteobacteria|Enterobacterales|Enterobacteriaceae|Escherichia|Escherichia_coli|Escherichia_coli_K-12|Escherichia_coli_str._K-12_substr._MG1655	no_rank	Escherichia_coli_str._K-12_substr._MG1655	Bacteria	1993.0	100.0	1993	1993	176000
+543	root|cellular_organisms|Bacteria|Proteobacteria|Gammaproteobacteria|Enterobacterales|Enterobacteriaceae	family	Enterobacteriaceae	Bacteria	1993.0	100.0	1993	1993	0

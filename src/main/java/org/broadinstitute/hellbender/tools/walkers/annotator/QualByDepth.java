@@ -6,10 +6,12 @@ import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
@@ -41,6 +43,7 @@ import java.util.Map;
  *     <li><b><a href="https://www.broadinstitute.org/gatk/guide/tooldocs/org_broadinstitute_gatk_tools_walkers_annotator_DepthPerAlleleBySample.php">DepthPerAlleleBySample</a></b> calculates depth of coverage for each allele per sample (AD).</li>
  * </ul>
  */
+@DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Variant confidence normalized by unfiltered depth of variant samples (QD)")
 public final class QualByDepth extends InfoFieldAnnotation implements StandardAnnotation {
 
     @VisibleForTesting
@@ -82,8 +85,11 @@ public final class QualByDepth extends InfoFieldAnnotation implements StandardAn
                         ADrestrictedDepth += totalADdepth;
                     }
                     depth += totalADdepth;
+                    continue;
                 }
-            } else if (likelihoods != null) {
+            }
+            // if there is no AD value or it is a dummy value, we want to look to other means to get the depth
+            if (likelihoods != null) {
                 depth += likelihoods.sampleReadCount(likelihoods.indexOfSample(genotype.getSampleName()));
             } else if ( genotype.hasDP() ) {
                 depth += genotype.getDP();
@@ -127,9 +133,4 @@ public final class QualByDepth extends InfoFieldAnnotation implements StandardAn
 
     @Override
     public List<String> getKeyNames() { return Collections.singletonList(GATKVCFConstants.QUAL_BY_DEPTH_KEY); }
-
-    @Override
-    public List<VCFInfoHeaderLine> getDescriptions() {
-        return Collections.singletonList(GATKVCFHeaderLines.getInfoLine(getKeyNames().get(0)));
-    }
 }

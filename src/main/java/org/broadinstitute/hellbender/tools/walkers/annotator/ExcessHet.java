@@ -8,35 +8,64 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math3.stat.StatUtils;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.GenotypeCounts;
 import org.broadinstitute.hellbender.utils.GenotypeUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.help.HelpConstants;
+import org.broadinstitute.hellbender.utils.samples.PedigreeValidationType;
+import org.broadinstitute.hellbender.utils.samples.SampleDBBuilder;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.io.File;
+import java.util.*;
 
 /**
  * Phred-scaled p-value for exact test of excess heterozygosity.
- * Using implementation from
- * Wigginton JE, Cutler DJ, Abecasis GR. A Note on Exact Tests of Hardy-Weinberg Equilibrium. American Journal of Human Genetics. 2005;76(5):887-893.
+ *
+ * <p>This annotation estimates the probability of the called samples exhibiting excess heterozygosity with respect to the null hypothesis that the samples are unrelated. The higher the score, the
+ * higher the chance that the variant is a technical artifact or that there is consanguinuity among the samples. In
+ * contrast to Inbreeding Coefficient, there is no minimal number of samples for this annotation. If samples are known to be related, a pedigree file can be provided so
+ * that the calculation is only performed on founders and offspring are excluded.</p>
+ *
+ * <h3>Statistical notes</h3>
+ * <p>This annotation uses the implementation from
+ * <a href='http://www.sciencedirect.com/science/article/pii/S0002929707607356?via%3Dihub'>Wigginton JE, Cutler DJ, Abecasis GR. <i>A Note on Exact Tests of Hardy-Weinberg Equilibrium. American Journal of Human Genetics</i>. 2005;76(5):887-893</a>.
+ *
+ * <h3>Caveat</h3>
+ * <p>The Excess Heterozygosity annotation can only be calculated for diploid samples.</p>
+ *
+ * <h3>Related annotations</h3>
+ * <p><b>InbreedingCoeff</b> also describes the heterozygosity of the called samples, though without explicitly taking into account the number of samples</p>
  */
-public final class ExcessHet extends InfoFieldAnnotation implements StandardAnnotation {
+@DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Phred-scaled p-value for exact test of excess heterozygosity (ExcessHet)")
+public final class ExcessHet extends PedigreeAnnotation implements StandardAnnotation {
     private static final double MIN_NEEDED_VALUE = 1.0E-16;
     private static final boolean ROUND_GENOTYPE_COUNTS = true;
     
     public static final double PHRED_SCALED_MIN_P_VALUE = -10.0 * Math.log10(MIN_NEEDED_VALUE);
 
+    public ExcessHet(final Set<String> founderIds){
+        super(founderIds);
+    }
+
+    public ExcessHet(final File pedigreeFile){
+        super(pedigreeFile);
+    }
+
+    public ExcessHet() {
+        this((Set<String>) null);
+    }
+
     @Override
     public Map<String, Object> annotate(final ReferenceContext ref,
                                         final VariantContext vc,
                                         final ReadLikelihoods<Allele> likelihoods) {
-        final GenotypesContext genotypes = vc.getGenotypes();
+        GenotypesContext genotypes = getFounderGenotypes(vc);
         if (genotypes == null || !vc.isVariant()) {
             return Collections.emptyMap();
         }
@@ -173,8 +202,4 @@ public final class ExcessHet extends InfoFieldAnnotation implements StandardAnno
         return Collections.singletonList(GATKVCFConstants.EXCESS_HET_KEY);
     }
 
-    @Override
-    public List<VCFInfoHeaderLine> getDescriptions() {
-        return Collections.singletonList(GATKVCFHeaderLines.getInfoLine(getKeyNames().get(0)));
-    }
 }

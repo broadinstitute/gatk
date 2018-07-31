@@ -4,21 +4,25 @@ import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.Iterators;
 import com.google.common.primitives.Ints;
 import htsjdk.samtools.SAMFileHeader;
-import org.apache.commons.io.FileUtils;
+import htsjdk.tribble.util.ParsingUtils;
+import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.math3.random.RandomDataGenerator;
 import org.apache.commons.math3.random.Well19937c;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.exceptions.UserException;
 
 import javax.annotation.Nullable;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.reflect.Array;
 import java.math.BigInteger;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.ZonedDateTime;
@@ -31,6 +35,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -524,12 +529,40 @@ public final class Utils {
     /**
      * Calculates the MD5 for the specified file and returns it as a String
      *
+     * Warning: this loads the whole file into memory, so it's not suitable
+     * for large files.
+     *
      * @param file file whose MD5 to calculate
      * @return file's MD5 in String form
      * @throws IOException if the file could not be read
      */
     public static String calculateFileMD5( final File file ) throws IOException{
-        return Utils.calcMD5(FileUtils.readFileToByteArray(file));
+        return calculatePathMD5(file.toPath());
+    }
+
+    /**
+     * Calculates the MD5 for the specified file and returns it as a String
+     *
+     * Warning: this loads the whole file into memory, so it's not suitable
+     * for large files.
+     *
+     * @param path file whose MD5 to calculate
+     * @return file's MD5 in String form
+     * @throws IOException if the file could not be read
+     */
+    public static String calculatePathMD5(final Path path) throws IOException{
+        // This doesn't have as nice error messages as FileUtils, but it's close.
+        String fname = path.toUri().toString();
+        if (!Files.exists(path)) {
+            throw new FileNotFoundException("File '" + fname + "' does not exist");
+        }
+        if (Files.isDirectory(path)) {
+            throw new IOException("File '" + fname + "' exists but is a directory");
+        }
+        if (!Files.isRegularFile(path)) {
+            throw new IOException("File '" + fname + "' exists but is not a regular file");
+        }
+        return Utils.calcMD5(Files.readAllBytes(path));
     }
 
     /**
@@ -586,6 +619,16 @@ public final class Utils {
         } else {
             return collection;
         }
+    }
+
+    /**
+     * Checks that a {@link Collection} is not {@code null} and that it is not empty.
+     * If it's non-null and non-empty it returns the true
+     * @param collection any Collection
+     * @return true if the collection exists and has elements
+     */
+    public static boolean isNonEmpty(Collection<?> collection){
+        return collection != null && !collection.isEmpty();
     }
 
     /**
@@ -1127,5 +1170,205 @@ public final class Utils {
      */
     public static void forceJVMLocaleToUSEnglish() {
         Locale.setDefault(Locale.US);
+    }
+
+    /**
+     * Streams and sorts a collection of objects and returns the integer median entry of the sorted list
+     * @param values List of sortable entries from which to select the median
+     */
+    public static <T extends Comparable<?>> T getMedianValue(List<T> values) {
+        final List<T> sorted = values.stream().sorted().collect(Collectors.toList());
+        return sorted.get(sorted.size() / 2);
+    }
+
+
+    /**
+     * Splits a String using indexOf instead of regex to speed things up.
+     * This method produces the same results as {@link String#split(String)} and {@code String.split(String, 0)},
+     * but has been measured to be ~2x faster (see {@code StringSplitSpeedUnitTest} for details).
+     *
+     * @param str       the string to split.
+     * @param delimiter the delimiter used to split the string.
+     * @return A {@link List} of {@link String} tokens.
+     */
+    public static List<String> split(final String str, final char delimiter) {
+
+        final List<String> tokens;
+
+        if ( str.isEmpty() ) {
+            tokens = new ArrayList<>(1);
+            tokens.add("");
+        }
+        else {
+            tokens = ParsingUtils.split(str, delimiter);
+            removeTrailingEmptyStringsFromEnd(tokens);
+        }
+
+        return tokens;
+    }
+
+    /**
+     * Splits a String using indexOf instead of regex to speed things up.
+     * If given an empty delimiter, will return each character in the string as a token.
+     * This method produces the same results as {@link String#split(String)} and {@code String.split(String, 0)},
+     * but has been measured to be ~2x faster (see {@code StringSplitSpeedUnitTest} for details).
+     *
+     * @param str       the string to split.
+     * @param delimiter the delimiter used to split the string.
+     * @return A {@link List} of {@link String} tokens.
+     */
+    public static List<String> split(final String str, final String delimiter) {
+        // This is 10 because the ArrayList default capacity is 10 (but private).
+        return split(str, delimiter, 10);
+    }
+
+    /**
+     * Splits a given {@link String} using {@link String#indexOf} instead of regex to speed things up.
+     * If given an empty delimiter, will return each character in the string as a token.
+     * This method produces the same results as {@link String#split(String)} and {@code String.split(String, 0)},
+     * but has been measured to be ~2x faster (see {@code StringSplitSpeedUnitTest} for details).
+     *
+     * @param str               The {@link String} to split.
+     * @param delimiter         The delimiter used to split the {@link String}.
+     * @param expectedNumTokens The number of tokens expected (used to initialize the capacity of the {@link ArrayList}).
+     * @return A {@link List} of {@link String} tokens.
+     */
+    private static List<String> split(final String str, final String delimiter, final int expectedNumTokens) {
+        final List<String> result;
+
+        if ( str.isEmpty() ) {
+            result = new ArrayList<>(1);
+            result.add("");
+        }
+        else if ( delimiter.isEmpty() ) {
+            result = new ArrayList<>(str.length());
+            for ( int i = 0; i < str.length(); ++i ) {
+                result.add(str.substring(i, i + 1));
+            }
+        }
+        else if ( delimiter.length() == 1 ) {
+            result = split(str, delimiter.charAt(0));
+        }
+        else {
+            result = new ArrayList<>(expectedNumTokens);
+
+            int delimiterIdx = -1;
+            int tokenStartIdx = delimiterIdx + 1;
+            do {
+                delimiterIdx = str.indexOf(delimiter, tokenStartIdx);
+                final String token = (delimiterIdx != -1 ? str.substring(tokenStartIdx, delimiterIdx) : str.substring(tokenStartIdx));
+                result.add(token);
+                tokenStartIdx = delimiterIdx + delimiter.length();
+            } while ( delimiterIdx != -1 );
+
+            removeTrailingEmptyStringsFromEnd(result);
+        }
+
+        return result;
+    }
+
+    private static void removeTrailingEmptyStringsFromEnd(final List<String> result) {
+        // Remove all trailing empty strings to emulate the behavior of String.split:
+        // We remove items from the end of the list to our index
+        // so that we can take advantage of better performance of removing items from the end
+        // of certain concrete lists:
+        while ( (!result.isEmpty()) && (result.get(result.size() - 1).isEmpty()) ) {
+            result.remove(result.size() - 1);
+        }
+    }
+
+    /**
+     * Take a map of a value to a list and reverse it.  Note that no assumptions of uniqueness are made, so returned
+     *  values are also lists.
+     *
+     *  <p>For example:</p>
+     *
+     *  Input:<br/>
+     *  k ->  {a,b} <br/>
+     *  j ->  {a} <br/>
+     *
+     *  Output:<br/>
+     *  a ->  {k,j} <br/>
+     *  b ->  {k} <br/>
+     *
+     *  Any sorting in the input map will be lost in the output.
+     *
+     * @param somethingToListMap a map from a value to a list of values.  Never {@code null}
+     * @param <T> class of the key of the input
+     * @param <U> class of the values in the list of the input
+     * @return A new mapping from class of values to set of keys.  Never {@code null}
+     */
+    public static <T,U> Map<U, Set<T>> getReverseValueToListMap(final Map<T, List<U>> somethingToListMap) {
+        final Map<U, Set<T>> result = new HashMap<>();
+
+        for (final Map.Entry<T, List<U>> entry : somethingToListMap.entrySet()) {
+            entry.getValue().forEach(v -> result.computeIfAbsent(v, k -> new HashSet<>()).add(entry.getKey()));
+        }
+
+        return result;
+    }
+
+    /**
+     * Convenience function that formats a percentage as a %.2f string
+     *
+     * @param x number of objects part of total that meet some criteria
+     * @param total count of all objects, including x
+     * @return a String percent rate, or NA if total == 0
+     */
+    public static String formattedPercent(final long x, final long total) {
+        return total == 0 ? "NA" : String.format("%.2f", (100.0*x) / total);
+    }
+
+    /**
+     * Convenience function that formats a ratio as a %.2f string
+     *
+     * @param num  number of observations in the numerator
+     * @param denom number of observations in the denumerator
+     * @return a String formatted ratio, or NA if all == 0
+     */
+    public static String formattedRatio(final long num, final long denom) {
+        return denom == 0 ? "NA" : String.format("%.2f", num / (1.0 * denom));
+    }
+
+    /**
+     * Given a collection of strings and a collection of regular expressions, generates the set of strings that match
+     * any expression
+     * @param sourceValues collection of strings from which to to select
+     * @param filterExpressions list of expressions to use for matching
+     * @param exactMatch If true match filters exactly, otherwise use as both exact and regular expressions
+     * @return A new set strings from sourceValues that satisfy at least one of the expressions in sampleExpressions
+     */
+    public static Set<String> filterCollectionByExpressions(final Collection<String> sourceValues, final Collection<String> filterExpressions, final boolean exactMatch) {
+        Utils.nonNull(filterExpressions);
+        Utils.nonNull(sourceValues);
+
+        final Set<String> filteredValues = new LinkedHashSet<>();
+
+        Collection<Pattern> patterns = null;
+        if (!exactMatch) {
+            patterns = compilePatterns(filterExpressions);
+        }
+        for (final String value : sourceValues) {
+            if (filterExpressions.contains(value)) {
+                filteredValues.add(value);
+            } else if (!exactMatch) {
+                for (final Pattern pattern : patterns) {
+                    if (pattern.matcher(value).find()) {
+                        filteredValues.add(value);
+                        break;
+                    }
+                }
+            }
+        }
+
+        return filteredValues;
+    }
+
+    private static Collection<Pattern> compilePatterns(final Collection<String> filters) {
+        final Collection<Pattern> patterns = new ArrayList<Pattern>();
+        for (final String filter: filters) {
+            patterns.add(Pattern.compile(filter));
+        }
+        return patterns;
     }
 }

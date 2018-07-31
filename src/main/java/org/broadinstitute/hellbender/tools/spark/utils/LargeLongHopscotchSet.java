@@ -5,7 +5,7 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.google.common.annotations.VisibleForTesting;
-import org.broadinstitute.hellbender.tools.spark.sv.SVUtils;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.Serializable;
@@ -18,7 +18,7 @@ import java.util.*;
  * the size estimate passed to the constructor and does not resize dynamically.
  */
 @DefaultSerializer(LargeLongHopscotchSet.Serializer.class)
-public final class LargeLongHopscotchSet implements Serializable, QueryableLongSet {
+public final class LargeLongHopscotchSet implements Serializable {
 
     private static final long serialVersionUID = 1L;
     private final List<LongHopscotchSet> sets;

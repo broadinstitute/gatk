@@ -1,0 +1,10 @@
+fam001 s1 0 0 2 2
+fam001 s2 0 0 1 1
+fam001 s3 0 0 2 2
+fam001 s4 0 0 1 2
+fam001 s5 0 0 2 2
+fam001 s6 s1 s2 1 2
+fam001 s7 s3 s4 2 2
+fam001 s8 s2 s5 1 2
+fam001 s9 s1 s2 2 2
+fam001 s10 s3 s4 1 2

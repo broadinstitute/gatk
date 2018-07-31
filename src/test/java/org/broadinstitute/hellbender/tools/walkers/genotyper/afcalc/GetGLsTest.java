@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc;
 
 import htsjdk.variant.variantcontext.*;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 
 import java.util.ArrayList;
@@ -9,7 +9,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-public final class GetGLsTest extends BaseTest.TestDataProvider {
+public final class GetGLsTest extends GATKBaseTest.TestDataProvider {
     GenotypesContext GLs;
     int numAltAlleles;
     final AFCalculator calc;

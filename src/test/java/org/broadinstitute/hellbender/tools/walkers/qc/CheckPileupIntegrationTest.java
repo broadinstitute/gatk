@@ -18,7 +18,7 @@ import java.util.Arrays;
  */
 public class CheckPileupIntegrationTest extends CommandLineProgramTest {
     private static final String TEST_DATA_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/";
-    private static final String TEST_OUTPUT_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/tools/walkers/qc/pileup/";
+    private static final String TEST_OUTPUT_DIRECTORY = toolsTestDir + "walkers/qc/pileup/";
 
     /**
      * This test runs on a basic pileup obtained with samtools (version 1.3.1) and options -B --min-BQ 0
@@ -45,7 +45,7 @@ public class CheckPileupIntegrationTest extends CommandLineProgramTest {
     public void testBAQPileup() throws IOException {
         // pileup was generated with "samtools -f hg19MiniReference --min-BQ 0 reads_data_source_test1.bam"
         IntegrationTestSpec testSpec = new IntegrationTestSpec(
-                " --continue_after_error " +
+                " --continue-after-error " +
                 " -R " + hg19MiniReference +
                 " -I " + TEST_DATA_DIRECTORY + "reads_data_source_test1.bam" +
                 " -pileup " +  TEST_OUTPUT_DIRECTORY + "reads_data_source_test1.samtools.baq.pileup" +

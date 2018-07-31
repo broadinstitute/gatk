@@ -41,11 +41,11 @@ public class FalsePositiveRecord {
 
     // report FPR in units of per megabases
     public double getSnpFalsePositiveRate(){
-        return snpFalsePositives / targetTerritory * 1000000.0;
+        return (double) snpFalsePositives / targetTerritory * 1e6;
     }
 
     public double getIndelFalsePositiveRate(){
-        return indelFalsePositives / targetTerritory * 1000000.0;
+        return (double) indelFalsePositives / targetTerritory * 1e6;
     }
 
 }

@@ -2,6 +2,8 @@ package org.broadinstitute.hellbender.tools;
 
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -48,11 +50,13 @@ public final class CountReadsIntegrationTest extends CommandLineProgramTest {
                 new Object[]{"-L chr1 -L chr7", 7l},
                 new Object[]{"-XL chr7", 0l},
                 new Object[]{"-XL chr7:2-404", 3l},
-                new Object[]{"-L chr7:1-30 -L chr7:10-15 --interval_set_rule INTERSECTION", 3l},
-                new Object[]{"-L chr7:1 --interval_padding 19", 4l },
+                new Object[]{"-L chr7:1-30 -L chr7:10-15 --" + IntervalArgumentCollection.INTERVAL_SET_RULE_LONG_NAME + " INTERSECTION", 3l},
+                new Object[]{"-L chr7:1 --" + IntervalArgumentCollection.INTERVAL_PADDING_LONG_NAME + " 19", 4l },
                 new Object[]{"-L " + getTestDataDir() + "/chr7_1_20.interval_list", 4l},
                 new Object[]{"-L chr7:1-100 -XL chr7:2-100", 3l},
-                new Object[]{"-L chr7:1-10 -L chr7:5-10 --interval_padding 10 --interval_set_rule INTERSECTION --XL chr7:21-200", 4l }
+                new Object[]{"-L chr7:1-10 -L chr7:5-10 --"
+                        +IntervalArgumentCollection.INTERVAL_PADDING_LONG_NAME  + " 10 --"
+                        +IntervalArgumentCollection.INTERVAL_SET_RULE_LONG_NAME + " INTERSECTION -XL chr7:21-200", 4l }
         };
     }
 

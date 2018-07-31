@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.pipelines.metrics;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.metrics.MetricsFile;
@@ -11,14 +12,13 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
+import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.MetricsReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.metrics.MetricsUtils;
-import org.broadinstitute.hellbender.tools.picard.analysis.BaseDistributionByCycleMetrics;
-import org.broadinstitute.hellbender.tools.picard.analysis.CollectBaseDistributionByCycle;
+import org.broadinstitute.hellbender.metrics.analysis.BaseDistributionByCycleMetrics;
 import org.broadinstitute.hellbender.utils.R.RScriptExecutor;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.Resource;
@@ -29,10 +29,30 @@ import java.io.Serializable;
 import java.util.Arrays;
 import java.util.List;
 
+/**
+ * Collects base distribution per cycle in SAM/BAM/CRAM file(s). The tool leverages the Spark framework for
+ * faster operation.
+ *
+ * <h3>Usage example</h3>
+ * <pre>
+ * gatk CollectBaseDistributionByCycleSpark \
+ *   -R gs://cloud-bucket/reference.fasta \
+ *   -I gs://cloud-bucket/input.bam \
+ *   -O gs://cloud-bucket/metrics_file.txt \
+ *   -- \
+ *   --spark-runner GCS \
+ *   --cluster my-dataproc-cluster
+ * </pre>
+ *
+ * See <a href ="https://software.broadinstitute.org/gatk/documentation/article?id=10060">Tutorial#10060</a>
+ * for an example of how to set up and run a Spark tool on a cloud Spark cluster.
+ */
+
 @CommandLineProgramProperties(
-        summary = "Program to chart the nucleotide distribution per cycle in a SAM/BAM file",
-        oneLineSummary = "CollectBaseDistributionByCycle on Spark",
-        programGroup = SparkProgramGroup.class
+        summary = "Collects base distribution per cycle in SAM/BAM/CRAM file(s). The tool " +
+                "leverages the Spark framework for faster operation.",
+        oneLineSummary = "Collects base distribution per cycle in SAM/BAM/CRAM file(s).",
+        programGroup = DiagnosticsAndQCProgramGroup.class
 )
 @DocumentedFeature
 @BetaFeature
@@ -40,18 +60,34 @@ public final class CollectBaseDistributionByCycleSpark extends GATKSparkTool {
 
     private static final long serialVersionUID = 1L;
 
-    @Argument(doc = "uri for the output file: a local file path",
-            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
-            optional = true)
+    @Argument(
+            doc = "Output metrics file.",
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            optional = true
+    )
     public String out;
 
-    @Argument(shortName="C", fullName = "chart", doc="A file (with .pdf extension) to write the chart to.", optional=true)
+    @Argument(
+            shortName="C",
+            fullName = "chart",
+            doc="Output charts file (pdf).",
+            optional=true
+    )
     public File chartOutput;
 
-    @Argument(shortName="A", fullName = "alignedReadsOnly", doc="If set to true, calculate the base distribution over aligned reads only.")
+    @Argument(
+            shortName="A",
+            fullName = "aligned-reads-only",
+            doc="If set to true, calculates the base distribution over aligned reads only."
+    )
     public boolean alignedReadsOnly = false;
 
-    @Argument(shortName="F", fullName = "pfReadsOnly", doc="If set to true calculate the base distribution over PF reads only.")
+    @Argument(
+            shortName="F",
+            fullName = "pf-reads-only",
+            doc="If set to true, calculates the base distribution over passing filter (PF) reads only."
+    )
     public boolean pfReadsOnly = false;
 
     @Override
@@ -229,10 +265,19 @@ public final class CollectBaseDistributionByCycleSpark extends GATKSparkTool {
                 plotSubtitle = StringUtil.asEmptyIfNull(readGroups.get(0).getLibrary());
             }
             final RScriptExecutor executor = new RScriptExecutor();
-            executor.addScript(new Resource(CollectBaseDistributionByCycle.R_SCRIPT, CollectBaseDistributionByCycle.class));
+            executor.addScript(getBaseDistributionByCycleRScriptResource());
             executor.addArgs(out, chartOutput.getAbsolutePath(), inputFileName, plotSubtitle);
             executor.exec();
         }
+    }
+
+    /**
+     * Return the R Script resource used by this class
+     */
+    @VisibleForTesting
+    static Resource getBaseDistributionByCycleRScriptResource() {
+        final String R_SCRIPT = "baseDistributionByCycle.R";
+        return new Resource(R_SCRIPT, CollectBaseDistributionByCycleSpark.class);
     }
 
 }

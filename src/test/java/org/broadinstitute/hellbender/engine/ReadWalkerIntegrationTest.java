@@ -26,8 +26,8 @@ public class ReadWalkerIntegrationTest extends CommandLineProgramTest {
         final String[] args = new String[] {
             "-I", BAM_PATH + "reads_data_source_test1.bam",
             "-I", BAM_PATH + "reads_data_source_test2.bam",
-            "--readIndex", INDEX_PATH + "reads_data_source_test1.bam.bai",
-            "--readIndex", INDEX_PATH + "reads_data_source_test2.bam.bai",
+            "--read-index", INDEX_PATH + "reads_data_source_test1.bam.bai",
+            "--read-index", INDEX_PATH + "reads_data_source_test2.bam.bai",
             "-O", outFile.getAbsolutePath()
         };
         runCommandLine(args);
@@ -43,7 +43,7 @@ public class ReadWalkerIntegrationTest extends CommandLineProgramTest {
         final String[] args = new String[] {
                 "-I", BAM_PATH + "reads_data_source_test1.bam",
                 "-I", BAM_PATH + "reads_data_source_test2.bam",
-                "--readIndex", INDEX_PATH + "reads_data_source_test1.bam.bai"
+                "--read-index", INDEX_PATH + "reads_data_source_test1.bam.bai"
         };
         runCommandLine(args);
     }

@@ -5,7 +5,9 @@ import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.variant.vcf.VCFContigHeaderLine;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFHeaderVersion;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import java.nio.file.Path;
+import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -13,17 +15,17 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.util.*;
 
-public class VcfUtilsUnitTest extends BaseTest {
+public class VcfUtilsUnitTest extends GATKBaseTest {
 
     VCFHeaderVersion vcfHeaderVersion = VCFHeaderVersion.VCF4_2;
 
     @DataProvider(name = "testData")
     public Object[][] getInitialData() {
     return new Object[][] {
-            { createHeaderLines(), createSequenceDictonary(), new File(b37_reference_20_21), true,  "human_g1k_v37.20.21"},
+            { createHeaderLines(), createSequenceDictonary(), IOUtils.getPath(b37_reference_20_21), true,  "human_g1k_v37.20.21"},
             { createHeaderLines(), createSequenceDictonary(), null, true,  "human_g1k_v37.20.21"},
-            { createHeaderLines(), createSequenceDictonary(), new File(b37_reference_20_21), false,
-                    "file://" + new File(b37_reference_20_21).getAbsolutePath() }
+            { createHeaderLines(), createSequenceDictonary(), IOUtils.getPath(b37_reference_20_21), false,
+                    IOUtils.getPath(b37_reference_20_21).toUri().toString() }
         };
     }
 
@@ -31,15 +33,15 @@ public class VcfUtilsUnitTest extends BaseTest {
     public void testUpdateContigsReferenceNameOnly(
             final Set<VCFHeaderLine> inHeaderLines,
             final SAMSequenceDictionary seqDict,
-            final File referenceFile,
+            final Path referencePath,
             final boolean refNameOnly,
             final String expectedRefName) {
 
         Set<VCFHeaderLine> resultLines = VcfUtils.updateHeaderContigLines(
-                inHeaderLines, referenceFile, seqDict, refNameOnly
+                inHeaderLines, referencePath, seqDict, refNameOnly
         );
 
-        Assert.assertEquals(resultLines.size(), referenceFile == null ? 2 : 3);
+        Assert.assertEquals(resultLines.size(), referencePath == null ? 2 : 3);
         for (VCFHeaderLine resultLine : resultLines) {
             if (resultLine instanceof VCFContigHeaderLine) {
                 VCFContigHeaderLine headerLine = (VCFContigHeaderLine) resultLine;
@@ -52,7 +54,7 @@ public class VcfUtilsUnitTest extends BaseTest {
                     Assert.fail("Bad sequence name in header lines");
                 }
             } else {
-                if (referenceFile != null) {
+                if (referencePath != null) {
                     Assert.assertEquals(resultLine.getValue(), expectedRefName);
                 }
                 else {

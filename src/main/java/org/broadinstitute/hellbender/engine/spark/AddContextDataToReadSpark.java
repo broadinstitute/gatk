@@ -65,7 +65,7 @@ public class AddContextDataToReadSpark {
         JavaPairRDD<GATKRead, Tuple2<Iterable<GATKVariant>, ReferenceBases>> withVariantsWithRef;
         if (joinStrategy.equals(JoinStrategy.BROADCAST)) {
             // Join Reads and Variants
-            JavaPairRDD<GATKRead, Iterable<GATKVariant>> withVariants = BroadcastJoinReadsWithVariants.join(mappedReads, variants);
+            JavaPairRDD<GATKRead, Iterable<GATKVariant>> withVariants = variantsPaths == null ? BroadcastJoinReadsWithVariants.join(mappedReads, variants) : BroadcastJoinReadsWithVariants.join(mappedReads, variantsPaths);
             // Join Reads with ReferenceBases
             withVariantsWithRef = BroadcastJoinReadsWithRefBases.addBases(referenceSource, withVariants);
         } else if (joinStrategy.equals(JoinStrategy.SHUFFLE)) {
@@ -118,7 +118,7 @@ public class AddContextDataToReadSpark {
             public Iterator<Tuple2<GATKRead, ReadContextData>> call(Shard<GATKRead> shard) throws Exception {
                 // get reference bases for this shard (padded)
                 SimpleInterval paddedInterval = shard.getInterval().expandWithinContig(shardPadding, sequenceDictionary);
-                ReferenceBases referenceBases = bReferenceSource.getValue().getReferenceBases(null, paddedInterval);
+                ReferenceBases referenceBases = bReferenceSource.getValue().getReferenceBases(paddedInterval);
                 final IntervalsSkipList<GATKVariant> intervalsSkipList = variantsPaths == null ? variantsBroadcast.getValue() :
                         KnownSitesCache.getVariants(variantsPaths);
                 Iterator<Tuple2<GATKRead, ReadContextData>> transform = Iterators.transform(shard.iterator(), new Function<GATKRead, Tuple2<GATKRead, ReadContextData>>() {

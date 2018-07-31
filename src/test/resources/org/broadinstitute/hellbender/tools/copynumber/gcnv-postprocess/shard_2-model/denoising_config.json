@@ -1,0 +1,16 @@
+{
+ "max_bias_factors": 5,
+ "mapping_error_rate": 0.01,
+ "psi_t_scale": 0.001,
+ "psi_s_scale": 0.0001,
+ "depth_correction_tau": 10000.0,
+ "log_mean_bias_std": 0.1,
+ "init_ard_rel_unexplained_variance": 0.1,
+ "num_gc_bins": 20,
+ "gc_curve_sd": 1.0,
+ "q_c_expectation_mode": "hybrid",
+ "active_class_padding_hybrid_mode": 50000,
+ "enable_bias_factors": true,
+ "enable_explicit_gc_bias_modeling": false,
+ "disable_bias_factors_in_active_class": false
+}

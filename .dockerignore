@@ -1,0 +1,4 @@
+# These are files that for whatever reason we don't want to include in our distribution docker images
+src/test/resources
+src/test/resources/*
+.git/*

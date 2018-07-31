@@ -3,12 +3,14 @@ package org.broadinstitute.hellbender.utils.read;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
+import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
-import org.broadinstitute.hellbender.utils.smithwaterman.SWPairwiseAlignment;
+import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
+import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignment;
 
 import java.util.*;
 
@@ -47,25 +49,28 @@ public final class AlignmentUtils {
      * @param referenceStart the start of the reference that haplotype is aligned to.  Provides global coordinate frame.
      * @param isInformative true if the read is differentially informative for one of the haplotypes
      *
+     * @param aligner
      * @throws IllegalArgumentException if {@code originalRead} is {@code null} or {@code haplotype} is {@code null} or it
      *   does not have a Cigar or the {@code referenceStart} is invalid (less than 1).
      *
      * @return a GATKRead aligned to reference. Never {@code null}.
      */
     public static GATKRead createReadAlignedToRef(final GATKRead originalRead,
-                                                       final Haplotype haplotype,
-                                                       final Haplotype refHaplotype,
-                                                       final int referenceStart,
-                                                       final boolean isInformative) {
+                                                  final Haplotype haplotype,
+                                                  final Haplotype refHaplotype,
+                                                  final int referenceStart,
+                                                  final boolean isInformative,
+                                                  final SmithWatermanAligner aligner) {
         Utils.nonNull(originalRead);
         Utils.nonNull(haplotype);
         Utils.nonNull(refHaplotype);
         Utils.nonNull(haplotype.getCigar());
+        Utils.nonNull(aligner);
         if ( referenceStart < 1 ) { throw new IllegalArgumentException("reference start much be >= 1 but got " + referenceStart); }
 
         // compute the smith-waterman alignment of read -> haplotype
-        final SWPairwiseAlignment swPairwiseAlignment = new SWPairwiseAlignment(haplotype.getBases(), originalRead.getBases(), CigarUtils.NEW_SW_PARAMETERS);
-        if ( swPairwiseAlignment.getAlignmentStart2wrt1() == -1 ) {
+        final SmithWatermanAlignment swPairwiseAlignment = aligner.align(haplotype.getBases(), originalRead.getBases(), CigarUtils.ALIGNMENT_TO_BEST_HAPLOTYPE_SW_PARAMETERS, SWOverhangStrategy.SOFTCLIP);
+        if ( swPairwiseAlignment.getAlignmentOffset() == -1 ) {
             // sw can fail (reasons not clear) so if it happens just don't realign the read
             return originalRead;
         }
@@ -82,19 +87,33 @@ public final class AlignmentUtils {
 
         // compute here the read starts w.r.t. the reference from the SW result and the hap -> ref cigar
         final Cigar extendedHaplotypeCigar = haplotype.getConsolidatedPaddedCigar(1000);
-        final int readStartOnHaplotype = calcFirstBaseMatchingReferenceInCigar(extendedHaplotypeCigar, swPairwiseAlignment.getAlignmentStart2wrt1());
+        final int readStartOnHaplotype = calcFirstBaseMatchingReferenceInCigar(extendedHaplotypeCigar, swPairwiseAlignment.getAlignmentOffset());
         final int readStartOnReference = referenceStart + haplotype.getAlignmentStartHapwrtRef() + readStartOnHaplotype;
         read.setPosition(read.getContig(), readStartOnReference);
 
         // compute the read -> ref alignment by mapping read -> hap -> ref from the
         // SW of read -> hap mapped through the given by hap -> ref
-        final Cigar haplotypeToRef = trimCigarByBases(extendedHaplotypeCigar, swPairwiseAlignment.getAlignmentStart2wrt1(), extendedHaplotypeCigar.getReadLength() - 1);
+        final Cigar haplotypeToRef = trimCigarByBases(extendedHaplotypeCigar, swPairwiseAlignment.getAlignmentOffset(), extendedHaplotypeCigar.getReadLength() - 1);
         final Cigar readToRefCigarRaw = applyCigarToCigar(swCigar, haplotypeToRef);
         final Cigar readToRefCigarClean = cleanUpCigar(readToRefCigarRaw);
         final Cigar readToRefCigar = leftAlignIndel(readToRefCigarClean, refHaplotype.getBases(),
-                originalRead.getBases(), swPairwiseAlignment.getAlignmentStart2wrt1(), 0, true);
+                                                    originalRead.getBases(), swPairwiseAlignment.getAlignmentOffset(), 0, true);
 
-        read.setCigar(readToRefCigar);
+
+        // the SW Cigar does not contain the hard clips of the original read
+        final Cigar originalCigar = originalRead.getCigar();
+        final CigarElement firstElement = originalCigar.getFirstCigarElement();
+        final CigarElement lastElement = originalCigar.getLastCigarElement();
+        final List<CigarElement> readToRefCigarElementsWithHardClips = new ArrayList<>();
+        if (firstElement.getOperator() == CigarOperator.HARD_CLIP) {
+            readToRefCigarElementsWithHardClips.add(firstElement);
+        }
+        readToRefCigarElementsWithHardClips.addAll(readToRefCigar.getCigarElements());
+        if (lastElement.getOperator() == CigarOperator.HARD_CLIP) {
+            readToRefCigarElementsWithHardClips.add(lastElement);
+        }
+
+        read.setCigar(new Cigar(readToRefCigarElementsWithHardClips));
 
         if ( readToRefCigar.getReadLength() != read.getLength() ) {
             throw new GATKException("Cigar " + readToRefCigar + " with read length " + readToRefCigar.getReadLength()

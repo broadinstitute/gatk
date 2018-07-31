@@ -9,7 +9,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -22,7 +22,7 @@ import java.util.*;
 /**
  * Basic unit test for AlleleBiasedDownsamplingUtils
  */
-public class AlleleBiasedDownsamplingUtilsUnitTest extends BaseTest {
+public class AlleleBiasedDownsamplingUtilsUnitTest extends GATKBaseTest {
 
     private static final org.apache.logging.log4j.Logger logger = LogManager.getLogger(AlleleBiasedDownsamplingUtilsUnitTest.class);
 
@@ -165,8 +165,8 @@ public class AlleleBiasedDownsamplingUtilsUnitTest extends BaseTest {
     }
 
     @DataProvider(name = "goodContaminationFiles")
-    public Integer[][] goodContaminationFiles() {
-        return new Integer[][]{
+    public Object[][] goodContaminationFiles() {
+        return new Object[][]{
                 {1, 2},
                 {2, 3},
                 {3, 2},
@@ -179,8 +179,8 @@ public class AlleleBiasedDownsamplingUtilsUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "goodContaminationFiles")
-    public void testLoadContaminationFile(final Integer ArtificalBAMnumber, final Integer numberOfSamples) throws IOException {
-        final String ArtificialBAM = String.format("contamination.case.%d.txt", ArtificalBAMnumber);
+    public void testLoadContaminationFile(final int artificalBAMnumber, final int numberOfSamples) throws IOException {
+        final String ArtificialBAM = String.format("contamination.case.%d.txt", artificalBAMnumber);
 
         final File file = new File(TEST_DATA_DIR, ArtificialBAM);
         Assert.assertTrue(AlleleBiasedDownsamplingUtils.loadContaminationFile(file, 0.0, null, logger).size() == numberOfSamples);
@@ -189,8 +189,8 @@ public class AlleleBiasedDownsamplingUtilsUnitTest extends BaseTest {
 
 
     @DataProvider(name = "badContaminationFiles")
-    public Integer[][] badContaminationFiles() {
-        return new Integer[][]{{1}, {2}, {3}, {4}, {5}};
+    public Object[][] badContaminationFiles() {
+        return new Object[][]{{1}, {2}, {3}, {4}, {5}};
     }
 
     @Test(dataProvider = "badContaminationFiles", expectedExceptions = UserException.MalformedFile.class)

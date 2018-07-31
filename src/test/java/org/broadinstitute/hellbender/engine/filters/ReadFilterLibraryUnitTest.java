@@ -115,7 +115,7 @@ public final class ReadFilterLibraryUnitTest {
         final GATKRead read = simpleGoodRead(header);
 
         Assert.assertTrue(MAPPED.test(read), "MAPPED " + read.toString());
-        Assert.assertTrue(PRIMARY_ALIGNMENT.test(read), "PRIMARY_ALIGNMENT " + read.toString());
+        Assert.assertTrue(NOT_SECONDARY_ALIGNMENT.test(read), "NOT_SECONDARY_ALIGNMENT " + read.toString());
         Assert.assertTrue(NOT_DUPLICATE.test(read), "NOT_DUPLICATE " + read.toString());
         Assert.assertTrue(PASSES_VENDOR_QUALITY_CHECK.test(read), "PASSES_VENDOR_QUALITY_CHECK " + read.toString());
         Assert.assertTrue(MAPPING_QUALITY_AVAILABLE.test(read), "MAPPING_QUALITY_AVAILABLE " + read.toString());
@@ -399,8 +399,12 @@ public final class ReadFilterLibraryUnitTest {
         header.getReadGroup(read.getReadGroup()).setLibrary(foo);
 
         Assert.assertFalse(f.test(read), read.toString());//fail
-        f.libraryToKeep = foo;
+        f.libraryToKeep = Collections.singleton(foo);
         Assert.assertTrue(f.test(read), read.toString());//pass
+        f.libraryToKeep = new HashSet<>(Arrays.asList("A", "B"));
+        Assert.assertFalse(f.test(read), read.toString());
+        f.libraryToKeep.add(foo);
+        Assert.assertTrue(f.test(read), read.toString());
     }
 
     @Test
@@ -774,6 +778,29 @@ public final class ReadFilterLibraryUnitTest {
         read.setIsPaired(true);
         read.setIsProperlyPaired(true);
         Assert.assertTrue(PROPERLY_PAIRED.test(read), "PROPERLY_PAIRED " + read.toString());
+    }
+
+    @Test
+    public void testPrimaryAlignmentReadFilter() {
+        // simple primary read (pass)
+        final GATKRead read = simpleGoodRead(createHeaderWithReadGroups());
+        Assert.assertTrue(ReadFilterLibrary.PRIMARY_LINE.test(read));
+
+        // supplementary read (filter out)
+        read.setIsSupplementaryAlignment(true);
+        read.setIsSecondaryAlignment(false);
+        Assert.assertFalse(ReadFilterLibrary.PRIMARY_LINE.test(read));
+
+        // only secondary (filter out)
+        read.setIsSupplementaryAlignment(false);
+        read.setIsSecondaryAlignment(true);
+        Assert.assertFalse(ReadFilterLibrary.PRIMARY_LINE.test(read));
+
+        // both supplementary and secondary (filter out)
+        read.setIsSupplementaryAlignment(true);
+        read.setIsSecondaryAlignment(true);
+        Assert.assertFalse(ReadFilterLibrary.PRIMARY_LINE.test(read));
+
     }
 
 }

@@ -1,7 +1,10 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.help.HelpConstants;
+import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -22,18 +25,26 @@ import java.util.OptionalDouble;
  * <h3>Caveat</h3>
  * <p>The clipping rank sum test cannot be calculated for sites without a mixture of reads showing both the reference and alternate alleles.</p>
  *
+ * <h3>Really Big Caveat</h3>
+ * <p> In AssemblyRegionWalkers the annotation engine receives reads after they have been hard-clipped to fit the assembly region.
+ *  Thus this annotation should not be used with HaplotypeCaller and Mutect2.</p>
  */
-public final class ClippingRankSumTest extends RankSumTest implements StandardHCAnnotation {
+@DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Rank sum test for hard-clipped bases on REF versus ALT reads (ClippingRankSum)")
+public final class ClippingRankSumTest extends RankSumTest {
 
     @Override
     public List<String> getKeyNames() { return Collections.singletonList(GATKVCFConstants.CLIPPING_RANK_SUM_KEY); }
 
     @Override
-    public List<VCFInfoHeaderLine> getDescriptions() { return Collections.singletonList(GATKVCFHeaderLines.getInfoLine(getKeyNames().get(0))); }
-
-    @Override
     protected OptionalDouble getElementForRead(final GATKRead read, final int refLoc) {
         Utils.nonNull(read);
         return OptionalDouble.of(AlignmentUtils.getNumHardClippedBases(read));
+    }
+
+    @Override
+    protected OptionalDouble getElementForPileupElement(final PileupElement p, final int refLoc) {
+        Utils.nonNull(p);
+        // default to returning the same value
+        return getElementForRead(p.getRead(),refLoc);
     }
  }
