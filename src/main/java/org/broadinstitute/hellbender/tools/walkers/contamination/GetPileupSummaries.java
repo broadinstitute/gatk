@@ -53,7 +53,7 @@ import java.util.List;
  * gatk GetPileupSummaries \
  *   -I tumor.bam \
  *   -V common_biallelic.vcf.gz \
- *   -V common_biallelic.vcf.gz \
+ *   -L common_biallelic.vcf.gz \
  *   -O pileups.table
  * </pre>
  *
@@ -64,6 +64,17 @@ import java.util.List;
  *   -L common_biallelic.vcf.gz \
  *   -O pileups.table
  * </pre>
+ *
+ * Although the sites (-L) and variants (-V) resources will often be identical, this need not be the case.  For example,
+ * <pre>
+ * gatk GetPileupSummaries \
+ *   -I normal.bam \
+ *   -V gnomad.vcf.gz \
+ *   -L common_snps.interval_list \
+ *   -O pileups.table
+ * </pre>
+ * attempts to get pileups at a list of common snps and emits output for those sites that are present in gnomAD, using the
+ * allele frequencies from gnomAD.
  *
  * <p>
  * GetPileupSummaries tabulates results into six columns as shown below.
