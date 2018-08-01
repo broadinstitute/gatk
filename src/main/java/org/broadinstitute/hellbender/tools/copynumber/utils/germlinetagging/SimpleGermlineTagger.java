@@ -76,20 +76,32 @@ public class SimpleGermlineTagger {
         final Map<AnnotatedInterval,CalledCopyRatioSegment.Call> result = new HashMap<>();
         for (final AnnotatedInterval normalSeg : nonZeroMergedNormalSegmentsToTumorSegments.keySet()) {
             final List<AnnotatedInterval> overlappingTumorSegments = nonZeroMergedNormalSegmentsToTumorSegments.get(normalSeg);
+
+            // TODO: Merge the tumor calls?
+            // TODO: Get the call annotation from the tumor sample properly, not with this constant
+            final double reciprocalThreshold = 0.75;
+            final List<AnnotatedInterval> mergedTumorSegments = mergedRegionsByAnnotation("CALL", overlappingTumorSegments);
+            final boolean isReciprocolOverlapSeen = mergedTumorSegments.stream()
+                .anyMatch(s -> (normalSeg.getInterval().intersect(s).size() > (s.getInterval().size() * reciprocalThreshold)) &&
+                        (s.getInterval().intersect(normalSeg).size() > (normalSeg.getInterval().size() * reciprocalThreshold)));
+
             final boolean isStartPositionSeen = overlappingTumorSegments.stream()
                     .anyMatch(s -> Math.abs(s.getStart() - normalSeg.getStart()) <= paddingInBp);
 
             final boolean isEndPositionSeen = overlappingTumorSegments.stream()
                     .anyMatch(s -> Math.abs(s.getEnd() - normalSeg.getEnd()) <= paddingInBp);
-            if (isStartPositionSeen && isEndPositionSeen) {
+            if ((isStartPositionSeen && isEndPositionSeen) || isReciprocolOverlapSeen) {
                 final CalledCopyRatioSegment.Call normalCall = Arrays.stream(CalledCopyRatioSegment.Call.values())
                         .filter(c -> c.getOutputString().equals(normalSeg.getAnnotationValue(callAnnotation))).findFirst().orElse(null);
                 if (normalCall == null) {
-                    throw new UserException.BadInput("No call exists in normal segment.  Does normal input have a call field?");
+                    throw new UserException.BadInput("No call exists in normal segment.  Does normal input have a call field (" + callAnnotation + "?");
                 }
                 result.putAll(overlappingTumorSegments.stream()
-                        .filter(s -> (Math.abs(s.getStart() - normalSeg.getStart()) <= paddingInBp) || (Math.abs(normalSeg.getEnd() - s.getEnd()) <= paddingInBp)
-                                || ((normalSeg.getStart() < s.getStart()) && (normalSeg.getEnd() > s.getEnd())) )
+                        .filter(s -> ((Math.abs(s.getStart() - normalSeg.getStart()) <= paddingInBp) || (Math.abs(normalSeg.getEnd() - s.getEnd()) <= paddingInBp)
+                                || ((normalSeg.getStart() < s.getStart()) && (normalSeg.getEnd() > s.getEnd())))
+                                && (normalSeg.getInterval().intersect(s).size() > (s.getInterval().size() * reciprocalThreshold))
+                                // TODO: make reciprocal threshold a parameter if possible.
+                        )
                         .collect(Collectors.toMap(Function.identity(), s -> normalCall)));
             }
         }
