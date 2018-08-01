@@ -324,6 +324,11 @@ public class ApplyPhasing extends VariantWalker {
             concordanceSummary.write(concordanceSummaryReportWriter);
             concordanceSummaryReportWriter.close();
         }
+
+        if (unmatchedVariantReportWriter != null) {
+            unmatchedVariantReportWriter.close();
+        }
+
     }
 
     static class ConcordanceSummary {
