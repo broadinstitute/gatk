@@ -48,10 +48,14 @@ public class ApplyPhasing extends VariantWalker {
     @Argument(doc="Discordant genotypes report", fullName = "discordant-genotypes-report", optional = true)
     public String discordantGenotypesReport = null;
 
+    @Argument(doc="Unmatched variant report", fullName = "unmatched-variant-report", optional = true)
+    public String unmatchedVariantReport = null;
+
     private VariantContextWriter vcfWriter;
     private PrintWriter missingAllelesReportWriter;
     private PrintWriter concordanceSummaryReportWriter;
     private PrintWriter discordantGenotypesReportWriter;
+    private PrintWriter unmatchedVariantReportWriter;
     private ConcordanceSummary concordanceSummary;
 
     @Override
@@ -96,6 +100,11 @@ public class ApplyPhasing extends VariantWalker {
         headerLines.add(new VCFInfoHeaderLine(DISCORDANT_GENTOYPES_INFO_KEY, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Samples in which the phased VCF had a discordant genotype"));
         headerLines.add(new VCFInfoHeaderLine(CONCORDANT_GENOTYPE_FILTER_STRINGS_KEY, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Filter strings for samples that had concordant genotypes with filters"));
         vcfWriter.writeHeader(new VCFHeader(headerLines, genotypeSamples));
+
+        if (unmatchedVariantReport != null) {
+            unmatchedVariantReportWriter = new PrintWriter(BucketUtils.createFile(unmatchedVariantReport));
+            unmatchedVariantReportWriter.print("CHROM\tPOS\tREF\tALT\tAC\n");
+        }
 
         if (missingAllelesReport != null) {
             missingAllelesReportWriter = new PrintWriter(BucketUtils.createFile(missingAllelesReport));
@@ -234,6 +243,14 @@ public class ApplyPhasing extends VariantWalker {
                 }
                 genotypesContext.replace(genotypeBuilder.make());
             }
+        }
+
+        if (!foundMatch) {
+            unmatchedVariantReportWriter.println(variant.getContig() +
+                    "\t" + variant.getStart() +
+                    "\t" + variant.getReference() +
+                    "\t" + variant.getAlternateAlleles() +
+                    "\t" + variant.getAttributeAsString(VCFConstants.ALLELE_COUNT_KEY, "."));
         }
 
         newVariantBuilder = newVariantBuilder.genotypes(genotypesContext);
