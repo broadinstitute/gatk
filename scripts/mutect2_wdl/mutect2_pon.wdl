@@ -61,8 +61,8 @@ workflow Mutect2_Panel {
 
     call CreatePanel {
         input:
-            input_vcfs = Mutect2.unfiltered_vcf,
-            input_vcfs_idx = Mutect2.unfiltered_vcf_index,
+            input_vcfs = Mutect2.filtered_vcf,
+            input_vcfs_idx = Mutect2.filtered_vcf_index,
             duplicate_sample_strategy = duplicate_sample_strategy,
             output_vcf_name = pon_name,
             gatk_override = gatk_override,
@@ -74,8 +74,8 @@ workflow Mutect2_Panel {
     output {
         File pon = CreatePanel.output_vcf
         File pon_idx = CreatePanel.output_vcf_index
-        Array[File] normal_calls = Mutect2.unfiltered_vcf
-        Array[File] normal_calls_idx = Mutect2.unfiltered_vcf_index
+        Array[File] normal_calls = Mutect2.filtered_vcf
+        Array[File] normal_calls_idx = Mutect2.filtered_vcf_index
     }
 }
 

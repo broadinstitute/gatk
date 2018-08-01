@@ -382,8 +382,6 @@ workflow Mutect2 {
     }
 
     output {
-        File unfiltered_vcf = MergeVCFs.merged_vcf
-        File unfiltered_vcf_index = MergeVCFs.merged_vcf_index
         File filtered_vcf = select_first([FilterAlignmentArtifacts.filtered_vcf, FilterByOrientationBias.filtered_vcf, Filter.filtered_vcf])
         File filtered_vcf_index = select_first([FilterAlignmentArtifacts.filtered_vcf_index, FilterByOrientationBias.filtered_vcf_index, Filter.filtered_vcf_index])
         File? contamination_table = CalculateContamination.contamination_table

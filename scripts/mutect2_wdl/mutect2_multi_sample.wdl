@@ -118,8 +118,6 @@ workflow Mutect2_Multi {
     }
 
     output {
-        Array[File] unfiltered_vcf = Mutect2.unfiltered_vcf
-        Array[File] unfiltered_vcf_idx = Mutect2.unfiltered_vcf_index
         Array[File] filtered_vcf = Mutect2.filtered_vcf
         Array[File] filtered_vcf_idx = Mutect2.filtered_vcf_index
         Array[File?] contamination_tables = Mutect2.contamination_table
