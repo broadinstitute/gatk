@@ -103,7 +103,7 @@ public class ApplyPhasing extends VariantWalker {
 
         if (unmatchedVariantReport != null) {
             unmatchedVariantReportWriter = new PrintWriter(BucketUtils.createFile(unmatchedVariantReport));
-            unmatchedVariantReportWriter.print("CHROM\tPOS\tREF\tALT\tAC\n");
+            unmatchedVariantReportWriter.print("CHROM\tPOS\tTYPE\tREF\tALT\tAC\n");
         }
 
         if (missingAllelesReport != null) {
@@ -135,6 +135,15 @@ public class ApplyPhasing extends VariantWalker {
         concordanceSummary.sawVariant(variant);
 
         if (phasedVariantsWithSameStart.size() == 0) {
+            if (unmatchedVariantReportWriter != null) {
+                unmatchedVariantReportWriter.println(variant.getContig() +
+                        "\t" + variant.getStart() +
+                        "\t" + variant.getType() +
+                        "\t" + variant.getReference() +
+                        "\t" + variant.getAlternateAlleles() +
+                        "\t" + variant.getAttributeAsString(VCFConstants.ALLELE_COUNT_KEY, "."));
+            }
+
             vcfWriter.add(variant);
             return;
         }
@@ -245,13 +254,6 @@ public class ApplyPhasing extends VariantWalker {
             }
         }
 
-        if (!foundMatch) {
-            unmatchedVariantReportWriter.println(variant.getContig() +
-                    "\t" + variant.getStart() +
-                    "\t" + variant.getReference() +
-                    "\t" + variant.getAlternateAlleles() +
-                    "\t" + variant.getAttributeAsString(VCFConstants.ALLELE_COUNT_KEY, "."));
-        }
 
         newVariantBuilder = newVariantBuilder.genotypes(genotypesContext);
         if (! discordantSamples.isEmpty()) {
