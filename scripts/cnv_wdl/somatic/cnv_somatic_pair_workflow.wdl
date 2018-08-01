@@ -5,7 +5,7 @@
 # - The intervals argument is required for both WGS and WES workflows and accepts formats compatible with the
 #   GATK -L argument (see https://gatkforums.broadinstitute.org/gatk/discussion/11009/intervals-and-interval-lists).
 #   These intervals will be padded on both sides by the amount specified by PreprocessIntervals.padding (default 250)
-#   and split into bins of length specified by PreprocessIntervals.bin_length (default 1000; specify 0 to skip binning,
+#   and split into bins of length specified by bin_length (default 1000; specify 0 to skip binning,
 #   e.g., for WES).  For WGS, the intervals should simply cover the autosomal chromosomes (sex chromosomes may be
 #   included, but care should be taken to 1) avoid creating panels of mixed sex, and 2) denoise case samples only
 #   with panels containing only individuals of the same sex as the case samples).
