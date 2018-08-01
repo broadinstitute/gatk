@@ -20,6 +20,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.config.ConfigFactory;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
+import org.broadinstitute.hellbender.utils.runtime.RuntimeUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -363,10 +364,7 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
      * May be overridden by subclasses to provide a custom implementation if desired.
      */
     protected String getVersion() {
-        String versionString = this.getClass().getPackage().getImplementationVersion();
-        return versionString != null ?
-                versionString :
-                "Unavailable";
+        return RuntimeUtils.getGATKVersionString();
     }
 
     /**
