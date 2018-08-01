@@ -74,7 +74,9 @@ import java.util.List;
  *   -O pileups.table
  * </pre>
  * attempts to get pileups at a list of common snps and emits output for those sites that are present in gnomAD, using the
- * allele frequencies from gnomAD.
+ * allele frequencies from gnomAD.  Note that the sites may be a subset of the variants, the variants may be a subset of the sites,
+ * or they may overlap partially.  In all cases pileup summaries are emitted for the overlap and nowhere else.  The most common use
+ * case in which sites and variants differ is when the variants resources is a large file and the sites is an interval list subset from that file.
  *
  * <p>
  * GetPileupSummaries tabulates results into six columns as shown below.
