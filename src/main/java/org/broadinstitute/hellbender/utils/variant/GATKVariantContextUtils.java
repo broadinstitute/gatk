@@ -22,7 +22,9 @@ import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAlleleCount
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculator;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculators;
-import org.broadinstitute.hellbender.utils.*;
+import org.broadinstitute.hellbender.utils.BaseUtils;
+import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.io.File;

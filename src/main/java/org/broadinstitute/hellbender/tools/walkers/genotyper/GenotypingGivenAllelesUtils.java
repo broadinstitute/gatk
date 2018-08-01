@@ -1,21 +1,12 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
 import htsjdk.samtools.util.Locatable;
-import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureInput;
-import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
-import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
-
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
 
 /**
  * Compendium of utils to work in GENOTYPE_GIVEN_ALLELES mode.

@@ -21,7 +21,6 @@ import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
-import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.File;
 import java.io.IOException;
