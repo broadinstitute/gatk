@@ -1,10 +1,12 @@
 package org.broadinstitute.hellbender.tools.spark.sv.discovery;
 
 import htsjdk.samtools.*;
+import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFConstants;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaRDD;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection;
+import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigAlignmentsSparkArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.BreakpointComplications;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.NovelAdjacencyAndAltHaplotype;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFileUtils;
@@ -19,10 +21,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -33,7 +32,7 @@ public class SvDiscoveryUtils {
     public static void evaluateIntervalsAndNarls(final List<SVInterval> assembledIntervals,
                                                  final List<NovelAdjacencyAndAltHaplotype> narls,
                                                  final SAMSequenceDictionary referenceSequenceDictionary,
-                                                 final DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection parameters,
+                                                 final DiscoverVariantsFromContigAlignmentsSparkArgumentCollection parameters,
                                                  final Logger toolLogger) {
         if ( parameters.truthVCF != null ) {
             final SVIntervalTree<String> trueBreakpoints =
@@ -153,5 +152,29 @@ public class SvDiscoveryUtils {
 
         samRecords.sort(localComparator);
         SVFileUtils.writeSAMFile( outputPath, samRecords.iterator(), cloneHeader, true);
+    }
+
+    /**
+     * todo: this should be fixed in a new major version of htsjdk
+     * this exist because for whatever reason,
+     * VC.getAttributeAsStringList() sometimes returns a giant single string, while using
+     * VC.getAttributeAsString() gives back an array.....
+     */
+    public static List<String> getAttributeAsStringList(final VariantContext vc, final String attributeKey) {
+        if (vc.getAttribute(attributeKey) == null) return Collections.emptyList();
+        return vc.getAttributeAsStringList(attributeKey, "").stream()
+                .flatMap(s -> {
+                    if ( s.contains(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR) ) {
+                        final String[] split = s.split(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR);
+                        return Arrays.stream(split);
+                    } else {
+                        return Stream.of(s);
+                    }
+                })
+                .collect(Collectors.toList());
+    }
+
+    public static SimpleInterval makeOneBpInterval(final String chr, final int pos) {
+        return new SimpleInterval(chr, pos, pos);
     }
 }

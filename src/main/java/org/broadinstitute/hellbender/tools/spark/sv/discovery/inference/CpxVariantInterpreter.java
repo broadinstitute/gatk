@@ -24,7 +24,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD;
+import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigAlignmentsSparkArgumentCollection.CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD;
 import static org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants.*;
 
 /**
