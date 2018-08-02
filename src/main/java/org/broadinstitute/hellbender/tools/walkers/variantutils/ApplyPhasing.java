@@ -103,7 +103,7 @@ public class ApplyPhasing extends VariantWalker {
 
         if (unmatchedVariantReport != null) {
             unmatchedVariantReportWriter = new PrintWriter(BucketUtils.createFile(unmatchedVariantReport));
-            unmatchedVariantReportWriter.print("CHROM\tPOS\tTYPE\tFILTER\tREF\tALT\tAC\n");
+            unmatchedVariantReportWriter.print("CHROM\tPOS\tTYPE\tFILTER\tREF\tALT\tAC\tQS\tMinAB\n");
         }
 
         if (missingAllelesReport != null) {
@@ -135,6 +135,7 @@ public class ApplyPhasing extends VariantWalker {
         concordanceSummary.sawVariant(variant);
 
         if (phasedVariantsWithSameStart.size() == 0) {
+            final Double minAB = getMinAB(variant);
             if (unmatchedVariantReportWriter != null) {
                 unmatchedVariantReportWriter.println(variant.getContig() +
                         "\t" + variant.getStart() +
@@ -142,7 +143,9 @@ public class ApplyPhasing extends VariantWalker {
                         "\t" + variant.getFilters() +
                         "\t" + variant.getReference() +
                         "\t" + variant.getAlternateAlleles() +
-                        "\t" + variant.getAttributeAsString(VCFConstants.ALLELE_COUNT_KEY, "."));
+                        "\t" + variant.getAttributeAsString(VCFConstants.ALLELE_COUNT_KEY, ".") +
+                        "\t" + variant.getAttributeAsString("QD", ".") +
+                        "\t" + ((minAB != null) ? minAB : "."));
             }
 
             vcfWriter.add(variant);
@@ -269,6 +272,7 @@ public class ApplyPhasing extends VariantWalker {
         vcfWriter.add(newVariantBuilder.make());
 
     }
+
 
     private boolean variantContainsPhasedAlleles(final VariantContext variant, final GATKVariantContextUtils.AlleleMapper alleleMapping, final Genotype phasedVariantGenotype, final boolean phasedVariantRefLonger) {
         if (! phasedVariantRefLonger) {
@@ -420,6 +424,37 @@ public class ApplyPhasing extends VariantWalker {
             concordanceSummaryReportWriter.println("GT_DISCORDANT\t" + genotypesDiscordant + "\t" + snpGenotypesDiscordant + "\t" + indelGenotypesDiscordant);
         }
 
+    }
+
+    // nicked from picard FilterVcf
+    private static class Counts { int samples; int allele1; int allele2; }
+
+    private Double getMinAB(final VariantContext variant) {
+        if (variant.getHetCount() == 0) return null;
+        final Map<List<Allele>, Counts> countsMap = new HashMap<List<Allele>, Counts>();
+
+        for (final Genotype gt : variant.getGenotypesOrderedByName()) {
+            if (gt.isNoCall() || !gt.isHet() || !gt.hasAD()) continue;
+
+            final List<Allele> alleles = gt.getAlleles();
+            Counts counts = countsMap.get(alleles);
+            if (counts == null) {
+                counts = new Counts();
+                countsMap.put(alleles, counts);
+            }
+
+            counts.allele1 += gt.getAD()[variant.getAlleleIndex(alleles.get(0))];
+            counts.allele2 += gt.getAD()[variant.getAlleleIndex(alleles.get(1))];
+        }
+
+        double minAB = Double.MAX_VALUE;
+        for (final Counts counts : countsMap.values()) {
+            final int total = counts.allele1 + counts.allele2;
+            if (total > 0 && Math.min(counts.allele1, counts.allele2) / (double) total < minAB) {
+                minAB = Math.min(counts.allele1, counts.allele2) / (double) total;
+            }
+        }
+        return minAB;
     }
 
 }
