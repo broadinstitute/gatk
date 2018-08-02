@@ -22,7 +22,6 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.util.*;
-import java.util.stream.Collectors;
 
 /*
  * Classic likelihood computation: full pair-hmm all haplotypes vs all reads.
@@ -184,7 +183,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
             computeReadLikelihoods(result.sampleMatrix(i));
         }
 
-        result.normalizeLikelihoods(false, log10globalReadMismappingRate);
+        result.normalizeLikelihoods(log10globalReadMismappingRate);
         result.filterPoorlyModeledReads(EXPECTED_ERROR_RATE_PER_BASE);
         return result;
     }

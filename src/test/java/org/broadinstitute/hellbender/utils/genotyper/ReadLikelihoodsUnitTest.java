@@ -252,37 +252,11 @@ public final class ReadLikelihoodsUnitTest {
     }
 
     @Test(dataProvider = "dataSets")
-    public void testNormalizeBestToZero(final String[] samples, final Allele[] alleles, final Map<String,List<GATKRead>> reads) {
-        final ReadLikelihoods<Allele> original = new ReadLikelihoods<>(new IndexedSampleList(samples), new IndexedAlleleList<>(alleles), reads);
-        final double[][][] originalLikelihoods = fillWithRandomLikelihoods(samples,alleles,original);
-        final ReadLikelihoods<Allele> result= original.copy();
-        result.normalizeLikelihoods(true, Double.NEGATIVE_INFINITY);
-        testAlleleQueries(alleles,result);
-        final int numberOfAlleles = alleles.length;
-        final double[][][] newLikelihoods = new double[originalLikelihoods.length][alleles.length][];
-        for (int s = 0; s < samples.length; s++) {
-            final int sampleReadCount = original.sampleReadCount(s);
-            for (int a = 0; a < numberOfAlleles; a++)
-                newLikelihoods[s][a] = new double[sampleReadCount];
-            for (int r = 0; r < sampleReadCount; r++) {
-                double bestLk = originalLikelihoods[s][0][r];
-                for (int a = 1; a < numberOfAlleles; a++) {
-                    bestLk = Math.max(bestLk, originalLikelihoods[s][a][r]);
-                }
-                for (int a = 0; a < numberOfAlleles; a++) {
-                    newLikelihoods[s][a][r] = originalLikelihoods[s][a][r] - bestLk;
-                }
-            }
-        }
-        testLikelihoodMatrixQueries(samples,result,newLikelihoods);
-    }
-
-    @Test(dataProvider = "dataSets")
     public void testNormalizeCapWorstLK(final String[] samples, final Allele[] alleles, final Map<String,List<GATKRead>> reads) {
         final ReadLikelihoods<Allele> original = new ReadLikelihoods<>(new IndexedSampleList(samples), new IndexedAlleleList<>(alleles), reads);
         final double[][][] originalLikelihoods = fillWithRandomLikelihoods(samples,alleles,original);
         final ReadLikelihoods<Allele> result= original.copy();
-        result.normalizeLikelihoods(false, - 0.001);
+        result.normalizeLikelihoods(- 0.001);
         testAlleleQueries(alleles,result);
         final int numberOfAlleles = alleles.length;
         final double[][][] newLikelihoods = new double[originalLikelihoods.length][alleles.length][];
@@ -304,41 +278,6 @@ public final class ReadLikelihoodsUnitTest {
                 else
                     for (int a = 0; a < numberOfAlleles; a++) {
                         newLikelihoods[s][a][r] = Math.max(originalLikelihoods[s][a][r], bestAltLk - 0.001);
-                    }
-            }
-        }
-        testLikelihoodMatrixQueries(samples,result,newLikelihoods);
-    }
-
-    @Test(dataProvider = "dataSets")
-    public void testNormalizeCapWorstLKAndBestToZero(final String[] samples, final Allele[] alleles, final Map<String,List<GATKRead>> reads) {
-        final ReadLikelihoods<Allele> original = new ReadLikelihoods<>(new IndexedSampleList(samples), new IndexedAlleleList<>(alleles), reads);
-        final double[][][] originalLikelihoods = fillWithRandomLikelihoods(samples,alleles,original);
-        final ReadLikelihoods<Allele> result= original.copy();
-        result.normalizeLikelihoods(true, - 0.001);
-        testAlleleQueries(alleles,result);
-        final int numberOfAlleles = alleles.length;
-        final double[][][] newLikelihoods = new double[originalLikelihoods.length][alleles.length][];
-        for (int s = 0; s < samples.length; s++) {
-            final int sampleReadCount = original.sampleReadCount(s);
-            for (int a = 0; a < numberOfAlleles; a++)
-                newLikelihoods[s][a] = new double[sampleReadCount];
-            for (int r = 0; r < sampleReadCount; r++) {
-                double bestAltLk = Double.NEGATIVE_INFINITY;
-                double bestLk = Double.NEGATIVE_INFINITY;
-                for (int a = 0; a < numberOfAlleles; a++) {
-                    bestLk = Math.max(bestLk, originalLikelihoods[s][a][r]);
-                    if (alleles[a].isReference())
-                        continue;
-                    bestAltLk = Math.max(bestAltLk, originalLikelihoods[s][a][r]);
-                }
-                if (bestAltLk == Double.NEGATIVE_INFINITY)
-                    for (int a = 0; a < numberOfAlleles; a++) {
-                        newLikelihoods[s][a][r] = originalLikelihoods[s][a][r] - bestLk;
-                    }
-                else
-                    for (int a = 0; a < numberOfAlleles; a++) {
-                        newLikelihoods[s][a][r] = Math.max(originalLikelihoods[s][a][r], bestAltLk - 0.001) - bestLk;
                     }
             }
         }
