@@ -408,7 +408,7 @@ public class GATKProtectedVariantContextUtils {
 
     /**
      * Given a set of alleles (reference and alternate), choose the allele that is the best match for the given read (and offset)
-     *
+     * TODO: This method cannot recognize equivalent alleles (See https://github.com/broadinstitute/gatk/issues/5061)
      * @param pileupElement read and offset.  Never {@code null}
      * @param referenceAllele Reference allele.  Never {@code null}
      * @param altAlleles List of candidate alternate alleles.  Never {@code null}

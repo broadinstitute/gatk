@@ -116,6 +116,7 @@ public class ValidateBasicSomaticShortMutations extends VariantWalker {
     public final static String IS_NOT_NOISE = "validated";
     public final static String IS_ENOUGH_VALIDATION_COVERAGE = "sufficient_tv_alt_coverage";
     public final static String DISCOVERY_VCF_FILTER = "discovery_vcf_filter";
+    public final static String NUM_ALT_READS_IN_VALIDATION_NORMAL = "num_alt_reads_in_validation_normal";
 
     // for the optional vcf
     public final static String POWER_INFO_FIELD_KEY = "POWER";
@@ -138,7 +139,8 @@ public class ValidateBasicSomaticShortMutations extends VariantWalker {
 
 
     public static String[] headers = {CONTIG, START, END, REF, ALT, DISCOVERY_ALT_COVERAGE, DISCOVERY_REF_COVERAGE,
-            VALIDATION_ALT_COVERAGE, VALIDATION_REF_COVERAGE, MIN_VAL_COUNT, POWER, IS_NOT_NOISE, IS_ENOUGH_VALIDATION_COVERAGE, DISCOVERY_VCF_FILTER};
+            VALIDATION_ALT_COVERAGE, VALIDATION_REF_COVERAGE, MIN_VAL_COUNT, POWER, IS_NOT_NOISE, IS_ENOUGH_VALIDATION_COVERAGE,
+            DISCOVERY_VCF_FILTER, NUM_ALT_READS_IN_VALIDATION_NORMAL};
 
     private List<BasicValidationResult> results = new ArrayList<>();
 
@@ -268,6 +270,7 @@ public class ValidateBasicSomaticShortMutations extends VariantWalker {
                 dataLine.set(IS_NOT_NOISE, record.isOutOfNoiseFloor());
                 dataLine.set(IS_ENOUGH_VALIDATION_COVERAGE, record.isEnoughValidationReads());
                 dataLine.set(DISCOVERY_VCF_FILTER, record.getFilters() == null ? "" : record.getFilters());
+                dataLine.set(NUM_ALT_READS_IN_VALIDATION_NORMAL, record.getNumAltSupportingReadsInNormal());
             }
         }) {
             writer.writeHeaderIfApplies();
