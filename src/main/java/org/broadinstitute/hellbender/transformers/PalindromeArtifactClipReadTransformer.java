@@ -64,7 +64,7 @@ public final class PalindromeArtifactClipReadTransformer implements ReadTransfor
     @Override
     public GATKRead apply(final GATKRead read) {
         final int adaptorBoundary = read.getAdaptorBoundary();
-        if (adaptorBoundary == ReadUtils.CANNOT_COMPUTE_ADAPTOR_BOUNDARY) {
+        if (!read.isProperlyPaired() || adaptorBoundary == ReadUtils.CANNOT_COMPUTE_ADAPTOR_BOUNDARY) {
             return read;
         }
 
