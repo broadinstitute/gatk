@@ -30,15 +30,28 @@ public class ReferenceBasesUnitTest extends GATKBaseTest {
         final VariantContext vc = new VariantContextBuilder("source", "20", 10_000_100, 10_000_100, Collections.singleton(Allele.create((byte) 'A', true))).make();
         final String refBases = (String) new ReferenceBases().annotate(ref, vc, null)
                 .get(ReferenceBases.REFERENCE_BASES_KEY);
-        Assert.assertEquals(refBases, "ACTGCATCCCTTGCATTTCC");
+        Assert.assertEquals(refBases, "ACTGCATCCCTTGCATTTCCA");
     }
 
     // Asserts that the code silently failed
     @Test
-    public void TestNoReferenceBehavior() {
+    public void testNoReferenceBehavior() {
         final VariantContext vc = new VariantContextBuilder("source", "20", 10_000_100, 10_000_100, Collections.singleton(Allele.create((byte) 'A', true))).make();
         final String refBases = (String) new ReferenceBases().annotate(null, vc, null)
                 .get(ReferenceBases.REFERENCE_BASES_KEY);
         Assert.assertNull(refBases);
+    }
+
+
+
+    @Test
+    public void testGetNMiddleBases(){
+        final String bases = "AACGATGGA";
+        Assert.assertEquals(ReferenceBases.getNMiddleBases(bases, 3), "GAT");
+
+        final String bases2 = "AGC";
+        Assert.assertEquals(ReferenceBases.getNMiddleBases(bases2, 3), "AGC");
+        Assert.assertEquals(ReferenceBases.getNMiddleBases(bases2, 1), "G");
+
     }
 }

@@ -196,7 +196,7 @@ public class ValidateBasicSomaticShortMutations extends VariantWalker {
         }
 
         // We assume that there is only one alternate allele that we are interested in.
-        //   Multiallelics are not supported.
+        // Multiallelics are not supported.
         final Allele altAllele = genotype.getAllele(1);
 
         final SAMFileHeader samFileHeader = getHeaderForReads();
@@ -204,7 +204,16 @@ public class ValidateBasicSomaticShortMutations extends VariantWalker {
         final ReadPileup readPileup = GATKProtectedVariantContextUtils.getPileup(discoveryVariantContext, readsContext);
         final Map<String, ReadPileup> pileupsBySample = readPileup.splitBySample(samFileHeader, "__UNKNOWN__");
 
+        // This could happen when read realignment moves reads such that a particular locus has zero reads
+        if (pileupsBySample.isEmpty()){
+            return;
+        }
+
         final ReadPileup validationNormalPileup = pileupsBySample.get(validationControlName);
+        // TODO: handle this case more carefully
+        if (validationNormalPileup == null){
+            return;
+        }
 
         final ReadPileup validationTumorPileup = pileupsBySample.get(validationCaseName);
 

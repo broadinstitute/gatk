@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.iterators.ByteArrayIterator;
 
+import java.util.Arrays;
 import java.util.Iterator;
 
 /**
@@ -380,10 +381,38 @@ public final class ReferenceContext implements Iterable<Byte> {
     }
 
     /**
+     * @param contig
+     * @return the length/end position of the contig
+     */
+    private int getContigLength(final String contig){
+        return dataSource.getSequenceDictionary().getSequence(contig).getSequenceLength();
+    }
+
+    /**
      * Get the base at the given locus.
      * @return The base at the given locus from the reference.
      */
     public byte getBase() {
         return getBases()[interval.getStart() - window.getStart()];
+    }
+
+    /**
+     * Get a kmer around a position in reference without altering the internal state of the object
+     * The position must lie within the window
+     *
+     * Returns null when, at the ends of a contig, we cannot expand the window to the requested size
+     */
+    public String getKmerAround(final int center, final int numBasesOnEachSide){
+        Utils.validateArg(center >= 1, () -> "start position must be positive");
+        Utils.validateArg(window.getStart() <= center && center <= window.getEnd(), "position must be smaller than end position");
+
+        final SimpleInterval newWindow = new SimpleInterval(window.getContig(), center, center)
+                .expandWithinContig(numBasesOnEachSide, getContigLength(window.getContig()));
+
+        if (newWindow.getEnd() - newWindow.getStart() < 2*numBasesOnEachSide){
+            return null;
+        }
+
+        return new String(getBases(newWindow));
     }
 }

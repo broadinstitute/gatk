@@ -10,12 +10,14 @@ import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscovery
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
+import org.broadinstitute.hellbender.tools.walkers.annotator.ReadOrientationArtifact;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.downsampling.MutectDownsampler;
 import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsampler;
 
 import java.io.File;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
@@ -188,6 +190,16 @@ public final class Mutect2 extends AssemblyRegionWalker {
         m2Engine = new Mutect2Engine(MTAC, createOutputBamIndex, createOutputBamMD5, getHeaderForReads(), referenceArguments.getReferenceFileName(), annotatorEngine);
         vcfWriter = createVCFWriter(outputVCF);
         m2Engine.writeHeader(vcfWriter, getDefaultToolVCFHeaderLines());
+    }
+
+    @Override
+    public Collection<Annotation> makeVariantAnnotations(){
+        final Collection<Annotation> annotations = super.makeVariantAnnotations();
+        if (MTAC.artifactPriorTable != null){
+            // Enable the annotations associated with the read orientation model
+            annotations.add(new ReadOrientationArtifact(MTAC.artifactPriorTable));
+        }
+        return annotations;
     }
 
     @Override

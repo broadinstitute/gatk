@@ -138,7 +138,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     }
 
     /**
-     * @return the default set of variant annotations for use with HaplotypeCaller
+     * @return the default set of variant annotations for Mutect2
      */
     public static List<Class<? extends Annotation>> getStandardMutect2AnnotationGroups() {
         return Collections.singletonList(StandardMutectAnnotation.class);

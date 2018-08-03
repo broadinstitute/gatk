@@ -107,7 +107,7 @@ public abstract class ReadFilter implements Predicate<GATKRead>, Serializable {
         return compositeFilter;
      }
 
-    //HACK: These methods are a hack to get to get the type system to accept compositions of ReadFilters.
+    //HACK: These methods are a hack to get the type system to accept compositions of ReadFilters.
     /**
      * Specialization of {@link #and(Predicate)} so that ReadFilters anded with other ReadFilters produce a ReadFilter
      */

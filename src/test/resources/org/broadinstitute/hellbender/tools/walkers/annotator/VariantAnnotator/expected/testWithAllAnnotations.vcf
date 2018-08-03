@@ -11,6 +11,9 @@
 ##FORMAT=<ID=MMQ,Number=A,Type=Integer,Description="median mapping quality">
 ##FORMAT=<ID=MPOS,Number=A,Type=Integer,Description="median distance from end of read">
 ##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
+##FORMAT=<ID=P_PRIOR_RO,Number=1,Type=Float,Description="prior probability of read orientation-based artifacts under the present referene context">
+##FORMAT=<ID=P_RO,Number=1,Type=Float,Description="posterior probability of read orientation-based artifacts">
+##FORMAT=<ID=ROF_TYPE,Number=1,Type=String,Description="type of read orientation artifact (F1R2 or F2R1)">
 ##FORMAT=<ID=SA_MAP_AF,Number=3,Type=Float,Description="MAP estimates of allele fraction given z">
 ##FORMAT=<ID=SA_POST_PROB,Number=3,Type=Float,Description="posterior probabilities of the presence of strand artifact">
 ##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fisher's Exact Test to detect strand bias.">
@@ -56,7 +59,7 @@
 ##INFO=<ID=loConfDeNovo,Number=1,Type=String,Description="Low confidence possible de novo mutation (GQ >= 10 for child, GQ > 0 for parents)=[comma-delimited list of child samples]">
 ##contig=<ID=20,length=63025520,assembly=b37>
 ##contig=<ID=21,length=48129895,assembly=b37>
-##reference=file:///Users/davidben/broad/gatk/src/test/resources/large/human_g1k_v37.20.21.fasta
+##reference=file:///Users/tsato/workspace/gatk/src/test/resources/large/human_g1k_v37.20.21.fasta
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA12878
 20	10000117	.	C	T	905.77	.	AC=1;AF=0.500;AN=2;AS_MQ;BaseQRankSum=2.136;ClippingRankSum=0.000;DP=64;ExcessHet=3.0103;FS=0.000;GQ_MEAN=99.00;MQ=59.71;MQ0=0;MQRankSum=0.913;NCC=0;QD=14.15;ReadPosRankSum=-0.481;SOR=0.693;Samples=NA12878	GT:AD:DP:F1R2:F2R1:GQ:MBQ:MFRL:MMQ:MPOS:PL:SB:UNIQ_ALT_READ_COUNT	0/1:36,28:0:0,0:0,0:99:0,0:0,0:0:0:934,0,1248:0,0,0,0:0
 20	10000211	.	C	T	941.77	.	AC=1;AF=0.500;AN=2;AS_MQ;BaseQRankSum=2.000;ClippingRankSum=0.000;DP=56;ExcessHet=3.0103;FS=0.000;GQ_MEAN=99.00;MQ=59.67;MQ0=0;MQRankSum=1.037;NCC=0;QD=16.82;ReadPosRankSum=0.996;SOR=0.693;Samples=NA12878	GT:AD:DP:F1R2:F2R1:GQ:MBQ:MFRL:MMQ:MPOS:PL:SB:UNIQ_ALT_READ_COUNT	0/1:28,28:0:0,0:0,0:99:0,0:0,0:0:0:970,0,906:0,0,0,0:0
