@@ -28,7 +28,9 @@ import java.util.stream.Collectors;
 public class ApplyPhasing extends VariantWalker {
 
     public static final String DISCORDANT_GENTOYPES_INFO_KEY = "PhasedDiscordantGTs";
-    public static final String CONCORDANT_GENOTYPE_FILTER_STRINGS_KEY = "PhasedConcordantFiltered";
+    public static final String CONCORDANT_GENOTYPE_FILTER_STRINGS_INFO_KEY = "PhasedConcordantFiltered";
+    public static final String NOPHASEMATCH_INFO_KEY = "NOPHASEMATCH";
+    public static final String UNPHASED_SAMPLES_INFO_KEY = "UnphasedSamples";
 
     @Argument(fullName="phased-variants-file", doc="the phased VCF file", optional=false)
     private List<FeatureInput<VariantContext>> phased;
@@ -98,7 +100,9 @@ public class ApplyPhasing extends VariantWalker {
         }
 
         headerLines.add(new VCFInfoHeaderLine(DISCORDANT_GENTOYPES_INFO_KEY, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Samples in which the phased VCF had a discordant genotype"));
-        headerLines.add(new VCFInfoHeaderLine(CONCORDANT_GENOTYPE_FILTER_STRINGS_KEY, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Filter strings for samples that had concordant genotypes with filters"));
+        headerLines.add(new VCFInfoHeaderLine(CONCORDANT_GENOTYPE_FILTER_STRINGS_INFO_KEY, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Filter strings for samples that had concordant genotypes with filters"));
+        headerLines.add(new VCFInfoHeaderLine(NOPHASEMATCH_INFO_KEY, 0, VCFHeaderLineType.Flag, "Site had no match in phased input vcf"));
+        headerLines.add(new VCFInfoHeaderLine(UNPHASED_SAMPLES_INFO_KEY, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Samples with matching heterozygous genotypes that were unphased in the phased VCF"));
         vcfWriter.writeHeader(new VCFHeader(headerLines, genotypeSamples));
 
         if (unmatchedVariantReport != null) {
@@ -134,41 +138,18 @@ public class ApplyPhasing extends VariantWalker {
 
         concordanceSummary.sawVariant(variant);
 
-        if (phasedVariantsWithSameStart.size() == 0) {
-            final Double minAB = getMinAB(variant);
-            if (unmatchedVariantReportWriter != null) {
-                unmatchedVariantReportWriter.println(variant.getContig() +
-                        "\t" + variant.getStart() +
-                        "\t" + variant.getType() +
-                        "\t" + variant.getFilters() +
-                        "\t" + variant.getReference() +
-                        "\t" + variant.getAlternateAlleles() +
-                        "\t" + variant.getAttributeAsString(VCFConstants.ALLELE_COUNT_KEY, ".") +
-                        "\t" + variant.getAttributeAsString("QD", ".") +
-                        "\t" + ((minAB != null) ? minAB : "."));
-            }
-
-            vcfWriter.add(variant);
-            return;
-        }
-
         VariantContextBuilder newVariantBuilder = new VariantContextBuilder(variant);
         final GenotypesContext genotypesContext = GenotypesContext.copy(variant.getGenotypes());
 
         final Map<String, String> sampleFilterStrings = new HashMap<>();
         final Set<String> discordantSamples = new HashSet<>();
+        final Set<String> unphasedSamples = new HashSet<>();
 
         boolean foundMatch = false;
         for (final VariantContext phasedVariant : phasedVariantsWithSameStart) {
 //            if (phasedVariant.isFiltered()) {
 //                continue;
 //            }
-
-            if (! foundMatch) {
-                concordanceSummary.variantSiteMatch(variant);
-                foundMatch = true;
-            }
-
 
             final boolean phasedVariantRefLonger = phasedVariant.getReference().length() > variant.getReference().length();
             final GATKVariantContextUtils.AlleleMapper alleleMapping;
@@ -190,6 +171,7 @@ public class ApplyPhasing extends VariantWalker {
 //            }
 
             for (Genotype phasedVariantGenotype : phasedVariant.getGenotypes()) {
+
                 final String sampleName = phasedVariantGenotype.getSampleName();
                 if (! genotypesContext.containsSample(sampleName)) {
                     continue;
@@ -199,8 +181,9 @@ public class ApplyPhasing extends VariantWalker {
                     continue;
                 }
 
-                if (! phasedVariantGenotype.isPhased()) {
-                    continue;
+                if (! foundMatch) {
+                    concordanceSummary.variantSiteMatch(variant);
+                    foundMatch = true;
                 }
 
                 if (!variantContainsPhasedAlleles(variant, alleleMapping, phasedVariantGenotype, phasedVariantRefLonger)) {
@@ -241,7 +224,12 @@ public class ApplyPhasing extends VariantWalker {
                 concordanceSummary.concordantGenotype(variant);
 
                 if (phasedVariant.isFiltered()) {
-                    sampleFilterStrings.put(sampleName, phasedVariant.getFilters().stream().collect(Collectors.joining("-")));
+                    sampleFilterStrings.put(sampleName, String.join("-", phasedVariant.getFilters()));
+                    continue;
+                }
+
+                if (phasedVariantGenotype.isHet() && ! phasedVariantGenotype.isPhased()) {
+                    unphasedSamples.add(sampleName);
                     continue;
                 }
 
@@ -259,16 +247,39 @@ public class ApplyPhasing extends VariantWalker {
         }
 
 
+        if (!foundMatch) {
+            if (unmatchedVariantReportWriter != null) {
+                final Double minAB = getMinAB(variant);
+                unmatchedVariantReportWriter.println(variant.getContig() +
+                        "\t" + variant.getStart() +
+                        "\t" + variant.getType() +
+                        "\t" + variant.getFilters() +
+                        "\t" + variant.getReference() +
+                        "\t" + variant.getAlternateAlleles() +
+                        "\t" + variant.getAttributeAsString(VCFConstants.ALLELE_COUNT_KEY, ".") +
+                        "\t" + variant.getAttributeAsString("QD", ".") +
+                        "\t" + ((minAB != null) ? minAB : "."));
+            }
+
+            newVariantBuilder = newVariantBuilder.attribute(NOPHASEMATCH_INFO_KEY,true);
+        }
+
         newVariantBuilder = newVariantBuilder.genotypes(genotypesContext);
         if (! discordantSamples.isEmpty()) {
             newVariantBuilder = newVariantBuilder.attribute(DISCORDANT_GENTOYPES_INFO_KEY,
-                    discordantSamples.stream().collect(Collectors.joining(",")));
+                    String.join(",", discordantSamples));
         }
 
         if (! sampleFilterStrings.isEmpty()) {
-            newVariantBuilder = newVariantBuilder.attribute(CONCORDANT_GENOTYPE_FILTER_STRINGS_KEY,
+            newVariantBuilder = newVariantBuilder.attribute(CONCORDANT_GENOTYPE_FILTER_STRINGS_INFO_KEY,
                     sampleFilterStrings.entrySet().stream().map(e -> e.getKey() + ":" + e.getValue()).collect(Collectors.joining(",")));
         }
+
+        if (! unphasedSamples.isEmpty()) {
+            newVariantBuilder = newVariantBuilder.attribute(UNPHASED_SAMPLES_INFO_KEY,
+                    String.join(",", unphasedSamples));
+        }
+
         vcfWriter.add(newVariantBuilder.make());
 
     }
