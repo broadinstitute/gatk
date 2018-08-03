@@ -114,8 +114,6 @@ public class SVVCFWriter {
         if (null != referenceSequenceDictionary) {
             vcWriterBuilder = vcWriterBuilder.setReferenceDictionary(referenceSequenceDictionary);
         }
-        // todo: remove this when things are solid?
-        vcWriterBuilder = vcWriterBuilder.setOption(Options.ALLOW_MISSING_FIELDS_IN_HEADER);
         for (final Options opt : new Options[]{}) {
             vcWriterBuilder = vcWriterBuilder.setOption(opt);
         }
