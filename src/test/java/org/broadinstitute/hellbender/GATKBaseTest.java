@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender;
 
-import com.google.common.jimfs.Jimfs;
 import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
@@ -11,9 +10,6 @@ import org.testng.annotations.BeforeClass;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.nio.file.FileSystem;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -126,16 +122,5 @@ public abstract class GATKBaseTest extends BaseTest {
             locs.add(hg19GenomeLocParser.parseGenomeLoc(interval));
         return Collections.unmodifiableList(locs);
     }
-
-    /**
-     * Closes the {@link java.nio.file.FileSystem} for a path if it is an instance from {@link Jimfs}
-     */
-    public static void closeFileSystemIfJimnfs(final Path path) throws IOException {
-        final FileSystem fs = path.getFileSystem();
-        if (Jimfs.URI_SCHEME.equals(fs.provider().getScheme())) {
-            fs.close();
-        }
-    }
-
 }
 

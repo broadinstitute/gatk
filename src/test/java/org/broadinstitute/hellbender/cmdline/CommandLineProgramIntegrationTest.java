@@ -4,6 +4,7 @@ import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -11,11 +12,9 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
-import java.net.URI;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.UUID;
 
 /**
@@ -23,7 +22,7 @@ import java.util.UUID;
  */
 public class CommandLineProgramIntegrationTest extends CommandLineProgramTest {
 
-    private static FileSystem jimfs;
+    private FileSystem jimfs;
 
     @BeforeClass
     public void setUp() {
@@ -68,12 +67,16 @@ public class CommandLineProgramIntegrationTest extends CommandLineProgramTest {
     public void testTmpDirArgument(final String tmpDirArg) throws Exception {
         // store the previous tmp.dir to check that it is working
         final String previousTmpDir = System.getProperty("java.io.tmpdir");
+        // expected property string and parent
+        final String expectedTmDirArgString = IOUtils.getAbsolutePathWithoutFileProtocol(IOUtils.getPath(tmpDirArg));
 
         try {
             final Path p = (Path) new TestCreateTempPathClp().instanceMain(new String[] {
                     "--" + StandardArgumentDefinitions.TMP_DIR_NAME, tmpDirArg});
             Assert.assertTrue(Files.exists(p));
+            Assert.assertEquals(IOUtils.getAbsolutePathWithoutFileProtocol(p.getParent()), expectedTmDirArgString);
             Assert.assertNotEquals(System.getProperty("java.io.tmpdir"), previousTmpDir);
+            Assert.assertEquals(System.getProperty("java.io.tmpdir"), expectedTmDirArgString);
         } finally {
             // get back to the previous tmp dir
             System.setProperty("java.io.tmpdir", previousTmpDir);

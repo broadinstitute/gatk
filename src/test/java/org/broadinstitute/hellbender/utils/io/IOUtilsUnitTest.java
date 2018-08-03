@@ -10,6 +10,8 @@ import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.broadinstitute.hellbender.testutils.MiniClusterUtils;
 import org.testng.Assert;
 import org.testng.SkipException;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -17,11 +19,27 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.*;
 import java.util.Arrays;
 import java.util.Random;
 import java.util.UUID;
 
 public final class IOUtilsUnitTest extends GATKBaseTest {
+
+    private FileSystem jimfs;
+
+    @BeforeClass
+    public void setUp() {
+        jimfs = Jimfs.newFileSystem(Configuration.unix());
+    }
+    @AfterClass
+    public void tearDown() {
+        try {
+            jimfs.close();
+        } catch (final IOException e) {
+            log("Unable to close JimFS");
+        }
+    }
 
     @Test
     public void testTempDir() {
@@ -302,7 +320,7 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
     public Object[][] tmpPathDirs() throws Exception {
         return new Object[][] {
                 {createTempDir("local").toPath()},
-                {Files.createDirectory(Jimfs.newFileSystem(Configuration.unix()).getPath("tmp"))}
+                {Files.createDirectory(jimfs.getPath("tmp"))}
         };
     }
 
@@ -319,7 +337,6 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
                     "file was not written to temp file: " + tempFile + " in dir: " + tempDir);
         } finally {
             System.setProperty("java.io.tmpdir", previousTmpDir);
-            closeFileSystemIfJimnfs(tempDir);
         }
     }
 
