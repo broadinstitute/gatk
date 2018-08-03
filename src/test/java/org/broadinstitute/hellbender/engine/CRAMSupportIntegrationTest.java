@@ -97,7 +97,34 @@ public final class CRAMSupportIntegrationTest extends CommandLineProgramTest {
             SamAssertionUtils.assertCRAMContentsIfCRAM(outputFile);
             checkReadNames(outputFile.toPath(), refPath, expectedReadNames);
         }
+    }
 
+    //TODO: this is the same test as above to illustrate the use of ArgumentsBuilderWithJIMFS
+    //TODO: If we like this pattern the test above canbe deleted.
+    @Test(dataProvider = "cramFromPathIndex")
+    public void testQueryCRAMWithIndexFromJimFSPath(
+            final File cramFile,
+            final File indexFile,
+            final File referenceFile,
+            final List<String> intervalArgs,
+            final List<String> expectedReadNames ) throws IOException
+    {
+        try (final ArgumentsBuilderWithJIMFS args = new ArgumentsBuilderWithJIMFS()) {
+            // copy the cram and the index
+            args.addInputWithIndexFromJIMFS(cramFile, indexFile);
+            // add the reference, copying the reference, the reference dictionary, and the reference index to jimfs
+            args.addReferenceFromJIMFS(referenceFile);
+
+            // get an output file also on the jimfs
+            final Path outputPath = args.addOutputFromJIMFS("testReadCramWithIndexFromPath.bam");
+
+            intervalArgs.stream().forEach(intervalArg -> { args.add("-L"); args.add(intervalArg); });
+
+            runCommandLine(args);
+
+            SamAssertionUtils.assertCRAMContentsIfCRAM(outputPath);
+            checkReadNames(outputPath, referenceFile.toPath(), expectedReadNames);
+        }
     }
 
     @Test(dataProvider = "ReadEntireCramTestData")
