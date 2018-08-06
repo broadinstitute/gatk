@@ -5,9 +5,14 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.utils.collections.IntervalsSkipList;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 import org.broadinstitute.hellbender.utils.variant.VariantContextVariantAdapter;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.ObjectInputStream;
+import java.nio.file.Files;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -30,7 +35,15 @@ class KnownSitesCache {
         return variants;
     }
 
+    @SuppressWarnings("unchecked")
     private static IntervalsSkipList<GATKVariant> retrieveVariants(List<String> paths) {
+        if (paths.size() == 1 && paths.get(0).endsWith(".ser")) {
+            try {
+                return (IntervalsSkipList<GATKVariant>) deserialize(Files.newInputStream(IOUtils.getPath(paths.get(0))));
+            } catch (IOException | ClassNotFoundException e) {
+                throw new IllegalStateException(e);
+            }
+        }
         return new IntervalsSkipList<>(paths
                 .stream()
                 .map(KnownSitesCache::loadFromFeatureDataSource)
@@ -42,6 +55,12 @@ class KnownSitesCache {
         int cloudPrefetchBuffer = 40; // only used for GCS
         try ( final FeatureDataSource<VariantContext> dataSource = new FeatureDataSource<>(path, null, 0, null, cloudPrefetchBuffer, cloudPrefetchBuffer) ) {
             return wrapQueryResults(dataSource.iterator());
+        }
+    }
+
+    private static Object deserialize(InputStream in) throws IOException, ClassNotFoundException {
+        try (ObjectInputStream ois = new ObjectInputStream(in)) {
+            return ois.readObject();
         }
     }
 
