@@ -125,7 +125,7 @@ public final class FilterMutectCalls extends TwoPassVariantWalker {
 
     @Override
     protected void afterFirstPass() {
-        stats = filteringEngine.calculateFilterStats(filteringFirstPass, MTFAC.maxFalsePositiveRate);
+        stats = filteringFirstPass.calculateFilterStats(MTFAC.maxFalsePositiveRate);
         Mutect2FilterSummary.writeM2FilterSummary(stats, MTFAC.mutect2FilteringStatsTable);
     }
 

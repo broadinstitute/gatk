@@ -33,7 +33,7 @@ public class Mutect2FilteringEngineUnitTest extends BaseTest {
     public void testCalculateThresholdForReadOrientationFilter(final double[] posteriors,
                                                                final double maxErrorRate,
                                                                final double expectedThreshold){
-        final Mutect2FilterSummary.FilterStats stats = engine.calculateThresholdForReadOrientationFilter(posteriors, maxErrorRate);
+        final Mutect2FilterSummary.FilterStats stats = FilteringFirstPass.calculateThresholdForReadOrientationFilter(posteriors, maxErrorRate);
         Assert.assertEquals(stats.getThreshold(), expectedThreshold);
     }
 
