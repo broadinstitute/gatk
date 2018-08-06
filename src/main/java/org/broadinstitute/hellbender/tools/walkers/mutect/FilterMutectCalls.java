@@ -105,7 +105,7 @@ public final class FilterMutectCalls extends TwoPassVariantWalker {
         final Optional<String> normalSample = normalSampleHeaderLine == null ? Optional.empty() : Optional.of(normalSampleHeaderLine.getValue());
 
         filteringEngine = new Mutect2FilteringEngine(MTFAC, tumorSample, normalSample);
-        filteringFirstPass = new FilteringFirstPass();
+        filteringFirstPass = new FilteringFirstPass(tumorSample);
     }
 
     @Override

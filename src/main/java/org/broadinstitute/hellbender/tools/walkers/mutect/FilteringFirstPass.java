@@ -1,8 +1,10 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
 
+import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
@@ -18,13 +20,15 @@ public class FilteringFirstPass {
     final List<FilterResult> filterResults;
     final Map<String, ImmutablePair<String, Integer>> filteredPhasedCalls;
     final Map<String, FilterStats> filterStats;
+    final String tumorSample;
     boolean readyForSecondPass;
 
-    public FilteringFirstPass() {
+    public FilteringFirstPass(final String tumorSample) {
         filterResults = new ArrayList<>();
         filteredPhasedCalls = new HashMap<>();
         filterStats = new HashMap<>();
         readyForSecondPass = false;
+        this.tumorSample = tumorSample;
     }
 
     public boolean isReadyForSecondPass() { return readyForSecondPass; }
@@ -34,14 +38,36 @@ public class FilteringFirstPass {
         return filterStats.get(filterName);
     }
 
+    public boolean isOnFilteredHaplotype(final VariantContext vc, final int maxDistance) {
+
+        final Genotype tumorGenotype = vc.getGenotype(tumorSample);
+
+        if (!hasPhaseInfo(tumorGenotype)) {
+            return false;
+        }
+
+        final String pgt = (String) tumorGenotype.getExtendedAttribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY, "");
+        final String pid = (String) tumorGenotype.getExtendedAttribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY, "");
+        final int position = vc.getStart();
+
+        final Pair<String, Integer> filteredCall = filteredPhasedCalls.get(pid);
+        if (filteredCall == null) {
+            return false;
+        }
+
+        // Check that vc occurs on the filtered haplotype
+        return filteredCall.getLeft().equals(pgt) && Math.abs(filteredCall.getRight() - position) <= maxDistance;
+    }
+
     public void add(final FilterResult filterResult, final VariantContext vc) {
         filterResults.add(filterResult);
+        final Genotype tumorGenotype = vc.getGenotype(tumorSample);
 
-        if (!filterResult.getFilters().isEmpty() && hasPhaseInfo(vc)) {
-            final String pgt = vc.getAttributeAsString(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY, "");
-            final String pid = vc.getAttributeAsString(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY, "");
+        if (!filterResult.getFilters().isEmpty() && hasPhaseInfo(tumorGenotype)) {
+            final String pgt = (String) tumorGenotype.getExtendedAttribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY, "");
+            final String pid = (String) tumorGenotype.getExtendedAttribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY, "");
             final int position = vc.getStart();
-            filteredPhasedCalls.put(pgt, new ImmutablePair<>(pid, position));
+            filteredPhasedCalls.put(pid, new ImmutablePair<>(pgt, position));
         }
     }
 
@@ -95,8 +121,8 @@ public class FilteringFirstPass {
                 cumulativeExpectedFPs, numPassingVariants, cumulativeExpectedFPs/numPassingVariants, requestedFPR);
     }
 
-    private static boolean hasPhaseInfo(VariantContext vc) {
-        return vc.hasAttribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY) && vc.hasAttribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY);
+    public static boolean hasPhaseInfo(final Genotype genotype) {
+        return genotype.hasExtendedAttribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY) && genotype.hasExtendedAttribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY);
     }
 
     public List<FilterResult> getFilterResults() {

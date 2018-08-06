@@ -292,7 +292,7 @@ public class Mutect2FilteringEngine {
         }
     }
 
-     private void applyReadOrientationFilter(final VariantContext vc, final FilterResult filterResult, final Optional<FilteringFirstPass> filterSummary){
+     private void applyReadOrientationFilter(final VariantContext vc, final FilterResult filterResult, final Optional<FilteringFirstPass> firstPass){
         if (! vc.isSNP()){
             return;
         }
@@ -305,12 +305,12 @@ public class Mutect2FilteringEngine {
 
         final double artifactPosterior = GATKProtectedVariantContextUtils.getAttributeAsDouble(tumorGenotype, GATKVCFConstants.ROF_POSTERIOR_KEY, -1.0);
 
-        if (! filterSummary.isPresent()) {
+        if (! firstPass.isPresent()) {
             // During first pass we simply collect the posterior artifact probabilities
             filterResult.setReadOrientationPosterior(artifactPosterior);
             return;
         } else {
-            final double threshold = filterSummary.get().getFilterStats(GATKVCFConstants.READ_ORIENTATION_ARTIFACT_FILTER_NAME).getThreshold();
+            final double threshold = firstPass.get().getFilterStats(GATKVCFConstants.READ_ORIENTATION_ARTIFACT_FILTER_NAME).getThreshold();
 
             if (artifactPosterior > threshold){
                 filterResult.addFilter(GATKVCFConstants.READ_ORIENTATION_ARTIFACT_FILTER_NAME);
@@ -318,10 +318,17 @@ public class Mutect2FilteringEngine {
         }
     }
 
+    private void applyFilteredHaplotypeFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final FilterResult filterResult, final Optional<FilteringFirstPass> firstPass){
+        if ( firstPass.isPresent() && firstPass.get().isOnFilteredHaplotype(vc, MTFAC.maxDistanceToFilteredCallOnSameHaplotype)){
+            filterResult.addFilter(GATKVCFConstants.BAD_HAPLOTYPE_FILTER_NAME);
+        }
+    }
+
     public FilterResult calculateFilters(final M2FiltersArgumentCollection MTFAC, final VariantContext vc,
-                                         final Optional<FilteringFirstPass> filterStats) {
-        filterStats.ifPresent(ffp -> Utils.validate(ffp.isReadyForSecondPass(), "First pass information has not been processed into a model for the second pass."));
+                                         final Optional<FilteringFirstPass> firstPass) {
+        firstPass.ifPresent(ffp -> Utils.validate(ffp.isReadyForSecondPass(), "First pass information has not been processed into a model for the second pass."));
         final FilterResult filterResult = new FilterResult();
+        applyFilteredHaplotypeFilter(MTFAC, vc, filterResult, firstPass);
         applyInsufficientEvidenceFilter(MTFAC, vc, filterResult);
         applyClusteredEventFilter(vc, filterResult);
         applyDuplicatedAltReadFilter(MTFAC, vc, filterResult);
@@ -338,7 +345,7 @@ public class Mutect2FilteringEngine {
         applyReadPositionFilter(MTFAC, vc, filterResult);
 
         // The following filters use the information gathered during the first pass
-        applyReadOrientationFilter(vc, filterResult, filterStats);
+        applyReadOrientationFilter(vc, filterResult, firstPass);
         return filterResult;
     }
 
