@@ -131,7 +131,7 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
         final SvDiscoveryInputMetaData svDiscoveryInputMetaData =
                 new SvDiscoveryInputMetaData(ctx, discoverStageArgs, null, vcfOutputPath,
                         null, null, null,
-                        cnvCallsBroadcast,
+                        cnvCallsBroadcast, null,
                         getHeaderForReads(), getReference(), localLogger);
 
         final JavaRDD<AlignedContig> parsedContigAlignments =

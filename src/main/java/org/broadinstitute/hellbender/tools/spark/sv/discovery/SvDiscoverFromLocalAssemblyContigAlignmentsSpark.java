@@ -17,6 +17,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.VariantFilter;
@@ -26,13 +27,8 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryPipelineSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.*;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.CpxVariantInterpreter;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.SegmentedCpxVariantSimpleVariantExtractor;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.SimpleNovelAdjacencyInterpreter;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.*;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.*;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -116,6 +112,9 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
             fullName = "non-canonical-contig-names-file", optional = true)
     private String nonCanonicalChromosomeNamesFile;
 
+    @Argument(doc = "path to dir for assembled fastqs", fullName = "fastq-dir", optional = true)
+    private String assemblyFastqDir;
+
     @Argument(doc = "prefix for output files (including VCF files and if enabled, the signaling assembly contig's alignments); sample name will be appended after the provided argument",
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
@@ -158,7 +157,7 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
         final SvDiscoveryInputMetaData svDiscoveryInputMetaData =
                 new SvDiscoveryInputMetaData(ctx, discoverStageArgs, nonCanonicalChromosomeNamesFile, outputPrefixWithSampleName,
                         null, null, null,
-                        cnvCallsBroadcast,
+                        cnvCallsBroadcast, assemblyFastqDir,
                         getHeaderForReads(), getReference(), localLogger);
         final JavaRDD<GATKRead> assemblyRawAlignments = getReads();
 
@@ -179,8 +178,8 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
         if (nonCanonicalChromosomeNamesFile!=null)
             IOUtils.assertFileIsReadable(IOUtils.getPath(nonCanonicalChromosomeNamesFile));
 
-        if ( fastqDir != null && Files.notExists(IOUtils.getPath(fastqDir)) )
-            throw new UserException("Provided fastq dir: " + fastqDir + " doesn't exist");
+        if ( assemblyFastqDir != null && Files.notExists(IOUtils.getPath(assemblyFastqDir)) )
+            throw new UserException("Provided fastq dir: " + assemblyFastqDir + " doesn't exist");
     }
 
     /**
@@ -315,7 +314,8 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
                     svDiscoveryInputMetaData.getSampleSpecificData().getHeaderBroadcast().getValue());
         }
 
-        final List<VariantContext> inversions = extractInversions();// TODO: 6/29/18 placeholder
+        final List<VariantContext> inversions = extractInversions(simpleChimeraVariants, complexChimeraVariants.cpxVariants,
+                svDiscoveryInputMetaData);// TODO: 6/29/18 placeholder
 
         // merged output
         final List<VariantContext> merged = new ArrayList<>(simpleChimeraVariants.size() + complexChimeraVariants.reInterpretedSimpleVariants.size() + inversions.size());
@@ -360,6 +360,7 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
                 svDiscoveryInputMetaData.getReferenceData().getReferenceSequenceDictionaryBroadcast().getValue(),
                 toolLogger);
 
+        // reinterpret complex variants
         final JavaRDD<VariantContext> complexVariantsRDD = ctx.parallelize(complexVariants);
         final SegmentedCpxVariantSimpleVariantExtractor.ExtractedSimpleVariants reInterpretedSimple =
                 SegmentedCpxVariantSimpleVariantExtractor.extract(complexVariantsRDD, svDiscoveryInputMetaData, assemblyRawAlignments);
@@ -373,8 +374,42 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
     }
 
     // TODO: 6/29/18 when BND variants are interpreted using short read evidence (e.g. EvidenceTargetLinks, resolved inversions), put it here
-    private static List<VariantContext> extractInversions() {
-        return Collections.emptyList();
+    private static List<VariantContext> extractInversions(final List<VariantContext> simpleVariants,
+                                                          final List<VariantContext> complexVariants,
+                                                          final SvDiscoveryInputMetaData svDiscoveryInputMetaData) {
+
+        final String pathToFastq = svDiscoveryInputMetaData.getSampleSpecificData().getPathToAssemblyFastqDir();
+        if ( pathToFastq != null ){
+            final String outputPrefixWithSampleName = svDiscoveryInputMetaData.getOutputPath();
+            final SAMSequenceDictionary refSeqDict = svDiscoveryInputMetaData.getReferenceData().getReferenceSequenceDictionaryBroadcast().getValue();
+            final Logger toolLogger = svDiscoveryInputMetaData.getToolLogger();
+
+            final List<InversionBreakendPreFilter.OverlappingPair> preprocessingResult =
+                    InversionBreakendPreFilter
+                            .preprocess(
+                                    simpleVariants.stream().filter(SVLocalContext::indicatesInversion)
+                                            .map(SVLocalContext.InvBreakEndContext::new).collect(Collectors.toList()),
+                                    complexVariants,
+                                    100_000, 30,
+                                    outputPrefixWithSampleName, refSeqDict, toolLogger);
+
+            if (preprocessingResult.isEmpty()) {
+                toolLogger.warn("No matched inversion breakpoint pairs found. This indicates something went wrong.");
+                return Collections.emptyList();
+            }
+
+            final ReferenceMultiSource reference = svDiscoveryInputMetaData.getReferenceData().getReferenceBroadcast().getValue();
+            final List<VariantContext> inversions =
+                    LinkedInversionBreakpointsInference
+                            .makeInterpretation(preprocessingResult, pathToFastq, reference, toolLogger);
+
+            // TODO: 5/16/18 artifact that we currently don't have sample columns for discovery VCF (until genotyping code is in)
+            final String vcfName = outputPrefixWithSampleName + "inversions_from_bnds.vcf" ;
+            SVVCFWriter.writeVCF(inversions, vcfName, refSeqDict, toolLogger);
+
+            return inversions;
+        } else
+            return Collections.emptyList();
     }
 
     //==================================================================================================================

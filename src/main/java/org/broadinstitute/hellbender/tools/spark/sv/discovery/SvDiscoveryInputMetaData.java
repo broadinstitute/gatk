@@ -71,18 +71,22 @@ public final class SvDiscoveryInputMetaData {
     public static final class SampleSpecificData {
         private final String sampleId;
 
+        private final String pathToAssemblyFastqDir;
+
         private final ReadMetadata readMetadata;
         private final Broadcast<SAMFileHeader> headerBroadcast;
         private final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast;
         private final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks;
         private final List<SVInterval> assembledIntervals;
 
-        public SampleSpecificData(final String sampleId, final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast,
+        public SampleSpecificData(final String sampleId, final String pathToAssemblyFastqDir,
+                                  final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast,
                                   final List<SVInterval> assembledIntervals,
                                   final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks,
                                   final ReadMetadata readMetadata,
                                   final Broadcast<SAMFileHeader> headerBroadcast) {
             this.sampleId = sampleId;
+            this.pathToAssemblyFastqDir = pathToAssemblyFastqDir;
             this.cnvCallsBroadcast = cnvCallsBroadcast;
             this.assembledIntervals = assembledIntervals;
             this.evidenceTargetLinks = evidenceTargetLinks;
@@ -92,6 +96,10 @@ public final class SvDiscoveryInputMetaData {
 
         public String getSampleId() {
             return sampleId;
+        }
+
+        public String getPathToAssemblyFastqDir() {
+            return pathToAssemblyFastqDir;
         }
 
         public ReadMetadata getReadMetadata() {
@@ -133,6 +141,7 @@ public final class SvDiscoveryInputMetaData {
                                     final List<SVInterval> assembledIntervals,
                                     final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks,
                                     final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast,
+                                    final String pathToAssemblyFastqDir,
                                     final SAMFileHeader headerForReads,
                                     final ReferenceMultiSource reference,
                                     final Logger toolLogger) {
@@ -143,7 +152,7 @@ public final class SvDiscoveryInputMetaData {
         final String sampleId = SVUtils.getSampleId(headerForReads);
 
         this.referenceData = new ReferenceData(canonicalChromosomesBroadcast, ctx.broadcast(reference), ctx.broadcast(sequenceDictionary));
-        this.sampleSpecificData = new SampleSpecificData(sampleId, cnvCallsBroadcast, assembledIntervals, evidenceTargetLinks, readMetadata, ctx.broadcast(headerForReads));
+        this.sampleSpecificData = new SampleSpecificData(sampleId, pathToAssemblyFastqDir, cnvCallsBroadcast, assembledIntervals, evidenceTargetLinks, readMetadata, ctx.broadcast(headerForReads));
         this.discoverStageArgs = discoverStageArgs;
         this.outputPath = outputPath;
         this.toolLogger = toolLogger;
