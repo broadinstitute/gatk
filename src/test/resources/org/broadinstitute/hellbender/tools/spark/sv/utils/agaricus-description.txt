@@ -1,0 +1,1 @@
+Data were originally obtained from https://archive.ics.uci.edu/ml/datasets/mushroom, and were subsequently transformed via ordinal encoding and compressed. The mapping of original feature values to ordinal coding has NOT been preserved, these data are intended to be used for unit tests.

@@ -326,6 +326,7 @@ dependencies {
     
     // Required for SV Discovery machine learning
     compile group: 'biz.k11i', name: 'xgboost-predictor', version: '0.3.0'
+    compile group: 'ml.dmlc', name: 'xgboost4j', version: '0.80'
 
     testUtilsCompile sourceSets.main.output
     testUtilsCompile 'org.testng:testng:' + testNGVersion
