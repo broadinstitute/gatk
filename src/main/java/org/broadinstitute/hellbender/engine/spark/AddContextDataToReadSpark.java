@@ -81,6 +81,33 @@ public class AddContextDataToReadSpark {
         return withVariantsWithRef.mapToPair(in -> new Tuple2<>(in._1(), new ReadContextData(in._2()._2(), in._2()._1())));
     }
 
+    public static JavaPairRDD<GATKRead, ReadContextData> add(
+            final JavaSparkContext ctx,
+            final JavaRDD<GATKRead> reads, final ReferenceMultiSource referenceSource,
+            final JavaRDD<GATKVariant> variants, final List<String> variantsPaths, final JoinStrategy joinStrategy,
+            final SAMSequenceDictionary sequenceDictionary,
+            final int shardSize, final int shardPadding, final String refPath) {
+        // TODO: this static method should not be filtering the unmapped reads.  To be addressed in another issue.
+        JavaRDD<GATKRead> mappedReads = reads.filter(read -> ReadFilterLibrary.MAPPED.test(read));
+        JavaPairRDD<GATKRead, Tuple2<Iterable<GATKVariant>, ReferenceBases>> withVariantsWithRef;
+        if (joinStrategy.equals(JoinStrategy.BROADCAST)) {
+            // Join Reads and Variants
+            JavaPairRDD<GATKRead, Iterable<GATKVariant>> withVariants = variantsPaths == null ? BroadcastJoinReadsWithVariants.join(mappedReads, variants) : BroadcastJoinReadsWithVariants.join(mappedReads, variantsPaths);
+            // Join Reads with ReferenceBases
+            withVariantsWithRef = BroadcastJoinReadsWithRefBases.addBases(refPath, withVariants);
+        } else if (joinStrategy.equals(JoinStrategy.SHUFFLE)) {
+            // Join Reads and Variants
+            JavaPairRDD<GATKRead, Iterable<GATKVariant>> withVariants = ShuffleJoinReadsWithVariants.join(mappedReads, variants);
+            // Join Reads with ReferenceBases
+            withVariantsWithRef = ShuffleJoinReadsWithRefBases.addBases(referenceSource, withVariants);
+        } else if (joinStrategy.equals(JoinStrategy.OVERLAPS_PARTITIONER)) {
+            return addUsingOverlapsPartitioning(ctx, reads, referenceSource, variants, variantsPaths, sequenceDictionary, shardSize, shardPadding);
+        } else {
+            throw new UserException("Unknown JoinStrategy");
+        }
+        return withVariantsWithRef.mapToPair(in -> new Tuple2<>(in._1(), new ReadContextData(in._2()._2(), in._2()._1())));
+    }
+
     /**
      * Add context data ({@link ReadContextData}) to reads, using overlaps partitioning to avoid a shuffle.
      * @param ctx the Spark context

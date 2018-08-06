@@ -5,6 +5,9 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceSource;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceSourceCache;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
@@ -51,6 +54,16 @@ public class BroadcastJoinReadsWithRefBases {
         return keyedByRead.mapToPair(pair -> {
             SimpleInterval interval = bReferenceSource.getValue().getReferenceWindowFunction().apply(pair._1());
             return new Tuple2<>(pair._1(), new Tuple2<>(pair._2(), bReferenceSource.getValue().getReferenceBases(
+                    interval)));
+        });
+    }
+
+    public static <T> JavaPairRDD<GATKRead, Tuple2<T, ReferenceBases>> addBases(final String refPath,
+                                                                                final JavaPairRDD<GATKRead, T> keyedByRead) {
+        return keyedByRead.mapToPair(pair -> {
+            ReferenceSource referenceSource = ReferenceSourceCache.getReferenceSource(refPath);
+            SimpleInterval interval = ReferenceWindowFunctions.IDENTITY_FUNCTION.apply(pair._1());
+            return new Tuple2<>(pair._1(), new Tuple2<>(pair._2(), referenceSource.getReferenceBases(
                     interval)));
         });
     }
