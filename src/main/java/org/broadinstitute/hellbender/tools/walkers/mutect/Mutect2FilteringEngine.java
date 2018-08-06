@@ -387,10 +387,10 @@ public class Mutect2FilteringEngine {
                 cumulativeExpectedFPs, numPassingVariants, cumulativeExpectedFPs/numPassingVariants, requestedFPR);
     }
 
-    public Mutect2FilterSummary calculateFilterStats(final List<FilterResult> filterResults, final double requestedFPR){
+    public Mutect2FilterSummary calculateFilterStats(final FilteringFirstPass filteringFirstPass, final double requestedFPR){
         final Mutect2FilterSummary filterSummary = new Mutect2FilterSummary();
 
-        final double[] readOrientationPosteriors = filterResults.stream()
+        final double[] readOrientationPosteriors = filteringFirstPass.getFilterResults().stream()
                 .filter(r -> r.getFilters().isEmpty())
                 .mapToDouble(r -> r.getReadOrientationPosterior())
                 .toArray();

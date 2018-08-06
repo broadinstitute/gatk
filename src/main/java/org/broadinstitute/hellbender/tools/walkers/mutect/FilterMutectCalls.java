@@ -84,7 +84,7 @@ public final class FilterMutectCalls extends TwoPassVariantWalker {
 
     private Mutect2FilteringEngine filteringEngine;
 
-    private List<FilterResult> firstPassFilterResults;
+    private FilteringFirstPass filteringFirstPass;
 
     private Mutect2FilterSummary stats;
 
@@ -109,7 +109,7 @@ public final class FilterMutectCalls extends TwoPassVariantWalker {
         final Optional<String> normalSample = normalSampleHeaderLine == null ? Optional.empty() : Optional.of(normalSampleHeaderLine.getValue());
 
         filteringEngine = new Mutect2FilteringEngine(MTFAC, tumorSample, normalSample);
-        firstPassFilterResults = new ArrayList<>();
+        filteringFirstPass = new FilteringFirstPass();
     }
 
     @Override
@@ -120,12 +120,12 @@ public final class FilterMutectCalls extends TwoPassVariantWalker {
     @Override
     public void firstPassApply(final VariantContext vc, final ReadsContext readsContext, final ReferenceContext refContext, final FeatureContext fc) {
         final FilterResult filterResult = filteringEngine.calculateFilters(MTFAC, vc, Optional.empty());
-        firstPassFilterResults.add(filterResult);
+        filteringFirstPass.add(filterResult, vc);
     }
 
     @Override
     protected void afterFirstPass() {
-        stats = filteringEngine.calculateFilterStats(firstPassFilterResults, MTFAC.maxFalsePositiveRate);
+        stats = filteringEngine.calculateFilterStats(filteringFirstPass, MTFAC.maxFalsePositiveRate);
         Mutect2FilterSummary.writeM2FilterSummary(stats, MTFAC.mutect2FilteringStatsTable);
     }
 
