@@ -3,17 +3,35 @@ package org.broadinstitute.hellbender.tools.walkers.mutect;
 
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.tsv.DataLine;
+import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
+import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.*;
 
 public class FilteringFirstPass {
     final List<FilterResult> filterResults;
     final Map<String, ImmutablePair<String, Integer>> filteredPhasedCalls;
+    final Map<String, FilterStats> filterStats;
+    boolean readyForSecondPass;
 
     public FilteringFirstPass() {
         filterResults = new ArrayList<>();
         filteredPhasedCalls = new HashMap<>();
+        filterStats = new HashMap<>();
+        readyForSecondPass = false;
+    }
+
+    public boolean isReadyForSecondPass() { return readyForSecondPass; }
+
+    public FilterStats getFilterStats(final String filterName){
+        Utils.validateArg(filterStats.containsKey(filterName), "invalid filter name: " + filterName);
+        return filterStats.get(filterName);
     }
 
     public void add(final FilterResult filterResult, final VariantContext vc) {
@@ -27,18 +45,15 @@ public class FilteringFirstPass {
         }
     }
 
-    public Mutect2FilterSummary calculateFilterStats(final double requestedFPR){
-        final Mutect2FilterSummary filterSummary = new Mutect2FilterSummary();
-
+    public void learnModelForSecondPass(final double requestedFPR){
         final double[] readOrientationPosteriors = getFilterResults().stream()
                 .filter(r -> r.getFilters().isEmpty())
                 .mapToDouble(r -> r.getReadOrientationPosterior())
                 .toArray();
 
-        final Mutect2FilterSummary.FilterStats readOrientationFilterStats = calculateThresholdForReadOrientationFilter(readOrientationPosteriors, requestedFPR);
-        filterSummary.addNewFilterStats(GATKVCFConstants.READ_ORIENTATION_ARTIFACT_FILTER_NAME, readOrientationFilterStats);
-
-        return filterSummary;
+        final FilterStats readOrientationFilterStats = calculateThresholdForReadOrientationFilter(readOrientationPosteriors, requestedFPR);
+        filterStats.put(GATKVCFConstants.READ_ORIENTATION_ARTIFACT_FILTER_NAME, readOrientationFilterStats);
+        readyForSecondPass = true;
     }
 
     /**
@@ -50,7 +65,7 @@ public class FilteringFirstPass {
      * @param requestedFPR We set the filtering threshold such that the FPR doesn't exceed this value
      * @return
      */
-    public static Mutect2FilterSummary.FilterStats calculateThresholdForReadOrientationFilter(final double[] posteriors, final double requestedFPR){
+    public static FilterStats calculateThresholdForReadOrientationFilter(final double[] posteriors, final double requestedFPR){
         final double thresholdForFilteringNone = 1.0;
         final double thresholdForFilteringAll = 0.0;
 
@@ -66,9 +81,9 @@ public class FilteringFirstPass {
             final double expectedFPR = (cumulativeExpectedFPs + posterior) / (i + 1);
             if (expectedFPR > requestedFPR){
                 return i > 0 ?
-                        new Mutect2FilterSummary.FilterStats(GATKVCFConstants.READ_ORIENTATION_ARTIFACT_FILTER_NAME, posteriors[i-1],
+                        new FilterStats(GATKVCFConstants.READ_ORIENTATION_ARTIFACT_FILTER_NAME, posteriors[i-1],
                                 cumulativeExpectedFPs, i-1, cumulativeExpectedFPs/i, requestedFPR) :
-                        new Mutect2FilterSummary.FilterStats(GATKVCFConstants.READ_ORIENTATION_ARTIFACT_FILTER_NAME, thresholdForFilteringAll,
+                        new FilterStats(GATKVCFConstants.READ_ORIENTATION_ARTIFACT_FILTER_NAME, thresholdForFilteringAll,
                                 0.0, 0, 0.0, requestedFPR);
             }
 
@@ -76,7 +91,7 @@ public class FilteringFirstPass {
         }
 
         // If the expected FP rate never exceeded the max tolerable value, then we can let everything pass
-        return new Mutect2FilterSummary.FilterStats(GATKVCFConstants.READ_ORIENTATION_ARTIFACT_FILTER_NAME, thresholdForFilteringNone,
+        return new FilterStats(GATKVCFConstants.READ_ORIENTATION_ARTIFACT_FILTER_NAME, thresholdForFilteringNone,
                 cumulativeExpectedFPs, numPassingVariants, cumulativeExpectedFPs/numPassingVariants, requestedFPR);
     }
 
@@ -88,6 +103,79 @@ public class FilteringFirstPass {
         return filterResults;
     }
 
+    public static class FilterStats {
+        private final String filterName;
+        private final double threshold;
+        private final double expectedNumFPs;
+        private final int numPassingVariants;
+        private final double expectedFPR;
+        private final double requestedFPR;
 
+        public FilterStats(final String filterName, final double threshold, final double expectedNumFPs,
+                           final int numPassingVariants, final double expectedFPR, final double requestedFPR){
+            this.filterName = filterName;
+            this.threshold = threshold;
+            this.expectedNumFPs = expectedNumFPs;
+            this.numPassingVariants = numPassingVariants;
+            this.expectedFPR = expectedFPR;
+            this.requestedFPR = requestedFPR;
+        }
 
+        public String getFilterName() { return filterName; }
+
+        public double getExpectedNumFPs() { return expectedNumFPs; }
+
+        public int getNumPassingVariants() { return numPassingVariants; }
+
+        public double getThreshold() { return threshold; }
+
+        public double getExpectedFPR() { return expectedFPR; }
+
+        public double getRequestedFPR() { return requestedFPR; }
+
+    }
+
+    private enum M2FilterStatsTableColumn {
+        FILTER_NAME("filter_name"),
+        THRESHOLD("threshold"),
+        EXPECTED_FALSE_POSITIVES("expected_fps"),
+        EXPECTED_FALSE_POSITIVE_RATE("expected_fpr"),
+        REQUESTED_FALSE_POSITIVE_RATE("requested_fpr"),
+        NUM_PASSING_VARIANTS("num_passing_variants");
+
+        private String columnName;
+
+        M2FilterStatsTableColumn(final String columnName) {
+            this.columnName = columnName;
+        }
+
+        @Override
+        public String toString() { return columnName; }
+
+        public static final TableColumnCollection COLUMNS = new TableColumnCollection((Object[]) values());
+    }
+
+    private static class Mutect2FilterStatsWriter extends TableWriter<FilterStats> {
+        private Mutect2FilterStatsWriter(final File output) throws IOException {
+            super(output, M2FilterStatsTableColumn.COLUMNS);
+        }
+
+        @Override
+        protected void composeLine(final FilterStats stats, final DataLine dataLine) {
+            dataLine.set(M2FilterStatsTableColumn.FILTER_NAME.toString(), stats.getFilterName())
+                    .set(M2FilterStatsTableColumn.THRESHOLD.toString(), stats.getThreshold())
+                    .set(M2FilterStatsTableColumn.EXPECTED_FALSE_POSITIVES.toString(), stats.getExpectedNumFPs())
+                    .set(M2FilterStatsTableColumn.EXPECTED_FALSE_POSITIVE_RATE.toString(), stats.getExpectedFPR())
+                    .set(M2FilterStatsTableColumn.REQUESTED_FALSE_POSITIVE_RATE.toString(), stats.getRequestedFPR())
+                    .set(M2FilterStatsTableColumn.NUM_PASSING_VARIANTS.toString(), stats.getNumPassingVariants());
+        }
+    }
+
+    public void writeM2FilterSummary(final File outputTable) {
+        try (Mutect2FilterStatsWriter writer = new Mutect2FilterStatsWriter(outputTable)) {
+            writer.writeAllRecords(filterStats.values());
+        } catch (IOException e) {
+            throw new UserException(String.format("Encountered an IO exception while writing to %s.", outputTable), e);
+        }
+    }
 }

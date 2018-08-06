@@ -22,8 +22,6 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
 import java.io.File;
 import java.util.Optional;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -86,8 +84,6 @@ public final class FilterMutectCalls extends TwoPassVariantWalker {
 
     private FilteringFirstPass filteringFirstPass;
 
-    private Mutect2FilterSummary stats;
-
     @Override
     public void onTraversalStart() {
         final VCFHeader inputHeader = getHeaderForVariants();
@@ -125,13 +121,13 @@ public final class FilterMutectCalls extends TwoPassVariantWalker {
 
     @Override
     protected void afterFirstPass() {
-        stats = filteringFirstPass.calculateFilterStats(MTFAC.maxFalsePositiveRate);
-        Mutect2FilterSummary.writeM2FilterSummary(stats, MTFAC.mutect2FilteringStatsTable);
+        filteringFirstPass.learnModelForSecondPass(MTFAC.maxFalsePositiveRate);
+        filteringFirstPass.writeM2FilterSummary(MTFAC.mutect2FilteringStatsTable);
     }
 
     @Override
     public void secondPassApply(final VariantContext vc, final ReadsContext readsContext, final ReferenceContext refContext, final FeatureContext fc) {
-        final FilterResult filterResult = filteringEngine.calculateFilters(MTFAC, vc, Optional.of(stats));
+        final FilterResult filterResult = filteringEngine.calculateFilters(MTFAC, vc, Optional.of(filteringFirstPass));
         final VariantContextBuilder vcb = new VariantContextBuilder(vc);
 
         vcb.filters(filterResult.getFilters());

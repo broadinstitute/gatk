@@ -8,10 +8,7 @@ import org.apache.commons.math3.distribution.BinomialDistribution;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.contamination.ContaminationRecord;
 import org.broadinstitute.hellbender.tools.walkers.contamination.MinorAlleleFractionRecord;
-import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
-import org.broadinstitute.hellbender.utils.IndexRange;
-import org.broadinstitute.hellbender.utils.MathUtils;
-import org.broadinstitute.hellbender.utils.QualityUtils;
+import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -295,7 +292,7 @@ public class Mutect2FilteringEngine {
         }
     }
 
-     private void applyReadOrientationFilter(final VariantContext vc, final FilterResult filterResult, final Optional<Mutect2FilterSummary> filterSummary){
+     private void applyReadOrientationFilter(final VariantContext vc, final FilterResult filterResult, final Optional<FilteringFirstPass> filterSummary){
         if (! vc.isSNP()){
             return;
         }
@@ -322,7 +319,8 @@ public class Mutect2FilteringEngine {
     }
 
     public FilterResult calculateFilters(final M2FiltersArgumentCollection MTFAC, final VariantContext vc,
-                                         final Optional<Mutect2FilterSummary> filterStats) {
+                                         final Optional<FilteringFirstPass> filterStats) {
+        filterStats.ifPresent(ffp -> Utils.validate(ffp.isReadyForSecondPass(), "First pass information has not been processed into a model for the second pass."));
         final FilterResult filterResult = new FilterResult();
         applyInsufficientEvidenceFilter(MTFAC, vc, filterResult);
         applyClusteredEventFilter(vc, filterResult);
