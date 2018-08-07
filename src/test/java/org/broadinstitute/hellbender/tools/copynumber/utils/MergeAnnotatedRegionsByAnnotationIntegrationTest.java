@@ -4,6 +4,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStandardArgument;
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedIntervalCollection;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -30,8 +31,10 @@ public class MergeAnnotatedRegionsByAnnotationIntegrationTest extends CommandLin
         arguments.add(outputFile.getAbsolutePath());
         runCommandLine(arguments);
 
+        final AnnotatedIntervalCollection collection = AnnotatedIntervalCollection.create(outputFile.toPath(), null);
+        Assert.assertEquals(collection.getRecords().size(), 2);
 
-        AnnotatedIntervalCollection.create(outputFile.toPath(), null);
+        //TODO: assert that Segment Mean is on the right.
     }
 
 }

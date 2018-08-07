@@ -13,6 +13,8 @@ workflow CombineTracksWorkflow {
     Int? germline_tagging_padding
     String group_id
     String gatk_docker
+    Int? max_merge_distance
+
     call CombineTracks {
         input:
             tumor_called_seg = tumor_called_seg,
@@ -35,8 +37,10 @@ workflow CombineTracksWorkflow {
             VALUE=basename(matched_normal_called_seg),
             FIELD="SAMPLE",
             OUTPUT = basename(matched_normal_called_seg) + ".igv.seg",
-            PRE_POST="PRE"
+            PRE_POST="PRE",
+            SEGMENT_MEAN_COL = "MEAN_LOG2_COPY_RATIO"
     }
+
     call IGVConvert as IGVConvertTumor {
         input:
             COMMENTCHAR="@",
@@ -44,8 +48,10 @@ workflow CombineTracksWorkflow {
             VALUE=basename(tumor_called_seg),
             FIELD="SAMPLE",
             OUTPUT = basename(tumor_called_seg) + ".igv.seg",
-            PRE_POST="PRE"
+            PRE_POST="PRE",
+            SEGMENT_MEAN_COL = "MEAN_LOG2_COPY_RATIO"
     }
+
     call IGVConvert as IGVConvertTumorOutput {
         input:
             COMMENTCHAR="@",
@@ -53,8 +59,10 @@ workflow CombineTracksWorkflow {
             VALUE=basename(tumor_called_seg),
             FIELD="SAMPLE",
             OUTPUT = basename(tumor_called_seg) + ".tagged.igv.seg",
-            PRE_POST="PRE"
+            PRE_POST="PRE",
+            SEGMENT_MEAN_COL = "MEAN_LOG2_COPY_RATIO"
     }
+
     call PruneGermlineTagged {
         input:
             germline_tagged_seg = IGVConvertTumorOutput.outFile
@@ -68,14 +76,26 @@ workflow CombineTracksWorkflow {
             ref_fasta_dict = ref_fasta_dict,
             ref_fasta_fai = ref_fasta_fai,
             gatk_docker = gatk_docker,
-            gatk4_jar_override = gatk4_jar_override
+            gatk4_jar_override = gatk4_jar_override,
+            max_merge_distance = max_merge_distance
+    }
+
+    call IGVConvert as IGVConvertMergedTumorOutput {
+        input:
+            COMMENTCHAR="@",
+            INPUT=MergeSegmentByAnnotation.cnv_merged_seg,
+            VALUE=basename(tumor_called_seg),
+            FIELD="SAMPLE",
+            OUTPUT = basename(tumor_called_seg) + ".pruned_merged.igv.seg",
+            PRE_POST="PRE",
+            SEGMENT_MEAN_COL = "MEAN_LOG2_COPY_RATIO"
     }
 
     output {
         File cnv_postprocessing_tumor_igv_compat = IGVConvertTumor.outFile
         File cnv_postprocessing_normal_igv_compat = IGVConvertNormal.outFile
         File cnv_postprocessing_tumor_with_tracks_pruned_seg = PruneGermlineTagged.tumor_with_germline_pruned_seg
-        File cnv_postprocessing_tumor_with_tracks_pruned_merged_seg = MergeSegmentByAnnotation.cnv_merged_seg
+        File cnv_postprocessing_tumor_with_tracks_pruned_merged_seg = IGVConvertMergedTumorOutput.outFile
         File cnv_postprocessing_tumor_with_tracks_tagged_seg = CombineTracks.germline_tagged_with_tracks_seg
     }
 
@@ -202,6 +222,7 @@ task IGVConvert {
     String FIELD
     String VALUE
     String OUTPUT
+    String SEGMENT_MEAN_COL
     String? PRE_POST
     String? COMMENTCHAR
 
@@ -242,7 +263,7 @@ else
 fi
 head -1 ${OUTPUT}.tmp > tmp_header2.txt
 
-tr "\t" "\n" < tmp_header2.txt | grep -n MEAN_LOG2_COPY_RATIO | cut -f1 -d: > tmp_col_num
+tr "\t" "\n" < tmp_header2.txt | grep -n ${SEGMENT_MEAN_COL} | cut -f1 -d: > tmp_col_num
 COL_NUM=`cat tmp_col_num`
 echo $COL_NUM
 

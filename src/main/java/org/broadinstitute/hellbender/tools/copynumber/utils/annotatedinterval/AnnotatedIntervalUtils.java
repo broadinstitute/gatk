@@ -132,15 +132,11 @@ public class AnnotatedIntervalUtils {
     }
 
     private static boolean isMergeByAnnotation(final AnnotatedInterval interval1, final AnnotatedInterval interval2, int maxDistance, final List<String> annotationNames) {
-        if (!interval1.getContig().equals(interval2.getContig())) {
-            return false;
-        }
-
-        if (getDistance(interval1, interval2) > maxDistance) {
-            return false;
-        }
-
-        if (!annotationNames.stream().allMatch(a -> interval1.getAnnotationValue(a).equals(interval2.getAnnotationValue(a)))) {
+        // If the contigs do not match OR the segments are too far apart OR there are annotation values that do not match,
+        //  then return false.
+        if ((!interval1.getContig().equals(interval2.getContig())) ||
+                (getDistance(interval1, interval2) > maxDistance) ||
+                (!annotationNames.stream().allMatch(a -> interval1.getAnnotationValue(a).equals(interval2.getAnnotationValue(a))))) {
             return false;
         }
 
@@ -149,11 +145,13 @@ public class AnnotatedIntervalUtils {
 
     /**
      * TODO: Docs
+     * TODO: Testing
      * Assumes that loc2 appears at a higher reference position.  Otherwise, you will get a negative number.
      * Overlapping locatables will always return 0.
+     * Locatables on different contigs will have a distance of {@link Long#MAX_VALUE}
      * @param loc1
      * @param loc2
-     * @return
+     * @return 0 or a positive number.
      */
     private static long getDistance(final Locatable loc1, final Locatable loc2) {
 
@@ -165,8 +163,7 @@ public class AnnotatedIntervalUtils {
             return 0;
         }
 
-        // TODO: Handle case where the intervals are out of order.
-        return loc2.getStart() - loc1.getEnd();
+        return (loc1.getEnd() < loc2.getStart()) ? (loc2.getStart() - loc1.getEnd()) : (loc1.getStart() - loc2.getEnd());
     }
 
 

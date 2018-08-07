@@ -13,7 +13,6 @@ import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -74,21 +73,8 @@ public class MergeAnnotatedRegionsByAnnotation extends GATKTool {
         final List<AnnotatedInterval> mergedSegments = AnnotatedIntervalUtils.mergeRegionsByAnnotation(initialSegments, getBestAvailableSequenceDictionary(), annotationsToMatch,
                 l -> progressMeter.update(l), DEFAULT_SEPARATOR, maxMergeDistance);
 
-        // TODO: Document that this uses a non-standard format and that this will not necessarily preserve the input format.
         final AnnotatedIntervalHeader header = new AnnotatedIntervalHeader("Chromosome", "Start", "End", new ArrayList<>(mergedSegments.get(0).getAnnotations().keySet()), null);
-
-        // TODO: Generalize this
-        // TODO: Improve this code
-        // TODO: Magic constants
-        final List<String> columnOrdering = new ArrayList<>();
-        columnOrdering.addAll(Arrays.asList("Chromosome", "Start", "End"));
-        columnOrdering.addAll(mergedSegments.get(0).getAnnotations().keySet());
-        columnOrdering.remove("SAMPLE");
-        columnOrdering.add(0,"SAMPLE");
-        columnOrdering.remove("MEAN_LOG2_COPY_RATIO");
-        columnOrdering.add("MEAN_LOG2_COPY_RATIO");
-
-        final AnnotatedIntervalWriter writer = new SimpleAnnotatedIntervalWriter(outputFile, columnOrdering);
+        final AnnotatedIntervalWriter writer = new SimpleAnnotatedIntervalWriter(outputFile);
         writer.writeHeader(header);
         mergedSegments.forEach(s -> writer.add(s));
         writer.close();
