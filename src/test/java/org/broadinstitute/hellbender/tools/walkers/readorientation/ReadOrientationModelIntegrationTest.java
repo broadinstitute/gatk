@@ -95,7 +95,6 @@ public class ReadOrientationModelIntegrationTest extends CommandLineProgramTest 
         // The pair is of type (Position, Expected Source of Prior Probability)
         // Prior for e.g. TGA->A F2R1 should come from TCA->T F1R2
         final List<Triple<Integer, ReadOrientation, ArtifactState>> knownArtifacts = Arrays.asList(
-                new ImmutableTriple<>(5296933, ReadOrientation.F1R2, ArtifactState.F1R2_T), // CGT->T F1R2, ref context is not canonical
                 new ImmutableTriple<>(23421079, ReadOrientation.F2R1, ArtifactState.F2R1_G), // CAC->G F2R1
                 new ImmutableTriple<>(34144749, ReadOrientation.F2R1, ArtifactState.F2R1_A), // TGA->A F2R1, ref context is not canonical
                 new ImmutableTriple<>(62165528, ReadOrientation.F1R2, ArtifactState.F1R2_A)); // CGC->A F1R2
