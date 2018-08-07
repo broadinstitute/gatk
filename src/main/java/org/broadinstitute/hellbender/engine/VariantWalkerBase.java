@@ -62,7 +62,7 @@ public abstract class VariantWalkerBase extends GATKTool {
      * choose the sequence dictionary from the driving source of variants.
      */
     @Override
-    public final SAMSequenceDictionary getBestAvailableSequenceDictionary() {
+    public SAMSequenceDictionary getBestAvailableSequenceDictionary() {
         final SAMSequenceDictionary dictFromDrivingVariants = getSequenceDictionaryForDrivingVariants();
         if (dictFromDrivingVariants != null) {
             //If this dictionary looks like it was synthesized from a feature index, see
