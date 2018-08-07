@@ -37,6 +37,8 @@ import static org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConsta
  */
 public final class CpxVariantInterpreter {
 
+    public static final int MIN_READ_SPAN_AFTER_DEOVERLAP = 2;
+
     public static List<VariantContext> makeInterpretation(final JavaRDD<AssemblyContigWithFineTunedAlignments> assemblyContigs,
                                                           final SvDiscoveryInputMetaData svDiscoveryInputMetaData) {
 
@@ -118,14 +120,19 @@ public final class CpxVariantInterpreter {
             }
             final int overlapOnContig = AlignmentInterval.overlapOnContig(one, two);
             if ( overlapOnContig == 0 ) { // nothing to remove
-                result.add(one);
+                // an extreme rare case is possible when, after de-overlapping, the alignment block is only 1bp long (yes, it occurs),
+                // this throws off segmentation algo, hence we drop it here
+                // more generally, the case could be that a small (say 2bp, or 5bp) alignment block is left, we need a more general strategy
+                if (one.getSizeOnRead() >= MIN_READ_SPAN_AFTER_DEOVERLAP)
+                    result.add(one);
                 one = two;
             } else {
                 final Tuple2<AlignmentInterval, AlignmentInterval> deoverlapped =
                         removeOverlap(one, two, overlapOnContig, refSequenceDictionary,
                                 one.equals(originalAlignments.get(0)),
                                 two.equals(originalAlignments.get(totalCount - 1)));
-                result.add(deoverlapped._1);
+                if (deoverlapped._1.getSizeOnRead() >= MIN_READ_SPAN_AFTER_DEOVERLAP) // see comment above
+                    result.add(deoverlapped._1);
                 one = deoverlapped._2;
             }
         }
@@ -158,7 +165,7 @@ public final class CpxVariantInterpreter {
                                                                       final int overlapOnRead,
                                                                       final SAMSequenceDictionary dictionary,
                                                                       final boolean firstIsAlignmentHead,
-                                                                      final boolean secondIsAlignmentTail){
+                                                                      final boolean secondIsAlignmentTail) {
 
         if (overlapOnRead <= 0)
             throw new IllegalArgumentException("Overlap on read is non-positive for two alignments: "
