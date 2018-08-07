@@ -24,9 +24,10 @@ import java.util.List;
  * Callers must call {@link #writeHeader} before {@link #add}.
  *
  * This class is not thread-safe.
+ *
+ * This will always write all annotations, even if not all are specified in the ordering.
  */
 public class SimpleAnnotatedIntervalWriter implements AnnotatedIntervalWriter {
-
 
     private SimpleTableWriter writer;
     private FileWriter fileWriter;
@@ -35,6 +36,7 @@ public class SimpleAnnotatedIntervalWriter implements AnnotatedIntervalWriter {
     private String endColumnHeader;
     private File outputFile;
     private boolean hasHeaderBeenWritten = false;
+    private List<String> columnsInOrder;
     private static final Logger logger = LogManager.getLogger(SimpleAnnotatedIntervalWriter.class);
 
     private class SimpleTableWriter extends TableWriter<AnnotatedInterval> {
@@ -61,19 +63,30 @@ public class SimpleAnnotatedIntervalWriter implements AnnotatedIntervalWriter {
      * @param outputFile destination file.  Must be writeable.
      */
     public SimpleAnnotatedIntervalWriter(final File outputFile) {
+        this(outputFile, null);
+    }
+
+    /**
+     * Initialize this writer to the given output file.
+     * TODO: Docs
+     * All columns specified must be in the records to write.  Please note that this issue will not be caught until the
+     *  header is rendered.
+     * null is okay for columns
+     * @param outputFile destination file.  Must be writeable.
+     */
+    public SimpleAnnotatedIntervalWriter(final File outputFile, final List<String> columnsInOrder) {
         IOUtil.assertFileIsWritable(outputFile);
         this.outputFile = outputFile;
-
+        this.columnsInOrder = columnsInOrder;
     }
 
     private void initializeForWriting(final String contigColumnName, final String startColumnName, final String endColumnName, final List<String> annotations) {
-        final List<String> finalColumnList = Lists.newArrayList(contigColumnName, startColumnName, endColumnName);
-        finalColumnList.addAll(annotations);
+
         try {
             fileWriter = new FileWriter(outputFile);
 
             // By initializing writer to be based on fileWriter, writer.close will close the fileWriter as well.
-            writer = new SimpleTableWriter(fileWriter, new TableColumnCollection(finalColumnList));
+            writer = new SimpleTableWriter(fileWriter, new TableColumnCollection(this.columnsInOrder));
         } catch (final IOException ioe) {
             throw new GATKException("Could not create: " + outputFile.getAbsolutePath(), ioe);
         }
@@ -81,6 +94,12 @@ public class SimpleAnnotatedIntervalWriter implements AnnotatedIntervalWriter {
         this.contigColumnHeader = contigColumnName;
         this.startColumnHeader = startColumnName;
         this.endColumnHeader = endColumnName;
+    }
+
+    private List<String> generateDefaultColumnOrdering(final String contigColumnName, final String startColumnName, final String endColumnName, final List<String> annotations) {
+        final List<String> finalColumnList = Lists.newArrayList(contigColumnName, startColumnName, endColumnName);
+        finalColumnList.addAll(annotations);
+        return finalColumnList;
     }
 
     /**
@@ -96,8 +115,17 @@ public class SimpleAnnotatedIntervalWriter implements AnnotatedIntervalWriter {
             final String contigColumnName = annotatedIntervalHeader.getContigColumnName();
             final String startColumnName = annotatedIntervalHeader.getStartColumnName();
             final String endColumnName = annotatedIntervalHeader.getEndColumnName();
+            final List<String> annotations = annotatedIntervalHeader.getAnnotations();
 
-            initializeForWriting(contigColumnName, startColumnName, endColumnName, annotatedIntervalHeader.getAnnotations());
+            if (this.columnsInOrder == null) {
+                this.columnsInOrder = generateDefaultColumnOrdering(contigColumnName, startColumnName, endColumnName, annotations);
+            } else {
+                // Make sure that the columns we were given are all in the annotations (plus locatable cols).
+                // TODO: Perform sanity checks
+                // TODO: Make sure that any dangling annotations are left at the end.
+            }
+
+            initializeForWriting(contigColumnName, startColumnName, endColumnName, annotations);
             try {
                 final SAMFileHeader samFileHeader = annotatedIntervalHeader.getSamFileHeader();
                 if (samFileHeader != null) {

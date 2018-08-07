@@ -16,7 +16,7 @@ import java.io.File;
 import java.util.List;
 
 @CommandLineProgramProperties(
-        oneLineSummary = "(EXPERIMENTAL) Merge annotated genomic regions based entirely on contig and annotation value.",
+        oneLineSummary = "(EXPERIMENTAL) Merge annotated genomic regions based entirely on touching/overlapping intervals.",
         summary = "(EXPERIMENTAL) Merge annotated genomic regions based entirely on contig and annotation value.  Column header order is not guaranteed to be preserved. Reference is required and will superseded any sequence dictionary in the given seg/region files.  Sequence dictionary is optional on the input file, but will be included on the output.  Conflicts of annotations is resolved by sorting the values and inserting a delimiter.  THIS TOOL IS TOTALLY UNSUPPORTED",
         programGroup = CopyNumberProgramGroup.class)
 

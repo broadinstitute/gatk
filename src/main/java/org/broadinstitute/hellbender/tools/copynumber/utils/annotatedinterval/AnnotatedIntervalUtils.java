@@ -82,6 +82,95 @@ public class AnnotatedIntervalUtils {
     }
 
     /**
+     * TODO: Update this entire doc
+     *
+     * Merge AnnotatedIntervals by whether the regions overlap.  Sorting is performed as well, so input
+     * ordering is lost.
+     *
+     * When two overlapping regions are merged, annotations are merged as follows:
+     *  - The annotation appears in one region:  Resulting region will have the annotation with the value of that one region
+     *  - The annotation appears in both regions:  Resulting region will have both values separated by the {@code annotationSeparator}
+     *  parameter.
+     *
+     * Only merges overlaps, not abutters.
+     *
+     * @param initialRegions regions to merge.  Never {@code null}
+     * @param dictionary sequence dictionary to use for sorting.  Never {@code null}
+     * @param annotationNames separator to use in the case of annotation conflicts.  Never {@code null}
+     * @param progressUpdater Consuming function that can callback with the latest region that has been processed.
+     *                        Never {@code null}.  Use a no-op function if you do not wish to provide a progress update.
+     * @return Segments will be sorted by the sequence dictionary
+     */
+    public static List<AnnotatedInterval> mergeRegionsByAnnotation(final List<AnnotatedInterval> initialRegions,
+                                                       final SAMSequenceDictionary dictionary, final List<String> annotationNames,
+                                                       final Consumer<Locatable> progressUpdater, final String annotationSeparator,
+                                                                   final int maxDistanceInBp) {
+
+        Utils.nonNull(initialRegions);
+        Utils.nonNull(dictionary);
+        Utils.nonNull(annotationNames);
+        Utils.nonNull(progressUpdater);
+
+        final List<AnnotatedInterval> segments = IntervalUtils.sortLocatablesBySequenceDictionary(initialRegions,
+                dictionary);
+
+        final List<AnnotatedInterval> finalSegments = new ArrayList<>();
+        final PeekableIterator<AnnotatedInterval> segmentsIterator = new PeekableIterator<>(segments.iterator());
+        while (segmentsIterator.hasNext()) {
+            AnnotatedInterval currentRegion = segmentsIterator.next();
+
+            while (segmentsIterator.peek() != null && isMergeByAnnotation(currentRegion, segmentsIterator.peek(), maxDistanceInBp, annotationNames)
+                    ) {
+                final AnnotatedInterval toBeMerged = segmentsIterator.next();
+
+                currentRegion = merge(currentRegion, toBeMerged, annotationSeparator);
+            }
+            progressUpdater.accept(currentRegion);
+            finalSegments.add(currentRegion);
+        }
+        return finalSegments;
+    }
+
+    private static boolean isMergeByAnnotation(final AnnotatedInterval interval1, final AnnotatedInterval interval2, int maxDistance, final List<String> annotationNames) {
+        if (!interval1.getContig().equals(interval2.getContig())) {
+            return false;
+        }
+
+        if (getDistance(interval1, interval2) > maxDistance) {
+            return false;
+        }
+
+        if (!annotationNames.stream().allMatch(a -> interval1.getAnnotationValue(a).equals(interval2.getAnnotationValue(a)))) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * TODO: Docs
+     * Assumes that loc2 appears at a higher reference position.  Otherwise, you will get a negative number.
+     * Overlapping locatables will always return 0.
+     * @param loc1
+     * @param loc2
+     * @return
+     */
+    private static long getDistance(final Locatable loc1, final Locatable loc2) {
+
+        if (!loc1.getContig().equals(loc2.getContig())) {
+            return Long.MAX_VALUE;
+        }
+
+        if (IntervalUtils.overlaps(loc1, loc2)) {
+            return 0;
+        }
+
+        // TODO: Handle case where the intervals are out of order.
+        return loc2.getStart() - loc1.getEnd();
+    }
+
+
+    /**
      *  Return a merged annotation value for the two regions and given annotation name.  Automatically solves conflicts.
      *
      * @param annotationName the annotation to determine.
