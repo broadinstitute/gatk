@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark;
 
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Output;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -24,7 +26,7 @@ import java.util.stream.Collectors;
 
 @CommandLineProgramProperties(
         summary = "Converts a VCF of known sites into an optimized format (serialized Java object format)",
-        oneLineSummary = "Converts a VCF of known sites into an optimized format (serialized Java object format)",
+        oneLineSummary = "Converts a VCF of known sites into an optimized format (serialized Kryo object format)",
         programGroup = CopyNumberProgramGroup.class
 )
 @DocumentedFeature
@@ -39,7 +41,7 @@ public class CreateOptimizedKnownSitesFile extends CommandLineProgram {
 
     @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
-            doc = "The output file, in serialized Java object format",
+            doc = "The output file, in serialized Kryo object format",
             optional = true)
     public String outputFile;
 
@@ -84,9 +86,10 @@ public class CreateOptimizedKnownSitesFile extends CommandLineProgram {
         return wrappedResults;
     }
 
-    private static void serialize(Object obj, OutputStream out) throws IOException {
-        try (ObjectOutputStream oos = new ObjectOutputStream(out)) {
-            oos.writeObject(obj);
+    private static void serialize(Object object, OutputStream out) {
+        Kryo kryo = new Kryo();
+        try (Output output = new Output(out)) {
+            kryo.writeClassAndObject(output, object);
         }
     }
 }

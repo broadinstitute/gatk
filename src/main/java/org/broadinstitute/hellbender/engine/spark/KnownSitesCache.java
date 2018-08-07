@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.engine.spark;
 
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Input;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -11,7 +13,6 @@ import org.broadinstitute.hellbender.utils.variant.VariantContextVariantAdapter;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.ObjectInputStream;
 import java.nio.file.Files;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -37,7 +38,7 @@ class KnownSitesCache {
 
     @SuppressWarnings("unchecked")
     private static IntervalsSkipList<GATKVariant> retrieveVariants(List<String> paths) {
-        if (paths.size() == 1 && paths.get(0).endsWith(".ser")) {
+        if (paths.size() == 1 && paths.get(0).endsWith(".kryo")) {
             try {
                 return (IntervalsSkipList<GATKVariant>) deserialize(Files.newInputStream(IOUtils.getPath(paths.get(0))));
             } catch (IOException | ClassNotFoundException e) {
@@ -59,9 +60,9 @@ class KnownSitesCache {
     }
 
     private static Object deserialize(InputStream in) throws IOException, ClassNotFoundException {
-        try (ObjectInputStream ois = new ObjectInputStream(in)) {
-            return ois.readObject();
-        }
+        Kryo kryo = new Kryo();
+        Input input = new Input(in);
+        return kryo.readClassAndObject(input);
     }
 
     private static List<GATKVariant> wrapQueryResults(final Iterator<VariantContext> queryResults ) {
