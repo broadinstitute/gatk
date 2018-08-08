@@ -132,7 +132,7 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
                 new SvDiscoveryInputMetaData(ctx, discoverStageArgs, null, vcfOutputPath,
                         null, null, null,
                         cnvCallsBroadcast,
-                        getHeaderForReads(), getReference(), localLogger);
+                        getHeaderForReads(), getReference(), getDefaultToolVCFHeaderLines(), localLogger);
 
         final JavaRDD<AlignedContig> parsedContigAlignments =
                 new SvDiscoverFromLocalAssemblyContigAlignmentsSpark
@@ -146,7 +146,7 @@ public final class DiscoverVariantsFromContigAlignmentsSAMSpark extends GATKSpar
                         .discoverVariantsFromChimeras(svDiscoveryInputMetaData, parsedContigAlignments);
 
         final SAMSequenceDictionary refSeqDictionary = svDiscoveryInputMetaData.getReferenceData().getReferenceSequenceDictionaryBroadcast().getValue();
-        SVVCFWriter.writeVCF(annotatedVariants, vcfOutputPath, refSeqDictionary, localLogger);
+        SVVCFWriter.writeVCF(annotatedVariants, vcfOutputPath, refSeqDictionary, getDefaultToolVCFHeaderLines(), localLogger);
     }
 
 
