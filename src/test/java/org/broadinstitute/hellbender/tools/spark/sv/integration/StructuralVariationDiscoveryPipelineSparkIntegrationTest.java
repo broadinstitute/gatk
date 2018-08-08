@@ -56,7 +56,7 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
             return  " -R " + SVIntegrationTestDataProvider.reference_2bit +
                     " -I " + bamLoc +
                     " -O " + outputDir + "/StructuralVariationDiscoveryPipelineSparkIntegrationTest/" +
-            " --aligner-index-image " + alignerRefIndexImgLoc +
+                    " --aligner-index-image " + alignerRefIndexImgLoc +
                     " --kmers-to-ignore " + kmerIgnoreListLoc +
                     " --contig-sam-file "       + outputDir + "/assemblies.bam" +
                     " --breakpoint-intervals " + outputDir + "/intervals" +
@@ -180,14 +180,20 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
                                               final String experimentalOutputPathForNonComplex,
                                               final List<String> attributesToIgnore, final boolean onHDFS) throws Exception {
 
-        List<VariantContext> expectedVcs;
-        try (final VCFFileReader fileReader = new VCFFileReader(new File(expectedVCFPath), false) ) {
-            try (final CloseableIterator<VariantContext> iterator = fileReader.iterator()) {
-                expectedVcs = Utils.stream(iterator).collect(Collectors.toList());
+        final List<VariantContext> expectedVcs;
+        if (expectedVCFPath == null) {
+            expectedVcs = Collections.emptyList();
+        } else {
+            try (final VCFFileReader fileReader = new VCFFileReader(new File(expectedVCFPath), false)) {
+                try (final CloseableIterator<VariantContext> iterator = fileReader.iterator()) {
+                    expectedVcs = Utils.stream(iterator).collect(Collectors.toList());
+                }
             }
         }
 
         List<VariantContext> actualVcs = extractActualVCs(generatedVCFPath, onHDFS);
+        if (expectedVCFPath == null)
+            Assert.assertTrue(actualVcs.isEmpty());
 
         GATKBaseTest.assertCondition(actualVcs, expectedVcs,
                 (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqual(a, e, attributesToIgnore));

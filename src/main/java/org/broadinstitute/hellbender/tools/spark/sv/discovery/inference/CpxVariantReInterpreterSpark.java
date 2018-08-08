@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.sv.discovery.inference;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFHeaderLine;
 import org.apache.http.annotation.Experimental;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -25,6 +26,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 /**
  * (Internal) Tries to extract simple variants from a provided GATK-SV CPX.vcf
@@ -82,11 +84,12 @@ public class CpxVariantReInterpreterSpark extends GATKSparkTool {
 
         // TODO: 5/9/18 getback sample name in output files
         final SAMFileHeader headerForReads = getHeaderForReads();
+        final Set<VCFHeaderLine> defaultToolVCFHeaderLines = getDefaultToolVCFHeaderLines();
         final SvDiscoveryInputMetaData svDiscoveryInputMetaData =
                 new SvDiscoveryInputMetaData(ctx, discoverStageArgs, nonCanonicalChromosomeNamesFile,
                         derivedSimpleVCFPrefix,
                         null, null, null, null,
-                        headerForReads, getReference(), localLogger);
+                        headerForReads, getReference(), defaultToolVCFHeaderLines, localLogger);
 
         final JavaRDD<VariantContext> complexVariants = new VariantsSparkSource(ctx)
                 .getParallelVariantContexts(complexVCF, getIntervals());
@@ -98,7 +101,7 @@ public class CpxVariantReInterpreterSpark extends GATKSparkTool {
         final String derivedOneSegmentSimpleVCF = derivedSimpleVCFPrefix + "_1_seg.vcf";
         final String derivedMultiSegmentSimpleVCF = derivedSimpleVCFPrefix + "_multi_seg.vcf";
         final VCFHeader vcfHeader = VariantsSparkSource.getHeader(complexVCF);
-        SVVCFWriter.writeVCF(extract.getReInterpretZeroOrOneSegmentCalls(), derivedOneSegmentSimpleVCF, vcfHeader.getSequenceDictionary(), logger);
-        SVVCFWriter.writeVCF(extract.getReInterpretMultiSegmentsCalls(), derivedMultiSegmentSimpleVCF, vcfHeader.getSequenceDictionary(), logger);
+        SVVCFWriter.writeVCF(extract.getReInterpretZeroOrOneSegmentCalls(), derivedOneSegmentSimpleVCF, vcfHeader.getSequenceDictionary(), defaultToolVCFHeaderLines, logger);
+        SVVCFWriter.writeVCF(extract.getReInterpretMultiSegmentsCalls(), derivedMultiSegmentSimpleVCF, vcfHeader.getSequenceDictionary(), defaultToolVCFHeaderLines, logger);
     }
 }

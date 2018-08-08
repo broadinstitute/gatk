@@ -1,16 +1,24 @@
 package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
 import htsjdk.samtools.*;
+import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.utils.HopscotchSet;
 import org.broadinstitute.hellbender.tools.spark.utils.LongIterator;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
+import javax.annotation.Nonnull;
+import java.io.IOException;
 import java.math.BigInteger;
+import java.nio.file.Files;
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Useful scraps of this and that.
@@ -18,6 +26,81 @@ import java.util.stream.Collectors;
 public final class SVUtils {
 
     public static final String GATKSV_CONTIG_ALIGNMENTS_READ_GROUP_ID = "GATKSVContigAlignments";
+
+    public static String getSampleId(final SAMFileHeader header) {
+        final List<SAMReadGroupRecord> readGroups = header.getReadGroups();
+        final Set<String> sampleSet = readGroups.stream().map(SAMReadGroupRecord::getSample).collect(Collectors.toSet());
+
+        Utils.validate(sampleSet.size() == 1,
+                "Read groups must contain reads from one and only one sample, " +
+                        "but we are finding the following ones in the given header: \t" + sampleSet.toString());
+
+        final String sample = sampleSet.iterator().next();
+        return sample;
+    }
+
+    /**
+     * Given {@code sortOrder}, provide appropriate comparator.
+     * Currently only support coordinate or query-name order,
+     * and throws UserException if other values are specified.
+     */
+    public static SAMRecordComparator getSamRecordComparator(final SAMFileHeader.SortOrder sortOrder) {
+        final SAMRecordComparator samRecordComparator;
+        switch (sortOrder) {
+            case coordinate:
+                samRecordComparator = new SAMRecordCoordinateComparator();
+                break;
+            case queryname:
+                samRecordComparator = new SAMRecordQueryNameComparator();
+                break;
+            default:
+                throw new UserException("Unsupported assembly alignment sort order specified");
+        }
+        return samRecordComparator;
+    }
+
+    /**
+     * todo: this should be fixed in a new major version of htsjdk
+     * this exist because for whatever reason,
+     * VC.getAttributeAsStringList() sometimes returns a giant single string, while using
+     * VC.getAttributeAsString() gives back an array.....
+     */
+    public static List<String> getAttributeAsStringList(final VariantContext vc, final String attributeKey) {
+        return getAttributeAsStringStream(vc, attributeKey)
+                .collect(Collectors.toList());
+    }
+
+    public static Stream<String> getAttributeAsStringStream(final VariantContext vc, final String attributeKey) {
+        if ( ! vc.hasAttribute(attributeKey) )
+            return Stream.empty();
+        return vc.getAttributeAsStringList(attributeKey, "").stream()
+                .flatMap(s -> {
+                    if ( s.contains(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR) ) {
+                        return Arrays.stream( s.split(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR) );
+                    } else {
+                        return Stream.of(s);
+                    }
+                });
+    }
+
+    public static SimpleInterval makeOneBpInterval(final String chr, final int pos) {
+        return new SimpleInterval(chr, pos, pos);
+    }
+
+    public static Set<String> getCanonicalChromosomes(final String nonCanonicalContigNamesFile,
+                                                      @Nonnull final SAMSequenceDictionary dictionary) {
+        final LinkedHashSet<String> allContigs = Utils.nonNull(dictionary).getSequences().stream().map(SAMSequenceRecord::getSequenceName)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (nonCanonicalContigNamesFile == null)
+            return allContigs;
+
+        try (final Stream<String> nonCanonical = Files.lines(IOUtils.getPath(( Utils.nonNull(nonCanonicalContigNamesFile) )))) {
+            nonCanonical.forEach(allContigs::remove);
+            return allContigs;
+        } catch ( final IOException ioe ) {
+            throw new UserException("Can't read nonCanonicalContigNamesFile file "+nonCanonicalContigNamesFile, ioe);
+        }
+    }
 
     // =================================================================================================================
 
@@ -42,18 +125,6 @@ public final class SVUtils {
 
     public static <T> Iterator<T> singletonIterator( final T t ) {
         return Collections.singletonList(t).iterator();
-    }
-
-    public static String getSampleId(final SAMFileHeader header) {
-        final List<SAMReadGroupRecord> readGroups = header.getReadGroups();
-        final Set<String> sampleSet = readGroups.stream().map(SAMReadGroupRecord::getSample).collect(Collectors.toSet());
-
-        Utils.validate(sampleSet.size() == 1,
-                "Read groups must contain reads from one and only one sample, " +
-                        "but we are finding the following ones in the given header: \t" + sampleSet.toString());
-
-        final String sample = sampleSet.iterator().next();
-        return sample;
     }
 
     public static Collection<SVKmer> uniquify(final Collection<SVKmer> coll1, final Collection<SVKmer> coll2) {
@@ -118,26 +189,14 @@ public final class SVUtils {
         return Collectors.toCollection( () -> new ArrayList<>(size));
     }
 
-    /**
-     * Given {@code sortOrder}, provide appropriate comparator.
-     * Currently only support coordinate or query-name order,
-     * and throws UserException if other values are specified.
-     */
-    public static SAMRecordComparator getSamRecordComparator(final SAMFileHeader.SortOrder sortOrder) {
-        final SAMRecordComparator samRecordComparator;
-        switch (sortOrder) {
-            case coordinate:
-                samRecordComparator = new SAMRecordCoordinateComparator();
-                break;
-            case queryname:
-                samRecordComparator = new SAMRecordQueryNameComparator();
-                break;
-            default:
-                throw new UserException("Unsupported assembly alignment sort order specified");
+    public static <T extends Enum<T>> EnumMap<T, Long> getZeroInitializedEnumMap(final Class<T> clazz) {
+        EnumMap<T, Long> map = new EnumMap<>(clazz);
+        for (final T t : clazz.getEnumConstants()) {
+            map.put(t, 0L);
         }
-        return samRecordComparator;
+        return map;
     }
-
+    
     // =================================================================================================================
 
     //Workaround for seed 14695981039346656037 that doesn't fit in a signed long

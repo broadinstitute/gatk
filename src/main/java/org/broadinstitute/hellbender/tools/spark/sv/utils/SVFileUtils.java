@@ -14,6 +14,9 @@ public final class SVFileUtils {
 
     private static final String REFERENCE_GAP_INTERVAL_FILE_COMMENT_LINE_PROMPT = "#";
 
+    /**
+     * Write SAM records to designated {@code outputName}.
+     */
     public static void writeSAMFile(final String outputName, final Iterator<SAMRecord> alignments, final SAMFileHeader header,
                                     final boolean preOrdered) {
         Utils.nonNull(alignments, "provided alignments to write out is null");

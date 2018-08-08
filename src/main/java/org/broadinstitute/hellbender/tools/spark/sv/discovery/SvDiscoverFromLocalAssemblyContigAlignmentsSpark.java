@@ -5,6 +5,7 @@ import htsjdk.samtools.*;
 import htsjdk.samtools.util.SequenceUtil;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.vcf.VCFHeaderLine;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaRDD;
@@ -125,11 +126,11 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
             fullName = "write-sam", optional = true)
     private boolean writeSAMFiles;
 
-    static final String SIMPLE_CHIMERA_VCF_FILE_NAME = "NonComplex.vcf";
-    static final String COMPLEX_CHIMERA_VCF_FILE_NAME = "Complex.vcf";
-    static final String REINTERPRETED_1_SEG_CALL_VCF_FILE_NAME = "cpx_reinterpreted_simple_1_seg.vcf";
-    static final String REINTERPRETED_MULTI_SEG_CALL_VCF_FILE_NAME = "cpx_reinterpreted_simple_multi_seg.vcf";
-    static final String MERGED_VCF_FILE_NAME = "merged_simple.vcf";
+    public static final String SIMPLE_CHIMERA_VCF_FILE_NAME = "NonComplex.vcf";
+    public static final String COMPLEX_CHIMERA_VCF_FILE_NAME = "Complex.vcf";
+    public static final String REINTERPRETED_1_SEG_CALL_VCF_FILE_NAME = "cpx_reinterpreted_simple_1_seg.vcf";
+    public static final String REINTERPRETED_MULTI_SEG_CALL_VCF_FILE_NAME = "cpx_reinterpreted_simple_multi_seg.vcf";
+    public static final String MERGED_VCF_FILE_NAME = "merged_simple.vcf";
 
     @Override
     public boolean requiresReference() {
@@ -150,6 +151,7 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
     protected void runTool(final JavaSparkContext ctx) {
 
         validateParams();
+        final Set<VCFHeaderLine> defaultToolVCFHeaderLines = getDefaultToolVCFHeaderLines();
 
         final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast =
                 StructuralVariationDiscoveryPipelineSpark.broadcastCNVCalls(ctx, getHeaderForReads(),
@@ -159,7 +161,7 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
                 new SvDiscoveryInputMetaData(ctx, discoverStageArgs, nonCanonicalChromosomeNamesFile, outputPrefixWithSampleName,
                         null, null, null,
                         cnvCallsBroadcast,
-                        getHeaderForReads(), getReference(), localLogger);
+                        getHeaderForReads(), getReference(), defaultToolVCFHeaderLines, localLogger);
         final JavaRDD<GATKRead> assemblyRawAlignments = getReads();
 
         final AssemblyContigsClassifiedByAlignmentSignatures contigsByPossibleRawTypes =
@@ -328,7 +330,7 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
         final Logger logger = svDiscoveryInputMetaData.getDiscoverStageArgs().runInDebugMode ? svDiscoveryInputMetaData.getToolLogger() : null;
         SVVCFWriter.writeVCF(simpleVariants, outputPrefixWithSampleName + SIMPLE_CHIMERA_VCF_FILE_NAME,
                 svDiscoveryInputMetaData.getReferenceData().getReferenceSequenceDictionaryBroadcast().getValue(),
-                logger);
+                svDiscoveryInputMetaData.getDefaultToolVCFHeaderLines(), logger);
         return simpleVariants;
     }
 
@@ -348,11 +350,12 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
                                                                         final JavaRDD<GATKRead> assemblyRawAlignments,
                                                                         final String outputPrefixWithSampleName) {
         final Logger toolLogger = svDiscoveryInputMetaData.getDiscoverStageArgs().runInDebugMode ? svDiscoveryInputMetaData.getToolLogger() : null;
+        final Set<VCFHeaderLine> defaultToolVCFHeaderLines = svDiscoveryInputMetaData.getDefaultToolVCFHeaderLines();
         final List<VariantContext> complexVariants =
                 CpxVariantInterpreter.makeInterpretation(contigsWithCpxAln, svDiscoveryInputMetaData);
         SVVCFWriter.writeVCF(complexVariants, outputPrefixWithSampleName + COMPLEX_CHIMERA_VCF_FILE_NAME,
                 svDiscoveryInputMetaData.getReferenceData().getReferenceSequenceDictionaryBroadcast().getValue(),
-                toolLogger);
+                defaultToolVCFHeaderLines, toolLogger);
 
         final JavaRDD<VariantContext> complexVariantsRDD = ctx.parallelize(complexVariants);
         final SegmentedCpxVariantSimpleVariantExtractor.ExtractedSimpleVariants reInterpretedSimple =
@@ -360,8 +363,8 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
         final SAMSequenceDictionary refSeqDict = svDiscoveryInputMetaData.getReferenceData().getReferenceSequenceDictionaryBroadcast().getValue();
         final String derivedOneSegmentSimpleVCF = outputPrefixWithSampleName + REINTERPRETED_1_SEG_CALL_VCF_FILE_NAME;
         final String derivedMultiSegmentSimpleVCF = outputPrefixWithSampleName + REINTERPRETED_MULTI_SEG_CALL_VCF_FILE_NAME;
-        SVVCFWriter.writeVCF(reInterpretedSimple.getReInterpretZeroOrOneSegmentCalls(), derivedOneSegmentSimpleVCF, refSeqDict, toolLogger);
-        SVVCFWriter.writeVCF(reInterpretedSimple.getReInterpretMultiSegmentsCalls(), derivedMultiSegmentSimpleVCF, refSeqDict, toolLogger);
+        SVVCFWriter.writeVCF(reInterpretedSimple.getReInterpretZeroOrOneSegmentCalls(), derivedOneSegmentSimpleVCF, refSeqDict, defaultToolVCFHeaderLines, toolLogger);
+        SVVCFWriter.writeVCF(reInterpretedSimple.getReInterpretMultiSegmentsCalls(), derivedMultiSegmentSimpleVCF, refSeqDict, defaultToolVCFHeaderLines, toolLogger);
 
         return new CpxAndReInterpretedSimpleVariants(complexVariants, reInterpretedSimple.getMergedReinterpretedCalls());
     }
@@ -399,6 +402,7 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
         final String out = outputPrefixWithSampleName + MERGED_VCF_FILE_NAME;
         SVVCFWriter.writeVCF(variantsWithFilterApplied, out,
                 svDiscoveryInputMetaData.getReferenceData().getReferenceSequenceDictionaryBroadcast().getValue(),
+                svDiscoveryInputMetaData.getDefaultToolVCFHeaderLines(),
                 svDiscoveryInputMetaData.getToolLogger());
     }
 
@@ -454,7 +458,7 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
             if ( !variantContext.hasAttribute(GATKSVVCFConstants.CONTIG_NAMES) )
                 return true;
 
-            final List<String> mapQuals = SvDiscoveryUtils.getAttributeAsStringList(variantContext, attributeKey);
+            final List<String> mapQuals = SVUtils.getAttributeAsStringList(variantContext, attributeKey);
             int maxMQ = 0;
             for (final String mapQual : mapQuals) {
                 Integer integer = Integer.valueOf(mapQual);

@@ -37,14 +37,16 @@ public class SVVCFWriter {
      * sequence dictionaries in a scrambled order, see https://github.com/broadinstitute/gatk/issues/2037.
      */
     public static void writeVCF(final List<VariantContext> localVariants, final String vcfFileName,
-                                final SAMSequenceDictionary referenceSequenceDictionary, final Logger logger) {
+                                final SAMSequenceDictionary referenceSequenceDictionary,
+                                final Set<VCFHeaderLine> defaultToolVCFHeaderLines,
+                                final Logger logger) {
 
         final List<VariantContext> sortedVariantsList = sortVariantsByCoordinate(localVariants, referenceSequenceDictionary);
 
         if (logger != null)
             logNumOfVarByTypes(sortedVariantsList, logger);
 
-        writeVariants(vcfFileName, sortedVariantsList, referenceSequenceDictionary);
+        writeVariants(vcfFileName, sortedVariantsList, referenceSequenceDictionary, defaultToolVCFHeaderLines);
     }
 
     private static void logNumOfVarByTypes(final List<VariantContext> variants, final Logger logger) {
@@ -78,13 +80,16 @@ public class SVVCFWriter {
     }
 
     private static void writeVariants(final String fileName, final List<VariantContext> variantsArrayList,
-                                      final SAMSequenceDictionary referenceSequenceDictionary) {
+                                      final SAMSequenceDictionary referenceSequenceDictionary,
+                                      final Set<VCFHeaderLine> defaultToolVCFHeaderLines) {
         try (final OutputStream outputStream
                      = new BufferedOutputStream(BucketUtils.createFile(fileName))) {
 
             final VariantContextWriter vcfWriter = getVariantContextWriter(outputStream, referenceSequenceDictionary);
 
-            vcfWriter.writeHeader(getVcfHeader(referenceSequenceDictionary));
+            final VCFHeader vcfHeader = getVcfHeader(referenceSequenceDictionary);
+            defaultToolVCFHeaderLines.forEach(vcfHeader::addMetaDataLine);
+            vcfWriter.writeHeader(vcfHeader);
             variantsArrayList.forEach(vcfWriter::add);
             vcfWriter.close();
 
@@ -105,6 +110,7 @@ public class SVVCFWriter {
         return header;
     }
 
+    // TODO: 8/10/18 see 5083
     private static VariantContextWriter getVariantContextWriter(final OutputStream outputStream,
                                                                 final SAMSequenceDictionary referenceSequenceDictionary) {
         VariantContextWriterBuilder vcWriterBuilder = new VariantContextWriterBuilder()
