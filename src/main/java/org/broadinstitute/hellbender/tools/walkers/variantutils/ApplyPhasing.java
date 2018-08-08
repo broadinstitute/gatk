@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import picard.cmdline.programgroups.VariantManipulationProgramGroup;
@@ -53,6 +54,8 @@ public class ApplyPhasing extends VariantWalker {
     @Argument(doc="Unmatched variant report", fullName = "unmatched-variant-report", optional = true)
     public String unmatchedVariantReport = null;
 
+    private List<SimpleInterval> intervals;
+
     private VariantContextWriter vcfWriter;
     private PrintWriter missingAllelesReportWriter;
     private PrintWriter concordanceSummaryReportWriter;
@@ -62,6 +65,10 @@ public class ApplyPhasing extends VariantWalker {
 
     @Override
     public void onTraversalStart() {
+
+        intervals = hasIntervals() ? intervalArgumentCollection.getIntervals(getBestAvailableSequenceDictionary()) :
+                Collections.emptyList();
+
         vcfWriter = createVCFWriter(out);
 
         final VCFHeader header = getHeaderForVariants();
@@ -132,9 +139,17 @@ public class ApplyPhasing extends VariantWalker {
                       final ReadsContext readsContext,
                       final ReferenceContext referenceContext,
                       final FeatureContext featureContext) {
+
+
+        final int variantStart = variant.getStart();
+        final SimpleInterval variantStartInterval = new SimpleInterval(variant.getContig(), variantStart, variantStart);
+        if (! intervals.stream().anyMatch(interval -> interval.contains(variantStartInterval))) {
+            return;
+        }
+
         final List<VariantContext> phasedOverlappingVariants = featureContext.getValues(phased);
         final List<VariantContext> phasedVariantsWithSameStart =
-                phasedOverlappingVariants.stream().filter(v -> v.getStart() == variant.getStart()).collect(Collectors.toList());
+                phasedOverlappingVariants.stream().filter(v -> v.getStart() == variantStart).collect(Collectors.toList());
 
         concordanceSummary.sawVariant(variant);
 
@@ -190,7 +205,7 @@ public class ApplyPhasing extends VariantWalker {
                     concordanceSummary.mismatchedAlleles(variant);
                     if (missingAllelesReportWriter != null) {
                         missingAllelesReportWriter.println(variant.getContig() + "\t" +
-                                variant.getStart() + "\t" +
+                                variantStart + "\t" +
                                 (phasedVariantRefLonger ? variant.getAlleles().stream().map(alleleMapping::remap).collect(Collectors.toList()) : variant.getAlleles()) + "\t" +
                                 phasedVariantGenotype.getSampleName() + "\t" +
                                 (phasedVariantRefLonger ? phasedVariant.getAlleles() : phasedVariantGenotype.getAlleles().stream().map(alleleMapping::remap).collect(Collectors.toList())));
@@ -204,7 +219,7 @@ public class ApplyPhasing extends VariantWalker {
                     concordanceSummary.discordantGenotype(variant);
                     if (discordantGenotypesReportWriter != null) {
                         discordantGenotypesReportWriter.println(variant.getContig() +
-                                "\t" + variant.getStart() +
+                                "\t" + variantStart +
                                 "\t" + variant.getType() +
                                 "\t" + variant.getPhredScaledQual() +
                                 "\t" + phasedVariant.getPhredScaledQual() +
@@ -251,7 +266,7 @@ public class ApplyPhasing extends VariantWalker {
             if (unmatchedVariantReportWriter != null) {
                 final Double minAB = getMinAB(variant);
                 unmatchedVariantReportWriter.println(variant.getContig() +
-                        "\t" + variant.getStart() +
+                        "\t" + variantStart +
                         "\t" + variant.getType() +
                         "\t" + variant.getFilters() +
                         "\t" + variant.getReference() +
