@@ -7,6 +7,7 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
@@ -16,6 +17,10 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
+/**
+ * Stores the results of the first pass of {@link FilterMutectCalls}, a purely online step in which each variant is
+ * not "aware" of other variants, and learns various global properties necessary for a more refined second step.
+ */
 public class FilteringFirstPass {
     final List<FilterResult> filterResults;
     final Map<String, ImmutablePair<String, Integer>> filteredPhasedCalls;
@@ -92,6 +97,7 @@ public class FilteringFirstPass {
      * @return
      */
     public static FilterStats calculateThresholdForReadOrientationFilter(final double[] posteriors, final double requestedFPR){
+        ParamUtils.isPositive(requestedFPR, "requested FPR must be positive");
         final double thresholdForFilteringNone = 1.0;
         final double thresholdForFilteringAll = 0.0;
 
