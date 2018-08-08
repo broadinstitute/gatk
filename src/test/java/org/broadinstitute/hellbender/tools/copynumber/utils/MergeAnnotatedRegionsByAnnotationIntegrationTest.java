@@ -10,7 +10,9 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class MergeAnnotatedRegionsByAnnotationIntegrationTest extends CommandLineProgramTest {
     private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/copynumber/utils/";
@@ -24,11 +26,12 @@ public class MergeAnnotatedRegionsByAnnotationIntegrationTest extends CommandLin
     @Test
     public void testLegacySegFile() throws IOException {
         final File outputFile = File.createTempFile("mergeannotatedregionsbyannotation", ".seg");
+        final String annotationToMatch = "Segment_Mean";
         final List<String> arguments = new ArrayList<>();
         arguments.add("--" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME);
         arguments.add(SIMPLE_TEST_FILE);
         arguments.add("--" + MergeAnnotatedRegionsByAnnotation.ANNOTATIONS_TO_MATCH);
-        arguments.add("Segment_Mean");
+        arguments.add(annotationToMatch);
         arguments.add("--" + StandardArgumentDefinitions.REFERENCE_LONG_NAME);
         arguments.add(REF);
         arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
@@ -38,7 +41,10 @@ public class MergeAnnotatedRegionsByAnnotationIntegrationTest extends CommandLin
         final AnnotatedIntervalCollection collection = AnnotatedIntervalCollection.create(outputFile.toPath(), null);
         Assert.assertEquals(collection.getRecords().size(), 2);
 
-        // TODO: Assert that the values are okay
+        final List<Double> gtSegMeans = Arrays.asList(0.037099, 0.001748);
+        final List<Double> segMeans = collection.getRecords().stream().map(r -> r.getAnnotationValue(annotationToMatch))
+                .map(Double::parseDouble)
+                .collect(Collectors.toList());
+        Assert.assertEquals(segMeans, gtSegMeans);
     }
-
 }
