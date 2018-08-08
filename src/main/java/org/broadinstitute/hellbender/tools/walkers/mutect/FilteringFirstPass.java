@@ -97,7 +97,7 @@ public class FilteringFirstPass {
      * @return
      */
     public static FilterStats calculateThresholdForReadOrientationFilter(final double[] posteriors, final double requestedFPR){
-        ParamUtils.isPositive(requestedFPR, "requested FPR must be positive");
+        ParamUtils.isPositiveOrZero(requestedFPR, "requested FPR must be non-negative");
         final double thresholdForFilteringNone = 1.0;
         final double thresholdForFilteringAll = 0.0;
 
