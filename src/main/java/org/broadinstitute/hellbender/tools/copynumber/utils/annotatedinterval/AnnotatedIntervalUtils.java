@@ -8,6 +8,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.util.*;
 import java.util.function.BiFunction;
@@ -82,24 +83,26 @@ public class AnnotatedIntervalUtils {
     }
 
     /**
-     * TODO: Update this entire doc
+     * Merge AnnotatedIntervals by whether the given annotation values match (all annotations must match).
      *
-     * Merge AnnotatedIntervals by whether the regions overlap.  Sorting is performed as well, so input
-     * ordering is lost.
+     * Sorting is performed as well, so input ordering is lost.  Note that the input itself is not changed.
      *
      * When two overlapping regions are merged, annotations are merged as follows:
      *  - The annotation appears in one region:  Resulting region will have the annotation with the value of that one region
      *  - The annotation appears in both regions:  Resulting region will have both values separated by the {@code annotationSeparator}
      *  parameter.
      *
-     * Only merges overlaps, not abutters.
-     *
-     * @param initialRegions regions to merge.  Never {@code null}
-     * @param dictionary sequence dictionary to use for sorting.  Never {@code null}
-     * @param annotationNames separator to use in the case of annotation conflicts.  Never {@code null}
+     * @param initialRegions Regions to merge.  Never {@code null}
+     * @param dictionary Sequence dictionary to use for sorting.  Never {@code null}
+     * @param annotationNames Names of the annotations to use for matching the initialRegions.  Never {@code null}
      * @param progressUpdater Consuming function that can callback with the latest region that has been processed.
-     *                        Never {@code null}.  Use a no-op function if you do not wish to provide a progress update.
-     * @return Segments will be sorted by the sequence dictionary
+     *                        Never {@code null}  Use a no-op function if you do not wish to provide a progress update.
+     * @param annotationSeparator In the case of conflicting annotation values (of annotations other than those specified
+     *                            in annotationNames), use this string to separate the resulting (merged) value.
+     *                            Never {@code null}
+     * @param maxDistanceInBp if two segments are farther than this distance, do not merge, even if all annotation values
+     *                        match.  Must be >= 0.
+     * @return merged annotated intervals.  Empty list if initialRegions was empty.  Never {@code null}
      */
     public static List<AnnotatedInterval> mergeRegionsByAnnotation(final List<AnnotatedInterval> initialRegions,
                                                        final SAMSequenceDictionary dictionary, final List<String> annotationNames,
@@ -109,7 +112,9 @@ public class AnnotatedIntervalUtils {
         Utils.nonNull(initialRegions);
         Utils.nonNull(dictionary);
         Utils.nonNull(annotationNames);
+        Utils.nonNull(annotationSeparator);
         Utils.nonNull(progressUpdater);
+        ParamUtils.isPositiveOrZero(maxDistanceInBp, "Cannot have a negative value for distance.");
 
         final List<AnnotatedInterval> segments = IntervalUtils.sortLocatablesBySequenceDictionary(initialRegions,
                 dictionary);
@@ -144,16 +149,19 @@ public class AnnotatedIntervalUtils {
     }
 
     /**
-     * TODO: Docs
-     * TODO: Testing
-     * Assumes that loc2 appears at a higher reference position.  Otherwise, you will get a negative number.
-     * Overlapping locatables will always return 0.
+     * Gets the distance, in base pairs between two locatables.  Looks for the closest endpoints, so the order of loc1
+     *  and loc2 do not matter.
+     *
+     * Overlapping (or abutting) locatables will always return 0.
+     *
      * Locatables on different contigs will have a distance of {@link Long#MAX_VALUE}
-     * @param loc1
-     * @param loc2
+     * @param loc1 Never {@code null}
+     * @param loc2 Never {@code null}
      * @return 0 or a positive number.
      */
     private static long getDistance(final Locatable loc1, final Locatable loc2) {
+        Utils.nonNull(loc1);
+        Utils.nonNull(loc2);
 
         if (!loc1.getContig().equals(loc2.getContig())) {
             return Long.MAX_VALUE;

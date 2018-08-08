@@ -18,9 +18,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @CommandLineProgramProperties(
-        oneLineSummary = "(EXPERIMENTAL) Merge annotated genomic regions within specified distance if annotation value(s) are exactly the same.",
-        // TODO: Finish this doc
-        summary = "(EXPERIMENTAL) THIS TOOL IS TOTALLY UNSUPPORTED",
+        oneLineSummary = "(DO NOT USE)  (EXPERIMENTAL) Merge annotated genomic regions within specified distance if annotation value(s) are exactly the same.",
+        summary = "(DO NOT USE)  (EXPERIMENTAL) THIS TOOL IS TOTALLY UNSUPPORTED. ",
         programGroup = CopyNumberProgramGroup.class)
 
 @ExperimentalFeature

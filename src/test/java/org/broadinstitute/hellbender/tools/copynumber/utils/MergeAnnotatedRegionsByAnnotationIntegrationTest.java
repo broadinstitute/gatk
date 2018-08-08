@@ -17,6 +17,10 @@ public class MergeAnnotatedRegionsByAnnotationIntegrationTest extends CommandLin
     private static final String SIMPLE_TEST_FILE = TEST_SUB_DIR + "merge-annotated-regions-by-annotation-legacy-test.seg";
     private static final String REF = hg19MiniReference;
 
+    /**
+     * Very simple test, since this tool basically calls out to a class that does all the heavy lifting.
+     * @throws IOException
+     */
     @Test
     public void testLegacySegFile() throws IOException {
         final File outputFile = File.createTempFile("mergeannotatedregionsbyannotation", ".seg");
@@ -34,7 +38,7 @@ public class MergeAnnotatedRegionsByAnnotationIntegrationTest extends CommandLin
         final AnnotatedIntervalCollection collection = AnnotatedIntervalCollection.create(outputFile.toPath(), null);
         Assert.assertEquals(collection.getRecords().size(), 2);
 
-        //TODO: assert that Segment Mean is on the right.
+        // TODO: Assert that the values are okay
     }
 
 }

@@ -94,7 +94,7 @@ public class SimpleGermlineTagger {
                 final CalledCopyRatioSegment.Call normalCall = Arrays.stream(CalledCopyRatioSegment.Call.values())
                         .filter(c -> c.getOutputString().equals(normalSeg.getAnnotationValue(callAnnotation))).findFirst().orElse(null);
                 if (normalCall == null) {
-                    throw new UserException.BadInput("No call exists in normal segment.  Does normal input have a call field (" + callAnnotation + "?");
+                    throw new UserException.BadInput("No call exists in normal segment.  Does normal input have a call field \"" + callAnnotation + "\"?");
                 }
                 result.putAll(overlappingTumorSegments.stream()
                         .filter(s -> ((Math.abs(s.getStart() - normalSeg.getStart()) <= paddingInBp) || (Math.abs(normalSeg.getEnd() - s.getEnd()) <= paddingInBp)
@@ -111,7 +111,7 @@ public class SimpleGermlineTagger {
 
     private static AnnotatedInterval createTumorTaggedSegment(final AnnotatedInterval tumorSegment, final String updateAnnotationName, final String updateAnnotationValue) {
         final Pair<String, String> updatePair = Pair.of(updateAnnotationName, updateAnnotationValue);
-        return createTumorTaggedSegment(tumorSegment, Arrays.asList(updatePair));
+        return createTumorTaggedSegment(tumorSegment, Collections.singletonList(updatePair));
     }
 
     private static AnnotatedInterval createTumorTaggedSegment(final AnnotatedInterval tumorSegment, final List<Pair<String,String>> updateAnnotationNameValuePairs) {
