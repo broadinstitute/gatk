@@ -8,14 +8,7 @@ import org.testng.annotations.Test;
 
 import java.util.Optional;
 
-public class Mutect2FilteringEngineUnitTest extends BaseTest {
-    Mutect2FilteringEngine engine;
-
-    @BeforeSuite
-    public void init(){
-        engine = new Mutect2FilteringEngine(new M2FiltersArgumentCollection(), "badTumor", Optional.empty());
-    }
-
+public class FilteringFirstPassUnitTest extends BaseTest {
     @DataProvider(name = "falsePositiveRateData")
     public Object[][] makeFalsePositiveRateData() {
         return new Object[][]{
@@ -33,7 +26,7 @@ public class Mutect2FilteringEngineUnitTest extends BaseTest {
     public void testCalculateThresholdForReadOrientationFilter(final double[] posteriors,
                                                                final double maxErrorRate,
                                                                final double expectedThreshold){
-        final Mutect2FilterSummary.FilterStats stats = engine.calculateThresholdForReadOrientationFilter(posteriors, maxErrorRate);
+        final FilteringFirstPass.FilterStats stats = FilteringFirstPass.calculateThresholdForReadOrientationFilter(posteriors, maxErrorRate);
         Assert.assertEquals(stats.getThreshold(), expectedThreshold);
     }
 

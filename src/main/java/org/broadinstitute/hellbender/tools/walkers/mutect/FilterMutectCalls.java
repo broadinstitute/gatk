@@ -22,8 +22,6 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
 import java.io.File;
 import java.util.Optional;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -84,9 +82,7 @@ public final class FilterMutectCalls extends TwoPassVariantWalker {
 
     private Mutect2FilteringEngine filteringEngine;
 
-    private List<FilterResult> firstPassFilterResults;
-
-    private Mutect2FilterSummary stats;
+    private FilteringFirstPass filteringFirstPass;
 
     @Override
     public void onTraversalStart() {
@@ -109,7 +105,7 @@ public final class FilterMutectCalls extends TwoPassVariantWalker {
         final Optional<String> normalSample = normalSampleHeaderLine == null ? Optional.empty() : Optional.of(normalSampleHeaderLine.getValue());
 
         filteringEngine = new Mutect2FilteringEngine(MTFAC, tumorSample, normalSample);
-        firstPassFilterResults = new ArrayList<>();
+        filteringFirstPass = new FilteringFirstPass(tumorSample);
     }
 
     @Override
@@ -120,18 +116,18 @@ public final class FilterMutectCalls extends TwoPassVariantWalker {
     @Override
     public void firstPassApply(final VariantContext vc, final ReadsContext readsContext, final ReferenceContext refContext, final FeatureContext fc) {
         final FilterResult filterResult = filteringEngine.calculateFilters(MTFAC, vc, Optional.empty());
-        firstPassFilterResults.add(filterResult);
+        filteringFirstPass.add(filterResult, vc);
     }
 
     @Override
     protected void afterFirstPass() {
-        stats = filteringEngine.calculateFilterStats(firstPassFilterResults, MTFAC.maxFalsePositiveRate);
-        Mutect2FilterSummary.writeM2FilterSummary(stats, MTFAC.mutect2FilteringStatsTable);
+        filteringFirstPass.learnModelForSecondPass(MTFAC.maxFalsePositiveRate);
+        filteringFirstPass.writeM2FilterSummary(MTFAC.mutect2FilteringStatsTable);
     }
 
     @Override
     public void secondPassApply(final VariantContext vc, final ReadsContext readsContext, final ReferenceContext refContext, final FeatureContext fc) {
-        final FilterResult filterResult = filteringEngine.calculateFilters(MTFAC, vc, Optional.of(stats));
+        final FilterResult filterResult = filteringEngine.calculateFilters(MTFAC, vc, Optional.of(filteringFirstPass));
         final VariantContextBuilder vcb = new VariantContextBuilder(vc);
 
         vcb.filters(filterResult.getFilters());
