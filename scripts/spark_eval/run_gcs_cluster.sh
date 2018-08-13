@@ -27,4 +27,4 @@ do
 done
 
 # Delete cluster
-gcloud dataproc clusters delete --quiet "$GCS_CLUSTER"
+#gcloud dataproc clusters delete --quiet "$GCS_CLUSTER"

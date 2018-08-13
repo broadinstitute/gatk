@@ -167,9 +167,9 @@ public class ReadsPipelineSpark extends GATKSparkTool {
 
     @Override
     protected void runTool(final JavaSparkContext ctx) {
-        if (joinStrategy == JoinStrategy.BROADCAST && ! getReference().isCompatibleWithSparkBroadcast()){
-            throw new UserException.Require2BitReferenceForBroadcast();
-        }
+//        if (joinStrategy == JoinStrategy.BROADCAST && ! getReference().isCompatibleWithSparkBroadcast()){
+//            throw new UserException.Require2BitReferenceForBroadcast();
+//        }
 
         final JavaRDD<GATKRead> alignedReads;
         final SAMFileHeader header;
