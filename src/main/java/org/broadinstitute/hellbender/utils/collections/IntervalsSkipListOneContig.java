@@ -25,18 +25,21 @@ public final class IntervalsSkipListOneContig<T extends Locatable> implements Se
     // approx number of buckets we're aiming for.
     private static final int NUMBUCKETS = 1000;
     // each bucket contains 2**shift entries.
-    private final int shift;
+    private int shift;
 
     // input intervals, sorted by start location
-    private final List<T> vs;
+    private List<T> vs;
     // the contig all the intervals are in.
-    private final String contig;
+    private String contig;
 
     // reach: bucket# -> how far that bucket reaches.
     // e.g. bucket 0 contains the first 2**shift locatables. reach[0] is the max over their .getEnd()
     //      reach[x] is the max over the .getEnd for that bucket and all the ones before it.
-    private final int[] reach;
-    private final int reachLength;
+    private int[] reach;
+    private int reachLength;
+
+    public IntervalsSkipListOneContig() {
+    }
 
     /**
      * Creates an IntervalsSkipList that holds a copy of the given intervals, sorted
