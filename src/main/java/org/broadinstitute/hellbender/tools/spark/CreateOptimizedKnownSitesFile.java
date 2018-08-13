@@ -53,7 +53,7 @@ public class CreateOptimizedKnownSitesFile extends CommandLineProgram {
             logger.info("Writing file to " + outputFile);
             serialize(variants, Files.newOutputStream(IOUtils.getPath(outputFile)));
             logger.info("Finished writing file");
-        } catch (IOException e) {
+        } catch (Throwable e) {
             throw new UserException("Problem writing file", e);
         }
         return null;
