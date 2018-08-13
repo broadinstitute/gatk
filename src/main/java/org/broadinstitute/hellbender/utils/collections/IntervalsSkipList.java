@@ -15,7 +15,10 @@ import java.util.*;
 public final class IntervalsSkipList<T extends Locatable> implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    private final Map<String, IntervalsSkipListOneContig<T>> intervals;
+    private Map<String, IntervalsSkipListOneContig<T>> intervals;
+
+    public IntervalsSkipList() {
+    }
 
     /**
      * Creates an IntervalsSkipList that holds a copy of the given intervals, sorted
@@ -49,6 +52,10 @@ public final class IntervalsSkipList<T extends Locatable> implements Serializabl
             return new ArrayList<>();
         }
         return result.getOverlapping(query);
+    }
+
+    public int size() {
+        return intervals.size();
     }
 
 }

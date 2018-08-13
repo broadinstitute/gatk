@@ -2,8 +2,6 @@ package org.broadinstitute.hellbender.tools.spark;
 
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -38,7 +36,7 @@ public class ReadOptimizedKnownSitesFile extends CommandLineProgram {
     protected Object doWork() {
         try {
             IntervalsSkipList<GATKVariant> variants = (IntervalsSkipList<GATKVariant>) deserialize(Files.newInputStream(IOUtils.getPath(inputFile)));
-            System.out.println("Variants: " + variants);
+            System.out.println("Variants: " + variants.size());
         } catch (Throwable e) {
             throw new UserException("Problem writing file", e);
         }
