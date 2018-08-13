@@ -39,7 +39,7 @@ public class MarkDuplicatesSparkUtils {
     // This comparator represents the tiebreaking for PairedEnds duplicate marking.
     // We compare first on score, followed by unclipped start position (which is reversed here because of the expected ordering)
     private static final Comparator<TransientFieldPhysicalLocation> PAIRED_ENDS_SCORE_COMPARATOR = Comparator.comparing(TransientFieldPhysicalLocation::getScore)
-            .thenComparing(PairedEndsLocationComparator.INSTANCE.reversed());
+            .thenComparing(TransientFieldPhysicalLocationComparator.INSTANCE.reversed());
 
     /**
      * Wrapper object used for storing an object and some type of index information.
@@ -480,23 +480,20 @@ public class MarkDuplicatesSparkUtils {
     }
 
     /**
-     * Comparator for by their PhysicalLoccation attributes and strandedness. This comparator is intended to serve as a tiebreaker
+     * Comparator for by their PhysicalLocation attributes and strandedness. This comparator is intended to serve as a tiebreaker
      * for the score comparator.
      *
-     * NOTE: we don't need to worry about reads genomic location as they will necessarily be grouped by start positions if they are being compared
-     *
-     * Ordering is not the same as {@link htsjdk.samtools.SAMRecordCoordinateComparator}, except for the alignment position.
      * It compares two PhysicalLocation  the orientation of the strand, followed by their physical location attributes,
      * and finally as a final tiebreaker the readname lexicographical order.
      *
      * NOTE: Because the original records were grouped by start position, we know that they must be unique once they hit this
      *       comparator and thus we don't need to worry about further tiebreaking for this method.
      */
-    public static final class PairedEndsLocationComparator implements Comparator<TransientFieldPhysicalLocation>, Serializable {
+    public static final class TransientFieldPhysicalLocationComparator implements Comparator<TransientFieldPhysicalLocation>, Serializable {
         private static final long serialVersionUID = 1L;
 
-        public static final PairedEndsLocationComparator INSTANCE = new PairedEndsLocationComparator();
-        private PairedEndsLocationComparator() { }
+        public static final TransientFieldPhysicalLocationComparator INSTANCE = new TransientFieldPhysicalLocationComparator();
+        private TransientFieldPhysicalLocationComparator() { }
 
         @Override
         public int compare( TransientFieldPhysicalLocation first, TransientFieldPhysicalLocation second ) {
