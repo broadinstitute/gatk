@@ -40,17 +40,13 @@ public final class EmptyFragment extends PairedEnds {
         return Type.EMPTY_FRAGMENT;
     }
     @Override
-    public int getScore() {
+    public short getScore() {
         return 0;
     }
     @Override
     // NOTE: This is transient and thus may not exist if the object gets serialized
     public ReadsKey key() {
         return key;
-    }
-    @Override
-    public int getFirstStartPosition() {
-        throw new UnsupportedOperationException("Empty fragments do not support requests for positional information");
     }
     @Override
     public boolean isRead1ReverseStrand() {
