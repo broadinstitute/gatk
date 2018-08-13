@@ -22,7 +22,7 @@ import java.util.Map;
  * during the processing step of MarkDuplicatesSpark
  */
 @DefaultSerializer(Pair.Serializer.class)
-public final class Pair extends PairedEnds implements PhysicalLocation {
+public final class Pair extends TransientFieldPhysicalLocation {
     protected transient ReadsKey key;
 
     private final int firstStartPosition;
@@ -31,14 +31,6 @@ public final class Pair extends PairedEnds implements PhysicalLocation {
     private final boolean isRead2ReverseStrand;
     private final int score;
     private final boolean wasFlipped;
-
-    // Information used to detect optical dupes
-    private short readGroupIndex = -1;
-
-    private transient short tile = -1;
-    private transient int x = -1;
-    private transient int y = -1;
-    private transient short libraryId = -1;
 
     public Pair(final GATKRead read1, final GATKRead read2, final SAMFileHeader header, int partitionIndex, MarkDuplicatesScoringStrategy scoringStrategy, Map<String, Byte> headerLibraryMap) {
         super(partitionIndex, read1.getName());
@@ -180,28 +172,6 @@ public final class Pair extends PairedEnds implements PhysicalLocation {
         }
         return ReadEnds.FF;  //at this point we know for sure isRead1ReverseStrand is false and isRead2ReverseStrand is false
     }
-
-    // Methods for OpticalDuplicateFinder.PhysicalLocation
-    @Override
-    public short getReadGroup() { return this.readGroupIndex; }
-    @Override
-    public void setReadGroup(final short readGroup) { this.readGroupIndex = readGroup; }
-    @Override
-    public short getTile() { return this.tile; }
-    @Override
-    public void setTile(final short tile) { this.tile = tile; }
-    @Override
-    public int getX() { return this.x; }
-    @Override
-    public void setX(final int x) { this.x = x; }
-    @Override
-    public int getY() { return this.y; }
-    @Override
-    public void setY(final int y) { this.y = y; }
-    @Override
-    public short getLibraryId() { return this.libraryId; }
-    @Override
-    public void setLibraryId(final short libraryId) { this.libraryId = libraryId; }
 
     /**
      * Serializers for each subclass of PairedEnds which rely on implementations of serializations within each class itself
