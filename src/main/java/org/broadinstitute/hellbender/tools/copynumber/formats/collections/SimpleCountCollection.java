@@ -63,10 +63,22 @@ public final class SimpleCountCollection extends AbstractSampleLocatableCollecti
 
     public static SimpleCountCollection read(final File file) {
         IOUtils.canReadFile(file);
+        // attempting to open a non-HDF5 file with readHDF5 may cause warnings to be emitted from native code,
+        // depending on the HDF5 environment, so we try to avoid that in typical scenarios
         try {
-            return readHDF5(new HDF5File(file));
-        } catch (final HDF5LibException e) {
+            // we first try to read the file as a TSV file
             return readTSV(file);
+        } catch (final IllegalArgumentException exTSV) {
+            // an IllegalArgumentException will be thrown if the file is an HDF5 file, but may also be thrown if the
+            // file is actually a TSV file but the SAM-style header is improperly formatted
+            try {
+                // we next try to open the file as an HDF5 file
+                return readHDF5(new HDF5File(file));
+            } catch (final HDF5LibException exHDF5) {
+                // if this throws an HDF5LibException, then it means the file was actually a TSV file, so we
+                // rethrow the original IllegalArgumentException; in this case, the native warning may also be emitted
+                throw exTSV;
+            }
         }
     }
 
