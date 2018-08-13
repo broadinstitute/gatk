@@ -23,9 +23,11 @@ public final class SimpleInterval implements Locatable, Serializable {
     public static final char START_END_SEPARATOR = '-';
     public static final String END_OF_CONTIG = "+"; //note: needs to be a String because it's used in an endsWith call.
 
-    private final int start;
-    private final int end;
-    private final String contig;
+    private int start;
+    private int end;
+    private String contig;
+
+    public SimpleInterval() {}
 
     /**
      * Create a new immutable 1-based interval of the form [start, end]
