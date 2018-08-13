@@ -10,9 +10,9 @@ import java.io.Serializable;
 public class MinimalVariant implements GATKVariant, Serializable {
     private static final long serialVersionUID = 1L;
 
-    private final SimpleInterval interval;
-    private final boolean snp;
-    private final boolean indel;
+    private SimpleInterval interval;
+    private boolean snp;
+    private boolean indel;
 
     @Override
     public boolean equals(Object o) {
@@ -34,6 +34,8 @@ public class MinimalVariant implements GATKVariant, Serializable {
         result = 31 * result + (isIndel() ? 1 : 0);
         return result;
     }
+
+    public MinimalVariant() {}
 
     public MinimalVariant(SimpleInterval interval, boolean isSNP, boolean isIndel) {
         this.interval = interval;
