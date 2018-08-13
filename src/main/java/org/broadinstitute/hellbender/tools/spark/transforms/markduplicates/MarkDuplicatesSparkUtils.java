@@ -480,7 +480,7 @@ public class MarkDuplicatesSparkUtils {
     }
 
     /**
-     * Comparator for by their PhysicalLocation attributes and strandedness. This comparator is intended to serve as a tiebreaker
+     * Comparator for TransientFieldPhysicalLocation objects by their attributes and strandedness. This comparator is intended to serve as a tiebreaker
      * for the score comparator.
      *
      * It compares two PhysicalLocation  the orientation of the strand, followed by their physical location attributes,
