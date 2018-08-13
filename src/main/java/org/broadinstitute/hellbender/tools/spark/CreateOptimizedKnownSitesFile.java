@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.spark;
 
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Output;
+import com.esotericsoftware.minlog.Log;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -22,7 +23,6 @@ import org.broadinstitute.hellbender.utils.variant.VariantContextVariantAdapter;
 import java.io.*;
 import java.nio.file.Files;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @CommandLineProgramProperties(
         summary = "Converts a VCF of known sites into an optimized format (serialized Java object format)",
@@ -45,9 +45,28 @@ public class CreateOptimizedKnownSitesFile extends CommandLineProgram {
             optional = true)
     public String outputFile;
 
+    @Argument(shortName = "max-results",
+            fullName = "max-results",
+            doc = "max-results",
+            optional = true)
+    public int maxResults = -1;
+
+    @Argument(shortName = "kryo-log-level",
+            fullName = "kryo-log-level",
+            doc = "kryo-log-level",
+            optional = true)
+    public String kryoLogLevel;
+
     @Override
     protected Object doWork() {
-        IntervalsSkipList<GATKVariant> variants = retrieveVariants(Collections.singletonList(inputFile));
+
+        if ("debug".equals(kryoLogLevel)) {
+            Log.DEBUG();
+        } else if("trace".equals(kryoLogLevel)) {
+            Log.TRACE();
+        }
+
+        IntervalsSkipList<GATKVariant> variants = retrieveVariants(Collections.singletonList(inputFile), maxResults);
         logger.info("Retrieved variants.");
         try {
             logger.info("Writing file to " + outputFile);
@@ -59,25 +78,27 @@ public class CreateOptimizedKnownSitesFile extends CommandLineProgram {
         return null;
     }
 
-    private static IntervalsSkipList<GATKVariant> retrieveVariants(List<String> paths) {
-        return new IntervalsSkipList<>(paths
-                .stream()
-                .map(CreateOptimizedKnownSitesFile::loadFromFeatureDataSource)
-                .flatMap(Collection::stream)
-                .collect(Collectors.toList()));
+    private static IntervalsSkipList<GATKVariant> retrieveVariants(List<String> paths, int maxResults) {
+        if (paths.size() > 1) {
+            throw new IllegalArgumentException();
+        }
+        return new IntervalsSkipList<>(loadFromFeatureDataSource(paths.get(0), maxResults));
     }
 
-    private static List<GATKVariant> loadFromFeatureDataSource(String path) {
+    private static List<GATKVariant> loadFromFeatureDataSource(String path, int maxResults) {
         int cloudPrefetchBuffer = 40; // only used for GCS
         try ( final FeatureDataSource<VariantContext> dataSource = new FeatureDataSource<>(path, null, 0, null, cloudPrefetchBuffer, cloudPrefetchBuffer) ) {
-            return wrapQueryResults(dataSource.iterator());
+            return wrapQueryResults(dataSource.iterator(), maxResults);
         }
     }
 
-    private static List<GATKVariant> wrapQueryResults(final Iterator<VariantContext> queryResults ) {
+    private static List<GATKVariant> wrapQueryResults(final Iterator<VariantContext> queryResults, int maxResults) {
         final List<GATKVariant> wrappedResults = new ArrayList<>();
         long count = 0;
         while ( queryResults.hasNext() ) {
+            if (maxResults > 0 && count >= maxResults) {
+                break;
+            }
             if (count++ % 100000 == 0) {
                 logger.info("Number of variants read: " + count);
             }
