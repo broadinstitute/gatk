@@ -342,6 +342,46 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
     }
 
     @DataProvider
+    Object[][] provideForTestGetIndelAdjustedAlleleChangeStartPosition() {
+
+        return new Object[][] {
+                {
+                        new VariantContextBuilder().chr("1").start(1).stop(1).alleles(Arrays.asList(Allele.create("A", true), Allele.create("T"))).make(),
+                        1
+                },
+                {
+                        new VariantContextBuilder().chr("1").start(1234).stop(1234).alleles(Arrays.asList(Allele.create("A", true), Allele.create("AT"))).make(),
+                        1235
+                },
+                {
+                        new VariantContextBuilder().chr("1").start(1234).stop(1234).alleles(Arrays.asList(Allele.create("A", true), Allele.create("ATG"))).make(),
+                        1235
+                },
+                {
+                        new VariantContextBuilder().chr("1").start(1234).stop(1234).alleles(Arrays.asList(Allele.create("A", true), Allele.create("ATGTC"))).make(),
+                        1235
+                },
+                {
+                        new VariantContextBuilder().chr("1").start(1234).stop(1236).alleles(Arrays.asList(Allele.create("ATG", true), Allele.create("AT"))).make(),
+                        1236
+                },
+                {
+                        new VariantContextBuilder().chr("1").start(1234).stop(1236).alleles(Arrays.asList(Allele.create("ATG", true), Allele.create("A"))).make(),
+                        1235
+                },
+                {
+                        new VariantContextBuilder().chr("1").start(1234).stop(1237).alleles(Arrays.asList(Allele.create("ATGT", true), Allele.create("ATGTC"))).make(),
+                        1238
+                },
+                {
+                        new VariantContextBuilder().chr("1").start(1234).stop(1238).alleles(Arrays.asList(Allele.create("ATGTC", true), Allele.create("ATGT"))).make(),
+                        1238
+                },
+
+        };
+    }
+
+    @DataProvider
     Object[][] provideDataForTestGetNonOverlappingAltAlleleBaseString() {
         return new Object[][] {
                 { Allele.create("A", true),          Allele.create("A"),          false, "" },
@@ -1210,6 +1250,11 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
 //    void testGetCodingSequenceWithIllegalArgumentExceptions(final ReferenceContext reference, final List<Locatable> exonList) {
 //        FuncotatorUtils.getCodingSequence(reference, exonList);
 //    }
+
+    @Test(dataProvider = "provideForTestGetIndelAdjustedAlleleChangeStartPosition")
+    void testGetIndelAdjustedAlleleChangeStartPosition(final VariantContext variant, final int expected) {
+         Assert.assertEquals( FuncotatorUtils.getIndelAdjustedAlleleChangeStartPosition(variant), expected );
+    }
 
     @Test(dataProvider = "provideDataForTestGetNonOverlappingAltAlleleBaseString")
     void testGetNonOverlappingAltAlleleBaseString(final Allele refAllele, final Allele altAllele, final boolean copyRefBasesWhenAltIsPastEnd, final String expected) {

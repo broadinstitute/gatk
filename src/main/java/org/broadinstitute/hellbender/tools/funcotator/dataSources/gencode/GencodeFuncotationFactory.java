@@ -963,20 +963,47 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             boolean overlapsLeft  = false;
             boolean overlapsRight = false;
 
+            // Adjust the variant interval for the overlap check, specifically to properly test for the indel cases:
+            final SimpleInterval variantInterval;
+            if ( variant.isIndel() ) {
+
+                final int adjustedStart = FuncotatorUtils.getIndelAdjustedAlleleChangeStartPosition(variant);
+
+                final int end;
+                // Insertion:
+                if ( variant.getReference().length() < altAllele.length() ) {
+                    // We use the adjusted start here because by inserting bases we're not making the actually changed
+                    // bases any closer to the boundaries of the exon.
+                    // That is, the inserted bases shouldn't count towards the extents of the variant in genomic space
+                    // with respect to the exon boundaries.
+                    end = adjustedStart;
+                }
+                // Deletion:
+                else {
+                    // The original end position should be correct:
+                    end = variant.getEnd();
+                }
+
+                variantInterval = new SimpleInterval(
+                            variant.getContig(),
+                            adjustedStart,
+                            end
+                        );
+            }
+            else {
+                variantInterval = new SimpleInterval(variant);
+            }
+
             if ( doLeftOverlapCheck ) {
-                final SimpleInterval leftSideInterval = new SimpleInterval(exon.getContig(), exon.getStart() - spliceSiteVariantWindowBases + 1, exon.getStart() + (spliceSiteVariantWindowBases-1) + 1);
-                overlapsLeft = leftSideInterval.overlaps(variant);
+                final SimpleInterval leftSideInterval = new SimpleInterval(exon.getContig(), exon.getStart() - spliceSiteVariantWindowBases, exon.getStart() + (spliceSiteVariantWindowBases-1));
+                overlapsLeft = leftSideInterval.overlaps(variantInterval);
             }
             if ( doRightOverlapCheck ) {
                 final SimpleInterval rightSideInterval = new SimpleInterval(exon.getContig(), exon.getEnd() - spliceSiteVariantWindowBases + 1, exon.getEnd() + (spliceSiteVariantWindowBases-1) + 1);
-                overlapsRight = rightSideInterval.overlaps(variant);
+                overlapsRight = rightSideInterval.overlaps(variantInterval);
             }
 
             // Check for splice site variants.
-            // Here we check to see if a splice site comes anywhere within `spliceSiteVariantWindowBases` of a variant.
-            // We add and subtract 1 from the end points because the positons are 1-based & inclusive.
-//            if ( (((startPos - spliceSiteVariantWindowBases + 1) <= exon.getStart()) && (exon.getStart() <= (spliceSiteVariantWindowBases - numInsertedBases + endPos - 1))) ||
-//                 (((startPos - spliceSiteVariantWindowBases + 1) <= exon.getEnd()  ) && (exon.getEnd()   <= (spliceSiteVariantWindowBases - numInsertedBases + endPos - 1))) ) {
             if ( overlapsLeft || overlapsRight ) {
                 varClass = GencodeFuncotation.VariantClassification.SPLICE_SITE;
             }
@@ -1311,7 +1338,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
     /**
      * Gets the {@link GencodeGtfExonFeature} that is within {@code spliceSiteVariantWindowBases} bases of the given {@code variant}.
-     * @param variant The {@link VariantContext} to check for position within {@code spliceSiteVariantWindowBases} bases of each {@link GencodeGtfExonFeature} in {@code transcript}.
+     * @param variant The {@link VariantContext} to check for position within {@code spliceSiteVariantWindowBases} bases of each {@link GencodeGtfExonFeature} in {@code transcript}.  Assumes the given variant has only one alternate allele.
      * @param transcript The {@link GencodeGtfTranscriptFeature} containing the given {@code variant}.
      * @return The {@link GencodeGtfExonFeature} that is within {@code spliceSiteVariantWindowBases} bases of the given {@code variant}; {@code null} if no such {@link GencodeGtfExonFeature} exists in the given {@code transcript}.
      */
@@ -1320,9 +1347,16 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                                                                         final int spliceSiteVariantWindowBases ) {
         GencodeGtfExonFeature spliceSiteExon = null;
 
+        final int varStart = FuncotatorUtils.getIndelAdjustedAlleleChangeStartPosition(variant);
+        final int varEnd = variant.getEnd();
+
         for ( final GencodeGtfExonFeature exon : transcript.getExons() ) {
-            if ((Math.abs(exon.getStart() - variant.getStart()) <= spliceSiteVariantWindowBases) ||
-                    (Math.abs(exon.getEnd() - variant.getStart()) <= spliceSiteVariantWindowBases)) {
+            // Check the start and end of the variant to see if it overlaps with either end of the exon:
+            if ((Math.abs(exon.getStart() - varStart) <= spliceSiteVariantWindowBases) ||
+                (Math.abs(exon.getEnd() - varStart) <= spliceSiteVariantWindowBases) ||
+                (Math.abs(exon.getStart() - varEnd) <= spliceSiteVariantWindowBases) ||
+                (Math.abs(exon.getEnd() - varEnd) <= spliceSiteVariantWindowBases)) {
+
                 spliceSiteExon = exon;
                 break;
             }
