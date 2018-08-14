@@ -14,6 +14,7 @@ import java.util.Collections;
 
 public class KnownSitesCachePerfUnitTest extends GATKBaseTest {
     @Test
+    @SuppressWarnings("unchecked")
     public void test() throws Exception {
 
         long start = System.nanoTime();
