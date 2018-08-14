@@ -87,7 +87,7 @@ public abstract class AbstractMarkDuplicatesTester extends SamFileTester {
         }
         expectedMetrics.READ_PAIR_DUPLICATES = expectedMetrics.READ_PAIR_DUPLICATES / 2;
         expectedMetrics.READ_PAIRS_EXAMINED = expectedMetrics.READ_PAIRS_EXAMINED / 2;
-        expectedMetrics.calculateDerivedMetrics();
+        expectedMetrics.calculateDerivedFields();
 
         // Have to run this Double value through the same format/parsing operations as during a file write/read
         expectedMetrics.PERCENT_DUPLICATION = formatter.parseDouble(formatter.format(expectedMetrics.PERCENT_DUPLICATION));

@@ -1,7 +1,8 @@
 package org.broadinstitute.hellbender.tools.walkers.readorientation;
 
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.Nucleotide;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -15,7 +16,7 @@ import java.util.stream.Collectors;
 /**
  * Created by tsato on 10/16/17.
  */
-public class AltSiteRecordUnitTest extends BaseTest {
+public class AltSiteRecordUnitTest extends GATKBaseTest {
     @Test
     public void test() throws IOException {
         File table = BaseTest.createTempFile("alt-site-design-matrix","tsv");
