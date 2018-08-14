@@ -14,7 +14,7 @@ import java.util.List;
  * It will convert old style "Argument=Value" into new style "--Argument value" strings
  * Use this only in test code.
  */
-public final class ArgumentsBuilder {
+public class ArgumentsBuilder {
     private final List<String> args= new ArrayList<>();
 
     public ArgumentsBuilder(){}
