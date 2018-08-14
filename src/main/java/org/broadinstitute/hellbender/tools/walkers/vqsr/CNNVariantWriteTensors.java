@@ -28,7 +28,7 @@ import java.util.List;
  *      <li>The truth BED is a bed file define the confident region for the validated calls.
  *      Variants from the input VCF inside this region, but not included in the truth VCF
  *      will be used as negative training data.</li>
- *      <li>The tensor-name argument determines what types of tensors will be written.
+ *      <li>The --tensor-type argument determines what types of tensors will be written.
  *      Set it to "reference" to write 1D tensors or "read_tensor" to write 2D tensors.</li>
  *      <li>The bam-file argument is necessary to write 2D tensors which incorporate read data.</li>
  * </ul>

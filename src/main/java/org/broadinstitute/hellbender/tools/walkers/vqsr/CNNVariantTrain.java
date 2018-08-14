@@ -21,7 +21,7 @@ import java.util.List;
  * <h3>Inputs</h3>
  * <ul>
  *      <li>data-dir The training data created by {@link CNNVariantWriteTensors}.</li>
- *      <li>The tensor-name argument determines what types of tensors the model will expect.
+ *      <li>The --tensor-type argument determines what types of tensors the model will expect.
  *      Set it to "reference" for 1D tensors or "read_tensor" for 2D tensors.</li>
  * </ul>
  *
