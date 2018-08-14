@@ -66,8 +66,13 @@ public class XsvTableFeature implements Feature {
         this.dataSourceName = dataSourceName;
 
         contig = columnValues.get(contigColumn);
-        start = Integer.valueOf( columnValues.get(startColumn) );
-        end = Integer.valueOf( columnValues.get(endColumn) );
+        try {
+            start = Integer.valueOf(columnValues.get(startColumn));
+            end = Integer.valueOf(columnValues.get(endColumn));
+        }
+        catch ( final NumberFormatException ex ) {
+            throw new UserException.MalformedFile("Could not convert value (" + ex.getMessage() + ") from input file into a number for Data Source: " + dataSourceName);
+        }
 
         if ( columnNames.size() != columnValues.size() ) {
             throw new UserException.BadInput("Number of columns in given header and data do not match: " + columnNames.size() + " != " + columnValues.size());

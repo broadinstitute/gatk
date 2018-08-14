@@ -32,6 +32,8 @@ public class XsvLocatableTableCodecUnitTest extends GATKBaseTest {
     private static final String TEST_FILE1 = TEST_RESOURCE_DIR + "xsv_locatable_test.csv";
     private static final String TEST_FILE2 = TEST_RESOURCE_DIR + "xsv_locatable_test2.tsv";
 
+    private static final String TEST_FILE_MIXED_ENCODING = TEST_RESOURCE_DIR + "xsv_locatable_test_mixed_encodings.csv";
+
     /** Uses column names, instead of index */
     private static final String TEST_FILE3 = TEST_RESOURCE_DIR + "xsv_locatable_test3.csv";
     private static final String TEST_FILE4 = TEST_RESOURCE_DIR + "xsv_locatable_test4.csv";
@@ -79,6 +81,14 @@ public class XsvLocatableTableCodecUnitTest extends GATKBaseTest {
     }
 
     @DataProvider
+    private Object[][] provideForTestDecodeCharsetFailure() {
+
+        return new Object[][]{
+                { TEST_FILE_MIXED_ENCODING },
+        };
+    }
+
+    @DataProvider
     private Object[][] provideForTestDecode() {
 
         return new Object[][] {
@@ -108,6 +118,8 @@ public class XsvLocatableTableCodecUnitTest extends GATKBaseTest {
                 }
         };
     }
+
+
 
     @DataProvider
     private Object[][] provideForTestReadActualHeader() {
@@ -164,16 +176,14 @@ public class XsvLocatableTableCodecUnitTest extends GATKBaseTest {
         Assert.assertEquals(xsvLocatableTableCodec.canDecode(filePath), expected);
     }
 
-    // decode
-    @Test(dataProvider = "provideForTestDecode")
-    public void testDecode(final String filePath, final List<XsvTableFeature> expected) {
+    private void testDecodeHelper(final String filePath, final List<XsvTableFeature> expected) {
         final XsvLocatableTableCodec xsvLocatableTableCodec = new XsvLocatableTableCodec();
         if (xsvLocatableTableCodec.canDecode(filePath)) {
             try ( final FileInputStream fileInputStream = new FileInputStream(filePath)) {
 
                 // Lots of scaffolding to do reading here:
-                final AsciiLineReaderIterator lineReaderIterator = new AsciiLineReaderIterator(AsciiLineReader.from(fileInputStream));
-                final ArrayList<XsvTableFeature> output = new ArrayList<>(expected.size());
+                final AsciiLineReaderIterator    lineReaderIterator = new AsciiLineReaderIterator(AsciiLineReader.from(fileInputStream));
+                final ArrayList<XsvTableFeature> output             = new ArrayList<>(expected.size());
 
                 // Read off the header:
                 xsvLocatableTableCodec.readActualHeader(lineReaderIterator);
@@ -196,6 +206,43 @@ public class XsvLocatableTableCodecUnitTest extends GATKBaseTest {
         else {
             throw new GATKException("Error - bad test case.");
         }
+    }
+
+    // Attempt to decode a malformed file:
+    @Test(dataProvider = "provideForTestDecodeCharsetFailure",
+            expectedExceptions = {UserException.MalformedFile.class})
+    public void testDecodeCharsetFailure(final String filePath ) {
+        final XsvLocatableTableCodec xsvLocatableTableCodec = new XsvLocatableTableCodec();
+        if (xsvLocatableTableCodec.canDecode(filePath)) {
+            try ( final FileInputStream fileInputStream = new FileInputStream(filePath)) {
+
+                // Lots of scaffolding to do reading here:
+                final AsciiLineReaderIterator lineReaderIterator = new AsciiLineReaderIterator(AsciiLineReader.from(fileInputStream));
+
+                // Read off the header:
+                xsvLocatableTableCodec.readActualHeader(lineReaderIterator);
+
+                // Read and decode the lines:
+                while ( lineReaderIterator.hasNext() ) {
+                    xsvLocatableTableCodec.decode(lineReaderIterator.next());
+                }
+            }
+            catch ( final FileNotFoundException ex ) {
+                throw new GATKException("Error - could not find test file: " + filePath, ex);
+            }
+            catch ( final IOException ex ) {
+                throw new GATKException("Error - IO problem with file " + filePath, ex);
+            }
+        }
+        else {
+            throw new GATKException("Error - bad test case.");
+        }
+    }
+
+    // decode
+    @Test(dataProvider = "provideForTestDecode")
+    public void testDecode(final String filePath, final List<XsvTableFeature> expected) {
+        testDecodeHelper(filePath, expected);
     }
 
     // readActualHeader
