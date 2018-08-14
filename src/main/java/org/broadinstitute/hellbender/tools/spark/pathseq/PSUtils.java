@@ -67,7 +67,7 @@ public final class PSUtils {
 
     /**
      * Returns a deep copy of the input header with an empty sequence dictionary, and logs warnings if the input may
-     * be aligned but --isHostAligned was not set to true (or vice versa).
+     * be aligned but --is-host-aligned was not set to true (or vice versa).
      */
     public static SAMFileHeader checkAndClearHeaderSequences(final SAMFileHeader inputHeader, final PSFilterArgumentCollection filterArgs, final Logger logger) {
 
@@ -79,10 +79,10 @@ public final class PSUtils {
         final SAMFileHeader header = inputHeader.clone();
 
         if (filterArgs.alignedInput && (header.getSequenceDictionary() == null || header.getSequenceDictionary().isEmpty())) {
-            logger.warn("--isHostAligned is true but the BAM header contains no sequences");
+            logger.warn("--is-host-aligned is true but the BAM header contains no sequences");
         }
         if (!filterArgs.alignedInput && header.getSequenceDictionary() != null && !header.getSequenceDictionary().isEmpty()) {
-            logger.warn("--isHostAligned is false but there are one or more sequences in the BAM header");
+            logger.warn("--is-host-aligned is false but there are one or more sequences in the BAM header");
         }
 
         //Clear header sequences

@@ -21,7 +21,7 @@ import java.util.List;
  * <h3>Inputs</h3>
  * <ul>
  *      <li>data-dir The training data created by {@link CNNVariantWriteTensors}.</li>
- *      <li>The tensor-name argument determines what types of tensors the model will expect.
+ *      <li>The --tensor-type argument determines what types of tensors the model will expect.
  *      Set it to "reference" for 1D tensors or "read_tensor" for 2D tensors.</li>
  * </ul>
  *
@@ -37,17 +37,17 @@ import java.util.List;
  * <h4>Train a 1D CNN on Reference Tensors</h4>
  * <pre>
  * gatk CNNVariantTrain \
- *   -tensor-type reference \
- *   -input-tensors-dir my_tensor_folder \
- *   -model-name my_1d_model
+ *   --tensor-type reference \
+ *   --input-tensor-dir my_tensor_folder \
+ *   --model-name my_1d_model
  * </pre>
  *
  * <h4>Train a 2D CNN on Read Tensors</h4>
  * <pre>
  * gatk CNNVariantTrain \
- *   -input-tensors-dir my_tensor_folder \
- *   -tensor-type read-tensor \
- *   -model-name my_2d_model
+ *   --input-tensor-dir my_tensor_folder \
+ *   --tensor-type read-tensor \
+ *   --model-name my_2d_model
  * </pre>
  *
  */

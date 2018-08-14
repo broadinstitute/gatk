@@ -75,8 +75,8 @@ import java.util.stream.Collectors;
  * By default, priors will be applied to each variant separately, provided each variant features data from at least
  * 10 called samples (no-calls do not count). SNP sites in the input callset that have a SNP at the matching site in
  * the supporting VCF will have priors applied based on the AC from the supporting samples and the input callset
- * unless the --ignoreInputSamples flag is used. If a site is not called in the supporting VCF, priors will be
- * applied using the discovered AC from the input samples unless the --discoveredACpriorsOff flag is used.
+ * unless the --ignore-input-samples flag is used. If a site is not called in the supporting VCF, priors will be
+ * applied using the discovered AC from the input samples unless the --discovered-allele-count-priors-off flag is used.
  * For any non-SNP sites in the input callset, flat priors are applied.
  * </p>
  *
@@ -103,7 +103,7 @@ import java.util.stream.Collectors;
  *   -V input.vcf.gz \
  *   -O output.vcf.gz \
  *   -ped family.ped \
- *   --skipPopulationPriors
+ *   --skip-population-priors
  * </pre>
  *
  * <h4>Apply frequency and HWE-based priors to the genotypes of a family without including the family allele counts
@@ -112,7 +112,7 @@ import java.util.stream.Collectors;
  * gatk --java-options "-Xmx4g" CalculateGenotypePosteriors \
  *   -V input.vcf.gz \
  *   -O output.vcf.gz \
- *   --ignoreInputSamples
+ *   --ignore-input-samples
  * </pre>
  *
  * <h4>Calculate the posterior genotypes of a callset, and impose that a variant *not seen* in the external panel

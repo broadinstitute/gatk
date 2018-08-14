@@ -43,7 +43,7 @@ import java.util.stream.Collectors;
  * gatk --java-options "-Xmx4g" AnnotateVcfWithExpectedAlleleFraction \
  *   -V input.vcf \
  *   -O output.vcf \
- *   -mixingFractions mixingFractions.table
+ *   --mixing-fractions mixingFractions.table
  * </pre>
  *
  * Created by David Benjamin on 1/31/17.

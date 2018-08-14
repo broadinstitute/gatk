@@ -28,7 +28,7 @@ import java.util.List;
  *      <li>The truth BED is a bed file define the confident region for the validated calls.
  *      Variants from the input VCF inside this region, but not included in the truth VCF
  *      will be used as negative training data.</li>
- *      <li>The tensor-name argument determines what types of tensors will be written.
+ *      <li>The --tensor-type argument determines what types of tensors will be written.
  *      Set it to "reference" to write 1D tensors or "read_tensor" to write 2D tensors.</li>
  *      <li>The bam-file argument is necessary to write 2D tensors which incorporate read data.</li>
  * </ul>
@@ -47,10 +47,10 @@ import java.util.List;
  * gatk CNNVariantWriteTensors \
  *   -R reference.fasta \
  *   -V input.vcf.gz \
- *   -truth-vcf platinum-genomes.vcf \
- *   -truth-bed platinum-confident-region.bed \
- *   -tensor-name reference \
- *   -output-tensor-dir my-tensor-folder
+ *   --truth-vcf platinum-genomes.vcf \
+ *   --truth-bed platinum-confident-region.bed \
+ *   --tensor-type reference \
+ *   --output-tensor-dir my-tensor-folder
  * </pre>
  *
  * <h4>Write Read Tensors</h4>
@@ -58,11 +58,11 @@ import java.util.List;
  * gatk CNNVariantWriteTensors \
  *   -R reference.fasta \
  *   -V input.vcf.gz \
- *   -truth-vcf platinum-genomes.vcf \
- *   -truth-bed platinum-confident-region.bed \
- *   -tensor-name read_tensor \
- *   -bam-file input.bam \
- *   -output-tensor-dir my-tensor-folder
+ *   --truth-vcf platinum-genomes.vcf \
+ *   --truth-bed platinum-confident-region.bed \
+ *   --tensor-type read_tensor \
+ *   --bam-file input.bam \
+ *   --output-tensor-dir my-tensor-folder
  * </pre>
  *
  */

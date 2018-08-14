@@ -87,9 +87,9 @@ public final class VariantFiltration extends VariantWalker {
 
     /**
      * Any variant which overlaps entries from the provided mask file will be filtered. If the user wants logic to be reversed,
-     * i.e. filter variants that do not overlap with provided mask, then argument -filterNotInMask can be used.
+     * i.e. filter variants that do not overlap with provided mask, then argument --filter-not-in-mask can be used.
      * Note that it is up to the user to adapt the name of the mask to make it clear that the reverse logic was used
-     * (e.g. if masking against Hapmap, use -maskName=hapmap for the normal masking and -maskName=not_hapmap for the reverse masking).
+     * (e.g. if masking against Hapmap, use --mask-name=hapmap for the normal masking and --mask-name=not_hapmap for the reverse masking).
      */
     @Argument(fullName="mask", shortName="mask", doc="Input mask", optional=true)
     public FeatureInput<Feature> mask;
@@ -142,20 +142,20 @@ public final class VariantFiltration extends VariantWalker {
     public Integer maskExtension = 0;
 
     /**
-     * When using the -mask argument, the maskName will be annotated in the variant record.
-     * Note that when using the -filter-not-in-mask argument to reverse the masking logic,
+     * When using the --mask argument, the mask-name will be annotated in the variant record.
+     * Note that when using the --filter-not-in-mask argument to reverse the masking logic,
      * it is up to the user to adapt the name of the mask to make it clear that the reverse logic was used
-     * (e.g. if masking against Hapmap, use -mask-name=hapmap for the normal masking and -mask-name=not_hapmap for the reverse masking).
+     * (e.g. if masking against Hapmap, use --mask-name=hapmap for the normal masking and --mask-name=not_hapmap for the reverse masking).
      */
     @Argument(fullName=MASK_NAME_LONG_NAME, doc="The text to put in the FILTER field if a 'mask' is provided and overlaps with a variant call", optional=true)
     public String maskName = "Mask";
 
     /**
-     * By default, if the -mask argument is used, any variant falling in a mask will be filtered.
+     * By default, if the --mask argument is used, any variant falling in a mask will be filtered.
      * If this argument is used, logic is reversed, and variants falling outside a given mask will be filtered.
      * Use case is, for example, if we have an interval list or BED file with "good" sites.
      * Note that it is up to the user to adapt the name of the mask to make it clear that the reverse logic was used
-     * (e.g. if masking against Hapmap, use -mask-name=hapmap for the normal masking and -mask-name=not_hapmap for the reverse masking).
+     * (e.g. if masking against Hapmap, use --mask-name=hapmap for the normal masking and --mask-name=not_hapmap for the reverse masking).
      */
     @Argument(fullName=FILTER_NOT_IN_MASK_LONG_NAME, doc="Filter records NOT in given input mask.", optional=true)
     public boolean filterRecordsNotInMask = false;
@@ -215,7 +215,7 @@ public final class VariantFiltration extends VariantWalker {
     }
 
     /**
-     * Prepend inverse phrase to description if --invertFilterExpression
+     * Prepend inverse phrase to description if --invert-filter-expression
      *
      * @param description the description
      * @return the description with inverse prepended if --invert_filter_expression

@@ -19,7 +19,7 @@ public final class ReadThreadingAssemblerArgumentCollection implements Serializa
     // -----------------------------------------------------------------------------------------------
 
     /**
-     * Multiple kmer sizes can be specified, using e.g. `-kmerSize 10 -kmerSize 25`.
+     * Multiple kmer sizes can be specified, using e.g. `--kmer-size 10 --kmer-size 25`.
      */
     @Advanced
     @Argument(fullName="kmer-size", doc="Kmer size to use in the read threading assembler", optional = true)

@@ -102,7 +102,7 @@ import java.util.*;
  *   --resource dbsnp,known=true,training=false,truth=false,prior=2.0:Homo_sapiens_assembly38.dbsnp138.vcf.gz \
  *   -an QD -an MQ -an MQRankSum -an ReadPosRankSum -an FS -an SOR \
  *   -mode SNP \
- *   --recal-file output.recal \
+ *   -O output.recal \
  *   --tranches-file output.tranches \
  *   --rscript-file output.plots.R
  * </pre>
@@ -119,7 +119,7 @@ import java.util.*;
  *   --resource dbsnp,known=true,training=false,truth=false,prior=2.0:Homo_sapiens_assembly38.dbsnp138.vcf.gz \
  *   -an QD -an MQ -an MQRankSum -an ReadPosRankSum -an FS -an SOR \
  *   -mode SNP \
- *   --recal-file output.AS.recal \
+ *   -O output.AS.recal \
  *   --tranches-file output.AS.tranches \
  *   --rscript-file output.plots.AS.R
  * </pre>
@@ -244,7 +244,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
     private List<Double> TS_TRANCHES = new ArrayList<Double>(Arrays.asList(100.0, 99.9, 99.0, 90.0));
 
     /**
-     * For this to work properly, the -ignoreFilter argument should also be applied to the ApplyRecalibration command.
+     * For this to work properly, the --ignore-filter argument should also be applied to the ApplyRecalibration command.
      */
     @Argument(fullName="ignore-filter",
             doc="If specified, the variant recalibrator will also use variants marked as filtered by the specified filter name in the input VCF file",
@@ -293,7 +293,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
      */
     @Argument(fullName="sample-every-Nth-variant",
             shortName = "sample-every",
-            doc="If specified, the variant recalibrator will use (and output) only a subset of variants consisting of every Nth variant where N is specified by this argument; for use with -outputModel -- see argument details",
+            doc="If specified, the variant recalibrator will use (and output) only a subset of variants consisting of every Nth variant where N is specified by this argument; for use with --output-model -- see argument details",
             optional=true)
     @Hidden
     private int sampleMod = 1;
@@ -632,7 +632,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
 
                     if (badModel.failedToConverge || goodModel.failedToConverge) {
                         throw new UserException(
-                                "NaN LOD value assigned. Clustering with this few variants and these annotations is unsafe. Please consider " + (badModel.failedToConverge ? "raising the number of variants used to train the negative model (via --minNumBadVariants 5000, for example)." : "lowering the maximum number of Gaussians allowed for use in the model (via --maxGaussians 4, for example)."));
+                                "NaN LOD value assigned. Clustering with this few variants and these annotations is unsafe. Please consider " + (badModel.failedToConverge ? "raising the number of variants used to train the negative model (via --minimum-bad-variants 5000, for example)." : "lowering the maximum number of Gaussians allowed for use in the model (via --max-gaussians 4, for example)."));
                     }
                 }
 

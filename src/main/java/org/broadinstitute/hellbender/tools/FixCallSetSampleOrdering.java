@@ -175,7 +175,7 @@ public final class FixCallSetSampleOrdering extends VariantWalker {
 
             if ( ! gvcfPathsFromSampleNameMap.isEmpty() ) {
                 throw new SampleNameFixingCannotProceedException("Not all GVCF paths from the --" + GenomicsDBImport.SAMPLE_NAME_MAP_LONG_NAME +
-                        " were found in the provided --gvcfToHeaderSampleMapFile");
+                        " were found in the provided --gvcf-to-header-sample-map-file");
             }
 
             return mapping;
@@ -273,11 +273,11 @@ public final class FixCallSetSampleOrdering extends VariantWalker {
                                 "You should be certain you want to do this before proceeding.\n" +
                                 "If the following description does not apply to your VCF then the newly generated vcf will be \n\n \t\tHORRIBLY CORRUPTED: by having its sample names shuffled so that the genotypes don't correspond to the correct samples\n\n" +
                                 "1: your vcf was generated using a GenomicsDBImport released before gatk version 4.beta.6\n" +
-                                "2: you set --batchSize != 0 when running GenomicsDBImport\n" +
+                                "2: you set --batch-size != 0 when running GenomicsDBImport\n" +
                                 "3: your callset was imported in multiple batches, i.e. your number of samples > batchSize\n" +
                                 "4: you supplied the exact same sampleNameMap file and batch size you used in the initial GenomicsDBImport\n" +
                                 "or:\n" +
-                                "1. you ran GenomicsDBImport with --readerThreads > 1, and at least one sample name as declared\n" +
+                                "1. you ran GenomicsDBImport with --reader-threads > 1, and at least one sample name as declared\n" +
                                 "   in a GVCF header did not match the sample name specified for that file in the sample name map file\n" +
                                 "   provided to GenomicsDBImport\n\n" +
 
