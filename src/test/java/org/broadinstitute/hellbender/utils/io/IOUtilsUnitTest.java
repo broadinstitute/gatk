@@ -294,7 +294,10 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
     private Object[][] getIsHDF5TestFiles() {
         return new Object[][] {
                 { getToolTestDataDir() + "/isValidHDF5.hdf5", true },
+                { getToolTestDataDir() + "isValidHDF5.ext", true },
                 { getToolTestDataDir() + "/isTSV.tsv", false },
+                { getToolTestDataDir() + "/isTSV.hdf", false },
+                { getToolTestDataDir() + "/isTSV.hdf5", false },
                 { getToolTestDataDir() + "/isEmpty.txt", false },
         };
     }

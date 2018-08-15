@@ -33,6 +33,9 @@ public final class IOUtils {
     private static final Logger logger = LogManager.getLogger(IOUtils.class);
     private static final File DEV_DIR = new File("/dev");
 
+    // see https://support.hdfgroup.org/HDF5/doc/H5.format.html
+    private static final byte hdf5HeaderSignature[] = { (byte) 0x89, 'H', 'D', 'F', '\r', '\n', (byte) 0x1A, '\n' };
+
     /**
      * Returns true if the file's extension is CRAM.
      */
@@ -70,11 +73,9 @@ public final class IOUtils {
      */
     public static boolean isHDF5File(final Path hdf5Candidate) {
         try (final DataInputStream candidateStream = new DataInputStream(Files.newInputStream(hdf5Candidate))) {
-            // see https://support.hdfgroup.org/HDF5/doc/H5.format.html
-            final byte HDF5Header[] = { (byte) 0x89, 'H', 'D', 'F', '\r', '\n', (byte) 0x1A, '\n' };
-            final byte candidateHeader[] = new byte[HDF5Header.length];
+            final byte candidateHeader[] = new byte[hdf5HeaderSignature.length];
             candidateStream.read(candidateHeader, 0, candidateHeader.length);
-            return Arrays.equals(candidateHeader, HDF5Header);
+            return Arrays.equals(candidateHeader, hdf5HeaderSignature);
         } catch (IOException e) {
             throw new UserException.CouldNotReadInputFile(String.format("I/O error reading from input stream %s", hdf5Candidate), e);
         }
