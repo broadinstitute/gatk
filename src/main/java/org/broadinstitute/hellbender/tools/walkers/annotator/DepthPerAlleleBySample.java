@@ -95,7 +95,7 @@ public final class DepthPerAlleleBySample extends GenotypeAnnotation implements 
         return counts;
     }
 
-    private int[] annotateWithLikelihoods(VariantContext vc, Genotype g, Set<Allele> alleles, ReadLikelihoods<Allele> likelihoods) {
+    protected int[] annotateWithLikelihoods(VariantContext vc, Genotype g, Set<Allele> alleles, ReadLikelihoods<Allele> likelihoods) {
 
         final Map<Allele, Integer> alleleCounts = new LinkedHashMap<>();
         for ( final Allele allele : vc.getAlleles() ) {
