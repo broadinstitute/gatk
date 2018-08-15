@@ -296,7 +296,7 @@ public class StreamingPythonScriptExecutor<T> extends PythonExecutorBase {
         if (dataTransferFIFOWriter != null) {
             if (asyncWriter != null) {
                 if(!asyncWriter.terminate()){
-                    throw new GATKException("failed to close asynWriter");
+                    throw new GATKException("failed to close asyncWriter");
                 }
             }
             spController.writeProcessInput(PYTHON_CLOSE_DATA_FIFO);

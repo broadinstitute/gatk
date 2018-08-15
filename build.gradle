@@ -187,16 +187,14 @@ sourceSets {
     testUtils
 }
 
+// Dependency change for including MLLib
 configurations {
     testUtilsCompile.extendsFrom compile
     testUtilsRuntime.extendsFrom runtime
 
     testCompile.extendsFrom testUtilsCompile
     testRuntime.extendsFrom testUtilsRuntime
-}
 
-// Dependency change for including MLLib
-configurations {
     compile.exclude module: 'jul-to-slf4j'
     compile.exclude module: 'javax.servlet'
     compile.exclude module: 'servlet-api'
@@ -337,7 +335,7 @@ dependencies {
     compile group: 'biz.k11i', name: 'xgboost-predictor', version: '0.3.0'
 
     testUtilsCompile sourceSets.main.output
-    testUtilsCompile 'org.testng:testng:' + testNGVersion //compile instead of testCompile because it is needed for test infrastructure that needs to be packaged
+    testUtilsCompile 'org.testng:testng:' + testNGVersion
     testUtilsCompile 'org.apache.hadoop:hadoop-minicluster:' + hadoopVersion
 
     testCompile sourceSets.testUtils.output
@@ -699,6 +697,10 @@ task testUtilsJar(type: Jar){
     from sourceSets.testUtils.output
 }
 
+tasks.withType(Javadoc) {
+    // do this for all javadoc tasks, including gatkDoc
+    options.addStringOption('Xdoclint:none')
+}
 
 javadoc {
     // This is a hack to disable the java 8 default javadoc lint until we fix the html formatting
@@ -729,11 +731,6 @@ task testUtilsSourceJar(type: Jar){
     baseName = "$project.name-test-utils"
     classifier = 'source'
     from sourceSets.testUtils.allSource
-}
-
-tasks.withType(Javadoc) {
-    // do this for all javadoc tasks, including gatkDoc
-    options.addStringOption('Xdoclint:none')
 }
 
 // Generate GATK Online Doc
@@ -854,16 +851,14 @@ signing {
     sign configurations.archives
 }
 
+def gatkArtifactFilter = { artifact, file -> artifact.name == 'gatk' }
+def gatkTestUtilsArtifactFilter = {artifact, file -> artifact.name == 'gatk-test-utils' }
 
 install {
     install {
         repositories.mavenInstaller {
-            addFilter('gatk') {artifact, file ->
-                artifact.name == 'gatk'
-            }
-            addFilter('gatk-test-utils') {artifact, file ->
-                artifact.name == 'gatk-test-utils'
-            }
+            addFilter('gatk', gatkArtifactFilter)
+            addFilter('gatk-test-utils', gatkTestUtilsArtifactFilter)
         }
     }
 }
@@ -889,12 +884,8 @@ uploadArchives {
                 authentication(userName: System.env.ARTIFACTORY_USERNAME, password: System.env.ARTIFACTORY_PASSWORD)
             }
 
-            addFilter('gatk') {artifact, file ->
-                artifact.name == 'gatk'
-            }
-            addFilter('gatk-test-utils') {artifact, file ->
-                artifact.name == 'gatk-test-utils'
-            }
+            addFilter('gatk', gatkArtifactFilter)
+            addFilter('gatk-test-utils', gatkTestUtilsArtifactFilter)
 
             pom.project {
                 name 'GATK4'
