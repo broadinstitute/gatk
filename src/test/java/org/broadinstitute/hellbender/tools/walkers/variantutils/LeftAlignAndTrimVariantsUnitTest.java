@@ -19,13 +19,14 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import org.broadinstitute.hellbender.utils.Utils;
 
+import java.io.UnsupportedEncodingException;
 import java.util.*;
 import java.util.stream.*;
 
 public class LeftAlignAndTrimVariantsUnitTest extends GATKBaseTest{
     final String refBases1 = "ACAGAGCTGACCCTCCCTCCCCTCTCCCAGTGCAACAGCACGGGCGGCGACTGCTTTTACCGAGGCTACACGTCAGGCGTGGCGGCTGTCCAGGACTGGTACCACTTCCACTATGTGGATCTCTGCTGAGGACCAGGAAAGCCAGCACCCGCAGAGACTCTTCCCCAGTGCTCCATACGATCACCATTCTCTGCAGAAGG";
     final List<String> longPieces = Arrays.asList("AAAAAAAAAAAAAAAAAAAAAAAAAAAA","TCTCTCTCTCTCTC"); // where we'll perform tests
-    final List<String> strs=Arrays.asList("A","TC"); //
+    final List<Integer> strLengths=Arrays.asList(1,2); //
     final List<String> refBasesStrings = longPieces.stream().map(l->refBases1 + l + refBases1).collect(Collectors.toList());
 
     final List<Integer> contigStops = refBasesStrings.stream().map(String::length).collect(Collectors.toList());
@@ -42,30 +43,35 @@ public class LeftAlignAndTrimVariantsUnitTest extends GATKBaseTest{
             .collect(Collectors.toList());
 
     @DataProvider(name = "LeftAlignDataProvider")
-    public Object[][] LeftAlignTestData() {
+    public Object[][] LeftAlignTestData() throws UnsupportedEncodingException {
         List<Object[]> tests = new ArrayList<Object[]>();
         for (int iLongPiece=0; iLongPiece < longPieces.size();iLongPiece++) {
             final String longPiece=longPieces.get(iLongPiece);
             final ReferenceMemorySource refSource=refSources.get(iLongPiece);
-            final String str=strs.get(iLongPiece);
-            final int nStrs=longPiece.length()/str.length();
-            for (int offset = 1; offset < nStrs; offset++) {
-                for (int indelSize = -nStrs + offset; indelSize < nStrs - offset; indelSize++) {
-                    if (indelSize == 0) {
+            final int strLength=strLengths.get(iLongPiece);
+            //final int nStrs=longPiece.length()/strLength; //number of strs in the repeat
+            final ReferenceBases theseRefBases=refBases.get(iLongPiece);
+            for (int indelIndex = repeatStart-1; indelIndex < repeatStart+longPiece.length(); indelIndex++) {
+                for (int indelRepeats = -(longPiece.length()-(indelIndex-repeatStart))/strLength; indelRepeats < 10; indelRepeats++) {
+                    if (indelRepeats == 0) {
                         continue;
                     }
                     final List<Allele> alleles = new ArrayList<Allele>();
-                    if (indelSize < 0) { // deletion
-                        alleles.add(Allele.create(Utils.dupString(str, Math.abs(indelSize) + 1), true));
-                        alleles.add(Allele.create(str, false));
+                    if (indelRepeats < 0) { // deletion
+                        byte [] basesRef= new byte[Math.abs(indelRepeats)*strLength+1];
+                        byte [] basesAlt = new byte[1];
+                        System.arraycopy(theseRefBases,repeatStart,basesRef,0,Math.abs(indelRepeats)*strLength+1);
+                        System.arraycopy(theseRefBases,repeatStart,basesAlt,0,1);
+                        alleles.add(Allele.create(new String(basesRef, "UTF-8"), true));
+                        alleles.add(Allele.create(new String(basesAlt, "UTF-8"), false));
                     } else {
                         alleles.add(Allele.create(str, true));
                         alleles.add(Allele.create(Utils.dupString(str, Math.abs(indelSize) + 1), false));
                     }
-                    final SimpleInterval interval = new SimpleInterval(artificialContig, repeatStart + offset*str.length(), repeatStart + offset*str.length());
+                    final SimpleInterval interval = new SimpleInterval(artificialContig, repeatStart + offset*str.length()+1, repeatStart + offset*str.length()+1);
                     ReferenceContext ref = new ReferenceContext(refSource, interval);
 
-                    final VariantContext vc = new VariantContextBuilder("test", artificialContig, repeatStart + offset*str.length(), repeatStart + offset*str.length() + alleles.get(0).length() - 1, alleles).make();
+                    final VariantContext vc = new VariantContextBuilder("test", artificialContig, repeatStart + offset*str.length()+1, repeatStart + offset*str.length() + alleles.get(0).length(), alleles).make();
                     tests.add(new Object[]{vc, ref, offset != 0, repeatStart});
                 }
             }

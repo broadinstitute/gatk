@@ -249,8 +249,8 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
      */
     @Override
     public Object onTraversalSuccess() {
-        logger.info(numRealignedVariants + (numRealignedVariants==1 ? " variant " : " variants ") + "left aligned");
-        return null;
+        String msg=numRealignedVariants + (numRealignedVariants==1 ? " variant " : " variants ") + "left aligned";
+        return msg;
     }
 
     /**
