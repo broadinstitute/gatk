@@ -12,9 +12,13 @@ import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.testutils.BaseTest;
+import org.broadinstitute.hellbender.testutils.FuncotatorReferenceTestUtils;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationBuilder;
@@ -24,6 +28,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfCodec;
 import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfFeature;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.test.FuncotatorTestUtils;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.broadinstitute.hellbender.testutils.FuncotatorReferenceTestUtils;
@@ -43,8 +48,10 @@ public class FuncotationMapUnitTest extends BaseTest{
 
     private static final String DS_PIK3CA_DIR = GATKBaseTest.largeFileTestDir + "funcotator/small_ds_pik3ca/";
     private static final String DS_PIK3CA_HG19_GENCODE_FASTA = DS_PIK3CA_DIR + "gencode_pik3ca/hg19/gencode.v19.PIK3CA_transcript.fasta";
+    private static final String DS_PIK3CA_HG19_GENCODE_GTF = DS_PIK3CA_DIR + "gencode_pik3ca/hg19/gencode.v19.PIK3CA.gtf";
     private static final String DS_MUC16_DIR = GATKBaseTest.largeFileTestDir + "funcotator/small_ds_muc16/";
     private static final String DS_MUC16_HG19_GENCODE_FASTA = DS_MUC16_DIR + "gencode_muc16/hg19/gencode.v19.MUC16_transcript.fasta";
+    private static final String DS_MUC16_HG19_GENCODE_GTF = DS_MUC16_DIR + "gencode_muc16/hg19/gencode.v19.MUC16.gtf";
     private static final FeatureReader<GencodeGtfFeature> pik3caFeatureReader = AbstractFeatureReader.getFeatureReader( FuncotatorTestConstants.PIK3CA_GENCODE_ANNOTATIONS_FILE_NAME, new GencodeGtfCodec() );
     private static final FeatureReader<GencodeGtfFeature> muc16FeatureReader = AbstractFeatureReader.getFeatureReader(FuncotatorTestConstants.MUC16_GENCODE_ANNOTATIONS_FILE_NAME, new GencodeGtfCodec() );
 
@@ -352,34 +359,34 @@ public class FuncotationMapUnitTest extends BaseTest{
         return new Object[][] {
                 {"chr3", 178916538, 178916538, "G", "C", FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(),
                         ReferenceDataSource.of( IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref())),
-                        pik3caFeatureReader, DS_PIK3CA_HG19_GENCODE_FASTA,
+                        pik3caFeatureReader, DS_PIK3CA_HG19_GENCODE_FASTA, DS_PIK3CA_HG19_GENCODE_GTF,
                         TranscriptSelectionMode.ALL, Collections.singletonList("ENST00000263967.3")
                 },{"chr3", 178916538, 178916538, "G", "C", FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(),
                         ReferenceDataSource.of( IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref())),
-                        pik3caFeatureReader, DS_PIK3CA_HG19_GENCODE_FASTA,
+                        pik3caFeatureReader, DS_PIK3CA_HG19_GENCODE_FASTA, DS_PIK3CA_HG19_GENCODE_GTF,
                         TranscriptSelectionMode.CANONICAL, Collections.singletonList("ENST00000263967.3")
                 },{"chr19", 8994200, 8994200, "G", "C", FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(),
                         ReferenceDataSource.of( IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref())),
-                        muc16FeatureReader, DS_MUC16_HG19_GENCODE_FASTA,
+                        muc16FeatureReader, DS_MUC16_HG19_GENCODE_FASTA, DS_MUC16_HG19_GENCODE_GTF,
                         TranscriptSelectionMode.ALL, Arrays.asList("ENST00000397910.4", "ENST00000380951.5")
 
                 // Next one tests where we would be in a gene with more than one basic transcript, but variant only overlaps one.  And we still ask for all,
                 //   but since one is IGR, it will never get added the the FuncotationMap.
                 }, {"chr19", 9014550, 9014550, "T", "A", FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(),
                         ReferenceDataSource.of(IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref())),
-                        muc16FeatureReader, DS_MUC16_HG19_GENCODE_FASTA,
+                        muc16FeatureReader, DS_MUC16_HG19_GENCODE_FASTA, DS_MUC16_HG19_GENCODE_GTF,
                         TranscriptSelectionMode.ALL, Collections.singletonList("ENST00000397910.4")
 
                 // Next one tests where we would be in a gene with more than one basic transcript, variant overlaps both, but we are in canonical mode.
                 },{"chr19", 8994200, 8994200, "G", "C", FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(),
                         ReferenceDataSource.of( IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref())),
-                        muc16FeatureReader, DS_MUC16_HG19_GENCODE_FASTA,
+                        muc16FeatureReader, DS_MUC16_HG19_GENCODE_FASTA, DS_MUC16_HG19_GENCODE_GTF,
                         TranscriptSelectionMode.CANONICAL, Collections.singletonList("ENST00000397910.4")
 
                 // Next one tests where we would be in a gene with more than one basic transcript, variant overlaps both, but we are in effect mode.
                 },{"chr19", 8994200, 8994200, "G", "C", FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(),
                         ReferenceDataSource.of( IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref())),
-                        muc16FeatureReader, DS_MUC16_HG19_GENCODE_FASTA,
+                        muc16FeatureReader, DS_MUC16_HG19_GENCODE_FASTA, DS_MUC16_HG19_GENCODE_GTF,
                         TranscriptSelectionMode.BEST_EFFECT, Collections.singletonList("ENST00000397910.4")
                 }
         };
@@ -394,10 +401,11 @@ public class FuncotationMapUnitTest extends BaseTest{
                                                final ReferenceDataSource referenceDataSource,
                                                final FeatureReader<GencodeGtfFeature> featureReader,
                                                final String transcriptFastaFile,
+                                               final String transcriptGtfFile,
                                                final TranscriptSelectionMode transcriptSelectionMode,
                                                final List<String> gtTranscripts) {
 
-        final List<GencodeFuncotation> gencodeFuncotations = createGencodeFuncotations(contig, start, end, ref, alt, referenceFileName, referenceDataSource, featureReader, transcriptFastaFile, transcriptSelectionMode);
+        final List<GencodeFuncotation> gencodeFuncotations = createGencodeFuncotations(contig, start, end, ref, alt, referenceFileName, referenceDataSource, featureReader, transcriptFastaFile, transcriptGtfFile, transcriptSelectionMode);
 
         final FuncotationMap funcotationMap = FuncotationMap.createFromGencodeFuncotations(gencodeFuncotations);
 
@@ -409,7 +417,7 @@ public class FuncotationMapUnitTest extends BaseTest{
                 .noneMatch(k -> ((GencodeFuncotation) funcotationMap.get(k).get(0)).getVariantClassification().equals(GencodeFuncotation.VariantClassification.COULD_NOT_DETERMINE) ));
     }
 
-    private static List<GencodeFuncotation> createGencodeFuncotations(final String contig, final int start, final int end, final String ref, final String alt, final String referenceFileName, final ReferenceDataSource referenceDataSource, final FeatureReader<GencodeGtfFeature> featureReader, final String transcriptFastaFile, final TranscriptSelectionMode transcriptSelectionMode) {
+    private static List<GencodeFuncotation> createGencodeFuncotations(final String contig, final int start, final int end, final String ref, final String alt, final String referenceFileName, final ReferenceDataSource referenceDataSource, final FeatureReader<GencodeGtfFeature> featureReader, final String transcriptFastaFile, final String transcriptGtfFile, final TranscriptSelectionMode transcriptSelectionMode) {
         final SimpleInterval variantInterval = new SimpleInterval( contig, start, end );
         final VariantContext variantContext = createVariantContext(contig, start, end, ref, alt, referenceFileName);
 
@@ -427,10 +435,14 @@ public class FuncotationMapUnitTest extends BaseTest{
 
         final String gencode_test = "GENCODE_TEST";
         final GencodeFuncotationFactory gencodeFactory = new GencodeFuncotationFactory(Paths.get(transcriptFastaFile),
-        "TEST", gencode_test, transcriptSelectionMode, new HashSet<>(), new LinkedHashMap<>());
+        "TEST", gencode_test, transcriptSelectionMode, new HashSet<>(), new LinkedHashMap<>(),
+                new FeatureInput<>(transcriptGtfFile, gencode_test, Collections.emptyMap()));
 
-        return gencodeFactory.createFuncotations(variantContext, referenceContext, Collections.singletonMap(gencode_test, featureList)).stream()
-        .map(f -> (GencodeFuncotation) f).collect(Collectors.toList());
+        final FeatureContext featureContext = FuncotatorTestUtils.createFeatureContext(Collections.singletonList(gencodeFactory), "FuncotationMapUnitTest",
+                variantInterval, 0, 0, 0, null);
+
+        return gencodeFactory.createFuncotations(variantContext, referenceContext, featureContext).stream()
+            .map(f -> (GencodeFuncotation) f).collect(Collectors.toList());
     }
 
     private List<String> createFieldValuesFromNameList(final String prefix, final List<String> baseFieldList) {
@@ -507,7 +519,7 @@ public class FuncotationMapUnitTest extends BaseTest{
         return new Object[][]{
                 {"chr3", 178916538, 178916538, "G", "C", FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(),
                         ReferenceDataSource.of( IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref())),
-                        pik3caFeatureReader, DS_PIK3CA_HG19_GENCODE_FASTA,
+                        pik3caFeatureReader, DS_PIK3CA_HG19_GENCODE_FASTA, DS_PIK3CA_HG19_GENCODE_GTF,
                         TranscriptSelectionMode.ALL, Collections.singletonList("ENST00000263967.3"),
                         Arrays.asList(
                                 TableFuncotation.create(
@@ -531,7 +543,7 @@ public class FuncotationMapUnitTest extends BaseTest{
                         )
                 },{"chr19", 8994200, 8994200, "G", "C", FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(),
                         ReferenceDataSource.of( IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref())),
-                        muc16FeatureReader, DS_MUC16_HG19_GENCODE_FASTA,
+                        muc16FeatureReader, DS_MUC16_HG19_GENCODE_FASTA, DS_MUC16_HG19_GENCODE_GTF,
                         TranscriptSelectionMode.BEST_EFFECT, Collections.singletonList("ENST00000397910.4"),
                         Arrays.asList(
                         TableFuncotation.create(
@@ -555,7 +567,7 @@ public class FuncotationMapUnitTest extends BaseTest{
                 )
                 }, {"chr19", 8994200, 8994200, "G", "C", FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(),
                         ReferenceDataSource.of( IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref())),
-                        muc16FeatureReader, DS_MUC16_HG19_GENCODE_FASTA,
+                        muc16FeatureReader, DS_MUC16_HG19_GENCODE_FASTA, DS_MUC16_HG19_GENCODE_GTF,
                         TranscriptSelectionMode.ALL, Arrays.asList("ENST00000397910.4", "ENST00000380951.5"),
                         Arrays.asList(
                                 TableFuncotation.create(
@@ -594,9 +606,10 @@ public class FuncotationMapUnitTest extends BaseTest{
                               final ReferenceDataSource referenceDataSource,
                               final FeatureReader<GencodeGtfFeature> featureReader,
                               final String transcriptFastaFile,
+                              final String transcriptGtfFile,
                               final TranscriptSelectionMode transcriptSelectionMode,
                               final List<String> gtTranscripts, final List<Funcotation> funcotationsToAdd){
-        final List<GencodeFuncotation> gencodeFuncotations = createGencodeFuncotations(contig, start, end, ref, alt, referenceFileName, referenceDataSource, featureReader, transcriptFastaFile, transcriptSelectionMode);
+        final List<GencodeFuncotation> gencodeFuncotations = createGencodeFuncotations(contig, start, end, ref, alt, referenceFileName, referenceDataSource, featureReader, transcriptFastaFile, transcriptGtfFile, transcriptSelectionMode);
         final FuncotationMap funcotationMap = FuncotationMap.createFromGencodeFuncotations(gencodeFuncotations);
 
         // Let's make sure that the gtTranscripts match what is in the map, even if this is tested elsewhere
@@ -672,7 +685,7 @@ public class FuncotationMapUnitTest extends BaseTest{
         // Create some gencode funcotations.  The content does not really matter here.
         final List<Funcotation> gencodeFuncotations = createGencodeFuncotations("chr19", 8994200, 8994200, "G", "C", FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(),
                 ReferenceDataSource.of( IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref())),
-                muc16FeatureReader, DS_MUC16_HG19_GENCODE_FASTA,
+                muc16FeatureReader, DS_MUC16_HG19_GENCODE_FASTA, DS_MUC16_HG19_GENCODE_GTF,
                 TranscriptSelectionMode.ALL).stream().map(gf -> (Funcotation) gf).collect(Collectors.toList());
 
         // Create a funcotationMap with some pre-made funcotations.  Content does not really matter.

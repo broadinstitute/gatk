@@ -25,6 +25,9 @@ import java.util.Map;
  * system only in order to be recognized by the Feature management system. This is why the constructor is
  * marked as protected.
  *
+ * If you still want to instantiate this class directly, you will have to call {@link GATKTool#addFeatureInputsAfterInitialization(String, String, Class, int)}
+ *  in order to register the FeatureInput with the engine.
+ *
  * FeatureInputs can be assigned logical names on the command line using the syntax:
  *
  *     --argument_name logical_name:feature_file

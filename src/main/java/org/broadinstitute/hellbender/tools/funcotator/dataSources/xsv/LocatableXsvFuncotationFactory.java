@@ -6,6 +6,7 @@ import htsjdk.tribble.readers.AsciiLineReader;
 import htsjdk.tribble.readers.AsciiLineReaderIterator;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
+import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -71,23 +72,14 @@ public class LocatableXsvFuncotationFactory extends DataSourceFuncotationFactory
     //==================================================================================================================
     // Constructors:
 
-    public LocatableXsvFuncotationFactory(){
+    @VisibleForTesting
+    LocatableXsvFuncotationFactory(){
         this(DEFAULT_NAME, DEFAULT_VERSION_STRING);
-    }
-
-    public LocatableXsvFuncotationFactory(final String name, final String version){
-        this(name, version, new LinkedHashMap<>());
-    }
-
-    public LocatableXsvFuncotationFactory(final String name, final String version, final LinkedHashMap<String, String> annotationOverridesMap){
-        this.name = name;
-        this.version = version;
-
-        this.annotationOverrideMap = new LinkedHashMap<>(annotationOverridesMap);
     }
 
     @VisibleForTesting
     LocatableXsvFuncotationFactory(final String name, final String version, final List<String> supportedFields){
+
         this.name = name;
         this.version = version;
 
@@ -95,11 +87,28 @@ public class LocatableXsvFuncotationFactory extends DataSourceFuncotationFactory
         initializeFieldNameLists();
     }
 
+    @VisibleForTesting
+    LocatableXsvFuncotationFactory(final String name, final String version){
+        this(name, version, new LinkedHashMap<>(), null);
+    }
+
+    public LocatableXsvFuncotationFactory(final String name, final String version, final LinkedHashMap<String, String> annotationOverridesMap,
+                                          final FeatureInput<? extends Feature> mainSourceFileAsFeatureInput){
+
+        super(mainSourceFileAsFeatureInput);
+
+        this.name = name;
+        this.version = version;
+
+        this.annotationOverrideMap = new LinkedHashMap<>(annotationOverridesMap);
+    }
+
+
     //==================================================================================================================
     // Override Methods:
 
     @Override
-    protected Class<? extends Feature> getAnnotationFeatureClass() {
+    public Class<? extends Feature> getAnnotationFeatureClass() {
         return XsvTableFeature.class;
     }
 

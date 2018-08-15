@@ -8,6 +8,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFFileReader;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.tools.funcotator.DataSourceFuncotationFactory;
@@ -19,6 +20,7 @@ import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetada
 import org.broadinstitute.hellbender.tools.funcotator.metadata.TumorNormalPair;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.test.FuncotatorTestUtils;
 import org.codehaus.plexus.util.StringUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -166,7 +168,12 @@ public class CustomMafFuncotationCreatorUnitTest extends GATKBaseTest {
                 new SimpleInterval(variant.getContig(),
                 variant.getStart(), variant.getEnd()));
 
-        final List<Funcotation> funcotations = vcfFuncotationFactory.createFuncotations(variant, referenceContext, vcfFuncotationSourceMap);
+        final FeatureContext featureContext = FuncotatorTestUtils.createFeatureContext(Collections.singletonList(vcfFuncotationFactory),
+                "TEST_CREATE_DB_SNP_CUSTOM_FIELDS",
+                new SimpleInterval(variant.getContig(), variant.getStart(), variant.getEnd()),
+                0, 0, 0, null);
+
+        final List<Funcotation> funcotations = vcfFuncotationFactory.createFuncotations(variant, referenceContext, featureContext);
         Assert.assertTrue(funcotations.size() > 0);
         for (final Funcotation f : funcotations) {
             Assert.assertEquals(StringUtils.split(f.getField(DBSNP_DS_NAME + "_VLD"), "|").length, vcfFuncotationSourceMap.get(DBSNP_DS_NAME).size());

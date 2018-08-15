@@ -9,6 +9,7 @@ import org.apache.commons.lang3.tuple.Triple;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.funcotator.DataSourceFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
@@ -87,11 +88,20 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
     //==================================================================================================================
     // Constructors:
 
+    /**
+     * Use this only for testing,
+     */
+    @VisibleForTesting
     public VcfFuncotationFactory(final String name, final String version, final Path sourceFilePath) {
-        this(name, version, sourceFilePath, new LinkedHashMap<>());
+        // The class in the FeatureInput must always match what is returned from {@link VcfFuncotationFactory#getAnnotationFeatureClass}
+        this(name, version, sourceFilePath, new LinkedHashMap<>(), new FeatureInput<VariantContext>(sourceFilePath.toString(), name, new HashMap<>()));
     }
 
-    public VcfFuncotationFactory(final String name, final String version, final Path sourceFilePath, final LinkedHashMap<String, String> annotationOverridesMap) {
+    public VcfFuncotationFactory(final String name, final String version, final Path sourceFilePath, final LinkedHashMap<String, String> annotationOverridesMap,
+                                 final FeatureInput<? extends Feature> mainSourceFileAsFeatureInput) {
+
+        super(mainSourceFileAsFeatureInput);
+
         this.name = name;
         this.version = version;
         this.sourceFilePath = sourceFilePath;
@@ -157,7 +167,7 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
     // Override Methods:
 
     @Override
-    protected Class<? extends Feature> getAnnotationFeatureClass() {
+    public Class<? extends Feature> getAnnotationFeatureClass() {
         return VariantContext.class;
     }
 

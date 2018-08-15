@@ -104,7 +104,7 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
                         Collections.singletonList(FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER)
                 );
 
-        final List<DataSourceFuncotationFactory> dataSourceFuncotationFactories = DataSourceUtils.createDataSourceFuncotationFactoriesForDataSources(
+        final List<DataSourceFuncotationFactory> dataSourceFuncotationFactories = DataSourceUtils.createDataSourceFuncotationFactoriesForDataSourcesForTesting(
                 configData,
                 new LinkedHashMap<>(),
                 TranscriptSelectionMode.BEST_EFFECT,
