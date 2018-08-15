@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.tools.copynumber.caller.SimpleCopyRatioCaller;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CalledCopyRatioSegmentCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CalledLegacySegmentCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioSegmentCollection;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -75,7 +76,7 @@ public final class CallCopyRatioSegments extends CommandLineProgram {
     public static final String NEUTRAL_SEGMENT_COPY_RATIO_UPPER_BOUND_LONG_NAME = "neutral-segment-copy-ratio-upper-bound";
     public static final String OUTLIER_NEUTRAL_SEGMENT_COPY_RATIO_Z_SCORE_THRESHOLD_LONG_NAME = "outlier-neutral-segment-copy-ratio-z-score-threshold";
     public static final String CALLING_COPY_RATIO_Z_SCORE_THRESHOLD_LONG_NAME = "calling-copy-ratio-z-score-threshold";
-
+    public static final String IGV_COMPATIBLE_FILE_SUFFIX = ".igv.seg";
     @Argument(
             doc = "Input file containing copy-ratio segments (.cr.seg output of ModelSegments).",
             fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
@@ -137,6 +138,10 @@ public final class CallCopyRatioSegments extends CommandLineProgram {
                         outlierNeutralSegmentCopyRatioZScoreThreshold, callingCopyRatioZScoreThreshold)
                         .makeCalls();
         calledCopyRatioSegments.write(outputCalledCopyRatioSegmentsFile);
+
+        // Write an IGV compatible collection
+        final CalledLegacySegmentCollection legacySegmentCollection = new CalledLegacySegmentCollection(calledCopyRatioSegments);
+        legacySegmentCollection.write(new File(outputCalledCopyRatioSegmentsFile.getAbsolutePath() + IGV_COMPATIBLE_FILE_SUFFIX));
 
         return "SUCCESS";
     }

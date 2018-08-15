@@ -673,6 +673,7 @@ task CallCopyRatioSegments {
 
     output {
         File called_copy_ratio_segments = "${entity_id}.called.seg"
+        File called_copy_ratio_legacy_segments = "${entity_id}.called.seg.igv.seg"
     }
 }
 
