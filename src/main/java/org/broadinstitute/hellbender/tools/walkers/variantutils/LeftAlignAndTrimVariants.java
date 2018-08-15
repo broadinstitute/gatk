@@ -8,6 +8,7 @@ import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.Hidden;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -150,13 +151,18 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
      * Maximum indel size to realign.  Indels larger than this will be left unadjusted.
      */
     @Argument(fullName="maxIndelSize",shortName="maxIndelSize",doc="Set maximum indel size to realign",optional=true)
-    private int maxIndelSize=200;
+    private static int maxIndelSize=200;
 
     /**
      * Distance in reference to look back before allele
      */
     @Argument(fullName="maxLeadingBases",shortName = "maxLeadingBases",doc="Set max reference window size to look back before allele",optional=true)
-    private int maxLeadingBases=1000;
+    private static int maxLeadingBases=1000;
+
+    @Hidden
+    @Argument(fullName="suppress-reference-path", optional=true,
+            doc="Suppress reference path in output for test result differencing")
+    private boolean suppressReferencePath = false;
 
     private VariantContextWriter vcfWriter = null;
 
@@ -180,12 +186,12 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
         if (hasReference()) {
             Path refPath = referenceArguments.getReferencePath();
             sequenceDictionary= this.getReferenceDictionary();
-            actualLines = VcfUtils.updateHeaderContigLines(headerLines, refPath, sequenceDictionary, false);
+            actualLines = VcfUtils.updateHeaderContigLines(headerLines, refPath, sequenceDictionary, suppressReferencePath);
         }
         else {
             sequenceDictionary = getHeaderForVariants().getSequenceDictionary();
             if (null != sequenceDictionary) {
-                actualLines = VcfUtils.updateHeaderContigLines(headerLines, null, sequenceDictionary, false);
+                actualLines = VcfUtils.updateHeaderContigLines(headerLines, null, sequenceDictionary, suppressReferencePath);
             }
             else {
                 actualLines = headerLines;
@@ -233,7 +239,7 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
                 GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL, keepOriginalChrCounts) : Collections.singletonList(vc);
 
         for (final VariantContext v: vcList) {
-            numRealignedVariants +=trimAlign(v,ref,vcList.size());
+            numRealignedVariants +=trimAlign(v,ref);
         }
     }
 
@@ -262,10 +268,9 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
      *
      * @param vc                Input VC with variants to left align
      * @param ref               Reference context
-     * @param numBiallelics     Number of biallelics from the original VC
      * @return                  Number of records left-aligned (0 or 1)
      */
-    protected int trimAlign(final VariantContext vc, final ReferenceContext ref, final int numBiallelics ){
+    protected int trimAlign(final VariantContext vc, final ReferenceContext ref){
 
         final int refLength =  vc.getReference().length();
 
