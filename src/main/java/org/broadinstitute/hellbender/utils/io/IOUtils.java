@@ -23,6 +23,7 @@ import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
@@ -31,6 +32,9 @@ import java.util.zip.ZipException;
 public final class IOUtils {
     private static final Logger logger = LogManager.getLogger(IOUtils.class);
     private static final File DEV_DIR = new File("/dev");
+
+    // see https://support.hdfgroup.org/HDF5/doc/H5.format.html
+    private static final byte hdf5HeaderSignature[] = { (byte) 0x89, 'H', 'D', 'F', '\r', '\n', (byte) 0x1A, '\n' };
 
     /**
      * Returns true if the file's extension is CRAM.
@@ -58,6 +62,23 @@ public final class IOUtils {
      */
     public static boolean isBamFileName(final String inputFileName) {
         return BamFileIoUtils.BAM_FILE_EXTENSION.equalsIgnoreCase("." + FilenameUtils.getExtension(inputFileName));
+    }
+
+    /**
+     * Given a Path, determine if it is an HDF5 file without requiring that we're on a platform that supports
+     * HDF5 (let the caller decide if a return value of false is fatal).
+     *
+     * @param hdf5Candidate a Path representing the input to be inspected
+     * @return true if the candidate Path is an HDF5 file, otherwise false
+     */
+    public static boolean isHDF5File(final Path hdf5Candidate) {
+        try (final DataInputStream candidateStream = new DataInputStream(Files.newInputStream(hdf5Candidate))) {
+            final byte candidateHeader[] = new byte[hdf5HeaderSignature.length];
+            candidateStream.read(candidateHeader, 0, candidateHeader.length);
+            return Arrays.equals(candidateHeader, hdf5HeaderSignature);
+        } catch (IOException e) {
+            throw new UserException.CouldNotReadInputFile(String.format("I/O error reading from input stream %s", hdf5Candidate), e);
+        }
     }
 
     /**

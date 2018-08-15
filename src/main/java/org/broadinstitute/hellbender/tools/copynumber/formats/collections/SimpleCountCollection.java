@@ -63,9 +63,9 @@ public final class SimpleCountCollection extends AbstractSampleLocatableCollecti
 
     public static SimpleCountCollection read(final File file) {
         IOUtils.canReadFile(file);
-        try {
+        if (IOUtils.isHDF5File(file.toPath())) {
             return readHDF5(new HDF5File(file));
-        } catch (final HDF5LibException e) {
+        } else {
             return readTSV(file);
         }
     }
