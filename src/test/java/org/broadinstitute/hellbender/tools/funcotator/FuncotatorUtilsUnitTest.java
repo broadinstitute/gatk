@@ -350,6 +350,10 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
                         1
                 },
                 {
+                        new VariantContextBuilder().chr("1").start(1).stop(1).alleles(Arrays.asList(Allele.create("A", true), Allele.create("TG"))).make(),
+                        1
+                },
+                {
                         new VariantContextBuilder().chr("1").start(1234).stop(1234).alleles(Arrays.asList(Allele.create("A", true), Allele.create("AT"))).make(),
                         1235
                 },
