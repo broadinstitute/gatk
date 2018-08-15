@@ -19,7 +19,6 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static org.broadinstitute.hellbender.tools.funcotator.mafOutput.MafOutputRendererConstants.*;
 
 /**
  * Produces custom MAF fields (e.g. t_alt_count) into a Funcotation that can be used by the {@link org.broadinstitute.hellbender.tools.funcotator.mafOutput.MafOutputRenderer}
@@ -38,14 +37,14 @@ public class CustomMafFuncotationCreator {
     public final static String BY_1KG = "by1000genomes";
     public final static Map<String, String> DBSNP_VALIDATION_VALUE_MAP =
             ImmutableMap.<String,String>builder()
-                    .put(DBSNP_DS_NAME + "_VLD", BY_FREQ)
-                    .put(DBSNP_DS_NAME + "_KGVAL", BY_1KG)
-                    .put(DBSNP_DS_NAME + "_KGPROD", BY_1KG)
-                    .put(DBSNP_DS_NAME + "_KGPilot1", BY_1KG)
-                    .put(DBSNP_DS_NAME + "_KGPilot123", BY_1KG)
-                    .put(DBSNP_DS_NAME + "_KGPilot3", BY_1KG)
-                    .put(DBSNP_DS_NAME + "_KGPhase1", BY_1KG)
-                    .put(DBSNP_DS_NAME + "_KGPhase3", BY_1KG)
+                    .put(MafOutputRendererConstants.DBSNP_DS_NAME + "_VLD", BY_FREQ)
+                    .put(MafOutputRendererConstants.DBSNP_DS_NAME + "_KGVAL", BY_1KG)
+                    .put(MafOutputRendererConstants.DBSNP_DS_NAME + "_KGPROD", BY_1KG)
+                    .put(MafOutputRendererConstants.DBSNP_DS_NAME + "_KGPilot1", BY_1KG)
+                    .put(MafOutputRendererConstants.DBSNP_DS_NAME + "_KGPilot123", BY_1KG)
+                    .put(MafOutputRendererConstants.DBSNP_DS_NAME + "_KGPilot3", BY_1KG)
+                    .put(MafOutputRendererConstants.DBSNP_DS_NAME + "_KGPhase1", BY_1KG)
+                    .put(MafOutputRendererConstants.DBSNP_DS_NAME + "_KGPhase3", BY_1KG)
                     .build();
     public static final String MAF_DBSNP_VAL_STATUS_DELIMITER = ";";
 
@@ -91,7 +90,7 @@ public class CustomMafFuncotationCreator {
                     nRefCount,
                     tumorF);
 
-            result.add(TableFuncotation.create(COUNT_FIELD_NAMES, fieldValues, allele, MAF_COUNT_RENDERING_DATASOURCE_DUMMY_NAME, createCustomMafCountFieldsMetadata()));
+            result.add(TableFuncotation.create(COUNT_FIELD_NAMES, fieldValues, allele, MafOutputRendererConstants.MAF_COUNT_RENDERING_DATASOURCE_DUMMY_NAME, createCustomMafCountFieldsMetadata()));
         }
 
         return result;
@@ -144,7 +143,7 @@ public class CustomMafFuncotationCreator {
         final List<Funcotation> result = new ArrayList<>();
 
         for (final Allele allele : alleles) {
-            result.add(TableFuncotation.create(COUNT_FIELD_NAMES, Collections.nCopies(COUNT_FIELD_NAMES.size(), ""), allele, MAF_COUNT_RENDERING_DATASOURCE_DUMMY_NAME, createCustomMafCountFieldsMetadata()));
+            result.add(TableFuncotation.create(COUNT_FIELD_NAMES, Collections.nCopies(COUNT_FIELD_NAMES.size(), ""), allele, MafOutputRendererConstants.MAF_COUNT_RENDERING_DATASOURCE_DUMMY_NAME, createCustomMafCountFieldsMetadata()));
         }
         return result;
     }
@@ -183,7 +182,7 @@ public class CustomMafFuncotationCreator {
                     .distinct()
                     .collect(Collectors.joining(MAF_DBSNP_VAL_STATUS_DELIMITER))),
                 dbSnpFuncotation.getAltAllele(),
-                MAF_DBSNP_RENDERING_DATASOURCE_DUMMY_NAME,
+                MafOutputRendererConstants.MAF_DBSNP_RENDERING_DATASOURCE_DUMMY_NAME,
                 createCustomMafDbSnpFieldsMetadata());
     }
 }
