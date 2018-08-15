@@ -446,6 +446,7 @@ workflow CNVSomaticPairWorkflow {
         File copy_ratio_parameters_tumor = ModelSegmentsTumor.copy_ratio_parameters
         File allele_fraction_parameters_tumor = ModelSegmentsTumor.allele_fraction_parameters
         File called_copy_ratio_segments_tumor = CallCopyRatioSegmentsTumor.called_copy_ratio_segments
+        File called_copy_ratio_segments_legacy_tumor = CallCopyRatioSegmentsTumor.called_copy_ratio_legacy_segments
         File denoised_copy_ratios_plot_tumor = PlotDenoisedCopyRatiosTumor.denoised_copy_ratios_plot
         File denoised_copy_ratios_lim_4_plot_tumor = PlotDenoisedCopyRatiosTumor.denoised_copy_ratios_lim_4_plot
         File standardized_MAD_tumor = PlotDenoisedCopyRatiosTumor.standardized_MAD
@@ -472,6 +473,7 @@ workflow CNVSomaticPairWorkflow {
         File? copy_ratio_parameters_normal = ModelSegmentsNormal.copy_ratio_parameters
         File? allele_fraction_parameters_normal = ModelSegmentsNormal.allele_fraction_parameters
         File? called_copy_ratio_segments_normal = CallCopyRatioSegmentsNormal.called_copy_ratio_segments
+        File? called_copy_ratio_segments_legacy_normal = CallCopyRatioSegmentsNormal.called_copy_ratio_legacy_segments
         File? denoised_copy_ratios_plot_normal = PlotDenoisedCopyRatiosNormal.denoised_copy_ratios_plot
         File? denoised_copy_ratios_lim_4_plot_normal = PlotDenoisedCopyRatiosNormal.denoised_copy_ratios_lim_4_plot
         File? standardized_MAD_normal = PlotDenoisedCopyRatiosNormal.standardized_MAD
