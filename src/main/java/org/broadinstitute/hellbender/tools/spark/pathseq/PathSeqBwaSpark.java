@@ -212,7 +212,7 @@ public final class PathSeqBwaSpark extends GATKSparkTool {
     protected void runTool(final JavaSparkContext ctx) {
 
         if (!readArguments.getReadFiles().isEmpty()) {
-            throw new UserException.BadInput("Please use --pairedInput or --unpairedInput instead of --input");
+            throw new UserException.BadInput("Please use --paired-input or --unpaired-input instead of --input");
         }
         final ReadsSparkSource readsSource = new ReadsSparkSource(ctx, readArguments.getReadValidationStringency());
 
@@ -220,7 +220,7 @@ public final class PathSeqBwaSpark extends GATKSparkTool {
         boolean bPairedSuccess = alignBam(inputPaired, aligner, true, ctx, readsSource);
         boolean bUnpairedSuccess = alignBam(inputUnpaired, aligner, false, ctx, readsSource);
         if (!bPairedSuccess && !bUnpairedSuccess) {
-            throw new UserException.BadInput("No reads were loaded. Ensure --pairedInput and/or --unpairedInput are set and valid.");
+            throw new UserException.BadInput("No reads were loaded. Ensure --paired-input and/or --unpaired-input are set and valid.");
         }
         aligner.close();
     }

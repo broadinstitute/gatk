@@ -34,7 +34,6 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import scala.Tuple2;
 
-import java.io.IOException;
 import java.util.*;
 
 import static org.broadinstitute.hellbender.tools.spark.sv.discovery.AnnotatedVariantProducer.produceAnnotatedVcFromAssemblyEvidence;
@@ -258,8 +257,8 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
                                                final List<VariantContext> expectedVariants) {
 
         final Logger localLogger = LogManager.getLogger(AnnotatedVariantProducer.class);
-        final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection params =
-                new StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection();
+        final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigAlignmentsSparkArgumentCollection params =
+                new StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigAlignmentsSparkArgumentCollection();
 
         ReadMetadata metadata = Mockito.mock(ReadMetadata.class);
         when(metadata.getMaxMedianFragmentSize()).thenReturn(300);

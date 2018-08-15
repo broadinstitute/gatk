@@ -3,9 +3,16 @@ package org.broadinstitute.hellbender.utils.test;
 import htsjdk.samtools.*;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import htsjdk.samtools.util.SequenceUtil;
+import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFHeader;
+import org.apache.commons.lang3.tuple.Pair;
+import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -87,5 +94,30 @@ public final class ReadTestUtils {
             result.add(record);
         }
         return result;
+    }
+
+    /**
+     * Reads an entire BAM into memory, returning both its SAMFile and all GATKRead records in
+     * the bam. Supports both local files and NIO-supported remote filesystems such as GCS.
+     *
+     * For unit/integration testing purposes only! Do not call this method from actual tools!
+     *
+     * @param bamPath path or URI to a bam, as a String
+     * @return A Pair with the SAMFileHeader as the first element, and a List of all  from the VCF
+     *         as the second element
+     */
+    public static Pair<SAMFileHeader, List<GATKRead>> readEntireBamIntoMemory(final String bamPath) {
+        Utils.nonNull(bamPath);
+
+        try ( final ReadsDataSource bamReader = new ReadsDataSource(Paths.get(bamPath)) ) {
+            final SAMFileHeader header = bamReader.getHeader();
+
+            final List<GATKRead> reads = new ArrayList<>();
+            for ( final GATKRead read : bamReader ) {
+                reads.add(read);
+            }
+
+            return Pair.of(header, reads);
+        }
     }
 }

@@ -186,7 +186,7 @@ public class PathSeqScoreSpark extends GATKSparkTool {
     protected void runTool(final JavaSparkContext ctx) {
 
         if (!readArguments.getReadFiles().isEmpty()) {
-            throw new UserException.BadInput("Please use --pairedInput or --unpairedInput instead of --input");
+            throw new UserException.BadInput("Please use --paired-input or --unpaired-input instead of --input");
         }
 
         final ReadsSparkSource readsSource = new ReadsSparkSource(ctx, readArguments.getReadValidationStringency());

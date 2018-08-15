@@ -77,7 +77,7 @@ public abstract class AbstractConcordanceWalker extends GATKTool {
         }
 
         if (truthVariants == null) {
-            truthVariants = new FeatureDataSource<>(new FeatureInput<>(truthVariantsFile, "truth"), CACHE_LOOKAHEAD, VariantContext.class);
+            truthVariants = new FeatureDataSource<>(new FeatureInput<>(truthVariantsFile, "truth"), CACHE_LOOKAHEAD, VariantContext.class, cloudPrefetchBuffer, cloudIndexPrefetchBuffer);
         }
     }
 
@@ -101,7 +101,7 @@ public abstract class AbstractConcordanceWalker extends GATKTool {
         super.onStartup();
 
         initializeTruthVariantsIfNecessary();
-        evalVariants = new FeatureDataSource<>(new FeatureInput<>(evalVariantsFile, "eval"), CACHE_LOOKAHEAD, VariantContext.class);
+        evalVariants = new FeatureDataSource<>(new FeatureInput<>(evalVariantsFile, "eval"), CACHE_LOOKAHEAD, VariantContext.class, cloudPrefetchBuffer, cloudIndexPrefetchBuffer);
 
         if ( hasUserSuppliedIntervals() ) {
             truthVariants.setIntervalsForTraversal(userIntervals);

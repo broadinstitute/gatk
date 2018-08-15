@@ -122,7 +122,7 @@ public class PathSeqBuildReferenceTaxonomy extends CommandLineProgram {
     public Object doWork() {
 
         if (refseqCatalogPath == null && genbankCatalogPath == null) {
-            throw new UserException.BadInput("At least one of --refseqCatalogPath or --genbankCatalogPath must be specified");
+            throw new UserException.BadInput("At least one of --refseq-catalog or --genbank-catalog must be specified");
         }
 
         logger.info("Parsing reference and files... (this may take a few minutes)");

@@ -22,23 +22,14 @@ import java.util.Map;
  * during the processing step of MarkDuplicatesSpark
  */
 @DefaultSerializer(Pair.Serializer.class)
-public final class Pair extends PairedEnds implements PhysicalLocation {
+public final class Pair extends TransientFieldPhysicalLocation {
     protected transient ReadsKey key;
 
-    private final int firstStartPosition;
     private final boolean isRead1ReverseStrand;
 
     private final boolean isRead2ReverseStrand;
-    private final int score;
+    private final short score;
     private final boolean wasFlipped;
-
-    // Information used to detect optical dupes
-    private short readGroupIndex = -1;
-
-    private transient short tile = -1;
-    private transient int x = -1;
-    private transient int y = -1;
-    private transient short libraryId = -1;
 
     public Pair(final GATKRead read1, final GATKRead read2, final SAMFileHeader header, int partitionIndex, MarkDuplicatesScoringStrategy scoringStrategy, Map<String, Byte> headerLibraryMap) {
         super(partitionIndex, read1.getName());
@@ -47,7 +38,7 @@ public final class Pair extends PairedEnds implements PhysicalLocation {
         final String name2 = read2.getName();
         Utils.validate(name1.equals(name2), () -> "Paired reads have different names\n" + name1 + "\n" + name2);
 
-        this.score = scoringStrategy.score(read1) + scoringStrategy.score(read2);
+        this.score = (short)(scoringStrategy.score(read1) + scoringStrategy.score(read2));
 
         GATKRead first = read1;
         GATKRead second;
@@ -65,7 +56,6 @@ public final class Pair extends PairedEnds implements PhysicalLocation {
             first = read2;
             second = read1;
         }
-        firstStartPosition = first.getAssignedStart();
 
         // if the two read ends are in the same position, pointing in opposite directions,
         // the orientation is undefined and the procedure above
@@ -101,9 +91,8 @@ public final class Pair extends PairedEnds implements PhysicalLocation {
         y = -1;
         libraryId = -1;
 
-        score = input.readInt();
+        score = input.readShort();
 
-        firstStartPosition = input.readInt();
         isRead1ReverseStrand = input.readBoolean();
 
         isRead2ReverseStrand = input.readBoolean();
@@ -116,9 +105,8 @@ public final class Pair extends PairedEnds implements PhysicalLocation {
         output.writeInt(partitionIndex, true);
         output.writeAscii(name);
 
-        output.writeInt(score);
+        output.writeShort(score);
 
-        output.writeInt(firstStartPosition);
         output.writeBoolean(isRead1ReverseStrand);
 
         output.writeBoolean(isRead2ReverseStrand);
@@ -137,20 +125,17 @@ public final class Pair extends PairedEnds implements PhysicalLocation {
         return key;
     }
     @Override
-    public int getScore() {
+    public short getScore() {
         return score;
     }
-    @Override
-    public int getFirstStartPosition() {
-        return firstStartPosition;
-    }
+
     @Override
     public boolean isRead1ReverseStrand() {
         return isRead1ReverseStrand;
     }
     @Override
     public String toString() {
-        return name + " " + firstStartPosition + " score:" + score;
+        return name + " score:" + score;
     }
 
     /**
@@ -180,28 +165,6 @@ public final class Pair extends PairedEnds implements PhysicalLocation {
         }
         return ReadEnds.FF;  //at this point we know for sure isRead1ReverseStrand is false and isRead2ReverseStrand is false
     }
-
-    // Methods for OpticalDuplicateFinder.PhysicalLocation
-    @Override
-    public short getReadGroup() { return this.readGroupIndex; }
-    @Override
-    public void setReadGroup(final short readGroup) { this.readGroupIndex = readGroup; }
-    @Override
-    public short getTile() { return this.tile; }
-    @Override
-    public void setTile(final short tile) { this.tile = tile; }
-    @Override
-    public int getX() { return this.x; }
-    @Override
-    public void setX(final int x) { this.x = x; }
-    @Override
-    public int getY() { return this.y; }
-    @Override
-    public void setY(final int y) { this.y = y; }
-    @Override
-    public short getLibraryId() { return this.libraryId; }
-    @Override
-    public void setLibraryId(final short libraryId) { this.libraryId = libraryId; }
 
     /**
      * Serializers for each subclass of PairedEnds which rely on implementations of serializations within each class itself

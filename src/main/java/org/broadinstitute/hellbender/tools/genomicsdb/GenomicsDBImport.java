@@ -148,6 +148,7 @@ public final class GenomicsDBImport extends GATKTool {
     public static final String VALIDATE_SAMPLE_MAP_LONG_NAME = "validate-sample-name-map";
     public static final String VCF_INITIALIZER_THREADS_LONG_NAME = "reader-threads";
     public static final String MAX_NUM_INTERVALS_TO_IMPORT_IN_PARALLEL = "max-num-intervals-to-import-in-parallel";
+    public static final int INTERVAL_LIST_SIZE_WARNING_THRESHOLD = 100;
 
     @Argument(fullName = WORKSPACE_ARG_LONG_NAME,
               doc = "Workspace for GenomicsDB. Must be a POSIX file system path, but can be a relative path." +
@@ -682,6 +683,14 @@ public final class GenomicsDBImport extends GATKTool {
 
             intervals = new ArrayList<>();
             final List<SimpleInterval> simpleIntervalList = intervalArgumentCollection.getIntervals(intervalDictionary);
+            if (simpleIntervalList.size() > INTERVAL_LIST_SIZE_WARNING_THRESHOLD) {
+                logger.warn(String.format(
+                        "A large number of intervals were specified. " +
+                        "Using more than %d intervals in a single import is not recommended and can cause performance to suffer. " +
+                        "It is recommended that intervals be aggregated together.",
+                        INTERVAL_LIST_SIZE_WARNING_THRESHOLD)
+                );
+            }
             simpleIntervalList.forEach(interval -> intervals.add(new ChromosomeInterval(interval.getContig(),
                     interval.getStart(), interval.getEnd())));
         } else {

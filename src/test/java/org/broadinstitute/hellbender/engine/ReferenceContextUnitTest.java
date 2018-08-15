@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+import org.testng.internal.junit.ArrayAsserts;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -354,6 +355,28 @@ public final class ReferenceContextUnitTest extends GATKBaseTest {
             SimpleInterval interval = new SimpleInterval("1", 5, 10);
             ReferenceContext refContext = new ReferenceContext(reference, interval);
             refContext.setWindow(windowStartOffset, windowStopOffset);
+        }
+    }
+
+    @DataProvider(name = "SubintervalDataProvider")
+    public Object[][] getSubintervals() {
+        return new Object[][] {
+                // start (1120x):   01234567890
+                // reference bases: CGGTGCTGTGC
+                {"1", 11211, 1, "CGG"},
+                {"1", 11219, 1, "TGC"},
+                {"1", 11217, 2, "CTGTG"}
+        };
+    }
+
+    @Test(dataProvider = "SubintervalDataProvider")
+    public void testGetKmerAround(final String contig, final int start, final int padding, String expectedSubsequence){
+        // the interval of a ReferenceContext object is *in*clusive on both ends
+        try (final ReferenceDataSource reference = new ReferenceFileSource(TEST_REFERENCE)) {
+            final SimpleInterval interval = new SimpleInterval(contig, start, start);
+            final ReferenceContext refContext = new ReferenceContext(reference, interval);
+            final String kmer = refContext.getKmerAround(start, padding);
+            Assert.assertEquals(kmer, expectedSubsequence);
         }
     }
 }

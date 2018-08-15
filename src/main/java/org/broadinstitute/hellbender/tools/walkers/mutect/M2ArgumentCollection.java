@@ -6,6 +6,8 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerArgumentCollection;
 
+import java.io.File;
+
 public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection {
     private static final long serialVersionUID = 9341L;
     public static final String TUMOR_SAMPLE_LONG_NAME = "tumor-sample";
@@ -23,6 +25,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public static final String EMISSION_LOG_SHORT_NAME = "emit-lod";
     public static final String INITIAL_TUMOR_LOD_LONG_NAME = "initial-tumor-lod";
     public static final String INITIAL_TUMOR_LOD_SHORT_NAME = "init-lod";
+    public static final String INITIAL_PCR_ERROR_QUAL = "initial-pcr-qual";
     public static final String MAX_POPULATION_AF_LONG_NAME = "max-population-af";
     public static final String MAX_POPULATION_AF_SHORT_NAME = "max-af";
     public static final String DOWNSAMPLING_STRIDE_LONG_NAME = "downsampling-stride";
@@ -32,10 +35,10 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public static final String MAX_MNP_DISTANCE_LONG_NAME = "max-mnp-distance";
     public static final String MAX_MNP_DISTANCE_SHORT_NAME = "mnp-dist";
     public static final String IGNORE_ITR_ARTIFACTS_LONG_NAME = "ignore-itr-artifacts";
-
+    public static final String ARTIFACT_PRIOR_TABLE_NAME = "orientation-bias-artifact-priors";
 
     public static final double DEFAULT_AF_FOR_TUMOR_ONLY_CALLING = 5e-8;
-    public static final double DEFAULT_AF_FOR_TUMOR_NORMAL_CALLING = 1e-5;
+    public static final double DEFAULT_AF_FOR_TUMOR_NORMAL_CALLING = 1e-6;
 
     //TODO: HACK ALERT HACK ALERT HACK ALERT
     //TODO: GATK4 does not yet have a way to tag inputs, eg -I:tumor tumor.bam -I:normal normal.bam,
@@ -109,6 +112,12 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public double initialTumorLod = 2.0;
 
     /**
+     * PCR error rate for overlapping fragments in isActive()
+     */
+    @Argument(fullName = INITIAL_PCR_ERROR_QUAL, optional = true, doc = "PCR error rate for overlapping fragments in isActive()")
+    public int initialPCRErrorQual = 40;
+
+    /**
      * In tumor-only mode, we discard variants with population allele frequencies greater than this threshold.
      */
     @Argument(fullName = MAX_POPULATION_AF_LONG_NAME, shortName = MAX_POPULATION_AF_SHORT_NAME, optional = true, doc = "Maximum population allele frequency in tumor-only mode.")
@@ -135,6 +144,9 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      */
     @Argument(fullName = NORMAL_LOD_LONG_NAME, optional = true, doc = "LOD threshold for calling normal variant non-germline.")
     public double normalLod = 2.2;
+
+    @Argument(fullName = ARTIFACT_PRIOR_TABLE_NAME, optional = true, doc = "table of prior artifact probabilities for the read orientation filter model")
+    public File artifactPriorTable = null;
 
     /**
      * Two or more phased substitutions separated by this distance or less are merged into MNPs.

@@ -333,24 +333,23 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
      * Adjusts likelihoods so that for each read, the best allele likelihood is 0 and caps the minimum likelihood
      * of any allele for each read based on the maximum alternative allele likelihood.
      *
-     * @param bestToZero set the best likelihood to 0, others will be subtracted the same amount.
      * @param maximumLikelihoodDifferenceCap maximum difference between the best alternative allele likelihood
      *                                           and any other likelihood.
      *
      * @throws IllegalArgumentException if {@code maximumDifferenceWithBestAlternative} is not 0 or less.
      */
-    public void normalizeLikelihoods(final boolean bestToZero, final double maximumLikelihoodDifferenceCap) {
+    public void normalizeLikelihoods(final double maximumLikelihoodDifferenceCap) {
         Utils.validateArg(maximumLikelihoodDifferenceCap < 0.0 && !Double.isNaN(maximumLikelihoodDifferenceCap),
                 "the minimum reference likelihood fall must be negative");
 
-        if (maximumLikelihoodDifferenceCap == Double.NEGATIVE_INFINITY && !bestToZero) {
+        if (maximumLikelihoodDifferenceCap == Double.NEGATIVE_INFINITY) {
             return;
         }
 
         final int alleleCount = alleles.numberOfAlleles();
         if (alleleCount == 0){ // trivial case there is no alleles.
             return;
-        } else if (alleleCount == 1 && !bestToZero) {
+        } else if (alleleCount == 1) {
             return;
         }
 
@@ -358,47 +357,28 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
             final double[][] sampleValues = valuesBySampleIndex[s];
             final int readCount = readsBySampleIndex[s].length;
             for (int r = 0; r < readCount; r++) {
-                normalizeLikelihoodsPerRead(bestToZero, maximumLikelihoodDifferenceCap, sampleValues, s, r);
+                normalizeLikelihoodsPerRead(maximumLikelihoodDifferenceCap, sampleValues, s, r);
             }
         }
     }
 
     // Does the normalizeLikelihoods job for each read.
-    private void normalizeLikelihoodsPerRead(final boolean bestToZero, final double maximumBestAltLikelihoodDifference,
+    private void normalizeLikelihoodsPerRead(final double maximumBestAltLikelihoodDifference,
                                              final double[][] sampleValues, final int sampleIndex, final int readIndex) {
 
         final BestAllele bestAlternativeAllele = searchBestAllele(sampleIndex,readIndex,false, false);
 
         final double worstLikelihoodCap = bestAlternativeAllele.likelihood + maximumBestAltLikelihoodDifference;
 
-        final double referenceLikelihood = referenceAlleleIndex == MISSING_REF ? Double.NEGATIVE_INFINITY :
-                sampleValues[referenceAlleleIndex][readIndex];
-
-        final double bestAbsoluteLikelihood = Math.max(bestAlternativeAllele.likelihood, referenceLikelihood);
-
         final int alleleCount = alleles.numberOfAlleles();
-        if (bestToZero) {
-            if (bestAbsoluteLikelihood == Double.NEGATIVE_INFINITY) {
-                for (int a = 0; a < alleleCount; a++) {
-                    sampleValues[a][readIndex] = 0;
-                }
-            } else if (worstLikelihoodCap != Double.NEGATIVE_INFINITY) {
-                for (int a = 0; a < alleleCount; a++) {
-                    sampleValues[a][readIndex] = (sampleValues[a][readIndex] < worstLikelihoodCap ? worstLikelihoodCap : sampleValues[a][readIndex]) - bestAbsoluteLikelihood;
-                }
-            } else {
-                for (int a = 0; a < alleleCount; a++) {
-                    sampleValues[a][readIndex] -= bestAbsoluteLikelihood;
-                }
-            }
-        } else {
-            // Guarantee to be the case by enclosing code.
-            for (int a = 0; a < alleleCount; a++) {
-                if (sampleValues[a][readIndex] < worstLikelihoodCap) {
-                    sampleValues[a][readIndex] = worstLikelihoodCap;
-                }
+
+        // Guarantee to be the case by enclosing code.
+        for (int a = 0; a < alleleCount; a++) {
+            if (sampleValues[a][readIndex] < worstLikelihoodCap) {
+                sampleValues[a][readIndex] = worstLikelihoodCap;
             }
         }
+
     }
 
     /**

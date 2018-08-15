@@ -62,7 +62,7 @@ import java.util.stream.Stream;
  *
  * <p>This is an implementation of {@link HaplotypeCaller} using spark to distribute the computation.
  * It is still in an early stage of development and does not yet support all the options that the non-spark version does.
- * Specifically it does not support the --dbsnp, --comp, and --bamOutput options.</p>
+ * Specifically it does not support the --dbsnp, --comp, and --bam-output options.</p>
  *
  * <h3>Usage Example</h3>
  * <pre>

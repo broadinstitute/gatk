@@ -70,6 +70,7 @@ before_install:
     fi;
     $GCLOUD_HOME/gcloud config set project broad-dsde-dev;
     $GCLOUD_HOME/gcloud auth activate-service-account --key-file servicekey.json;
+    $GCLOUD_HOME/gcloud --version
     openssl aes-256-cbc -K $encrypted_4823d58debd3_key -iv $encrypted_4823d58debd3_iv -in resources_for_CI/github_deploy_key.enc -out ~/.ssh/id_rsa -d;
     chmod 600 ~/.ssh/id_rsa;
     echo "Testing github authentication:";
@@ -146,7 +147,10 @@ script:
     sudo mkdir -p build/reports/;
     sudo chmod -R a+w build/reports/;
     cp scripts/docker/dockertest.gradle .;
-    sudo docker run -v $(pwd):/gatkCloneMountPoint:cached -v $(pwd)/testJars:/jars:cached --rm -e "TEST_VERBOSITY=minimal" -e "TEST_TYPE=${TEST_TYPE}" -t broadinstitute/gatk:${DOCKER_TAG} bash --init-file /gatk/gatkenv.rc /root/run_unit_tests.sh && sudo mkdir build/reports/tests/test && sudo cp -rp build/reports/tests/testOnPackagedReleaseJar/* build/reports/tests/test && sudo rm -r build/reports/tests/testOnPackagedReleaseJar;
+    sudo docker run -v $(pwd):/gatkCloneMountPoint:cached -v $(pwd)/testJars:/jars:cached --rm -e "TEST_VERBOSITY=minimal" -e "TEST_TYPE=${TEST_TYPE}" -t broadinstitute/gatk:${DOCKER_TAG} bash --init-file /gatk/gatkenv.rc /root/run_unit_tests.sh;
+    TEST_EXIT_VALUE=$?;
+    sudo mkdir build/reports/tests/test && sudo cp -rp build/reports/tests/testOnPackagedReleaseJar/* build/reports/tests/test && sudo rm -r build/reports/tests/testOnPackagedReleaseJar;
+    $( exit ${TEST_EXIT_VALUE} );
   else
     ./gatk PrintReads -I src/test/resources/NA12878.chr17_69k_70k.dictFix.bam -O output.bam;
     travis_wait 50 ./gradlew jacocoTestReport;

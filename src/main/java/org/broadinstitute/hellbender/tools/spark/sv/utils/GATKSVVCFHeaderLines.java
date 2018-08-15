@@ -19,7 +19,7 @@ public final class GATKSVVCFHeaderLines {
     public static VCFFilterHeaderLine getFilterLine(final String id) { return filterLines.get(id); }
     public static Set<VCFFilterHeaderLine> getFilterLines() { return new HashSet<>(filterLines.values());  }
 
-    private static final Map<String, VCFInfoHeaderLine> infoLines = new LinkedHashMap<>(20);
+    private static final Map<String, VCFInfoHeaderLine> infoLines = new LinkedHashMap<>(30);
     private static final Map<String, VCFFormatHeaderLine> formatLines = new LinkedHashMap<>(5);
     private static final Map<String, VCFFilterHeaderLine> filterLines = new LinkedHashMap<>(2);
 
@@ -60,6 +60,8 @@ public final class GATKSVVCFHeaderLines {
                 GATKSVVCFConstants.SYMB_ALT_ALLELE_DUP, "Region of elevated copy number relative to the reference"));
         addSymbAltAlleleLine(new VCFSimpleHeaderLine(GATKVCFConstants.SYMBOLIC_ALLELE_DEFINITION_HEADER_TAG,
                 GATKSVVCFConstants.SYMB_ALT_ALLELE_INVDUP, "Region of elevated copy number relative to the reference, with some copies inverted"));
+        addSymbAltAlleleLine(new VCFSimpleHeaderLine(GATKVCFConstants.SYMBOLIC_ALLELE_DEFINITION_HEADER_TAG,
+                GATKSVVCFConstants.CPX_SV_SYB_ALT_ALLELE_STR, "Complex rearrangement of reference sequence"));
 
         // descriptions on INFO fields that are available for each record
         addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.SVTYPE,
@@ -114,11 +116,15 @@ public final class GATKSVVCFHeaderLines {
                     1,
                     VCFHeaderLineType.String,
                     "Comma-delimited list of external copy number calls that overlap with this variant in format ID:CN:CNQ"));
+
+            addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.LINK,
+                    VCFHeaderLineCount.UNBOUNDED,
+                    VCFHeaderLineType.String,
+                    "ID(s) of other record(s) linked to current record"));
         }
         
         // for variants-detected from assembly
-        // todo: create an alternate assembly file and link to it with breakpoint IDs according to the VCF spec
-        {
+        {// todo: create an alternate assembly file and link to it with breakpoint IDs according to the VCF spec
             addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.CONTIG_NAMES,
                     VCFHeaderLineCount.UNBOUNDED,
                     VCFHeaderLineType.String,
@@ -221,6 +227,41 @@ public final class GATKSVVCFHeaderLines {
                     0,
                     VCFHeaderLineType.Flag,
                     "Tandem repeats expansion compared to reference"));
+
+            addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.CPX_EVENT_ALT_ARRANGEMENTS,
+                    VCFHeaderLineCount.UNBOUNDED,
+                    VCFHeaderLineType.String,
+                    "For CPX variants only; specifies how reference segments given in " + GATKSVVCFConstants.CPX_SV_REF_SEGMENTS + " are re-arranged"));
+            addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.CPX_SV_REF_SEGMENTS,
+                    VCFHeaderLineCount.UNBOUNDED,
+                    VCFHeaderLineType.String,
+                    "For CPX variants only; segments of reference that are rearranged"));
+            addInfoLine(new VCFInfoHeaderLine(GATKSVVCFConstants.CPX_EVENT_KEY,
+                    VCFHeaderLineCount.UNBOUNDED,
+                    VCFHeaderLineType.String,
+                    "ID(s) of " + GATKSVVCFConstants.CPX_SV_SYB_ALT_ALLELE_STR + "(s) events from which current simple variant record is extracted"));
+        }
+
+        // format lines
+        {
+            addFormatLine(new VCFFormatHeaderLine(GATKSVVCFConstants.COPY_NUMBER_FORMAT,
+                    1, // TODO: 7/3/18 Spec 4.3 has this example value at bottom of page 12, but what about multi-allelic sites?
+                    VCFHeaderLineType.Integer,
+                    "Copy number genotype for imprecise events"));
+
+            addFormatLine(new VCFFormatHeaderLine(GATKSVVCFConstants.COPY_NUMBER_QUALITY_FORMAT,
+                    1, // TODO: 7/3/18 Spec 4.3 has this example value at bottom of page 12, but what about multi-allelic sites?
+                    VCFHeaderLineType.Float,
+                    "Copy number genotype quality for imprecise events"));
+        }
+
+        // filter lines
+        {
+            addFilterLine(new VCFFilterHeaderLine(GATKSVVCFConstants.ASSEMBLY_BASED_VARIANT_MQ_FILTER_KEY,
+                    "Assembly evidence based record that whose maximum value specified in " + GATKSVVCFConstants.MAPPING_QUALITIES + " is lower than user specified threshold"));
+
+            addFilterLine(new VCFFilterHeaderLine(GATKSVVCFConstants.ASSEMBLY_BASED_VARIANT_ALN_LENGTH_FILTER_KEY,
+                    "Assembly evidence based record that whose " + GATKSVVCFConstants.MAPPING_QUALITIES + " value is lower than user specified threshold"));
         }
     }
 }

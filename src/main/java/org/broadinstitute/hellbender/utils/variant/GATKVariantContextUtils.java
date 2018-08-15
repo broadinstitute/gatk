@@ -22,7 +22,9 @@ import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAlleleCount
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculator;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculators;
-import org.broadinstitute.hellbender.utils.*;
+import org.broadinstitute.hellbender.utils.BaseUtils;
+import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.io.File;
@@ -144,54 +146,6 @@ public final class GATKVariantContextUtils {
      */
     @Deprecated
     public final static List<Allele> NO_CALL_ALLELES = Arrays.asList(Allele.NO_CALL, Allele.NO_CALL);
-
-
-    /**
-     * Checks whether a variant-context overlaps with a region.
-     *
-     * <p>
-     *     No event overlaps an unmapped region.
-     * </p>
-     *
-     * @param variantContext variant-context to test the overlap with.
-     * @param region region to test the overlap with.
-     *
-     * @throws IllegalArgumentException if either region or event is {@code null}.
-     *
-     * @return {@code true} if there is an overlap between the event described and the active region provided.
-     */
-    public static boolean overlapsRegion(final VariantContext variantContext, final GenomeLoc region) {
-        Utils.nonNull(region, "the active region is null");
-        Utils.nonNull(variantContext);
-
-        if (region.isUnmapped())
-            return false;
-        if (variantContext.getEnd() < region.getStart())
-            return false;
-        if (variantContext.getStart() > region.getStop())
-            return false;
-        return variantContext.getContig().equals(region.getContig());
-    }
-
-    /**
-     * Checks whether a variant-context overlaps with a region.
-     *
-     * @param variantContext variant-context to test the overlap with.
-     * @param region region to test the overlap with.
-     *
-     * @throws IllegalArgumentException if either region or event is {@code null}.
-     *
-     * @return {@code true} if there is an overlap between the event described and the active region provided.
-     */
-    public static boolean overlapsRegion(final VariantContext variantContext, final SimpleInterval region) {
-        Utils.nonNull(region, "the active region is null");
-        Utils.nonNull(variantContext);
-        if (variantContext.getEnd() < region.getStart())
-            return false;
-        if (variantContext.getStart() > region.getEnd())
-            return false;
-        return variantContext.getContig().equals(region.getContig());
-    }
 
     private static boolean hasPLIncompatibleAlleles(final Collection<Allele> alleleSet1, final Collection<Allele> alleleSet2) {
         final Iterator<Allele> it1 = alleleSet1.iterator();

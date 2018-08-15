@@ -74,7 +74,7 @@ public final class SimpleNovelAdjacencyInterpreter {
         final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast =
                 svDiscoveryInputMetaData.getReferenceData().getReferenceSequenceDictionaryBroadcast();
         final List<SVInterval> assembledIntervals = svDiscoveryInputMetaData.getSampleSpecificData().getAssembledIntervals();
-        final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection
+        final StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigAlignmentsSparkArgumentCollection
                 discoverStageArgs = svDiscoveryInputMetaData.getDiscoverStageArgs();
         final Logger toolLogger = svDiscoveryInputMetaData.getToolLogger();
         SvDiscoveryUtils.evaluateIntervalsAndNarls(assembledIntervals, narls,

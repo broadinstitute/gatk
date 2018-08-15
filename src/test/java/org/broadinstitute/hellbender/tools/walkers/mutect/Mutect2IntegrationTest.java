@@ -46,6 +46,10 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     private static final File NO_CONTAMINATION_TABLE = new File(toolsTestDir, "mutect/no-contamination.table");
     private static final File FIVE_PCT_CONTAMINATION_TABLE = new File(toolsTestDir, "mutect/five-pct-contamination.table");
     private static final File TEN_PCT_CONTAMINATION_TABLE = new File(toolsTestDir, "mutect/ten-pct-contamination.table");
+
+    private static final File NA12878_MITO_BAM = new File(toolsTestDir, "mutect/mito/NA12878.bam");
+    private static final File MITO_REF = new File(toolsTestDir, "mutect/mito/Homo_sapiens_assembly38.mt_only.fasta");
+
     /**
      * Several DREAM challenge bams with synthetic truth data.  In order to keep file sizes manageable, bams are restricted
      * to chromosome 20, leaving ~100-200 variants, and then further restricted to 400-bp intervals centered around
@@ -88,7 +92,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "-O", unfilteredVcf.getAbsolutePath(),
                 "--" + M2ArgumentCollection.DOWNSAMPLING_STRIDE_LONG_NAME, "20",
                 "--max-reads-per-alignment-start", "4",
-                "--" + M2ArgumentCollection.MAX_SUSPICIOUS_READS_PER_ALIGNMENT_START_LONG_NAME, "4").stream().collect(Collectors.toList());
+                "--" + M2ArgumentCollection.MAX_SUSPICIOUS_READS_PER_ALIGNMENT_START_LONG_NAME, "4").stream().collect(Collectors.toList());;
 
         // tumor-only calling with gnomAD
         if (!tumorOnly) {
@@ -464,6 +468,35 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
             final List<Integer> diff = lowStarts.stream().sorted().collect(Collectors.toList());
             Assert.assertEquals(diff, Arrays.asList(11000090, 11000515, 12753594));
         }
+    }
+
+    // basic test on a small chunk of NA12878 mitochondria.  This is not a validation, but rather a sanity check
+    // that M2 makes obvious calls, doesn't trip up on the beginning of the circular chromosome, and can handle high depth
+    @Test
+    public void testMitochondria() throws Exception {
+        Utils.resetRandomGenerator();
+        final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
+
+        final List<String> args = Arrays.asList("-I", NA12878_MITO_BAM.getAbsolutePath(),
+                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, "NA12878",
+                "-R", MITO_REF.getAbsolutePath(),
+                "-L", "chrM:1-1000",
+                "-min-pruning", "5",
+                "-O", unfilteredVcf.getAbsolutePath());
+        runCommandLine(args);
+
+
+        final List<VariantContext> variants = VariantContextTestUtils.streamVcf(unfilteredVcf).collect(Collectors.toList());
+        final Set<String> variantKeys = variants.stream().map(vc -> keyForVariant(vc)).collect(Collectors.toSet());
+
+        final List<String> expectedKeys = Arrays.asList(
+                "chrM:152-152 [T*, C]",
+                "chrM:263-263 [A*, G]",
+                "chrM:301-301 [A*, AC]",
+                "chrM:302-302 [A*, AC, C, ACC]",
+                "chrM:310-310 [T*, TC]",
+                "chrM:750-750 [A*, G]");
+        Assert.assertTrue(expectedKeys.stream().allMatch(variantKeys::contains));
     }
 
 

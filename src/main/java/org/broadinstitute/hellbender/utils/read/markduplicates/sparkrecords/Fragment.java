@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.utils.read.markduplicates.LibraryIdGenerato
 import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesScoringStrategy;
 import org.broadinstitute.hellbender.utils.read.markduplicates.ReadEnds;
 import org.broadinstitute.hellbender.utils.read.markduplicates.ReadsKey;
+import picard.sam.util.PhysicalLocation;
 
 import java.util.Map;
 
@@ -17,18 +18,16 @@ import java.util.Map;
  * This class holds onto as little information as possible in an attempt to prevent excessive serialization of
  * during the processing step of MarkDuplicatesSpark
  */
-public class Fragment extends PairedEnds {
+public class Fragment extends TransientFieldPhysicalLocation {
     protected transient ReadsKey key;
 
-    private final int firstStartPosition;
     private final boolean R1R;
 
-    protected final int score;
+    protected final short score;
 
     public Fragment(final GATKRead first, final SAMFileHeader header, int partitionIndex, MarkDuplicatesScoringStrategy scoringStrategy, Map<String, Byte> headerLibraryMap) {
         super(partitionIndex, first.getName());
 
-        this.firstStartPosition = first.getAssignedStart();
         this.score = scoringStrategy.score(first);
         this.R1R = first.isReverseStrand();
         this.key = ReadsKey.getKeyForFragment(ReadUtils.getStrandedUnclippedStart(first),
@@ -47,12 +46,8 @@ public class Fragment extends PairedEnds {
         return key;
     }
     @Override
-    public int getScore() {
+    public short getScore() {
       return score;
-    }
-    @Override
-    public int getFirstStartPosition() {
-      return firstStartPosition;
     }
     @Override
     public boolean isRead1ReverseStrand() {
@@ -64,6 +59,6 @@ public class Fragment extends PairedEnds {
     }
     @Override
     public String toString() {
-        return "fragment: " + name + " " + firstStartPosition;
+        return "fragment: " + name;
     }
 }

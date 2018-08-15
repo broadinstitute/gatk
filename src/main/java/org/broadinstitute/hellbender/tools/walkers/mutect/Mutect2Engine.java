@@ -60,6 +60,11 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     public static final int MAX_NORMAL_QUAL_SUM = 100;
     public static final int MIN_PALINDROME_SIZE = 5;
 
+    // after trimming to fit the assembly window, throw away read stubs shorter than this length
+    // if we don't, the several bases left of reads that end just within the assembly window can
+    // get realigned incorrectly.  See https://github.com/broadinstitute/gatk/issues/5060
+    public static final int MINIMUM_READ_LENGTH_AFTER_TRIMMING = 10;
+
     private M2ArgumentCollection MTAC;
     private SAMFileHeader header;
 
@@ -133,7 +138,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     }
 
     /**
-     * @return the default set of variant annotations for use with HaplotypeCaller
+     * @return the default set of variant annotations for Mutect2
      */
     public static List<Class<? extends Annotation>> getStandardMutect2AnnotationGroups() {
         return Collections.singletonList(StandardMutectAnnotation.class);
@@ -193,6 +198,9 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         }
 
         final AssemblyRegion regionForGenotyping = assemblyResult.getRegionForGenotyping();
+        final List<GATKRead> readStubs = regionForGenotyping.getReads().stream()
+                .filter(r -> r.getLength() < MINIMUM_READ_LENGTH_AFTER_TRIMMING).collect(Collectors.toList());
+        regionForGenotyping.removeAll(readStubs);
 
         final Map<String,List<GATKRead>> reads = splitReadsBySample( regionForGenotyping.getReads() );
 
@@ -251,14 +259,14 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
         final ReadPileup pileup = context.getBasePileup();
         final ReadPileup tumorPileup = pileup.getPileupForSample(tumorSample, header);
-        final List<Byte> tumorAltQuals = altQuals(tumorPileup, refBase);
+        final List<Byte> tumorAltQuals = altQuals(tumorPileup, refBase, MTAC.initialPCRErrorQual);
         final double tumorLog10Odds = MathUtils.logToLog10(lnLikelihoodRatio(tumorPileup.size()-tumorAltQuals.size(), tumorAltQuals));
 
         if (tumorLog10Odds < MTAC.initialTumorLod) {
             return new ActivityProfileState(refInterval, 0.0);
         } else if (hasNormal() && !MTAC.genotypeGermlineSites) {
             final ReadPileup normalPileup = pileup.getPileupForSample(normalSample, header);
-            final List<Byte> normalAltQuals = altQuals(normalPileup, refBase);
+            final List<Byte> normalAltQuals = altQuals(normalPileup, refBase, MTAC.initialPCRErrorQual);
             final int normalAltCount = normalAltQuals.size();
             final double normalQualSum = normalAltQuals.stream().mapToDouble(Byte::doubleValue).sum();
             if (normalAltCount > normalPileup.size() * MAX_ALT_FRACTION_IN_NORMAL && normalQualSum > MAX_NORMAL_QUAL_SUM) {
@@ -289,8 +297,9 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         return (byte) Math.min(INDEL_START_QUAL + (indelLength - 1) * INDEL_CONTINUATION_QUAL, Byte.MAX_VALUE);
     }
 
-    private static List<Byte> altQuals(final ReadPileup pileup, final byte refBase) {
+    private static List<Byte> altQuals(final ReadPileup pileup, final byte refBase, final int pcrErrorQual) {
         final List<Byte> result = new ArrayList<>();
+        final int position = pileup.getLocation().getStart();
 
         for (final PileupElement pe : pileup) {
             final int indelLength = getCurrentOrFollowingIndelLength(pe);
@@ -299,7 +308,10 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
             } else if (isNextToUsefulSoftClip(pe)) {
                 result.add(indelQual(1));
             } else if (pe.getBase() != refBase && pe.getQual() > MINIMUM_BASE_QUALITY) {
-                result.add(pe.getQual());
+                final GATKRead read = pe.getRead();
+                final int mateStart = read.mateIsUnmapped() ? Integer.MAX_VALUE : read.getMateStart();
+                final boolean overlapsMate = mateStart <= position && position < mateStart + read.getLength();
+                result.add(overlapsMate ? (byte) FastMath.min(pe.getQual(), pcrErrorQual/2) : pe.getQual());
             }
         }
 

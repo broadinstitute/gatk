@@ -427,4 +427,56 @@ Here for convenience is a table of \code{Mutect2} filters with their correspondi
  \end{tabular}
 \end{table}
 
+
+\section{Read Orientation Artifact Filter}
+
+The read orientation artifact, also known as the orientation bias artifact, arises due to a chemical change in the nucleotide during library prep that results in, for example, G base-paring with A. This kind of artifact has a clear signature (e.g. C to A SNP that occurs predominantly for the middle C in the DNA sequence CCG), and it's single-stranded in nature. Downstream, this artifact manifests as low allele fraction SNPs whose evidence for the alt allele consists almost entirely F1R2 reads or F2R1 reads. A read pair is F1R2 (forward 1st, reverse 2nd) if the sequence of bases in Read 1 maps to the forward strand of the reference (F1), and the sequence of Read 2 to the reverse strand of the reference (R2). F2R1 is defined similarly.
+
+Without loss of generality, suppose that the reference context at locus $i$ is ACT. Let $\vz_i$ denote the genotype at locus $i$ with the one-hot encoding $z_{ik} = 1$ iff the genotype of locus $i$ is $k$, where the possible genotypes are
+\begin{equation*}
+z_i \in \{ \text{F1R2}_A, \text{F1R2}_G, \text{F1R2}_T, \text{F2R1}_A, \text{F2R1}_G, \text{F2R1}_T,  \text{Hom Ref}, \text{Germline Het}, \text{Somatic Het}, \text{Hom Var} \}
+\end{equation*}
+$z_i = \mathrm{F1R2_A}$ denotes that at locus $i$ we have an artifact in which the evidence for alt allele A consists entirely of reads in the F1R2 orientation. The remaining artifact states are defined analogously. Let $\vpi$ denote the prior probabilities of the $\vz_i$ under the reference context ACT. Then we have 
+\begin{equation}
+P(\vz_i) = \prod_k \pi_{k}^{z_{ik}}
+\end{equation}
+
+The number of alt reads at a locus depends on the genotype $z_i$. Let $n_i$ and $m_i$ denote the total depth and alt depth at locus $i$, respectively. The conditional distribution of $m_i$ is
+\begin{equation}
+P(m_i | z_{ik} = 1) = \mathrm{BetaBinomial}(m_i | n_i, \alpha_k, \beta_k)
+\end{equation}
+where $\alpha_k$ and $\beta_k$ are fixed hyperparameters for genotype $z_k$. When the site's genotype indicates in $m_i$ alt reads we expect a heavily skewed distribution of F1R2 reads. This is captured in the conditional distribution of F1R2 alt reads. Let $c_i$ denote the number of F1R2 reads among the $m_i$ alt reads at locus $i$. Then we have
+\begin{equation}
+P(c_i | m_i, z_{ik} = 1) = \mathrm{BetaBinomial}( c_i | m_i, \alpha'_k, \beta'_k)
+\end{equation}
+We learn the prior artifact probabilities $\vpi$ based on the observed values of $n_i$, $m_i$, $c_i$ for each of $N$ loci using the EM algorithm. In the E-step, we compute the posterior probabilities of $\vz_i$ for $i = 1 ... N$. The joint probabilities of $\vz$ factorizes over $i$, thus the the posteriors over $\vz$ are independent across loci. 
+\begin{equation}
+P(z_{ik} = 1 | m_i, c_i) \propto P(z_{ik} = 1, m_i, c_i) = \pi_{k} \mathrm{BetaBinomial}(m_i | n_i, \alpha_k, \beta_k)  \mathrm{BetaBinomial}( c_i | m_i, \alpha'_k, \beta'_k)
+\end{equation}
+In the M-step we maximize the expectation of the log complete-data likelihood with respect to $\vpi$. The log complete data likelihood is given as
+\begin{equation}
+\ln P(\vz, \vm, \vc) = \sum_i \sum_k z_{ik} \big( \ln \pi_{k} + \ln \mathrm{BetaBinomial} ( m_i | n_i, \alpha_k, \beta_k)  + \ln \mathrm{BetaBinomial}( c_i | m_i, \alpha'_k, \beta'_k) \big)
+\end{equation}
+Maximizing the log likelihood under the constraint $\sum_k \pi_k = 1$ gives us
+\begin{equation}
+\pi_k = \frac{N_k}{N}
+\end{equation}
+where $N_k = \sum_i P(z_{ik} | m_i, c_i)$ is the effective count of loci with genotype $k$. We alternate E-step and M-step until convergence. We then use the learned prior genotype probabilities to compute the posterior artifact probabilities of variants in a vcf. The filtering threshold is set such that the false discovery rate doesn't exceed a specified value, as described below.
+
+\section{Filtering False Discovery Rate}
+
+Let $p_1 \leq p_2 \leq ... \leq p_n$ denote ordered posterior probabilities that given variants are sequencing artifacts. Suppose we filter variants for which $p_i > p_j$ for some index $j$; that is, we keep the first $j$ variants as \code{PASS} and filter the rest. Then the expected number of false positives is
+\begin{equation}
+\mathbb{E} [ \mathrm{FP}(j)] = \sum_{i = 1}^{j} p_i
+\end{equation}
+And the expected false positive rate is
+\begin{equation} \label{eq:fpr}
+\mathbb{E} [ \mathrm{FPR}(j)]= \frac{1}{j} {\sum_{i = 1}^{j} p_i}
+\end{equation}
+We choose the threshold so as to maximize the number of variants to let through while keeping the false positive rate below $\delta \in [0, 1]$. In other words, we solve for
+\begin{equation}
+j^* = \mathrm{argmax}_j \mathbb{E} [ \mathrm{FPR}(j)]= \frac{1}{j} \sum_{i = 1}^{j} p_i
+\end{equation}
+under the constraint $ \mathbb{E} [ \mathrm{FPR}(j)] < \delta$. We can prove by induction that $\mathbb{E} [ \mathrm{FPR}(j)]$ is monotonically increasing in $j$. Thus we test $\mathbb{E} [ \mathrm{FPR}(j)]$ for $j = 1, \cdots, k$, where $k$ is the smallest integer such that $\mathbb{E} [ \rm{FPR}(k)] > \delta$, and set $j^* = k-1$. 
+
 \end{document}

@@ -10,7 +10,6 @@ import htsjdk.variant.vcf.VCFConstants;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
-import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.NovelAdjacencyAndAltHaplotype;
@@ -26,7 +25,7 @@ import java.io.Serializable;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection;
+import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigAlignmentsSparkArgumentCollection;
 
 /**
  * Given identified pair of breakpoints for a simple SV and its supportive evidence, i.e. chimeric alignments,
@@ -137,7 +136,7 @@ public class AnnotatedVariantProducer implements Serializable {
                                                                                               final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks,
                                                                                               final ReadMetadata metadata,
                                                                                               final ReferenceMultiSource reference,
-                                                                                              final DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection parameters,
+                                                                                              final DiscoverVariantsFromContigAlignmentsSparkArgumentCollection parameters,
                                                                                               final Logger localLogger) {
 
         final int originalEvidenceLinkSize = evidenceTargetLinks.size();
@@ -192,7 +191,7 @@ public class AnnotatedVariantProducer implements Serializable {
 
         final Map<String, Object> attributeMap = new HashMap<>();
         attributeMap.put(GATKSVVCFConstants.TOTAL_MAPPINGS,    annotations.size());
-        attributeMap.put(GATKSVVCFConstants.HQ_MAPPINGS,       annotations.stream().filter(annotation -> annotation.minMQ == StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection.CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD).count());
+        attributeMap.put(GATKSVVCFConstants.HQ_MAPPINGS,       annotations.stream().filter(annotation -> annotation.minMQ == DiscoverVariantsFromContigAlignmentsSparkArgumentCollection.CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD).count());
         attributeMap.put(GATKSVVCFConstants.MAPPING_QUALITIES, annotations.stream().map(annotation -> String.valueOf(annotation.minMQ)).collect(Collectors.joining(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR)));
         attributeMap.put(GATKSVVCFConstants.ALIGN_LENGTHS,     annotations.stream().map(annotation -> String.valueOf(annotation.minAL)).collect(Collectors.joining(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR)));
         attributeMap.put(GATKSVVCFConstants.MAX_ALIGN_LENGTH,  annotations.stream().map(annotation -> annotation.minAL).max(Comparator.naturalOrder()).orElse(0));

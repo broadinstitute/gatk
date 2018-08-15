@@ -14,6 +14,7 @@ import org.testng.annotations.Test;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Random;
 
@@ -287,6 +288,24 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
             tempResourceFile.delete();
         }
         return resourceContentsFirstLine;
+    }
+
+    @DataProvider
+    private Object[][] getIsHDF5TestFiles() {
+        return new Object[][] {
+                { getToolTestDataDir() + "/isValidHDF5.hdf5", true },
+                { getToolTestDataDir() + "isValidHDF5.ext", true },
+                { getToolTestDataDir() + "/isTSV.tsv", false },
+                { getToolTestDataDir() + "/isTSV.hdf", false },
+                { getToolTestDataDir() + "/isTSV.hdf5", false },
+                { getToolTestDataDir() + "/isEmpty.txt", false },
+        };
+    }
+
+    @Test(dataProvider = "getIsHDF5TestFiles")
+    public void testIsHDF5File(final String filePath, final boolean expected) {
+        final Path testPath = Paths.get(filePath);
+        Assert.assertEquals(IOUtils.isHDF5File(testPath), expected);
     }
 
 }
