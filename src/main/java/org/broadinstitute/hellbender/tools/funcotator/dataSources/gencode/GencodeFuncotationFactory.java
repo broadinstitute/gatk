@@ -16,6 +16,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.*;
 import org.broadinstitute.hellbender.utils.BaseUtils;
+import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.codecs.gencode.*;
@@ -963,20 +964,24 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             boolean overlapsLeft  = false;
             boolean overlapsRight = false;
 
+            // Adjust the variant interval for the overlap check, specifically to properly test for the indel cases:
+            final SimpleInterval variantInterval = getChangedBasesInterval(variant, altAllele);
+
+            // Adjust the exon interval if we have an insertion because everything needs to be adjusted to account
+            // for the newly inserted bases:
+            final int adjustedExonStart = adjustLocusForInsertion(exon.getStart(), variant, altAllele, variantInterval);
+            final int adjustedExonEnd = adjustLocusForInsertion(exon.getEnd(), variant, altAllele, variantInterval);
+
             if ( doLeftOverlapCheck ) {
-                final SimpleInterval leftSideInterval = new SimpleInterval(exon.getContig(), exon.getStart() - spliceSiteVariantWindowBases + 1, exon.getStart() + (spliceSiteVariantWindowBases-1) + 1);
-                overlapsLeft = leftSideInterval.overlaps(variant);
+                final SimpleInterval leftSideInterval = new SimpleInterval(exon.getContig(), adjustedExonStart - spliceSiteVariantWindowBases, adjustedExonStart + (spliceSiteVariantWindowBases-1));
+                overlapsLeft = leftSideInterval.overlaps(variantInterval);
             }
             if ( doRightOverlapCheck ) {
-                final SimpleInterval rightSideInterval = new SimpleInterval(exon.getContig(), exon.getEnd() - spliceSiteVariantWindowBases + 1, exon.getEnd() + (spliceSiteVariantWindowBases-1) + 1);
-                overlapsRight = rightSideInterval.overlaps(variant);
+                final SimpleInterval rightSideInterval = new SimpleInterval(exon.getContig(), adjustedExonEnd - spliceSiteVariantWindowBases + 1, adjustedExonEnd + (spliceSiteVariantWindowBases-1) + 1);
+                overlapsRight = rightSideInterval.overlaps(variantInterval);
             }
 
             // Check for splice site variants.
-            // Here we check to see if a splice site comes anywhere within `spliceSiteVariantWindowBases` of a variant.
-            // We add and subtract 1 from the end points because the positons are 1-based & inclusive.
-//            if ( (((startPos - spliceSiteVariantWindowBases + 1) <= exon.getStart()) && (exon.getStart() <= (spliceSiteVariantWindowBases - numInsertedBases + endPos - 1))) ||
-//                 (((startPos - spliceSiteVariantWindowBases + 1) <= exon.getEnd()  ) && (exon.getEnd()   <= (spliceSiteVariantWindowBases - numInsertedBases + endPos - 1))) ) {
             if ( overlapsLeft || overlapsRight ) {
                 varClass = GencodeFuncotation.VariantClassification.SPLICE_SITE;
             }
@@ -999,6 +1004,31 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         }
 
         return varClass;
+    }
+
+    /**
+     * Shifts a given genomic locus by the number of inserted bases in the given {@code variant}/{@code altAllele} pair
+     * if the position occurs after the start of the insertion (and if the variant is an insertion).
+     * Assumes that the position and the variant are on the same contig.
+     * @param genomicLocus The locus to be potentially adjusted.
+     * @param variant The {@link VariantContext} to use for the reference allele.
+     * @param altAllele The alternate {@link Allele} to use to compare against the reference allele.
+     * @param changedBasesInterval The interval representing the bases actually changed in the given {@code variant} and {@code altAllele} pair.
+     * @return A genomic locus adjusted for the bases inserted before it, if any.
+     */
+    private static int adjustLocusForInsertion(final int genomicLocus, final VariantContext variant,
+                                               final Allele altAllele, final SimpleInterval changedBasesInterval) {
+
+        int adjustedPosition = genomicLocus;
+
+        // Is our variant / alt pair an insertion AND Is our position after the changed bases have started:
+        if ( (altAllele.length() > variant.getReference().length()) && (genomicLocus > changedBasesInterval.getStart()) ) {
+            // Adjust our position by the number of inserted bases:
+            adjustedPosition += (changedBasesInterval.getEnd() - changedBasesInterval.getStart() + 1);
+        }
+
+        return adjustedPosition;
+
     }
 
     /**
@@ -1240,7 +1270,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         gencodeFuncotationBuilder.setGcContent( calculateGcContent( variant.getReference(), altAllele, reference, gcContentWindowSizeBases ) );
 
         // Need to check if we're within the window for splice site variants:
-        final GencodeGtfExonFeature spliceSiteExon = getExonWithinSpliceSiteWindow(variant, transcript, spliceSiteVariantWindowBases);
+        final GencodeGtfExonFeature spliceSiteExon = getExonWithinSpliceSiteWindow(variant, altAllele, transcript, spliceSiteVariantWindowBases);
         if ( spliceSiteExon != null ) {
             // Set the variant classification:
             gencodeFuncotationBuilder.setVariantClassification(GencodeFuncotation.VariantClassification.SPLICE_SITE)
@@ -1309,20 +1339,67 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         }
     }
 
+    private static SimpleInterval getChangedBasesInterval(final VariantContext variant,
+                                                          final Allele altAllele) {
+
+        // Adjust the variant interval for the overlap check, specifically to properly test for the indel cases:
+        final SimpleInterval changedBasesInterval;
+        if ( GATKProtectedVariantContextUtils.typeOfVariant(variant.getReference(), altAllele).equals(VariantContext.Type.INDEL) ) {
+
+            final int adjustedStart;
+            final int end;
+            // Insertion:
+            if ( variant.getReference().length() < altAllele.length() ) {
+                // We use the variant start here because by inserting bases we're not making the actually changed
+                // bases any closer to the boundaries of the exon.
+                // That is, the inserted bases shouldn't count towards the extents of the variant in genomic space
+                // with respect to the exon boundaries.
+                adjustedStart = FuncotatorUtils.getIndelAdjustedAlleleChangeStartPosition(variant, altAllele);
+                end = variant.getEnd() + (altAllele.length() - (adjustedStart - variant.getStart()));
+            }
+            // Deletion:
+            else {
+                // Because we're deleting bases from the reference allele, we need to adjust the start position of the
+                // variant to reflect that the leading base(s) do(es) not matter.
+                adjustedStart = FuncotatorUtils.getIndelAdjustedAlleleChangeStartPosition(variant, altAllele);
+
+                // The original end position should be correct:
+                end = variant.getEnd();
+            }
+
+            changedBasesInterval = new SimpleInterval( variant.getContig(), adjustedStart, end );
+        }
+        else {
+            changedBasesInterval = new SimpleInterval(variant);
+        }
+
+        return changedBasesInterval;
+    }
+
     /**
      * Gets the {@link GencodeGtfExonFeature} that is within {@code spliceSiteVariantWindowBases} bases of the given {@code variant}.
      * @param variant The {@link VariantContext} to check for position within {@code spliceSiteVariantWindowBases} bases of each {@link GencodeGtfExonFeature} in {@code transcript}.
+     * @param altAllele The alternate {@link Allele} to check against the reference allele in the given {@code variant}.
      * @param transcript The {@link GencodeGtfTranscriptFeature} containing the given {@code variant}.
      * @return The {@link GencodeGtfExonFeature} that is within {@code spliceSiteVariantWindowBases} bases of the given {@code variant}; {@code null} if no such {@link GencodeGtfExonFeature} exists in the given {@code transcript}.
      */
     private static GencodeGtfExonFeature getExonWithinSpliceSiteWindow( final VariantContext variant,
+                                                                        final Allele altAllele,
                                                                         final GencodeGtfTranscriptFeature transcript,
                                                                         final int spliceSiteVariantWindowBases ) {
         GencodeGtfExonFeature spliceSiteExon = null;
 
+        // Adjust the variant interval for the overlap check, specifically to properly test for the indel cases:
+        final SimpleInterval changedBasesInterval = getChangedBasesInterval(variant, altAllele);
+
         for ( final GencodeGtfExonFeature exon : transcript.getExons() ) {
-            if ((Math.abs(exon.getStart() - variant.getStart()) <= spliceSiteVariantWindowBases) ||
-                    (Math.abs(exon.getEnd() - variant.getStart()) <= spliceSiteVariantWindowBases)) {
+
+            // We have to adjust the exon boundaries to reflect any insertions before them:
+            final int exonStart = adjustLocusForInsertion(exon.getStart(), variant, altAllele, changedBasesInterval);
+            final int exonEnd = adjustLocusForInsertion(exon.getEnd(), variant, altAllele, changedBasesInterval);
+            final SimpleInterval exonInterval = new SimpleInterval(exon.getContig(), exonStart, exonEnd);
+
+            if ( changedBasesInterval.overlapsWithMargin(exonInterval, spliceSiteVariantWindowBases) ) {
                 spliceSiteExon = exon;
                 break;
             }

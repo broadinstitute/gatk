@@ -17,6 +17,7 @@ import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotati
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetadata;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
+import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.Resource;
@@ -173,13 +174,53 @@ public final class FuncotatorUtils {
     }
 
     /**
+     * Get the start position of the difference between the reference and alternate alleles in the given {@link VariantContext}.
+     * Assumes the given {@link VariantContext} contains only one alternate allele.
+     * @param variant {@link VariantContext} in which to determine the start of the different bases.
+     * @return The start position of the difference between the reference and alternate alleles in the given {@link VariantContext}.
+     */
+    public static int getIndelAdjustedAlleleChangeStartPosition(final VariantContext variant) {
+        return getIndelAdjustedAlleleChangeStartPosition(variant, variant.getAlternateAllele(0));
+    }
+
+    /**
+     * Get the start position of the difference between the reference and alternate alleles in the given {@link VariantContext}.
+     * @param variant {@link VariantContext} in which to determine the start of the different bases.
+     * @param altAllele The alternate {@link Allele} against which to check the reference allele in {@code variant}.
+     * @return The start position of the difference between the reference and alternate alleles in the given {@link VariantContext}.
+     */
+    public static int getIndelAdjustedAlleleChangeStartPosition(final VariantContext variant, final Allele altAllele) {
+
+        // If the variant is an indel, we need to check only the bases that are added/deleted for overlap.
+        // The convention for alleles in Funcotator is to preserve a leading base for an indel, so we just need
+        // to create a new variant that has its start position shifted by the leading base.
+        // NOTE: because there could be degenerate VCF files that have more than one leading base overlapping, we need
+        //       to detect how many leading bases there are that overlap, rather than assuming there is only one.
+        final int varStart;
+        if ( GATKProtectedVariantContextUtils.typeOfVariant(variant.getReference(), altAllele).equals(VariantContext.Type.INDEL) &&
+             !GATKProtectedVariantContextUtils.isComplexIndel(variant.getReference(), altAllele) ) {
+            int startOffset = 0;
+            while ( (startOffset < variant.getReference().length()) && (startOffset < altAllele.length()) && (variant.getReference().getBases()[ startOffset ] == altAllele.getBases()[ startOffset ]) ) {
+                ++startOffset;
+            }
+            varStart = variant.getStart() + startOffset;
+        }
+        else {
+            // Not an indel?  Then we should have no overlapping bases:
+            varStart = variant.getStart();
+        }
+
+        return varStart;
+    }
+
+    /**
      * Get the string of bases that are different from the given alleles.
      * Assumes there is one contiguous string of changed bases between the two alleles.
      * Assumes that if there is overlap between the alleles, the overlap occurs at either the front or the back.
      * @param firstAllele First {@link Allele}.  Must not be {@code null}.
      * @param secondAllele Second {@link Allele}.  Must not be {@code null}.
      * @param copyRefBasesWhenAltIsPastEnd Will copy the bases from the given {@code firstAllele} when the alternate allele has no more bases to copy over.  Used primarily for handling deletions.
-     * @return A string containing the bases from the given {@code secondAllele} that are different from the reference (in their correct relative order).
+     * @return A string containing the bases from the given {@code secondAllele} that are different from the {@code firstAllele} (in their correct relative order).
      */
     public static String getNonOverlappingAltAlleleBaseString( final Allele firstAllele, final Allele secondAllele, final boolean copyRefBasesWhenAltIsPastEnd ) {
 
