@@ -21,6 +21,8 @@ import org.broadinstitute.hellbender.utils.test.testers.AbstractMarkDuplicatesTe
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+import picard.sam.util.PhysicalLocationInt;
+import picard.sam.util.ReadNameParser;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -244,5 +246,39 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
             Assert.assertTrue(e instanceof SparkException);
             Assert.assertTrue(e.getCause() instanceof UserException.ReadMissingReadGroup);
         }
+    }
+
+    @Test(dataProvider = "readNameData")
+    public void testOpticalDuplicatesTiebrokenByPhysicalLocationNotStartPosition(final String readName1, final String readName2) {
+        // This tests the readname based tiebreaking code in mark duplicates. Since it's ambiguous which read should be marked
+        // as duplicate or not if scores match we break ties by evaluating the readname for consistencies sake.
+
+        final ReadNameParser parser = new ReadNameParser();
+
+        final PhysicalLocationInt position1 = new PhysicalLocationInt();
+        final PhysicalLocationInt position2 = new PhysicalLocationInt();
+
+        parser.addLocationInformation(readName1, position1);
+        parser.addLocationInformation(readName2, position2);
+
+        final AbstractMarkDuplicatesTester tester = getTester();
+        tester.getSamRecordSetBuilder().setReadLength(101);
+        tester.setExpectedOpticalDuplicate(0);
+
+        int compare = position1.tile - position2.tile;
+        if (compare == 0) {
+            compare = position1.x - position2.x;
+        }
+
+        if (compare == 0) {
+            compare = position1.y - position2.y;
+        }
+
+        final boolean isDuplicate = compare < 0;
+
+        // NOTE these reads are offset slightly but should have the same unclipped start postitions
+        tester.addMatePair(readName1, 1,2, 46,  false, false, !isDuplicate, !isDuplicate, "6S42M28S", "3S68M",  true, false, false, false, false, DEFAULT_BASE_QUALITY);
+        tester.addMatePair(readName2, 1,2, 51, false, false, isDuplicate, isDuplicate, "6S42M28S", "8S68M", true, false, false, false, false, DEFAULT_BASE_QUALITY);
+        tester.runTest();
     }
 }

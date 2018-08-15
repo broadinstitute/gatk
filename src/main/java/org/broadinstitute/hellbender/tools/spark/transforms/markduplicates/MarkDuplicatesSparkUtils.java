@@ -39,7 +39,7 @@ public class MarkDuplicatesSparkUtils {
     // This comparator represents the tiebreaking for PairedEnds duplicate marking.
     // We compare first on score, followed by unclipped start position (which is reversed here because of the expected ordering)
     private static final Comparator<TransientFieldPhysicalLocation> PAIRED_ENDS_SCORE_COMPARATOR = Comparator.comparing(TransientFieldPhysicalLocation::getScore)
-            .thenComparing(PairedEndsCoordinateComparator.INSTANCE.reversed());
+            .thenComparing(TransientFieldPhysicalLocationComparator.INSTANCE.reversed());
 
     /**
      * Wrapper object used for storing an object and some type of index information.
@@ -480,32 +480,24 @@ public class MarkDuplicatesSparkUtils {
     }
 
     /**
-     * Comparator for sorting Reads by coordinate. Note that a header is required in
-     * order to meaningfully compare contigs.
+     * Comparator for TransientFieldPhysicalLocation objects by their attributes and strandedness. This comparator is intended to serve as a tiebreaker
+     * for the score comparator.
      *
-     * Uses the various other fields in a read to break ties for reads that share
-     * the same location.
+     * It compares two PhysicalLocation  the orientation of the strand, followed by their physical location attributes,
+     * and finally as a final tiebreaker the readname lexicographical order.
      *
-     * Ordering is not the same as {@link htsjdk.samtools.SAMRecordCoordinateComparator}.
-     * It compares two pairedEnds objects by their first reads according to first their clipped start positions
-     * (they were matched together based on UnclippedStartOriginally), then the orientation of the strand, followed by
-     * the readname lexicographical order.
-     *
-     * NOTE: Because the original records were grouped by readname, we know that they must be unique once they hit this
+     * NOTE: Because the original records were grouped by start position, we know that they must be unique once they hit this
      *       comparator and thus we don't need to worry about further tiebreaking for this method.
      */
-    public static final class PairedEndsCoordinateComparator implements Comparator<TransientFieldPhysicalLocation>, Serializable {
+    public static final class TransientFieldPhysicalLocationComparator implements Comparator<TransientFieldPhysicalLocation>, Serializable {
         private static final long serialVersionUID = 1L;
 
-        public static final PairedEndsCoordinateComparator INSTANCE = new PairedEndsCoordinateComparator();
-        private PairedEndsCoordinateComparator() { }
+        public static final TransientFieldPhysicalLocationComparator INSTANCE = new TransientFieldPhysicalLocationComparator();
+        private TransientFieldPhysicalLocationComparator() { }
 
         @Override
         public int compare( TransientFieldPhysicalLocation first, TransientFieldPhysicalLocation second ) {
-            int result = Integer.compare(first.getFirstStartPosition(), second.getFirstStartPosition());
-            if ( result != 0 ) {
-                return result;
-            }
+            int result = 0;
 
             //This is done to mimic SAMRecordCoordinateComparator's behavior
             if (first.isRead1ReverseStrand() != second.isRead1ReverseStrand()) {

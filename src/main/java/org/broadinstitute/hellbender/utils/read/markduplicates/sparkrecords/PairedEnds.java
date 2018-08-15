@@ -9,8 +9,7 @@ public abstract class PairedEnds extends MarkDuplicatesSparkRecord {
         super(partitionIndex, name);
     }
 
-    public abstract int getFirstStartPosition();
-    public abstract int getScore();
+    public abstract short getScore();
     public abstract boolean isRead1ReverseStrand();
 
     /**
