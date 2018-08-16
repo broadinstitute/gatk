@@ -403,6 +403,21 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         runCommandLine(args);
     }
 
+    // make sure that unpaired reads that pass filtering do not cause errors
+    // in particular, the read HAVCYADXX150109:1:1109:11610:46575 with SAM flag 16 fails without the patch
+    @Test
+    public void testUnpairedReads() throws Exception {
+        final String bamWithUnpairedReads = toolsTestDir + "unpaired.bam";
+        final File outputVcf = createTempFile("output", ".vcf");
+        final String[] args = {
+                "-I", bamWithUnpairedReads,
+                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, "SM-612V3",
+                "-R", b37_reference_20_21,
+                "-O", outputVcf.getAbsolutePath()
+        };
+        runCommandLine(args);
+    }
+
     // some bams from external pipelines use faulty adapter trimming programs that introduce identical repeated reads
     // into bams.  Although these bams fail the Picard tool ValidateSamFile, one can run HaplotypeCaller and Mutect on them
     // and get fine results.  This test ensures that this remains the case.  The test bam is a small chunk of reads surrounding
