@@ -72,29 +72,6 @@ public class StreamingPythonScriptExecutorUnitTest extends GATKBaseTest {
     }
 
     @Test(groups = "python", dataProvider="supportedPythonVersions", dependsOnMethods = "testPythonExists")
-    public void testStderrOutput(final PythonScriptExecutor.PythonExecutableName executableName) {
-        // test write to stderr from python
-        final StreamingPythonScriptExecutor<String> streamingPythonExecutor =
-                new StreamingPythonScriptExecutor<>(executableName,true);
-        Assert.assertNotNull(streamingPythonExecutor);
-        Assert.assertTrue(streamingPythonExecutor.start(Collections.emptyList()));
-
-        try {
-            streamingPythonExecutor.sendSynchronousCommand("import sys" + NL);
-            final ProcessOutput po = streamingPythonExecutor.sendSynchronousCommand(
-                    "sys.stderr.write('error output to stderr\\n')" + NL);
-
-            Assert.assertNotNull(po.getStderr());
-            Assert.assertNotNull(po.getStderr().getBufferString());
-            Assert.assertNotNull(po.getStderr().getBufferString().contains("error output to stderr"));
-        }
-        finally {
-            streamingPythonExecutor.terminate();
-            Assert.assertFalse(streamingPythonExecutor.getProcess().isAlive());
-        }
-    }
-
-    @Test(groups = "python", dataProvider="supportedPythonVersions", dependsOnMethods = "testPythonExists")
     public void testTerminateWhilePythonBlocked(final PythonScriptExecutor.PythonExecutableName executableName) {
         // Test termination on a Python process that is blocked on I/O to ensure that we don't leave
         // zombie Python processes around. This unfinished code block will cause Python to hang with
