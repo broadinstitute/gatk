@@ -1,10 +1,9 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr;
 
-import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;

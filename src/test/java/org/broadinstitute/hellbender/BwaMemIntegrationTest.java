@@ -13,7 +13,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAligner;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemIndex;
-import org.broadinstitute.hellbender.utils.test.ReadTestUtils;
+import org.broadinstitute.hellbender.testutils.ReadTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;

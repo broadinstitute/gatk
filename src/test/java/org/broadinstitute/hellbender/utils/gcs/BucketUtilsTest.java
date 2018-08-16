@@ -5,7 +5,7 @@ import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.utils.test.MiniClusterUtils;
+import org.broadinstitute.hellbender.testutils.MiniClusterUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 

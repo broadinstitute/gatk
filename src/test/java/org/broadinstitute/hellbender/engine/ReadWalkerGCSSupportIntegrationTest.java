@@ -4,8 +4,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.tools.PrintReads;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
-import org.testng.Assert;
+import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 

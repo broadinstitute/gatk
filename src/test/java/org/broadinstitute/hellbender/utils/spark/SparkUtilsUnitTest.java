@@ -18,7 +18,7 @@ import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
 import org.broadinstitute.hellbender.utils.read.ReadQueryNameComparator;
-import org.broadinstitute.hellbender.utils.test.MiniClusterUtils;
+import org.broadinstitute.hellbender.testutils.MiniClusterUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;

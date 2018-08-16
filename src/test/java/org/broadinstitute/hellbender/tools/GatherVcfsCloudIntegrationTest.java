@@ -10,8 +10,8 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.testng.Assert;
@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 public class GatherVcfsCloudIntegrationTest extends CommandLineProgramTest{

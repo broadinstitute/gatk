@@ -7,7 +7,7 @@ import htsjdk.samtools.TextCigarCodec;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanJavaAligner;
-import org.broadinstitute.hellbender.utils.test.ReadClipperTestUtils;
+import org.broadinstitute.hellbender.testutils.ReadClipperTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;

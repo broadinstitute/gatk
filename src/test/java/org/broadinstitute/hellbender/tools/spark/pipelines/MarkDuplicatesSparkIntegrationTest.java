@@ -15,9 +15,9 @@ import org.broadinstitute.hellbender.tools.spark.transforms.markduplicates.MarkD
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.markduplicates.GATKDuplicationMetrics;
 import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesSparkTester;
-import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.tools.walkers.markduplicates.AbstractMarkDuplicatesCommandLineProgramTest;
-import org.broadinstitute.hellbender.utils.test.testers.AbstractMarkDuplicatesTester;
+import org.broadinstitute.hellbender.testutils.testers.AbstractMarkDuplicatesTester;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;

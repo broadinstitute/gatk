@@ -13,7 +13,7 @@ import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculation
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerArgumentCollection;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.utils.test.SparkTestUtils;
+import org.broadinstitute.hellbender.testutils.SparkTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;

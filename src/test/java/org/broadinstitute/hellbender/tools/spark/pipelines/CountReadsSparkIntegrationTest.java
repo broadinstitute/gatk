@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.pipelines;
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
-import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;

@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.copynumber;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CalledCopyRatioSegmentCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioSegmentCollection;
-import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 

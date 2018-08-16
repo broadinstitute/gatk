@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.utils.nio;
 
-import org.broadinstitute.hellbender.utils.test.XorWrapper;
+import org.broadinstitute.hellbender.testutils.XorWrapper;
 import org.testng.annotations.Test;
 import org.testng.Assert;
 

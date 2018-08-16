@@ -12,7 +12,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.Assembly
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.ContigAlignmentsModifier;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
+import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.DataProvider;

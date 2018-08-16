@@ -12,7 +12,7 @@ import htsjdk.samtools.SamFiles;
 
 import java.nio.file.Path;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
@@ -21,7 +21,7 @@ import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
+import org.broadinstitute.hellbender.testutils.SamAssertionUtils;
 import org.testng.Assert;
 
 import org.testng.annotations.DataProvider;

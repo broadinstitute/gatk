@@ -20,10 +20,10 @@ import org.broadinstitute.hellbender.tools.funcotator.mafOutput.CustomMafFuncota
 import org.broadinstitute.hellbender.tools.funcotator.mafOutput.MafOutputRenderer;
 import org.broadinstitute.hellbender.tools.funcotator.mafOutput.MafOutputRendererConstants;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
-import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.broadinstitute.hellbender.utils.test.FuncotatorReferenceTestUtils;
-import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
-import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.FuncotatorReferenceTestUtils;
+import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
+import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;

@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Lists;
 import htsjdk.samtools.TextCigarCodec;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
@@ -9,7 +8,7 @@ import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.ArtificialAnnotationUtils;
+import org.broadinstitute.hellbender.testutils.ArtificialAnnotationUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;

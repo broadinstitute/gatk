@@ -16,7 +16,7 @@ import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.ArtificialAnnotationUtils;
+import org.broadinstitute.hellbender.testutils.ArtificialAnnotationUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.Test;

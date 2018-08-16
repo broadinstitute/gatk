@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.engine;
 
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.runtime.ProcessController;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 

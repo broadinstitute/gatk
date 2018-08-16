@@ -6,7 +6,7 @@ import org.aeonbits.owner.ConfigCache;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;

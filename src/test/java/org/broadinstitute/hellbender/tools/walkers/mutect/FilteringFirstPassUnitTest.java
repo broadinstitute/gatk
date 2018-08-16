@@ -1,14 +1,11 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
-import org.testng.annotations.BeforeSuite;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.util.Optional;
-
-public class FilteringFirstPassUnitTest extends BaseTest {
+public class FilteringFirstPassUnitTest extends GATKBaseTest {
     @DataProvider(name = "falsePositiveRateData")
     public Object[][] makeFalsePositiveRateData() {
         return new Object[][]{

@@ -4,7 +4,7 @@ import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
+import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.testng.Assert;

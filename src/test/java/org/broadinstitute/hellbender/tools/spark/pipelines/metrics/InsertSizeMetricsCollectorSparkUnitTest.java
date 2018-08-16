@@ -13,7 +13,7 @@ import org.broadinstitute.hellbender.metrics.InsertSizeMetricsArgumentCollection
 import org.broadinstitute.hellbender.metrics.MetricAccumulationLevel;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 

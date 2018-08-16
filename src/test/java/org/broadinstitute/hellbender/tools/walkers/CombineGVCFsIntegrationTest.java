@@ -1,9 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers;
 
 import htsjdk.samtools.seekablestream.SeekablePathStream;
-import htsjdk.tribble.readers.LineIterator;
-import htsjdk.tribble.readers.PositionalBufferedStream;
-import htsjdk.variant.vcf.VCFCodec;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.codec.digest.DigestUtils;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -11,24 +8,18 @@ import org.apache.commons.collections.IteratorUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.runtime.ProcessController;
 import org.broadinstitute.hellbender.utils.runtime.ProcessOutput;
 import org.broadinstitute.hellbender.utils.runtime.ProcessSettings;
-import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.seqdoop.hadoop_bam.util.VCFHeaderReader;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;

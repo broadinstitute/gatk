@@ -8,7 +8,7 @@ import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;

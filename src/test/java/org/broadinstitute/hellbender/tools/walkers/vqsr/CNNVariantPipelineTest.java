@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.vqsr;
 
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.Main;
 import org.testng.annotations.Test;
 

@@ -13,7 +13,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.examples.ExampleVariantWalker;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 

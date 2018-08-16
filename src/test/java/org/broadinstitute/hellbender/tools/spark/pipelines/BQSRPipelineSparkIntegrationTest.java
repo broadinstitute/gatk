@@ -5,10 +5,10 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceTwoBitSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.bqsr.BQSRTestData;
-import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
-import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
+import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
+import org.broadinstitute.hellbender.testutils.SamAssertionUtils;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 

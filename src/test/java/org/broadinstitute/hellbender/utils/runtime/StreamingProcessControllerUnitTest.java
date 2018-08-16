@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.utils.runtime;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;

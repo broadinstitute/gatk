@@ -17,8 +17,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
 import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.utils.test.MiniClusterUtils;
-import org.broadinstitute.hellbender.utils.test.ReadTestUtils;
+import org.broadinstitute.hellbender.testutils.MiniClusterUtils;
 import org.seqdoop.hadoop_bam.SplittingBAMIndexer;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
@@ -31,7 +30,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.Iterator;
 import java.util.List;
 
 public class ReadsSparkSinkUnitTest extends GATKBaseTest {

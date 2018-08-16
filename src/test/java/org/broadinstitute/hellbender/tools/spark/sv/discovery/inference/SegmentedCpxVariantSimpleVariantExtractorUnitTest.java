@@ -12,7 +12,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
+import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;

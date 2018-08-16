@@ -11,7 +11,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
-import org.broadinstitute.hellbender.utils.test.FakeReferenceSource;
+import org.broadinstitute.hellbender.testutils.FakeReferenceSource;
 import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 import org.broadinstitute.hellbender.utils.variant.MinimalVariant;
 import org.testng.Assert;

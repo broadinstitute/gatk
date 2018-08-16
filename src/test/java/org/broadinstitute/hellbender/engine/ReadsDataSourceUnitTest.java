@@ -6,7 +6,7 @@ import java.util.function.Function;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.test.XorWrapper;
+import org.broadinstitute.hellbender.testutils.XorWrapper;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;

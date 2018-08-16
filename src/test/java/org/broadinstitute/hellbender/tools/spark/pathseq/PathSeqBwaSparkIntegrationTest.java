@@ -2,8 +2,8 @@ package org.broadinstitute.hellbender.tools.spark.pathseq;
 
 import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.SamAssertionUtils;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 

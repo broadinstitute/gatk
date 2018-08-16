@@ -2,13 +2,11 @@ package org.broadinstitute.hellbender.tools.walkers.qc;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 
 /**
  * @author Daniel Gomez-Sanchez (magicDGS)
