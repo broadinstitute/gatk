@@ -309,7 +309,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
                 result.add(indelQual(1));
             } else if (pe.getBase() != refBase && pe.getQual() > MINIMUM_BASE_QUALITY) {
                 final GATKRead read = pe.getRead();
-                final int mateStart = read.mateIsUnmapped() ? Integer.MAX_VALUE : read.getMateStart();
+                final int mateStart = (!read.isProperlyPaired() || read.mateIsUnmapped()) ? Integer.MAX_VALUE : read.getMateStart();
                 final boolean overlapsMate = mateStart <= position && position < mateStart + read.getLength();
                 result.add(overlapsMate ? (byte) FastMath.min(pe.getQual(), pcrErrorQual/2) : pe.getQual());
             }
