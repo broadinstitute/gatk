@@ -26,12 +26,12 @@ public final class KmerAndCount extends SVKmerLong implements Map.Entry<SVKmer, 
     }
 
     private KmerAndCount(final Kryo kryo, final Input input ) {
-        super(kryo, input);
+        super(input);
         count = input.readInt();
     }
 
     protected void serialize( final Kryo kryo, final Output output ) {
-        super.serialize(kryo, output);
+        super.serialize(output);
         output.writeInt(count);
     }
 

@@ -12,27 +12,27 @@ import java.util.stream.StreamSupport;
  * Iterator over successive Kmers from a sequence of characters.
  * Silently skips over parts of the sequence that has characters other than A, C, G, or T.
  */
-public class SVKmerizer implements Iterator<SVKmer> {
+public class SVKmerizer<KmerType extends SVKmer> implements Iterator<KmerType> {
     protected final CharSequence seq;
     protected final int kSize, kAdvance;
     protected int idx = 0;
-    protected SVKmer nextKmer;
+    protected KmerType nextKmer;
 
     //3-arg constructor creates a Kmerizer that returns consecutive kmers in the sequence
-    public SVKmerizer( final byte[] seq, final int kSize, SVKmer kmer ) {
+    public SVKmerizer( final byte[] seq, final int kSize, final KmerType kmer ) {
         this(seq, kSize, 1, kmer );
     }
 
     //Overloaded constructor with kSpace, the number of bases to advance between kmers
-    public SVKmerizer( final byte[] seq, final int kSize, final int kSpace, SVKmer kmer ) {
+    public SVKmerizer( final byte[] seq, final int kSize, final int kSpace, final KmerType kmer ) {
         this(new ASCIICharSequence(seq), kSize, kSpace, kmer );
     }
 
-    public SVKmerizer( final CharSequence seq, final int kSize, SVKmer kmer ) {
+    public SVKmerizer( final CharSequence seq, final int kSize, final KmerType kmer ) {
         this(seq, kSize, 1, kmer);
     }
 
-    public SVKmerizer( final CharSequence seq, final int kSize, final int kSpace, SVKmer kmer ) {
+    public SVKmerizer( final CharSequence seq, final int kSize, final int kSpace, final KmerType kmer ) {
         this.seq = seq;
         this.kSize = kSize;
         this.kAdvance = kSize - kSpace;
@@ -55,47 +55,62 @@ public class SVKmerizer implements Iterator<SVKmer> {
     }
 
     @Override
-    public SVKmer next() {
+    public KmerType next() {
         if ( nextKmer == null ) throw new NoSuchElementException("Kmerization sequence exhausted.");
-        final SVKmer result = nextKmer;
+        final KmerType result = nextKmer;
         nextKmer = nextKmer(nextKmer, kAdvance);
         return result;
     }
 
-    public static SVKmer toKmer(final CharSequence seq, SVKmer kmer) {
-        final SVKmerizer sk = new SVKmerizer(seq, seq.length(), 1, kmer);
+    public static <KmerType extends SVKmer> KmerType toKmer( final CharSequence seq, final KmerType kmer ) {
+        final SVKmerizer<KmerType> sk = new SVKmerizer<>(seq, seq.length(), 1, kmer);
         Utils.validateArg(sk.hasNext(), () -> "Can't make a SVKmer from '"+seq+"'");
         return sk.next();
     }
 
-    public static SVKmer toKmer( final byte[] seq, final SVKmer kmer ) {
+    public static <KmerType extends SVKmer> KmerType toKmer( final byte[] seq, final KmerType kmer ) {
         return toKmer(new ASCIICharSequence(seq),kmer);
     }
 
-    public static Stream<SVKmer> stream(final CharSequence seq, final int kSize, final int kSpace, final SVKmer kmer) {
-        return StreamSupport.stream(((Iterable<SVKmer>)() -> new SVKmerizer(seq, kSize, kSpace, kmer)).spliterator(), false);
+    public static <KmerType extends SVKmer> Stream<KmerType> stream( final CharSequence seq,
+                                                                     final int kSize,
+                                                                     final int kSpace,
+                                                                     final KmerType kmer ) {
+        return StreamSupport.stream(((Iterable<KmerType>)() ->
+                new SVKmerizer<>(seq, kSize, kSpace, kmer)).spliterator(), false);
     }
 
-    public static Stream<SVKmer> stream(final byte[] seq, final int kSize, final int kSpace, SVKmer kmer ) {
+    public static <KmerType extends SVKmer> Stream<KmerType> stream( final byte[] seq,
+                                                                     final int kSize,
+                                                                     final int kSpace,
+                                                                     final KmerType kmer ) {
         return stream(new ASCIICharSequence(seq), kSize, kSpace, kmer);
     }
 
-    public static Stream<SVKmer> stream(final byte[] seq, final int kSize, SVKmer kmer ) {
+    public static <KmerType extends SVKmer> Stream<KmerType> stream( final byte[] seq,
+                                                                     final int kSize,
+                                                                     final KmerType kmer ) {
         return stream(seq, kSize, 1, kmer);
     }
 
-    public static Stream<SVKmer> canonicalStream( final byte[] seq, final int kSize, final SVKmer kmer ) {
-        return stream(seq, kSize, 1, kmer).map(kkk -> kkk.canonical(kSize));
+    @SuppressWarnings("unchecked")
+    public static <KmerType extends SVKmer> Stream<KmerType> canonicalStream( final byte[] seq,
+                                                                              final int kSize,
+                                                                              final KmerType kmer ) {
+        return stream(seq, kSize, 1, kmer).map(kkk -> (KmerType)kkk.canonical(kSize));
     }
 
-    protected SVKmer nextKmer( SVKmer tmpKmer, int validBaseCount ) {
+    @SuppressWarnings("unchecked")
+    protected KmerType nextKmer( final KmerType tmpKmerArg, final int validBaseCountArg ) {
+        KmerType tmpKmer = tmpKmerArg;
+        int validBaseCount = validBaseCountArg;
         final int len = seq.length();
         while ( idx < len ) {
             switch ( seq.charAt(idx) ) {
-                case 'a': case 'A': tmpKmer = tmpKmer.successor(SVKmer.Base.A, kSize); break;
-                case 'c': case 'C': tmpKmer = tmpKmer.successor(SVKmer.Base.C, kSize); break;
-                case 'g': case 'G': tmpKmer = tmpKmer.successor(SVKmer.Base.G, kSize); break;
-                case 't': case 'T': tmpKmer = tmpKmer.successor(SVKmer.Base.T, kSize); break;
+                case 'a': case 'A': tmpKmer = (KmerType)tmpKmer.successor(SVKmer.Base.A, kSize); break;
+                case 'c': case 'C': tmpKmer = (KmerType)tmpKmer.successor(SVKmer.Base.C, kSize); break;
+                case 'g': case 'G': tmpKmer = (KmerType)tmpKmer.successor(SVKmer.Base.G, kSize); break;
+                case 't': case 'T': tmpKmer = (KmerType)tmpKmer.successor(SVKmer.Base.T, kSize); break;
                 default: validBaseCount = -1;
             }
             idx += 1;

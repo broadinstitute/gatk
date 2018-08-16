@@ -153,7 +153,7 @@ public final class FindBadGenomicKmersSpark extends GATKSparkTool {
                         SVDUSTFilteredKmerizer.canonicalStream(seq, kSize, maxDUSTScore, new SVKmerLong())
                                 .forEach(kmer -> {
                                     final KmerAndCount entry = kmerCounts.find(kmer);
-                                    if ( entry == null ) kmerCounts.add(new KmerAndCount((SVKmerLong)kmer));
+                                    if ( entry == null ) kmerCounts.add(new KmerAndCount(kmer));
                                     else entry.bumpCount();
                                 });
                     }

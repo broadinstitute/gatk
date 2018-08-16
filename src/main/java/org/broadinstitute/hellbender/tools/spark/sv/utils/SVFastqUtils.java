@@ -18,10 +18,7 @@ import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -223,8 +220,8 @@ public class SVFastqUtils {
             this.bases = read.getBasesNoCopy();
             this.quals = read.getBaseQualitiesNoCopy();
             if (!read.isUnmapped() && read.isReverseStrand()) {
-                SequenceUtil.reverseComplement(this.bases);
-                SequenceUtil.reverseQualities(this.quals);
+                SequenceUtil.reverseComplement(Arrays.copyOf(this.bases, this.bases.length));
+                SequenceUtil.reverseQualities(Arrays.copyOf(this.quals, this.quals.length));
             }
         }
 

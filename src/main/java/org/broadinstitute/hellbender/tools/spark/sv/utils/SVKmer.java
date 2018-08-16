@@ -2,6 +2,9 @@ package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
 //Superclass for SVKmerLong and SVKmerShort
 
+import java.util.AbstractList;
+import java.util.List;
+
 public abstract class SVKmer {
 
     public enum Base {
@@ -14,15 +17,23 @@ public abstract class SVKmer {
 
         Base(final long value) { this.value = value; }
 
-        public Base complement() { return baseValues[3 - ordinal()]; }
+        public Base complement() { return baseValues.get(3 - ordinal()); }
     }
 
-    protected static final Base[] baseValues = Base.values();
+    protected static final List<Base> baseValues = // anonymous, fixed-size, unmodifiable list
+            new AbstractList<Base>() {
+                final Base[] valsArray = Base.values();
+
+                @Override public Base get( final int idx ) { return valsArray[idx]; }
+                @Override public int size() { return valsArray.length; }
+            };
+
+    protected static final String baseChars = "ACGT";
 
     // Lookup table for reverse-complementing each possible byte value.
     // Each pair of bits represents a base, so you have to reverse bits pairwise and then invert all bits.
     // This is most quickly and easily done with a lookup table.
-    protected static final long[] BYTEWISE_REVERSE_COMPLEMENT;
+    private static final long[] BYTEWISE_REVERSE_COMPLEMENT;
     static {
         BYTEWISE_REVERSE_COMPLEMENT = new long[256];
         for ( int idx = 0; idx != 256; ++idx ) {
@@ -34,6 +45,7 @@ public abstract class SVKmer {
     public abstract SVKmer successor( final Base base, final int kSize );
     public abstract SVKmer predecessor( final Base base, final int kSize );
     public abstract SVKmer reverseComplement( final int kSize );
+    public abstract boolean isCanonical( final int kSize );
     public abstract SVKmer canonical( final int kSize );
     public abstract Base firstBase( final int kSize );
     public abstract Base lastBase();
@@ -55,9 +67,8 @@ public abstract class SVKmer {
         return result;
     }
 
-    protected static long reverseComplementByteValueAsLong( final int bIn ) {
+    private static long reverseComplementByteValueAsLong( final int bIn ) {
         // this turns the 8 bits [b1 b2 b3 b4 b5 b6 b7 b8] into [~b7 ~b8 ~b5 ~b6 ~b3 ~b4 ~b1 ~b2]
         return ~(((bIn & 3) << 6) | (((bIn >> 2) & 3) << 4) | (((bIn >> 4) & 3) << 2) | ((bIn >> 6) & 3)) & 0xffL;
     }
-
 }

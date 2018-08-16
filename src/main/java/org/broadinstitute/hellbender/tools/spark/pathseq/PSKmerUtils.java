@@ -56,7 +56,7 @@ public class PSKmerUtils {
             //Kmerize the record
             final byte[] bases = records.get(recName).getBases();
             final long[] list = SVKmerizer.stream(bases, kSize, kSpace, new SVKmerShort(kSize))
-                    .mapToLong(kmer -> PSKmerCollection.canonicalizeAndMask((SVKmerShort) kmer, kSize, mask))
+                    .mapToLong(kmer -> PSKmerCollection.canonicalizeAndMask(kmer, kSize, mask))
                     .toArray();
 
             //Add kmers to the result

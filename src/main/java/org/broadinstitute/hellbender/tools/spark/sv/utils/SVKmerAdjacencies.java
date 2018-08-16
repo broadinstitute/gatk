@@ -10,7 +10,11 @@ import java.util.Map;
 
 public class SVKmerAdjacencies extends SVKmerLong {
     private int adjacentKmers;
+
+    // bit-wise reverse of binary representation of all integers 0 to 255
     private static int[] reverseComplementAdjacencies;
+
+    // number of bits set in the binary representation of the integers from 0 to 15
     private static int[] bitCount = { 0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4 };
 
     public SVKmerAdjacencies( final SVKmerLong kmer, final Base predecessor, final Base successor ) {
@@ -76,7 +80,7 @@ public class SVKmerAdjacencies extends SVKmerLong {
         for ( int baseIdx = 0; baseIdx != 4; ++baseIdx ) {
             if ( (predecessorBits & (1 << baseIdx)) != 0 ) {
                 final Integer contigId =
-                        contigEnds.get(predecessor(baseValues[baseIdx], kSize).reverseComplement(kSize));
+                        contigEnds.get(predecessor(baseValues.get(baseIdx), kSize).reverseComplement(kSize));
                 if ( contigId == null ) {
                     throw new GATKException("can't find predecessor contig");
                 }
@@ -93,7 +97,7 @@ public class SVKmerAdjacencies extends SVKmerLong {
         final int successorBits = adjacentKmers & 0x0f;
         for ( int baseIdx = 0; baseIdx != 4; ++baseIdx ) {
             if ( (successorBits & (1 << baseIdx)) != 0 ) {
-                final Integer contigId = contigEnds.get(successor(baseValues[baseIdx], kSize));
+                final Integer contigId = contigEnds.get(successor(baseValues.get(baseIdx), kSize));
                 if ( contigId == null ) {
                     throw new GATKException("can't find successor contig");
                 }

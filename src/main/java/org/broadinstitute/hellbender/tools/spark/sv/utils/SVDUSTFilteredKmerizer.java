@@ -17,16 +17,16 @@ import java.util.stream.Stream;
  *  So our DUST-like score is (kSize-3) too big, but proportional to a real DUST score for the kmer,
  *  which is good enough and much faster to calculate.
  */
-public class SVDUSTFilteredKmerizer extends SVKmerizer {
+public class SVDUSTFilteredKmerizer<KmerType extends SVKmer> extends SVKmerizer<KmerType> {
     private final int maxDUSTScore;
     private final int[] trimerCounts;
     private int curDUSTScore;
 
-    public SVDUSTFilteredKmerizer(final byte[] seq, final int kSize, final int maxDUSTScore, final SVKmer kmer ) {
+    public SVDUSTFilteredKmerizer( final byte[] seq, final int kSize, final int maxDUSTScore, final KmerType kmer ) {
         this(new ASCIICharSequence(seq), kSize, maxDUSTScore, kmer);
     }
 
-    public SVDUSTFilteredKmerizer(final CharSequence seq, final int kSize, final int maxDUSTScore, final SVKmer kmer ) {
+    public SVDUSTFilteredKmerizer( final CharSequence seq, final int kSize, final int maxDUSTScore, final KmerType kmer ) {
         super(kSize, seq);
         // kmers of length < 3 don't have any trimers.
         // kmers of length 3 always have a score of 0, and are uninformative.
@@ -42,45 +42,61 @@ public class SVDUSTFilteredKmerizer extends SVKmerizer {
         nextKmer = nextKmer(kmer, 0);
     }
 
-    public static Stream<SVKmer> stream( final CharSequence seq, final int kSize, final int maxDUSTScore, final SVKmer kmer ) {
-        return Utils.stream(new SVDUSTFilteredKmerizer(seq, kSize, maxDUSTScore, kmer));
+    public static <KmerType extends SVKmer> Stream<KmerType> stream( final CharSequence seq,
+                                                                     final int kSize,
+                                                                     final int maxDUSTScore,
+                                                                     final KmerType kmer ) {
+        return Utils.stream(new SVDUSTFilteredKmerizer<>(seq, kSize, maxDUSTScore, kmer));
     }
 
-    public static Stream<SVKmer> stream( final byte[] seq, final int kSize, final int maxDUSTScore, final SVKmer kmer ) {
-        return Utils.stream(new SVDUSTFilteredKmerizer(seq, kSize, maxDUSTScore, kmer));
+    public static <KmerType extends SVKmer> Stream<KmerType> stream( final byte[] seq,
+                                                                     final int kSize,
+                                                                     final int maxDUSTScore,
+                                                                     final KmerType kmer ) {
+        return Utils.stream(new SVDUSTFilteredKmerizer<>(seq, kSize, maxDUSTScore, kmer));
     }
 
-    public static Stream<SVKmer> canonicalStream( final CharSequence seq, final int kSize, final int maxDUSTScore, final SVKmer kmer ) {
-        return stream(seq, kSize, maxDUSTScore, kmer).map(km -> km.canonical(kSize));
+    @SuppressWarnings("unchecked")
+    public static <KmerType extends SVKmer> Stream<KmerType> canonicalStream( final CharSequence seq,
+                                                                              final int kSize,
+                                                                              final int maxDUSTScore,
+                                                                              final KmerType kmer ) {
+        return stream(seq, kSize, maxDUSTScore, kmer).map(kkk -> (KmerType)kkk.canonical(kSize));
     }
 
-    public static Stream<SVKmer> canonicalStream( final byte[] seq, final int kSize, final int maxDUSTScore, final SVKmer kmer ) {
-        return stream(seq, kSize, maxDUSTScore, kmer).map(km -> km.canonical(kSize));
+    @SuppressWarnings("unchecked")
+    public static  <KmerType extends SVKmer> Stream<KmerType> canonicalStream( final byte[] seq,
+                                                                               final int kSize,
+                                                                               final int maxDUSTScore,
+                                                                               final KmerType kmer ) {
+        return stream(seq, kSize, maxDUSTScore, kmer).map(kkk -> (KmerType)kkk.canonical(kSize));
     }
 
     @Override
-    protected SVKmer nextKmer( final SVKmer initialKmer, int validBaseCount ) {
+    @SuppressWarnings("unchecked")
+    protected KmerType nextKmer( final KmerType initialKmer, final int validBaseCountArg ) {
         final int len = seq.length();
-        SVKmer result = initialKmer;
+        KmerType result = initialKmer;
+        int validBaseCount = validBaseCountArg;
         while ( idx < len ) {
             // adjust score for the contribution of the lead trimer, which is disappearing
             // note that count*(count-1)/2 is equal to sum(0, 1, 2, ..., (count-1))
             curDUSTScore -= --trimerCounts[result.firstTrimer(kSize)];
             switch ( seq.charAt(idx) ) {
                 case 'a': case 'A':
-                    result = result.successor(SVKmer.Base.A, kSize);
+                    result = (KmerType)result.successor(SVKmer.Base.A, kSize);
                     break;
                 case 'c': case 'C':
-                    result = result.successor(SVKmer.Base.C, kSize);
+                    result = (KmerType)result.successor(SVKmer.Base.C, kSize);
                     break;
                 case 'g': case 'G':
-                    result = result.successor(SVKmer.Base.G, kSize);
+                    result = (KmerType)result.successor(SVKmer.Base.G, kSize);
                     break;
                 case 't': case 'T':
-                    result = result.successor(SVKmer.Base.T, kSize);
+                    result = (KmerType)result.successor(SVKmer.Base.T, kSize);
                     break;
                 default:
-                    result = result.successor(SVKmer.Base.A, kSize);
+                    result = (KmerType)result.successor(SVKmer.Base.A, kSize);
                     validBaseCount = -1;
                     break;
             }

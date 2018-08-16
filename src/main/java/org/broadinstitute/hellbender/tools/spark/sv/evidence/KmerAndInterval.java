@@ -21,14 +21,14 @@ public final class KmerAndInterval extends SVKmerLong implements Map.Entry<SVKme
         this.intervalId = intervalId;
     }
 
-    private KmerAndInterval( final Kryo kryo, final Input input ) {
-        super(kryo, input);
+    private KmerAndInterval( final Input input ) {
+        super(input);
         intervalId = input.readInt();
     }
 
     @Override
-    protected void serialize( final Kryo kryo, final Output output ) {
-        super.serialize(kryo, output);
+    protected void serialize( final Output output ) {
+        super.serialize(output);
         output.writeInt(intervalId);
     }
 
@@ -55,13 +55,13 @@ public final class KmerAndInterval extends SVKmerLong implements Map.Entry<SVKme
     public static final class Serializer extends com.esotericsoftware.kryo.Serializer<KmerAndInterval> {
         @Override
         public void write( final Kryo kryo, final Output output, final KmerAndInterval kmerAndInterval) {
-            kmerAndInterval.serialize(kryo, output);
+            kmerAndInterval.serialize(output);
         }
 
         @Override
         public KmerAndInterval read( final Kryo kryo, final Input input,
                                      final Class<KmerAndInterval> klass ) {
-            return new KmerAndInterval(kryo, input);
+            return new KmerAndInterval(input);
         }
     }
 }

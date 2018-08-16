@@ -34,10 +34,10 @@ public class ContainsKmerReadFilter extends ReadFilter {
 
     @Override
     public boolean test(final GATKRead read) {
-        final SVKmerizer kmers = new SVKmerizer(read.getBases(), kSize, 1, new SVKmerShort(kSize));
+        final SVKmerizer<SVKmerShort> kmers = new SVKmerizer<>(read.getBases(), kSize, 1, new SVKmerShort(kSize));
         int numKmersFound = 0;
         while (kmers.hasNext()) {
-            if (kmerLib.contains(((SVKmerShort)kmers.next()))) {
+            if (kmerLib.contains((kmers.next()))) {
                 if (++numKmersFound >= kmerCountThreshold) {
                     return false;
                 }

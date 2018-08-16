@@ -30,10 +30,10 @@ public class ContainsKmerReadFilterTest extends GATKBaseTest {
         final byte[] maskBytes = new byte[]{3};
         kmerMask = SVKmerShort.getMask(maskBytes, kSize);
 
-        final SVKmerizer kmerizer = new SVKmerizer(kmerRef.getBytes(), kSize, 1, new SVKmerShort(kSize));
+        final SVKmerizer<SVKmerShort> kmerizer = new SVKmerizer<>(kmerRef.getBytes(), kSize, 1, new SVKmerShort(kSize));
         kmerSet = new LongHopscotchSet(kmerRef.length());
         while (kmerizer.hasNext()) {
-            kmerSet.add(((SVKmerShort)kmerizer.next()).canonical(kSize).mask(kmerMask).getLong());
+            kmerSet.add((kmerizer.next()).canonical(kSize).mask(kmerMask).getLong());
         }
         final LargeLongHopscotchSet largeKmerSet = new LargeLongHopscotchSet(kmerSet.size());
         LongIterator itr = kmerSet.iterator();

@@ -167,10 +167,10 @@ public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpa
             final byte[] tigBases = tig.getSequence();
             final int maxMismatches = (int) (tigBases.length * maxMismatchRate);
             int tigOffset = 0;
-            final SVKmerizer contigKmerItr =
-                    new SVKmerizer(tig.getSequence(), assemblyKmerSize, new SVKmerShort(assemblyKmerSize));
+            final SVKmerizer<SVKmerShort> contigKmerItr =
+                    new SVKmerizer<>(tig.getSequence(), assemblyKmerSize, new SVKmerShort(assemblyKmerSize));
             while ( contigKmerItr.hasNext() ) {
-                final SVKmerShort contigKmer = (SVKmerShort) contigKmerItr.next();
+                final SVKmerShort contigKmer = contigKmerItr.next();
                 final SVKmerShort canonicalContigKmer = contigKmer.canonical(assemblyKmerSize);
                 final boolean contigKmerIsCanonical = contigKmer.equals(canonicalContigKmer);
                 final Iterator<KmerLocation> locItr = kmerMap.findEach(canonicalContigKmer);
@@ -256,10 +256,10 @@ public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpa
         final HopscotchMultiMap<SVKmerShort, ContigLocation, KmerLocation> kmerMap = new HopscotchMultiMap<>(capacity);
         assembly.getContigs().forEach(tig -> {
             int contigOffset = 0;
-            final Iterator<SVKmer> contigKmerItr =
-                    new SVKmerizer(tig.getSequence(), assemblyKmerSize, new SVKmerShort());
+            final Iterator<SVKmerShort> contigKmerItr =
+                    new SVKmerizer<>(tig.getSequence(), assemblyKmerSize, new SVKmerShort());
             while ( contigKmerItr.hasNext() ) {
-                final SVKmerShort kmer = (SVKmerShort) contigKmerItr.next();
+                final SVKmerShort kmer = contigKmerItr.next();
                 final SVKmerShort canonicalKmer = kmer.canonical(assemblyKmerSize);
                 final ContigLocation location = new ContigLocation(tig, contigOffset++, kmer.equals(canonicalKmer));
                 kmerMap.add(new KmerLocation(canonicalKmer, location));

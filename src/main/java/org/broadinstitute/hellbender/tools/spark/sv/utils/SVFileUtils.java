@@ -72,7 +72,7 @@ public final class SVFileUtils {
                             " but we were expecting K = " + kSize);
                 }
 
-                final SVKmerizer kmerizer = new SVKmerizer(line, kSize, 1, new SVKmerLong(kSize));
+                final SVKmerizer<SVKmerLong> kmerizer = new SVKmerizer<>(line, kSize, 1, new SVKmerLong(kSize));
                 if ( !kmerizer.hasNext() ) {
                     throw new GATKException("Unable to kmerize the kmer kill set string '" + line + "'.");
                 }

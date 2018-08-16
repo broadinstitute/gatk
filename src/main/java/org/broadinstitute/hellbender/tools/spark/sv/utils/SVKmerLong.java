@@ -4,7 +4,6 @@ import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
-import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
 /**
@@ -40,12 +39,12 @@ public class SVKmerLong extends SVKmer implements Comparable<SVKmerLong>  {
 
     private SVKmerLong( final long valHigh, final long valLow ) { this.valHigh = valHigh; this.valLow = valLow; }
 
-    protected SVKmerLong( final Kryo kryo, final Input input ) {
+    protected SVKmerLong( final Input input ) {
         valHigh = input.readLong();
         valLow = input.readLong();
     }
 
-    protected void serialize( final Kryo kryo, final Output output ) {
+    protected void serialize( final Output output ) {
         output.writeLong(valHigh);
         output.writeLong(valLow);
     }
@@ -55,6 +54,7 @@ public class SVKmerLong extends SVKmer implements Comparable<SVKmerLong>  {
      * E.g., if kmer.toString(5) is "ACTGA", then kmer.successor(SVKmerLong.Base.C,5).toString(5) is "CTGAC".
      * @param base must be 0, 1, 2, or 3, corresponding to A, C, G, or T.
      */
+    @Override
     public final SVKmerLong successor( final Base base, final int kSize ) {
         // bit hack to make a long value with the kSize least significant bits set to 1
         final long mask = (1L << kSize) - 1L;
@@ -70,6 +70,7 @@ public class SVKmerLong extends SVKmer implements Comparable<SVKmerLong>  {
      * E.g., if kmer.toString(5) is "ACTGA", then kmer.predecessor(SVKmerLong.Base.T,5).toString(5) is "TACTG".
      * @param base must be 0, 1, 2, or 3, corresponding to A, C, G, or T.
      */
+    @Override
     public final SVKmerLong predecessor( final Base base, final int kSize ) {
         // bit hack to make a long value with the kSize least significant bits set to 1
         final long mask = (1L << kSize) - 1L;
@@ -80,6 +81,7 @@ public class SVKmerLong extends SVKmer implements Comparable<SVKmerLong>  {
         return new SVKmerLong(newV1, newV2);
     }
 
+    @Override
     public boolean isCanonical( final int kSize ) {
         Utils.validateArg( (kSize & 1) != 0, "Kmer length must be odd to canonicalize.");
         // for odd-size kmers, the high bit of the middle base is in least significant position in valHigh.
@@ -91,6 +93,7 @@ public class SVKmerLong extends SVKmer implements Comparable<SVKmerLong>  {
      * Returns a new SVKmerLong that's the reverse-complement of this one.
      * E.g., if kmer.toString(5) is "ACTGA", then kmer.rc(5).toString(5) is "TCAGT".
      */
+    @Override
     public SVKmerLong reverseComplement( final int kSize ) {
         // bit hack to make a long value with the kSize least significant bits set to 1
         final long mask = (1L << kSize) - 1L;
@@ -117,18 +120,16 @@ public class SVKmerLong extends SVKmer implements Comparable<SVKmerLong>  {
      * The reverse-complement of a non-canonical SVKmerLong is a canonical SVKmerLong, and vice versa.  (Think about it.)
      * Canonical form is not defined for even-K Kmers (too expensive to compute routinely).
      */
-    public SVKmerLong canonical( final int kSize ) {
-        Utils.validateArg( (kSize & 1) != 0, "Kmer length must be odd to canonicalize.");
-        // for odd-size kmers, the high bit of the middle base is in least significant position in valHigh.
-        // test its value by ANDing with 1.  if it's zero the middle base is A or C and we're good to go.
-        if ( (valHigh & 1L) == 0 ) return this;
-        // middle base is G or T.  reverse complement.
-        return reverseComplement(kSize);
-    }
+    @Override
+    public SVKmerLong canonical( final int kSize ) { return isCanonical(kSize) ? this : reverseComplement(kSize); }
 
-    public final Base firstBase( final int kSize ) { return baseValues[(int)(valHigh >> (kSize-2))]; }
-    public final Base lastBase() { return baseValues[(int)(valLow & 3)]; }
-    public final int firstTrimer(final int kSize ) { return (int)(valHigh >>> (kSize-6)); }
+    @Override
+    public final Base firstBase( final int kSize ) { return baseValues.get((int)(valHigh >> (kSize-2))); }
+    @Override
+    public final Base lastBase() { return baseValues.get((int)(valLow & 3)); }
+    @Override
+    public final int firstTrimer( final int kSize ) { return (int)(valHigh >>> (kSize-6)); }
+    @Override
     public final int lastTrimer() { return (int)valLow & 0x3F; }
 
     /** Returns a kmer of size kSize-2 by removing the first and last base */
@@ -147,7 +148,8 @@ public class SVKmerLong extends SVKmer implements Comparable<SVKmerLong>  {
 
     @Override
     public final int hashCode() {
-        return (int)SVUtils.fnvLong64(SVUtils.fnvLong64(valHigh), valLow);
+        final long val = SVUtils.fnvLong64(SVUtils.fnvLong64(valHigh), valLow);
+        return (int)(val ^ (val >>> 32));
     }
 
     /**
@@ -171,7 +173,7 @@ public class SVKmerLong extends SVKmer implements Comparable<SVKmerLong>  {
         long val = valLow;
         for ( int nChars = kSize/2; nChars > 0; --nChars ) {
             // grab the two least significant bits to index into the BASE_CHARS array
-            sb.append(BaseUtils.BASE_CHARS[(int)val & 3]);
+            sb.append(baseChars.charAt((int)val & 3));
             // roll the whole mess down two bits
             val >>= 2;
         }
@@ -179,12 +181,12 @@ public class SVKmerLong extends SVKmer implements Comparable<SVKmerLong>  {
         if ( (kSize & 1) == 0 ) {
             val = valHigh; // we've used all the bits from valLow -- just move on to valHigh
         } else { // kSize is odd
-            val |= valHigh << 1; // there's one leftover bit from valLow that need to be accounted for
+            val |= valHigh << 1; // there's one leftover bit from valLow that needs to be accounted for
         }
         // this for loop will have one more iteration than the previous one if kSize is odd
         for ( int nChars = (kSize+1)/2; nChars > 0; --nChars ) {
             // grab two lowest bits to index into array
-            sb.append(BaseUtils.BASE_CHARS[(int)val & 3]);
+            sb.append(baseChars.charAt((int)val & 3));
             // move 'em down
             val >>= 2;
         }
@@ -195,13 +197,12 @@ public class SVKmerLong extends SVKmer implements Comparable<SVKmerLong>  {
     public static final class Serializer extends com.esotericsoftware.kryo.Serializer<SVKmerLong> {
         @Override
         public void write( final Kryo kryo, final Output output, final SVKmerLong svKmer ) {
-            svKmer.serialize(kryo, output);
+            svKmer.serialize(output);
         }
 
         @Override
         public SVKmerLong read( final Kryo kryo, final Input input, final Class<SVKmerLong> klass ) {
-            return new SVKmerLong(kryo, input);
+            return new SVKmerLong(input);
         }
     }
-
 }

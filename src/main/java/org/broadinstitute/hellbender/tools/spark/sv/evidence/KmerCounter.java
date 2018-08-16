@@ -35,7 +35,7 @@ public final class KmerCounter {
                         if ( kmerMap.contains(kmer) ) {
                             final KmerAndCount kmerAndCount = counts.find(kmer);
                             if ( kmerAndCount != null ) kmerAndCount.bumpCount();
-                            else counts.add(new KmerAndCount((SVKmerLong)kmer));
+                            else counts.add(new KmerAndCount(kmer));
                         }
                     });
         }

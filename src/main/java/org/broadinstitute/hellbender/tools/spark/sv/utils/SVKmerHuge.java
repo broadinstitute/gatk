@@ -5,7 +5,6 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Arrays;
@@ -22,6 +21,7 @@ public final class SVKmerHuge extends SVKmer implements Comparable<SVKmerHuge> {
 
     public SVKmerHuge( final SVKmerHuge that ) {
         this.vals = Arrays.copyOf( that.vals, that.vals.length );
+        this.hashVal = that.hashVal;
     }
 
     private SVKmerHuge( final long[] vals ) {
@@ -39,7 +39,7 @@ public final class SVKmerHuge extends SVKmer implements Comparable<SVKmerHuge> {
     }
 
     @Override
-    public SVKmer successor( final Base base, final int kSize ) {
+    public SVKmerHuge successor( final Base base, final int kSize ) {
         final long[] newVals = Arrays.copyOf(vals, vals.length);
         int idx = newVals.length;
         newVals[idx - 1] &= (1L << (((kSize - 1) & 0x1F) << 1)) - 1L;
@@ -51,7 +51,7 @@ public final class SVKmerHuge extends SVKmer implements Comparable<SVKmerHuge> {
     }
 
     @Override
-    public SVKmer predecessor( final Base base, final int kSize ) {
+    public SVKmerHuge predecessor( final Base base, final int kSize ) {
         final long[] newVals = Arrays.copyOf(vals, vals.length);
         final int nnn = newVals.length - 1;
         for ( int idx = 0; idx != nnn; ++idx ) {
@@ -62,7 +62,13 @@ public final class SVKmerHuge extends SVKmer implements Comparable<SVKmerHuge> {
     }
 
     @Override
-    public SVKmer reverseComplement( final int kSize ) {
+    public boolean isCanonical( final int kSize ) {
+        Utils.validateArg( (kSize & 1) != 0, "Kmer length must be odd to canonicalize.");
+        return (vals[kSize >>> 6] & (1L << (kSize & 0x3f))) == 0;
+    }
+
+    @Override
+    public SVKmerHuge reverseComplement( final int kSize ) {
         final long[] newVals = Arrays.copyOf(vals, vals.length);
         for ( int idx1 = 0, idx2 = newVals.length - 1; idx1 < idx2; ++idx1, --idx2 ) {
             long tmp = reverseComplement(newVals[idx1]);
@@ -86,20 +92,16 @@ public final class SVKmerHuge extends SVKmer implements Comparable<SVKmerHuge> {
     }
 
     @Override
-    public SVKmer canonical( final int kSize ) {
-        Utils.validateArg( (kSize & 1) != 0, "Kmer length must be odd to canonicalize.");
-        if ( (vals[kSize >>> 6] & (1L << (kSize & 0x3f))) == 0 ) return this;
-        return reverseComplement(kSize);
-    }
+    public SVKmerHuge canonical( final int kSize ) { return isCanonical(kSize) ? this : reverseComplement(kSize); }
 
     @Override
     public Base firstBase( final int kSize ) {
-        return baseValues[(int)((vals[vals.length-1] >>> (((kSize - 1) & 0x1f) << 1)) & 0x3L)];
+        return baseValues.get((int)((vals[vals.length-1] >>> (((kSize - 1) & 0x1f) << 1)) & 0x3L));
     }
 
     @Override
     public Base lastBase() {
-        return baseValues[(int)(vals[0] & 0x3L)];
+        return baseValues.get((int)(vals[0] & 0x3L));
     }
 
     @Override
@@ -141,8 +143,8 @@ public final class SVKmerHuge extends SVKmer implements Comparable<SVKmerHuge> {
         return hashVal;
     }
 
-    @Override
     // results could be bogus if the kmers are of unequal sizes
+    @Override
     public int compareTo( final SVKmerHuge that ) {
         int idx = Math.min(this.vals.length, that.vals.length);
         while ( idx-- > 0 ) {
@@ -159,7 +161,7 @@ public final class SVKmerHuge extends SVKmer implements Comparable<SVKmerHuge> {
         for ( long val : vals ) {
             int nnn = 32;
             while ( nnn-- > 0 ) {
-                sb.append(BaseUtils.BASE_CHARS[(int)(val & 0x3L)]);
+                sb.append(baseChars.charAt((int)val & 3));
                 val >>>= 2;
                 if ( ++count == kSize ) return sb.reverse().toString();
             }

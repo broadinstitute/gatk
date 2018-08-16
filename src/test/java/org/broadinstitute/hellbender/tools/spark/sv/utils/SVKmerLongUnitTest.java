@@ -94,8 +94,8 @@ public class SVKmerLongUnitTest extends GATKBaseTest {
 
     @Test(groups = "sv")
     public void testComparison() {
-        final SVKmerLong kkk1 = (SVKmerLong)SVKmerizer.toKmer("ACGTA",new SVKmerLong(5));
-        final SVKmerLong kkk2 = (SVKmerLong)SVKmerizer.toKmer("ACGTC",new SVKmerLong(5));
+        final SVKmerLong kkk1 = SVKmerizer.toKmer("ACGTA",new SVKmerLong(5));
+        final SVKmerLong kkk2 = SVKmerizer.toKmer("ACGTC",new SVKmerLong(5));
         Assert.assertTrue(kkk1.compareTo(kkk1) == 0);
         Assert.assertTrue(kkk2.compareTo(kkk2) == 0);
         Assert.assertTrue(kkk1.compareTo(kkk2) < 0);
@@ -110,7 +110,7 @@ public class SVKmerLongUnitTest extends GATKBaseTest {
 
     @Test(groups = "sv")
     public void testKmerization() {
-        final SVKmerizer kmerizer = new SVKmerizer("AAAAATT", 5, 1, new SVKmerLong(7));
+        final SVKmerizer<SVKmerLong> kmerizer = new SVKmerizer<>("AAAAATT", 5, 1, new SVKmerLong(7));
         Assert.assertTrue(kmerizer.hasNext());
         Assert.assertEquals(kmerizer.next(), SVKmerizer.toKmer("AAAAA",new SVKmerLong(5)));
         Assert.assertTrue(kmerizer.hasNext());
@@ -122,7 +122,7 @@ public class SVKmerLongUnitTest extends GATKBaseTest {
 
     @Test(groups = "sv")
     public void testKmerizationAcrossN() {
-        final SVKmerizer kmerizer = new SVKmerizer("AAAAANTTTTT", 5, 1, new SVKmerLong(11));
+        final SVKmerizer<SVKmerLong> kmerizer = new SVKmerizer<>("AAAAANTTTTT", 5, 1, new SVKmerLong(11));
         Assert.assertTrue(kmerizer.hasNext());
         Assert.assertEquals(kmerizer.next(), SVKmerizer.toKmer("AAAAA",new SVKmerLong(5)));
         Assert.assertTrue(kmerizer.hasNext());

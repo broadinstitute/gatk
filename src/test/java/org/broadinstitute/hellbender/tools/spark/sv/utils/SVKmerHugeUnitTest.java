@@ -132,8 +132,9 @@ public class SVKmerHugeUnitTest extends GATKBaseTest {
     }
 
     private SVKmerHuge toKmer( final String str ) {
-        return (SVKmerHuge)SVKmerizer.toKmer(str, new SVKmerHuge(str.length()));
+        return SVKmerizer.toKmer(str, new SVKmerHuge(str.length()));
     }
+
     private String rcString( final String str ) {
         final int K = str.length();
         final StringBuilder sb = new StringBuilder(K);

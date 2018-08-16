@@ -79,8 +79,8 @@ public class SVKmerShortUnitTest {
         }
         final int K = seq1.length();
 
-        final SVKmerShort kmer1 = (SVKmerShort)SVKmerizer.toKmer(seq1, new SVKmerShort(K));
-        final SVKmerShort kmer2 = (SVKmerShort)SVKmerizer.toKmer(seq2, new SVKmerShort(K));
+        final SVKmerShort kmer1 = SVKmerizer.toKmer(seq1, new SVKmerShort(K));
+        final SVKmerShort kmer2 = SVKmerizer.toKmer(seq2, new SVKmerShort(K));
         final SVKmerShort mask = SVKmerShort.getMask(maskBytes, K);
 
         if (equal) {
@@ -123,8 +123,8 @@ public class SVKmerShortUnitTest {
                 maskedBasesA[maskIndicesBytes[j]] = 'A';
                 maskedBasesT[maskIndicesBytes[j]] = 'T';
             }
-            final SVKmerShort kmerA = (SVKmerShort)SVKmerizer.toKmer(maskedBasesA, new SVKmerShort(K));
-            final SVKmerShort kmerT = (SVKmerShort)SVKmerizer.toKmer(maskedBasesT, new SVKmerShort(K));
+            final SVKmerShort kmerA = SVKmerizer.toKmer(maskedBasesA, new SVKmerShort(K));
+            final SVKmerShort kmerT = SVKmerizer.toKmer(maskedBasesT, new SVKmerShort(K));
 
             Assert.assertEquals(kmerA.mask(mask), kmerT.mask(mask));
         }
@@ -163,8 +163,8 @@ public class SVKmerShortUnitTest {
 
     @Test(groups = "sv")
     public void testComparison() {
-        final SVKmerShort kkk1 = (SVKmerShort) SVKmerizer.toKmer("ACGTA", new SVKmerShort(5));
-        final SVKmerShort kkk2 = (SVKmerShort) SVKmerizer.toKmer("ACGTC", new SVKmerShort(5));
+        final SVKmerShort kkk1 = SVKmerizer.toKmer("ACGTA", new SVKmerShort(5));
+        final SVKmerShort kkk2 = SVKmerizer.toKmer("ACGTC", new SVKmerShort(5));
         Assert.assertTrue(kkk1.compareTo(kkk1) == 0);
         Assert.assertTrue(kkk2.compareTo(kkk2) == 0);
         Assert.assertTrue(kkk1.compareTo(kkk2) < 0);
@@ -179,7 +179,7 @@ public class SVKmerShortUnitTest {
 
     @Test(groups = "sv")
     public void testKmerization() {
-        final SVKmerizer kmerizer = new SVKmerizer("AAAAATT", 5, 1, new SVKmerShort(7));
+        final SVKmerizer<SVKmerShort> kmerizer = new SVKmerizer<>("AAAAATT", 5, 1, new SVKmerShort(7));
         Assert.assertTrue(kmerizer.hasNext());
         Assert.assertEquals(kmerizer.next(), SVKmerizer.toKmer("AAAAA", new SVKmerShort(5)));
         Assert.assertTrue(kmerizer.hasNext());
@@ -191,7 +191,7 @@ public class SVKmerShortUnitTest {
 
     @Test(groups = "sv")
     public void testKmerizationAcrossN() {
-        final SVKmerizer kmerizer = new SVKmerizer("AAAAANTTTTT", 5, 1, new SVKmerShort(11));
+        final SVKmerizer<SVKmerShort> kmerizer = new SVKmerizer<>("AAAAANTTTTT", 5, 1, new SVKmerShort(11));
         Assert.assertTrue(kmerizer.hasNext());
         Assert.assertEquals(kmerizer.next(), SVKmerizer.toKmer("AAAAA", new SVKmerShort(5)));
         Assert.assertTrue(kmerizer.hasNext());
