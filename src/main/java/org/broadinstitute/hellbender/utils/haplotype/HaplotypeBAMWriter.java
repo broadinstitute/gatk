@@ -11,7 +11,6 @@ import org.broadinstitute.hellbender.utils.read.*;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 
-import java.io.File;
 import java.util.Collection;
 import java.util.function.Function;
 import java.util.Set;
@@ -33,6 +32,7 @@ public abstract class HaplotypeBAMWriter implements AutoCloseable {
     private static final int otherMQ = 0;
 
     protected final HaplotypeBAMDestination output;
+    private WriterType writerType;
     private boolean writeHaplotypes = true;
 
     /**
@@ -43,26 +43,14 @@ public abstract class HaplotypeBAMWriter implements AutoCloseable {
          * A mode that's for method developers.  Writes out all of the possible
          * haplotypes considered, as well as reads aligned to each
          */
-        ALL_POSSIBLE_HAPLOTYPES(AllHaplotypeBAMWriter::new),
+        ALL_POSSIBLE_HAPLOTYPES,
 
         /**
          * A mode for users.  Writes out the reads aligned only to the called
          * haplotypes.  Useful to understand why the caller is calling what it is
          */
-        CALLED_HAPLOTYPES(CalledHaplotypeBAMWriter::new);
+        CALLED_HAPLOTYPES;
 
-        final private Function<HaplotypeBAMDestination, HaplotypeBAMWriter> factory;
-
-        WriterType(Function<HaplotypeBAMDestination, HaplotypeBAMWriter> factory) {
-            this.factory = factory;
-        }
-
-        /**
-         * Create an instance of the  HaplotypeBAMWriter corresponding to this type.
-         */
-        public HaplotypeBAMWriter create(HaplotypeBAMDestination destination) {
-            Utils.nonNull(destination, "destination cannot be null");
-            return factory.apply(destination); }
     }
 
     /**
@@ -75,17 +63,13 @@ public abstract class HaplotypeBAMWriter implements AutoCloseable {
      * @param sourceHeader the header of the input BAMs used to make calls, must not be null.
      * @return a new HaplotypeBAMWriter
      */
-    public static HaplotypeBAMWriter create(
+    public HaplotypeBAMWriter(
             final WriterType type,
             final Path outputPath,
             final boolean createBamOutIndex,
             final boolean createBamOutMD5,
             final SAMFileHeader sourceHeader) {
-        Utils.nonNull(type, "type cannot be null");
-        Utils.nonNull(outputPath, "outputPath cannot be null");
-        Utils.nonNull(sourceHeader, "sourceHeader cannot be null");
-
-        return create(type, new SAMFileDestination(outputPath, createBamOutIndex, createBamOutMD5, sourceHeader, DEFAULT_HAPLOTYPE_READ_GROUP_ID));
+        this(type, new HaplotypeBAMDestination(outputPath, createBamOutIndex, createBamOutMD5, sourceHeader, DEFAULT_HAPLOTYPE_READ_GROUP_ID));
     }
 
     /**
@@ -97,11 +81,13 @@ public abstract class HaplotypeBAMWriter implements AutoCloseable {
      *
      * @return a new HaplotypeBAMWriter
      */
-    public static HaplotypeBAMWriter create(final WriterType type, final HaplotypeBAMDestination destination) {
+    public HaplotypeBAMWriter(
+            final WriterType type,
+            final HaplotypeBAMDestination destination) {
         Utils.nonNull(type, "type cannot be null");
         Utils.nonNull(destination, "destination cannot be null");
-
-        return type.create(destination);
+        this.writerType = type;
+        this.output = destination;
     }
 
     /**
@@ -111,6 +97,7 @@ public abstract class HaplotypeBAMWriter implements AutoCloseable {
      *               have its presorted bit set to false, as reads may come in out of order during writing.
      */
     protected HaplotypeBAMWriter(final HaplotypeBAMDestination output) {
+
         Utils.nonNull(output, "output cannot be null");
         this.output = output;
     }
@@ -132,11 +119,13 @@ public abstract class HaplotypeBAMWriter implements AutoCloseable {
      * @param calledHaplotypes a list of the haplotypes that where actually called as non-reference
      * @param readLikelihoods a map from sample -> likelihoods for each read for each of the best haplotypes
      */
-    public abstract void writeReadsAlignedToHaplotypes(final Collection<Haplotype> haplotypes,
+    public void writeReadsAlignedToHaplotypes(final Collection<Haplotype> haplotypes,
                                                        final Locatable paddedReferenceLoc,
                                                        final Collection<Haplotype> bestHaplotypes,
                                                        final Set<Haplotype> calledHaplotypes,
-                                                       final ReadLikelihoods<Haplotype> readLikelihoods);
+                                                       final ReadLikelihoods<Haplotype> readLikelihoods){
+        this.writerType;
+    }
 
     /**
      * Write out read aligned to haplotype to the BAM file

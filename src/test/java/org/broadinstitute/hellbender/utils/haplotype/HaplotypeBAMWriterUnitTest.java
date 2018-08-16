@@ -133,7 +133,7 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
         ) throws IOException
     {
         final Path outPath = GATKBaseTest.createTempFile("haplotypeBamWriterTest", outputFileExtension).toPath();
-        final HaplotypeBAMDestination fileDest = new SAMFileDestination(outPath, createIndex, createMD5, samHeader, "TestHaplotypeRG");
+        final HaplotypeBAMDestination fileDest = new HaplotypeBAMDestination(outPath, createIndex, createMD5, samHeader, "TestHaplotypeRG");
 
         try (final HaplotypeBAMWriter haplotypeBAMWriter = HaplotypeBAMWriter.create(HaplotypeBAMWriter.WriterType.ALL_POSSIBLE_HAPLOTYPES, fileDest)) {
             haplotypeBAMWriter.writeReadsAlignedToHaplotypes(
@@ -287,12 +287,11 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
 
     private class MockValidatingDestination extends HaplotypeBAMDestination {
         private final String expectedBaseSignature;  // bases expected for the synthesized haplotype read
-
         public int readCount = 0;           // number of reads written to this destination
         public boolean foundBases = false;  // true we've seen a read that contains the expectedBaseSignature
 
         private MockValidatingDestination(String baseSignature) {
-            super(samHeader, "testGroupID");
+            super(GATKBaseTest.createTempFile("haplotypeBamWriterTest", ".bam").toPath(), false, false, samHeader, "testGroupID");
             expectedBaseSignature = baseSignature;
         }
 

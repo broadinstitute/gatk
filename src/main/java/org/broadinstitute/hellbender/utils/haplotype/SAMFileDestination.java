@@ -31,7 +31,7 @@ public final class SAMFileDestination extends HaplotypeBAMDestination {
             final SAMFileHeader sourceHeader,
             final String haplotypeReadGroupID)
     {
-        super(sourceHeader, haplotypeReadGroupID);
+        super(outPath, createBamOutIndex, createBamOutMD5,sourceHeader, haplotypeReadGroupID);
         samWriter = new SAMFileGATKReadWriter(ReadUtils.createCommonSAMWriter(
                 outPath,
                 null,

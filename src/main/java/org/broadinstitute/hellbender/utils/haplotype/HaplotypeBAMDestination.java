@@ -19,7 +19,7 @@ import java.util.List;
  *
  */
 
-public final class HaplotypeBAMDestination {
+public class HaplotypeBAMDestination {
     private final SAMFileGATKReadWriter samWriter;
     private final SAMFileHeader bamOutputHeader;
     private final String haplotypeReadGroupID;
@@ -41,6 +41,8 @@ public final class HaplotypeBAMDestination {
             final SAMFileHeader sourceHeader,
             final String haplotypeReadGroupID)
     {
+        Utils.nonNull(outPath, "outputPath cannot be null");
+        Utils.nonNull(sourceHeader, "sourceHeader cannot be null");
         Utils.nonNull(sourceHeader, "sourceHeader cannot be null");
         Utils.nonNull(haplotypeReadGroupID, "haplotypeReadGroupID cannot be null");
         this.haplotypeReadGroupID = haplotypeReadGroupID;
