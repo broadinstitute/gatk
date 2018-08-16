@@ -180,7 +180,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(numVariants, 0);
     }
 
-    // run tumor-only using the original DREAM synthetic sample 1 tumor and normal restricted to
+    // run tumor-normal mode using the original DREAM synthetic sample 1 tumor and normal restricted to
     // 1/3 of our dbSNP interval, in which there is only one true positive.
     // we want to see that the number of false positives is small
     @Test
@@ -204,6 +204,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         };
 
         runCommandLine(args);
+        VariantContextTestUtils.streamVcf(outputVcf).forEach(a -> Assert.assertTrue(a.getGenotype(tumorName).hasAD()));
         final long numVariants = VariantContextTestUtils.streamVcf(outputVcf).count();
         Assert.assertTrue(numVariants < 4);
     }
@@ -421,7 +422,9 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 false,
                 false
         );
-    }/*
+    }
+
+    /*
     * Test that the min_base_quality_score parameter works
     */
     @Test
