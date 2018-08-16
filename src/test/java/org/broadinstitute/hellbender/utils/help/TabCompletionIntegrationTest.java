@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.testutils;
+package org.broadinstitute.hellbender.utils.help;
 
 import org.broadinstitute.barclay.argparser.ClassFinder;
 import org.broadinstitute.barclay.help.BashTabCompletionDoclet;

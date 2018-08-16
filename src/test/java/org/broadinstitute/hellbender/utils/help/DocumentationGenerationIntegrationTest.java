@@ -1,9 +1,7 @@
-package org.broadinstitute.hellbender.testutils;
+package org.broadinstitute.hellbender.utils.help;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.utils.help.GATKHelpDoclet;
 import org.broadinstitute.hellbender.utils.runtime.ProcessController;
-import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
