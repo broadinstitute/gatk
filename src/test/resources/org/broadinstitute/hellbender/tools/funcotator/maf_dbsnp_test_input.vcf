@@ -1,0 +1,11 @@
+##fileformat=VCFv4.2
+##fileDate=20170710
+##phasing=partial
+##reference=GRCh37.p13
+##source=SelectVariants
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+3	178865909	.	G	A	.	.	.
+3	178865910	.	G	A	.	.	.
+3	178865923	.	G	A	.	.	.
+3	178865958	.	A	AG	.	.	.
+3	178866132	.	AGT	A	.	.	.
