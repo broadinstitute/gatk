@@ -235,10 +235,13 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
                                         final Optional<LikelihoodMatrix<Allele>> normalLog10Matrix,
                                         final VariantContextBuilder callVcb) {
         final double[] tumorAlleleCounts = getEffectiveCounts(tumorLog10Matrix);
-        final Genotype tumorGenotype = new GenotypeBuilder(tumorSample, tumorLog10Matrix.alleles())
-                .AD(Arrays.stream(tumorAlleleCounts).mapToInt(x -> (int) FastMath.round(x)).toArray())
-                .attribute(GATKVCFConstants.ALLELE_FRACTION_KEY, getAltAlleleFractions(tumorAlleleCounts))
-                .make();
+        final int[] adArray = Arrays.stream(tumorAlleleCounts).mapToInt(x -> (int) FastMath.round(x)).toArray();
+        final int dp = (int) MathUtils.sum(adArray);
+        final GenotypeBuilder gb = new GenotypeBuilder(tumorSample, tumorLog10Matrix.alleles());
+        if (!MTAC.calculateAFfromAD) {
+            gb.attribute(GATKVCFConstants.ALLELE_FRACTION_KEY, getAltAlleleFractions(Arrays.stream(tumorAlleleCounts).map(x -> (double) FastMath.round(x)/dp).toArray()));
+        }
+        final Genotype tumorGenotype = gb.make();
         final List<Genotype> genotypes = new ArrayList<>(Arrays.asList(tumorGenotype));
 
         // TODO: We shouldn't always assume that the genotype in the normal is hom ref
@@ -269,7 +272,7 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
 
     private static double[] getAltAlleleFractions(final double[] alleleCounts) {
         final double[] allAlleleFractions = MathUtils.normalizeFromRealSpace(alleleCounts);
-        return Arrays.copyOfRange(allAlleleFractions, 1, allAlleleFractions.length);
+        return Arrays.copyOfRange(allAlleleFractions, 1, allAlleleFractions.length); //omit the first entry of the array corresponding to the reference
     }
     /**
      * Calculate the log10 likelihoods of the ref/alt het genotype for each alt allele, then subtracts

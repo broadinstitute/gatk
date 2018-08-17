@@ -36,6 +36,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public static final String MAX_MNP_DISTANCE_SHORT_NAME = "mnp-dist";
     public static final String IGNORE_ITR_ARTIFACTS_LONG_NAME = "ignore-itr-artifacts";
     public static final String ARTIFACT_PRIOR_TABLE_NAME = "orientation-bias-artifact-priors";
+    public static final String GET_AF_FROM_AD_LONG_NAME = "get-af-from-ad";
 
     public static final double DEFAULT_AF_FOR_TUMOR_ONLY_CALLING = 5e-8;
     public static final double DEFAULT_AF_FOR_TUMOR_NORMAL_CALLING = 1e-6;
@@ -163,5 +164,9 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      */
     @Argument(fullName= IGNORE_ITR_ARTIFACTS_LONG_NAME, doc="Turn off read transformer that clips artifacts associated with end repair insertions near inverted tandem repeats.", optional = true)
     public boolean dontClipITRArtifacts = false;
+
+    @Advanced
+    @Argument(fullName = GET_AF_FROM_AD_LONG_NAME, doc="Use allelic depth to calculate tumor allele fraction; recommended for mitochondrial applications", optional = true)
+    public boolean calculateAFfromAD = false;
 
 }

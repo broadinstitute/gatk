@@ -33,8 +33,6 @@ import java.util.stream.Collectors;
  * <h3>Related annotations</h3>
  * <ul>
  *     <li><b><a href="https://www.broadinstitute.org/gatk/guide/tooldocs/org_broadinstitute_gatk_tools_walkers_annotator_Coverage.php">Coverage</a></b> gives the filtered depth of coverage for each sample and the unfiltered depth across all samples.</li>
- *     <li><b><a href="https://www.broadinstitute.org/gatk/guide/tooldocs/org_broadinstitute_gatk_tools_walkers_annotator_AlleleBalance.php">AlleleBalance</a></b> is a generalization of this annotation over all samples.</li>
- *     <li><b><a href="https://www.broadinstitute.org/gatk/guide/tooldocs/org_broadinstitute_gatk_tools_walkers_annotator_AlleleBalanceBySample.php">AlleleBalanceBySample</a></b> calculates allele balance for each individual sample.</li>
  * </ul>
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Depth of coverage of each allele per sample (AD)")
@@ -95,7 +93,7 @@ public final class DepthPerAlleleBySample extends GenotypeAnnotation implements 
         return counts;
     }
 
-    private int[] annotateWithLikelihoods(VariantContext vc, Genotype g, Set<Allele> alleles, ReadLikelihoods<Allele> likelihoods) {
+    protected int[] annotateWithLikelihoods(VariantContext vc, Genotype g, Set<Allele> alleles, ReadLikelihoods<Allele> likelihoods) {
 
         final Map<Allele, Integer> alleleCounts = new LinkedHashMap<>();
         for ( final Allele allele : vc.getAlleles() ) {
