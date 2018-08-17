@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 
 import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.function.Function;
 import java.util.Set;
 
@@ -19,7 +20,7 @@ import java.util.Set;
  * A BAMWriter that aligns reads to haplotypes and emits their best alignments to a destination.
  *
  */
-public abstract class HaplotypeBAMWriter implements AutoCloseable {
+public class HaplotypeBAMWriter implements AutoCloseable {
     /**
      * Allows us to write out unique names for our synthetic haplotype reads
      */
@@ -69,6 +70,7 @@ public abstract class HaplotypeBAMWriter implements AutoCloseable {
             final boolean createBamOutIndex,
             final boolean createBamOutMD5,
             final SAMFileHeader sourceHeader) {
+
         this(type, new HaplotypeBAMDestination(outputPath, createBamOutIndex, createBamOutMD5, sourceHeader, DEFAULT_HAPLOTYPE_READ_GROUP_ID));
     }
 
@@ -84,22 +86,11 @@ public abstract class HaplotypeBAMWriter implements AutoCloseable {
     public HaplotypeBAMWriter(
             final WriterType type,
             final HaplotypeBAMDestination destination) {
+
         Utils.nonNull(type, "type cannot be null");
         Utils.nonNull(destination, "destination cannot be null");
         this.writerType = type;
         this.output = destination;
-    }
-
-    /**
-     * Create a new HaplotypeBAMWriter writing its output to the given destination
-     *
-     * @param output the output destination, must not be null. Note that SAM writer associated with the destination must
-     *               have its presorted bit set to false, as reads may come in out of order during writing.
-     */
-    protected HaplotypeBAMWriter(final HaplotypeBAMDestination output) {
-
-        Utils.nonNull(output, "output cannot be null");
-        this.output = output;
     }
 
     /**
@@ -112,6 +103,7 @@ public abstract class HaplotypeBAMWriter implements AutoCloseable {
 
     /**
      * Write out a BAM representing for the haplotype caller at this site
+     * writerType (ALL_POSSIBLE_HAPLOTYPES or CALLED_HAPLOTYPES) determines inputs to writeHaplotypesAsReads
      *
      * @param haplotypes a list of all possible haplotypes at this loc
      * @param paddedReferenceLoc the span of the based reference here
@@ -120,11 +112,31 @@ public abstract class HaplotypeBAMWriter implements AutoCloseable {
      * @param readLikelihoods a map from sample -> likelihoods for each read for each of the best haplotypes
      */
     public void writeReadsAlignedToHaplotypes(final Collection<Haplotype> haplotypes,
-                                                       final Locatable paddedReferenceLoc,
-                                                       final Collection<Haplotype> bestHaplotypes,
-                                                       final Set<Haplotype> calledHaplotypes,
-                                                       final ReadLikelihoods<Haplotype> readLikelihoods){
-        this.writerType;
+                                              final Locatable paddedReferenceLoc,
+                                              final Collection<Haplotype> bestHaplotypes,
+                                              final Set<Haplotype> calledHaplotypes,
+                                              final ReadLikelihoods<Haplotype> readLikelihoods) {
+
+        Utils.nonNull(haplotypes, "haplotypes cannot be null");
+        Utils.nonNull(paddedReferenceLoc, "paddedReferenceLoc cannot be null");
+        Utils.nonNull(calledHaplotypes, "calledHaplotypes cannot be null");
+        Utils.nonNull(readLikelihoods, "readLikelihoods cannot be null");
+
+        if (calledHaplotypes.isEmpty() && writerType.equals(WriterType.CALLED_HAPLOTYPES)) { // only write out called haplotypes
+            return;
+        }
+
+        Collection<Haplotype> haplotypesToWrite = writerType.equals(WriterType.CALLED_HAPLOTYPES) ? calledHaplotypes : haplotypes;
+        Set<Haplotype> bestHaplotypesToWrite = writerType.equals(WriterType.CALLED_HAPLOTYPES) ? calledHaplotypes : new LinkedHashSet<>(bestHaplotypes);
+
+        writeHaplotypesAsReads(haplotypesToWrite, bestHaplotypesToWrite, paddedReferenceLoc);
+
+        final int sampleCount = readLikelihoods.numberOfSamples();
+        for (int i = 0; i < sampleCount; i++) {
+            for (final GATKRead read : readLikelihoods.sampleReads(i)) {
+                writeReadAgainstHaplotype(read);
+            }
+        }
     }
 
     /**
