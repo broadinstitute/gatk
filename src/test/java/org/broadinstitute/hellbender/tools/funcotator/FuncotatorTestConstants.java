@@ -10,6 +10,9 @@ import java.io.File;
  * Created by jonn on 11/1/17.
  */
 public class FuncotatorTestConstants {
+
+    public static final double FUNCOTATOR_DOUBLE_COMPARISON_EPSILON = 0.0001;
+
     public static final String FUNCOTATOR_TEST_DIR = GATKBaseTest.toolsTestDir + "funcotator" + File.separator;
 
     public static final String HG19_CHR19_REFERENCE_FILE_NAME = GATKBaseTest.largeFileTestDir + "funcotator" + File.separator + "GRCh37.p13.chr19.tar.gz";

@@ -96,7 +96,7 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
         return outList;
     }
 
-    private MafOutputRenderer createMafOutputRenderer(final File outputFile) {
+    private MafOutputRenderer createMafOutputRenderer(final File outputFile, final String referenceVersion) {
 
         final Map<Path, Properties> configData =
                 DataSourceUtils.getAndValidateDataSourcesFromPaths(
@@ -120,12 +120,13 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
                 new VCFHeader(),
                 new LinkedHashMap<>(),
                 new LinkedHashMap<>(),
-                new HashSet<>()
+                new HashSet<>(),
+                referenceVersion
         );
     }
 
-    private MafOutputRenderer createMafOutputRenderer() {
-        return createMafOutputRenderer(getSafeNonExistentFile("TestMafOutputFile"));
+    private MafOutputRenderer createMafOutputRenderer(final String referenceVersion) {
+        return createMafOutputRenderer(getSafeNonExistentFile("TestMafOutputFile"), referenceVersion);
     }
 
     //==================================================================================================================
@@ -372,93 +373,111 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
         return new Object[][] {
                 // Empty Strings:
                 {
-                    "", "", ""
+                    "", "", "hg19", ""
                 },
 
                 // Field has no replacements
                 {
-                        "SPECIAL_NO_REPLACEY_FIELD", "GARBAGE", "GARBAGE"
+                        "SPECIAL_NO_REPLACEY_FIELD", "GARBAGE", "hg19", "GARBAGE"
                 },
 
                 // Field containing replaceable string from another field:
                 {
-                    MafOutputRendererConstants.FieldName_Variant_Classification, MafOutputRendererConstants.FieldValue_Gencode_Chromosome_Mito, MafOutputRendererConstants.FieldValue_Gencode_Chromosome_Mito
+                    MafOutputRendererConstants.FieldName_Variant_Classification,
+                        MafOutputRendererConstants.FieldValue_Gencode_Chromosome_Mito,
+                        "hg19",
+                        MafOutputRendererConstants.FieldValue_Gencode_Chromosome_Mito
                 },
 
                 // Variant classification tests:
                 {
                         MafOutputRendererConstants.FieldName_Variant_Classification,
                         GencodeFuncotation.VariantClassification.IN_FRAME_DEL.toString(),
+                        "hg19",
                         "In_Frame_Del"
                 },
                 {
                         MafOutputRendererConstants.FieldName_Variant_Classification,
                         GencodeFuncotation.VariantClassification.IN_FRAME_INS.toString(),
+                        "hg19",
                         "In_Frame_Ins"
                 },
                 {
                         MafOutputRendererConstants.FieldName_Variant_Classification,
                         GencodeFuncotation.VariantClassification.FRAME_SHIFT_INS.toString(),
+                        "hg19",
                         "Frame_Shift_Ins"
                 },
                 {
                         MafOutputRendererConstants.FieldName_Variant_Classification,
                         GencodeFuncotation.VariantClassification.FRAME_SHIFT_DEL.toString(),
+                        "hg19",
                         "Frame_Shift_Del"
                 },
                 {
                         MafOutputRendererConstants.FieldName_Variant_Classification,
                         GencodeFuncotation.VariantClassification.MISSENSE.toString(),
+                        "hg19",
                         "Missense_Mutation"
                 },
                 {
                         MafOutputRendererConstants.FieldName_Variant_Classification,
                         GencodeFuncotation.VariantClassification.NONSENSE.toString(),
+                        "hg19",
                         "Nonsense_Mutation"
                 },
                 {
                         MafOutputRendererConstants.FieldName_Variant_Classification,
                         GencodeFuncotation.VariantClassification.SILENT.toString(),
+                        "hg19",
                         "Silent"
                 },
                 {
                         MafOutputRendererConstants.FieldName_Variant_Classification,
                         GencodeFuncotation.VariantClassification.SPLICE_SITE.toString(),
+                        "hg19",
                         "Splice_Site"
                 },
                 {
                         MafOutputRendererConstants.FieldName_Variant_Classification,
                         GencodeFuncotation.VariantClassification.START_CODON_DEL.toString(),
+                        "hg19",
                         "Translation_Start_Site"
                 },
                 {
                         MafOutputRendererConstants.FieldName_Variant_Classification,
                         GencodeFuncotation.VariantClassification.NONSTOP.toString(),
+                        "hg19",
                         "Nonstop_Mutation"
                 },
                 {
                         MafOutputRendererConstants.FieldName_Variant_Classification,
                         GencodeFuncotation.VariantClassification.FIVE_PRIME_UTR.toString(),
+                        "hg19",
                         "5'UTR"
                 },
                 {
                         MafOutputRendererConstants.FieldName_Variant_Classification,
                         GencodeFuncotation.VariantClassification.THREE_PRIME_UTR.toString(),
+                        "hg19",
                         "3'UTR"
                 },
                 {
                         MafOutputRendererConstants.FieldName_Variant_Classification,
                         GencodeFuncotation.VariantClassification.FIVE_PRIME_FLANK.toString(),
+                        "hg19",
                         "5'Flank"
                 },
                 {
                         MafOutputRendererConstants.FieldName_Variant_Classification,
                         GencodeFuncotation.VariantClassification.INTRON.toString(),
+                        "hg19",
                         "Intron"
                 },
                 {
                         MafOutputRendererConstants.FieldName_Variant_Classification,
                         GencodeFuncotation.VariantClassification.LINCRNA.toString(),
+                        "hg19",
                         "RNA"
                 },
 
@@ -466,103 +485,171 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
                 {
                     MafOutputRendererConstants.FieldName_Chromosome,
                     MafOutputRendererConstants.FieldValue_Gencode_Chromosome_Mito,
+                    "hg19",
                     MafOutputRendererConstants.FieldValue_Chromosome_Mito
                 },
                 {
                         MafOutputRendererConstants.FieldName_Chromosome,
                         "chr7",
+                        "hg19",
                         "7"
                 },
                 {
                         MafOutputRendererConstants.FieldName_Chromosome,
                         "ChR7",
+                        "hG19",
                         "7"
                 },
                 {
                         MafOutputRendererConstants.FieldName_Chromosome,
                         "chracteristic",
-                        "acteristic"
+                        "Hg19",
+                        "chracteristic"
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Chromosome,
+                        "chrZ",
+                        "HG19",
+                        "chrZ"
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Chromosome,
+                        "chr7",
+                        "b37",
+                        "7"
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Chromosome,
+                        "ChR7",
+                        "B37",
+                        "7"
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Chromosome,
+                        "chr7",
+                        "hg38",
+                        "chr7"
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Chromosome,
+                        "ChR7",
+                        "hG38",
+                        "ChR7"
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Chromosome,
+                        "chracteristic",
+                        "Hg38",
+                        "chracteristic"
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Chromosome,
+                        "chrZ",
+                        "HG38",
+                        "chrZ"
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Chromosome,
+                        "chrQ",
+                        "Xenomorph A1",
+                        "chrQ"
                 },
 
                 // Other transcripts:
                 {
                         MafOutputRendererConstants.FieldName_Other_Transcripts,
                         GencodeFuncotation.VariantClassification.IN_FRAME_DEL.toString(),
+                        "hg19",
                         MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.IN_FRAME_DEL.toString())
                 },
                 {
                         MafOutputRendererConstants.FieldName_Other_Transcripts,
                         GencodeFuncotation.VariantClassification.IN_FRAME_DEL.toString(),
+                        "hg19",
                         MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.IN_FRAME_DEL.toString())
                 },
                 {
                         MafOutputRendererConstants.FieldName_Other_Transcripts,
                         GencodeFuncotation.VariantClassification.IN_FRAME_INS.toString(),
+                        "hg19",
                         MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.IN_FRAME_INS.toString())
                 },
                 {
                         MafOutputRendererConstants.FieldName_Other_Transcripts,
                         GencodeFuncotation.VariantClassification.FRAME_SHIFT_INS.toString(),
+                        "hg19",
                         MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.FRAME_SHIFT_INS.toString())
                 },
                 {
                         MafOutputRendererConstants.FieldName_Other_Transcripts,
                         GencodeFuncotation.VariantClassification.FRAME_SHIFT_DEL.toString(),
+                        "hg19",
                         MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.FRAME_SHIFT_DEL.toString())
                 },
                 {
                         MafOutputRendererConstants.FieldName_Other_Transcripts,
                         GencodeFuncotation.VariantClassification.MISSENSE.toString(),
+                        "hg19",
                         MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.MISSENSE.toString())
                 },
                 {
                         MafOutputRendererConstants.FieldName_Other_Transcripts,
                         GencodeFuncotation.VariantClassification.NONSENSE.toString(),
+                        "hg19",
                         MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.NONSENSE.toString())
                 },
                 {
                         MafOutputRendererConstants.FieldName_Other_Transcripts,
                         GencodeFuncotation.VariantClassification.SILENT.toString(),
+                        "hg19",
                         MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.SILENT.toString())
                 },
                 {
                         MafOutputRendererConstants.FieldName_Other_Transcripts,
                         GencodeFuncotation.VariantClassification.SPLICE_SITE.toString(),
+                        "hg19",
                         MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.SPLICE_SITE.toString())
                 },
                 {
                         MafOutputRendererConstants.FieldName_Other_Transcripts,
                         GencodeFuncotation.VariantClassification.START_CODON_DEL.toString(),
+                        "hg19",
                         MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.START_CODON_DEL.toString())
                 },
                 {
                         MafOutputRendererConstants.FieldName_Other_Transcripts,
                         GencodeFuncotation.VariantClassification.NONSTOP.toString(),
+                        "hg19",
                         MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.NONSTOP.toString())
                 },
                 {
                         MafOutputRendererConstants.FieldName_Other_Transcripts,
                         GencodeFuncotation.VariantClassification.FIVE_PRIME_UTR.toString(),
+                        "hg19",
                         MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.FIVE_PRIME_UTR.toString())
                 },
                 {
                         MafOutputRendererConstants.FieldName_Other_Transcripts,
                         GencodeFuncotation.VariantClassification.THREE_PRIME_UTR.toString(),
+                        "hg19",
                         MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.THREE_PRIME_UTR.toString())
                 },
                 {
                         MafOutputRendererConstants.FieldName_Other_Transcripts,
                         GencodeFuncotation.VariantClassification.FIVE_PRIME_FLANK.toString(),
+                        "hg19",
                         MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.FIVE_PRIME_FLANK.toString())
                 },
                 {
                         MafOutputRendererConstants.FieldName_Other_Transcripts,
                         GencodeFuncotation.VariantClassification.INTRON.toString(),
+                        "hg19",
                         MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.INTRON.toString())
                 },
                 {
                         MafOutputRendererConstants.FieldName_Other_Transcripts,
                         GencodeFuncotation.VariantClassification.LINCRNA.toString(),
+                        "hg19",
                         MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.LINCRNA.toString())
                 },
 
@@ -570,21 +657,25 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
                 {
                         MafOutputRendererConstants.FieldName_Other_Transcripts,
                         GencodeFuncotation.VariantClassification.DE_NOVO_START_IN_FRAME.toString(),
+                        "hg19",
                         GencodeFuncotation.VariantClassification.DE_NOVO_START_IN_FRAME.toString()
                 },
                 {
                         MafOutputRendererConstants.FieldName_Other_Transcripts,
                         GencodeFuncotation.VariantClassification.DE_NOVO_START_OUT_FRAME.toString(),
+                        "hg19",
                         GencodeFuncotation.VariantClassification.DE_NOVO_START_OUT_FRAME.toString()
                 },
                 {
                         MafOutputRendererConstants.FieldName_Other_Transcripts,
                         GencodeFuncotation.VariantClassification.START_CODON_SNP.toString(),
+                        "hg19",
                         GencodeFuncotation.VariantClassification.START_CODON_SNP.toString()
                 },
                 {
                         MafOutputRendererConstants.FieldName_Other_Transcripts,
                         GencodeFuncotation.VariantClassification.START_CODON_INS.toString(),
+                        "hg19",
                         GencodeFuncotation.VariantClassification.START_CODON_INS.toString()
                 },
 
@@ -592,7 +683,324 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
                 {
                     MafOutputRendererConstants.FieldName_Other_Transcripts,
                         OTHER_TRANSCRIPTS_RAW_NAMES,
+                        "hg19",
                         OTHER_TRANSCRIPTS_MAF_READY_NAMES
+                }
+        };
+    }
+
+    @DataProvider
+    private Object[][] provideForMafTransformInvert() {
+        return new Object[][] {
+                // Empty Strings:
+                {
+                        "", "", "hg19", ""
+                },
+
+                // Field has no replacements
+                {
+                        "SPECIAL_NO_REPLACEY_FIELD", "GARBAGE", "hg19", "GARBAGE"
+                },
+
+                // Field containing replaceable string from another field:
+                {
+                        MafOutputRendererConstants.FieldName_Variant_Classification,
+                        MafOutputRendererConstants.FieldValue_Gencode_Chromosome_Mito,
+                        "hg19",
+                        MafOutputRendererConstants.FieldValue_Gencode_Chromosome_Mito
+                },
+
+                // Variant classification tests:
+                {
+                        MafOutputRendererConstants.FieldName_Variant_Classification,
+                        "In_Frame_Del",
+                        "hg19",
+                        GencodeFuncotation.VariantClassification.IN_FRAME_DEL.toString(),
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Variant_Classification,
+                        "In_Frame_Ins",
+                        "hg19",
+                        GencodeFuncotation.VariantClassification.IN_FRAME_INS.toString()
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Variant_Classification,
+                        "Frame_Shift_Ins",
+                        "hg19",
+                        GencodeFuncotation.VariantClassification.FRAME_SHIFT_INS.toString(),
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Variant_Classification,
+                        "Frame_Shift_Del",
+                        "hg19",
+                        GencodeFuncotation.VariantClassification.FRAME_SHIFT_DEL.toString(),
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Variant_Classification,
+                        "Missense_Mutation",
+                        "hg19",
+                        GencodeFuncotation.VariantClassification.MISSENSE.toString(),
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Variant_Classification,
+                        "Nonsense_Mutation",
+                        "hg19",
+                        GencodeFuncotation.VariantClassification.NONSENSE.toString(),
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Variant_Classification,
+                        "Silent",
+                        "hg19",
+                        GencodeFuncotation.VariantClassification.SILENT.toString(),
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Variant_Classification,
+                        "Splice_Site",
+                        "hg19",
+                        GencodeFuncotation.VariantClassification.SPLICE_SITE.toString(),
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Variant_Classification,
+                        "Translation_Start_Site",
+                        "hg19",
+                        GencodeFuncotation.VariantClassification.START_CODON_DEL.toString(),
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Variant_Classification,
+                        "Nonstop_Mutation",
+                        "hg19",
+                        GencodeFuncotation.VariantClassification.NONSTOP.toString(),
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Variant_Classification,
+                        "5'UTR",
+                        "hg19",
+                        GencodeFuncotation.VariantClassification.FIVE_PRIME_UTR.toString(),
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Variant_Classification,
+                        "3'UTR",
+                        "hg19",
+                        GencodeFuncotation.VariantClassification.THREE_PRIME_UTR.toString(),
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Variant_Classification,
+                        "5'Flank",
+                        "hg19",
+                        GencodeFuncotation.VariantClassification.FIVE_PRIME_FLANK.toString(),
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Variant_Classification,
+                        "Intron",
+                        "hg19",
+                        GencodeFuncotation.VariantClassification.INTRON.toString(),
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Variant_Classification,
+                        "RNA",
+                        "hg19",
+                        GencodeFuncotation.VariantClassification.LINCRNA.toString(),
+                },
+
+                // Chromosome tests:
+                {
+                        MafOutputRendererConstants.FieldName_Chromosome,
+                        MafOutputRendererConstants.FieldValue_Chromosome_Mito,
+                        "hg19",
+                        MafOutputRendererConstants.FieldValue_Gencode_Chromosome_Mito,
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Chromosome,
+                        "7",
+                        "hg19",
+                        "chr7",
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Chromosome,
+                        "acteristic",
+                        "Hg19",
+                        "acteristic",
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Chromosome,
+                        "7",
+                        "b37",
+                        "chr7",
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Chromosome,
+                        "chr7",
+                        "hg38",
+                        "chr7"
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Chromosome,
+                        "ChR7",
+                        "hG38",
+                        "ChR7"
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Chromosome,
+                        "chracteristic",
+                        "Hg38",
+                        "chracteristic"
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Chromosome,
+                        "chrZ",
+                        "HG38",
+                        "chrZ"
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Chromosome,
+                        "chrQ",
+                        "Xenomorph A1",
+                        "chrQ"
+                },
+
+                // Other transcripts:
+                {
+                        MafOutputRendererConstants.FieldName_Other_Transcripts,
+                        MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.IN_FRAME_DEL.toString()),
+                        "hg19",
+                        GencodeFuncotation.VariantClassification.IN_FRAME_DEL.toString(),
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Other_Transcripts,
+                        MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.IN_FRAME_DEL.toString()),
+                        "hg19",
+                        GencodeFuncotation.VariantClassification.IN_FRAME_DEL.toString(),
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Other_Transcripts,
+                        MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.IN_FRAME_INS.toString()),
+                        "hg19",
+                        GencodeFuncotation.VariantClassification.IN_FRAME_INS.toString(),
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Other_Transcripts,
+                        MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.FRAME_SHIFT_INS.toString()),
+                        "hg19",
+                        GencodeFuncotation.VariantClassification.FRAME_SHIFT_INS.toString(),
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Other_Transcripts,
+                        MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.FRAME_SHIFT_DEL.toString()),
+                        "hg19",
+                        GencodeFuncotation.VariantClassification.FRAME_SHIFT_DEL.toString(),
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Other_Transcripts,
+                        MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.MISSENSE.toString()),
+                        "hg19",
+                        GencodeFuncotation.VariantClassification.MISSENSE.toString(),
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Other_Transcripts,
+                        MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.NONSENSE.toString()),
+                        "hg19",
+                        GencodeFuncotation.VariantClassification.NONSENSE.toString(),
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Other_Transcripts,
+                        MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.SILENT.toString()),
+                        "hg19",
+                        GencodeFuncotation.VariantClassification.SILENT.toString(),
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Other_Transcripts,
+                        MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.SPLICE_SITE.toString()),
+                        "hg19",
+                        GencodeFuncotation.VariantClassification.SPLICE_SITE.toString(),
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Other_Transcripts,
+                        MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.START_CODON_DEL.toString()),
+                        "hg19",
+                        GencodeFuncotation.VariantClassification.START_CODON_DEL.toString(),
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Other_Transcripts,
+                        MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.NONSTOP.toString()),
+                        "hg19",
+                        GencodeFuncotation.VariantClassification.NONSTOP.toString(),
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Other_Transcripts,
+                        MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.FIVE_PRIME_UTR.toString()),
+                        "hg19",
+                        GencodeFuncotation.VariantClassification.FIVE_PRIME_UTR.toString(),
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Other_Transcripts,
+                        MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.THREE_PRIME_UTR.toString()),
+                        "hg19",
+                        GencodeFuncotation.VariantClassification.THREE_PRIME_UTR.toString(),
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Other_Transcripts,
+                        MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.FIVE_PRIME_FLANK.toString()),
+                        "hg19",
+                        GencodeFuncotation.VariantClassification.FIVE_PRIME_FLANK.toString(),
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Other_Transcripts,
+                        MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.INTRON.toString()),
+                        "hg19",
+                        GencodeFuncotation.VariantClassification.INTRON.toString(),
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Other_Transcripts,
+                        MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.LINCRNA.toString()),
+                        "hg19",
+                        GencodeFuncotation.VariantClassification.LINCRNA.toString(),
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Other_Transcripts,
+                        "LINCRNA",
+                        "hg19",
+                        "LINCRNA",
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Other_Transcripts,
+                        "LINCRNA|" + MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.LINCRNA.toString()),
+                        "hg19",
+                        "LINCRNA|" + GencodeFuncotation.VariantClassification.LINCRNA.toString(),
+                },
+
+
+                // Fields that we do not replace:
+                {
+                        MafOutputRendererConstants.FieldName_Other_Transcripts,
+                        GencodeFuncotation.VariantClassification.DE_NOVO_START_IN_FRAME.toString(),
+                        "hg19",
+                        GencodeFuncotation.VariantClassification.DE_NOVO_START_IN_FRAME.toString()
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Other_Transcripts,
+                        GencodeFuncotation.VariantClassification.DE_NOVO_START_OUT_FRAME.toString(),
+                        "hg19",
+                        GencodeFuncotation.VariantClassification.DE_NOVO_START_OUT_FRAME.toString()
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Other_Transcripts,
+                        GencodeFuncotation.VariantClassification.START_CODON_SNP.toString(),
+                        "hg19",
+                        GencodeFuncotation.VariantClassification.START_CODON_SNP.toString()
+                },
+                {
+                        MafOutputRendererConstants.FieldName_Other_Transcripts,
+                        GencodeFuncotation.VariantClassification.START_CODON_INS.toString(),
+                        "hg19",
+                        GencodeFuncotation.VariantClassification.START_CODON_INS.toString()
+                },
+
+                // Multiple other transcripts:
+                {
+                        MafOutputRendererConstants.FieldName_Other_Transcripts,
+                        OTHER_TRANSCRIPTS_MAF_READY_NAMES,
+                        "hg19",
+                        OTHER_TRANSCRIPTS_RAW_NAMES,
                 }
         };
     }
@@ -608,7 +1016,7 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
 
         final List<VariantContext> variantList = Arrays.asList(variant1, variant2, variant3, variant4, variant5);
 
-        final List<String> baseFieldNameList = new ArrayList<>(createMafOutputRenderer( getSafeNonExistentFile("GARBAGE") ).getDefaultMap().keySet());
+        final List<String> baseFieldNameList = new ArrayList<>(createMafOutputRenderer( getSafeNonExistentFile("GARBAGE"), "hg19" ).getDefaultMap().keySet());
 
         final int fieldSize = 10;
         
@@ -682,19 +1090,25 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "provideForTestReplaceFuncotationValuesWithMafCompliantValues")
     public void testReplaceFuncotationValuesWithMafCompliantValues(final Map<String, Object> outputMap, final LinkedHashMap<String, String> expected ) {
-        final LinkedHashMap<String, String> compliantMap = createMafOutputRenderer().replaceFuncotationValuesWithMafCompliantValues(outputMap);
+        final LinkedHashMap<String, String> compliantMap = createMafOutputRenderer("hg19").replaceFuncotationValuesWithMafCompliantValues(outputMap);
         Assert.assertEquals(compliantMap, expected);
     }
 
     @Test(dataProvider = "provideForMafTransform")
-    public void testMafTransform(final String key, final String value, final String expectedValue) {
-        final String transformedValue = createMafOutputRenderer().mafTransform(key, value);
+    public void testMafTransform(final String key, final String value, final String referenceVersion, final String expectedValue) {
+        final String transformedValue = MafOutputRenderer.mafTransform(key, value, referenceVersion);
+        Assert.assertEquals(transformedValue, expectedValue);
+    }
+
+    @Test(dataProvider = "provideForMafTransformInvert")
+    public void testMafTransformInvert(final String key, final String value, final String referenceVersion, final String expectedValue) {
+        final String transformedValue = MafOutputRenderer.mafTransformInvert(key, value, referenceVersion);
         Assert.assertEquals(transformedValue, expectedValue);
     }
 
     @Test(dataProvider = "provideForAdjustIndelAlleleInformationForMafOutput")
     public void testAdjustIndelAlleleInformationForMafOutput(final LinkedHashMap<String, String> outputMap, final LinkedHashMap<String, String> expected) {
-        createMafOutputRenderer().adjustIndelAlleleInformationForMafOutput(outputMap);
+        createMafOutputRenderer("hg19").adjustIndelAlleleInformationForMafOutput(outputMap);
         Assert.assertEquals(outputMap, expected);
     }
 
@@ -702,7 +1116,7 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
     public void testWrite(final List<VariantContext> variants, final List<List<Funcotation>> funcotations, final File expectedFile) {
 
         final File outFile = getSafeNonExistentFile("TestMafOutputFile");
-        try ( final MafOutputRenderer mafOutputRenderer = createMafOutputRenderer( outFile ) ) {
+        try ( final MafOutputRenderer mafOutputRenderer = createMafOutputRenderer( outFile, "hg19" ) ) {
             for ( int i = 0 ; i < variants.size(); ++i ) {
                 final FuncotationMap funcotationMap = FuncotationMap.createNoTranscriptInfo(funcotations.get(i));
                 mafOutputRenderer.write(variants.get(i), funcotationMap);
