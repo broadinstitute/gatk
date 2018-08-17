@@ -2207,4 +2207,16 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         final int[] matches = GATKVariantContextUtils.matchAllelesOnly(variant1, variant2);
         Assert.assertTrue(Arrays.equals(matches, gtMatch), "Failed");
     }
+
+    @DataProvider(name = "multiAllelic")
+    public Object[][] multiAllelicDataProvider() {
+            return new Object[][] {
+                    {makeVC("source",Arrays.asList(Aref,T,ATC)),Arrays.asList(makeVC("source",Arrays.asList(Aref,T)),makeVC("source",Arrays.asList(Aref,ATC)))}
+            };
+    }
+    @Test(dataProvider = "multiAllelic")
+    public void testSplitMultiAllelic(final VariantContext vcToSplit, final List<VariantContext> expectedVcs) {
+        final List<VariantContext> outVcs=GATKVariantContextUtils.splitVariantContextToBiallelics(vcToSplit,true,GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL,false);
+        Assert.assertEquals(outVcs,expectedVcs);
+    }
 }

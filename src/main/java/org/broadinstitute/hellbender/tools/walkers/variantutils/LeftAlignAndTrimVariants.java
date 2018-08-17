@@ -183,20 +183,9 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
 
         Set<VCFHeaderLine> actualLines = null;
         SAMSequenceDictionary sequenceDictionary = null;
-        if (hasReference()) {
-            Path refPath = referenceArguments.getReferencePath();
-            sequenceDictionary= this.getReferenceDictionary();
-            actualLines = VcfUtils.updateHeaderContigLines(headerLines, refPath, sequenceDictionary, suppressReferencePath);
-        }
-        else {
-            sequenceDictionary = getHeaderForVariants().getSequenceDictionary();
-            if (null != sequenceDictionary) {
-                actualLines = VcfUtils.updateHeaderContigLines(headerLines, null, sequenceDictionary, suppressReferencePath);
-            }
-            else {
-                actualLines = headerLines;
-            }
-        }
+        Path refPath = referenceArguments.getReferencePath();
+        sequenceDictionary= this.getReferenceDictionary();
+        actualLines = VcfUtils.updateHeaderContigLines(headerLines, refPath, sequenceDictionary, suppressReferencePath);
 
         vcfWriter = createVCFWriter(outFile);
         vcfWriter.writeHeader(new VCFHeader(actualLines, vcfSamples));
@@ -243,6 +232,13 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
         }
     }
 
+    /**
+     * Reference is required for left alignment
+     */
+    @Override
+    public boolean requiresReference() {
+        return true;
+    }
     /**
      * Print out message of how many variants were realigned
      * @return
@@ -323,8 +319,6 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
             // create an indel haplotype.
             //
             final int originalIndex = vc.getStart() - ref.getWindow().getStart() + 1;
-            if (originalIndex < 0 || originalIndex >= ref.getBases().length)
-                return vc;
 
             final byte[] originalIndel = makeHaplotype(vc, refSeq, originalIndex, indelLength);
             // create a CIGAR string to represent the event
@@ -339,7 +333,7 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
             if (newCigar.equals(originalCigar)) {
                 return vc;
             }
-            if (newCigar.getCigarElement(0).getOperator()==CigarOperator.M) {
+            if (newCigar.getCigarElement(0).getLength()!=refSeq.length && newCigar.getCigarElement(0).getOperator()==CigarOperator.M) {
                 int difference = originalIndex - newCigar.getCigarElement(0).getLength();
                 VariantContext newVC = new VariantContextBuilder(vc).start(vc.getStart()-difference).stop(vc.getEnd()-difference).make();
 
@@ -356,7 +350,7 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
             leadingBases *= 2;
         }
         //if we have made it here we have failed to align the indel before reaching the maximum number of leading Bases
-        logger.info("Indel left aligned to beginning of reference window.  Please set --maxLeadingBases to greater than " + maxLeadingBases +
+        logger.info("Indel left aligned to beginning of allowed reference window.  Please set --maxLeadingBases to greater than " + maxLeadingBases +
             "and try again if you would like to align this indel");
         return vc;
     }

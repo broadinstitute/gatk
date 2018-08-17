@@ -25,8 +25,8 @@ import java.util.stream.*;
 
 public class LeftAlignAndTrimVariantsUnitTest extends GATKBaseTest{
     final String refBases1 = "ACAGAGCTGACCCTCCCTCCCCTCTCCCAGTGCAACAGCACGGGCGGCGACTGCTTTTACCGAGGCTACACGTCAGGCGTGGCGGCTGTCCAGGACTGGTACCACTTCCACTATGTGGATCTCTGCTGAGGACCAGGAAAGCCAGCACCCGCAGAGACTCTTCCCCAGTGCTCCATACGATCACCATTCTCTGCAGAAGG";
-    final List<String> longPieces = Arrays.asList("AAAAAAAAAAAAAAAAAAAAAAAAAAAA","TCTCTCTCTCTCTC"); // where we'll perform tests
-    final List<Integer> strLengths=Arrays.asList(1,2); //
+    final List<String> longPieces = Arrays.asList("AAAAAAAAAAAAAAAAAAAAAAAAAAAA","TCTCTCTCTCTCTC","CAGTCCAGTCCAGTCCAGTCCAGTCCAGTCCAGTCCAGTCCAGTCCAGTCCAGTC",Utils.dupString("A",120)); // where we'll perform tests
+    final List<Integer> strLengths=Arrays.asList(1,2,5,1); //
     final List<String> refBasesStrings = longPieces.stream().map(l->refBases1 + l + refBases1).collect(Collectors.toList());
 
     final List<Integer> contigStops = refBasesStrings.stream().map(String::length).collect(Collectors.toList());
@@ -46,36 +46,61 @@ public class LeftAlignAndTrimVariantsUnitTest extends GATKBaseTest{
     public Object[][] LeftAlignTestData() throws UnsupportedEncodingException {
         List<Object[]> tests = new ArrayList<Object[]>();
         for (int iLongPiece=0; iLongPiece < longPieces.size();iLongPiece++) {
-            final String longPiece=longPieces.get(iLongPiece);
-            final ReferenceMemorySource refSource=refSources.get(iLongPiece);
-            final int strLength=strLengths.get(iLongPiece);
+            final String longPiece = longPieces.get(iLongPiece);
+            final ReferenceMemorySource refSource = refSources.get(iLongPiece);
+            final int strLength = strLengths.get(iLongPiece);
             //final int nStrs=longPiece.length()/strLength; //number of strs in the repeat
-            final ReferenceBases theseRefBases=refBases.get(iLongPiece);
-            for (int indelIndex = repeatStart-1; indelIndex < repeatStart+longPiece.length(); indelIndex++) {
-                for (int indelRepeats = -(longPiece.length()-(indelIndex-repeatStart))/strLength; indelRepeats < 10; indelRepeats++) {
+            final byte[] theseRefBases = refBases.get(iLongPiece).getBases();
+            Integer indelIndexStart,indelIndexStop;
+            if (longPiece.length() < 90) {
+                indelIndexStart = repeatStart - 1;
+                indelIndexStop = repeatStart + Math.min(longPiece.length(), 20);
+            }
+            else {
+                indelIndexStart=repeatStart+60;
+                indelIndexStop=indelIndexStart+1;
+            }
+
+            for (int indelIndex = indelIndexStart; indelIndex < indelIndexStop; indelIndex++) {
+                for (int indelRepeats = Math.max(-(longPiece.length() - (indelIndex - repeatStart + 1)),-10) / strLength; indelRepeats < 10; indelRepeats++) {
                     if (indelRepeats == 0) {
                         continue;
                     }
                     final List<Allele> alleles = new ArrayList<Allele>();
                     if (indelRepeats < 0) { // deletion
-                        byte [] basesRef= new byte[Math.abs(indelRepeats)*strLength+1];
-                        byte [] basesAlt = new byte[1];
-                        System.arraycopy(theseRefBases,repeatStart,basesRef,0,Math.abs(indelRepeats)*strLength+1);
-                        System.arraycopy(theseRefBases,repeatStart,basesAlt,0,1);
+                        byte[] basesRef = new byte[Math.abs(indelRepeats) * strLength + 1];
+                        byte[] basesAlt = new byte[1];
+                        System.arraycopy(theseRefBases, indelIndex, basesRef, 0, Math.abs(indelRepeats) * strLength + 1);
+                        System.arraycopy(theseRefBases, indelIndex, basesAlt, 0, 1);
                         alleles.add(Allele.create(new String(basesRef, "UTF-8"), true));
                         alleles.add(Allele.create(new String(basesAlt, "UTF-8"), false));
                     } else {
-                        alleles.add(Allele.create(str, true));
-                        alleles.add(Allele.create(Utils.dupString(str, Math.abs(indelSize) + 1), false));
+                        byte[] basesRef = new byte[1];
+                        byte[] basesAlt = new byte[Math.abs(indelRepeats) * strLength + 1];
+                        byte[] basesRepeat = new byte[strLength];
+                        System.arraycopy(theseRefBases, indelIndex, basesRef, 0, 1);
+                        System.arraycopy(theseRefBases, indelIndex, basesAlt, 0, 1);
+                        if (indelIndex < repeatStart + longPiece.length() - strLength) {
+                            //look at next strLength bases to find str
+                            System.arraycopy(theseRefBases, indelIndex + 1, basesRepeat, 0, strLength);
+                        } else {
+                            //look at previous strLength bases (including this one) to find str
+                            System.arraycopy(theseRefBases, indelIndex - strLength + 1, basesRepeat, 0, strLength);
+
+                        }
+                        System.arraycopy(Utils.dupString(new String(basesRepeat, "UTF-8"), indelRepeats).getBytes(), 0, basesAlt, 1, Math.abs(indelRepeats) * strLength);
+                        alleles.add(Allele.create(new String(basesRef, "UTF-8"), true));
+                        alleles.add(Allele.create(new String(basesAlt, "UTF-8"), false));
                     }
-                    final SimpleInterval interval = new SimpleInterval(artificialContig, repeatStart + offset*str.length()+1, repeatStart + offset*str.length()+1);
+                    final SimpleInterval interval = new SimpleInterval(artificialContig, indelIndex + 1, indelIndex + alleles.get(0).length());
                     ReferenceContext ref = new ReferenceContext(refSource, interval);
 
-                    final VariantContext vc = new VariantContextBuilder("test", artificialContig, repeatStart + offset*str.length()+1, repeatStart + offset*str.length() + alleles.get(0).length(), alleles).make();
-                    tests.add(new Object[]{vc, ref, offset != 0, repeatStart});
+                    final VariantContext vc = new VariantContextBuilder("test", artificialContig, indelIndex + 1, indelIndex + alleles.get(0).length(), alleles).make();
+                    tests.add(new Object[]{vc, ref, indelIndex != repeatStart - 1, repeatStart});
                 }
             }
         }
+
         return tests.toArray(new Object[][]{});
 
     }
@@ -83,9 +108,8 @@ public class LeftAlignAndTrimVariantsUnitTest extends GATKBaseTest{
     @Test(dataProvider = "LeftAlignDataProvider")
     public void testLeftAlign(final VariantContext vc, final ReferenceContext ref,final boolean expectRealigned, final int expectedStart) {
         final LeftAlignAndTrimVariants leftAligner=new LeftAlignAndTrimVariants();
-        VariantContext vcTrim=GATKVariantContextUtils.trimAlleles(vc, true, true);
-        final VariantContext realignedV=leftAligner.leftAlign(vcTrim,ref);
-        Assert.assertEquals(realignedV!=vcTrim,expectRealigned);
+        final VariantContext realignedV=leftAligner.leftAlign(vc,ref);
+        Assert.assertEquals(realignedV!=vc,expectRealigned);
         Assert.assertEquals(realignedV.getStart(),expectedStart);
     }
 }
