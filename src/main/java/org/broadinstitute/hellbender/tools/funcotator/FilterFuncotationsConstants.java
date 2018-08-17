@@ -29,4 +29,10 @@ public class FilterFuncotationsConstants {
      * Description for {@value NOT_CLINSIG_FILTER} to include in VCF headers.
      */
     public static final String NOT_CLINSIG_FILTER_DESCRIPTION = "Filter for clinically insignificant variants.";
+
+    /**
+     * Delimiting string to place between values in the {@value CLINSIG_INFO_KEY} INFO field
+     * when Funcotations for a variant match multiple filters.
+     */
+    public static final String FILTER_DELIMITER = ",";
 }

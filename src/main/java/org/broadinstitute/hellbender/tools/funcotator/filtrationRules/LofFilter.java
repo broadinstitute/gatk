@@ -53,7 +53,7 @@ public class LofFilter extends FuncotationFilter {
      */
     private final String classificationFuncotation;
 
-    public LofFilter(final FilterFuncotations.ReferenceVersion ref) {
+    public LofFilter(final FilterFuncotations.Reference ref) {
         super(CLINSIG_INFO_VALUE);
         this.classificationFuncotation = "Gencode_" + ref.getGencodeVersion() + "_variantClassification";
     }

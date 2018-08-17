@@ -68,12 +68,12 @@ public class FilterFuncotations extends VariantWalker {
      *
      * Used to derive names of Gencode Funcotations.
      */
-    public enum ReferenceVersion {
-        hg19(19), hg38(27);
+    public enum Reference {
+        b37(19), hg19(19), hg38(27);
 
         private final int gencodeVersion;
 
-        ReferenceVersion(int gencodeVersion) {
+        Reference(int gencodeVersion) {
             this.gencodeVersion = gencodeVersion;
         }
 
@@ -92,7 +92,7 @@ public class FilterFuncotations extends VariantWalker {
             fullName =  FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME,
             doc = "The version of the Human Genome reference which was used to Funcotate the input VCF."
     )
-    protected ReferenceVersion referenceVersion;
+    protected Reference reference;
 
     private VariantContextWriter outputVcfWriter;
     private String[] funcotationKeys;
@@ -113,13 +113,14 @@ public class FilterFuncotations extends VariantWalker {
                     VCFHeaderLineType.String, FilterFuncotationsConstants.CLINSIG_INFO_KEY_DESCRIPTION));
             outputVcfWriter.writeHeader(vcfHeader);
         } else {
-            throw new UserException.BadInput("Input VCF does not have Funcotator annotations.");
+            throw new UserException.BadInput("Could not extract Funcotation keys from " +
+                    VcfOutputRenderer.FUNCOTATOR_VCF_FIELD_NAME + " field in input VCF header.");
         }
     }
 
     private void registerFilters() {
         funcotationFilters.add(new ClinVarFilter());
-        funcotationFilters.add(new LofFilter(referenceVersion));
+        funcotationFilters.add(new LofFilter(reference));
         funcotationFilters.add(new LmmFilter());
     }
 
@@ -139,7 +140,7 @@ public class FilterFuncotations extends VariantWalker {
 
 
         final Map<Allele, FuncotationMap> funcs = FuncotatorUtils.createAlleleToFuncotationMapFromFuncotationVcfAttribute(
-                funcotationKeys, variant, "Gencode_" + referenceVersion.gencodeVersion + "_annotationTranscript", "FAKE_SOURCE");
+                funcotationKeys, variant, "Gencode_" + reference.gencodeVersion + "_annotationTranscript", "FAKE_SOURCE");
 
         funcs.values().forEach(funcotationMap -> {
             final Stream<Map<String, String>> transcriptFuncotations = funcotationMap.getTranscriptList().stream()
@@ -177,8 +178,9 @@ public class FilterFuncotations extends VariantWalker {
         final boolean isSignificant = !matchingFilters.isEmpty();
 
         // Mark the individual filters that make the variant significant, if any.
-        final String clinicalSignificance =
-                isSignificant ? String.join(",", matchingFilters) : FilterFuncotationsConstants.CLINSIG_INFO_NOT_SIGNIFICANT;
+        final String clinicalSignificance = isSignificant ?
+                String.join(FilterFuncotationsConstants.FILTER_DELIMITER, matchingFilters) :
+                FilterFuncotationsConstants.CLINSIG_INFO_NOT_SIGNIFICANT;
         variantContextBuilder.attribute(FilterFuncotationsConstants.CLINSIG_INFO_KEY, clinicalSignificance);
 
         // Also set the filter field for insignificant variants, to make it easier for

@@ -30,20 +30,20 @@ public class FilterFuncotationsIntegrationTest extends CommandLineProgramTest {
     @DataProvider(name = "uniformVcfProvider")
     public Object[][] uniformVcfProvider() {
         return new Object[][]{
-                {"clinvar.vcf", 19, Collections.emptySet(), Collections.singleton(ClinVarFilter.CLINSIG_INFO_VALUE)},
-                {"lmm.vcf", 38, Collections.emptySet(), Collections.singleton(LmmFilter.CLINSIG_INFO_VALUE)},
-                {"lof.vcf", 19, Collections.emptySet(), Collections.singleton(LofFilter.CLINSIG_INFO_VALUE)},
-                {"all.vcf", 38, Collections.emptySet(), ALL_FILTERS},
-                {"multi-transcript.vcf", 38, Collections.emptySet(), ALL_FILTERS},
-                {"multi-allelic.vcf", 38, Collections.emptySet(), ALL_FILTERS},
-                {"none.vcf", 38, Collections.singleton(FilterFuncotationsConstants.NOT_CLINSIG_FILTER),
+                {"clinvar.vcf", FilterFuncotations.Reference.hg19, Collections.emptySet(), Collections.singleton(ClinVarFilter.CLINSIG_INFO_VALUE)},
+                {"lmm.vcf", FilterFuncotations.Reference.hg38, Collections.emptySet(), Collections.singleton(LmmFilter.CLINSIG_INFO_VALUE)},
+                {"lof.vcf", FilterFuncotations.Reference.b37, Collections.emptySet(), Collections.singleton(LofFilter.CLINSIG_INFO_VALUE)},
+                {"all.vcf", FilterFuncotations.Reference.hg38, Collections.emptySet(), ALL_FILTERS},
+                {"multi-transcript.vcf", FilterFuncotations.Reference.hg38, Collections.emptySet(), ALL_FILTERS},
+                {"multi-allelic.vcf", FilterFuncotations.Reference.hg38, Collections.emptySet(), ALL_FILTERS},
+                {"none.vcf", FilterFuncotations.Reference.hg38, Collections.singleton(FilterFuncotationsConstants.NOT_CLINSIG_FILTER),
                         Collections.singleton(FilterFuncotationsConstants.CLINSIG_INFO_NOT_SIGNIFICANT)}
         };
     }
 
     @Test(dataProvider = "uniformVcfProvider")
     public void testFilterUniform(final String vcfName,
-                                  final int build,
+                                  final FilterFuncotations.Reference ref,
                                   final Set<String> expectedFilters,
                                   final Set<String> expectedAnnotations) {
 
@@ -52,7 +52,7 @@ public class FilterFuncotationsIntegrationTest extends CommandLineProgramTest {
         final List<String> args = Arrays.asList(
                 "-V", TEST_DATA_DIR.resolve(vcfName).toString(),
                 "-O", tmpOut.toString(),
-                "--ref-version", "hg" + build
+                "--ref-version", ref.name()
         );
         runCommandLine(args);
 
