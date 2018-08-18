@@ -40,7 +40,7 @@ public class F1R2FilterConstants {
     // We combine all sites of depths above this value in the last bin of the histogram
     static final int DEFAULT_MAX_DEPTH = 200;
 
-    static final int numAltHistogramsPerContext = (Nucleotide.REGULAR_BASES.size() - 1) * (ReadOrientation.values().length);
+    static final int numAltHistogramsPerContext = (Nucleotide.STANDARD_DNA_BASES.size() - 1) * (ReadOrientation.values().length);
 
     public static Integer[] getEmptyBins(final int maxDepth){
         return IntStream.rangeClosed(1, maxDepth).boxed().toArray( Integer[]::new );

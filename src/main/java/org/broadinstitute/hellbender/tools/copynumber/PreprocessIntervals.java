@@ -202,7 +202,7 @@ public final class PreprocessIntervals extends GATKTool {
     private static IntervalList filterBinsContainingOnlyNs(final IntervalList unfilteredBins, final ReferenceDataSource reference) {
         final IntervalList bins = new IntervalList(reference.getSequenceDictionary());
         for (final Interval unfilteredBin : unfilteredBins) {
-            if (!Utils.stream(reference.query(new SimpleInterval(unfilteredBin))).allMatch(b -> b == Nucleotide.N.toBase())) {
+            if (!Utils.stream(reference.query(new SimpleInterval(unfilteredBin))).allMatch(b -> Nucleotide.decode(b) == Nucleotide.N)) {
                 bins.add(unfilteredBin);
             }
         }

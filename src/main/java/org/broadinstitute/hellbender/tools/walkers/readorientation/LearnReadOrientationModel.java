@@ -180,7 +180,7 @@ public class LearnReadOrientationModel extends CommandLineProgram {
 
         final List<Histogram<Integer>> combinedHistograms = new ArrayList<>(F1R2FilterConstants.numAltHistogramsPerContext);
 
-        for (Nucleotide altAllele : Nucleotide.REGULAR_BASES){
+        for (Nucleotide altAllele : Nucleotide.STANDARD_DNA_BASES){
             // Skip when the alt base is the ref base, which doesn't make sense because this is a histogram of alt sites
             if (altAllele == F1R2FilterUtils.getMiddleBase(refContext)){
                 continue;
