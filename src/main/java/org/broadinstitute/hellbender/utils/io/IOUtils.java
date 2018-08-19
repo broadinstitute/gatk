@@ -535,6 +535,24 @@ public final class IOUtils {
     }
 
     /**
+     * Appends path to the given parent dir. Parent dir could be a URI or a File.
+     * @param dir the folder to append the path to
+     * @param path the path relative to dir.
+     * @return the appended path as a String if path is relative, else path is returned.
+     */
+    public static String appendPathToDir(String dir, String path) {
+        if (path.startsWith("/")) { // Already an absolute path
+            return path;
+        }
+        if (BucketUtils.isRemoteStorageUrl(dir) || BucketUtils.isFileUrl(dir)) {
+            Path dirPath = getPath(dir);
+            return dirPath.resolve(path).toUri().toString();
+        } else {
+            return new File(dir, path).getPath();
+        }
+    }
+
+    /**
      * @param path Path to test
      * @throws org.broadinstitute.hellbender.exceptions.UserException.CouldNotReadInputFile if the file isn't readable
      *         and a regular file

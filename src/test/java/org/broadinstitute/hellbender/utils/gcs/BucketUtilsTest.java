@@ -59,19 +59,6 @@ public final class BucketUtilsTest extends GATKBaseTest {
     }
 
     @Test
-    public void testAppendPathToDir() {
-	Assert.assertEquals(BucketUtils.appendPathToDir("dir", "file"), "dir/file");
-	Assert.assertEquals(BucketUtils.appendPathToDir("dir/", "file"), "dir/file");
-	Assert.assertEquals(BucketUtils.appendPathToDir("dir", "/file"), "/file");
-	Assert.assertEquals(BucketUtils.appendPathToDir("dir/", "/file"), "/file");
-	Assert.assertEquals(BucketUtils.appendPathToDir("/path/to/dir", "anotherdir/file"), "/path/to/dir/anotherdir/file");
-
-	Assert.assertEquals(BucketUtils.appendPathToDir("file://dir", "file"), "file://dir/file");
-	Assert.assertEquals(BucketUtils.appendPathToDir("hdfs://namenode:9000/dir", "file"), "hdfs://namenode:9000/dir/file");
-	Assert.assertEquals(BucketUtils.appendPathToDir("gs://abucket/dir", "file"), "gs://abucket/dir/file");
-    }
-
-    @Test
     public void testCopyLocal() throws IOException {
         final String src = publicTestDir+"empty.vcf";
         File dest = createTempFile("copy-empty",".vcf");

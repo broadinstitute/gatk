@@ -168,6 +168,25 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
     }
 
     @Test
+    public void testAppendPathToDir() throws Exception {
+        Assert.assertEquals(IOUtils.appendPathToDir("dir", "file"), "dir/file");
+        Assert.assertEquals(IOUtils.appendPathToDir("dir/", "file"), "dir/file");
+        Assert.assertEquals(IOUtils.appendPathToDir("dir", "/file"), "/file");
+        Assert.assertEquals(IOUtils.appendPathToDir("dir/", "/file"), "/file");
+        Assert.assertEquals(IOUtils.appendPathToDir("/path/to/dir", "anotherdir/file"), "/path/to/dir/anotherdir/file");
+
+        // hdfs: URI
+        Path tempPath = IOUtils.getPath(MiniClusterUtils.getWorkingDir(MiniClusterUtils.getMiniCluster()).toUri().toString());
+        Assert.assertEquals(IOUtils.appendPathToDir(tempPath.toString(), "temp"), tempPath.toString()+"/temp");
+
+        // gs: URI
+        Assert.assertEquals(IOUtils.appendPathToDir("gs://abucket/dir", "file"), "gs://abucket/dir/file");
+
+        // file: URI
+        Assert.assertEquals(IOUtils.appendPathToDir("file:///dir", "file"), "file:///dir/file");
+    }
+
+    @Test
     public void testSuccessfulCanReadFileCheck() {
         final File expectedFile = createTempFile("Utils-can-read-test",".txt");
         IOUtils.canReadFile(expectedFile);

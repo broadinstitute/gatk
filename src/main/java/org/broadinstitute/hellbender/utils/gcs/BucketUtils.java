@@ -82,27 +82,6 @@ public final class BucketUtils {
     }
 
     /**
-     * Appends path to the given dir/folder.
-     * @param dir the folder to append the path to
-     * @param path the path relative to dir
-     * @return the appended path as a String.
-     */
-    public static String appendPathToDir(String dir, String path) {
-	if (path.startsWith("/")) { // Not a relative path
-	    return path;
-	}
-	if (isCloudStorageUrl(dir) || isHadoopUrl(dir) || isFileUrl(dir)){
-	    if (dir.endsWith("/")) {
-		return dir+path;
-	    } else {
-		return dir+'/'+path;
-	    }
-	} else {
-	    return new File(dir, path).getPath();
-	}
-    }
-
-    /**
      * Open a file for reading regardless of whether it's on GCS, HDFS or local disk.
      *
      * If the file ends with .gz will attempt to wrap it in an appropriate unzipping stream

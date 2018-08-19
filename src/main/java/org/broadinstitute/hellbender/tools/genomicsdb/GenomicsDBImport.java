@@ -37,7 +37,6 @@ import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.nio.SeekableByteChannelPrefetcher;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
@@ -460,12 +459,10 @@ public final class GenomicsDBImport extends GATKTool {
      */
     @Override
     public void onTraversalStart() {
-
-        String workspaceDir = overwriteOrCreateWorkspace();
-
-        vidMapJSONFile = BucketUtils.appendPathToDir(workspaceDir, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME);
-        callsetMapJSONFile = BucketUtils.appendPathToDir(workspaceDir, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME);
-        vcfHeaderFile = BucketUtils.appendPathToDir(workspaceDir, GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME);
+        String workspaceDir = BucketUtils.makeFilePathAbsolute(overwriteOrCreateWorkspace());
+        vidMapJSONFile = IOUtils.appendPathToDir(workspaceDir, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME);
+        callsetMapJSONFile = IOUtils.appendPathToDir(workspaceDir, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME);
+        vcfHeaderFile = IOUtils.appendPathToDir(workspaceDir, GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME);
 
         logger.info("Vid Map JSON file will be written to " + vidMapJSONFile);
         logger.info("Callset Map JSON file will be written to " + callsetMapJSONFile);
@@ -652,11 +649,20 @@ public final class GenomicsDBImport extends GATKTool {
      * @return  The workspace directory
      */
     private String overwriteOrCreateWorkspace() {
-	String workspaceDir = BucketUtils.makeFilePathAbsolute(workspace);
-	if (GenomicsDBUtils.createTileDBWorkspace(workspaceDir, overwriteExistingWorkspace) < 0) {
-	    throw new UnableToCreateGenomicsDBWorkspace("Error creating GenomicsDB workspace: " + workspace);
-	}
-	return workspaceDir;
+        String workspaceDir = BucketUtils.makeFilePathAbsolute(workspace);
+        // From JavaDoc for GenomicsDBUtils.createTileDBWorkspace
+        //   returnCode = 0 : OK
+        //   returnCode = -1 : path was not a directory
+        //   returnCode = -2 : failed to create workspace
+        //   returnCode = 1 : existing directory, nothing changed
+        int returnCode = GenomicsDBUtils.createTileDBWorkspace(workspaceDir, overwriteExistingWorkspace);
+        if (returnCode < 0) {
+            throw new UnableToCreateGenomicsDBWorkspace("Error creating GenomicsDB workspace: " + workspace);
+        } else if (!overwriteExistingWorkspace && returnCode == 1) {
+            throw new UnableToCreateGenomicsDBWorkspace("Error creating GenomicsDB workspace: " + workspace + " already exists");
+        } else {
+            return workspaceDir;
+        }
     }
 
     static class UnableToCreateGenomicsDBWorkspace extends UserException {

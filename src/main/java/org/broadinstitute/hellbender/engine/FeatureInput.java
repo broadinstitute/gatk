@@ -5,6 +5,7 @@ import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureCodec;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
@@ -242,7 +243,7 @@ public final class FeatureInput<T extends Feature> implements Serializable {
      */
     private static String makeIntoAbsolutePath(final String filePath){
         if(FeatureDataSource.isGenomicsDBPath(filePath)){
-            return FeatureDataSource.GENOMIC_DB_URI_SCHEME + new File(filePath.replace(FeatureDataSource.GENOMIC_DB_URI_SCHEME,"")).getAbsolutePath();
+            return FeatureDataSource.getGenomicsDBAbsolutePath(filePath);
         } else if (URI.create(filePath).getScheme() != null) {
             return IOUtils.getPath(filePath).toAbsolutePath().toUri().toString();
         } else {

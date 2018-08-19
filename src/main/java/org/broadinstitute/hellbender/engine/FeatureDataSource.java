@@ -26,13 +26,13 @@ import org.broadinstitute.hellbender.utils.nio.SeekableByteChannelPrefetcher;
 import java.io.File;
 import java.io.IOException;
 import java.nio.channels.SeekableByteChannel;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Enables traversals and queries over sources of Features, which are metadata associated with a location
@@ -64,9 +64,14 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
     private static final Logger logger = LogManager.getLogger(FeatureDataSource.class);
 
     /**
-     * identifies a path as a GenomicsDB URI
+     * Schemes starting with gendb could be GenomicsDB paths
      */
-    public static final String GENOMIC_DB_URI_SCHEME = "gendb://";
+    public static final String GENOMIC_DB_URI_SCHEME = "gendb";
+
+    /**
+     * Patterns identifying GenomicsDB paths
+     */
+    private static final Pattern genomicsdb_uri_pattern = Pattern.compile("^" + GENOMIC_DB_URI_SCHEME + "(.?)(.*)(://)(.*)");
 
     /**
      * Feature reader used to retrieve records from our file
@@ -288,8 +293,49 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
      * @return true if path represent a GenomicsDB URI, otherwise false
      */
     public static boolean isGenomicsDBPath(final String path) {
-        return path != null && path.startsWith(GENOMIC_DB_URI_SCHEME);
+        return getGenomicsDBPath(path) != null;
     }
+
+    public static String getGenomicsDBAbsolutePath(final String path) {
+        String genomicsdbPath = getGenomicsDBPath(path);
+        if (genomicsdbPath != null) {
+            return BucketUtils.makeFilePathAbsolute(getGenomicsDBPath(path));
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * If path is prefaced with gendb:// or gendb.<CloudURI>://, returns a path acceptable
+     * by GenomicsDB. Otherwise, returns null.
+     *
+     * @param path gendb paths
+     *             following are valid gendb URI examples
+     *             gendb://my_folder
+     *             gendb:///my_abs_folder
+     *             gendb.hdfs://name_node/my_folder
+     *             gendb.gs://my_bucket/my_folder
+     *             gendb.s3://my_bucket/my_folder
+     * @return GenomicsDB acceptable path or null
+     */
+    public static String getGenomicsDBPath(final String path) {
+        // genomicsdb_uri_pattern = Pattern.compile("^" + GENOMIC_DB_URI_SCHEME + "(.?)(.*)(://)(.*)");
+        //   gendb.supportedCloudURI://<rest_of_path>
+        //           ^^group2^^         ^^group4^^
+        String genomicsdbPath = null;
+        if (path != null && path.startsWith(GENOMIC_DB_URI_SCHEME)) { // Check if path starts with "gendb"
+            Matcher matcher = genomicsdb_uri_pattern.matcher(path);
+            if (matcher.find() && !matcher.group(3).isEmpty()) { // path contains "://"
+                if (!matcher.group(1).isEmpty() && matcher.group(1).equals(".")) { // path has a period after gendb, so it is a URI
+                    genomicsdbPath = matcher.group(2) + matcher.group(3) + matcher.group(4);
+                } else if (matcher.group(2).isEmpty()) {
+                    genomicsdbPath = matcher.group(4);
+                }
+            }
+        }
+        return genomicsdbPath;
+    }
+
 
     @SuppressWarnings("unchecked")
     private static <T extends Feature> FeatureReader<T> getFeatureReader(final FeatureInput<T> featureInput, final Class<? extends Feature> targetFeatureType,
@@ -366,14 +412,14 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
     }
 
     private static FeatureReader<VariantContext> getGenomicsDBFeatureReader(final String path, final File reference) {
-        if( !isGenomicsDBPath(path) ) {
-            throw new IllegalArgumentException("Trying to create a GenomicsDBReader from a non-GenomicsDB input");
+        final String workspace = getGenomicsDBAbsolutePath(path);
+        if (workspace == null) {
+            throw new IllegalArgumentException("Trying to create a GenomicsDBReader from non-GenomicsDB input");
         }
 
-        final String workspace = path.replace(GENOMIC_DB_URI_SCHEME, "");
-        final String callsetJson = BucketUtils.appendPathToDir(workspace, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME);
-        final String vidmapJson = BucketUtils.appendPathToDir(workspace, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME);
-        final String vcfHeader = BucketUtils.appendPathToDir(workspace, GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME);
+        final String callsetJson = IOUtils.appendPathToDir(workspace, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME);
+        final String vidmapJson = IOUtils.appendPathToDir(workspace, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME);
+        final String vcfHeader = IOUtils.appendPathToDir(workspace, GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME);
 
         final GenomicsDBExportConfiguration.ExportConfiguration exportConfigurationBuilder =
            createExportConfiguration(reference, workspace, callsetJson, vidmapJson, vcfHeader);

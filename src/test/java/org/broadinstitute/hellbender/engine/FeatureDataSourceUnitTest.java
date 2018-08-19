@@ -63,6 +63,40 @@ public final class FeatureDataSourceUnitTest extends GATKBaseTest {
         Assert.assertTrue(header instanceof VCFHeader, "Header for " + QUERY_TEST_VCF.getAbsolutePath() + " not a VCFHeader");
     }
 
+    @DataProvider(name = "GenomicsDBTestPathData")
+    public Object[][] genomicsDBTestPathData() {
+        return new Object[][]{
+                //path, getGenomicsDBPath, isGenomicsDBPath
+                {null, null, false},
+                {"", null, false},
+                {"dfdfdf://fdfdf", null, false},
+                {"fdfdf", null, false},
+                {"gendbdfdfdf://fdfdf", null, false},
+                {"gendb-dfdfdf://fdfdf", null, false},
+                {"gendb-dfdfdf://", null, false},
+                {"gendb", null, false},
+                {"gendbdfdf", null, false},
+                {"agendb://dfdfd", null, false},
+
+                {"gendb.dfdfdf://fdfdf", "dfdfdf://fdfdf", true},
+                {"gendb://fdfdf", "fdfdf", true},
+                {"gendb://", "", true},
+                {"gendb:///fdfd", "/fdfd", true},
+                {"gendb:///", "/", true},
+                {"gendb.hdfs://this-node:9000/dir", "hdfs://this-node:9000/dir", true},
+                {"gendb.gs://my-bucket/dir", "gs://my-bucket/dir", true},
+
+                {"gendb-hdfs://this-node:9000/dir", null, false},
+                {"gendb-gs://this-node:9000/dir", null, false}
+        };
+    }
+
+    @Test(dataProvider = "GenomicsDBTestPathData")
+    public void testGenomicsDBPathParsing(String path, String expectedPath, boolean expectedComparison){
+        Assert.assertEquals(FeatureDataSource.getGenomicsDBPath(path), expectedPath);
+        Assert.assertEquals(FeatureDataSource.isGenomicsDBPath(path), expectedComparison);
+    }
+
     @Test
     public void testGetSequenceDictionary() {
         try (FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF, "CustomName")) {

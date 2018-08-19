@@ -11,6 +11,7 @@ import java.util.List;
 
 
 public final class GenomicsDBTestUtils {
+
     /**
      * don't instantiate a utility class
      */
@@ -21,7 +22,7 @@ public final class GenomicsDBTestUtils {
      * @return a string formatted as a genomicsDB uri pointing to the given workspace i.e "gendb:///pathTo/workspace
      */
     public static String makeGenomicsDBUri(final File workspace){
-        return FeatureDataSource.GENOMIC_DB_URI_SCHEME + workspace.getAbsolutePath();
+        return FeatureDataSource.GENOMIC_DB_URI_SCHEME + "://" + workspace.getAbsolutePath();
     }
 
     /**
