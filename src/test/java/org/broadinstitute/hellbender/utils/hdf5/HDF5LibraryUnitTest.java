@@ -11,7 +11,6 @@ import org.broadinstitute.hdf5.HDF5LibException;
 import org.broadinstitute.hdf5.HDF5Library;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;

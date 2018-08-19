@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 
 /**
  * Unit tests for the {@link org.broadinstitute.hellbender.tools.funcotator}.

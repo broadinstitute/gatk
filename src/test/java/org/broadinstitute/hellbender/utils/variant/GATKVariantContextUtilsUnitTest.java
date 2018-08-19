@@ -18,7 +18,7 @@ import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
 import org.broadinstitute.hellbender.utils.*;
-import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
+import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -1538,7 +1538,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
             }
         };
     }
-    
+
     @Test(dataProvider = "totalPloidyData")
     public void testTotalPloidy(final int[] ploidies, final int defaultPloidy, final int expected) {
         final Genotype[] genotypes = new Genotype[ploidies.length];

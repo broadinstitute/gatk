@@ -16,12 +16,13 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBased
 import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceSummaryRecord;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+import scala.tools.nsc.transform.patmat.ScalaLogic;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -49,6 +50,8 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
     private static final File NA12878_MITO_BAM = new File(toolsTestDir, "mutect/mito/NA12878.bam");
     private static final File MITO_REF = new File(toolsTestDir, "mutect/mito/Homo_sapiens_assembly38.mt_only.fasta");
+    private static final File DEEP_MITO_BAM = new File(largeFileTestDir, "mutect/highDPMTsnippet.bam");
+    private static final String DEEP_MITO_SAMPLE_NAME = "mixture";
 
     /**
      * Several DREAM challenge bams with synthetic truth data.  In order to keep file sizes manageable, bams are restricted
@@ -177,7 +180,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(numVariants, 0);
     }
 
-    // run tumor-only using the original DREAM synthetic sample 1 tumor and normal restricted to
+    // run tumor-normal mode using the original DREAM synthetic sample 1 tumor and normal restricted to
     // 1/3 of our dbSNP interval, in which there is only one true positive.
     // we want to see that the number of false positives is small
     @Test
@@ -201,6 +204,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         };
 
         runCommandLine(args);
+        VariantContextTestUtils.streamVcf(outputVcf).forEach(a -> Assert.assertTrue(a.getGenotype(tumorName).hasAD()));
         final long numVariants = VariantContextTestUtils.streamVcf(outputVcf).count();
         Assert.assertTrue(numVariants < 4);
     }
@@ -403,6 +407,21 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         runCommandLine(args);
     }
 
+    // make sure that unpaired reads that pass filtering do not cause errors
+    // in particular, the read HAVCYADXX150109:1:1109:11610:46575 with SAM flag 16 fails without the patch
+    @Test
+    public void testUnpairedReads() throws Exception {
+        final String bamWithUnpairedReads = toolsTestDir + "unpaired.bam";
+        final File outputVcf = createTempFile("output", ".vcf");
+        final String[] args = {
+                "-I", bamWithUnpairedReads,
+                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, "SM-612V3",
+                "-R", b37_reference_20_21,
+                "-O", outputVcf.getAbsolutePath()
+        };
+        runCommandLine(args);
+    }
+
     // some bams from external pipelines use faulty adapter trimming programs that introduce identical repeated reads
     // into bams.  Although these bams fail the Picard tool ValidateSamFile, one can run HaplotypeCaller and Mutect on them
     // and get fine results.  This test ensures that this remains the case.  The test bam is a small chunk of reads surrounding
@@ -418,7 +437,9 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 false,
                 false
         );
-    }/*
+    }
+
+    /*
     * Test that the min_base_quality_score parameter works
     */
     @Test
@@ -499,7 +520,34 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(expectedKeys.stream().allMatch(variantKeys::contains));
     }
 
+   @Test
+   @SuppressWarnings("deprecation")
+   public void testAFfromADoverHighDP() throws Exception {
+        Utils.resetRandomGenerator();
+        final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
 
+        final List<String> args = Arrays.asList("-I", DEEP_MITO_BAM.getAbsolutePath(),
+                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, DEEP_MITO_SAMPLE_NAME,
+                "-R", MITO_REF.getAbsolutePath(),
+                "-L", "chrM:1-1018",
+                "-ip", "300",
+                "-min-pruning", "4",
+                "--" + M2ArgumentCollection.GET_AF_FROM_AD_LONG_NAME,
+                "-O", unfilteredVcf.getAbsolutePath());
+        runCommandLine(args);
+
+        final List<VariantContext> variants = VariantContextTestUtils.streamVcf(unfilteredVcf).collect(Collectors.toList());
+
+        for (final VariantContext vc : variants) {
+            Assert.assertTrue(vc.isBiallelic()); //I do some lazy parsing below that won't hold for multiple alternate alleles
+            Genotype g = vc.getGenotype(DEEP_MITO_SAMPLE_NAME);
+            Assert.assertTrue(g.hasAD());
+            final int[] ADs = g.getAD();
+            Assert.assertTrue(g.hasExtendedAttribute(GATKVCFConstants.ALLELE_FRACTION_KEY));
+            //Assert.assertEquals(Double.parseDouble(String.valueOf(vc.getGenotype(DEEP_MITO_SAMPLE_NAME).getExtendedAttribute(GATKVCFConstants.ALLELE_FRACTION_KEY,"0"))), (double)ADs[1]/(ADs[0]+ADs[1]), 1e-6);
+            Assert.assertEquals(Double.parseDouble(String.valueOf(vc.getGenotype(DEEP_MITO_SAMPLE_NAME).getAttributeAsString(GATKVCFConstants.ALLELE_FRACTION_KEY,"0"))), (double)ADs[1]/(ADs[0]+ADs[1]), 1e-6);
+        }
+    }
 
     @DataProvider(name="bamoutVariations")
     public Object[][] bamoutVariations() {

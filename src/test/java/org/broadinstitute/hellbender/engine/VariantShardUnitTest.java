@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.engine;
 import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.ReadsPreprocessingPipelineTestData;
+import org.broadinstitute.hellbender.testutils.ReadsPreprocessingPipelineTestData;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;

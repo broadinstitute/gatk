@@ -307,7 +307,6 @@ R installation is not part of the gradle build.  See http://cran.r-project.org/ 
 * for ubuntu see these [ubuntu specific instructions](http://cran.r-project.org/bin/linux/ubuntu/README)
 * for OSX we recommend installation through [homebrew](http://brew.sh/)
 ```
-brew tap homebrew/science
 brew install R
 ```
 

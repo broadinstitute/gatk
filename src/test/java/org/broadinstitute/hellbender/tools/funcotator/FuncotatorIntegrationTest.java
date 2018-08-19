@@ -20,10 +20,10 @@ import org.broadinstitute.hellbender.tools.funcotator.mafOutput.CustomMafFuncota
 import org.broadinstitute.hellbender.tools.funcotator.mafOutput.MafOutputRenderer;
 import org.broadinstitute.hellbender.tools.funcotator.mafOutput.MafOutputRendererConstants;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
-import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.broadinstitute.hellbender.utils.test.FuncotatorReferenceTestUtils;
-import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
-import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.FuncotatorReferenceTestUtils;
+import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
+import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -75,6 +75,8 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     private static final String XSV_CLINVAR_COL_TEST_VCF = toolsTestDir + "funcotator" + File.separator + "clinvar_hg19_column_test.vcf";
     private static final String DS_XSV_CLINVAR_COL_TEST  = largeFileTestDir + "funcotator" + File.separator + "small_ds_clinvar_hg19" + File.separator;
     private static final String EMPTY_VCF  = publicTestDir + File.separator + "empty.vcf";
+    private static final String PIK3CA_DBSNP_DS          = toolsTestDir + "funcotator" + File.separator + "small_pik3ca_dbsnp_ds";
+    private static final String MAF_DBSNP_TEST           = toolsTestDir + "funcotator" + File.separator + "maf_dbsnp_test_input.vcf";
 
     private static String hg38Chr3Ref;
     private static String b37Chr3Ref;
@@ -1076,10 +1078,48 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 
         final AnnotatedIntervalCollection maf = AnnotatedIntervalCollection.create(outputFile.toPath(), null);
         Assert.assertEquals(maf.getRecords().size(),  0);
+        assertCustomFieldsArePresent(maf);
 
+
+    }
+
+    private void assertCustomFieldsArePresent(final AnnotatedIntervalCollection maf) {
         // Double-check that the custom MAF fields are present.
         Assert.assertTrue(CustomMafFuncotationCreator.COUNT_FIELD_NAMES.stream()
                 .allMatch(f -> maf.getAnnotations().contains(f)));
+
+        Assert.assertTrue(maf.getAnnotations().contains(MafOutputRendererConstants.FieldName_dbSNP_Val_Status));
+    }
+
+    @Test
+    public void testEnsureDbSnpInMaf() {
+        final FuncotatorArgumentDefinitions.OutputFormatType outputFormatType = FuncotatorArgumentDefinitions.OutputFormatType.MAF;
+        final File outputFile = getOutputFile(outputFormatType);
+
+        final ArgumentsBuilder arguments = new ArgumentsBuilder();
+
+        arguments.addVCF(new File(MAF_DBSNP_TEST));
+        arguments.addOutput(outputFile);
+        arguments.addReference(new File(b37Chr3Ref));
+        arguments.addArgument(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, PIK3CA_DBSNP_DS);
+        arguments.addArgument(FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME, FuncotatorTestConstants.REFERENCE_VERSION_HG19);
+        arguments.addArgument(FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME, outputFormatType.toString());
+        arguments.addArgument(FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME, TranscriptSelectionMode.CANONICAL.toString());
+        arguments.addBooleanArgument(StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, true);
+        runCommandLine(arguments);
+
+        final AnnotatedIntervalCollection maf = AnnotatedIntervalCollection.create(outputFile.toPath(), null);
+        Assert.assertEquals(maf.getRecords().size(),  5);
+        assertCustomFieldsArePresent(maf);
+
+        final List<String> gtDbSnpValStatus = Arrays.asList("",
+                CustomMafFuncotationCreator.BY_FREQ + CustomMafFuncotationCreator.MAF_DBSNP_VAL_STATUS_DELIMITER + CustomMafFuncotationCreator.BY_1KG,
+                CustomMafFuncotationCreator.BY_FREQ + CustomMafFuncotationCreator.MAF_DBSNP_VAL_STATUS_DELIMITER + CustomMafFuncotationCreator.BY_1KG,
+                CustomMafFuncotationCreator.BY_FREQ + CustomMafFuncotationCreator.MAF_DBSNP_VAL_STATUS_DELIMITER + CustomMafFuncotationCreator.BY_1KG,
+                CustomMafFuncotationCreator.BY_FREQ + CustomMafFuncotationCreator.MAF_DBSNP_VAL_STATUS_DELIMITER + CustomMafFuncotationCreator.BY_1KG);
+        final List<String> guessDbSnpValStatus = maf.getRecords().stream().map(r -> r.getAnnotationValue(MafOutputRendererConstants.FieldName_dbSNP_Val_Status))
+                .collect(Collectors.toList());
+        Assert.assertEquals(guessDbSnpValStatus, gtDbSnpValStatus);
     }
 }
 

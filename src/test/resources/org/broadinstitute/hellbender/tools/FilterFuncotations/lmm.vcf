@@ -1,0 +1,9 @@
+##fileformat=VCFv4.2
+##Funcotator Version=0.0.3 | Gencode 27 ALL | LMMKnown 20180618
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##INFO=<ID=FUNCOTATION,Number=A,Type=String,Description="Functional annotation from the Funcotator tool.  Funcotation fields are: Gencode_27_annotationTranscript|LMMKnown_LMM_FLAGGED">
+##buildName=GRCh38
+##contig=<ID=chr1,length=248956422,assembly=Homo_sapiens_assembly38.fasta>
+##reference=file:///cromwell_root/broad-references/hg38/v0/Homo_sapiens_assembly38.fasta
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+chr1	55039931	.	G	A	.	.	FUNCOTATION=[ENST00000302118.5|true]

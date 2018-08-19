@@ -1,0 +1,8 @@
+##fileformat=VCFv4.2
+##INFO=<ID=FUNCOTATION,Number=A,Type=String,Description="Functional annotation from the Funcotator tool.  Funcotation fields are: Gencode_19_annotationTranscript|ACMG_recommendation_Disease_Name|ClinVar_VCF_CLNSIG|ExAC_AC_AFR|ExAC_AN_AFR|ExAC_AC_AMR|ExAC_AN_AMR|ExAC_AC_EAS|ExAC_AN_EAS|ExAC_AC_FIN|ExAC_AN_FIN|ExAC_AC_NFE|ExAC_AN_NFE|ExAC_AC_OTH|ExAC_AN_OTH|ExAC_AC_SAS|ExAC_AN_SAS">
+##contig=<ID=1,length=249250621,assembly=Homo_sapiens_assembly19.fasta>
+##reference=file:///cromwell_root/broad-references/hg19/v0/Homo_sapiens_assembly19.fasta
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+1	17349143	.	C	T	.	.	FUNCOTATION=[ENST00000375499.3|Paragangliomas_%20_4_%20_(MIM_%20_115310)|Pathogenic|4|100|3|100|2|100|1|100|2|100|3|100|4|100]
+1	17349144	.	C	T	.	.	FUNCOTATION=[ENST00000375499.3|Paragangliomas_%20_4_%20_(MIM_%20_115310)|Likely_pathogenic|1|100|2|100|3|100|4|100|3|100|2|100|1|100]
+1	17349145	.	C	T	.	.	FUNCOTATION=[ENST00000375499.3|Paragangliomas_%20_4_%20_(MIM_%20_115310)|Pathogenic/Likely_pathogenic|4|100|1|100|3|100|2|100|3|100|1|100|4|100]
