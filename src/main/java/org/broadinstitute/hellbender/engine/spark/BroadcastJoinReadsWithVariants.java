@@ -60,15 +60,15 @@ public final class BroadcastJoinReadsWithVariants {
         }
         String path = variantsPaths.get(0);
         return reads.mapPartitionsToPair((PairFlatMapFunction<Iterator<GATKRead>, GATKRead, Iterable<GATKVariant>>) gatkReadIterator -> {
-            try (FeatureDataSource<VariantContext> variantSource = openFeatureSource(path)) {
-                return Iterators.transform(gatkReadIterator, new Function<GATKRead, Tuple2<GATKRead, Iterable<GATKVariant>>>() {
-                    @Nullable
-                    @Override
-                    public Tuple2<GATKRead, Iterable<GATKVariant>> apply(@Nullable GATKRead read) {
-                        return getOverlapping(read, variantSource);
-                    }
-                });
-            }
+            FeatureDataSource<VariantContext> variantSource = openFeatureSource(path);
+            Iterator<Tuple2<GATKRead, Iterable<GATKVariant>>> iterator = Iterators.transform(gatkReadIterator, new Function<GATKRead, Tuple2<GATKRead, Iterable<GATKVariant>>>() {
+                @Nullable
+                @Override
+                public Tuple2<GATKRead, Iterable<GATKVariant>> apply(@Nullable GATKRead read) {
+                    return getOverlapping(read, variantSource);
+                }
+            });
+            return new AutocloseIteratorWrapper<>(iterator, variantSource); // close FeatureDataSource at end of iteration
         });
     }
 
