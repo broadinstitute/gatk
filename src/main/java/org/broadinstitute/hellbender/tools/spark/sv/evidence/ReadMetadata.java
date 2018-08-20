@@ -32,6 +32,8 @@ import java.util.*;
  */
 @DefaultSerializer(ReadMetadata.Serializer.class)
 public class ReadMetadata {
+
+    public static final String CDF_PREFIX = "template size cumulative counts:";
     private final Set<Integer> crossContigIgnoreSet;
     private final Map<String, Integer> contigNameToID;
     private final String[] contigIDToName;
@@ -363,7 +365,7 @@ public class ReadMetadata {
                 final IntHistogram.CDF templateSizeCDF = stats.getCDF();
                 final int cdfSize = templateSizeCDF.size();
                 final long totalObservations = templateSizeCDF.getTotalObservations();
-                writer.write("template size cumulative counts:");
+                writer.write(CDF_PREFIX);
                 for(int idx = 0; idx < cdfSize; ++idx) {
                     final long cumulativeCounts = Math.round(templateSizeCDF.getFraction(idx) * totalObservations);
                     writer.write("\t" + cumulativeCounts);

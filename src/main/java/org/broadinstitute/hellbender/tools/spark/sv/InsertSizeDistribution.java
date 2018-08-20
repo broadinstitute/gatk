@@ -6,7 +6,13 @@ import org.apache.commons.math3.distribution.LogNormalDistribution;
 import org.apache.commons.math3.distribution.NormalDistribution;
 import org.apache.commons.math3.distribution.RealDistribution;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collections;
@@ -28,6 +34,39 @@ public class InsertSizeDistribution implements Serializable {
         List<String> getNames();
 
         AbstractRealDistribution fromMeanAndStdDeviation(final double mean, final double stddev);
+
+        default AbstractRealDistribution fromReadMetadataFile(final String meanString) {
+            try (final BufferedReader reader = new BufferedReader(new InputStreamReader(BucketUtils.openFile(meanString)))) {
+                String line;
+                int value;
+                double totalSum = 0;
+                double totalSqSum = 0;
+                long totalCount = 0;
+                while ((line = reader.readLine()) != null) {
+                    if (line.startsWith(ReadMetadata.CDF_PREFIX)) {
+                        final String[] cdf = line.substring(ReadMetadata.CDF_PREFIX.length() + 1).split("\t");
+                        long leftCdf = 0;
+                        for (value = 0; value < cdf.length; value++) {
+                            final long frequency = Long.parseLong(cdf[value]) - leftCdf;
+                            leftCdf += frequency;
+                            totalSum += frequency * value;
+                            totalSqSum += value * value * frequency;
+                        }
+                        totalCount += leftCdf;
+                    }
+                }
+                if (totalCount == 0) {
+                    throw new UserException.MalformedFile("Could not find any insert-sizes in " + meanString);
+                }
+                final double mean = totalSum / totalCount;
+                final double stdDev = Math.sqrt(Math.abs(totalSqSum/totalCount - mean * mean));
+                return fromMeanAndStdDeviation(mean, stdDev);
+            } catch (final IOException ex) {
+                throw new UserException.CouldNotReadInputFile(meanString);
+            } catch (final NumberFormatException ex) {
+                throw new UserException.MalformedFile("the CDF contains non-numbers in " + meanString);
+            }
+        }
     }
 
     public static class NormalType implements Type {
@@ -41,6 +80,7 @@ public class InsertSizeDistribution implements Serializable {
         public AbstractRealDistribution fromMeanAndStdDeviation(final double mean, final double stddev) {
             return new NormalDistribution(mean, stddev);
         }
+
     }
 
     public static class LogNormalType implements Type {
@@ -60,7 +100,7 @@ public class InsertSizeDistribution implements Serializable {
     }
 
     private static Pattern DESCRIPTION_PATTERN =
-            Pattern.compile("^\\s*(?<name>[^\\s\\(\\)]+)\\s*\\((?<mean>[^,\\(\\)]+?)\\s*,\\s*(?<stddev>[^,\\(\\)]+?)\\s*\\)\\s*");
+            Pattern.compile("^\\s*(?<name>[^\\s\\(\\)]+)\\s*\\((?<mean>[^,\\(\\)]+?)\\s*(?:,\\s*(?<stddev>[^,\\(\\)]+?)\\s*)?\\)\\s*");
 
     private final String description;
 
@@ -71,9 +111,13 @@ public class InsertSizeDistribution implements Serializable {
         return dist;
     }
 
-    public double average() {
+    public double mean() {
         return dist().getNumericalMean();
     }
+
+    public double variance() { return dist().getNumericalVariance(); }
+
+    public double stddev() { return Math.sqrt(variance()); }
 
     public InsertSizeDistribution(final String distrString) {
         this.description = distrString;
@@ -90,12 +134,16 @@ public class InsertSizeDistribution implements Serializable {
         final String meanString = matcher.group("mean");
         final String stddevString = matcher.group("stddev");
         final Type type = extractDistributionType(nameString, description);
-        final double mean = extractDoubleParameter("mean", description, meanString, 0, Double.MAX_VALUE);
-        final double stddev = extractDoubleParameter("stddev", description, stddevString, 0, Double.MAX_VALUE);
-        dist = type.fromMeanAndStdDeviation(mean, stddev);
+        if (stddevString != null) {
+            final double mean = extractDoubleParameter("mean", description, meanString, 0, Double.MAX_VALUE);
+            final double stddev = extractDoubleParameter("stddev", description, stddevString, 0, Double.MAX_VALUE);
+            dist = type.fromMeanAndStdDeviation(mean, stddev);
+        } else {
+            dist = type.fromReadMetadataFile(meanString);
+        }
     }
 
-    private static final Type extractDistributionType(final String nameString, final String description) {
+    private static Type extractDistributionType(final String nameString, final String description) {
         for (final Type candidate : SUPPORTED_TYPES) {
             if (candidate.getNames().stream().anyMatch(name -> name.toLowerCase().equals(nameString.trim().toLowerCase()))) {
                 return candidate;
@@ -105,7 +153,7 @@ public class InsertSizeDistribution implements Serializable {
                 + "' in description: " + description);
     }
 
-    private static final double extractDoubleParameter(final String name, final String description,
+    private static double extractDoubleParameter(final String name, final String description,
                                                        final String valueString, final double min,
                                                        final double max) {
         final double value;
@@ -132,7 +180,7 @@ public class InsertSizeDistribution implements Serializable {
 
     @Override
     public boolean equals(final Object obj) {
-        if (obj == null || !(obj instanceof InsertSizeDistribution)) {
+        if (!(obj instanceof InsertSizeDistribution)) {
             return false;
         } else {
             return ((InsertSizeDistribution)obj).dist().equals(dist());

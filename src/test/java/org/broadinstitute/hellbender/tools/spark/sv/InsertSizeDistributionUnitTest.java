@@ -3,13 +3,14 @@ package org.broadinstitute.hellbender.tools.spark.sv;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.math3.distribution.PoissonDistribution;
 import org.apache.commons.math3.random.JDKRandomGenerator;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.File;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.util.function.IntToDoubleFunction;
@@ -17,7 +18,23 @@ import java.util.function.IntToDoubleFunction;
 /**
  * Unit tests for {@link InsertSizeDistribution}.
  */
-public class InsertSizeDistributionUnitTest extends BaseTest {
+public class InsertSizeDistributionUnitTest extends GATKBaseTest {
+
+    private static final String READ_METADATA_FILE_NAME = "read-metadata-example.txt.gz";
+
+    private static final File READ_METADATA_FILE = new File( publicTestDir + InsertSizeDistribution.class.getPackage().getName()
+            .replace('.', File.separatorChar) + File.separatorChar + READ_METADATA_FILE_NAME);
+
+    @Test
+    public void testLogNormalFromMetaData() {
+        final InsertSizeDistribution lnDist  = new InsertSizeDistribution("LogNormal(" + READ_METADATA_FILE.toString() + ")");
+        final InsertSizeDistribution nDist  = new InsertSizeDistribution("Normal(" + READ_METADATA_FILE.toString() + ")");
+        for (final InsertSizeDistribution dist : Arrays.asList(lnDist, nDist)) {
+            Assert.assertEquals(dist.mean(), 379.1432, 0.00005); // calculated independently using R.
+            Assert.assertEquals(dist.variance(), 18163.74, 0.005);
+            Assert.assertEquals(dist.stddev(), 134.7729, 0.00005);
+        }
+    }
 
     @Test(dataProvider = "testData")
     public void testProbability(final String description, final int x, final double expected, final double logExpected) {
@@ -114,5 +131,4 @@ public class InsertSizeDistributionUnitTest extends BaseTest {
                 ')' +
                 StringUtils.repeat(' ', spacesDistr.sample());
     }
-
 }
