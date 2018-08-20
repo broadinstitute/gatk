@@ -185,14 +185,18 @@ public final class EvaluateConcordanceOnNonGenotypedSVVCFs extends AbstractInter
             if ( maskedOut.hasOverlapper(convertLocatable(vc, refSeqDict)) )  // masked out
                 return false;
 
-            if ( vc.hasAttribute(GATKSVVCFConstants.MAPPING_QUALITIES) ) {
-                int maxMQ = SVUtils.getAttributeAsStringStream(vc, GATKSVVCFConstants.MAPPING_QUALITIES).mapToInt(Integer::new).max().orElse(0);
-                if  (maxMQ < minMQ)
-                    return false;
+            if ( minMQ > 0 ) {
+                if (vc.hasAttribute(GATKSVVCFConstants.MAPPING_QUALITIES)) {
+                    int maxMQ = SVUtils.getAttributeAsStringStream(vc, GATKSVVCFConstants.MAPPING_QUALITIES).mapToInt(Integer::new).max().orElse(0);
+                    if (maxMQ < minMQ)
+                        return false;
+                }
             }
-            if ( vc.hasAttribute(GATKSVVCFConstants.MAX_ALIGN_LENGTH) ) {
-                if (vc.getAttributeAsInt(GATKSVVCFConstants.MAX_ALIGN_LENGTH, 0) < minAlnLen)
-                    return false;
+            if ( minAlnLen > 0 ) {
+                if (vc.hasAttribute(GATKSVVCFConstants.MAX_ALIGN_LENGTH)) {
+                    if (vc.getAttributeAsInt(GATKSVVCFConstants.MAX_ALIGN_LENGTH, 0) < minAlnLen)
+                        return false;
+                }
             }
 
             final int svLen = Math.abs(vc.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0));
