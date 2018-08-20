@@ -1,23 +1,18 @@
-import math
-import random
 import matplotlib
 matplotlib.use('Agg')
+%matplotlib inline
+from matplotlib.collections import LineCollection
+from matplotlib.colors import LogNorm
+from matplotlib import  ticker
+from matplotlib import pyplot as plt
 import numpy as np
 import scipy
 from scipy.stats import multivariate_normal
 from scipy.optimize import minimize
 from sklearn import mixture, cluster
 from sklearn.neighbors import KernelDensity
-from sklearn.cluster import KMeans
-from sklearn import metrics
-from sklearn.metrics import pairwise_distances
-from sklearn import datasets
-from scipy.spatial.distance import pdist
-import numpy.ma as ma
-from matplotlib.collections import LineCollection
-from matplotlib.colors import LogNorm
-from matplotlib import  ticker
-from matplotlib import pyplot as plt
+import math
+import random
 from pymc3 import Normal, Metropolis, sample, MvNormal, Dirichlet, DensityDist, find_MAP, NUTS, Slice
 import pymc3 as pm
 from pymc3.math import logsumexp
@@ -27,7 +22,7 @@ from copy import deepcopy
 from typing import List
 import logging
 import datetime
-from statistics import median
+
 
 RANDOM_SEED = 123
 
@@ -48,15 +43,14 @@ class LoadAndSampleCrAndAf:
         We attribute a weigth to each segment based on the tightness of their posteriors.
     """
     def __init__(self, filename: str, load_cr: bool = True, load_af: bool=True, do_logging: bool=True,
-                 cr_weight_ratio_max=10, af_weight_ratio_max=10, output_log_dir: str= "", output_log_prefix: str= ""):
+                 weight_ratio_max=10, output_log_dir: str= "", output_log_prefix: str= ""):
         """ Inputs:
             - filename: 'modelFinal.seg' file characterizing the posterior distribution of the
               copy ratio and the allele fraction data
             - load_cr: whether to load copy ratio data
             - load_af: whether to load the allele fraction data
-            - cr_weight_ratio_max: defines the maximum value that the weights of copy ratio points can take.
-              The maximum value is cr_weight_ratio_max * median(copy ratio weights)
-            - af_weight_ratio_max: same as the previous one, just using allele fraction instead of copy ratio
+            - weight_ratio_max: defines the maximum value that the weights of points can take.
+              The maximum value is weight_ratio_max * median(weights)
         """
 
         # Start logging
@@ -105,8 +99,7 @@ class LoadAndSampleCrAndAf:
         self.__filename = filename
         self.__load_cr = load_cr
         self.__load_af = load_af
-        self.__cr_weight_ratio_max = cr_weight_ratio_max
-        self.__af_weight_ratio_max = af_weight_ratio_max
+        self.__weight_ratio_max = weight_ratio_max
 
         # Load data from file
         if not output_log_prefix == "":
@@ -135,8 +128,6 @@ class LoadAndSampleCrAndAf:
 
         # Determine the weights of each segment based on the posterior
         self.__weights = self.__determine_weights()
-        plt.plot(self.__weights)
-        plt.show()
 
         # Auxiliary arrays, used by methods that do not know how to deal with points with weights:
         # we sample the number of points in each segment to be proportional to their weights
@@ -502,13 +493,12 @@ class LoadAndSampleCrAndAf:
                                                     self.__allele_fraction_10th_perc[i],
                                                     self.__allele_fraction_90th_perc[i])
             weights.append(w)
-        cr_avg_weight = median([weights[i][0] for i in range(len(weights))])
-        af_avg_weight = median([weights[i][1] for i in range(len(weights))])
-        cr_avg_weight = median([weights[i][0] for i in range(len(weights)) if weights[i][0] > 0.001 * cr_avg_weight])
-        af_avg_weight = median([weights[i][1] for i in range(len(weights)) if weights[i][1] > 0.001 * af_avg_weight])
-        max_cr_weight = self.__cr_weight_ratio_max * cr_avg_weight
-        max_af_weight = self.__af_weight_ratio_max * af_avg_weight
-        weights = [[min([weights[i][0], max_cr_weight]), min([weights[i][1], max_af_weight])] for i in range(len(weights))]
+        avg_weight = np.mean([weights[i] for i in range(len(weights))]) if len(weights) > 0 else 0.
+        avg_weight = np.mean([weights[i] for i in range(len(weights)) if weights[i] > 0.001 * avg_weight]) \
+                     if len([weights[i] for i in range(len(weights)) if weights[i] > 0.001 * avg_weight]) > 0 \
+                     else 0.
+        max_weight = self.__weight_ratio_max * avg_weight
+        weights = [min([weights[i], max_weight]) for i in range(len(weights))]
         return weights
 
     def __determine_weight_one_segment(self, cr_median: float, cr_10: float, cr_90: float,
@@ -520,27 +510,27 @@ class LoadAndSampleCrAndAf:
             [cr_a, cr_b] = self.fit_gamma_distribution(cr_median=cr_median, cr_10=cr_10, cr_90=cr_90)
             var_cr = cr_a / cr_b**2
         else:
-            var_cr = float("inf")
+            var_cr = 0.
         if self.__load_af:
             [af_a, af_b] = self.fit_beta_distribution(2 * af_median, 2 * af_10, 2 * af_90)
             var_af = (af_a * af_b) / (af_a + af_b)**2 / (af_a + af_b + 1)
         else:
-            var_af = float("inf")
-        weight = [1./var_cr, 1./var_af]
+            var_af = 0.
+        weight = 1./(var_cr + var_af)
         return weight
 
     def __sample_points(self):
         total_number_of_points = 5000
         avg_number_of_points = total_number_of_points / self.__n_segments
-        avg_weight = np.sum(np.ndarray.flatten(np.array(self.__weights))) / self.__n_segments
+        avg_weight = np.sum(self.__weights) / self.__n_segments
 
         copy_ratio_sampled = []
         allele_fraction_sampled = []
+
         for i in range(self.__n_segments):
-            n_pts_cr = int(round(avg_number_of_points * self.__weights[i][0] / avg_weight))
-            n_pts_af = int(round(avg_number_of_points * self.__weights[i][1] / avg_weight))
-            copy_ratio_sampled += [self.__copy_ratio_median[i]] * n_pts_cr
-            allele_fraction_sampled += [self.__allele_fraction_median[i]] * n_pts_af
+            n_pts = int(round(avg_number_of_points * self.__weights[i] / avg_weight))
+            copy_ratio_sampled += [self.__copy_ratio_median[i]] * n_pts
+            allele_fraction_sampled += [self.__allele_fraction_median[i]] * n_pts
         return copy_ratio_sampled, allele_fraction_sampled
 
 class ModeledSegmentsCaller:
@@ -562,7 +552,7 @@ class ModeledSegmentsCaller:
                  interactive_output_copy_ratio_suffix:str="_copy_ratio_fit.png",
                  interactive_output_copy_ratio_clustering_suffix:str="_copy_ratio_clusters.png",
                  normal_minor_allele_fraction_threshold: float=0.475,
-                 copy_ratio_peak_min_relative_height: float=0.05,
+                 copy_ratio_peak_min_relative_height: float=0.04,
                  copy_ratio_kernel_density_bandwidth: float=None,
                  min_weight_first_cr_peak_cr_data_only: float=0.35,
                  min_fraction_of_points_in_normal_allele_fraction_region: float=0.15,
@@ -786,103 +776,121 @@ class ModeledSegmentsCaller:
         """Return whether the code was run in interactive mode."""
         return self.__interactive
 
+    def __weighted_k_means(self, data, weights, n_clusters, maxIters=10):
+        data = np.array(data)
+        centroids = np.array(data[np.random.choice(np.arange(len(data)), n_clusters), :])
 
-    def __k_means(self, data, data_weights, max_n_clusters):
-        # Determines the optimal number of clusters based on the silhouette coefficient
-        silhouette_coeff = []
-        for n_cl in range(2, max_n_clusters):
-            kmeans_model = KMeans(n_clusters=n_cl, random_state=1).fit(data)
-            labels = kmeans_model.labels_
-            silhouette_coeff.append([n_cl, metrics.silhouette_score(data, labels, metric='euclidean')])
-        i = np.argmax(np.array(silhouette_coeff)[:,1])
-        n_clusters = silhouette_coeff[i][0]
+        for i0 in range(maxIters):
+            cluster_assignments = np.array([np.argmin([weights[i] * ((data[i][0]-y[0])**2 + (data[i][1]-y[1])**2)
+                                                       for y in centroids])
+                                            for i in range(len(data))])
+            for k in range(n_clusters):
+                total_weight = np.sum([weights[i] for i in range(len(data)) if cluster_assignments[i]==k])
+                if total_weight == 0.:
+                    return self.__weighted_k_means(data, weights, n_clusters-1, maxIters=10)
+                for j in range(2):
+                    centroids[k][j] = np.sum([weights[i] * data[i][j] for i in range(len(data))
+                                              if cluster_assignments[i]==k]) / total_weight
+        return np.array(centroids), cluster_assignments
 
-        kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(data)
-        plt.scatter([data[i][0] for i in range(len(data))],
-                    [data[i][1] for i in range(len(data))],
-                    c='g', alpha=0.5)
-        plt.scatter(np.array(kmeans.cluster_centers_)[:, 0], np.array(kmeans.cluster_centers_)[:, 1], c="r")
-        plt.title("Finding cluster centers using k-means")
-        plt.show()
-        return [kmeans.cluster_centers_, n_clusters]
-
-    def __fit_weighted_Gaussian_mixture_ADVI(self, data_points, data_weights, max_n_Gaussians):
+    def __fit_weighted_Gaussian_mixture_ADVI(self, data_points, weights, n_Gaussians_proposed):
         # Function that fits Gaussians to data with weights. The dimension of the data can be arbitrary.
 
-        if np.array(data_weights).any() == None:
-            data_weights = [1, 1] * len(data_points)
-        data = np.array([[data_points[i][0], data_points[i][1],
-                          data_weights[i][0], data_weights[i][1]]
-                         for i in range(len(data_points))])
+        if np.array(weights).any() == None:
+            weights = [1] * len(data_points)
+        data_and_weights = np.array([[data_points[i][0], data_points[i][1], weights[i]] for i in range(len(data_points))])
         data_dim = 2
 
+        [mu_estimates, cluster_assignments] = self.__weighted_k_means(data=data_points,
+                                                                      weights=weights,
+                                                                      n_clusters=n_Gaussians_proposed)
+        n_Gaussians = len(mu_estimates)
+        pi_init = np.random.uniform(0, 1, n_Gaussians)
+        n_extra_Gaussians = 6
+        n_Gaussians += n_extra_Gaussians
+        pi_init = np.append(pi_init, [0.02] * n_extra_Gaussians)
+        mu_init = np.append(mu_estimates, [[np.random.uniform(0,2), np.random.uniform(0,0.5)]
+                                           for _ in range(n_extra_Gaussians)])
+        pi_init = pi_init / np.sum(pi_init)
+        epsilon = 1e-9
+
         # Log likelihood of normal distribution
-        def logp_normal(mu, tau, value):
-            # log probability of individual samples
-            # The first n coordinates of the input 'value' contains the data point coordinates,
-            # whereas the last coordinate is the weight of the point.
-            k = tau.shape[0]
-            delta = lambda mu: value[:, 0:k] - mu
-            return (-1 / 2.) * tt.sum([k * tt.log(2 * np.pi) - tt.log(det(tau))
-                                       - (tt.log(value[i][-2]) + tt.log(value[i][-1]))
-                                       + mu[0]**2 * tau[0][0] * value[i][-2] + mu[1]**2 * tau[1][1] * value[i][-1]
-                                       for i in range(len(value))])
+        def logp_normal(mu, tau, values):
+            # log probability of individual Gaussians, assuming that the Gaussian is diagonal
+            delta = lambda mu: (values - mu)
+            return (-1/2.) * (2*tt.log(2*np.pi) - tt.log(det(tau)) + (delta(mu).dot(tau)*delta(mu)).sum(axis=1))
 
         # Log likelihood of Gaussian mixture distribution
         def logp_gmix(mus, pis, taus, n_Gaussians):
-            def logp_(value):
-                logps = [tt.log(pis[i]) + logp_normal(mus[i], taus[i], value) for i in range(n_Gaussians)]
-                return tt.sum(logsumexp(logps), axis=0)
+            def logp_(data_and_weights):
+                # values = data_and_weights[:,:2]
+                # weights = data_and_weights[:,-1]
+                n_samples = tt.shape(data_and_weights)[0].eval()
+                logps = [tt.log(pis[i]) + logp_normal(mus[i], taus[i], data_and_weights[:,:2])
+                         for i in range(n_Gaussians)]
+                return tt.sum(data_and_weights[:,-1] * logsumexp(tt.stacklists(logps)[:, :n_samples], axis=0))
             return logp_
 
-        [mu_estimates, n_Gaussians] = self.__k_means(data=data_points,
-                                                     data_weights=data_weights,
-                                                     max_n_clusters=max_n_Gaussians)
-
-        pi_init = np.random.uniform(0, 1, n_Gaussians)
-        pi_init = pi_init / np.sum(pi_init)
         with pm.Model() as model:
             mus = [MvNormal('mu_%d' % i,
-                            mu=pm.floatX(np.zeros(data_dim)),
-                            tau=pm.floatX(0.1*np.eye(data_dim)),
-                            shape=(data_dim,), testval=mu_estimates[i])
+                            mu=mu_init[i],
+                            tau=pm.floatX((1/0.0001)*np.eye(2)) if i<(n_Gaussians-n_extra_Gaussians) else pm.floatX((1/0.2)*np.eye(2)),
+                            testval=mu_init[i],
+                            shape=(2,))
                    for i in range(n_Gaussians)]
-            std_dev_data = np.std(data)
-            taus =  [tt.nlinalg.alloc_diag([pm.Gamma('tau_%d_%d' % (i, j),
-                                                     mu=std_dev_data/3,
-                                                     sd=std_dev_data/8,
-                                                     testval=std_dev_data/3)
+            std_dev_data = max([0.1, np.std(data_points)])
+            taus =  [tt.nlinalg.alloc_diag([pm.Gamma('tau_%d_%d' % (i, j), mu=1/0.002, sd=1/0.002, testval=1/0.002)
                                             for j in range(data_dim)])
                      for i in range(n_Gaussians)]
-            pis = Dirichlet('pis', a=pm.floatX(0.1*np.ones(n_Gaussians)), shape=(n_Gaussians,), testval=pi_init)
-            xs = DensityDist('x', logp_gmix(mus, pis, taus, n_Gaussians), observed=data)
+            pis = Dirichlet('pis', a=pm.floatX(1000*np.ones(n_Gaussians)),
+                            shape=(n_Gaussians,),
+                            testval = pi_init,
+                            transform=pm.distributions.transforms.t_stick_breaking(epsilon)
+                            )
+            xs = DensityDist('x', logp_gmix(mus, pis, taus, n_Gaussians), observed=data_and_weights)
 
         with model:
-            approx = pm.fit(n=40000)
-
+            inference = pm.ADVI()
+        
+        approx = inference.fit(n=120000, total_grad_norm_constraint=50)
         means = approx.bij.rmap(approx.mean.eval())
         cov = approx.cov.eval()
         sds = approx.bij.rmap(np.diag(cov)**.5)
 
+        elbo = approx.hist
+        fig = plt.figure(1, dpi=400)
+        plt.plot(elbo[::10])
+        plt.xlabel("Steps")
+        plt.ylabel("ELBO")
+        elbo_tail = elbo[-int(np.ceil(0.1 * len(elbo))): -1]
+        plt.ylim(min(elbo_tail), max(elbo_tail))
+        plt.show()
+        plt.plot(elbo[::10])
+        plt.xlabel("Steps")
+        plt.ylabel("ELBO")
+        elbo_tail = elbo[-int(np.ceil(0.1 * len(elbo))): -1]
+        plt.show()
+        plt.close(fig)
+
+
         mu_result = []
-        pi_result = means['pis_stickbreaking__']
+        pi_result = pm.distributions.transforms.t_stick_breaking(epsilon).backward(means['pis_stickbreaking__']).eval()
         cov_result = []
         for i in range(n_Gaussians):
             mu_result.append(means['mu_' + str(i)])
         for i in range(n_Gaussians):
-            cov_result.append([np.exp(means["tau_" + str(i) + "_" + str(j) + "_log__"]) for j in range(data_dim)])
+            cov_result.append([1/np.exp(means["tau_" + str(i) + "_" + str(j) + "_log__"]) for j in range(data_dim)])
+        sd_result = [[np.sqrt(cov_result[i][j]) for j in range(2)] for i in range(len(cov_result))]
 
-        plt.figure(figsize=(5, 5))
-        plt.scatter(data[:, 0], data[:, 1], c='g', alpha=0.5)
-        colors = ["r", "b", "k", "c", "m"]
-        for i in range(n_Gaussians):
-            plt.scatter(mu_result[i][0], mu_result[i][1], c=colors[i % len(colors)], s=100)
-        plt.xlim(1.5*min(data[:,0]), 1.5*max(data[:,0]))
-        plt.ylim(1.5*min(data[:,1]), 1.5*max(data[:,1]))
+        print("pi_result = ", pi_result)
+        print("mu_result = ", mu_result)
+        print("cov_result = ", cov_result)
+        print("sd_result = ", sd_result)
+        print("tau_result = ", [[1/cov_result[i][j] for j in range(2)] for i in range(len(cov_result))])
 
         return [pi_result, mu_result, cov_result]
 
-    def __choose_normal_segments__cr_af_data(self, n_Gaussians: int=10):
+    def __choose_normal_segments__cr_af_data(self, n_Gaussians_proposed: int=30):
         """ Choose those Gaussians from the fitted distribution that cover the
             normal segments. The Gaussians are fitted using Bayesian variational
             inference in the  two dimensional space of copy ratio and allele fraction axes.
@@ -895,20 +903,20 @@ class ModeledSegmentsCaller:
 
         # Fit mixtures using Gaussian variational inference
         data = [[self.__copy_ratio_median[i], self.__allele_fraction_median[i]] for i in range(self.__n_segments)]
-        [pis, mus, covs] = self.__fit_weighted_Gaussian_mixture_ADVI(data, self.__weights, n_Gaussians)
+        [pis, mus, covs] = self.__fit_weighted_Gaussian_mixture_ADVI(data, self.__weights, n_Gaussians_proposed)
 
         # We choose those peaks to be normal whose mean's copy ratio value is within the range specified
         # by '__choose_cn2_cr_cluster' and whose allele fraction value is within the range specified by
         # 'normal_range_af'.
-        normal_range_af = [self.__normal_minor_allele_fraction_threshold, 0.5]
-        normal_range_cr = self.__choose_cn2_cr_cluster()
+        self.__normal_range_af = [self.__normal_minor_allele_fraction_threshold, 0.5]
+        self.__normal_range_cr = self.__choose_cn2_cr_cluster()
 
         normal_peak_indices = []
         for i in range(len(pis)):
-            if (normal_range_cr[0] - min(np.sqrt(covs[i][0]), 0.25) <= mus[i][0]
-                and mus[i][0] <= normal_range_cr[1] + min(np.sqrt(covs[i][0]), 0.25)
-                and (normal_range_af[0] <= mus[i][1] + np.sqrt(covs[i][1]))
-                and (mus[i][1] <= normal_range_af[1])
+            if (self.__normal_range_cr[0] - min(np.sqrt(covs[i][0]), 0.25) <= mus[i][0]
+                and mus[i][0] <= self.__normal_range_cr[1] + min(np.sqrt(covs[i][0]), 0.25)
+                and (self.__normal_range_af[0] <= mus[i][1] + np.sqrt(covs[i][1]))
+                and (mus[i][1] <= self.__normal_range_af[1])
                 ):
                 normal_peak_indices.append(i)
 
@@ -918,8 +926,8 @@ class ModeledSegmentsCaller:
             if responsibilities_normal[i] >= self.__responsibility_threshold_normal:
                 normal_segment_indices.append(i)
         pis = [abs(p) for p in pis]
-        gmix = [pis, mus, covs]
-        return [responsibilities_normal, normal_segment_indices, gmix]
+        gaussian_mixture_fit = [pis, mus, covs]
+        return [responsibilities_normal, normal_segment_indices, gaussian_mixture_fit]
 
     def __choose_normal_segments__af_data_only(self):
         """ This function tries to determine which segments are normal relying only on allele fraction data.
@@ -929,9 +937,11 @@ class ModeledSegmentsCaller:
         responsibilities_normal = [0] * len(self.__allele_fraction_median)
         normal_segment_indices = []
         for i in range(len(self.__allele_fraction_median)):
-            responsibilities_normal[i] = np.sum([self.__weights[i][1] if a0 > self.__allele_fraction[i] else 0])
-            if responsibilities_normal[i] >= self.__responsibility_threshold_normal:
+            if self.__allele_fraction_median[i] >= self.__normal_minor_allele_fraction_threshold:
                 normal_segment_indices.append(i)
+                responsibilities_normal[i] = 1
+            else:
+                responsibilities_normal[i] = 0
         return [responsibilities_normal, normal_segment_indices]
 
     def __choose_normal_segments__cr_data_only(self):
@@ -946,11 +956,11 @@ class ModeledSegmentsCaller:
             weights_per_cluster = [0] * (len(cluster_separators) + 1)
             ordering = self.__indices_increasing_order(self.__copy_ratio_median)
             j = 0
-            total_weight = np.sum(np.array(self.__weights)[:, 0])
+            total_weight = np.sum(self.__weights)
             for i in range(len(cluster_separators)):
                 while self.__copy_ratio_median[ordering[j]] < cluster_separators[i]:
                     j += 1
-                    weights_per_cluster[i] += self.__weights[ordering[j][0]]
+                    weights_per_cluster[i] += self.__weights[ordering[j]]
                 weights_per_cluster[i] /= total_weight
             weights_per_cluster[-1] = 1. - np.sum([weights_per_cluster[i] for i in range(len(weights_per_cluster)-1)])
 
@@ -1030,18 +1040,13 @@ class ModeledSegmentsCaller:
                                                                                      alpha = 0.1, min_std_dev = 0.05)
         ind = self.__indices_increasing_order(list(mu_peaks))
         if self.__copy_ratio_kernel_density_bandwidth == None:
-            if len(ind) == 1:
-                bandwidth = 0.5 * sd_peaks[0]
+            if len(sd_peaks) == 1:
+                bandwidth = 0.5 * sd_peaks[ind[0]]
             else:
                 bandwidth = 0.5 * min([sd_peaks[ind[0]], sd_peaks[ind[1]]])
+            bandwidth = max([bandwidth, 0.02])
         else:
             bandwidth = self.__copy_ratio_kernel_density_bandwidth
-
-        bandwidth = 0.05
-        print("n_peaks = ", n_peaks)
-        print("w_peaks = ", w_peaks)
-        print("mu_peaks = ", mu_peaks)
-        print("sd_peaks = ", sd_peaks)
 
         # Convolve the data with a Gaussian kernel ("Gaussian kernel density estimation")
         dataTransposed = np.array(data)[:, np.newaxis]
@@ -1075,7 +1080,7 @@ class ModeledSegmentsCaller:
             fig = plt.figure(3, dpi=400)
             plt.subplot(311)
             cols = ["r", "m", "c", "k", "y"]
-            plt.hist(self.__copy_ratio_median, weights=np.array(self.__weights)[:,0], density=1, bins=200)
+            plt.hist(self.__copy_ratio_median, weights=np.array(self.__weights), density=1, bins=200)
             for i in range(len(w_peaks)):
                 y = [0] * len(xPlot)
                 rv = multivariate_normal(mu_peaks[i], sd_peaks[i]**2)
@@ -1122,7 +1127,7 @@ class ModeledSegmentsCaller:
 
         if self.__interactive:
             fig = plt.figure(1, dpi=300)
-            plt.hist(self.__copy_ratio_median, weights=np.array(self.__weights)[:,0], color = "k", bins = 100, density = True)
+            plt.hist(self.__copy_ratio_median, weights=np.array(self.__weights), color = "k", bins = 100, density = True)
             plt.plot(cn1_interval_candidate[0], [0], "rv")
             plt.plot(cn1_interval_candidate[1], [0], "rv")
             plt.plot(cn2_interval_candidate[0], [0], "g*")
@@ -1141,15 +1146,16 @@ class ModeledSegmentsCaller:
         af__cn2_interval_candidate = []
         for i in range(len(self.__allele_fraction_median)):
             if cn2_interval_candidate[0] <= self.__copy_ratio_median[i] < cn2_interval_candidate[1]:
-                af__cn2_interval_candidate.append([self.__allele_fraction_median[i], self.__weights[i][0]])
+                af__cn2_interval_candidate.append([self.__allele_fraction_median[i], self.__weights[i]])
             elif cn1_interval_candidate[0] <= self.__copy_ratio_median[i] < cn1_interval_candidate[1]:
-                af__cn1_interval_candidate.append([self.__allele_fraction_median[i], self.__weights[i][1]])
+                af__cn1_interval_candidate.append([self.__allele_fraction_median[i], self.__weights[i]])
                 []
         normal_range_af_cn1_interval_candidate = [af for af in af__cn1_interval_candidate
                                                   if (normal_range_af[0] <= af[0] <= normal_range_af[1])]
 
-        if (np.sum(np.array(normal_range_af_cn1_interval_candidate)[:,1]) / np.sum(np.array(af__cn1_interval_candidate))
-                > self.__min_fraction_of_points_in_normal_allele_fraction_region):
+        if (len(normal_range_af_cn1_interval_candidate) > 0
+            and (np.sum(np.array(normal_range_af_cn1_interval_candidate)[:,1]) / np.sum(np.array(af__cn1_interval_candidate))
+                     > self.__min_fraction_of_points_in_normal_allele_fraction_region)):
             cn2_interval = cn1_interval_candidate
             color_1 = 'k'
             color_2 = 'r'
@@ -1468,13 +1474,12 @@ class ModeledSegmentsCaller:
         """ This function plots the details of how the fitting was done to the normal cluster
             in copy ratio and allele fraction space.
         """
-        fig = plt.figure(1, figsize=(12, 6), dpi=400)
+        fig = plt.figure(4, figsize=(12, 6), dpi=400)
         plt.subplot(221)
         xedges = np.linspace(0, 5, 50)
         yedges = np.linspace(0, 0.5, 20)
         plt.hist2d(x=self.__copy_ratio_median, y=self.__allele_fraction_median,
-                   weights=[2 / (1/self.__weights[i][0]**2 + 1/self.__weights[i][1]**2) for i in range(len(self.__weights))],
-                   bins=(xedges, yedges), norm=LogNorm(), cmap="gray_r")
+                   weights=self.__weights, bins=(xedges, yedges), norm=LogNorm(), cmap="gray_r")
         plt.colorbar()
         plt.xlabel("Copy ratio")
         plt.ylabel("Allele fraction")
@@ -1523,8 +1528,9 @@ class ModeledSegmentsCaller:
         """
         samples = np.asarray([self.__copy_ratio_sampled, self.__allele_fraction_sampled]).T
         [pis, mu, cov] = self.__gaussian_mixture_fit
+
         n_Gaussians = len(pis)
-        X, Y = np.mgrid[0:5:.05, 0:0.5:0.01]
+        X, Y = np.mgrid[0:5:.025, 0:0.5:0.005]
         pos = np.empty(X.shape + (2,))
         pos[:, :, 0] = X
         pos[:, :, 1] = Y
@@ -1532,10 +1538,25 @@ class ModeledSegmentsCaller:
         for i in range(n_Gaussians):
             rv = multivariate_normal(mu[i], cov[i])
             Z += pis[i] * rv.pdf(pos)
-        Z = np.asarray([[(Z[i][j] + 0.0000000000001) for i in range(len(Z))] for j in range(len(Z[0]))]).T
-        print("Z = ", Z)
+        Z = np.asarray([[(Z[i][j] + 0.000000000000001) for i in range(len(Z))] for j in range(len(Z[0]))]).T
         plt.contourf(X, Y, Z, cmap="gray_r", locator=ticker.LogLocator())
         plt.colorbar()
+
+        x = np.array(mu)[:,0]
+        y = np.array(mu)[:,1]
+        xerr = np.sqrt(np.array(cov)[:,0])
+        yerr = np.sqrt(np.array(cov)[:,1])
+        for i in range(len(x)):
+            rel_w = pis[i] / max(pis)
+            if rel_w > 0.01:
+                plt.errorbar(x=x[i], y=y[i], xerr=xerr[i], yerr=yerr[i], fmt='o', color=(1, 1-rel_w, 1-rel_w),
+                             markersize=4, linewidth=1)
+
+        plt.plot([self.__normal_range_cr[0]]*2, [0, 0.5], color="w", lineStyle="--")
+        plt.plot([self.__normal_range_cr[1]]*2, [0, 0.5], color="w", lineStyle="--")
+
+        plt.xlim((0, 5))
+        plt.ylim((0, 0.5))
 
     def __gray_background_contigs(self, contig_beginning_end: List, ymin: float, ymax: float, ax):
         """Create a gray/white alternating background, in which the length of the individual stripes is
@@ -1694,5 +1715,3 @@ class ModeledSegmentsCaller:
         std_dev_normal_cr = var_normal_cr**0.5
 
         return [avg_normal_cr, std_dev_normal_cr]
-
-

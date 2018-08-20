@@ -49,6 +49,14 @@ group.add_argument("--load_allele_fraction",
                    default="True",
                    help="Whether to load allele fraction data.")
 
+group.add_argument("--weight-ratio-max",
+                   type=str,
+                   required=False,
+                   default=10,
+                   help="Upon loading the data from file, we set an upper cut-off to the segment weights, "
+                        "given by weight_ratio_max * mean(weights). This is required as ModeledSegments might "
+                        "over-estimate these weights.")
+
 group.add_argument("--log",
                    type=str,
                    required=False,
@@ -132,6 +140,13 @@ group.add_argument("--min_fraction_of_points_in_normal_allele_fraction_region",
                    help="The region of copy ratio values are is considered normal only if at least this "
                         "fraction of points are above the normalMinorAlleleFractionThreshold",)
 
+group.add_argument("--responsibility-threshold-normal",
+                   type=float,
+                   required=False,
+                   default=0.5,
+                   help="Segments are considered normal if the responsibility in the Gaussian mixture model "
+                        "of them being normal exceeds this threshold (set to 0.5 by default).",)
+
 
 def str2bool(boolString):
     if boolString=="true" or boolString==True:
@@ -151,8 +166,7 @@ if __name__ == "__main__":
                                 output_log_dir=args.output,
                                 output_log_prefix=args.output_prefix,
                                 do_logging=args.log,
-                                cr_weight_ratio_max=args.cr_weight_ratio_max,
-                                af_weight_ratio_max=args.af_weight_ratio_max
+                                weight_ratio_max=args.weight_ratio_max
                                 )
 
     # Run the caller
@@ -173,5 +187,6 @@ if __name__ == "__main__":
                                    copy_ratio_peak_min_relative_height=args.copy_ratio_peak_min_relative_height,
                                    copy_ratio_kernel_density_bandwidth=args.copy_ratio_kernel_density_bandwidth,
                                    min_weight_first_cr_peak_cr_data_only=args.min_weight_first_cr_peak_cr_data_only,
-                                   min_fraction_of_points_in_normal_allele_fraction_region=args.min_fraction_of_points_in_normal_allele_fraction_region
+                                   min_fraction_of_points_in_normal_allele_fraction_region=args.min_fraction_of_points_in_normal_allele_fraction_region,
+                                   responsibility_threshold_normal=args.responsibility_threshold_normal
                                    )
