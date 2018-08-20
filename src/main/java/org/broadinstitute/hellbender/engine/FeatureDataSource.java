@@ -296,7 +296,18 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         return getGenomicsDBPath(path) != null;
     }
 
-    public static String getGenomicsDBAbsolutePath(final String path) {
+    public static String getAbsolutePathWithGenDBScheme(final String path) {
+        String gendb_path = FeatureDataSource.getGenomicsDBAbsolutePath(path);
+        if (gendb_path == null) {
+            return null;
+        } else if (gendb_path.contains("://")) {
+            return FeatureDataSource.GENOMIC_DB_URI_SCHEME + "." + gendb_path;
+        } else {
+            return FeatureDataSource.GENOMIC_DB_URI_SCHEME + "://" + gendb_path;
+        }
+    }
+
+    private static String getGenomicsDBAbsolutePath(final String path) {
         String genomicsdbPath = getGenomicsDBPath(path);
         if (genomicsdbPath != null) {
             return BucketUtils.makeFilePathAbsolute(getGenomicsDBPath(path));

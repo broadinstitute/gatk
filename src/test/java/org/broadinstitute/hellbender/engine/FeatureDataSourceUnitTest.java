@@ -66,34 +66,35 @@ public final class FeatureDataSourceUnitTest extends GATKBaseTest {
     @DataProvider(name = "GenomicsDBTestPathData")
     public Object[][] genomicsDBTestPathData() {
         return new Object[][]{
-                //path, getGenomicsDBPath, isGenomicsDBPath
-                {null, null, false},
-                {"", null, false},
-                {"dfdfdf://fdfdf", null, false},
-                {"fdfdf", null, false},
-                {"gendbdfdfdf://fdfdf", null, false},
-                {"gendb-dfdfdf://fdfdf", null, false},
-                {"gendb-dfdfdf://", null, false},
-                {"gendb", null, false},
-                {"gendbdfdf", null, false},
-                {"agendb://dfdfd", null, false},
+                //path, getGenomicsDBPath, getAbsolutePathWithGenDBScheme, isGenomicsDBPath
+                {null, null, null, false},
+                {"", null, null, false},
+                {"dfdfdf://fdfdf", null, null, false},
+                {"fdfdf", null, null, false},
+                {"gendbdfdfdf://fdfdf", null, null, false},
+                {"gendb-dfdfdf://fdfdf", null, null, false},
+                {"gendb-dfdfdf://", null, null, false},
+                {"gendb", null, null, false},
+                {"gendbdfdf", null, null, false},
+                {"agendb://dfdfd", null, null, false},
 
-                {"gendb.dfdfdf://fdfdf", "dfdfdf://fdfdf", true},
-                {"gendb://fdfdf", "fdfdf", true},
-                {"gendb://", "", true},
-                {"gendb:///fdfd", "/fdfd", true},
-                {"gendb:///", "/", true},
-                {"gendb.hdfs://this-node:9000/dir", "hdfs://this-node:9000/dir", true},
-                {"gendb.gs://my-bucket/dir", "gs://my-bucket/dir", true},
+                {"gendb.dfdfdf://fdfdf", "dfdfdf://fdfdf", "gendb://"+new File("dfdfdf://fdfdf").getAbsolutePath(), true}, //Not supported URI.
+                {"gendb://fdfdf", "fdfdf", "gendb://"+new File("fdfdf").getAbsolutePath(), true},
+                {"gendb://", "", "gendb://" + new File("").getAbsolutePath(), true},
+                {"gendb:///fdfd", "/fdfd", "gendb:///fdfd", true},
+                {"gendb:///", "/", "gendb:///", true},
+                {"gendb.hdfs://this-node:9000/dir", "hdfs://this-node:9000/dir", "gendb.hdfs://this-node:9000/dir", true},
+                {"gendb.gs://my-bucket/dir", "gs://my-bucket/dir", "gendb.gs://my-bucket/dir", true},
 
-                {"gendb-hdfs://this-node:9000/dir", null, false},
-                {"gendb-gs://this-node:9000/dir", null, false}
+                {"gendb-hdfs://this-node:9000/dir", null, null, false},
+                {"gendb-gs://this-node:9000/dir", null, null, false}
         };
     }
 
     @Test(dataProvider = "GenomicsDBTestPathData")
-    public void testGenomicsDBPathParsing(String path, String expectedPath, boolean expectedComparison){
+    public void testGenomicsDBPathParsing(String path, String expectedPath, String gendbExpectedAbsolutePath, boolean expectedComparison){
         Assert.assertEquals(FeatureDataSource.getGenomicsDBPath(path), expectedPath);
+        Assert.assertEquals(FeatureDataSource.getAbsolutePathWithGenDBScheme(path), gendbExpectedAbsolutePath);
         Assert.assertEquals(FeatureDataSource.isGenomicsDBPath(path), expectedComparison);
     }
 
