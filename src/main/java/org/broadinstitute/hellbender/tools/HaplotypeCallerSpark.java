@@ -195,7 +195,8 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
         // Reads must be coordinate sorted to use the overlaps partitioner
         final SAMFileHeader readsHeader = header.clone();
         readsHeader.setSortOrder(SAMFileHeader.SortOrder.coordinate);
-        final JavaRDD<GATKRead> coordinateSortedReads = SparkUtils.sortReadsAccordingToHeader(reads, readsHeader, numReducers);
+        // reads are already sorted by BQSR (TODO: sort only if needed)
+        final JavaRDD<GATKRead> coordinateSortedReads = reads; // SparkUtils.sortReadsAccordingToHeader(reads, readsHeader, numReducers);
         final VariantAnnotatorEngine variantannotatorEngine = new VariantAnnotatorEngine(annotations,  hcArgs.dbsnp.dbsnp, hcArgs.comps, hcArgs.emitReferenceConfidence != ReferenceConfidenceMode.NONE);
 
         final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgs, false, false, readsHeader, new ReferenceMultiSourceAdapter(reference), variantannotatorEngine);

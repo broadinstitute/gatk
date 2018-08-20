@@ -60,14 +60,15 @@ public final class BroadcastJoinReadsWithVariants {
         }
         String path = variantsPaths.get(0);
         return reads.mapPartitionsToPair((PairFlatMapFunction<Iterator<GATKRead>, GATKRead, Iterable<GATKVariant>>) gatkReadIterator -> {
-            FeatureDataSource<VariantContext> variantSource = openFeatureSource(path);
-            return Iterators.transform(gatkReadIterator, new Function<GATKRead, Tuple2<GATKRead, Iterable<GATKVariant>>>() {
-                @Nullable
-                @Override
-                public Tuple2<GATKRead, Iterable<GATKVariant>> apply(@Nullable GATKRead read) {
-                    return getOverlapping(read, variantSource);
-                }
-            });
+            try (FeatureDataSource<VariantContext> variantSource = openFeatureSource(path)) {
+                return Iterators.transform(gatkReadIterator, new Function<GATKRead, Tuple2<GATKRead, Iterable<GATKVariant>>>() {
+                    @Nullable
+                    @Override
+                    public Tuple2<GATKRead, Iterable<GATKVariant>> apply(@Nullable GATKRead read) {
+                        return getOverlapping(read, variantSource);
+                    }
+                });
+            }
         });
     }
 
@@ -103,7 +104,7 @@ public final class BroadcastJoinReadsWithVariants {
 
     private static FeatureDataSource<VariantContext> openFeatureSource(String path) {
         int cloudPrefetchBuffer = 40; // only used for GCS
-        return new FeatureDataSource<>(path, null, 0, null, cloudPrefetchBuffer, cloudPrefetchBuffer);
+        return new FeatureDataSource<>(path, null, 100000, null, cloudPrefetchBuffer, cloudPrefetchBuffer);
     }
 
     private static List<GATKVariant> getOverlapping(FeatureDataSource<VariantContext> variantSource, SimpleInterval interval) {

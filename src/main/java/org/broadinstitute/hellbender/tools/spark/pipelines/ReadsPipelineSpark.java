@@ -192,20 +192,18 @@ public class ReadsPipelineSpark extends GATKSparkTool {
 
         final JavaRDD<GATKRead> markedReads = MarkDuplicatesSpark.mark(alignedReads, header, markDuplicatesSparkArgumentCollection.duplicatesScoringStrategy, new SerializableOpticalDuplicatesFinder(), getRecommendedNumReducers(), markDuplicatesSparkArgumentCollection.dontMarkUnmappedMates);
 
+        // always coordinate-sort reads so BQSR can use queryLookaheadBases in FeatureDataSource
+        final SAMFileHeader readsHeader = header.clone();
+        readsHeader.setSortOrder(SAMFileHeader.SortOrder.coordinate);
+        final JavaRDD<GATKRead> sortedMarkedReads = SparkUtils.sortReadsAccordingToHeader(markedReads, readsHeader, numReducers);
+
         // The markedReads have already had the WellformedReadFilter applied to them, which
         // is all the filtering that MarkDupes and ApplyBQSR want. BQSR itself wants additional
         // filtering performed, so we do that here.
         //NOTE: this doesn't honor enabled/disabled commandline filters
         final ReadFilter bqsrReadFilter = ReadFilter.fromList(BaseRecalibrator.getBQSRSpecificReadFilterList(), header);
 
-        JavaRDD<GATKRead> markedFilteredReadsForBQSR = markedReads.filter(read -> bqsrReadFilter.test(read));
-
-        if (joinStrategy.equals(JoinStrategy.OVERLAPS_PARTITIONER)) {
-            // the overlaps partitioner requires that reads are coordinate-sorted
-            final SAMFileHeader readsHeader = header.clone();
-            readsHeader.setSortOrder(SAMFileHeader.SortOrder.coordinate);
-            markedFilteredReadsForBQSR = SparkUtils.sortReadsAccordingToHeader(markedFilteredReadsForBQSR, readsHeader, numReducers);
-        }
+        JavaRDD<GATKRead> markedFilteredReadsForBQSR = sortedMarkedReads.filter(read -> bqsrReadFilter.test(read));
 
         VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);
         JavaRDD<GATKVariant> bqsrKnownVariants = variantsSparkSource.getParallelVariants(baseRecalibrationKnownVariants, getIntervals());
@@ -214,7 +212,7 @@ public class ReadsPipelineSpark extends GATKSparkTool {
         final RecalibrationReport bqsrReport = BaseRecalibratorSparkFn.apply(rddReadContext, header, getReferenceSequenceDictionary(), bqsrArgs);
 
         final Broadcast<RecalibrationReport> reportBroadcast = ctx.broadcast(bqsrReport);
-        final JavaRDD<GATKRead> finalReads = ApplyBQSRSparkFn.apply(markedReads, reportBroadcast, header, applyBqsrArgs.toApplyBQSRArgumentCollection(bqsrArgs.PRESERVE_QSCORES_LESS_THAN));
+        final JavaRDD<GATKRead> finalReads = ApplyBQSRSparkFn.apply(sortedMarkedReads, reportBroadcast, header, applyBqsrArgs.toApplyBQSRArgumentCollection(bqsrArgs.PRESERVE_QSCORES_LESS_THAN));
 
         if (outputBam != null) { // only write output of BQSR if output BAM is specified
             writeReads(ctx, outputBam, finalReads, header);
@@ -223,7 +221,8 @@ public class ReadsPipelineSpark extends GATKSparkTool {
         // Run Haplotype Caller
         final ReadFilter hcReadFilter = ReadFilter.fromList(HaplotypeCallerEngine.makeStandardHCReadFilters(), header);
         final JavaRDD<GATKRead> filteredReadsForHC = finalReads.filter(read -> hcReadFilter.test(read));
-        filteredReadsForHC.persist(StorageLevel.DISK_ONLY()); // without caching, computations are run twice as a side effect of finding partition boundaries for sorting
+        // no longer cache since sorting happens earlier in the pipeline
+//        filteredReadsForHC.persist(StorageLevel.DISK_ONLY()); // without caching, computations are run twice as a side effect of finding partition boundaries for sorting
         final List<SimpleInterval> intervals = hasIntervals() ? getIntervals() : IntervalUtils.getAllIntervalsForReference(header.getSequenceDictionary());
         HaplotypeCallerSpark.callVariantsWithHaplotypeCallerAndWriteOutput(ctx, filteredReadsForHC, header, getReference(), intervals, hcArgs, shardingArgs, numReducers, output, makeVariantAnnotations());
 
