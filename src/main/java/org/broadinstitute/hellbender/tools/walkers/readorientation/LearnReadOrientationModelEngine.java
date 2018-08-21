@@ -197,7 +197,7 @@ public class LearnReadOrientationModelEngine {
         // Compute the responsibilities of alt sites with depth=1
         for (int i = 0; i < maxDepth; i++){
             final int depth = i+1;
-            for (Nucleotide altAllele : Nucleotide.STANDARD_DNA_BASES){
+            for (Nucleotide altAllele : Nucleotide.STANDARD_BASES){
                 for (ReadOrientation orientation : ReadOrientation.values()){
                     if (altAllele == refAllele){
                         continue;

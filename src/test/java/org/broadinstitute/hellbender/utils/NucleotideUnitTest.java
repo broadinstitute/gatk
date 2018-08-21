@@ -286,9 +286,9 @@ public class NucleotideUnitTest {
         }
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    @Test
     public void testValueOfNegativeBase() {
-        Nucleotide.decode((byte) -10);
+        Assert.assertSame(Nucleotide.decode((byte) -10), Nucleotide.X);
     }
 
     @Test
@@ -335,10 +335,13 @@ public class NucleotideUnitTest {
         subject.addAll((byte[]) null);
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    @Test
     public void testAddingAllAtOnceWithNegativeBases() {
         final Nucleotide.Counter subject = new Nucleotide.Counter();
         subject.addAll(new byte[]{'a', 'A', -10, 'C'});
+        Assert.assertEquals(subject.get(Nucleotide.INVALID), 1);
+        Assert.assertEquals(subject.get(Nucleotide.A), 2);
+        Assert.assertEquals(subject.get(Nucleotide.T), 0);
     }
 
     @Test(dependsOnMethods = "testDecode", dataProvider = "testSequences")
@@ -373,7 +376,6 @@ public class NucleotideUnitTest {
         Assert.assertSame(Nucleotide.CYTOSINE, Nucleotide.C);
         Assert.assertSame(Nucleotide.URACIL, Nucleotide.U);
         Assert.assertSame(Nucleotide.ANY, Nucleotide.N);
-        Assert.assertSame(Nucleotide.UNKNOWN, Nucleotide.N);
         Assert.assertSame(Nucleotide.PURINE, Nucleotide.R);
         Assert.assertSame(Nucleotide.PYRIMIDINE, Nucleotide.Y);
         Assert.assertSame(Nucleotide.INVALID, Nucleotide.X);
@@ -393,7 +395,6 @@ public class NucleotideUnitTest {
         Assert.assertSame(constantNameToInstance("CYTOSINE"), Nucleotide.C);
         Assert.assertSame(constantNameToInstance("URACIL"), Nucleotide.U);
         Assert.assertSame(constantNameToInstance("ANY"), Nucleotide.N);
-        Assert.assertSame(constantNameToInstance("UNKNOWN"), Nucleotide.N);
         Assert.assertSame(constantNameToInstance("PURINE"), Nucleotide.R);
         Assert.assertSame(constantNameToInstance("PYRIMIDINE"), Nucleotide.Y);
         Assert.assertSame(constantNameToInstance("INVALID"), Nucleotide.X);

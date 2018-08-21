@@ -395,7 +395,7 @@ public class LearnReadOrientationModelEngineUnitTest extends CommandLineProgramT
      */
     private List<Histogram<Integer>> createDepthOneAltHistograms(final String refContext, final int depth, final int numExamples) {
         final List<Histogram<Integer>> altComputationalHistograms = new ArrayList<>(F1R2FilterConstants.numAltHistogramsPerContext);
-        for (final Nucleotide altAllele : Nucleotide.STANDARD_DNA_BASES){
+        for (final Nucleotide altAllele : Nucleotide.STANDARD_BASES){
             if (altAllele == F1R2FilterUtils.getMiddleBase(refContext)){
                 continue;
             }

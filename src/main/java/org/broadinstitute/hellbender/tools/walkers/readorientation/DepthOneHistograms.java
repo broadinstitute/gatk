@@ -24,9 +24,9 @@ public class DepthOneHistograms {
 
         // Initialize, for each reference context, the (Alt Allele, Artifact Type) -> Histogram map
         F1R2FilterConstants.ALL_KMERS.forEach(context -> {
-            map.put(context, new HashMap<>((Nucleotide.STANDARD_DNA_BASES.size() - 1) * ReadOrientation.SIZE));
+            map.put(context, new HashMap<>((Nucleotide.STANDARD_BASES.size() - 1) * ReadOrientation.SIZE));
 
-            for (Nucleotide altAllele : Nucleotide.STANDARD_DNA_BASES) {
+            for (Nucleotide altAllele : Nucleotide.STANDARD_BASES) {
                 // Skip e.g. AGT -> AGT because G is not an alt allele
 
                 if (altAllele == F1R2FilterUtils.getMiddleBase(context)) {
