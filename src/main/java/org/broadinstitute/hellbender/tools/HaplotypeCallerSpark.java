@@ -239,7 +239,7 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
         Utils.validateArg(hcArgs.comps.isEmpty(), "HaplotypeCallerSpark does not yet support -comp or --comp arguments" );
         Utils.validateArg(hcArgs.bamOutputPath == null, "HaplotypeCallerSpark does not yet support -bamout or --bamOutput");
 
-        final Broadcast<ReferenceLazyFileSource> referenceBroadcast = ctx.broadcast(reference);
+        //final Broadcast<ReferenceLazyFileSource> referenceBroadcast = ctx.broadcast(reference);
         final Broadcast<HaplotypeCallerArgumentCollection> hcArgsBroadcast = ctx.broadcast(hcArgs);
 
         final Broadcast<VariantAnnotatorEngine> annotatorEngineBroadcast = ctx.broadcast(variantannotatorEngine);
@@ -250,11 +250,14 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
 
         final JavaRDD<Shard<GATKRead>> readShards = SparkSharder.shard(ctx, reads, GATKRead.class, header.getSequenceDictionary(), shardBoundaries, maxReadLength);
 
+        // Try *not* broadcasting so each task gets its own copy of ReferenceLazyFileSource
+        // TODO: formalize
+
         final JavaRDD<Tuple2<AssemblyRegion, SimpleInterval>> assemblyRegions = readShards
-                .mapPartitions(shardsToAssemblyRegions(referenceBroadcast,
+                .mapPartitions(shardsToAssemblyRegions(reference,
                                                        hcArgsBroadcast, shardingArgs, header, annotatorEngineBroadcast));
 
-        return assemblyRegions.mapPartitions(callVariantsFromAssemblyRegions(header, referenceBroadcast, hcArgsBroadcast, annotatorEngineBroadcast));
+        return assemblyRegions.mapPartitions(callVariantsFromAssemblyRegions(header, reference, hcArgsBroadcast, annotatorEngineBroadcast));
     }
 
     /**
@@ -264,12 +267,12 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
      */
     private static FlatMapFunction<Iterator<Tuple2<AssemblyRegion, SimpleInterval>>, VariantContext> callVariantsFromAssemblyRegions(
             final SAMFileHeader header,
-            final Broadcast<ReferenceLazyFileSource> referenceBroadcast,
+            final ReferenceLazyFileSource reference,
             final Broadcast<HaplotypeCallerArgumentCollection> hcArgsBroadcast,
             final Broadcast<VariantAnnotatorEngine> annotatorEngineBroadcast) {
         return regionAndIntervals -> {
             //HaplotypeCallerEngine isn't serializable but is expensive to instantiate, so construct and reuse one for every partition
-            final ReferenceLazyFileSource referenceSource = referenceBroadcast.value();
+            final ReferenceLazyFileSource referenceSource = reference;
             ReferenceSequenceFile referenceSequenceFile = referenceSource.getReferenceSequenceFile();
             final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgsBroadcast.value(), false, false, header, referenceSequenceFile, annotatorEngineBroadcast.getValue());
             return Utils.stream(regionAndIntervals).flatMap(regionToVariants(hcEngine)).iterator();
@@ -301,13 +304,13 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
      * interval it was generated in
      */
     private static FlatMapFunction<Iterator<Shard<GATKRead>>, Tuple2<AssemblyRegion, SimpleInterval>> shardsToAssemblyRegions(
-            final Broadcast<ReferenceLazyFileSource> reference,
+            final ReferenceLazyFileSource reference,
             final Broadcast<HaplotypeCallerArgumentCollection> hcArgsBroadcast,
             final ShardingArgumentCollection assemblyArgs,
             final SAMFileHeader header,
             final Broadcast<VariantAnnotatorEngine> annotatorEngineBroadcast) {
         return shards -> {
-            final ReferenceLazyFileSource referenceSource = reference.value();
+            final ReferenceLazyFileSource referenceSource = reference;
             ReferenceSequenceFile referenceSequenceFile = referenceSource.getReferenceSequenceFile();
             final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgsBroadcast.value(), false, false, header, referenceSequenceFile, annotatorEngineBroadcast.getValue());
 
