@@ -4,6 +4,7 @@ import com.google.common.collect.Sets;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.StringUtil;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.apache.commons.collections4.Predicate;
 import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.barclay.argparser.Advanced;
@@ -150,6 +151,7 @@ public final class EvaluateConcordanceOnNonGenotypedSVVCFs extends AbstractInter
     private Integer minAlnLen = 0;
 
     // =================================================================================================================
+    private static final String VARIANT_SKIPPED_EVAL_REASON_KEY = "EVAL_SKIP_REASON";
 
     private static final Set<String> CHROMOSOME_Y_NAMES = Sets.newHashSet("Y", "chrY");
     private Set<String> chromosomesOfInterest = new HashSet<>();
@@ -158,6 +160,8 @@ public final class EvaluateConcordanceOnNonGenotypedSVVCFs extends AbstractInter
     private Float insLenDiffScoreCoeff;
 
     private final List<EvalVariant> classifiedVariants = new ArrayList<>(50_000); // guess
+
+    private final List<VariantContext> evalSkippedTesting = new ArrayList<>(5_000); // guess
 
     // =================================================================================================================
 
@@ -179,34 +183,46 @@ public final class EvaluateConcordanceOnNonGenotypedSVVCFs extends AbstractInter
     protected Predicate<VariantContext> makeEvalVariantFilter() {
         return vc -> {
             // currently only considers variants on canonical chromosomes, filter turned off if chromosomesOfInterest is all chromosomes in VCF header
-            if ( ! chromosomesOfInterest.contains(vc.getContig()) )
+            if ( ! chromosomesOfInterest.contains(vc.getContig()) ) {
+                evalSkippedTesting.add( new VariantContextBuilder(vc).attribute(VARIANT_SKIPPED_EVAL_REASON_KEY, "not_on_chr_of_interest").make() );
                 return false;
+            }
 
-            if ( maskedOut.hasOverlapper(convertLocatable(vc, refSeqDict)) )  // masked out
+            if ( maskedOut.hasOverlapper(convertLocatable(vc, refSeqDict)) ) {  // masked out
+                evalSkippedTesting.add( new VariantContextBuilder(vc).attribute(VARIANT_SKIPPED_EVAL_REASON_KEY, "in_masked_out_region").make() );
                 return false;
+            }
 
             if ( minMQ > 0 ) {
                 if (vc.hasAttribute(GATKSVVCFConstants.MAPPING_QUALITIES)) {
                     int maxMQ = SVUtils.getAttributeAsStringStream(vc, GATKSVVCFConstants.MAPPING_QUALITIES).mapToInt(Integer::new).max().orElse(0);
-                    if (maxMQ < minMQ)
+                    if (maxMQ < minMQ) {
+                        evalSkippedTesting.add( new VariantContextBuilder(vc).attribute(VARIANT_SKIPPED_EVAL_REASON_KEY, "low_asm_mq").make() );
                         return false;
+                    }
                 }
             }
             if ( minAlnLen > 0 ) {
                 if (vc.hasAttribute(GATKSVVCFConstants.MAX_ALIGN_LENGTH)) {
-                    if (vc.getAttributeAsInt(GATKSVVCFConstants.MAX_ALIGN_LENGTH, 0) < minAlnLen)
+                    if (vc.getAttributeAsInt(GATKSVVCFConstants.MAX_ALIGN_LENGTH, 0) < minAlnLen) {
+                        evalSkippedTesting.add( new VariantContextBuilder(vc).attribute(VARIANT_SKIPPED_EVAL_REASON_KEY, "short_asm_aln").make() );
                         return false;
+                    }
                 }
             }
 
             final int svLen = Math.abs(vc.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0));
             final String svType = vc.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "");
             if (svType.equals(SimpleSVType.SupportedType.DEL.name())) { // some tiny deletion calls are actually RPL calls with micro deletions
-                if ( (!vc.hasAttribute(GATKSVVCFConstants.INSERTED_SEQUENCE)) && svLen < StructuralVariationDiscoveryArgumentCollection.STRUCTURAL_VARIANT_SIZE_LOWER_BOUND) // no ins_seq AND tiny
+                if ( (!vc.hasAttribute(GATKSVVCFConstants.INSERTED_SEQUENCE)) && svLen < StructuralVariationDiscoveryArgumentCollection.STRUCTURAL_VARIANT_SIZE_LOWER_BOUND) { // no ins_seq AND tiny
+                    evalSkippedTesting.add( new VariantContextBuilder(vc).attribute(VARIANT_SKIPPED_EVAL_REASON_KEY, "tiny_del").make() );
                     return false;
+                }
             } else if (svType.equals(SimpleSVType.SupportedType.INS.name()) || svType.equals(SimpleSVType.SupportedType.DUP.name())) {
-                if (svLen < StructuralVariationDiscoveryArgumentCollection.STRUCTURAL_VARIANT_SIZE_LOWER_BOUND)
+                if (svLen < StructuralVariationDiscoveryArgumentCollection.STRUCTURAL_VARIANT_SIZE_LOWER_BOUND) {
+                    evalSkippedTesting.add( new VariantContextBuilder(vc).attribute(VARIANT_SKIPPED_EVAL_REASON_KEY, "tiny_ins").make() );
                     return false;
+                }
             }
 
             return true;
@@ -362,6 +378,7 @@ public final class EvaluateConcordanceOnNonGenotypedSVVCFs extends AbstractInter
     public Object onTraversalSuccess() {
         printSummaryToStdErr();
         writeConcordanceToBedFile();
+        writeSkippedEvalBedFile();
         return "SUCCESS";
     }
 
@@ -405,6 +422,7 @@ public final class EvaluateConcordanceOnNonGenotypedSVVCFs extends AbstractInter
         System.err.println();
     }
 
+    private static final String NA_STRING = "NA";
     /**
      * BED file contains only: TP, FP, FILTERED_TRUE_NEGATIVE (record correctly filtered), and FILTERED_FALSE_NEGATIVE.
      *
@@ -439,9 +457,33 @@ public final class EvaluateConcordanceOnNonGenotypedSVVCFs extends AbstractInter
                 final String evalID = eval.getID();
                 final String contigNames = eval.hasAttribute(GATKSVVCFConstants.CONTIG_NAMES)
                         ? SVUtils.getAttributeAsStringStream(eval, GATKSVVCFConstants.CONTIG_NAMES).collect(Collectors.joining(","))
-                        : "NA";
+                        : NA_STRING;
                 writer.write(String.format("%s\t%d\t%d\t%s\t%.2f\n", eval.getContig(), eval.getStart(), eval.getEnd(),
                         concordance + ";" + type + ";" + other + ";" + evalID + ";" + contigNames, supportScore));
+            }
+        } catch (final IOException ioe) {
+            throw new GATKException("Can't write BED file " + outPrefix + "concordance.bed", ioe);
+        }
+    }
+
+    private void writeSkippedEvalBedFile() {
+        try (final OutputStreamWriter writer = new OutputStreamWriter(new BufferedOutputStream(
+                BucketUtils.createFile(outPrefix + "skipped.bed")))) {
+            for (final VariantContext skipped : evalSkippedTesting) {
+                final String asmCtg;
+                if(skipped.hasAttribute(GATKSVVCFConstants.CONTIG_NAMES)) {
+                    asmCtg = StringUtil.join(",", SVUtils.getAttributeAsStringList(skipped, GATKSVVCFConstants.CONTIG_NAMES));
+                } else {
+                    asmCtg = NA_STRING;
+                }
+                StringBuilder stringBuilder = new StringBuilder(skipped.getContig());
+                stringBuilder.append("\t").append(skipped.getStart());
+                stringBuilder.append("\t").append(skipped.getEnd());
+                stringBuilder.append("\t").append(skipped.getID())
+                        .append(";").append(asmCtg)
+                        .append(";").append(skipped.getAttributeAsString(VARIANT_SKIPPED_EVAL_REASON_KEY, ""))
+                        .append("\n");
+                writer.write( stringBuilder.toString() );
             }
         } catch (final IOException ioe) {
             throw new GATKException("Can't write BED file " + outPrefix + "concordance.bed", ioe);
