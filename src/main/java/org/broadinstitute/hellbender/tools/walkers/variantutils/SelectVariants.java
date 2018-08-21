@@ -570,7 +570,7 @@ public final class SelectVariants extends VariantWalker {
         final VariantContext filteredGenotypeToNocall = setFilteredGenotypesToNocall ? builder.make(): sub;
 
         // Not excluding non-variants or subsetted polymorphic variants AND including filtered loci or subsetted variant is not filtered
-        if ((!XLnonVariants || filteredGenotypeToNocall.isPolymorphicInSamples()) && (!XLfiltered || !filteredGenotypeToNocall.isFiltered())) {
+        if ((!XLnonVariants || filteredGenotypeToNocall.isPolymorphicInSamples() || !checkOnlySpanDel(filteredGenotypeToNocall)) && (!XLfiltered || !filteredGenotypeToNocall.isFiltered())) {
 
             // Write the subsetted variant if it matches all of the expressions
             boolean failedJexlMatch = false;
@@ -596,6 +596,9 @@ public final class SelectVariants extends VariantWalker {
         }
     }
 
+    private boolean checkOnlySpanDel(VariantContext vc){
+        return vc.getAlternateAlleles().size() == 1 && vc.getAlternateAllele(0).basesMatch(Allele.SPAN_DEL);
+    }
     /**
      * Get the genotype filters
      *
