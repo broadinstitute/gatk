@@ -119,7 +119,6 @@ class SamplePloidyWriter:
                                   sample_index: int):
         fig, axarr = plt.subplots(2, 1, figsize=(12, 8), gridspec_kw = {'height_ratios':[3, 1]})
         si = sample_index
-        num_counts = ploidy_workspace.num_counts
         counts_m = ploidy_workspace.counts_m
         for i, contig_tuple in enumerate(ploidy_workspace.contig_tuples):
             for contig in contig_tuple:
@@ -128,18 +127,18 @@ class SamplePloidyWriter:
 
                 hist_norm_m = ploidy_workspace.hist_sjm[si, j] / \
                               np.sum(ploidy_workspace.hist_sjm[si, j] * ploidy_workspace.hist_mask_sjm[si, j])
-                axarr[0].semilogy(counts_m, hist_norm_m, c='k', alpha=0.25,
-                                  label='masked data' if j == 0 else None)
-                axarr[0].semilogy(counts_m, np.ma.array(hist_norm_m, mask=hist_mask_m), c='b', alpha=0.5,
-                                  label='data' if j == 0 else None)
+                axarr[0].step(counts_m, hist_norm_m, c='k', alpha=0.25,
+                              label='masked data' if j == 0 else None)
+                axarr[0].step(counts_m, np.ma.array(hist_norm_m, mask=hist_mask_m), c='b', alpha=0.5,
+                              label='data' if j == 0 else None)
                 mu = ploidy_workspace.fit_mu_sj[si, j]
                 alpha = ploidy_workspace.fit_alpha_sj[si, j]
-                tau = alpha / (mu * (alpha + mu))
-                hist_norm = 0.5 * (1 + erf((num_counts - 0.5 - mu) * np.sqrt(tau / 2.)))
-                pdf_m = nbinom.pmf(k=counts_m, n=alpha, p=alpha / (mu + alpha)) / hist_norm
-                axarr[0].semilogy(counts_m, np.ma.array(pdf_m, mask=hist_mask_m), c='g', lw=2,
-                                  label='histogram model' if j == 0 else None)
+                hist_norm = ploidy_workspace.fit_hist_norm_sj[si, j]
+                pdf_m = hist_norm * nbinom.pmf(k=counts_m, n=alpha, p=alpha / (mu + alpha))
+                axarr[0].step(counts_m, np.ma.array(pdf_m, mask=hist_mask_m), c='g', lw=2,
+                              label='histogram model' if j == 0 else None)
                 axarr[0].set_xlim([0, ploidy_workspace.num_counts])
+                axarr[0].set_yscale('log')
         axarr[0].set_ylim([1 / np.max(np.sum(ploidy_workspace.hist_sjm[si] * ploidy_workspace.hist_mask_sjm[si],
                                              axis=-1)),
                            1])
