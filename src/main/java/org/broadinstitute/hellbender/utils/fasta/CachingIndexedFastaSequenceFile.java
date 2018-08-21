@@ -284,7 +284,7 @@ public final class CachingIndexedFastaSequenceFile extends IndexedFastaSequenceF
      *         all of the bases in the ReferenceSequence returned by this method will be upper cased.
      */
     @Override
-    public ReferenceSequence getSubsequenceAt( final String contig, long start, final long stop ) {
+    public synchronized ReferenceSequence getSubsequenceAt( final String contig, long start, final long stop ) {
         final ReferenceSequence result;
 
         if ( (stop - start) >= cacheSize ) {
