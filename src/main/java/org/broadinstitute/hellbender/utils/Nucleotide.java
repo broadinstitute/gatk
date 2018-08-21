@@ -9,36 +9,42 @@ import java.util.List;
  *
  * <p>
  *    This enumeration not only contains standard (non-ambiguous) nucleotides, but also
- *    values to represent ambiguous and an invalid nucleotide call ({@link #X} aka {@link #INVALID}.
+ *    contains ambiguous nucleotides, as well as a code {@link #X} (a.k.a. {@link #INVALID})
+ *    for invalid nucleotide calls.
  * </p>
  *
  * <p>
  *     You can query whether a value refers to a non-ambiguous nucleotide with {@link #isStandard()} or
- *     {@link #isAmbiguous()} depending of your preference. Notice that the special value {@link #X}
+ *     {@link #isAmbiguous()} whichever is most convenient. Notice that the special value {@link #X}
  *     is neither of those.
  * </p>
  *
  * <p>
  *     Querying the {@link #X} value for its {@link #complement}, {@link #transition} or
  *     {@link #transversion} or using it in other operations
- *     likes {@link #intersect} would result in returning also a {@link #X}; similar to {@link Double#NaN} in
+ *     such as {@link #intersect} will return {@link #X}; similar to {@link Double#NaN} in
  *     {@code double} arithmetic.
  * </p>
  *
  * <p>
- *     For naming consistency it is recommended to use {@link #decode} and {@link #encodeAsByte} or {@link #encodeAsString} methods to
- *     translate byte/char and string encodings from and into values of this enum over the inherited {@link #toString} or {@link #name}.
+ *     For naming consistency it is recommended to use {@link #decode} and {@link #encodeAsByte}
+ *     or {@link #encodeAsString} methods to translate byte/char and string encodings from and
+ *     into values of this enum over the inherited {@link #toString}, {@link #name} or {@link #valueOf}.
  * </p>
  *
  * <p>
- *     Although the canonical names for values use the single letter IUPAC encodings, this class provides
- *     convenient longer form names constant aliases (e.g. {@link #ADENINE} for {@link #A}, {@link #PURINE} for {@link #R}, etc.).
+ *     Although the canonical names for values use the single letter IUPAC
+ *     encodings, this class provides convenient longer form names constant aliases
+ *     (e.g. {@link #ADENINE} for {@link #A}, {@link #PURINE} for {@link #R}, etc.).
  * </p>
  * <p>
- *     Finally, notice that there is no code of the "gap nucleotide" that may appear in aligned sequences as in fact that is not a nucleotide.
- *     A base encoding using the typical gap representation such as '.' or '-' would
+ *     Uracil and Thymine are considered equivalent in this enum with {@link #T} as the canonical name.
+ * </p>
+ * <p>
+ *     Finally, notice that there is no code of the "gap nucleotide" that may appear in aligned sequences as in fact
+ *     that is not a nucleotide. A base encoding using the typical gap representation such as '.' or '-' would
  *     be interpreted as an {@link #INVALID} (i.e. {@link #X}) call which is probably not what you want.
- *     So code that mus support those will need to do so outside this {@code enum}.
+ *     So code to support those will need to do so outside this {@code enum}.
  * </p>
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
@@ -67,8 +73,9 @@ public enum Nucleotide {
     V(A, C, G), // Not-V (V follows T)
     // Any
     N(A, C, G, T), // Any/Unknown
-    // and X/invalid-call:
-    X(); // Invalid.
+
+    // And X/invalid-call:
+    X();
 
     // As far as this enum is concern,
     // references to Uracil (U) are considered equivalent to Thymine (T) as they are transcription equivalent.
@@ -187,7 +194,6 @@ public enum Nucleotide {
      */
     private final char upperCaseCharEncoding;
 
-
     /**
      * Construct a nucleotide given its mask.
      * @param mask the mask.
@@ -200,7 +206,6 @@ public enum Nucleotide {
         upperCaseByteEncoding = (byte) Character.toUpperCase(name().charAt(0));
         upperCaseCharEncoding = Character.toUpperCase(name().charAt(0));
         lowerCaseStringEncoding = name().toLowerCase();
-
     }
 
     /**
@@ -354,14 +359,17 @@ public enum Nucleotide {
      * Returns the nucleotide code that include all and only the nucleotides that are
      * included by this another code.
      * @param other the other nucleotide code.
-     * @return never {@code null}.
+     * @throws IllegalArgumentException if {@code other} is {@code null}.
+     * @return never {@code null}. Returns {@link #INVALID} if the intersection does not contain
+     * any nucleotide.
      */
     public Nucleotide intersect(final Nucleotide other) {
+        Utils.nonNull(other, "the other nucleotide cannot be null");
         return maskToValue[mask & other.mask];
     }
 
     /**
-     * Checks whether to base encodings make reference to the same {@link #Nucleotide}
+     * Checks whether two base encodings make reference to the same {@link #Nucleotide}
      *  instance regardless of their case.
      * <p>
      *     This method is a shorthand for:
