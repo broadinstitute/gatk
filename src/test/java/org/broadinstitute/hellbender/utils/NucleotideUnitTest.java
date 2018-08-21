@@ -14,7 +14,7 @@ import java.util.*;
 public class NucleotideUnitTest {
 
     private static final Random random = new Random(13);
-    private static final RandomDNA randomDNA = new RandomDNA(13);
+    private static final RandomDNA randomDNA = new RandomDNA(random);
     private static final int MIN_RANDOM_SEQ_LENGTH = 10;
     private static final int MAX_RANDOM_SEQ_LENGTH = 100;
     private static final int NUMBER_OF_RANDOM_SEQUENCES = 10;
@@ -31,7 +31,70 @@ public class NucleotideUnitTest {
     }
 
     @Test(dataProvider = "values")
-    public void testIsConcrete(final Nucleotide nuc) {
+    public void testEncodeAsChar(final Nucleotide nuc) {
+        // Will always use the first letter of the constant as the one byte encoding.
+        final char firstLetter = nuc.name().charAt(0);
+        final char expectedLowerEncoding = Character.toLowerCase(firstLetter);
+        final char expectedUpperEncoding = Character.toUpperCase(firstLetter);
+        Assert.assertEquals(nuc.encodeAsChar(), expectedUpperEncoding); // by default is upper case.
+        Assert.assertEquals(nuc.encodeAsChar(true), expectedUpperEncoding);
+        Assert.assertEquals(nuc.encodeAsChar(false), expectedLowerEncoding);
+    }
+
+    @Test(dataProvider = "values")
+    public void testEncodeAsString(final Nucleotide nuc) {
+        Assert.assertEquals(nuc.encodeAsString(), "" + (char) nuc.encodeAsByte());
+        Assert.assertEquals(nuc.encodeAsString(), nuc.encodeAsString(true));
+        Assert.assertEquals(nuc.encodeAsString(false), nuc.encodeAsString(true).toLowerCase());
+        Assert.assertEquals(nuc.encodeAsString(true), "" + (char) nuc.encodeAsByte(true));
+        Assert.assertEquals(nuc.encodeAsString(false), ""  + (char) nuc.encodeAsByte(false));
+    }
+
+    /**
+     * Checks the assumption that each nuc canonical name is a single upper-case letter.
+     * If this test fails that would  indicates that you are modifying {@link Nucleotide} in a way
+     * that may result in unexpected errors down-the-road as some code that uses that class
+     * may make such an assumption.
+     *
+     * @param nuc the value to test.
+     */
+    @Test(dataProvider = "values")
+    public void testSingleUpperLetterNames(final Nucleotide nuc) {
+        Assert.assertEquals(nuc.name().length(), 1);
+        Assert.assertEquals(nuc.name(), nuc.name().toUpperCase());
+        Assert.assertEquals(nuc.encodeAsString().length(), 1);
+        Assert.assertEquals(nuc.encodeAsString(false).length(), 1);
+    }
+
+    @Test
+    public void testStandardNucleotidesList() {
+        Assert.assertEquals(Nucleotide.STANDARD_BASES.size(), 4);
+        for (final Nucleotide value : Nucleotide.values()) {
+            switch (value) {
+                case A:
+                case C:
+                case G:
+                case T:
+                    Assert.assertTrue(Nucleotide.STANDARD_BASES.contains(value));
+                    break;
+                default:
+                    Assert.assertFalse(Nucleotide.STANDARD_BASES.contains(value));
+            }
+        }
+    }
+
+    @Test(expectedExceptions = RuntimeException.class)
+    public void testStandardNucleotideListIsUnmodifiable1() {
+        Nucleotide.STANDARD_BASES.clear();
+    }
+
+    @Test(expectedExceptions = RuntimeException.class)
+    public void testStandardNucleotideListIsUnmodifiable2() {
+        Nucleotide.STANDARD_BASES.set(0, Nucleotide.N);
+    }
+
+    @Test(dataProvider = "values")
+    public void testIsStandard(final Nucleotide nuc) {
         switch (nuc) {
             case A:
             case C:
@@ -146,7 +209,18 @@ public class NucleotideUnitTest {
             }
             Assert.assertSame(Nucleotide.decode(i), expected, "Failed with base " + i + " returning nucleotide " + Nucleotide.decode(i));
             Assert.assertSame(Nucleotide.decode((char)i), expected, "Failed with base " + i + " returning nucleotide " + Nucleotide.decode((char)i));
+            final StringBuilder builder = new StringBuilder(1);
+            builder.append((char)i);
+            Assert.assertSame(Nucleotide.decode(builder.toString()), expected);
         }
+    }
+
+    @Test
+    public void testDecodeCharOverMax() {
+        final char baseCh = 'A';
+        final char alteredCh = (char) (baseCh | 0x0100);
+        Assert.assertSame(Nucleotide.decode(baseCh), Nucleotide.A);
+        Assert.assertSame(Nucleotide.decode(alteredCh), Nucleotide.X);
     }
 
     @Test(dataProvider = "values")
@@ -188,7 +262,6 @@ public class NucleotideUnitTest {
                 Assert.assertFalse(nuc.includes(other.encodeAsByte(false)));
             }
         }
-
     }
 
     @Test(dataProvider = "values")
@@ -314,6 +387,30 @@ public class NucleotideUnitTest {
         Assert.assertEquals(subject.sum(), shadow.values().stream().mapToLong(l -> l).sum());
     }
 
+    @Test(dependsOnMethods = {"testDecode", "testDecodeCharOverMax"}, dataProvider = "testSequences")
+    public void testAddingCharsOneByOne(final byte[] byteBases) {
+        final char[] bases = new char[byteBases.length];
+        for (int i = 0; i < bases.length; i++) {
+            bases[i] = (char) byteBases[i];
+            if ((random.nextDouble() < 0.1)) {
+                // 10% of the time we will add random fuzz to the upper-byte of the char to render it
+                // invalid.
+                bases[i] |= (random.nextInt(127) + 1) << 8;
+            }
+        }
+        final Nucleotide.Counter subject = new Nucleotide.Counter();
+        final Map<Nucleotide, Integer> shadow = new HashMap<>(Nucleotide.values().length);
+        for (final char base : bases) {
+            subject.add(base);
+            final Nucleotide nuc = Nucleotide.decode(base);
+            shadow.put(nuc, shadow.getOrDefault(nuc, 0) + 1);
+            for (final Nucleotide n : Nucleotide.values()) {
+                Assert.assertEquals(subject.get(n), (long) shadow.getOrDefault(n, 0));
+            }
+        }
+        Assert.assertEquals(subject.sum(), shadow.values().stream().mapToLong(l -> l).sum());
+    }
+
     @Test(dependsOnMethods = "testDecode", dataProvider = "testSequences")
     public void testAddingAllAtOnce(final byte[] bases) {
         final Nucleotide.Counter subject = new Nucleotide.Counter();
@@ -328,6 +425,56 @@ public class NucleotideUnitTest {
         }
         Assert.assertEquals(subject.sum(), shadow.values().stream().mapToLong(l -> l).sum());
     }
+
+    @Test(dependsOnMethods = {"testDecode", "testDecodeCharOverMax"}, dataProvider = "testSequences")
+    public void testAddingAllCharsAtOnce(final byte[] byteBases) {
+        final char[] bases = new char[byteBases.length];
+        for (int i = 0; i < bases.length; i++) {
+            bases[i] = (char) byteBases[i];
+            if ((random.nextDouble() < 0.1)) {
+                // 10% of the time we will add random fuzz to the upper-byte of the char to render it
+                // invalid.
+                bases[i] |= (random.nextInt(127) + 1) << 8;
+            }
+        }
+        final Nucleotide.Counter subject = new Nucleotide.Counter();
+        final Map<Nucleotide, Integer> shadow = new HashMap<>(Nucleotide.values().length);
+        for (final char base : bases) {
+            final Nucleotide nuc = Nucleotide.decode(base);
+            shadow.put(nuc, shadow.getOrDefault(nuc, 0) + 1);
+        }
+        subject.addAll(bases);
+        for (final Nucleotide n : Nucleotide.values()) {
+            Assert.assertEquals(subject.get(n), (long) shadow.getOrDefault(n, 0));
+        }
+        Assert.assertEquals(subject.sum(), shadow.values().stream().mapToLong(l -> l).sum());
+    }
+
+    @Test(dependsOnMethods = {"testDecode", "testDecodeCharOverMax"}, dataProvider = "testSequences")
+    public void testAddingStringAtOnce(final byte[] byteBases) {
+        final char[] bases = new char[byteBases.length];
+        for (int i = 0; i < bases.length; i++) {
+            bases[i] = (char) byteBases[i];
+            if ((random.nextDouble() < 0.1)) {
+                // 10% of the time we will add random fuzz to the upper-byte of the char to render it
+                // invalid.
+                bases[i] |= (random.nextInt(127) + 1) << 8;
+            }
+        }
+        final String string = new String(bases);
+        final Nucleotide.Counter subject = new Nucleotide.Counter();
+        final Map<Nucleotide, Integer> shadow = new HashMap<>(Nucleotide.values().length);
+        for (final char base : bases) {
+            final Nucleotide nuc = Nucleotide.decode(base);
+            shadow.put(nuc, shadow.getOrDefault(nuc, 0) + 1);
+        }
+        subject.addAll(string);
+        for (final Nucleotide n : Nucleotide.values()) {
+            Assert.assertEquals(subject.get(n), (long) shadow.getOrDefault(n, 0));
+        }
+        Assert.assertEquals(subject.sum(), shadow.values().stream().mapToLong(l -> l).sum());
+    }
+
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testAddingAllAtOnceOnANullArray() {

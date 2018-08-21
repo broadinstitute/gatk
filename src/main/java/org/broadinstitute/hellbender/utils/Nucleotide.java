@@ -3,22 +3,49 @@ package org.broadinstitute.hellbender.utils;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.LongStream;
 
 /**
  * Represents the nucleotide alphabet with support for IUPAC ambiguity codes.
  *
  * <p>
  *    This enumeration not only contains standard (non-ambiguous) nucleotides, but also
- *    values to represent ambiguous and invalid codes.
+ *    values to represent ambiguous and an invalid nucleotide call ({@link #X} aka {@link #INVALID}.
  * </p>
  *
+ * <p>
+ *     You can query whether a value refers to a non-ambiguous nucleotide with {@link #isStandard()} or
+ *     {@link #isAmbiguous()} depending of your preference. Notice that the special value {@link #X}
+ *     is neither of those.
+ * </p>
+ *
+ * <p>
+ *     Querying the {@link #X} value for its {@link #complement}, {@link #transition} or
+ *     {@link #transversion} or using it in other operations
+ *     likes {@link #intersect} would result in returning also a {@link #X}; similar to {@link Double#NaN} in
+ *     {@code double} arithmetic.
+ * </p>
+ *
+ * <p>
+ *     For naming consistency it is recommended to use {@link #decode} and {@link #encodeAsByte} or {@link #encodeAsString} methods to
+ *     translate byte/char and string encodings from and into values of this enum over the inherited {@link #toString} or {@link #name}.
+ * </p>
+ *
+ * <p>
+ *     Although the canonical names for values use the single letter IUPAC encodings, this class provides
+ *     convenient longer form names constant aliases (e.g. {@link #ADENINE} for {@link #A}, {@link #PURINE} for {@link #R}, etc.).
+ * </p>
+ * <p>
+ *     Finally, notice that there is no code of the "gap nucleotide" that may appear in aligned sequences as in fact that is not a nucleotide.
+ *     A base encoding using the typical gap representation such as '.' or '-' would
+ *     be interpreted as an {@link #INVALID} (i.e. {@link #X}) call which is probably not what you want.
+ *     So code that mus support those will need to do so outside this {@code enum}.
+ * </p>
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
 public enum Nucleotide {
 
     // Standard nucleotide codes,
-    // and their one-bit-encoding masks CODE(0xTGCA):
+    // and their one-bit-encoding masks CODE(0bTGCA):
     A(0b0001),
     C(0b0010),
     G(0b0100),
@@ -76,8 +103,20 @@ public enum Nucleotide {
     // total number of constants is best to cache it in a constant.
     private static final int NUMBER_OF_CONSTANTS;
 
+    /**
+     * Values indexed by their unsigned byte encodings. Non-valid encodings point to {@link #INVALID}.
+     */
     private static final Nucleotide[] baseToValue;
+
+    /**
+     * Values indexed by their mask.
+     */
     private static final Nucleotide[] maskToValue;
+
+    /**
+     * Value ordinal indexed by their unsigned byte ecodings. Non-valid encodings point to {@link #INVALID}
+     * (thru its ordinal).
+     */
     private static final int[] baseToOrdinal;
 
     static {
@@ -89,26 +128,25 @@ public enum Nucleotide {
         Arrays.fill(baseToValue, INVALID);
         Arrays.fill(baseToOrdinal, INVALID.ordinal());
         for (final Nucleotide nucleotide : values) {
+            // Notice that {@code "x & 0xFF"} is needed instead of {@code "(int)x" as
+            // we want the unsigned value (e.g. 255 rather than -1).
+            // This is repeated through this class code.
             final int lowerCaseIndex = nucleotide.lowerCaseByteEncoding & 0xFF;
             final int upperCaseIndex = nucleotide.upperCaseByteEncoding & 0xFF;
-            maskToValue[nucleotide.mask]
-                    = baseToValue[lowerCaseIndex]
-                    = baseToValue[upperCaseIndex]
-                    = nucleotide;
-            baseToOrdinal[lowerCaseIndex]
-                    = baseToOrdinal[upperCaseIndex]
-                    = nucleotide.ordinal();
+            maskToValue[nucleotide.mask] = nucleotide;
+            baseToValue[lowerCaseIndex] = baseToValue[upperCaseIndex] = nucleotide;
+            baseToOrdinal[lowerCaseIndex] = baseToOrdinal[upperCaseIndex] = nucleotide.ordinal();
         }
         // need to do u and U here as they are just aliases to T.
         baseToValue['u' & 0xFF] = baseToValue['U' & 0xFF] = U;
         baseToOrdinal['u' & 0xFF] = baseToOrdinal['U' & 0xFF] = U.ordinal();
-
     }
 
     private final int mask;
     private final boolean isStandard;
 
-    // Some properties initialized after construction as these depends on some static arrays.
+    // Some properties initialized after construction as these depend on some static arrays
+    // defined above.
     private Nucleotide complement;
     private Nucleotide transition;
     private Nucleotide transversion;
@@ -120,16 +158,35 @@ public enum Nucleotide {
     }
 
     /**
-     * Holds lower-case byte encoding for this nucleotide.
+     * Holds the lower-case byte encoding for this nucleotide.
      * This is typically the lower-case version of the enum constant name.
      */
     private final byte lowerCaseByteEncoding;
+
+    /**
+     * Holds the lower-case {@link String} representation for this nucleotide.
+     * This is typically the lower-case version of the enum constant name.
+     */
+    private final String lowerCaseStringEncoding;
+
+    /**
+     * Holds the lower-case {@code char} representation for this nucleotide.
+     * This is typically the lower-case version of the enum constant name only character.
+     */
+    private final char lowerCaseCharEncoding;
 
     /**
      * Holds the upper-case byte encoding for this nucleotide.
      * This is typically the upper-case version of the enum constant name.
      */
     private final byte upperCaseByteEncoding;
+
+    /**
+     * Holds the upper-case {@code char} representation for this nucleotide.
+     * This is typically the upper-case version of the enum constant name only character.
+     */
+    private final char upperCaseCharEncoding;
+
 
     /**
      * Construct a nucleotide given its mask.
@@ -139,7 +196,11 @@ public enum Nucleotide {
         this.mask = mask;
         isStandard = Integer.bitCount(mask & 0b1111) == 1;
         lowerCaseByteEncoding = (byte) Character.toLowerCase(name().charAt(0));
+        lowerCaseCharEncoding = Character.toLowerCase(name().charAt(0));
         upperCaseByteEncoding = (byte) Character.toUpperCase(name().charAt(0));
+        upperCaseCharEncoding = Character.toUpperCase(name().charAt(0));
+        lowerCaseStringEncoding = name().toLowerCase();
+
     }
 
     /**
@@ -151,25 +212,54 @@ public enum Nucleotide {
     }
 
     /**
-     * Returns the base that corresponds to this nucleotide.
-     * <p>
-     *    The base is returned in uppercase.
-     * </p>
-     * <p>
-     *     The {@link #INVALID} nucleotide does not have an actual base then resulting in an exception.
-     * </p>
-     * @return a valid byte representation for a nucleotide.
+     * Returns the {@code byte} typed encoding that corresponds to this nucleotide.
+     * @param upperCase whether to return the upper- or lower-case {@code byte} representation.
+     * @return a valid and exclusive {@code byte} representation for a nucleotide.
      */
     public byte encodeAsByte(final boolean upperCase) {
         return upperCase ? upperCaseByteEncoding : lowerCaseByteEncoding;
     }
 
     /**
-     * Returns the nucleotide encoding in a byte using its upper-case representation.
-     * @return a valid upper-case byte representation for a nucleotide.
+     * Returns the {@code char} typed encoding that corresponds to this nucleotide.
+     * @param upperCase whether to return the upper- or lower-case {@code char} representation.
+     * @return a valid and exclusive {@code char} representation for a nucleotide.
+     */
+    public char encodeAsChar(final boolean upperCase) {
+        return upperCase ? upperCaseCharEncoding : lowerCaseCharEncoding;
+    }
+
+    /**
+     * Returns this nucleotide's exclusive upper-case {@code byte} encoding.
+     * @return <i>ditto</i>.
      */
     public byte encodeAsByte() {
         return upperCaseByteEncoding;
+    }
+
+    /**
+     * Returns the nucleotide's exclusive upper-case {@code char} encoding.
+     * @return <i>ditto</i>.
+     */
+    public char encodeAsChar() {
+        return upperCaseCharEncoding;
+    }
+
+    /**
+     * Returns the nucleotide's exclusive upper-case {@code String} encoding.
+     * @return <i>ditto</i>.
+     */
+    public String encodeAsString() {
+        return toString();
+    }
+
+    /**
+     * Returns the nucleotide's exclusive {@link String} typed encoding.
+     * @param upperCase whether the upper or lower-case representation should be returned.
+     * @return a valid and exclusive {@link String} representation for this nucleotide.
+     */
+    public String encodeAsString(final boolean upperCase) {
+        return upperCase ? toString() : lowerCaseStringEncoding;
     }
 
     /**
@@ -184,12 +274,37 @@ public enum Nucleotide {
 
     /**
      * Returns the nucleotide that corresponds to a particular {@code char} typed base code.
-     * @param base the query base code.
+     * @param ch the query base code.
      * @return never {@code null}, but {@link #INVALID} if the base code does not correspond
      * to a valid nucleotide specification.
      */
-    public static Nucleotide decode(final char base) {
-        return baseToValue[base & 0xFF];
+    public static Nucleotide decode(final char ch) {
+        if ((ch & 0xFF00) != 0) {
+            return INVALID;
+        } else {
+            return baseToValue[ch & 0xFF];
+        }
+    }
+
+    /**
+     * Transform a single-letter character string into the corresponding nucleotide.
+     * <p>
+     *    {@code Null}, empty or multi-letter input will result in an {@link IllegalArgumentException}.
+     *    These are not simply invalid encodings as the fact that are not a single character is
+     *    an indication of a probable bug.
+     * </p>
+     *
+     * @param seq the input character sequence to transform into.
+     * @return never {@code null}, perhaps {@link #INVALID} to indicate that the input is not a valid
+     * single letter encoding encoding.
+     */
+    public static Nucleotide decode(final CharSequence seq) {
+        Utils.nonNull(seq, "the input character sequence must not be null");
+        if (seq.length() != 1) {
+            throw new IllegalArgumentException("the input character sequence must be exactly one character long");
+        } else {
+            return decode(seq.charAt(0));
+        }
     }
 
     /**
@@ -355,14 +470,17 @@ public enum Nucleotide {
      * Calculate and set the complement, transition and transversion using the #maskToValue array.
      */
     private void finalizeInitialization() {
+       // set the complement.
        final int complementMask = ((mask & A.mask) != 0 ? T.mask : 0)
                         | ((mask & T.mask) != 0 ? A.mask : 0)
                         | ((mask & C.mask) != 0 ? G.mask : 0)
                         | ((mask & G.mask) != 0 ? C.mask : 0);
        complement = maskToValue[complementMask];
+       // set the transversion.
        final int transversionMask = ((mask & PURINE.mask) != 0 ? PYRIMIDINE.mask : 0)
                     | ((mask & PYRIMIDINE.mask) != 0 ? PURINE.mask : 0);
        transversion = maskToValue[transversionMask];
+       // set the transition.
        final int transitionMask = ((mask & A.mask) != 0 ? G.mask : 0)
                     | ((mask & G.mask) != 0 ? A.mask : 0)
                     | ((mask & C.mask) != 0 ? T.mask : 0)
@@ -417,6 +535,14 @@ public enum Nucleotide {
             counts[baseToOrdinal[base & 0xFF]]++;
         }
 
+        public void add(final char base) {
+            if ((base & 0xFF00) != 0) {
+                counts[INVALID.ordinal()]++;
+            } else {
+                counts[baseToOrdinal[base & 0xFF]]++;
+            }
+        }
+
         /**
          * Returns the current count for a given nucleotide.
          * @param nucleotide the query nucleotide.
@@ -431,13 +557,47 @@ public enum Nucleotide {
          * Increase by one the count for a nucleotide for each
          * occurrence of such in the input byte array base codes.
          * @param bases the input base codes.
-         * @throws IllegalArgumentException if {@code bases} are null or
-         * it contains negative values.
+         * @throws IllegalArgumentException if {@code bases} is null.
          */
         public final void addAll(final byte ... bases) {
             Utils.nonNull(bases);
             for (final byte base : bases) {
                 counts[baseToOrdinal[base & 0xFF]]++;
+            }
+        }
+
+        /**
+         * Increase by one the count for a nucleotide for each
+         * occurrence of such in the input char array base codes.
+         * @param bases the input base codes.
+         * @throws IllegalArgumentException if {@code bases} is null.
+         */
+        public final void addAll(final char ... bases) {
+            Utils.nonNull(bases);
+            for (final char base : bases) {
+                if ((base & 0xFF00) != 0) {
+                    counts[INVALID.ordinal()]++;
+                } else {
+                    counts[baseToOrdinal[base & 0xFF]]++;
+                }
+            }
+        }
+
+        /**
+         * Increase by one the count for a nucleotide for each
+         * occurrence of such in the input {@link CharSequence}.
+         * @param bases the input bases sequence.
+         * @throws IllegalArgumentException if the input is {@code null}.
+         */
+        public final void addAll(final CharSequence bases) {
+            Utils.nonNull(bases);
+            for (int i = 0; i < bases.length(); i++) {
+                final char base = bases.charAt(i);
+                if ((base & 0xFF00) != 0) {
+                    counts[INVALID.ordinal()]++;
+                } else {
+                    counts[baseToOrdinal[base & 0xFF]]++;
+                }
             }
         }
 
@@ -453,7 +613,7 @@ public enum Nucleotide {
          * @return 0 or greater.
          */
         public long sum() {
-            return LongStream.of(counts).sum();
+            return MathUtils.sum(counts);
         }
     }
 }
