@@ -30,9 +30,8 @@ public class PathLineIterator implements AutoCloseable, Iterable<String> {
      * to close it automatically.
      *
      * @param path path to a text file.
-     * @throws UserException if we cannot open the file for reading.
      */
-    public PathLineIterator(final Path path) throws UserException {
+    public PathLineIterator(final Path path) {
         try {
             lines = Files.lines(Utils.nonNull(path, "path shouldn't be null"));
         }
