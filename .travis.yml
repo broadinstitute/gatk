@@ -96,8 +96,7 @@ before_install:
 # Download git lfs files
 - git lfs version
 - git lfs install
-- git lfs fetch
-- git lfs checkout
+- git lfs pull
 install:
 - if [[ $TRAVIS_SECURE_ENV_VARS == false && $TEST_TYPE == cloud ]]; then
     echo "Can't run cloud tests without keys so don't bother building";
