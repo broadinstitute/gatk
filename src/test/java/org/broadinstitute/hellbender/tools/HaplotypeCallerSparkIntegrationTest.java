@@ -48,7 +48,7 @@ public class HaplotypeCallerSparkIntegrationTest extends CommandLineProgramTest 
 
         final String[] args = {
                 "-I", NA12878_20_21_WGS_bam,
-                "-R", b37_2bit_reference_20_21,
+                "-R", b37_reference_20_21,
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
                 "-pairHMM", "AVX_LOGLESS_CACHING"
@@ -83,7 +83,7 @@ public class HaplotypeCallerSparkIntegrationTest extends CommandLineProgramTest 
 
         final String[] args = {
                 "-I", NA12878_20_21_WGS_bam,
-                "-R", b37_2bit_reference_20_21,
+                "-R", b37_reference_20_21,
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
                 "-G", "StandardAnnotation",
@@ -116,7 +116,7 @@ public class HaplotypeCallerSparkIntegrationTest extends CommandLineProgramTest 
 
         final String[] args = {
                 "-I", NA12878_20_21_WGS_bam,
-                "-R", b37_2bit_reference_20_21,
+                "-R", b37_reference_20_21,
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
                 "-ERC", "GVCF",
@@ -141,7 +141,7 @@ public class HaplotypeCallerSparkIntegrationTest extends CommandLineProgramTest 
     public void testBrokenGVCFConfigurationsAreDisallowed(String extension) {
         final String[] args = {
                 "-I", NA12878_20_21_WGS_bam,
-                "-R", b37_2bit_reference_20_21,
+                "-R", b37_reference_20_21,
                 "-O", createTempFile("testGVCF_GZ_throw_exception", extension).getAbsolutePath(),
                 "-ERC", "GVCF",
         };
@@ -173,7 +173,7 @@ public class HaplotypeCallerSparkIntegrationTest extends CommandLineProgramTest 
 
         final String[] args = {
                 "-I", NA12878_20_21_WGS_bam,
-                "-R", b37_2bit_reference_20_21,
+                "-R", b37_reference_20_21,
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
                 "-G", "StandardAnnotation",
@@ -190,7 +190,7 @@ public class HaplotypeCallerSparkIntegrationTest extends CommandLineProgramTest 
 
     @Test
     public void testReferenceAdapterIsSerializable() throws IOException {
-        final ReferenceMultiSparkSource referenceMultiSource = new ReferenceMultiSparkSource(b37_2bit_reference_20_21, ReferenceWindowFunctions.IDENTITY_FUNCTION);
+        final ReferenceMultiSparkSource referenceMultiSource = new ReferenceMultiSparkSource(b37_reference_20_21, ReferenceWindowFunctions.IDENTITY_FUNCTION);
         SparkTestUtils.roundTripInKryo(referenceMultiSource, ReferenceMultiSparkSource.class, SparkContextFactory.getTestSparkContext().getConf());
         final HaplotypeCallerSpark.ReferenceMultiSourceAdapter adapter = new HaplotypeCallerSpark.ReferenceMultiSourceAdapter(referenceMultiSource);
         SparkTestUtils.roundTripInKryo(adapter, HaplotypeCallerSpark.ReferenceMultiSourceAdapter.class, SparkContextFactory.getTestSparkContext().getConf());
@@ -213,7 +213,7 @@ public class HaplotypeCallerSparkIntegrationTest extends CommandLineProgramTest 
 
     @Test
     public void testReferenceMultiSourceIsSerializable() {
-        final ReferenceMultiSparkSource args = new ReferenceMultiSparkSource(GATKBaseTest.b37_2bit_reference_20_21, ReferenceWindowFunctions.IDENTITY_FUNCTION);
+        final ReferenceMultiSparkSource args = new ReferenceMultiSparkSource(GATKBaseTest.b37_reference_20_21, ReferenceWindowFunctions.IDENTITY_FUNCTION);
         SparkTestUtils.roundTripInKryo(args, ReferenceMultiSparkSource.class, SparkContextFactory.getTestSparkContext().getConf());
     }
 

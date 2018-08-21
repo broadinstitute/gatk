@@ -2,6 +2,8 @@ package org.broadinstitute.hellbender.engine.spark;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
+import htsjdk.samtools.util.IOUtil;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -35,8 +37,10 @@ import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.time.ZonedDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Base class for GATK spark tools that accept standard kinds of inputs (reads, reference, and/or intervals).
@@ -567,6 +571,50 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
                 }
             }
         }
+    }
+
+    /**
+     * Register the reference file (and associated dictionary and index) to be downloaded to every node using Spark's
+     * copying mechanism ({@code SparkContext#addFile()}).
+     * @param ctx the Spark context
+     * @param referenceFile the reference file, can be a local file or a remote path
+     * @return the reference file name; the absolute path of the file can be found by a Spark task using {@code SparkFiles#get()}
+     */
+    protected String addReferenceFilesForSpark(JavaSparkContext ctx, String referenceFile) {
+        Path referencePath = IOUtils.getPath(referenceFile);
+        Path indexPath = ReferenceSequenceFileFactory.getFastaIndexFileName(referencePath);
+        Path dictPath = ReferenceSequenceFileFactory.getDefaultDictionaryForReferenceSequence(referencePath);
+
+        // TODO: check existence of all files
+        ctx.addFile(referenceFile);
+        ctx.addFile(indexPath.toString());
+        ctx.addFile(dictPath.toString());
+
+        return referencePath.getFileName().toString();
+    }
+
+    /**
+     * Register the VCF file (and associated index) to be downloaded to every node using Spark's copying mechanism
+     * ({@code SparkContext#addFile()}).
+     * @param ctx the Spark context
+     * @param knownVariants the known variant (VCF) files, can be local files or remote paths
+     * @return the reference file name; the absolute path of the file can be found by a Spark task using {@code SparkFiles#get()}
+     */
+    protected List<String> addKnownSitesForSpark(JavaSparkContext ctx, List<String> knownVariants) {
+        for (String vcfFileName : knownVariants) {
+            String vcfIndexFileName;
+            if (vcfFileName.endsWith(IOUtil.VCF_FILE_EXTENSION)) {
+                vcfIndexFileName = vcfFileName + IOUtil.VCF_INDEX_EXTENSION;
+            } else if (vcfFileName.endsWith(IOUtil.COMPRESSED_VCF_FILE_EXTENSION)) {
+                vcfIndexFileName = vcfFileName + IOUtil.COMPRESSED_VCF_INDEX_EXTENSION;
+            } else {
+                throw new IllegalArgumentException("Unrecognized known sites file extension. Must be .vcf or .vcf.gz");
+            }
+            // TODO: check existence of all files
+            ctx.addFile(vcfFileName);
+            ctx.addFile(vcfIndexFileName);
+        }
+        return knownVariants.stream().map(name -> IOUtils.getPath(name).getFileName().toString()).collect(Collectors.toList());
     }
 
     /**
