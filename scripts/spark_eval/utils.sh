@@ -34,7 +34,7 @@ time_gatk() {
     --num-executors $NUM_EXECUTORS --executor-cores $EXECUTOR_CORES --executor-memory $EXECUTOR_MEMORY \
     --driver-memory $DRIVER_MEMORY \
     --conf spark.dynamicAllocation.enabled=false \
-    --files hdfs://${HDFS_HOST_PORT}/user/$USER/exome_spark_eval/dbsnp_138.hg18.vcf.gz,hdfs://${HDFS_HOST_PORT}/user/$USER/exome_spark_eval/dbsnp_138.hg18.vcf.gz.tbi,hdfs://${HDFS_HOST_PORT}/user/$USER/exome_spark_eval/Homo_sapiens_assembly18.dict,hdfs://${HDFS_HOST_PORT}/user/$USER/exome_spark_eval/Homo_sapiens_assembly18.fasta,hdfs://${HDFS_HOST_PORT}/user/$USER/exome_spark_eval/Homo_sapiens_assembly18.fasta.fai \
+    --files hdfs://${HDFS_HOST_PORT}/user/$USER/q4_spark_eval/dbsnp_138.b37.vcf.gz,hdfs://${HDFS_HOST_PORT}/user/$USER/q4_spark_eval/dbsnp_138.b37.vcf.gz.tbi,hdfs://${HDFS_HOST_PORT}/user/$USER/q4_spark_eval/human_g1k_v37.dict,hdfs://${HDFS_HOST_PORT}/user/$USER/q4_spark_eval/human_g1k_v37.fasta,hdfs://${HDFS_HOST_PORT}/user/$USER/q4_spark_eval/human_g1k_v37.fasta.fai \
   >> $LOG 2>&1
   RC=$?
   DURATION_MINS=$(grep 'Elapsed time' $LOG | grep -Eow "[0-9]+\.[0-9][0-9]")
