@@ -48,4 +48,31 @@ public final class BaseRecalibratorSparkFn {
         final StandardCovariateList covariates = new StandardCovariateList(recalArgs, header);
         return RecalUtils.createRecalibrationReport(recalArgs.generateReportTable(covariates.covariateNames()), quantizationInfo.generateReportTable(), RecalUtils.generateReportTables(combinedTables, covariates));
     }
+
+    public static RecalibrationReport apply( final JavaPairRDD<GATKRead, Iterable<GATKVariant>> readsWithContext, final SAMFileHeader header, final SAMSequenceDictionary referenceDictionary, final RecalibrationArgumentCollection recalArgs, final ReferenceDataSource referenceDataSource) {
+        JavaRDD<RecalibrationTables> unmergedTables = readsWithContext.mapPartitions(readWithContextIterator -> {
+            final BaseRecalibrationEngine bqsr = new BaseRecalibrationEngine(recalArgs, header);
+            bqsr.logCovariatesUsed();
+
+            while ( readWithContextIterator.hasNext() ) {
+                final Tuple2<GATKRead, Iterable<GATKVariant>> readWithData = readWithContextIterator.next();
+                Iterable<GATKVariant> variants = readWithData._2();
+                bqsr.processRead(readWithData._1(), referenceDataSource, variants);
+            }
+            return Arrays.asList(bqsr.getRecalibrationTables()).iterator();
+        });
+
+        final RecalibrationTables emptyRecalibrationTable = new RecalibrationTables(new StandardCovariateList(recalArgs, header));
+        final RecalibrationTables combinedTables = unmergedTables.treeAggregate(emptyRecalibrationTable,
+                RecalibrationTables::inPlaceCombine,
+                RecalibrationTables::inPlaceCombine,
+                Math.max(1, (int)(Math.log(unmergedTables.partitions().size()) / Math.log(2))));
+
+        BaseRecalibrationEngine.finalizeRecalibrationTables(combinedTables);
+
+        final QuantizationInfo quantizationInfo = new QuantizationInfo(combinedTables, recalArgs.QUANTIZING_LEVELS);
+
+        final StandardCovariateList covariates = new StandardCovariateList(recalArgs, header);
+        return RecalUtils.createRecalibrationReport(recalArgs.generateReportTable(covariates.covariateNames()), quantizationInfo.generateReportTable(), RecalUtils.generateReportTables(combinedTables, covariates));
+    }
 }

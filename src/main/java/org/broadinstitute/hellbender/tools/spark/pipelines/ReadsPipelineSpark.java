@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.MarkDuplicatesSparkArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.ReadContextData;
+import org.broadinstitute.hellbender.engine.ReferenceLazyFileSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.AddContextDataToReadSpark;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
@@ -44,6 +45,7 @@ import org.broadinstitute.hellbender.utils.recalibration.RecalibrationReport;
 import org.broadinstitute.hellbender.utils.spark.SparkUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 
+import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.List;
 
@@ -167,9 +169,9 @@ public class ReadsPipelineSpark extends GATKSparkTool {
 
     @Override
     protected void runTool(final JavaSparkContext ctx) {
-        if (joinStrategy == JoinStrategy.BROADCAST && ! getReference().isCompatibleWithSparkBroadcast()){
-            throw new UserException.Require2BitReferenceForBroadcast();
-        }
+//        if (joinStrategy == JoinStrategy.BROADCAST && ! getReference().isCompatibleWithSparkBroadcast()){
+//            throw new UserException.Require2BitReferenceForBroadcast();
+//        }
 
         final JavaRDD<GATKRead> alignedReads;
         final SAMFileHeader header;
@@ -208,8 +210,9 @@ public class ReadsPipelineSpark extends GATKSparkTool {
         VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);
         JavaRDD<GATKVariant> bqsrKnownVariants = variantsSparkSource.getParallelVariants(baseRecalibrationKnownVariants, getIntervals());
 
-        JavaPairRDD<GATKRead, ReadContextData> rddReadContext = AddContextDataToReadSpark.add(ctx, markedFilteredReadsForBQSR, getReference(), bqsrKnownVariants, baseRecalibrationKnownVariants, joinStrategy, header.getSequenceDictionary(), shardingArgs.readShardSize, shardingArgs.readShardPadding);
-        final RecalibrationReport bqsrReport = BaseRecalibratorSparkFn.apply(rddReadContext, header, getReferenceSequenceDictionary(), bqsrArgs);
+        JavaPairRDD<GATKRead, Iterable<GATKVariant>> rddReadContext = AddContextDataToReadSpark.add(ctx, markedFilteredReadsForBQSR, bqsrKnownVariants, baseRecalibrationKnownVariants, joinStrategy, header.getSequenceDictionary(), shardingArgs.readShardSize, shardingArgs.readShardPadding);
+        final ReferenceLazyFileSource referenceLazyFileSource = new ReferenceLazyFileSource(referenceArguments.getReferenceFileName());
+        final RecalibrationReport bqsrReport = BaseRecalibratorSparkFn.apply(rddReadContext, header, getReferenceSequenceDictionary(), bqsrArgs, referenceLazyFileSource);
 
         final Broadcast<RecalibrationReport> reportBroadcast = ctx.broadcast(bqsrReport);
         final JavaRDD<GATKRead> finalReads = ApplyBQSRSparkFn.apply(sortedMarkedReads, reportBroadcast, header, applyBqsrArgs.toApplyBQSRArgumentCollection(bqsrArgs.PRESERVE_QSCORES_LESS_THAN));
@@ -224,7 +227,7 @@ public class ReadsPipelineSpark extends GATKSparkTool {
         // no longer cache since sorting happens earlier in the pipeline
 //        filteredReadsForHC.persist(StorageLevel.DISK_ONLY()); // without caching, computations are run twice as a side effect of finding partition boundaries for sorting
         final List<SimpleInterval> intervals = hasIntervals() ? getIntervals() : IntervalUtils.getAllIntervalsForReference(header.getSequenceDictionary());
-        HaplotypeCallerSpark.callVariantsWithHaplotypeCallerAndWriteOutput(ctx, filteredReadsForHC, header, getReference(), intervals, hcArgs, shardingArgs, numReducers, output, makeVariantAnnotations());
+        HaplotypeCallerSpark.callVariantsWithHaplotypeCallerAndWriteOutput(ctx, filteredReadsForHC, header, referenceLazyFileSource, intervals, hcArgs, shardingArgs, numReducers, output, makeVariantAnnotations());
 
         if (bwaEngine != null) {
             bwaEngine.close();

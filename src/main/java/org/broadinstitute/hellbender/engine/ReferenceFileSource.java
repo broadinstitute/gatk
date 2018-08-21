@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequence;
+import htsjdk.samtools.reference.ReferenceSequenceFile;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
@@ -102,5 +103,9 @@ public final class ReferenceFileSource implements ReferenceDataSource {
         catch ( IOException e ) {
             throw new GATKException("Error closing reference file", e);
         }
+    }
+
+    public ReferenceSequenceFile getReferenceSequenceFile() {
+        return reference;
     }
 }

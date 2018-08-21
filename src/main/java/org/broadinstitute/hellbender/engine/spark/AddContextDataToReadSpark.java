@@ -81,6 +81,21 @@ public class AddContextDataToReadSpark {
         return withVariantsWithRef.mapToPair(in -> new Tuple2<>(in._1(), new ReadContextData(in._2()._2(), in._2()._1())));
     }
 
+    public static JavaPairRDD<GATKRead, Iterable<GATKVariant>> add(
+            final JavaSparkContext ctx,
+            final JavaRDD<GATKRead> reads,
+            final JavaRDD<GATKVariant> variants, final List<String> variantsPaths, final JoinStrategy joinStrategy,
+            final SAMSequenceDictionary sequenceDictionary,
+            final int shardSize, final int shardPadding) {
+        // TODO: this static method should not be filtering the unmapped reads.  To be addressed in another issue.
+        JavaRDD<GATKRead> mappedReads = reads.filter(read -> ReadFilterLibrary.MAPPED.test(read));
+        if (joinStrategy.equals(JoinStrategy.BROADCAST)) {
+            return variantsPaths == null ? BroadcastJoinReadsWithVariants.join(mappedReads, variants) : BroadcastJoinReadsWithVariants.join(mappedReads, variantsPaths);
+        } else {
+            throw new UserException("Unknown JoinStrategy");
+        }
+    }
+
     /**
      * Add context data ({@link ReadContextData}) to reads, using overlaps partitioning to avoid a shuffle.
      * @param ctx the Spark context
