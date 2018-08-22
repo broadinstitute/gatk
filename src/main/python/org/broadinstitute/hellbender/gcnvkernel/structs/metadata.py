@@ -120,9 +120,9 @@ class SamplePloidyMetadata:
         return self.ploidy_genotyping_quality_j[self._contig_map[contig]]
 
     def check_germline_contig_ploidy_for_homo_sapiens(self):
-        autosomal_contigs = {str(j) for j in range(1, 23)}
-        allosomal_contigs = {'X', 'Y'}
-        all_standard_contigs = autosomal_contigs.union(allosomal_contigs)
+        autosomal_contigs = [str(j) for j in range(1, 23)]
+        allosomal_contigs = ['X', 'Y']
+        all_standard_contigs = autosomal_contigs + allosomal_contigs
         homo_sapiens_autosomal_contig_ploidy = 2
         homo_sapiens_sex_genotypes = {
             'SEX_XX': {'X': 2, 'Y': 0},
