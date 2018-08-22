@@ -344,12 +344,34 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
+    public void testRemoveSingleSpanDelAlleleNoSpanDel() throws IOException {
+        final String testFile = getToolTestDataDir() + "spanning_deletion.vcf";
+        final String samplesFile = "NA1";
+
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString(" -sn " + samplesFile + " --remove-unused-alternates", testFile),
+                Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_testRemoveSingleSpanDelAlleleExNoVar.vcf")
+        );
+        spec.executeTest("test will not remove variant line where '*' is only ALT allele because none exist" + testFile, this);
+
+    @Test
+    public void testRemoveSingleSpanDelAlleleExNonVar() throws IOException {
+        final String testFile = getToolTestDataDir() + "spanning_deletion.vcf";
+        final String samplesFile = "NA2";
+
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString(" -sn " + samplesFile + " --remove-unused-alternates", testFile),
+                Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_testRemoveSingleSpanDelAlleleExNoVar.vcf")
+        );
+        spec.executeTest("test will not remove variant line where '*' is only ALT allele because --exclude-non-variants not called --" + testFile, this);
+    }
+
     public void testRemoveSingleSpanDelAllele() throws IOException {
         final String testFile = getToolTestDataDir() + "spanning_deletion.vcf";
         final String samplesFile = "NA2";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(" -sn " + samplesFile + " --exclude-non-variants true --remove-unused-alternates true", testFile),
+                baseTestString(" -sn " + samplesFile + " --exclude-non-variants --remove-unused-alternates", testFile),
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_testRemoveSingleSpanDelAllele.vcf")
         );
         spec.executeTest("test removes variant line where '*' is only ALT allele --" + testFile, this);

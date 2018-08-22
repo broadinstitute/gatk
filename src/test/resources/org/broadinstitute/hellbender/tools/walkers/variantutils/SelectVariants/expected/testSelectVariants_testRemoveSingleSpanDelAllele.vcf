@@ -27,8 +27,7 @@
 ##INFO=<ID=QD,Number=1,Type=Float,Description="Variant Confidence/Quality by Depth">
 ##INFO=<ID=ReadPosRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt vs. Ref read position bias">
 ##INFO=<ID=SOR,Number=1,Type=Float,Description="Symmetric Odds Ratio of 2x2 contingency table to detect strand bias">
-##contig=<ID=20,length=63025520,assembly=b37>
-##contig=<ID=21,length=48129895,assembly=b37>
-##reference=file:///Users/louisb/Workspace/gatk-protected/src/test/resources/large/human_g1k_v37.20.21.fasta
-#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA1	NA2
-20	14	.	GCCCCCACCC	G	4490.20	.	.	GT:AD:DP:GQ:PL	0/0:1,0,79:80:99:2284,2287,2316,207,237,0	1/1:1,79,0:80:99:2233,233,0,2244,234,2333
+##contig=<ID=20,length=63025520>
+##contig=<ID=21,length=48129895>
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA2
+20	14	.	GCCCCCACCC	G	4490.20	.	AC=2;AF=1.00;AN=2;DP=80	GT:AD:DP:GQ:PL	1/1:1,79,0:80:99:2233,233,0,2244,234,2333

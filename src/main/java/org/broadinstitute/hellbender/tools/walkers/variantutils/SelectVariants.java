@@ -569,7 +569,7 @@ public final class SelectVariants extends VariantWalker {
         }
         final VariantContext filteredGenotypeToNocall = setFilteredGenotypesToNocall ? builder.make(): sub;
 
-        // Not excluding non-variants or subsetted polymorphic variants AND including filtered loci or subsetted variant is not filtered
+        // Not excluding non-variants OR (subsetted polymorphic variants AND not spanning deletion) AND (including filtered loci OR subsetted variant) is not filtered
         if ((!XLnonVariants || (filteredGenotypeToNocall.isPolymorphicInSamples() && !checkOnlySpanDel(filteredGenotypeToNocall))) && (!XLfiltered || !filteredGenotypeToNocall.isFiltered())) {
 
             // Write the subsetted variant if it matches all of the expressions
