@@ -8,7 +8,7 @@ import pymc3 as pm
 import theano as th
 import theano.tensor as tt
 import pymc3.distributions.dist_math as pm_dist_math
-from pymc3 import Deterministic, Dirichlet, Bound, Uniform, Gamma, Potential
+from pymc3 import Deterministic, Dirichlet, Bound, Uniform, Gamma, Potential, Beta
 from scipy.stats import nbinom
 from scipy.misc import logsumexp
 
@@ -186,8 +186,6 @@ class PloidyWorkspace:
         self.num_ploidies = np.max([np.max(ploidy_k) for ploidy_k in self.ploidy_j_k]) + 1
         self.is_ploidy_in_ploidy_state_j_kl = [np.zeros((self.num_ploidy_states_j[j], self.num_ploidies))
                                                for j in range(self.num_contigs)]
-        self.ploidy_priors_jl = 1E-10 * np.ones((self.num_contigs, self.num_ploidies),
-                                                dtype=types.floatX)
 
         for j in range(self.num_contigs):
             for k in range(self.num_ploidy_states_j[j]):
@@ -223,7 +221,7 @@ class PloidyWorkspace:
     @staticmethod
     def _construct_mask(hist_sjm):
         mask_sjm = np.ones(np.shape(hist_sjm))
-        # mask_sjm[hist_sjm < 5] = 0
+        mask_sjm[hist_sjm < 10] = 0
         return mask_sjm
 
     def update_ploidy_model_approx_trace(self, ploidy_model_approx, num_trace_samples):
@@ -254,6 +252,8 @@ class PloidyWorkspace:
                          for i, contig_tuple in enumerate(self.contig_tuples)
                          for j in map(self.contig_to_index_map.get, contig_tuple)], # jsl
                 axes=(1, 0, 2)) # sjl
+
+        print(log_ploidy_emission_sjl)
 
         self.log_q_ploidy_sjl = log_ploidy_emission_sjl - logsumexp(log_ploidy_emission_sjl, axis=2)[:, :, np.newaxis]
 
@@ -299,29 +299,35 @@ class HistogramModel(GeneralizedContinuousModel):
                                shape=(num_samples, num_contigs))
         register_as_sample_specific(fit_alpha_sj, sample_axis=0)
 
+        # # use Gaussian approximation (including continuity correction) to calculate
+        # # normalization factor arising from truncation of negative binomial at m = num_counts - 1 (FIX THIS)
+        # fit_tau_sj = fit_alpha_sj / (fit_mu_sj * (fit_alpha_sj + fit_mu_sj))
+        # fit_hist_norm_approx_sj = tt.inv(0.5 * (1 + tt.erf((num_counts - 0.5 - fit_mu_sj) * tt.sqrt(fit_tau_sj / 2.)) + eps))
+        # fit_hist_norm_sj = Deterministic('fit_hist_norm_sj',
+        #                                  var=fit_hist_norm_approx_sj)
         fit_hist_norm_sj = Uniform('fit_hist_norm_sj',
-                               shape=(num_samples, num_contigs))
+                                   shape=(num_samples, num_contigs))
         register_as_sample_specific(fit_hist_norm_sj, sample_axis=0)
-        log_fit_hist_norm_sj = tt.log(fit_hist_norm_sj)
+        log_fit_hist_norm_sj = tt.log(fit_hist_norm_sj + eps)
 
         num_occurrences_sj = th.shared(np.sum(hist_sjm * hist_mask_sjm, axis=-1))
         logp_sjm = negative_binomial_logp(mu=fit_mu_sj.dimshuffle(0, 1, 'x') + eps,
                                           alpha=fit_alpha_sj.dimshuffle(0, 1, 'x'),
                                           value=counts_m_batched[np.newaxis, np.newaxis, :],
-                                          mask=hist_mask_sjm_th[:, :, counts_m_batched]) - log_fit_hist_norm_sj[:, :, np.newaxis]
-        pm.Potential(name='logp_hist_sjm',
-                     var=tt.sum(poisson_logp(log_mu=tt.log(num_occurrences_sj[:, :, np.newaxis] + eps) + logp_sjm,
+                                          mask=hist_mask_sjm_th[:, :, counts_m_batched])
+        Potential(name='logp_hist_sjm',
+                     var=tt.sum(poisson_logp(log_mu=tt.log(num_occurrences_sj[:, :, np.newaxis] + eps) + log_fit_hist_norm_sj[:, :, np.newaxis] + logp_sjm,
                                              value=hist_sjm_th[:, :, counts_m_batched],
                                              mask=hist_mask_sjm_th[:, :, counts_m_batched])))
-        # pm.Potential(name='logp_hist_sjm', var=hist_sjm_th[:, :, counts_m_batched] * logp_sjm)
+        # Potential(name='logp_hist_sjm', var=hist_sjm_th[:, :, counts_m_batched] * logp_sjm)
 
-        # pm.Potential(name='logp_hist_sjm',
-        #              var=tt.sum(hist_sjm_th *
-        #                         (negative_binomial_logp(mu=fit_mu_sj[:, :, np.newaxis] + eps,
-        #                                                 alpha=fit_alpha_sj[:, :, np.newaxis],
-        #                                                 value=counts_m[np.newaxis, np.newaxis, :],
-        #                                                 mask=hist_mask_sjm_th)
-        #                          - logp_hist_norm_sj[:, :, np.newaxis])))
+        # Potential(name='logp_hist_sjm',
+        #           var=tt.sum(hist_sjm_th *
+        #                      (negative_binomial_logp(mu=fit_mu_sj[:, :, np.newaxis] + eps,
+        #                                              alpha=fit_alpha_sj[:, :, np.newaxis],
+        #                                              value=counts_m[np.newaxis, np.newaxis, :],
+        #                                              mask=hist_mask_sjm_th)
+        #                       - logp_hist_norm_sj[:, :, np.newaxis])))
 
         # num_occurrences_sj = th.shared(np.sum(hist_sjm * hist_mask_sjm, axis=-1))
         # p_sjm = tt.exp(negative_binomial_logp(mu=fit_mu_sj.dimshuffle(0, 1, 'x') + eps,
@@ -330,10 +336,10 @@ class HistogramModel(GeneralizedContinuousModel):
         #                                       mask=hist_mask_sjm_th[:, :, counts_m_batched])
         #                - logp_hist_norm_sj[:, :, np.newaxis])
         #
-        # pm.Potential(name='logp_hist_sjm',
-        #              var=tt.sum(poisson_logp(mu=num_occurrences_sj[:, :, np.newaxis] * p_sjm + eps,
-        #                                      value=hist_sjm_th[:, :, counts_m_batched],
-        #                                      mask=hist_mask_sjm_th[:, :, counts_m_batched])))
+        # Potential(name='logp_hist_sjm',
+        #           var=tt.sum(poisson_logp(mu=num_occurrences_sj[:, :, np.newaxis] * p_sjm + eps,
+        #                                   value=hist_sjm_th[:, :, counts_m_batched],
+        #                                   mask=hist_mask_sjm_th[:, :, counts_m_batched])))
 
         # logp_sjm = negative_binomial_logp(mu=fit_mu_sj.dimshuffle(0, 1, 'x') + eps,
         #                                       alpha=fit_alpha_sj.dimshuffle(0, 1, 'x'),
@@ -341,9 +347,9 @@ class HistogramModel(GeneralizedContinuousModel):
         #                                       mask=hist_mask_sjm_th[:, :, counts_m_batched]) \
         #            - logp_hist_norm_sj[:, :, np.newaxis]
         #
-        # pm.Potential(name='logp_hist_sjm',
-        #              var=tt.sum(hist_sjm_th[:, :, counts_m_batched] * (tt.log(num_occurrences_sj)[:, :, np.newaxis] + logp_sjm)
-        #                         - num_occurrences_sj[:, :, np.newaxis] * tt.exp(logp_sjm)))
+        # Potential(name='logp_hist_sjm',
+        #           var=tt.sum(hist_sjm_th[:, :, counts_m_batched] * (tt.log(num_occurrences_sj)[:, :, np.newaxis] + logp_sjm)
+        #                      - num_occurrences_sj[:, :, np.newaxis] * tt.exp(logp_sjm)))
 
 class HistogramInferenceTask(HybridInferenceTask):
     def __init__(self,
@@ -369,14 +375,12 @@ class HistogramInferenceTask(HybridInferenceTask):
         self.ploidy_workspace.fit_alpha_sj = np.mean(trace['fit_alpha_sj'], axis=0)
         self.ploidy_workspace.fit_alpha_sd_sj = np.std(trace['fit_alpha_sj'], axis=0)
         self.ploidy_workspace.fit_hist_norm_sj = np.mean(trace['fit_hist_norm_sj'], axis=0)
-        self.ploidy_workspace.fit_hist_norm_sd_sj = np.std(trace['fit_hist_norm_sj'], axis=0)
 
         print(np.array2string(self.ploidy_workspace.fit_mu_sj, separator=', '))
         print(np.array2string(self.ploidy_workspace.fit_mu_sd_sj, separator=', '))
         print(np.array2string(self.ploidy_workspace.fit_alpha_sj, separator=', '))
         print(np.array2string(self.ploidy_workspace.fit_alpha_sd_sj, separator=', '))
         print(np.array2string(self.ploidy_workspace.fit_hist_norm_sj, separator=', '))
-        print(np.array2string(self.ploidy_workspace.fit_hist_norm_sd_sj, separator=', '))
 
 
 class PloidyModel(GeneralizedContinuousModel):
