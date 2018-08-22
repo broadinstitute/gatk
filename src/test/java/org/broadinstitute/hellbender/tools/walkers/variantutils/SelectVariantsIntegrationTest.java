@@ -344,6 +344,18 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
+    public void testRemoveSingleSpanDelAllele() throws IOException {
+        final String testFile = getToolTestDataDir() + "spanning_deletion.vcf";
+        final String samplesFile = "NA2";
+
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString(" -sn " + samplesFile + " --exclude-non-variants true --remove-unused-alternates true", testFile),
+                Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_testRemoveSingleSpanDelAllele.vcf")
+        );
+        spec.executeTest("test removes variant line where '*' is only ALT allele --" + testFile, this);
+    }
+
+    @Test
     public void testSelectFromMultiAllelic() throws IOException {
         final String testFile = getToolTestDataDir() + "multi-allelic.bi-allelicInGIH.vcf";
         final String samplesFile = getToolTestDataDir() + "GIH.samples.args";
