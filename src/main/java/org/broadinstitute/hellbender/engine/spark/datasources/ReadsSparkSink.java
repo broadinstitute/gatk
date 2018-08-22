@@ -287,6 +287,7 @@ public final class ReadsSparkSink {
             final SAMFileHeader header, final int numReducers, final String outputPartsDir) throws IOException {
 
         final JavaRDD<SAMRecord> sortedReads = sortSamRecordsToMatchHeader(reads, header, numReducers);
+        System.out.println("After sorting the reads there were: " + sortedReads.count());
         final String outputPartsDirectory = (outputPartsDir == null)? getDefaultPartsDirectory(outputFile)  : outputPartsDir;
         saveAsShardedHadoopFiles(ctx, outputPartsDirectory, referenceFile, samOutputFormat, sortedReads,  header, false);
         logger.info("Finished sorting the bam file and dumping read shards to disk, proceeding to merge the shards into a single file using the master thread");

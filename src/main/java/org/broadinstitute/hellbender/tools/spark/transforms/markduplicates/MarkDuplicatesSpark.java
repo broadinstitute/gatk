@@ -184,12 +184,14 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
     @Override
     protected void runTool(final JavaSparkContext ctx) {
         JavaRDD<GATKRead> reads = getReads();
+        System.out.println("After getting the reads there were: " + reads.count());
         final OpticalDuplicateFinder finder = opticalDuplicatesArgumentCollection.READ_NAME_REGEX != null ?
                 new SerializableOpticalDuplicatesFinder(opticalDuplicatesArgumentCollection.READ_NAME_REGEX, opticalDuplicatesArgumentCollection.OPTICAL_DUPLICATE_PIXEL_DISTANCE) : null;
 
         final SAMFileHeader header = getHeaderForReads();
         final JavaRDD<GATKRead> finalReadsForMetrics = mark(reads, header, markDuplicatesSparkArgumentCollection.duplicatesScoringStrategy, finder, getRecommendedNumReducers(),  markDuplicatesSparkArgumentCollection.dontMarkUnmappedMates);
 
+        System.out.println("After marking the reads there were: " + finalReadsForMetrics.count());
         if (metricsFile != null) {
             final JavaPairRDD<String, GATKDuplicationMetrics> metricsByLibrary = MarkDuplicatesSparkUtils.generateMetrics(
                     header, finalReadsForMetrics);
@@ -198,6 +200,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
         }
         header.setSortOrder(SAMFileHeader.SortOrder.coordinate);
         writeReads(ctx, output, finalReadsForMetrics, header);
+        System.out.println("After writing/sorting the reads there were: " + finalReadsForMetrics.count());
     }
 
 }
