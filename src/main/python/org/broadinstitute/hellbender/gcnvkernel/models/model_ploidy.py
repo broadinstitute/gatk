@@ -223,7 +223,7 @@ class PloidyWorkspace:
     @staticmethod
     def _construct_mask(hist_sjm):
         mask_sjm = np.ones(np.shape(hist_sjm))
-        mask_sjm[hist_sjm < 100] = 0
+        mask_sjm[hist_sjm < 50] = 0
         return mask_sjm
 
     def update_ploidy_model_approx_trace(self, ploidy_model_approx, num_trace_samples):
