@@ -43,7 +43,6 @@ public class HaplotypeBAMDestination {
     {
         Utils.nonNull(outPath, "outputPath cannot be null");
         Utils.nonNull(sourceHeader, "sourceHeader cannot be null");
-        Utils.nonNull(sourceHeader, "sourceHeader cannot be null");
         Utils.nonNull(haplotypeReadGroupID, "haplotypeReadGroupID cannot be null");
         this.haplotypeReadGroupID = haplotypeReadGroupID;
 
