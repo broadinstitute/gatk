@@ -8,7 +8,7 @@ import pymc3 as pm
 import theano as th
 import theano.tensor as tt
 import pymc3.distributions.dist_math as pm_dist_math
-from pymc3 import Deterministic, Dirichlet, Bound, Uniform, Gamma, Potential, Beta
+from pymc3 import Deterministic, Dirichlet, Bound, Uniform, Gamma, Potential
 from scipy.stats import nbinom
 from scipy.misc import logsumexp
 
@@ -221,7 +221,7 @@ class PloidyWorkspace:
     @staticmethod
     def _construct_mask(hist_sjm):
         mask_sjm = np.ones(np.shape(hist_sjm))
-        mask_sjm[hist_sjm < 10] = 0
+        mask_sjm[hist_sjm < 5] = 0
         return mask_sjm
 
     def update_ploidy_model_approx_trace(self, ploidy_model_approx, num_trace_samples):
