@@ -21,7 +21,7 @@ repositories {
     mavenLocal()
 }
 
-apply from: "../../testsettings.gradle"
+apply from: "testsettings.gradle"
 
 // This method unpacks the classes from a jar. This is necessary because the version of testNG we use cannot discover test
 // classes from fram a .jar file, so we must unpackage them in order to run the tests.
