@@ -289,7 +289,7 @@ public final class DetermineGermlineContigPloidyIntegrationTest extends CommandL
                 .addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, "/home/slee/working/gatk/test_files")
                 .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, "/home/slee/working/gatk/test_files/NimbleGenEZ2Tiled_hg19_v2.preprocessed.mapp_gt_0.99.interval_list")
                 .addArgument(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, "test-sfari-cohort-full")
-                .addArgument(DetermineGermlineContigPloidy.MAXIMUM_COUNT_LONG_NAME, "1000")
+                .addArgument(DetermineGermlineContigPloidy.MAXIMUM_COUNT_LONG_NAME, "2000")
                 .addArgument(DetermineGermlineContigPloidy.RUN_MODE_LONG_NAME, "COHORT")
                 .addArgument(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString())
                 .addArgument(StandardArgumentDefinitions.VERBOSITY_NAME, "DEBUG");

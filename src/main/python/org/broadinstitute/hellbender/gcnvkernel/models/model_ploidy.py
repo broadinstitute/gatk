@@ -223,7 +223,7 @@ class PloidyWorkspace:
     @staticmethod
     def _construct_mask(hist_sjm):
         mask_sjm = np.ones(np.shape(hist_sjm))
-        mask_sjm[hist_sjm < 10] = 0
+        # mask_sjm[hist_sjm < 5] = 0
         return mask_sjm
 
     def update_ploidy_model_approx_trace(self, ploidy_model_approx, num_trace_samples):
@@ -371,12 +371,12 @@ class HistogramInferenceTask(HybridInferenceTask):
         self.ploidy_workspace.fit_hist_norm_sj = np.mean(trace['fit_hist_norm_sj'], axis=0)
         self.ploidy_workspace.fit_hist_norm_sd_sj = np.std(trace['fit_hist_norm_sj'], axis=0)
 
-        print(self.ploidy_workspace.fit_mu_sj)
-        print(self.ploidy_workspace.fit_mu_sd_sj)
-        print(self.ploidy_workspace.fit_alpha_sj)
-        print(self.ploidy_workspace.fit_alpha_sd_sj)
-        print(self.ploidy_workspace.fit_hist_norm_sj)
-        print(self.ploidy_workspace.fit_hist_norm_sd_sj)
+        print(np.array2string(self.ploidy_workspace.fit_mu_sj, separator=', '))
+        print(np.array2string(self.ploidy_workspace.fit_mu_sd_sj, separator=', '))
+        print(np.array2string(self.ploidy_workspace.fit_alpha_sj, separator=', '))
+        print(np.array2string(self.ploidy_workspace.fit_alpha_sd_sj, separator=', '))
+        print(np.array2string(self.ploidy_workspace.fit_hist_norm_sj, separator=', '))
+        print(np.array2string(self.ploidy_workspace.fit_hist_norm_sd_sj, separator=', '))
 
 
 class PloidyModel(GeneralizedContinuousModel):
