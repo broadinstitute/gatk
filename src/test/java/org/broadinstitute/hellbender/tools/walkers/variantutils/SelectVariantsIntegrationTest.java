@@ -344,15 +344,28 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
+    public void testRemoveMonomorphAfterSNSelect() throws IOException {
+        final String testFile = getToolTestDataDir() + "spanning_deletion.vcf";
+        final String samplesFile = "NA1";
+
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString(" -sn " + samplesFile + " --remove-unused-alternates --exclude-non-variants", testFile),
+                Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_RemoveMonomorphAfterSNSelect.vcf")
+        );
+        spec.executeTest("test will make sure line is removed when only monomorphic allele exists" + testFile, this);
+    }
+
+    @Test
     public void testRemoveSingleSpanDelAlleleNoSpanDel() throws IOException {
         final String testFile = getToolTestDataDir() + "spanning_deletion.vcf";
         final String samplesFile = "NA1";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(" -sn " + samplesFile + " --remove-unused-alternates", testFile),
-                Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_testRemoveSingleSpanDelAlleleExNoVar.vcf")
+                baseTestString(" -sn " + samplesFile + " --remove-unused-alternates --exclude-non-variants", testFile),
+                Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_RemoveSingleSpanDelAlleleNoSpanDel.vcf")
         );
         spec.executeTest("test will not remove variant line where '*' is only ALT allele because none exist" + testFile, this);
+    }
 
     @Test
     public void testRemoveSingleSpanDelAlleleExNonVar() throws IOException {
@@ -361,18 +374,19 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
                 baseTestString(" -sn " + samplesFile + " --remove-unused-alternates", testFile),
-                Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_testRemoveSingleSpanDelAlleleExNoVar.vcf")
+                Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_RemoveSingleSpanDelAlleleExNoVar.vcf")
         );
         spec.executeTest("test will not remove variant line where '*' is only ALT allele because --exclude-non-variants not called --" + testFile, this);
     }
 
+    @Test
     public void testRemoveSingleSpanDelAllele() throws IOException {
         final String testFile = getToolTestDataDir() + "spanning_deletion.vcf";
         final String samplesFile = "NA2";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
                 baseTestString(" -sn " + samplesFile + " --exclude-non-variants --remove-unused-alternates", testFile),
-                Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_testRemoveSingleSpanDelAllele.vcf")
+                Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_RemoveSingleSpanDelAllele.vcf")
         );
         spec.executeTest("test removes variant line where '*' is only ALT allele --" + testFile, this);
     }
