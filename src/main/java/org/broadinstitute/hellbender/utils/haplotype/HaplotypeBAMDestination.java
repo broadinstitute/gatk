@@ -80,7 +80,7 @@ public class HaplotypeBAMDestination {
     public void add(final GATKRead read){
         Utils.nonNull(read, "read cannot be null");
         samWriter.addRead(read);
-    };
+    }
 
     /**
      * Get the read group ID that is used by this writer when writing halpotypes as reads.

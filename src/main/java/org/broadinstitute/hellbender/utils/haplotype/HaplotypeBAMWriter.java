@@ -50,7 +50,7 @@ public class HaplotypeBAMWriter implements AutoCloseable {
          * A mode for users.  Writes out the reads aligned only to the called
          * haplotypes.  Useful to understand why the caller is calling what it is
          */
-        CALLED_HAPLOTYPES;
+        CALLED_HAPLOTYPES
 
     }
 
@@ -144,7 +144,7 @@ public class HaplotypeBAMWriter implements AutoCloseable {
      *
      * @param read the read we want to write aligned to the reference genome, must not be null
      */
-    protected void writeReadAgainstHaplotype(final GATKRead read) {
+    private void writeReadAgainstHaplotype(final GATKRead read) {
         Utils.nonNull(read, "read cannot be null");
         output.add(read);
     }
@@ -157,7 +157,7 @@ public class HaplotypeBAMWriter implements AutoCloseable {
      *                       be null
      * @param paddedReferenceLoc the genome loc of the padded reference, must not be null
      */
-    protected void writeHaplotypesAsReads(final Collection<Haplotype> haplotypes,
+    private void writeHaplotypesAsReads(final Collection<Haplotype> haplotypes,
                                           final Set<Haplotype> bestHaplotypes,
                                           final Locatable paddedReferenceLoc) {
         Utils.nonNull(haplotypes, "haplotypes cannot be null");
