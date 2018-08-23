@@ -248,7 +248,10 @@ workflow CNVSomaticPairWorkflow {
             load_copy_ratio = load_copy_ratio,
             load_allele_fraction = load_allele_fraction,
             normal_minor_allele_fraction_threshold = normal_minor_allele_fraction_threshold,
-            copy_ratio_peak_min_weight = copy_ratio_peak_min_weight,
+            copy_ratio_peak_min_relative_height = copy_ratio_peak_min_relative_height,
+            copy_ratio_kernel_density_bandwidth = copy_ratio_kernel_density_bandwidth,
+            min_fraction_of_points_in_normal_allele_fraction_region = min_fraction_of_points_in_normal_allele_fraction_region,
+            min_weight_first_cr_peak_cr_data_only = min_weight_first_cr_peak_cr_data_only,
             min_fraction_of_points_in_normal_allele_fraction_region = min_fraction_of_points_in_normal_allele_fraction_region,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
@@ -377,7 +380,10 @@ workflow CNVSomaticPairWorkflow {
             load_copy_ratio = load_copy_ratio,
             load_allele_fraction = load_allele_fraction,
             normal_minor_allele_fraction_threshold = normal_minor_allele_fraction_threshold,
-            copy_ratio_peak_min_weight = copy_ratio_peak_min_weight,
+            copy_ratio_peak_min_relative_height = copy_ratio_peak_min_relative_height,
+            copy_ratio_kernel_density_bandwidth = copy_ratio_kernel_density_bandwidth,
+            min_fraction_of_points_in_normal_allele_fraction_region = min_fraction_of_points_in_normal_allele_fraction_region,
+            min_weight_first_cr_peak_cr_data_only = min_weight_first_cr_peak_cr_data_only,
             min_fraction_of_points_in_normal_allele_fraction_region = min_fraction_of_points_in_normal_allele_fraction_region,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
@@ -640,8 +646,10 @@ task CallModeledSegments {
     File? output_dir
     String? output_prefix
     Float? normal_minor_allele_fraction_threshold
-    Float? copy_ratio_peak_min_weight
+    Float? copy_ratio_peak_min_relative_height
+    Float? copy_ratio_kernel_density_bandwidth
     Float? min_fraction_of_points_in_normal_allele_fraction_region
+    Float? min_weight_first_cr_peak_cr_data_only
     File? gatk4_jar_override
 
     # Runtime parameters
