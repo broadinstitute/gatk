@@ -590,7 +590,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             }
             catch ( final FuncotatorUtils.TranscriptCodingSequenceException ex ) {
                  logger.error("Unable to create a GencodeFuncotation on transcript " + transcript.getTranscriptId() + " for variant: " +
-                        variant.getContig() + ":" + variant.getStart() + "-" + variant.getEnd() + "(" + variant.getReference() + " -> " + altAllele + ")"
+                        variant.getContig() + ":" + variant.getStart() + "-" + variant.getEnd() + "(" + variant.getReference() + " -> " + altAllele + "): " +
+                         ex.getMessage()
                 );
             }
         }
