@@ -1,6 +1,5 @@
 import matplotlib
 matplotlib.use('Agg')
-%matplotlib inline
 from matplotlib.collections import LineCollection
 from matplotlib.colors import LogNorm
 from matplotlib import  ticker
@@ -13,7 +12,7 @@ from sklearn import mixture, cluster
 from sklearn.neighbors import KernelDensity
 import math
 import random
-from pymc3 import Normal, Metropolis, sample, MvNormal, Dirichlet, DensityDist, find_MAP, NUTS, Slice
+from pymc3 import MvNormal, Dirichlet, DensityDist
 import pymc3 as pm
 from pymc3.math import logsumexp
 import theano.tensor as tt
@@ -43,14 +42,14 @@ class LoadAndSampleCrAndAf:
         We attribute a weigth to each segment based on the tightness of their posteriors.
     """
     def __init__(self, filename: str, load_cr: bool = True, load_af: bool=True, do_logging: bool=True,
-                 weight_ratio_max=10, output_log_dir: str= "", output_log_prefix: str= ""):
+                 weight_ratio_max=10., output_log_dir: str= "", output_log_prefix: str= ""):
         """ Inputs:
             - filename: 'modelFinal.seg' file characterizing the posterior distribution of the
               copy ratio and the allele fraction data
             - load_cr: whether to load copy ratio data
             - load_af: whether to load the allele fraction data
             - weight_ratio_max: defines the maximum value that the weights of points can take.
-              The maximum value is weight_ratio_max * median(weights)
+              The maximum value is weight_ratio_max * mean(weights)
         """
 
         # Start logging
@@ -497,7 +496,7 @@ class LoadAndSampleCrAndAf:
         avg_weight = np.mean([weights[i] for i in range(len(weights)) if weights[i] > 0.001 * avg_weight]) \
                      if len([weights[i] for i in range(len(weights)) if weights[i] > 0.001 * avg_weight]) > 0 \
                      else 0.
-        max_weight = self.__weight_ratio_max * avg_weight
+        max_weight = float(self.__weight_ratio_max) * float(avg_weight)
         weights = [min([weights[i], max_weight]) for i in range(len(weights))]
         return weights
 
@@ -851,8 +850,8 @@ class ModeledSegmentsCaller:
 
         with model:
             inference = pm.ADVI()
-        
-        approx = inference.fit(n=120000, total_grad_norm_constraint=50)
+
+        approx = inference.fit(n=110000, total_grad_norm_constraint=50)
         means = approx.bij.rmap(approx.mean.eval())
         cov = approx.cov.eval()
         sds = approx.bij.rmap(np.diag(cov)**.5)
@@ -1690,27 +1689,27 @@ class ModeledSegmentsCaller:
         """ Auxiliary function to determine the averge and the standard deviation of the copy ratio
             value of all the normal segments.
         """
-        total_length = 0
+        total_weight = 0
         total_cr = 0
         total_var_cr = 0
         for i in range(len(self.__copy_ratio_median)):
             if self.__responsibilities_normal[i] > responsibility_threshold:
-                total_length += self.__n_points_cr[i]
-                total_cr += self.__n_points_cr[i] * self.__copy_ratio_median[i]
+                total_weight += self.__weights[i]
+                total_cr += self.__weights[i] * self.__copy_ratio_median[i]
 
-        if total_length == 0:
+        if total_weight == 0:
             avg_normal_cr = 0
         else:
-            avg_normal_cr = total_cr / total_length
+            avg_normal_cr = total_cr / total_weight
 
         for i in range(len(self.__copy_ratio_median)):
             if self.__responsibilities_normal[i] > responsibility_threshold:
-                total_var_cr += self.__n_points_cr[i] * (self.__copy_ratio_median[i] - avg_normal_cr)**2
+                total_var_cr += self.__weights[i] * (self.__copy_ratio_median[i] - avg_normal_cr)**2
 
-        if total_length == 0:
+        if total_weight == 0:
             var_normal_cr = 0
         else:
-            var_normal_cr = total_var_cr / total_length
+            var_normal_cr = total_var_cr / total_weight
 
         std_dev_normal_cr = var_normal_cr**0.5
 

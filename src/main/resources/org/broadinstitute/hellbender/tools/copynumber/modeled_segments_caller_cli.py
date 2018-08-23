@@ -49,8 +49,8 @@ group.add_argument("--load_allele_fraction",
                    default="True",
                    help="Whether to load allele fraction data.")
 
-group.add_argument("--weight-ratio-max",
-                   type=str,
+group.add_argument("--weight_ratio_max",
+                   type=float,
                    required=False,
                    default=10,
                    help="Upon loading the data from file, we set an upper cut-off to the segment weights, "
@@ -140,7 +140,7 @@ group.add_argument("--min_fraction_of_points_in_normal_allele_fraction_region",
                    help="The region of copy ratio values are is considered normal only if at least this "
                         "fraction of points are above the normalMinorAlleleFractionThreshold",)
 
-group.add_argument("--responsibility-threshold-normal",
+group.add_argument("--responsibility_threshold_normal",
                    type=float,
                    required=False,
                    default=0.5,
