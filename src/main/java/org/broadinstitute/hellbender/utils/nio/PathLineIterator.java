@@ -1,14 +1,16 @@
 package org.broadinstitute.hellbender.utils.nio;
 
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.Utils;
+
 import java.io.IOException;
+import java.nio.charset.CharacterCodingException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.Spliterator;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
-import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.Utils;
 
 /**
  * Iterate through the lines of a Path. Works for anything you can point
@@ -28,12 +30,15 @@ public class PathLineIterator implements AutoCloseable, Iterable<String> {
      * to close it automatically.
      *
      * @param path path to a text file.
-     * @throws UserException if we cannot open the file for reading.
      */
-    public PathLineIterator(Path path) throws UserException {
+    public PathLineIterator(final Path path) {
         try {
             lines = Files.lines(Utils.nonNull(path, "path shouldn't be null"));
-        } catch (IOException x) {
+        }
+        catch (final CharacterCodingException ex ) {
+            throw new UserException("Error detected in file character encoding.  Possible inconsistent character encodings within the file: " + path.toUri().toString(), ex);
+        }
+        catch (final IOException x) {
             throw new UserException("Error reading " + path.toUri().toString(), x);
         }
     }

@@ -130,7 +130,7 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
             final Iterator<String> it = pathLineIterator.iterator();
 
             // Get our column names:
-            annotationColumnNames = createColumnNames( it, numHeaderLinesToIgnore );
+            annotationColumnNames = createColumnNames(it, numHeaderLinesToIgnore);
 
             // Populate our empty annotation list:
             emptyAnnotationList = new ArrayList<>(annotationColumnNames.size());
@@ -139,7 +139,7 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
             }
 
             // Populate our annotation map:
-            populateAnnotationMap( it, permissiveColumns );
+            populateAnnotationMap(it, permissiveColumns);
         }
 
         // Initialize overrides / defaults:
