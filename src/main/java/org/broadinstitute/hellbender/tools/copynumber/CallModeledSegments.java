@@ -70,10 +70,6 @@ import java.util.*;
 @DocumentedFeature
 @BetaFeature
 public final class CallModeledSegments extends CommandLineProgram {
-    public enum RunMode {
-        COHORT, CASE
-    }
-
     // Arugments given by the user
     private static final String SEGMENT_CALLER_PYTHON_SCRIPT = "modeled_segments_caller_cli.py";
     public static final String OUTPUT_PREFIX_LONG_NAME = "output-prefix";
@@ -229,10 +225,10 @@ public final class CallModeledSegments extends CommandLineProgram {
     )
     private double responsibilityThresholdNormal=0.5;
 
-    @Override
-    protected void onStartup() {
-        PythonScriptExecutor.checkPythonEnvironmentForPackage("modeled_segments_caller");
-    }
+    // @Override
+    // protected void onStartup() {
+    //     PythonScriptExecutor.checkPythonEnvironmentForPackage("modeled_segments_caller");
+    // }
 
     @Override
     protected Object doWork() {
@@ -257,8 +253,17 @@ public final class CallModeledSegments extends CommandLineProgram {
         if (interactive && outputPrefix.equals("")) {
                 // In case no name prefix is given to the images, we specify it using the input file's path
                 String strArray0[] = inFile.getAbsolutePath().split("/");
-                String strArray1[] = strArray0[strArray0.length - 1].split(".");
-                outputPrefix = strArray1[0];
+                if (strArray0.length == 0) {
+                    outputPrefix = "msc";
+                } else {
+                    String strArray1[] = strArray0[strArray0.length - 1].split(".");
+                    if (strArray1.length == 0) {
+                        outputPrefix = "msc";
+                    }
+                    else {
+                        outputPrefix = strArray1[0];
+                    }
+                }
         }
 
         // Call python inference code

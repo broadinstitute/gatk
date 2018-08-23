@@ -1,1 +1,1 @@
-from .main import LoadAndSampleCrAndAf, ModeledSegmentsCaller
+from .modeled_segments_caller.main import LoadAndSampleCrAndAf, ModeledSegmentsCaller
