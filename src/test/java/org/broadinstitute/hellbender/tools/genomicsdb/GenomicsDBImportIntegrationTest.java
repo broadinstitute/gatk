@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.genomicsdb;
 
+import com.intel.genomicsdb.GenomicsDBUtils;
 import com.intel.genomicsdb.model.GenomicsDBExportConfiguration;
 import com.intel.genomicsdb.reader.GenomicsDBFeatureReader;
 import htsjdk.samtools.SAMSequenceDictionary;
@@ -17,6 +18,7 @@ import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -32,9 +34,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
+import java.nio.file.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -399,9 +399,9 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     }
 
     private static void checkJSONFilesAreWritten(final String workspace) {
-        Assert.assertTrue(new File(workspace, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME).exists());
-        Assert.assertTrue(new File(workspace, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME).exists());
-        Assert.assertTrue(new File(workspace, GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME).exists());
+        Assert.assertTrue(BucketUtils.fileExists(IOUtils.appendPathToDir(workspace, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME)));
+        Assert.assertTrue(BucketUtils.fileExists(IOUtils.appendPathToDir(workspace, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME)));
+        Assert.assertTrue(BucketUtils.fileExists(IOUtils.appendPathToDir(workspace, GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME)));
     }
 
     private static void checkGenomicsDBAgainstExpected(final String workspace, final List<SimpleInterval> intervals,
@@ -754,12 +754,13 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
             final String workspace, final String reference,
             final boolean produceGTField,
             final boolean sitesOnlyQuery) throws IOException {
-       GenomicsDBExportConfiguration.ExportConfiguration exportConfiguration = GenomicsDBExportConfiguration.ExportConfiguration.newBuilder()
+        String workspaceAbsPath = BucketUtils.makeFilePathAbsolute(workspace);
+        GenomicsDBExportConfiguration.ExportConfiguration exportConfiguration = GenomicsDBExportConfiguration.ExportConfiguration.newBuilder()
                 .setWorkspace(workspace)
                 .setReferenceGenome(reference)
-                .setVidMappingFile(new File(workspace, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME).getAbsolutePath())
-                .setCallsetMappingFile(new File(workspace, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME).getAbsolutePath())
-                .setVcfHeaderFilename(new File(workspace, GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME).getAbsolutePath())
+                .setVidMappingFile(IOUtils.appendPathToDir(workspaceAbsPath, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME))
+                .setCallsetMappingFile(IOUtils.appendPathToDir(workspaceAbsPath, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME))
+                .setVcfHeaderFilename(IOUtils.appendPathToDir(workspaceAbsPath, GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME))
                 .setProduceGTField(produceGTField)
                 .setSitesOnlyQuery(sitesOnlyQuery)
                 .setGenerateArrayNameFromPartitionBounds(true)
@@ -778,5 +779,57 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         // this actually creates the directory on disk, not just the file name.
         final String workspace = createTempDir("workspace").getAbsolutePath();
         writeToGenomicsDB(LOCAL_GVCFS, INTERVAL, workspace, 0, false, 0, 1);
+    }
+
+    private void cleanupGCSFolder(String path) {
+        try {
+            if (BucketUtils.isCloudStorageUrl(path)) {
+                Files.list(Paths.get(path)).forEach(f -> {
+                    try {
+                        Files.deleteIfExists(Paths.get(f.toString()));
+                    } catch (DirectoryNotEmptyException e1) {
+                        cleanupGCSFolder(f.toString());
+                    } catch (IOException e) {
+                        // Ignore for now
+                    }
+                });
+                Files.deleteIfExists(BucketUtils.getPathOnGcs(path));
+            }
+        } catch (IOException e) {
+            // Ignore for now.
+        }
+    }
+
+    @Test(groups = {"bucket"})
+    public void testWriteToAndQueryFromGCS() throws IOException {
+        String workspace = BucketUtils.randomRemotePath(getGCPTestInputPath(), "","");
+        try {
+            Assert.assertNotNull(getGoogleServiceAccountKeyPath());
+            System.gc();
+            writeToGenomicsDB(LOCAL_GVCFS, INTERVAL, workspace, 0, false, 0, 1);
+            checkJSONFilesAreWritten(workspace);
+            checkGenomicsDBAgainstExpected(workspace, INTERVAL, COMBINED, b38_reference_20_21, true);
+        } catch (UserException e) {
+            // Don't run this test as GOOGLE_APPLICATION_CREDENTIALS is not set
+        } finally {
+            cleanupGCSFolder(workspace);
+        }
+    }
+
+    @Test(groups = {"bucket"}, expectedExceptions = GenomicsDBImport.UnableToCreateGenomicsDBWorkspace.class)
+    public void testWriteToExistingGCSDirectory() throws IOException {
+        String workspace = BucketUtils.randomRemotePath(getGCPTestInputPath(), "","");
+        try {
+            Assert.assertNotNull(getGoogleServiceAccountKeyPath());
+            int rc = GenomicsDBUtils.createTileDBWorkspace(workspace, false);
+            Assert.assertEquals(rc, 0);
+            writeToGenomicsDB(LOCAL_GVCFS, INTERVAL, workspace, 0, false, 0, 1);
+        } catch (GenomicsDBImport.UnableToCreateGenomicsDBWorkspace e1) {
+            throw e1;
+        } catch (UserException e) {
+            // Don't run this test as GOOGLE_APPLICATION_CREDENTIALS is not set
+        } finally {
+            cleanupGCSFolder(workspace);
+        }
     }
 }
