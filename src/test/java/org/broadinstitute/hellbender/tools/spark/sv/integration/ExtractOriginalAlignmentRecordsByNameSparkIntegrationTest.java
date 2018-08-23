@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.sv.integration;
 
+import com.google.common.collect.Sets;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import org.apache.commons.io.FileUtils;
@@ -27,26 +28,34 @@ public final class ExtractOriginalAlignmentRecordsByNameSparkIntegrationTest ext
 
         final File tempWorkingDir = BaseTest.createTempDir("extractOriginalAlignmentRecordsByNameSparkIntegrationTest");
 
-        FileUtils.writeLines(new File(tempWorkingDir, "names.txt"), Collections.singleton("asm013903:tig00002"));
+        final Set<String> readNames = Sets.newHashSet("HCELLCCXX100000.1:1216:26352:40143",
+                                                      "@HCELLCCXX100000.1:1102:4513:24427",
+                                                      "@HCELLCCXX100000.1:2209:14387:21983/1",
+                                                      "@HCELLCCXX100000.1:1102:18497:19012/2");
+        FileUtils.writeLines(new File(tempWorkingDir, "names.txt"), readNames);
+        final Set<String> cleanReaNames = Sets.newHashSet("HCELLCCXX100000.1:1216:26352:40143",
+                                                          "HCELLCCXX100000.1:1102:4513:24427",
+                                                          "HCELLCCXX100000.1:2209:14387:21983",
+                                                          "HCELLCCXX100000.1:1102:18497:19012");
 
         final SAMFileHeader expectedHeader;
         final List<SAMRecord> expectedRecordsNormalMatch;
-        try (final ReadsDataSource readsSource = new ReadsDataSource(IOUtils.getPath(SVIntegrationTestDataProvider.TEST_CONTIG_SAM))) {
+        try (final ReadsDataSource readsSource = new ReadsDataSource(IOUtils.getPath(SVIntegrationTestDataProvider.TEST_BAM))) {
             expectedHeader = readsSource.getHeader();
-            expectedRecordsNormalMatch = Utils.stream(readsSource.iterator()).filter(r -> r.getName().equals("asm013903:tig00002"))
+            expectedRecordsNormalMatch = Utils.stream(readsSource.iterator()).filter(r -> cleanReaNames.contains(r.getName()))
                     .sorted(Comparator.comparingInt(GATKRead::getAssignedStart)).map(r -> r.convertToSAMRecord(expectedHeader)).collect(Collectors.toList());
         }
-        final List<String> normalArgs = Arrays.asList("-I", SVIntegrationTestDataProvider.TEST_CONTIG_SAM,
+        final List<String> normalArgs = Arrays.asList("-I", SVIntegrationTestDataProvider.TEST_BAM,
                 "-O", tempWorkingDir.getAbsolutePath() + "/names.bam",
                 "--read-name-file", tempWorkingDir.getAbsolutePath() + "/names.txt");
         data.add(new Object[]{IOUtils.getPath(tempWorkingDir+"/names.bam"), normalArgs, expectedHeader, expectedRecordsNormalMatch});
 
         final List<SAMRecord> expectedRecordsInvertedMatch;
-        try (final ReadsDataSource readsSource = new ReadsDataSource(IOUtils.getPath(SVIntegrationTestDataProvider.TEST_CONTIG_SAM))) {
-            expectedRecordsInvertedMatch = Utils.stream(readsSource.iterator()).filter(r -> !r.getName().equals("asm013903:tig00002"))
+        try (final ReadsDataSource readsSource = new ReadsDataSource(IOUtils.getPath(SVIntegrationTestDataProvider.TEST_BAM))) {
+            expectedRecordsInvertedMatch = Utils.stream(readsSource.iterator()).filter(r -> !cleanReaNames.contains(r.getName()))
                     .sorted(Comparator.comparingInt(GATKRead::getAssignedStart)).map(r -> r.convertToSAMRecord(expectedHeader)).collect(Collectors.toList());
         }
-        final List<String> invertArgs = Arrays.asList("-I", SVIntegrationTestDataProvider.TEST_CONTIG_SAM,
+        final List<String> invertArgs = Arrays.asList("-I", SVIntegrationTestDataProvider.TEST_BAM,
                 "-O", tempWorkingDir.getAbsolutePath() + "/namesInverted.bam",
                 "--read-name-file", tempWorkingDir.getAbsolutePath() + "/names.txt",
                 "--invert-match");
@@ -64,8 +73,8 @@ public final class ExtractOriginalAlignmentRecordsByNameSparkIntegrationTest ext
         try (final ReadsDataSource readsSource = new ReadsDataSource(bamPath)) {
             Assert.assertEquals(readsSource.getHeader(), expectedHeader);
             final List<SAMRecord> samRecords = Utils.stream(readsSource.iterator()).map(r -> r.convertToSAMRecord(expectedHeader)).collect(Collectors.toList());
-            Assert.assertEquals(samRecords.stream().map(SAMRecord::getSAMString).collect(Collectors.toList()),
-                    expectedRecords.stream().map(SAMRecord::getSAMString).collect(Collectors.toList()));
+            Assert.assertEquals(samRecords.stream().map(SAMRecord::getSAMString).sorted().collect(Collectors.toList()),
+                                expectedRecords.stream().map(SAMRecord::getSAMString).sorted().collect(Collectors.toList()));
         }
     }
 }
