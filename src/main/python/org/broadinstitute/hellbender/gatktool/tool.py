@@ -14,11 +14,12 @@ used to read data that had been passed to Python by GATK Java code.
 
 import sys
 import os
+import gatktool._version
 
 _ackFIFO = None
 _dataFIFO = None
 
-def initializeGATK(ackFIFOName: str):
+def initializeGATK(expectedVersion: str, ackFIFOName: str):
     """
     Open the GATK ack FIFO and install the exception handler hook.
 
@@ -30,6 +31,27 @@ def initializeGATK(ackFIFOName: str):
     global _ackFIFO
     _ackFIFO = AckFIFO(ackFIFOName)
     sys.excepthook = gatkExceptionHook
+    # verify the version after the exception hook has been set so it will be
+    # caught by the exception handler
+    verifyGATKVersion(expectedVersion)
+
+
+def verifyGATKVersion(expectedVersion: str):
+    """
+    Verify that the GATK runtime matches the version of the gatktool package in the
+    current environment (sends a nack on failure). This can fail in the common case
+    where the user has upgraded GATK, but not updated the conda environment.
+    :param expectedVersion: The version of GATK currently running.
+    """
+    if (gatktool._version.__version__ != expectedVersion):
+        if (expectedVersion == "Unavailable"):
+            versionErrorString = "Warning: Can't validate python module version (expected/found): {}/{})"
+            print(versionErrorString.format(expectedVersion, gatktool._version.__version__))
+        else :
+            versionErrorString = \
+                "The GATK version is {}, but the GATK Python module in the current environment version {}. " \
+                "The GATK conda environment must be updated to match GATK version {}."
+            raise RuntimeError(versionErrorString.format(expectedVersion, gatktool._version.__version__, expectedVersion))
 
 
 def gatkExceptionHook(exceptionType, value, traceback):

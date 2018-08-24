@@ -50,4 +50,18 @@ public final class RuntimeUtils {
                 toolClass.getSimpleName();
     }
 
+    /**
+     * Get the version of GATK.
+     * @return A string representing the version of the GATK software, or the string "Unavailable" if
+     * the version can't be determined. Usually, the version String is retrieved from the manifest in
+     * the GATK jar. However, when running tests through Gradle/IntelliJ, there is no uber jar, only
+     * the compiled .class files. In that case, the string "Unavailable" is returned.
+     */
+    public static String getGATKVersionString() {
+        final String versionString = RuntimeUtils.class.getPackage().getImplementationVersion();
+        return versionString != null ?
+                versionString :
+                "Unavailable";
+    }
+
 }

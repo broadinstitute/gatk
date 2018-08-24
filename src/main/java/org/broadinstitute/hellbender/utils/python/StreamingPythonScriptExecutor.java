@@ -59,7 +59,7 @@ public class StreamingPythonScriptExecutor<T> extends PythonExecutorBase {
     // Python commands that are executed in the companion python process. The functions called
     // here live in the {@code tool} module in {@code gatktool} Python package.
     private final static String PYTHON_IMPORT_GATK = "from gatktool import tool" + NL;
-    private final static String PYTHON_INITIALIZE_GATK = "tool.initializeGATK('%s')" + NL;
+    private final static String PYTHON_INITIALIZE_GATK = "tool.initializeGATK('%s', '%s')" + NL;
     private final static String PYTHON_TERMINATE_GATK = "tool.terminateGATK()" + NL;
     private final static String PYTHON_INITIALIZE_DATA_FIFO = "tool.initializeDataFIFO('%s')" + NL;
     private final static String PYTHON_CLOSE_DATA_FIFO = "tool.closeDataFIFO()" + NL;
@@ -334,7 +334,10 @@ public class StreamingPythonScriptExecutor<T> extends PythonExecutorBase {
     private void initializeTool(final File ackFIFOFile) {
         //  first we need to import the module; no ack expected yet as we haven't initialized the ack fifo
         spController.writeProcessInput(PYTHON_IMPORT_GATK); // no ack generated
-        spController.writeProcessInput(String.format(PYTHON_INITIALIZE_GATK, ackFIFOFile.getAbsolutePath()));
+        spController.writeProcessInput(
+                String.format(PYTHON_INITIALIZE_GATK,
+                        RuntimeUtils.getGATKVersionString(),
+                        ackFIFOFile.getAbsolutePath()));
         sendAckRequest(); // queue up an ack request
         // open the FIFO to unblock the remote caller (which should be blocked on open for read), and then
         // wait for the ack to be sent
