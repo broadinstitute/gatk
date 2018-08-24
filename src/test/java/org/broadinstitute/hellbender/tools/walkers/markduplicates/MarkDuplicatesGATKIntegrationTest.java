@@ -178,7 +178,7 @@ public final class MarkDuplicatesGATKIntegrationTest extends AbstractMarkDuplica
         }
         markDuplicatesGATK.OUTPUT = outputSam;
         markDuplicatesGATK.METRICS_FILE = metricsFile;
-        markDuplicatesGATK.TMP_DIR = CollectionUtil.makeList(outputDir);
+        markDuplicatesGATK.tmpDir = outputDir.toString();
         // Needed to suppress calling CommandLineProgram.getVersion(), which doesn't work for code not in a jar
         markDuplicatesGATK.PROGRAM_RECORD_ID = null;
         Assert.assertEquals(markDuplicatesGATK.doWork(), null);
@@ -254,7 +254,7 @@ public final class MarkDuplicatesGATKIntegrationTest extends AbstractMarkDuplica
         markDuplicatesGATK.INPUT = CollectionUtil.makeList(sam);
         markDuplicatesGATK.OUTPUT = outputSam;
         markDuplicatesGATK.METRICS_FILE = metricsFile;
-        markDuplicatesGATK.TMP_DIR = CollectionUtil.makeList(outputDir);
+        markDuplicatesGATK.tmpDir = outputDir.toString();
         // Needed to suppress calling CommandLineProgram.getVersion(), which doesn't work for code not in a jar
         markDuplicatesGATK.PROGRAM_RECORD_ID = null;
         Assert.assertEquals(markDuplicatesGATK.doWork(), null);

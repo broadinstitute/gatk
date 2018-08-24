@@ -245,6 +245,18 @@ public abstract class BaseTest {
     }
 
     /**
+     * Creates a temp path that will be deleted on exit after tests are complete.
+     *
+     * This will also mark the corresponding Tribble/Tabix/BAM indices matching the temp file for deletion.
+     * @param name Prefix of the path.
+     * @param extension Extension to concat to the end of the path.
+     * @return A file in the temporary directory starting with name, ending with extension, which will be deleted after the program exits.
+     */
+    public static Path createTempPath(final String name, final String extension) {
+        return IOUtils.createTempPath(name, extension);
+    }
+
+    /**
      * Return a File object representing a file with the given name and extension that is guaranteed not to exist.
      * @param fileNameWithExtension
      * @return File object representing a file that is guaranteed not to exist

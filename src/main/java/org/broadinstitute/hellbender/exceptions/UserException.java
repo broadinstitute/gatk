@@ -5,6 +5,7 @@ import htsjdk.tribble.Feature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.ValidateVariants;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
@@ -193,6 +194,11 @@ public class UserException extends RuntimeException {
         public BadTempDir(String message, Throwable cause) {
             super(String.format(MESSAGE_FORMAT_STRING, System.getProperties().get("java.io.tmpdir"), message), cause);
         }
+
+        public BadTempDir(Path tmpDir, String message, Throwable cause) {
+            super(String.format(MESSAGE_FORMAT_STRING, IOUtils.getAbsolutePathWithoutFileProtocol(tmpDir), message), cause);
+        }
+
     }
 
     public static class MalformedGenomeLoc extends UserException {

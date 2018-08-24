@@ -122,6 +122,5 @@ public abstract class GATKBaseTest extends BaseTest {
             locs.add(hg19GenomeLocParser.parseGenomeLoc(interval));
         return Collections.unmodifiableList(locs);
     }
-    
 }
 
