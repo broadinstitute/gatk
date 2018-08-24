@@ -587,8 +587,8 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
 
         // TODO: check existence of all files
         ctx.addFile(referenceFile);
-        ctx.addFile(indexPath.toString());
-        ctx.addFile(dictPath.toString());
+        ctx.addFile(indexPath.toUri().toString());
+        ctx.addFile(dictPath.toUri().toString());
 
         return referencePath.getFileName().toString();
     }
