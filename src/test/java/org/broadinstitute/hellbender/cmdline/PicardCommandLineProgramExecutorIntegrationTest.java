@@ -52,7 +52,7 @@ public final class PicardCommandLineProgramExecutorIntegrationTest extends Comma
         final File outfile = createTempFile("normalized", ".fasta");
 
         // Use GATK-style lower case argument names, which are rejected by Picard
-        // because it uses upper cased argument names (--INPUT/--OUTPUT)
+        // because it uses upper cased argument names (--input/--output)
         final String[] args = {
                 "--input", input.getAbsolutePath(),
                 "--output", outfile.getAbsolutePath(),

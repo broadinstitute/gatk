@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.utils.spark;
 
-import com.google.common.collect.Iterators;
-import com.google.common.collect.PeekingIterator;
+import com.google.common.collect.*;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.SAMTextHeaderCodec;
@@ -21,8 +20,10 @@ import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.spark.transforms.markduplicates.MarkDuplicatesSparkUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.*;
+import org.broadinstitute.hellbender.utils.read.markduplicates.ReadsKey;
 import scala.Tuple2;
 
 import java.io.*;
@@ -231,4 +232,54 @@ public final class SparkUtils {
             return current;
         });
     }
+
+    /**
+     * Like <code>groupByKey</code>, but assumes that values are already sorted by key, so no shuffle is needed,
+     * which is much faster.
+     * @param rdd the input RDD
+     * @param <K> type of keys
+     * @param <V> type of values
+     * @return an RDD where each the values for each key are grouped into an iterable collection
+     */
+    public static <K, V> JavaPairRDD<K, Iterable<V>> spanByKey(JavaPairRDD<K, V> rdd) {
+        return rdd.mapPartitionsToPair(SparkUtils::spanningIterator);
+    }
+
+    /**
+     * An iterator that groups values having the same key into iterable collections.
+     * @param iterator an iterator over key-value pairs
+     * @param <K> type of keys
+     * @param <V> type of values
+     * @return an iterator over pairs of keys and grouped values
+     */
+    public static <K, V> Iterator<Tuple2<K, Iterable<V>>> spanningIterator(Iterator<Tuple2<K, V>> iterator) {
+        final PeekingIterator<Tuple2<K, V>> iter = Iterators.peekingIterator(iterator);
+        return new AbstractIterator<Tuple2<K, Iterable<V>>>() {
+            @Override
+            protected Tuple2<K, Iterable<V>> computeNext() {
+                K key = null;
+                List<V> group = Lists.newArrayList();
+                while (iter.hasNext()) {
+                    if (key == null) {
+                        Tuple2<K, V> next = iter.next();
+                        key = next._1();
+                        V value = next._2();
+                        group.add(value);
+                        continue;
+                    }
+                    K nextKey = iter.peek()._1(); // don't advance...
+                    if (nextKey.equals(key)) {
+                        group.add(iter.next()._2()); // .. unless the keys match
+                    } else {
+                        return new Tuple2<>(key, group);
+                    }
+                }
+                if (key != null) {
+                    return new Tuple2<>(key, group);
+                }
+                return endOfData();
+            }
+        };
+    }
+
 }

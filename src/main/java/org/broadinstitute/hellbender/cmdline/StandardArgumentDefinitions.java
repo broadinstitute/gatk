@@ -40,6 +40,8 @@ public final class StandardArgumentDefinitions {
     public static final String PEDIGREE_FILE_LONG_NAME = "pedigree";
     public static final String SITES_ONLY_LONG_NAME = "sites-only-vcf-output";
     public static final String INVALIDATE_PREVIOUS_FILTERS_LONG_NAME = "invalidate-previous-filters";
+    public static final String SORT_ORDER_LONG_NAME = "sort-order";
+
 
     public static final String INPUT_SHORT_NAME = "I";
     public static final String OUTPUT_SHORT_NAME = "O";
@@ -67,6 +69,7 @@ public final class StandardArgumentDefinitions {
     public static final String ANNOTATIONS_TO_EXCLUDE_SHORT_NAME = "AX";
     public static final String SAMPLE_NAME_SHORT_NAME = "sn";
     public static final String PEDIGREE_FILE_SHORT_NAME = "ped";
+    public static final String SORT_ORDER_SHORT_NAME = "SO";
 
     public static final String SPARK_PROPERTY_NAME = "conf";
 

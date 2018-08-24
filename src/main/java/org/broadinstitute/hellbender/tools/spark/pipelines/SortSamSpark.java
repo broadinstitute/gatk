@@ -26,15 +26,13 @@ import java.util.List;
 public final class SortSamSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 
-    public static final String SORT_ORDER_LONG_NAME = "sort-order";
-
     @Override
     public boolean requiresReads() { return true; }
 
     @Argument(doc="the output file path", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, optional = false)
     private String outputFile;
 
-    @Argument(doc="sort order of the output file", fullName = SORT_ORDER_LONG_NAME, optional = true)
+    @Argument(doc="sort order of the output file", shortName = StandardArgumentDefinitions.SORT_ORDER_SHORT_NAME, fullName = StandardArgumentDefinitions.SORT_ORDER_LONG_NAME, optional = true)
     private SparkSortOrder sortOrder = SparkSortOrder.coordinate;
 
     /**

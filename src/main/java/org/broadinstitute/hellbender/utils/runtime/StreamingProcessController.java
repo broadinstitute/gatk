@@ -363,7 +363,7 @@ public final class StreamingProcessController extends ProcessControllerBase<Capt
             }
         }
         if (process != null) {
-            // terminate the app by closing the process' INPUT stream
+            // terminate the app by closing the process' input stream
             IOUtils.closeQuietly(process.getOutputStream());
         }
     }

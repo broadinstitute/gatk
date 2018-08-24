@@ -755,7 +755,7 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
         final List<String> lines = FileUtils.readLines(metricsFile, StandardCharsets.UTF_8);
         Assert.assertTrue(lines.get(0).startsWith("##"), lines.get(0));
         Assert.assertTrue(lines.get(1).startsWith("#"), lines.get(1));
-        Assert.assertTrue(lines.get(1).toLowerCase().contains("--input"), lines.get(1));  //Note: lowercase because picard uses INPUT and GATK uses input for full name
+        Assert.assertTrue(lines.get(1).toLowerCase().contains("--input"), lines.get(1));  //Note: lowercase because picard uses input and GATK uses input for full name
         Assert.assertTrue(lines.get(2).startsWith("##"), lines.get(2));
         Assert.assertTrue(lines.get(3).startsWith("# Started on:"), lines.get(3));
         Assert.assertTrue(lines.get(4).trim().isEmpty());

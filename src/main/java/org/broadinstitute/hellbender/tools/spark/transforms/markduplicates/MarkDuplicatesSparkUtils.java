@@ -21,6 +21,7 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.read.markduplicates.*;
 import org.broadinstitute.hellbender.utils.read.markduplicates.sparkrecords.*;
+import org.broadinstitute.hellbender.utils.spark.SparkUtils;
 import picard.sam.markduplicates.util.OpticalDuplicateFinder;
 import picard.sam.markduplicates.util.ReadEnds;
 import scala.Tuple2;
@@ -259,7 +260,7 @@ public class MarkDuplicatesSparkUtils {
      */
     private static JavaPairRDD<String, Iterable<IndexPair<GATKRead>>> spanReadsByKey(final JavaRDD<IndexPair<GATKRead>> reads) {
         JavaPairRDD<String, IndexPair<GATKRead>> nameReadPairs = reads.mapToPair(read -> new Tuple2<>(read.getValue().getName(), read));
-        return spanByKey(nameReadPairs).flatMapToPair(namedRead -> {
+        return SparkUtils.spanByKey(nameReadPairs).flatMapToPair(namedRead -> {
             // for each name, separate reads by key (group name)
             List<Tuple2<String, Iterable<IndexPair<GATKRead>>>> out = Lists.newArrayList();
             ListMultimap<String, IndexPair<GATKRead>> multi = LinkedListMultimap.create();
@@ -274,54 +275,6 @@ public class MarkDuplicatesSparkUtils {
         });
     }
 
-    /**
-     * Like <code>groupByKey</code>, but assumes that values are already sorted by key, so no shuffle is needed,
-     * which is much faster.
-     * @param rdd the input RDD
-     * @param <K> type of keys
-     * @param <V> type of values
-     * @return an RDD where each the values for each key are grouped into an iterable collection
-     */
-    private static <K, V> JavaPairRDD<K, Iterable<V>> spanByKey(JavaPairRDD<K, V> rdd) {
-        return rdd.mapPartitionsToPair(MarkDuplicatesSparkUtils::spanningIterator);
-    }
-
-    /**
-     * An iterator that groups values having the same key into iterable collections.
-     * @param iterator an iterator over key-value pairs
-     * @param <K> type of keys
-     * @param <V> type of values
-     * @return an iterator over pairs of keys and grouped values
-     */
-    static <K, V> Iterator<Tuple2<K, Iterable<V>>> spanningIterator(Iterator<Tuple2<K, V>> iterator) {
-        final PeekingIterator<Tuple2<K, V>> iter = Iterators.peekingIterator(iterator);
-        return new AbstractIterator<Tuple2<K, Iterable<V>>>() {
-            @Override
-            protected Tuple2<K, Iterable<V>> computeNext() {
-                K key = null;
-                List<V> group = Lists.newArrayList();
-                while (iter.hasNext()) {
-                    if (key == null) {
-                        Tuple2<K, V> next = iter.next();
-                        key = next._1();
-                        V value = next._2();
-                        group.add(value);
-                        continue;
-                    }
-                    K nextKey = iter.peek()._1(); // don't advance...
-                    if (nextKey.equals(key)) {
-                        group.add(iter.next()._2()); // .. unless the keys match
-                    } else {
-                        return new Tuple2<>(key, group);
-                    }
-                }
-                if (key != null) {
-                    return new Tuple2<>(key, group);
-                }
-                return endOfData();
-            }
-        };
-    }
 
     /**
      * Primary landing point for MarkDuplicateSparkRecords:

@@ -58,7 +58,7 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
             final ReadLikelihoods <Haplotype> readLikelihoods
         ) throws IOException
     {
-        // create OUTPUT SAM file
+        // create output SAM file
         final Path outPath = testWriteToFile(".sam", haplotypes, genomeLoc, readLikelihoods, false, false);
         final File expectedFile = new File(expectedFilePath, "testSAM.sam");
         IntegrationTestSpec.assertEqualTextFiles(outPath.toFile(), expectedFile);
@@ -73,7 +73,7 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
             final ReadLikelihoods <Haplotype> readLikelihoods
         ) throws IOException
     {
-        // create OUTPUT BAM file
+        // create output BAM file
         final Path outPath = testWriteToFile(".bam", haplotypes, genomeLoc, readLikelihoods, false, false);
         final File expectedFile = new File(expectedFilePath, "testBAM.bam");
         SamAssertionUtils.assertEqualBamFiles(outPath.toFile(), expectedFile, false, ValidationStringency.DEFAULT_STRINGENCY);
@@ -88,7 +88,7 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
                     final ReadLikelihoods <Haplotype> readLikelihoods
             ) throws IOException
     {
-        // create OUTPUT BAM file
+        // create output BAM file
         final Path outPath = testWriteToFile(".bam", haplotypes, genomeLoc, readLikelihoods, true, false);
         final File expectedFile = new File(expectedFilePath, "testBAM.bam");
         SamAssertionUtils.assertEqualBamFiles(outPath.toFile(), expectedFile, false, ValidationStringency.DEFAULT_STRINGENCY);
@@ -103,7 +103,7 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
                     final ReadLikelihoods <Haplotype> readLikelihoods
             ) throws IOException
     {
-        // create OUTPUT BAM file
+        // create output BAM file
         final Path outPath = testWriteToFile(".bam", haplotypes, genomeLoc, readLikelihoods, false, true);
         final File expectedFile = new File(expectedFilePath, "testBAM.bam");
         SamAssertionUtils.assertEqualBamFiles(outPath.toFile(), expectedFile, false, ValidationStringency.DEFAULT_STRINGENCY);

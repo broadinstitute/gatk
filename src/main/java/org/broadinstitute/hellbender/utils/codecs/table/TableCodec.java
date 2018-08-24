@@ -17,6 +17,8 @@ import java.util.List;
  *     <ul>
  *     <li>Header: must begin with line HEADER or track (for IGV), followed by any number of column names,
  *     separated by whitespace.</li>
+ *     <li>Header: Custom header delimiters can be provided, with a null header line being interpreted as having a non-delimeted
+ *     header which consists of one line.</li>
  *     <li>Comment lines starting with # are ignored</li>
  *     <li>Each non-header and non-comment line is split into parts by whitespace,
  *     and these parts are assigned as a map to their corresponding column name in the header.
@@ -28,30 +30,56 @@ import java.util.List;
  *
  * </p>
  *
- * <h2>File format example</h2>
+ * <h2>File format example 1</h2>
  * <pre>
  *     HEADER a b c
  *     1:1  1   2   3
  *     1:2  4   5   6
  *     1:3  7   8   9
  * </pre>
+ *
+ * <h2>File format example 2</h2>
+ * <pre>
+ *     a b c
+ *     1:1  1   2   3
+ *     1:2  4   5   6
+ *     1:3  7   8   9
+ * </pre>
  */
 public final class TableCodec extends AsciiFeatureCodec<TableFeature> {
-    protected static final String HEADER_DELIMITER = "HEADER";
+    protected static final String DEFAULT_HEADER_DELIMITER = "HEADER";
     protected static final String IGV_HEADER_DELIMITER = "track";
     protected static final String COMMENT_DELIMITER = "#";
+
+    private final String headerDelimiter;
+    private final String commentDelimiter;
 
     protected String delimiter_regex = "\\s+";
 
     protected List<String> header = new ArrayList<>();
 
-    public TableCodec() {
+    private boolean havePassedHeader = false;
+
+    public TableCodec(final String headerLineDelimiter, final String commentLineDelimiter) {
         super(TableFeature.class);
+        headerDelimiter = headerLineDelimiter;
+        commentDelimiter = commentLineDelimiter;
+    }
+
+    public TableCodec(final String headerLineDelimiter) {
+        this(headerLineDelimiter, COMMENT_DELIMITER);
+    }
+
+    public TableCodec() {
+        this(DEFAULT_HEADER_DELIMITER);
     }
 
     @Override
     public TableFeature decode(final String line) {
-        if (line.startsWith(HEADER_DELIMITER) || line.startsWith(COMMENT_DELIMITER) || line.startsWith(IGV_HEADER_DELIMITER)) {
+        if ((headerDelimiter != null && ! line.startsWith(headerDelimiter)) ||
+                (headerDelimiter == null && !havePassedHeader) ||
+                line.startsWith(commentDelimiter) || line.startsWith(IGV_HEADER_DELIMITER)) {
+            havePassedHeader = true;
             return null;
         }
         final String[] split = line.split(delimiter_regex);
@@ -66,11 +94,11 @@ public final class TableCodec extends AsciiFeatureCodec<TableFeature> {
         boolean isFirst = true;
         while (reader.hasNext()) {
             final String line = reader.peek(); // Peek to avoid reading non-header data
-            if ( isFirst && ! line.startsWith(HEADER_DELIMITER) && ! line.startsWith(COMMENT_DELIMITER)) {
+            if ( isFirst && ! line.startsWith(commentDelimiter) &&  headerDelimiter != null && ! line.startsWith(headerDelimiter) ) {
                 throw new UserException.MalformedFile("TableCodec file does not have a header");
             }
-            isFirst &= line.startsWith(COMMENT_DELIMITER);
-            if (line.startsWith(HEADER_DELIMITER)) {
+            isFirst &= line.startsWith(commentDelimiter);
+            if (headerDelimiter == null || line.startsWith(headerDelimiter)) {
                 reader.next(); // "Commit" the peek
                 if (!header.isEmpty()) {
                     throw new UserException.MalformedFile("Input table file seems to have two header lines.  The second is = " + line);
@@ -78,7 +106,7 @@ public final class TableCodec extends AsciiFeatureCodec<TableFeature> {
                 final String[] spl = line.split(delimiter_regex);
                 Collections.addAll(header, spl);
                 return header;
-            } else if (line.startsWith(COMMENT_DELIMITER)) {
+            } else if (line.startsWith(commentDelimiter)) {
                 reader.next(); // "Commit" the peek
             } else {
                 break;
