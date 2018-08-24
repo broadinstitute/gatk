@@ -8,10 +8,13 @@ public interface ByteSequence extends Iterable<Byte> {
     int length();
     ByteSequence subSequence( int start, int end );
 
-    @Override default ByteIterator iterator() { return new ByteSequenceIterator(this); }
-    default ByteIterator reverseIterator() { return new ByteSequenceReverseIterator(this); }
-    default ByteIterator rcIterator( final Complementer complementer ) {
-        return new ByteSequenceReverseComplementIterator(this, complementer);
+    @Override default ByteIterator iterator() { return iterator(0); }
+    default ByteIterator iterator( final int index ) { return new ByteSequenceIterator(this, index); }
+    default ByteIterator reverseIterator() { return reverseIterator(0); }
+    default ByteIterator reverseIterator( final int index ) { return new ByteSequenceReverseIterator(this, index); }
+    default ByteIterator rcIterator( final Complementer complementer ) { return rcIterator(0, complementer); }
+    default ByteIterator rcIterator( final int index, final Complementer complementer ) {
+        return new ByteSequenceReverseComplementIterator(this, index, complementer);
     }
 
     interface ByteIterator extends Iterator<Byte> {
@@ -33,9 +36,14 @@ public interface ByteSequence extends Iterable<Byte> {
         private int index;
 
         public ByteSequenceIterator( final ByteSequence byteSequence ) {
+            this(byteSequence, 0);
+        }
+
+        public ByteSequenceIterator( final ByteSequence byteSequence, final int index ) {
             Utils.nonNull(byteSequence);
+            Utils.validateArg(index >= 0 && index < byteSequence.length(), "index out of bounds");
             this.byteSequence = byteSequence;
-            this.index = 0;
+            this.index = index;
         }
 
         @Override public boolean hasNext() { return index < byteSequence.length(); }
@@ -47,9 +55,14 @@ public interface ByteSequence extends Iterable<Byte> {
         private int index;
 
         public ByteSequenceReverseIterator( final ByteSequence byteSequence ) {
+            this(byteSequence, 0);
+        }
+
+        public ByteSequenceReverseIterator( final ByteSequence byteSequence, final int index ) {
             Utils.nonNull(byteSequence);
+            Utils.validateArg(index >= 0 && index < byteSequence.length(), "index out of bounds");
             this.byteSequence = byteSequence;
-            this.index = byteSequence.length();
+            this.index = byteSequence.length() - index;
         }
 
         @Override public boolean hasNext() { return index > 0; }
@@ -63,9 +76,16 @@ public interface ByteSequence extends Iterable<Byte> {
 
         public ByteSequenceReverseComplementIterator( final ByteSequence byteSequence,
                                                       final Complementer complementer ) {
+            this(byteSequence, 0, complementer);
+        }
+
+        public ByteSequenceReverseComplementIterator( final ByteSequence byteSequence,
+                                                      final int index,
+                                                      final Complementer complementer ) {
             Utils.nonNull(byteSequence);
+            Utils.validateArg(index >= 0 && index < byteSequence.length(), "index out of bounds");
             this.byteSequence = byteSequence;
-            this.index = byteSequence.length();
+            this.index = byteSequence.length() - index;
             this.complementer = complementer;
         }
 

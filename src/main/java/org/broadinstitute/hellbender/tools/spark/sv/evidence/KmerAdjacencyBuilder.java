@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.*;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFastqUtils.FastqRead;
 import org.broadinstitute.hellbender.tools.spark.utils.HopscotchSet;
+import org.broadinstitute.hellbender.utils.ByteSequence;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
@@ -70,7 +71,7 @@ public class KmerAdjacencyBuilder extends CommandLineProgram {
                                                          final List<Contig> contigs,
                                                          final int kSize2 ) {
         final int nKmers = contigs.stream().mapToInt(tig -> tig.getSequence().length()-kSize2+1).sum();
-        final Map<SVKmer, SVLocation> contigKmerMap = new HashMap<>(SVUtils.hashMapCapacity(nKmers));
+        final Map<SVKmerLong, SVLocation> contigKmerMap = new HashMap<>(SVUtils.hashMapCapacity(nKmers));
         final int nContigs = contigs.size();
         for ( int contigId = 0; contigId != nContigs; ++contigId ) {
             int contigOffset = 0;
@@ -108,11 +109,33 @@ public class KmerAdjacencyBuilder extends CommandLineProgram {
         return readPaths;
     }
 
+    private static List<Contig> chasePath( final byte[] sequence,
+                                           final byte[] quals,
+                                           final int kSize2,
+                                           final Map<SVKmerLong, SVLocation> contigKmerMap,
+                                           final List<Contig> contigs ) {
+        final Iterator<SVKmerLong> readItr = new NInsensitiveKmerizer<>(sequence, kSize2, new SVKmerLong());
+        while ( readItr.hasNext() ) {
+            final SVKmerLong kmer = readItr.next();
+            final SVKmerLong kmerCanonical = kmer.canonical(kSize2);
+            SVLocation location = contigKmerMap.get(kmerCanonical);
+            if ( location != null ) {
+                if ( !kmer.equals(kmerCanonical) ) {
+                    int contigId = location.getContig();
+                    if ( contigId < 0 ) contigId = ~contigId;
+                    final int contigLen = contigs.get(contigId).getSequence().length();
+                    location = new SVLocation(~location.getContig(), contigLen - location.getPosition() - kSize2);
+                }
+
+            }
+        }
+    }
+
     private static List<SVInterval> processRead( final StringBuilder sb,
                                                  final byte[] sequence,
                                                  final byte[] quals,
                                                  final int kSize2,
-                                                 final Map<SVKmer, SVLocation> contigKmerMap,
+                                                 final Map<SVKmerLong, SVLocation> contigKmerMap,
                                                  final List<Contig> contigs ) {
         final List<SVInterval> readPath = new ArrayList<>();
         SVInterval currentSpan = null;
