@@ -20,7 +20,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoveryUtils.getCanonicalChromosomes;
+import static org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils.getCanonicalChromosomes;
 
 public final class TestUtilsForAssemblyBasedSVDiscovery {
 
