@@ -17,7 +17,7 @@ import java.security.GeneralSecurityException;
 public final class BucketUtilsTest extends GATKBaseTest {
 
     static {
-        BucketUtils.setGlobalNIODefaultOptions();
+        BucketUtils.setGlobalNIODefaultOptions(20,"");
     }
 
     @Test(groups={"bucket"})
