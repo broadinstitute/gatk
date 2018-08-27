@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr;
 
-import com.google.common.collect.Lists
+import com.google.common.collect.Lists;
 import org.apache.log4j.Logger;
 
 import org.broadinstitute.barclay.argparser.CommandLineException;
