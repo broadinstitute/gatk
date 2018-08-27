@@ -168,6 +168,9 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
 
     private int numRealignedVariants;
 
+
+    private int furthestEndOfEarlierVariant;
+    private String currentContig;
     /**
      * Set up the VCF writer, samples
      *
@@ -175,6 +178,7 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
     @Override
     public void onTraversalStart() {
         numRealignedVariants=0;
+        furthestEndOfEarlierVariant=0;
         final Map<String, VCFHeader> vcfHeaders = Collections.singletonMap(getDrivingVariantsFeatureInput().getName(), getHeaderForVariants());
         final SortedSet<String> vcfSamples = VcfUtils.getSortedSampleSet(vcfHeaders, GATKVariantContextUtils.GenotypeMergeType.REQUIRE_UNIQUE);
 
@@ -224,6 +228,11 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
      */
     @Override
     public void apply(VariantContext vc, ReadsContext readsContext, ReferenceContext ref, FeatureContext featureContext) {
+        if(!vc.getContig().equals(currentContig)) {
+            // if we are on a new contig reset furthestEndOfEarlierVariant
+            currentContig=vc.getContig();
+            furthestEndOfEarlierVariant=0;
+        }
         final List<VariantContext> vcList= splitMultiallelics ? GATKVariantContextUtils.splitVariantContextToBiallelics(vc, false,
                 GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL, keepOriginalChrCounts) : Collections.singletonList(vc);
 
@@ -267,7 +276,6 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
      * @return                  Number of records left-aligned (0 or 1)
      */
     protected int trimAlign(final VariantContext vc, final ReferenceContext ref){
-
         final int refLength =  vc.getReference().length();
 
         // ignore if the reference length is greater than the maxIndelSize
@@ -285,6 +293,10 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
 
         // write out new VC
         vcfWriter.add(alignedV);
+
+        if(alignedV.getEnd()>furthestEndOfEarlierVariant) {
+            furthestEndOfEarlierVariant=alignedV.getEnd();
+        }
 
         // number of records left aligned
         return (v.equals(alignedV)? 0 : 1);
@@ -328,8 +340,10 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
             elements.add(new CigarElement(refSeq.length - originalIndex, CigarOperator.M));
             Cigar originalCigar = new Cigar(elements);
 
+            // align no further left than base after previous variant
+            int leftmostAllowedAlignment = furthestEndOfEarlierVariant-ref.getWindow().getStart() + 2;
             // left align the CIGAR
-            Cigar newCigar = AlignmentUtils.leftAlignIndel(originalCigar, refSeq, originalIndel, 0, 0, true);
+            Cigar newCigar = AlignmentUtils.leftAlignIndel(originalCigar, refSeq, originalIndel, 0, 0, leftmostAllowedAlignment,true);
             if (newCigar.equals(originalCigar)) {
                 return vc;
             }

@@ -712,23 +712,28 @@ public final class AlignmentUtils {
      * @param readSeq   read sequence
      * @param refIndex  0-based alignment start position on ref
      * @param readIndex 0-based alignment start position on read
+     * @param leftmostAllowedAlignment left align indel no further left than this index (0-based)
      * @param doNotThrowExceptionForMultipleIndels  if true we will not throw an exception if we encounter multiple indels in the alignment will instead will return the original cigar
      * @return a non-null cigar, in which the indels are guaranteed to be placed at the leftmost possible position across a repeat (if any)
      */
-    public static Cigar leftAlignIndel(Cigar cigar, final byte[] refSeq, final byte[] readSeq, final int refIndex, final int readIndex, final boolean doNotThrowExceptionForMultipleIndels) {
+
+    public static Cigar leftAlignIndel(Cigar cigar, final byte[] refSeq, final byte[] readSeq, final int refIndex, final int readIndex, final int leftmostAllowedAlignment,final boolean doNotThrowExceptionForMultipleIndels) {
         ensureLeftAlignmentHasGoodArguments(cigar, refSeq, readSeq, refIndex, readIndex);
 
         final int numIndels = countIndelElements(cigar);
         if ( numIndels == 0 )
             return cigar;
         if ( numIndels == 1 )
-            return leftAlignSingleIndel(cigar, refSeq, readSeq, refIndex, readIndex, true);
+            return leftAlignSingleIndel(cigar, refSeq, readSeq, refIndex, readIndex, leftmostAllowedAlignment,true);
 
         // if we got here then there is more than 1 indel in the alignment
         if ( doNotThrowExceptionForMultipleIndels )
             return cigar;
 
         throw new UnsupportedOperationException("attempting to left align a CIGAR that has more than 1 indel in its alignment but this functionality has not been implemented yet");
+    }
+    public static Cigar leftAlignIndel(Cigar cigar, final byte[] refSeq, final byte[] readSeq, final int refIndex, final int readIndex, final boolean doNotThrowExceptionForMultipleIndels) {
+        return leftAlignIndel(cigar, refSeq, readSeq, refIndex, readIndex, 0, doNotThrowExceptionForMultipleIndels);
     }
 
     private static void ensureLeftAlignmentHasGoodArguments(final Cigar cigar, final byte[] refSeq, final byte[] readSeq, final int refIndex, final int readIndex) {
@@ -765,10 +770,11 @@ public final class AlignmentUtils {
      * @param readSeq   read sequence
      * @param refIndex  0-based alignment start position on ref
      * @param readIndex 0-based alignment start position on read
+     * @param leftmostAllowedAlignment left align indel no further left than this index (0-based)
      * @param cleanupCigar if true, we'll cleanup the resulting cigar element, removing 0 length elements and deletions from the first cigar position
      * @return a non-null cigar, in which the single indel is guaranteed to be placed at the leftmost possible position across a repeat (if any)
      */
-    public static Cigar leftAlignSingleIndel(Cigar cigar, final byte[] refSeq, final byte[] readSeq, final int refIndex, final int readIndex, final boolean cleanupCigar) {
+    public static Cigar leftAlignSingleIndel(Cigar cigar, final byte[] refSeq, final byte[] readSeq, final int refIndex, final int readIndex, final int leftmostAllowedAlignment,final boolean cleanupCigar) {
         ensureLeftAlignmentHasGoodArguments(cigar, refSeq, readSeq, refIndex, readIndex);
 
         int indexOfIndel = -1;
@@ -798,6 +804,9 @@ public final class AlignmentUtils {
         Cigar newCigar = cigar;
         for (int i = 0; i < indelLength; i++) {
             newCigar = moveCigarLeft(newCigar, indexOfIndel);
+            if(isIndelAlignedTooFarLeft(newCigar,leftmostAllowedAlignment)) {
+                break;
+            }
             byte[] newAltString = createIndelString(newCigar, indexOfIndel, refSeq, readSeq, refIndex, readIndex);
 
             // check to make sure we haven't run off the end of the read
@@ -816,6 +825,30 @@ public final class AlignmentUtils {
 
         return cigar;
     }
+    public static Cigar leftAlignSingleIndel(Cigar cigar, final byte[] refSeq, final byte[] readSeq, final int refIndex, final int readIndex, final boolean cleanupCigar) {
+        return leftAlignSingleIndel(cigar, refSeq, readSeq, refIndex, readIndex, 0, cleanupCigar);
+    }
+
+    /**
+     * Check if cigar aligns indel too far left
+     * @param cigar     structure of the original alignment -- cannot be null
+     * @param leftmostAllowedAlignment furthest left in cigar indel can be
+     * @param
+     * @return true is indel is aligned too far left
+     */
+    protected static boolean isIndelAlignedTooFarLeft(final Cigar cigar,final int leftmostAllowedAlignment) {
+        int location=0;
+        for (CigarElement element : cigar.getCigarElements() ) {
+            if (element.getOperator()==CigarOperator.D || element.getOperator()==CigarOperator.I) {
+                return location<leftmostAllowedAlignment;
+            }
+            if(element.getOperator().consumesReferenceBases()) {
+                location += element.getLength();
+            }
+        }
+        return false;
+    }
+
 
     /**
      * Does one of the elements in cigar have a 0 length?
