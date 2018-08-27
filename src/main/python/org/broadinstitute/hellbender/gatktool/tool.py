@@ -14,9 +14,11 @@ used to read data that had been passed to Python by GATK Java code.
 
 import sys
 import os
+import cProfile, pstats, io
 
 _ackFIFO = None
 _dataFIFO = None
+_GATKProfiler = None
 
 def initializeGATK(ackFIFOName: str):
     """
@@ -106,6 +108,32 @@ def readDataFIFO() -> str:
     """
     global _dataFIFO
     return _dataFIFO.readLine()
+
+def startProfiling():
+    """
+    Start Python CProfile profiling.
+    """
+    global _GATKProfiler
+    _GATKProfiler = cProfile.Profile()
+    _GATKProfiler.enable()
+
+def endProfiling(profileName: str):
+    """
+    End Python CProfile profiling and write results to a file. The
+    startProfile function must have been previously called. The results
+    are ordered by cummulative time.
+    :param profileName: name of the file to which the profiling results should be written.
+    """
+    global _GATKProfiler
+    _GATKProfiler.disable()
+    gatkProfilerDescriptor = os.open(profileName, os.O_WRONLY | os.O_CREAT)
+    gatkProfileStream = os.fdopen(gatkProfilerDescriptor, 'w')
+    gatkStats = pstats.Stats(_GATKProfiler, stream=gatkProfileStream).sort_stats('cumulative')
+    gatkStats.print_stats()
+    gatkProfileStream.close()
+    del gatkProfileStream
+    del gatkProfilerDescriptor
+    del gatkStats
 
 
 class AckFIFO:
