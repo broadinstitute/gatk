@@ -1,12 +1,16 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Input;
 import com.google.api.client.repackaged.com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.math3.distribution.AbstractRealDistribution;
 import org.apache.commons.math3.distribution.LogNormalDistribution;
 import org.apache.commons.math3.distribution.NormalDistribution;
 import org.apache.commons.math3.distribution.RealDistribution;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.spark.sv.evidence.LibraryStatistics;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
+import org.broadinstitute.hellbender.tools.spark.utils.IntHistogram;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 
 import java.io.BufferedReader;
@@ -35,8 +39,16 @@ public class InsertSizeDistribution implements Serializable {
 
         AbstractRealDistribution fromMeanAndStdDeviation(final double mean, final double stddev);
 
-        default AbstractRealDistribution fromReadMetadataFile(final String meanString) {
-            try (final BufferedReader reader = new BufferedReader(new InputStreamReader(BucketUtils.openFile(meanString)))) {
+        default AbstractRealDistribution fromReadMetadataFile(final String whereFrom) {
+            try {
+                return fromSerializationFile(whereFrom);
+            } catch (final RuntimeException ex) {
+                return fromTextFile(whereFrom);
+            }
+        }
+
+        default AbstractRealDistribution fromTextFile(String whereFrom) {
+            try (final BufferedReader reader = new BufferedReader(new InputStreamReader(BucketUtils.openFile(whereFrom)))) {
                 String line;
                 int value;
                 double totalSum = 0;
@@ -56,17 +68,44 @@ public class InsertSizeDistribution implements Serializable {
                     }
                 }
                 if (totalCount == 0) {
-                    throw new UserException.MalformedFile("Could not find any insert-sizes in " + meanString);
+                    throw new UserException.MalformedFile("Could not find any insert-sizes in " + whereFrom);
                 }
                 final double mean = totalSum / totalCount;
                 final double stdDev = Math.sqrt(Math.abs(totalSqSum/totalCount - mean * mean));
                 return fromMeanAndStdDeviation(mean, stdDev);
-            } catch (final IOException ex) {
-                throw new UserException.CouldNotReadInputFile(meanString);
-            } catch (final NumberFormatException ex) {
-                throw new UserException.MalformedFile("the CDF contains non-numbers in " + meanString);
+            } catch (final IOException ex2) {
+                throw new UserException.CouldNotReadInputFile(whereFrom);
+            } catch (final NumberFormatException ex2) {
+                throw new UserException.MalformedFile("the CDF contains non-numbers in " + whereFrom);
             }
         }
+
+        default AbstractRealDistribution fromSerializationFile(String whereFrom) {
+            final ReadMetadata metaData = ReadMetadata.Serializer.readStandalone(whereFrom);
+            double totalSum = 0;
+            double totalSqSum = 0;
+            long totalCount = 0;
+            for (final LibraryStatistics libStats : metaData.getAllLibraryStatistics().values()) {
+                final IntHistogram.CDF cdf = libStats.getCDF();
+                final long cdfTotalCount = cdf.getTotalObservations();
+                final int size = cdf.size();
+                for (int i = 1; i < size; i++) {
+                    final double fraction = cdf.getFraction(i) - cdf.getFraction(i - 1);
+                    final double count = fraction * cdfTotalCount;
+                    totalSum += count * i;
+                    totalSqSum += count * i * i;
+                }
+                totalCount += cdfTotalCount;
+            }
+            if (totalCount == 0) {
+                throw new UserException.MalformedFile("Could not find any insert-sizes in " + whereFrom);
+            }
+            final double mean = totalSum / totalCount;
+            final double variance = Math.abs(totalSqSum / totalCount - mean * mean);
+            final double stdDev = Math.sqrt(variance);
+            return fromMeanAndStdDeviation(mean, stdDev);
+        }
+
     }
 
     public static class NormalType implements Type {

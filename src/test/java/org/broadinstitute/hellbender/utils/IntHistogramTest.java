@@ -8,7 +8,7 @@ import org.testng.annotations.Test;
 import java.util.Random;
 
 public class IntHistogramTest extends GATKBaseTest {
-    private static final int MAX_TRACKED_VALUE = 1000;
+    private static final int MAX_TRACKED_VALUE = 10000;
     private static final float SIGNIFICANCE = .05f;
 
     @Test

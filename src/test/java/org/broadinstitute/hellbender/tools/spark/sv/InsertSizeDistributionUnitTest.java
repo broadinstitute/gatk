@@ -4,11 +4,14 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.math3.distribution.PoissonDistribution;
 import org.apache.commons.math3.random.JDKRandomGenerator;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
+import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadataTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -25,8 +28,49 @@ public class InsertSizeDistributionUnitTest extends GATKBaseTest {
     private static final File READ_METADATA_FILE = new File( publicTestDir + InsertSizeDistribution.class.getPackage().getName()
             .replace('.', File.separatorChar) + File.separatorChar + READ_METADATA_FILE_NAME);
 
+
     @Test
-    public void testLogNormalFromMetaData() {
+    public void testFromSerializedMetaData() throws IOException {
+        final ReadMetadata readMetadata = ReadMetadataTest.composeTestReadMetadata();
+        final File tempFile = File.createTempFile("test-rd", ".bin.gz");
+        try {
+            tempFile.delete();
+            tempFile.deleteOnExit();
+            ReadMetadata.Serializer.writeStandalone(readMetadata, tempFile.toString());
+            final InsertSizeDistribution lnDist = new InsertSizeDistribution("LogNormal(" + tempFile.toString() + ")");
+            final InsertSizeDistribution nDist = new InsertSizeDistribution("Normal(" + tempFile.toString() + ")");
+            Assert.assertEquals(lnDist.mean(), ReadMetadataTest.LIBRARY_STATISTICS_MEAN, ReadMetadataTest.LIBRARY_STATISTIC_MEAN_DIFF);
+            Assert.assertEquals(lnDist.stddev(), ReadMetadataTest.LIBRARY_STATISTICS_SDEV, ReadMetadataTest.LIBRARY_STATISTICS_SDEV_DIFF);
+            Assert.assertEquals(nDist.mean(), ReadMetadataTest.LIBRARY_STATISTICS_MEAN, ReadMetadataTest.LIBRARY_STATISTIC_MEAN_DIFF);
+            Assert.assertEquals(nDist.stddev(), ReadMetadataTest.LIBRARY_STATISTICS_SDEV, ReadMetadataTest.LIBRARY_STATISTICS_SDEV_DIFF);
+
+        } finally {
+            tempFile.delete();
+        }
+    }
+
+    @Test
+    public void testFromTextMetaData() throws IOException {
+        final ReadMetadata readMetadata = ReadMetadataTest.composeTestReadMetadata();
+        final File tempFile = File.createTempFile("test-rd", ".txt");
+        try {
+            tempFile.delete();
+            tempFile.deleteOnExit();
+            ReadMetadata.writeMetadata(readMetadata, tempFile.toString());
+            final InsertSizeDistribution lnDist = new InsertSizeDistribution("LogNormal(" + tempFile.toString() + ")");
+            final InsertSizeDistribution nDist = new InsertSizeDistribution("Normal(" + tempFile.toString() + ")");
+            Assert.assertEquals(lnDist.mean(), ReadMetadataTest.LIBRARY_STATISTICS_MEAN, ReadMetadataTest.LIBRARY_STATISTIC_MEAN_DIFF);
+            Assert.assertEquals(lnDist.stddev(), ReadMetadataTest.LIBRARY_STATISTICS_SDEV, ReadMetadataTest.LIBRARY_STATISTICS_SDEV_DIFF);
+            Assert.assertEquals(nDist.mean(), ReadMetadataTest.LIBRARY_STATISTICS_MEAN, ReadMetadataTest.LIBRARY_STATISTIC_MEAN_DIFF);
+            Assert.assertEquals(nDist.stddev(), ReadMetadataTest.LIBRARY_STATISTICS_SDEV, ReadMetadataTest.LIBRARY_STATISTICS_SDEV_DIFF);
+
+        } finally {
+            tempFile.delete();
+        }
+    }
+
+    @Test
+    public void testFromRealTextMetaData() {
         final InsertSizeDistribution lnDist  = new InsertSizeDistribution("LogNormal(" + READ_METADATA_FILE.toString() + ")");
         final InsertSizeDistribution nDist  = new InsertSizeDistribution("Normal(" + READ_METADATA_FILE.toString() + ")");
         for (final InsertSizeDistribution dist : Arrays.asList(lnDist, nDist)) {
