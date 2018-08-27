@@ -187,13 +187,13 @@ public final class MarkDuplicatesGATK extends AbstractMarkDuplicatesCommandLineP
                 new ReadEndsForMarkDuplicatesCodec(),
                 new ReadEndsMDComparator(),
                 maxInMemory,
-                Collections.singletonList(IOUtils.getPath(tmpDir)));
+                Collections.singletonList(configArgs.getTmpDirectory()));
 
         this.fragSort = SortingCollection.newInstanceFromPaths(ReadEndsForMarkDuplicates.class,
                 new ReadEndsForMarkDuplicatesCodec(),
                 new ReadEndsMDComparator(),
                 maxInMemory,
-                Collections.singletonList(IOUtils.getPath(tmpDir)));
+                Collections.singletonList(configArgs.getTmpDirectory()));
 
         try(final SamHeaderAndIterator headerAndIterator = openInputs()) {
             final SAMFileHeader header = headerAndIterator.header;
@@ -337,7 +337,7 @@ public final class MarkDuplicatesGATK extends AbstractMarkDuplicatesCommandLineP
         final int maxInMemory = (int) Math.min((Runtime.getRuntime().maxMemory() * 0.25) / SortingLongCollection.SIZEOF,
                 (double) (Integer.MAX_VALUE - 5));
         logger.info("Will retain up to " + maxInMemory + " duplicate indices before spilling to disk.");
-        this.duplicateIndexes = new SortingLongCollection(maxInMemory, IOUtils.getPath(tmpDir));
+        this.duplicateIndexes = new SortingLongCollection(maxInMemory, configArgs.getTmpDirectory());
 
         ReadEndsForMarkDuplicates firstOfNextChunk = null;
         final List<ReadEndsForMarkDuplicates> nextChunk = new ArrayList<>(200);
