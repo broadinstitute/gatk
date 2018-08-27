@@ -44,7 +44,55 @@ public class MafOutputRenderer extends OutputRenderer {
     //==================================================================================================================
     // Private Static Members:
 
-    static final Logger logger = LogManager.getLogger(MafOutputRenderer.class);
+    private static final Logger logger = LogManager.getLogger(MafOutputRenderer.class);
+
+    private static final Set<String> HG_19_CHR_SET = new HashSet<>(Arrays.asList("1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","X","Y"));
+
+    private static final List<String> ORDERED_GENCODE_VARIANT_CLASSIFICATIONS = new ArrayList<> (Arrays.asList(
+            GencodeFuncotation.VariantClassification.IN_FRAME_DEL.toString(),
+            GencodeFuncotation.VariantClassification.IN_FRAME_INS.toString(),
+            GencodeFuncotation.VariantClassification.FRAME_SHIFT_INS.toString(),
+            GencodeFuncotation.VariantClassification.FRAME_SHIFT_DEL.toString(),
+            GencodeFuncotation.VariantClassification.MISSENSE.toString(),
+            GencodeFuncotation.VariantClassification.NONSENSE.toString(),
+            GencodeFuncotation.VariantClassification.SILENT.toString(),
+            GencodeFuncotation.VariantClassification.SPLICE_SITE.toString(),
+            GencodeFuncotation.VariantClassification.DE_NOVO_START_IN_FRAME.toString(),
+            GencodeFuncotation.VariantClassification.DE_NOVO_START_OUT_FRAME.toString(),
+            GencodeFuncotation.VariantClassification.START_CODON_SNP.toString(),
+            GencodeFuncotation.VariantClassification.START_CODON_INS.toString(),
+            GencodeFuncotation.VariantClassification.START_CODON_DEL.toString(),
+            GencodeFuncotation.VariantClassification.NONSTOP.toString(),
+            GencodeFuncotation.VariantClassification.FIVE_PRIME_UTR.toString(),
+            GencodeFuncotation.VariantClassification.THREE_PRIME_UTR.toString(),
+            GencodeFuncotation.VariantClassification.FIVE_PRIME_FLANK.toString(),
+            GencodeFuncotation.VariantClassification.INTRON.toString(),
+            GencodeFuncotation.VariantClassification.LINCRNA.toString()
+    ));
+    private static final List<String> ORDERED_MAF_VARIANT_CLASSIFICATIONS = new ArrayList<> (Arrays.asList(
+        MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.IN_FRAME_DEL.toString()),
+        MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.IN_FRAME_INS.toString()),
+        MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.FRAME_SHIFT_INS.toString()),
+        MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.FRAME_SHIFT_DEL.toString()),
+        MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.MISSENSE.toString()),
+        MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.NONSENSE.toString()),
+        MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.SILENT.toString()),
+        MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.SPLICE_SITE.toString()),
+        MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.DE_NOVO_START_IN_FRAME.toString()),
+        MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.DE_NOVO_START_OUT_FRAME.toString()),
+        MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.START_CODON_SNP.toString()),
+        MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.START_CODON_INS.toString()),
+        MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.START_CODON_DEL.toString()),
+        MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.NONSTOP.toString()),
+        MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.FIVE_PRIME_UTR.toString()),
+        MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.THREE_PRIME_UTR.toString()),
+        MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.FIVE_PRIME_FLANK.toString()),
+        MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.INTRON.toString()),
+        MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.LINCRNA.toString())
+    ));
+
+    //==================================================================================================================
+    // Private Members:
 
     /**
      * Default set of columns to include in this {@link MafOutputRenderer}.
@@ -63,9 +111,6 @@ public class MafOutputRenderer extends OutputRenderer {
      * dataSourceFieldName1 will be used as the outputField.
      */
     private final Map<String, List<String>> outputFieldNameMap = new LinkedHashMap<>();
-
-    //==================================================================================================================
-    // Private Members:
 
     /** Flag to see if the header has been written to the output file yet. */
     private boolean hasWrittenHeader = false;
@@ -432,62 +477,14 @@ public class MafOutputRenderer extends OutputRenderer {
                 }
                 else if ( value.toLowerCase().startsWith("chr") && (referenceVersion.toLowerCase().equals("hg19") || referenceVersion.toLowerCase().equals("b37"))) {
                     final String trimVal = value.substring(3);
-                    if ( trimVal.equals("1") || trimVal.equals("2") || trimVal.equals("3") || trimVal.equals("4") ||
-                            trimVal.equals("5") || trimVal.equals("6") || trimVal.equals("7") || trimVal.equals("8") ||
-                            trimVal.equals("9") || trimVal.equals("10") || trimVal.equals("11") || trimVal.equals("12") ||
-                            trimVal.equals("13") || trimVal.equals("14") || trimVal.equals("15") || trimVal.equals("16") ||
-                            trimVal.equals("17") || trimVal.equals("18") || trimVal.equals("19") || trimVal.equals("20") ||
-                            trimVal.equals("21") || trimVal.equals("22") || trimVal.equals("X") || trimVal.equals("Y")) {
+                    if ( HG_19_CHR_SET.contains(trimVal)) {
                         return trimVal;
                     }
                 }
                 break;
             case MafOutputRendererConstants.FieldName_Other_Transcripts:
-
                 // Use apache commons string utils because it's much, much faster to do this replacement:
-                return StringUtils.replaceEachRepeatedly(value,
-                        new String[]{GencodeFuncotation.VariantClassification.IN_FRAME_DEL.toString(),
-                                GencodeFuncotation.VariantClassification.IN_FRAME_INS.toString(),
-                                GencodeFuncotation.VariantClassification.FRAME_SHIFT_INS.toString(),
-                                GencodeFuncotation.VariantClassification.FRAME_SHIFT_DEL.toString(),
-                                GencodeFuncotation.VariantClassification.MISSENSE.toString(),
-                                GencodeFuncotation.VariantClassification.NONSENSE.toString(),
-                                GencodeFuncotation.VariantClassification.SILENT.toString(),
-                                GencodeFuncotation.VariantClassification.SPLICE_SITE.toString(),
-                                GencodeFuncotation.VariantClassification.DE_NOVO_START_IN_FRAME.toString(),
-                                GencodeFuncotation.VariantClassification.DE_NOVO_START_OUT_FRAME.toString(),
-                                GencodeFuncotation.VariantClassification.START_CODON_SNP.toString(),
-                                GencodeFuncotation.VariantClassification.START_CODON_INS.toString(),
-                                GencodeFuncotation.VariantClassification.START_CODON_DEL.toString(),
-                                GencodeFuncotation.VariantClassification.NONSTOP.toString(),
-                                GencodeFuncotation.VariantClassification.FIVE_PRIME_UTR.toString(),
-                                GencodeFuncotation.VariantClassification.THREE_PRIME_UTR.toString(),
-                                GencodeFuncotation.VariantClassification.FIVE_PRIME_FLANK.toString(),
-                                GencodeFuncotation.VariantClassification.INTRON.toString(),
-                                GencodeFuncotation.VariantClassification.LINCRNA.toString(),
-                        },
-                        new String[]{
-                                MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.IN_FRAME_DEL.toString()),
-                                MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.IN_FRAME_INS.toString()),
-                                MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.FRAME_SHIFT_INS.toString()),
-                                MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.FRAME_SHIFT_DEL.toString()),
-                                MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.MISSENSE.toString()),
-                                MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.NONSENSE.toString()),
-                                MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.SILENT.toString()),
-                                MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.SPLICE_SITE.toString()),
-                                MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.DE_NOVO_START_IN_FRAME.toString()),
-                                MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.DE_NOVO_START_OUT_FRAME.toString()),
-                                MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.START_CODON_SNP.toString()),
-                                MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.START_CODON_INS.toString()),
-                                MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.START_CODON_DEL.toString()),
-                                MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.NONSTOP.toString()),
-                                MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.FIVE_PRIME_UTR.toString()),
-                                MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.THREE_PRIME_UTR.toString()),
-                                MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.FIVE_PRIME_FLANK.toString()),
-                                MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.INTRON.toString()),
-                                MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.LINCRNA.toString())
-                            }
-                        );
+                return StringUtils.replaceEachRepeatedly(value, ORDERED_GENCODE_VARIANT_CLASSIFICATIONS.toArray(new String[]{}), ORDERED_MAF_VARIANT_CLASSIFICATIONS.toArray(new String[]{}));
         }
 
         return value;
@@ -514,12 +511,7 @@ public class MafOutputRenderer extends OutputRenderer {
                 }
                 else if (referenceVersion.toLowerCase().equals("hg19") || referenceVersion.toLowerCase().equals("b37")) {
                     if ( value.length() <= 2 ) {
-                        if ( value.equals("1") || value.equals("2") || value.equals("3") || value.equals("4") ||
-                             value.equals("5") || value.equals("6") || value.equals("7") || value.equals("8") ||
-                             value.equals("9") || value.equals("10") || value.equals("11") || value.equals("12") ||
-                             value.equals("13") || value.equals("14") || value.equals("15") || value.equals("16") ||
-                             value.equals("17") || value.equals("18") || value.equals("19") || value.equals("20") ||
-                             value.equals("21") || value.equals("22") || value.equals("X") || value.equals("Y")) {
+                        if ( HG_19_CHR_SET.contains(value) ) {
                             return "chr" + value;
                         }
                     }
@@ -528,47 +520,11 @@ public class MafOutputRenderer extends OutputRenderer {
             case MafOutputRendererConstants.FieldName_Other_Transcripts:
 
                 // Use apache commons string utils because it's much, much faster to do this replacement:
-                String replacement = StringUtils.replaceEachRepeatedly(value,
-                        new String[]{
-                                MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.IN_FRAME_DEL.toString()),
-                                MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.IN_FRAME_INS.toString()),
-                                MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.FRAME_SHIFT_INS.toString()),
-                                MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.FRAME_SHIFT_DEL.toString()),
-                                MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.MISSENSE.toString()),
-                                MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.NONSENSE.toString()),
-                                MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.SILENT.toString()),
-                                MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.SPLICE_SITE.toString()),
-                                MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.DE_NOVO_START_IN_FRAME.toString()),
-                                MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.DE_NOVO_START_OUT_FRAME.toString()),
-                                MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.START_CODON_SNP.toString()),
-                                MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.START_CODON_INS.toString()),
-                                MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.START_CODON_DEL.toString()),
-                                MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.NONSTOP.toString()),
-                                MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.FIVE_PRIME_UTR.toString()),
-                                MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.THREE_PRIME_UTR.toString()),
-                                MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.FIVE_PRIME_FLANK.toString()),
-                                MafOutputRendererConstants.VariantClassificationMap.get(GencodeFuncotation.VariantClassification.INTRON.toString())
-                        },
-                        new String[]{
-                                GencodeFuncotation.VariantClassification.IN_FRAME_DEL.toString(),
-                                GencodeFuncotation.VariantClassification.IN_FRAME_INS.toString(),
-                                GencodeFuncotation.VariantClassification.FRAME_SHIFT_INS.toString(),
-                                GencodeFuncotation.VariantClassification.FRAME_SHIFT_DEL.toString(),
-                                GencodeFuncotation.VariantClassification.MISSENSE.toString(),
-                                GencodeFuncotation.VariantClassification.NONSENSE.toString(),
-                                GencodeFuncotation.VariantClassification.SILENT.toString(),
-                                GencodeFuncotation.VariantClassification.SPLICE_SITE.toString(),
-                                GencodeFuncotation.VariantClassification.DE_NOVO_START_IN_FRAME.toString(),
-                                GencodeFuncotation.VariantClassification.DE_NOVO_START_OUT_FRAME.toString(),
-                                GencodeFuncotation.VariantClassification.START_CODON_SNP.toString(),
-                                GencodeFuncotation.VariantClassification.START_CODON_INS.toString(),
-                                GencodeFuncotation.VariantClassification.START_CODON_DEL.toString(),
-                                GencodeFuncotation.VariantClassification.NONSTOP.toString(),
-                                GencodeFuncotation.VariantClassification.FIVE_PRIME_UTR.toString(),
-                                GencodeFuncotation.VariantClassification.THREE_PRIME_UTR.toString(),
-                                GencodeFuncotation.VariantClassification.FIVE_PRIME_FLANK.toString(),
-                                GencodeFuncotation.VariantClassification.INTRON.toString(),
-                        }
+                // But we have to do the LINCRNA -> RNA conversion separately, so exclude those indices:
+                String replacement = StringUtils.replaceEachRepeatedly(
+                        value,
+                        ORDERED_MAF_VARIANT_CLASSIFICATIONS.subList(0, ORDERED_MAF_VARIANT_CLASSIFICATIONS.size()-1).toArray(new String[]{}),
+                        ORDERED_GENCODE_VARIANT_CLASSIFICATIONS.subList(0, ORDERED_MAF_VARIANT_CLASSIFICATIONS.size()-1).toArray(new String[]{})
                 );
 
                 // Handle the RNA/LINCRNA case specially:

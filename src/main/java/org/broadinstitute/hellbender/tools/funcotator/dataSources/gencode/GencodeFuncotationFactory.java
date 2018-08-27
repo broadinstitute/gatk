@@ -673,52 +673,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         return gencodeFuncotation;
     }
 
-//    /**
-//     * Checks the given {@code outputMap} has MAF-correct values for information relating to INDEL alleles.
-//     * NOTE: The output map is modified in place.
-//     * @param outputMap The {@link Map} of output field -> values to be checked for MAF compliance.
-//     */
-//    @VisibleForTesting
-//    void adjustIndelAlleleInformationForMafOutput(final LinkedHashMap<String, String> outputMap) {
-//        // Massage the start/end/alleles in the case of INDELs
-//        // (Because MAF has different conventions from VCF for start/end positions of INDELs)
-//        if ( outputMap.containsKey(MafOutputRendererConstants.FieldName_Variant_Type) &&
-//                (outputMap.get(MafOutputRendererConstants.FieldName_Variant_Type).equals(MafOutputRendererConstants.FieldValue_Variant_Type_Insertion) ||
-//                        outputMap.get(MafOutputRendererConstants.FieldName_Variant_Type).equals(MafOutputRendererConstants.FieldValue_Variant_Type_Deletion)) ) {
-//
-//            final int refAlleleLength = outputMap.get(MafOutputRendererConstants.FieldName_Reference_Allele).length();
-//            final int altAlleleLength = outputMap.get(MafOutputRendererConstants.FieldName_Tumor_Seq_Allele2).length();
-//
-//            // TODO: port these changes to GencodeFuncotationFactory (issue: https://github.com/broadinstitute/gatk/issues/4378)
-//            // Check to see if it's an insertion:
-//            if ( refAlleleLength < altAlleleLength ) {
-//                // We must:
-//                //    Remove the first N bases from the ALT_allele where N = length(ref_allele)
-//                //    Replace the ref_allele with "-"
-//                //    Replace the Tumor_Seq_Allele1 with "-"
-//                //    Set the End_Position to be Start_Position + 1 (All Insertions should have length 1 to represent the bases between which the insertion occurs).
-//                outputMap.put(MafOutputRendererConstants.FieldName_Tumor_Seq_Allele2, outputMap.get(MafOutputRendererConstants.FieldName_Tumor_Seq_Allele2).substring(refAlleleLength));
-//                outputMap.put(MafOutputRendererConstants.FieldName_Reference_Allele,  MafOutputRendererConstants.EmptyAllele);
-//                outputMap.put(MafOutputRendererConstants.FieldName_Tumor_Seq_Allele1, MafOutputRendererConstants.EmptyAllele);
-//                outputMap.put(MafOutputRendererConstants.FieldName_End_Position, String.valueOf(Integer.valueOf(outputMap.get(MafOutputRendererConstants.FieldName_Start_Position)) + 1));
-//            }
-//            // Check to see if it's a deletion:
-//            else if ( refAlleleLength > altAlleleLength ) {
-//                // We must:
-//                //    Remove the first N bases from the REF_allele where N = length(alt_allele)
-//                //    Remove the first N bases from the Tumor_Seq_Allele1
-//                //    Replace the alt_allele with "-"
-//                //    Increment the Start_Position by 1 (start position should be inclusive of the first base deleted)
-//                //    Increment the End_Position by M-1 where M = length(ref_allele) (end position should be inclusive of the last base deleted)
-//                outputMap.put(MafOutputRendererConstants.FieldName_Reference_Allele,  outputMap.get(MafOutputRendererConstants.FieldName_Reference_Allele).substring(altAlleleLength));
-//                outputMap.put(MafOutputRendererConstants.FieldName_Tumor_Seq_Allele1, outputMap.get(MafOutputRendererConstants.FieldName_Tumor_Seq_Allele1).substring(altAlleleLength));
-//                outputMap.put(MafOutputRendererConstants.FieldName_Tumor_Seq_Allele2, MafOutputRendererConstants.EmptyAllele);
-//                outputMap.put(MafOutputRendererConstants.FieldName_Start_Position, String.valueOf(Integer.valueOf(outputMap.get(MafOutputRendererConstants.FieldName_Start_Position)) + 1));
-//                outputMap.put(MafOutputRendererConstants.FieldName_End_Position, String.valueOf(Integer.valueOf(outputMap.get(MafOutputRendererConstants.FieldName_End_Position)) + refAlleleLength - 1));
-//            }
-//        }
-//    }
-
     /**
      * Create a {@link GencodeFuncotation} for a {@code variant} that occurs in a given {@code exon}.
      * @param variant The {@link VariantContext} for which to create a {@link GencodeFuncotation}.
