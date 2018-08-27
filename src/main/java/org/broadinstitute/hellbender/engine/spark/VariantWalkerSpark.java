@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.engine.spark;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
+import org.apache.spark.SparkFiles;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.FlatMapFunction;
@@ -10,13 +11,13 @@ import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.*;
-import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.engine.filters.VariantFilter;
 import org.broadinstitute.hellbender.engine.filters.VariantFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSource;
 import org.broadinstitute.hellbender.utils.IndexUtils;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -37,12 +38,10 @@ public abstract class VariantWalkerSpark extends GATKSparkTool {
     @Argument(fullName="variantShardSize", shortName="variantShardSize", doc = "Maximum size of each variant shard, in bases.", optional = true)
     public int variantShardSize = 10000;
 
-    @Argument(fullName="variantShardPadding", shortName="readShardPadding", doc = "Each variant shard has this many bases of extra context on each side.", optional = true)
-    public int variantShardPadding = 1000;
-
     @Argument(doc = "whether to use the shuffle implementation or not", shortName = "shuffle", fullName = "shuffle", optional = true)
     public boolean shuffle = false;
 
+    private String referenceFileName;
     private transient VariantsSparkSource variantsSource;
 
     /**
@@ -119,7 +118,6 @@ public abstract class VariantWalkerSpark extends GATKSparkTool {
     public JavaRDD<VariantWalkerContext> getVariants(JavaSparkContext ctx) {
         SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
         List<SimpleInterval> intervals = hasUserSuppliedIntervals() ? getIntervals() : IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
-        // use unpadded shards (padding is only needed for reference bases)
         final List<ShardBoundary> intervalShards = intervals.stream()
                 .flatMap(interval -> Shard.divideIntervalIntoShards(interval, variantShardSize, 0, sequenceDictionary).stream())
                 .collect(Collectors.toList());
@@ -127,20 +125,15 @@ public abstract class VariantWalkerSpark extends GATKSparkTool {
         VariantFilter variantFilter = makeVariantFilter();
         variants = variants.filter(variantFilter::test);
         JavaRDD<Shard<VariantContext>> shardedVariants = SparkSharder.shard(ctx, variants, VariantContext.class, sequenceDictionary, intervalShards, variantShardSize, shuffle);
-        Broadcast<ReferenceMultiSparkSource> bReferenceSource = hasReference() ? ctx.broadcast(getReference()) : null;
         Broadcast<FeatureManager> bFeatureManager = features == null ? null : ctx.broadcast(features);
-        return shardedVariants.flatMap(getVariantsFunction(bReferenceSource, bFeatureManager, sequenceDictionary, variantShardPadding));
+        return shardedVariants.flatMap(getVariantsFunction(referenceFileName, bFeatureManager));
     }
 
     private static FlatMapFunction<Shard<VariantContext>, VariantWalkerContext> getVariantsFunction(
-            final Broadcast<ReferenceMultiSparkSource> bReferenceSource,
-            final Broadcast<FeatureManager> bFeatureManager,
-            final SAMSequenceDictionary sequenceDictionary, final int variantShardPadding) {
+            final String referenceFileName,
+            final Broadcast<FeatureManager> bFeatureManager) {
         return (FlatMapFunction<Shard<VariantContext>, VariantWalkerContext>) shard -> {
-            // get reference bases for this shard (padded)
-            SimpleInterval paddedInterval = shard.getInterval().expandWithinContig(variantShardPadding, sequenceDictionary);
-            ReferenceDataSource reference = bReferenceSource == null ? null :
-                    new ReferenceMemorySource(bReferenceSource.getValue().getReferenceBases(paddedInterval), sequenceDictionary);
+            ReferenceDataSource reference = referenceFileName == null ? null : new ReferenceFileSource(IOUtils.getPath(SparkFiles.get(referenceFileName)));
             FeatureManager features = bFeatureManager == null ? null : bFeatureManager.getValue();
 
             return StreamSupport.stream(shard.spliterator(), false)
@@ -157,6 +150,7 @@ public abstract class VariantWalkerSpark extends GATKSparkTool {
 
     @Override
     protected void runTool(JavaSparkContext ctx) {
+        referenceFileName = addReferenceFilesForSpark(ctx, referenceArguments.getReferenceFileName());
         processVariants(getVariants(ctx), ctx);
     }
 
