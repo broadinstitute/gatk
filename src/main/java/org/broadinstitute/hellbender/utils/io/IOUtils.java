@@ -1,9 +1,11 @@
 package org.broadinstitute.hellbender.utils.io;
 
 import com.google.cloud.storage.contrib.nio.CloudStorageFileSystem;
+import htsjdk.samtools.BAMIndex;
 import htsjdk.samtools.BamFileIoUtils;
 import htsjdk.samtools.cram.build.CramIO;
 import htsjdk.samtools.util.BlockCompressedInputStream;
+import htsjdk.samtools.util.IOUtil;
 import htsjdk.tribble.Tribble;
 import htsjdk.tribble.util.TabixUtils;
 import org.apache.commons.io.FileUtils;
@@ -459,6 +461,40 @@ public final class IOUtils {
     }
 
     /**
+     * Creates a temp path that will be deleted on exit.
+     *
+     * This will also mark the corresponding Tribble/Tabix/BAM indices matching the temp file for deletion.
+     *
+     * @param name Prefix of the file.
+     * @param extension Extension to concat to the end of the file.
+     *
+     * @return A file in the temporary directory starting with name, ending with extension, which will be deleted after the program exits.
+     */
+    public static Path createTempPath(String name, String extension) {
+        try {
+
+            if ( !extension.startsWith(".") ) {
+                extension = "." + extension;
+            }
+
+            final Path path = Files.createTempFile(getPath(System.getProperty("java.io.tmpdir")), name, extension);
+            IOUtil.deleteOnExit(path);
+
+            // Mark corresponding indices for deletion on exit as well just in case an index is created for the temp file:
+            final String filename = path.getFileName().toString();
+            IOUtil.deleteOnExit(path.resolveSibling(filename + Tribble.STANDARD_INDEX_EXTENSION));
+            IOUtil.deleteOnExit(path.resolveSibling(filename + TabixUtils.STANDARD_INDEX_EXTENSION));
+            IOUtil.deleteOnExit(path.resolveSibling(filename + BAMIndex.BAMIndexSuffix));
+            IOUtil.deleteOnExit(path.resolveSibling(filename.replaceAll(extension + "$", ".bai")));
+            IOUtil.deleteOnExit(path.resolveSibling(filename + ".md5"));
+
+            return path;
+        } catch (final IOException ex) {
+            throw new GATKException("Cannot create temp file: " + ex.getMessage(), ex);
+        }
+    }
+
+    /**
      * @param extension a file extension, may include 0 or more leading dots which will be replaced with a single dot
      * @return replace the final extension on a path with the given extension
      */
@@ -550,6 +586,17 @@ public final class IOUtils {
         } else {
             return new File(dir, path).getPath();
         }
+    }
+
+    /**
+     * Gets the absolute Path name with the URI marker, handling the special case of the default file system by removing
+     * the file:// prefix.
+     *
+     * @param path path to get the absolute name.
+     * @return a String with the absolute name, and the file:// protocol removed, if it was present.
+     */
+    public static String getAbsolutePathWithoutFileProtocol(final Path path) {
+        return path.toAbsolutePath().toUri().toString().replaceFirst("^file://", "");
     }
 
     /**

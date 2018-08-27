@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.utils.io;
 
+import com.google.common.jimfs.Configuration;
+import com.google.common.jimfs.Jimfs;
 import org.apache.logging.log4j.core.util.FileUtils;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -8,6 +10,8 @@ import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.broadinstitute.hellbender.testutils.MiniClusterUtils;
 import org.testng.Assert;
 import org.testng.SkipException;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -15,10 +19,27 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.*;
 import java.util.Arrays;
 import java.util.Random;
+import java.util.UUID;
 
 public final class IOUtilsUnitTest extends GATKBaseTest {
+
+    private FileSystem jimfs;
+
+    @BeforeClass
+    public void setUp() {
+        jimfs = Jimfs.newFileSystem(Configuration.unix());
+    }
+    @AfterClass
+    public void tearDown() {
+        try {
+            jimfs.close();
+        } catch (final IOException e) {
+            log("Unable to close JimFS");
+        }
+    }
 
     @Test
     public void testTempDir() {
@@ -167,6 +188,23 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
         Assert.assertTrue(size>0);
     }
 
+    @DataProvider
+    public Object[][] absoluteNames() {
+        return new Object[][] {
+                {"relative/example.txt", new File("relative/example.txt").getAbsolutePath()},
+                {"/local/example.txt", "/local/example.txt"},
+                // note that path normalization removes the extra / in file://
+                {"/local/file://example.txt", "/local/file:/example.txt"},
+                {"file:///local/example.txt", "/local/example.txt"},
+                {"gs://dir/example.txt", "gs://dir/example.txt"}
+        };
+    }
+
+    @Test(dataProvider = "absoluteNames")
+    public void testGetAbsolutePathWithoutFileProtocol(final String uriString, final String expected) {
+        Assert.assertEquals(IOUtils.getAbsolutePathWithoutFileProtocol(IOUtils.getPath(uriString)), expected);
+    }
+
     @Test
     public void testAppendPathToDir() throws Exception {
         Assert.assertEquals(IOUtils.appendPathToDir("dir", "file"), "dir/file");
@@ -295,6 +333,30 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
         Assert.assertTrue(tempFile.exists(), "file was not written to temp file: " + tempFile);
         Assert.assertEquals(tempFile.getParentFile().getAbsolutePath(), (tempDir.getAbsolutePath()),
                 "file was not written to temp file: " + tempFile + " in dir: " + tempDir);
+    }
+
+    @DataProvider
+    public Object[][] tmpPathDirs() throws Exception {
+        return new Object[][] {
+                {createTempDir("local").toPath()},
+                {Files.createDirectory(jimfs.getPath("tmp"))}
+        };
+    }
+
+    @Test(dataProvider = "tmpPathDirs", singleThreaded = true)
+    public void testTempPath(final Path tempDir) throws Exception {
+        // store the previous tmp.dir to check that it is working
+        final String previousTmpDir = System.getProperty("java.io.tmpdir");
+        try {
+            System.setProperty("java.io.tmpdir", IOUtils.getAbsolutePathWithoutFileProtocol(tempDir));
+            final Path tempFile = IOUtils.createTempPath(UUID.randomUUID().toString(), ".txt");
+            Assert.assertTrue(Files.exists(tempFile),
+                    "file was not written to temp file: " + tempFile);
+            Assert.assertEquals(tempFile.getParent().toUri().toString(), tempDir.toUri().toString(),
+                    "file was not written to temp file: " + tempFile + " in dir: " + tempDir);
+        } finally {
+            System.setProperty("java.io.tmpdir", previousTmpDir);
+        }
     }
 
     private String getFirstLineAndDeleteTempFile(final File tempResourceFile) throws IOException {

@@ -10,29 +10,27 @@ import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.metrics.StringHeader;
 import htsjdk.samtools.util.BlockCompressedOutputStream;
 import htsjdk.samtools.util.BlockGunzipper;
-import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.*;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.config.ConfigFactory;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.URL;
+import java.nio.file.*;
 import java.text.DecimalFormat;
 import java.time.Duration;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 import java.util.stream.Collectors;
@@ -62,8 +60,8 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
 
     private static final String DEFAULT_TOOLKIT_SHORT_NAME = "GATK";
 
-    @Argument(fullName = StandardArgumentDefinitions.TMP_DIR_NAME, common=true, optional=true)
-    public List<File> TMP_DIR = new ArrayList<>();
+    @Argument(fullName = StandardArgumentDefinitions.TMP_DIR_NAME, common=true, optional=true, doc = "Temp directory to use.")
+    public String tmpDir;
 
     @ArgumentCollection(doc="Special Arguments that have meaning to the argument parsing system.  " +
             "It is unlikely these will ever need to be accessed by the command line program")
@@ -143,8 +141,10 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
 
     public Object instanceMainPostParseArgs() {
         // Provide one temp directory if the caller didn't
-        if (this.TMP_DIR == null) this.TMP_DIR = new ArrayList<>();
-        if (this.TMP_DIR.isEmpty()) TMP_DIR.add(IOUtil.getDefaultTmpDir());
+        // TODO - this should use the HTSJDK IOUtil.getDefaultTmpDirPath, which is somehow broken in the current HTSJDK version
+        if (tmpDir == null || tmpDir.isEmpty()) {
+            tmpDir = IOUtils.getAbsolutePathWithoutFileProtocol(IOUtils.getPath(System.getProperty("java.io.tmpdir")));
+        }
 
         // Build the default headers
         final ZonedDateTime startDateTime = ZonedDateTime.now();
@@ -153,13 +153,19 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
 
         LoggingUtils.setLoggingLevel(VERBOSITY);  // propagate the VERBOSITY level to logging frameworks
 
-        for (final File f : TMP_DIR) {
-            // Intentionally not checking the return values, because it may be that the program does not
-            // need a tmp_dir. If this fails, the problem will be discovered downstream.
-            if (!f.exists()) f.mkdirs();
-            f.setReadable(true, false);
-            f.setWritable(true, false);
-            System.setProperty("java.io.tmpdir", f.getAbsolutePath()); // in loop so that last one takes effect
+        // set the temp directory as a java property, checking for existence and read/write access
+        final Path p = IOUtils.getPath(tmpDir);
+        try {
+            p.getFileSystem().provider().checkAccess(p, AccessMode.READ, AccessMode.WRITE);
+            System.setProperty("java.io.tmpdir", IOUtils.getAbsolutePathWithoutFileProtocol(p));
+        } catch (final AccessDeniedException | NoSuchFileException e) {
+            // TODO: it may be that the program does not need a tmp dir
+            // TODO: if it fails, the problem can be discovered downstream
+            // TODO: should log a warning instead?
+            throw new UserException.BadTempDir(p, "should exist and have read/write access", e);
+        } catch (final IOException e) {
+            // other exceptions with the tmp directory
+            throw new UserException.BadTempDir(p, e.getMessage(), e);
         }
 
         //Set defaults (note: setting them here means they are not controllable by the user)
@@ -430,7 +436,6 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
         logger.info("Inflater: " + (usingIntelInflater ? "IntelInflater": "JdkInflater"));
 
         logger.info("GCS max retries/reopens: " + BucketUtils.getCloudStorageConfiguration(NIO_MAX_REOPENS).maxChannelReopens());
-        logger.info("Using google-cloud-java fork https://github.com/broadinstitute/google-cloud-java/releases/tag/0.20.5-alpha-GCS-RETRY-FIX");
     }
 
     /**
