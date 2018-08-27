@@ -315,7 +315,7 @@ public final class FastaReferenceWriter implements AutoCloseable {
         final int to = offset + length;
         for (int i = offset; i < to; i++) {
             final byte b = bases[i];
-            if (Nucleotide.valueOf(b) == Nucleotide.INVALID) {
+            if (!Nucleotide.decode(b).isValid()) {
                 throw new IllegalArgumentException( "the input sequence contains invalid base calls like: "
                         + StringUtils.escape(""+ (char) b));
             }
@@ -541,7 +541,7 @@ public final class FastaReferenceWriter implements AutoCloseable {
      * @param bases array containing the bases to be added.
      * @return this instance.
      * @throws IllegalArgumentException if {@bases} is {@code null} or
-     *              the input array contains invalid bases (as assessed by: {@link Nucleotide#valueOf(byte)}).
+     *              the input array contains invalid bases (as assessed by: {@link Nucleotide#decode(byte)}).
      * @throws IllegalStateException if no sequence was started or the writer is already closed.
      * @throws IOException if such exception is throw when writing in any of the outputs.
      */
@@ -560,7 +560,7 @@ public final class FastaReferenceWriter implements AutoCloseable {
      * @return this instance.
      * @throws IllegalArgumentException if {@bases} is {@code null} or
      *              {@code offset} and {@code length} do not entail a valid range in {@code bases} or
-     *              that range in {@base} contain invalid bases (as assessed by: {@link Nucleotide#valueOf(byte)}).
+     *              that range in {@base} contain invalid bases (as assessed by: {@link Nucleotide#decode(byte)}).
      * @throws IllegalStateException if no sequence was started or the writer is already closed.
      * @throws IOException if such exception is throw when writing in any of the outputs.
      */

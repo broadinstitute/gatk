@@ -5,7 +5,6 @@ import htsjdk.samtools.SAMSequenceRecord;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
-import org.apache.commons.math3.stat.inference.ChiSquareTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -150,8 +149,8 @@ public final class RandomDNAUnitTest {
                         final String lineBases = line.trim();
                         final String nextLine = reader.readLine();
                         for (final byte base : lineBases.getBytes()) {
-                            final Nucleotide nuc = Nucleotide.valueOf(base);
-                            Assert.assertTrue(nuc.isConcrete());
+                            final Nucleotide nuc = Nucleotide.decode(base);
+                            Assert.assertTrue(nuc.isStandard());
                             frequencies.add(nuc);
                         }
                         if (nextLine != null && !nextLine.matches("^>.*$")){
