@@ -239,6 +239,51 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
         spec.executeTest("testVariantRecalibratorModelInput"+  inputFile, this);
     }
 
+    private final String annoOrderRecal = getLargeVQSRTestDataDir() + "expected/anno_order.recal";
+    private final String annoOrderTranches = getLargeVQSRTestDataDir() + "expected/anno_order.tranches";
+    private final String exacModelReportFilename = publicTestDir + "/subsetExAC.snps_model.report";
+
+    @Test
+    public void testVQSRAnnotationOrder() throws IOException {
+        final String inputFile = publicTestDir + "/oneSNP.vcf";
+
+        // We don't actually need resources because we are using a serialized model,
+        // so we just pass input as resource to prevent a crash
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                " --variant " + inputFile +
+                        " -L 1:110201699" +
+                        " --resource hapmap,known=false,training=true,truth=true,prior=15:" + inputFile +
+                        " -an FS -an ReadPosRankSum -an MQ -an MQRankSum -an QD -an SOR" +
+                        " --output %s" +
+                        " -tranches-file %s" +
+                        " --input-model " + exacModelReportFilename +
+                        " --add-output-vcf-command-line false" +
+                        " -ignore-all-filters -mode SNP",
+                Arrays.asList(
+                        annoOrderRecal,
+                        annoOrderTranches));
+        spec.executeTest("testVariantRecalibratorModelInput"+  inputFile, this);
+
+        Utils.resetRandomGenerator();
+        // Change annotation order and assert consistent outputs
+        final IntegrationTestSpec spec2 = new IntegrationTestSpec(
+                " --variant " + inputFile +
+                        " -L 1:110201699" +
+                        " --resource hapmap,known=false,training=true,truth=true,prior=15:" + inputFile +
+                        " -an ReadPosRankSum -an MQ -an MQRankSum -an QD -an SOR -an FS" +
+                        " --output %s" +
+                        " -tranches-file %s" +
+                        " --input-model " + exacModelReportFilename +
+                        " --add-output-vcf-command-line false" +
+                        " -ignore-all-filters -mode SNP",
+                Arrays.asList(
+                        annoOrderRecal,
+                        annoOrderTranches));
+        spec2.executeTest("testVariantRecalibratorModelInput"+  inputFile, this);
+
+    }
+
+
     @DataProvider(name="VarRecalSNPScattered")
     public Object[][] getVarRecalSNPScatteredData() {
         return new Object[][] {

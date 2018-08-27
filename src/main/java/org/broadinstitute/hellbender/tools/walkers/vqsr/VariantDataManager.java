@@ -56,7 +56,15 @@ public class VariantDataManager {
         return data;
     }
 
-    public void normalizeData(final boolean calculateMeans) {
+    /**
+     * Normalize annotations to mean 0 and standard deviation 1.
+     * Order the variant annotations by the provided list {@code theOrder} or standard deviation.
+     *
+     * @param calculateMeans Boolean indicating whether or not to calculate the means
+     * @param theOrder a list of integers specifying the desired annotation order. If this is null
+     *                 annotations will get sorted in decreasing size of their standard deviations.
+     */
+    public void normalizeData(final boolean calculateMeans, List<Integer> theOrder) {
         boolean foundZeroVarianceAnnotation = false;
         for( int iii = 0; iii < meanVector.length; iii++ ) {
             final double theMean, theSTD;
@@ -96,7 +104,10 @@ public class VariantDataManager {
 
         // re-order the data by increasing standard deviation so that the results don't depend on the order things were specified on the command line
         // standard deviation over the training points is used as a simple proxy for information content, perhaps there is a better thing to use here
-        final List<Integer> theOrder = calculateSortOrder(meanVector);
+        // or use the serialized report's annotation order via the argument theOrder
+        if (theOrder == null){
+            theOrder = calculateSortOrder(meanVector);
+        }
         annotationKeys = reorderList(annotationKeys, theOrder);
         varianceVector = ArrayUtils.toPrimitive(reorderArray(ArrayUtils.toObject(varianceVector), theOrder));
         meanVector = ArrayUtils.toPrimitive(reorderArray(ArrayUtils.toObject(meanVector), theOrder));
@@ -104,7 +115,7 @@ public class VariantDataManager {
             datum.annotations = ArrayUtils.toPrimitive(reorderArray(ArrayUtils.toObject(datum.annotations), theOrder));
             datum.isNull = ArrayUtils.toPrimitive(reorderArray(ArrayUtils.toObject(datum.isNull), theOrder));
         }
-        logger.info("Annotations are now ordered by their information content: " + annotationKeys.toString());
+        logger.info("Annotation order is: " + annotationKeys.toString());
     }
 
     public double[] getMeanVector() {

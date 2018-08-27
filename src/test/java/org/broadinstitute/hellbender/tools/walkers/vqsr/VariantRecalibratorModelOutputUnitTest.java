@@ -1,7 +1,9 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr;
 
+import com.google.common.collect.Lists;
 import org.apache.log4j.Logger;
 
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.utils.report.GATKReport;
 import org.broadinstitute.hellbender.utils.report.GATKReportTable;
 
@@ -223,6 +225,44 @@ public class VariantRecalibratorModelOutputUnitTest extends GATKBaseTest {
         badGaussianList.add(badGaussian1);
 
         return new GaussianMixtureModel(badGaussianList, shrinkage, dirichlet, priorCounts);
+    }
+
+    @Test
+    public void testAnnotationOrderAndValidate() {
+        final VariantRecalibrator vqsr = new VariantRecalibrator();
+        final List<String> annotationList = new ArrayList<>();
+        annotationList.add("QD");
+        annotationList.add("FS");
+        annotationList.add("ReadPosRankSum");
+        annotationList.add("MQ");
+        annotationList.add("MQRankSum");
+        annotationList.add("SOR");
+
+        double[] meanVector = {16.13, 2.45, 0.37, 59.08, 0.14, 0.91};
+        final String columnName = "Mean";
+        final String formatString = "%.3f";
+        GATKReportTable annotationTable = vqsr.makeVectorTable("AnnotationMeans", "Mean for each annotation, used to normalize data", annotationList, meanVector, columnName, formatString);
+        vqsr.orderAndValidateAnnotations(annotationTable, annotationList);
+
+        double epsilon = 1e-7;
+        for (int i = 0; i < vqsr.annotationOrder.size(); i++){
+            Assert.assertEquals(i, vqsr.annotationOrder.get(i), epsilon);
+        }
+
+        final List<String> reversed = Lists.reverse(annotationList);
+        vqsr.orderAndValidateAnnotations(annotationTable, reversed);
+        for (int i = 0; i < vqsr.annotationOrder.size(); i++){
+            Assert.assertEquals(reversed.size()-i-1, vqsr.annotationOrder.get(i), epsilon);
+        }
+
+        // Now break things...
+        // we should throw an error if there are too many or too few annotations on the command line.
+        annotationList.add("BaseQRankSum");
+        Assert.assertThrows(CommandLineException.class, () -> vqsr.orderAndValidateAnnotations(annotationTable, annotationList));
+
+        annotationList.remove(0);
+        annotationList.remove(annotationList.size()-1);
+        Assert.assertThrows(CommandLineException.class, () -> vqsr.orderAndValidateAnnotations(annotationTable, annotationList));
     }
 
 }
