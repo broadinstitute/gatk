@@ -241,7 +241,7 @@ workflow CNVSomaticPairWorkflow {
     }
 
     # Changed by Marton
-    Int modeled_segments_tumor_disk = ceil(size(DenoiseReadCountsTumor.denoised_copy_ratios, "GB")) + ceil(size(ModelSegmentsTumor.copy_ratio_only_segments, "GB")) + disk_pad
+    Int modeled_segments_tumor_disk = ceil(size(DenoiseReadCountsTumor.denoised_copy_ratios, "GB")) + ceil(size(ModelSegmentsTumor.modeled_segments, "GB")) + disk_pad
     call CallModeledSegments as CallModeledSegmentsTumor {
         input:
             entity_id = CollectCountsTumor.entity_id,
@@ -380,7 +380,7 @@ workflow CNVSomaticPairWorkflow {
         }
 
         # changed by Marton
-        Int modeled_segments_normal_disk = ceil(size(DenoiseReadCountsNormal.denoised_copy_ratios, "GB")) + ceil(size(ModelSegmentsNormal.copy_ratio_only_segments, "GB")) + disk_pad
+        Int modeled_segments_normal_disk = ceil(size(DenoiseReadCountsNormal.denoised_copy_ratios, "GB")) + ceil(size(ModelSegmentsNormal.modeled_segments, "GB")) + disk_pad
         call CallModeledSegments as CallModeledSegmentsNormal {
             input:
             entity_id = CollectCountsTumor.entity_id,
