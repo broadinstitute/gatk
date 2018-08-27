@@ -1,7 +1,5 @@
 package org.broadinstitute.hellbender.tools.spark;
 
-import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
-import htsjdk.samtools.util.IOUtil;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -12,13 +10,12 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
-import org.broadinstitute.hellbender.engine.spark.JoinReadsWithVariants;
+import org.broadinstitute.hellbender.utils.spark.JoinReadsWithVariants;
 import org.broadinstitute.hellbender.tools.spark.transforms.BaseRecalibratorSparkFn;
 import org.broadinstitute.hellbender.tools.walkers.bqsr.BaseRecalibrator;
 import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.recalibration.BaseRecalibrationEngine;
 import org.broadinstitute.hellbender.utils.recalibration.RecalUtils;
@@ -28,11 +25,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 
 import java.io.PrintStream;
-import java.nio.file.Path;
 import java.util.List;
-import java.util.stream.Collectors;
-
-;
 
 /**
  * Spark version of the first pass of the base quality score recalibration.

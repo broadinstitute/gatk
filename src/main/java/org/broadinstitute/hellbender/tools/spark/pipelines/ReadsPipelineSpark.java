@@ -15,7 +15,7 @@ import org.broadinstitute.hellbender.cmdline.argumentcollections.MarkDuplicatesS
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
-import org.broadinstitute.hellbender.engine.spark.JoinReadsWithVariants;
+import org.broadinstitute.hellbender.utils.spark.JoinReadsWithVariants;
 import org.broadinstitute.hellbender.tools.ApplyBQSRUniqueArgumentCollection;
 import org.broadinstitute.hellbender.tools.HaplotypeCallerSpark;
 import org.broadinstitute.hellbender.tools.spark.bwa.BwaArgumentCollection;

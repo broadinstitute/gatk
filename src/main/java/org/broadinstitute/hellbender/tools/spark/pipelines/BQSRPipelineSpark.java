@@ -12,7 +12,7 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
-import org.broadinstitute.hellbender.engine.spark.JoinReadsWithVariants;
+import org.broadinstitute.hellbender.utils.spark.JoinReadsWithVariants;
 import org.broadinstitute.hellbender.tools.ApplyBQSRUniqueArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.transforms.ApplyBQSRSparkFn;
 import org.broadinstitute.hellbender.tools.spark.transforms.BaseRecalibratorSparkFn;

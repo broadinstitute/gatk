@@ -43,7 +43,6 @@ import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
-import org.broadinstitute.hellbender.utils.spark.SparkUtils;
 import scala.Tuple2;
 
 import java.io.IOException;
@@ -155,6 +154,8 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
         if (output.endsWith(IOUtil.BCF_FILE_EXTENSION) || output.endsWith(IOUtil.BCF_FILE_EXTENSION + ".gz")) {
             throw new UserException.UnimplementedFeature("It is currently not possible to write a BCF file on spark.  See https://github.com/broadinstitute/gatk/issues/4303 for more details .");
         }
+        SAMFileHeader header = getHeaderForReads();
+        Utils.validate(header.getSortOrder() == SAMFileHeader.SortOrder.coordinate, "The reads must be coordinate sorted.");
         logger.info("********************************************************************************");
         logger.info("The output of this tool DOES NOT match the output of HaplotypeCaller. ");
         logger.info("It is under development and should not be used for production work. ");
@@ -162,8 +163,8 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
         logger.info("Use the non-spark HaplotypeCaller if you care about the results. ");
         logger.info("********************************************************************************");
         addReferenceFilesForSpark(ctx, referenceArguments.getReferenceFileName());
-        final List<SimpleInterval> intervals = hasUserSuppliedIntervals() ? getIntervals() : IntervalUtils.getAllIntervalsForReference(getHeaderForReads().getSequenceDictionary());
-        callVariantsWithHaplotypeCallerAndWriteOutput(ctx, getReads(), getHeaderForReads(), referenceArguments.getReferenceFileName(), intervals, hcArgs, shardingArgs, numReducers, output, makeVariantAnnotations());
+        final List<SimpleInterval> intervals = hasUserSuppliedIntervals() ? getIntervals() : IntervalUtils.getAllIntervalsForReference(header.getSequenceDictionary());
+        callVariantsWithHaplotypeCallerAndWriteOutput(ctx, getReads(), header, referenceArguments.getReferenceFileName(), intervals, hcArgs, shardingArgs, numReducers, output, makeVariantAnnotations());
     }
 
     @Override
@@ -197,20 +198,16 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
             final int numReducers,
             final String output,
             final Collection<Annotation> annotations) {
-        // Reads must be coordinate sorted to use the overlaps partitioner
-        final SAMFileHeader readsHeader = header.clone();
-        readsHeader.setSortOrder(SAMFileHeader.SortOrder.coordinate);
-        final JavaRDD<GATKRead> coordinateSortedReads = reads;
         final VariantAnnotatorEngine variantannotatorEngine = new VariantAnnotatorEngine(annotations,  hcArgs.dbsnp.dbsnp, hcArgs.comps, hcArgs.emitReferenceConfidence != ReferenceConfidenceMode.NONE);
 
         final Path referencePath = IOUtils.getPath(reference);
         final ReferenceSequenceFile driverReferenceSequenceFile = CachingIndexedFastaSequenceFile.checkAndCreate(referencePath);
-        final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgs, false, false, readsHeader, driverReferenceSequenceFile, variantannotatorEngine);
+        final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgs, false, false, header, driverReferenceSequenceFile, variantannotatorEngine);
         final String referenceFileName = referencePath.getFileName().toString();
-        final JavaRDD<VariantContext> variants = callVariantsWithHaplotypeCaller(ctx, coordinateSortedReads, readsHeader, referenceFileName, intervals, hcArgs, shardingArgs, variantannotatorEngine);
+        final JavaRDD<VariantContext> variants = callVariantsWithHaplotypeCaller(ctx, reads, header, referenceFileName, intervals, hcArgs, shardingArgs, variantannotatorEngine);
         variants.cache(); // without caching, computations are run twice as a side effect of finding partition boundaries for sorting
         try {
-            VariantsSparkSink.writeVariants(ctx, output, variants, hcEngine.makeVCFHeader(readsHeader.getSequenceDictionary(), new HashSet<>()),
+            VariantsSparkSink.writeVariants(ctx, output, variants, hcEngine.makeVCFHeader(header.getSequenceDictionary(), new HashSet<>()),
                     hcArgs.emitReferenceConfidence == ReferenceConfidenceMode.GVCF, hcArgs.GVCFGQBands, hcArgs.genotypeArgs.samplePloidy);
         } catch (IOException e) {
             throw new UserException.CouldNotCreateOutputFile(output, "writing failed", e);

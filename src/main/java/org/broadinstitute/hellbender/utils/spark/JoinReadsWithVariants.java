@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.engine.spark;
+package org.broadinstitute.hellbender.utils.spark;
 
 import com.google.common.collect.Iterators;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -42,14 +42,14 @@ public final class JoinReadsWithVariants {
     public static JavaPairRDD<GATKRead, Iterable<GATKVariant>> join(final JavaRDD<GATKRead> reads, final List<String> variantsFileNames) {
         return reads.mapPartitionsToPair((PairFlatMapFunction<Iterator<GATKRead>, GATKRead, Iterable<GATKVariant>>) gatkReadIterator -> {
             List<FeatureDataSource<VariantContext>> variantSources = variantsFileNames.stream().map(fileName -> openFeatureSource(SparkFiles.get(fileName))).collect(Collectors.toList());
-            Iterator<Tuple2<GATKRead, Iterable<GATKVariant>>> iterator = Iterators.transform(gatkReadIterator, read -> getOverlapping(read, variantSources));
+            Iterator<Tuple2<GATKRead, Iterable<GATKVariant>>> iterator = Iterators.transform(gatkReadIterator, read -> getVariantsOverlappingRead(read, variantSources));
             return new CloseAtEndIterator<>(iterator, new AutoCloseableCollection(variantSources)); // close FeatureDataSource at end of iteration
         });
     }
 
-    private static Tuple2<GATKRead, Iterable<GATKVariant>> getOverlapping(final GATKRead read, final List<FeatureDataSource<VariantContext>> variantSources) {
+    private static Tuple2<GATKRead, Iterable<GATKVariant>> getVariantsOverlappingRead(final GATKRead read, final List<FeatureDataSource<VariantContext>> variantSources) {
         if (SimpleInterval.isValid(read.getContig(), read.getStart(), read.getEnd())) {
-            return new Tuple2<>(read, getOverlapping(variantSources, new SimpleInterval(read)));
+            return new Tuple2<>(read, getVariantsOverlappingInterval(variantSources, new SimpleInterval(read)));
         } else {
             //Sometimes we have reads that do not form valid intervals (reads that do not consume any ref bases, eg CIGAR 61S90I
             //In those cases, we'll just say that nothing overlaps the read
@@ -63,11 +63,11 @@ public final class JoinReadsWithVariants {
         return new FeatureDataSource<>(path, null, DEFAULT_QUERY_LOOKAHEAD_BASES, null, cloudPrefetchBuffer, cloudIndexPrefetchBuffer);
     }
 
-    private static List<GATKVariant> getOverlapping(FeatureDataSource<VariantContext> variantSource, SimpleInterval interval) {
+    private static List<GATKVariant> getVariantsOverlappingInterval(FeatureDataSource<VariantContext> variantSource, SimpleInterval interval) {
         return Utils.stream(variantSource.query(interval)).map(VariantContextVariantAdapter::sparkVariantAdapter).collect(Collectors.toList());
     }
 
-    private static List<GATKVariant> getOverlapping(List<FeatureDataSource<VariantContext>> variantSources, SimpleInterval interval) {
-        return variantSources.stream().map(variantSource -> getOverlapping(variantSource, interval)).flatMap(List::stream).collect(Collectors.toList());
+    private static List<GATKVariant> getVariantsOverlappingInterval(List<FeatureDataSource<VariantContext>> variantSources, SimpleInterval interval) {
+        return variantSources.stream().map(variantSource -> getVariantsOverlappingInterval(variantSource, interval)).flatMap(List::stream).collect(Collectors.toList());
     }
 }
