@@ -21,7 +21,7 @@ import static org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtil
 public final class GenotypingGivenAllelesUtils {
 
     /**
-     * Composes the given allele variant-context providing information about the given allele variants and reference location.
+     * Composes the given allele variant-context providing information about the given variant alleles and reference location.
      * @param tracker the meta data tracker.
      * @param loc the query location.
      * @param keepFiltered whether to include filtered variants
