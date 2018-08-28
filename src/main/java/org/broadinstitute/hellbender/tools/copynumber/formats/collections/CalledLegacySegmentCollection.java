@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.copynumber.formats.collections;
 
+import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CalledCopyRatioSegment;
@@ -15,7 +16,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -28,7 +28,6 @@ import java.util.stream.Stream;
  *     http://software.broadinstitute.org/cancer/software/genepattern/file-formats-guide#CBS</a>
  * and <a href="https://software.broadinstitute.org/software/igv/SEG">
  *     https://software.broadinstitute.org/software/igv/SEG</a>.
- *
  */
 public final class CalledLegacySegmentCollection extends AbstractSampleLocatableCollection<CalledLegacySegment> {
     //note to developers: repeat the column headers in Javadoc so that they are viewable when linked
@@ -54,7 +53,7 @@ public final class CalledLegacySegmentCollection extends AbstractSampleLocatable
                 Stream.of(values()).map(c -> c.columnName).toArray());
     }
 
-    private static final Function<DataLine, CalledLegacySegment> LEGACY_SEGMENT_DATA_LINE_TO_RECORD_FUNCTION = dataLine -> {
+    private static final Function<DataLine, CalledLegacySegment> CALLED_LEGACY_SEGMENT_DATA_LINE_TO_RECORD_FUNCTION = dataLine -> {
         final String sampleName = dataLine.get(CalledLegacySegmentTableColumn.SAMPLE.columnName);
         final String contig = dataLine.get(CalledLegacySegmentTableColumn.CHROMOSOME.columnName);
         final int start = dataLine.getInt(CalledLegacySegmentTableColumn.START.columnName);
@@ -63,12 +62,16 @@ public final class CalledLegacySegmentCollection extends AbstractSampleLocatable
         final double segmentMean = dataLine.getDouble(CalledLegacySegmentTableColumn.SEGMENT_MEAN.columnName);
         final String callOutputString = dataLine.get(CalledCopyRatioSegmentCollection.CalledCopyRatioSegmentTableColumn.CALL);
         final CalledCopyRatioSegment.Call call = Arrays.stream(CalledCopyRatioSegment.Call.values())
-                .filter(c -> c.getOutputString().equals(callOutputString)).findFirst().orElse(null);;
+                .filter(c -> c.getOutputString().equals(callOutputString)).findFirst().orElseThrow(
+                        () -> new UserException("Attempting to read an invalid value for " +
+                                CalledLegacySegmentTableColumn.CALL +": " + callOutputString +
+                                ".  Valid values are " + StringUtils.join(CalledCopyRatioSegment.Call.values(), ", ")
+                        ));
         final SimpleInterval interval = new SimpleInterval(contig, start, end);
         return new CalledLegacySegment(sampleName, interval, numProbes, segmentMean, call);
     };
 
-    private static final BiConsumer<CalledLegacySegment, DataLine> LEGACY_SEGMENT_RECORD_AND_DATA_LINE_BI_CONSUMER = (calledLegacySegment, dataLine) ->
+    private static final BiConsumer<CalledLegacySegment, DataLine> CALLED_LEGACY_SEGMENT_RECORD_AND_DATA_LINE_BI_CONSUMER = (calledLegacySegment, dataLine) ->
             dataLine.append(calledLegacySegment.getSampleName())
                     .append(calledLegacySegment.getContig())
                     .append(calledLegacySegment.getStart())
@@ -78,21 +81,13 @@ public final class CalledLegacySegmentCollection extends AbstractSampleLocatable
                     .append(formatDouble(calledLegacySegment.getSegmentMean()));
 
     public CalledLegacySegmentCollection(final SampleLocatableMetadata metadata,
-                                         final List<CalledLegacySegment> LegacySegments) {
-        super(metadata, LegacySegments, CalledLegacySegmentTableColumn.COLUMNS, LEGACY_SEGMENT_DATA_LINE_TO_RECORD_FUNCTION, LEGACY_SEGMENT_RECORD_AND_DATA_LINE_BI_CONSUMER);
+                                         final List<CalledLegacySegment> calledLegacySegments) {
+        super(metadata, calledLegacySegments, CalledLegacySegmentTableColumn.COLUMNS, CALLED_LEGACY_SEGMENT_DATA_LINE_TO_RECORD_FUNCTION, CALLED_LEGACY_SEGMENT_RECORD_AND_DATA_LINE_BI_CONSUMER);
     }
 
-    public CalledLegacySegmentCollection(final CalledCopyRatioSegmentCollection collection) {
-        this(collection.getMetadata(), collection.getRecords().stream()
-                .map(r -> convert(r, collection.getMetadata().getSampleName())).collect(Collectors.toList()));
-    }
 
     public CalledLegacySegmentCollection(final File inputFile) {
-        super(inputFile, CopyRatioSegmentCollection.CopyRatioSegmentTableColumn.COLUMNS, LEGACY_SEGMENT_DATA_LINE_TO_RECORD_FUNCTION, LEGACY_SEGMENT_RECORD_AND_DATA_LINE_BI_CONSUMER);
-    }
-
-    private static CalledLegacySegment convert(final CalledCopyRatioSegment seg, final String sampleName) {
-        return new CalledLegacySegment(sampleName, seg.getInterval(), seg.getNumPoints(), seg.getMeanLog2CopyRatio(), seg.getCall());
+        super(inputFile, CopyRatioSegmentCollection.CopyRatioSegmentTableColumn.COLUMNS, CALLED_LEGACY_SEGMENT_DATA_LINE_TO_RECORD_FUNCTION, CALLED_LEGACY_SEGMENT_RECORD_AND_DATA_LINE_BI_CONSUMER);
     }
 
     // output of SAM-style header is suppressed

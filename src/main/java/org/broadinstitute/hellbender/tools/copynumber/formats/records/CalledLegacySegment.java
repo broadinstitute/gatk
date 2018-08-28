@@ -1,14 +1,17 @@
 package org.broadinstitute.hellbender.tools.copynumber.formats.records;
 
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 
 public class CalledLegacySegment extends LegacySegment {
 
-    private CalledCopyRatioSegment.Call call;
+    private final CalledCopyRatioSegment.Call call;
 
-    public CalledLegacySegment(final String sampleName, final SimpleInterval interval, final int numProbes, final double segmentMean,
+    public CalledLegacySegment(final String sampleName, final SimpleInterval interval, final int numProbes,
+                               final double segmentMean,
                                final CalledCopyRatioSegment.Call call) {
         super(sampleName, interval, numProbes, segmentMean);
+        Utils.nonNull(call, "Cannot initialize a called legacy segment with a null call.");
         this.call = call;
     }
 
@@ -17,26 +20,30 @@ public class CalledLegacySegment extends LegacySegment {
     }
 
     @Override
-    public boolean equals(final Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        if (!super.equals(o)) return false;
-
-        CalledLegacySegment that = (CalledLegacySegment) o;
-
+    public final boolean equals(final Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        if (!super.equals(o)) {
+            return false;
+        }
+        final CalledLegacySegment that = (CalledLegacySegment) o;
         return call == that.call;
     }
 
     @Override
-    public int hashCode() {
+    public final int hashCode() {
         int result = super.hashCode();
-        result = 31 * result + (call != null ? call.hashCode() : 0);
+        result = 31 * result + call.hashCode();
         return result;
     }
 
     @Override
-    public String toString() {
-        return "CalledLegacyCopyRatioSegment{" +
+    public final String toString() {
+        return "CalledLegacySegment{" +
                 "interval=" + getInterval() +
                 ", numPoints=" + getNumProbes() +
                 ", meanLog2CopyRatio=" + getSegmentMean() +

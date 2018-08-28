@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.tools.copynumber;
 
+import com.google.common.annotations.VisibleForTesting;
+import org.apache.commons.io.FilenameUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -11,9 +13,12 @@ import org.broadinstitute.hellbender.tools.copynumber.caller.SimpleCopyRatioCall
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CalledCopyRatioSegmentCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CalledLegacySegmentCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioSegmentCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.records.CalledCopyRatioSegment;
+import org.broadinstitute.hellbender.tools.copynumber.formats.records.CalledLegacySegment;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
+import java.util.stream.Collectors;
 
 /**
  * Calls copy-ratio segments as amplified, deleted, or copy-number neutral.
@@ -76,7 +81,7 @@ public final class CallCopyRatioSegments extends CommandLineProgram {
     public static final String NEUTRAL_SEGMENT_COPY_RATIO_UPPER_BOUND_LONG_NAME = "neutral-segment-copy-ratio-upper-bound";
     public static final String OUTLIER_NEUTRAL_SEGMENT_COPY_RATIO_Z_SCORE_THRESHOLD_LONG_NAME = "outlier-neutral-segment-copy-ratio-z-score-threshold";
     public static final String CALLING_COPY_RATIO_Z_SCORE_THRESHOLD_LONG_NAME = "calling-copy-ratio-z-score-threshold";
-    public static final String IGV_COMPATIBLE_FILE_SUFFIX = ".igv.seg";
+    public static final String LEGACY_SEGMENTS_FILE_SUFFIX = ".igv.seg";
     @Argument(
             doc = "Input file containing copy-ratio segments (.cr.seg output of ModelSegments).",
             fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
@@ -140,9 +145,24 @@ public final class CallCopyRatioSegments extends CommandLineProgram {
         calledCopyRatioSegments.write(outputCalledCopyRatioSegmentsFile);
 
         // Write an IGV compatible collection
-        final CalledLegacySegmentCollection legacySegmentCollection = new CalledLegacySegmentCollection(calledCopyRatioSegments);
-        legacySegmentCollection.write(new File(outputCalledCopyRatioSegmentsFile.getAbsolutePath() + IGV_COMPATIBLE_FILE_SUFFIX));
+        final CalledLegacySegmentCollection legacySegmentCollection = createCalledLegacySegmentCollection(calledCopyRatioSegments);
+        legacySegmentCollection.write(createCalledLegacyOutputFilename(outputCalledCopyRatioSegmentsFile));
 
         return "SUCCESS";
     }
+
+    @VisibleForTesting
+    public static File createCalledLegacyOutputFilename(final File calledCopyRatioBaseFilename) {
+        return new File(FilenameUtils.removeExtension(calledCopyRatioBaseFilename.getAbsolutePath()) + LEGACY_SEGMENTS_FILE_SUFFIX);
+    }
+
+    private static CalledLegacySegmentCollection createCalledLegacySegmentCollection(final CalledCopyRatioSegmentCollection segments) {
+        return new CalledLegacySegmentCollection(segments.getMetadata(), segments.getRecords().stream()
+                .map(r -> convert(r, segments.getMetadata().getSampleName())).collect(Collectors.toList()));
+    }
+
+    private static CalledLegacySegment convert(final CalledCopyRatioSegment segment, final String sampleName) {
+        return new CalledLegacySegment(sampleName, segment.getInterval(), segment.getNumPoints(), segment.getMeanLog2CopyRatio(), segment.getCall());
+    }
+
 }
