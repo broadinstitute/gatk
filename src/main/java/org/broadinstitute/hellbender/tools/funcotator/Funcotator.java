@@ -385,7 +385,7 @@ public class Funcotator extends VariantWalker {
             default:
                 throw new GATKException("Unsupported output format type specified: " + outputFormatType.toString());
         }
-        logger.info("Creating a " + outputFormatType.toString() + " file for output: " + outputFile.toURI().toString());
+        logger.info("Creating a " + outputFormatType + " file for output: " + outputFile.toURI());
 
         // Check for reference version (in)compatibility:
         determineReferenceAndDatasourceCompatibility();
