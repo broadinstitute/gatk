@@ -903,10 +903,10 @@ public final class AlignmentUtilsUnitTest {
         final byte[] repeat3Reference = "ABCDEFGHIJKLMNOPXYZXYZXYZXYZABCDEFGHIJKLMN".getBytes();
         final int referenceLength = repeat1Reference.length;
 
-        for ( int indelStart = 0; indelStart < repeat1Reference.length; indelStart++ ) {
-            for ( final int indelSize : Arrays.asList(0, 1, 2, 3, 4) ) {
-                for ( final char indelOp : Arrays.asList('D', 'I') ) {
-                    for (int leftmostAllowedAlignment = 0; leftmostAllowedAlignment<indelStart;leftmostAllowedAlignment++) {
+        for (int indelStart = 0; indelStart < repeat1Reference.length; indelStart++) {
+            for (final int indelSize : Arrays.asList(0, 1, 2, 3, 4)) {
+                for (final char indelOp : Arrays.asList('D', 'I')) {
+                    for (int leftmostAllowedAlignment = 0; leftmostAllowedAlignment < indelStart; leftmostAllowedAlignment++) {
                         if (indelOp == 'D' && indelStart + indelSize >= repeat1Reference.length)
                             continue;
 
@@ -917,62 +917,61 @@ public final class AlignmentUtilsUnitTest {
                         read.setCigar(buildTestCigarString(indelSize == 0 ? 'M' : indelOp, 0, indelStart, indelSize, readLength));
                         final Cigar originalCigar = read.getCigar();
 
-                        final Cigar expectedCigar1 = makeExpectedCigar1WithLimit(originalCigar, indelOp, indelStart, indelSize, readLength,leftmostAllowedAlignment);
+                        final Cigar expectedCigar1 = makeExpectedCigar1WithLimit(originalCigar, indelOp, indelStart, indelSize, readLength, leftmostAllowedAlignment);
                         final byte[] readString1 = makeReadString(repeat1Reference, indelOp, indelStart, indelSize, readLength, 1);
-                        tests.add(new Object[]{originalCigar, expectedCigar1, repeat1Reference, readString1, 1,leftmostAllowedAlignment});
+                        tests.add(new Object[]{originalCigar, expectedCigar1, repeat1Reference, readString1, 1, leftmostAllowedAlignment});
 
-                        final Cigar expectedCigar2 = makeExpectedCigar2WithLimit(originalCigar, indelOp, indelStart, indelSize, readLength,leftmostAllowedAlignment);
+                        final Cigar expectedCigar2 = makeExpectedCigar2WithLimit(originalCigar, indelOp, indelStart, indelSize, readLength, leftmostAllowedAlignment);
                         final byte[] readString2 = makeReadString(repeat2Reference, indelOp, indelStart, indelSize, readLength, 2);
-                        tests.add(new Object[]{originalCigar, expectedCigar2, repeat2Reference, readString2, 2,leftmostAllowedAlignment});
+                        tests.add(new Object[]{originalCigar, expectedCigar2, repeat2Reference, readString2, 2, leftmostAllowedAlignment});
 
-                        final Cigar expectedCigar3 = makeExpectedCigar3WithLimit(originalCigar, indelOp, indelStart, indelSize, readLength,leftmostAllowedAlignment);
+                        final Cigar expectedCigar3 = makeExpectedCigar3WithLimit(originalCigar, indelOp, indelStart, indelSize, readLength, leftmostAllowedAlignment);
                         final byte[] readString3 = makeReadString(repeat3Reference, indelOp, indelStart, indelSize, readLength, 3);
-                        tests.add(new Object[]{originalCigar, expectedCigar3, repeat3Reference, readString3, 3,leftmostAllowedAlignment});
+                        tests.add(new Object[]{originalCigar, expectedCigar3, repeat3Reference, readString3, 3, leftmostAllowedAlignment});
                     }
                 }
             }
         }
-
         return tests.toArray(new Object[][]{});
     }
 
-    private Cigar makeExpectedCigar1WithLimit(final Cigar originalCigar, final char indelOp, final int indelStart, final int indelSize, final int readLength,final int leftmostAllowedAlignment) {
-        if ( indelSize == 0 || indelStart < 17 || indelStart > (26 - (indelOp == 'D' ? indelSize : 0)) || indelStart <= leftmostAllowedAlignment )
+    private Cigar makeExpectedCigar1WithLimit(final Cigar originalCigar, final char indelOp, final int indelStart, final int indelSize, final int readLength, final int leftmostAllowedAlignment) {
+        if (indelSize == 0 || indelStart < 17 || indelStart > (26 - (indelOp == 'D' ? indelSize : 0)) || indelStart <= leftmostAllowedAlignment)
             return originalCigar;
 
         final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "myRead", 0, 1, readLength);
-        read.setCigar(buildTestCigarString(indelOp, 0, Math.max(16,leftmostAllowedAlignment), indelSize, readLength));
+        read.setCigar(buildTestCigarString(indelOp, 0, Math.max(16, leftmostAllowedAlignment), indelSize, readLength));
         return read.getCigar();
     }
 
-    private Cigar makeExpectedCigar2WithLimit(final Cigar originalCigar, final char indelOp, final int indelStart, final int indelSize, final int readLength,final int leftmostAllowedAlignment) {
-        if ( indelStart < 17 || indelStart > (26 - (indelOp == 'D' ? indelSize : 0)) || indelStart <= leftmostAllowedAlignment)
+    private Cigar makeExpectedCigar2WithLimit(final Cigar originalCigar, final char indelOp, final int indelStart, final int indelSize, final int readLength, final int leftmostAllowedAlignment) {
+        if (indelStart < 17 || indelStart > (26 - (indelOp == 'D' ? indelSize : 0)) || indelStart <= leftmostAllowedAlignment)
             return originalCigar;
 
         final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "myRead", 0, 1, readLength);
 
-        if ( indelOp == 'I' && (indelSize == 1 || indelSize == 3) && indelStart % 2 == 1 )
-            read.setCigar(buildTestCigarString(indelOp, 0, Math.max(Math.max(indelStart - indelSize, 16),leftmostAllowedAlignment), indelSize, readLength));
-        else if ( (indelSize == 2 || indelSize == 4) && (indelOp == 'D' || indelStart % 2 == 0) )
-            read.setCigar(buildTestCigarString(indelOp, 0, Math.max(16,leftmostAllowedAlignment), indelSize, readLength));
+        if (indelOp == 'I' && (indelSize == 1 || indelSize == 3) && indelStart % 2 == 1)
+            read.setCigar(buildTestCigarString(indelOp, 0, Math.max(Math.max(indelStart - indelSize, 16), leftmostAllowedAlignment), indelSize, readLength));
+        else if ((indelSize == 2 || indelSize == 4) && (indelOp == 'D' || indelStart % 2 == 0))
+            read.setCigar(buildTestCigarString(indelOp, 0, Math.max(16, leftmostAllowedAlignment), indelSize, readLength));
         else
             return originalCigar;
 
         return read.getCigar();
     }
 
-    private Cigar makeExpectedCigar3WithLimit(final Cigar originalCigar, final char indelOp, final int indelStart, final int indelSize, final int readLength,final int leftmostAllowedAlignment) {
-        if ( indelStart < 17 || indelStart > (28 - (indelOp == 'D' ? indelSize : 0)) || indelStart <= leftmostAllowedAlignment )
+    private Cigar makeExpectedCigar3WithLimit(final Cigar originalCigar, final char indelOp, final int indelStart, final int indelSize, final int readLength, final int leftmostAllowedAlignment) {
+        if (indelStart < 17 || indelStart > (28 - (indelOp == 'D' ? indelSize : 0)) || indelStart <= leftmostAllowedAlignment)
             return originalCigar;
 
         final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "myRead", 0, 1, readLength);
 
-        if ( indelSize == 3 && (indelOp == 'D' || indelStart % 3 == 1) )
-            read.setCigar(buildTestCigarString(indelOp, 0, Math.max(16,leftmostAllowedAlignment), indelSize, readLength));
-        else if ( (indelOp == 'I' && indelSize == 4 && indelStart % 3 == 2) ||
+        if (indelSize == 3 && (indelOp == 'D' || indelStart % 3 == 1))
+            read.setCigar(buildTestCigarString(indelOp, 0, Math.max(16, leftmostAllowedAlignment), indelSize, readLength));
+        else if ((indelOp == 'I' && indelSize == 4 && indelStart % 3 == 2) ||
                 (indelOp == 'I' && indelSize == 2 && indelStart % 3 == 0) ||
-                (indelOp == 'I' && indelSize == 1 && indelStart < 28 && indelStart % 3 == 2) )
-            read.setCigar(buildTestCigarString(indelOp, 0, Math.max(Math.max(indelStart - indelSize, 16),leftmostAllowedAlignment), indelSize, readLength));
+                (indelOp == 'I' && indelSize == 1 && indelStart < 28 && indelStart % 3 == 2))
+            read.setCigar(buildTestCigarString(indelOp, 0, Math.max(Math.max(indelStart - indelSize, 16), leftmostAllowedAlignment), indelSize, readLength));
         else
             return originalCigar;
 
@@ -980,9 +979,9 @@ public final class AlignmentUtilsUnitTest {
     }
 
     @Test(dataProvider = "LeftAlignIndelWithLimitDataProvider")
-    public void testLeftAlignIndelWithLimit(final Cigar originalCigar, final Cigar expectedCigar, final byte[] reference, final byte[] read, final int repeatLength,final int leftmostAllowedAlignment) {
+    public void testLeftAlignIndelWithLimit(final Cigar originalCigar, final Cigar expectedCigar, final byte[] reference, final byte[] read, final int repeatLength, final int leftmostAllowedAlignment) {
         final Cigar actualCigar = AlignmentUtils.leftAlignIndel(originalCigar, reference, read, 0, 0, leftmostAllowedAlignment, true);
-        Assert.assertTrue(expectedCigar.equals(actualCigar), "Wrong left alignment detected for cigar " + originalCigar.toString() + " to " + actualCigar.toString() + " but expected " + expectedCigar.toString() + " with repeat length " + repeatLength + " and leftmostAllowedAlignment "+ leftmostAllowedAlignment);
+        Assert.assertTrue(expectedCigar.equals(actualCigar), "Wrong left alignment detected for cigar " + originalCigar.toString() + " to " + actualCigar.toString() + " but expected " + expectedCigar.toString() + " with repeat length " + repeatLength + " and leftmostAllowedAlignment " + leftmostAllowedAlignment);
     }
 
     //////////////////////////////////////////
@@ -991,74 +990,74 @@ public final class AlignmentUtilsUnitTest {
 
     @DataProvider(name = "IsIndelAlignedTooFarLeftDataProvider")
     public Object[][] makeIsIndelALignedTooFarLeftDataProvider() {
-        List<Object[]> tests =new ArrayList<>();
-            for(int nM=0;nM<3;nM++) {
-                for(int nN=0;nN<3;nN++) {
-                    for(int nEq=0;nEq<3;nEq++) {
-                        for(int nX=0;nX<3;nX++) {
-                            final int totalBefore=nM+nN+nEq+nX;
-                            if(totalBefore==0) {
+        List<Object[]> tests = new ArrayList<>();
+        for (int nM = 0; nM < 3; nM++) {
+            for (int nN = 0; nN < 3; nN++) {
+                for (int nEq = 0; nEq < 3; nEq++) {
+                    for (int nX = 0; nX < 3; nX++) {
+                        final int totalBefore = nM + nN + nEq + nX;
+                        if (totalBefore == 0) {
+                            continue;
+                        }
+                        for (int leftmostLimit = totalBefore - 2; leftmostLimit < totalBefore + 2; leftmostLimit++) {
+                            if (leftmostLimit < 0) {
                                 continue;
                             }
-                            for(int leftmostLimit=totalBefore-2;leftmostLimit<totalBefore+2;leftmostLimit++) {
-                                if(leftmostLimit<0) {
-                                    continue;
-                                }
-                                boolean expected=leftmostLimit>totalBefore;
-                                ArrayList<CigarElement> elements = new ArrayList<>();
-                                if(nM>0) {
-                                    elements.add(new CigarElement(nM,CigarOperator.M));
-                                }
-                                if(nN>0) {
-                                    elements.add(new CigarElement(nN,CigarOperator.N));
-                                }
-                                if(nEq>0) {
-                                    elements.add(new CigarElement(nEq,CigarOperator.EQ));
-                                }
-                                if(nX>0) {
-                                    elements.add(new CigarElement(nX,CigarOperator.X));
-                                }
-                                tests.add(new Object[]{new Cigar(elements),leftmostLimit,false});
-                                ArrayList<CigarElement> elementsInsertion=elements;
-                                elementsInsertion.add(new CigarElement(10,CigarOperator.I));
-                                tests.add(new Object[]{new Cigar(elementsInsertion),leftmostLimit,expected});
-                                ArrayList<CigarElement> elementsDeletion=elements;
-                                elementsDeletion.add(new CigarElement(10,CigarOperator.I));
-                                tests.add(new Object[]{new Cigar(elementsDeletion),leftmostLimit,expected});
-
-                                //test clippings
-                                ArrayList<CigarElement> elementsSoftClippedInsertion=elementsInsertion;
-                                elementsSoftClippedInsertion.add(0,new CigarElement(2,CigarOperator.S));
-                                tests.add(new Object[]{new Cigar(elementsSoftClippedInsertion),leftmostLimit,expected});
-                                ArrayList<CigarElement> elementsHardClippedInsertion=elementsInsertion;
-                                elementsHardClippedInsertion.add(0,new CigarElement(2,CigarOperator.H));
-                                tests.add(new Object[]{new Cigar(elementsHardClippedInsertion),leftmostLimit,expected});
-                                ArrayList<CigarElement> elementsPaddedInsertion=elementsInsertion;
-                                elementsPaddedInsertion.add(0,new CigarElement(2,CigarOperator.P));
-                                tests.add(new Object[]{new Cigar(elementsPaddedInsertion),leftmostLimit,expected});
-
-                                ArrayList<CigarElement> elementsSoftClippedDeletion=elementsDeletion;
-                                elementsSoftClippedDeletion.add(0,new CigarElement(2,CigarOperator.S));
-                                tests.add(new Object[]{new Cigar(elementsSoftClippedDeletion),leftmostLimit,expected});
-                                ArrayList<CigarElement> elementsHardClippedDeletion=elementsDeletion;
-                                elementsHardClippedDeletion.add(0,new CigarElement(2,CigarOperator.H));
-                                tests.add(new Object[]{new Cigar(elementsHardClippedDeletion),leftmostLimit,expected});
-                                ArrayList<CigarElement> elementsPaddedDeletion=elementsDeletion;
-                                elementsPaddedDeletion.add(0,new CigarElement(2,CigarOperator.P));
-                                tests.add(new Object[]{new Cigar(elementsPaddedDeletion),leftmostLimit,expected});
-
+                            boolean expected = leftmostLimit > totalBefore;
+                            ArrayList<CigarElement> elements = new ArrayList<>();
+                            if (nM > 0) {
+                                elements.add(new CigarElement(nM, CigarOperator.M));
                             }
-                        }
+                            if (nN > 0) {
+                                elements.add(new CigarElement(nN, CigarOperator.N));
+                            }
+                            if (nEq > 0) {
+                                elements.add(new CigarElement(nEq, CigarOperator.EQ));
+                            }
+                            if (nX > 0) {
+                                elements.add(new CigarElement(nX, CigarOperator.X));
+                            }
+                            tests.add(new Object[]{new Cigar(elements), leftmostLimit, false});
+                            ArrayList<CigarElement> elementsInsertion = elements;
+                            elementsInsertion.add(new CigarElement(10, CigarOperator.I));
+                            tests.add(new Object[]{new Cigar(elementsInsertion), leftmostLimit, expected});
+                            ArrayList<CigarElement> elementsDeletion = elements;
+                            elementsDeletion.add(new CigarElement(10, CigarOperator.I));
+                            tests.add(new Object[]{new Cigar(elementsDeletion), leftmostLimit, expected});
 
+                            //test clippings
+                            ArrayList<CigarElement> elementsSoftClippedInsertion = elementsInsertion;
+                            elementsSoftClippedInsertion.add(0, new CigarElement(2, CigarOperator.S));
+                            tests.add(new Object[]{new Cigar(elementsSoftClippedInsertion), leftmostLimit, expected});
+                            ArrayList<CigarElement> elementsHardClippedInsertion = elementsInsertion;
+                            elementsHardClippedInsertion.add(0, new CigarElement(2, CigarOperator.H));
+                            tests.add(new Object[]{new Cigar(elementsHardClippedInsertion), leftmostLimit, expected});
+                            ArrayList<CigarElement> elementsPaddedInsertion = elementsInsertion;
+                            elementsPaddedInsertion.add(0, new CigarElement(2, CigarOperator.P));
+                            tests.add(new Object[]{new Cigar(elementsPaddedInsertion), leftmostLimit, expected});
+
+                            ArrayList<CigarElement> elementsSoftClippedDeletion = elementsDeletion;
+                            elementsSoftClippedDeletion.add(0, new CigarElement(2, CigarOperator.S));
+                            tests.add(new Object[]{new Cigar(elementsSoftClippedDeletion), leftmostLimit, expected});
+                            ArrayList<CigarElement> elementsHardClippedDeletion = elementsDeletion;
+                            elementsHardClippedDeletion.add(0, new CigarElement(2, CigarOperator.H));
+                            tests.add(new Object[]{new Cigar(elementsHardClippedDeletion), leftmostLimit, expected});
+                            ArrayList<CigarElement> elementsPaddedDeletion = elementsDeletion;
+                            elementsPaddedDeletion.add(0, new CigarElement(2, CigarOperator.P));
+                            tests.add(new Object[]{new Cigar(elementsPaddedDeletion), leftmostLimit, expected});
+
+                        }
                     }
+
                 }
             }
+        }
         return tests.toArray(new Object[][]{});
     }
 
     @Test(dataProvider = "IsIndelAlignedTooFarLeftDataProvider")
-    public void testIsIndelAlignedTooFarLeft(final Cigar cigar, final int leftmostAllowedAlignment,final boolean expected) {
-        Assert.assertEquals(AlignmentUtils.isIndelAlignedTooFarLeft(cigar,leftmostAllowedAlignment),expected);
+    public void testIsIndelAlignedTooFarLeft(final Cigar cigar, final int leftmostAllowedAlignment, final boolean expected) {
+        Assert.assertEquals(AlignmentUtils.isIndelAlignedTooFarLeft(cigar, leftmostAllowedAlignment), expected);
     }
 
     //////////////////////////////////////////

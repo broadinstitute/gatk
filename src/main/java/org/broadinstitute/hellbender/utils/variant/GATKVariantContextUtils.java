@@ -1541,7 +1541,7 @@ public final class GATKVariantContextUtils {
                 gb.noAttributes();
                 break;
             case USE_PLS_TO_ASSIGN:
-                if ( newLikelihoods == null || !isInformative(newLikelihoods) ) {
+                if (newLikelihoods == null || !isInformative(newLikelihoods)) {
                     // if there is no mass on the (new) likelihoods, then just no-call the sample
                     gb.alleles(noCallAlleles(ploidy));
                     gb.noGQ();
@@ -1549,8 +1549,8 @@ public final class GATKVariantContextUtils {
                     // find the genotype with maximum likelihoods
                     final int PLindex = MathUtils.maxElementIndex(newLikelihoods);
                     final List<Allele> alleles = new ArrayList<>();
-                    for ( final Integer alleleIndex : GenotypeLikelihoods.getAlleles(PLindex, ploidy)) {
-                        alleles.add(allelesToUse.get(alleleIndex) );
+                    for (final Integer alleleIndex : GenotypeLikelihoods.getAlleles(PLindex, ploidy)) {
+                        alleles.add(allelesToUse.get(alleleIndex));
                     }
                     gb.alleles(alleles);
                     gb.log10PError(GenotypeLikelihoods.getGQLog10FromLikelihoods(PLindex, newLikelihoods));
@@ -1559,7 +1559,7 @@ public final class GATKVariantContextUtils {
             case BEST_MATCH_TO_ORIGINAL:
                 final List<Allele> best = new LinkedList<>();
                 final Allele ref = allelesToUse.get(0);
-                for ( final Allele originalAllele : originalGT ) {
+                for (final Allele originalAllele : originalGT) {
                     best.add((allelesToUse.contains(originalAllele) || originalAllele.isNoCall()) ? originalAllele : ref);
                 }
                 gb.alleles(best);
