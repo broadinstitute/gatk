@@ -71,7 +71,7 @@ public class HaplotypeBAMWriter implements AutoCloseable {
             final boolean createBamOutMD5,
             final SAMFileHeader sourceHeader) {
 
-        this(type, new HaplotypeBAMDestination(outputPath, createBamOutIndex, createBamOutMD5, sourceHeader, DEFAULT_HAPLOTYPE_READ_GROUP_ID));
+        this(type, new SAMFileDestination(outputPath, createBamOutIndex, createBamOutMD5, sourceHeader, DEFAULT_HAPLOTYPE_READ_GROUP_ID));
     }
 
     /**

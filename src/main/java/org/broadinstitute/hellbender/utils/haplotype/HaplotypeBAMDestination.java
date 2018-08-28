@@ -3,24 +3,18 @@ package org.broadinstitute.hellbender.utils.haplotype;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMProgramRecord;
 import htsjdk.samtools.SAMReadGroupRecord;
-import java.nio.file.Path;
-import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
-
 
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Class used to direct output from a HaplotypeBAMWriter to a bam/sam file.
+ * Utility class that allows easy creation of destinations for the HaplotypeBAMWriters
  *
  */
-
-public class HaplotypeBAMDestination {
-    private final SAMFileGATKReadWriter samWriter;
+public abstract class HaplotypeBAMDestination {
     private final SAMFileHeader bamOutputHeader;
     private final String haplotypeReadGroupID;
     private final static String haplotypeSampleTag = "HC";
@@ -28,20 +22,10 @@ public class HaplotypeBAMDestination {
     /**
      * Create a new HaplotypeBAMDestination
      *
-     * @param outPath path where output is written (doesn't have to be local)
-     * @param createBamOutIndex true to create an index file for the bamout
-     * @param createBamOutMD5 true to create an md5 file for the bamout
-     * @param sourceHeader SAMFileHeader used to seed the output SAMFileHeader for this destination, must not be null
-     * @param haplotypeReadGroupID  read group ID used when writing haplotypes as reads
+     * @param sourceHeader SAMFileHeader used to seed the output SAMFileHeader for this destination.
+     * @param haplotypeReadGroupID read group ID used when writing haplotypes as reads
      */
-    protected HaplotypeBAMDestination(
-            final Path outPath,
-            final boolean createBamOutIndex,
-            final boolean createBamOutMD5,
-            final SAMFileHeader sourceHeader,
-            final String haplotypeReadGroupID)
-    {
-        Utils.nonNull(outPath, "outputPath cannot be null");
+    protected HaplotypeBAMDestination(SAMFileHeader sourceHeader, final String haplotypeReadGroupID) {
         Utils.nonNull(sourceHeader, "sourceHeader cannot be null");
         Utils.nonNull(haplotypeReadGroupID, "haplotypeReadGroupID cannot be null");
         this.haplotypeReadGroupID = haplotypeReadGroupID;
@@ -61,15 +45,6 @@ public class HaplotypeBAMDestination {
         bamOutputHeader.setReadGroups(readGroups);
 
         bamOutputHeader.addProgramRecord(new SAMProgramRecord("HalpotypeBAMWriter"));
-
-        samWriter = new SAMFileGATKReadWriter(ReadUtils.createCommonSAMWriter(
-                outPath,
-                null,
-                getBAMOutputHeader(), // use the header derived from the source header by HaplotypeBAMDestination
-                false,
-                createBamOutIndex,
-                createBamOutMD5
-        ));
     }
 
     /**
@@ -77,10 +52,7 @@ public class HaplotypeBAMDestination {
      *
      * @param read the read to write out
      */
-    public void add(final GATKRead read){
-        Utils.nonNull(read, "read cannot be null");
-        samWriter.addRead(read);
-    }
+    public abstract void add(final GATKRead read);
 
     /**
      * Get the read group ID that is used by this writer when writing halpotypes as reads.
@@ -97,12 +69,10 @@ public class HaplotypeBAMDestination {
     public String getHaplotypeSampleTag() { return haplotypeSampleTag; }
 
     /**
-     * Close any resources associated with this destination.
+     * Close the destination
+     *
      */
-
-    void close(){
-        samWriter.close();
-    };
+    abstract void close();
 
     /**
      * Get the SAMFileHeader that is used for writing the output for this destination.
