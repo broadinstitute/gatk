@@ -71,8 +71,8 @@ public final class LegacySegmentCollection extends AbstractSampleLocatableCollec
                     .append(formatDouble(LegacySegment.getSegmentMean()));
 
     public LegacySegmentCollection(final SampleLocatableMetadata metadata,
-                                   final List<LegacySegment> LegacySegments) {
-        super(metadata, LegacySegments, LegacySegmentTableColumn.COLUMNS, LEGACY_SEGMENT_DATA_LINE_TO_RECORD_FUNCTION, LEGACY_SEGMENT_RECORD_AND_DATA_LINE_BI_CONSUMER);
+                                   final List<LegacySegment> legacySegments) {
+        super(metadata, legacySegments, LegacySegmentTableColumn.COLUMNS, LEGACY_SEGMENT_DATA_LINE_TO_RECORD_FUNCTION, LEGACY_SEGMENT_RECORD_AND_DATA_LINE_BI_CONSUMER);
     }
 
     // output of SAM-style header is suppressed
