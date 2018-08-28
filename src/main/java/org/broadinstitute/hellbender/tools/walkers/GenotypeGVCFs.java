@@ -150,12 +150,6 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
         return Arrays.asList(StandardAnnotation.class);
     }
 
-
-    @Override
-    protected int getVariantCacheLookAheadBases() {
-        return 1000;
-    }
-
     @Override
     public void onTraversalStart() {
         if (!includeNonVariants) {

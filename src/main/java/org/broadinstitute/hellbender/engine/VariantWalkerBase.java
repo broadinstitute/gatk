@@ -29,10 +29,10 @@ import java.util.stream.StreamSupport;
 public abstract class VariantWalkerBase extends GATKTool {
 
     /**
-     * Default value to control the size of the cache for our primary FeatureInputs
-     * (specifically, the number of additional bases worth of overlapping records to cache when querying feature sources).
+     * Default value to control the size of the cache for our driving variants input(s)
+     * (specifically, the number of additional bases worth of overlapping records to cache for driving variants).
      */
-    public static final int DEFAULT_FEATURE_CACHE_LOOKAHEAD = 100_000;
+    public static final int DEFAULT_DRIVING_VARIANTS_LOOKAHEAD_BASES = 100_000;
 
     @Override
     public boolean requiresFeatures() { return true; }
@@ -43,9 +43,15 @@ public abstract class VariantWalkerBase extends GATKTool {
     @Override
     void initializeFeatures() {
 
-        //Note: we override this method because we don't want to set feature manager to null if there are no FeatureInputs.
-        //This is because we have at least 1 source of features (namely the driving dataset).
-        features = new FeatureManager(this, FeatureDataSource.DEFAULT_QUERY_LOOKAHEAD_BASES, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
+        // We override this method to prevent our FeatureManager from being set to null when no side feature inputs
+        // are specified, since VariantWalkers always have at least one (driving) variants input. Note that the query
+        // lookahead size used here for side inputs is not necessarily the same as for driving variants, which is
+        // determined by {@link #getDrivingVariantCacheLookAheadBases}.
+        //
+        // TODO: I think reducing the lookahead for side inputs from DEFAULT_DRIVING_VARIANTS_LOOKAHEAD_BASES to
+        // FeatureDataSource.DEFAULT_QUERY_LOOKAHEAD_BASES will likely hurt performance for tools like VQSR, but lets
+        // test it
+        features = new FeatureManager(this, DEFAULT_DRIVING_VARIANTS_LOOKAHEAD_BASES, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
                                       referenceArguments.getReferencePath());
         initializeDrivingVariants();
     }
@@ -98,12 +104,13 @@ public abstract class VariantWalkerBase extends GATKTool {
     protected abstract Spliterator<VariantContext> getSpliteratorForDrivingVariants();
 
     /**
-     * When performing a query on the primary variant input how many overlapping records should be cached when querying.
+     * When performing a query on the driving variants input(s), the number of lookahead bases for which overlapping
+     * variants should be pre-fetched and cached.
      * Subclasses can set this value by overriding this method.
      * @return the number of bases ahead of a query to prefetch
      */
-    protected int getVariantCacheLookAheadBases(){
-        return DEFAULT_FEATURE_CACHE_LOOKAHEAD;
+    protected int getDrivingVariantCacheLookAheadBases(){
+        return DEFAULT_DRIVING_VARIANTS_LOOKAHEAD_BASES;
     }
 
     /**
