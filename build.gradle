@@ -77,7 +77,6 @@ final docBuildDir = "$buildDir/docs"
 final pythonPackageArchiveName = 'gatkPythonPackageArchive.zip'
 final gatkCondaTemplate = "gatkcondaenv.yml.template"
 final gatkCondaYML = "gatkcondaenv.yml"
-final gatkCondaIntelYML = "gatkcondaenv.intel.yml"
 final largeResourcesFolder = "src/main/resources/large"
 final buildPrerequisitesMessage = "See https://github.com/broadinstitute/gatk#building for information on how to build GATK."
 
@@ -568,7 +567,6 @@ task collectBundleIntoDir(type: Copy) {
 
     from("$buildDir/$pythonPackageArchiveName")
     from("$buildDir/$gatkCondaYML")
-    from("$buildDir/$gatkCondaIntelYML")
     from("scripts/sv", { into("scripts/sv") })
     from("scripts/cnv_wdl/", { into("scripts/cnv_wdl") })
     from("scripts/mutect2_wdl/", { into("scripts/mutect2_wdl") })
@@ -609,31 +607,17 @@ task condaStandardEnvironmentDefinition(type: Copy) {
     include gatkCondaTemplate
     rename { file -> gatkCondaYML }
     expand(["condaEnvName":"gatk",
-            "condaEnvDescription" : "Conda environment for GATK Python Tools",
-            "tensorFlowDependency" : "tensorflow==$tensorflowVersion"])
+            "condaEnvDescription" : "Conda environment for GATK Python Tools"])
     doLast {
         logger.lifecycle("Created standard Conda environment yml file: $gatkCondaYML")
     }
 }
 
-task condaIntelEnvironmentDefinition(type: Copy) {
-    from "scripts"
-    into buildDir
-    include gatkCondaTemplate
-    rename { file -> gatkCondaIntelYML }
-    expand(["condaEnvName":"gatk-intel",
-            "condaEnvDescription" : "Conda environment for GATK Python Tools running with Intel hardware acceleration",
-            "tensorFlowDependency" :
-                    "https://anaconda.org/intel/tensorflow/$tensorflowVersion/download/tensorflow-$tensorflowVersion-cp36-cp36m-linux_x86_64.whl"])
-    doLast {
-        logger.lifecycle("Created Intel Conda environment yml file: $gatkCondaIntelYML")
-    }
-}
 
-// Create two GATK conda environment yml files from the conda enc template
-// (one for standard GATK and one for running GATK with Intel hardware).
+// Create a GATK conda environment yml file from the conda enc template
+// (used TensorFlow with Intel hardware acceleration).
 task condaEnvironmentDefinition() {
-    dependsOn 'pythonPackageArchive', 'condaStandardEnvironmentDefinition', 'condaIntelEnvironmentDefinition'
+    dependsOn 'pythonPackageArchive', 'condaStandardEnvironmentDefinition'
 }
 
 // Create the Python package archive file
