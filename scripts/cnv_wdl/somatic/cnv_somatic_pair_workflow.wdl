@@ -113,8 +113,10 @@ workflow CNVSomaticPairWorkflow {
     #### optional arguments for CallModeledSegments ####
     ####################################################
     Float? normal_minor_allele_fraction_threshold
-    Float? copy_ratio_peak_min_weight
+    Float? copy_ratio_peak_min_relative_height
+    Float? copy_ratio_kernel_density_bandwidth
     Float? min_fraction_of_points_in_normal_allele_fraction_region
+    Float? min_weight_first_cr_peak_cr_data_only
     Boolean? load_copy_ratio
     Boolean? load_allele_fraction
     Int? mem_gb_for_call_modeled_segments
@@ -162,10 +164,10 @@ workflow CNVSomaticPairWorkflow {
             preemptible_attempts = preemptible_attempts
     }
 
-    Int collect_counts_tumor_disk = tumor_bam_size + ceil(size(PreprocessIntervals.preprocessed_intervals, "GB")) + disk_pad
+    Int collect_counts_tumor_disk = tumor_bam_size + ceil(size(CNVTasks.PreprocessIntervals.preprocessed_intervals, "GB")) + disk_pad
     call CNVTasks.CollectCounts as CollectCountsTumor {
         input:
-            intervals = PreprocessIntervals.preprocessed_intervals,
+            intervals = CNVTasks.PreprocessIntervals.preprocessed_intervals,
             bam = tumor_bam,
             bam_idx = tumor_bam_idx,
             ref_fasta = ref_fasta,
@@ -295,11 +297,11 @@ workflow CNVSomaticPairWorkflow {
             preemptible_attempts = preemptible_attempts
     }
 
-    Int collect_counts_normal_disk = normal_bam_size + ceil(size(PreprocessIntervals.preprocessed_intervals, "GB")) + disk_pad
+    Int collect_counts_normal_disk = normal_bam_size + ceil(size(CNVTasks.PreprocessIntervals.preprocessed_intervals, "GB")) + disk_pad
     if (defined(normal_bam)) {
         call CNVTasks.CollectCounts as CollectCountsNormal {
             input:
-                intervals = PreprocessIntervals.preprocessed_intervals,
+                intervals = CNVTasks.PreprocessIntervals.preprocessed_intervals,
                 bam = final_normal_bam,
                 bam_idx = final_normal_bam_idx,
                 ref_fasta = ref_fasta,
@@ -440,7 +442,7 @@ workflow CNVSomaticPairWorkflow {
     }
 
     output {
-        File preprocessed_intervals = PreprocessIntervals.preprocessed_intervals
+        File preprocessed_intervals = CNVTasks.PreprocessIntervals.preprocessed_intervals
         File read_counts_entity_id_tumor = CollectCountsTumor.entity_id
         File read_counts_tumor = CollectCountsTumor.counts
         File allelic_counts_entity_id_tumor = CollectAllelicCountsTumor.entity_id
