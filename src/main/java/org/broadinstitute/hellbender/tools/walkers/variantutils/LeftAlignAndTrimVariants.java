@@ -299,16 +299,12 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
      * @return new VC.
      */
     protected VariantContext leftAlign(final VariantContext vc, final ReferenceContext ref) {
-        if (!vc.isIndel() || vc.isComplexIndel()) {
+        if (!vc.isSimpleIndel()) {
             return vc;
         }
 
         // get the indel length
-        final int indelLength;
-        if (vc.isSimpleDeletion())
-            indelLength = vc.getReference().length() - 1;
-        else
-            indelLength = vc.getAlternateAllele(0).length() - 1;
+        final int indelLength = Math.abs(vc.getIndelLengths().get(0));
 
         int leadingBases = 50;
 
