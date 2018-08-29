@@ -268,6 +268,8 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
         if (refLength > maxIndelSize) {
             logger.info(String.format("%s (%d) at position %s:%d; skipping that record. Set --maxIndelSize >= %d",
                     "Reference allele is too long", refLength, vc.getContig(), vc.getStart(), refLength));
+            //still write out variant, just don't try to left align
+            vcfWriter.add(vc);
             return 0;
         }
 
