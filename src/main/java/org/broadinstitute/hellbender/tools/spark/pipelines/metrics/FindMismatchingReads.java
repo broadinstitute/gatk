@@ -30,10 +30,6 @@ public class FindMismatchingReads extends GATKTool {
     ReadsDataSource controlFile;
     ReadsDataSource testFile;
 
-
-    @Override
-    public boolean requiresReads() { return true; }
-
     public void onTraversalStart() {
         controlFile = new ReadsDataSource(IOUtils.getPath(input1));
         testFile = new ReadsDataSource(IOUtils.getPath(input2));
