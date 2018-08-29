@@ -48,12 +48,14 @@ final public class DataSourceUtils {
     private static final PathMatcher configFileMatcher =
             FileSystems.getDefault().getPathMatcher("glob:**/*.config");
 
-    private static final String README_VERSION_LINE_START    = "Version:";
-    private static final String README_SOURCE_LINE_START     = "Source:";
-    private static final String README_ALT_SOURCE_LINE_START = "Alternate Source:";
-    private static final Pattern VERSION_PATTERN    = Pattern.compile(README_VERSION_LINE_START + "\\s+(\\d+)\\.(\\d+)\\.(\\d\\d\\d\\d)(\\d\\d)(\\d\\d)");
-    private static final Pattern SOURCE_PATTERN     = Pattern.compile(README_SOURCE_LINE_START + "\\s+(ftp.*)");
-    private static final Pattern ALT_SOURCE_PATTERN = Pattern.compile(README_ALT_SOURCE_LINE_START + "\\s+(gs.*)");
+    @VisibleForTesting
+    static final         String  MANIFEST_VERSION_LINE_START    = "Version:";
+    private static final String  MANIFEST_SOURCE_LINE_START     = "Source:";
+    private static final String  MANIFEST_ALT_SOURCE_LINE_START = "Alternate Source:";
+    @VisibleForTesting
+    static final Pattern VERSION_PATTERN                = Pattern.compile(MANIFEST_VERSION_LINE_START + "\\s+(\\d+)\\.(\\d+)\\.(\\d\\d\\d\\d)(\\d\\d)(\\d\\d)(.*)");
+    private static final Pattern SOURCE_PATTERN                 = Pattern.compile(MANIFEST_SOURCE_LINE_START + "\\s+(ftp.*)");
+    private static final Pattern ALT_SOURCE_PATTERN             = Pattern.compile(MANIFEST_ALT_SOURCE_LINE_START + "\\s+(gs.*)");
 
     // Track our minimum version number here:
     @VisibleForTesting
@@ -63,19 +65,18 @@ final public class DataSourceUtils {
     @VisibleForTesting
     static final int MIN_YEAR_RELEASED        = 2018;
     @VisibleForTesting
-    static final int MIN_MONTH_RELEASED       = 6;
+    static final int MIN_MONTH_RELEASED       = 8;
     @VisibleForTesting
-    static final int MIN_DAY_RELEASED         = 15;
+    static final int MIN_DAY_RELEASED         = 29;
 
     //==================================================================================================================
     // Public Static Members:
 
     /** The minimum version of the data sources required for funcotator to run.  */
     public static final String CURRENT_MINIMUM_DATA_SOURCE_VERSION         = String.format("v%d.%d.%d%02d%02d", MIN_MAJOR_VERSION_NUMBER, MIN_MINOR_VERSION_NUMBER, MIN_YEAR_RELEASED, MIN_MONTH_RELEASED, MIN_DAY_RELEASED);
-    public static final String README_FILE_NAME                            = "README.txt";
+    public static final String MANIFEST_FILE_NAME                          = "MANIFEST.txt";
     public static final String DATA_SOURCES_FTP_PATH                       = "ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/funcotator/";
     public static final String DATA_SOURCES_BUCKET_PATH                    = "gs://broad-public-datasets/funcotator/";
-
     public static final String CONFIG_FILE_FIELD_NAME_NAME                 = "name";
     public static final String CONFIG_FILE_FIELD_NAME_VERSION              = "version";
     public static final String CONFIG_FILE_FIELD_NAME_SRC_FILE             = "src_file";
@@ -100,7 +101,7 @@ final public class DataSourceUtils {
      * @param dataSourceDirectories A {@link List} of {@link Path} to the directories containing our data sources.  Must not be {@code null}.
      * @return The contents of the config files for each of the data sources found in the given {@code dataSourceDirectories}.
      */
-    public static Map<Path, Properties> getAndValidateDataSourcesFromPaths(final String refVersion,
+    public static Map<Path, Properties> getAndValidateDataSourcesFromPaths( final String refVersion,
                                                                             final List<String> dataSourceDirectories) {
         Utils.nonNull(refVersion);
         Utils.nonNull(dataSourceDirectories);
@@ -115,13 +116,13 @@ final public class DataSourceUtils {
 
             logger.info("Initializing data sources from directory: " + pathString);
 
-            final Path p = IOUtils.getPath(pathString);
-            if ( !isValidDirectory(p) ) {
-                throw new UserException("ERROR: Given data source path is not a valid directory: " + p.toUri().toString());
+            final Path pathToDatasources = IOUtils.getPath(pathString);
+            if ( !isValidDirectory(pathToDatasources) ) {
+                throw new UserException("ERROR: Given data source path is not a valid directory: " + pathToDatasources.toUri());
             }
 
             // Log information from the datasources directory so we can have a record of what we're using:
-            final boolean isGoodVersionOfDataSources = logDataSourcesInfo(p);
+            final boolean isGoodVersionOfDataSources = logDataSourcesInfo(pathToDatasources);
 
             if ( !isGoodVersionOfDataSources ) {
                 continue;
@@ -129,7 +130,7 @@ final public class DataSourceUtils {
 
             // Now that we have a valid directory, we need to grab a list of sub-directories in it:
             try {
-                for ( final Path dataSourceTopDir : Files.list(p).filter(DataSourceUtils::isValidDirectory).collect(Collectors.toSet()) ) {
+                for ( final Path dataSourceTopDir : Files.list(pathToDatasources).filter(DataSourceUtils::isValidDirectory).collect(Collectors.toSet()) ) {
 
                     // Get the path that corresponds to our reference version:
                     final Path dataSourceDir = dataSourceTopDir.resolve(refVersion);
@@ -166,7 +167,7 @@ final public class DataSourceUtils {
                 }
             }
             catch (final IOException ex) {
-                throw new GATKException("Unable to read contents of: " + p.toUri().toString(), ex);
+                throw new GATKException("Unable to read contents of: " + pathToDatasources.toUri().toString(), ex);
             }
         }
 
@@ -461,12 +462,14 @@ final public class DataSourceUtils {
      * user can create their own data sources directory, which may not contain the metadata we seek.
      *
      * NOTE: The README file in a Data Sources directory is assumed to have the following properties:
-     *       - Its name must be {@link #README_FILE_NAME}
-     *       - It must contain a line starting with {@link #README_VERSION_LINE_START} containing an alphanumeric string containing the version number information.
+     *       - Its name must be {@link #MANIFEST_FILE_NAME}
+     *       - It must contain a line starting with {@link #MANIFEST_VERSION_LINE_START} containing an alphanumeric string containing the version number information.
      *           - This version information takes the form of:
-     *               [MAJOR_VERSION].[MINOR_VERSION].[RELEASE_YEAR][RELEASE_MONTH][RELEASE_DAY]
+     *               [MAJOR_VERSION].[MINOR_VERSION].[RELEASE_YEAR][RELEASE_MONTH][RELEASE_DAY][VERSION_DECORATOR]?
      *               e.g.
-     *               1.1.20180204 (version 1.1 released Feb. 2, 2018)
+     *               1.1.20180204        (version 1.1 released Feb. 2, 2018)
+     *               4.2.20480608somatic (version 4.2 released June 6, 2048 - somatic data sources)
+     *               1.7.20190918X       (version 1.7 released Sept. 18, 2048 - X data sources)
      *
      *
      * @param dataSourcesPath {@link Path} to a Data Sources directory to check.
@@ -476,34 +479,36 @@ final public class DataSourceUtils {
 
         boolean dataSourcesPathIsAcceptable = true;
 
-        final Path readmePath = dataSourcesPath.resolve(IOUtils.getPath(README_FILE_NAME));
+        final Path manifestPath = dataSourcesPath.resolve(IOUtils.getPath(MANIFEST_FILE_NAME));
 
         String version = null;
 
-        if ( Files.exists(readmePath) && Files.isRegularFile(readmePath) && Files.isReadable(readmePath) ) {
+        if ( Files.exists(manifestPath) && Files.isRegularFile(manifestPath) && Files.isReadable(manifestPath) ) {
 
-            try ( final BufferedReader reader = Files.newBufferedReader(readmePath) ) {
+            try ( final BufferedReader reader = Files.newBufferedReader(manifestPath) ) {
 
-                Integer versionMajor   = null;
-                Integer versionMinor   = null;
-                Integer versionYear    = null;
-                Integer versionMonth   = null;
-                Integer versionDay     = null;
-                String source          = null;
-                String alternateSource = null;
+                Integer versionMajor     = null;
+                Integer versionMinor     = null;
+                Integer versionYear      = null;
+                Integer versionMonth     = null;
+                Integer versionDay       = null;
+                String  versionDecorator = null;
+                String  source           = null;
+                String  alternateSource  = null;
 
                 // Get the info from our README file:
                 String line = reader.readLine();
                 while ((line != null) && ((version == null) || (source == null) || (alternateSource == null))) {
 
-                    if (version == null && line.startsWith(README_VERSION_LINE_START)) {
-                        final Matcher m = VERSION_PATTERN.matcher(line);
-                        if ( m.matches() ) {
-                            versionMajor  = Integer.valueOf(m.group(1));
-                            versionMinor  = Integer.valueOf(m.group(2));
-                            versionYear   = Integer.valueOf(m.group(3));
-                            versionMonth  = Integer.valueOf(m.group(4));
-                            versionDay    = Integer.valueOf(m.group(5));
+                    if (version == null && line.startsWith(MANIFEST_VERSION_LINE_START)) {
+                        final Matcher matcher = VERSION_PATTERN.matcher(line);
+                        if ( matcher.matches() ) {
+                            versionMajor     = Integer.valueOf(matcher.group(1));
+                            versionMinor     = Integer.valueOf(matcher.group(2));
+                            versionYear      = Integer.valueOf(matcher.group(3));
+                            versionMonth     = Integer.valueOf(matcher.group(4));
+                            versionDay       = Integer.valueOf(matcher.group(5));
+                            versionDecorator = matcher.group(6);
 
                             version = versionMajor + "." + versionMinor + "." + versionYear + "" + versionMonth + "" + versionDay;
                         }
@@ -512,7 +517,7 @@ final public class DataSourceUtils {
                         }
                     }
 
-                    if (source == null && line.startsWith(README_SOURCE_LINE_START)) {
+                    if (source == null && line.startsWith(MANIFEST_SOURCE_LINE_START)) {
                         final Matcher m = SOURCE_PATTERN.matcher(line);
                         if ( m.matches() ) {
                             source = m.group(1);
@@ -522,7 +527,7 @@ final public class DataSourceUtils {
                         }
                     }
 
-                    if (alternateSource == null && line.startsWith(README_ALT_SOURCE_LINE_START)) {
+                    if (alternateSource == null && line.startsWith(MANIFEST_ALT_SOURCE_LINE_START)) {
                         final Matcher m = ALT_SOURCE_PATTERN.matcher(line);
                         if ( m.matches() ) {
                             alternateSource = m.group(1);
@@ -537,7 +542,7 @@ final public class DataSourceUtils {
 
                 // Make sure we have good info:
                 if ( version == null ) {
-                    logger.warn("Unable to read version information from data sources info/readme file: " + readmePath.toUri().toString());
+                    logger.warn("Unable to read version information from data sources info/readme file: " + manifestPath.toUri().toString());
                 }
                 else {
                     logger.info("Data sources version: " + version);
@@ -547,25 +552,25 @@ final public class DataSourceUtils {
                 }
 
                 if ( source == null ) {
-                    logger.warn("Unable to read source information from data sources info/readme file: " + readmePath.toUri().toString());
+                    logger.warn("Unable to read source information from data sources info/readme file: " + manifestPath.toUri().toString());
                 }
                 else {
                     logger.info("Data sources source: " + source);
                 }
 
                 if ( alternateSource == null ) {
-                    logger.warn("Unable to read alternate source information from data sources info/readme file: " + readmePath.toUri().toString());
+                    logger.warn("Unable to read alternate source information from data sources info/readme file: " + manifestPath.toUri().toString());
                 }
                 else {
                     logger.info("Data sources alternate source: " + alternateSource);
                 }
             }
             catch (final Exception ex) {
-                logger.warn("Could not read " + README_FILE_NAME + ": unable to log data sources version information.", ex);
+                logger.warn("Could not read " + MANIFEST_FILE_NAME + ": unable to log data sources version information.", ex);
             }
         }
         else {
-            logger.warn("Could not read " + README_FILE_NAME + ": unable to log data sources version information.");
+            logger.warn("Could not read " + MANIFEST_FILE_NAME + ": unable to log data sources version information.");
         }
 
         // Warn the user if they need newer stuff.
