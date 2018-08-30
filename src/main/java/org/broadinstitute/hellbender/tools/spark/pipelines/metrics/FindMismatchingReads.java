@@ -53,6 +53,9 @@ public class FindMismatchingReads extends GATKTool {
             if (bigMapOfAllReads.contains(controlRead)) System.out.println("Map already contained the read '"+controlRead.toString()+"' this will result in an error later");
             bigMapOfAllReads.add(controlFileIterator.next());
             i++;
+            if (i%1000==0) {
+                System.out.println("Processed "+i+" reads from control");
+            }
 
             while (j < i-LEADING_READS) {
                 GATKRead testRead = testFileIterator.next();
