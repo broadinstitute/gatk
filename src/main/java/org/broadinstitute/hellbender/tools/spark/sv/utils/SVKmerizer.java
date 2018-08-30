@@ -62,6 +62,9 @@ public class SVKmerizer<KmerType extends SVKmer> implements Iterator<KmerType> {
         return result;
     }
 
+    /** returns distance from beginning of sequence to beginning of current kmer */
+    public int getOffset() { return idx - kSize; }
+
     public static <KmerType extends SVKmer> KmerType toKmer( final CharSequence seq, final KmerType kmer ) {
         final SVKmerizer<KmerType> sk = new SVKmerizer<>(seq, seq.length(), 1, kmer);
         Utils.validateArg(sk.hasNext(), () -> "Can't make a SVKmer from '"+seq+"'");
@@ -80,6 +83,12 @@ public class SVKmerizer<KmerType extends SVKmer> implements Iterator<KmerType> {
                 new SVKmerizer<>(seq, kSize, kSpace, kmer)).spliterator(), false);
     }
 
+    public static <KmerType extends SVKmer> Stream<KmerType> stream( final CharSequence seq,
+                                                                     final int kSize,
+                                                                     final KmerType kmer ) {
+        return stream(seq, kSize, 1, kmer);
+    }
+
     public static <KmerType extends SVKmer> Stream<KmerType> stream( final byte[] seq,
                                                                      final int kSize,
                                                                      final int kSpace,
@@ -95,6 +104,13 @@ public class SVKmerizer<KmerType extends SVKmer> implements Iterator<KmerType> {
 
     @SuppressWarnings("unchecked")
     public static <KmerType extends SVKmer> Stream<KmerType> canonicalStream( final byte[] seq,
+                                                                              final int kSize,
+                                                                              final KmerType kmer ) {
+        return stream(seq, kSize, 1, kmer).map(kkk -> (KmerType)kkk.canonical(kSize));
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <KmerType extends SVKmer> Stream<KmerType> canonicalStream( final CharSequence seq,
                                                                               final int kSize,
                                                                               final KmerType kmer ) {
         return stream(seq, kSize, 1, kmer).map(kkk -> (KmerType)kkk.canonical(kSize));
@@ -122,7 +138,7 @@ public class SVKmerizer<KmerType extends SVKmer> implements Iterator<KmerType> {
 
     // a shim to turn a byte array into a character sequence by treating the bytes as ASCII characters
     public static final class ASCIICharSequence implements CharSequence {
-        ASCIICharSequence( final byte[] bytes ) { this.bytes = bytes; }
+        public ASCIICharSequence( final byte[] bytes ) { this.bytes = bytes; }
 
         @Override public int length() { return bytes.length; }
 
