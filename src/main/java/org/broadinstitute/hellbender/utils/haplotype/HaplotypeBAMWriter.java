@@ -125,14 +125,13 @@ public class HaplotypeBAMWriter implements AutoCloseable {
         Utils.nonNull(readLikelihoods, "readLikelihoods cannot be null");
         Utils.nonNull(bestHaplotypes, "bestHaplotypes cannot be null");
 
-        if (calledHaplotypes.isEmpty() && writerType.equals(WriterType.CALLED_HAPLOTYPES)) { // only write out called haplotypes
-            return;
-        }
-
         Collection<Haplotype> haplotypesToWrite = haplotypes;
         Set<Haplotype> bestHaplotypesToWrite = new LinkedHashSet<>(bestHaplotypes);
 
         if (writerType.equals(WriterType.CALLED_HAPLOTYPES)){
+            if (calledHaplotypes.isEmpty()){
+                return;
+            }
             haplotypesToWrite = calledHaplotypes;
             bestHaplotypesToWrite = calledHaplotypes;
         }
