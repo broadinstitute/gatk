@@ -62,7 +62,7 @@ public class FindMismatchingReads extends GATKTool {
             }
 
             while (j < i-LEADING_READS) {
-                GATKRead testRead = testFileIterator.next();
+                SAMRecordToGATKReadAdapter testRead = (SAMRecordToGATKReadAdapter)testFileIterator.next();
                 if (!bigMapOfAllReads.remove(testRead)) {
                     discoradantReads.add(testRead);
                 }
