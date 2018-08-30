@@ -19,7 +19,7 @@ import java.util.*;
 public class FindMismatchingReads extends GATKTool {
     private static final long serialVersionUID = 1L;
 
-    private static final int LEADING_READS = 1000000;
+    private static final int LEADING_READS = 100000;
 
     @Argument(doc="The first BAM",fullName = "control", optional = false)
     protected String input1;
