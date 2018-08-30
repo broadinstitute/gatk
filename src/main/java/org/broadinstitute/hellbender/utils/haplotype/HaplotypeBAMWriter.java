@@ -32,7 +32,7 @@ public class HaplotypeBAMWriter implements AutoCloseable {
     private static final int bestHaplotypeMQ = 60;
     private static final int otherMQ = 0;
 
-    protected final HaplotypeBAMDestination output;
+    private final HaplotypeBAMDestination output;
     private WriterType writerType;
     private boolean writeHaplotypes = true;
 
@@ -104,12 +104,14 @@ public class HaplotypeBAMWriter implements AutoCloseable {
     /**
      * Write out a BAM representing for the haplotype caller at this site
      * writerType (ALL_POSSIBLE_HAPLOTYPES or CALLED_HAPLOTYPES) determines inputs to writeHaplotypesAsReads
+     * Write out a BAM representing the haplotypes at this site, based on the value for writerType used when
+     * the writer was constructed (ALL_POSSIBLE_HAPLOTYPES or CALLED_HAPLOTYPES).
      *
-     * @param haplotypes a list of all possible haplotypes at this loc
-     * @param paddedReferenceLoc the span of the based reference here
-     * @param bestHaplotypes a list of the best (a subset of all) haplotypes that actually went forward into genotyping
-     * @param calledHaplotypes a list of the haplotypes that where actually called as non-reference
-     * @param readLikelihoods a map from sample -> likelihoods for each read for each of the best haplotypes
+     * @param haplotypes a list of all possible haplotypes at this loc, cannot be null
+     * @param paddedReferenceLoc the span of the based reference here, cannot be null
+     * @param bestHaplotypes a list of the best (a subset of all) haplotypes that actually went forward into genotyping, cannot be null
+     * @param calledHaplotypes a list of the haplotypes that where actually called as non-reference, cannot be null
+     * @param readLikelihoods a map from sample -> likelihoods for each read for each of the best haplotypes, cannot be null
      */
     public void writeReadsAlignedToHaplotypes(final Collection<Haplotype> haplotypes,
                                               final Locatable paddedReferenceLoc,
@@ -121,13 +123,19 @@ public class HaplotypeBAMWriter implements AutoCloseable {
         Utils.nonNull(paddedReferenceLoc, "paddedReferenceLoc cannot be null");
         Utils.nonNull(calledHaplotypes, "calledHaplotypes cannot be null");
         Utils.nonNull(readLikelihoods, "readLikelihoods cannot be null");
+        Utils.nonNull(bestHaplotypes, "bestHaplotypes cannot be null");
 
         if (calledHaplotypes.isEmpty() && writerType.equals(WriterType.CALLED_HAPLOTYPES)) { // only write out called haplotypes
             return;
         }
 
-        Collection<Haplotype> haplotypesToWrite = writerType.equals(WriterType.CALLED_HAPLOTYPES) ? calledHaplotypes : haplotypes;
-        Set<Haplotype> bestHaplotypesToWrite = writerType.equals(WriterType.CALLED_HAPLOTYPES) ? calledHaplotypes : new LinkedHashSet<>(bestHaplotypes);
+        Collection<Haplotype> haplotypesToWrite = haplotypes;
+        Set<Haplotype> bestHaplotypesToWrite = new LinkedHashSet<>(bestHaplotypes);
+
+        if (writerType.equals(WriterType.CALLED_HAPLOTYPES)){
+            haplotypesToWrite = calledHaplotypes;
+            bestHaplotypesToWrite = calledHaplotypes;
+        }
 
         writeHaplotypesAsReads(haplotypesToWrite, bestHaplotypesToWrite, paddedReferenceLoc);
 
