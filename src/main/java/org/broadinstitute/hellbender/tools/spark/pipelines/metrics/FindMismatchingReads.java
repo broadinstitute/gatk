@@ -53,7 +53,7 @@ public class FindMismatchingReads extends GATKTool {
         while (controlFileIterator.hasNext()) {
             SAMRecordToGATKReadAdapter controlRead = (SAMRecordToGATKReadAdapter)controlFileIterator.next();
             if (bigMapOfAllReads.contains(controlRead)) System.out.println("Map already contained the read '"+controlRead.toString()+"' this will result in an error later");
-            bigMapOfAllReads.add(((SAMRecordToGATKReadAdapter)(controlFileIterator.next())));
+            bigMapOfAllReads.add(controlRead);
             i++;
             if (i%10000==0) {
                 System.out.println("Processed "+i+" reads from control, "+bigMapOfAllReads.size()+" reads in bigMap, and "+j+" test reads processed");
@@ -62,6 +62,7 @@ public class FindMismatchingReads extends GATKTool {
             while (j < i-LEADING_READS) {
                 SAMRecordToGATKReadAdapter testRead = (SAMRecordToGATKReadAdapter)testFileIterator.next();
                 if (!bigMapOfAllReads.remove(testRead)) {
+                    System.out.println(testRead);
                     discoradantReads.add(testRead);
                 }
                 j++;
