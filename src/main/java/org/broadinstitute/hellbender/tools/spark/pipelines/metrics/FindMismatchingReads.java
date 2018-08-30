@@ -9,7 +9,9 @@ import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscovery
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.iterators.SAMRecordToReadIterator;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 
 
 import java.util.*;
@@ -38,7 +40,7 @@ public class FindMismatchingReads extends GATKTool {
 
     @Override
     public void traverse() {
-        Set<GATKRead> bigMapOfAllReads = new HashSet<>();
+        Set<SAMRecordToGATKReadAdapter> bigMapOfAllReads = new HashSet<>();
 
         List<GATKRead> discoradantReads = new ArrayList<>();
 
@@ -49,12 +51,12 @@ public class FindMismatchingReads extends GATKTool {
         int j = 0;
 
         while (controlFileIterator.hasNext()) {
-            GATKRead controlRead = controlFileIterator.next();
+            SAMRecordToGATKReadAdapter controlRead = (SAMRecordToGATKReadAdapter)controlFileIterator.next();
             if (bigMapOfAllReads.contains(controlRead)) System.out.println("Map already contained the read '"+controlRead.toString()+"' this will result in an error later");
-            bigMapOfAllReads.add(controlFileIterator.next());
+            bigMapOfAllReads.add(((SAMRecordToGATKReadAdapter)(controlFileIterator.next())));
             i++;
             if (i%10000==0) {
-                System.out.println("Processed "+i+" reads from control, "+bigMapOfAllReads.size()+" reads in bigMap");
+                System.out.println("Processed "+i+" reads from control, "+bigMapOfAllReads.size()+" reads in bigMap, and "+j+" test reads processed");
             }
 
             while (j < i-LEADING_READS) {
@@ -68,7 +70,7 @@ public class FindMismatchingReads extends GATKTool {
         System.out.println("Traversed test file with "+i+" total reads");
 
         while (testFileIterator.hasNext()) {
-            GATKRead testRead = testFileIterator.next();
+            SAMRecordToGATKReadAdapter testRead = (SAMRecordToGATKReadAdapter)testFileIterator.next();
             if (!bigMapOfAllReads.remove(testRead)) {
                 discoradantReads.add(testRead);
             }
@@ -78,7 +80,7 @@ public class FindMismatchingReads extends GATKTool {
 
         System.out.println("The following reads were not matched (duplicated or created) from input1 to input2:");
         discoradantReads.forEach(read -> {
-            if (!bigMapOfAllReads.remove(read)) {
+            if (!bigMapOfAllReads.remove((SAMRecordToGATKReadAdapter)read)) {
                 System.out.println(read.toString());
             }
         });
