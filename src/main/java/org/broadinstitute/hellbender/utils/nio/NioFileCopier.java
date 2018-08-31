@@ -547,12 +547,12 @@ public class NioFileCopier {
      */
     private abstract class SimpleTimeFormatter {
 
-        long rawTime_ms;
-        long days;
-        long hours;
-        long minutes;
-        long seconds;
-        long millis;
+        final long rawTime_ms;
+        final long days;
+        final long hours;
+        final long minutes;
+        final long seconds;
+        final long millis;
 
         SimpleTimeFormatter(final long time_ms) {
             rawTime_ms = time_ms;
