@@ -5,7 +5,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.TextCigarCodec;
 import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.TestUtilsForAssemblyBasedSVDiscovery;
+import org.broadinstitute.hellbender.tools.spark.sv.TestUtilsForSV;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.ContigAlignmentsModifier;
@@ -30,7 +30,7 @@ public class BreakpointComplicationsAndLocationAndAltSeqInferenceUnitTest extend
     @DataProvider
     private Object[][] forValidateInferredLocations() {
         final List<Object[]> data = new ArrayList<>(20);
-        final SAMSequenceDictionary bareBoneHg38SAMSeqDict = TestUtilsForAssemblyBasedSVDiscovery.bareBoneHg38SAMSeqDict;
+        final SAMSequenceDictionary bareBoneHg38SAMSeqDict = TestUtilsForSV.bareBoneHg38SAMSeqDictAllChromosomes;
 
         SimpleInterval inferredLeftBreakpoint = new SimpleInterval("chr20", 10000, 10000);
         SimpleInterval inferredRightBreakpoint = new SimpleInterval("chr20", 10000-1, 10000-1);
@@ -121,7 +121,7 @@ public class BreakpointComplicationsAndLocationAndAltSeqInferenceUnitTest extend
                 false, 60, 17, 1106, ContigAlignmentsModifier.AlnModType.NONE);
         final SimpleChimera simpleChimera = new SimpleChimera(region5, region6, Collections.emptyList(), "asm030282:tig00005",
                 AssemblyContigWithFineTunedAlignments.NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME,
-                TestUtilsForAssemblyBasedSVDiscovery.b38_seqDict_chr20_chr21);
+                TestUtilsForSV.b38_seqDict_chr20_chr21);
         final BreakpointComplications.SmallDuplicationWithPreciseDupRangeBreakpointComplications smallDuplicationWithPreciseDupRangeBreakpointComplications =
                 new BreakpointComplications.SmallDuplicationWithPreciseDupRangeBreakpointComplications(simpleChimera, "CTCCTGTCGTCCAGGTAGACATGGAGCAGGCTCTCCTTCTTGTCTACACTGGGTCCAGGTGGTTGTGGGACAAGATCTCCTCTTGTCTACACTGGATCGAGGTGGATGTGAGGCAGTCTCTCTTCCTGTCTACACTGGGTCCAGGTGGTTGTGGGACAAGAGCTCCTCCTGTCTACACTGGGTCCAGGTAGCTGTGGGACAAGAGCTCCTCCTGTCTACACTGGGTCTCCATGGAGGTGGGGCAGGGTCTCCTTCTGTCTACACTGCGTGTAGTTGGAGGTGGGGCAGGGTCTCCTCCTGTCTACACTGGGTCCAGGTAGACATGGGGCAGTCTCTCCTTCTTGTCTACACTGGGTCCAGGTGGTTGTGGGACAAGAGCTCCTCCTGTCTACACTGGGTCCAGGTAGTTGTGGGACAAGAGCTCCTCCTGTCTACACTGGGTCTCCATGGAGGTGGGGCAGTCTCTCCTTCTTGTCTACACTGGGTCCAGGTGGTTGTGGGACAAGATCTCCTCTTGTCTACACTGGCTCGAGGTGGACATGGGGCAGGGTCTCTTCTTGTCTACACTGGGTCCAGGAGGTTGTGAGACAAGATCTCCTCTTGTCTACACTGGATCGAGGTGGACGTGAGGCAGTCTCTCTCCCTGTCTACACTGGGTCCAGGTAGTTGTGGGACAAGAGCTCCTCCTGTCTACACTGGGTCTCCATGGAGGTGGAGCAGGGTCTCCTCCTGTCTACACTGGGTGTAGGTGGAGGTGGGGTCGGGTGTCCTCCTATCTACACTGGGTCCAGGTAGACATGGGGCAGGGTCTCCTTCTCTCTACACTGCGTCCAGCTGGAGGTGGAGCAGAGGCTCTCCTTGCTTGTGGCATCGTCCCCCACACCTCCCGGTCCACTTCCTGGTTCCATGGTTGCAGGATCATCCTTGTCCACCCTCCCTGCAACCTCTTTCAAGGTGGCTCCACAGGCCACAGACCCTTCACCTCTTCCTCCGCTACCCGAAGTGTGTTCACCCCAGAGTCACCGCTCACCACCCACCCATCCTTCCCCCAGGCCACTTCCCCGGGATTCCCAGGCTCCTGTGCGGGCGTGTCCCGTACGCCTCCCTCCTGGTGCCCAGCCCCGGGGAGCTCTCACCGACCTTTCTGTGGACGTCCAGCTGGTACTGAAAGTCCAGGTACGACAGCTTCTGATAGGTCCTGGGCTGTTTCCACCGTACGAGGCAGTGCGTCGTGTTGCAACGTACGGTGACATTGCTGGGAGGGTTGAATCGTTCTGTAACGAGGGCGCAGGACACACCCCTGAACCCGAGAGGTCCTGTCTACACTGGGTCCAGGTGGAGGTGGTGCAGAGTCTCCTCCTGTCTACACTGGGTCCAGGTGGAGGTGGAGTAGGTCCTGTCTACACTGGGTCCAGGTGGAGGTGGAGTAGGGACACCTCTTTGACTACACTGGGTCCAGGTGGAGATGGGGCAGGGTCTCCTCCTGTCTACACTGGGTCCAGGTGGAGGTGGGGCAGGGTCTCCTCCTGTCTACACTGGGTCTAGGTGGAGGTGGTGCAGAGTCTTCTCCTGTCTACACTGGGTCCAGGTGGAGGTGGGGCAGGGTCTCCTCCTGTCTACACTCGGTCCAGGTGGATGTGGACTAGGGACACCTCTTTGTCTA".getBytes(), true);
         Assert.assertEquals(smallDuplicationWithPreciseDupRangeBreakpointComplications.getCigarStringsForDupSeqOnCtgForwardStrandRep(),
@@ -225,10 +225,10 @@ public class BreakpointComplicationsAndLocationAndAltSeqInferenceUnitTest extend
                 new SimpleInterval("chr21", 39192594, 39192692),
                 252 ,350,
                 TextCigarCodec.decode("251S99M26S"), true, 32, 1, 94, ContigAlignmentsModifier.AlnModType.NONE);
-        SimpleChimera simpleChimera = new SimpleChimera(region1, region2, Collections.emptyList(), "testContig", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, TestUtilsForAssemblyBasedSVDiscovery.b38_seqDict_chr20_chr21);
+        SimpleChimera simpleChimera = new SimpleChimera(region1, region2, Collections.emptyList(), "testContig", NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, TestUtilsForSV.b38_seqDict_chr20_chr21);
         NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(simpleChimera,
                 "TTCCTTAAAATGCAGGTGAATACAAGAATTAGGTTTCAGGTTTTATATATATATTCTGATATATATATATAATATAACCTGAGATATATATATAAATATATATATTAATATATATTAATATATATAAATATATATATATTAATATATATTTATATATAAATATATATATATTAATATATATAAATATATATAAATATATATATATTAATATATATTAATATATAAATATATATATATTAATATATATTAATATATATAAATATATATATTAATATATATAAATATATATATAAATATATATAAATATATAAATATATATATAAATATATATAAATATATATAAATATATATACACACATACATACACATATACATT".getBytes(),
-                TestUtilsForAssemblyBasedSVDiscovery.b38_seqDict_chr20_chr21);
+                TestUtilsForSV.b38_seqDict_chr20_chr21);
         Assert.assertEquals(breakpoints.getLeftJustifiedLeftRefLoc(), new SimpleInterval("chr21", 39192594, 39192594));
         Assert.assertEquals(breakpoints.getLeftJustifiedRightRefLoc(), new SimpleInterval("chr21", 39477346, 39477346));
         Assert.assertEquals(breakpoints.getComplication().getHomologyForwardStrandRep(), "ATATATAAATATATATA");

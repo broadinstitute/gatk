@@ -1,11 +1,10 @@
 package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMRecordComparator;
-import htsjdk.samtools.SAMRecordCoordinateComparator;
-import htsjdk.samtools.SAMRecordQueryNameComparator;
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.spark.sv.TestUtilsForSV;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -23,28 +22,36 @@ public class SVUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(SVUtils.hashMapCapacity(150),201);
     }
 
-    @DataProvider
-    private Object[][] forGetSamRecordComparatorExpectingException() {
-        final List<Object[]> data = new ArrayList<>(3);
-        data.add(new Object[]{SAMFileHeader.SortOrder.unsorted});
-        data.add(new Object[]{SAMFileHeader.SortOrder.duplicate});
-        data.add(new Object[]{SAMFileHeader.SortOrder.unknown});
-        return data.toArray(new Object[data.size()][]);
-    }
-    @Test(groups = "sv", expectedExceptions = UserException.class, dataProvider = "forGetSamRecordComparatorExpectingException")
-    void testGetSamRecordComparatorExpectingException(final SAMFileHeader.SortOrder sortOrder) {
-        SVUtils.getSamRecordComparator(sortOrder);
+    @Test(groups = "sv")
+    public void testConversionBetweenLocatableAndSvInterval() {
+        SimpleInterval simpleInterval = new SimpleInterval("20", 10000, 10000);
+        SVInterval svInterval = new SVInterval(0, 10000, 10001);
+        Assert.assertEquals(SVUtils.convertLocatable(simpleInterval, TestUtilsForSV.b37_seqDict), svInterval);
+        Assert.assertEquals(SVUtils.convertSVInterval(svInterval, TestUtilsForSV.b37_seqDict), simpleInterval);
     }
 
     @DataProvider
-    private Object[][] forGetSamRecordComparator() {
-        final List<Object[]> data = new ArrayList<>(2);
-        data.add(new Object[]{SAMFileHeader.SortOrder.coordinate, SAMRecordCoordinateComparator.class});
-        data.add(new Object[]{SAMFileHeader.SortOrder.queryname, SAMRecordQueryNameComparator.class});
+    private Object[][] forTestConvertFromLocatableExpectingException() {
+        final List<Object[]> data = new ArrayList<>(3);
+        data.add(new Object[]{new SimpleInterval("2", 10000, 10000), TestUtilsForSV.b37_seqDict});
+        data.add(new Object[]{new SimpleInterval("chr20", 10000, 10000), TestUtilsForSV.b37_seqDict});
+        data.add(new Object[]{new SimpleInterval("20", 10000, 10000), TestUtilsForSV.b38_seqDict_chr20_chr21});
         return data.toArray(new Object[data.size()][]);
     }
-    @Test(groups = "sv", dataProvider = "forGetSamRecordComparator")
-    void testGetSamRecordComparator(final SAMFileHeader.SortOrder sortOrder, final Class<SAMRecordComparator> expectedClass) {
-        Assert.assertEquals(SVUtils.getSamRecordComparator(sortOrder).getClass(), expectedClass);
+    @Test(groups = "sv", dataProvider = "forTestConvertFromLocatableExpectingException", expectedExceptions = IllegalArgumentException.class)
+    public void testConvertFromLocatableExpectingException(final Locatable locatable, final SAMSequenceDictionary dictionary) {
+        SVUtils.convertLocatable(locatable, dictionary);
+    }
+
+    @DataProvider
+    private Object[][] forTestConvertFromSVIntervalExpectingException() {
+        final List<Object[]> data = new ArrayList<>(2);
+        data.add(new Object[]{new SVInterval(3, 10000, 10000), TestUtilsForSV.b37_seqDict}); // invalid chromosome
+        data.add(new Object[]{new SVInterval(0, 10000, 10000), TestUtilsForSV.b37_seqDict}); // length zero
+        return data.toArray(new Object[data.size()][]);
+    }
+    @Test(groups = "sv", dataProvider = "forTestConvertFromSVIntervalExpectingException", expectedExceptions = IllegalArgumentException.class)
+    public void testConvertFromSVIntervalExpectingException(final SVInterval svInterval, final SAMSequenceDictionary dictionary) {
+        SVUtils.convertSVInterval(svInterval, dictionary);
     }
 }

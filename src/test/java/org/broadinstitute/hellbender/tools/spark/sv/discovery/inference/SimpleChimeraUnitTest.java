@@ -6,7 +6,7 @@ import com.esotericsoftware.kryo.io.Output;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.TextCigarCodec;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.TestUtilsForAssemblyBasedSVDiscovery;
+import org.broadinstitute.hellbender.tools.spark.sv.TestUtilsForSV;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.ContigAlignmentsModifier;
@@ -79,7 +79,7 @@ public class SimpleChimeraUnitTest extends AssemblyBasedSVDiscoveryBaseTest {
         final AlignmentInterval region1 = new AlignmentInterval(new SimpleInterval("21", 100001, 100100), 1 ,100, TextCigarCodec.decode("100M"), true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
         final AlignmentInterval region2 = new AlignmentInterval(new SimpleInterval("21", 100101, 100200), 101 ,200, TextCigarCodec.decode("100M"), true, 60, 0, 100, ContigAlignmentsModifier.AlnModType.NONE);
         final SimpleChimera simpleChimera = new SimpleChimera(region1, region2, Collections.emptyList(), "1",
-                AssemblyContigWithFineTunedAlignments.NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, b37_seqDict);
+                AssemblyContigWithFineTunedAlignments.NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME, TestUtilsForSV.b37_seqDict);
         simpleChimera.inferType(null);
     }
 
@@ -147,13 +147,13 @@ public class SimpleChimeraUnitTest extends AssemblyBasedSVDiscoveryBaseTest {
 
         AlignmentInterval intervalOne = new AlignmentInterval(new SimpleInterval("chr21:25625477-25625587"), 1, 111, TextCigarCodec.decode("111M212H"), false, 60, 0, 111, ContigAlignmentsModifier.AlnModType.NONE);
         AlignmentInterval intervalTwo = new AlignmentInterval(new SimpleInterval("chr21:25625379-25625595"), 107, 323, TextCigarCodec.decode("106S217M"), true, 60, 0, 127, ContigAlignmentsModifier.AlnModType.NONE);
-        result.add(new TestData(intervalOne, intervalTwo, bareBoneHg38SAMSeqDict, null,
+        result.add(new TestData(intervalOne, intervalTwo, TestUtilsForSV.bareBoneHg38SAMSeqDictAllChromosomes, null,
                 StrandSwitch.REVERSE_TO_FORWARD, false, true,
                 false, true, TypeInferredFromSimpleChimera.INTRA_CHR_STRAND_SWITCH_33));
 
         intervalOne = new AlignmentInterval(new SimpleInterval("chr20", 48513458, 48513545), 1, 88, TextCigarCodec.decode("88M227H"), true, 39, 1, 83, ContigAlignmentsModifier.AlnModType.NONE);
         intervalTwo = new AlignmentInterval(new SimpleInterval("chr20", 48513297, 48513578), 84, 365, TextCigarCodec.decode("83S282M"), false, 60, 0, 282, ContigAlignmentsModifier.AlnModType.NONE);
-        result.add(new TestData(intervalOne, intervalTwo, TestUtilsForAssemblyBasedSVDiscovery.bareBoneHg38SAMSeqDict, null,
+        result.add(new TestData(intervalOne, intervalTwo, TestUtilsForSV.bareBoneHg38SAMSeqDictAllChromosomes, null,
                 StrandSwitch.FORWARD_TO_REVERSE, true, true,
                 false, true, TypeInferredFromSimpleChimera.INTRA_CHR_STRAND_SWITCH_55));
         return result;

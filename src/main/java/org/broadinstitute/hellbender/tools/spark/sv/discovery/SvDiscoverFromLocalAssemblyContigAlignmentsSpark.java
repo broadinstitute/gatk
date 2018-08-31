@@ -157,10 +157,10 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
                         discoverStageArgs.cnvCallsFile);
         final String outputPrefixWithSampleName = getOutputPrefix();
         final SvDiscoveryInputMetaData svDiscoveryInputMetaData =
-                new SvDiscoveryInputMetaData(ctx, discoverStageArgs, nonCanonicalChromosomeNamesFile, outputPrefixWithSampleName,
+                new SvDiscoveryInputMetaData(ctx, discoverStageArgs, getReference(), outputPrefixWithSampleName, getHeaderForReads(), getDefaultToolVCFHeaderLines(), localLogger, nonCanonicalChromosomeNamesFile,
                         null, null, null,
-                        cnvCallsBroadcast,
-                        getHeaderForReads(), getReference(), getDefaultToolVCFHeaderLines(), localLogger);
+                        cnvCallsBroadcast
+                );
         final JavaRDD<GATKRead> assemblyRawAlignments = getReads();
 
         final AssemblyContigsClassifiedByAlignmentSignatures contigsByPossibleRawTypes =

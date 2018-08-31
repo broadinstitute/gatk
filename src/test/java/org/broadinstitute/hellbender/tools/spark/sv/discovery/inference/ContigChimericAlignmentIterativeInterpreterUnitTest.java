@@ -5,6 +5,7 @@ import htsjdk.samtools.TextCigarCodec;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
+import org.broadinstitute.hellbender.tools.spark.sv.TestUtilsForSV;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvType;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.TestUtilsForAssemblyBasedSVDiscovery;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedContig;
@@ -57,7 +58,7 @@ public class ContigChimericAlignmentIterativeInterpreterUnitTest extends GATKBas
     // -----------------------------------------------------------------------------------------------
     @DataProvider
     private Object[][] forInferSimpleTypeFromNovelAdjacency() {
-        final ReferenceMultiSource referenceMultiSource = TestUtilsForAssemblyBasedSVDiscovery.b37_reference;
+        final ReferenceMultiSource referenceMultiSource = TestUtilsForSV.b37_reference;
         final List<Object[]> data = new ArrayList<>(20);
         // inversion
         data.add(new Object[]{assemblyBasedSVDiscoveryTestDataProviderForInversionBreakpoints.forSimpleInversionWithHomology_RightBreakpoint_minus.expectedNovelAdjacencyAndAltSeq, INV.name(), ImmutableSet.of(INV33), referenceMultiSource});
@@ -123,7 +124,7 @@ public class ContigChimericAlignmentIterativeInterpreterUnitTest extends GATKBas
         final AlignmentInterval region3 = new AlignmentInterval(new SimpleInterval("20", 23103633, 23104602), 556, 1525, TextCigarCodec.decode("555S970M"), true, 60, 3, 100, ContigAlignmentsModifier.AlnModType.NONE);
 
         final AlignedContig alignedContig = new AlignedContig("asm00001:tig0001", contigSequence, Arrays.asList(region1, region2, region3));
-        final List<SimpleChimera> assembledBreakpointsFromAlignmentIntervals = ContigChimericAlignmentIterativeInterpreter.parseOneContig(alignedContig, TestUtilsForAssemblyBasedSVDiscovery.b37_seqDict, true, StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigAlignmentsSparkArgumentCollection.DEFAULT_MIN_ALIGNMENT_LENGTH, StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigAlignmentsSparkArgumentCollection.CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD, true);
+        final List<SimpleChimera> assembledBreakpointsFromAlignmentIntervals = ContigChimericAlignmentIterativeInterpreter.parseOneContig(alignedContig, TestUtilsForSV.b37_seqDict, true, StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigAlignmentsSparkArgumentCollection.DEFAULT_MIN_ALIGNMENT_LENGTH, StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigAlignmentsSparkArgumentCollection.CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD, true);
         Assert.assertEquals(assembledBreakpointsFromAlignmentIntervals.size(), 1);
         final SimpleChimera simpleChimera = assembledBreakpointsFromAlignmentIntervals.get(0);
         Assert.assertEquals(simpleChimera.sourceContigName, "asm00001:tig0001");
@@ -132,7 +133,7 @@ public class ContigChimericAlignmentIterativeInterpreterUnitTest extends GATKBas
         Assert.assertEquals(simpleChimera.insertionMappings.size(), 1);
         final String expectedInsertionMappingsString = String.join(AlignmentInterval.PACKED_STRING_REP_SEPARATOR, "516", "557", "20:23103196-23103237", "-", "515S42M968S", "60", "2", "100", "O");
         Assert.assertEquals(simpleChimera.insertionMappings.get(0), expectedInsertionMappingsString);
-        final NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(simpleChimera, contigSequence, TestUtilsForAssemblyBasedSVDiscovery.b37_seqDict);
+        final NovelAdjacencyAndAltHaplotype breakpoints = new NovelAdjacencyAndAltHaplotype(simpleChimera, contigSequence, TestUtilsForSV.b37_seqDict);
         Assert.assertTrue(breakpoints.getComplication().getHomologyForwardStrandRep().isEmpty());
         Assert.assertEquals(breakpoints.getComplication().getInsertedSequenceForwardStrandRep().getBytes(), Arrays.copyOfRange(contigSequence, 519, 555));
         Assert.assertEquals(breakpoints.getAltHaplotypeSequence(), Arrays.copyOfRange(contigSequence, 519, 555));

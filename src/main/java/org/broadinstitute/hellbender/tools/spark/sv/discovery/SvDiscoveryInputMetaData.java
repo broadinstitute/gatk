@@ -14,7 +14,10 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.PairedStrandedInterval
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Set;
 
@@ -23,38 +26,15 @@ import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDi
 
 public final class SvDiscoveryInputMetaData {
 
-    public ReferenceData getReferenceData() {
-        return referenceData;
-    }
-
-    public SampleSpecificData getSampleSpecificData() {
-        return sampleSpecificData;
-    }
-
-    public DiscoverVariantsFromContigAlignmentsSparkArgumentCollection getDiscoverStageArgs() {
-        return discoverStageArgs;
-    }
-
-    public Logger getToolLogger() {
-        return toolLogger;
-    }
-
-    public String getOutputPath() {
-        return outputPath;
-    }
-
-    public Set<VCFHeaderLine> getDefaultToolVCFHeaderLines() {
-        return defaultToolVCFHeaderLines;
-    }
-
     public static final class ReferenceData {
         private final Broadcast<Set<String>> canonicalChromosomesBroadcast;
         private final Broadcast<ReferenceMultiSource> referenceBroadcast;
         private final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast;
 
-        ReferenceData(final Broadcast<Set<String>> canonicalChromosomesBroadcast,
-                      final Broadcast<ReferenceMultiSource> referenceBroadcast,
-                      final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast) {
+        // marked private so can be constructed only by enclosing class
+        private ReferenceData(@Nonnull final Broadcast<Set<String>> canonicalChromosomesBroadcast,
+                              @Nonnull final Broadcast<ReferenceMultiSource> referenceBroadcast,
+                              @Nonnull final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast) {
             this.canonicalChromosomesBroadcast = canonicalChromosomesBroadcast;
             this.referenceBroadcast = referenceBroadcast;
             this.referenceSequenceDictionaryBroadcast = referenceSequenceDictionaryBroadcast;
@@ -82,11 +62,22 @@ public final class SvDiscoveryInputMetaData {
         private final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks;
         private final List<SVInterval> assembledIntervals;
 
-        public SampleSpecificData(final String sampleId, final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast,
-                                  final List<SVInterval> assembledIntervals,
-                                  final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks,
-                                  final ReadMetadata readMetadata,
-                                  final Broadcast<SAMFileHeader> headerBroadcast) {
+        // marked private so can be constructed only by enclosing class
+
+        /**
+         * Holds sample specific data.
+         * @param sampleId              sample ID string
+         * @param headerBroadcast       SAM file header corresponding to the sample
+         * @param cnvCallsBroadcast     broadcast of CNV calls from CNV caller(s), can be null
+         * @param assembledIntervals    broadcast of assembled intervals, can be null
+         * @param evidenceTargetLinks   broadcast of evidence target links, can be null
+         * @param readMetadata          broadcast of short read meta data, can be null
+         */
+        private SampleSpecificData(@Nonnull final String sampleId, @Nonnull final Broadcast<SAMFileHeader> headerBroadcast,
+                                   @Nullable final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast,
+                                   @Nullable final List<SVInterval> assembledIntervals,
+                                   @Nullable final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks,
+                                   @Nullable final ReadMetadata readMetadata) {
             this.sampleId = sampleId;
             this.cnvCallsBroadcast = cnvCallsBroadcast;
             this.assembledIntervals = assembledIntervals;
@@ -132,18 +123,41 @@ public final class SvDiscoveryInputMetaData {
 
     private String outputPath;
 
-    public SvDiscoveryInputMetaData(final JavaSparkContext ctx,
-                                    final DiscoverVariantsFromContigAlignmentsSparkArgumentCollection discoverStageArgs,
-                                    final String nonCanonicalChromosomeNamesFile,
-                                    final String outputPath,
-                                    final ReadMetadata readMetadata,
-                                    final List<SVInterval> assembledIntervals,
-                                    final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks,
-                                    final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast,
-                                    final SAMFileHeader headerForReads,
-                                    final ReferenceMultiSource reference,
-                                    final Set<VCFHeaderLine> defaultToolVCFHeaderLines,
-                                    final Logger toolLogger) {
+    /**
+     * Holds various information used in the discovery stage.
+     * @param ctx                               for broadcasting
+     * @param discoverStageArgs                 argument collection used for discovery
+     * @param reference                         reference bases
+     * @param outputPath                        path to output files for discovery stage
+     * @param headerForReads                    SAM file header for the sample's bam
+     * @param defaultToolVCFHeaderLines         a set of default VCF headers to be included in the output VCF
+     * @param toolLogger                        logger
+     * @param nonCanonicalChromosomeNamesFile   path to file holding non-canonical chromosome names, all chromosomes considered to be canonical when {@code null}
+     * @param readMetadata                      short read meta data, can be null
+     * @param assembledIntervals                assembled intervals, can be null
+     * @param evidenceTargetLinks               evidence target links, can be null
+     * @param cnvCallsBroadcast                 CNV calls by CNV caller(s), can be null
+     */
+    public SvDiscoveryInputMetaData(@Nonnull final JavaSparkContext ctx,
+                                    @Nonnull final DiscoverVariantsFromContigAlignmentsSparkArgumentCollection discoverStageArgs,
+                                    @Nonnull final ReferenceMultiSource reference,
+                                    @Nonnull final String outputPath,
+                                    @Nonnull final SAMFileHeader headerForReads,
+                                    @Nonnull final Set<VCFHeaderLine> defaultToolVCFHeaderLines,
+                                    @Nonnull final Logger toolLogger,
+                                    @Nullable final String nonCanonicalChromosomeNamesFile,
+                                    @Nullable final ReadMetadata readMetadata,
+                                    @Nullable final List<SVInterval> assembledIntervals,
+                                    @Nullable final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks,
+                                    @Nullable final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast) {
+
+        Utils.nonNull(ctx);
+        Utils.nonNull(discoverStageArgs);
+        Utils.nonNull(headerForReads);
+        Utils.nonNull(reference);
+        Utils.nonNull(defaultToolVCFHeaderLines);
+        Utils.nonNull(outputPath);
+        Utils.nonNull(toolLogger);
 
         final SAMSequenceDictionary sequenceDictionary = headerForReads.getSequenceDictionary();
         final Broadcast<Set<String>> canonicalChromosomesBroadcast =
@@ -151,11 +165,36 @@ public final class SvDiscoveryInputMetaData {
         final String sampleId = SVUtils.getSampleId(headerForReads);
 
         this.referenceData = new ReferenceData(canonicalChromosomesBroadcast, ctx.broadcast(reference), ctx.broadcast(sequenceDictionary));
-        this.sampleSpecificData = new SampleSpecificData(sampleId, cnvCallsBroadcast, assembledIntervals, evidenceTargetLinks, readMetadata, ctx.broadcast(headerForReads));
+        this.sampleSpecificData = new SampleSpecificData(sampleId, ctx.broadcast(headerForReads), cnvCallsBroadcast, assembledIntervals, evidenceTargetLinks, readMetadata);
         this.discoverStageArgs = discoverStageArgs;
         this.outputPath = outputPath;
         this.defaultToolVCFHeaderLines = defaultToolVCFHeaderLines;
         this.toolLogger = toolLogger;
+    }
+
+
+    public ReferenceData getReferenceData() {
+        return referenceData;
+    }
+
+    public SampleSpecificData getSampleSpecificData() {
+        return sampleSpecificData;
+    }
+
+    public DiscoverVariantsFromContigAlignmentsSparkArgumentCollection getDiscoverStageArgs() {
+        return discoverStageArgs;
+    }
+
+    public Logger getToolLogger() {
+        return toolLogger;
+    }
+
+    public String getOutputPath() {
+        return outputPath;
+    }
+
+    public Set<VCFHeaderLine> getDefaultToolVCFHeaderLines() {
+        return defaultToolVCFHeaderLines;
     }
 
     public void updateOutputPath(final String newOutputPath) {

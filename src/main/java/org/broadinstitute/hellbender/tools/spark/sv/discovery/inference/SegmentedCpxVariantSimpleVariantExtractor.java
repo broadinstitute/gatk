@@ -617,13 +617,13 @@ public abstract class SegmentedCpxVariantSimpleVariantExtractor implements Seria
 
             final List<Integer> segmentLen = Collections.singletonList(refSegment.size());
 
-            final SimpleInterval frontInsPos = SVUtils.makeOneBpInterval(refSegment.getContig(), refSegment.getStart() - 1);
+            final SimpleInterval frontInsPos = new SimpleInterval(refSegment.getContig(), refSegment.getStart() - 1);
             final VariantContextBuilder frontIns =
                     getInsFromOneEnd(true, segmentIdx, frontInsPos, anchorBaseRefAlleleFront, segmentLen, altArrangement, true);
             if (frontIns != null)
                 result.add(frontIns);
 
-            final SimpleInterval rearInsPos = SVUtils.makeOneBpInterval(refSegment.getContig(), refSegment.getEnd());
+            final SimpleInterval rearInsPos = new SimpleInterval(refSegment.getContig(), refSegment.getEnd());
             final VariantContextBuilder rearIns =
                     getInsFromOneEnd(false, segmentIdx, rearInsPos, anchorBaseRefAlleleRear, segmentLen, altArrangement, true);
             if (rearIns != null)
@@ -748,7 +748,7 @@ public abstract class SegmentedCpxVariantSimpleVariantExtractor implements Seria
                         .filter(i -> refSegmentIntervals.get(i - 1).size() > EVENT_SIZE_THRESHOLD && (!presentSegments.contains(i)))
                         .map(i -> {
                             final SimpleInterval invertedSegment = refSegmentIntervals.get(i - 1);
-                            final byte[] ref = getReferenceBases(SVUtils.makeOneBpInterval(invertedSegment.getContig(), invertedSegment.getStart()), reference);
+                            final byte[] ref = getReferenceBases(new SimpleInterval(invertedSegment.getContig(), invertedSegment.getStart()), reference);
                             final Allele refAllele = Allele.create(ref, true);
                             return makeInversion(invertedSegment, refAllele);
                         })
@@ -761,7 +761,7 @@ public abstract class SegmentedCpxVariantSimpleVariantExtractor implements Seria
             final List<VariantContextBuilder> deletions = compactifyMissingSegments(missingSegments).stream()
                     .filter(gone -> gone.size() > EVENT_SIZE_THRESHOLD) // large enough
                     .map(gone -> {
-                        final byte[] ref = getReferenceBases(SVUtils.makeOneBpInterval(gone.getContig(), gone.getStart()), reference);
+                        final byte[] ref = getReferenceBases(new SimpleInterval(gone.getContig(), gone.getStart()), reference);
                         final Allele refAllele = Allele.create(ref, true);
                         return makeDeletion(new SimpleInterval(gone.getContig(), gone.getStart(), gone.getEnd() - 1), refAllele);
                     })
@@ -812,7 +812,7 @@ public abstract class SegmentedCpxVariantSimpleVariantExtractor implements Seria
                 }
             }
             if (firstRefSegmentIdx > 0) {
-                final SimpleInterval startAndStop = SVUtils.makeOneBpInterval(complexVC.getContig(), complexVC.getStart());
+                final SimpleInterval startAndStop = new SimpleInterval(complexVC.getContig(), complexVC.getStart());
                 final Allele anchorBaseRefAlleleFront = Allele.create(getReferenceBases(startAndStop, reference), true);
                 final VariantContextBuilder frontIns = getInsFromOneEnd(true, firstRefSegmentIdx, startAndStop, anchorBaseRefAlleleFront, refSegmentLengths, altArrangement, true);
                 if (frontIns != null) result.add( frontIns );
@@ -829,7 +829,7 @@ public abstract class SegmentedCpxVariantSimpleVariantExtractor implements Seria
 
             if (firstRefSegmentIdx != altArrangement.size() - 1) {
                 final int pos = complexVC.getEnd();
-                final SimpleInterval insertionPos = SVUtils.makeOneBpInterval(complexVC.getContig(), pos);
+                final SimpleInterval insertionPos = new SimpleInterval(complexVC.getContig(), pos);
                 final Allele anchorBaseRefAlleleRear = Allele.create(getReferenceBases(insertionPos, reference), true);
                 final VariantContextBuilder rearIns = getInsFromOneEnd(false, firstRefSegmentIdx, insertionPos, anchorBaseRefAlleleRear, refSegmentLengths, altArrangement, true);
                 if (rearIns != null) result.add( rearIns );
@@ -927,7 +927,7 @@ public abstract class SegmentedCpxVariantSimpleVariantExtractor implements Seria
     // boiler-plate code block =========================================================================================
 
     private static Allele getAnchorBaseRefAllele(final String chr, final int pos, final ReferenceMultiSource reference) {
-        return Allele.create(getReferenceBases(SVUtils.makeOneBpInterval(chr, pos), reference), true);
+        return Allele.create(getReferenceBases(new SimpleInterval(chr, pos), reference), true);
     }
 
     // try not to have many try's

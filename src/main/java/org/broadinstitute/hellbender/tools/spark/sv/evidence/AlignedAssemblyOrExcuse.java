@@ -326,7 +326,7 @@ public final class AlignedAssemblyOrExcuse {
         final SAMFileHeader cleanHeader = new SAMFileHeader(header.getSequenceDictionary());
         cleanHeader.addReadGroup(contigAlignmentsReadGroup);
         cleanHeader.setSortOrder(assemblyAlnSortOrder);
-        final SAMRecordComparator samRecordComparator = SVUtils.getSamRecordComparator(assemblyAlnSortOrder);
+        final SAMRecordComparator samRecordComparator = assemblyAlnSortOrder.getComparatorInstance();
 
         final List<String> refNames = SequenceDictionaryUtils.getContigNamesList(cleanHeader.getSequenceDictionary());
         final Stream<SAMRecord> samRecordStream =

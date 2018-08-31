@@ -41,6 +41,16 @@ public final class SimpleInterval implements Locatable, Serializable {
     }
 
     /**
+     * Create a new immutable 1-based interval of the form [startAndEnd, startAndEnd]
+     * that is 1 bp long.
+     * @param contig the name of the contig, must not be null
+     * @param startAndEnd  1-based inclusive start/end position (that are the same since it is only 1 bp long)
+     */
+    public SimpleInterval(final String contig, final int startAndEnd) {
+        this(contig, startAndEnd, startAndEnd);
+    }
+
+    /**
      * Create a new SimpleInterval from a {@link Locatable}
      * @param locatable any Locatable
      * @throws IllegalArgumentException if locatable violates any of the SimpleInterval constraints or is null

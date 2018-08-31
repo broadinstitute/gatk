@@ -230,11 +230,10 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
         final String outputPrefixWithSampleName = variantsOutDir + (variantsOutDir.endsWith("/") ? "" : "/")
                                                     + SVUtils.getSampleId(headerForReads) + "_";
 
-        return new SvDiscoveryInputMetaData(ctx, discoverStageArgs, evidenceAndAssemblyArgs.crossContigsToIgnoreFile,
-                outputPrefixWithSampleName,
+        return new SvDiscoveryInputMetaData(ctx, discoverStageArgs, getReference(), outputPrefixWithSampleName, getHeaderForReads(), getDefaultToolVCFHeaderLines(), localLogger, evidenceAndAssemblyArgs.crossContigsToIgnoreFile,
                 assembledEvidenceResults.getReadMetadata(), assembledEvidenceResults.getAssembledIntervals(),
                 makeEvidenceLinkTree(assembledEvidenceResults.getEvidenceTargetLinks()),
-                cnvCallsBroadcast, getHeaderForReads(), getReference(), getDefaultToolVCFHeaderLines(), localLogger);
+                cnvCallsBroadcast);
     }
 
     public static Broadcast<SVIntervalTree<VariantContext>> broadcastCNVCalls(final JavaSparkContext ctx,

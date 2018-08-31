@@ -12,7 +12,7 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.TestUtilsForAssemblyBasedSVDiscovery;
+import org.broadinstitute.hellbender.tools.spark.sv.TestUtilsForSV;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.StrandedInterval;
 import org.broadinstitute.hellbender.tools.spark.utils.IntHistogram;
@@ -88,7 +88,7 @@ public class XGBoostEvidenceFilterUnitTest extends GATKBaseTest {
     public static SAMFileHeader createArtificialSamHeader() {
         final SAMFileHeader header = new SAMFileHeader();
         header.setSortOrder(SAMFileHeader.SortOrder.coordinate);
-        header.setSequenceDictionary(TestUtilsForAssemblyBasedSVDiscovery.bareBoneHg38SAMSeqDict);
+        header.setSequenceDictionary(TestUtilsForSV.bareBoneHg38SAMSeqDictAllChromosomes);
         return header;
     }
 

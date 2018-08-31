@@ -4,6 +4,7 @@ import com.google.common.collect.Lists;
 import htsjdk.samtools.TextCigarCodec;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
+import org.broadinstitute.hellbender.tools.spark.sv.TestUtilsForSV;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.TestUtilsForAssemblyBasedSVDiscovery;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
@@ -18,6 +19,7 @@ import java.util.stream.Collectors;
 import static org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigAlignmentsSparkArgumentCollection.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY;
 import static org.broadinstitute.hellbender.tools.spark.sv.discovery.TestUtilsForAssemblyBasedSVDiscovery.*;
 import static org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigAlignmentsConfigPicker.*;
+import static org.broadinstitute.hellbender.tools.spark.sv.TestUtilsForSV.b38_canonicalChromosomes;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
@@ -80,7 +82,7 @@ public class AssemblyContigAlignmentsConfigPickerUnitTest extends GATKBaseTest {
                 true);
 
         final GoodAndBadMappings goodAndBadMappings =
-                heuristicSpeedUpWhenFacingManyMappings(alignedContig, hg38CanonicalChromosomes, 175);
+                heuristicSpeedUpWhenFacingManyMappings(alignedContig, TestUtilsForSV.hg38FullCanonicalChromosomesSet, 175);
 
         final List<AlignmentInterval> alignments = alignedContig.getAlignments();
         final List<AlignmentInterval> expectedBad = Arrays.asList(new AlignmentInterval("chr3,151030872,+,399H47M1514H,10,0,47"),
@@ -125,7 +127,7 @@ public class AssemblyContigAlignmentsConfigPickerUnitTest extends GATKBaseTest {
     public void testGetBetterNonCanonicalMapping(final List<AlignmentInterval> configuration, final int maxCanonicalAS,
                                                  final AlignmentInterval expectedOutput) {
         final AlignmentInterval result = AssemblyContigAlignmentsConfigPicker
-                .getBetterNonCanonicalMapping(b38_canonicalChromosomes, configuration, maxCanonicalAS);
+                .getBetterNonCanonicalMapping(TestUtilsForSV.b38_canonicalChromosomes, configuration, maxCanonicalAS);
         Assert.assertEquals(result, expectedOutput);
     }
 

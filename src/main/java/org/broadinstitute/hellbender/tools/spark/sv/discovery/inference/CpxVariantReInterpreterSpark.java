@@ -86,10 +86,9 @@ public class CpxVariantReInterpreterSpark extends GATKSparkTool {
         final SAMFileHeader headerForReads = getHeaderForReads();
         final Set<VCFHeaderLine> defaultToolVCFHeaderLines = getDefaultToolVCFHeaderLines();
         final SvDiscoveryInputMetaData svDiscoveryInputMetaData =
-                new SvDiscoveryInputMetaData(ctx, discoverStageArgs, nonCanonicalChromosomeNamesFile,
-                        derivedSimpleVCFPrefix,
-                        null, null, null, null,
-                        headerForReads, getReference(), defaultToolVCFHeaderLines, localLogger);
+                new SvDiscoveryInputMetaData(ctx, discoverStageArgs, getReference(), derivedSimpleVCFPrefix, headerForReads, defaultToolVCFHeaderLines, localLogger, nonCanonicalChromosomeNamesFile,
+                        null, null, null, null
+                );
 
         final JavaRDD<VariantContext> complexVariants = new VariantsSparkSource(ctx)
                 .getParallelVariantContexts(complexVCF, getIntervals());

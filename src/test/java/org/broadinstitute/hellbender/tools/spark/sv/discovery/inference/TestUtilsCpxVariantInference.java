@@ -6,15 +6,13 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFConstants;
+import org.broadinstitute.hellbender.tools.spark.sv.TestUtilsForSV;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.TestUtilsForAssemblyBasedSVDiscovery;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedContig;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigAlignmentsConfigPicker;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.StrandSwitch;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import scala.Tuple2;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -61,11 +59,11 @@ final class TestUtilsCpxVariantInference {
     static {
 
         PREPROCESSED_AND_ANALYSIS_READY_CONTIGS_AND_EXPECTED_RESULTS = new ArrayList<>();
-        PREPROCESSED_AND_ANALYSIS_READY_CONTIGS_AND_EXPECTED_RESULTS.add(buildForContig_2428_0(TestUtilsForAssemblyBasedSVDiscovery.hg38CanonicalChromosomes, TestUtilsForAssemblyBasedSVDiscovery.bareBoneHg38SAMSeqDict));
-        PREPROCESSED_AND_ANALYSIS_READY_CONTIGS_AND_EXPECTED_RESULTS.add(buildForContig_2548_1(TestUtilsForAssemblyBasedSVDiscovery.hg38CanonicalChromosomes, TestUtilsForAssemblyBasedSVDiscovery.bareBoneHg38SAMSeqDict));
-        PREPROCESSED_AND_ANALYSIS_READY_CONTIGS_AND_EXPECTED_RESULTS.add(buildForContig_30077_1(TestUtilsForAssemblyBasedSVDiscovery.hg38CanonicalChromosomes, TestUtilsForAssemblyBasedSVDiscovery.bareBoneHg38SAMSeqDict));
-        PREPROCESSED_AND_ANALYSIS_READY_CONTIGS_AND_EXPECTED_RESULTS.add(buildForContig_22672_4(TestUtilsForAssemblyBasedSVDiscovery.hg38CanonicalChromosomes, TestUtilsForAssemblyBasedSVDiscovery.bareBoneHg38SAMSeqDict));
-        PREPROCESSED_AND_ANALYSIS_READY_CONTIGS_AND_EXPECTED_RESULTS.add(buildForCaseWithZeroSegment(TestUtilsForAssemblyBasedSVDiscovery.hg38CanonicalChromosomes, TestUtilsForAssemblyBasedSVDiscovery.bareBoneHg38SAMSeqDict));
+        PREPROCESSED_AND_ANALYSIS_READY_CONTIGS_AND_EXPECTED_RESULTS.add(buildForContig_2428_0(TestUtilsForSV.hg38FullCanonicalChromosomesSet, TestUtilsForSV.bareBoneHg38SAMSeqDictAllChromosomes));
+        PREPROCESSED_AND_ANALYSIS_READY_CONTIGS_AND_EXPECTED_RESULTS.add(buildForContig_2548_1(TestUtilsForSV.hg38FullCanonicalChromosomesSet, TestUtilsForSV.bareBoneHg38SAMSeqDictAllChromosomes));
+        PREPROCESSED_AND_ANALYSIS_READY_CONTIGS_AND_EXPECTED_RESULTS.add(buildForContig_30077_1(TestUtilsForSV.hg38FullCanonicalChromosomesSet, TestUtilsForSV.bareBoneHg38SAMSeqDictAllChromosomes));
+        PREPROCESSED_AND_ANALYSIS_READY_CONTIGS_AND_EXPECTED_RESULTS.add(buildForContig_22672_4(TestUtilsForSV.hg38FullCanonicalChromosomesSet, TestUtilsForSV.bareBoneHg38SAMSeqDictAllChromosomes));
+        PREPROCESSED_AND_ANALYSIS_READY_CONTIGS_AND_EXPECTED_RESULTS.add(buildForCaseWithZeroSegment(TestUtilsForSV.hg38FullCanonicalChromosomesSet, TestUtilsForSV.bareBoneHg38SAMSeqDictAllChromosomes));
     }
 
     // =================================================================================================================

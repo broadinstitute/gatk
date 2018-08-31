@@ -16,6 +16,7 @@ import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryPipelineSpark;
+import org.broadinstitute.hellbender.tools.spark.sv.TestUtilsForSV;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.StrandSwitch;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.*;
@@ -52,8 +53,8 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
 
         final String testSample = "testSample";
         final JavaSparkContext testSparkContext = SparkContextFactory.getTestSparkContext();
-        final Broadcast<ReferenceMultiSource> referenceBroadcast = testSparkContext.broadcast(TestUtilsForAssemblyBasedSVDiscovery.b37_reference);
-        final Broadcast<SAMSequenceDictionary> refSeqDictBroadcast = testSparkContext.broadcast(TestUtilsForAssemblyBasedSVDiscovery.b37_seqDict);
+        final Broadcast<ReferenceMultiSource> referenceBroadcast = testSparkContext.broadcast(TestUtilsForSV.b37_reference);
+        final Broadcast<SAMSequenceDictionary> refSeqDictBroadcast = testSparkContext.broadcast(TestUtilsForSV.b37_seqDict);
 
         for (final AssemblyBasedSVDiscoveryTestDataProvider.AssemblyBasedSVDiscoveryTestDataForSimpleChimera testData : new AssemblyBasedSVDiscoveryTestDataProviderForSimpleSV().getAllTestData()) {
             data.add(new Object[]{testData.expectedSvTypes, new SimpleNovelAdjacencyAndChimericAlignmentEvidence(testData.expectedNovelAdjacencyAndAltSeq, Collections.singletonList(testData.expectedSimpleChimera)), referenceBroadcast, refSeqDictBroadcast, testSample, LINK,
@@ -64,8 +65,8 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
                                   testData.expectedVariantContexts});
         }
 
-        final Broadcast<ReferenceMultiSource> referenceBroadcast_b38 = testSparkContext.broadcast(TestUtilsForAssemblyBasedSVDiscovery.b38_reference_chr20_chr21);
-        final Broadcast<SAMSequenceDictionary> refSeqDictBroadcast_b38 = testSparkContext.broadcast(TestUtilsForAssemblyBasedSVDiscovery.b38_seqDict_chr20_chr21);
+        final Broadcast<ReferenceMultiSource> referenceBroadcast_b38 = testSparkContext.broadcast(TestUtilsForSV.b38_reference_chr20_chr21);
+        final Broadcast<SAMSequenceDictionary> refSeqDictBroadcast_b38 = testSparkContext.broadcast(TestUtilsForSV.b38_seqDict_chr20_chr21);
 
         for (final AssemblyBasedSVDiscoveryTestDataProvider.AssemblyBasedSVDiscoveryTestDataForSimpleChimera testData : new AssemblyBasedSVDiscoveryTestDataProviderForBreakEndVariants().getAllTestData()) {
             data.add(new Object[]{testData.expectedSvTypes, new SimpleNovelAdjacencyAndChimericAlignmentEvidence(testData.expectedNovelAdjacencyAndAltSeq, Collections.singletonList(testData.expectedSimpleChimera)), referenceBroadcast_b38, refSeqDictBroadcast_b38, testSample, BND_MATEID_STR,
@@ -97,8 +98,8 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
     @Test(groups = "sv")
     public void testMiscCases() {
         final JavaSparkContext testSparkContext = SparkContextFactory.getTestSparkContext();
-        Broadcast<ReferenceMultiSource> referenceBroadcast = testSparkContext.broadcast(TestUtilsForAssemblyBasedSVDiscovery.b38_reference_chr20_chr21);
-        Broadcast<SAMSequenceDictionary> refSeqDictBroadcast = testSparkContext.broadcast(TestUtilsForAssemblyBasedSVDiscovery.b38_seqDict_chr20_chr21);
+        Broadcast<ReferenceMultiSource> referenceBroadcast = testSparkContext.broadcast(TestUtilsForSV.b38_reference_chr20_chr21);
+        Broadcast<SAMSequenceDictionary> refSeqDictBroadcast = testSparkContext.broadcast(TestUtilsForSV.b38_seqDict_chr20_chr21);
 
         // the following works for: multiple evidence contigs, insertion sequence mapping available, good non-canonical chromosome mapping available
         final AlignmentInterval asm018485_tig00004_1 = TestUtilsForAssemblyBasedSVDiscovery.fromSAMRecordString("asm018485:tig00004\t0\tchr20\t28831147\t38\t275M2I114M229S\t*\t0\t0\tTATCTTCACATAAAAACTACACAGTATCATTCTGAGAAACTTGTTTGTGATGTGTGCATTCATCTCACAGATTTGAACCCTTCCATCTTTTGAGCAGTTTGTACACCTTCTTTTTGTAAAATCTACAAGTGGATATATGGAGCGCTTTGAGGCCTATTGTGGAAAAGGAAATACCTTCACATAAAAACTACACAGAAGCATTCTGAGAAACTTCTTTTTGACGTGTGCATTCATCTCACAGAGTTGAACATTTCATGTGATTGAGCAGCTTTGAAACACTCTTTTTGTAAAATCTGCAAGTGGGTATTTGCAGCACTTTGAGGCCTATTTTGGAAAAGGAAATATCTTCCCATAAAAACTACATAGAAACATTCTCAGAAACTTCTTTGTGTTATCTGCATGTATGTAGAGAGTTGAACCTTTCATTTGATTTAGCAGTTTGCAAACACTCTTTTAGTAGAATCTGCAAGTAGATATTTGAAGCCCTTGGGGCCTATTATGGAAAAGGAAATATCTTCACATAAAAACTATGCAAAAGCGTTCTGAGAAACTTCATTGTGATGTGTGCATTCACTTAACAGAGTTGAACCTTTCTTTGAATTAAGCAGTTTTGAAACACT\t*\tSA:Z:chr3,90319741,-,121M499S,0,11;chr20,29212084,+,409S71M140S,38,4;chrUn_KN707904v1_decoy,742,+,620M,60,8;\tMD:Z:69A12T1G22C43T21T24A18G3T6C5T8A1A3C0G5T11T18G13A6G3C5C0A5C0G0G6C12A13C4G6G3C11\tRG:Z:GATKSVContigAlignments\tNM:i:34\tAS:i:211\tXS:i:181", true);
@@ -131,8 +132,8 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
         VariantContextTestUtils.assertVariantContextsAreEqual(actual, expected, Collections.singletonList(HQ_MAPPINGS));
 
         // cnv call available
-        referenceBroadcast = testSparkContext.broadcast(TestUtilsForAssemblyBasedSVDiscovery.b37_reference);
-        refSeqDictBroadcast = testSparkContext.broadcast(TestUtilsForAssemblyBasedSVDiscovery.b37_seqDict);
+        referenceBroadcast = testSparkContext.broadcast(TestUtilsForSV.b37_reference);
+        refSeqDictBroadcast = testSparkContext.broadcast(TestUtilsForSV.b37_seqDict);
         final SAMFileHeader samFileHeader = new SAMFileHeader(refSeqDictBroadcast.getValue());
         SAMReadGroupRecord test = new SAMReadGroupRecord("test");
         test.setSample("sample");
@@ -269,7 +270,7 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
 
         final List<VariantContext> processedVariantContexts =
                 AnnotatedVariantProducer.annotateBreakpointBasedCallsWithImpreciseEvidenceLinks(inputVariants,
-                        evidenceTree, metadata, TestUtilsForAssemblyBasedSVDiscovery.b37_reference, params, localLogger);
+                        evidenceTree, metadata, TestUtilsForSV.b37_reference, params, localLogger);
 
         VariantContextTestUtils.assertEqualVariants(processedVariantContexts, expectedVariants);
     }

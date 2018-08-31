@@ -18,7 +18,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.util.*;
 
-import static org.broadinstitute.hellbender.tools.spark.sv.discovery.TestUtilsForAssemblyBasedSVDiscovery.bareBoneHg38SAMSeqDict;
+import static org.broadinstitute.hellbender.tools.spark.sv.TestUtilsForSV.bareBoneHg38SAMSeqDictAllChromosomes;
 
 public class CpxVariantInducingAssemblyContigUnitTest extends GATKBaseTest {
     @DataProvider(name = "forBasicInfoCtor")
@@ -157,7 +157,7 @@ public class CpxVariantInducingAssemblyContigUnitTest extends GATKBaseTest {
                                                                           List<SimpleInterval> expectedResults) {
         final List<SimpleInterval> result =
                 CpxVariantInducingAssemblyContig.extractSegmentingRefLocationsOnEventPrimaryChromosome(jumps, basicInfo,
-                        bareBoneHg38SAMSeqDict);
+                        bareBoneHg38SAMSeqDictAllChromosomes);
         Assert.assertEquals(result, expectedResults);
     }
 

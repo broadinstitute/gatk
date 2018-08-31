@@ -95,6 +95,15 @@ public final class SimpleIntervalUnitTest extends GATKBaseTest {
     }
 
     @Test
+    public void testConstructSingleBaseInterval() {
+        SimpleInterval simpleInterval = new SimpleInterval("chr20", 1_000_000);
+        Assert.assertEquals(simpleInterval.getContig(), "chr20");
+        Assert.assertEquals(simpleInterval.getStart(), 1_000_000);
+        Assert.assertEquals(simpleInterval.getEnd(), 1_000_000);
+        Assert.assertEquals(simpleInterval.size(), 1);
+    }
+
+    @Test
     public void testEquality(){
         final SimpleInterval i1 = new SimpleInterval("1",1,100);
         final SimpleInterval i2 = new SimpleInterval("1",1,100);

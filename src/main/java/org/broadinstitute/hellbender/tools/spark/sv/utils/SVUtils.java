@@ -1,6 +1,10 @@
 package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
-import htsjdk.samtools.*;
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMReadGroupRecord;
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -11,6 +15,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.file.Files;
@@ -27,36 +32,24 @@ public final class SVUtils {
 
     public static final String GATKSV_CONTIG_ALIGNMENTS_READ_GROUP_ID = "GATKSVContigAlignments";
 
+    /**
+     * Returns the SINGLE sample name contained in the given {@code header}
+     * @param header header supposedly holding the sample name
+     * @return the sample name contained in {@code header}
+     * @throws IllegalArgumentException if the {@code header} contains no or more than one sample names.
+     */
     public static String getSampleId(final SAMFileHeader header) {
         final List<SAMReadGroupRecord> readGroups = header.getReadGroups();
-        final Set<String> sampleSet = readGroups.stream().map(SAMReadGroupRecord::getSample).collect(Collectors.toSet());
+        final List<String> sampleNames = readGroups.stream().map(SAMReadGroupRecord::getSample).distinct().collect(Collectors.toList());
 
-        Utils.validate(sampleSet.size() == 1,
-                "Read groups must contain reads from one and only one sample, " +
-                        "but we are finding the following ones in the given header: \t" + sampleSet.toString());
+        if (sampleNames.isEmpty())
+            throw new IllegalArgumentException("Read groups contain no sample name. ");
 
-        final String sample = sampleSet.iterator().next();
-        return sample;
-    }
+        if (sampleNames.size() > 1)
+            throw new IllegalArgumentException("Read groups must contain reads from one and only one sample, " +
+                    "but we are finding the following ones in the given header: \t" + sampleNames.toString());
 
-    /**
-     * Given {@code sortOrder}, provide appropriate comparator.
-     * Currently only support coordinate or query-name order,
-     * and throws UserException if other values are specified.
-     */
-    public static SAMRecordComparator getSamRecordComparator(final SAMFileHeader.SortOrder sortOrder) {
-        final SAMRecordComparator samRecordComparator;
-        switch (sortOrder) {
-            case coordinate:
-                samRecordComparator = new SAMRecordCoordinateComparator();
-                break;
-            case queryname:
-                samRecordComparator = new SAMRecordQueryNameComparator();
-                break;
-            default:
-                throw new UserException("Unsupported assembly alignment sort order specified");
-        }
-        return samRecordComparator;
+        return sampleNames.get(0);
     }
 
     /**
@@ -83,29 +76,55 @@ public final class SVUtils {
                 });
     }
 
+    // TODO: 9/4/18 should they be in SVInterval class?
     /**
-     * Given chromosome name and requested position (1-based coordinate system),
-     * return a 1 bp long interval that spans only the requested base.
+     * Convert from 1-based closed locatable [1, e]
+     *         to 1-based semi-open interval [1, e + 1).
      */
-    public static SimpleInterval makeOneBpInterval(final String chr, final int pos) {
-        return new SimpleInterval(chr, pos, pos);
+    public static SVInterval convertLocatable(@Nonnull final Locatable locatable, @Nonnull final SAMSequenceDictionary sequenceDictionary) {
+        final int sequenceIndex = sequenceDictionary.getSequenceIndex(locatable.getContig());
+        if (sequenceIndex < 0)
+            throw new IllegalArgumentException("Provided locatable: " + locatable.toString() +
+                    " doesn't seem to live on the chromosomes held in the provided dictionary: " + sequenceDictionary.toString());
+        return new SVInterval(sequenceIndex,
+                locatable.getStart(), locatable.getEnd() + 1);
+    }
+
+    /**
+     * Opposite of {@link #convertLocatable(Locatable, SAMSequenceDictionary)}
+     * Note that this method throws {@link IllegalArgumentException} if the provided SVInterval is length-0.
+     */
+    public static SimpleInterval convertSVInterval(@Nonnull final SVInterval svInterval,
+                                                   @Nonnull final SAMSequenceDictionary sequenceDictionary) {
+        final SAMSequenceRecord sequence = sequenceDictionary.getSequence(svInterval.getContig());
+        if (sequence == null)
+            throw new IllegalArgumentException("Provided SVInterval: " + svInterval.toString() +
+                    " doesn't seem to live on the chromosomes held in the provided dictionary: " + sequenceDictionary.toString());
+        if (svInterval.getLength() == 0)
+            throw new IllegalArgumentException("Provided SVInterval: " + svInterval.toString() +
+                    " has zero length");
+        return new SimpleInterval(sequence.getSequenceName(),
+                                  svInterval.getStart(),
+                                  svInterval.getEnd() - 1);
     }
 
     /**
      * Canonical chromosomes are defined, for homo sapiens, as chromosomes 1-22, chromosome X and Y.
+     * @param nonCanonicalContigNamesFile   path to file holding non-canonical chromosomes; when {@code null}, all chromosomes defined in {@code dictionary} are treated as canonical
+     * @param dictionary                    dictionary assumed to hold all chromosomes of the organism, i.e. a super set of those included in {@code nonCanonicalContigNamesFile}
      */
-    public static Set<String> getCanonicalChromosomes(final String nonCanonicalContigNamesFile,
+    public static Set<String> getCanonicalChromosomes(@Nullable final String nonCanonicalContigNamesFile,
                                                       @Nonnull final SAMSequenceDictionary dictionary) {
-        final LinkedHashSet<String> allContigs = Utils.nonNull(dictionary).getSequences().stream().map(SAMSequenceRecord::getSequenceName)
+        final Set<String> results = Utils.nonNull(dictionary).getSequences().stream().map(SAMSequenceRecord::getSequenceName)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
         if (nonCanonicalContigNamesFile == null)
-            return allContigs;
+            return results;
 
         try (final Stream<String> nonCanonical = Files.lines(IOUtils.getPath(( Utils.nonNull(nonCanonicalContigNamesFile) )))) {
-            nonCanonical.forEach(allContigs::remove);
-            return allContigs;
+            nonCanonical.forEach(results::remove);
+            return results;
         } catch ( final IOException ioe ) {
-            throw new UserException("Can't read nonCanonicalContigNamesFile file "+nonCanonicalContigNamesFile, ioe);
+            throw new UserException.CouldNotReadInputFile("Can't read nonCanonicalContigNamesFile file " + nonCanonicalContigNamesFile, ioe);
         }
     }
 

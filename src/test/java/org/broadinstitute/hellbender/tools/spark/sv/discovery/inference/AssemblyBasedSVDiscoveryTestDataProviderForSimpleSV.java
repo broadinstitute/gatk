@@ -9,6 +9,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.tools.spark.sv.TestUtilsForSV;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvType;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.TestUtilsForAssemblyBasedSVDiscovery;
@@ -59,12 +60,12 @@ public final class AssemblyBasedSVDiscoveryTestDataProviderForSimpleSV extends A
 
         @Override
         public SAMSequenceDictionary getAppropriateDictionary() {
-            return TestUtilsForAssemblyBasedSVDiscovery.b37_seqDict;
+            return TestUtilsForSV.b37_seqDict;
         }
 
         @Override
         public ReferenceMultiSource getAppropriateRef() {
-            return TestUtilsForAssemblyBasedSVDiscovery.b37_reference;
+            return TestUtilsForSV.b37_reference;
         }
 
         @Override

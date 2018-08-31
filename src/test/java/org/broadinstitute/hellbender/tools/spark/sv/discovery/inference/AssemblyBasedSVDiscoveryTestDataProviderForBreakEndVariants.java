@@ -8,6 +8,7 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.tools.spark.sv.TestUtilsForSV;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.BreakEndVariantType;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvType;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.TestUtilsForAssemblyBasedSVDiscovery;
@@ -47,12 +48,12 @@ public class AssemblyBasedSVDiscoveryTestDataProviderForBreakEndVariants extends
 
         @Override
         public SAMSequenceDictionary getAppropriateDictionary() {
-            return TestUtilsForAssemblyBasedSVDiscovery.b38_seqDict_chr20_chr21;
+            return TestUtilsForSV.b38_seqDict_chr20_chr21;
         }
 
         @Override
         public ReferenceMultiSource getAppropriateRef() {
-            return TestUtilsForAssemblyBasedSVDiscovery.b38_reference_chr20_chr21;
+            return TestUtilsForSV.b38_reference_chr20_chr21;
         }
 
         @Override
