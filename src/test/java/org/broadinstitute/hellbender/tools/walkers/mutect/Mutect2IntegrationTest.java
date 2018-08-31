@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
+import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SamFiles;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
@@ -18,18 +19,17 @@ import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-import scala.tools.nsc.transform.patmat.ScalaLogic;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -571,6 +571,45 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 createBamoutIndex,
                 createBamoutMD5
         );
+    }
+
+    @Test()
+    public void testBaseQualityFilter() throws IOException {
+        // Create a test sam file
+        final File samFile = File.createTempFile("synthetic", ".bam");
+        final SAMFileHeader samHeader = M2TestingUtils.createSamHeader();
+        final SAMFileGATKReadWriter writer = M2TestingUtils.getBareBonesSamWriter(samFile, samHeader);
+
+        final byte poorQuality = 10;
+        final byte goodQuality = 30;
+        final int numReads = 20;
+        final List<GATKRead> refReads = M2TestingUtils.createReads(numReads, M2TestingUtils.DEFAULT_REF_BASES, samHeader, poorQuality);
+        final List<GATKRead> alt1Reads = M2TestingUtils.createReads(numReads, M2TestingUtils.DEFAULT_ALT_BASES, samHeader, goodQuality);
+
+        refReads.forEach(writer::addRead);
+        alt1Reads.forEach(writer::addRead);
+        writer.close(); // closing the writer writes to the file
+        // End creating sam file
+
+        final File unfilteredVcf = File.createTempFile("unfiltered", ".vcf");
+        final List<String> args = Arrays.asList(
+                "-I", samFile.getAbsolutePath(),
+                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, M2TestingUtils.DEFAULT_SAMPLE_NAME,
+                "-R", hg19_chr1_1M_Reference,
+                "-O", unfilteredVcf.getAbsolutePath());
+        runCommandLine(args);
+
+        final File filteredVcf = File.createTempFile("filtered", ".vcf");
+        final String[] filteringArgs = makeCommandLineArgs(Arrays.asList(
+                "-V", unfilteredVcf.getAbsolutePath(),
+                "-O", filteredVcf.getAbsolutePath()),
+                FilterMutectCalls.class.getSimpleName());
+        new Main().instanceMain(filteringArgs);
+
+        final Optional<VariantContext> vc = VariantContextTestUtils.streamVcf(filteredVcf).findAny();
+        Assert.assertTrue(vc.isPresent());
+        Assert.assertEquals(vc.get().getStart(), M2TestingUtils.DEFAULT_SNP_POSITION);
+        Assert.assertFalse(vc.get().getFilters().contains(GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME));
     }
 
     private void doMutect2Test(
