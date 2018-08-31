@@ -92,6 +92,5 @@ public final class StandardArgumentDefinitions {
     public static final String USE_JDK_INFLATER_SHORT_NAME = "jdk-inflater";
     public static final String NIO_MAX_REOPENS_LONG_NAME = "gcs-max-retries";
     public static final String NIO_MAX_REOPENS_SHORT_NAME = "gcs-retries";
-    public static final String NIO_PROJECT_FOR_REQUESTER_PAYS_LONG_NAME = "project-for-requester-pays";
-    public static final String NIO_PROJECT_FOR_REQUESTER_PAYS_SHORT_NAME = "requester-project";
+    public static final String NIO_PROJECT_FOR_REQUESTER_PAYS_LONG_NAME = "gcs-project-for-requester-pays";
 }

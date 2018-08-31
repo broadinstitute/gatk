@@ -344,12 +344,16 @@ public final class BucketUtils {
     public static String getPathWithoutBucket(String path) {
         final String[] split = path.split("/");
         return String.join("/", Arrays.copyOfRange(split, 3, split.length));
-
     }
 
     /**
      * Sets max_reopens, requester_pays, and generous timeouts as the global default.
      * These will apply even to library code that creates its own paths to access with NIO.
+     *
+     * @param maxReopens If the GCS bucket channel errors out, how many times it will attempt to
+     *                   re-initiate the connection.
+     * @param requesterProject Project to bill when accessing "requester pays" buckets. If unset,
+     *                         these buckets cannot be accessed.
      */
     public static void setGlobalNIODefaultOptions(int maxReopens, String requesterProject) {
         CloudStorageFileSystemProvider.setDefaultCloudStorageConfiguration(getCloudStorageConfiguration(maxReopens, requesterProject));
@@ -369,7 +373,15 @@ public final class BucketUtils {
         return CloudStorageFileSystem.forBucket(BUCKET).getPath(pathWithoutBucket);
     }
 
-    /** The config we want to use. **/
+    /**
+     * The config we want to use.
+     *
+     * @param maxReopens If the GCS bucket channel errors out, how many times it will attempt to
+     *                   re-initiate the connection.
+     * @param requesterProject Project to bill when accessing "requester pays" buckets. If unset,
+     *                         these buckets cannot be accessed.
+     *
+     **/
     public static CloudStorageConfiguration getCloudStorageConfiguration(int maxReopens, String requesterProject) {
         Builder builder = CloudStorageConfiguration.builder()
             // if the channel errors out, re-open up to this many times
