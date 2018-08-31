@@ -181,6 +181,7 @@ public final class UpdateVCFSequenceDictionary extends VariantWalker {
             if (masterDictionary != null) {
                 // We'll accept the master dictionary if one was specified. Using the master dictionary
                 // arg will result in sequence dictionary validation.
+                logger.warn("Using the dictionary supplied via the \"%s\" argument", StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME);
                 resultDictionary = masterDictionary;
             }
             else if (hasReference()) {
