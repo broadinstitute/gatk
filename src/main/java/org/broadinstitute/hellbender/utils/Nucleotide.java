@@ -369,6 +369,16 @@ public enum Nucleotide {
     }
 
     /**
+     * Checks whether two nucleotides intersect given their byte encodings.
+     * @param a first nucleotide.
+     * @param b second nucleotide.
+     * @return {@code true} iff the input nucleotides intersect.
+     */
+    public static boolean intersect(final byte a, final byte b) {
+        return (baseToValue[0xFF & a].mask & baseToValue[0xFF & b].mask) != 0;
+    }
+
+    /**
      * Checks whether two base encodings make reference to the same {@link #Nucleotide}
      *  instance regardless of their case.
      * <p>
