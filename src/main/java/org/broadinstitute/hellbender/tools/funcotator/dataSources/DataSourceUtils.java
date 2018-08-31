@@ -461,7 +461,7 @@ final public class DataSourceUtils {
      * We assume the data sources path is OK in the case that the version information cannot be read because the
      * user can create their own data sources directory, which may not contain the metadata we seek.
      *
-     * NOTE: The README file in a Data Sources directory is assumed to have the following properties:
+     * NOTE: The MANIFEST file in a Data Sources directory is assumed to have the following properties:
      *       - Its name must be {@link #MANIFEST_FILE_NAME}
      *       - It must contain a line starting with {@link #MANIFEST_VERSION_LINE_START} containing an alphanumeric string containing the version number information.
      *           - This version information takes the form of:
