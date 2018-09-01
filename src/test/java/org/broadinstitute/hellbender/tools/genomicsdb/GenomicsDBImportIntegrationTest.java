@@ -805,7 +805,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         String workspace = BucketUtils.randomRemotePath(getGCPTestInputPath(), "","");
         try {
             Assert.assertNotNull(getGoogleServiceAccountKeyPath());
-            System.gc();
+            // System.gc();
             writeToGenomicsDB(LOCAL_GVCFS, INTERVAL, workspace, 0, false, 0, 1);
             checkJSONFilesAreWritten(workspace);
             checkGenomicsDBAgainstExpected(workspace, INTERVAL, COMBINED, b38_reference_20_21, true);
