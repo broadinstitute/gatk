@@ -30,6 +30,10 @@ public class GencodeFuncotationBuilder {
         gencodeFuncotation = new GencodeFuncotation();
     }
 
+    public GencodeFuncotationBuilder(final GencodeFuncotation gf) {
+        gencodeFuncotation = new GencodeFuncotation(gf);
+    }
+
     public GencodeFuncotation build() {
         // TODO: In the future, we will need a mechanism for populating the metadata  (https://github.com/broadinstitute/gatk/issues/4857)
         gencodeFuncotation.setMetadata(FuncotationMetadataUtils.createWithUnknownAttributes(new ArrayList<>(gencodeFuncotation.getFieldNames())));

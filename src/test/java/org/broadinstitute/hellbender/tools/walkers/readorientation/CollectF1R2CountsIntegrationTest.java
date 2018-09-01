@@ -8,6 +8,7 @@ import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.Histogram;
 import htsjdk.samtools.util.IOUtil;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.tools.walkers.mutect.M2TestingUtils;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
@@ -64,8 +65,8 @@ public class CollectF1R2CountsIntegrationTest extends CommandLineProgramTest {
          *
          * coord.:    99,990             100,000             100,010             100,020
          *              |                   |                   |                   |
-         * reference: | T C A T C A C A C T C A C T A A G C A C A C A G A G A A T A A T
-         * alt read:  | T C A T C A C A C T C T C T G A C C A A A G A G A A T A A T A A
+         * reference:   T C A T C A C A C T C A C T A A G C A C A C A G A G A A T A A T
+         * alt read:    T C A T C A C A C T C T C T G A C C A A A G A G A A T A A T A A
          *                                    *     *   *     *
          *
          * At each alt site, we have 75 ref and 25 alt reads
@@ -157,7 +158,6 @@ public class CollectF1R2CountsIntegrationTest extends CommandLineProgramTest {
         final File altTable = createTempFile("alt", ".table");
         final File sam = createSyntheticSam(30, 1);
 
-
         final String[] args = {
                 "-R", hg19_chr1_1M_Reference,
                 "-I", sam.getAbsolutePath(),
@@ -189,50 +189,16 @@ public class CollectF1R2CountsIntegrationTest extends CommandLineProgramTest {
     }
 
     private File createSyntheticSam(final int refDepth, final int altDepth) throws IOException {
-        // create a sam header
-        final int alignmentStart = 99_991;
-        final int numChromosomes = 1;
-        final int startingChromosome = 1;
-        final int chromosomeSize = 1_000_000;
-        final String readGroupName = "HELLO.1";
-        final SAMFileHeader samHeader = ArtificialReadUtils.createArtificialSamHeader(
-                numChromosomes, startingChromosome, chromosomeSize);
-        samHeader.addReadGroup(new SAMReadGroupRecord(readGroupName));
-
-        // create a sample list
-        final int chromosomeIndex = 0;
-        final String sampleName = "samthreetree";
-        final SampleList sampleList = new IndexedSampleList(sampleName);
-
-        // specify characteristics of reads
-        final int depth = altDepth + refDepth;
-
-        final byte[] refReadBases = "CATCACACTCACTAAGCACACAGAGAATAAT".getBytes();
+        final File samFile = File.createTempFile("synthetic", ".bam");
+        final SAMFileHeader samHeader = M2TestingUtils.createSamHeader();
+        final SAMFileGATKReadWriter writer = M2TestingUtils.getBareBonesSamWriter(samFile, samHeader);
+        //            Ref Sequence: "CATCACACTCACTAAGCACACAGAGAATAAT".getBytes();
+        //          SNPs positions:            *  * *  *
         final byte[] altReadBases = "CATCACACTCTCTGACCAAACAGAGAATAAT".getBytes();
-        final int readLength = refReadBases.length;
-        final byte baseq = 26;
-        final byte[] quals = new byte[readLength];
-        Arrays.fill(quals, baseq);
-        final int mapq = 60;
-
-        // create reads
-        final List<GATKRead> reads = new ArrayList<>(depth);
-        for (int i = 0; i < depth; i++) {
-            final byte[] bases = i < altDepth ? altReadBases : refReadBases;
-            final String cigar = refReadBases.length + "M";
-            final GATKRead read = ArtificialReadUtils.createArtificialRead(samHeader, "Read" + i, chromosomeIndex,
-                    alignmentStart, bases, quals, cigar);
-            read.setReadGroup(readGroupName);
-            read.setMappingQuality(mapq);
-            read.setIsFirstOfPair();
-            read.setIsReverseStrand(i % 2 == 0);
-            reads.add(read);
-        }
-
-        final File samFile = File.createTempFile("synthetic", ".sam");
-        final SAMFileGATKReadWriter writer = new SAMFileGATKReadWriter(
-                ReadUtils.createCommonSAMWriter(samFile, null, samHeader, true, false, false));
-        reads.forEach(writer::addRead);
+        final List<GATKRead> refReads = M2TestingUtils.createReads(refDepth, M2TestingUtils.DEFAULT_REF_BASES, samHeader, (byte)30);
+        final List<GATKRead> alt1Reads = M2TestingUtils.createReads(altDepth, altReadBases, samHeader, (byte)30);
+        refReads.forEach(writer::addRead);
+        alt1Reads.forEach(writer::addRead);
         writer.close(); // closing the writer writes to the file
 
         return samFile;

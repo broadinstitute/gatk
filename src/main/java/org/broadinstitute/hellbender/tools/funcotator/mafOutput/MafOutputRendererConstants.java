@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.funcotator.mafOutput;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.broadinstitute.hellbender.tools.funcotator.mafOutput.CustomMafFuncotationCreator.MAF_DBSNP_VAL_STATUS_FIELD;
 
@@ -35,6 +36,7 @@ public class MafOutputRendererConstants {
         variantClassMap.put(GencodeFuncotation.VariantClassification.LINCRNA.toString(),          "RNA");
 
         VariantClassificationMap = variantClassMap;
+        VariantClassificationMapInverse = variantClassMap.entrySet().stream().collect(Collectors.toMap(Map.Entry::getValue, Map.Entry::getKey));
     }
 
     //==================================================================================================================
@@ -178,6 +180,7 @@ public class MafOutputRendererConstants {
 
     // Variant Classification Map:
     static final Map<String, String> VariantClassificationMap;
+    static final Map<String, String> VariantClassificationMapInverse;
 
     // Output Field Name Map Defaults:
     static final List<String> OutputFieldNameMap_Hugo_Symbol                            = Arrays.asList(FieldName_Hugo_Symbol, "Gencode_19_hugoSymbol", "Gencode_27_hugoSymbol", "Gencode_28_hugoSymbol", "gene", "Gene");

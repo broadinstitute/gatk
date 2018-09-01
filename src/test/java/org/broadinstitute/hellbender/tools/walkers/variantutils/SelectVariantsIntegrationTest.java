@@ -344,12 +344,48 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
-    public void testSelectFromMultiAllelic() throws IOException {
-        final String testFile = getToolTestDataDir() + "multi-allelic.bi-allelicInGIH.vcf";
-        final String samplesFile = getToolTestDataDir() + "GIH.samples.args";
+    public void testRemoveSingleSpanDelAlleleNoSpanDel() throws IOException {
+        final String testFile = getToolTestDataDir() + "spanning_deletion.vcf";
+        final String sampleName = "NA1";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(" -sn " + samplesFile + " --exclude-non-variants --remove-unused-alternates", testFile),
+                baseTestString(" -sn " + sampleName + " --remove-unused-alternates --exclude-non-variants", testFile),
+                Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_RemoveSingleSpanDelAlleleNoSpanDel.vcf")
+        );
+        spec.executeTest("test encounter no instance of '*' as only ALT allele and ensure line is removed when only monomorphic allele exists" + testFile, this);
+    }
+
+    @Test
+    public void testRemoveSingleSpanDelAlleleExNonVar() throws IOException {
+        final String testFile = getToolTestDataDir() + "spanning_deletion.vcf";
+        final String sampleName = "NA2";
+
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString(" -sn " + sampleName + " --remove-unused-alternates", testFile),
+                Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_RemoveSingleSpanDelAlleleExNoVar.vcf")
+        );
+        spec.executeTest("test will not remove variant line where '*' is only ALT allele because --exclude-non-variants not called --" + testFile, this);
+    }
+
+    @Test
+    public void testRemoveSingleSpanDelAllele() throws IOException {
+        final String testFile = getToolTestDataDir() + "spanning_deletion.vcf";
+        final String sampleName = "NA2";
+
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString(" -sn " + sampleName + " --exclude-non-variants --remove-unused-alternates", testFile),
+                Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_RemoveSingleSpanDelAllele.vcf")
+        );
+        spec.executeTest("test removes variant line where '*' is only ALT allele --" + testFile, this);
+    }
+
+    @Test
+    public void testSelectFromMultiAllelic() throws IOException {
+        final String testFile = getToolTestDataDir() + "multi-allelic.bi-allelicInGIH.vcf";
+        final String sampleName = getToolTestDataDir() + "GIH.samples.args";
+
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString(" -sn " + sampleName + " --exclude-non-variants --remove-unused-alternates", testFile),
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_MultiAllelicExcludeNonVar.vcf")
         );
         spec.executeTest("test select from multi allelic with exclude-non-variants --" + testFile, this);

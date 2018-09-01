@@ -47,6 +47,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      */
     public static final String DEFAULT_NAME = "Gencode";
 
+    public static final String OTHER_TRANSCRIPTS_INFO_SEP = "_";
+
     //==================================================================================================================
     // Private Static Members:
     /** Standard Logger.  */
@@ -667,6 +669,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             // Uh-oh!  Problemz.
             throw new GATKException.ShouldNeverReachHereException("Unable to determine type of variant-containing subfeature: " + containingSubfeature.getClass().getName());
         }
+
         return gencodeFuncotation;
     }
 
@@ -1880,14 +1883,14 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
         if ( !funcotation.getVariantClassification().equals(GencodeFuncotation.VariantClassification.IGR) ) {
             condensedFuncotationStringBuilder.append(funcotation.getHugoSymbol());
-            condensedFuncotationStringBuilder.append("_");
+            condensedFuncotationStringBuilder.append(OTHER_TRANSCRIPTS_INFO_SEP);
             condensedFuncotationStringBuilder.append(funcotation.getAnnotationTranscript());
-            condensedFuncotationStringBuilder.append("_");
+            condensedFuncotationStringBuilder.append(OTHER_TRANSCRIPTS_INFO_SEP);
             condensedFuncotationStringBuilder.append(funcotation.getVariantClassification());
 
             if ( !(funcotation.getVariantClassification().equals(GencodeFuncotation.VariantClassification.INTRON) ||
                     ((funcotation.getSecondaryVariantClassification() != null) && funcotation.getSecondaryVariantClassification().equals(GencodeFuncotation.VariantClassification.INTRON))) ) {
-                condensedFuncotationStringBuilder.append("_");
+                condensedFuncotationStringBuilder.append(OTHER_TRANSCRIPTS_INFO_SEP);
                 condensedFuncotationStringBuilder.append(funcotation.getProteinChange());
             }
         }

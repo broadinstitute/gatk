@@ -154,14 +154,14 @@ public class CollectF1R2Counts extends LocusWalker {
         }
 
         // If we got here, we have an alt site with a single alt base
-        final Nucleotide altBase = Nucleotide.valueOf(BaseUtils.baseIndexToSimpleBase(altBaseIndex));
+        final Nucleotide altBase = Nucleotide.decode(BaseUtils.baseIndexToSimpleBase(altBaseIndex));
 
         final int refCount = baseCounts[refBase.ordinal()];
         final int altCount = baseCounts[altBaseIndex];
         Utils.validate(altCount > 0, "We must have a nonzero alt read but got " + altCount);
 
-        final int refF1R2 = pileup.getNumberOfElements(pe -> Nucleotide.valueOf(pe.getBase()) == refBase && ReadUtils.isF1R2(pe.getRead()));
-        final int altF1R2 = pileup.getNumberOfElements(pe -> Nucleotide.valueOf(pe.getBase()) == altBase && ReadUtils.isF1R2(pe.getRead()));
+        final int refF1R2 = pileup.getNumberOfElements(pe -> Nucleotide.decode(pe.getBase()) == refBase && ReadUtils.isF1R2(pe.getRead()));
+        final int altF1R2 = pileup.getNumberOfElements(pe -> Nucleotide.decode(pe.getBase()) == altBase && ReadUtils.isF1R2(pe.getRead()));
 
         if (altCount == 1) {
             final ReadOrientation type = altF1R2 == 1 ? F1R2 : F2R1;

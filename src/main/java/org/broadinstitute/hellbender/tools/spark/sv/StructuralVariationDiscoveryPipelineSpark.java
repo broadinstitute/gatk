@@ -6,6 +6,7 @@ import htsjdk.samtools.SAMFlag;
 import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFHeaderLine;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaRDD;
@@ -47,6 +48,7 @@ import scala.Serializable;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -188,8 +190,9 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
 
         final String outputPath = svDiscoveryInputMetaData.getOutputPath();
         final SAMSequenceDictionary refSeqDictionary = svDiscoveryInputMetaData.getReferenceData().getReferenceSequenceDictionaryBroadcast().getValue();
+        final Set<VCFHeaderLine> defaultToolVCFHeaderLines = svDiscoveryInputMetaData.getDefaultToolVCFHeaderLines();
         final Logger toolLogger = svDiscoveryInputMetaData.getToolLogger();
-        SVVCFWriter.writeVCF(annotatedVariants, outputPath + "inv_del_ins.vcf", refSeqDictionary, toolLogger);
+        SVVCFWriter.writeVCF(annotatedVariants, outputPath + "inv_del_ins.vcf", refSeqDictionary, defaultToolVCFHeaderLines, toolLogger);
 
         // TODO: 1/14/18 this is the next version of precise variant calling
         if ( expInterpret != null ) {
@@ -231,7 +234,7 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
                 outputPrefixWithSampleName,
                 assembledEvidenceResults.getReadMetadata(), assembledEvidenceResults.getAssembledIntervals(),
                 makeEvidenceLinkTree(assembledEvidenceResults.getEvidenceTargetLinks()),
-                cnvCallsBroadcast, getHeaderForReads(), getReference(), localLogger);
+                cnvCallsBroadcast, getHeaderForReads(), getReference(), getDefaultToolVCFHeaderLines(), localLogger);
     }
 
     public static Broadcast<SVIntervalTree<VariantContext>> broadcastCNVCalls(final JavaSparkContext ctx,
