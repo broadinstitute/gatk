@@ -9,18 +9,10 @@ import org.testng.annotations.Test;
 import java.nio.file.Path;
 
 /**
+ * Unit test suite for {@link NioFileCopierWithProgressMeterResults}.
  * Created by jonn on 9/4/18.
  */
 public class NioFileCopierWithProgressMeterResultsUnitTest extends GATKBaseTest {
-
-    //==================================================================================================================
-    // Private Static Members:
-
-    //==================================================================================================================
-    // Private Members:
-
-    //==================================================================================================================
-    // Helper Methods:
 
     //==================================================================================================================
     // Data Providers:
