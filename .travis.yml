@@ -60,7 +60,7 @@ before_install:
     PULL_REQUESTS=$(curl -v  https://api.github.com/repos/broadinstitute/gatk/pulls\?state\=open\&head="broadinstitute:${TRAVIS_BRANCH}");
     if [[ $( grep -c "commits" <<< ${PULL_REQUESTS} ) -gt 0 ]];
     then
-      travis_terminate 0
+      travis_terminate 0;
     fi
   fi
 - REPORT_PATH=${TRAVIS_BRANCH}_${TRAVIS_JOB_NUMBER};
