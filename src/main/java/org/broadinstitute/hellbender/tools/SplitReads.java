@@ -8,7 +8,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
+import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -29,39 +29,77 @@ import java.util.Map;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-@CommandLineProgramProperties(
-        summary = "Outputs reads by read group, etc. " +
-                "Not to be confused with a tool that splits reads for RNA-Seq analysis.",
-        oneLineSummary = "Outputs reads from a SAM/BAM/CRAM by read group, sample and library name",
-        programGroup = ReadProgramGroup.class
-)
+/**
+ * Outputs reads from a SAM/BAM/CRAM by read group, sample and library name
+ *
+ * <p>
+ *     Note: Not to be confused with a tool that splits reads for RNA-Seq analysis
+ * </p>
+ *
+ * <h3>Input</h3>
+ * <ul>
+ *     <li>A single BAM file</li>
+ * </ul>
+ *
+ * <h3>Outputs</h3>
+ * <ul>
+ *     <li>A collection of BAM files each corresponding to a group, sample and/or library of the original BAM file</li>
+ * </ul>
+ *
+ * <h3>Usage Example</h3>
+ * <h4>Split reads in BAM file by sample name, read group and library name</h4>
+ * <pre>
+ *   gatk SplitReads \
+ *     -I input.bam \
+ *     -O outputDirectory \
+ *     --split-sample \
+ *     --split-read-group \
+ *     --split-library-name
+ * </pre>
+ */
 @DocumentedFeature
+@CommandLineProgramProperties(
+        summary = "Outputs reads from a SAM/BAM/CRAM by read group, sample and library name",
+        oneLineSummary = "Outputs reads from a SAM/BAM/CRAM by read group, sample and library name",
+        programGroup = ReadDataManipulationProgramGroup.class
+)
 public final class SplitReads extends ReadWalker {
 
     public static final String SAMPLE_SHORT_NAME = "SM";
     public static final String READ_GROUP_SHORT_NAME = "RG";
     public static final String LIBRARY_NAME_SHORT_NAME = "LB";
-    public static final String SAMPLE_LONG_NAME = "splitSample";
-    public static final String READ_GROUP_LONG_NAME = "splitReadGroup";
-    public static final String LIBRARY_NAME_LONG_NAME = "splitLibraryName";
+    public static final String SAMPLE_LONG_NAME = "split-sample";
+    public static final String READ_GROUP_LONG_NAME = "split-read-group";
+    public static final String LIBRARY_NAME_LONG_NAME = "split-library-name";
     public static final String UNKNOWN_OUT_PREFIX = "unknown";
 
 
-    @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+    @Argument(
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
-            doc = "The directory to output SAM/BAM/CRAM files.")
+            doc = "The directory to output SAM/BAM/CRAM files."
+    )
     public File OUTPUT_DIRECTORY = new File("");
 
-    @Argument(fullName = SAMPLE_LONG_NAME, shortName = SAMPLE_SHORT_NAME,
-            doc = "Split file by sample.")
+    @Argument(
+            fullName = SAMPLE_LONG_NAME,
+            shortName = SAMPLE_SHORT_NAME,
+            doc = "Split file by sample."
+    )
     public boolean SAMPLE;
 
-    @Argument(fullName = READ_GROUP_LONG_NAME, shortName = READ_GROUP_SHORT_NAME,
-            doc = "Split file by read group.")
+    @Argument(
+            fullName = READ_GROUP_LONG_NAME,
+            shortName = READ_GROUP_SHORT_NAME,
+            doc = "Split file by read group."
+    )
     public boolean READ_GROUP;
 
-    @Argument(fullName = LIBRARY_NAME_LONG_NAME, shortName = LIBRARY_NAME_SHORT_NAME,
-            doc = "Split file by library.")
+    @Argument(
+            fullName = LIBRARY_NAME_LONG_NAME,
+            shortName = LIBRARY_NAME_SHORT_NAME,
+            doc = "Split file by library."
+    )
     public boolean LIBRARY_NAME;
 
     private final List<ReaderSplitter<?>> splitters = new ArrayList<>();

@@ -21,31 +21,47 @@ public class InsertSizeMetricsArgumentCollection extends MetricsArgumentCollecti
 
     private static final long serialVersionUID = 1L;
 
-    @Argument(fullName = "histogramPlotFile",
-            shortName="H",
-            doc="File to write insert size Histogram chart to.")
+    @Argument(
+            doc = "File to write insert size histogram chart to.",
+            fullName = "histogram-plot-file",
+            shortName = "H"
+    )
     public String histogramPlotFile;
 
-    @Argument(doc="Generate mean, sd and plots by trimming the data down to MEDIAN + maxMADTolerance*MEDIAN_ABSOLUTE_DEVIATION. " +
-            "This is done because insert size data typically includes enough anomalous values from chimeras and other " +
-            "artifacts to make the mean and sd grossly misleading regarding the real distribution.",
+    @Argument(
+            doc = "Generate mean, sd and plots by trimming the data down to MEDIAN + maxMADTolerance*MEDIAN_ABSOLUTE_DEVIATION. " +
+                    "This is done because insert size data typically includes enough anomalous values from chimeras and other " +
+                    "artifacts to make the mean and sd grossly misleading regarding the real distribution.",
+            fullName = "histogram-plot-deviations-tolerance",
             shortName = "TOL",
-            fullName = "HistogramPlotDeviationsTolerance",
-            optional = true)
+            optional = true
+    )
     public double maxMADTolerance = 10.0;
 
-    @Argument(shortName="W", doc="Explicitly sets the Histogram width, overriding automatic truncation of Histogram tail. " +
-            "Also, when calculating mean and standard deviation, only bins <= HISTOGRAM_WIDTH will be included.", optional=true)
+    @Argument(
+            doc = "Explicitly sets the histogram width, overriding automatic truncation of Histogram tail. " +
+                    "Also, when calculating mean and standard deviation, only bins <= HISTOGRAM_WIDTH will be included.",
+            fullName = "width",
+            shortName = "W",
+            optional = true
+    )
     public Integer histogramWidth = null;
 
-    @Argument(shortName="M", doc="When generating the Histogram, discard any data categories (out of FR, TANDEM, RF) that have fewer than this " +
-            "percentage of overall reads. (Range: 0 to 1).")
+    @Argument(
+            doc = "When generating the histogram, discard any data categories (out of FR, TANDEM, RF) that have " +
+                    "fewer than this percentage of overall reads (Range: 0 to 1).",
+            fullName = "min-category-reads-percentage",
+            shortName="M"
+    )
     public float minimumPct = 0.05f;
 
-    @Argument(doc = "Should an output plot be created")
+    @Argument(
+            doc = "If enabled, an output .pdf plot will be created.",
+            fullName = "produce-plot"
+    )
     public boolean producePlot = false;
 
     @ArgumentCollection
-    public MetricAccumulationLevelArgumentCollection metricAccumulationLevel = new MetricAccumulationLevelArgumentCollection();
-
+    public MetricAccumulationLevelArgumentCollection metricAccumulationLevel
+            = new MetricAccumulationLevelArgumentCollection();
 }

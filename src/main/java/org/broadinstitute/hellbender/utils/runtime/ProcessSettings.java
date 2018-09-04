@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.runtime;
 
 
+import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
@@ -46,6 +47,10 @@ public final class ProcessSettings {
 
     public String[] getCommand() {
         return command;
+    }
+
+    public String getCommandString() {
+        return StringUtils.join(command, " ");
     }
 
     public void setCommand(String[] command) {

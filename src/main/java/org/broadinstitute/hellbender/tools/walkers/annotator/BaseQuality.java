@@ -2,21 +2,23 @@ package org.broadinstitute.hellbender.tools.walkers.annotator;
 
 import com.google.common.primitives.Ints;
 import htsjdk.variant.variantcontext.VariantContext;
+import org.apache.commons.math3.util.FastMath;
 import org.broadinstitute.barclay.help.DocumentedFeature;
-import org.broadinstitute.hellbender.utils.GATKProtectedMathUtils;
-import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
-import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.util.List;
+import java.util.OptionalDouble;
 import java.util.OptionalInt;
 
 /**
  * Median base quality of bases supporting each allele.
  *
- * Created by David Benjamin on 3/20/17.
+ * <p>The output is an array containing, for each allele, the median base quality at the variant (for SNVs) and one base before the variant (for indels) over all reads that best match that allele.</p>
+ *
+ * <p>For example, for variant context with ref allele A and alt allele C we use base qualities at the A and C.  For variant context with ref allele AG and alt allele A (deletion),
+ * we use base qualities at the A.  For variant context with ref allele A and alt allele AG (insertion) we use base qualities at the A.</p>
  */
 @DocumentedFeature(groupName= HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Median base quality of bases supporting each allele (MBQ)")
 public class BaseQuality extends PerAlleleAnnotation implements StandardMutectAnnotation {
@@ -24,7 +26,7 @@ public class BaseQuality extends PerAlleleAnnotation implements StandardMutectAn
 
     @Override
     protected int aggregate(final List<Integer> values) {
-        return values.isEmpty() ? 0 : GATKProtectedMathUtils.median(Ints.toArray(values));
+        return values.isEmpty() ? 0 : MathUtils.median(Ints.toArray(values));
     }
 
     @Override
@@ -34,11 +36,14 @@ public class BaseQuality extends PerAlleleAnnotation implements StandardMutectAn
     protected String getDescription() { return "median base quality"; }
 
     @Override
-    protected OptionalInt getValueForRead(final GATKRead read, final VariantContext vc) {
-        Utils.nonNull(read);
+    protected boolean includeRefAllele() { return true; }
 
-        final int offset = ReadUtils.getReadCoordinateForReferenceCoordinate(ReadUtils.getSoftStart(read), read.getCigar(), vc.getStart(), ReadUtils.ClippingTail.RIGHT_TAIL, true);
-        return offset == ReadUtils.CLIPPING_GOAL_NOT_REACHED || AlignmentUtils.isInsideDeletion(read.getCigar(), offset) ?
-                OptionalInt.empty() : OptionalInt.of(read.getBaseQuality(offset));
+    @Override
+    protected OptionalInt getValueForRead(final GATKRead read, final VariantContext vc) {
+        if (vc.getStart() < read.getStart() || read.getEnd() < vc.getStart()) {
+            return OptionalInt.empty();
+        }
+        final OptionalDouble result = BaseQualityRankSumTest.getReadBaseQuality(read, vc.getStart());
+        return result.isPresent() ? OptionalInt.of((int) FastMath.round(result.getAsDouble())) : OptionalInt.empty();
     }
 }

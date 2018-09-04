@@ -7,62 +7,68 @@ import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
-import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
+import picard.cmdline.programgroups.VariantFilteringProgramGroup;
+import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.ReadsContext;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.tools.exome.FilterByOrientationBias;
+import org.broadinstitute.hellbender.tools.walkers.contamination.CalculateContamination;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
-import org.broadinstitute.hellbender.tools.exome.FilterByOrientationBias;
 
 import java.io.File;
-import java.util.*;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Filter SNVs and indels from a Mutect2 callset.
+ * <p>Filter variants in a Mutect2 VCF callset.</p>
  *
  * <p>
- *     FilterMutectCalls encapsulates GATK3 MuTect2's filtering functionality.
- *     GATK4 Mutect2 retains variant calling and some prefiltering.
- *     Separating calling and filtering functionalities into two tools better enables an iterative filtering process
- *     that allows for context-specific optimizations. To filter further based on sequence context artifacts,
- *     additionally use {@link FilterByOrientationBias}.
+ *     FilterMutectCalls encapsulates GATK3 MuTect2's filtering functionality and adds additional filters.
+ *     Thresholds for filters are contained in {@link M2FiltersArgumentCollection} and described in
+ *     <a href='https://github.com/broadinstitute/gatk/tree/master/docs/mutect/mutect.pdf' target='_blank'>https://github.com/broadinstitute/gatk/tree/master/docs/mutect/mutect.pdf</a>.
+ *     To filter based on sequence context artifacts, see {@link FilterByOrientationBias}.
  * </p>
- *
  * <p>
- *     Filtering thresholds for both normal_artifact_lod (default threshold 0.0) and tumor_lod (default threshold 5.3) can be set in this tool.
+ *     Filtering thresholds for both normal-artifact-lod (default threshold 0.0) and tumor-lod (default threshold 5.3) can be set in this tool.
  *     If the normal artifact log odds is larger than the threshold, then FilterMutectCalls applies the artifact-in-normal filter.
- *     For matched normal analyses with tumor contamination in the normal, consider increasing the normal_artifact_lod threshold.
+ *     For matched normal analyses with tumor contamination in the normal, consider increasing the normal-artifact-lod threshold.
  *     If the tumor log odds is smaller than the threshold, then FilterMutectCalls filters the variant.
  * </p>
- *
  * <p>
- *     If given a --contaminationTable file, e.g. results from
- *     {@link org.broadinstitute.hellbender.tools.walkers.contamination.CalculateContamination}, the tool will additionally
- *     filter on contamination fractions. Alternatively, provide a numerical fraction to filter with --contamination_fraction_to_filter.
+ *     If given a --contamination-table file, e.g. results from
+ *     {@link CalculateContamination}, the tool will additionally
+ *     filter on contamination fractions. Alternatively, provide a numerical fraction to filter with the --contamination argument.
+ * </p>
+ * <p>
+ *     This tool is featured in the Somatic Short Mutation calling Best Practice Workflow.
+ *     See <a href="https://software.broadinstitute.org/gatk/documentation/article?id=11136">Tutorial#11136</a> for a
+ *     step-by-step description of the workflow and <a href="https://software.broadinstitute.org/gatk/documentation/article?id=11127">Article#11127</a>
+ *     for an overview of what traditional somatic calling entails. For the latest pipeline scripts, see the
+ *     <a href="https://github.com/broadinstitute/gatk/tree/master/scripts/mutect2_wdl">Mutect2 WDL scripts directory</a>.
  * </p>
  *
- * <h3>Example</h3>
- *
+ * <h3>Usage example</h3>
  * <pre>
- * gatk-launch --javaOptions "-Xmx4g" FilterMutectCalls \
- *   -V tumor_matched_m2_snvs_indels.vcf.gz \
- *   -contaminationTable contamination.table \
- *   -O tumor_matched_m2_filtered.vcf.gz
+ * gatk FilterMutectCalls \
+ *   -V somatic.vcf.gz \
+ *   --contamination-table contamination.table \
+ *   -O filtered.vcf.gz
  * </pre>
  *
  */
 @CommandLineProgramProperties(
         summary = "Filter somatic SNVs and indels called by Mutect2",
         oneLineSummary = "Filter somatic SNVs and indels called by Mutect2",
-        programGroup = VariantProgramGroup.class
+        programGroup = VariantFilteringProgramGroup.class
 )
 @DocumentedFeature
-@BetaFeature
-public final class FilterMutectCalls extends VariantWalker {
+public final class FilterMutectCalls extends TwoPassVariantWalker {
 
     @Argument(fullName= StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName=StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -75,6 +81,8 @@ public final class FilterMutectCalls extends VariantWalker {
     private VariantContextWriter vcfWriter;
 
     private Mutect2FilteringEngine filteringEngine;
+
+    private FilteringFirstPass filteringFirstPass;
 
     @Override
     public void onTraversalStart() {
@@ -92,8 +100,12 @@ public final class FilterMutectCalls extends VariantWalker {
         vcfWriter = createVCFWriter(new File(outputVcf));
         vcfWriter.writeHeader(vcfHeader);
 
-        final String tumorSample = getHeaderForVariants().getMetaDataLine(Mutect2Engine.TUMOR_SAMPLE_KEY_IN_VCF_HEADER).getValue();
-        filteringEngine = new Mutect2FilteringEngine(MTFAC, tumorSample);
+        final String tumorSample = getTumorSampleName();
+        final VCFHeaderLine normalSampleHeaderLine = getHeaderForVariants().getMetaDataLine(Mutect2Engine.NORMAL_SAMPLE_KEY_IN_VCF_HEADER);
+        final Optional<String> normalSample = normalSampleHeaderLine == null ? Optional.empty() : Optional.of(normalSampleHeaderLine.getValue());
+
+        filteringEngine = new Mutect2FilteringEngine(MTFAC, tumorSample, normalSample);
+        filteringFirstPass = new FilteringFirstPass(tumorSample);
     }
 
     @Override
@@ -102,9 +114,25 @@ public final class FilterMutectCalls extends VariantWalker {
     }
 
     @Override
-    public void apply(final VariantContext vc, final ReadsContext readsContext, final ReferenceContext refContext, final FeatureContext fc) {
+    public void firstPassApply(final VariantContext vc, final ReadsContext readsContext, final ReferenceContext refContext, final FeatureContext fc) {
+        final FilterResult filterResult = filteringEngine.calculateFilters(MTFAC, vc, Optional.empty());
+        filteringFirstPass.add(filterResult, vc);
+    }
+
+    @Override
+    protected void afterFirstPass() {
+        filteringFirstPass.learnModelForSecondPass(MTFAC.maxFalsePositiveRate);
+        filteringFirstPass.writeM2FilterSummary(MTFAC.mutect2FilteringStatsTable);
+    }
+
+    @Override
+    public void secondPassApply(final VariantContext vc, final ReadsContext readsContext, final ReferenceContext refContext, final FeatureContext fc) {
+        final FilterResult filterResult = filteringEngine.calculateFilters(MTFAC, vc, Optional.of(filteringFirstPass));
         final VariantContextBuilder vcb = new VariantContextBuilder(vc);
-        vcb.filters(filteringEngine.calculateFilters(MTFAC, vc));
+
+        vcb.filters(filterResult.getFilters());
+        filterResult.getAttributes().entrySet().forEach(e -> vcb.attribute(e.getKey(), e.getValue()));
+
         vcfWriter.add(vcb.make());
     }
 
@@ -113,5 +141,9 @@ public final class FilterMutectCalls extends VariantWalker {
         if ( vcfWriter != null ) {
             vcfWriter.close();
         }
+    }
+
+    private String getTumorSampleName(){
+        return getHeaderForVariants().getMetaDataLine(Mutect2Engine.TUMOR_SAMPLE_KEY_IN_VCF_HEADER).getValue();
     }
 }

@@ -190,5 +190,12 @@ public class SVKmerLongUnitTest extends GATKBaseTest {
                 "GGATCACAGGTCTATCACCCTATTAACCACTCACGGGAGCTCTCCATGCAT"
         ).map(str -> SVKmerizer.toKmer(str,kmer)).collect(Collectors.toList());
         Assert.assertEquals(kmers,expectedKmers);
+
+        final byte[] seq2 = "CTAACCCTAACCCTAACCCTAACCCTAACCCTAACCCTAACCCTAACCCTAACCCTAACCCTAACCCCACCCCTAACCCTAACCCAAACCCTAACCCTAACCCAAACCCTAACCCTAACCCTAACCCCAACCCCAACCCTCACCCTAACCC".getBytes();
+        final List<SVKmer> kmers2 =
+                SVDUSTFilteredKmerizer.stream(seq2, KMER_SIZE, MAX_DUST_SCORE, kmer)
+                        .collect(SVUtils.arrayListCollector(seq.length - KMER_SIZE+1));
+
+        Assert.assertTrue(kmers2.isEmpty());
     }
 }

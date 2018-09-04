@@ -2,21 +2,19 @@ package org.broadinstitute.hellbender.tools.walkers.contamination;
 
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
+import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.MultiVariantWalker;
-import org.broadinstitute.hellbender.engine.ReadsContext;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.cmdline.programgroups.CoverageAnalysisProgramGroup;
+import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
-import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2Engine;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 
@@ -25,47 +23,109 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Given a sites VCF of common population SNPs and a BAM file, summarizes alt and ref counts along with population allele frequency.
+ * <p>Summarizes counts of reads that support reference, alternate and other alleles for given sites. Results can be used with {@link CalculateContamination}.</p>
  *
  * <p>
- *     The resulting table is the input for {@link CalculateContamination}.
- *     The sites VCF, e.g. gnomAD resource file, contains population allele frequencies (AF) in the INFO field.
- *     Note the default maximum population allele frequency (--maximumPopulationAlleleFrequency or -maxAF) is set to 0.2,
- *     which limits sites the tool considers to those in the variants resource file that have allele frequencies (AF) of 0.2 or less.
+ * The tool requires a <i>common</i> germline variant sites VCF, e.g. derived from the gnomAD resource, with population allele frequencies (AF) in the INFO field.
+ * This resource must contain only biallelic SNPs and can be an eight-column sites-only VCF.
+ * The tool ignores the filter status of the variant calls in this germline resource.
+ * </p>
+ * <p>
+ *     This tool is featured in the Somatic Short Mutation calling Best Practice Workflow.
+ *     See <a href="https://software.broadinstitute.org/gatk/documentation/article?id=11136">Tutorial#11136</a> for a
+ *     step-by-step description of the workflow and <a href="https://software.broadinstitute.org/gatk/documentation/article?id=11127">Article#11127</a>
+ *     for an overview of what traditional somatic calling entails. For the latest pipeline scripts, see the
+ *     <a href="https://github.com/broadinstitute/gatk/tree/master/scripts/mutect2_wdl">Mutect2 WDL scripts directory</a>.
+ *     In particular, the mutect_resources.wdl script prepares a suitable resource from a larger dataset. An example excerpt is shown.
  * </p>
  *
- * <h3>Example</h3>
+ * <pre>
+ * #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+ * chr6	29942512	.	G	C	2974860	VQSRTrancheSNP99.80to99.90	AF=0.063
+ * chr6	29942517	.	C	A	2975860	VQSRTrancheSNP99.80to99.90	AF=0.062
+ * chr6	29942525	.	G	C	2975600	VQSRTrancheSNP99.60to99.80	AF=0.063
+ * chr6	29942547	rs114945359	G	C	15667700	PASS	AF=0.077
+ * </pre>
+ *
+ * <h3>Usage examples</h3>
  *
  * <pre>
- * gatk-launch --javaOptions "-Xmx4g" GetPileupSummaries \
+ * gatk GetPileupSummaries \
  *   -I tumor.bam \
- *   -L intervals.list \
- *   -V variants_for_contamination.vcf.gz \
+ *   -V common_biallelic.vcf.gz \
+ *   -L common_biallelic.vcf.gz \
  *   -O pileups.table
  * </pre>
  *
- * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
+ * <pre>
+ * gatk GetPileupSummaries \
+ *   -I normal.bam \
+ *   -V common_biallelic.vcf.gz \
+ *   -L common_biallelic.vcf.gz \
+ *   -O pileups.table
+ * </pre>
+ *
+ * Although the sites (-L) and variants (-V) resources will often be identical, this need not be the case.  For example,
+ * <pre>
+ * gatk GetPileupSummaries \
+ *   -I normal.bam \
+ *   -V gnomad.vcf.gz \
+ *   -L common_snps.interval_list \
+ *   -O pileups.table
+ * </pre>
+ * attempts to get pileups at a list of common snps and emits output for those sites that are present in gnomAD, using the
+ * allele frequencies from gnomAD.  Note that the sites may be a subset of the variants, the variants may be a subset of the sites,
+ * or they may overlap partially.  In all cases pileup summaries are emitted for the overlap and nowhere else.  The most common use
+ * case in which sites and variants differ is when the variants resources is a large file and the sites is an interval list subset from that file.
+ *
+ * <p>
+ * GetPileupSummaries tabulates results into six columns as shown below.
+ * The alt_count and allele_frequency correspond to the ALT allele in the germline resource.
+ * </p>
+ *
+ * <pre>
+ * contig	position	ref_count	alt_count	other_alt_count	allele_frequency
+ * chr6	29942512	9	0	0	0.063
+ * chr6	29942517	13	1	0	0.062
+ * chr6	29942525	13	7	0	0.063
+ * chr6	29942547	36	0	0	0.077
+ * </pre>
+ *
+ * <p>
+ * Note the default maximum population AF ({@code --maximum-population-allele-frequency} or {@code -max-af})
+ * is set to 0.2, which limits the sites the tool considers to those in the variants resource file that have
+ * AF of 0.2 or less. Likewise, the default minimum population AF ({@code --minimum-population-allele-frequency}
+ * or {@code -min-af}) is set to 0.01, which limits the sites the tool considers to those in the variants resource
+ * file that have AF of 0.01 or more.
+ * </p>
+ *
  */
 @CommandLineProgramProperties(
-        summary = "Calculate pileup statistics for inferring contamination",
-        oneLineSummary = "Calculate pileup statistics for inferring contamination",
-        programGroup = VariantProgramGroup.class)
+        summary = "Tabulates pileup metrics for inferring contamination",
+        oneLineSummary = "Tabulates pileup metrics for inferring contamination",
+        programGroup = CoverageAnalysisProgramGroup.class)
 @BetaFeature
 @DocumentedFeature
-public class GetPileupSummaries extends MultiVariantWalker {
+public class GetPileupSummaries extends LocusWalker {
 
-    public final String MAX_SITE_AF_LONG_NAME = "maximumPopulationAlleleFrequency";
-    public final String MIN_SITE_AF_LONG_NAME = "minimumPopulationAlleleFrequency";
-    public final String MAX_SITE_AF_SHORT_NAME = "maxAF";
-    public final String MIN_SITE_AF_SHORT_NAME = "minAF";
+    public static final String MAX_SITE_AF_LONG_NAME = "maximum-population-allele-frequency";
+    public static final String MIN_SITE_AF_LONG_NAME = "minimum-population-allele-frequency";
+    public static final String MAX_SITE_AF_SHORT_NAME = "max-af";
+    public static final String MIN_SITE_AF_SHORT_NAME = "min-af";
+    public static final String MIN_MAPPING_QUALITY_LONG_NAME = "min-mapping-quality";
+    public static final String MIN_MAPPING_QUALITY_SHORT_NAME = "mmq";
 
     private static final double DEFAULT_MIN_POPULATION_AF = 0.01;
     private static final double DEFAULT_MAX_POPULATION_AF = 0.2;
+    private static final int DEFAULT_MINIMUM_MAPPING_QUALITY = 50;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc="The output table", optional=false)
     private File outputTable;
+
+    @Argument(fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME, shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME, doc = "A VCF file containing variants and allele frequencies")
+    public FeatureInput<VariantContext> variants;
 
     @Argument(fullName = MIN_SITE_AF_LONG_NAME,
             shortName = MIN_SITE_AF_SHORT_NAME,
@@ -77,9 +137,13 @@ public class GetPileupSummaries extends MultiVariantWalker {
             doc = "Maximum population allele frequency of sites to consider.", optional = true)
     private double maxPopulationAlleleFrequency = DEFAULT_MAX_POPULATION_AF;
 
+    @Argument(fullName = MIN_MAPPING_QUALITY_LONG_NAME, shortName = MIN_MAPPING_QUALITY_SHORT_NAME, doc = "Minimum read mapping quality", optional = true)
+    private int minMappingQuality = DEFAULT_MINIMUM_MAPPING_QUALITY;
+
     private final List<PileupSummary> pileupSummaries = new ArrayList<>();
 
-    private VariantContext lastVariant = null;
+    private boolean sawVariantsWithoutAlleleFrequency = false;
+    private boolean sawVariantsWithAlleleFrequency = false;
 
     @Override
     public boolean requiresReads() {
@@ -91,16 +155,23 @@ public class GetPileupSummaries extends MultiVariantWalker {
         return false;
     }
 
-    private static final int MAPPING_QUALITY_THRESHOLD = 50;
+    @Override
+    public boolean requiresIntervals() {
+        return true;
+    }
+
+    @Override
+    public boolean requiresFeatures() {
+        return true;
+    }
 
     @Override
     public List<ReadFilter> getDefaultReadFilters() {
         final List<ReadFilter> filters = new ArrayList<>();
-        filters.add(new MappingQualityReadFilter(MAPPING_QUALITY_THRESHOLD));
         filters.add(ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE);
         filters.add(ReadFilterLibrary.MAPPING_QUALITY_NOT_ZERO);
         filters.add(ReadFilterLibrary.MAPPED);
-        filters.add(ReadFilterLibrary.PRIMARY_ALIGNMENT);
+        filters.add(ReadFilterLibrary.PRIMARY_LINE);
         filters.add(ReadFilterLibrary.NOT_DUPLICATE);
         filters.add(ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK);
         filters.add(ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT);
@@ -111,27 +182,47 @@ public class GetPileupSummaries extends MultiVariantWalker {
     }
 
     @Override
-    public void apply(final VariantContext vc, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext ) {
-        // if we input multiple sources of variants, ignore repeats
-        if (lastVariant != null && vc.getStart() == lastVariant.getStart()) {
+    public void onTraversalStart() {
+        final boolean alleleFrequencyInHeader = ((VCFHeader) getHeaderForFeatures(variants)).getInfoHeaderLines().stream()
+                .anyMatch(line -> line.getID().equals(VCFConstants.ALLELE_FREQUENCY_KEY));
+        if (!alleleFrequencyInHeader) {
+            throw new UserException.BadInput("Population vcf does not have an allele frequency (AF) info field in its header.");
+        }
+    }
+
+    @Override
+    public void apply(AlignmentContext alignmentContext, ReferenceContext referenceContext, FeatureContext featureContext) {
+        final List<VariantContext> vcs = featureContext.getValues(variants);
+        if (vcs.isEmpty()) {
             return;
-        } else if ( vc.isBiallelic() && vc.isSNP() && alleleFrequencyInRange(vc) ) {
-            final ReadPileup pileup = GATKProtectedVariantContextUtils.getPileup(vc, readsContext);
+        }
+        final VariantContext vc = vcs.get(0);
+
+        if ( vc.isBiallelic() && vc.isSNP() && alleleFrequencyInRange(vc) ) {
+            final ReadPileup pileup = alignmentContext.getBasePileup()
+                    .makeFilteredPileup(pe -> pe.getRead().getMappingQuality() >= minMappingQuality);
             pileupSummaries.add(new PileupSummary(vc, pileup));
         }
-        lastVariant = vc;
     }
 
     @Override
     public Object onTraversalSuccess() {
-        PileupSummary.writePileupSummaries(pileupSummaries, outputTable);
+        if (sawVariantsWithoutAlleleFrequency && !sawVariantsWithAlleleFrequency) {
+            throw new UserException.BadInput("No variants in population vcf had an allele frequency (AF) field.");
+        }
+        PileupSummary.writeToFile(pileupSummaries, outputTable);
         return "SUCCESS";
     }
 
     private boolean alleleFrequencyInRange(final VariantContext vc) {
         if (!vc.hasAttribute(VCFConstants.ALLELE_FREQUENCY_KEY)) {
+            if (!sawVariantsWithoutAlleleFrequency) {
+                logger.warn(String.format("Variant context at %s:%d lacks allele frequency (AF) field.", vc.getContig(), vc.getStart()));
+                sawVariantsWithoutAlleleFrequency = true;
+            }
             return false;
         } else {
+            sawVariantsWithAlleleFrequency = true;
             final double alleleFrequency = vc.getAttributeAsDouble(VCFConstants.ALLELE_FREQUENCY_KEY, -1.0);
             return minPopulationAlleleFrequency < alleleFrequency && alleleFrequency < maxPopulationAlleleFrequency;
         }

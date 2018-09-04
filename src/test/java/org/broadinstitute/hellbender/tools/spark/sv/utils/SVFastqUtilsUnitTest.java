@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.sv.utils;
 import htsjdk.samtools.*;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.spark.sv.discovery.AlignmentInterval;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
 import org.broadinstitute.hellbender.utils.RandomDNA;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
@@ -11,12 +11,15 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.*;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+
+import static org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils.singletonIterator;
 
 /**
  * Unit tests for components in {@link SVFastqUtils}.
@@ -110,7 +113,7 @@ public class SVFastqUtilsUnitTest extends GATKBaseTest {
     }
 
     @Test(expectedExceptions = GATKException.class, groups = "sv")
-    public void testNonPrimaryAlignmentWithSAWhereFirstElementHasHardclips() {
+    public void testNonPrimaryAlignmentWithSAWhereFirstElementHasHardClips() {
         final SAMFileHeader header;
         final SAMRecord samRecord;
         final GATKRead read;
@@ -292,6 +295,35 @@ public class SVFastqUtilsUnitTest extends GATKBaseTest {
         }
 
     }
+
+    @Test
+    public void testSimpleRoundTrip() {
+        final byte[] calls = "ACGTTGCAACGTTGCAACGT".getBytes();
+        final byte[] quals = new byte[calls.length];
+        Arrays.fill(quals, (byte) 20);
+        final SVFastqUtils.FastqRead read = new SVFastqUtils.FastqRead("@readName", calls, quals);
+        final ByteArrayOutputStream os = new ByteArrayOutputStream();
+        try {
+            SVFastqUtils.writeFastqStream(os, singletonIterator(read));
+        }
+        catch ( final IOException ioe ) {
+            throw new GATKException("failed to write FASTQ file to memory", ioe);
+        }
+        try {
+            final BufferedReader reader =
+                    new BufferedReader(new InputStreamReader(new ByteArrayInputStream(os.toByteArray())));
+            final List<SVFastqUtils.FastqRead> reads = SVFastqUtils.readFastqStream(reader, "from memory");
+            Assert.assertEquals(reads.size(), 1);
+            final SVFastqUtils.FastqRead read2 = reads.get(0);
+            Assert.assertEquals(read.getHeader(), read2.getHeader());
+            Assert.assertTrue(Arrays.equals(read.getBases(), read2.getBases()));
+            Assert.assertTrue(Arrays.equals(read.getQuals(), read2.getQuals()));
+        }
+        catch ( final IOException ioe ) {
+            throw new GATKException("failed to read FASTQ from memory", ioe);
+        }
+    }
+
 
     @DataProvider(name="mappingFromBadStringData")
     public static Object[][] mappingFromBadStringData() {

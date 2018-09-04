@@ -19,10 +19,8 @@ import java.util.List;
  * Worker class to collect insert size metrics, add metrics to file, and provides
  * accessors to stats of groups of different level.
  */
-public class InsertSizeMetricsCollectorSpark
-        implements MetricsCollectorSpark<InsertSizeMetricsArgumentCollection>,
-        Serializable
-{
+public class InsertSizeMetricsCollectorSpark implements
+        MetricsCollectorSpark<InsertSizeMetricsArgumentCollection>, Serializable {
     private static final long serialVersionUID = 1L;
 
     private InsertSizeMetricsArgumentCollection inputArgs = null;

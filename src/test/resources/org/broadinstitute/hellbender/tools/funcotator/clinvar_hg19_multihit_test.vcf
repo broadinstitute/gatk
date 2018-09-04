@@ -1,0 +1,196 @@
+##fileformat=VCFv4.2
+##Biotin(Bgnd)=Biotin(Bgnd)|Staining|508|179
+##Biotin(High)=Biotin(High)|Staining|778|5902
+##DNP(Bgnd)=DNP(Bgnd)|Staining|1058|245
+##DNP(High)=DNP(High)|Staining|32198|156
+##Extension(A)=Extension(A)|Extension|41089|480
+##Extension(C)=Extension(C)|Extension|2446|11515
+##Extension(G)=Extension(G)|Extension|2936|11197
+##Extension(T)=Extension(T)|Extension|43350|395
+##FILTER=<ID=DUPE,Description="Duplicate assays position.">
+##FILTER=<ID=FAIL_REF,Description="Assay failed to map to reference.">
+##FILTER=<ID=TRIALLELIC,Description="Tri-allelic assay.">
+##FILTER=<ID=ZCALL_DIFF,Description="ZCALL_DIFF">
+##FORMAT=<ID=BAF,Number=1,Type=Float,Description="B Allele Frequency">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=GTA,Number=1,Type=String,Description="Illumina Autocall Genotype">
+##FORMAT=<ID=GTZ,Number=1,Type=String,Description="zCall Genotype">
+##FORMAT=<ID=IGC,Number=1,Type=Float,Description="Illumina GenCall Confidence Score">
+##FORMAT=<ID=LRR,Number=1,Type=Float,Description="Log R Ratio">
+##FORMAT=<ID=NORMX,Number=1,Type=Float,Description="Normalized X intensity">
+##FORMAT=<ID=NORMY,Number=1,Type=Float,Description="Normalized Y intensity">
+##FORMAT=<ID=R,Number=1,Type=Float,Description="Normalized R value">
+##FORMAT=<ID=THETA,Number=1,Type=Float,Description="Normalized Theta value">
+##FORMAT=<ID=X,Number=1,Type=Integer,Description="Raw X intensity">
+##FORMAT=<ID=Y,Number=1,Type=Integer,Description="Raw Y intensity">
+##Hyb(High)=Hyb(High)|Hybridization|3310|11184
+##Hyb(Low)=Hyb(Low)|Hybridization|3436|1823
+##Hyb(Medium)=Hyb(Medium)|Hybridization|1307|6426
+##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
+##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">
+##INFO=<ID=ALLELE_A,Number=1,Type=String,Description="A allele">
+##INFO=<ID=ALLELE_B,Number=1,Type=String,Description="B allele">
+##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">
+##INFO=<ID=BEADSET_ID,Number=1,Type=Integer,Description="Bead set ID for normalization">
+##INFO=<ID=GC_SCORE,Number=1,Type=Float,Description="Gentrain Score">
+##INFO=<ID=ILLUMINA_BUILD,Number=1,Type=String,Description="Genome Build in Illumina manifest">
+##INFO=<ID=ILLUMINA_CHR,Number=1,Type=String,Description="Chromosome in Illumina manifest">
+##INFO=<ID=ILLUMINA_POS,Number=1,Type=Integer,Description="Position in Illumina manifest">
+##INFO=<ID=ILLUMINA_STRAND,Number=1,Type=String,Description="Probe strand">
+##INFO=<ID=N_AA,Number=1,Type=Integer,Description="Number of AA calls in training set">
+##INFO=<ID=N_AB,Number=1,Type=Integer,Description="Number of AB calls in training set">
+##INFO=<ID=N_BB,Number=1,Type=Integer,Description="Number of BB calls in training set">
+##INFO=<ID=PROBE_A,Number=1,Type=String,Description="Probe base pair sequence">
+##INFO=<ID=PROBE_B,Number=1,Type=String,Description="Probe base pair sequence; not missing for strand-ambiguous SNPs">
+##INFO=<ID=SOURCE,Number=1,Type=String,Description="Probe source">
+##INFO=<ID=devR_AA,Number=1,Type=Float,Description="Standard deviation of normalized R for AA cluster">
+##INFO=<ID=devR_AB,Number=1,Type=Float,Description="Standard deviation of normalized R for AB cluster">
+##INFO=<ID=devR_BB,Number=1,Type=Float,Description="Standard deviation of normalized R for BB cluster">
+##INFO=<ID=devTHETA_AA,Number=1,Type=Float,Description="Standard deviation of normalized THETA for AA cluster">
+##INFO=<ID=devTHETA_AB,Number=1,Type=Float,Description="Standard deviation of normalized THETA for AB cluster">
+##INFO=<ID=devTHETA_BB,Number=1,Type=Float,Description="Standard deviation of normalized THETA for BB cluster">
+##INFO=<ID=devX_AA,Number=1,Type=Float,Description="Standard deviation of normalized X for AA cluster">
+##INFO=<ID=devX_AB,Number=1,Type=Float,Description="Standard deviation of normalized X for AB cluster">
+##INFO=<ID=devX_BB,Number=1,Type=Float,Description="Standard deviation of normalized X for BB cluster">
+##INFO=<ID=devY_AA,Number=1,Type=Float,Description="Standard deviation of normalized Y for AA cluster">
+##INFO=<ID=devY_AB,Number=1,Type=Float,Description="Standard deviation of normalized Y for AB cluster">
+##INFO=<ID=devY_BB,Number=1,Type=Float,Description="Standard deviation of normalized Y for BB cluster">
+##INFO=<ID=meanR_AA,Number=1,Type=Float,Description="Mean of normalized R for AA cluster">
+##INFO=<ID=meanR_AB,Number=1,Type=Float,Description="Mean of normalized R for AB cluster">
+##INFO=<ID=meanR_BB,Number=1,Type=Float,Description="Mean of normalized R for BB cluster">
+##INFO=<ID=meanTHETA_AA,Number=1,Type=Float,Description="Mean of normalized THETA for AA cluster">
+##INFO=<ID=meanTHETA_AB,Number=1,Type=Float,Description="Mean of normalized THETA for AB cluster">
+##INFO=<ID=meanTHETA_BB,Number=1,Type=Float,Description="Mean of normalized THETA for BB cluster">
+##INFO=<ID=meanX_AA,Number=1,Type=Float,Description="Mean of normalized X for AA cluster">
+##INFO=<ID=meanX_AB,Number=1,Type=Float,Description="Mean of normalized X for AB cluster">
+##INFO=<ID=meanX_BB,Number=1,Type=Float,Description="Mean of normalized X for BB cluster">
+##INFO=<ID=meanY_AA,Number=1,Type=Float,Description="Mean of normalized Y for AA cluster">
+##INFO=<ID=meanY_AB,Number=1,Type=Float,Description="Mean of normalized Y for AB cluster">
+##INFO=<ID=meanY_BB,Number=1,Type=Float,Description="Mean of normalized Y for BB cluster">
+##INFO=<ID=refSNP,Number=1,Type=String,Description="dbSNP rs ID">
+##INFO=<ID=zthresh_X,Number=1,Type=Float,Description="zCall X threshold">
+##INFO=<ID=zthresh_Y,Number=1,Type=Float,Description="zCall Y threshold">
+##NP(A)=NP(A)|Non-Polymorphic|17148|391
+##NP(C)=NP(C)|Non-Polymorphic|1093|6000
+##NP(G)=NP(G)|Non-Polymorphic|1286|5170
+##NP(T)=NP(T)|Non-Polymorphic|15772|304
+##NSB(Bgnd)Blue=NSB(Bgnd)Blue|Non-SpecificBinding|922|301
+##NSB(Bgnd)Green=NSB(Bgnd)Green|Non-SpecificBinding|842|238
+##NSB(Bgnd)Purple=NSB(Bgnd)Purple|Non-SpecificBinding|912|204
+##NSB(Bgnd)Red=NSB(Bgnd)Red|Non-SpecificBinding|1016|295
+##Restore=Restore|Restoration|961|374
+##String(MM)=String(MM)|Stringency|4768|259
+##String(PM)=String(PM)|Stringency|29830|468
+##TargetRemoval=TargetRemoval|TargetRemoval|2492|281
+##analysisVersionNumber=1
+##arrayType=PsychChip_v1-1_15073391_A1
+##autocallDate=08/17/2017 00:40
+##autocallGender=F
+##autocallVersion=2.0.0.137
+##chipWellBarcode=0816201804HC0_R01C01
+##clusterFile=PsychChip_v1-1_15073391_A1_ClusterFile.egt
+##content=PsychChip_v1-1_15073391_A1.1.2.extended.csv
+##contig=<ID=1,length=249250621,assembly=GRCh37>
+##contig=<ID=2,length=243199373,assembly=GRCh37>
+##contig=<ID=3,length=198022430,assembly=GRCh37>
+##contig=<ID=4,length=191154276,assembly=GRCh37>
+##contig=<ID=5,length=180915260,assembly=GRCh37>
+##contig=<ID=6,length=171115067,assembly=GRCh37>
+##contig=<ID=7,length=159138663,assembly=GRCh37>
+##contig=<ID=8,length=146364022,assembly=GRCh37>
+##contig=<ID=9,length=141213431,assembly=GRCh37>
+##contig=<ID=10,length=135534747,assembly=GRCh37>
+##contig=<ID=11,length=135006516,assembly=GRCh37>
+##contig=<ID=12,length=133851895,assembly=GRCh37>
+##contig=<ID=13,length=115169878,assembly=GRCh37>
+##contig=<ID=14,length=107349540,assembly=GRCh37>
+##contig=<ID=15,length=102531392,assembly=GRCh37>
+##contig=<ID=16,length=90354753,assembly=GRCh37>
+##contig=<ID=17,length=81195210,assembly=GRCh37>
+##contig=<ID=18,length=78077248,assembly=GRCh37>
+##contig=<ID=19,length=59128983,assembly=GRCh37>
+##contig=<ID=20,length=63025520,assembly=GRCh37>
+##contig=<ID=21,length=48129895,assembly=GRCh37>
+##contig=<ID=22,length=51304566,assembly=GRCh37>
+##contig=<ID=X,length=155270560,assembly=GRCh37>
+##contig=<ID=Y,length=59373566,assembly=GRCh37>
+##contig=<ID=MT,length=16569,assembly=GRCh37>
+##contig=<ID=GL000207.1,length=4262,assembly=GRCh37>
+##contig=<ID=GL000226.1,length=15008,assembly=GRCh37>
+##contig=<ID=GL000229.1,length=19913,assembly=GRCh37>
+##contig=<ID=GL000231.1,length=27386,assembly=GRCh37>
+##contig=<ID=GL000210.1,length=27682,assembly=GRCh37>
+##contig=<ID=GL000239.1,length=33824,assembly=GRCh37>
+##contig=<ID=GL000235.1,length=34474,assembly=GRCh37>
+##contig=<ID=GL000201.1,length=36148,assembly=GRCh37>
+##contig=<ID=GL000247.1,length=36422,assembly=GRCh37>
+##contig=<ID=GL000245.1,length=36651,assembly=GRCh37>
+##contig=<ID=GL000197.1,length=37175,assembly=GRCh37>
+##contig=<ID=GL000203.1,length=37498,assembly=GRCh37>
+##contig=<ID=GL000246.1,length=38154,assembly=GRCh37>
+##contig=<ID=GL000249.1,length=38502,assembly=GRCh37>
+##contig=<ID=GL000196.1,length=38914,assembly=GRCh37>
+##contig=<ID=GL000248.1,length=39786,assembly=GRCh37>
+##contig=<ID=GL000244.1,length=39929,assembly=GRCh37>
+##contig=<ID=GL000238.1,length=39939,assembly=GRCh37>
+##contig=<ID=GL000202.1,length=40103,assembly=GRCh37>
+##contig=<ID=GL000234.1,length=40531,assembly=GRCh37>
+##contig=<ID=GL000232.1,length=40652,assembly=GRCh37>
+##contig=<ID=GL000206.1,length=41001,assembly=GRCh37>
+##contig=<ID=GL000240.1,length=41933,assembly=GRCh37>
+##contig=<ID=GL000236.1,length=41934,assembly=GRCh37>
+##contig=<ID=GL000241.1,length=42152,assembly=GRCh37>
+##contig=<ID=GL000243.1,length=43341,assembly=GRCh37>
+##contig=<ID=GL000242.1,length=43523,assembly=GRCh37>
+##contig=<ID=GL000230.1,length=43691,assembly=GRCh37>
+##contig=<ID=GL000237.1,length=45867,assembly=GRCh37>
+##contig=<ID=GL000233.1,length=45941,assembly=GRCh37>
+##contig=<ID=GL000204.1,length=81310,assembly=GRCh37>
+##contig=<ID=GL000198.1,length=90085,assembly=GRCh37>
+##contig=<ID=GL000208.1,length=92689,assembly=GRCh37>
+##contig=<ID=GL000191.1,length=106433,assembly=GRCh37>
+##contig=<ID=GL000227.1,length=128374,assembly=GRCh37>
+##contig=<ID=GL000228.1,length=129120,assembly=GRCh37>
+##contig=<ID=GL000214.1,length=137718,assembly=GRCh37>
+##contig=<ID=GL000221.1,length=155397,assembly=GRCh37>
+##contig=<ID=GL000209.1,length=159169,assembly=GRCh37>
+##contig=<ID=GL000218.1,length=161147,assembly=GRCh37>
+##contig=<ID=GL000220.1,length=161802,assembly=GRCh37>
+##contig=<ID=GL000213.1,length=164239,assembly=GRCh37>
+##contig=<ID=GL000211.1,length=166566,assembly=GRCh37>
+##contig=<ID=GL000199.1,length=169874,assembly=GRCh37>
+##contig=<ID=GL000217.1,length=172149,assembly=GRCh37>
+##contig=<ID=GL000216.1,length=172294,assembly=GRCh37>
+##contig=<ID=GL000215.1,length=172545,assembly=GRCh37>
+##contig=<ID=GL000205.1,length=174588,assembly=GRCh37>
+##contig=<ID=GL000219.1,length=179198,assembly=GRCh37>
+##contig=<ID=GL000224.1,length=179693,assembly=GRCh37>
+##contig=<ID=GL000223.1,length=180455,assembly=GRCh37>
+##contig=<ID=GL000195.1,length=182896,assembly=GRCh37>
+##contig=<ID=GL000212.1,length=186858,assembly=GRCh37>
+##contig=<ID=GL000222.1,length=186861,assembly=GRCh37>
+##contig=<ID=GL000200.1,length=187035,assembly=GRCh37>
+##contig=<ID=GL000193.1,length=189789,assembly=GRCh37>
+##contig=<ID=GL000194.1,length=191469,assembly=GRCh37>
+##contig=<ID=GL000225.1,length=211173,assembly=GRCh37>
+##contig=<ID=GL000192.1,length=547496,assembly=GRCh37>
+##contig=<ID=NC_007605,length=171823,assembly=NC_007605.1>
+##expectedGender=Female
+##extendedIlluminaManifestVersion=1.2
+##extendedManifestFile=PsychChip_v1-1_15073391_A1.1.2.extended.csv
+##fileDate=Thu Aug 17 00:44:56 UTC 2017
+##fingerprintGender=Unknown
+##genomeBuild=HG19
+##imagingDate=8/14/2015 7:27:49 PM
+##manifestFile=PsychChip_v1-1_15073391_A1.csv
+##p95Green=7373
+##p95Red=22526
+##picardVersion=1.1222-SNAPSHOT
+##reference=/cromwell_root/broad-references/hg19/v0/Homo_sapiens_assembly19.fasta
+##sampleAlias=NA12878
+##scannerName=N0700
+##source=BPM file
+##zcallThresholds=thresholds.7.txt
+##zcallVersion=1.0.0.0
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	0816201804HC0_R01C01
+2	25384456	.	C	T	.	.	AC=0;AF=0.00;ALLELE_A=T;ALLELE_B=C*;AN=2;BEADSET_ID=860;GC_SCORE=0.885;ILLUMINA_BUILD=37.1;ILLUMINA_CHR=2;ILLUMINA_POS=21230514;ILLUMINA_STRAND=TOP;N_AA=0;N_AB=0;N_BB=1251;PROBE_A=GTTTTCCATTAAGGTTAACAGGGAAGATAGACTTCCTGAATAACTATGCA;PROBE_B=.;SOURCE=ExomeSNPs;devR_AA=0.1;devR_AB=0.1;devR_BB=0.1;devTHETA_AA=0.022;devTHETA_AB=0.022;devTHETA_BB=0.014;devX_AA=0.099;devX_AB=0.052;devX_BB=0.014;devY_AA=0.021;devY_AB=0.051;devY_BB=0.095;meanR_AA=0.639;meanR_AB=0.76;meanR_BB=0.655;meanTHETA_AA=0.024;meanTHETA_AB=0.492;meanTHETA_BB=0.96;meanX_AA=0.616;meanX_AB=0.385;meanX_BB=0.039;meanY_AA=0.023;meanY_AB=0.375;meanY_BB=0.616;refSNP=rs72653099;zthresh_X=0.129168772932;zthresh_Y=0.162602617756	GT:BAF:GTA:GTZ:IGC:LRR:NORMX:NORMY:R:THETA:X:Y	0/0:0.999:0/0:0/0:0.488:-0.035:0.039:0.6:0.639:0.959:1112:3435

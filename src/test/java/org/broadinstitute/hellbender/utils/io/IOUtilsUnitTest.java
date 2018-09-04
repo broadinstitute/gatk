@@ -1,63 +1,55 @@
 package org.broadinstitute.hellbender.utils.io;
 
+import com.google.common.jimfs.Configuration;
+import com.google.common.jimfs.Jimfs;
 import org.apache.logging.log4j.core.util.FileUtils;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
-import org.broadinstitute.hellbender.utils.test.MiniClusterUtils;
+import org.broadinstitute.hellbender.testutils.BaseTest;
+import org.broadinstitute.hellbender.testutils.MiniClusterUtils;
 import org.testng.Assert;
 import org.testng.SkipException;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.*;
 import java.util.Arrays;
 import java.util.Random;
+import java.util.UUID;
 
 public final class IOUtilsUnitTest extends GATKBaseTest {
 
+    private FileSystem jimfs;
+
+    @BeforeClass
+    public void setUp() {
+        jimfs = Jimfs.newFileSystem(Configuration.unix());
+    }
+    @AfterClass
+    public void tearDown() {
+        try {
+            jimfs.close();
+        } catch (final IOException e) {
+            log("Unable to close JimFS");
+        }
+    }
+
     @Test
     public void testTempDir() {
-        File tempDir = IOUtils.tempDir("Q-Unit-Test", "", new File("queueTempDirToDelete"));
+        File tempDir = IOUtils.createTempDir("Q-Unit-Test");
         Assert.assertTrue(tempDir.exists());
         Assert.assertFalse(tempDir.isFile());
         Assert.assertTrue(tempDir.isDirectory());
         boolean deleted = IOUtils.tryDelete(tempDir);
         Assert.assertTrue(deleted);
         Assert.assertFalse(tempDir.exists());
-    }
-
-    @Test
-    public void testAbsolute() {
-        File dir = IOUtils.absolute(new File("/path/./to/./directory/."));
-        Assert.assertEquals(dir, new File("/path/to/directory"));
-
-        dir = IOUtils.absolute(new File("/"));
-        Assert.assertEquals(dir, new File("/"));
-
-        dir = IOUtils.absolute(new File("/."));
-        Assert.assertEquals(dir, new File("/"));
-
-        dir = IOUtils.absolute(new File("/././."));
-        Assert.assertEquals(dir, new File("/"));
-
-        dir = IOUtils.absolute(new File("/./directory/."));
-        Assert.assertEquals(dir, new File("/directory"));
-
-        dir = IOUtils.absolute(new File("/./directory/./"));
-        Assert.assertEquals(dir, new File("/directory"));
-
-        dir = IOUtils.absolute(new File("/./directory./"));
-        Assert.assertEquals(dir, new File("/directory."));
-
-        dir = IOUtils.absolute(new File("/./.directory/"));
-        Assert.assertEquals(dir, new File("/.directory"));
     }
 
     @Test
@@ -180,10 +172,37 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
         innerTestGetPath(NA12878_20_21_WGS_bam);
     }
 
+    @Test
+    public void testGetPathHandlesIntervals() throws IOException {
+        // Make sure we don't crash if passing intervals to getPath.
+        // Also, it shouldn't crash when we check whether the file exists.
+        Assert.assertFalse(Files.exists(IOUtils.getPath("chr1:10-11")));
+        Assert.assertFalse(Files.exists(IOUtils.getPath("chr1:10")));
+        Assert.assertFalse(Files.exists(IOUtils.getPath("1:10-11")));
+        Assert.assertFalse(Files.exists(IOUtils.getPath("1:10")));
+    }
+
     private void innerTestGetPath(String s) throws IOException {
         Path p = IOUtils.getPath(s);
         long size = Files.size(p);
         Assert.assertTrue(size>0);
+    }
+
+    @DataProvider
+    public Object[][] absoluteNames() {
+        return new Object[][] {
+                {"relative/example.txt", new File("relative/example.txt").getAbsolutePath()},
+                {"/local/example.txt", "/local/example.txt"},
+                // note that path normalization removes the extra / in file://
+                {"/local/file://example.txt", "/local/file:/example.txt"},
+                {"file:///local/example.txt", "/local/example.txt"},
+                {"gs://dir/example.txt", "gs://dir/example.txt"}
+        };
+    }
+
+    @Test(dataProvider = "absoluteNames")
+    public void testGetAbsolutePathWithoutFileProtocol(final String uriString, final String expected) {
+        Assert.assertEquals(IOUtils.getAbsolutePathWithoutFileProtocol(IOUtils.getPath(uriString)), expected);
     }
 
     @Test
@@ -241,4 +260,114 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
         IOUtils.createDirectory(tempPath.toUri().toString());
         Assert.assertTrue(java.nio.file.Files.exists(tempPath));
     }
+
+    @DataProvider(name="urlEncodeDecode")
+    public Object[][] urlEncodeDecode() {
+        return new Object[][]{
+                // string, url encoding
+                { "string", "string"},
+                { "string.", "string."},
+                { "string1", "string1"},
+                { "string with space", "string+with+space"},
+                { "string://", "string%3A%2F%2F"},
+        };
+    }
+
+    @Test(dataProvider = "urlEncodeDecode")
+    public void testUrlEncodeDecode(final String string, final String encoded) {
+        Assert.assertEquals(IOUtils.urlEncode(string), encoded);
+        Assert.assertEquals(string, IOUtils.urlDecode(encoded));
+    }
+
+    @DataProvider(name="resourcePaths")
+    public Object[][] getResourcePaths() {
+        final String testResourceContents = "this is a test resource file";
+        return new Object[][] {
+                { Resource.LARGE_RUNTIME_RESOURCES_PATH + "/testResourceFile.txt", null , testResourceContents},
+                { "testResourceFile.txt", IOUtils.class , testResourceContents},
+        };
+    }
+
+    @Test(dataProvider = "resourcePaths")
+    public void testWriteTempResource(
+            final String resourcePath, final Class<?> relativeClass, final String expectedFirstLine) throws IOException
+    {
+        final Resource largeResource = new Resource(resourcePath, relativeClass);
+        final File resourceFile = IOUtils.writeTempResource(largeResource);
+        final String resourceContentsFirstLine = getFirstLineAndDeleteTempFile(resourceFile);
+        Assert.assertEquals(resourceContentsFirstLine, expectedFirstLine);
+    }
+
+    @Test(dataProvider = "resourcePaths")
+    public void testWriteTempResourceFromPath(
+            final String resourcePath, final Class<?> relativeClass, final String expectedFirstLine) throws IOException
+    {
+        final File resourceFile = IOUtils.writeTempResourceFromPath(resourcePath, relativeClass);
+        final String resourceContentsFirstLine = getFirstLineAndDeleteTempFile(resourceFile);
+        Assert.assertEquals(resourceContentsFirstLine, expectedFirstLine);
+    }
+
+    @Test
+    public void testCreateTempFileInDirectory() {
+        final File tempDir = createTempDir("testCreateTempFileInDirectory");
+        final File tempFile = IOUtils.createTempFileInDirectory("testCreateTempFileInDirectory", ".txt", tempDir);
+        Assert.assertTrue(tempFile.exists(), "file was not written to temp file: " + tempFile);
+        Assert.assertEquals(tempFile.getParentFile().getAbsolutePath(), (tempDir.getAbsolutePath()),
+                "file was not written to temp file: " + tempFile + " in dir: " + tempDir);
+    }
+
+    @DataProvider
+    public Object[][] tmpPathDirs() throws Exception {
+        return new Object[][] {
+                {createTempDir("local").toPath()},
+                {Files.createDirectory(jimfs.getPath("tmp"))}
+        };
+    }
+
+    @Test(dataProvider = "tmpPathDirs", singleThreaded = true)
+    public void testTempPath(final Path tempDir) throws Exception {
+        // store the previous tmp.dir to check that it is working
+        final String previousTmpDir = System.getProperty("java.io.tmpdir");
+        try {
+            System.setProperty("java.io.tmpdir", IOUtils.getAbsolutePathWithoutFileProtocol(tempDir));
+            final Path tempFile = IOUtils.createTempPath(UUID.randomUUID().toString(), ".txt");
+            Assert.assertTrue(Files.exists(tempFile),
+                    "file was not written to temp file: " + tempFile);
+            Assert.assertEquals(tempFile.getParent().toUri().toString(), tempDir.toUri().toString(),
+                    "file was not written to temp file: " + tempFile + " in dir: " + tempDir);
+        } finally {
+            System.setProperty("java.io.tmpdir", previousTmpDir);
+        }
+    }
+
+    private String getFirstLineAndDeleteTempFile(final File tempResourceFile) throws IOException {
+        String resourceContentsFirstLine = "";
+        try (final FileReader fr = new FileReader(tempResourceFile);
+             final BufferedReader br = new BufferedReader(fr)) {
+            resourceContentsFirstLine = br.readLine();
+        }
+        finally {
+            tempResourceFile.delete();
+        }
+        return resourceContentsFirstLine;
+    }
+
+    @DataProvider
+    private Object[][] getIsHDF5TestFiles() {
+        return new Object[][] {
+                { getToolTestDataDir() + "/isValidHDF5.hdf5", true },
+                { getToolTestDataDir() + "isValidHDF5.ext", true },
+                { getToolTestDataDir() + "/isTSV.tsv", false },
+                { getToolTestDataDir() + "/isTSV.hdf", false },
+                { getToolTestDataDir() + "/isTSV.hdf5", false },
+                { getToolTestDataDir() + "/isEmpty.txt", false },
+        };
+    }
+
+    @Test(dataProvider = "getIsHDF5TestFiles")
+    public void testIsHDF5File(final String filePath, final boolean expected) {
+        final Path testPath = Paths.get(filePath);
+        Assert.assertEquals(IOUtils.isHDF5File(testPath), expected);
+    }
+
 }

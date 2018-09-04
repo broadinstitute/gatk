@@ -8,7 +8,6 @@ import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.RandomGeneratorFactory;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.copynumber.utils.optimization.PersistenceOptimizer;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.MathUtils;
@@ -31,51 +30,46 @@ import java.util.stream.IntStream;
  * </p>
  *
  * <p>
- * Given <i>N</i> sequential data points of type {@code DATA} to segment, the basic steps of the method are:
+ *     Given <i>N</i> sequential data points of type {@code DATA} to segment, the basic steps of the method are:
  *
  * <ol>
- *     1) Select <i>C<sub>max</sub></i>, the maximum number of changepoints to discover.
+ *     <li>
+ *         Select <i>C<sub>max</sub></i>, the maximum number of changepoints to discover.
+ *     </li>
+ *     <li>
+ *         Select a kernel (linear for sensitivity to changes in the distribution mean,
+ *         Gaussian with a specified variance for multimodal data, etc.)
+ *         and a subsample of <i>p</i> points to approximate it using singular value decomposition.
+ *         This is provided via a lambda of the form {@code (DATA, DATA) -> double}.
+ *     </li>
+ *     <li>
+ *         Select window sizes <i>w<sub>j</sub></i> for which to calculate local costs at each point.
+ *         To be precise, we calculate the cost of a changepoint at the point with index <i>i</i>,
+ *         assuming adjacent segments containing the points with indices <i>[i - w<sub>j</sub> + 1, i]</i>
+ *         and <i>[i + 1, i + w<sub>j</sub>]</i>.
+ *     </li>
+ *     <li>
+ *         For each of these cost functions, find (up to) the  <i>C<sub>max</sub></i> most significant local minima.
+ *         The problem of finding local minima of a noisy function can be solved by using topological persistence
+ *         (see, e.g., <a href="https://people.mpi-inf.mpg.de/~weinkauf/notes/persistence1d.html">https://people.mpi-inf.mpg.de/~weinkauf/notes/persistence1d.html</a>
+ *         and <a href="http://www2.iap.fr/users/sousbie/web/html/indexd3dd.html?post/Persistence-and-simplification">http://www2.iap.fr/users/sousbie/web/html/indexd3dd.html?post/Persistence-and-simplification</a>).
+ *     </li>
+ *     <li>
+ *         These sets of local minima from all window sizes together provide the pool of candidate changepoints
+ *         (some of which may overlap exactly or approximately).  We perform backward selection using the global segmentation cost.
+ *         That is, we calculate the global segmentation cost given all the candidate changepoints,
+ *         calculate the cost change for removing each of the changepoints individually,
+ *         remove the changepoint with the minimum cost change, and repeat.
+ *         This gives the global cost as a function of the number of changepoints <i>C</i>.
+ *     </li>
+ *     <li>
+ *         Add a penalty <i>A * C + B * C * log (N / C)</i> to the global cost and find the minimum to determine the
+ *         number of changepoints, where <i>A</i> and <i>B</i> are specified penalty factors.
+ *     </li>
  * </ol>
- * <ol>
- *     2) Select a kernel (linear for sensitivity to changes in the distribution mean,
- *     Gaussian with a specified variance for multimodal data, etc.)
- *     and a subsample of <i>p</i> points to approximate it using singular value decomposition.
- *     This is provided via a lambda of the form {@code (DATA, DATA) -> double}.
- * </ol>
- * <ol>
- *     3) Select window sizes <i>w<sub>j</sub></i> for which to calculate local costs at each point.
- *     To be precise, we calculate the cost of a changepoint at the point with index <i>i</i>,
- *     assuming adjacent segments containing the points with indices <i>[i - w<sub>j</sub> + 1, i]</i>
- *     and <i>[i + 1, i + w<sub>j</sub>]</i>.
- * </ol>
- * <ol>
- *     4) For each of these cost functions, find (up to) the  <i>C<sub>max</sub></i> most significant local minima.
- *     The problem of finding local minima of a noisy function can be solved by using topological persistence
- *     (e.g., <a href="https://people.mpi-inf.mpg.de/~weinkauf/notes/persistence1d.html">https://people.mpi-inf.mpg.de/~weinkauf/notes/persistence1d.html</a>
- *     and <a href="http://www2.iap.fr/users/sousbie/web/html/indexd3dd.html?post/Persistence-and-simplification">http://www2.iap.fr/users/sousbie/web/html/indexd3dd.html?post/Persistence-and-simplification</a>).
- * </ol>
- * <ol>
- *     5) These sets of local minima from all window sizes together provide the pool of candidate changepoints
- *     (some of which may overlap exactly or approximately).  We perform backward selection using the global segmentation cost.
- *     That is, we calculate the global segmentation cost given all the candidate changepoints,
- *     calculate the cost change for removing each of the changepoints individually,
- *     remove the changepoint with the minimum cost change, and repeat.
- *     This gives the global cost as a function of the number of changepoints <i>C</i>.
- * </ol>
- * <ol>
- *     6) Add a penalty <i>A * C + B * C * log (N / C)</i> to the global cost and find the minimum to determine the
- *     number of changepoints, where <i>A</i> and <i>B</i> are specified penalty factors.
- *
- * </ol>
- * </p>
- *
- * <p>
- * See discussion at <a href="https://github.com/broadinstitute/gatk/issues/2858#issuecomment-324125586">https://github.com/broadinstitute/gatk/issues/2858#issuecomment-324125586</a>
- * and accompanying plots for more detail.
- * </p>
  *
  * <p>
- * Note that we break with camelCase naming convention in places to match some notation in the paper
+ *     Note that we break with camelCase naming convention in places to match some notation in the paper
  * </p>
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
@@ -134,18 +128,18 @@ public final class KernelSegmenter<DATA> {
             return Collections.emptyList();
         }
 
-        logger.info(String.format("Finding up to %d changepoints in %d data points...", maxNumChangepoints, data.size()));
+        logger.debug(String.format("Finding up to %d changepoints in %d data points...", maxNumChangepoints, data.size()));
         final RandomGenerator rng = RandomGeneratorFactory.createRandomGenerator(new Random(RANDOM_SEED));
 
-        logger.info("Calculating low-rank approximation to kernel matrix...");
+        logger.debug("Calculating low-rank approximation to kernel matrix...");
         final RealMatrix reducedObservationMatrix = calculateReducedObservationMatrix(rng, data, kernel, kernelApproximationDimension);
         final double[] kernelApproximationDiagonal = calculateKernelApproximationDiagonal(reducedObservationMatrix);
 
-        logger.info(String.format("Finding changepoint candidates for all window sizes %s...", windowSizes.toString()));
+        logger.debug(String.format("Finding changepoint candidates for all window sizes %s...", windowSizes.toString()));
         final List<Integer> changepointCandidates = findChangepointCandidates(
                 data, reducedObservationMatrix, kernelApproximationDiagonal, maxNumChangepoints, windowSizes);
 
-        logger.info("Performing backward model selection on changepoint candidates...");
+        logger.debug("Performing backward model selection on changepoint candidates...");
         return selectChangepoints(
                 changepointCandidates, maxNumChangepoints, numChangepointsPenaltyLinearFactor, numChangepointsPenaltyLogLinearFactor,
                 reducedObservationMatrix, kernelApproximationDiagonal).stream()
@@ -198,19 +192,19 @@ public final class KernelSegmenter<DATA> {
                                                                        final BiFunction<DATA, DATA, Double> kernel,
                                                                        final int kernelApproximationDimension) {
         if (kernelApproximationDimension > data.size()) {
-            logger.warn("Specified dimension of the kernel approximation exceeds the number of data points to segment; " +
-                    "using all data points to calculate kernel matrix.");
+            logger.warn(String.format("Specified dimension of the kernel approximation (%d) exceeds the number of data points (%d) to segment; " +
+                    "using all data points to calculate kernel matrix.", kernelApproximationDimension, data.size()));
         }
 
         //subsample data with replacement
         final int numSubsample = Math.min(kernelApproximationDimension, data.size());
-        logger.info(String.format("Subsampling %d points from data to find kernel approximation...", numSubsample));
+        logger.debug(String.format("Subsampling %d points from data to find kernel approximation...", numSubsample));
         final List<DATA> dataSubsample = numSubsample == data.size()
                 ? data
-                : IntStream.range(0, numSubsample).boxed().map(i -> data.get(rng.nextInt(data.size()))).collect(Collectors.toList());
+                : IntStream.range(0, numSubsample).mapToObj(i -> data.get(rng.nextInt(data.size()))).collect(Collectors.toList());
 
         //calculate (symmetric) kernel matrix of subsampled data
-        logger.info(String.format("Calculating kernel matrix of subsampled data (%d x %d)...", numSubsample, numSubsample));
+        logger.debug(String.format("Calculating kernel matrix of subsampled data (%d x %d)...", numSubsample, numSubsample));
         final RealMatrix subKernelMatrix = new Array2DRowRealMatrix(numSubsample, numSubsample);
         for (int i = 0; i < numSubsample; i++) {
             for (int j = 0; j < i; j++) {
@@ -222,11 +216,11 @@ public final class KernelSegmenter<DATA> {
         }
 
         //perform SVD of kernel matrix of subsampled data
-        logger.info(String.format("Performing SVD of kernel matrix of subsampled data (%d x %d)...", numSubsample, numSubsample));
+        logger.debug(String.format("Performing SVD of kernel matrix of subsampled data (%d x %d)...", numSubsample, numSubsample));
         final SingularValueDecomposition svd = new SingularValueDecomposition(subKernelMatrix);
 
         //calculate reduced observation matrix
-        logger.info(String.format("Calculating reduced observation matrix (%d x %d)...", data.size(), numSubsample));
+        logger.debug(String.format("Calculating reduced observation matrix (%d x %d)...", data.size(), numSubsample));
         final double[] invSqrtSingularValues = Arrays.stream(svd.getSingularValues()).map(Math::sqrt).map(x -> 1. / (x + EPSILON)).toArray();
         final RealMatrix subKernelUMatrix = new Array2DRowRealMatrix(numSubsample, numSubsample);
         subKernelUMatrix.walkInOptimizedOrder(new DefaultRealMatrixChangingVisitor() {
@@ -267,7 +261,7 @@ public final class KernelSegmenter<DATA> {
             logger.debug(String.format("Calculating local changepoints costs for window size %d...", windowSize));
             if (windowSize > data.size()) {
                 logger.warn(String.format("Number of points needed to calculate local changepoint costs (2 * window size = %d) " +
-                        "exceeds number of data points %d.  Local changepoint costs will not be calculated for this window size.",
+                        "exceeds number of data points (%d).  Local changepoint costs will not be calculated for this window size.",
                         2 * windowSize, data.size()));
                 continue;
             }
@@ -281,7 +275,7 @@ public final class KernelSegmenter<DATA> {
         }
 
         if (changepointCandidates.isEmpty()) {
-            throw new GATKException.ShouldNeverReachHereException("No changepoint candidates found.");
+            logger.warn("No changepoint candidates were found.  The specified window sizes may be inappropriate, or there may be insufficient data points");
         }
 
         return changepointCandidates;
@@ -299,8 +293,8 @@ public final class KernelSegmenter<DATA> {
 
         //calculate penalties as a function of the number of changepoints
         final int numData = reducedObservationMatrix.getRowDimension();
-        final List<Double> changepointPenalties = IntStream.range(0, maxNumChangepoints + 1).boxed()
-                .map(numChangepoints -> calculateChangepointPenalty(
+        final List<Double> changepointPenalties = IntStream.range(0, maxNumChangepoints + 1)
+                .mapToObj(numChangepoints -> calculateChangepointPenalty(
                         numChangepoints, numChangepointsPenaltyLinearFactor, numChangepointsPenaltyLogLinearFactor, numData))
                 .collect(Collectors.toList());
 
@@ -311,18 +305,18 @@ public final class KernelSegmenter<DATA> {
         final List<Integer> candidateEnds = changepointCandidates.stream().sorted().distinct().collect(Collectors.toList());
         candidateEnds.add(numData - 1);
         final int numSegments = candidateStarts.size();
-        final List<Segment> segments = IntStream.range(0, numSegments).boxed()
-                .map(i -> new Segment(candidateStarts.get(i), candidateEnds.get(i), reducedObservationMatrix, kernelApproximationDiagonal))
+        final List<Segment> segments = IntStream.range(0, numSegments)
+                .mapToObj(i -> new Segment(candidateStarts.get(i), candidateEnds.get(i), reducedObservationMatrix, kernelApproximationDiagonal))
                 .collect(Collectors.toList());
         final List<Double> totalSegmentationCosts = new ArrayList<>(Collections.singletonList(segments.stream().mapToDouble(s -> s.cost).sum()));
-        final List<Double> costsForSegmentPairs = IntStream.range(0, numSegments - 1).boxed()
-                .map(i -> segments.get(i).cost + segments.get(i + 1).cost)
+        final List<Double> costsForSegmentPairs = IntStream.range(0, numSegments - 1)
+                .mapToObj(i -> segments.get(i).cost + segments.get(i + 1).cost)
                 .collect(Collectors.toList());  //sum of the costs for the segments in each adjacent pair
-        final List<Double> costsForMergedSegmentPairs = IntStream.range(0, numSegments - 1).boxed()
-                .map(i -> new Segment(candidateStarts.get(i), candidateEnds.get(i + 1), reducedObservationMatrix, kernelApproximationDiagonal).cost)
+        final List<Double> costsForMergedSegmentPairs = IntStream.range(0, numSegments - 1)
+                .mapToObj(i -> new Segment(candidateStarts.get(i), candidateEnds.get(i + 1), reducedObservationMatrix, kernelApproximationDiagonal).cost)
                 .collect(Collectors.toList());  //cost of each adjacent pair when considered as a single segment
-        final List<Double> costsForMergingSegmentPairs = IntStream.range(0, numSegments - 1).boxed()
-                .map(i -> costsForSegmentPairs.get(i) - costsForMergedSegmentPairs.get(i))
+        final List<Double> costsForMergingSegmentPairs = IntStream.range(0, numSegments - 1)
+                .mapToObj(i -> costsForSegmentPairs.get(i) - costsForMergedSegmentPairs.get(i))
                 .collect(Collectors.toList());  //cost for merging each adjacent pair into a single segment
 
         //iteratively merge the segment pair with greatest merge cost and update all costs until only a single segment remains
@@ -361,8 +355,8 @@ public final class KernelSegmenter<DATA> {
 
         //find optimal number of changepoints according to penalty function
         final int effectiveMaxNumChangepoints = Math.min(maxNumChangepoints, changepoints.size());
-        final List<Double> totalSegmentationCostsPlusPenalties = IntStream.range(0, effectiveMaxNumChangepoints + 1).boxed()
-                .map(i -> totalSegmentationCosts.get(i) + changepointPenalties.get(i))
+        final List<Double> totalSegmentationCostsPlusPenalties = IntStream.range(0, effectiveMaxNumChangepoints + 1)
+                .mapToObj(i -> totalSegmentationCosts.get(i) + changepointPenalties.get(i))
                 .collect(Collectors.toList());
         final int numChangepointsOptimal = totalSegmentationCostsPlusPenalties.indexOf(Collections.min(totalSegmentationCostsPlusPenalties));
 

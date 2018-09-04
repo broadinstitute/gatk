@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.variantcontext.*;
-import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -80,8 +79,16 @@ public final class AlleleSubsettingUtils {
             }
 
             final boolean useNewLikelihoods = newLikelihoods != null && (depth != 0 || GATKVariantContextUtils.isInformative(newLikelihoods));
-            final GenotypeBuilder gb = useNewLikelihoods ? new GenotypeBuilder(g).PL(newLikelihoods).log10PError(newLog10GQ) : new GenotypeBuilder(g).noPL().noGQ();
-
+            final GenotypeBuilder gb = new GenotypeBuilder(g);
+            if (useNewLikelihoods) {
+                final Map<String, Object> attributes = new HashMap<>(g.getExtendedAttributes());
+                gb.PL(newLikelihoods).log10PError(newLog10GQ);
+                attributes.remove(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY);
+                gb.noAttributes().attributes(attributes);
+            }
+            else {
+                gb.noPL().noGQ();
+            }
             GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(), gb, assignmentMethod, newLikelihoods, allelesToKeep);
 
             // restrict SAC to the new allele subset
@@ -187,7 +194,7 @@ public final class AlleleSubsettingUtils {
      *
      * @param vc target variant context.
      * @param numAltAllelesToKeep number of alt alleles to keep.
-     * @return the list of alleles to keep, including the reference and {@link GATKVCFConstants#NON_REF_SYMBOLIC_ALLELE} if present
+     * @return the list of alleles to keep, including the reference and {@link Allele#NON_REF_ALLELE} if present
      *
      */
     public static List<Allele> calculateMostLikelyAlleles(final VariantContext vc, final int defaultPloidy,
@@ -196,7 +203,7 @@ public final class AlleleSubsettingUtils {
         Utils.validateArg(defaultPloidy > 0, () -> "default ploidy must be > 0 but defaultPloidy=" + defaultPloidy);
         Utils.validateArg(numAltAllelesToKeep > 0, () -> "numAltAllelesToKeep must be > 0, but numAltAllelesToKeep=" + numAltAllelesToKeep);
 
-        final boolean hasSymbolicNonRef = vc.hasAllele(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE);
+        final boolean hasSymbolicNonRef = vc.hasAllele(Allele.NON_REF_ALLELE);
         final int numberOfAllelesThatArentProperAlts = hasSymbolicNonRef ? 2 : 1; 
         final int numberOfProperAltAlleles = vc.getNAlleles() - numberOfAllelesThatArentProperAlts;
 
@@ -210,13 +217,13 @@ public final class AlleleSubsettingUtils {
 
 
     /**
-     * @return a list of the best proper alt alleles based on the likelihood sums, keeping the reference allele and {@link GATKVCFConstants#NON_REF_SYMBOLIC_ALLELE}
+     * @return a list of the best proper alt alleles based on the likelihood sums, keeping the reference allele and {@link Allele#NON_REF_ALLELE}
      * the list will include no more than {@code numAltAllelesToKeep + 2} alleles and will maintain the order of the original alleles in {@code vc}
      *
      */
     @VisibleForTesting
     static List<Allele> filterToMaxNumberOfAltAllelesBasedOnScores(int numAltAllelesToKeep, List<Allele> alleles, double[] likelihoodSums) {
-        final int nonRefAltAlleleIndex = alleles.indexOf(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE);
+        final int nonRefAltAlleleIndex = alleles.indexOf(Allele.NON_REF_ALLELE);
         final int numAlleles = alleles.size();
         final Set<Integer> properAltIndexesToKeep = IntStream.range(1, numAlleles).filter(n -> n != nonRefAltAlleleIndex).boxed()
                                                              .sorted(Comparator.comparingDouble((Integer n) -> likelihoodSums[n]).reversed())

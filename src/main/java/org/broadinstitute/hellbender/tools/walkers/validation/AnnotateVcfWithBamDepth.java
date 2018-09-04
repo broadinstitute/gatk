@@ -9,7 +9,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
+import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -37,7 +37,7 @@ import java.util.Set;
  * <h3>Example</h3>
  *
  * <pre>
- * gatk-launch --javaOptions "-Xmx4g" AnnotateVcfWithBamDepth \
+ * gatk --java-options "-Xmx4g" AnnotateVcfWithBamDepth \
  *   -V input.vcf \
  *   -I reads.bam \
  *   -O output.vcf
@@ -48,7 +48,7 @@ import java.util.Set;
 @CommandLineProgramProperties(
         summary = "Annotate a vcf with a bam's read depth at each variant locus",
         oneLineSummary = "(Internal) Annotate a vcf with a bam's read depth at each variant locus",
-        programGroup = VariantProgramGroup.class
+        programGroup = VariantEvaluationProgramGroup.class
 )
 @DocumentedFeature
 public class AnnotateVcfWithBamDepth extends VariantWalker {

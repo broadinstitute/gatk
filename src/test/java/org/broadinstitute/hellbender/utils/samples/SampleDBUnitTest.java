@@ -112,6 +112,15 @@ public class SampleDBUnitTest extends GATKBaseTest {
     }
 
     @Test()
+    public void testAddSamplesFromSampleNames() {
+        List<String> names = new ArrayList<>();
+        testSAMSamples.forEach(s -> names.add(s.getID()));
+        builder.addSamplesFromSampleNames(names);
+        SampleDB db = builder.getFinalSampleDB();
+        Assert.assertEquals(db.getSamples(), testSAMSamples);
+    }
+
+    @Test()
     public void loadDuplicateData() {
         builder.addSamplesFromPedigreeFiles(Arrays.asList(testPED));
         builder.addSamplesFromPedigreeFiles(Arrays.asList(testPED));
@@ -123,7 +132,7 @@ public class SampleDBUnitTest extends GATKBaseTest {
     public void loadNonExistentFile() {
         builder.addSamplesFromPedigreeFiles(Arrays.asList(GATKBaseTest.getSafeNonExistentFile("non-existence-file.txt")));
         SampleDB db = builder.getFinalSampleDB();
-        Assert.assertEquals(testSAMSamples, db.getSamples());
+        Assert.assertEquals(db.getSamples(), testSAMSamples);
     }
 
     @Test(expectedExceptions = UserException.class)

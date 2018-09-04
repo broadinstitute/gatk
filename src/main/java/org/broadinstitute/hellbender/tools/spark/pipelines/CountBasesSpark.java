@@ -7,16 +7,46 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.CoverageAnalysisProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.PrintStream;
 
-@CommandLineProgramProperties(summary = "Counts bases in the input SAM/BAM",
-        oneLineSummary = "CountBases on Spark",
-        programGroup = SparkProgramGroup.class)
+/**
+ * Calculate the overall number of bases SAM/BAM/CRAM file
+ *
+ * <h3>Input</h3>
+ * <ul>
+ *     <li>A single BAM file</li>
+ * </ul>
+ *
+ * <h3>Output</h3>
+ * <ul>
+ *     <li>A text file containing number of bases</li>
+ * </ul>
+ *
+ * <h3>Example</h3>
+ *
+ * <h4>Output base count to file</h4>
+ * <pre>
+ *   gatk CountBasesSpark \
+ *     -I input_reads.bam \
+ *     -O base_count.txt
+ * </pre>
+ *
+ * <h4>Print base count</h4>
+ * <pre>
+ *     gatk CountBasesSpark \
+ *       -I input_reads.bam
+ * </pre>
+ */
+@CommandLineProgramProperties(
+        summary = "Counts bases in the input SAM/BAM",
+        oneLineSummary = "Counts bases in the input SAM/BAM",
+        programGroup = CoverageAnalysisProgramGroup.class
+)
 @DocumentedFeature
 @BetaFeature
 public final class CountBasesSpark extends GATKSparkTool {
@@ -26,9 +56,12 @@ public final class CountBasesSpark extends GATKSparkTool {
     @Override
     public boolean requiresReads() { return true; }
 
-    @Argument(doc = "uri for the output file: a local file path",
-            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
-            optional = true)
+    @Argument(
+            doc = "uri for the output file: a local file path",
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            optional = true
+    )
     public String out;
 
     @Override

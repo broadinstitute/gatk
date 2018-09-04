@@ -86,7 +86,7 @@ public abstract class LocusWalkerSpark extends GATKSparkTool {
      */
     public JavaRDD<LocusWalkerContext> getAlignments(JavaSparkContext ctx) {
         SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
-        List<SimpleInterval> intervals = hasIntervals() ? getIntervals() : IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
+        List<SimpleInterval> intervals = hasUserSuppliedIntervals() ? getIntervals() : IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
         final List<ShardBoundary> intervalShards = intervals.stream()
                 .flatMap(interval -> Shard.divideIntervalIntoShards(interval, readShardSize, readShardPadding, sequenceDictionary).stream())
                 .collect(Collectors.toList());
@@ -114,7 +114,7 @@ public abstract class LocusWalkerSpark extends GATKSparkTool {
             SimpleInterval paddedInterval = shardedRead.getPaddedInterval();
             Iterator<GATKRead> readIterator = shardedRead.iterator();
             ReferenceDataSource reference = bReferenceSource == null ? null :
-                    new ReferenceMemorySource(bReferenceSource.getValue().getReferenceBases(null, paddedInterval), sequenceDictionary);
+                    new ReferenceMemorySource(bReferenceSource.getValue().getReferenceBases(paddedInterval), sequenceDictionary);
             FeatureManager fm = bFeatureManager == null ? null : bFeatureManager.getValue();
 
             final SAMSequenceDictionary referenceDictionary = reference == null? null : reference.getSequenceDictionary();

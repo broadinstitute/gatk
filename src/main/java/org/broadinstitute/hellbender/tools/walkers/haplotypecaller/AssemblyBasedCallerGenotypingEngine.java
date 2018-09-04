@@ -45,13 +45,6 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
         return configuration.outputMode == OutputMode.EMIT_ALL_SITES || configuration.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES;
     }
 
-    @Override
-    protected boolean forceKeepAllele(final Allele allele) {
-        return allele == GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE ||
-                configuration.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES ||
-                configuration.emitReferenceConfidence != ReferenceConfidenceMode.NONE;
-    }
-
     /**
      * Carries the result of a call to #assignGenotypeLikelihoods
      */
@@ -89,15 +82,33 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
      * @param ref the reference bases (over the same interval as the haplotypes)
      * @param refLoc the span of the reference bases
      * @param activeAllelesToGenotype alleles we want to ensure are scheduled for genotyping (GGA mode)
+     * @param maxMnpDistance Phased substitutions separated by this distance or less are merged into MNPs.  More than
+     *                       two substitutions occurring in the same alignment block (ie the same M/X/EQ CIGAR element)
+     *                       are merged until a substitution is separated from the previous one by a greater distance.
+     *                       That is, if maxMnpDistance = 1, substitutions at positions 10,11,12,14,15,17 are partitioned into a MNP
+     *                       at 10-12, a MNP at 14-15, and a SNP at 17.
      * @return never {@code null} but perhaps an empty list if there is no variants to report.
      */
     protected TreeSet<Integer> decomposeHaplotypesIntoVariantContexts(final List<Haplotype> haplotypes,
                                                                       final byte[] ref,
                                                                       final SimpleInterval refLoc,
-                                                                      final List<VariantContext> activeAllelesToGenotype) {
-        return activeAllelesToGenotype.isEmpty() ? EventMap.buildEventMapsForHaplotypes(haplotypes, ref, refLoc, configuration.debug) :
-                activeAllelesToGenotype.stream().map(vc -> new Integer(vc.getStart())).collect(Collectors.toCollection(TreeSet<Integer>::new));
+                                                                      final List<VariantContext> activeAllelesToGenotype,
+                                                                      final int maxMnpDistance) {
+        final boolean inGGAMode = ! activeAllelesToGenotype.isEmpty();
 
+        // Using the cigar from each called haplotype figure out what events need to be written out in a VCF file
+        // IMPORTANT NOTE: This needs to be done even in GGA mode, as this method call has the side effect of setting the
+        // event maps in the Haplotype objects!
+        final TreeSet<Integer> startPosKeySet = EventMap.buildEventMapsForHaplotypes(haplotypes, ref, refLoc, configuration.debug, maxMnpDistance);
+
+        if ( inGGAMode ) {
+            startPosKeySet.clear();
+            for( final VariantContext compVC : activeAllelesToGenotype ) {
+                startPosKeySet.add(compVC.getStart());
+            }
+        }
+
+        return startPosKeySet;
     }
 
     protected static List<VariantContext> getVCsAtThisLocation(final List<Haplotype> haplotypes,
@@ -191,13 +202,13 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
         // We can reuse for annotation the likelihood for genotyping as long as there is no contamination filtering
         // or the user want to use the contamination filtered set for annotations.
         // Otherwise (else part) we need to do it again.
-        if (configuration.USE_FILTERED_READ_MAP_FOR_ANNOTATIONS || !configuration.isSampleContaminationPresent()) {
+        if (configuration.useFilteredReadMapForAnnotations || !configuration.isSampleContaminationPresent()) {
             readAlleleLikelihoodsForAnnotations = readAlleleLikelihoodsForGenotyping;
-            readAlleleLikelihoodsForAnnotations.filterToOnlyOverlappingUnclippedReads(loc);
+            readAlleleLikelihoodsForAnnotations.filterToOnlyOverlappingReads(loc);
         } else {
             readAlleleLikelihoodsForAnnotations = readHaplotypeLikelihoods.marginalize(alleleMapper, loc);
             if (emitReferenceConfidence) {
-                readAlleleLikelihoodsForAnnotations.addNonReferenceAllele(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE);
+                readAlleleLikelihoodsForAnnotations.addNonReferenceAllele(Allele.NON_REF_ALLELE);
             }
         }
 
@@ -224,7 +235,7 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
                 continue;
             }
             final List<GATKRead> newList = originalList.stream()
-                    .filter(read -> ReadLikelihoods.unclippedReadOverlapsRegion(read, loc))
+                    .filter(read -> read.overlaps(loc))
                     .collect(Collectors.toCollection(() -> new ArrayList<>(originalList.size())));
 
             if (!newList.isEmpty()) {
@@ -432,7 +443,7 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
      * @return true if this variant context is bi-allelic, ignoring the NON-REF symbolic allele, false otherwise
      */
     private static boolean isBiallelic(final VariantContext vc) {
-        return vc.isBiallelic() || (vc.getNAlleles() == 3 && vc.getAlternateAlleles().contains(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE));
+        return vc.isBiallelic() || (vc.getNAlleles() == 3 && vc.getAlternateAlleles().contains(Allele.NON_REF_ALLELE));
     }
 
     /**

@@ -36,7 +36,7 @@ public class ContaminationRecord {
     }
 
     //----- The following two public static methods read and write contamination files
-    public static void writeContaminationTable(final List<ContaminationRecord> records, final File outputTable) {
+    public static void writeToFile(final List<ContaminationRecord> records, final File outputTable) {
         try ( ContaminationRecord.ContaminationTableWriter writer = new ContaminationRecord.ContaminationTableWriter(outputTable) ) {
             writer.writeAllRecords(records);
         } catch (IOException e){
@@ -44,7 +44,7 @@ public class ContaminationRecord {
         }
     }
 
-    public static List<ContaminationRecord> readContaminationTable(final File tableFile) {
+    public static List<ContaminationRecord> readFromFile(final File tableFile) {
         try( ContaminationTableReader reader = new ContaminationTableReader(tableFile) ) {
             return reader.toList();
         } catch (IOException e){

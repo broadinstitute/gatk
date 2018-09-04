@@ -18,13 +18,13 @@ import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
 
 /**
  *  Count of read pairs in the F1R2 and F2R1 configurations supporting the reference and alternate alleles
@@ -35,8 +35,8 @@ import java.util.stream.Collectors;
  *
  *  <h3>References</h3>
  *  <p>For more details about the mechanism of oxoG artifact generation, see <a href='http://www.ncbi.nlm.nih.gov/pubmed/23303777' target='_blank'>
- *      "Discovery and characterization of artefactual mutations in deep coverage targeted capture sequencing data due to oxidative DNA damage during sample preparation."
- *  by Costello et al.</a></p>
+ *      <i></i>Discovery and characterization of artefactual mutations in deep coverage targeted capture sequencing data due to oxidative DNA damage during sample preparation.</i>
+ *  by Costello et al, doi: 10.1093/nar/gks1443</a></p>
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Count of read pairs in the F1R2 and F2R1 configurations supporting REF and ALT alleles (F1R2, F2R1)")
 public final class OxoGReadCounts extends GenotypeAnnotation implements StandardMutectAnnotation {
@@ -74,9 +74,9 @@ public final class OxoGReadCounts extends GenotypeAnnotation implements Standard
         final Map<Allele, MutableInt> f2r1Counts = likelihoods.alleles().stream()
                 .collect(Collectors.toMap(a -> a, a -> new MutableInt(0)));
 
-        Utils.stream(likelihoods.bestAlleles(g.getSampleName()))
+        Utils.stream(likelihoods.bestAllelesBreakingTies(g.getSampleName()))
                 .filter(ba -> ba.isInformative() && isUsableRead(ba.read))
-                .forEach(ba -> (isF2R1(ba.read) ? f2r1Counts : f1r2Counts).get(ba.allele).increment());
+                .forEach(ba -> (ReadUtils.isF2R1(ba.read) ? f2r1Counts : f1r2Counts).get(ba.allele).increment());
 
         final int[] f1r2 = vc.getAlleles().stream().mapToInt(a -> f1r2Counts.get(a).intValue()).toArray();
 
@@ -150,7 +150,7 @@ public final class OxoGReadCounts extends GenotypeAnnotation implements Standard
                                     final Map<Allele, MutableInt> f2r1Counts, final Allele referenceAllele,
                                         final List<Allele> altAlleles, int minBaseQualityCutoff) {
 
-        final Map<Allele, MutableInt> countMap = isF2R1(pileupElement.getRead()) ? f2r1Counts : f1r2Counts;
+        final Map<Allele, MutableInt> countMap = ReadUtils.isF2R1(pileupElement.getRead()) ? f2r1Counts : f1r2Counts;
 
         final Allele pileupAllele = GATKProtectedVariantContextUtils.chooseAlleleForRead(pileupElement, referenceAllele, altAlleles, minBaseQualityCutoff);
 
@@ -165,9 +165,5 @@ public final class OxoGReadCounts extends GenotypeAnnotation implements Standard
 
     protected static boolean isUsableRead(final GATKRead read) {
         return read.getMappingQuality() != 0 && read.getMappingQuality() != QualityUtils.MAPPING_QUALITY_UNAVAILABLE;
-    }
-
-    protected static boolean isF2R1(final GATKRead read) {
-        return read.isReverseStrand() == read.isFirstOfPair();
     }
 }

@@ -8,7 +8,6 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
-import java.nio.file.Path;
 
 /**
  * A FeatureWalker is a tool that processes a {@link Feature} at a time from a source of Features, with
@@ -49,8 +48,8 @@ public abstract class FeatureWalker<F extends Feature> extends GATKTool {
     protected final void onStartup() {
         super.onStartup();
         // set the intervals for the feature here, because they are not initialized when initialize features is set
-        if ( hasIntervals() ) {
-            drivingFeatures.setIntervalsForTraversal(intervalsForTraversal);
+        if ( hasUserSuppliedIntervals() ) {
+            drivingFeatures.setIntervalsForTraversal(userIntervals);
         }
     }
 

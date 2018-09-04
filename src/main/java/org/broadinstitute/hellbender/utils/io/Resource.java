@@ -1,6 +1,10 @@
 package org.broadinstitute.hellbender.utils.io;
 
+import org.apache.commons.io.FileUtils;
+import org.broadinstitute.hellbender.exceptions.GATKException;
+
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 
 /**
@@ -9,6 +13,11 @@ import java.io.InputStream;
 public final class Resource {
     private final String path;
     private final Class<?> relativeClass;
+
+    /**
+     * Path to the directory for large runtime system resources
+     */
+    public final static String LARGE_RUNTIME_RESOURCES_PATH = "large";
 
     /**
      * Create a resource with a path and a relative class.
@@ -62,5 +71,27 @@ public final class Resource {
         }
 
         return inputStream;
+    }
+
+    /**
+     *  Given a resource path that is either on the file system or in a jar, return a File.
+     *
+     *  Note:  A side-effect is that the temp file will be copied to temporary directory.
+     *
+     * @param resourcePath location of the resource.  If in a jar file, use relative path.
+     * @return the File in a temp directory
+     * @throws IOException
+     */
+    public static File getResourceContentsAsFile(final String resourcePath) throws IOException {
+        final File tmpResourceFile = File.createTempFile("tmp_read_resource_", ".config");
+        final InputStream systemResourceAsStream = ClassLoader.getSystemResourceAsStream(resourcePath);
+
+        if (systemResourceAsStream == null) {
+            throw new GATKException("Null value when trying to read system resource.  Cannot find: " + resourcePath);
+        }
+
+        FileUtils.copyInputStreamToFile(systemResourceAsStream,
+                tmpResourceFile);
+        return tmpResourceFile;
     }
 }

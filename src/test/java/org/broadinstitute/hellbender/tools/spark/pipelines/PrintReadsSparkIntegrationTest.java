@@ -1,26 +1,24 @@
 package org.broadinstitute.hellbender.tools.spark.pipelines;
 
+import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
-import org.broadinstitute.hellbender.engine.filters.ReadLengthReadFilter;
-import org.broadinstitute.hellbender.engine.filters.ReadNameReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
-import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
+import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
+import org.broadinstitute.hellbender.testutils.SamAssertionUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -85,8 +83,8 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
         final File outFile = GATKBaseTest.createTempFile(fileIn + ".", extOut);
         outFile.deleteOnExit();
         final File originalFile = new File(TEST_DATA_DIR, fileIn);
-        final File refFile;
         final String[] args;
+        final File refFile;
         if (reference == null) {
             refFile = null;
             args = new String[]{
@@ -101,6 +99,11 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
                     "-R", refFile.getAbsolutePath()
             };
         }
+        try (ReadsDataSource ds = reference==null ? new ReadsDataSource(originalFile.toPath()) :
+                new ReadsDataSource(originalFile.toPath(), SamReaderFactory.make().referenceSequence(refFile.toPath()))){
+            Assert.assertEquals(ds.getHeader().getSortOrder(), SAMFileHeader.SortOrder.coordinate);
+        }
+
         runCommandLine(args);
 
         SamAssertionUtils.assertSamsEqual(outFile, originalFile, refFile);
@@ -169,7 +172,7 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
         };
     }
 
-    @Test(dataProvider="testFileToFile_queryNameSorted", expectedExceptions = UserException.class, groups="spark")
+    @Test(dataProvider="testFileToFile_queryNameSorted", groups="spark")
     public void testFileToFile_queryNameSorted(String fileIn, String extOut, String reference) throws Exception {
         final File outFile = GATKBaseTest.createTempFile(fileIn + ".", extOut);
         outFile.deleteOnExit();
@@ -190,13 +193,39 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
                     "-R", refFile.getAbsolutePath()
             };
         }
+        try (ReadsDataSource ds = reference==null ? new ReadsDataSource(originalFile.toPath()) :
+                new ReadsDataSource(originalFile.toPath(), SamReaderFactory.make().referenceSequence(refFile.toPath()))){
+            Assert.assertEquals(ds.getHeader().getSortOrder(), SAMFileHeader.SortOrder.queryname);
+        }
+
         runCommandLine(args);
         SamAssertionUtils.assertSamsEqual(outFile, originalFile, refFile);
     }
 
-    @Test(expectedExceptions = UserException.class, groups = "spark")
+    @Test( groups = "spark")
     public void testNameSorted() throws Exception {
         final File inBam = new File(getTestDataDir(), "print_reads.bam");
+        try (ReadsDataSource ds = new ReadsDataSource(inBam.toPath())){
+            Assert.assertEquals(ds.getHeader().getSortOrder(), SAMFileHeader.SortOrder.queryname);
+        }
+        final File outBam = GATKBaseTest.createTempFile("print_reads", ".bam");
+        ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
+        args.add(inBam.getCanonicalPath());
+        args.add("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
+        args.add(outBam.getCanonicalPath());
+
+        this.runCommandLine(args.getArgsArray());
+
+        SamAssertionUtils.assertSamsEqual(outBam, inBam);
+    }
+
+    @Test( groups = "spark")
+    public void testUnSorted() throws Exception {
+        final File inBam = new File(getTestDataDir(), "print_reads.unsorted.bam");
+        try (ReadsDataSource ds = new ReadsDataSource(inBam.toPath())){
+            Assert.assertEquals(ds.getHeader().getSortOrder(), SAMFileHeader.SortOrder.unsorted);
+        }
         final File outBam = GATKBaseTest.createTempFile("print_reads", ".bam");
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
@@ -318,70 +347,7 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
         }
     }
 
-    @DataProvider(name="readFilterTestData")
-    public Object[][] testReadFilterData() {
-        return new Object[][]{
-                {"print_reads_one_malformed_read.sam", null, ".sam", Collections.emptyList(), 7},
-                {"print_reads_one_malformed_read.sam", null, ".sam", Arrays.asList("--disableToolDefaultReadFilters"), 8},
-                {"print_reads_one_malformed_read.sam", null, ".sam",
-                        Arrays.asList("--disableReadFilter", "WellformedReadFilter"), 8},
-                {"print_reads.sorted.sam", null, ".sam",
-                        Arrays.asList(
-                                "--readFilter", ReadNameReadFilter.class.getSimpleName(),
-                                "--readName", "both_reads_align_clip_adapter"),
-                        2},
-                {"print_reads.sorted.sam", null, ".sam",
-                        Arrays.asList(
-                                "--RF", ReadLengthReadFilter.class.getSimpleName(),
-                                "--minReadLength", "100",
-                                "--maxReadLength", "200"),
-                        8},
-                {"print_reads.sorted.sam", null, ".sam",
-                        Arrays.asList(
-                                "--RF", ReadLengthReadFilter.class.getSimpleName(),
-                                "--minReadLength", "1",
-                                "--maxReadLength", "10"),
-                        0},
-                {"print_reads.sorted.sam", null, ".sam",
-                        Arrays.asList(
-                                "--readFilter", ReadNameReadFilter.class.getSimpleName(),
-                                "--readName", "both_reads_align_clip_adapter",
-                                "--RF", ReadLengthReadFilter.class.getSimpleName(),
-                                "--minReadLength", "100",
-                                "--maxReadLength", "101"),
-                        2},
-                {"print_reads.sorted.bam", null, ".sam", Arrays.asList("--disableToolDefaultReadFilters"), 8},
-                {"print_reads.sorted.bam", null, ".sam",
-                        Arrays.asList(
-                                "--readFilter", ReadNameReadFilter.class.getSimpleName(),
-                                "--readName", "both_reads_align_clip_adapter"),
-                        2},
-                {"print_reads.sorted.bam", null, ".sam",
-                        Arrays.asList(
-                                "--RF", ReadLengthReadFilter.class.getSimpleName(),
-                                "--minReadLength", "100",
-                                "--maxReadLength", "101"),
-                        8},
-                {"print_reads.sorted.bam", null, ".sam",
-                        Arrays.asList(
-                                "--readFilter", ReadNameReadFilter.class.getSimpleName(),
-                                "--readName", "both_reads_align_clip_adapter",
-                                "--RF", ReadLengthReadFilter.class.getSimpleName(),
-                                "--minReadLength", "100",
-                                "--maxReadLength", "101"),
-                        2},
-                {"print_reads.sorted.cram", "print_reads.fasta", ".sam",
-                        Arrays.asList(
-                                "--readFilter", ReadNameReadFilter.class.getSimpleName(),
-                                "--readName", "both_reads_align_clip_adapter",
-                                "--RF", ReadLengthReadFilter.class.getSimpleName(),
-                                "--minReadLength", "100",
-                                "--maxReadLength", "101"),
-                        2},
-        };
-    }
-
-    @Test(dataProvider = "readFilterTestData", groups = "spark")
+    @Test(dataProviderClass = org.broadinstitute.hellbender.tools.PrintReadsIntegrationTest.class, dataProvider = "readFilterTestData", groups = "spark")
     public void testReadFilters(
             final String input,
             final String reference,

@@ -1,94 +1,99 @@
 package org.broadinstitute.hellbender.tools.spark.pathseq;
 
 import htsjdk.samtools.ValidationStringency;
+import htsjdk.samtools.metrics.MetricsFile;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.SamAssertionUtils;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
 
 public class PathSeqFilterSparkIntegrationTest extends CommandLineProgramTest {
 
+    static final String imagePath = publicTestDir + "hg19mini.fasta.img";
+    static final String libraryPath = publicTestDir + PathSeqFilterSpark.class.getPackage().getName().replace(".", "/") + "/hg19mini.hss";
+
+    @DataProvider(name = "pathseqFilterTestData")
+    public Object[][] getTestData() {
+        return new Object[][]{
+                {"basic_input.bam",
+                    "basic_output.paired.bam",
+                    "basic_output.unpaired.bam",
+                    "basic_filter.metrics",
+                    false, false, false, false, false},
+                {"basic_input.bam",
+                    "dup_output.paired.bam",
+                    "dup_output.unpaired.bam",
+                    "dup_filter.metrics",
+                    false, true, true, false, false},
+                {"basic_input.bam",
+                    "kmer_output.paired.bam",
+                    "kmer_output.unpaired.bam",
+                    "kmer_filter.metrics",
+                    false, true, false, true, false},
+                {"basic_input.bam",
+                    "bwa_output.paired.bam",
+                    "bwa_output.unpaired.bam",
+                    "bwa_filter.metrics",
+                    false, true, false, false, true},
+                {"aligned_input.bam",
+                    "aligned_output.paired.bam",
+                    null,
+                    "aligned_filter.metrics",
+                    true, true, false, false, false},
+                {"basic_input.bam",
+                    "all_output.paired.bam",
+                    "all_output.unpaired.bam",
+                    "all_filter.metrics",
+                    false, false, true, true, true},
+        };
+    }
+
     @Override
     public String getTestedClassName() {
         return PathSeqFilterSpark.class.getSimpleName();
     }
 
-    private void testFilterTool(final ArgumentsBuilder args, final String inputFilename, final String expectedFilePaired, final String expectedFileUnpaired) throws Exception {
-        final File inputFile = getTestFile(inputFilename);
-        final File tmpDir = createTempDir("tmp");
-        if (!tmpDir.delete()) {
-            Assert.fail();
+    @Test(dataProvider = "pathseqFilterTestData")
+    private void testFilterTool(final String inputBamFilename, final String expectedPairedBamFilename,
+                                final String expectedUnpairedBamFilename, final String expectedMetricsFilename,
+                                final boolean isHostAligned, final boolean skipFilters,
+                                final boolean filterDuplicates, final boolean useKmerFilter,
+                                final boolean useBwaFilter) throws Exception {
+        final File inputBamFile = getTestFile(inputBamFilename);
+        final File expectedMetricsFile = getTestFile(expectedMetricsFilename);
+
+        final File outputPairedBamFile = createTempFile("output_paired", ".bam");
+        final File outputUnpairedBamFile = createTempFile("output_unpaired", ".bam");
+        final File outputMetricsFile = createTempFile("metrics", ".txt");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addBooleanArgument(PSFilterArgumentCollection.IS_HOST_ALIGNED_LONG_NAME, isHostAligned);
+        args.addBooleanArgument(PSFilterArgumentCollection.SKIP_FILTERS_LONG_NAME, skipFilters);
+        args.addBooleanArgument(PSFilterArgumentCollection.FILTER_DUPLICATES_LONG_NAME, filterDuplicates);
+        args.addInput(inputBamFile);
+        args.addFileArgument(PathSeqFilterSpark.PAIRED_OUTPUT_LONG_NAME, outputPairedBamFile);
+        args.addFileArgument(PathSeqFilterSpark.UNPAIRED_OUTPUT_LONG_NAME, outputUnpairedBamFile);
+        args.addFileArgument(PSFilterArgumentCollection.FILTER_METRICS_FILE_LONG_NAME, outputMetricsFile);
+        if (useKmerFilter) {
+            args.addFileArgument(PSFilterArgumentCollection.KMER_FILE_PATH_LONG_NAME, new File(libraryPath));
         }
-        final File outputFile = new File(tmpDir.getAbsolutePath(), "output");
-        final String outputBasePath = outputFile.getAbsolutePath();
-        final File metricsFile = createTempFile("metrics", ".txt");
-        if (!metricsFile.delete()) {
-            Assert.fail();
+        if (useBwaFilter) {
+            args.addFileArgument(PSFilterArgumentCollection.FILTER_BWA_IMAGE_LONG_NAME, new File(imagePath));
         }
-        args.addInput(inputFile);
-        args.addArgument("output", outputBasePath);
-        args.addFileArgument("metricsFile", metricsFile);
 
         this.runCommandLine(args.getArgsArray());
 
-        if (expectedFilePaired != null) {
-            SamAssertionUtils.assertSamsEqual(new File(outputBasePath + ".paired.bam"), getTestFile(expectedFilePaired), ValidationStringency.LENIENT, null);
+        if (expectedPairedBamFilename != null) {
+            SamAssertionUtils.assertSamsEqual(outputPairedBamFile, getTestFile(expectedPairedBamFilename), ValidationStringency.LENIENT, null);
         }
-        if (expectedFileUnpaired != null) {
-            SamAssertionUtils.assertSamsEqual(new File(outputBasePath + ".unpaired.bam"), getTestFile(expectedFileUnpaired), ValidationStringency.LENIENT, null);
+        if (expectedUnpairedBamFilename != null) {
+            SamAssertionUtils.assertSamsEqual(outputUnpairedBamFile, getTestFile(expectedUnpairedBamFilename), ValidationStringency.LENIENT, null);
         }
-    }
-
-    @SuppressWarnings("unchecked")
-    @Test(groups = "spark")
-    public void testFilterBasic() throws Exception {
-        final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addBooleanArgument("filterDuplicates", false);
-        testFilterTool(args, "basic_input.bam", "basic_output.paired.bam", "basic_output.unpaired.bam");
-    }
-
-    @SuppressWarnings("unchecked")
-    @Test(groups = "spark")
-    public void testFilterDuplicates() throws Exception {
-        final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addBooleanArgument("filterDuplicates", true);
-        args.addBooleanArgument("skipFilters", true);
-        testFilterTool(args, "basic_input.bam", "dup_output.paired.bam", "dup_output.unpaired.bam");
-    }
-
-    @SuppressWarnings("unchecked")
-    @Test(groups = "spark")
-    public void testFilterKmer() throws Exception {
-        final ArgumentsBuilder args = new ArgumentsBuilder();
-        final String libraryPath = "src/test/resources/" + PathSeqBuildKmers.class.getPackage().getName().replace(".", "/") + "/hg19mini.hss";
-        args.addArgument("kmerLibraryPath", libraryPath);
-        args.addBooleanArgument("skipFilters", true);
-        args.addBooleanArgument("filterDuplicates", false);
-        testFilterTool(args, "basic_input.bam", "kmer_output.paired.bam", "kmer_output.unpaired.bam");
-    }
-
-    @SuppressWarnings("unchecked")
-    @Test(groups = "spark")
-    public void testFilterBwa() throws Exception {
-        final ArgumentsBuilder args = new ArgumentsBuilder();
-        final String imagePath = "src/test/resources/" + PathSeqBuildKmers.class.getPackage().getName().replace(".", "/") + "/hg19mini.fasta.bwa_image";
-        args.addArgument("filterBwaImage", imagePath);
-        args.addBooleanArgument("skipFilters", true);
-        args.addBooleanArgument("filterDuplicates", false);
-        testFilterTool(args, "basic_input.bam", "bwa_output.paired.bam", "bwa_output.unpaired.bam");
-    }
-
-    @SuppressWarnings("unchecked")
-    @Test(groups = "spark")
-    public void testFilterPrealignedOnly() throws Exception {
-        final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addBooleanArgument("isHostAligned", true);
-        args.addBooleanArgument("skipFilters", true);
-        args.addBooleanArgument("filterDuplicates", false);
-        testFilterTool(args, "aligned_input.bam", "aligned_output.paired.bam", null);
+        Assert.assertTrue(MetricsFile.areMetricsEqual(outputMetricsFile, expectedMetricsFile));
     }
 
 }

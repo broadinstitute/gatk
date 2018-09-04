@@ -26,10 +26,10 @@ public class OverclippedReadFilterUnitTest extends GATKBaseTest {
 
 
     @Test(dataProvider= "OverclippedDataProvider")
-    public void testOverclippedFilter(final String cigarString, boolean doNotRequireSoftclipsOnBothEnds, final boolean expectedResult) {
+    public void testOverclippedFilter(final String cigarString, boolean doNotRequireSoftClipsOnBothEnds, final boolean expectedResult) {
 
         final OverclippedReadFilter filter = new OverclippedReadFilter(30, false);
-        filter.doNotRequireSoftclipsOnBothEnds = doNotRequireSoftclipsOnBothEnds;
+        filter.doNotRequireSoftClipsOnBothEnds = doNotRequireSoftClipsOnBothEnds;
         final GATKRead read = buildSAMRead(cigarString);
         Assert.assertEquals(filter.test(read), expectedResult, cigarString);
     }

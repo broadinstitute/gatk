@@ -11,24 +11,18 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.filters.AmbiguousBaseReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadLengthReadFilter;
-import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.spark.pathseq.loggers.PSFilterLogger;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.tools.spark.utils.ReadFilterSparkifier;
 import org.broadinstitute.hellbender.tools.spark.utils.ReadTransformerSparkifier;
 import org.broadinstitute.hellbender.transformers.*;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemIndexCache;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.illumina.IlluminaAdapterPair;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import scala.Tuple2;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.charset.Charset;
-import java.text.DecimalFormat;
-import java.text.NumberFormat;
 import java.util.*;
 
 /**
@@ -38,8 +32,6 @@ public final class PSFilter implements AutoCloseable {
 
     private final JavaSparkContext ctx;
     private final PSFilterArgumentCollection filterArgs;
-    private final MetricsState metricsState;
-    private JavaRDD<GATKRead> reads;
     private final SAMFileHeader header;
 
     private static final List<String> ADAPTER_SEQUENCES = CollectionUtil.makeList(
@@ -58,16 +50,12 @@ public final class PSFilter implements AutoCloseable {
     private final static int MAX_AT_CONTENT_2 = 87;
     private final static int MAX_GC_CONTENT_2 = 89;
 
-
-    public PSFilter(final JavaSparkContext ctx, final PSFilterArgumentCollection filterArgs, final JavaRDD<GATKRead> inputReads,
+    public PSFilter(final JavaSparkContext ctx, final PSFilterArgumentCollection filterArgs,
                     final SAMFileHeader header) {
         Utils.nonNull(ctx, "JavaSparkContext cannot be null");
         Utils.nonNull(filterArgs, "Filter arguments cannot be null");
-        Utils.nonNull(inputReads, "Input reads cannot be null");
         this.ctx = ctx;
         this.filterArgs = filterArgs;
-        this.metricsState = initializeMetics(filterArgs.metricsFileUri);
-        this.reads = inputReads;
         this.header = header;
     }
 
@@ -213,17 +201,18 @@ public final class PSFilter implements AutoCloseable {
     /**
      * Main PathSeq filtering method. See PathSeqFilterSpark for an overview.
      * Returns a tuple containing the paired reads and unpaired reads as separate RDDs.
+     * If metricsFile is null, read count metrics will not be collected.
      */
-    public Tuple2<JavaRDD<GATKRead>, JavaRDD<GATKRead>> doFilter() {
+    public Tuple2<JavaRDD<GATKRead>, JavaRDD<GATKRead>> doFilter(JavaRDD<GATKRead> reads, final PSFilterLogger filterLogger) {
 
-        recordReadCountMetric(reads, "input");
+        Utils.nonNull(reads, "Input reads cannot be null");
         reads = PSUtils.primaryReads(reads);
-        recordReadCountMetric(reads, "primary_reads");
+        filterLogger.logPrimaryReads(reads);
 
         if (filterArgs.alignedInput) {
             reads = reads.filter(new ReadFilterSparkifier(new HostAlignmentReadFilter(filterArgs.minIdentity)));
-            recordReadCountMetric(reads, "prealigned_filter");
         }
+        filterLogger.logReadsAfterPrealignedHostFilter(reads);
 
         //Clear alignment data from the reads
         reads = clearAllAlignments(reads, header);
@@ -249,20 +238,18 @@ public final class PSFilter implements AutoCloseable {
 
             //Filter reads with less than minReadLength bases
             reads = reads.filter(new ReadFilterSparkifier(new ReadLengthReadFilter(filterArgs.minReadLength, Integer.MAX_VALUE)));
-            recordReadCountMetric(reads, "quality_1");
 
             //Change low-quality bases to 'N'
             reads = reads.map(new ReadTransformerSparkifier(new BaseQualityReadTransformer(filterArgs.qualPhredThresh)));
 
             //Filter reads with too many 'N's
             reads = reads.filter(new ReadFilterSparkifier(new AmbiguousBaseReadFilter(filterArgs.maxAmbiguousBases)));
-            recordReadCountMetric(reads, "quality_2");
         }
+        filterLogger.logReadsAfterQualityFilter(reads);
 
         //Kmer filtering
-        if (filterArgs.kmerLibPath != null) {
-            reads = doKmerFiltering(reads, filterArgs.kmerLibPath, filterArgs.hostKmerThresh);
-            recordReadCountMetric(reads, "kmer");
+        if (filterArgs.kmerFilePath != null) {
+            reads = doKmerFiltering(reads, filterArgs.kmerFilePath, filterArgs.hostKmerThresh);
         }
 
         //Redistribute reads
@@ -274,52 +261,27 @@ public final class PSFilter implements AutoCloseable {
         if (filterArgs.indexImageFile != null) {
             reads = doBwaFilter(reads, filterArgs.indexImageFile, filterArgs.minSeedLength,
                     filterArgs.bwaThreads, filterArgs.minIdentity);
-            recordReadCountMetric(reads, "bwa");
         }
+        filterLogger.logReadsAfterHostFilter(reads);
 
         //Filter duplicates
         if (filterArgs.filterDuplicates) {
-            reads = setPairFlags(reads, filterArgs.readsPerPartition);
+            reads = setPairFlags(reads, filterArgs.filterReadsPerPartition);
             reads = filterDuplicateSequences(reads);
-            recordReadCountMetric(reads, "duplicates");
         }
+        filterLogger.logReadsAfterDeduplication(reads);
 
         //Sets pairedness flags properly
-        reads = setPairFlags(reads, filterArgs.readsPerPartition);
+        reads = setPairFlags(reads, filterArgs.filterReadsPerPartition);
         reads = clearAllAlignments(reads, header);
 
         //Unset paired read flags for reads that are not paired
-        final PSPairedUnpairedSplitterSpark splitter = new PSPairedUnpairedSplitterSpark(reads, filterArgs.readsPerPartition, false);
+        final PSPairedUnpairedSplitterSpark splitter = new PSPairedUnpairedSplitterSpark(reads, filterArgs.filterReadsPerPartition, false);
         final JavaRDD<GATKRead> pairedReads = splitter.getPairedReads();
         final JavaRDD<GATKRead> unpairedReads = splitter.getUnpairedReads();
-        recordReadCountMetric(reads, "split_paired");
+        filterLogger.logFinalPairedReads(pairedReads);
 
         return new Tuple2<>(pairedReads, unpairedReads);
-    }
-
-    /**
-     * Open metrics file, to which the number of reads after each stage will be written.
-     */
-    private MetricsState initializeMetics(final String metricsFileUri) {
-        if (metricsFileUri == null) return null;
-        try {
-            return new MetricsState(metricsFileUri);
-        } catch (IOException e) {
-            throw new GATKException("Could not open metrics file " + metricsFileUri, e);
-        }
-    }
-
-    /**
-     * Records number of reads in the metrics file. Note this invokes a count action on the RDD and therefore
-     * may substantially reduce performance.
-     */
-    private void recordReadCountMetric(final JavaRDD<GATKRead> reads, final String name) {
-        if (metricsState == null) return;
-        try {
-            metricsState.writeReadCount(reads, name);
-        } catch (final IOException e) {
-            throw new GATKException("Could not write to metrics file", e);
-        }
     }
 
     /**
@@ -328,40 +290,6 @@ public final class PSFilter implements AutoCloseable {
     public void close() {
         BwaMemIndexCache.closeAllDistributedInstances(ctx);
         ContainsKmerReadFilterSpark.closeAllDistributedInstances(ctx);
-        if (metricsState != null) {
-            try {
-                metricsState.close();
-            } catch (final IOException e) {
-                throw new GATKException("Could not close metrics output stream");
-            }
-        }
     }
 
-    /**
-     * Tracks elapsed time and output stream for the metrics file
-     */
-    private static final class MetricsState implements AutoCloseable {
-        public final long initialTimeMillis;
-        public final OutputStream metricsOutputStream;
-
-        public MetricsState(final String metricsFileUri) throws IOException {
-            initialTimeMillis = System.currentTimeMillis();
-            metricsOutputStream = BucketUtils.createFile(metricsFileUri);
-            final String outputString = "step\treads\tseconds\n";
-            metricsOutputStream.write(outputString.getBytes(Charset.defaultCharset()));
-        }
-
-        public void writeReadCount(JavaRDD<GATKRead> reads, final String name) throws IOException {
-            final long currentTimeMillis = System.currentTimeMillis();
-            final double elapsedTimeSeconds = (currentTimeMillis - initialTimeMillis) / 1000.0;
-            NumberFormat formatter = new DecimalFormat("#0.00");
-            final String outputString = name + "\t" + reads.count() + "\t" + formatter.format(elapsedTimeSeconds) + "\n";
-            metricsOutputStream.write(outputString.getBytes(Charset.defaultCharset()));
-            metricsOutputStream.flush();
-        }
-
-        public void close() throws IOException {
-            metricsOutputStream.close();
-        }
-    }
 }

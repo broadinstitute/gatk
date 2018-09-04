@@ -37,7 +37,7 @@ public final class SVContext extends VariantContext {
     private static final int MISSING_LENGTH = -2;
 
     /**
-     * Indicates that the variant does not have a length or this could not be determined.
+     * Indicates that the variant does not have a length or this could not be determined, e.g. for BND records.
      */
     public static final int NO_LENGTH = -1;
 
@@ -160,7 +160,7 @@ public final class SVContext extends VariantContext {
 
         final ReferenceBases bases;
         try {
-            bases = reference.getReferenceBases(null, referenceInterval);
+            bases = reference.getReferenceBases(referenceInterval);
         } catch (final IOException ex) {
             throw new GATKException("could not read reference file");
         }

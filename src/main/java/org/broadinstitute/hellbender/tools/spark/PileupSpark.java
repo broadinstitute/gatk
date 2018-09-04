@@ -10,7 +10,7 @@ import org.broadinstitute.barclay.argparser.Hidden;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.CoverageAnalysisProgramGroup;
 import org.broadinstitute.hellbender.engine.AlignmentContext;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureInput;
@@ -28,13 +28,60 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-@CommandLineProgramProperties(summary = "This tool emulates the 'samtools pileup' command. It prints the alignment in a format that is very "
-        + "similar to the Samtools pileup format (see the documentation in http://samtools.sourceforge.net/pileup.shtml"
-        + "for more details about the original format). There is one line per genomic position, listing the chromosome "
-        + "name, coordinate, reference base, read bases, and read qualities. In addition to these default fields, "
-        + "additional information can be added to the output as extra columns; see options detailed below.",
-        oneLineSummary = "Print read alignments in Pileup-style format on Spark",
-        programGroup = SparkProgramGroup.class)
+/**
+ * Prints read alignments in {@code samtools} pileup format. The tool leverages the Spark framework
+ * for faster operation.
+ *
+ * <p>This tool emulates  the functionality of {@code samtools pileup}. It prints the alignments in a format that is very similar
+ * to the {@code samtools} pileup format; see the <a href="http://samtools.sourceforge.net/pileup.shtml">Samtools Pileup format
+ * documentation</a> for more details about the original format. The output comprises one line per genomic position, listing the
+ * chromosome name, coordinate, reference base, bases from reads, and corresponding base qualities from reads.
+ * In addition to these default fields,
+ * additional information can be added to the output as extra columns.</p>
+ *
+ * <h3>Usage example</h3>
+ * <pre>
+ * gatk PileupSpark \
+ *   -R reference.fasta \
+ *   -I input.bam \
+ *   -O output.txt
+ * </pre>
+ *
+ * <h4>Emulated command:</h4>
+ * <pre>
+ *  samtools pileup -f reference.fasta input.bam
+ * </pre>
+ *
+ * <h4>Typical output format</h4>
+ * <pre>
+ *     chr1 257 A CAA '&=
+ *     chr1 258 C TCC A:=
+ *     chr1 259 C CCC )A=
+ *     chr1 260 C ACC (=<
+ *     chr1 261 T TCT '44
+ *     chr1 262 A AAA '?:
+ *     chr1 263 A AGA 1'6
+ *     chr1 264 C TCC 987
+ *     chr1 265 C CCC (@(
+ *     chr1 266 C GCC ''=
+ *     chr1 267 T AAT 7%>
+ * </pre>
+ * <p>
+ * This tool can be run without explicitly specifying Spark options.
+ * That is to say, the given example command without Spark options will run locally.
+ * See <a href ="https://software.broadinstitute.org/gatk/documentation/article?id=10060">Tutorial#10060</a>
+ * for an example of how to set up and run a Spark tool on a cloud Spark cluster.
+ * </p>
+ *
+ * @author Daniel Gomez-Sanchez (magicDGS)
+ */
+@CommandLineProgramProperties(
+        summary = "Prints read alignments in samtools pileup format. The tool leverages the Spark framework for " +
+                "faster operationThe output comprises one line per genomic position, listing the chromosome name, " +
+                "coordinate, reference base, read bases, and read qualities. In addition to these default fields, " +
+                "additional information can be added to the output as extra columns.",
+        oneLineSummary = "Prints read alignments in samtools pileup format",
+        programGroup = CoverageAnalysisProgramGroup.class)
 @DocumentedFeature
 @BetaFeature
 public final class PileupSpark extends LocusWalkerSpark {
@@ -45,7 +92,11 @@ public final class PileupSpark extends LocusWalkerSpark {
     @Override
     public boolean requiresReads() { return true; }
 
-    @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, doc="The output directory, which the sharded output will be written to", optional = false)
+    @Argument(
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            doc="The output directory to which the scattered output will be written."
+    )
     protected String outputFile;
 
     /**
@@ -53,23 +104,41 @@ public final class PileupSpark extends LocusWalkerSpark {
      * spanning deletions, and for each read in the pileup it has the read name, offset in the base string, read length,
      * and read mapping quality.  These per read items are delimited with an '@' character.
      */
-    @Argument(fullName = "showVerbose", shortName = "verbose", doc = "Add an extra verbose section to the pileup output", optional = true)
+    @Argument(
+            fullName = "show-verbose",
+            shortName = "verbose",
+            doc = "Add extra informative columns to the pileup output. The verbose output contains the number of " +
+                    "spanning deletions, and for each read in the pileup it has the read name, offset in the base " +
+                    "string, read length, and read mapping quality.  These per read items are delimited with an '@' " +
+                    "character.",
+            optional = true
+    )
     public boolean showVerbose = false;
 
     /**
-     * This enables annotating the pileup to show overlaps with metadata from a Feature file(s). For example, if you provide a
-     * VCF and there is a SNP at a given location covered by the pileup, the pileup output at that position will be
-     * annotated with the corresponding source Feature identifier.
+     * This enables annotating the pileup to show overlaps with metadata from a Feature file(s). For example, if the
+     * user provide a VCF and there is a SNP at a given location covered by the pileup, the pileup output at that
+     * position will be annotated with the corresponding source Feature identifier.
      */
-    @Argument(fullName = "metadata", shortName = "metadata", doc = "Features file(s) containing metadata", optional = true)
+    @Argument(
+            fullName = "metadata",
+            shortName = "metadata",
+            doc = "Features file(s) containing metadata. The overlapping sites will be annotated with the corresponding" +
+                    " source Feature identifier.",
+            optional = true
+    )
     public List<FeatureInput<Feature>> metadata = new ArrayList<>();
 
     /**
      * Adds the length of the insert each base comes from to the output pileup. Here, "insert" refers to the DNA insert
      * produced during library generation before sequencing.
      */
-    @Hidden
-    @Argument(fullName = "outputInsertLength", shortName = "outputInsertLength", doc = "Output insert length", optional = true)
+    @Argument(
+            fullName = "output-insert-length",
+            shortName = "output-insert-length",
+            doc = "If enabled, inserts lengths will be added to the output pileup.",
+            optional = true
+    )
     public boolean outputInsertLength = false;
 
     @Override

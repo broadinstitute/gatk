@@ -19,10 +19,10 @@ public final class ReadThreadingAssemblerArgumentCollection implements Serializa
     // -----------------------------------------------------------------------------------------------
 
     /**
-     * Multiple kmer sizes can be specified, using e.g. `-kmerSize 10 -kmerSize 25`.
+     * Multiple kmer sizes can be specified, using e.g. `--kmer-size 10 --kmer-size 25`.
      */
     @Advanced
-    @Argument(fullName="kmerSize", shortName="kmerSize", doc="Kmer size to use in the read threading assembler", optional = true)
+    @Argument(fullName="kmer-size", doc="Kmer size to use in the read threading assembler", optional = true)
     public List<Integer> kmerSizes = Lists.newArrayList(10,25);
 
     /**
@@ -30,7 +30,7 @@ public final class ReadThreadingAssemblerArgumentCollection implements Serializa
      * resolved. Disabling this behavior may cause the program to give up on assembling the ActiveRegion.
      */
     @Advanced
-    @Argument(fullName="dontIncreaseKmerSizesForCycles", shortName="dontIncreaseKmerSizesForCycles", doc="Disable iterating over kmer sizes when graph cycles are detected", optional = true)
+    @Argument(fullName="dont-increase-kmer-sizes-for-cycles", doc="Disable iterating over kmer sizes when graph cycles are detected", optional = true)
     public boolean dontIncreaseKmerSizesForCycles = false;
 
     /**
@@ -38,28 +38,28 @@ public final class ReadThreadingAssemblerArgumentCollection implements Serializa
      * this check may cause problems in the assembly graph.
      */
     @Advanced
-    @Argument(fullName="allowNonUniqueKmersInRef", shortName="allowNonUniqueKmersInRef", doc="Allow graphs that have non-unique kmers in the reference", optional = true)
+    @Argument(fullName="allow-non-unique-kmers-in-ref", doc="Allow graphs that have non-unique kmers in the reference", optional = true)
     public boolean allowNonUniqueKmersInRef = false;
 
     /**
      * If fewer samples than the specified number pass the minPruning threshold for a given path, that path will be eliminated from the graph.
      */
     @Advanced
-    @Argument(fullName="numPruningSamples", shortName="numPruningSamples", doc="Number of samples that must pass the minPruning threshold", optional = true)
+    @Argument(fullName="num-pruning-samples", doc="Number of samples that must pass the minPruning threshold", optional = true)
     public int numPruningSamples = 1;
 
     /**
      * As of version 3.3, this argument is no longer needed because dangling end recovery is now the default behavior. See GATK 3.3 release notes for more details.
      */
     @Deprecated
-    @Argument(fullName="recoverDanglingHeads", shortName="recoverDanglingHeads", doc="This argument is deprecated since version 3.3", optional = true)
+    @Argument(fullName="recover-dangling-heads", doc="This argument is deprecated since version 3.3", optional = true)
     public boolean DEPRECATED_RecoverDanglingHeads = false;
 
     /**
      * By default, the read threading assembler will attempt to recover dangling heads and tails. See the `minDanglingBranchLength` argument documentation for more details.
      */
     @Hidden
-    @Argument(fullName="doNotRecoverDanglingBranches", shortName="doNotRecoverDanglingBranches", doc="Disable dangling head and tail recovery", optional = true)
+    @Argument(fullName="do-not-recover-dangling-branches", doc="Disable dangling head and tail recovery", optional = true)
     public boolean doNotRecoverDanglingBranches = false;
 
     /**
@@ -68,7 +68,7 @@ public final class ReadThreadingAssemblerArgumentCollection implements Serializa
      * try to rescue it.  A smaller number here will lead to higher sensitivity to real variation but also to a higher number of false positives.
      */
     @Advanced
-    @Argument(fullName="minDanglingBranchLength", shortName="minDanglingBranchLength", doc="Minimum length of a dangling branch to attempt recovery", optional = true)
+    @Argument(fullName="min-dangling-branch-length", doc="Minimum length of a dangling branch to attempt recovery", optional = true)
     public int minDanglingBranchLength = 4;
 
     /**
@@ -76,7 +76,7 @@ public final class ReadThreadingAssemblerArgumentCollection implements Serializa
      * provided alleles to the assembly graph but will not forcibly genotype all of them.
      */
     @Advanced
-    @Argument(fullName="consensus", shortName="consensus", doc="1000G consensus mode", optional = true)
+    @Argument(fullName="consensus", doc="1000G consensus mode", optional = true)
     public boolean consensusMode = false;
 
     /**
@@ -88,14 +88,14 @@ public final class ReadThreadingAssemblerArgumentCollection implements Serializa
      * You can consider increasing this number when calling organisms with high heterozygosity.
      */
     @Advanced
-    @Argument(fullName="maxNumHaplotypesInPopulation", shortName="maxNumHaplotypesInPopulation", doc="Maximum number of haplotypes to consider for your population", optional = true)
+    @Argument(fullName="max-num-haplotypes-in-population", doc="Maximum number of haplotypes to consider for your population", optional = true)
     public int maxNumHaplotypesInPopulation = 128;
 
     /**
      * Enabling this argument may cause fundamental problems with the assembly graph itself.
      */
     @Hidden
-    @Argument(fullName="errorCorrectKmers", shortName="errorCorrectKmers", doc = "Use an exploratory algorithm to error correct the kmers used during assembly", optional = true)
+    @Argument(fullName="error-correct-kmers", doc = "Use an exploratory algorithm to error correct the kmers used during assembly", optional = true)
     public boolean errorCorrectKmers = false;
 
     /**
@@ -108,17 +108,17 @@ public final class ReadThreadingAssemblerArgumentCollection implements Serializa
      * depth to produce calls).
      */
     @Advanced
-    @Argument(fullName="minPruning", shortName="minPruning", doc = "Minimum support to not prune paths in the graph", optional = true)
+    @Argument(fullName="min-pruning", doc = "Minimum support to not prune paths in the graph", optional = true)
     public int minPruneFactor = 2;
 
     @Hidden
-    @Argument(fullName="debugGraphTransformations", shortName="debugGraphTransformations", doc="Write DOT formatted graph files out of the assembler for only this graph size", optional = true)
+    @Argument(fullName="debug-graph-transformations", doc="Write DOT formatted graph files out of the assembler for only this graph size", optional = true)
     public boolean debugGraphTransformations = false;
 
     /**
      * This argument is meant for debugging and is not immediately useful for normal analysis use.
      */
-    @Argument(fullName="graphOutput", shortName="graph", doc="Write debug assembly graph information to this file", optional = true)
+    @Argument(fullName="graph-output", shortName="graph", doc="Write debug assembly graph information to this file", optional = true)
     public String graphOutput = null;
 
     //---------------------------------------------------------------------------------------------------------------
@@ -131,10 +131,10 @@ public final class ReadThreadingAssemblerArgumentCollection implements Serializa
      * Enabling this argument may cause fundamental problems with the assembly graph itself.
      */
     @Hidden
-    @Argument(fullName="kmerLengthForReadErrorCorrection", shortName="kmerLengthForReadErrorCorrection", doc = "Use an exploratory algorithm to error correct the kmers used during assembly", optional = true)
+    @Argument(fullName="kmer-length-for-read-error-correction", doc = "Use an exploratory algorithm to error correct the kmers used during assembly", optional = true)
     public int kmerLengthForReadErrorCorrection = 25;
 
     @Hidden
-    @Argument(fullName="minObservationsForKmerToBeSolid", shortName="minObservationsForKmerToBeSolid", doc = "A k-mer must be seen at least these times for it considered to be solid", optional = true)
+    @Argument(fullName="min-observations-for-kmer-to-be-solid", doc = "A k-mer must be seen at least these times for it considered to be solid", optional = true)
     public int minObservationsForKmerToBeSolid = 20;
 }

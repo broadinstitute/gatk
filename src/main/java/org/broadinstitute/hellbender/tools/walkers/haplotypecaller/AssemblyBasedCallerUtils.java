@@ -19,6 +19,7 @@ import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.*;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
@@ -43,7 +44,7 @@ public final class AssemblyBasedCallerUtils {
      * @return never {@code null}
      */
     public static Map<GATKRead, GATKRead> realignReadsToTheirBestHaplotype(final ReadLikelihoods<Haplotype> originalReadLikelihoods, final Haplotype refHaplotype, final Locatable paddedReferenceLoc, final SmithWatermanAligner aligner) {
-        final Collection<ReadLikelihoods<Haplotype>.BestAllele> bestAlleles = originalReadLikelihoods.bestAlleles();
+        final Collection<ReadLikelihoods<Haplotype>.BestAllele> bestAlleles = originalReadLikelihoods.bestAllelesBreakingTies();
         final Map<GATKRead, GATKRead> result = new HashMap<>(bestAlleles.size());
 
         for (final ReadLikelihoods<Haplotype>.BestAllele bestAllele : bestAlleles) {
@@ -148,9 +149,9 @@ public final class AssemblyBasedCallerUtils {
     public static CachingIndexedFastaSequenceFile createReferenceReader(final String reference) {
         try {
             // fasta reference reader to supplement the edges of the reference sequence
-            return new CachingIndexedFastaSequenceFile(new File(reference));
+            return new CachingIndexedFastaSequenceFile(IOUtils.getPath(reference));
         } catch( FileNotFoundException e ) {
-            throw new UserException.CouldNotReadInputFile(new File(reference), e);
+            throw new UserException.CouldNotReadInputFile(IOUtils.getPath(reference), e);
         }
     }
 
@@ -196,7 +197,7 @@ public final class AssemblyBasedCallerUtils {
                                                                final boolean createBamOutMD5,
                                                                final SAMFileHeader header) {
         return args.bamOutputPath != null ?
-                Optional.of(HaplotypeBAMWriter.create(args.bamWriterType, new File(args.bamOutputPath), createBamOutIndex, createBamOutMD5, header)) :
+                Optional.of(new HaplotypeBAMWriter(args.bamWriterType, IOUtils.getPath(args.bamOutputPath), createBamOutIndex, createBamOutMD5, header)) :
                 Optional.empty();
     }
 

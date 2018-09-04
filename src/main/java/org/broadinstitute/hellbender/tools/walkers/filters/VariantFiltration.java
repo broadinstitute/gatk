@@ -11,7 +11,7 @@ import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
+import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
@@ -25,7 +25,7 @@ import static java.util.Collections.singleton;
 
 
 /**
- * Filter variant calls based on INFO and FORMAT annotations
+ * Filter variant calls based on INFO and/or FORMAT annotations
  *
  * <p>
  * This tool is designed for hard-filtering variant calls based on certain criteria. Records are hard-filtered by
@@ -46,12 +46,12 @@ import static java.util.Collections.singleton;
  *
  * <h3>Usage example</h3>
  * <pre>
- *   ./gatk-launch VariantFiltration \
+ *   gatk VariantFiltration \
  *   -R reference.fasta \
- *   -V input.vcf \
- *   -O output.vcf \
- *   --filterExpression "AB < 0.2 || MQ0 > 50" \
- *   --filterName "my_filters"
+ *   -V input.vcf.gz \
+ *   -O output.vcf.gz \
+ *   --filter-expression "AB < 0.2 || MQ0 > 50" \
+ *   --filter-name "my_filters"
  * </pre>
  *
  * <h3>Note</h3>
@@ -61,18 +61,34 @@ import static java.util.Collections.singleton;
  *
  */
 @CommandLineProgramProperties(
-        summary = "Filter variant calls based on INFO and FORMAT annotations.",
-        oneLineSummary = "Filter variant calls based on INFO and FORMAT annotations",
-        programGroup = VariantProgramGroup.class
+        summary = "Filter variant calls based on INFO and/or FORMAT annotations.",
+        oneLineSummary = "Filter variant calls based on INFO and/or FORMAT annotations",
+        programGroup = VariantFilteringProgramGroup.class
 )
 @DocumentedFeature
 public final class VariantFiltration extends VariantWalker {
 
+    public static final String FILTER_EXPRESSION_LONG_NAME = "filter-expression";
+    public static final String FILTER_NAME_LONG_NAME = "filter-name";
+    public static final String GENOTYPE_FILTER_EXPRESSION_LONG_NAME = "genotype-filter-expression";
+    public static final String GENOTYPE_FILTER_NAME_LONG_NAME = "genotype-filter-name";
+    public static final String CLUSTER_SIZE_LONG_NAME = "cluster-size";
+    public static final String CLUSTER_WINDOW_SIZE_LONG_NAME = "cluster-window-size";
+    public static final String MASK_EXTENSION_LONG_NAME = "mask-extension";
+    public static final String MASK_NAME_LONG_NAME = "mask-name";
+    public static final String FILTER_NOT_IN_MASK_LONG_NAME = "filter-not-in-mask";
+    public static final String MISSING_VAL_LONG_NAME = "missing-values-evaluate-as-failing";
+    public static final String INVERT_LONG_NAME = "invert-filter-expression";
+    public static final String INVERT_GT_LONG_NAME = "invert-genotype-filter-expression";
+    public static final String NO_CALL_GTS_LONG_NAME = "set-filtered-genotype-to-no-call";
+
+    private static final String FILTER_DELIMITER = ";";
+
     /**
      * Any variant which overlaps entries from the provided mask file will be filtered. If the user wants logic to be reversed,
-     * i.e. filter variants that do not overlap with provided mask, then argument -filterNotInMask can be used.
+     * i.e. filter variants that do not overlap with provided mask, then argument --filter-not-in-mask can be used.
      * Note that it is up to the user to adapt the name of the mask to make it clear that the reverse logic was used
-     * (e.g. if masking against Hapmap, use -maskName=hapmap for the normal masking and -maskName=not_hapmap for the reverse masking).
+     * (e.g. if masking against Hapmap, use --mask-name=hapmap for the normal masking and --mask-name=not_hapmap for the reverse masking).
      */
     @Argument(fullName="mask", shortName="mask", doc="Input mask", optional=true)
     public FeatureInput<Feature> mask;
@@ -82,15 +98,15 @@ public final class VariantFiltration extends VariantWalker {
 
     /**
      * VariantFiltration accepts any number of JEXL expressions (so you can have two named filters by using
-     * --filterName One --filterExpression "X < 1" --filterName Two --filterExpression "X > 2").
+     * --filter-name One --filter-expression "X < 1" --filter-name Two --filter-expression "X > 2").
      */
-    @Argument(fullName="filterExpression", shortName="filter", doc="One or more expression used with INFO fields to filter", optional=true)
+    @Argument(fullName=FILTER_EXPRESSION_LONG_NAME, shortName="filter", doc="One or more expression used with INFO fields to filter", optional=true)
     public List<String> filterExpressions = new ArrayList<>();
 
     /**
      * This name is put in the FILTER field for variants that get filtered.  Note that there must be a 1-to-1 mapping between filter expressions and filter names.
      */
-    @Argument(fullName="filterName", shortName="filterName", doc="Names to use for the list of filters", optional=true)
+    @Argument(fullName=FILTER_NAME_LONG_NAME, doc="Names to use for the list of filters", optional=true)
     public List<String> filterNames = new ArrayList<>();
 
     /**
@@ -100,78 +116,78 @@ public final class VariantFiltration extends VariantWalker {
      * methods so that one can now filter out hets ("isHet == 1"), refs ("isHomRef == 1"), or homs ("isHomVar == 1"). Also available are
      * expressions isCalled, isNoCall, isMixed, and isAvailable, in accordance with the methods of the Genotype object.
      */
-    @Argument(fullName="genotypeFilterExpression", shortName="G_filter", doc="One or more expression used with FORMAT (sample/genotype-level) fields to filter (see documentation guide for more info)", optional=true)
+    @Argument(fullName=GENOTYPE_FILTER_EXPRESSION_LONG_NAME, shortName="G-filter", doc="One or more expression used with FORMAT (sample/genotype-level) fields to filter (see documentation guide for more info)", optional=true)
     public List<String> genotypeFilterExpressions = new ArrayList<>();
 
     /**
      * Similar to the INFO field based expressions, but used on the FORMAT (genotype) fields instead.
      */
-    @Argument(fullName="genotypeFilterName", shortName="G_filterName", doc="Names to use for the list of sample/genotype filters (must be a 1-to-1 mapping); this name is put in the FILTER field for variants that get filtered", optional=true)
+    @Argument(fullName=GENOTYPE_FILTER_NAME_LONG_NAME, shortName="G-filter-name", doc="Names to use for the list of sample/genotype filters (must be a 1-to-1 mapping); this name is put in the FILTER field for variants that get filtered", optional=true)
     public List<String> genotypeFilterNames = new ArrayList<>();
 
     /**
-     * Works together with the --clusterWindowSize argument.
+     * Works together with the --cluster-window-size argument.
      */
-    @Argument(fullName="clusterSize", shortName="cluster", doc="The number of SNPs which make up a cluster. Must be at least 2", optional=true)
+    @Argument(fullName=CLUSTER_SIZE_LONG_NAME, shortName="cluster", doc="The number of SNPs which make up a cluster. Must be at least 2", optional=true)
     public Integer clusterSize = 3;
 
     /**
-     * Works together with the --clusterSize argument.  To disable the clustered SNP filter, set this value to less than 1.
+     * Works together with the --cluster-size argument.  To disable the clustered SNP filter, set this value to less than 1.
      */
-    @Argument(fullName="clusterWindowSize", shortName="window", doc="The window size (in bases) in which to evaluate clustered SNPs", optional=true)
+    @Argument(fullName=CLUSTER_WINDOW_SIZE_LONG_NAME, shortName="window", doc="The window size (in bases) in which to evaluate clustered SNPs", optional=true)
     public Integer clusterWindow = 0;
 
-    @Argument(fullName="maskExtension", shortName="maskExtend", doc="How many bases beyond records from a provided 'mask' should variants be filtered", optional=true)
+    @Argument(fullName=MASK_EXTENSION_LONG_NAME, doc="How many bases beyond records from a provided 'mask' should variants be filtered", optional=true)
     public Integer maskExtension = 0;
 
     /**
-     * When using the -mask argument, the maskName will be annotated in the variant record.
-     * Note that when using the -filterNotInMask argument to reverse the masking logic,
+     * When using the --mask argument, the mask-name will be annotated in the variant record.
+     * Note that when using the --filter-not-in-mask argument to reverse the masking logic,
      * it is up to the user to adapt the name of the mask to make it clear that the reverse logic was used
-     * (e.g. if masking against Hapmap, use -maskName=hapmap for the normal masking and -maskName=not_hapmap for the reverse masking).
+     * (e.g. if masking against Hapmap, use --mask-name=hapmap for the normal masking and --mask-name=not_hapmap for the reverse masking).
      */
-    @Argument(fullName="maskName", shortName="maskName", doc="The text to put in the FILTER field if a 'mask' is provided and overlaps with a variant call", optional=true)
+    @Argument(fullName=MASK_NAME_LONG_NAME, doc="The text to put in the FILTER field if a 'mask' is provided and overlaps with a variant call", optional=true)
     public String maskName = "Mask";
 
     /**
-     * By default, if the -mask argument is used, any variant falling in a mask will be filtered.
+     * By default, if the --mask argument is used, any variant falling in a mask will be filtered.
      * If this argument is used, logic is reversed, and variants falling outside a given mask will be filtered.
      * Use case is, for example, if we have an interval list or BED file with "good" sites.
      * Note that it is up to the user to adapt the name of the mask to make it clear that the reverse logic was used
-     * (e.g. if masking against Hapmap, use -maskName=hapmap for the normal masking and -maskName=not_hapmap for the reverse masking).
+     * (e.g. if masking against Hapmap, use --mask-name=hapmap for the normal masking and --mask-name=not_hapmap for the reverse masking).
      */
-    @Argument(fullName="filterNotInMask", shortName="filterNotInMask", doc="Filter records NOT in given input mask.", optional=true)
+    @Argument(fullName=FILTER_NOT_IN_MASK_LONG_NAME, doc="Filter records NOT in given input mask.", optional=true)
     public boolean filterRecordsNotInMask = false;
 
     /**
      * By default, if JEXL cannot evaluate your expression for a particular record because one of the annotations is not present, the whole expression evaluates as PASSing.
      * Use this argument to have it evaluate as failing filters instead for these cases.
      */
-    @Argument(fullName="missingValuesInExpressionsShouldEvaluateAsFailing", doc="When evaluating the JEXL expressions, missing values should be considered failing the expression", optional=true)
+    @Argument(fullName=MISSING_VAL_LONG_NAME, doc="When evaluating the JEXL expressions, missing values should be considered failing the expression", optional=true)
     public Boolean failMissingValues = false;
 
     /**
      * Invalidate previous filters applied to the VariantContext, applying only the filters here
      */
-    @Argument(fullName="invalidatePreviousFilters",doc="Remove previous filters applied to the VCF",optional=true)
+    @Argument(fullName=StandardArgumentDefinitions.INVALIDATE_PREVIOUS_FILTERS_LONG_NAME, doc="Remove previous filters applied to the VCF", optional=true)
     boolean invalidatePreviousFilters = false;
 
     /**
-     * Invert the selection criteria for --filterExpression
+     * Invert the selection criteria for --filter-expression
      */
-    @Argument(fullName="invertFilterExpression", shortName="invfilter", doc="Invert the selection criteria for --filterExpression", optional=true)
+    @Argument(fullName=INVERT_LONG_NAME, shortName="invfilter", doc="Invert the selection criteria for --filter-expression", optional=true)
     public boolean invertFilterExpression = false;
 
     /**
-     * Invert the selection criteria for --genotypeFilterExpression
+     * Invert the selection criteria for --genotype-filter-expression
      */
-    @Argument(fullName="invertGenotypeFilterExpression", shortName="invG_filter", doc="Invert the selection criteria for --genotypeFilterExpression", optional=true)
+    @Argument(fullName=INVERT_GT_LONG_NAME, shortName="invG-filter", doc="Invert the selection criteria for --genotype-filter-expression", optional=true)
     public boolean invertGenotypeFilterExpression = false;
 
     /**
      * If this argument is provided, set filtered genotypes to no-call (./.).
      */
-    @Argument(fullName="setFilteredGtToNocall", optional=true, doc="Set filtered genotypes to no-call")
+    @Argument(fullName=NO_CALL_GTS_LONG_NAME, optional=true, doc="Set filtered genotypes to no-call")
     public boolean setFilteredGenotypesToNocall = false;
 
     // JEXL expressions for the filters
@@ -198,7 +214,7 @@ public final class VariantFiltration extends VariantWalker {
     }
 
     /**
-     * Prepend inverse phrase to description if --invertFilterExpression
+     * Prepend inverse phrase to description if --invert-filter-expression
      *
      * @param description the description
      * @return the description with inverse prepended if --invert_filter_expression
@@ -255,14 +271,14 @@ public final class VariantFiltration extends VariantWalker {
     @Override
     public void onTraversalStart() {
         if (clusterSize <= 1){
-            throw new CommandLineException.BadArgumentValue("clusterSize", "values lower than 2 are not allowed");
+            throw new CommandLineException.BadArgumentValue(CLUSTER_SIZE_LONG_NAME, "values lower than 2 are not allowed");
         }
         if ( maskExtension < 0 ) {
-            throw new CommandLineException.BadArgumentValue("maskExtension", "negative values are not allowed");
+            throw new CommandLineException.BadArgumentValue(MASK_EXTENSION_LONG_NAME, "negative values are not allowed");
         }
 
         if (filterRecordsNotInMask && mask == null) {
-            throw new CommandLineException.BadArgumentValue("filterNotInMask", "argument not allowed if mask argument is not provided");
+            throw new CommandLineException.BadArgumentValue(FILTER_NOT_IN_MASK_LONG_NAME, "argument not allowed if mask argument is not provided");
         }
         filterExps = VariantContextUtils.initializeMatchExps(filterNames, filterExpressions);
         genotypeFilterExps = VariantContextUtils.initializeMatchExps(genotypeFilterNames, genotypeFilterExpressions);
@@ -343,7 +359,7 @@ public final class VariantFiltration extends VariantWalker {
     private List<String> getGenotypeFilters(final VariantContext vc, final Genotype g) {
         final List<String> filters = new ArrayList<>();
         if (g.isFiltered()) {
-            filters.addAll(Arrays.asList(g.getFilters().split(";")));
+            filters.addAll(Arrays.asList(g.getFilters().split(FILTER_DELIMITER)));
         }
 
         // Add if expression filters the variant context

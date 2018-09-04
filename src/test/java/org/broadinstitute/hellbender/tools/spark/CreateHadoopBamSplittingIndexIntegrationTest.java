@@ -6,7 +6,7 @@ import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.seqdoop.hadoop_bam.SplittingBAMIndex;
 import org.seqdoop.hadoop_bam.SplittingBAMIndexer;
 import org.testng.Assert;

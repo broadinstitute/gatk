@@ -1,23 +1,19 @@
 package org.broadinstitute.hellbender.tools.spark;
 
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hdfs.MiniDFSCluster;
-import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
-import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
-import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
-import org.broadinstitute.hellbender.utils.test.MiniClusterUtils;
-import org.testng.Assert;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
+import org.broadinstitute.hellbender.testutils.MiniClusterUtils;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.List;
 
+/**
+ * Integration tests for {@link PileupSpark}.
+ */
 public final class PileupSparkIntegrationTest extends CommandLineProgramTest {
 
     private static final File TEST_DATA_DIR = new File(getTestDataDir(), "walkers/qc/pileup");
@@ -104,7 +100,7 @@ public final class PileupSparkIntegrationTest extends CommandLineProgramTest {
         args.add("--reference");
         args.add(b37_reference_20_21);
         args.add("-L 20:10000092-10000112");
-        args.add("-outputInsertLength");
+        args.add("--output-insert-length");
         if (useShuffle) {
             args.add("--shuffle");
         }

@@ -1,29 +1,56 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
 import htsjdk.variant.variantcontext.VariantContext;
+import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.ArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.VariantAnnotationArgumentCollection;
 import org.broadinstitute.hellbender.engine.FeatureInput;
-import org.broadinstitute.hellbender.tools.walkers.annotator.StandardMutectAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerArgumentCollection;
 
-import java.util.Arrays;
-import java.util.Collections;
+import java.io.File;
 
 public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection {
     private static final long serialVersionUID = 9341L;
+    public static final String TUMOR_SAMPLE_LONG_NAME = "tumor-sample";
+    public static final String TUMOR_SAMPLE_SHORT_NAME = "tumor";
+    public static final String NORMAL_SAMPLE_LONG_NAME = "normal-sample";
+    public static final String NORMAL_SAMPLE_SHORT_NAME = "normal";
+    public static final String PANEL_OF_NORMALS_LONG_NAME = "panel-of-normals";
+    public static final String PANEL_OF_NORMALS_SHORT_NAME = "pon";
+    public static final String GENOTYPE_PON_SITES_LONG_NAME = "genotype-pon-sites";
+    public static final String GENOTYPE_GERMLINE_SITES_LONG_NAME = "genotype-germline-sites";
+    public static final String GERMLINE_RESOURCE_LONG_NAME = "germline-resource";
+    public static final String DEFAULT_AF_LONG_NAME = "af-of-alleles-not-in-resource";
+    public static final String DEFAULT_AF_SHORT_NAME = "default-af";
+    public static final String EMISSION_LOD_LONG_NAME = "tumor-lod-to-emit";
+    public static final String EMISSION_LOG_SHORT_NAME = "emit-lod";
+    public static final String INITIAL_TUMOR_LOD_LONG_NAME = "initial-tumor-lod";
+    public static final String INITIAL_TUMOR_LOD_SHORT_NAME = "init-lod";
+    public static final String INITIAL_PCR_ERROR_QUAL = "initial-pcr-qual";
+    public static final String MAX_POPULATION_AF_LONG_NAME = "max-population-af";
+    public static final String MAX_POPULATION_AF_SHORT_NAME = "max-af";
+    public static final String DOWNSAMPLING_STRIDE_LONG_NAME = "downsampling-stride";
+    public static final String DOWNSAMPLING_STRIDE_SHORT_NAME = "stride";
+    public static final String MAX_SUSPICIOUS_READS_PER_ALIGNMENT_START_LONG_NAME = "max-suspicious-reads-per-alignment-start";
+    public static final String NORMAL_LOD_LONG_NAME = "normal-lod";
+    public static final String MAX_MNP_DISTANCE_LONG_NAME = "max-mnp-distance";
+    public static final String MAX_MNP_DISTANCE_SHORT_NAME = "mnp-dist";
+    public static final String IGNORE_ITR_ARTIFACTS_LONG_NAME = "ignore-itr-artifacts";
+    public static final String ARTIFACT_PRIOR_TABLE_NAME = "orientation-bias-artifact-priors";
+    public static final String GET_AF_FROM_AD_LONG_NAME = "get-af-from-ad";
+
+    public static final double DEFAULT_AF_FOR_TUMOR_ONLY_CALLING = 5e-8;
+    public static final double DEFAULT_AF_FOR_TUMOR_NORMAL_CALLING = 1e-6;
 
     //TODO: HACK ALERT HACK ALERT HACK ALERT
     //TODO: GATK4 does not yet have a way to tag inputs, eg -I:tumor tumor.bam -I:normal normal.bam,
     //TODO: so for now we require the user to specify bams *both* as inputs, with -I tumor.bam -I normal.bam
     //TODO: *and* as sample names e.g. -tumor <tumor sample> -normal <normal sample>
 
-    @Argument(fullName = "tumor-sample", shortName = "tumor", doc = "BAM sample name of tumor", optional = false)
-    protected String tumorSampleName = null;
+    @Argument(fullName = TUMOR_SAMPLE_LONG_NAME, shortName = TUMOR_SAMPLE_SHORT_NAME, doc = "BAM sample name of tumor.  May be URL-encoded as output by GetSampleName with -encode argument.", optional = false)
+    protected String tumorSample = null;
 
-    @Argument(fullName = "normal-sample", shortName = "normal", doc = "BAM sample name of tumor", optional = true)
-    protected String normalSampleName = null;
+    @Argument(fullName = NORMAL_SAMPLE_LONG_NAME, shortName = NORMAL_SAMPLE_SHORT_NAME, doc = "BAM sample name of normal.  May be URL-encoded as output by GetSampleName with -encode argument.", optional = true)
+    protected String normalSample = null;
 
     //TODO: END OF HACK ALERT
 
@@ -34,41 +61,41 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     /**
      * A panel of normals can be a useful (optional) input to help filter out commonly seen sequencing noise that may appear as low allele-fraction somatic variants.
      */
-    @Argument(fullName="panel-of-normals", shortName = "pon", doc="VCF file of sites observed in normal.", optional = true)
+    @Argument(fullName= PANEL_OF_NORMALS_LONG_NAME, shortName = PANEL_OF_NORMALS_SHORT_NAME, doc="VCF file of sites observed in normal.", optional = true)
     public FeatureInput<VariantContext> pon;
 
     /**
      * Usually we exclude sites in the panel of normals from active region determination, which saves time.  Setting this to true
      * causes Mutect to produce a variant call at these sites.  This call will still be filtered, but it shows up in the vcf.
      */
-    @Argument(fullName="genotype-pon-sites", doc="Whether to call sites in the PoN even though they will ultimately be filtered.", optional = true)
+    @Argument(fullName= GENOTYPE_PON_SITES_LONG_NAME, doc="Call sites in the PoN even though they will ultimately be filtered.", optional = true)
     public boolean genotypePonSites = false;
+
+    /**
+     * Usually we exclude sites in the panel of normals from active region determination, which saves time.  Setting this to true
+     * causes Mutect to produce a variant call at these sites.  This call will still be filtered, but it shows up in the vcf.
+     */
+    @Argument(fullName= GENOTYPE_GERMLINE_SITES_LONG_NAME, doc="(EXPERIMENTAL) Call all apparent germline site even though they will ultimately be filtered.", optional = true)
+    public boolean genotypeGermlineSites = false;
 
     /**
      * A resource, such as gnomAD, containing population allele frequencies of common and rare variants.
      */
-    @Argument(fullName="germline-resource", doc="Population vcf of germline sequencing containing allele fractions.", optional = true)
+    @Argument(fullName= GERMLINE_RESOURCE_LONG_NAME, doc="Population vcf of germline sequencing containing allele fractions.", optional = true)
     public FeatureInput<VariantContext> germlineResource;
 
     /**
      * Population allele fraction assigned to alleles not found in germline resource.
      */
-    @Argument(fullName="af-of-alleles-not-in-resource", shortName = "default-af",
-            doc="Population allele fraction assigned to alleles not found in germline resource.  A reasonable value is" +
-                    "1/(2* number of samples in resource) if a germline resource is available; otherwise an average " +
-                    "heterozygosity rate such as 0.001 is reasonable.", optional = true)
-    public double afOfAllelesNotInGermlineResource = 0.001;
+    @Argument(fullName= DEFAULT_AF_LONG_NAME, shortName = DEFAULT_AF_SHORT_NAME,
+            doc="Population allele fraction assigned to alleles not found in germline resource.  Please see docs/mutect/mutect2.pdf for" +
+                    "a derivation of the default value.", optional = true)
+    public double afOfAllelesNotInGermlineResource = -1;
 
-    /**
-     * Prior log-10 probability that any given site has a somatic allele. Impacts germline probability calculation.
-     * The workflow uses this parameter only towards the germline event filter. It does NOT relate to the LOD threshold.
-     * For example, -6 translates to one in a million or ~3000 somatic mutations per human genome.
-     * Depending on tumor type, mutation rate ranges vary (Lawrence et al. Nature 2013), and so adjust parameter accordingly.
-     * For higher expected rate of mutation, adjust number up, e.g. -5. For lower expected rate of mutation, adjust number down, e.g. -7.
-     */
-    @Argument(fullName="log-somatic-prior",
-            doc="Prior probability that a given site has a somatic allele.", optional = true)
-    public double log10PriorProbOfSomaticEvent = -6.0;
+    public double getDefaultAlleleFrequency() {
+        return afOfAllelesNotInGermlineResource >= 0 ? afOfAllelesNotInGermlineResource :
+                (normalSample == null ? DEFAULT_AF_FOR_TUMOR_ONLY_CALLING : DEFAULT_AF_FOR_TUMOR_NORMAL_CALLING);
+    }
 
     /**
      * Only variants with tumor LODs exceeding this threshold will be written to the VCF, regardless of filter status.
@@ -76,20 +103,39 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      * Default setting of 3 is permissive and will emit some amount of negative training data that 
      * {@link FilterMutectCalls} should then filter.
      */
-    @Argument(fullName = "tumor-lod-to-emit", shortName = "emit-lod", optional = true, doc = "LOD threshold to emit tumor variant to VCF.")
-    public double emissionLodThreshold = 3.0;
+    @Argument(fullName = EMISSION_LOD_LONG_NAME, shortName = EMISSION_LOG_SHORT_NAME, optional = true, doc = "LOD threshold to emit tumor variant to VCF.")
+    public double emissionLod = 3.0;
 
     /**
      * Only variants with estimated tumor LODs exceeding this threshold will be considered active.
      */
-    @Argument(fullName = "initial-tumor-lod", shortName = "init-lod", optional = true, doc = "LOD threshold to consider pileup active.")
-    public double initialTumorLodThreshold = 2.0;
+    @Argument(fullName = INITIAL_TUMOR_LOD_LONG_NAME, shortName = INITIAL_TUMOR_LOD_SHORT_NAME, optional = true, doc = "LOD threshold to consider pileup active.")
+    public double initialTumorLod = 2.0;
+
+    /**
+     * PCR error rate for overlapping fragments in isActive()
+     */
+    @Argument(fullName = INITIAL_PCR_ERROR_QUAL, optional = true, doc = "PCR error rate for overlapping fragments in isActive()")
+    public int initialPCRErrorQual = 40;
 
     /**
      * In tumor-only mode, we discard variants with population allele frequencies greater than this threshold.
      */
-    @Argument(fullName = "max-population-af", shortName = "max-af", optional = true, doc = "Maximum population allele frequency in tumor-only mode.")
+    @Argument(fullName = MAX_POPULATION_AF_LONG_NAME, shortName = MAX_POPULATION_AF_SHORT_NAME, optional = true, doc = "Maximum population allele frequency in tumor-only mode.")
     public double maxPopulationAlleleFrequency = 0.01;
+
+    /**
+     * Downsample a pool of reads starting within a range of one or more bases.
+     */
+    @Argument(fullName = DOWNSAMPLING_STRIDE_LONG_NAME, shortName = DOWNSAMPLING_STRIDE_SHORT_NAME, optional = true, doc = "Downsample a pool of reads starting within a range of one or more bases.")
+    public int downsamplingStride = 1;
+
+    /**
+     * Maximum number of suspicious reads (mediocre mapping quality or too many substitutions) allowed in a downsampling stride.
+     */
+    @Advanced
+    @Argument(fullName = MAX_SUSPICIOUS_READS_PER_ALIGNMENT_START_LONG_NAME, optional = true, doc = "Maximum number of suspicious reads (mediocre mapping quality or too many substitutions) allowed in a downsampling stride.  Set to 0 to disable.")
+    public int maxSuspiciousReadsPerAlignmentStart = 0;
 
     /**
      * This is a measure of the minimum evidence to support that a variant observed in the tumor is not also present in the normal.
@@ -97,18 +143,30 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      * It is unlikely such analyses will require changing the default value. Increasing the parameter may increase the sensitivity of somatic calling,
      * but may also increase calling false positive, i.e. germline, variants.
      */
-    @Argument(fullName = "normal-lod", optional = true, doc = "LOD threshold for calling normal variant non-germline.")
-    public double NORMAL_LOD_THRESHOLD = 2.2;
+    @Argument(fullName = NORMAL_LOD_LONG_NAME, optional = true, doc = "LOD threshold for calling normal variant non-germline.")
+    public double normalLod = 2.2;
 
+    @Argument(fullName = ARTIFACT_PRIOR_TABLE_NAME, optional = true, doc = "table of prior artifact probabilities for the read orientation filter model")
+    public File artifactPriorTable = null;
 
     /**
-     * Set of annotation arguments to use.
-     * Any requirements that are not met, e.g. failing to provide a pedigree file for a pedigree-based annotation, may cause the run to fail.
+     * Two or more phased substitutions separated by this distance or less are merged into MNPs.
      */
-    @ArgumentCollection
-    VariantAnnotationArgumentCollection variantAnnotationArgumentCollection = new VariantAnnotationArgumentCollection(
-            Arrays.asList(StandardMutectAnnotation.class.getSimpleName()),
-            Collections.emptyList(),
-            Collections.emptyList());
+    @Advanced
+    @Argument(fullName = MAX_MNP_DISTANCE_LONG_NAME, shortName = MAX_MNP_DISTANCE_SHORT_NAME,
+            doc = "Two or more phased substitutions separated by this distance or less are merged into MNPs.", optional = true)
+    public int maxMnpDistance = 1;
+
+    /**
+     * When opposite ends of a fragment are inverted tandem repeats of each other, the sequence past one end may be copied onto the other
+     * during library prep.  By default, Mutect2 identifies and clips these artifacts, which are especially prevalent when
+     * DNA is damaged as in the case of FFPE samples and ancient DNA.
+     */
+    @Argument(fullName= IGNORE_ITR_ARTIFACTS_LONG_NAME, doc="Turn off read transformer that clips artifacts associated with end repair insertions near inverted tandem repeats.", optional = true)
+    public boolean dontClipITRArtifacts = false;
+
+    @Advanced
+    @Argument(fullName = GET_AF_FROM_AD_LONG_NAME, doc="Use allelic depth to calculate tumor allele fraction; recommended for mitochondrial applications", optional = true)
+    public boolean calculateAFfromAD = false;
 
 }

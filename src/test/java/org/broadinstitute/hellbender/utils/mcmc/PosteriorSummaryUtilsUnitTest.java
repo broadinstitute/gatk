@@ -37,7 +37,7 @@ public final class PosteriorSummaryUtilsUnitTest extends GATKBaseTest {
     private static final List<Double> betaSamplesMAF = Arrays.stream(ArrayUtils.addAll(
             new BetaDistribution(rng, 10, 6).sample(1000),
             new BetaDistribution(rng, 6, 10).sample(1000)))
-            .boxed().filter(d -> d <= 0.5).collect(Collectors.toList());    //mimics ACNV minor-allele-fraction posterior
+            .boxed().filter(d -> d <= 0.5).collect(Collectors.toList());    //mimics minor-allele-fraction posterior
 
     private static final List<Double> identicalSamples = Collections.nCopies(1000, 1.);
     private static final List<Double> withNaNSamples = toList(new double[]{Double.NEGATIVE_INFINITY, 0., 1.});

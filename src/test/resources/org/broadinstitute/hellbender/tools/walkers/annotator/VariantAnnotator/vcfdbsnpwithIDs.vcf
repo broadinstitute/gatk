@@ -1,0 +1,14 @@
+##fileformat=VCFv4.1
+##FORMAT=<ID=GQ,Number=1,Type=Float,Description="Genotype Quality">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=RD,Number=1,Type=Integer,Description="Read Depth (only filtered reads used for calling)">
+##source=UnifiedGenotyper
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	
+20	10002353	rs372143558	G	T	.	.	.
+20	10002374	.	C	T	.	.	.
+20	10002443	rs1;rs2	T	C	.	.	.
+20	10002458	.	G	GTT,GTTT	.	.	.
+20	10002460	rstestnot	TC	T,TTT	.	.	.
+20	10002470	rstest	C	T	.	.	.
+20	10002470	rstest	C	CTTT	.	.	.
+20	10002478	.	A	ATT,ATTT	.	.	.

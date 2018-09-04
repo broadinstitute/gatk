@@ -3,9 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.validation;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.engine.FeatureDataSource;
-import org.broadinstitute.hellbender.tools.walkers.validation.AnnotateVcfWithExpectedAlleleFraction;
-import org.broadinstitute.hellbender.tools.walkers.validation.MixingFraction;
+import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -13,14 +11,13 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 /**
  * Created by David Benjamin on 1/31/17.
  */
 public class AnnotateVcfWithExpectedAlleleFractionIntegrationTest extends CommandLineProgramTest {
 
-    private static final String VCF_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/tools/mutect/validation/";
+    private static final String VCF_DIRECTORY = toolsTestDir + "mutect/validation/";
     private static final File INPUT_VCF = new File(VCF_DIRECTORY, "dream_4_mixing.vcf");
 
     // run with made-up mixing fractions and the doctored 2-sample version of DREAM challenge sample 4
@@ -44,10 +41,9 @@ public class AnnotateVcfWithExpectedAlleleFractionIntegrationTest extends Comman
 
         runCommandLine(arguments);
 
-        final List<VariantContext> input = StreamSupport.stream(new FeatureDataSource<VariantContext>(INPUT_VCF).spliterator(), false)
+        final List<VariantContext> input = VariantContextTestUtils.streamVcf(INPUT_VCF)
                 .collect(Collectors.toList());
-        final List<VariantContext> output = StreamSupport.stream(new FeatureDataSource<VariantContext>(outputVcf).spliterator(), false)
-                .collect(Collectors.toList());
+        final List<VariantContext> output = VariantContextTestUtils.streamVcf(outputVcf).collect(Collectors.toList());
 
         Assert.assertEquals(input.size(), output.size());
 

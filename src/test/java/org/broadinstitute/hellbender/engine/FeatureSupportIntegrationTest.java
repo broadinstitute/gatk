@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.engine;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.tools.examples.ExampleReadWalkerWithVariants;
 import org.testng.annotations.Test;
 
@@ -80,5 +80,20 @@ public final class FeatureSupportIntegrationTest extends CommandLineProgramTest 
                 UserException.CouldNotReadInputFile.class
         );
         testSpec.executeTest("testFeaturesAsIntervals", this);
+    }
+
+    @Test
+    // this test asserts that a helpful exception is thrown for blockZipped files lacking an index as they may not be fully supported
+    //TODO this is a temporary fix until https://github.com/broadinstitute/gatk/issues/4224 has been resolved
+    public void testUnindexedBZippedFile() throws IOException {
+        IntegrationTestSpec testSpec = new IntegrationTestSpec(
+                " -R " + hg19MiniReference +
+                        " -I " + FEATURE_INTEGRATION_TEST_DIRECTORY + "reads_data_source_test1.bam" +
+                        " -V " + toolsTestDir + "IndexFeatureFile/4featuresHG38Header.unindexed.vcf.gz" +
+                        " -O %s",
+                1,
+                UserException.MissingIndex.class
+        );
+        testSpec.executeTest("testMissingIndexFeatureFile", this);
     }
 }

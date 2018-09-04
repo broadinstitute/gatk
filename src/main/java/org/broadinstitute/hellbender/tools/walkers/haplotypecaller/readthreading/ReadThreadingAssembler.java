@@ -21,7 +21,6 @@ import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
-import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -57,9 +56,7 @@ public final class ReadThreadingAssembler {
     private boolean debugGraphTransformations = false;
     private boolean recoverDanglingBranches = true;
     private int minDanglingBranchLength = 0;
-
-    private static final byte MIN_BASE_QUALITY_TO_USE_IN_ASSEMBLY = DEFAULT_MIN_BASE_QUALITY_TO_USE;
-
+    
     protected byte minBaseQualityToUseInAssembly = DEFAULT_MIN_BASE_QUALITY_TO_USE;
     private int pruneFactor = 2;
 
@@ -178,7 +175,7 @@ public final class ReadThreadingAssembler {
         final int activeRegionStart = refHaplotype.getAlignmentStartHapwrtRef();
 
         for( final VariantContext compVC : givenHaplotypes ) {
-            Utils.validateArg(GATKVariantContextUtils.overlapsRegion(compVC, activeRegionWindow), " some variant provided does not overlap with active region window");
+            Utils.validateArg(compVC.overlaps(activeRegionWindow), " some variant provided does not overlap with active region window");
             for( final Allele compAltAllele : compVC.getAlternateAlleles() ) {
                 final Haplotype insertedRefHaplotype = refHaplotype.insertAllele(compVC.getReference(), compAltAllele, activeRegionStart + compVC.getStart() - activeRegionWindow.getStart(), compVC.getStart());
                 if( insertedRefHaplotype != null ) { // can be null if the requested allele can't be inserted into the haplotype
@@ -444,7 +441,7 @@ public final class ReadThreadingAssembler {
             return null;
         }
 
-        final ReadThreadingGraph rtgraph = new ReadThreadingGraph(kmerSize, debugGraphTransformations, MIN_BASE_QUALITY_TO_USE_IN_ASSEMBLY, numPruningSamples);
+        final ReadThreadingGraph rtgraph = new ReadThreadingGraph(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples);
 
         rtgraph.setThreadingStartOnlyAtExistingVertex(!recoverDanglingBranches);
 

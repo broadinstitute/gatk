@@ -1,0 +1,74 @@
+##fileformat=VCFv4.2
+##FILTER=<ID=LowQual,Description="Low quality">
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
+##INFO=<ID=ABHet,Number=1,Type=Float,Description="Allele Balance for heterozygous calls (ref/(ref+alt))">
+##INFO=<ID=ABHom,Number=1,Type=Float,Description="Allele Balance for homozygous calls (A/(A+O)) where A is the allele (ref or alt) and O is anything other">
+##INFO=<ID=DS,Number=0,Type=Flag,Description="Were any of the samples downsampled?">
+##INFO=<ID=Dels,Number=1,Type=Float,Description="Fraction of Reads Containing Spanning Deletions">
+##INFO=<ID=FS,Number=1,Type=Float,Description="Phred-scaled p-value using Fisher's exact test to detect strand bias">
+##INFO=<ID=MLEAC,Number=A,Type=Integer,Description="Maximum likelihood expectation (MLE) for the allele counts (not necessarily the same as the AC), for each ALT allele, in the same order as listed">
+##INFO=<ID=MLEAF,Number=A,Type=Float,Description="Maximum likelihood expectation (MLE) for the allele frequency (not necessarily the same as the AF), for each ALT allele, in the same order as listed">
+##INFO=<ID=MQ0,Number=1,Type=Integer,Description="Total Mapping Quality Zero Reads">
+##INFO=<ID=OND,Number=1,Type=Float,Description="Overall non-diploid ratio (alleles/(alleles+non-alleles))">
+##INFO=<ID=RPA,Number=.,Type=Integer,Description="Number of times tandem repeat unit is repeated, for each allele (including reference)">
+##INFO=<ID=RU,Number=1,Type=String,Description="Tandem repeat unit (bases)">
+##INFO=<ID=STR,Number=0,Type=Flag,Description="Variant is a short tandem repeat">
+##contig=<ID=20,length=63025520,assembly=b37>
+##contig=<ID=21,length=48129895,assembly=b37>
+##reference=file:///Users/emeryj/hellbender/gatk/src/test/resources/large/human_g1k_v37.20.21.fasta
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA12878	NA12891	NA12892
+20	10000598	.	T	A	18.59	.	ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=2;MLEAF=1.00;MQ0=0;OND=0.00	GT:DP:GQ:PL	./.	1/1:2:3:45,3,0	./.
+20	10001617	.	C	A	12.77	.	ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=2;MLEAF=1.00;MQ0=0;OND=0.00	GT:DP:GQ:PL	1/1:1:3:39,3,0	./.	./.
+20	10001628	.	G	A	18.59	.	ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=2;MLEAF=1.00;MQ0=0;OND=0.00	GT:DP:GQ:PL	1/1:2:3:45,3,0	./.	./.
+20	10001661	.	T	C	17.49	.	ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=2;MLEAF=0.500;MQ0=0;OND=0.00	GT:DP:GQ:PL	1/1:2:3:45,3,0	./.	0/0:1:3:0,3,39
+20	10001670	.	T	G	14.57	.	ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=2;MLEAF=0.500;MQ0=0;OND=0.00	GT:DP:GQ:PL	1/1:1:3:42,3,0	./.	0/0:2:3:0,3,45
+20	10002138	.	C	G	16.63	.	ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=2;MLEAF=1.00;MQ0=0;OND=0.00	GT:DP:GQ:PL	1/1:1:3:43,3,0	./.	./.
+20	10002142	.	G	C	16.63	.	ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=2;MLEAF=1.00;MQ0=0;OND=0.00	GT:DP:GQ:PL	1/1:1:3:43,3,0	./.	./.
+20	10003021	.	C	T	12.77	.	ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=2;MLEAF=1.00;MQ0=0;OND=0.00	GT:DP:GQ:PL	./.	1/1:1:3:39,3,0	./.
+20	10003358	.	A	C	15.65	.	ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=2;MLEAF=1.00;MQ0=0;OND=0.00	GT:DP:GQ:PL	./.	1/1:1:3:42,3,0	./.
+20	10003651	.	T	C	53.42	.	ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=4;MLEAF=1.00;MQ0=0;OND=0.00	GT:DP:GQ:PL	1/1:1:3:33,3,0	1/1:2:3:45,3,0	./.
+20	10003692	.	A	G	12.77	.	ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=2;MLEAF=1.00;MQ0=0;OND=0.00	GT:DP:GQ:PL	./.	1/1:1:3:39,3,0	./.
+20	10003832	.	G	A	53.42	.	ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=4;MLEAF=1.00;MQ0=0;OND=0.00	GT:DP:GQ:PL	./.	1/1:1:3:39,3,0	1/1:1:3:39,3,0
+20	10004094	.	A	C	14.68	.	ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=2;MLEAF=1.00;MQ0=0;OND=0.00	GT:DP:GQ:PL	./.	./.	1/1:1:3:41,3,0
+20	10004351	.	C	G	56.42	.	ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=4;MLEAF=1.00;MQ0=0;OND=0.00	GT:DP:GQ:PL	./.	1/1:1:3:39,3,0	1/1:1:3:42,3,0
+20	10004389	.	T	G	15.65	.	ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=2;MLEAF=1.00;MQ0=0;OND=0.00	GT:DP:GQ:PL	./.	./.	1/1:1:3:42,3,0
+20	10004610	.	A	C	14.68	.	ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=2;MLEAF=1.00;MQ0=0;OND=0.00	GT:DP:GQ:PL	./.	1/1:1:3:41,3,0	./.
+20	10004725	.	A	G	14.68	.	ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=2;MLEAF=1.00;MQ0=0;OND=0.00	GT:DP:GQ:PL	./.	1/1:1:3:41,3,0	./.
+20	10004874	.	A	C	59.42	.	ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=4;MLEAF=1.00;MQ0=0;OND=0.00	GT:DP:GQ:PL	./.	1/1:1:3:42,3,0	1/1:1:3:42,3,0
+20	10004887	.	A	G	14.57	.	ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=2;MLEAF=0.500;MQ0=0;OND=0.00	GT:DP:GQ:PL	./.	0/0:1:3:0,3,38	1/1:1:3:42,3,0
+20	10005010	.	C	T	18.59	.	ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=2;MLEAF=1.00;MQ0=0;OND=0.00	GT:DP:GQ:PL	./.	1/1:2:3:45,3,0	./.
+20	10005427	.	C	T	17.49	.	ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=2;MLEAF=0.500;MQ0=0;OND=0.00	GT:DP:GQ:PL	./.	1/1:2:3:45,3,0	0/0:1:3:0,3,41
+20	10005723	.	A	G	10.90	.	ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=2;MLEAF=1.00;MQ0=0;OND=0.00	GT:DP:GQ:PL	./.	1/1:1:3:37,3,0	./.
+20	10006682	.	T	A	12.77	.	ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=2;MLEAF=1.00;MQ0=0;OND=0.00	GT:DP:GQ:PL	./.	./.	1/1:1:3:39,3,0
+20	10007352	.	C	T	204.23	.	ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=6;MLEAF=1.00;MQ0=0;OND=0.00	GT:DP:GQ:PL	1/1:1:3:39,3,0	1/1:3:6:79,6,0	1/1:4:9:111,9,0
+20	10008221	.	T	C	61.42	.	ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=4;MLEAF=1.00;MQ0=0;OND=0.00	GT:DP:GQ:PL	1/1:1:3:41,3,0	./.	1/1:2:3:45,3,0
+20	10009227	.	A	G	18.59	.	ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=2;MLEAF=1.00;MQ0=0;OND=0.00	GT:DP:GQ:PL	./.	./.	1/1:2:3:45,3,0
+20	10009246	.	A	G	18.59	.	ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=2;MLEAF=1.00;MQ0=0;OND=0.00	GT:DP:GQ:PL	./.	./.	1/1:2:3:45,3,0
+20	10009446	.	G	T	12.77	.	ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=2;MLEAF=1.00;MQ0=0;OND=0.00	GT:DP:GQ:PL	./.	./.	1/1:1:3:39,3,0
+20	10009512	.	C	G	15.65	.	ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=2;MLEAF=1.00;MQ0=0;OND=0.00	GT:DP:GQ:PL	./.	./.	1/1:1:3:42,3,0
+20	10009795	.	A	G	13.72	.	ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=2;MLEAF=1.00;MQ0=0;OND=0.00	GT:DP:GQ:PL	1/1:1:3:40,3,0	./.	./.
+20	10011075	.	C	T	17.49	.	ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=2;MLEAF=0.500;MQ0=0;OND=0.00	GT:DP:GQ:PL	./.	1/1:2:3:45,3,0	0/0:1:3:0,3,37
+20	10012362	.	G	T	12.77	.	ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=2;MLEAF=1.00;MQ0=0;OND=0.00	GT:DP:GQ:PL	./.	1/1:1:3:39,3,0	./.
+20	10019093	.	A	G	9258.92	.	ABHet=0.558;Dels=0.00;FS=0.000;MLEAC=3;MLEAF=0.500;MQ0=0;OND=0.00	GT:DP:GQ:PL	0/1:250:99:3166,0,3854	0/1:250:99:3346,0,3750	0/1:250:99:2777,0,4107
+20	10024107	.	C	T	26.29	.	ABHet=0.778;ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=2;MLEAF=0.333;MQ0=0;OND=0.00	GT:DP:GQ:PL	0/1:4:27:27,0,101	0/0:6:18:0,18,215	0/1:5:31:31,0,81
+20	10026108	.	A	G	23.15	.	ABHet=0.778;ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=1;MLEAF=0.167;MQ0=0;OND=0.00	GT:DP:GQ:PL	0/0:15:39:0,39,513	0/1:9:54:54,0,255	0/0:14:42:0,42,541
+20	10026357	.	T	C	3067.16	.	ABHet=0.467;ABHom=1.00;Dels=0.00;FS=2.821;MLEAC=2;MLEAF=0.333;MQ0=0;OND=0.00	GT:DP:GQ:PL	0/1:87:99:1310,0,1044	0/0:90:99:0,220,2870	0/1:111:99:1789,0,1374
+20	10026794	.	C	T	11.83	.	ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=2;MLEAF=1.00;MQ0=0;OND=0.00	GT:DP:GQ:PL	1/1:1:3:38,3,0	./.	./.
+20	10030188	.	T	A	3747.16	.	ABHet=0.448;ABHom=1.00;Dels=0.00;FS=0.394;MLEAC=2;MLEAF=0.333;MQ0=0;OND=0.00	GT:DP:GQ:PL	0/1:94:99:1333,0,1308	0/0:137:99:0,328,4257	0/1:154:99:2446,0,1566
+20	10030931	.	C	A	56.23	.	ABHet=0.700;ABHom=0.960;Dels=0.00;FS=0.000;MLEAC=1;MLEAF=0.167;MQ0=0;OND=0.029	GT:DP:GQ:PL	0/0:9:24:0,24,299	0/1:10:87:87,0,229	0/0:16:16:0,16,440
+20	10031342	.	G	A	18.59	.	ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=2;MLEAF=1.00;MQ0=0;OND=0.00	GT:DP:GQ:PL	./.	1/1:2:3:45,3,0	./.
+20	10031798	.	G	A	100.34	.	ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=6;MLEAF=1.00;MQ0=0;OND=0.00	GT:DP:GQ:PL	1/1:1:3:40,3,0	1/1:2:3:45,3,0	1/1:1:3:39,3,0
+20	10031827	.	C	T	17.49	.	ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=2;MLEAF=0.500;MQ0=0;OND=0.00	GT:DP:GQ:PL	1/1:2:3:45,3,0	0/0:1:3:0,3,42	./.
+20	10032413	.	T	G	3643.16	.	ABHet=0.512;ABHom=1.00;Dels=0.00;FS=0.435;MLEAC=2;MLEAF=0.333;MQ0=0;OND=0.00	GT:DP:GQ:PL	0/1:124:99:2087,0,1530	0/0:97:99:0,250,3265	0/1:134:99:1588,0,2067
+20	10034546	.	T	C	11.83	.	ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=2;MLEAF=1.00;MQ0=0;OND=0.00	GT:DP:GQ:PL	1/1:1:3:38,3,0	./.	./.
+20	10036107	.	T	G	12.39	.	ABHet=0.477;ABHom=0.630;Dels=0.00;FS=5.027;MLEAC=1;MLEAF=0.167;MQ0=0;OND=0.231	GT:DP:GQ:PL	0/0:49:28:0,28,561	0/0:24:39:0,39,462	0/1:44:43:43,0,518
+20	10037877	.	G	C	16.67	.	ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=2;MLEAF=0.333;MQ0=0;OND=0.00	GT:DP:GQ:PL	1/1:2:3:45,3,0	0/0:3:3:0,3,45	0/0:2:3:0,3,45
+20	10043441	.	T	A	11.12	.	ABHet=0.500;Dels=0.00;FS=0.000;MLEAC=1;MLEAF=0.500;MQ0=0;OND=0.00	GT:DP:GQ:PL	./.	0/1:4:38:39,0,38	./.
+20	10044282	.	T	C	150.42	.	ABHet=0.111;ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=1;MLEAF=0.167;MQ0=0;OND=0.00	GT:DP:GQ:PL	0/0:2:6:0,6,74	0/1:9:18:180,0,18	0/0:3:9:0,9,108
+20	10044849	.	A	G	57.17	.	ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=2;MLEAF=0.500;MQ0=0;OND=0.00	GT:DP:GQ:PL	./.	0/0:2:3:0,3,45	1/1:3:6:86,6,0
+20	10045078	.	G	T	12.77	.	ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=2;MLEAF=1.00;MQ0=0;OND=0.00	GT:DP:GQ:PL	./.	1/1:1:3:39,3,0	./.
+20	10046489	.	C	T	11.83	.	ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=2;MLEAF=1.00;MQ0=0;OND=0.00	GT:DP:GQ:PL	./.	./.	1/1:1:3:38,3,0
+20	10047597	.	C	A	12.77	.	ABHom=1.00;Dels=0.00;FS=0.000;MLEAC=2;MLEAF=1.00;MQ0=0;OND=0.00	GT:DP:GQ:PL	./.	./.	1/1:1:3:39,3,0

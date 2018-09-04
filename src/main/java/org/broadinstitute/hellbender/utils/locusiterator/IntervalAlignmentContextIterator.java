@@ -33,7 +33,7 @@ public class IntervalAlignmentContextIterator implements Iterator<AlignmentConte
      * @param intervalLocusIterator an iterator that will traverse all relevant loci
      * @param dictionary reference or best available dictionary.
      */
-    IntervalAlignmentContextIterator(Iterator<AlignmentContext> alignmentContextIterator, IntervalLocusIterator intervalLocusIterator, SAMSequenceDictionary dictionary) {
+    public IntervalAlignmentContextIterator(Iterator<AlignmentContext> alignmentContextIterator, IntervalLocusIterator intervalLocusIterator, SAMSequenceDictionary dictionary) {
         this.alignmentContextIterator = alignmentContextIterator;
         this.intervalLocusIterator = intervalLocusIterator;
         this.dictionary = dictionary;

@@ -1,14 +1,14 @@
 package org.broadinstitute.hellbender.engine;
 
-import com.intel.genomicsdb.GenomicsDBUtils;
+import com.intel.genomicsdb.GenomicsDBLibLoader;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.SelectVariants;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.utils.test.GenomicsDBTestUtils;
-import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
+import org.broadinstitute.hellbender.testutils.GenomicsDBTestUtils;
+import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -30,7 +30,7 @@ public class GenomicsDBIntegrationTest extends CommandLineProgramTest {
     @Test
     public void testGenomicsDBInClassPath(){
         final String path = "/"+System.mapLibraryName("tiledbgenomicsdb");
-        Assert.assertNotNull(GenomicsDBUtils.class.getResource(path), "Could not find the genomicsdb binary at " + path);
+        Assert.assertNotNull(GenomicsDBLibLoader.class.getResource(path), "Could not find the genomicsdb binary at " + path);
     }
 
     @Test

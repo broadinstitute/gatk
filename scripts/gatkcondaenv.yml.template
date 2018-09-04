@@ -1,0 +1,51 @@
+# $condaEnvDescription
+#
+name: $condaEnvName
+channels:
+- defaults
+dependencies:
+- certifi=2016.2.28=py36_0
+- intel-openmp=2018.0.0
+- mkl=2018.0.1
+- mkl-service=1.1.2
+- openssl=1.0.2l=0
+- pip=9.0.1=py36_1
+- python=3.6.2=0
+- readline=6.2=2
+- setuptools=36.4.0=py36_1
+- sqlite=3.13.0=0
+- tk=8.5.18=0
+- wheel=0.29.0=py36_0
+- xz=5.2.3=0
+- zlib=1.2.11=0
+- pip:
+  - biopython==1.70
+  - bleach==1.5.0
+  - cycler==0.10.0
+  - enum34==1.1.6
+  - h5py==2.7.1
+  - html5lib==0.9999999
+  - joblib==0.11
+  - keras==2.1.4
+  - markdown==2.6.9
+  - matplotlib==2.1.0
+  - numpy==1.13.3
+  - pandas==0.21.0
+  - patsy==0.4.1
+  - protobuf==3.5.0.post1
+  - pymc3==3.1
+  - pyparsing==2.2.0
+  - pysam==0.13
+  - python-dateutil==2.6.1
+  - pytz==2017.3
+  - pyvcf==0.6.8
+  - pyyaml==3.12
+  - scikit-learn==0.19.1
+  - scipy==1.0.0
+  - six==1.11.0
+  - $tensorFlowDependency
+  - tensorflow-tensorboard==0.4.0rc3
+  - theano==0.9.0
+  - tqdm==4.19.4
+  - werkzeug==0.12.2
+  - gatkPythonPackageArchive.zip

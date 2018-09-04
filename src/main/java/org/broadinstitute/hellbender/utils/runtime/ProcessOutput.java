@@ -29,5 +29,4 @@ public final class ProcessOutput {
     public StreamOutput getStderr() {
         return stderr;
     }
-
 }

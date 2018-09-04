@@ -12,14 +12,17 @@ import java.util.EnumMap;
 /**
  * Stream output captured from a stream.
  */
-public final class CapturedStreamOutput extends StreamOutput {
-    private final InputStream processStream;
+public class CapturedStreamOutput extends StreamOutput {
+    protected final InputStream processStream;
     private final EnumMap<StreamLocation, OutputStream> outputStreams = new EnumMap<>(StreamLocation.class);
+
+    // Size of buffers used to transfer data read from process streams
+    public final static int STREAM_BLOCK_TRANSFER_SIZE = 4096;
 
     /**
      * The byte stream to capture content or null if no output string content was requested.
      */
-    private final ByteArrayOutputStream bufferStream;
+    protected final ByteArrayOutputStream bufferStream;
 
     /**
      * True if the buffer is truncated.
@@ -89,10 +92,11 @@ public final class CapturedStreamOutput extends StreamOutput {
      *
      * @throws IOException When unable to read or write.
      */
-    public void readAndClose() throws IOException {
+    public void read() throws IOException {
+        int readCount = 0;
         try {
-            byte[] buf = new byte[4096];
-            int readCount;
+            // read until eof
+            byte[] buf = new byte[STREAM_BLOCK_TRANSFER_SIZE];
             while ((readCount = processStream.read(buf)) >= 0)
                 for (OutputStream outputStream : this.outputStreams.values()) {
                     outputStream.write(buf, 0, readCount);

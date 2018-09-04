@@ -116,7 +116,7 @@ public final class FeatureInput<T extends Feature> implements Serializable {
             } else if (tokens.length == 1) {
                 // No user-specified logical name for this FeatureInput, so use the absolute path to the File as its name
                 final String featurePath = tokens[0];
-                return new ParsedArgument(FeatureInput.makeIntoAbsolutePath(featurePath), featurePath);
+                return new ParsedArgument(getDefaultName(featurePath), featurePath);
             } else {
                 // User specified a logical name (and optional list of key-value pairs)
                 // for this FeatureInput using name(,key=value)*:File syntax.
@@ -140,6 +140,10 @@ public final class FeatureInput<T extends Feature> implements Serializable {
                 }
                 return pa;
             }
+        }
+
+        private static String getDefaultName(String featurePath) {
+            return FeatureInput.makeIntoAbsolutePath(featurePath);
         }
 
         private ParsedArgument(final String name, final String file) {
@@ -212,7 +216,7 @@ public final class FeatureInput<T extends Feature> implements Serializable {
     public FeatureInput(final String featureFile, final String name, final Map<String, String> keyValueMap) {
         Utils.nonNull(name, "name");
         Utils.nonNull(keyValueMap, "kevValueMap");
-        Utils.nonNull(featureFile, "featureFile");
+        Utils.nonNull(featureFile, "feature-file");
         this.name = name;
         this.keyValueMap = Collections.unmodifiableMap(new LinkedHashMap<>(keyValueMap));   //make a unmodifiable copy
         this.featureFile = featureFile;
@@ -265,6 +269,14 @@ public final class FeatureInput<T extends Feature> implements Serializable {
      */
     public String getName() {
         return name;
+    }
+
+    /**
+     *
+     * @return true if the value for name does not match the default, indicating it was a user supplied name (i.e. foo:file.vcf)
+     */
+    public boolean hasUserSuppliedName() {
+        return !ParsedArgument.getDefaultName(getFeaturePath()).equals(name);
     }
 
     /**

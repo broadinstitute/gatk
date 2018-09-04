@@ -1,9 +1,9 @@
 package org.broadinstitute.hellbender.tools.validation;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -25,7 +25,7 @@ public class CompareBaseQualitiesIntegrationTest extends CommandLineProgramTest 
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.add(firstBam.getCanonicalPath());
         args.add(secondBam.getCanonicalPath());
-        args.add("--throwOnDiff true");
+        args.add("--throw-on-diff true");
         args.add("--VALIDATION_STRINGENCY SILENT");
         final Object result = this.runCommandLine(args);
         Assert.assertEquals(result, 0);
@@ -67,7 +67,7 @@ public class CompareBaseQualitiesIntegrationTest extends CommandLineProgramTest 
         }
         if (staticQuantizationQuals != null && !staticQuantizationQuals.isEmpty()){
             for (int sq : staticQuantizationQuals){
-                args.add("-SQQ");
+                args.add("--" + CompareBaseQualities.STATIC_QUANTIZED_QUALS_LONG_NAME);
                 args.add(sq);
             }
         }

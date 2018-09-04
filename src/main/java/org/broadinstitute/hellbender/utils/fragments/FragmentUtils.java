@@ -23,11 +23,12 @@ public final class FragmentUtils {
      * are not treated independently.
      *
      * Assumes that firstRead starts before secondRead (according to their soft clipped starts)
+     * Sets the qualities of clippedFirstRead and clippedSecondRead to mimic a merged read or
+     * nothing if the algorithm cannot create a meaningful one
      *
      * @param clippedFirstRead the left most read
      * @param clippedSecondRead the right most read
      *
-     * @return a strandless merged read of first and second, or null if the algorithm cannot create a meaningful one
      */
     public static void adjustQualsOfOverlappingPairedFragments(final GATKRead clippedFirstRead, final GATKRead clippedSecondRead) {
         Utils.nonNull(clippedFirstRead);
@@ -74,7 +75,7 @@ public final class FragmentUtils {
         final GATKRead firstRead = overlappingPair.get(0);
         final GATKRead secondRead = overlappingPair.get(1);
 
-        if ( ReadUtils.getSoftStart(secondRead) < ReadUtils.getSoftStart(firstRead) ) {
+        if ( secondRead.getSoftStart() < firstRead.getSoftStart() ) {
             adjustQualsOfOverlappingPairedFragments(secondRead, firstRead);
         }
         else {

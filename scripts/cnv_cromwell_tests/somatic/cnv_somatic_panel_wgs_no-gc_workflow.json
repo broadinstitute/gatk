@@ -1,0 +1,15 @@
+{
+  "CNVSomaticPanelWorkflow.gatk_docker": "__GATK_DOCKER__",
+  "CNVSomaticPanelWorkflow.intervals": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_somatic_workflows_test_files/chr20.interval_list",
+  "CNVSomaticPanelWorkflow.normal_bais": [
+    "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_somatic_workflows_test_files/HCC1143_BL-n1-chr20-downsampled.deduplicated.bam.bai",
+    "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_somatic_workflows_test_files/HCC1143-t1-chr20-downsampled.deduplicated.bam.bai"],
+  "CNVSomaticPanelWorkflow.normal_bams": [
+    "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_somatic_workflows_test_files/HCC1143_BL-n1-chr20-downsampled.deduplicated.bam",
+    "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_somatic_workflows_test_files/HCC1143-t1-chr20-downsampled.deduplicated.bam"],
+  "CNVSomaticPanelWorkflow.pon_entity_id": "wgs-no-gc",
+  "CNVSomaticPanelWorkflow.bin_length": "10000",
+  "CNVSomaticPanelWorkflow.ref_fasta_dict": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_somatic_workflows_test_files/human_g1k_v37.chr-20.truncated.dict",
+  "CNVSomaticPanelWorkflow.ref_fasta_fai": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_somatic_workflows_test_files/human_g1k_v37.chr-20.truncated.fasta.fai",
+  "CNVSomaticPanelWorkflow.ref_fasta": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_somatic_workflows_test_files/human_g1k_v37.chr-20.truncated.fasta"
+}

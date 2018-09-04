@@ -23,6 +23,7 @@ import java.util.List;
  */
 public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
     private static final SmithWatermanJavaAligner ALIGNER = new SmithWatermanJavaAligner();
+    private long totalComputeTime = 0;
 
     /**
      * return the stateless singleton instance of SmithWatermanJavaAligner
@@ -55,6 +56,8 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
      */
     @Override
     public SmithWatermanAlignment align(final byte[] reference, final byte[] alternate, final SWParameters parameters, final SWOverhangStrategy overhangStrategy) {
+        long startTime = System.nanoTime();
+
         if ( reference == null || reference.length == 0 || alternate == null || alternate.length == 0 ) {
             throw new IllegalArgumentException("Non-null, non-empty sequences are required for the Smith-Waterman calculation");
         }
@@ -69,11 +72,13 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
             matchIndex = Utils.lastIndexOf(reference, alternate);
         }
 
+        final SmithWatermanAlignment alignmentResult;
+
         if (matchIndex != -1) {
             // generate the alignment result when the substring search was successful
             final List<CigarElement> lce = new ArrayList<>(alternate.length);
             lce.add(makeElement(State.MATCH, alternate.length));
-            return  new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), matchIndex);
+            alignmentResult = new SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), matchIndex);
         }
         else {
             // run full Smith-Waterman
@@ -83,8 +88,11 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
             final int[][] btrack=new int[n][m];
 
             calculateMatrix(reference, alternate, sw, btrack, overhangStrategy, parameters);
-            return calculateCigar(sw, btrack, overhangStrategy); // length of the segment (continuous matches, insertions or deletions)
+            alignmentResult = calculateCigar(sw, btrack, overhangStrategy); // length of the segment (continuous matches, insertions or deletions)
         }
+
+        totalComputeTime += System.nanoTime() - startTime;
+        return alignmentResult;
     }
 
     /**
@@ -335,7 +343,7 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
         // post-process the last segment we are still keeping;
         // NOTE: if reads "overhangs" the ref on the left (i.e. if p2>0) we are counting
         // those extra bases sticking out of the ref into the first cigar element if DO_SOFTCLIP is false;
-        // otherwise they will be softclipped. For instance,
+        // otherwise they will be soft-clipped. For instance,
         // if read length is 5 and alignment starts at offset -2 (i.e. read starts before the ref, and only
         // last 3 bases of the read overlap with/align to the ref), the cigar will be still 5M if
         // DO_SOFTCLIP is false or 2S3M if DO_SOFTCLIP is true.
@@ -378,4 +386,8 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
         return new CigarElement(length, op);
     }
 
+    @Override
+    public void close() {
+        logger.info(String.format("Total compute time in java Smith-Waterman : %.2f sec", totalComputeTime * 1e-9));
+    }
 }

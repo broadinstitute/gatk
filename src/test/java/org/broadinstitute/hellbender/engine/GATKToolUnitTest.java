@@ -1,12 +1,7 @@
 package org.broadinstitute.hellbender.engine;
 
+import htsjdk.samtools.*;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
-import htsjdk.samtools.SAMFormatException;
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.ValidationStringency;
 import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -16,26 +11,28 @@ import htsjdk.variant.vcf.VCFFileReader;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFIDHeaderLine;
-import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.CommandLineArgumentParser;
-import org.broadinstitute.barclay.argparser.CommandLineParser;
-import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.*;
+import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
+import org.broadinstitute.hellbender.tools.walkers.annotator.ClippingRankSumTest;
+import org.broadinstitute.hellbender.tools.walkers.annotator.Coverage;
+import org.broadinstitute.hellbender.tools.walkers.annotator.StandardAnnotation;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
-import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import javax.annotation.Nullable;
 import java.io.File;
-import java.util.Arrays;
-import java.util.Iterator;
 import java.io.IOException;
-import java.util.Set;
+import java.util.*;
 
 public final class GATKToolUnitTest extends GATKBaseTest {
 
@@ -77,6 +74,10 @@ public final class GATKToolUnitTest extends GATKBaseTest {
         @Override
         public void traverse() {
             //no op
+        }
+
+        public List<SimpleInterval> getIntervals() {
+            return intervalArgumentCollection.getIntervals(getBestAvailableSequenceDictionary());
         }
     }
 
@@ -163,6 +164,57 @@ public final class GATKToolUnitTest extends GATKBaseTest {
         public void traverse() {
             //no op
         }
+
+        @Override
+        public boolean useVariantAnnotations() {
+            return true;
+        }
+    }
+
+    @CommandLineProgramProperties(
+            summary = "TestGATKToolWithDefaultAnnotations",
+            oneLineSummary = "TestGATKToolWithDefaultAnnotations",
+            programGroup = TestProgramGroup.class
+    )
+    private static final class TestGATKToolWithDefaultAnnotations extends GATKTool{
+
+        @Override
+        public void traverse() {
+            //no op
+        }
+
+        @Override
+        public boolean useVariantAnnotations() {
+            return true;
+        }
+
+        @Override
+        public List<Annotation> getDefaultVariantAnnotations() {
+            return Collections.singletonList(new Coverage());
+        }
+    }
+
+    @CommandLineProgramProperties(
+            summary = "TestGATKToolWithDefaultAnnotations",
+            oneLineSummary = "TestGATKToolWithDefaultAnnotations",
+            programGroup = TestProgramGroup.class
+    )
+    private static final class TestGATKToolWithDefaultAnnotationGroups extends GATKTool{
+
+        @Override
+        public void traverse() {
+            //no op
+        }
+
+        @Override
+        public boolean useVariantAnnotations() {
+            return true;
+        }
+
+        @Override
+        public List<Class<? extends Annotation>> getDefaultVariantAnnotationGroups() {
+            return Collections.singletonList(StandardAnnotation.class);
+        }
     }
 
     @DataProvider
@@ -196,8 +248,8 @@ public final class GATKToolUnitTest extends GATKBaseTest {
         final CommandLineParser clp = new CommandLineArgumentParser(tool);
 
         final String[] args = (cramRefArg == null)
-                ? new String[] {"--sequenceDictionary", masterSequenceDictionaryFile, otherSeqArg, otherSequenceFile }
-                : new String[] {"--sequenceDictionary", masterSequenceDictionaryFile, otherSeqArg, otherSequenceFile, cramRefArg, cramRefFile };
+                ? new String[] {"--" + StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, masterSequenceDictionaryFile, otherSeqArg, otherSequenceFile }
+                : new String[] {"--" + StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, masterSequenceDictionaryFile, otherSeqArg, otherSequenceFile, cramRefArg, cramRefFile };
 
         clp.parseArguments(System.out, args);
 
@@ -251,7 +303,7 @@ public final class GATKToolUnitTest extends GATKBaseTest {
 
         final String[] args = (masterSequenceFileName == null)
                 ? new String[] { "--input", inputFileName, }
-                : new String[] { "--sequenceDictionary", masterSequenceFileName, "--input", inputFileName, };
+                : new String[] { "--" + StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, masterSequenceFileName, "--input", inputFileName, };
 
         clp.parseArguments(System.out, args);
 
@@ -288,8 +340,8 @@ public final class GATKToolUnitTest extends GATKBaseTest {
         final CommandLineParser clp = new CommandLineArgumentParser(tool);
 
         final String[] args = (cramRefArg == null)
-            ? new String[] { "--sequenceDictionary", sequenceFileName, otherSeqArg, otherSequenceFile, }
-            : new String[] { "--sequenceDictionary", sequenceFileName, otherSeqArg, otherSequenceFile, cramRefArg, cramRefFile };
+            ? new String[] { "--" + StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, sequenceFileName, otherSeqArg, otherSequenceFile, }
+            : new String[] { "--" + StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, sequenceFileName, otherSeqArg, otherSequenceFile, cramRefArg, cramRefFile };
 
         clp.parseArguments(System.out, args);
 
@@ -317,6 +369,35 @@ public final class GATKToolUnitTest extends GATKBaseTest {
             Assert.assertEquals(headerForReads, samFileHeader);
         }
         tool.doWork();
+        tool.onShutdown();
+    }
+
+    @Test
+    public void testPicardIntervalList() throws Exception {
+        final TestGATKToolWithReads tool = new TestGATKToolWithReads();
+        final CommandLineParser clp = new CommandLineArgumentParser(tool);
+        final File bamFile = new File(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam");
+        final File intervalsFile = new File(publicTestDir + "picard_intervals.list");
+        final String[] args = {
+                "-I", bamFile.getCanonicalPath(),
+                "-L", intervalsFile.getCanonicalPath()
+        };
+        clp.parseArguments(System.out, args);
+        tool.onStartup();
+        final SAMFileHeader headerForReads = tool.getHeaderForReads();
+
+        final SamReaderFactory factory = SamReaderFactory.makeDefault()    //read the file directly and compare headers
+                .validationStringency(ValidationStringency.SILENT);
+        try(SamReader samReader = factory.open(bamFile)) {
+            final SAMFileHeader samFileHeader = samReader.getFileHeader();
+            Assert.assertEquals(headerForReads, samFileHeader);
+        }
+        tool.doWork();
+
+        // ensure that the raw interval argument has not been expanded by Barclay, and that the post-merged
+        // intervals list contains 3 intervals (there are 4 in the file; 2 get merged)
+        Assert.assertEquals(tool.getIntervals().size(), 3);
+
         tool.onShutdown();
     }
 
@@ -534,12 +615,152 @@ public final class GATKToolUnitTest extends GATKBaseTest {
         Assert.assertFalse(outFileMD5.exists(), "An md5 file was created and should not have been");
     }
 
-    private TestGATKToolWithVariants createTestVariantTool(final String args[]) {
-        final TestGATKToolWithVariants tool = new TestGATKToolWithVariants();
-        if (null != args) {
-            final CommandLineParser clp = new CommandLineArgumentParser(tool);
-            clp.parseArguments(System.out, args);
+    @Test
+    public void testMakeEmptyAnnotations() {
+        final TestGATKToolWithVariants tool = createTestVariantTool(null);
+        Collection<Annotation> annots = tool.makeVariantAnnotations();
+
+        Assert.assertTrue(annots.isEmpty());
+    }
+
+    @Test
+    public void testGetAllAnnotations() {
+        String[] args = {"--"+StandardArgumentDefinitions.ENABLE_ALL_ANNOTATIONS};
+
+        final TestGATKToolWithVariants tool = createTestVariantTool(args);
+        Collection<Annotation> annots = tool.makeVariantAnnotations();
+
+        ClassFinder finder = new ClassFinder();
+        finder.find(GATKAnnotationPluginDescriptor.pluginPackageName, Annotation.class);
+
+        Set<Class<?>> classes = finder.getConcreteClasses();
+        Assert.assertFalse(classes.isEmpty());
+        Assert.assertEquals(annots.size(),classes.size());
+        for(Class<?> found : classes) {
+            Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass()==found));
         }
+    }
+
+    @Test
+    public void testExcludeAnnotation(){
+        String[] args = {"--"+StandardArgumentDefinitions.ENABLE_ALL_ANNOTATIONS, "-AX", "Coverage"};
+
+        final TestGATKToolWithVariants tool = createTestVariantTool(args);
+        Collection<Annotation> annots = tool.makeVariantAnnotations();
+
+        // Asserting that the annotation was excluded
+        Assert.assertFalse(annots.stream().anyMatch(a -> a.getClass()==Coverage.class));
+        Assert.assertFalse(annots.isEmpty());
+    }
+
+    @Test
+    public void testIncludeAnnotationGroups(){
+        String[] args = {"-G", StandardAnnotation.class.getSimpleName()};
+
+        final TestGATKToolWithVariants tool = createTestVariantTool(args);
+        Collection<Annotation> annots = tool.makeVariantAnnotations();
+
+        // Asserting that a standard annotation was included but not everything
+        ClassFinder finder = new ClassFinder();
+        finder.find(GATKAnnotationPluginDescriptor.pluginPackageName, StandardAnnotation.class);
+
+        Set<Class<?>> classes = finder.getConcreteClasses();
+        Assert.assertFalse(classes.isEmpty());
+        Assert.assertEquals(annots.size(),classes.size());
+        for(Class<?> found : classes) {
+            Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass()==found));
+        }
+    }
+
+
+    @Test
+    public void testIncludeAnnotation(){
+        String[] args = {"-A", Coverage.class.getSimpleName()};
+
+        final TestGATKToolWithVariants tool = createTestVariantTool(args);
+        Collection<Annotation> annots = tool.makeVariantAnnotations();
+
+        // Asserting coverage was added
+        Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass()==Coverage.class));
+        Assert.assertTrue(annots.size() == 1);
+    }
+
+    @Test
+    public void testMakeDefaultAnnotations() {
+        String[] args = null;
+
+        final TestGATKToolWithDefaultAnnotations tool = createTestVariantTool(new TestGATKToolWithDefaultAnnotations(), args);
+        Collection<Annotation> annots = tool.makeVariantAnnotations();
+
+        // Asserting coverage was added by default
+        Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass()==Coverage.class));
+        Assert.assertTrue(annots.size() == 1);
+    }
+
+    @Test
+    public void testMakeDefaultAnnotationGroups() {
+        String[] args = null;
+
+        final TestGATKToolWithDefaultAnnotationGroups tool = createTestVariantTool(new TestGATKToolWithDefaultAnnotationGroups(), args);
+        Collection<Annotation> annots = tool.makeVariantAnnotations();
+
+        ClassFinder finder = new ClassFinder();
+        finder.find(GATKAnnotationPluginDescriptor.pluginPackageName, StandardAnnotation.class);
+
+        Set<Class<?>> classes = finder.getConcreteClasses();
+        Assert.assertFalse(classes.isEmpty());
+        Assert.assertEquals(annots.size(),classes.size());
+        for(Class<?> found : classes) {
+            Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass()==found));
+        }
+
+        Assert.assertFalse(annots.stream().anyMatch(a -> a.getClass()==StandardAnnotation.class));
+        Assert.assertFalse(annots.stream().anyMatch(a -> a.getClass()==ClippingRankSumTest.class));
+    }
+
+    @Test
+    public void testClearDefaultAnnotationsGroups() {
+        String[] args = {"--"+StandardArgumentDefinitions.DISABLE_TOOL_DEFAULT_ANNOTATIONS};
+
+        final TestGATKToolWithDefaultAnnotationGroups tool = createTestVariantTool(new TestGATKToolWithDefaultAnnotationGroups(), args);
+        Collection<Annotation> annots = tool.makeVariantAnnotations();
+
+        // Asserting that the standard annotation was not included when defaults are disabled
+        Assert.assertFalse(annots.stream().anyMatch(a -> a.getClass()==Coverage.class));
+        Assert.assertFalse(annots.stream().anyMatch(a -> a.getClass()==StandardAnnotation.class));
+        Assert.assertFalse(annots.stream().anyMatch(a -> a.getClass()==ClippingRankSumTest.class));
+    }
+
+    @Test
+    public void testClearDefaultAnnotations() {
+        String[] args = {"--"+StandardArgumentDefinitions.DISABLE_TOOL_DEFAULT_ANNOTATIONS};
+
+        final TestGATKToolWithDefaultAnnotations tool = createTestVariantTool(new TestGATKToolWithDefaultAnnotations(), args);
+        Collection<Annotation> annots = tool.makeVariantAnnotations();
+
+        // Asserting that the standard annotation was not included when defaults are disabled
+        Assert.assertFalse(annots.stream().anyMatch(a -> a.getClass()==Coverage.class));
+        Assert.assertFalse(annots.stream().anyMatch(a -> a.getClass()==StandardAnnotation.class));
+        Assert.assertFalse(annots.stream().anyMatch(a -> a.getClass()==ClippingRankSumTest.class));
+    }
+
+    @Test
+    public void testHelpWithAllPluginDescriptors() {
+        // Smoke test to ensure that requesting help from plugin descriptors doesn't crash. Use a tool
+        // (TestGATKToolWithVariants) that has both the read filter and annotation plugin descriptors enabled.
+        String[] args = {"-h"};
+        new TestGATKToolWithVariants().instanceMain(args);
+    }
+
+    private TestGATKToolWithVariants createTestVariantTool(final String args[]) {
+       return createTestVariantTool(new TestGATKToolWithVariants(), args);
+    }
+
+    private <T extends GATKTool> T createTestVariantTool(final T tool, final String args[]) {
+
+        final CommandLineParser clp = tool.getCommandLineParser();
+        clp.parseArguments(System.out, args==null? new String[0] : args);
+
         return tool;
     }
 
@@ -674,8 +895,8 @@ public final class GATKToolUnitTest extends GATKBaseTest {
 
         args.addInput(inputFile);
         args.addOutput(outputFile);
-        args.add("--createOutputVariantIndex"); args.add(Boolean.toString(createIndex));
-        args.add("--createOutputVariantMD5"); args.add(Boolean.toString(createMD5));
+        args.add("--" + StandardArgumentDefinitions.CREATE_OUTPUT_VARIANT_INDEX_LONG_NAME); args.add(Boolean.toString(createIndex));
+        args.add("--" + StandardArgumentDefinitions.CREATE_OUTPUT_VARIANT_MD5_LONG_NAME); args.add(Boolean.toString(createMD5));
         if (lenient) {
             args.add("--lenient");
         }
@@ -718,4 +939,61 @@ public final class GATKToolUnitTest extends GATKBaseTest {
         writer.add(vc);
     }
 
+    final String baseVariants = packageRootTestDir + "engine/feature_data_source_test.vcf";
+
+    @CommandLineProgramProperties(programGroup = TestProgramGroup.class, oneLineSummary = "GATKTool Intervals Test Walker", summary = "This is a test walker for GATKTool getTraversalIntervals")
+    private static class TestIntervalWalker extends GATKTool {
+        @Argument(fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME, shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME, doc = "A VCF file containing variants", common = false, optional = false)
+        public String drivingVariantFile;
+
+        public TestIntervalWalker() {
+
+        }
+
+        @Override
+        public void traverse() {
+
+        }
+    }
+
+    @Test(expectedExceptions = UserException.class)
+    public void testSequenceDictionaryRequiredForIntervalQuery() throws Exception {
+        //This should have failed because no dictionary is provided
+        final TestIntervalWalker tool = new TestIntervalWalker();
+        tool.instanceMain(new String[]{
+                "-V", baseVariants,
+                "-L", "1:21-21"
+        });
+    }
+
+    @DataProvider(name = "TestGetTraversalIntervalsProvider")
+    public Object[][] getTestGetTraversalIntervalsProvider() {
+        return new Object[][]{
+                {"1:21-21", 1, hg19MiniReference},
+                {null, 4, hg19MiniReference},
+                {null, null, null}
+        };
+    }
+
+    @Test(dataProvider = "TestGetTraversalIntervalsProvider")
+    public void testGetTraversalIntervals(@Nullable String intervals, Integer expected, String ref) {
+        List<String> args = new ArrayList<>(Arrays.asList(
+                "-V", baseVariants
+        ));
+
+        if (ref != null) {
+            args.add("-R");
+            args.add(ref);
+        }
+
+        if (intervals != null) {
+            args.add("-L");
+            args.add(intervals);
+        }
+
+        final TestIntervalWalker tool = new TestIntervalWalker();
+        tool.instanceMain(args.toArray(new String[args.size()]));
+
+        Assert.assertEquals(tool.getTraversalIntervals() == null ? null : tool.getTraversalIntervals().size(), expected);
+    }
 }

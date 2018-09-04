@@ -28,26 +28,26 @@ public final class PersistenceOptimizerUnitTest extends GATKBaseTest {
 
         final Random rng = new Random(RANDOM_SEED);
         final double period = numPoints / 4.;
-        final double[] dataSinusoidal = IntStream.range(0, numPoints).boxed()
+        final double[] dataSinusoidal = IntStream.range(0, numPoints)
                 .mapToDouble(i -> Math.sin(i * 2 * Math.PI / period) + 0.1 * rng.nextGaussian())
                 .toArray();
         final List<Integer> minimaIndicesExpectedSinusoidal = Arrays.asList(
                 45, 94, 20, 68, 0, 82, 43, 22, 73, 31, 55, 79);                                         //from implementation at https://people.mpi-inf.mpg.de/~weinkauf/notes/persistence1d.html
 
         rng.setSeed(RANDOM_SEED);
-        final double[] dataPolynomial = IntStream.range(0, numPoints).boxed()
+        final double[] dataPolynomial = IntStream.range(0, numPoints)
                 .mapToDouble(i -> (double) i / numPoints - 0.5)
                 .map(x -> (x - 0.75) * (x - 0.5) * (x - 0.25) * (x - 0.1) * (x + 0.25) * (x + 0.5) + 0.0001 * rng.nextGaussian())
                 .toArray();
         final List<Integer> minimaIndicesExpectedPolynomial = Arrays.asList(
                 8, 68, 99, 73, 82, 89, 36, 34, 79, 45, 38, 49, 43, 84, 60, 56, 66, 62, 70, 92, 47, 87); //from implementation at https://people.mpi-inf.mpg.de/~weinkauf/notes/persistence1d.html
 
-        final double[] dataIdentity = IntStream.range(0, numPoints).boxed()
+        final double[] dataIdentity = IntStream.range(0, numPoints)
                 .mapToDouble(i -> i)
                 .toArray();
         final List<Integer> minimaIndicesExpectedIdentity = Collections.singletonList(0);
 
-        final double[] dataIdentityNegative = IntStream.range(0, numPoints).boxed()
+        final double[] dataIdentityNegative = IntStream.range(0, numPoints)
                 .mapToDouble(i -> -i)
                 .toArray();
         final List<Integer> minimaIndicesExpectedIdentityNegative = Collections.singletonList(numPoints - 1);
@@ -62,12 +62,12 @@ public final class PersistenceOptimizerUnitTest extends GATKBaseTest {
         dataFlatWithExtrema[90] = 2.;
         final List<Integer> minimaIndicesExpectedFlatWithExtrema = Arrays.asList(10, 91, 0);        //leftmost point of a constant region is considered a local minimum
 
-        final double[] dataAbsoluteValue = IntStream.range(0, numPoints).boxed()
+        final double[] dataAbsoluteValue = IntStream.range(0, numPoints)
                 .mapToDouble(i -> Math.abs(i - numPoints / 2))
                 .toArray();
         final List<Integer> minimaIndicesExpectedAbsoluteValue = Collections.singletonList(50);
 
-        final double[] dataNegativeAbsoluteValue = IntStream.range(0, numPoints).boxed()
+        final double[] dataNegativeAbsoluteValue = IntStream.range(0, numPoints)
                 .mapToDouble(i -> -Math.abs(i - numPoints / 2))
                 .toArray();
         final List<Integer> minimaIndicesExpectedNegativeAbsoluteValue = Arrays.asList(0, 99);

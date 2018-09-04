@@ -8,12 +8,14 @@ import htsjdk.samtools.util.TestUtil;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesTester;
-import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.broadinstitute.hellbender.utils.test.testers.AbstractMarkDuplicatesTester;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.testers.AbstractMarkDuplicatesTester;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+import picard.sam.util.PhysicalLocationInt;
+import picard.sam.util.ReadNameParser;
 
 import java.io.File;
 import java.util.*;
@@ -72,7 +74,7 @@ public final class MarkDuplicatesGATKIntegrationTest extends AbstractMarkDuplica
             final File outputSam = new File(outputDir, TEST_BASE_NAME + ".sam");
             args.add("--output");
             args.add(outputSam.getAbsolutePath());
-            args.add("--METRICS_FILE");
+            args.add("--"+StandardArgumentDefinitions.METRICS_FILE_LONG_NAME);
             args.add(new File(outputDir, TEST_BASE_NAME + ".duplicate_metrics").getAbsolutePath());
             if (suppressPg) {
                 args.add("--PROGRAM_RECORD_ID");
@@ -176,7 +178,7 @@ public final class MarkDuplicatesGATKIntegrationTest extends AbstractMarkDuplica
         }
         markDuplicatesGATK.OUTPUT = outputSam;
         markDuplicatesGATK.METRICS_FILE = metricsFile;
-        markDuplicatesGATK.TMP_DIR = CollectionUtil.makeList(outputDir);
+        markDuplicatesGATK.tmpDir = outputDir.toString();
         // Needed to suppress calling CommandLineProgram.getVersion(), which doesn't work for code not in a jar
         markDuplicatesGATK.PROGRAM_RECORD_ID = null;
         Assert.assertEquals(markDuplicatesGATK.doWork(), null);
@@ -197,7 +199,7 @@ public final class MarkDuplicatesGATKIntegrationTest extends AbstractMarkDuplica
         outputFile.delete();
         args.add(outputFile.getAbsolutePath());
 
-        args.add("--METRICS_FILE");
+        args.add("--"+StandardArgumentDefinitions.METRICS_FILE_LONG_NAME);
         File metricsFile = createTempFile("markdups_metrics", ".txt");
         args.add(metricsFile.getAbsolutePath());
 
@@ -220,7 +222,7 @@ public final class MarkDuplicatesGATKIntegrationTest extends AbstractMarkDuplica
         outputFile.delete();
         args.add(outputFile.getAbsolutePath());
 
-        args.add("--METRICS_FILE");
+        args.add("--"+StandardArgumentDefinitions.METRICS_FILE_LONG_NAME);
         File metricsFile = createTempFile("markdups_metrics", ".txt");
         args.add(metricsFile.getAbsolutePath());
 
@@ -252,7 +254,7 @@ public final class MarkDuplicatesGATKIntegrationTest extends AbstractMarkDuplica
         markDuplicatesGATK.INPUT = CollectionUtil.makeList(sam);
         markDuplicatesGATK.OUTPUT = outputSam;
         markDuplicatesGATK.METRICS_FILE = metricsFile;
-        markDuplicatesGATK.TMP_DIR = CollectionUtil.makeList(outputDir);
+        markDuplicatesGATK.tmpDir = outputDir.toString();
         // Needed to suppress calling CommandLineProgram.getVersion(), which doesn't work for code not in a jar
         markDuplicatesGATK.PROGRAM_RECORD_ID = null;
         Assert.assertEquals(markDuplicatesGATK.doWork(), null);

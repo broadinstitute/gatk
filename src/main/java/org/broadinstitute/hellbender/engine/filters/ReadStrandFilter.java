@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.engine.filters;
 
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.cmdline.ReadFilterArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
@@ -14,8 +15,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 public final class ReadStrandFilter extends ReadFilter {
     private static final long serialVersionUID = 1L;
 
-    @Argument(fullName = "keepReverse",
-            shortName = "keepReverse",
+    @Argument(fullName = ReadFilterArgumentDefinitions.KEEP_REVERSE_STRAND_ONLY_NAME,
             doc="Keep only reads on the reverse strand",
             optional=false)
 	public Boolean keepOnlyReverse;

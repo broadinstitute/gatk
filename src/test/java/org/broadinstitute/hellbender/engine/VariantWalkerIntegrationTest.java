@@ -7,11 +7,13 @@ import org.broadinstitute.barclay.argparser.CommandLineArgumentParser;
 import org.broadinstitute.barclay.argparser.CommandLineParser;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.cmdline.ReadFilterArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.examples.ExampleVariantWalker;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -67,10 +69,13 @@ public final class VariantWalkerIntegrationTest extends CommandLineProgramTest {
     )
     private static final class TestGATKToolWithFeatures extends VariantWalker{
 
-        @Argument(fullName="hasBackingReadSource")
+        public static final String HAS_BACKING_READ_SOURCE_LONG_NAME = "has-backing-read-source";
+        public static final String BACKING_READS_LONG_NAME = "backing-reads";
+
+        @Argument(fullName=HAS_BACKING_READ_SOURCE_LONG_NAME)
         boolean hasBackingReadSource = false;
 
-        @Argument(fullName="backingReads", optional=true)
+        @Argument(fullName=BACKING_READS_LONG_NAME, optional=true)
         List<String> backingReads= new ArrayList<>();
 
         @Override
@@ -100,7 +105,7 @@ public final class VariantWalkerIntegrationTest extends CommandLineProgramTest {
         final SAMSequenceDictionary toolDict = tool.getBestAvailableSequenceDictionary();
         Assert.assertFalse(toolDict.getSequences().stream().allMatch(seqRec -> seqRec.getSequenceLength() == 0));
 
-        SAMSequenceDictionary refDict = new ReferenceFileSource(new File(hg19MiniReference)).getSequenceDictionary();
+        SAMSequenceDictionary refDict = new ReferenceFileSource(IOUtils.getPath(hg19MiniReference)).getSequenceDictionary();
         toolDict.assertSameDictionary(refDict);
         refDict.assertSameDictionary(toolDict);
         Assert.assertEquals(toolDict, refDict);
@@ -128,10 +133,10 @@ public final class VariantWalkerIntegrationTest extends CommandLineProgramTest {
         final String[] args = {
                 "--variant", vcfFile.getCanonicalPath(),
                 "--input", bamFile.getCanonicalPath(),
-                "--hasBackingReadSource", "true",
+                "--" + TestGATKToolWithFeatures.HAS_BACKING_READ_SOURCE_LONG_NAME, "true",
                 // reads we expect to see when using no filter
-                "--backingReads", "a",
-                "--backingReads", "d"
+                "--" + TestGATKToolWithFeatures.BACKING_READS_LONG_NAME, "a",
+                "--" + TestGATKToolWithFeatures.BACKING_READS_LONG_NAME, "d"
         };
         tool.instanceMain(args);
     }
@@ -144,10 +149,10 @@ public final class VariantWalkerIntegrationTest extends CommandLineProgramTest {
         final String[] args = {
                 "--variant", vcfFile.getCanonicalPath(),
                 "--input", bamFile.getCanonicalPath(),
-                "--hasBackingReadSource", "true",
-                "--readFilter", "ReadNameReadFilter",
-                "--readName", "d",      // only retain reads named "d"
-                "--backingReads", "d",  // name of reads we expect to see
+                "--" + TestGATKToolWithFeatures.HAS_BACKING_READ_SOURCE_LONG_NAME, "true",
+                "--" + ReadFilterArgumentDefinitions.READ_FILTER_LONG_NAME, "ReadNameReadFilter",
+                "--" + ReadFilterArgumentDefinitions.READ_NAME_LONG_NAME, "d",      // only retain reads named "d"
+                "--" + TestGATKToolWithFeatures.BACKING_READS_LONG_NAME, "d",  // name of reads we expect to see
         };
         tool.instanceMain(args);
     }

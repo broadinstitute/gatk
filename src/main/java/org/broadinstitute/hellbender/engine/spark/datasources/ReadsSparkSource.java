@@ -1,7 +1,5 @@
 package org.broadinstitute.hellbender.engine.spark.datasources;
 
-import com.google.common.collect.Iterators;
-import com.google.common.collect.PeekingIterator;
 import htsjdk.samtools.*;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
@@ -9,15 +7,16 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.PathFilter;
 import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.JobContext;
+import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.parquet.avro.AvroParquetInputFormat;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.api.java.function.FlatMapFunction;
-import org.apache.spark.api.java.function.FlatMapFunction2;
 import org.apache.spark.broadcast.Broadcast;
 import org.bdgenomics.formats.avro.AlignmentRecord;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
@@ -26,23 +25,19 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.read.BDGAlignmentRecordToGATKReadAdapter;
-import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.ReadConstants;
-import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
+import org.broadinstitute.hellbender.utils.read.*;
 import org.broadinstitute.hellbender.utils.spark.SparkUtils;
-import org.seqdoop.hadoop_bam.AnySAMInputFormat;
-import org.seqdoop.hadoop_bam.BAMInputFormat;
-import org.seqdoop.hadoop_bam.CRAMInputFormat;
-import org.seqdoop.hadoop_bam.SAMRecordWritable;
+import org.seqdoop.hadoop_bam.*;
 import org.seqdoop.hadoop_bam.util.SAMHeaderReader;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Iterator;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Stream;
 
 /** Loads the reads from disk either serially (using samReaderFactory) or in parallel using Hadoop-BAM.
  * The parallel code is a modified version of the example writing code from Hadoop-BAM.
@@ -77,6 +72,33 @@ public final class ReadsSparkSource implements Serializable {
         return getParallelReads(readFileName, referencePath, traversalParameters, 0);
     }
 
+
+    /**
+     * this is a hack to work around https://github.com/HadoopGenomics/Hadoop-BAM/issues/199
+     *
+     * fix the problem by explicitly sorting the input file splits
+     */
+    public static class SplitSortingSamInputFormat extends AnySAMInputFormat{
+        @SuppressWarnings("unchecked")
+        @Override
+        public List<InputSplit> getSplits(JobContext job) throws IOException {
+            final List<InputSplit> splits = super.getSplits(job);
+
+            if( splits.stream().allMatch(split -> split instanceof FileVirtualSplit || split instanceof FileSplit)) {
+                splits.sort(Comparator.comparing(split -> {
+                    if (split instanceof FileVirtualSplit) {
+                        return ((FileVirtualSplit) split).getPath().getName();
+                    } else {
+                        return ((FileSplit) split).getPath().getName();
+                    }
+                }));
+            }
+
+            return splits;
+        }
+    }
+
+
     /**
      * Loads Reads using Hadoop-BAM. For local files, bam must have the fully-qualified path,
      * i.e., file:///path/to/bam.bam.
@@ -110,7 +132,7 @@ public final class ReadsSparkSource implements Serializable {
         }
 
         rdd2 = ctx.newAPIHadoopFile(
-                readFileName, AnySAMInputFormat.class, LongWritable.class, SAMRecordWritable.class,
+                readFileName, SplitSortingSamInputFormat.class, LongWritable.class, SAMRecordWritable.class,
                 conf);
 
         JavaRDD<GATKRead> reads= rdd2.map(v1 -> {
@@ -119,8 +141,17 @@ public final class ReadsSparkSource implements Serializable {
                 return (GATKRead) SAMRecordToGATKReadAdapter.headerlessReadAdapter(sam);
             }
             return null;
-        }).filter(v1 -> v1 != null);
-        return putPairsInSamePartition(header, reads);
+        }).filter(Objects::nonNull);
+
+        return fixPartitionsIfQueryGrouped(ctx, header, reads);
+    }
+
+    private static JavaRDD<GATKRead> fixPartitionsIfQueryGrouped(JavaSparkContext ctx, SAMFileHeader header, JavaRDD<GATKRead> reads) {
+        if( ReadUtils.isReadNameGroupedBam(header)) {
+            return SparkUtils.putReadsWithTheSameNameInTheSamePartition(header, reads, ctx);
+        } else {
+            return reads;
+        }
     }
 
     /**
@@ -167,7 +198,8 @@ public final class ReadsSparkSource implements Serializable {
                 .values();
         JavaRDD<GATKRead> readsRdd = recordsRdd.map(record -> new BDGAlignmentRecordToGATKReadAdapter(record, bHeader.getValue()));
         JavaRDD<GATKRead> filteredRdd = readsRdd.filter(record -> samRecordOverlaps(record.convertToSAMRecord(header), traversalParameters));
-        return putPairsInSamePartition(header, filteredRdd);
+
+        return fixPartitionsIfQueryGrouped(ctx, header, filteredRdd);
     }
 
     /**
@@ -206,40 +238,6 @@ public final class ReadsSparkSource implements Serializable {
         } catch (IOException | IllegalArgumentException e) {
             throw new UserException("Failed to read bam header from " + filePath + "\n Caused by:" + e.getMessage(), e);
         }
-    }
-
-    /**
-     * Ensure reads in a pair fall in the same partition (input split), if the reads are queryname-sorted,
-     * so they are processed together. No shuffle is needed.
-     */
-    JavaRDD<GATKRead> putPairsInSamePartition(final SAMFileHeader header, final JavaRDD<GATKRead> reads) {
-        if (!header.getSortOrder().equals(SAMFileHeader.SortOrder.queryname)) {
-            return reads;
-        }
-        int numPartitions = reads.getNumPartitions();
-        // Find the first read in each partition
-        List<GATKRead> firstReadInEachPartition = reads
-                .mapPartitions((FlatMapFunction<Iterator<GATKRead>, GATKRead>) it -> Iterators.singletonIterator(it.next()))
-                .collect();
-        // Shift left, so that each partition will be joined with the first read from the _next_ partition
-        List<GATKRead> firstReadInNextPartition = new ArrayList<>(firstReadInEachPartition.subList(1, numPartitions));
-        firstReadInNextPartition.add(null); // the last partition does not have any reads to add to it
-
-        // Join the reads with the first read from the _next_ partition, then filter out the first and/or last read if not in a pair
-        return reads.zipPartitions(ctx.parallelize(firstReadInNextPartition, numPartitions),
-                (FlatMapFunction2<Iterator<GATKRead>, Iterator<GATKRead>, GATKRead>) (it1, it2) -> {
-            PeekingIterator<GATKRead> current = Iterators.peekingIterator(it1);
-            // skip the first read in the _current_ partition if it is the second in a pair since it will be handled in the previous partition
-            if (current.hasNext() && current.peek() != null && current.peek().isSecondOfPair()) {
-                current.next();
-            }
-            // append the first read in the _next_ partition to the _current_ partition if it is the second in a pair
-            PeekingIterator<GATKRead> next = Iterators.peekingIterator(it2);
-            if (next.hasNext() && next.peek() != null && next.peek().isSecondOfPair()) {
-                return Iterators.concat(current, next);
-            }
-            return current;
-        });
     }
 
     /**

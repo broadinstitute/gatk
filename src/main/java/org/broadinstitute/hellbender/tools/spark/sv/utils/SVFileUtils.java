@@ -5,6 +5,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.utils.HopscotchSet;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.*;
 import java.util.*;
@@ -13,39 +14,22 @@ public final class SVFileUtils {
 
     private static final String REFERENCE_GAP_INTERVAL_FILE_COMMENT_LINE_PROMPT = "#";
 
+    /**
+     * Write SAM records to designated {@code outputName}.
+     */
     public static void writeSAMFile(final String outputName, final Iterator<SAMRecord> alignments, final SAMFileHeader header,
                                     final boolean preOrdered) {
         Utils.nonNull(alignments, "provided alignments to write out is null");
         Utils.nonNull(header, "provided header for outputting sam file is null");
         Utils.nonNull(outputName, "provided output name is null");
 
-        try (final SAMFileWriter writer = getSAMFileWriter(outputName, header, preOrdered)) {
+        final SAMFileWriterFactory factory = new SAMFileWriterFactory()
+                .setCreateIndex(preOrdered && outputName.endsWith(BamFileIoUtils.BAM_FILE_EXTENSION)
+                        && header.getSortOrder() == SAMFileHeader.SortOrder.coordinate);
+        try ( SAMFileWriter writer = factory.makeSAMOrBAMWriter(header, preOrdered, IOUtils.getPath(outputName))) {
             alignments.forEachRemaining(writer::addAlignment);
         } catch ( final UncheckedIOException ie) {
             throw new GATKException("Can't write SAM file to the specified location: " + outputName, ie);
-        }
-    }
-
-    /**
-     * Supported format: BAM and SAM. CRAM is unsupported. Other requested type will default to SAM.
-     */
-    private static SAMFileWriter getSAMFileWriter(final String outputName, final SAMFileHeader header, final boolean preOrdered) {
-        final int idx = outputName.lastIndexOf(".");
-        if ( idx < 0) {
-            throw new IllegalArgumentException("Provided path doesn't have a proper extension: " + outputName);
-        }
-        final SAMFileWriterFactory factory = new SAMFileWriterFactory()
-                .setCreateIndex(preOrdered && header.getSortOrder() == SAMFileHeader.SortOrder.coordinate);
-
-        final String fileExtension = outputName.substring(idx + 1, outputName.length());
-        if (fileExtension.endsWith(SamReader.Type.BAM_TYPE.fileExtension())) {
-            return factory.makeBAMWriter(header, preOrdered, BucketUtils.createFile(outputName));
-        } else if (fileExtension.endsWith(SamReader.Type.SAM_TYPE.fileExtension())) {
-            return factory.makeSAMWriter(header, preOrdered, BucketUtils.createFile(outputName));
-        } else if (fileExtension.endsWith(SamReader.Type.CRAM_TYPE.fileExtension())) {
-            throw new UnsupportedOperationException("We currently don't support CRAM output");
-        } else {
-            return factory.makeSAMWriter(header, preOrdered, BucketUtils.createFile(outputName));
         }
     }
 

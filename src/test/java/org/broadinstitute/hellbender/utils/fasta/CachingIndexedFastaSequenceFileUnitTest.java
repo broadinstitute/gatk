@@ -7,10 +7,13 @@ package org.broadinstitute.hellbender.utils.fasta;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import htsjdk.samtools.reference.ReferenceSequence;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.Level;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -25,7 +28,7 @@ import java.util.List;
  * Basic unit test for CachingIndexedFastaSequenceFile
  */
 public final class CachingIndexedFastaSequenceFileUnitTest extends GATKBaseTest {
-    private File simpleFasta = new File(publicTestDir + "/exampleFASTA.fasta");
+    private Path simpleFasta = Paths.get(publicTestDir + "/exampleFASTA.fasta");
     private static final int STEP_SIZE = 1;
     private final static boolean DEBUG = false;
 
@@ -36,7 +39,7 @@ public final class CachingIndexedFastaSequenceFileUnitTest extends GATKBaseTest 
     @DataProvider(name = "fastas")
     public Object[][] createData1() {
         List<Object[]> params = new ArrayList<>();
-        for ( File fasta : Arrays.asList(simpleFasta) ) {
+        for ( Path fasta : Arrays.asList(simpleFasta) ) {
             for ( int cacheSize : CACHE_SIZES ) {
                 for ( int querySize : QUERY_SIZES ) {
                     params.add(new Object[]{fasta, cacheSize, querySize});
@@ -52,7 +55,7 @@ public final class CachingIndexedFastaSequenceFileUnitTest extends GATKBaseTest 
     }
 
     @Test(dataProvider = "fastas", enabled = ! DEBUG)
-    public void testCachingIndexedFastaReaderSequential1(File fasta, int cacheSize, int querySize) throws FileNotFoundException {
+    public void testCachingIndexedFastaReaderSequential1(Path fasta, int cacheSize, int querySize) throws FileNotFoundException {
         final CachingIndexedFastaSequenceFile caching = new CachingIndexedFastaSequenceFile(fasta, getCacheSize(cacheSize), true, false);
 
         SAMSequenceRecord contig = caching.getSequenceDictionary().getSequence(0);
@@ -61,7 +64,7 @@ public final class CachingIndexedFastaSequenceFileUnitTest extends GATKBaseTest 
         testSequential(caching, fasta, querySize);
     }
 
-    private void testSequential(final CachingIndexedFastaSequenceFile caching, final File fasta, final int querySize) throws FileNotFoundException {
+    private void testSequential(final CachingIndexedFastaSequenceFile caching, final Path fasta, final int querySize) throws FileNotFoundException {
         Assert.assertTrue(caching.isPreservingCase(), "testSequential only works for case preserving CachingIndexedFastaSequenceFile readers");
 
         final IndexedFastaSequenceFile uncached = new IndexedFastaSequenceFile(fasta);
@@ -93,7 +96,7 @@ public final class CachingIndexedFastaSequenceFileUnitTest extends GATKBaseTest 
 
     // Tests grabbing sequences around a middle cached value.
     @Test(dataProvider = "fastas", enabled = ! DEBUG)
-    public void testCachingIndexedFastaReaderTwoStage(File fasta, int cacheSize, int querySize) throws FileNotFoundException {
+    public void testCachingIndexedFastaReaderTwoStage(Path fasta, int cacheSize, int querySize) throws FileNotFoundException {
         final IndexedFastaSequenceFile uncached = new IndexedFastaSequenceFile(fasta);
         final CachingIndexedFastaSequenceFile caching = new CachingIndexedFastaSequenceFile(fasta, getCacheSize(cacheSize), true, false);
 
@@ -124,7 +127,7 @@ public final class CachingIndexedFastaSequenceFileUnitTest extends GATKBaseTest 
     public Object[][] createParallelFastaTest() {
         List<Object[]> params = new ArrayList<>();
 
-        for ( File fasta : Arrays.asList(simpleFasta) ) {
+        for ( Path fasta : Arrays.asList(simpleFasta) ) {
             for ( int cacheSize : CACHE_SIZES ) {
                 for ( int querySize : QUERY_SIZES ) {
                     for ( int nt : Arrays.asList(1, 2, 3, 4) ) {
@@ -141,8 +144,9 @@ public final class CachingIndexedFastaSequenceFileUnitTest extends GATKBaseTest 
     @Test
     public void testMixedCasesInExample() throws FileNotFoundException, InterruptedException {
         final IndexedFastaSequenceFile original = new IndexedFastaSequenceFile(new File(exampleFASTA));
-        final CachingIndexedFastaSequenceFile casePreserving = new CachingIndexedFastaSequenceFile(new File(exampleFASTA), true);
-        final CachingIndexedFastaSequenceFile allUpper = new CachingIndexedFastaSequenceFile(new File(exampleFASTA));
+        final CachingIndexedFastaSequenceFile casePreserving = new CachingIndexedFastaSequenceFile(
+                IOUtils.getPath(exampleFASTA), true);
+        final CachingIndexedFastaSequenceFile allUpper = new CachingIndexedFastaSequenceFile(IOUtils.getPath(exampleFASTA));
 
         int nMixedCase = 0;
         for ( SAMSequenceRecord contig : original.getSequenceDictionary().getSequences() ) {
@@ -185,8 +189,8 @@ public final class CachingIndexedFastaSequenceFileUnitTest extends GATKBaseTest 
     @Test
     public void testIupacChanges() throws FileNotFoundException, InterruptedException {
         final String testFasta = publicTestDir + "iupacFASTA.fasta";
-        final CachingIndexedFastaSequenceFile iupacPreserving = new CachingIndexedFastaSequenceFile(new File(testFasta), CachingIndexedFastaSequenceFile.DEFAULT_CACHE_SIZE, false, true);
-        final CachingIndexedFastaSequenceFile makeNs = new CachingIndexedFastaSequenceFile(new File(testFasta));
+        final CachingIndexedFastaSequenceFile iupacPreserving = new CachingIndexedFastaSequenceFile(IOUtils.getPath(testFasta), CachingIndexedFastaSequenceFile.DEFAULT_CACHE_SIZE, false, true);
+        final CachingIndexedFastaSequenceFile makeNs = new CachingIndexedFastaSequenceFile(IOUtils.getPath(testFasta));
 
         int preservingNs = 0;
         int changingNs = 0;
@@ -204,7 +208,7 @@ public final class CachingIndexedFastaSequenceFileUnitTest extends GATKBaseTest 
     @Test(expectedExceptions = {UserException.class})
     public void testFailOnBadBase() throws FileNotFoundException, InterruptedException {
         final String testFasta = publicTestDir + "problematicFASTA.fasta";
-        final CachingIndexedFastaSequenceFile fasta = new CachingIndexedFastaSequenceFile(new File(testFasta));
+        final CachingIndexedFastaSequenceFile fasta = new CachingIndexedFastaSequenceFile(IOUtils.getPath(testFasta));
 
         for ( SAMSequenceRecord contig : fasta.getSequenceDictionary().getSequences() ) {
             fetchBaseString(fasta, contig.getSequenceName(), -1, -1);
@@ -213,7 +217,7 @@ public final class CachingIndexedFastaSequenceFileUnitTest extends GATKBaseTest 
 
     @Test(expectedExceptions = {UserException.MissingReference.class})
     public void testNonexistentReference() throws FileNotFoundException, InterruptedException {
-        CachingIndexedFastaSequenceFile.checkAndCreate(GATKBaseTest.getSafeNonExistentFile("NonexistentReference.fasta"));
+        CachingIndexedFastaSequenceFile.checkAndCreate(GATKBaseTest.getSafeNonExistentPath("NonexistentReference.fasta"));
     }
 
 }

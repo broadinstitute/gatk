@@ -1,7 +1,10 @@
 package org.broadinstitute.hellbender.utils.read.markduplicates;
 
+import org.broadinstitute.hellbender.exceptions.GATKException;
+import picard.sam.util.PhysicalLocation;
+
 /** Little struct-like class to hold read pair (and fragment) end data for duplicate marking. */
-public abstract class ReadEnds implements OpticalDuplicateFinder.PhysicalLocation {
+public abstract class ReadEnds implements PhysicalLocation {
 
     public static final byte F = 0, R = 1, FF = 2, FR = 3, RR = 4, RF = 5;
 
@@ -15,7 +18,7 @@ public abstract class ReadEnds implements OpticalDuplicateFinder.PhysicalLocatio
     // Information used to detect optical dupes
     public short readGroup = -1;
     public short tile = -1;
-    public short x = -1, y = -1;
+    public int x = -1, y = -1;
 
     /** For optical duplicate detection the orientation matters regard to 1st or 2nd end of a mate */
     public byte orientationForOpticalDuplicates = -1;
@@ -36,16 +39,16 @@ public abstract class ReadEnds implements OpticalDuplicateFinder.PhysicalLocatio
     public void setTile(final short tile) { this.tile = tile; }
 
     @Override
-    public short getX() { return this.x; }
+    public int getX() { return this.x; }
 
     @Override
-    public void setX(final short x) { this.x = x; }
+    public void setX(final int x) { this.x = x; }
 
     @Override
-    public short getY() { return this.y; }
+    public int getY() { return this.y; }
 
     @Override
-    public void setY(final short y) { this.y = y; }
+    public void setY(final int y) { this.y = y; }
 
     @Override
     public short getLibraryId() { return this.libraryId; }

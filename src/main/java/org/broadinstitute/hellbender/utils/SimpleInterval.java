@@ -4,6 +4,8 @@
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.Locatable;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
@@ -16,7 +18,6 @@ import java.io.Serializable;
  *@warning 0 length intervals are NOT currently allowed, but support may be added in the future
  */
 public final class SimpleInterval implements Locatable, Serializable {
-
     private static final long serialVersionUID = 1L;
     public static final char CONTIG_SEPARATOR = ':';
     public static final char START_END_SEPARATOR = '-';
@@ -56,7 +57,7 @@ public final class SimpleInterval implements Locatable, Serializable {
      *    end must be >= start
      * @throws IllegalArgumentException if it is invalid
      */
-    private static void validatePositions(final String contig, final int start, final int end) {
+    static void validatePositions(final String contig, final int start, final int end) {
         Utils.validateArg(isValid(contig, start, end), () -> "Invalid interval. Contig:" + contig + " start:"+start + " end:" + end);
     }
 
@@ -135,12 +136,19 @@ public final class SimpleInterval implements Locatable, Serializable {
         this.end = end;
     }
 
-    /**
+     /**
+      * Parses a number like 100000 or 1,000,000 into an int. Throws NumberFormatException on parse failure.
+      */
+     static int parsePositionThrowOnFailure(final String pos) throws NumberFormatException {
+         return Integer.parseInt(pos.replaceAll(",", "")); //strip commas
+     }
+
+     /**
      * Parses a number like 100000 or 1,000,000 into an int.
      */
-    private static int parsePosition(final String pos) {
+    static int parsePosition(final String pos) {
         try {
-            return Integer.parseInt(pos.replaceAll(",", "")); //strip commas
+            return parsePositionThrowOnFailure(pos);
         } catch (NumberFormatException e){
             throw new UserException("Problem parsing start/end value in interval string. Value was: " + pos, e);
         }

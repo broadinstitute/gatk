@@ -17,12 +17,14 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
+import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.read.markduplicates.AbstractOpticalDuplicateFinderCommandLineProgram;
-import org.broadinstitute.hellbender.utils.read.markduplicates.DuplicationMetrics;
-import org.broadinstitute.hellbender.utils.read.markduplicates.OpticalDuplicateFinder;
+import org.broadinstitute.hellbender.utils.read.markduplicates.GATKDuplicationMetrics;
+import picard.sam.markduplicates.util.OpticalDuplicateFinder;
 import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
+import picard.sam.util.PhysicalLocation;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -32,90 +34,116 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static java.lang.Math.pow;
 
 /**
- * <p>Attempts to estimate library complexity from sequence alone. Does so by sorting all reads
- * by the first N bases (5 by default) of each read and then comparing reads with the first
- * N bases identical to each other for duplicates.  Reads are considered to be duplicates if
- * they match each other with no gaps and an overall mismatch rate less than or equal to
- * MAX_DIFF_RATE (0.03 by default).</p>
- * <p/>
- * <p>Reads of poor quality are filtered out so as to provide a more accurate estimate. The filtering
+ * Estimate library complexity from the sequence of read pairs
+ *
+ * <p>
+ * The estimation is done by sorting all reads by the first N bases (defined by --min-identical-bases with default of 5)
+ * of each read and then comparing reads with the first N bases identical to each other for duplicates.
+ * Reads are considered to be duplicates if they match each other with no gaps and an overall mismatch
+ * rate less than or equal to MAX_DIFF_RATE (0.03 by default). The approach differs from that taken by
+ * Picard MarkDuplicates to estimate library complexity in that here alignment is not a factor.
+ * </p>
+ *
+ * <p>
+ * Reads of poor quality are filtered out so as to provide a more accurate estimate. The filtering
  * removes reads with any no-calls in the first N bases or with a mean base quality lower than
- * MIN_MEAN_QUALITY across either the first or second read.</p>
- * <p/>
- * <p>The algorithm attempts to detect optical duplicates separately from PCR duplicates and excludes
+ * MIN_MEAN_QUALITY across either the first or second read. Unpaired reads are ignored in this computation.
+ * </p>
+ *
+ * <p>
+ * The algorithm attempts to detect optical duplicates separately from PCR duplicates and excludes
  * these in the calculation of library size. Also, since there is no alignment to screen out technical
  * reads one further filter is applied on the data.  After examining all reads a Histogram is built of
  * [#reads in duplicate set -> #of duplicate sets]; all bins that contain exactly one duplicate set are
- * then removed from the Histogram as outliers before library size is estimated.</p>
+ * then removed from the Histogram as outliers before library size is estimated.
+ * </p>
+ *
+ * <h3>Input</h3>
+ * <ul>
+ *     <li>A BAM or CRAM file containing aligned read data.</li>
+ * </ul>
+ *
+ * <h3>Output</h3>
+ * <ul>
+ *     <li>A text file with per-library complexity metrics</li>
+ * </ul>
+ *
+ * <h3>Usage Example</h3>
+ * <pre>
+ *   gatk EstimateLibraryComplexityGATK \
+ *     -I input.bam \
+ *     -O metrics.txt
+ * </pre>
  *
  * @author Tim Fennell
  */
 @BetaFeature
 @DocumentedFeature
 @CommandLineProgramProperties(
-        summary = "Attempts to estimate library complexity from sequence of read pairs alone. Does so by sorting all reads " +
-                "by the first N bases (5 by default) of each read and then comparing reads with the first " +
-                "N bases identical to each other for duplicates.  Reads are considered to be duplicates if " +
-                "they match each other with no gaps and an overall mismatch rate less than or equal to " +
-                "MAX_DIFF_RATE (0.03 by default).\n\n" +
-                "Reads of poor quality are filtered out so as to provide a more accurate estimate. The filtering " +
-                "removes reads with any no-calls in the first N bases or with a mean base quality lower than " +
-                "MIN_MEAN_QUALITY across either the first or second read.\n\n" +
-                "Unpaired reads are ignored in this computation.\n\n" +
-                "The algorithm attempts to detect optical duplicates separately from PCR duplicates and excludes " +
-                "these in the calculation of library size. Also, since there is no alignment to screen out technical " +
-                "reads one further filter is applied on the data.  After examining all reads a Histogram is built of " +
-                "[#reads in duplicate set -> #of duplicate sets] all bins that contain exactly one duplicate set are " +
-                "then removed from the Histogram as outliers before library size is estimated.",
-        oneLineSummary = "Estimates library complexity from the sequence of read pairs",
-        programGroup = ReadProgramGroup.class
+        summary = "Estimate library complexity from the sequence of read pairs",
+        oneLineSummary = "Estimate library complexity from the sequence of read pairs",
+        programGroup = DiagnosticsAndQCProgramGroup.class
 )
 public final class EstimateLibraryComplexityGATK extends AbstractOpticalDuplicateFinderCommandLineProgram {
 
-    @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME, shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
+    @Argument(
+            fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
             doc = "One or more files to combine and " +
-            "estimate library complexity from. Reads can be mapped or unmapped.")
+            "estimate library complexity from. Reads can be mapped or unmapped."
+    )
     public List<File> INPUT;
 
-    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-            doc = "Output file to writes per-library metrics to.")
+    @Argument(
+            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+            doc = "Output file to writes per-library metrics to."
+    )
     public File OUTPUT;
 
-    @Argument(doc = "The minimum number of bases at the starts of reads that must be identical for reads to " +
+    @Argument(
+            fullName = "min-identical-bases",
+            doc = "The minimum number of bases at the starts of reads that must be identical for reads to " +
             "be grouped together for duplicate detection.  In effect total_reads / 4^max_id_bases reads will " +
             "be compared at a time, so lower numbers will produce more accurate results but consume " +
-            "exponentially more memory and CPU.")
+            "exponentially more memory and CPU."
+    )
     public int MIN_IDENTICAL_BASES = 5;
 
-    @Argument(doc = "The maximum rate of differences between two reads to call them identical.")
+    @Argument(
+            fullName = "max-diff-rate",
+            doc = "The maximum rate of differences between two reads to call them identical."
+    )
     public double MAX_DIFF_RATE = 0.03;
 
-    @Argument(doc = "The minimum mean quality of the bases in a read pair for the read to be analyzed. Reads with " +
-            "lower average quality are filtered out and not considered in any calculations.")
+    @Argument(
+            fullName = "min-mean-quality",
+            doc = "The minimum mean quality of the bases in a read pair for the read to be analyzed. Reads with " +
+            "lower average quality are filtered out and not considered in any calculations."
+    )
     public int MIN_MEAN_QUALITY = 20;
 
-    @Argument(doc = "Do not process self-similar groups that are this many times over the mean expected group size. " +
+    @Argument(
+            fullName = "max-group-ratio",
+            doc = "Do not process self-similar groups that are this many times over the mean expected group size. " +
             "I.e. if the input contains 10m read pairs and MIN_IDENTICAL_BASES is set to 5, then the mean expected " +
-            "group size would be approximately 10 reads.")
+            "group size would be approximately 10 reads."
+    )
     public int MAX_GROUP_RATIO = 500;
 
     /**
      * Little class to hold the sequence of a pair of reads and tile location information.
      */
-    static class PairedReadSequence implements OpticalDuplicateFinder.PhysicalLocation {
+    static class PairedReadSequence implements PhysicalLocation {
         static int size_in_bytes = 2 + 1 + 4 + 1 + 300; // rough guess at memory footprint
         short readGroup = -1;
         short tile = -1;
-        short x = -1, y = -1;
+        int x = -1, y = -1;
         boolean qualityOk = true;
         byte[] read1;
         byte[] read2;
@@ -134,16 +162,16 @@ public final class EstimateLibraryComplexityGATK extends AbstractOpticalDuplicat
         public void setTile(final short tile) { this.tile = tile; }
 
         @Override
-        public short getX() { return this.x; }
+        public int getX() { return this.x; }
 
         @Override
-        public void setX(final short x) { this.x = x; }
+        public void setX(final int x) { this.x = x; }
 
         @Override
-        public short getY() { return this.y; }
+        public int getY() { return this.y; }
 
         @Override
-        public void setY(final short y) { this.y = y; }
+        public void setY(final int y) { this.y = y; }
 
         @Override
         public short getLibraryId() { return this.libraryId; }
@@ -268,11 +296,11 @@ public final class EstimateLibraryComplexityGATK extends AbstractOpticalDuplicat
 
         final List<SAMReadGroupRecord> readGroups = new ArrayList<>();
         final int recordsRead = 0;
-        final SortingCollection<PairedReadSequence> sorter = SortingCollection.newInstance(PairedReadSequence.class,
+        final SortingCollection<PairedReadSequence> sorter = SortingCollection.newInstanceFromPaths(PairedReadSequence.class,
                 new PairedReadCodec(),
                 new PairedReadComparator(),
                 MAX_RECORDS_IN_RAM,
-                TMP_DIR);
+                Collections.singletonList(IOUtils.getPath(tmpDir)));
 
         // Loop through the input files and pick out the read sequences etc.
         final ProgressLogger progress = new ProgressLogger(logger, (int) 1e6, "Read");
@@ -386,7 +414,7 @@ public final class EstimateLibraryComplexityGATK extends AbstractOpticalDuplicat
                                 final int duplicateCount = dupes.size();
                                 duplicationHisto.increment(duplicateCount);
 
-                                final boolean[] flags = opticalDuplicateFinder.findOpticalDuplicates(dupes);
+                                final boolean[] flags = opticalDuplicateFinder.findOpticalDuplicates(dupes, null);
                                 for (final boolean b : flags) {
                                     if (b) opticalHisto.increment(duplicateCount);
                                 }
@@ -405,11 +433,11 @@ public final class EstimateLibraryComplexityGATK extends AbstractOpticalDuplicat
             }
             sorter.cleanup();
 
-            final MetricsFile<DuplicationMetrics, Integer> file = getMetricsFile();
+            final MetricsFile<GATKDuplicationMetrics, Integer> file = getMetricsFile();
             for (final String library : duplicationHistosByLibrary.keySet()) {
                 final Histogram<Integer> duplicationHisto = duplicationHistosByLibrary.get(library);
                 final Histogram<Integer> opticalHisto = opticalHistosByLibrary.get(library);
-                final DuplicationMetrics metrics = new DuplicationMetrics();
+                final GATKDuplicationMetrics metrics = new GATKDuplicationMetrics();
                 metrics.LIBRARY = library;
 
                 // Filter out any bins that have only a single entry in them and calcu
@@ -424,7 +452,7 @@ public final class EstimateLibraryComplexityGATK extends AbstractOpticalDuplicat
                     }
                 }
 
-                metrics.calculateDerivedMetrics();
+                metrics.calculateDerivedFields();
                 file.addMetric(metrics);
                 file.addHistogram(duplicationHisto);
 

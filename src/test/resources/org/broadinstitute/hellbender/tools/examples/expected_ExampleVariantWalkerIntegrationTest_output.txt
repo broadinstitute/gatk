@@ -1,10 +1,10 @@
-Current variant: [VC Unknown @ 1:198-199 Q2.00 of type=INDEL alleles=[GG*, G] attr={} GT=[]
+Current variant: [VC Unknown @ 1:198-199 Q2.00 of type=INDEL alleles=[GG*, G] attr={} GT=[] filters=
         Overlapping reference bases: NN
 
 
         Overlapping variant at 1:199-200. Ref: GG* Alt(s): [G]
 
-Current variant: [VC Unknown @ 1:200 Q3.00 of type=SNP alleles=[G*, A] attr={} GT=[]
+Current variant: [VC Unknown @ 1:200 Q3.00 of type=SNP alleles=[G*, A] attr={} GT=[] filters=
         Overlapping reference bases: N
 
         Overlapping read at 1:200-275

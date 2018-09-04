@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.codecs.sampileup;
 
+import htsjdk.samtools.util.IOUtil;
 import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.readers.LineIteratorImpl;
@@ -51,7 +52,7 @@ public class SAMPileupCodecUnitTest extends GATKBaseTest {
         final String EXTRA_CHAR = "1";
         for(final String ext: SAMPileupCodec.SAM_PILEUP_FILE_EXTENSIONS) {
             testCanDecodeExtension(ext);
-            for (final String bcExt: AbstractFeatureReader.BLOCK_COMPRESSED_EXTENSIONS) {
+            for (final String bcExt: IOUtil.BLOCK_COMPRESSED_EXTENSIONS) {
                 testCanDecodeExtension(ext + bcExt);
             }
         }

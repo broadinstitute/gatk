@@ -1,13 +1,17 @@
 package org.broadinstitute.hellbender.utils.gcs;
 
+import com.google.cloud.http.HttpTransportOptions;
+import com.google.cloud.storage.StorageOptions;
+import com.google.cloud.storage.contrib.nio.CloudStorageConfiguration;
+import com.google.cloud.storage.contrib.nio.CloudStorageConfiguration.Builder;
 import com.google.cloud.storage.contrib.nio.CloudStorageFileSystem;
 import com.google.cloud.storage.contrib.nio.CloudStorageFileSystemProvider;
+import com.google.common.base.Strings;
 import com.google.common.io.ByteStreams;
+import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.RuntimeIOException;
-import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.Tribble;
 import htsjdk.tribble.util.TabixUtils;
-import java.nio.file.Files;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -17,16 +21,14 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import shaded.cloud_nio.com.google.auth.oauth2.GoogleCredentials;
 import shaded.cloud_nio.com.google.api.gax.retrying.RetrySettings;
+import shaded.cloud_nio.com.google.auth.oauth2.GoogleCredentials;
 import shaded.cloud_nio.org.threeten.bp.Duration;
 
 import java.io.*;
+import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.UUID;
-import com.google.cloud.storage.StorageOptions;
-import com.google.cloud.http.HttpTransportOptions;
-import com.google.cloud.storage.contrib.nio.CloudStorageConfiguration;
 
 /**
  * Utilities for dealing with google buckets.
@@ -37,10 +39,6 @@ public final class BucketUtils {
 
     // slashes omitted since hdfs paths seem to only have 1 slash which would be weirder to include than no slashes
     public static final String FILE_PREFIX = "file:";
-
-    // if the channel errors out, re-open up to this many times
-    public static final int DEFAULT_GCS_MAX_REOPENS = 20;
-
 
     public static final Logger logger = LogManager.getLogger("org.broadinstitute.hellbender.utils.gcs");
 
@@ -106,7 +104,7 @@ public final class BucketUtils {
                 inputStream = new FileInputStream(path);
             }
 
-            if(AbstractFeatureReader.hasBlockCompressedExtension(path)){
+            if(IOUtil.hasBlockCompressedExtension(path)){
                 return IOUtils.makeZippedInputStream(new BufferedInputStream(inputStream));
             } else {
                 return inputStream;
@@ -345,20 +343,20 @@ public final class BucketUtils {
      */
     public static String getPathWithoutBucket(String path) {
         final String[] split = path.split("/");
-        final String BUCKET = split[2];
         return String.join("/", Arrays.copyOfRange(split, 3, split.length));
-
     }
 
     /**
-     * Sets NIO_MAX_REOPENS and generous timeouts as the global default.
+     * Sets max_reopens, requester_pays, and generous timeouts as the global default.
      * These will apply even to library code that creates its own paths to access with NIO.
+     *
+     * @param maxReopens If the GCS bucket channel errors out, how many times it will attempt to
+     *                   re-initiate the connection.
+     * @param requesterProject Project to bill when accessing "requester pays" buckets. If unset,
+     *                         these buckets cannot be accessed.
      */
-    public static void setGlobalNIODefaultOptions() {
-        setGlobalNIODefaultOptions(DEFAULT_GCS_MAX_REOPENS);
-    }
-    public static void setGlobalNIODefaultOptions(int maxReopens) {
-        CloudStorageFileSystemProvider.setDefaultCloudStorageConfiguration(getCloudStorageConfiguration(maxReopens));
+    public static void setGlobalNIODefaultOptions(int maxReopens, String requesterProject) {
+        CloudStorageFileSystemProvider.setDefaultCloudStorageConfiguration(getCloudStorageConfiguration(maxReopens, requesterProject));
         CloudStorageFileSystemProvider.setStorageOptions(setGenerousTimeouts(StorageOptions.newBuilder()).build());
     }
 
@@ -375,12 +373,24 @@ public final class BucketUtils {
         return CloudStorageFileSystem.forBucket(BUCKET).getPath(pathWithoutBucket);
     }
 
-    /** The config we want to use. **/
-    public static CloudStorageConfiguration getCloudStorageConfiguration(int maxReopens) {
-        return CloudStorageConfiguration.builder()
+    /**
+     * The config we want to use.
+     *
+     * @param maxReopens If the GCS bucket channel errors out, how many times it will attempt to
+     *                   re-initiate the connection.
+     * @param requesterProject Project to bill when accessing "requester pays" buckets. If unset,
+     *                         these buckets cannot be accessed.
+     *
+     **/
+    public static CloudStorageConfiguration getCloudStorageConfiguration(int maxReopens, String requesterProject) {
+        Builder builder = CloudStorageConfiguration.builder()
             // if the channel errors out, re-open up to this many times
-            .maxChannelReopens(maxReopens)
-            .build();
+            .maxChannelReopens(maxReopens);
+        if (!Strings.isNullOrEmpty(requesterProject)) {
+            // enable requester pays and indicate who pays
+            builder = builder.autoDetectRequesterPays(true).userProject(requesterProject);
+        }
+        return builder.build();
     }
 
     private static StorageOptions.Builder setGenerousTimeouts(StorageOptions.Builder builder) {

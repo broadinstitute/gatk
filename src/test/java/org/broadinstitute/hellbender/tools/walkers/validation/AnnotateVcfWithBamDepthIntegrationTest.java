@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.validation;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -11,14 +11,13 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 /**
  * Created by davidben on 1/31/17.
  */
 public class AnnotateVcfWithBamDepthIntegrationTest extends CommandLineProgramTest {
     private static final String DREAM_BAMS_DIR = largeFileTestDir + "mutect/dream_synthetic_bams/";
-    private static final String DREAM_VCFS_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/mutect/dream/vcfs/";
+    private static final String DREAM_VCFS_DIR = toolsTestDir + "mutect/dream/vcfs/";
 
     // test on the DREAM bam 1 and accompanying variants
     // depths verified manually in IGV
@@ -36,10 +35,9 @@ public class AnnotateVcfWithBamDepthIntegrationTest extends CommandLineProgramTe
 
         runCommandLine(arguments);
 
-        final List<VariantContext> input = StreamSupport.stream(new FeatureDataSource<VariantContext>(vcf).spliterator(), false)
+        final List<VariantContext> input = VariantContextTestUtils.streamVcf(vcf)
                 .collect(Collectors.toList());
-        final List<VariantContext> output = StreamSupport.stream(new FeatureDataSource<VariantContext>(outputVcf).spliterator(), false)
-                .collect(Collectors.toList());
+        final List<VariantContext> output = VariantContextTestUtils.streamVcf(outputVcf).collect(Collectors.toList());
 
         Assert.assertEquals(input.size(), output.size());
 

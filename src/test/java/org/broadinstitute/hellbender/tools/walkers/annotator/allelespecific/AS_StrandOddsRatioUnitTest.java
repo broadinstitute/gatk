@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific;
 
+import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.Collections;
@@ -13,8 +14,8 @@ import static org.testng.Assert.*;
 public class AS_StrandOddsRatioUnitTest extends ReducibleAnnotationBaseTest {
 
     @Override
-    protected List<String> getAnnotationsToUse() {
-        return Collections.singletonList(AS_StrandOddsRatio.class.getSimpleName());
+    protected List<Annotation> getAnnotationsToUse() {
+        return Collections.singletonList(new AS_StrandOddsRatio());
     }
 
     @Override

@@ -27,19 +27,19 @@ public final class ParameterReader<T extends Enum<T> & ParameterEnum> extends Ta
     protected Map.Entry<T, PosteriorSummary> createRecord(final DataLine dataLine) {
         final String parameterName = dataLine.get(ParameterTableColumn.PARAMETER_NAME);
         final T parameter = Enum.valueOf(parameterClass, parameterName);
-        final double center = dataLine.getDouble(ParameterTableColumn.PARAMETER_POSTERIOR_MODE);
-        final double lower = dataLine.getDouble(ParameterTableColumn.PARAMETER_POSTERIOR_LOWER);
-        final double upper = dataLine.getDouble(ParameterTableColumn.PARAMETER_POSTERIOR_UPPER);
+        final double center = dataLine.getDouble(ParameterTableColumn.POSTERIOR_MODE);
+        final double lower = dataLine.getDouble(ParameterTableColumn.POSTERIOR_LOWER);
+        final double upper = dataLine.getDouble(ParameterTableColumn.POSTERIOR_UPPER);
         final DecileCollection deciles = new DecileCollection(Arrays.asList(
-                dataLine.getDouble(ParameterTableColumn.PARAMETER_POSTERIOR_10),
-                dataLine.getDouble(ParameterTableColumn.PARAMETER_POSTERIOR_20),
-                dataLine.getDouble(ParameterTableColumn.PARAMETER_POSTERIOR_30),
-                dataLine.getDouble(ParameterTableColumn.PARAMETER_POSTERIOR_40),
-                dataLine.getDouble(ParameterTableColumn.PARAMETER_POSTERIOR_50),
-                dataLine.getDouble(ParameterTableColumn.PARAMETER_POSTERIOR_60),
-                dataLine.getDouble(ParameterTableColumn.PARAMETER_POSTERIOR_70),
-                dataLine.getDouble(ParameterTableColumn.PARAMETER_POSTERIOR_80),
-                dataLine.getDouble(ParameterTableColumn.PARAMETER_POSTERIOR_90)));
+                dataLine.getDouble(ParameterTableColumn.POSTERIOR_10),
+                dataLine.getDouble(ParameterTableColumn.POSTERIOR_20),
+                dataLine.getDouble(ParameterTableColumn.POSTERIOR_30),
+                dataLine.getDouble(ParameterTableColumn.POSTERIOR_40),
+                dataLine.getDouble(ParameterTableColumn.POSTERIOR_50),
+                dataLine.getDouble(ParameterTableColumn.POSTERIOR_60),
+                dataLine.getDouble(ParameterTableColumn.POSTERIOR_70),
+                dataLine.getDouble(ParameterTableColumn.POSTERIOR_80),
+                dataLine.getDouble(ParameterTableColumn.POSTERIOR_90)));
         final PosteriorSummary posteriorSummary = new PosteriorSummary(center, lower, upper);
         posteriorSummary.setDeciles(deciles);
         return new AbstractMap.SimpleEntry<>(parameter, posteriorSummary);

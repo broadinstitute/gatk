@@ -1,0 +1,12 @@
+@HD	VN:1.5	GO:none	SO:coordinate
+@SQ	SN:1	LN:2000000
+@RG	ID:GATKCopyNumber	SM:sample1
+CONTIG	START	END	consensus_major_cn	consensus_minor_cn	final_total_cn	star	MEAN_LOG2_COPY_RATIO	CALL
+1	10001	10500	1	0	1	3	-0.03	0
+1	10501	51173	1	0	1	3		
+1	51174	51436	1	0	1.0	2		
+1	51437	52499	1	0	1	3		
+1	52500	109750	1	0	1	3	-0.76	-
+1	109751	121477	1	0	1	3	-0.10	0
+1	121478	230500					-0.10	0
+1	230501	258500					-0.60	-

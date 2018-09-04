@@ -4,7 +4,8 @@ import htsjdk.samtools.Cigar;
 import htsjdk.samtools.TextCigarCodec;
 import htsjdk.variant.variantcontext.*;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.utils.test.ArtificialAnnotationUtils;
+import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
+import org.broadinstitute.hellbender.testutils.ArtificialAnnotationUtils;
 import org.broadinstitute.hellbender.utils.MannWhitneyU;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
@@ -47,8 +48,8 @@ public class AS_MappingQualityRankSumTestUnitTest extends ReducibleAnnotationBas
     }
 
     @Override
-    protected List<String> getAnnotationsToUse() {
-        return Collections.singletonList(AS_MappingQualityRankSumTest.class.getSimpleName());
+    protected List<Annotation> getAnnotationsToUse() {
+        return Collections.singletonList(new AS_MappingQualityRankSumTest());
     }
 
     @Override
@@ -84,8 +85,9 @@ public class AS_MappingQualityRankSumTestUnitTest extends ReducibleAnnotationBas
 
         MannWhitneyU.Result expectedAlt = mannWhitneyU.test(new double[]{10.0, 20.0},new double[]{100.0, 110.0}, MannWhitneyU.TestType.FIRST_DOMINATES);
         String expected = "|"+String.format("%.1f",Math.round(Math.floor((expectedAlt.getZ() )/0.1))*0.1)+",1";
+        String expectedAnnotate = String.format("%.3f",expectedAlt.getZ());
 
-        Assert.assertEquals(annotate.get(key1), expected);
+        Assert.assertEquals(annotate.get(key2), expectedAnnotate);
         Assert.assertEquals(annotateRaw.get(key1), expected);
 
         Assert.assertEquals(ann.getDescriptions().size(), 1);

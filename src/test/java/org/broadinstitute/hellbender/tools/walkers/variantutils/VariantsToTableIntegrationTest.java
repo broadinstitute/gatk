@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.variantutils;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
@@ -46,7 +46,7 @@ public final class VariantsToTableIntegrationTest extends CommandLineProgramTest
     @Test
     public void testComplexVariantsToTableFail() throws IOException {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                variantsToTableCmd("--errorIfMissingData"),
+                variantsToTableCmd("--error-if-missing-data"),
                 1, UserException.class);
         spec.executeTest("testComplexVariantsToTable-FAIL", this);
     }
@@ -55,7 +55,7 @@ public final class VariantsToTableIntegrationTest extends CommandLineProgramTest
     public void testUnfilteredGenotypeFieldsFail() throws IOException {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
                 " --variant " + getToolTestDataDir() + "vcfexample2.vcf" +
-                        " -GF RD -GF FT --errorIfMissingData" +
+                        " -GF RD -GF FT --error-if-missing-data" +
                         " -O %s",
                 1,
                 UserException.class);

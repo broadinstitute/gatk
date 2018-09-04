@@ -43,7 +43,7 @@ WriteModeledSegmentsPlot = function(sample_name, allelic_counts_file, denoised_c
     png(plot_file, 12, 3.5 * num_plots, units="in", type="cairo", res=300, bg="white")
     par(mfrow=c(num_plots, 1), cex=0.75, las=1)
 
-    if (file.exists(denoised_copy_ratios_file)) {
+    if (file.exists(denoised_copy_ratios_file) && denoised_copy_ratios_file!="null") {
         denoised_copy_ratios_df = ReadTSV(denoised_copy_ratios_file)
 
         #transform to linear copy ratio
@@ -56,7 +56,7 @@ WriteModeledSegmentsPlot = function(sample_name, allelic_counts_file, denoised_c
         PlotCopyRatiosWithModeledSegments(denoised_copy_ratios_df, modeled_segments_df, contig_names, contig_starts)
     }
 
-    if (file.exists(allelic_counts_file)) {
+    if (file.exists(allelic_counts_file) && allelic_counts_file!="null") {
         allelic_counts_df = ReadTSV(allelic_counts_file)
 
         SetUpPlot(sample_name, "alternate-allele fraction", 0, 1.0, "contig", contig_names, contig_starts, contig_ends, TRUE)

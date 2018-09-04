@@ -9,18 +9,29 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.util.BlockCompressedOutputStream;
+import htsjdk.samtools.util.IOUtil;
+import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaRDD;
+import org.broadinstitute.hellbender.engine.spark.GATKRegistrator;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.tools.spark.utils.IntHistogram;
-import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.util.*;
@@ -33,6 +44,8 @@ import java.util.*;
  */
 @DefaultSerializer(ReadMetadata.Serializer.class)
 public class ReadMetadata {
+
+    public static final String CDF_PREFIX = "template size cumulative counts:";
     private final Set<Integer> crossContigIgnoreSet;
     private final Map<String, Integer> contigNameToID;
     private final String[] contigIDToName;
@@ -107,7 +120,7 @@ public class ReadMetadata {
     @VisibleForTesting
     ReadMetadata( final Set<Integer> crossContigIgnoreSet, final SAMFileHeader header,
                   final LibraryStatistics stats, final PartitionBounds[] partitionBounds,
-                  final long nReads, final long maxReadsInPartition, final int coverage ) {
+                  final long nReads, final long maxReadsInPartition, final float coverage ) {
         this.crossContigIgnoreSet = crossContigIgnoreSet;
         contigNameToID = buildContigNameToIDMap(header.getSequenceDictionary());
         contigIDToName = buildContigIDToNameArray(contigNameToID);
@@ -361,6 +374,15 @@ public class ReadMetadata {
                                 "+" + stats.getPositiveMAD() + "\t" + stats.getCoverage() + "\t" +
                                 stats.getMeanBaseQuality() + "\t" +
                                 stats.getNReads() + "\t" + stats.getReadStartFrequency() + "\n");
+                final IntHistogram.CDF templateSizeCDF = stats.getCDF();
+                final int cdfSize = templateSizeCDF.size();
+                final long totalObservations = templateSizeCDF.getTotalObservations();
+                writer.write(CDF_PREFIX);
+                for(int idx = 0; idx < cdfSize; ++idx) {
+                    final long cumulativeCounts = Math.round(templateSizeCDF.getFraction(idx) * totalObservations);
+                    writer.write("\t" + cumulativeCounts);
+                }
+                writer.write("\n");
             }
             final PartitionBounds[] partitionBounds = readMetadata.partitionBounds;
             writer.write("\nPartition Boundaries\n");
@@ -383,6 +405,30 @@ public class ReadMetadata {
     }
 
     public static final class Serializer extends com.esotericsoftware.kryo.Serializer<ReadMetadata> {
+
+        /**
+         * Placed at the beginning of each standalone serialization of the meta-data
+         * identifies file that most likely are valid serializations.
+         * <p>
+         * Is not a 100% guarantee as one construct an invalid file that contains,
+         * but is extremely-unlikely to be accidental.
+         * </p>
+         */
+        public static final String MAGIC_STRING = "9wdgy2yEbw0jg";
+
+        /**
+         * Serialization version.
+         * <p>
+         *     This follows the {@link #MAGIC_STRING} in the serialization file indicating
+         *     the format version.
+         * </p>
+         * <p>
+         *     This number/string should be change every time the serialization format changes
+         *     so that we can catch incompatible deserialization early.
+         * </p>
+         */
+        public static final String VERSION_STRING = "0.1";
+
         @Override
         public void write( final Kryo kryo, final Output output, final ReadMetadata readMetadata ) {
             readMetadata.serialize(kryo, output);
@@ -391,6 +437,64 @@ public class ReadMetadata {
         @Override
         public ReadMetadata read( final Kryo kryo, final Input input, final Class<ReadMetadata> klass ) {
             return new ReadMetadata(kryo, input);
+        }
+
+        /**
+         * Serializes a read-metadata by itself into a file.
+         * @param meta the read-metadata to serialize.
+         * @param whereTo the name of the file or resource where it will go to.
+         * @throws IllegalArgumentException if either {@code meta} or {@code whereTo}
+         * is {@code null}.
+         * @throws UserException if there was a problem during serialization.
+         */
+        public static void writeStandalone(final ReadMetadata meta, final String whereTo) {
+            try {
+                final OutputStream outputStream = BucketUtils.createFile(whereTo);
+                final OutputStream actualStream = IOUtil.hasBlockCompressedExtension(whereTo)
+                        ? new GzipCompressorOutputStream(outputStream) : outputStream;
+                final Output output = new Output(actualStream);
+                final Kryo kryo = new Kryo();
+                final Serializer serializer = new Serializer();
+                output.writeString(MAGIC_STRING);
+                output.writeString(VERSION_STRING);
+                serializer.write(kryo, output, meta);
+                output.close();
+            } catch (final IOException ex) {
+                throw new UserException.CouldNotCreateOutputFile(whereTo, ex);
+            }
+        }
+
+        /**
+         * Reads a read-metadata from a file or resource.
+         * @param whereFrom the file or resource containing the read-metadata.
+         * @throws IllegalArgumentException if {@code whereFrom} is {@code null}.
+         * @throws UserException if any problem occurred where deserializing.
+         * @return never {@code null}.
+         */
+        public static ReadMetadata readStandalone(final String whereFrom) {
+            try (final InputStream inputStream = BucketUtils.openFile(whereFrom);
+                 final Input input = new Input(inputStream)) {
+                final Kryo kryo = new Kryo();
+                final Serializer serializer = new Serializer();
+                final String magicString = input.readString();
+                if (!Objects.equals(MAGIC_STRING, magicString)) {
+                    throw new UserException.BadInput("Bad file format in " + whereFrom +
+                            "; it does not seem to be a valid read-metadata serialization");
+                }
+                final String versionString = input.readString();
+                if (!Objects.equals(VERSION_STRING, versionString)) {
+                    throw new UserException.BadInput("Bad file format in " + whereFrom +
+                            "; it contains an incompatible version " + versionString + "(expected: " + VERSION_STRING + ")");
+                }
+                final ReadMetadata result = serializer.read(kryo, input, ReadMetadata.class);
+                if (result == null) {
+                    throw new UserException.BadInput("Missing read-metadata in " + whereFrom);
+                }
+                return result;
+
+            } catch (final Exception ex) {
+                throw new UserException.CouldNotCreateOutputFile(whereFrom, ex);
+            }
         }
     }
 

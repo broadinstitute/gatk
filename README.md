@@ -3,10 +3,7 @@
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/org.broadinstitute/gatk/badge.svg)](https://maven-badges.herokuapp.com/maven-central/org.broadinstitute/gatk)
 [![License (3-Clause BSD)](https://img.shields.io/badge/license-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
-
-***This project is in a pre-release stage of development.  It is subject to change without warning. Do not use this code for production work.***
-
-***If you are looking for the current version of GATK to use in production work (ie., GATK3), please see the [GATK website](http://www.broadinstitute.org/gatk), where you can download a precompiled executable, read documentation, ask questions and receive technical support.***
+***Please see the [GATK website](http://www.broadinstitute.org/gatk), where you can download a precompiled executable, read documentation, ask questions, and receive technical support.***
 
 ### GATK 4
 
@@ -25,13 +22,13 @@ releases of the toolkit.
 * [Downloading GATK4](#downloading)
 * [Building GATK4](#building)
 * [Running GATK4](#running)
-    * [Passing JVM options to gatk-launch](#jvmoptions)
+    * [Passing JVM options to gatk](#jvmoptions)
+    * [Passing a configuration file to gatk](#configFileOptions)
     * [Running GATK4 with inputs on Google Cloud Storage](#gcs)
     * [Running GATK4 Spark tools on a Spark cluster](#sparkcluster)
     * [Running GATK4 Spark tools on Google Cloud Dataproc](#dataproc)
     * [Note on 2bit Reference](#2bit)
     * [Using R to generate plots](#R)
-    * [Running the CNV workflows](#cnv_workflows)
     * [GATK Tab Completion for Bash](#tab_completion)
 * [For GATK Developers](#developers)
     * [General guidelines for GATK4 developers](#dev_guidelines)
@@ -53,36 +50,74 @@ releases of the toolkit.
 * [License](#license)
 
 ## <a name="requirements">Requirements</a>
-* Java 8
-* Git 2.5 or greater
-* Optional, but recommended:
-    * Gradle 3.1 or greater, needed for building the GATK. We recommend using the `./gradlew` script which will
+* To run GATK:
+    * Java 8
+    * Python 2.6 or greater (required to run the `gatk` frontend script)
+    * Python 3.6.2, along with a set of additional Python packages, is required to run some tools and workflows.
+      See [Python Dependencies](#python) for more information.
+    * R 3.2.5 (needed for producing plots in certain tools)
+* To build GATK:
+    * A Java 8 JDK
+    * Git 2.5 or greater
+    * [git-lfs](https://git-lfs.github.com/) 1.1.0 or greater. Required to download the large files used to build GATK, and
+      test files required to run the test suite. Run `git lfs install` after downloading, followed by `git lfs pull` from
+      the root of your git clone to download all of the large files, including those required to run the test suite. The
+      full download is approximately 2 gigabytes. Alternatively, if you are just building GATK and not running the test
+      suite, you can skip this step since the build itself will use git-lfs to download the minimal set of large `lfs`
+      resource files required to complete the build. The test resources will not be downloaded, but this greatly reduces
+      the size of the download.
+    * Gradle 3.1 or greater. We recommend using the `./gradlew` script which will
       download and use an appropriate gradle version automatically (see examples below).
-    * Python 2.6 or greater (needed for running the `gatk-launch` frontend script)
-    * R 3.1.3 (needed for producing plots in certain tools, and for running the test suite)
-    * [git-lfs](https://git-lfs.github.com/) 1.1.0 or greater (needed to download large files for the complete test suite).
-      Run `git lfs install` after downloading, followed by `git lfs pull` from the root of your git clone to download the large files. The download is several hundred megabytes.
+    * R 3.2.5 (needed for running the test suite)
+* Pre-packaged Docker images with all needed dependencies installed can be found on
+  [our dockerhub repository](https://hub.docker.com/r/broadinstitute/gatk/). This requires a recent version of the
+   docker client, which can be found on the [docker website](https://www.docker.com/get-docker).
+* Python Dependencies:<a name="python"></a>
+    * GATK4 uses the [Conda](https://conda.io/docs/index.html) package manager to establish and manage the
+      Python environment and dependencies required by GATK tools that have a Python dependency. There are two different
+      conda environments that can be used:
+        * The ```gatk``` environment, which has no special hardware requirements. The GATK Docker image comes with the
+          "gatk" environment pre-configured.
+        * The ```gatk-intel``` environment, which requires and uses Intel (AVX2 or AVX-512) hardware acceleration to
+          increase performance.
+    * To establish the conda environment when not using the Docker image, a conda environment must first be "created", and
+      then "activated":
+        * First, make sure [Miniconda or Conda](https://conda.io/docs/index.html) is installed (Miniconda is sufficient).
+        * To "create" the conda environment:
+            * If running from a zip or tar distribution, run the command ```conda env create -f gatkcondaenv.yml``` to
+              create the ```gatk``` environment, or the command ```conda env create -f gatkcondaenv.intel.yml``` to create
+              the ```gatk-intl``` environment.
+            * If running from a cloned repository, run ```./gradlew localDevCondaEnv```. This generates the Python
+              package archive and conda yml dependency file(s) in the build directory, and also creates (or updates)
+              the local  ```gatk``` conda environment. (To create the ```gatk-intel``` conda environment once the files
+              have been generated, run the command ```conda env create -f gatkcondaenv.intel.yml```).
+        * To "activate" the conda environment (the conda environment must be activated within the same shell from which
+          GATK is run):
+             * Execute the shell command ```source activate gatk``` to activate the ```gatk``` environment, or
+               ```source activate gatk-intel``` to activate the ```gatk-intel``` environment.
+        * See the [Conda](https://conda.io/docs/user-guide/tasks/manage-environments.html) documentation for
+          additional information about using and managing Conda environments.
 
 ## <a name="quickstart">Quick Start Guide</a>
 
 * Build the GATK: `./gradlew bundle` (creates `gatk-VERSION.zip` in `build/`)
-* Get help on running the GATK: `./gatk-launch --help`
-* Get a list of available tools: `./gatk-launch --list`
-* Run a tool: `./gatk-launch PrintReads -I src/test/resources/NA12878.chr17_69k_70k.dictFix.bam -O output.bam`
-* Get help on a particular tool: `./gatk-launch PrintReads --help`
+* Get help on running the GATK: `./gatk --help`
+* Get a list of available tools: `./gatk --list`
+* Run a tool: `./gatk PrintReads -I src/test/resources/NA12878.chr17_69k_70k.dictFix.bam -O output.bam`
+* Get help on a particular tool: `./gatk PrintReads --help`
 
 ## <a name="downloading">Downloading GATK4</a>
 
 You can download and run pre-built versions of GATK4 from the following places:
 
-* Starting with the beta release, a zip archive with everything you need to run GATK4 can be downloaded for each release from the [github releases page](https://github.com/broadinstitute/gatk/releases).
+* A zip archive with everything you need to run GATK4 can be downloaded for each release from the [github releases page](https://github.com/broadinstitute/gatk/releases).
 
-* Starting with the beta release, you can download a GATK4 docker image from [our dockerhub repository](https://hub.docker.com/r/broadinstitute/gatk/). We also host unstable nightly development builds on [this dockerhub repository](https://hub.docker.com/r/broadinstitute/gatk-nightly/).
-    * Within the docker image, run gatk-launch commands as usual from the default startup directory (/gatk).
+* You can download a GATK4 docker image from [our dockerhub repository](https://hub.docker.com/r/broadinstitute/gatk/). We also host unstable nightly development builds on [this dockerhub repository](https://hub.docker.com/r/broadinstitute/gatk-nightly/).
+    * Within the docker image, run gatk commands as usual from the default startup directory (/gatk).
 
 ## <a name="building">Building GATK4</a>
 
-* **To do a full build of GATK4, run:**
+* **To do a full build of GATK4, first clone the GATK repository using "git clone", then run:**
 
         ./gradlew bundle
         
@@ -90,8 +125,9 @@ You can download and run pre-built versions of GATK4 from the following places:
   
         ./gradlew
         
-    * This creates a zip archive in the `build/` directory with a name like `gatk-VERSION.zip` containing a complete standalone GATK distribution, including our launcher `gatk-launch`, both the local and spark jars, and this README.    
+    * This creates a zip archive in the `build/` directory with a name like `gatk-VERSION.zip` containing a complete standalone GATK distribution, including our launcher `gatk`, both the local and spark jars, and this README.    
     * You can also run GATK commands directly from the root of your git clone after running this command.
+    * Note that you *must* have a full git clone in order to build GATK, including the git-lfs files in src/main/resources. The zipped source code alone is not buildable.
 
 * **Other ways to build:**
     * `./gradlew installDist`  
@@ -115,25 +151,25 @@ You can download and run pre-built versions of GATK4 from the following places:
 
 ## <a name="running">Running GATK4</a>
 
-* The standard way to run GATK4 tools is via the **`gatk-launch`** wrapper script located in the root directory of a clone of this repository.
+* The standard way to run GATK4 tools is via the **`gatk`** wrapper script located in the root directory of a clone of this repository.
     * Requires Python 2.6 or greater (this includes Python 3.x)
     * You need to have built the GATK as described in the [Building GATK4](#building) section above before running this script.
-    * There are several ways `gatk-launch` can be run:
+    * There are several ways `gatk` can be run:
         * Directly from the root of your git clone after building
-        * By extracting the zip archive produced by `./gradlew bundle` to a directory, and running `gatk-launch` from there
-        * Manually putting the `gatk-launch` script within the same directory as fully-packaged GATK jars produced by `./gradlew localJar` and/or `./gradlew sparkJar`
+        * By extracting the zip archive produced by `./gradlew bundle` to a directory, and running `gatk` from there
+        * Manually putting the `gatk` script within the same directory as fully-packaged GATK jars produced by `./gradlew localJar` and/or `./gradlew sparkJar`
         * Defining the environment variables `GATK_LOCAL_JAR` and `GATK_SPARK_JAR`, and setting them to the paths to the GATK jars produced by `./gradlew localJar` and/or `./gradlew sparkJar` 
-    * `gatk-launch` can run non-Spark tools as well as Spark tools, and can run Spark tools locally, on a Spark cluster, or on Google Cloud Dataproc.
-    * ***Note:*** running with `java -jar` directly and bypassing `gatk-launch` causes several important system properties to not get set, including htsjdk compression level!
+    * `gatk` can run non-Spark tools as well as Spark tools, and can run Spark tools locally, on a Spark cluster, or on Google Cloud Dataproc.
+    * ***Note:*** running with `java -jar` directly and bypassing `gatk` causes several important system properties to not get set, including htsjdk compression level!
     
-* For help on using `gatk-launch` itself, run **`./gatk-launch --help`**
+* For help on using `gatk` itself, run **`./gatk --help`**
 
-* To print a list of available tools, run **`./gatk-launch --list`**.
+* To print a list of available tools, run **`./gatk --list`**.
     * Spark-based tools will have a name ending in `Spark` (eg., `BaseRecalibratorSpark`). Most other tools are non-Spark-based.
 
-* To print help for a particular tool, run **`./gatk-launch ToolName --help`**.
+* To print help for a particular tool, run **`./gatk ToolName --help`**.
 
-* To run a non-Spark tool, or to run a Spark tool locally, the syntax is: **`./gatk-launch ToolName toolArguments`**.
+* To run a non-Spark tool, or to run a Spark tool locally, the syntax is: **`./gatk ToolName toolArguments`**.
 
 * Tool arguments that allow multiple values, such as -I, can be supplied on the command line using a file with the extension ".args". Each line of the file should contain a
   single value for the argument.
@@ -141,28 +177,38 @@ You can download and run pre-built versions of GATK4 from the following places:
 * Examples:
 
   ```
-  ./gatk-launch PrintReads -I input.bam -O output.bam
+  ./gatk PrintReads -I input.bam -O output.bam
   ```
 
   ```
-  ./gatk-launch PrintReadsSpark -I input.bam -O output.bam
+  ./gatk PrintReadsSpark -I input.bam -O output.bam
   ```
 
-#### <a name="jvmoptions">Passing JVM options to gatk-launch</a>
+#### <a name="jvmoptions">Passing JVM options to gatk</a>
 
-* To pass JVM arguments to GATK, run `gatk-launch` with the `--javaOptions` argument: 
+* To pass JVM arguments to GATK, run `gatk` with the `--java-options` argument: 
 
     ```
-    ./gatk-launch --javaOptions "-Xmx4G" <rest of command>
+    ./gatk --java-options "-Xmx4G" <rest of command>
      
-    ./gatk-launch --javaOptions "-Xmx4G -XX:+PrintGCDetails" <rest of command>
+    ./gatk --java-options "-Xmx4G -XX:+PrintGCDetails" <rest of command>
     ```
+#### <a name="configFileOptions">Passing a configuration file to gatk</a>
+
+* To pass a configuration file to GATK, run `gatk` with the `--gatk-config-file` argument: 
+
+	```
+	./gatk --gatk-config-file GATKProperties.config <rest of command>
+	```
+
+	An example GATK configuration file is packaged with each release as `GATKConfig.EXAMPLE.properties`
+	This example file contains all current options that are used by GATK and their default values.
 
 #### <a name="gcs">Running GATK4 with inputs on Google Cloud Storage:</a>
 
 * Many GATK4 tools can read BAM or VCF inputs from a Google Cloud Storage bucket. Just use the "gs://" prefix:
   ```
-  ./gatk-launch PrintReads -I gs://mybucket/path/to/my.bam -L 1:10000-20000 -O output.bam
+  ./gatk PrintReads -I gs://mybucket/path/to/my.bam -L 1:10000-20000 -O output.bam
   ```
 * ***Important:*** You must set up your credentials first for this to work! There are three options:
     * Option (a): run in a Google Cloud Engine VM
@@ -189,19 +235,19 @@ You can download and run pre-built versions of GATK4 from the following places:
 
 #### <a name="sparkcluster">Running GATK4 Spark tools on a Spark cluster:</a>
 
-**`./gatk-launch ToolName toolArguments -- --sparkRunner SPARK --sparkMaster <master_url> additionalSparkArguments`**
+**`./gatk ToolName toolArguments -- --spark-runner SPARK --spark-master <master_url> additionalSparkArguments`**
 * Examples:
 
   ```
-  ./gatk-launch PrintReadsSpark -I hdfs://path/to/input.bam -O hdfs://path/to/output.bam \
+  ./gatk PrintReadsSpark -I hdfs://path/to/input.bam -O hdfs://path/to/output.bam \
       -- \
-      --sparkRunner SPARK --sparkMaster <master_url>
+      --spark-runner SPARK --spark-master <master_url>
   ```
 
     ```
-    ./gatk-launch PrintReadsSpark -I hdfs://path/to/input.bam -O hdfs://path/to/output.bam \
+    ./gatk PrintReadsSpark -I hdfs://path/to/input.bam -O hdfs://path/to/output.bam \
       -- \
-      --sparkRunner SPARK --sparkMaster <master_url> \
+      --spark-runner SPARK --spark-master <master_url> \
       --num-executors 5 --executor-cores 2 --executor-memory 4g \
       --conf spark.yarn.executor.memoryOverhead=600
     ```
@@ -209,14 +255,14 @@ You can download and run pre-built versions of GATK4 from the following places:
 * You can also omit the "--num-executors" argument to enable [dynamic allocation](https://spark.apache.org/docs/latest/job-scheduling.html#dynamic-resource-allocation) if you configure the cluster properly (see the Spark website for instructions).
 * Note that the Spark-specific arguments are separated from the tool-specific arguments by a `--`.
 * Running a Spark tool on a cluster requires Spark to have been installed from http://spark.apache.org/, since
-   `gatk-launch` invokes the `spark-submit` tool behind-the-scenes.
+   `gatk` invokes the `spark-submit` tool behind-the-scenes.
 * Note that the examples above use YARN but we have successfully run GATK4 on Mesos as well.
 
 #### <a name="dataproc">Running GATK4 Spark tools on Google Cloud Dataproc:</a>
   * You must have a [Google cloud services](https://cloud.google.com/) account, and have spun up a Dataproc cluster
     in the [Google Developer's console](https://console.developers.google.com). You may need to have the "Allow API access to all Google Cloud services in the same project" option enabled (settable when you create a cluster).
   * You need to have installed the Google Cloud SDK from [here](https://cloud.google.com/sdk/), since
-    `gatk-launch` invokes the `gcloud` tool behind-the-scenes. As part of the installation, be sure
+    `gatk` invokes the `gcloud` tool behind-the-scenes. As part of the installation, be sure
       that you follow the `gcloud` setup instructions [here](https://cloud.google.com/sdk/gcloud/). As this library is frequently updated by Google, we recommend updating your copy regularly to avoid any version-related difficulties.
   * Your inputs to the GATK when running on dataproc are typically in Google Cloud Storage buckets, and should be specified on
     your GATK command line using the syntax `gs://my-gcs-bucket/path/to/my-file`
@@ -224,24 +270,24 @@ You can download and run pre-built versions of GATK4 from the following places:
 
   Once you're set up, you can run a Spark tool on your Dataproc cluster using a command of the form:
 
-  **`./gatk-launch ToolName toolArguments -- --sparkRunner GCS --cluster myGCSCluster additionalSparkArguments`**
+  **`./gatk ToolName toolArguments -- --spark-runner GCS --cluster myGCSCluster additionalSparkArguments`**
 
   * Examples:
 
       ```
-      ./gatk-launch PrintReadsSpark \
+      ./gatk PrintReadsSpark \
           -I gs://my-gcs-bucket/path/to/input.bam \
           -O gs://my-gcs-bucket/path/to/output.bam \
           -- \
-          --sparkRunner GCS --cluster myGCSCluster
+          --spark-runner GCS --cluster myGCSCluster
       ```
 
       ```
-      ./gatk-launch PrintReadsSpark \
+      ./gatk PrintReadsSpark \
           -I gs://my-gcs-bucket/path/to/input.bam \
           -O gs://my-gcs-bucket/path/to/output.bam \
           -- \
-          --sparkRunner GCS --cluster myGCSCluster \
+          --spark-runner GCS --cluster myGCSCluster \
           --num-executors 5 --executor-cores 2 --executor-memory 4g \
           --conf spark.yarn.executor.memoryOverhead=600
       ```
@@ -255,13 +301,12 @@ You can download and run pre-built versions of GATK4 from the following places:
 * Note: Some GATK Spark tools by default require the reference file to be in 2bit format (notably `BaseRecalibratorSpark`,`BQSRPipelineSpark` and `ReadsPipelineSpark`). You can convert your fasta to 2bit by using the `faToTwoBit` utility from [UCSC](http://hgdownload.soe.ucsc.edu/admin/exe/) - see also the [documentation for `faToTwoBit`](https://genome.ucsc.edu/goldenpath/help/blatSpec.html#faToTwoBitUsage).
 
 #### <a name="R">Using R to generate plots</a>
-Certain GATK tools may optionally generate plots if R is installed.  We recommend **R v3.1.3** if you want to produce plots.  If you are uninterested in plotting, R is still required by several of the unit tests.  Plotting is currently untested and should be viewed as a convenience rather than a primary output.
+Certain GATK tools may optionally generate plots if R is installed.  We recommend **R v3.2.5** if you want to produce plots.  If you are uninterested in plotting, R is still required by several of the unit tests.  Plotting is currently untested and should be viewed as a convenience rather than a primary output.
 
 R installation is not part of the gradle build.  See http://cran.r-project.org/ for general information on installing R for your system.
 * for ubuntu see these [ubuntu specific instructions](http://cran.r-project.org/bin/linux/ubuntu/README)
 * for OSX we recommend installation through [homebrew](http://brew.sh/)
 ```
-brew tap homebrew/science
 brew install R
 ```
 
@@ -275,10 +320,6 @@ R
 source("scripts/docker/gatkbase/install_R_packages.R")
 ```
 
-#### <a name="cnv_workflows">Running the CNV workflows</a>
-
-* A walkthrough and examples for the CNV workflows can be found [here](http://gatkforums.broadinstitute.org/gatk/discussion/9143)
-
 #### <a name="tab_completion">Bash Command-line Tab Completion (BETA)</a>
 
 * A tab completion bootstrap file for the bash shell is now included in releases.  This file allows the command-line shell to complete GATK run options in a manner equivalent to built-in command-line tools (e.g. grep).  
@@ -288,24 +329,24 @@ source("scripts/docker/gatkbase/install_R_packages.R")
 * To enable tab completion for the GATK, open a terminal window and source the included tab completion script:
 
 ```
-source gatk-launch-completion.sh
+source gatk-completion.sh
 ```
 
 * Sourcing this file will allow you to press the tab key twice to get a list of options available to add to your current GATK command.  By default you will have to source this file once in each command-line session, then for the rest of the session the GATK tab completion functionality will be available.  GATK tab completion will be available in that current command-line session only.
 
-* Note that you must have already started typing an invocation of the GATK (using gatk-launch) for tab completion to initiate:
+* Note that you must have already started typing an invocation of the GATK (using gatk) for tab completion to initiate:
 
 ```
-./gatk-launch <TAB><TAB>
+./gatk <TAB><TAB>
 ```
 
 * We recommend adding a line to your bash settings file (i.e. your ~/.bashrc file) that sources the tab completion script.  To add this line to your bash settings / bashrc file you can use the following command:
 
 ```
-echo "source <PATH_TO>/gatk-launch-completion.sh" >> ~/.bashrc
+echo "source <PATH_TO>/gatk-completion.sh" >> ~/.bashrc
 ```
 
-* Where ```<PATH_TO>``` is the fully qualified path to the ```gatk-launch-completion.sh``` script.
+* Where ```<PATH_TO>``` is the fully qualified path to the ```gatk-completion.sh``` script.
 
 ## <a name="developers">For GATK Developers</a>
 
@@ -351,13 +392,12 @@ echo "source <PATH_TO>/gatk-launch-completion.sh" >> ~/.bashrc
     * Test report is in `build/reports/tests/test/index.html`.
     * What will happen depends on the value of the `TEST_TYPE` environment variable: 
        * unset or any other value         : run non-cloud unit and integration tests, this is the default
-       * `cloud`, `unit`, `integration`, `spark`   : run only the cloud, unit, integration, or Spark tests
+       * `cloud`, `unit`, `integration`, `spark`, `python`   : run only the cloud, unit, integration, python, or Spark tests
        * `all`                            : run the entire test suite
     * Cloud tests require being logged into `gcloud` and authenticated with a project that has access
       to the cloud test data.  They also require setting several certain environment variables.
       * `HELLBENDER_JSON_SERVICE_ACCOUNT_KEY` : path to a local JSON file with [service account credentials](https://cloud.google.com/storage/docs/authentication#service_accounts) 
       * `HELLBENDER_TEST_PROJECT` : your google cloud project 
-      * `HELLBENDER_TEST_APIKEY` : your google cloud API key
       * `HELLBENDER_TEST_STAGING` : a gs:// path to a writable location
       * `HELLBENDER_TEST_INPUTS` : path to cloud test data, ex: gs://hellbender/test/resources/ 
     * Setting the environment variable `TEST_VERBOSITY=minimal` will produce much less output from the test suite 

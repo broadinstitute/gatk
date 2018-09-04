@@ -26,7 +26,7 @@ final class VariantRecalibratorArgumentCollection {
      * Generate a VQSR model using per-allele data instead of the default per-site data, assuming that the input VCF contains allele-specific annotations.
      * Annotations should be specified using their full names with AS_ prefix. Non-allele-specific (scalar) annotations will be applied to all alleles.
      */
-    @Argument(fullName="useAlleleSpecificAnnotations",
+    @Argument(fullName="use-allele-specific-annotations",
             shortName="AS",
             doc="If specified, the variant recalibrator will attempt to use the allele-specific versions of the specified annotations.", optional=true)
     public boolean useASannotations = false;
@@ -36,7 +36,7 @@ final class VariantRecalibratorArgumentCollection {
      * using the variational Bayes algorithm.
      */
     @Advanced
-    @Argument(fullName = "maxGaussians", shortName = "mG", doc = "Max number of Gaussians for the positive model", optional = true)
+    @Argument(fullName = "max-gaussians", doc = "Max number of Gaussians for the positive model", optional = true)
     public int MAX_GAUSSIANS = 8;
 
     /**
@@ -46,7 +46,7 @@ final class VariantRecalibratorArgumentCollection {
      * be small (e.g. 4) to achieve the best results.
      */
     @Advanced
-    @Argument(fullName = "maxNegativeGaussians", shortName = "mNG", doc = "Max number of Gaussians for the negative model", optional = true)
+    @Argument(fullName = "max-negative-gaussians", doc = "Max number of Gaussians for the negative model", optional = true)
     public int MAX_GAUSSIANS_FOR_NEGATIVE_MODEL = 2;
 
     /**
@@ -54,7 +54,7 @@ final class VariantRecalibratorArgumentCollection {
      * The procedure will normally end when convergence is detected.
      */
     @Advanced
-    @Argument(fullName = "maxIterations", shortName = "mI", doc = "Maximum number of VBEM iterations", optional = true)
+    @Argument(fullName = "max-iterations", doc = "Maximum number of VBEM iterations", optional = true)
     public int MAX_ITERATIONS = 150;
 
     /**
@@ -62,7 +62,7 @@ final class VariantRecalibratorArgumentCollection {
      * the Gaussians in the Gaussian mixture model.
      */
     @Advanced
-    @Argument(fullName = "numKMeans", shortName = "nKM", doc = "Number of k-means iterations", optional = true)
+    @Argument(fullName = "k-means-iterations", doc = "Number of k-means iterations", optional = true)
     public int NUM_KMEANS_ITERATIONS = 100;
 
     /**
@@ -70,26 +70,26 @@ final class VariantRecalibratorArgumentCollection {
      * the Gaussian mixture model.
      */
     @Advanced
-    @Argument(fullName = "stdThreshold", shortName = "std", doc = "Annotation value divergence threshold (number of standard deviations from the means) ", optional = true)
+    @Argument(fullName = "standard-deviation-threshold", shortName = "std", doc = "Annotation value divergence threshold (number of standard deviations from the means) ", optional = true)
     public double STD_THRESHOLD = 10.0;
 
     @Advanced
-    @Argument(fullName = "shrinkage", shortName = "shrinkage", doc = "The shrinkage parameter in the variational Bayes algorithm.", optional = true)
+    @Argument(fullName = "shrinkage", doc = "The shrinkage parameter in the variational Bayes algorithm.", optional = true)
     public double SHRINKAGE = 1.0;
 
     @Advanced
-    @Argument(fullName = "dirichlet", shortName = "dirichlet", doc = "The dirichlet parameter in the variational Bayes algorithm.", optional = true)
+    @Argument(fullName = "dirichlet",doc = "The dirichlet parameter in the variational Bayes algorithm.", optional = true)
     public double DIRICHLET_PARAMETER = 0.001;
 
     @Advanced
-    @Argument(fullName = "priorCounts", shortName = "priorCounts", doc = "The number of prior counts to use in the variational Bayes algorithm.", optional = true)
+    @Argument(fullName = "prior-counts", doc = "The number of prior counts to use in the variational Bayes algorithm.", optional = true)
     public double PRIOR_COUNTS = 20.0;
 
     /**
      * The number of variants to use in building the Gaussian mixture model. Training sets larger than this will be randomly downsampled.
      */
     @Advanced
-    @Argument(fullName = "maxNumTrainingData", shortName = "maxNumTrainingData", doc = "Maximum number of training data", optional = true)
+    @Argument(fullName = "maximum-training-variants", doc = "Maximum number of training data", optional = true)
     protected int MAX_NUM_TRAINING_DATA = 2500000;
 
     /**
@@ -97,14 +97,14 @@ final class VariantRecalibratorArgumentCollection {
      * variants to use for building the Gaussian mixture model of bad variants.
      */
     @Advanced
-    @Argument(fullName = "minNumBadVariants", shortName = "minNumBad", doc = "Minimum number of bad variants", optional = true)
+    @Argument(fullName = "minimum-bad-variants", doc = "Minimum number of bad variants", optional = true)
     public int MIN_NUM_BAD_VARIANTS = 1000;
 
     /**
      * Variants scoring lower than this threshold will be used to build the Gaussian model of bad variants.
      */
     @Advanced
-    @Argument(fullName = "badLodCutoff", shortName = "badLodCutoff", doc = "LOD score cutoff for selecting bad variants", optional = true)
+    @Argument(fullName = "bad-lod-score-cutoff", shortName = "bad-lod-cutoff", doc = "LOD score cutoff for selecting bad variants", optional = true)
     public double BAD_LOD_CUTOFF = -5.0;
 
     /**
@@ -124,7 +124,7 @@ final class VariantRecalibratorArgumentCollection {
      * If this option is not used, or if MQCap is set to 0, MQ will not be transformed.
      */
     @Advanced
-    @Argument(fullName="MQCapForLogitJitterTransform", shortName = "MQCap", doc="Apply logit transform and jitter to MQ values", optional=true)
+    @Argument(fullName="mq-cap-for-logit-jitter-transform", shortName = "mq-cap", doc="Apply logit transform and jitter to MQ values", optional=true)
     public int MQ_CAP = 0;
 
     /**
@@ -134,12 +134,12 @@ final class VariantRecalibratorArgumentCollection {
 
     @Hidden
     @Advanced
-    @Argument(fullName = "no_MQ_logit", shortName = "NoMQLogit", doc="MQ is by default transformed to log[(MQ_cap + epsilon - MQ)/(MQ + epsilon)] to make it more Gaussian-like.  Use this flag to not do that.", optional = true)
+    @Argument(fullName = "no-mq-logit", doc="MQ is by default transformed to log[(MQ_cap + epsilon - MQ)/(MQ + epsilon)] to make it more Gaussian-like.  Use this flag to not do that.", optional = true)
     public boolean NO_MQ_LOGIT = false;
 
     @Hidden
     @Advanced
-    @Argument(fullName="MQ_jitter", shortName="MQJitt", doc="Amount of jitter (as a factor to a Normal(0,1) noise) to add to the MQ capped values", optional = true)
+    @Argument(fullName="mq-jitter", doc="Amount of jitter (as a factor to a Normal(0,1) noise) to add to the MQ capped values", optional = true)
     public double MQ_JITTER = 0.05;
 
 }

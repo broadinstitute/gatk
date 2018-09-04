@@ -59,8 +59,10 @@ public class ReadUtilsIntegrationTest extends GATKBaseTest {
         Assert.assertEquals(expectIndex, header.getSortOrder() == SAMFileHeader.SortOrder.coordinate);
       }
 
+      final Path referencePath = referenceFile == null ? null : referenceFile.toPath();
+
       try (final SAMFileWriter samWriter = ReadUtils.createCommonSAMWriter
-          (outputPath, referenceFile, samReader.getFileHeader(), preSorted, createIndex, createMD5)) {
+          (outputPath, referencePath, samReader.getFileHeader(), preSorted, createIndex, createMD5)) {
         final Iterator<SAMRecord> samRecIt = samReader.iterator();
         while (samRecIt.hasNext()) {
           samWriter.addAlignment(samRecIt.next());

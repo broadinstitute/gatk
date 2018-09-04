@@ -6,7 +6,7 @@ import htsjdk.variant.vcf.VCFFileReader;
 import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -50,7 +50,7 @@ public class UpdateVCFSequenceDictionaryIntegrationTest extends CommandLineProgr
         SAMSequenceDictionary sourceDictionary =
                 SAMSequenceDictionaryExtractor.extractDictionary(
                         inputSourceFile == null ?
-                                inputReferenceFile : inputSourceFile
+                                inputReferenceFile.toPath() : inputSourceFile.toPath()
                 );
 
         // Some sequence dictionary sources will contain optional attributes (i.e., if the source is a .dict file,
@@ -100,10 +100,10 @@ public class UpdateVCFSequenceDictionaryIntegrationTest extends CommandLineProgr
             argBuilder.addReference(inputReferenceFile);
         }
         if (inputSourceFile != null) {
-            argBuilder.addFileArgument("sourceDictionary", inputSourceFile);
+            argBuilder.addFileArgument(UpdateVCFSequenceDictionary.DICTIONARY_ARGUMENT_NAME, inputSourceFile);
         }
         if (replace) {
-            argBuilder.addArgument("replace", Boolean.toString(replace));
+            argBuilder.addArgument(UpdateVCFSequenceDictionary.REPLACE_ARGUMENT_NAME, Boolean.toString(replace));
         }
 
         File outFile = createTempFile("updateSequenceDictionary", ".vcf");

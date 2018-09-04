@@ -7,7 +7,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
+import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
@@ -41,7 +41,7 @@ import java.util.stream.StreamSupport;
  * <h3>Example</h3>
  *
  * <pre>
- * gatk-launch --javaOptions "-Xmx4g" CalculateMixingFractions \
+ * gatk --java-options "-Xmx4g" CalculateMixingFractions \
  *   -V input.vcf \
  *   -O output.table
  * </pre>
@@ -53,7 +53,7 @@ import java.util.stream.StreamSupport;
                 " mixing fraction as the average alt fraction in the bam of singleton hets belonging to that sample, then" +
                 " normalizing these initial estimates to sum to one.",
         oneLineSummary = "(Internal) Calculate proportions of different samples in a pooled bam",
-        programGroup = VariantProgramGroup.class
+        programGroup = VariantEvaluationProgramGroup.class
 )
 @DocumentedFeature
 public class CalculateMixingFractions extends VariantWalker {

@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.cmdline;
 
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.PicardNonZeroExitException;
 
 /**
  * Adapter shim for use within GATK to run Picard tools. Note that this class does not have
@@ -21,7 +22,11 @@ public class PicardCommandLineProgramExecutor extends CommandLineProgram {
      */
     @Override
     public Object instanceMain(final String[] argv) {
-        return picardCommandLineProgram.instanceMain(argv);
+        final int toolReturnCode = picardCommandLineProgram.instanceMain(argv);
+        if (toolReturnCode != 0) {
+            throw new PicardNonZeroExitException(toolReturnCode);
+        }
+        return toolReturnCode;
     }
 
     @Override

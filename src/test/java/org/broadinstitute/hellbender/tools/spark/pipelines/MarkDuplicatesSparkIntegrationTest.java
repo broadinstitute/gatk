@@ -3,35 +3,44 @@ package org.broadinstitute.hellbender.tools.spark.pipelines;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import htsjdk.samtools.metrics.MetricsFile;
+import org.apache.spark.SparkException;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.MarkDuplicatesSparkArgumentCollection;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
+import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.markduplicates.MarkDuplicatesGATKIntegrationTest;
 import org.broadinstitute.hellbender.tools.spark.transforms.markduplicates.MarkDuplicatesSpark;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.markduplicates.DuplicationMetrics;
+import org.broadinstitute.hellbender.utils.read.markduplicates.GATKDuplicationMetrics;
 import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesSparkTester;
-import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.tools.walkers.markduplicates.AbstractMarkDuplicatesCommandLineProgramTest;
-import org.broadinstitute.hellbender.utils.test.testers.AbstractMarkDuplicatesTester;
+import org.broadinstitute.hellbender.testutils.testers.AbstractMarkDuplicatesTester;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+import picard.sam.util.PhysicalLocationInt;
+import picard.sam.util.ReadNameParser;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-
+@Test(groups = "spark")
 public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCommandLineProgramTest {
 
     @Override
     protected AbstractMarkDuplicatesTester getTester() {
-        return new MarkDuplicatesSparkTester();
+        MarkDuplicatesSparkTester markDuplicatesSparkTester = new MarkDuplicatesSparkTester();
+        markDuplicatesSparkTester.addArg("--"+ MarkDuplicatesSparkArgumentCollection.DO_NOT_MARK_UNMAPPED_MATES_LONG_NAME);
+        return markDuplicatesSparkTester;
     }
 
     @Override
@@ -39,12 +48,15 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
         return new MarkDuplicatesSpark();
     }
 
+    @Override
+    protected boolean markSecondaryAndSupplementaryRecordsLikeTheCanonical() { return true; }
+
     @Test(dataProvider = "testMDdata", groups = "spark")
     @Override
     public void testMDOrder(final File input, final File expectedOutput) throws Exception {
-        // Override this test case to provide a --shardedOutput false argument, so that we write a single, sorted
+        // Override this test case to provide a --sharded-output false argument, so that we write a single, sorted
         // bam (since sharded output is not sorted, and this test case is sensitive to order).
-        testMDOrderImpl(input, expectedOutput, "--shardedOutput false");
+        testMDOrderImpl(input, expectedOutput, "--" + GATKSparkTool.SHARDED_OUTPUT_LONG_NAME +" false");
     }
 
     @DataProvider(name = "md")
@@ -81,7 +93,7 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
         };
     }
 
-    @Test(groups = "spark", dataProvider = "md")
+    @Test( dataProvider = "md")
     public void testMarkDuplicatesSparkIntegrationTestLocal(
         final File input, final long totalExpected, final long dupsExpected,
         Map<String, List<String>> metricsExpected) throws IOException {
@@ -95,7 +107,7 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
         outputFile.delete();
         args.add(outputFile.getAbsolutePath());
 
-        args.add("--METRICS_FILE");
+        args.add("--"+StandardArgumentDefinitions.METRICS_FILE_LONG_NAME);
         File metricsFile = createTempFile("markdups_metrics", ".txt");
         args.add(metricsFile.getAbsolutePath());
 
@@ -118,13 +130,13 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
         Assert.assertEquals(totalReads, totalExpected, "Wrong number of reads in output BAM");
         Assert.assertEquals(duplicateReads, dupsExpected, "Wrong number of duplicate reads in output BAM");
 
-        final MetricsFile<DuplicationMetrics, Comparable<?>> metricsOutput = new MetricsFile<>();
+        final MetricsFile<GATKDuplicationMetrics, Comparable<?>> metricsOutput = new MetricsFile<>();
         try {
             metricsOutput.read(new FileReader(metricsFile));
         } catch (final FileNotFoundException ex) {
             System.err.println("Metrics file not found: " + ex);
         }
-        final List<DuplicationMetrics> nonEmptyMetrics = metricsOutput.getMetrics().stream().filter(
+        final List<GATKDuplicationMetrics> nonEmptyMetrics = metricsOutput.getMetrics().stream().filter(
                 metric ->
                     metric.UNPAIRED_READS_EXAMINED != 0L ||
                     metric.READ_PAIRS_EXAMINED != 0L ||
@@ -139,7 +151,7 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
         Assert.assertEquals(nonEmptyMetrics.size(), metricsExpected.size(),
                             "Wrong number of metrics with non-zero fields.");
         for (int i = 0; i < nonEmptyMetrics.size(); i++ ){
-            final DuplicationMetrics observedMetrics = nonEmptyMetrics.get(i);
+            final GATKDuplicationMetrics observedMetrics = nonEmptyMetrics.get(i);
             List<?> expectedList = metricsExpected.get(observedMetrics.LIBRARY);
             Assert.assertNotNull(expectedList, "Unexpected library found: " + observedMetrics.LIBRARY);
             Assert.assertEquals(observedMetrics.UNPAIRED_READS_EXAMINED, expectedList.get(0));
@@ -156,5 +168,117 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
                 Assert.assertEquals(observedMetrics.ESTIMATED_LIBRARY_SIZE, expectedList.get(7));
             }
         }
+    }
+
+    @Test
+    public void testSupplementaryReadUnmappedMate() {
+        File output = createTempFile("supplementaryReadUnmappedMate", "bam");
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addOutput(output);
+        args.addInput(getTestFile("supplementaryReadUnmappedmate.bam"));
+        runCommandLine(args);
+
+        try ( final ReadsDataSource outputReadsSource = new ReadsDataSource(output.toPath()) ) {
+            final List<GATKRead> actualReads = new ArrayList<>();
+            for ( final GATKRead read : outputReadsSource ) {
+                Assert.assertFalse(read.isDuplicate());
+                actualReads.add(read);
+            }
+
+            Assert.assertEquals(actualReads.size(), 3, "Wrong number of reads output");
+        }
+    }
+
+    @Test
+    public void testHashCollisionHandling() {
+        // This test asserts that the handling of two read pairs with the same start positions but on different in such a way
+        // that they might cause hash collisions are handled properly.
+        final File output = createTempFile("supplementaryReadUnmappedMate", "bam");
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addOutput(output);
+        args.addInput(getTestFile("hashCollisionedReads.bam"));
+        runCommandLine(args);
+
+        try ( final ReadsDataSource outputReadsSource = new ReadsDataSource(output.toPath()) ) {
+            final List<GATKRead> actualReads = new ArrayList<>();
+            for ( final GATKRead read : outputReadsSource ) {
+                Assert.assertFalse(read.isDuplicate());
+                actualReads.add(read);
+            }
+
+            Assert.assertEquals(actualReads.size(), 4, "Wrong number of reads output");
+        }
+    }
+
+    // Tests asserting that without --do-not-mark-unmapped-mates argument that unmapped mates are still duplicate marked with their partner
+    @Test
+    public void testMappedPairAndMappedFragmentAndMatePairSecondUnmapped() {
+        final AbstractMarkDuplicatesTester tester = new MarkDuplicatesSparkTester(true);
+        tester.addMatePair(1, 10040, 10040, false, true, true, true, "76M", null, false, false, false, false, false, DEFAULT_BASE_QUALITY); // first a duplicate,
+        // second end unmapped
+        tester.addMappedPair(1, 10189, 10040, false, false, "41S35M", "65M11S", true, false, false, ELIGIBLE_BASE_QUALITY); // mapped OK
+        tester.addMappedFragment(1, 10040, true, DEFAULT_BASE_QUALITY); // duplicate
+        tester.runTest();
+    }
+
+    @Test
+    public void testNonExistantReadGroupInRead() {
+        final AbstractMarkDuplicatesTester tester = new MarkDuplicatesSparkTester(true);
+        tester.addMatePair("RUNID:7:1203:2886:82292",  19, 19, 485253, 485253, false, false, true, true, "42M59S", "59S42M", true, false, false, false, false, DEFAULT_BASE_QUALITY, "NotADuplicateGroup");
+        try {
+            tester.runTest();
+            Assert.fail("Should have thrown an exception");
+        } catch (Exception e){
+           Assert.assertTrue(e instanceof SparkException);
+           Assert.assertTrue(e.getCause() instanceof UserException.HeaderMissingReadGroup);
+        }
+    }
+
+    @Test
+    public void testNoReadGroupInRead() {
+        final AbstractMarkDuplicatesTester tester = new MarkDuplicatesSparkTester(true);
+        tester.addMatePair("RUNID:7:1203:2886:82292",  19, 19, 485253, 485253, false, false, true, true, "42M59S", "59S42M", true, false, false, false, false, DEFAULT_BASE_QUALITY, null);
+
+        try {
+            tester.runTest();
+            Assert.fail("Should have thrown an exception");
+        } catch (Exception e){
+            Assert.assertTrue(e instanceof SparkException);
+            Assert.assertTrue(e.getCause() instanceof UserException.ReadMissingReadGroup);
+        }
+    }
+
+    @Test(dataProvider = "readNameData")
+    public void testOpticalDuplicatesTiebrokenByPhysicalLocationNotStartPosition(final String readName1, final String readName2) {
+        // This tests the readname based tiebreaking code in mark duplicates. Since it's ambiguous which read should be marked
+        // as duplicate or not if scores match we break ties by evaluating the readname for consistencies sake.
+
+        final ReadNameParser parser = new ReadNameParser();
+
+        final PhysicalLocationInt position1 = new PhysicalLocationInt();
+        final PhysicalLocationInt position2 = new PhysicalLocationInt();
+
+        parser.addLocationInformation(readName1, position1);
+        parser.addLocationInformation(readName2, position2);
+
+        final AbstractMarkDuplicatesTester tester = getTester();
+        tester.getSamRecordSetBuilder().setReadLength(101);
+        tester.setExpectedOpticalDuplicate(0);
+
+        int compare = position1.tile - position2.tile;
+        if (compare == 0) {
+            compare = position1.x - position2.x;
+        }
+
+        if (compare == 0) {
+            compare = position1.y - position2.y;
+        }
+
+        final boolean isDuplicate = compare < 0;
+
+        // NOTE these reads are offset slightly but should have the same unclipped start postitions
+        tester.addMatePair(readName1, 1,2, 46,  false, false, !isDuplicate, !isDuplicate, "6S42M28S", "3S68M",  true, false, false, false, false, DEFAULT_BASE_QUALITY);
+        tester.addMatePair(readName2, 1,2, 51, false, false, isDuplicate, isDuplicate, "6S42M28S", "8S68M", true, false, false, false, false, DEFAULT_BASE_QUALITY);
+        tester.runTest();
     }
 }

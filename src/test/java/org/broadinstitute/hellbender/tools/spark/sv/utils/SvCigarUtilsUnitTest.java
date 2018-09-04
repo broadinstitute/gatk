@@ -46,8 +46,7 @@ public class SvCigarUtilsUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions=IllegalArgumentException.class, groups = "sv")
     public void testCigarChecker_emptyCigarElementList(){
-        @SuppressWarnings("unchecked")
-        final List<CigarElement> emptyList = Collections.EMPTY_LIST;
+        final List<CigarElement> emptyList = Collections.emptyList();
         SvCigarUtils.validateCigar(emptyList);
     }
 

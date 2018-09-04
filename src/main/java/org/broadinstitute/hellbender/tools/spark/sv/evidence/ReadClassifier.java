@@ -3,7 +3,8 @@ package org.broadinstitute.hellbender.tools.spark.sv.evidence;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
-import org.broadinstitute.hellbender.tools.spark.sv.evidence.experimental.FindSmallIndelRegions;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.*;
@@ -17,22 +18,24 @@ public class ReadClassifier implements Function<GATKRead, Iterator<BreakpointEvi
     @VisibleForTesting static final int MIN_INDEL_LEN = 40; // minimum length of an interesting indel
     private static final byte MIN_QUALITY = 15; // minimum acceptable quality in a soft-clip window
     private static final int MAX_LOW_QUALITY_SCORES = 3; // maximum # of low quality base calls in soft-clip window
-    private static final float MAX_ZISH_SCORE = 6.f; // maximum fragment-length "z" score for a normal fragment
-    private static final float MIN_CRAZY_ZISH_SCORE = 100.f; // "z" score that's probably associated with a mapping error
+    private static final float MAX_NON_OUTLIER_ZISH_SCORE = 6.f; // maximum fragment-length "z" score for a normal fragment
     private final ReadMetadata readMetadata;
     private final GATKRead sentinel;
     private final int allowedShortFragmentOverhang;
     private final SVReadFilter filter;
     private final KSWindowFinder smallIndelFinder;
+    private final SVIntervalTree<SVInterval> regionsToIgnore;
 
-    public ReadClassifier( final ReadMetadata readMetadata,
-                           GATKRead sentinel,
-                           final int allowedShortFragmentOverhang,
-                           SVReadFilter filter ) {
+    public ReadClassifier(final ReadMetadata readMetadata,
+                          GATKRead sentinel,
+                          final int allowedShortFragmentOverhang,
+                          SVReadFilter filter,
+                          final SVIntervalTree<SVInterval> regionsToIgnore) {
         this.readMetadata = readMetadata;
         this.sentinel = sentinel;
         this.allowedShortFragmentOverhang = allowedShortFragmentOverhang;
         this.filter = filter;
+        this.regionsToIgnore = regionsToIgnore;
         smallIndelFinder = new KSWindowFinder(readMetadata, filter);
     }
 
@@ -44,7 +47,15 @@ public class ReadClassifier implements Function<GATKRead, Iterator<BreakpointEvi
             return evidenceList.iterator();
         }
 
+        if ( !filter.isMappedToPrimaryContig(read, readMetadata)) return Collections.emptyIterator();
         if ( !filter.isEvidence(read) ) return Collections.emptyIterator();
+        if (regionsToIgnore != null) {
+            final int readContigId = readMetadata.getContigID(read.getContig());
+            final SVInterval clippedReadInterval = new SVInterval(readContigId, read.getStart(), read.getEnd());
+            if (filter.containedInRegionToIgnore(clippedReadInterval, regionsToIgnore)) {
+                return Collections.emptyIterator();
+            }
+        }
 
         final List<BreakpointEvidence> evidenceList = new ArrayList<>();
         checkForSplitRead(read, evidenceList);
@@ -147,7 +158,7 @@ public class ReadClassifier implements Function<GATKRead, Iterator<BreakpointEvi
                     evidenceList.add(new BreakpointEvidence.OutiesPair(read, readMetadata));
                 } else {
                     final float zIshScore = readMetadata.getZishScore(read.getReadGroup(), Math.abs(read.getFragmentLength()));
-                    if ( zIshScore > MAX_ZISH_SCORE && zIshScore < MIN_CRAZY_ZISH_SCORE ) {
+                    if ( zIshScore > MAX_NON_OUTLIER_ZISH_SCORE) {
                         evidenceList.add(new BreakpointEvidence.WeirdTemplateSize(read, readMetadata));
                     }
                 }

@@ -1,0 +1,22 @@
+{
+  "CNVGermlineCaseWorkflow.bam": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/SM-74NEG_20xy-downsampled.bam",
+  "CNVGermlineCaseWorkflow.bam_idx": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/SM-74NEG_20xy-downsampled.bam.bai",
+  "CNVGermlineCaseWorkflow.contig_ploidy_model_tar": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/wgs-contig-ploidy-model.tar.gz",
+  "CNVGermlineCaseWorkflow.gatk_docker": "__GATK_DOCKER__",
+  "CNVGermlineCaseWorkflow.allosomal_contigs": ["X", "Y"],
+  "CNVGermlineCaseWorkflow.ref_copy_number_autosomal_contigs": 2,
+  "CNVGermlineCaseWorkflow.gcnv_disable_annealing": true,
+  "CNVGermlineCaseWorkflow.gcnv_initial_temperature": 1.0,
+  "CNVGermlineCaseWorkflow.gcnv_max_training_epochs": 1,
+  "CNVGermlineCaseWorkflow.gcnv_min_training_epochs": 1,
+  "CNVGermlineCaseWorkflow.gcnv_model_tars": [
+    "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/wgs-no-gc-gcnv-model-0.tar.gz",
+    "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/wgs-no-gc-gcnv-model-1.tar.gz"],
+  "CNVGermlineCaseWorkflow.gcnv_num_thermal_advi_iters": 1,
+  "CNVGermlineCaseWorkflow.intervals": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/chr20xy.interval_list",
+  "CNVGermlineCaseWorkflow.num_intervals_per_scatter": "50",
+  "CNVGermlineCaseWorkflow.bin_length": "20000",
+  "CNVGermlineCaseWorkflow.ref_fasta_dict": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/Homo_sapiens_assembly19.truncated.dict",
+  "CNVGermlineCaseWorkflow.ref_fasta_fai": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/Homo_sapiens_assembly19.truncated.fasta.fai",
+  "CNVGermlineCaseWorkflow.ref_fasta": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/Homo_sapiens_assembly19.truncated.fasta"
+}

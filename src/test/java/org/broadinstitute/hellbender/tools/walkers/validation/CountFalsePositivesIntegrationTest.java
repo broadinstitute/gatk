@@ -15,7 +15,7 @@ import static org.broadinstitute.hellbender.tools.walkers.validation.FalsePositi
  * Created by tsato on 12/28/16.
  */
 public class CountFalsePositivesIntegrationTest extends CommandLineProgramTest {
-    private final File dreamDir =  new File(publicTestDir, "org/broadinstitute/hellbender/tools/mutect/dream");
+    private final File dreamDir =  new File(toolsTestDir, "mutect/dream");
 
     // expected numbers are computed as follows:
     // SNP: grep PASS dream3-chr20.vcf | awk 'length($4) == length($5) { print $0 }' | wc -l

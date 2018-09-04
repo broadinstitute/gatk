@@ -7,14 +7,16 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
-import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.PathSeqProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.MetagenomicsProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.spark.pathseq.loggers.PSScoreFileLogger;
+import org.broadinstitute.hellbender.tools.spark.pathseq.loggers.PSScoreLogger;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
@@ -23,63 +25,107 @@ import scala.Tuple2;
 import java.io.IOException;
 
 /**
- * This Spark tool classifies reads taxonomically, assigning each taxon abundance scores. This is the last
- * step of the PathSeq pipeline for abundance quantification. The output is a tab-delimited table with the
- * following columns:
- * <p>
- * 1) taxonomic id
- * 2) taxonomic classification
- * 3) taxonomic type (order, family, genus, etc.)
- * 4) name
- * 5) raw abundance score:
- * <p>
- * score of species S = sum_{read r in reads aligned to S} 1 / ({# of species that r aligned to} x {length of species reference in Mbp})
- * <p>
- * score of higher taxa = sum of scores of child nodes
- * <p>
- * 6) abundance score normalized as a percentage of total pathogen-mapped reads
- * 7) total number of reads aligned to this taxon
- * 8) number of reads assigned uniquely to this taxon (i.e. mapped only to the node and/or its children)
- * 9) total taxon reference sequence length
- * <p>
- * For unpaired reads, a particular alignment is considered a hit if it aligned with minimal coverage score (read length
- * less padding) given as a fraction of the full read length, and identity score (matches less deletions) given as a
- * fraction of the read with padded bases removed.
- * For paired-end reads, an alignment to a particular taxon is considered a hit only if both reads aligned to that
- * taxon with minimal coverage and identity.
+ * Classify reads and estimate abundances of each taxon in the reference. This is the third and final step of the PathSeq pipeline.
+ *
+ * <p>See PathSeqPipelineSpark for an overview of the PathSeq pipeline.</p>
+ *
+ * <p>This tool performs taxonomic classification of reads that have been aligned to a microbe reference. Using
+ * alignments that are sufficiently identical to the reference, it scores each taxon in the reference based on aligned
+ * reads. These scores can be used to detect and quantify microbe abundance.</p>
+ *
+ * <h3>Methods</h3>
+ *
+ * <p>Alignments with sufficient identity score (e.g. 90% of read length) are used to estimate read counts
+ * and the relative abundance of microorganisms present in the sample at each level of the taxonomic tree (e.g. strain,
+ * species, genus, family, etc.). If a read maps to more than one organism, only the best alignment and any others with
+ * identity score within a margin of error of the best (e.g. 2%) are retained. For paired-end reads, alignments to organisms present in one read but not the other are
+ * discarded. Reads with a single valid alignment add a score of 1 to the corresponding species or strain. For reads with N hits, a score of 1/N is distributed
+ * to each organism. Scores are totaled for each taxon by summing the scores across all reads and the scores of any descendent taxa.</p>
+ *
+ * <h3>Input</h3>
+ *
+ * <ul>
+ *     <li>Queryname-sorted BAM file containing only paired reads aligned to the microbe reference</li>
+ *     <li>BAM file containing only unpaired reads aligned to the microbe reference</li>
+ *     <li>*Taxonomy file generated using PathSeqBuildReferenceTaxonomy</li>
+ * </ul>
+ *
+ * <p>*A standard microbe taxonomy file is available in the <a href="https://software.broadinstitute.org/gatk/download/bundle">GATK Resource Bundle</a>.</p>
+ *
+ * <h3>Output</h3>
+ *
+ * <p>Tab-delimited scores table with the following columns:</p>
+ *
+ * <ul>
+ *      <li>NCBI taxonomic ID</li>
+ *      <li>phylogenetic classification</li>
+ *      <li>phylogenetic rank (order, family, genus, etc.)</li>
+ *      <li>taxon name</li>
+ *      <li>abundance score (described above)</li>
+ *      <li>abundance score normalized as a percentage of total microbe-mapped reads</li>
+ *      <li>total number of reads aligned to this taxon</li>
+ *      <li>number of reads assigned unambiguously to the taxon (i.e. mapped only to the node and/or its children)</li>
+ *      <li>total taxon reference sequence length</li>
+ * </ul>
+ *
+ * <p>The tool may also optionally produce:</p>
+ *
+ * <ul>
+ *     <li>BAM file of all reads annotated with the NCBI taxonomy IDs of mapped organisms</li>
+ *     <li>Metrics file with the number of mapped and unmapped reads</li>
+ * </ul>
+ *
+ * <h3>Usage example</h3>
+ *
+ * <p>This tool can be run without explicitly specifying Spark options. That is to say, the given example command
+ * without Spark options will run locally. See
+ * <a href ="https://software.broadinstitute.org/gatk/documentation/article?id=10060">Tutorial#10060</a> for an example
+ * of how to set up and run a Spark tool on a cloud Spark cluster.</p>
+ *
+ * <pre>
+ * gatk PathSeqScoreSpark  \
+ *   --paired-input input_reads_paired.bam \
+ *   --unpaired-input input_reads_unpaired.bam \
+ *   --taxonomy-file taxonomy.db \
+ *   --scores-output scores.txt \
+ *   --output output_reads.bam \
+ *   --min-score-identity 0.90 \
+ *   --identity-margin 0.02
+ * </pre>
+ *
+ * @author Mark Walker &lt;markw@broadinstitute.org&gt;
  */
 
-@CommandLineProgramProperties(summary = "Performs taxonomic classification of reads that have been aligned to a pathogen " +
-        "reference and generates a table of abundance scores. Briefly, an alignment is considered a 'hit' if it meets " +
-        "minimum query coverage and identity criteria. For paired reads, hits that appear in only one mate and not the " +
-        "other are discarded. Reads with a single hit add a score of 1 to the corresponding species or strain. For reads with " +
-        "N hits, a score of 1/N is distributed to each. Scores are then normalized by genome length in megabases and added " +
-        "to all taxonomic ancestors." +
-        "\n\n" +
-        "Users must supply the paired and/or unpaired read BAM(s) (do not use --input) and the taxonomic database " +
-        "created using PathSeqBuildReferenceTaxonomy." +
-        "\n\n" +
-        "The output is a score table giving the abundance score, normalized score, number of hits, number of " +
-        "unambiguous hits, and genome length of each taxon. Optionally, a BAM is also produced that attaches a " +
-        PSScorer.HITS_TAG + " tag to each read listing its hit taxonomic IDs.",
+@CommandLineProgramProperties(summary = "Classify reads and estimate abundances of each taxon in the reference. This is the third and final step of the PathSeq pipeline.",
         oneLineSummary = "Step 3: Classifies pathogen-aligned reads and generates abundance scores",
-        programGroup = PathSeqProgramGroup.class)
-@BetaFeature
+        programGroup = MetagenomicsProgramGroup.class)
+@DocumentedFeature
 public class PathSeqScoreSpark extends GATKSparkTool {
 
     private static final long serialVersionUID = 1L;
 
-    @Argument(doc = "URI to paired reads BAM",
-            fullName = "pairedInput",
+    public static final String PAIRED_INPUT_LONG_NAME = "paired-input";
+    public static final String PAIRED_INPUT_SHORT_NAME = "PI";
+    public static final String UNPAIRED_INPUT_LONG_NAME = "unpaired-input";
+    public static final String UNPAIRED_INPUT_SHORT_NAME = "UI";
+
+    @Argument(doc = "Input queryname-sorted BAM containing only paired reads",
+            fullName = PAIRED_INPUT_LONG_NAME,
+            shortName = PAIRED_INPUT_SHORT_NAME,
             optional = true)
     public String pairedInput = null;
 
-    @Argument(doc = "URI to unpaired reads BAM",
-            fullName = "unpairedInput",
+    @Argument(doc = "Input BAM containing only unpaired reads",
+            fullName = UNPAIRED_INPUT_LONG_NAME,
+            shortName = UNPAIRED_INPUT_SHORT_NAME,
             optional = true)
     public String unpairedInput = null;
 
-    @Argument(doc = "URI to the output BAM",
+    /**
+     * Records have a "YP" tag that lists the NCBI taxonomy IDs of any mapped organisms. This tag is omitted if the
+     * read is unmapped.
+     */
+    @Argument(doc = "Output BAM",
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             optional = true)
@@ -140,7 +186,7 @@ public class PathSeqScoreSpark extends GATKSparkTool {
     protected void runTool(final JavaSparkContext ctx) {
 
         if (!readArguments.getReadFiles().isEmpty()) {
-            throw new UserException.BadInput("Please use --pairedInput or --unpairedInput instead of --input");
+            throw new UserException.BadInput("Please use --paired-input or --unpaired-input instead of --input");
         }
 
         final ReadsSparkSource readsSource = new ReadsSparkSource(ctx, readArguments.getReadValidationStringency());
@@ -164,13 +210,18 @@ public class PathSeqScoreSpark extends GATKSparkTool {
         //Main tool routine
         final PSScorer scorer = new PSScorer(scoreArgs);
         final JavaRDD<GATKRead> readsFinal = scorer.scoreReads(ctx, pairedReads, unpairedReads, header);
+        if (scoreArgs.scoreMetricsFileUri != null) {
+            try (final PSScoreLogger scoreLogger = new PSScoreFileLogger(getMetricsFile(), scoreArgs.scoreMetricsFileUri)) {
+                scoreLogger.logReadCounts(readsFinal);
+            }
+        }
 
         //Write reads to BAM, if specified
         //Note writeReads() is not used because we determine recommendedNumReducers differently with 2 input BAMs
         if (outputPath != null) {
             try {
                 ReadsSparkSink.writeReads(ctx, outputPath, null, readsFinal, header,
-                        shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE, recommendedNumReducers);
+                        shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE, recommendedNumReducers, shardedPartsDir);
             } catch (final IOException e) {
                 throw new UserException.CouldNotCreateOutputFile(outputPath, "writing failed", e);
             }

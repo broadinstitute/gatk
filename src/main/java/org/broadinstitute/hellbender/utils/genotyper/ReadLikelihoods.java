@@ -12,8 +12,8 @@ import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.downsampling.AlleleBiasedDownsamplingUtils;
+import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -28,7 +28,7 @@ import java.util.stream.IntStream;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public final class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList<A> {
+public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList<A> {
 
     /**
      * Index indicaintg that the reference allele is missing.
@@ -38,7 +38,7 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
     /**
      * Reads by sample index. Each sub array contains reference to the reads of the ith sample.
      */
-    private final GATKRead[][] readsBySampleIndex;
+    protected final GATKRead[][] readsBySampleIndex;
 
     /**
      * Indexed per sample, allele and finally read (within sample).
@@ -46,17 +46,17 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
      *     valuesBySampleIndex[s][a][r] == lnLk(R_r | A_a) where R_r comes from Sample s.
      * </p>
      */
-    private final double[][][] valuesBySampleIndex;
+    protected final double[][][] valuesBySampleIndex;
 
     /**
      * Sample list
      */
-    private final SampleList samples;
+    protected final SampleList samples;
 
     /**
      * Allele list
      */
-    private AlleleList<A> alleles;
+    protected AlleleList<A> alleles;
 
     /**
      * Cached allele list.
@@ -90,6 +90,13 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
      * Sample matrices lazily initialized (the elements not the array) by invoking {@link #sampleMatrix(int)}.
      */
     private final LikelihoodMatrix<A>[] sampleMatrices;
+
+    /**
+     * Is this container expected to have the per-allele liklihoods calculations filled in.
+     */
+    public boolean hasFilledLikelihoods() {
+        return true;
+    }
 
     /**
      * Constructs a new read-likelihood collection.
@@ -136,7 +143,7 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
 
     // Internally used constructor.
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private ReadLikelihoods(final AlleleList alleles,
+    ReadLikelihoods(final AlleleList alleles,
                             final SampleList samples,
                             final GATKRead[][] readsBySampleIndex,
                             final Object2IntMap<GATKRead>[] readIndex,
@@ -179,7 +186,8 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
     /**
      * Create an independent copy of this read-likelihoods collection
      */
-    public ReadLikelihoods<A> copy() {
+    @VisibleForTesting
+    ReadLikelihoods<A> copy() {
 
         final int sampleCount = samples.numberOfSamples();
         final int alleleCount = alleles.numberOfAlleles();
@@ -325,24 +333,23 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
      * Adjusts likelihoods so that for each read, the best allele likelihood is 0 and caps the minimum likelihood
      * of any allele for each read based on the maximum alternative allele likelihood.
      *
-     * @param bestToZero set the best likelihood to 0, others will be subtracted the same amount.
      * @param maximumLikelihoodDifferenceCap maximum difference between the best alternative allele likelihood
      *                                           and any other likelihood.
      *
      * @throws IllegalArgumentException if {@code maximumDifferenceWithBestAlternative} is not 0 or less.
      */
-    public void normalizeLikelihoods(final boolean bestToZero, final double maximumLikelihoodDifferenceCap) {
+    public void normalizeLikelihoods(final double maximumLikelihoodDifferenceCap) {
         Utils.validateArg(maximumLikelihoodDifferenceCap < 0.0 && !Double.isNaN(maximumLikelihoodDifferenceCap),
                 "the minimum reference likelihood fall must be negative");
 
-        if (maximumLikelihoodDifferenceCap == Double.NEGATIVE_INFINITY && !bestToZero) {
+        if (maximumLikelihoodDifferenceCap == Double.NEGATIVE_INFINITY) {
             return;
         }
 
         final int alleleCount = alleles.numberOfAlleles();
         if (alleleCount == 0){ // trivial case there is no alleles.
             return;
-        } else if (alleleCount == 1 && !bestToZero) {
+        } else if (alleleCount == 1) {
             return;
         }
 
@@ -350,47 +357,28 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
             final double[][] sampleValues = valuesBySampleIndex[s];
             final int readCount = readsBySampleIndex[s].length;
             for (int r = 0; r < readCount; r++) {
-                normalizeLikelihoodsPerRead(bestToZero, maximumLikelihoodDifferenceCap, sampleValues, s, r);
+                normalizeLikelihoodsPerRead(maximumLikelihoodDifferenceCap, sampleValues, s, r);
             }
         }
     }
 
     // Does the normalizeLikelihoods job for each read.
-    private void normalizeLikelihoodsPerRead(final boolean bestToZero, final double maximumBestAltLikelihoodDifference,
+    private void normalizeLikelihoodsPerRead(final double maximumBestAltLikelihoodDifference,
                                              final double[][] sampleValues, final int sampleIndex, final int readIndex) {
 
-        final BestAllele bestAlternativeAllele = searchBestAllele(sampleIndex,readIndex,false);
+        final BestAllele bestAlternativeAllele = searchBestAllele(sampleIndex,readIndex,false, false);
 
         final double worstLikelihoodCap = bestAlternativeAllele.likelihood + maximumBestAltLikelihoodDifference;
 
-        final double referenceLikelihood = referenceAlleleIndex == MISSING_REF ? Double.NEGATIVE_INFINITY :
-                sampleValues[referenceAlleleIndex][readIndex];
-
-        final double bestAbsoluteLikelihood = Math.max(bestAlternativeAllele.likelihood, referenceLikelihood);
-
         final int alleleCount = alleles.numberOfAlleles();
-        if (bestToZero) {
-            if (bestAbsoluteLikelihood == Double.NEGATIVE_INFINITY) {
-                for (int a = 0; a < alleleCount; a++) {
-                    sampleValues[a][readIndex] = 0;
-                }
-            } else if (worstLikelihoodCap != Double.NEGATIVE_INFINITY) {
-                for (int a = 0; a < alleleCount; a++) {
-                    sampleValues[a][readIndex] = (sampleValues[a][readIndex] < worstLikelihoodCap ? worstLikelihoodCap : sampleValues[a][readIndex]) - bestAbsoluteLikelihood;
-                }
-            } else {
-                for (int a = 0; a < alleleCount; a++) {
-                    sampleValues[a][readIndex] -= bestAbsoluteLikelihood;
-                }
-            }
-        } else {
-            // Guarantee to be the case by enclosing code.
-            for (int a = 0; a < alleleCount; a++) {
-                if (sampleValues[a][readIndex] < worstLikelihoodCap) {
-                    sampleValues[a][readIndex] = worstLikelihoodCap;
-                }
+
+        // Guarantee to be the case by enclosing code.
+        for (int a = 0; a < alleleCount; a++) {
+            if (sampleValues[a][readIndex] < worstLikelihoodCap) {
+                sampleValues[a][readIndex] = worstLikelihoodCap;
             }
         }
+
     }
 
     /**
@@ -433,10 +421,11 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
      * @param sampleIndex including sample index.
      * @param readIndex  target read index.
      *
+     * @param useReferenceIfUninformative
      * @return never {@code null}, but with {@link BestAllele#allele allele} == {@code null}
      * if non-could be found.
      */
-    private BestAllele searchBestAllele(final int sampleIndex, final int readIndex, final boolean canBeReference) {
+    private BestAllele searchBestAllele(final int sampleIndex, final int readIndex, final boolean canBeReference, boolean useReferenceIfUninformative) {
         final int alleleCount = alleles.numberOfAlleles();
         if (alleleCount == 0 || (alleleCount == 1 && referenceAlleleIndex == 0 && !canBeReference)) {
             return new BestAllele(sampleIndex, readIndex, -1, Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY);
@@ -458,6 +447,17 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
                 bestLikelihood = candidateLikelihood;
             } else if (candidateLikelihood > secondBestLikelihood) {
                 secondBestLikelihood = candidateLikelihood;
+            }
+        }
+
+        // if our read is not informative against the ref we set the ref as the best allele.  This is so that bamouts don't
+        // spuriously show deletions in ref reads that end in STRs
+        if (useReferenceIfUninformative && canBeReference && referenceAlleleIndex != MISSING_REF && bestAlleleIndex != referenceAlleleIndex) {
+            final double referenceLikelihood = sampleValues[referenceAlleleIndex][readIndex];
+            if ( bestLikelihood - referenceLikelihood < BestAllele.INFORMATIVE_THRESHOLD ) {
+                secondBestLikelihood = bestLikelihood;
+                bestAlleleIndex = referenceAlleleIndex;
+                bestLikelihood = referenceLikelihood;
             }
         }
         return new BestAllele(sampleIndex,readIndex,bestAlleleIndex,bestLikelihood,secondBestLikelihood);
@@ -660,42 +660,20 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
         final int sampleCount = samples.numberOfSamples();
         final int[][] result = new int[sampleCount][];
         final IntArrayList buffer = new IntArrayList(200);
-        final String contig = overlap.getContig();
-        final int overlapStart = overlap.getStart();
-        final int overlapEnd = overlap.getEnd();
+
         for (int s = 0; s < sampleCount; s++) {
             buffer.clear();
             final GATKRead[] sampleReads = readsBySampleIndex[s];
             final int sampleReadCount = sampleReads.length;
             buffer.ensureCapacity(sampleReadCount);
             for (int r = 0; r < sampleReadCount; r++) {
-                if (unclippedReadOverlapsRegion(sampleReads[r], contig, overlapStart, overlapEnd)) {
+                if (sampleReads[r].overlaps(overlap)) {
                     buffer.add(r);
                 }
             }
             result[s] = buffer.toIntArray();
         }
         return result;
-    }
-
-    public static boolean unclippedReadOverlapsRegion(final GATKRead read, final Locatable region) {
-        return unclippedReadOverlapsRegion(read, region.getContig(), region.getStart(), region.getEnd());
-    }
-
-    private static boolean unclippedReadOverlapsRegion(final GATKRead sampleRead, final String contig, final int start, final int end) {
-        final String readReference = sampleRead.getContig();
-        if (!Objects.equals(readReference, contig)) {
-            return false;
-        }
-
-        final int readStart = sampleRead.getUnclippedStart();
-        if (readStart > end) {
-            return false;
-        }
-
-        final int readEnd = sampleRead.isUnmapped() ? sampleRead.getUnclippedEnd()
-                : Math.max(sampleRead.getUnclippedEnd(), sampleRead.getUnclippedStart());
-        return readEnd >= start;
     }
 
     // Calculate the marginal likelihoods considering the old -> new allele index mapping.
@@ -881,11 +859,11 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
      * @param nonRefAllele the non-ref allele.
      *
      * @throws IllegalArgumentException if {@code nonRefAllele} is anything but the designated &lt;NON_REF&gt;
-     * symbolic allele {@link org.broadinstitute.hellbender.utils.variant.GATKVCFConstants#NON_REF_SYMBOLIC_ALLELE}.
+     * symbolic allele {@link Allele#NON_REF_ALLELE}.
      */
     public void addNonReferenceAllele(final A nonRefAllele) {
         Utils.nonNull(nonRefAllele, "non-ref allele cannot be null");
-        if (!nonRefAllele.equals(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE)) {
+        if (!nonRefAllele.equals(Allele.NON_REF_ALLELE)) {
             throw new IllegalArgumentException("the non-ref allele is not valid");
         } else if (alleles.containsAllele(nonRefAllele)) {
             return;
@@ -910,9 +888,9 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
      *
      * @param allelesToConsider
      */
-    @SuppressWarnings("unchecked")  // for the cast (A) GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE below
+    @SuppressWarnings("unchecked")  // for the cast (A) Allele.NON_REF_ALLELE below
     public void updateNonRefAlleleLikelihoods(final AlleleList<A> allelesToConsider) {
-        final int nonRefAlleleIndex = indexOfAllele((A) GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE);
+        final int nonRefAlleleIndex = indexOfAllele((A) Allele.NON_REF_ALLELE);
         if ( nonRefAlleleIndex < 0) {
             return;
         }
@@ -925,7 +903,7 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
             final double[][] sampleValues = valuesBySampleIndex[s];
             final int readCount = sampleValues[0].length;
             for (int r = 0; r < readCount; r++) {
-                final BestAllele bestAllele = searchBestAllele(s, r, true);
+                final BestAllele bestAllele = searchBestAllele(s, r, true, false);
                 int numberOfQualifiedAlleleLikelihoods = 0;
                 for (int i = 0; i < alleleCount; i++) {
                     final double alleleLikelihood = sampleValues[i][r];
@@ -981,42 +959,48 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
 
     /**
      * Returns the collection of best allele estimates for the reads based on the read-likelihoods.
+     * "Ties" where the ref likelihood is within {@code ReadLikelihoods.INFORMATIVE_THRESHOLD} of the greatest likelihood
+     * are broken in favor of the reference.
      *
      * @throws IllegalStateException if there is no alleles.
      *
      * @return never {@code null}, one element per read in the read-likelihoods collection.
      */
-    public Collection<BestAllele> bestAlleles() {
-        return IntStream.range(0, numberOfSamples()).boxed().flatMap(n -> bestAlleles(n).stream()).collect(Collectors.toList());
+    public Collection<BestAllele> bestAllelesBreakingTies() {
+        return IntStream.range(0, numberOfSamples()).boxed().flatMap(n -> bestAllelesBreakingTies(n).stream()).collect(Collectors.toList());
     }
 
     /**
      * Returns the collection of best allele estimates for one sample's reads based on the read-likelihoods.
+     * "Ties" where the ref likelihood is within {@code ReadLikelihoods.INFORMATIVE_THRESHOLD} of the greatest likelihood
+     * are broken in favor of the reference.
      *
      * @throws IllegalStateException if there is no alleles.
      *
      * @return never {@code null}, one element per read in the read-likelihoods collection.
      */
-    public Collection<BestAllele> bestAlleles(final String sample) {
+    public Collection<BestAllele> bestAllelesBreakingTies(final String sample) {
         final int sampleIndex = indexOfSample(sample);
-        return bestAlleles(sampleIndex);
+        return bestAllelesBreakingTies(sampleIndex);
     }
 
     /**
      * Returns the collection of best allele estimates for one sample's reads reads based on the read-likelihoods.
+     * "Ties" where the ref likelihood is within {@code ReadLikelihoods.INFORMATIVE_THRESHOLD} of the greatest likelihood
+     * are broken in favor of the reference.
      *
      * @throws IllegalStateException if there is no alleles.
      *
      * @return never {@code null}, one element per read in the read-likelihoods collection.
      */
-    private Collection<BestAllele> bestAlleles(final int sampleIndex) {
+    private Collection<BestAllele> bestAllelesBreakingTies(final int sampleIndex) {
         Utils.validIndex(sampleIndex, numberOfSamples());
 
         final GATKRead[] sampleReads = readsBySampleIndex[sampleIndex];
         final int readCount = sampleReads.length;
         final List<BestAllele> result = new ArrayList<>(readCount);
         for (int r = 0; r < readCount; r++) {
-            result.add(searchBestAllele(sampleIndex, r, true));
+            result.add(searchBestAllele(sampleIndex, r, true, true));
         }
 
         return result;
@@ -1059,12 +1043,12 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
         return result;
     }
 
-    private void readsByBestAlleleMap(final int sampleIndex, final Map<A,List<GATKRead>> result) {
+    private void readsByBestAlleleMap(final int sampleIndex, final Map<A, List<GATKRead>> result) {
         final GATKRead[] reads = readsBySampleIndex[sampleIndex];
         final int readCount = reads.length;
 
         for (int r = 0; r < readCount; r++) {
-            final BestAllele bestAllele = searchBestAllele(sampleIndex,r,true);
+            final BestAllele bestAllele = searchBestAllele(sampleIndex,r,true, false);
             if (!bestAllele.isInformative()) {
                 continue;
             }
@@ -1125,20 +1109,16 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
      *
      * @throws IllegalArgumentException the location cannot be {@code null} nor unmapped.
      */
-    public void filterToOnlyOverlappingUnclippedReads(final SimpleInterval location) {
+    public void filterToOnlyOverlappingReads(final SimpleInterval location) {
         Utils.nonNull(location, "the location cannot be null");
 
         final int sampleCount = samples.numberOfSamples();
-
-        final String locContig = location.getContig();
-        final int locStart = location.getStart();
-        final int locEnd = location.getEnd();
 
         final int alleleCount = alleles.numberOfAlleles();
         for (int s = 0; s < sampleCount; s++) {
             final GATKRead[] sampleReads = readsBySampleIndex[s];
             final List<Integer> removeIndices = new IndexRange(0, sampleReads.length)
-                    .filter(r -> !unclippedReadOverlapsRegion(sampleReads[r], locContig, locStart, locEnd));
+                    .filter(r -> !sampleReads[r].overlaps(location));
             removeSampleReads(s, removeIndices, alleleCount);
         }
     }
@@ -1295,6 +1275,18 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
             }
         }
         return readIndexBySampleIndex[sampleIndex];
+    }
+
+
+    /**
+     * Collect a map stratified per-sample of the base pileups at the provided Location
+     * NOTE: Since we shouldn't need to use the pileup if we have more reliable liklihoods, we want to discourage their use
+     *
+     * @param loc reference location to construct pileups for
+     * @return
+     */
+    public Map<String, List<PileupElement>> getStratifiedPileups(final Locatable loc) {
+        return null;
     }
 
     /**

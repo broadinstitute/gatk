@@ -1,13 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark;
 
-import htsjdk.samtools.BAMIndex;
-import htsjdk.samtools.BAMIndexer;
-import htsjdk.samtools.BamFileIoUtils;
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.ValidationStringency;
+import htsjdk.samtools.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -17,37 +10,53 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.ReadConstants;
 import org.codehaus.plexus.util.FileUtils;
 import org.seqdoop.hadoop_bam.SplittingBAMIndexer;
+import picard.cmdline.programgroups.OtherProgramGroup;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 
-@CommandLineProgramProperties(summary = "Create a HadoopBam splitting index as well as a bam index from a bam file.",
-        oneLineSummary = "create a hadoop-bam splitting index" ,
-        programGroup = SparkProgramGroup.class)
+/**
+ * Create a Hadoop BAM splitting index and optionally a BAM index from a BAM file.
+ *
+ * <h3>Input</h3>
+ *
+ * <ul>
+ *     <li>A BAM file</li>
+ * </ul>
+ *
+ * <h3>Output</h3>
+ *
+ * <ul>
+ *     <li>BAM splitting index file</li>
+ *     <li>BAM bai index (optional)</li>
+ * </ul>
+ *
+ * <h3>Usage example</h3>
+ * <pre>
+ *     gatk CreateHadoopBamSplittingIndex \
+ *         -I input_reads.bam \
+ *         -O input_reads.bam.splitting-bai
+ * </pre>
+ */
+@CommandLineProgramProperties(summary = "Create a Hadoop BAM splitting index and optionally a BAM index from a BAM file",
+        oneLineSummary = "Create a Hadoop BAM splitting index" ,
+        programGroup = OtherProgramGroup.class)
 @DocumentedFeature
 @BetaFeature
 public final class CreateHadoopBamSplittingIndex extends CommandLineProgram {
     private static final Logger logger = LogManager.getLogger(CreateHadoopBamSplittingIndex.class);
 
-    public static final String SPLITTING_INDEX_GRANULARITY_LONG_NAME = "splittingIndexGranularity";
-    public static final String SPLITTING_INDEX_GRANULARITY_SHORT_NAME = "granularity";
-    public static final String CREATE_BAI_LONG_NAME = "createBai";
-    public static final String CREATE_BAI_SHORT_NAME = CREATE_BAI_LONG_NAME;
+    public static final String SPLITTING_INDEX_GRANULARITY_LONG_NAME = "splitting-index-granularity";
+    public static final String CREATE_BAI_LONG_NAME = "create-bai";
 
     @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
-              shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
-             doc = "bam file to create a HadoopBam splitting index for",
-            optional = false )
+             shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
+             doc = "BAM file to create a HadoopBam splitting index for",
+             optional = false )
     public File inputBam;
 
     @Argument(fullName = StandardArgumentDefinitions.READ_VALIDATION_STRINGENCY_LONG_NAME,
@@ -67,14 +76,12 @@ public final class CreateHadoopBamSplittingIndex extends CommandLineProgram {
     public File output;
 
     @Argument(fullName = SPLITTING_INDEX_GRANULARITY_LONG_NAME,
-            shortName = SPLITTING_INDEX_GRANULARITY_SHORT_NAME,
             doc = "Splitting index granularity, an entry is created in the index every this many reads.",
             optional = true)
     public int granularity = SplittingBAMIndexer.DEFAULT_GRANULARITY;
 
     @Argument(fullName = CREATE_BAI_LONG_NAME,
-            shortName = CREATE_BAI_SHORT_NAME,
-            doc = "set this to create a bai index at the same time as creating a splitting index",
+            doc = "Set this to create a bai index at the same time as creating a splitting index",
             optional = true)
     public boolean createBai = false;
 
