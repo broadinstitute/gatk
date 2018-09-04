@@ -270,7 +270,9 @@ public final class GenotypeLikelihoodCalculators {
     }
 
     /**
-     * Update of shared tables
+     * Update of shared tables. Note that this method is synchronized to avoid race conditions in Spark. This is because
+     * in Spark each region has its own HaplotypeCallerEngine instance (so there can be multiple instances in a single
+     * JVM), but these share a single (static) instance of this class (via AlleleSubsettingUtils).
      *
      * @param requestedMaximumAllele the new requested maximum allele maximum.
      * @param requestedMaximumPloidy the new requested ploidy maximum.
