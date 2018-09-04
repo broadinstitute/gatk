@@ -45,14 +45,6 @@ matrix:
      - jdk: oraclejdk8
        env: TEST_TYPE=integration TEST_VERBOSITY=minimal
 before_cache:
-  - if [[ ${TRAVIS_EVENT_TYPE} == push ]];
-    then
-      pull_requests=$(curl -v  https://api.github.com/repos/broadinstitute/gatk/pulls\?state\=open\&head="broadinstitute:${TRAVIS_BRANCH}");
-      if [[ grep -c "commits" <<< ${pull_requests} -gt 0 ]];
-      then
-        travis_terminate 0
-      fi
-    fi
   - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
   - rm -fr $HOME/.gradle/caches/*/plugin-resolution/
 cache:
@@ -63,6 +55,14 @@ cache:
     - $HOME/gcloud/
     - $HOME/site-library
 before_install:
+- if [[ ${TRAVIS_EVENT_TYPE} == push ]];
+  then
+    PULL_REQUESTS=$(curl -v  https://api.github.com/repos/broadinstitute/gatk/pulls\?state\=open\&head="broadinstitute:${TRAVIS_BRANCH}");
+    if [[ $( grep -c "commits" <<< ${PULL_REQUESTS} ) -gt 0 ]];
+    then
+      travis_terminate 0
+    fi
+  fi
 - REPORT_PATH=${TRAVIS_BRANCH}_${TRAVIS_JOB_NUMBER};
 - if [[ $TRAVIS_SECURE_ENV_VARS == true && $TRAVIS_EVENT_TYPE != cron ]]; then
     echo "Test report will be written to  https://storage.googleapis.com$HELLBENDER_TEST_LOGS$REPORT_PATH/tests/test/index.html";
