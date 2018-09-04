@@ -68,7 +68,7 @@ public class SVIntervalTreeTest extends GATKBaseTest {
         Assert.assertEquals(testTree.size(), intervals.length);
 
         // putting a new interval into the tree ought to return the sentinel value and increase the size by 1
-        Assert.assertEquals(testTree.put(new SVInterval(-1, 0, 0), someValue), sentinel);
+        Assert.assertEquals(testTree.put(new SVInterval(-1, 0, 0, SVInterval.SVIntervalConstructorArgsValidator.RefuseNegativeCoordinates), someValue), sentinel);
         Assert.assertEquals(testTree.size(), intervals.length+1);
     }
 
