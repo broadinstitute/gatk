@@ -69,6 +69,7 @@ case ${GATK_SV_TOOL} in
             --breakpoint-intervals ${PROJECT_OUTPUT_DIR}/intervals \
             --high-coverage-intervals "${PROJECT_OUTPUT_DIR}/highCoverageIntervals.bed" \
             --fastq-dir ${PROJECT_OUTPUT_DIR}/fastq \
+	    --read-metadata ${PROJECT_OUTPUT_DIR}/read-metadata.txt \
             --contig-sam-file ${PROJECT_OUTPUT_DIR}/assemblies.bam \
             --target-link-file ${PROJECT_OUTPUT_DIR}/target_links.bedpe \
             --exp-interpret"
