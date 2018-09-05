@@ -7,6 +7,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.StructuralVariantType;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFFileReader;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
@@ -120,7 +121,7 @@ public class SVContextUnitTest extends GATKBaseTest {
      * to obtain the reference alternative haplotype.
      * @param vc input variant context.
      */
-    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate", "testType", "testLength"}, groups = "sv")
+    @Test(dataProvider="validInsertionsAndDeletions", dependsOnMethods = {"testCreate", "testType", "testLength"}, groups = "sv")
     public void testComposeAlternativeHaplotype(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) throws IOException {
         final SVContext svc = SVContext.of(vc);
         if (svc.getStructuralVariantType() != StructuralVariantType.INS && svc.getStructuralVariantType() != StructuralVariantType.DEL) {
@@ -151,13 +152,12 @@ public class SVContextUnitTest extends GATKBaseTest {
         Assert.assertEquals(altHaplotype.getBases(), expectedBases, svc.getStructuralVariantType().name() + " " + new String(altHaplotype.getBases()) + " vs " + new String(expectedBases));
     }
 
-
     /**
      * Tests {@link SVContext#getBreakPointIntervals(int, SAMSequenceDictionary, boolean)}.
      * to obtain the reference haplotype.
      * @param vc input variant context.
      */
-    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate", "testType", "testLength"}, groups = "sv")
+    @Test(dataProvider="validInsertionsAndDeletions", dependsOnMethods = {"testCreate", "testType", "testLength"}, groups = "sv")
     public void testGetBreakPoints(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) throws IOException {
         testGetBreakPoints(vc, reference, 0);
         testGetBreakPoints(vc, reference, 10);
@@ -215,6 +215,22 @@ public class SVContextUnitTest extends GATKBaseTest {
         final ReferenceMultiSource reference = referenceMultiSource(REFERENCE_FILE.getAbsolutePath());
         try (final VCFFileReader reader = new VCFFileReader(VALID_VARIANTS_FILE, false)) {
             return Utils.stream(reader)
+                    .map(vc -> new Object[]{vc, reference})
+                    .toArray(Object[][]::new);
+        } catch (final Throwable ex) {
+            throw new TestException("could not load the valid context file: " + VALID_VARIANTS_FILE.getAbsolutePath(), ex);
+        }
+    }
+
+    @DataProvider(name="validInsertionsAndDeletions")
+    public Object[][] validInsertionsAndDeletions(){
+        final ReferenceMultiSource reference = referenceMultiSource(REFERENCE_FILE.getAbsolutePath());
+        try (final VCFFileReader reader = new VCFFileReader(VALID_VARIANTS_FILE, false)) {
+            return Utils.stream(reader)
+                    .filter(vc -> {
+                        final StructuralVariantType svtype = StructuralVariantType.valueOf(vc.getAttributeAsString(VCFConstants.SVTYPE, ""));
+                        return svtype.equals(StructuralVariantType.INS) || svtype.equals(StructuralVariantType.DEL);
+                    })
                     .map(vc -> new Object[]{vc, reference})
                     .toArray(Object[][]::new);
         } catch (final Throwable ex) {
