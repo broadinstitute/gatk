@@ -86,7 +86,7 @@ public final class AssemblyBasedCallerUtils {
             if ( ! clippedRead.isEmpty() && clippedRead.getCigar().getReadLength() > 0 ) {
                 clippedRead = ReadClipper.hardClipToRegion( clippedRead, region.getExtendedSpan().getStart(), region.getExtendedSpan().getEnd() );
                 if ( region.readOverlapsRegion(clippedRead) && clippedRead.getLength() > 0 ) {
-                    readsToUse.add(clippedRead);
+                    readsToUse.add((clippedRead == myRead) ? clippedRead.copy() : clippedRead);
                 }
             }
         }
