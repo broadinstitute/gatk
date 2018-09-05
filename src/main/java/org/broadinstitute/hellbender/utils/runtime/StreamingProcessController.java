@@ -255,30 +255,7 @@ public final class StreamingProcessController extends ProcessControllerBase<Capt
 
     private File createFIFOFile(final String fifoName) {
         final String fifoTempFileName = String.format("%s/%s", fifoTempDir.getAbsolutePath(), fifoName);
-
-        // create the FIFO by executing mkfifo via another ProcessController
-        final ProcessSettings mkFIFOSettings = new ProcessSettings(new String[]{"mkfifo", fifoTempFileName});
-        mkFIFOSettings.getStdoutSettings().setBufferSize(-1);
-        mkFIFOSettings.setRedirectErrorStream(true);
-        final ProcessController mkFIFOController = new ProcessController();
-        final ProcessOutput result = mkFIFOController.exec(mkFIFOSettings);
-        final int exitValue = result.getExitValue();
-
-        final File fifoFile = new File(fifoTempFileName);
-        if (exitValue != 0) {
-            throw new GATKException(String.format(
-                    "Failure creating FIFO named (%s). Got exit code (%d) stderr (%s) and stdout (%s)",
-                    fifoTempFileName,
-                    exitValue,
-                    result.getStderr() == null ? "" : result.getStderr().getBufferString(),
-                    result.getStdout() == null ? "" : result.getStdout().getBufferString()));
-        } else if (!fifoFile.exists()) {
-            throw new GATKException(String.format("FIFO (%s) created but doesn't exist", fifoTempFileName));
-        } else if (!fifoFile.canWrite()) {
-            throw new GATKException(String.format("FIFO (%s) created isn't writable", fifoTempFileName));
-        }
-
-        return fifoFile;
+        return org.broadinstitute.hellbender.utils.io.IOUtils.createFifoFile(fifoTempFileName, true);
     }
 
     /**

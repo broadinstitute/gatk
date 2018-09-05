@@ -3,11 +3,13 @@ package org.broadinstitute.hellbender.utils.io;
 import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
 import org.apache.logging.log4j.core.util.FileUtils;
-import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.broadinstitute.hellbender.testutils.MiniClusterUtils;
+import org.broadinstitute.hellbender.tools.funcotator.FuncotatorTestConstants;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.testng.Assert;
 import org.testng.SkipException;
 import org.testng.annotations.AfterClass;
@@ -16,13 +18,15 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.*;
+import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
 import java.util.Random;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 public final class IOUtilsUnitTest extends GATKBaseTest {
 
@@ -39,6 +43,130 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
         } catch (final IOException e) {
             log("Unable to close JimFS");
         }
+    }
+
+    @Test
+    public void testExtractTarGz() {
+
+        // Create an output location for the test files to go:
+
+        // Create an output location for the test files to go:
+        final File tmpDir = createTempDir("IOUtilsUnitTest_testExtractTarGz");
+        tmpDir.deleteOnExit();
+        final Path tmpDirPath = tmpDir.toPath();
+        final Path outputDataSourcesPath = tmpDirPath.resolve(IOUtils.getPath(FuncotatorTestConstants.DUMMY_DATA_SOURCES_TAR_GZ).getFileName());
+
+        // Copy our data sources to the destination folder:
+        try {
+            Files.copy(IOUtils.getPath(FuncotatorTestConstants.DUMMY_DATA_SOURCES_TAR_GZ), outputDataSourcesPath);
+        }
+        catch (final IOException ex) {
+            throw new GATKException("Could not copy files for testing!");
+        }
+
+        // Extract the files:
+        IOUtils.extractTarGz( outputDataSourcesPath, false );
+
+        // Get the base expected data soruces output path:
+        final Path baseExpectedOutputDataSourcesPath = IOUtils.getPath(FuncotatorTestConstants.DUMMY_DATA_SOURCES_FOLDER);
+
+        // Get the base file path for the output:
+        final Path baseActualOutputDataSourcesPath = outputDataSourcesPath.getParent().resolve(
+                baseExpectedOutputDataSourcesPath.getFileName()
+        );
+
+        // Now compare the files with the files in the known output folder:
+        try {
+            // Check that the files and directories are the same:
+            Files.find(baseActualOutputDataSourcesPath, Integer.MAX_VALUE,
+                    (actualPath, fileAttributes) -> {
+
+                        // First check that the corresponding file exists in our expected unzipped archive:
+                        final Path expectedPath = baseExpectedOutputDataSourcesPath.resolve(baseActualOutputDataSourcesPath.relativize(actualPath));
+
+                        final Path actualFileName = actualPath.getFileName();
+                        final Path expectedFileName = expectedPath.getFileName();
+
+                        Assert.assertEquals(actualFileName, expectedFileName);
+
+                        // For regular files, make sure the contents of the corresponding files are the same:
+                        if ( fileAttributes.isRegularFile() && !fileAttributes.isSymbolicLink()) {
+                            try {
+                                final byte[] actualContents   = Files.readAllBytes(actualPath);
+                                final byte[] expectedContents = Files.readAllBytes(expectedPath);
+
+                                Assert.assertEquals(actualContents, expectedContents);
+                            }
+                            catch (final IOException ex) {
+                                throw new GATKException("Could not verify contents of files: " + actualPath.toUri() + " AND " + expectedPath.toUri());
+                            }
+                        }
+
+                        return true;
+                    }
+                ).collect(Collectors.toList());
+        }
+        catch (final IOException ex) {
+            throw new GATKException("Could not verify identical contents of test directories!");
+        }
+    }
+
+    @Test
+    public void testCreateFifoFile() {
+
+        // Create an output location for the test files to go:
+        final File tmpDir = createTempDir("IOUtilsUnitTest_testCreateFifoFile");
+        tmpDir.deleteOnExit();
+        final Path tmpDirPath = tmpDir.toPath();
+
+        // Create a FIFO file:
+        final Path fifoFilePath = tmpDirPath.resolve(IOUtils.getPath("FIFOFILE"));
+        IOUtils.createFifoFile( tmpDirPath.resolve(fifoFilePath).toFile().getAbsolutePath() );
+
+        // Verify the FIFO file exists and is a FIFO file:
+        Assert.assertTrue( Files.exists(fifoFilePath) );
+        try {
+            Assert.assertTrue( Files.readAttributes(fifoFilePath, BasicFileAttributes.class).isOther() );
+        }
+        catch (final IOException ex) {
+            throw new GATKException("Could not verify file is a FIFO file!");
+        }
+
+        // Create the same FIFO file again and overwrite it:
+        IOUtils.createFifoFile( tmpDirPath.resolve(fifoFilePath).toFile().getAbsolutePath(), true );
+
+        // Verify the FIFO file exists and is a FIFO file:
+        Assert.assertTrue( Files.exists(fifoFilePath) );
+        try {
+            Assert.assertTrue( Files.readAttributes(fifoFilePath, BasicFileAttributes.class).isOther() );
+        }
+        catch (final IOException ex) {
+            throw new GATKException("Could not verify file is a FIFO file!");
+        }
+    }
+
+    @Test(expectedExceptions = UserException.class)
+    public void testCreateFifoFileThrows() {
+
+        // Create an output location for the test files to go:
+        final Path tmpDirPath = createTempDir("IOUtilsUnitTest_testCreateFifoFileThrows").toPath();
+
+        // Create a FIFO file:
+        final Path fifoFilePath = tmpDirPath.resolve(IOUtils.getPath("FIFOFILE"));
+        IOUtils.createFifoFile( tmpDirPath.resolve(fifoFilePath).toFile().getAbsolutePath() );
+
+        // Verify the FIFO file exists and is a FIFO file:
+        Assert.assertTrue( Files.exists(fifoFilePath) );
+        try {
+            Assert.assertTrue( Files.readAttributes(fifoFilePath, BasicFileAttributes.class).isOther() );
+        }
+        catch (final IOException ex) {
+            throw new GATKException("Could not verify file is a FIFO file!");
+        }
+
+        // Create the same FIFO file again and overwrite it:
+        // This will throw:
+        IOUtils.createFifoFile( tmpDirPath.resolve(fifoFilePath).toFile().getAbsolutePath() );
     }
 
     @Test

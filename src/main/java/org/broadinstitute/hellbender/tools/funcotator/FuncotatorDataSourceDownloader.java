@@ -1,15 +1,9 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
 import org.apache.commons.codec.digest.MessageDigestAlgorithms;
-import org.apache.commons.compress.archivers.ArchiveEntry;
-import org.apache.commons.compress.archivers.ArchiveInputStream;
-import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
-import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.BetaFeature;
-import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -19,7 +13,8 @@ import org.broadinstitute.hellbender.utils.nio.NioFileCopierWithProgressMeter;
 import org.broadinstitute.hellbender.utils.nio.NioFileCopierWithProgressMeterResults;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -49,6 +44,11 @@ public class FuncotatorDataSourceDownloader extends CommandLineProgram {
 
     //==================================================================================================================
     // Private Static Members:
+    static final String TESTING_OVERRIDE_PATH_FOR_DATA_SOURCES_ARG         = "testing-override-path-for-datasources";
+    static final String TESTING_OVERRIDE_PATH_FOR_DATA_SOURCES_SHA256_ARG  = "testing-override-path-for-datasources-sha256";
+
+    //==================================================================================================================
+    // Private Static Members:
 
     private static String BASE_URL = "gs://broad-public-datasets/funcotator/funcotator_dataSources.v1.4.20180829";
 
@@ -71,14 +71,14 @@ public class FuncotatorDataSourceDownloader extends CommandLineProgram {
 
     @Argument(fullName = SOMATIC_ARG_LONG_NAME,
             shortName = SOMATIC_ARG_LONG_NAME,
-            mutex = {GERMLINE_ARG_LONG_NAME},
+            mutex = {GERMLINE_ARG_LONG_NAME, TESTING_OVERRIDE_PATH_FOR_DATA_SOURCES_SHA256_ARG},
             doc = "Download the latest pre-packaged datasources for somatic functional annotation.",
             optional = true)
     private boolean getSomaticDataSources = false;
 
     @Argument(fullName = GERMLINE_ARG_LONG_NAME,
             shortName = GERMLINE_ARG_LONG_NAME,
-            mutex = {SOMATIC_ARG_LONG_NAME},
+            mutex = {SOMATIC_ARG_LONG_NAME, TESTING_OVERRIDE_PATH_FOR_DATA_SOURCES_SHA256_ARG},
             doc = "Download the latest pre-packaged datasources for germline functional annotation.",
             optional = true)
     private boolean getGermlineDataSources = false;
@@ -103,6 +103,27 @@ public class FuncotatorDataSourceDownloader extends CommandLineProgram {
             optional = true)
     protected boolean extractDataSourcesAfterDownload = false;
 
+    // Testing arguments:
+    @Hidden
+    @Advanced
+    @Argument(
+            shortName = TESTING_OVERRIDE_PATH_FOR_DATA_SOURCES_ARG,
+            fullName  = TESTING_OVERRIDE_PATH_FOR_DATA_SOURCES_ARG,
+            mutex = {SOMATIC_ARG_LONG_NAME, GERMLINE_ARG_LONG_NAME},
+            doc = "FOR TESTING ONLY: Override path to data sources file with another path.",
+            optional = true)
+    private String testingOverrideDataSourcesPath;
+
+    @Hidden
+    @Advanced
+    @Argument(
+            shortName = TESTING_OVERRIDE_PATH_FOR_DATA_SOURCES_SHA256_ARG,
+            fullName  = TESTING_OVERRIDE_PATH_FOR_DATA_SOURCES_SHA256_ARG,
+            mutex = {SOMATIC_ARG_LONG_NAME, GERMLINE_ARG_LONG_NAME},
+            doc = "FOR TESTING ONLY: Override path to data sources sha256sum file with another path.",
+            optional = true)
+    private String testingOverrideDataSourcesSha256Path;
+
     //==================================================================================================================
     // Constructors:
 
@@ -111,9 +132,16 @@ public class FuncotatorDataSourceDownloader extends CommandLineProgram {
 
     @Override
     protected void onStartup() {
+
         // Make sure the user specified at least one data source to download:
-        if ((!getSomaticDataSources) && (!getGermlineDataSources)) {
+        if ((!getSomaticDataSources) && (!getGermlineDataSources) && (testingOverrideDataSourcesPath == null)) {
             throw new UserException("Must select either somatic or germline datasources.");
+        }
+
+        // Make sure the testing inputs are correct:
+        if ( ((testingOverrideDataSourcesPath == null) && (testingOverrideDataSourcesSha256Path != null)) ||
+             ((testingOverrideDataSourcesSha256Path == null) && (testingOverrideDataSourcesPath != null)) ) {
+            throw new UserException("Must specify both a test data sources path and a test data sources sha256sum path.");
         }
 
         if ( overwriteOutputFile ) {
@@ -124,14 +152,29 @@ public class FuncotatorDataSourceDownloader extends CommandLineProgram {
     @Override
     protected Object doWork() {
 
+        final String dataSourceDescription;
+        final Path dataSourcesPath;
+        final Path dataSourcesSha256Path;
+
         // Get the correct data source:
         if ( getSomaticDataSources ) {
-            downloadAndValidateDataSources("Somatic", SOMATIC_GCLOUD_DATASOURCES_PATH, SOMATIC_GCLOUD_DATASOURCES_SHA256_PATH);
+            dataSourceDescription = "Somatic";
+            dataSourcesPath = SOMATIC_GCLOUD_DATASOURCES_PATH;
+            dataSourcesSha256Path = SOMATIC_GCLOUD_DATASOURCES_SHA256_PATH;
+        }
+        else if ( getGermlineDataSources ) {
+            dataSourceDescription = "Germline";
+            dataSourcesPath = GERMLINE_GCLOUD_DATASOURCES_PATH;
+            dataSourcesSha256Path = GERMLINE_GCLOUD_DATASOURCES_SHA256_PATH;
+        }
+        else {
+            // Test case:
+            dataSourceDescription = "TESTING";
+            dataSourcesPath = IOUtils.getPath(testingOverrideDataSourcesPath);
+            dataSourcesSha256Path = IOUtils.getPath(testingOverrideDataSourcesSha256Path);
         }
 
-        if ( getGermlineDataSources ) {
-            downloadAndValidateDataSources("Germline", GERMLINE_GCLOUD_DATASOURCES_PATH, GERMLINE_GCLOUD_DATASOURCES_SHA256_PATH);
-        }
+        downloadAndValidateDataSources(dataSourceDescription, dataSourcesPath, dataSourcesSha256Path);
 
         // Token return value:
         return true;
@@ -142,80 +185,6 @@ public class FuncotatorDataSourceDownloader extends CommandLineProgram {
 
     //==================================================================================================================
     // Instance Methods:
-
-    private void extractDataSources(final Path localDataSourcesPath) {
-
-        logger.info("Extracting data sources archive: " + localDataSourcesPath.toUri());
-
-        // Create a stream for the data sources input.
-        // (We know it will be a tar.gz):
-        try ( final InputStream fi = Files.newInputStream(localDataSourcesPath);
-              final InputStream bi = new BufferedInputStream(fi);
-              final InputStream gzi = new GzipCompressorInputStream(bi);
-              final ArchiveInputStream archiveStream = new TarArchiveInputStream(gzi)) {
-
-            extractFilesFromArchiveStream(archiveStream, localDataSourcesPath);
-        }
-        catch (final IOException ex) {
-            throw new UserException("Could not extract data from: " + localDataSourcesPath.toUri());
-        }
-
-    }
-
-    private void extractFilesFromArchiveStream(final ArchiveInputStream archiveStream,
-                                               final Path localDataSourcesPath) throws IOException {
-
-        // Adapted from: http://commons.apache.org/proper/commons-compress/examples.html
-
-        // Go through the archive and get the entries:
-        ArchiveEntry entry;
-        while ((entry = archiveStream.getNextEntry()) != null) {
-
-            logger.info("Extracting file: " + entry.getName());
-
-            // Make sure we can read the data for the entry:
-            if (!archiveStream.canReadEntryData(entry)) {
-                throw new UserException("Could not read data from archive file(" + localDataSourcesPath.toUri() + "): " + entry.getName());
-            }
-
-            // Get the path for the entry on disk and make sure it's OK:
-            final Path extractedEntryPath = localDataSourcesPath.resolveSibling(IOUtils.getPath(entry.getName()));
-            ensurePathIsOkForOutput(extractedEntryPath);
-
-            // Now we can create the entry in our output location:
-            final File extractedEntryFile = extractedEntryPath.toFile();
-            if (entry.isDirectory()) {
-                // Handle a directory entry:
-                if (!extractedEntryFile.isDirectory() && !extractedEntryFile.mkdirs()) {
-                    throw new IOException("Failed to create directory " + extractedEntryFile);
-                }
-            } else {
-                // Handle a file entry:
-
-                // Make sure we can actually create the file in the expected/requested directory:
-                final File parent = extractedEntryFile.getParentFile();
-                if (!parent.isDirectory() && !parent.mkdirs()) {
-                    throw new IOException("Failed to create directory " + parent);
-                }
-
-                // Create the output file from the stream:
-                try (final OutputStream o = Files.newOutputStream(extractedEntryPath)) {
-                    org.apache.commons.io.IOUtils.copy(archiveStream, o);
-                }
-            }
-        }
-    }
-
-    private void ensurePathIsOkForOutput(final Path p) {
-        if ( Files.exists(p) ) {
-            if ( overwriteOutputFile ) {
-                logger.warn("Overwriting existing output destination: " + p.toUri());
-            }
-            else {
-                throw new UserException("Output destination already exists: " + p.toUri());
-            }
-        }
-    }
 
     private NioFileCopierWithProgressMeter createNioDownloader(final Path dsPath) {
         // Get the data sources file:
@@ -241,7 +210,7 @@ public class FuncotatorDataSourceDownloader extends CommandLineProgram {
 
         // Extract data sources if requested:
         if ( extractDataSourcesAfterDownload ) {
-            extractDataSources(results.getDestination());
+            IOUtils.extractTarGz(results.getDestination(), overwriteOutputFile);
         }
         else {
             logger.info("IMPORTANT: You must unzip the downloaded data sources prior to using them with Funcotator.");
