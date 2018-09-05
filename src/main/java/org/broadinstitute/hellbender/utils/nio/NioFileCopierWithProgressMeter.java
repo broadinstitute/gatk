@@ -267,10 +267,10 @@ public class NioFileCopierWithProgressMeter {
     }
 
     protected void logProgress(final double progressValue, final long totalBytesRead, final double bytesPerMillisecond) {
-        if ( isSilent() ) {
+        if ( verbosity == Verbosity.VERBOSE ) {
             logProgressVerbose(progressValue, totalBytesRead, bytesPerMillisecond);
         }
-        else {
+        else if (verbosity.isAbove(Verbosity.MINIMAL)) {
             logProgressSimple(progressValue, totalBytesRead, bytesPerMillisecond);
         }
     }
@@ -399,7 +399,7 @@ public class NioFileCopierWithProgressMeter {
 
             determineProgessDisplayIncrement(srcFileSize);
 
-            if ( !isSilent() ) {
+            if ( verbosity.isAbove(Verbosity.SILENT) ) {
                 logger.info("Initiating copy from " + getSource().toUri().toString() + " to " + getDest().toUri().toString());
                 logger.info("File size: " + srcFileSize + " bytes (" + FileUtils.byteCountToDisplaySize(srcFileSize) + ").");
                 logger.info("Please wait.  This could take a while...");
@@ -447,7 +447,7 @@ public class NioFileCopierWithProgressMeter {
             if ( !isOverwriteExisting() ) {
                 throw new UserException.CouldNotCreateOutputFile(getDest().toUri().toString(), "Download aborted!  Output data sources file already exists!");
             }
-            else if ( !isSilent() ) {
+            else if ( verbosity.isAbove(Verbosity.SILENT) ) {
                 logger.warn("Destination already exists.  Overwriting file at location: " + getDest().toUri().toString());
             }
         }
@@ -462,7 +462,7 @@ public class NioFileCopierWithProgressMeter {
         doCopy();
 
         // Let the world know the glory that is a complete file copy:
-        if ( !isSilent() ) {
+        if ( verbosity.isAbove(Verbosity.SILENT) ) {
             logger.info(String.format("Download Complete! - Total elapsed time: %ds", ((System.nanoTime() - startTime_ns) / NANOS_TO_SECONDS)));
         }
 
@@ -490,19 +490,27 @@ public class NioFileCopierWithProgressMeter {
         /**
          * Output no logging messages whatsoever.
          */
-        SILENT,
+        SILENT(0),
         /**
          * Output logging messages at the start and end of the copy, but no progress during.
          */
-        MINIMAL,
+        MINIMAL(1),
         /**
          * Output basic progress information during the copy.
          */
-        MODERATE,
+        MODERATE(2),
         /**
          * Output verbose progress information during the copy.
          */
-        VERBOSE
+        VERBOSE(3);
+
+        final private int sev;
+
+        Verbosity(final int sev) { this.sev = sev; }
+
+        public boolean isAbove(final Verbosity other) {
+            return this.sev > other.sev;
+        }
     }
 
     /**

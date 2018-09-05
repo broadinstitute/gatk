@@ -26,7 +26,6 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
 import java.util.Random;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 public final class IOUtilsUnitTest extends GATKBaseTest {
 
@@ -45,44 +44,14 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
         }
     }
 
-    @Test
-    public void testExtractTarGz() {
-
-        // Create an output location for the test files to go:
-
-        // Create an output location for the test files to go:
-        final File tmpDir = createTempDir("IOUtilsUnitTest_testExtractTarGz");
-        tmpDir.deleteOnExit();
-        final Path tmpDirPath = tmpDir.toPath();
-        final Path outputDataSourcesPath = tmpDirPath.resolve(IOUtils.getPath(FuncotatorTestConstants.DUMMY_DATA_SOURCES_TAR_GZ).getFileName());
-
-        // Copy our data sources to the destination folder:
-        try {
-            Files.copy(IOUtils.getPath(FuncotatorTestConstants.DUMMY_DATA_SOURCES_TAR_GZ), outputDataSourcesPath);
-        }
-        catch (final IOException ex) {
-            throw new GATKException("Could not copy files for testing!");
-        }
-
-        // Extract the files:
-        IOUtils.extractTarGz( outputDataSourcesPath, false );
-
-        // Get the base expected data soruces output path:
-        final Path baseExpectedOutputDataSourcesPath = IOUtils.getPath(FuncotatorTestConstants.DUMMY_DATA_SOURCES_FOLDER);
-
-        // Get the base file path for the output:
-        final Path baseActualOutputDataSourcesPath = outputDataSourcesPath.getParent().resolve(
-                baseExpectedOutputDataSourcesPath.getFileName()
-        );
-
-        // Now compare the files with the files in the known output folder:
+    private void assertContentsTheSame(final Path baseActualPath, final Path baseExpectedPath) {
         try {
             // Check that the files and directories are the same:
-            Files.find(baseActualOutputDataSourcesPath, Integer.MAX_VALUE,
+            Files.find(baseActualPath, Integer.MAX_VALUE,
                     (actualPath, fileAttributes) -> {
 
                         // First check that the corresponding file exists in our expected unzipped archive:
-                        final Path expectedPath = baseExpectedOutputDataSourcesPath.resolve(baseActualOutputDataSourcesPath.relativize(actualPath));
+                        final Path expectedPath = baseExpectedPath.resolve(baseActualPath.relativize(actualPath));
 
                         final Path actualFileName = actualPath.getFileName();
                         final Path expectedFileName = expectedPath.getFileName();
@@ -98,17 +67,129 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
                                 Assert.assertEquals(actualContents, expectedContents);
                             }
                             catch (final IOException ex) {
-                                throw new GATKException("Could not verify contents of files: " + actualPath.toUri() + " AND " + expectedPath.toUri());
+                                throw new GATKException("Could not verify contents of files: " + actualPath.toUri() + " AND " + expectedPath.toUri(), ex);
                             }
                         }
 
                         return true;
                     }
-                ).collect(Collectors.toList());
+            );
         }
         catch (final IOException ex) {
             throw new GATKException("Could not verify identical contents of test directories!");
         }
+    }
+
+    @DataProvider
+    private Object[][] provideForTestExtractTarGz() {
+        return new Object[][] {
+                { null },
+                { createTempDir("provideForTestExtractTarGz_Case2").toPath() },
+        };
+    }
+
+    @Test(dataProvider = "provideForTestExtractTarGz")
+    public void testExtractTarGz(final Path destDir) {
+
+        final Path outputDataSourcesPath;
+
+        // Prepare our output directory:
+        if ( destDir == null ) {
+            final File tmpDir = createTempDir("IOUtilsUnitTest_testExtractTarGz");
+            tmpDir.deleteOnExit();
+            final Path tmpDirPath            = tmpDir.toPath();
+            outputDataSourcesPath = tmpDirPath.resolve(IOUtils.getPath(FuncotatorTestConstants.DUMMY_DATA_SOURCES_TAR_GZ).getFileName());
+
+            // Copy our data sources to the destination folder:
+            try {
+                Files.copy(IOUtils.getPath(FuncotatorTestConstants.DUMMY_DATA_SOURCES_TAR_GZ), outputDataSourcesPath);
+            }
+            catch (final IOException ex) {
+                throw new GATKException("Could not copy files for testing!", ex);
+            }
+
+            // Extract the files:
+            IOUtils.extractTarGz( outputDataSourcesPath );
+        }
+        else {
+            // Extract the files:
+            IOUtils.extractTarGz( IOUtils.getPath(FuncotatorTestConstants.DUMMY_DATA_SOURCES_TAR_GZ), destDir );
+
+            outputDataSourcesPath = destDir.resolve(IOUtils.getPath(FuncotatorTestConstants.DUMMY_DATA_SOURCES_TAR_GZ).getFileName());
+        }
+
+        // Get the base expected data sources output path:
+        final Path baseExpectedOutputDataSourcesPath = IOUtils.getPath(FuncotatorTestConstants.DUMMY_DATA_SOURCES_FOLDER);
+
+        // Get the base file path for the output:
+        final Path baseActualOutputDataSourcesPath = outputDataSourcesPath.getParent().resolve(
+                baseExpectedOutputDataSourcesPath.getFileName()
+        );
+
+        // Now compare the files with the files in the known output folder:
+        assertContentsTheSame(baseActualOutputDataSourcesPath, baseExpectedOutputDataSourcesPath);
+    }
+
+    @Test(expectedExceptions = UserException.class)
+    public void testExtractTarGzThrowsException() {
+
+        // Prepare our output directory:
+        final File tmpDir = createTempDir("IOUtilsUnitTest_testExtractTarGz");
+        tmpDir.deleteOnExit();
+        final Path tmpDirPath            = tmpDir.toPath();
+        final Path outputDataSourcesPath = tmpDirPath.resolve(IOUtils.getPath(FuncotatorTestConstants.DUMMY_DATA_SOURCES_TAR_GZ).getFileName());
+
+        // Copy our data sources to the destination folder:
+        try {
+            Files.copy(IOUtils.getPath(FuncotatorTestConstants.DUMMY_DATA_SOURCES_TAR_GZ), outputDataSourcesPath);
+        }
+        catch (final IOException ex) {
+            throw new GATKException("Could not copy files for testing!", ex);
+        }
+
+        // Extract the files:
+        IOUtils.extractTarGz( outputDataSourcesPath );
+
+        // Extract them again and explode:
+        IOUtils.extractTarGz( outputDataSourcesPath );
+    }
+
+    @Test
+    public void testExtractTarGzOverwrite() {
+
+        // Prepare our output directory:
+        final File tmpDir = createTempDir("IOUtilsUnitTest_testExtractTarGz");
+        tmpDir.deleteOnExit();
+        final Path tmpDirPath            = tmpDir.toPath();
+        final Path outputDataSourcesPath = tmpDirPath.resolve(IOUtils.getPath(FuncotatorTestConstants.DUMMY_DATA_SOURCES_TAR_GZ).getFileName());
+
+        // Copy our data sources to the destination folder:
+        try {
+            Files.copy(IOUtils.getPath(FuncotatorTestConstants.DUMMY_DATA_SOURCES_TAR_GZ), outputDataSourcesPath);
+        }
+        catch (final IOException ex) {
+            throw new GATKException("Could not copy files for testing!", ex);
+        }
+
+        // Extract the files:
+        IOUtils.extractTarGz( outputDataSourcesPath );
+
+        // Get the base expected data sources output path:
+        final Path baseExpectedOutputDataSourcesPath = IOUtils.getPath(FuncotatorTestConstants.DUMMY_DATA_SOURCES_FOLDER);
+
+        // Get the base file path for the output:
+        final Path baseActualOutputDataSourcesPath = outputDataSourcesPath.getParent().resolve(
+                baseExpectedOutputDataSourcesPath.getFileName()
+        );
+
+        // Now compare the files with the files in the known output folder:
+        assertContentsTheSame(baseActualOutputDataSourcesPath, baseExpectedOutputDataSourcesPath);
+
+        // Extract them again and overwrite them:
+        IOUtils.extractTarGz( outputDataSourcesPath, outputDataSourcesPath.getParent(), true );
+
+        // Now compare the files with the files in the known output folder AGAIN:
+        assertContentsTheSame(baseActualOutputDataSourcesPath, baseExpectedOutputDataSourcesPath);
     }
 
     @Test
@@ -121,7 +202,7 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
 
         // Create a FIFO file:
         final Path fifoFilePath = tmpDirPath.resolve(IOUtils.getPath("FIFOFILE"));
-        IOUtils.createFifoFile( tmpDirPath.resolve(fifoFilePath).toFile().getAbsolutePath() );
+        IOUtils.createFifoFile( tmpDirPath.resolve(fifoFilePath) );
 
         // Verify the FIFO file exists and is a FIFO file:
         Assert.assertTrue( Files.exists(fifoFilePath) );
@@ -129,11 +210,11 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
             Assert.assertTrue( Files.readAttributes(fifoFilePath, BasicFileAttributes.class).isOther() );
         }
         catch (final IOException ex) {
-            throw new GATKException("Could not verify file is a FIFO file!");
+            throw new GATKException("Could not verify file is a FIFO file!", ex);
         }
 
         // Create the same FIFO file again and overwrite it:
-        IOUtils.createFifoFile( tmpDirPath.resolve(fifoFilePath).toFile().getAbsolutePath(), true );
+        IOUtils.createFifoFile( tmpDirPath.resolve(fifoFilePath), true );
 
         // Verify the FIFO file exists and is a FIFO file:
         Assert.assertTrue( Files.exists(fifoFilePath) );
@@ -141,7 +222,7 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
             Assert.assertTrue( Files.readAttributes(fifoFilePath, BasicFileAttributes.class).isOther() );
         }
         catch (final IOException ex) {
-            throw new GATKException("Could not verify file is a FIFO file!");
+            throw new GATKException("Could not verify file is a FIFO file!", ex);
         }
     }
 
@@ -153,7 +234,7 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
 
         // Create a FIFO file:
         final Path fifoFilePath = tmpDirPath.resolve(IOUtils.getPath("FIFOFILE"));
-        IOUtils.createFifoFile( tmpDirPath.resolve(fifoFilePath).toFile().getAbsolutePath() );
+        IOUtils.createFifoFile( tmpDirPath.resolve(fifoFilePath) );
 
         // Verify the FIFO file exists and is a FIFO file:
         Assert.assertTrue( Files.exists(fifoFilePath) );
@@ -161,12 +242,12 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
             Assert.assertTrue( Files.readAttributes(fifoFilePath, BasicFileAttributes.class).isOther() );
         }
         catch (final IOException ex) {
-            throw new GATKException("Could not verify file is a FIFO file!");
+            throw new GATKException("Could not verify file is a FIFO file!", ex);
         }
 
         // Create the same FIFO file again and overwrite it:
         // This will throw:
-        IOUtils.createFifoFile( tmpDirPath.resolve(fifoFilePath).toFile().getAbsolutePath() );
+        IOUtils.createFifoFile( tmpDirPath.resolve(fifoFilePath) );
     }
 
     @Test

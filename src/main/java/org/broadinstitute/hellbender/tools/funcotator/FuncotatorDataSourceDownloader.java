@@ -210,7 +210,7 @@ public class FuncotatorDataSourceDownloader extends CommandLineProgram {
 
         // Extract data sources if requested:
         if ( extractDataSourcesAfterDownload ) {
-            IOUtils.extractTarGz(results.getDestination(), overwriteOutputFile);
+            IOUtils.extractTarGz(results.getDestination(), results.getDestination().getParent(), overwriteOutputFile);
         }
         else {
             logger.info("IMPORTANT: You must unzip the downloaded data sources prior to using them with Funcotator.");

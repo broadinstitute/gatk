@@ -255,7 +255,7 @@ public final class StreamingProcessController extends ProcessControllerBase<Capt
 
     private File createFIFOFile(final String fifoName) {
         final String fifoTempFileName = String.format("%s/%s", fifoTempDir.getAbsolutePath(), fifoName);
-        return org.broadinstitute.hellbender.utils.io.IOUtils.createFifoFile(fifoTempFileName, true);
+        return org.broadinstitute.hellbender.utils.io.IOUtils.createFifoFile(org.broadinstitute.hellbender.utils.io.IOUtils.getPath(fifoTempFileName), true);
     }
 
     /**

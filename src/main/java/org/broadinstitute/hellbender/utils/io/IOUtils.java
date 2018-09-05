@@ -414,20 +414,33 @@ public final class IOUtils {
     /**
      * Extracts the tar.gz file given by {@code tarGzFilePath}.
      * Input {@link Path} MUST be to a gzipped tar file.
+     * Will extract contents in the containing folder of {@code tarGzFilePath}.
      * Will throw an exception if files exist already.
      * @param tarGzFilePath {@link Path} to a gzipped tar file for extraction.
      */
     public static void extractTarGz(final Path tarGzFilePath) {
-        extractTarGz(tarGzFilePath, false);
+        extractTarGz(tarGzFilePath, tarGzFilePath.getParent(), false);
+    }
+
+    /**
+     * Extracts the tar.gz file given by {@code tarGzFilePath}.
+     * Input {@link Path} MUST be to a gzipped tar file.
+     * Will throw an exception if files exist already.
+     * @param tarGzFilePath {@link Path} to a gzipped tar file for extraction.
+     * @param destDir {@link Path} to the directory where the contents of {@code tarGzFilePath} will be extracted.
+     */
+    public static void extractTarGz(final Path tarGzFilePath, final Path destDir) {
+        extractTarGz(tarGzFilePath, destDir, false);
     }
 
     /**
      * Extracts the tar.gz file given by {@code tarGzFilePath}.
      * Input {@link Path} MUST be to a gzipped tar file.
      * @param tarGzFilePath {@link Path} to a gzipped tar file for extraction.
+     * @param destDir {@link Path} to the directory where the contents of {@code tarGzFilePath} will be extracted.
      * @param overwriteExistingFiles If {@code true}, will enable overwriting of existing files.  If {@code false}, will cause an exception to be thrown if files exist already.
      */
-    public static void extractTarGz(final Path tarGzFilePath, final boolean overwriteExistingFiles) {
+    public static void extractTarGz(final Path tarGzFilePath, final Path destDir, final boolean overwriteExistingFiles) {
 
         logger.info("Extracting data from archive: " + tarGzFilePath.toUri());
 
@@ -438,15 +451,16 @@ public final class IOUtils {
               final InputStream gzi = new GzipCompressorInputStream(bi);
               final TarArchiveInputStream archiveStream = new TarArchiveInputStream(gzi)) {
 
-            extractFilesFromArchiveStream(archiveStream, tarGzFilePath, overwriteExistingFiles);
+            extractFilesFromArchiveStream(archiveStream, tarGzFilePath, destDir, overwriteExistingFiles);
         }
         catch (final IOException ex) {
-            throw new UserException("Could not extract data from: " + tarGzFilePath.toUri());
+            throw new UserException("Could not extract data from: " + tarGzFilePath.toUri(), ex);
         }
     }
 
     private static void extractFilesFromArchiveStream(final TarArchiveInputStream archiveStream,
                                                       final Path localTarGzPath,
+                                                      final Path destDir,
                                                       final boolean overwriteExistingFiles) throws IOException {
 
         // Adapted from: http://commons.apache.org/proper/commons-compress/examples.html
@@ -463,7 +477,7 @@ public final class IOUtils {
             }
 
             // Get the path for the entry on disk and make sure it's OK:
-            final Path extractedEntryPath = localTarGzPath.resolveSibling(IOUtils.getPath(entry.getName())).normalize();
+            final Path extractedEntryPath = destDir.resolve(entry.getName()).normalize();
             ensurePathIsOkForOutput(extractedEntryPath, overwriteExistingFiles);
 
             // Now we can create the entry in our output location:
@@ -476,16 +490,28 @@ public final class IOUtils {
 
                 if ( entry.isFIFO() ) {
                     // Handle a fifo file:
-                    createFifoFile(extractedEntryPath.toFile().getAbsolutePath(), overwriteExistingFiles);
+                    createFifoFile(extractedEntryPath, overwriteExistingFiles);
                 }
                 else if ( entry.isSymbolicLink() ) {
                     // Handle a symbolic link:
                     final String linkName = entry.getLinkName();
+
+                    // If the link already exists, we must clear it:
+                    if ( Files.exists(extractedEntryPath) && overwriteExistingFiles ) {
+                        removeFileWithWarning(extractedEntryPath);
+                    }
+
                     Files.createSymbolicLink(extractedEntryPath, Paths.get(linkName));
                 }
                 else if ( entry.isLink() ) {
                     // Handle a hard link:
                     final String linkName = entry.getLinkName();
+
+                    // If the link already exists, we must clear it:
+                    if ( Files.exists(extractedEntryPath) && overwriteExistingFiles ) {
+                        removeFileWithWarning(extractedEntryPath);
+                    }
+
                     Files.createLink(extractedEntryPath, Paths.get(linkName));
                 }
                 else if ( entry.isFile() ) {
@@ -519,29 +545,44 @@ public final class IOUtils {
      * Create a Unix FIFO file with the given path string.
      * If requested file already exists, will throw an exception.
      * Will throw an Exception on failure.
-     * @param fifoFilePathString {@link String} representing the path to the FIFO file to be created.
+     * @param fifoFilePath {@link Path} to the FIFO file to be created.
      * @return The {@link File} object pointing to the created FIFO file.
      */
-    public static File createFifoFile(final String fifoFilePathString) {
-        return createFifoFile(fifoFilePathString, false);
+    public static File createFifoFile(final Path fifoFilePath) {
+        return createFifoFile(fifoFilePath, false);
+    }
+
+    private static void removeFileWithWarning(final Path filePath) {
+        logger.warn("File already exists in path.  Replacing existing file: " + filePath.toUri());
+        try {
+            Files.delete(filePath);
+        }
+        catch (final IOException ex) {
+            throw new UserException("Could not replace existing file: " + filePath.toUri());
+        }
     }
 
     /**
      * Create a Unix FIFO file with the given path string.
      * Will throw an Exception on failure.
-     * @param fifoFilePathString {@link String} representing the path to the FIFO file to be created.
+     * @param fifoFilePath {@link Path} to the FIFO file to be created.
      * @param overwriteExisting If {@code true} will overwrite an existing file in the requested location for the FIFO file.  If {@code false} will throw an exception if the file exists.
      * @return The {@link File} object pointing to the created FIFO file.
      */
-    public static File createFifoFile(final String fifoFilePathString, final boolean overwriteExisting) {
+    public static File createFifoFile(final Path fifoFilePath, final boolean overwriteExisting) {
 
         // Make sure we're allowed to create the file:
-        if ( (!overwriteExisting) && (Files.exists(IOUtils.getPath(fifoFilePathString))) ) {
-            throw new UserException("Cannot create fifo file.  File already exists: " + fifoFilePathString);
+        if ( Files.exists(fifoFilePath) ) {
+            if ( (!overwriteExisting) ) {
+                throw new UserException("Cannot create fifo file.  File already exists: " + fifoFilePath.toUri());
+            }
+            else {
+                removeFileWithWarning(fifoFilePath);
+            }
         }
 
         // Create the FIFO by executing mkfifo via another ProcessController
-        final ProcessSettings mkFIFOSettings = new ProcessSettings(new String[]{"mkfifo", fifoFilePathString});
+        final ProcessSettings mkFIFOSettings = new ProcessSettings(new String[]{"mkfifo", fifoFilePath.toFile().getAbsolutePath()});
         mkFIFOSettings.getStdoutSettings().setBufferSize(-1);
         mkFIFOSettings.setRedirectErrorStream(true);
 
@@ -550,20 +591,20 @@ public final class IOUtils {
         final ProcessOutput     result           = mkFIFOController.exec(mkFIFOSettings);
         final int               exitValue        = result.getExitValue();
 
-        final File fifoFile = new File(fifoFilePathString);
+        final File fifoFile = fifoFilePath.toFile();
 
         // Make sure we're OK:
         if (exitValue != 0) {
             throw new GATKException(String.format(
                     "Failure creating FIFO named (%s). Got exit code (%d) stderr (%s) and stdout (%s)",
-                    fifoFilePathString,
+                    fifoFilePath.toFile().getAbsolutePath(),
                     exitValue,
                     result.getStderr() == null ? "" : result.getStderr().getBufferString(),
                     result.getStdout() == null ? "" : result.getStdout().getBufferString()));
         } else if (!fifoFile.exists()) {
-            throw new GATKException(String.format("FIFO (%s) created but doesn't exist", fifoFilePathString));
+            throw new GATKException(String.format("FIFO (%s) created but doesn't exist", fifoFilePath.toFile().getAbsolutePath()));
         } else if (!fifoFile.canWrite()) {
-            throw new GATKException(String.format("FIFO (%s) created isn't writable", fifoFilePathString));
+            throw new GATKException(String.format("FIFO (%s) created isn't writable", fifoFilePath.toFile().getAbsolutePath()));
         }
 
         return fifoFile;
