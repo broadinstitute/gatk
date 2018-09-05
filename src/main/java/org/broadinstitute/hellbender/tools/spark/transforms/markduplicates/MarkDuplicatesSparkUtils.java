@@ -515,7 +515,7 @@ public class MarkDuplicatesSparkUtils {
             }
 
             if ( first.getName() != null && second.getName() != null ) {
-                result = first.getName().compareTo(second.getName());
+                result = -first.getName().compareTo(second.getName());
             }
             return result;
         }
