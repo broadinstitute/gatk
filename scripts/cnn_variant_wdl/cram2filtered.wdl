@@ -31,7 +31,7 @@ workflow Cram2FilteredVcf {
     String info_key                  # The score key for the info field of the vcf (e.g. CNN_1D, CNN_2D)
     String snp_tranches              # Filtering threshold(s) for SNPs in terms of sensitivity to overlapping known variants in resources
     String indel_tranches            # Filtering threshold(s) for INDELs in terms of sensitivity to overlapping known variants in resources
-    File? gatk_override
+    File? gatk_override              # GATK Jar file to over ride the one included in gatk_docker
     String gatk_docker
     File calling_intervals
     Int scatter_count                # Number of shards for parallelization of HaplotypeCaller and CNNScoreVariants
