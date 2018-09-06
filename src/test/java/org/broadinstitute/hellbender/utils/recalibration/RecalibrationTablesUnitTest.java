@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.utils.recalibration;
 
 import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.Covariate;
-import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCovariateList;
+import org.broadinstitute.hellbender.utils.recalibration.covariates.BQSRCovariateList;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
@@ -15,7 +15,7 @@ import java.util.stream.IntStream;
 
 public final class RecalibrationTablesUnitTest extends GATKBaseTest {
     private RecalibrationTables tables;
-    private StandardCovariateList covariates;
+    private BQSRCovariateList covariates;
     private int numReadGroups = 6;
     final byte qualByte = 1;
     final List<Integer> combineStates = Arrays.asList(0, 1, 2);
@@ -23,7 +23,7 @@ public final class RecalibrationTablesUnitTest extends GATKBaseTest {
     @BeforeMethod
     private void makeTables() {
         final List<String> readGroups= IntStream.range(1, numReadGroups).mapToObj(i -> "readgroup"+i).collect(Collectors.toList());
-        covariates = new StandardCovariateList(new RecalibrationArgumentCollection(), readGroups);
+        covariates = new BQSRCovariateList(new RecalibrationArgumentCollection(), readGroups);
         tables = new RecalibrationTables(covariates, numReadGroups);
         fillTable(tables);
     }

@@ -17,7 +17,7 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.Covariate;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.CovariateKeyCache;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.ReadCovariates;
-import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCovariateList;
+import org.broadinstitute.hellbender.utils.recalibration.covariates.BQSRCovariateList;
 import org.broadinstitute.hellbender.utils.report.GATKReport;
 import org.broadinstitute.hellbender.utils.report.GATKReportTable;
 
@@ -77,7 +77,7 @@ public final class RecalUtils {
     private static class CsvPrinter {
 
         private final PrintStream ps;
-        private final StandardCovariateList covariates;
+        private final BQSRCovariateList covariates;
 
         /**
          * Constructs a printer redirected to an output file.
@@ -85,7 +85,7 @@ public final class RecalUtils {
          * @param covs covariates to print out.
          * @throws FileNotFoundException if the file could not be created anew.
          */
-        protected CsvPrinter(final File out, final StandardCovariateList covs)
+        protected CsvPrinter(final File out, final BQSRCovariateList covs)
                 throws FileNotFoundException {
             this(new FileOutputStream(out), covs);
         }
@@ -95,7 +95,7 @@ public final class RecalUtils {
          * @param os the output.
          * @param covs  covariates to print out.
          */
-        protected CsvPrinter(final OutputStream os, final StandardCovariateList covs) {
+        protected CsvPrinter(final OutputStream os, final BQSRCovariateList covs) {
             covariates = covs;
             ps = new PrintStream(os);
             printHeader();
@@ -142,7 +142,7 @@ public final class RecalUtils {
      *
      * @return never <code>null</code>
      */
-    protected static CsvPrinter csvPrinter(final File out, final StandardCovariateList covs) throws FileNotFoundException {
+    protected static CsvPrinter csvPrinter(final File out, final BQSRCovariateList covs) throws FileNotFoundException {
         Utils.nonNull(covs, "the input covariate array cannot be null");
         return new CsvPrinter(out,covs);
     }
@@ -163,7 +163,32 @@ public final class RecalUtils {
             throw new GATKException("no reports");
         }
         final RecalibrationReport firstReport = reports.values().iterator().next();
-        final StandardCovariateList covariates = firstReport.getCovariates();
+        final BQSRCovariateList covariates = firstReport.getCovariates();
+
+        // TODO: this method need to generate the minimum common set of covariates.
+        // Legacy code to do this:
+        /*
+             final Iterator<RecalibrationReport> rit = reports.values().iterator();
+             final RecalibrationReport first = rit.next();
+             final Covariate[] firstCovariates = first.getRequestedCovariates();
+             final Set<Covariate> covariates = new LinkedHashSet<>();
+             Utils.addAll(covariates,firstCovariates);
+             while (rit.hasNext() && covariates.size() > 0) {
+                 final Covariate[] nextCovariates = rit.next().getRequestedCovariates();
+                 final Set<String> nextCovariateNames = new LinkedHashSet<>(nextCovariates.length);
+                 for (final Covariate nc : nextCovariates) {
+                     nextCovariateNames.add(nc.getClass().getSimpleName());
+                 }
+                 final Iterator<Covariate> cit = covariates.iterator();
+                 while (cit.hasNext()) {
+                     if (!nextCovariateNames.contains(cit.next().getClass().getSimpleName())) {
+                         cit.remove();
+                     }
+                 }
+             }
+             writeCsv(out, reports, covariates.toArray(new Covariate[covariates.size()]));
+        */
+
         writeCsv(out, reports, covariates);
     }
 
@@ -176,7 +201,7 @@ public final class RecalUtils {
      * @param covs the covariates to print out.
      * @throws FileNotFoundException if <code>out</code> could not be created anew.
      */
-    private static void writeCsv(final File out, final Map<String, RecalibrationReport> reports, final StandardCovariateList covs)
+    private static void writeCsv(final File out, final Map<String, RecalibrationReport> reports, final BQSRCovariateList covs)
         throws FileNotFoundException {
         final CsvPrinter p = csvPrinter(out, covs);
         for (final Map.Entry<String,RecalibrationReport> e : reports.entrySet()) {
@@ -185,7 +210,7 @@ public final class RecalUtils {
         p.close();
     }
 
-    public static List<GATKReportTable> generateReportTables(final RecalibrationTables recalibrationTables, final StandardCovariateList covariates) {
+    public static List<GATKReportTable> generateReportTables(final RecalibrationTables recalibrationTables, final BQSRCovariateList covariates) {
         final List<GATKReportTable> result = new LinkedList<>();
         int rowIndex = 0;
 
@@ -295,7 +320,7 @@ public final class RecalUtils {
      * @param recalibrationTables Recalibration tables
      * @param covariates The list of requested covariates
      */
-    public static void outputRecalibrationReport(final PrintStream recalTableStream, final RecalibrationArgumentCollection RAC, final QuantizationInfo quantizationInfo, final RecalibrationTables recalibrationTables, final StandardCovariateList covariates) {
+    public static void outputRecalibrationReport(final PrintStream recalTableStream, final RecalibrationArgumentCollection RAC, final QuantizationInfo quantizationInfo, final RecalibrationTables recalibrationTables, final BQSRCovariateList covariates) {
         final GATKReport report = createRecalibrationGATKReport(RAC.generateReportTable(covariates.covariateNames()), quantizationInfo.generateReportTable(), generateReportTables(recalibrationTables, covariates));
         report.print(recalTableStream);
     }
@@ -322,7 +347,7 @@ public final class RecalUtils {
      * @param covariates The list of covariates
      * @return GATK report
      */
-    public static GATKReport createRecalibrationGATKReport(final GATKReportTable argumentTable, final QuantizationInfo quantizationInfo, final RecalibrationTables recalibrationTables, final StandardCovariateList covariates) {
+    public static GATKReport createRecalibrationGATKReport(final GATKReportTable argumentTable, final QuantizationInfo quantizationInfo, final RecalibrationTables recalibrationTables, final BQSRCovariateList covariates) {
         return createRecalibrationGATKReport(argumentTable, quantizationInfo.generateReportTable(), generateReportTables(recalibrationTables, covariates));
     }
 
@@ -360,7 +385,7 @@ public final class RecalUtils {
         executor.exec();
     }
 
-    private static void writeCsv(final PrintStream deltaTableFile, final RecalibrationTables recalibrationTables, final String recalibrationMode, final StandardCovariateList covariates, final boolean printHeader) {
+    private static void writeCsv( final PrintStream deltaTableFile, final RecalibrationTables recalibrationTables, final String recalibrationMode, final BQSRCovariateList covariates, final boolean printHeader) {
 
         final NestedIntegerArray<RecalDatum> deltaTable = createDeltaTable(recalibrationTables, covariates.size());
 
@@ -445,7 +470,7 @@ public final class RecalUtils {
         return new NestedIntegerArray<>(dimensionsForDeltaTable);
     }
 
-    static List<Object> generateValuesFromKeys(final int[] keys, final StandardCovariateList covariates) {
+    static List<Object> generateValuesFromKeys(final int[] keys, final BQSRCovariateList covariates) {
         final List<Object> values = new ArrayList<>(4);
         values.add(covariates.getReadGroupCovariate().formatKey(keys[0]));
 
@@ -522,7 +547,7 @@ public final class RecalUtils {
      * @param recordIndelValues   should we compute covariates for indel BQSR?
      * @return a matrix with all the covariates calculated for every base in the read
      */
-    public static ReadCovariates computeCovariates(final GATKRead read, final SAMFileHeader header, final StandardCovariateList covariates, final boolean recordIndelValues, final CovariateKeyCache keyCache) {
+    public static ReadCovariates computeCovariates( final GATKRead read, final SAMFileHeader header, final BQSRCovariateList covariates, final boolean recordIndelValues, final CovariateKeyCache keyCache) {
         final ReadCovariates readCovariates = new ReadCovariates(read.getLength(), covariates.size(), keyCache);
         computeCovariates(read, header, covariates, readCovariates, recordIndelValues);
         return readCovariates;
@@ -542,7 +567,7 @@ public final class RecalUtils {
      * @param resultsStorage      The object to store the covariate values
      * @param recordIndelValues   should we compute covariates for indel BQSR?
      */
-    public static void computeCovariates(final GATKRead read, final SAMFileHeader header, final StandardCovariateList covariates, final ReadCovariates resultsStorage, final boolean recordIndelValues) {
+    public static void computeCovariates( final GATKRead read, final SAMFileHeader header, final BQSRCovariateList covariates, final ReadCovariates resultsStorage, final boolean recordIndelValues) {
         covariates.recordAllValuesInStorage(read, header, resultsStorage, recordIndelValues);
     }
 

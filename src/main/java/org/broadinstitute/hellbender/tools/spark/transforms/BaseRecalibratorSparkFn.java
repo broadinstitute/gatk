@@ -9,12 +9,11 @@ import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.engine.ReferenceMemorySource;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.recalibration.*;
-import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCovariateList;
+import org.broadinstitute.hellbender.utils.recalibration.covariates.BQSRCovariateList;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 import scala.Tuple2;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 
 public final class BaseRecalibratorSparkFn {
@@ -35,7 +34,7 @@ public final class BaseRecalibratorSparkFn {
             return Arrays.asList(bqsr.getRecalibrationTables()).iterator();
         });
 
-        final RecalibrationTables emptyRecalibrationTable = new RecalibrationTables(new StandardCovariateList(recalArgs, header));
+        final RecalibrationTables emptyRecalibrationTable = new RecalibrationTables(new BQSRCovariateList(recalArgs, header));
         final RecalibrationTables combinedTables = unmergedTables.treeAggregate(emptyRecalibrationTable,
                 RecalibrationTables::inPlaceCombine,
                 RecalibrationTables::inPlaceCombine,
@@ -45,7 +44,7 @@ public final class BaseRecalibratorSparkFn {
 
         final QuantizationInfo quantizationInfo = new QuantizationInfo(combinedTables, recalArgs.QUANTIZING_LEVELS);
 
-        final StandardCovariateList covariates = new StandardCovariateList(recalArgs, header);
+        final BQSRCovariateList covariates = new BQSRCovariateList(recalArgs, header);
         return RecalUtils.createRecalibrationReport(recalArgs.generateReportTable(covariates.covariateNames()), quantizationInfo.generateReportTable(), RecalUtils.generateReportTables(combinedTables, covariates));
     }
 }

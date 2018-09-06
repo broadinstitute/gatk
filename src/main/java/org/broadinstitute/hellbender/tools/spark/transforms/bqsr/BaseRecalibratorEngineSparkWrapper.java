@@ -8,7 +8,7 @@ import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.recalibration.*;
-import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCovariateList;
+import org.broadinstitute.hellbender.utils.recalibration.covariates.BQSRCovariateList;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 
@@ -61,7 +61,7 @@ public final class BaseRecalibratorEngineSparkWrapper implements Serializable {
         if (recalArgs.FORCE_PLATFORM != null) {
             recalArgs.DEFAULT_PLATFORM = recalArgs.FORCE_PLATFORM;
         }
-        StandardCovariateList covariates = new StandardCovariateList(recalArgs, header);
+        BQSRCovariateList covariates = new BQSRCovariateList(recalArgs, header);
         try ( PrintStream reportStream = new PrintStream(oStream) ) {
             RecalUtils.outputRecalibrationReport(reportStream, recalArgs, qi, rt, covariates);
         }
