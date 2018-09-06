@@ -55,12 +55,6 @@ import static org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.A
  * (Internal) Examines aligned contigs from local assemblies and calls structural variants or their breakpoints
  *
  * <p>
- *     This is an experimental tool and should not be of interest to most researchers. It is a prototype of a method
- *     for calling structural variation from alignments of assembled contigs and is under active development. For a
- *     more stable method for this, please see DiscoverVariantsFromContigAlignmentsSAMSpark.
- * </p>
- *
- * <p>
  *     This tool takes a file containing the alignments of assembled contigs (typically the output file produced by
  *     FindBreakpointEvidenceSpark) and searches for split alignments or alignments with large gaps indicating the
  *     presence of structural variation breakpoints. The type of each variation is determined by analyzing the
@@ -94,9 +88,6 @@ import static org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.A
 @CommandLineProgramProperties(
         oneLineSummary = "(Internal) Examines aligned contigs from local assemblies and calls structural variants or their breakpoints",
         summary =
-        "This tool is used in development and should not be of interest to most researchers. It is a prototype of" +
-        " structural variant calling, and has been under active developments. For more stable version," +
-        " please see DiscoverVariantsFromContigAlignmentsSAMSpark." +
         " This tool takes a file containing the alignments of assembled contigs" +
         " (typically the output file produced by FindBreakpointEvidenceSpark) and searches for reads with" +
         " split alignments or large gaps indicating the presence of structural variation breakpoints." +

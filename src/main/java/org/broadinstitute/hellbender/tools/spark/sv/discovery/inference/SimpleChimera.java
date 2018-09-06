@@ -96,8 +96,7 @@ public class SimpleChimera {
     }
 
     /**
-     * Roughly similar to
-     * DiscoverVariantsFromContigAlignmentsSAMSpark#nextAlignmentMayBeInsertion(AlignmentInterval, AlignmentInterval, Integer, Integer, boolean):
+     * Essentially trying to remove potential simple chimera that are flanked by "weak" alignments, by "weak" we mean:
      *  1) either alignment may have very low mapping quality (a more relaxed mapping quality threshold);
      *  2) either alignment may consume only a "short" part of the contig, or if assuming that the alignment consumes
      *     roughly the same amount of ref bases and read bases, has isAlignment that is too short

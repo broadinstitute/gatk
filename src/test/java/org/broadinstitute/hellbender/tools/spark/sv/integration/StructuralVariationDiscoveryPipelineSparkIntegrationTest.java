@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.broadinstitute.hellbender.testutils.MiniClusterUtils;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -27,9 +28,15 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static org.broadinstitute.hellbender.tools.spark.sv.integration.DiscoverVariantsFromContigAlignmentsSAMSparkIntegrationTest.annotationsToIgnoreWhenComparingVariants;
-
 public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends CommandLineProgramTest {
+
+    private static final List<String> annotationsToIgnoreWhenComparingVariants =
+            Arrays.asList(GATKSVVCFConstants.ALIGN_LENGTHS,
+                    GATKSVVCFConstants.CONTIG_NAMES,
+                    GATKSVVCFConstants.INSERTED_SEQUENCE_MAPPINGS,
+                    GATKSVVCFConstants.TOTAL_MAPPINGS,
+                    GATKSVVCFConstants.SPLIT_READ_SUPPORT,
+                    GATKSVVCFConstants.READ_PAIR_SUPPORT);
 
     private static final class StructuralVariationDiscoveryPipelineSparkIntegrationTestArgs {
 

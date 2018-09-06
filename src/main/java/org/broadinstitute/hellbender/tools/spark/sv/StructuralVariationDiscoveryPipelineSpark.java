@@ -55,12 +55,13 @@ import java.util.stream.IntStream;
 /**
  * Runs the structural variation discovery workflow on a single sample
  *
- * <p>This tool packages the algorithms described in {@link FindBreakpointEvidenceSpark} and
- * {@link org.broadinstitute.hellbender.tools.spark.sv.discovery.DiscoverVariantsFromContigAlignmentsSAMSpark}
- * as an integrated workflow.  Please consult the
- * descriptions of those tools for more details about the algorithms employed.  In brief, input reads are examined
- * for evidence of structural variation in a genomic region, regions so identified are locally assembled, and
- * the local assemblies are called for structural variation.</p>
+ * <p>This tool packages the algorithms described in
+ * {@link FindBreakpointEvidenceSpark} and
+ * {@link SvDiscoverFromLocalAssemblyContigAlignmentsSpark}
+ * as an integrated workflow.
+ * Please consult the descriptions of those tools for more details about the algorithms employed.
+ * In brief, input reads are examined for evidence of structural variation in a genomic region,
+ * regions so identified are locally assembled, and the local assemblies are called for SV.</p>
  *
  * <h3>Inputs</h3>
  * <ul>
@@ -112,7 +113,7 @@ import java.util.stream.IntStream;
         oneLineSummary = "Runs the structural variation discovery workflow on a single sample",
         summary =
         "This tool packages the algorithms described in FindBreakpointEvidenceSpark and" +
-        " DiscoverVariantsFromContigAlignmentsSAMSpark as an integrated workflow.  Please consult the" +
+        " SvDiscoverFromLocalAssemblyContigAlignmentsSpark as an integrated workflow.  Please consult the" +
         " descriptions of those tools for more details about the algorithms employed.  In brief, input reads are examined" +
         " for evidence of structural variation in a genomic region, regions so identified are locally assembled, and" +
         " the local assemblies are called for structural variation.",
@@ -492,7 +493,7 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
         public JavaRDD<AlignedContig> getAlignedContigs() {
 
             // here we have two options, one is going through the route "BwaMemAlignment -> SAM -> GATKRead -> SAM -> AlignmentInterval"
-            //                           which is the route if the discovery pipeline is run by "FindBreakpointEvidenceSpark -> write sam file -> load sam file -> DiscoverVariantsFromContigAlignmentsSAMSpark"
+            //                           which is the route if the discovery pipeline is run by "FindBreakpointEvidenceSpark -> write sam file -> load sam file -> infer SV by scanning alignment signature"
             //                         , the other is to go directly "BwaMemAlignment -> AlignmentInterval" by calling into {@code filterAndConvertToAlignedContigDirect()}, which is faster but not used here.
             //                         ; the two routes are tested to be generating the same output via {@code AlignedContigGeneratorUnitTest#testConvertAlignedAssemblyOrExcuseToAlignedContigsDirectAndConcordanceWithSAMRoute()}
             return filterAndConvertToAlignedContigViaSAM(alignedAssemblyOrExcuseList, header, ctx);
