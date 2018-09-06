@@ -61,7 +61,7 @@ public class SVIntervalUtilsUnitTest extends GATKBaseTest {
         final SAMSequenceDictionary dictionary = new SAMSequenceDictionary();
         dictionary.addSequence(new SAMSequenceRecord("seq0", 1000));
         final SimpleInterval simpleInterval = SVIntervalUtils.convertToSimpleInterval(svInterval, dictionary);
-        Assert.assertEquals(simpleInterval, new SimpleInterval("seq0", 100, 200));
+        Assert.assertEquals(simpleInterval, new SimpleInterval("seq0", 101, 200));
     }
 
 }
