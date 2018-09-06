@@ -11,7 +11,6 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.StrandedInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
-import java.io.Serializable;
 import java.util.Collections;
 import java.util.Set;
 import java.util.function.Function;
@@ -24,10 +23,9 @@ import java.util.function.Function;
  * that contributed to the link, as well as the template names of the reads.
  */
 @DefaultSerializer(EvidenceTargetLink.Serializer.class)
-public final class EvidenceTargetLink implements Serializable {
+public final class EvidenceTargetLink {
     private static final StrandedInterval.Serializer intervalSerializer = new StrandedInterval.Serializer();
 
-    public static final long serialVersionUID = 1L;
     final StrandedInterval source;
     final StrandedInterval target;
     final int splitReads;
