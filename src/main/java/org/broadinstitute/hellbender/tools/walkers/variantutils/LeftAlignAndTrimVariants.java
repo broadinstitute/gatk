@@ -119,14 +119,14 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
     /**
      * If this argument is set, bases common to all alleles will not be removed and will not leave their minimal representation.
      */
-    @Argument(fullName = "dontTrimAlleles", shortName = "notrim", doc = "Do not Trim alleles to remove bases common to all of them", optional = true)
+    @Argument(fullName = "dont-trim-alleles", shortName = "notrim", doc = "Do not Trim alleles to remove bases common to all of them", optional = true)
     protected boolean dontTrimAlleles = false;
 
     /**
      * If this argument is set, split multiallelic records and left-align individual alleles.
      * If this argument is not set, multiallelic records are not attempted to left-align and will be copied as is.
      */
-    @Argument(fullName = "splitMultiallelics", shortName = "split", doc = "Split multiallelic records and left-align individual alleles", optional = true)
+    @Argument(fullName = "split-multi-allelics", shortName = "split", doc = "Split multiallelic records and left-align individual alleles", optional = true)
     protected boolean splitMultiallelics = false;
 
     /**
@@ -134,19 +134,19 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
      * subset. If this flag is enabled, the original values of those annotations will be stored in new annotations called
      * AC_Orig, AF_Orig, and AN_Orig.
      */
-    @Argument(fullName = "keepOriginalAC", shortName = "keepOriginalAC", doc = "Store the original AC, AF, and AN values after subsetting", optional = true)
+    @Argument(fullName = "keep-original-ac", doc = "Store the original AC, AF, and AN values after subsetting", optional = true)
     private boolean keepOriginalChrCounts = false;
 
     /**
      * Maximum indel size to realign.  Indels larger than this will be left unadjusted.
      */
-    @Argument(fullName = "maxIndelSize", shortName = "maxIndelSize", doc = "Set maximum indel size to realign", optional = true)
+    @Argument(fullName = "max-indel-length", doc = "Set maximum indel size to realign", optional = true)
     private static int maxIndelSize = 200;
 
     /**
      * Distance in reference to look back before allele
      */
-    @Argument(fullName = "maxLeadingBases", shortName = "maxLeadingBases", doc = "Set max reference window size to look back before allele", optional = true)
+    @Argument(fullName = "max-leading-bases", doc = "Set max reference window size to look back before allele", optional = true)
     private static int maxLeadingBases = 1000;
 
     @Hidden
@@ -156,6 +156,11 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
 
     private VariantContextWriter vcfWriter = null;
     private int numRealignedVariants;
+    private int numVariantsSplit;
+    private int numVariantsSplitTo;
+    private int numVariantsTrimmed;
+    private int numSkippedForLength;
+    private int longestSkippedVariant;
     private int furthestEndOfEarlierVariant;
     private String currentContig;
 
@@ -165,7 +170,12 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
     @Override
     public void onTraversalStart() {
         numRealignedVariants = 0;
+        numVariantsSplit=0;
+        numVariantsSplitTo=0;
+        numVariantsTrimmed=0;
+        longestSkippedVariant=0;
         furthestEndOfEarlierVariant = 0;
+        numSkippedForLength = 0;
         final Map<String, VCFHeader> vcfHeaders = Collections.singletonMap(getDrivingVariantsFeatureInput().getName(), getHeaderForVariants());
         final SortedSet<String> vcfSamples = VcfUtils.getSortedSampleSet(vcfHeaders, GATKVariantContextUtils.GenotypeMergeType.REQUIRE_UNIQUE);
 
@@ -220,6 +230,11 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
         final List<VariantContext> vcList = splitMultiallelics ? GATKVariantContextUtils.splitVariantContextToBiallelics(vc, false,
                 GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL, keepOriginalChrCounts) : Collections.singletonList(vc);
 
+        if (vcList.size() > 1 ) {
+            numVariantsSplit++;
+            numVariantsSplitTo += vcList.size();
+        }
+
         for (final VariantContext v : vcList) {
             numRealignedVariants += trimAlign(v, ref);
         }
@@ -240,8 +255,23 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
      */
     @Override
     public Object onTraversalSuccess() {
+        if (numVariantsSplit > 0) {
+            String splitMessage = numVariantsSplit + " multiallelic " + (numVariantsSplit == 1 ? " variant " : " variants ") + " split into " + numVariantsSplitTo + " biallelic variants";
+            logger.info(splitMessage);
+        }
+        if (numVariantsTrimmed > 0) {
+            String trimMessage = numVariantsTrimmed + (numVariantsTrimmed == 1 ? " variant " : " variants ") + " trimmed";
+            logger.info(trimMessage);
+        }
+        if (numSkippedForLength > 0) {
+            String lengthMessage = numSkippedForLength + (numSkippedForLength == 1 ? " variant " : " variants ") + " skipped because the reference allele was too long.  " +
+                    "The longest had a reference allele length of " + longestSkippedVariant + ".  To not skip these variants set --max-indel-length >= " + longestSkippedVariant;
+            logger.info(lengthMessage);
+
+        }
         String msg = numRealignedVariants + (numRealignedVariants == 1 ? " variant " : " variants ") + "left aligned";
-        return msg;
+        logger.info(msg);
+        return null;
     }
 
     /**
@@ -266,8 +296,12 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
 
         // ignore if the reference length is greater than the maxIndelSize
         if (refLength > maxIndelSize) {
-            logger.info(String.format("%s (%d) at position %s:%d; skipping that record. Set --maxIndelSize >= %d",
+            logger.info(String.format("%s (%d) at position %s:%d; skipping that record. Set --max-indel-length >= %d",
                     "Reference allele is too long", refLength, vc.getContig(), vc.getStart(), refLength));
+            numSkippedForLength++;
+            if (refLength>longestSkippedVariant) {
+                longestSkippedVariant=refLength;
+            }
             //still write out variant, just don't try to left align
             vcfWriter.add(vc);
             return 0;
@@ -275,6 +309,10 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
 
         // optionally don't trim VC
         final VariantContext v = dontTrimAlleles ? vc : GATKVariantContextUtils.trimAlleles(vc, true, true);
+
+        if (!v.equals(vc)) {
+            numVariantsTrimmed++;
+        }
 
         // align the VC
         final VariantContext alignedV = leftAlign(v, ref);

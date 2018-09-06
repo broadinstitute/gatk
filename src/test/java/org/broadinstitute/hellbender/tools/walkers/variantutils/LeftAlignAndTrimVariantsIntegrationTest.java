@@ -22,10 +22,10 @@ public class LeftAlignAndTrimVariantsIntegrationTest extends CommandLineProgramT
     @DataProvider(name = "LeftAlignDataProvider")
     public Object[][] LeftAlignTestData() {
         return new Object[][]{getTestSet("expected_left_align_hg38.vcf", ""),
-                getTestSet("expected_left_align_hg38_split_multiallelics.vcf", " --splitMultiallelics"),
-                getTestSet("expected_left_align_hg38_notrim.vcf", " --dontTrimAlleles"),
-                getTestSet("expected_left_align_hg38_notrim_split_multiallelics.vcf", " --dontTrimAlleles --splitMultiallelics"),
-                getTestSet("expected_left_align_hg38_split_multiallelics_keepOrigAC.vcf", " --splitMultiallelics --keepOriginalAC")
+                getTestSet("expected_left_align_hg38_split_multiallelics.vcf", " --split-multi-allelics"),
+                getTestSet("expected_left_align_hg38_notrim.vcf", " --dont-trim-alleles"),
+                getTestSet("expected_left_align_hg38_notrim_split_multiallelics.vcf", " --dont-trim-alleles --split-multi-allelics"),
+                getTestSet("expected_left_align_hg38_split_multiallelics_keepOrigAC.vcf", " --split-multi-allelics --keep-original-ac")
         };
     }
 
