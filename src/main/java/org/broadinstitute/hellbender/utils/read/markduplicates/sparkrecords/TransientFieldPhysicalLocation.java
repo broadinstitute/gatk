@@ -37,13 +37,13 @@ public abstract class TransientFieldPhysicalLocation extends PairedEnds implemen
     public int getX() { return this.x; }
 
     @Override
-    public void setX(final int x) { this.x = x; }
+    public void setX(final int x) { this.x = (short)x; }
 
     @Override
     public int getY() { return this.y; }
 
     @Override
-    public void setY(final int y) { this.y = y; }
+    public void setY(final int y) { this.y = (short)y; }
 
     @Override
     public short getLibraryId() { return this.libraryId; }

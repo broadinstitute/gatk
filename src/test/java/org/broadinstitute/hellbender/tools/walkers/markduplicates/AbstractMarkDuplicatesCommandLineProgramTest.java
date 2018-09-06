@@ -177,6 +177,9 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
                 {"RUNID:7:1203:2886:35756", "RUNID:7:1203:2886:36756"},
                 {"RUNID:7:1203:2886:37756", "RUNID:7:1203:2886:36756"},
                 {"RUNID:7:1203:2886:38756", "RUNID:7:1203:2886:36756"},
+
+                //Added a test for tiebreaking accounting for the short casting done in picard
+                {"HK3T5CCXX160204:3:1112:11586:37067", "HK3T5CCXX160204:3:1112:11586:32144"}
         };
     }
 
@@ -199,11 +202,11 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
 
         int compare = position1.tile - position2.tile;
         if (compare == 0) {
-            compare = position1.x - position2.x;
+            compare = (short)position1.x - (short)position2.x;
         }
 
         if (compare == 0) {
-            compare = position1.y - position2.y;
+            compare = (short)position1.y - (short)position2.y;
         }
 
         final boolean isDuplicate = compare < 0;
