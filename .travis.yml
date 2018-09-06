@@ -17,6 +17,7 @@ env:
   - RUN_CNV_GERMLINE_WDL=true
   - RUN_CNV_SOMATIC_WDL=true
   - RUN_M2_WDL=true
+  - RUN_CNN_WDL=true
   global:
   #gradle needs this
   - TERM=dumb
@@ -90,7 +91,7 @@ before_install:
    sudo Rscript scripts/docker/gatkbase/install_R_packages.R;
   fi
 # Download Cromwell jar -- if you change the version, please change the CROMWELL_JAR env variable above, too.
-- if [[ $RUN_CNV_GERMLINE_WDL == true || $RUN_CNV_SOMATIC_WDL == true || $RUN_M2_WDL == true ]]; then
+- if [[ $RUN_CNV_GERMLINE_WDL == true || $RUN_CNV_SOMATIC_WDL == true || $RUN_M2_WDL == true || $RUN_CNN_WDL == true ]]; then
     wget -O $CROMWELL_JAR https://github.com/broadinstitute/cromwell/releases/download/30.2/cromwell-30.2.jar;
   fi
 # Download git lfs files
@@ -106,7 +107,7 @@ install:
   else
     ./gradlew assemble;
     ./gradlew installDist;
-    if [[ $RUN_CNV_GERMLINE_WDL == true || $RUN_CNV_SOMATIC_WDL == true || $RUN_M2_WDL == true ]]; then
+    if [[ $RUN_CNV_GERMLINE_WDL == true || $RUN_CNV_SOMATIC_WDL == true || $RUN_M2_WDL == true || $RUN_CNN_WDL == true ]]; then
       echo "building a shadow jar for the wdl";
       ./gradlew shadowJar;
     elif [[ $TEST_TYPE == cloud ]]; then
@@ -132,6 +133,9 @@ script:
     rm -Rf src/test/resources/large/VQSR;
     echo "Running M2 WDL";
     sudo bash scripts/m2_cromwell_tests/run_m2_wdl.sh;
+  elif [[ $RUN_CNN_WDL == true ]]; then
+    echo "Running CNN WDL";
+    sudo bash scripts/cnn_variant_cromwell_tests/run_cnn_variant_wdl.sh;
   elif [[ $TEST_DOCKER == true ]]; then
     echo "Building docker image and running appropriate tests..." ;
     if [ ${TRAVIS_PULL_REQUEST} != false ]; then
