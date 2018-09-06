@@ -28,7 +28,7 @@ import static org.broadinstitute.hellbender.tools.walkers.readorientation.F1R2Fi
  * Computes the posterior probability of orientation bias. Uses the prior artifact probability calculated in
  * {@link LearnReadOrientationModel}
  */
-public class ReadOrientationArtifact extends GenotypeAnnotation implements NonStandardMutectAnnotation {
+public class ReadOrientationArtifact extends GenotypeAnnotation implements OrientationBiasMixtureModelAnnotation {
     private ArtifactPriorCollection artifactPriorCollection;
     private int minimumBaseQuality = 20;
 
