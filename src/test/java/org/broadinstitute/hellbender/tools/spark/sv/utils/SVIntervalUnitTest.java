@@ -45,4 +45,24 @@ public class SVIntervalUnitTest extends GATKBaseTest {
     public void testContainment(final SVInterval one, final SVInterval two, final boolean expected) {
         Assert.assertEquals(one.contains(two), expected);
     }
+
+    @DataProvider
+    private Object[][] forTestCtorArgsValidators() {
+        final List<Object[]> data = new ArrayList<>(20);
+
+        data.add(new Object[]{-1,  0,  0, SVInterval.SVIntervalConstructorArgsValidator.RefuseNegativeContigs});
+        data.add(new Object[]{ 0, -1,  0, SVInterval.SVIntervalConstructorArgsValidator.RefuseNegativeCoordinates});
+        data.add(new Object[]{ 0,  0, -1, SVInterval.SVIntervalConstructorArgsValidator.RefuseNegativeCoordinates});
+
+        data.add(new Object[]{-1,  0,  0, SVInterval.SVIntervalConstructorArgsValidator.RefuseNegativeContigAndCoordinates});
+        data.add(new Object[]{ 0, -1,  0, SVInterval.SVIntervalConstructorArgsValidator.RefuseNegativeContigAndCoordinates});
+        data.add(new Object[]{ 0,  0, -1, SVInterval.SVIntervalConstructorArgsValidator.RefuseNegativeContigAndCoordinates});
+        data.add(new Object[]{-1, -1, -1, SVInterval.SVIntervalConstructorArgsValidator.RefuseNegativeContigAndCoordinates});
+
+        return data.toArray(new Object[data.size()][]);
+    }
+    @Test(groups = "sv", dataProvider = "forTestCtorArgsValidators", expectedExceptions = IllegalArgumentException.class)
+    public void test(final int contig, final int start, final int end, final SVInterval.SVIntervalConstructorArgsValidator argsValidator) {
+        new SVInterval(contig, start, end, argsValidator);
+    }
 }

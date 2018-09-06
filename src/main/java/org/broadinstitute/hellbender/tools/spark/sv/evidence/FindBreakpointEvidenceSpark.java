@@ -837,21 +837,24 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         final int minFlankingHighCovFactor = params.highDepthCoverageFactor;
         final int minPeakHighCovFactor = params.highDepthCoveragePeakFactor;
 
-        int minFlankingHighCoverageValue = (int) (minFlankingHighCovFactor * broadcastMetadata.getValue().getCoverage());
-        int minPeakHighCoverageValue = (int) (minPeakHighCovFactor * broadcastMetadata.getValue().getCoverage());
+        final ReadMetadata shortReadMetadata = broadcastMetadata.getValue();
+        int minFlankingHighCoverageValue = (int) (minFlankingHighCovFactor * shortReadMetadata.getCoverage());
+        int minPeakHighCoverageValue = (int) (minPeakHighCovFactor * shortReadMetadata.getCoverage());
         final List<SVInterval> result =
                 findHighCoverageSubIntervals(ctx, broadcastMetadata, intervals, unfilteredReads,
                         filter,
                         minFlankingHighCoverageValue,
                         minPeakHighCoverageValue);
-        log("Found " + result.size() + " sub-intervals with coverage over " + minFlankingHighCoverageValue + " and a peak coverage of over " + minPeakHighCoverageValue + ".", logger);
+        log("Found " + result.size() + " sub-intervals with coverage over " + minFlankingHighCoverageValue +
+                " and a peak coverage of over " + minPeakHighCoverageValue + ".", logger);
 
         final String intervalFile = params.highCoverageIntervalsFile;
         if (intervalFile != null) {
             try (final OutputStreamWriter writer =
                          new OutputStreamWriter(new BufferedOutputStream(BucketUtils.createFile(intervalFile)))) {
-                for (SVInterval i : result) {
-                    writer.write(i.toBedString(broadcastMetadata.getValue()) + "\n");
+                for (final SVInterval svInterval : result) {
+                    final String bedLine = shortReadMetadata.getContigName(svInterval.getContig()) + "\t" + (svInterval.getStart() - 1) + "\t" + svInterval.getEnd() + "\n";
+                    writer.write(bedLine);
                 }
             } catch (final IOException ioe) {
                 throw new UserException.CouldNotCreateOutputFile("Can't write high coverage intervals file " + intervalFile, ioe);

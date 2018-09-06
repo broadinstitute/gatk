@@ -329,7 +329,7 @@ public abstract class SegmentedCpxVariantSimpleVariantExtractor implements Seria
 
         final SimpleInterval deletedRange = new SimpleInterval(simple.getContig(), simple.getStart() + 1, simple.getEnd());
         // dummy number for chr to be used in constructing SVInterval, since 2 input AI's both map to the same chr by this point
-        final int dummyChr = -1;
+        final int dummyChr = 0;
         final SVInterval intervalOne = new SVInterval(dummyChr, deletedRange.getStart() - 1, deletedRange.getEnd());
 
         for (final SimpleInterval missing : missingSegments) {
