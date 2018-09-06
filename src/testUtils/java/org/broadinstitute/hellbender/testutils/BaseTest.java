@@ -237,7 +237,7 @@ public abstract class BaseTest {
      *
      * This will also mark the corresponding Tribble/Tabix/BAM indices matching the temp file for deletion.
      * @param name Prefix of the file.
-     * @param extension Extension to concat to the end of the file.
+     * @param extension Extension to concat to the end of the file; should begin with a dot (e.g. ".bam")
      * @return A file in the temporary directory starting with name, ending with extension, which will be deleted after the program exits.
      */
     public static File createTempFile(final String name, final String extension) {
