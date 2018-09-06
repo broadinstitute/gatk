@@ -1,4 +1,5 @@
-# Workflow for running GATK GermlineCNVCaller on a single case sample. Supports both WGS and WES.
+# Workflow for running GATK GermlineCNVCaller on multiple case samples using a trained model (obtained from running 
+# GATK GermlineCNVCaller in the cohort mode). Supports both WGS and WES.
 #
 # Notes:
 #
@@ -29,8 +30,8 @@ workflow CNVGermlineCaseWorkflow {
     ##################################
     File intervals
     File? blacklist_intervals
-    File bam
-    File bam_idx
+    Array[String]+ normal_bams
+    Array[String]+ normal_bais
     File contig_ploidy_model_tar
     Array[File]+ gcnv_model_tars
     Int num_intervals_per_scatter
@@ -51,6 +52,12 @@ workflow CNVGermlineCaseWorkflow {
     Int? padding
     Int? bin_length
 
+    ##############################################
+    #### optional arguments for CollectCounts ####
+    ##############################################
+    String? collect_counts_format
+    Int? mem_gb_for_collect_counts
+
     ######################################################################
     #### optional arguments for DetermineGermlineContigPloidyCaseMode ####
     ######################################################################
@@ -58,6 +65,7 @@ workflow CNVGermlineCaseWorkflow {
     Float? ploidy_sample_psi_scale
     Int? mem_gb_for_determine_germline_contig_ploidy
     Int? cpu_for_determine_germline_contig_ploidy
+    Int? disk_for_determine_germline_contig_ploidy
 
     ##########################################################
     #### optional arguments for GermlineCNVCallerCaseMode ####
@@ -67,6 +75,7 @@ workflow CNVGermlineCaseWorkflow {
     Int? gcnv_max_copy_number
     Int? mem_gb_for_germline_cnv_caller
     Int? cpu_for_germline_cnv_caller
+    Int? disk_for_germline_cnv_caller
 
     # optional arguments for germline CNV denoising model
     Float? gcnv_mapping_error_rate
@@ -103,6 +112,8 @@ workflow CNVGermlineCaseWorkflow {
     Int ref_copy_number_autosomal_contigs
     Array[String]? allosomal_contigs
 
+    Array[Pair[String, String]] normal_bams_and_bais = zip(normal_bams, normal_bais)
+
     call CNVTasks.PreprocessIntervals {
         input:
             intervals = intervals,
@@ -117,17 +128,21 @@ workflow CNVGermlineCaseWorkflow {
             preemptible_attempts = preemptible_attempts
     }
 
-    call CNVTasks.CollectCounts {
-        input:
-            intervals = PreprocessIntervals.preprocessed_intervals,
-            bam = bam,
-            bam_idx = bam_idx,
-            ref_fasta = ref_fasta,
-            ref_fasta_fai = ref_fasta_fai,
-            ref_fasta_dict = ref_fasta_dict,
-            gatk4_jar_override = gatk4_jar_override,
-            gatk_docker = gatk_docker,
-            preemptible_attempts = preemptible_attempts
+    scatter (normal_bam_and_bai in normal_bams_and_bais) {
+        call CNVTasks.CollectCounts {
+            input:
+                intervals = PreprocessIntervals.preprocessed_intervals,
+                bam = normal_bam_and_bai.left,
+                bam_idx = normal_bam_and_bai.right,
+                ref_fasta = ref_fasta,
+                ref_fasta_fai = ref_fasta_fai,
+                ref_fasta_dict = ref_fasta_dict,
+                format = collect_counts_format,
+                gatk4_jar_override = gatk4_jar_override,
+                gatk_docker = gatk_docker,
+                mem_gb = mem_gb_for_collect_counts,
+                preemptible_attempts = preemptible_attempts
+        }
     }
 
     call DetermineGermlineContigPloidyCaseMode {
@@ -138,6 +153,7 @@ workflow CNVGermlineCaseWorkflow {
             gatk_docker = gatk_docker,
             mem_gb = mem_gb_for_determine_germline_contig_ploidy,
             cpu = cpu_for_determine_germline_contig_ploidy,
+            disk_space_gb = disk_for_determine_germline_contig_ploidy,
             mapping_error_rate = ploidy_mapping_error_rate,
             sample_psi_scale = ploidy_sample_psi_scale,
             preemptible_attempts = preemptible_attempts
@@ -195,29 +211,37 @@ workflow CNVGermlineCaseWorkflow {
         }
     }
 
-    call CNVTasks.PostprocessGermlineCNVCalls {
-        input:
-            entity_id = CollectCounts.entity_id,
-            gcnv_calls_tars = GermlineCNVCallerCaseMode.gcnv_calls_tar,
-            gcnv_model_tars = gcnv_model_tars,
-            allosomal_contigs = allosomal_contigs,
-            ref_copy_number_autosomal_contigs = ref_copy_number_autosomal_contigs,
-            contig_ploidy_calls_tar = DetermineGermlineContigPloidyCaseMode.contig_ploidy_calls_tar,
-            sample_index = 0,
-            gatk4_jar_override = gatk4_jar_override,
-            gatk_docker = gatk_docker,
-            preemptible_attempts = preemptible_attempts
+    Array[Array[File]] call_tars_sample_by_shard = transpose(GermlineCNVCallerCaseMode.gcnv_call_tars)
+
+    scatter (sample_index in range(length(normal_bams))) {
+        call CNVTasks.PostprocessGermlineCNVCalls {
+            input:
+                calling_configs = GermlineCNVCallerCaseMode.calling_config_json,
+                denoising_configs = GermlineCNVCallerCaseMode.denoising_config_json,
+                gcnvkernel_version = GermlineCNVCallerCaseMode.gcnvkernel_version_json,
+                sharded_interval_lists = GermlineCNVCallerCaseMode.sharded_interval_list,
+                entity_id = CollectCounts.entity_id[sample_index],
+                gcnv_calls_tars = call_tars_sample_by_shard[sample_index],
+                gcnv_model_tars = gcnv_model_tars,
+                allosomal_contigs = allosomal_contigs,
+                ref_copy_number_autosomal_contigs = ref_copy_number_autosomal_contigs,
+                contig_ploidy_calls_tar = DetermineGermlineContigPloidyCaseMode.contig_ploidy_calls_tar,
+                sample_index = sample_index,
+                gatk4_jar_override = gatk4_jar_override,
+                gatk_docker = gatk_docker,
+                preemptible_attempts = preemptible_attempts
+        }
     }
 
     output {
         File preprocessed_intervals = PreprocessIntervals.preprocessed_intervals
-        File read_counts_entity_id = CollectCounts.entity_id
-        File read_counts = CollectCounts.counts
+        Array[File] read_counts_entity_id = CollectCounts.entity_id
+        Array[File] read_counts = CollectCounts.counts
         File contig_ploidy_calls_tar = DetermineGermlineContigPloidyCaseMode.contig_ploidy_calls_tar
-        Array[File] gcnv_calls_tars = GermlineCNVCallerCaseMode.gcnv_calls_tar
+        Array[Array[File]] gcnv_calls_tars = GermlineCNVCallerCaseMode.gcnv_call_tars
         Array[File] gcnv_tracking_tars = GermlineCNVCallerCaseMode.gcnv_tracking_tar
-        File genotyped_intervals_vcf = PostprocessGermlineCNVCalls.genotyped_intervals_vcf
-        File genotyped_segments_vcf = PostprocessGermlineCNVCalls.genotyped_segments_vcf
+        Array[File] genotyped_intervals_vcf = PostprocessGermlineCNVCalls.genotyped_intervals_vcf
+        Array[File] genotyped_segments_vcf = PostprocessGermlineCNVCalls.genotyped_segments_vcf
     }
 }
 
@@ -274,7 +298,7 @@ task DetermineGermlineContigPloidyCaseMode {
         memory: machine_mem_mb + " MB"
         disks: "local-disk " + select_first([disk_space_gb, 150]) + if use_ssd then " SSD" else " HDD"
         cpu: select_first([cpu, 8])
-        preemptible: select_first([preemptible_attempts, 2])
+        preemptible: select_first([preemptible_attempts, 5])
     }
 
     output {
@@ -340,6 +364,7 @@ task GermlineCNVCallerCaseMode {
     # If optional output_dir not specified, use "out"
     String output_dir_ = select_first([output_dir, "out"])
 
+    Int num_samples = length(read_count_files)
     command <<<
         set -e
         mkdir ${output_dir_}
@@ -390,7 +415,11 @@ task GermlineCNVCallerCaseMode {
             --caller-external-admixing-rate ${default="1.00" caller_external_admixing_rate} \
             --disable-annealing ${default="false" disable_annealing}
 
-        tar czf case-gcnv-calls-${scatter_index}.tar.gz -C ${output_dir_}/case-calls .
+        CURRENT_SAMPLE=0
+        while [ $CURRENT_SAMPLE -lt ${num_samples} ]; do
+            tar czf case-gcnv-shard-${scatter_index}-sample-$CURRENT_SAMPLE-gcnv-calls.tar.gz -C ${output_dir_}/case-calls/SAMPLE_$CURRENT_SAMPLE .
+            let CURRENT_SAMPLE=CURRENT_SAMPLE+1
+        done
         tar czf case-gcnv-tracking-${scatter_index}.tar.gz -C ${output_dir_}/case-tracking .
     >>>
 
@@ -399,11 +428,15 @@ task GermlineCNVCallerCaseMode {
         memory: machine_mem_mb + " MB"
         disks: "local-disk " + select_first([disk_space_gb, 150]) + if use_ssd then " SSD" else " HDD"
         cpu: select_first([cpu, 8])
-        preemptible: select_first([preemptible_attempts, 2])
+        preemptible: select_first([preemptible_attempts, 5])
     }
 
     output {
-        File gcnv_calls_tar = "case-gcnv-calls-${scatter_index}.tar.gz"
+        File calling_config_json = "${output_dir_}/case-calls/calling_config.json"
+        File denoising_config_json = "${output_dir_}/case-calls/denoising_config.json"
+        File gcnvkernel_version_json = "${output_dir_}/case-calls/gcnvkernel_version.json"
+        File sharded_interval_list = "${output_dir_}/case-calls/interval_list.tsv"
+        Array[File] gcnv_call_tars = glob("*-gcnv-calls.tar.gz")
         File gcnv_tracking_tar = "case-gcnv-tracking-${scatter_index}.tar.gz"
     }
 }

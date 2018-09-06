@@ -66,7 +66,7 @@ workflow CNVSomaticPairWorkflow {
     ##############################################
     #### optional arguments for CollectCounts ####
     ##############################################
-    String? format
+    String? collect_counts_format
     Int? mem_gb_for_collect_counts
 
     #####################################################
@@ -165,7 +165,7 @@ workflow CNVSomaticPairWorkflow {
             ref_fasta = ref_fasta,
             ref_fasta_fai = ref_fasta_fai,
             ref_fasta_dict = ref_fasta_dict,
-            format = format,
+            format = collect_counts_format,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
             mem_gb = mem_gb_for_collect_counts,
@@ -295,7 +295,7 @@ workflow CNVSomaticPairWorkflow {
                 ref_fasta = ref_fasta,
                 ref_fasta_fai = ref_fasta_fai,
                 ref_fasta_dict = ref_fasta_dict,
-                format = format,
+                format = collect_counts_format,
                 gatk4_jar_override = gatk4_jar_override,
                 gatk_docker = gatk_docker,
                 mem_gb = mem_gb_for_collect_counts,
