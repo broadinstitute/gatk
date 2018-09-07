@@ -58,7 +58,7 @@ before_install:
   #skip push builds if there's an associated PR because we don't look at them anway
 - if [[ ${TRAVIS_EVENT_TYPE} == push ]];
   then
-    PULL_REQUESTS=$(curl -v -H "Authorization: token $GITHUB_API_TOKEN" https://api.github.com/repos/broadinstitute/gatk/pulls\?state\=open\&head="broadinstitute:${TRAVIS_BRANCH}");
+    PULL_REQUESTS=$(curl -v -H "Authorization':' token $GITHUB_API_TOKEN" https://api.github.com/repos/broadinstitute/gatk/pulls\?state\=open\&head="broadinstitute:${TRAVIS_BRANCH}");
     if [[ $( grep -c "commits" <<< ${PULL_REQUESTS} ) -gt 0 ]];
     then
       travis_terminate 0;
