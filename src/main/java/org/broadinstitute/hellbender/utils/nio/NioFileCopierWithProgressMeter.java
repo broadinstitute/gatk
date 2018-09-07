@@ -101,8 +101,8 @@ public class NioFileCopierWithProgressMeter {
      * @param verbosity {@link Verbosity} of the progress progress log over the duration of the copy.
      */
     protected NioFileCopierWithProgressMeter(final Path source, final Path dest, final boolean overwriteExisting, final Verbosity verbosity) {
-        this.source = source;
-        this.dest = dest;
+        this.source = source.toAbsolutePath();
+        this.dest = dest.toAbsolutePath();
         this.overwriteExisting = overwriteExisting;
         this.verbosity = verbosity;
     }
@@ -362,27 +362,36 @@ public class NioFileCopierWithProgressMeter {
         // Simple checks on input file size to make sure we don't overwhelm or underwhelm the user with updates:
         // TODO: Refactor class to have download and logger in separate threads and display on every percentage complete or delta-time.
 
-        // 100G or larger:
-        if ( fileSize > (1024*9999) ) {
+        final long SIZE_STEP = 1024;
+        final long KB        = 1024;
+        final long MB        = KB * SIZE_STEP;
+        final long GB        = MB * SIZE_STEP;
+
+        // 100Gb or larger:
+        if ( fileSize >= (100*GB) ) {
             progressPercentDisplayIncrement = 0.1;
         }
-        // 10G or larger:
-        else if ( fileSize > (1024*9999) ) {
+        // 10Gb or larger:
+        else if ( fileSize >= (10*GB) ) {
             progressPercentDisplayIncrement = 0.25;
         }
-        // 1G or larger:
-        else if ( fileSize > 999999999 ) {
+        // 5Gb or larger:
+        else if ( fileSize >= (5*GB) ) {
+            progressPercentDisplayIncrement = 0.5;
+        }
+        // 1Gb or larger:
+        else if ( fileSize >= GB ) {
             progressPercentDisplayIncrement = 1;
         }
-        // 100M or larger:
-        else if ( fileSize > (1024*9999) ) {
+        // 100Mb or larger:
+        else if ( fileSize >= (MB*100) ) {
             progressPercentDisplayIncrement = 5;
         }
-        // 1M or larger:
-        else if ( fileSize > (1024*9999) ) {
+        // 1Mb or larger:
+        else if ( fileSize >= MB ) {
             progressPercentDisplayIncrement = 10;
         }
-        // Less than 1M
+        // Less than 1Mb
         else {
             progressPercentDisplayIncrement = 25;
         }

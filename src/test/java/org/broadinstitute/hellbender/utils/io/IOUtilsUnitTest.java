@@ -45,9 +45,13 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
     }
 
     private void assertContentsTheSame(final Path baseActualPath, final Path baseExpectedPath) {
+
         try {
+            // First get the number of expected entries in the path:
+            final long expectedNumFiles = Files.walk(baseExpectedPath).count();
+
             // Check that the files and directories are the same:
-            Files.find(baseActualPath, Integer.MAX_VALUE,
+            final long actualNumFiles = Files.find(baseActualPath, Integer.MAX_VALUE,
                     (actualPath, fileAttributes) -> {
 
                         // First check that the corresponding file exists in our expected unzipped archive:
@@ -73,7 +77,10 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
 
                         return true;
                     }
-            );
+            ).count();
+
+            // Make sure the same number of files exists in both entries:
+            Assert.assertEquals(actualNumFiles, expectedNumFiles);
         }
         catch (final IOException ex) {
             throw new GATKException("Could not verify identical contents of test directories!");
@@ -96,7 +103,6 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
         // Prepare our output directory:
         if ( destDir == null ) {
             final File tmpDir = createTempDir("IOUtilsUnitTest_testExtractTarGz");
-            tmpDir.deleteOnExit();
             final Path tmpDirPath            = tmpDir.toPath();
             outputDataSourcesPath = tmpDirPath.resolve(IOUtils.getPath(FuncotatorTestConstants.DUMMY_DATA_SOURCES_TAR_GZ).getFileName());
 
@@ -131,11 +137,10 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
     }
 
     @Test(expectedExceptions = UserException.class)
-    public void testExtractTarGzThrowsException() {
+    public void testExtractTarGzThrowsExceptionOnExistingOutput() {
 
         // Prepare our output directory:
         final File tmpDir = createTempDir("IOUtilsUnitTest_testExtractTarGz");
-        tmpDir.deleteOnExit();
         final Path tmpDirPath            = tmpDir.toPath();
         final Path outputDataSourcesPath = tmpDirPath.resolve(IOUtils.getPath(FuncotatorTestConstants.DUMMY_DATA_SOURCES_TAR_GZ).getFileName());
 
@@ -159,7 +164,6 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
 
         // Prepare our output directory:
         final File tmpDir = createTempDir("IOUtilsUnitTest_testExtractTarGz");
-        tmpDir.deleteOnExit();
         final Path tmpDirPath            = tmpDir.toPath();
         final Path outputDataSourcesPath = tmpDirPath.resolve(IOUtils.getPath(FuncotatorTestConstants.DUMMY_DATA_SOURCES_TAR_GZ).getFileName());
 
@@ -197,12 +201,11 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
 
         // Create an output location for the test files to go:
         final File tmpDir = createTempDir("IOUtilsUnitTest_testCreateFifoFile");
-        tmpDir.deleteOnExit();
         final Path tmpDirPath = tmpDir.toPath();
 
         // Create a FIFO file:
         final Path fifoFilePath = tmpDirPath.resolve(IOUtils.getPath("FIFOFILE"));
-        IOUtils.createFifoFile( tmpDirPath.resolve(fifoFilePath) );
+        IOUtils.createFifoFile( fifoFilePath);
 
         // Verify the FIFO file exists and is a FIFO file:
         Assert.assertTrue( Files.exists(fifoFilePath) );
@@ -214,7 +217,7 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
         }
 
         // Create the same FIFO file again and overwrite it:
-        IOUtils.createFifoFile( tmpDirPath.resolve(fifoFilePath), true );
+        IOUtils.createFifoFile( fifoFilePath, true );
 
         // Verify the FIFO file exists and is a FIFO file:
         Assert.assertTrue( Files.exists(fifoFilePath) );
@@ -234,7 +237,7 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
 
         // Create a FIFO file:
         final Path fifoFilePath = tmpDirPath.resolve(IOUtils.getPath("FIFOFILE"));
-        IOUtils.createFifoFile( tmpDirPath.resolve(fifoFilePath) );
+        IOUtils.createFifoFile( fifoFilePath );
 
         // Verify the FIFO file exists and is a FIFO file:
         Assert.assertTrue( Files.exists(fifoFilePath) );
@@ -247,7 +250,7 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
 
         // Create the same FIFO file again and overwrite it:
         // This will throw:
-        IOUtils.createFifoFile( tmpDirPath.resolve(fifoFilePath) );
+        IOUtils.createFifoFile( fifoFilePath );
     }
 
     @Test

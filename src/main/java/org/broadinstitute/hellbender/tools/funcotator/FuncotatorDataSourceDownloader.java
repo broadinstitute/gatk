@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.codec.digest.MessageDigestAlgorithms;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -53,12 +54,16 @@ public class FuncotatorDataSourceDownloader extends CommandLineProgram {
     private static String BASE_URL = "gs://broad-public-datasets/funcotator/funcotator_dataSources.v1.4.20180829";
 
     private static String GERMLINE_GCLOUD_DATASOURCES_BASEURL     = BASE_URL + "g";
-    private static Path   GERMLINE_GCLOUD_DATASOURCES_PATH        = IOUtils.getPath(GERMLINE_GCLOUD_DATASOURCES_BASEURL + ".tar.gz");
-    private static Path   GERMLINE_GCLOUD_DATASOURCES_SHA256_PATH = IOUtils.getPath(GERMLINE_GCLOUD_DATASOURCES_BASEURL + ".sha256");
+    @VisibleForTesting
+    static Path   GERMLINE_GCLOUD_DATASOURCES_PATH        = IOUtils.getPath(GERMLINE_GCLOUD_DATASOURCES_BASEURL + ".tar.gz");
+    @VisibleForTesting
+    static Path   GERMLINE_GCLOUD_DATASOURCES_SHA256_PATH = IOUtils.getPath(GERMLINE_GCLOUD_DATASOURCES_BASEURL + ".sha256");
 
     private static String SOMATIC_GCLOUD_DATASOURCES_BASEURL     = BASE_URL + "s";
-    private static Path   SOMATIC_GCLOUD_DATASOURCES_PATH        = IOUtils.getPath(SOMATIC_GCLOUD_DATASOURCES_BASEURL + ".tar.gz");
-    private static Path   SOMATIC_GCLOUD_DATASOURCES_SHA256_PATH = IOUtils.getPath(SOMATIC_GCLOUD_DATASOURCES_BASEURL + ".sha256");
+    @VisibleForTesting
+    static Path   SOMATIC_GCLOUD_DATASOURCES_PATH        = IOUtils.getPath(SOMATIC_GCLOUD_DATASOURCES_BASEURL + ".tar.gz");
+    @VisibleForTesting
+    static Path   SOMATIC_GCLOUD_DATASOURCES_SHA256_PATH = IOUtils.getPath(SOMATIC_GCLOUD_DATASOURCES_BASEURL + ".sha256");
 
     //==================================================================================================================
     // Private Members:
