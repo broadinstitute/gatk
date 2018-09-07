@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.runtime;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.io.Files;
 import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.LogManager;
@@ -40,11 +41,16 @@ public final class StreamingProcessController extends ProcessControllerBase<Capt
     // These strings must be kept in sync with the ones used in the Python package
     public static String ACK_MESSAGE = "ack";
     public static String NCK_MESSAGE = "nck";
-    private static int ACK_MESSAGE_SIZE = 3; // "ack" or "nck"
-    private static String ACK_LOG_MESSAGE = "Ack received\n\n";
-    private static String NCK_LOG_MESSAGE = "Nck received\n\n";
+    public static String NCK_WITH_MESSAGE_MESSAGE = "nkm";
+    private static int ACK_MESSAGE_SIZE = 3; // "ack", "nck", or "nkm"
+
+    private static int NCK_WITH_MESSAGE_MESSAGE_LEN_SIZE = 4; // length of serialized message size
+
+    @VisibleForTesting
+    static int NCK_WITH_MESSAGE_MAX_MESSAGE_LENGTH = 9999; // we cap messages at the max length represented in 4 decimal digits
+
     private InputStream ackFIFOInputStream;
-    private Future<Boolean> ackFuture;
+    private Future<ProcessControllerAckResult> ackFuture;
 
     // keep an optional journal of all IPC; disabled/no-op by default
     private ProcessJournal processJournal = new ProcessJournal();
@@ -203,24 +209,27 @@ public final class StreamingProcessController extends ProcessControllerBase<Capt
      * @return true if an positive acknowledgement (ACK) was received, false if a negative acknowledgement (NCK)
      * was received
      */
-    public boolean waitForAck() {
+    public ProcessControllerAckResult waitForAck() {
         if (ackFuture != null) {
-            throw new GATKException("An ack is already outstanding");
+            throw new GATKException("An ack request is already outstanding");
         }
         ackFuture = executorService.submit(
                 () -> {
                     try {
-                        byte[] ack = new byte[ACK_MESSAGE_SIZE];
+                        final byte[] ack = new byte[ACK_MESSAGE_SIZE];
                         int nBytes = ackFIFOInputStream.read(ack, 0, ACK_MESSAGE_SIZE);
-                        if (nBytes != ACK_MESSAGE_SIZE) {
+                        if (nBytes < ACK_MESSAGE_SIZE) {
                             throw new GATKException(String.format("Failure reading ack message from ack fifo, ret: (%d)", nBytes));
-                        } else if (Arrays.equals(ack, NCK_MESSAGE.getBytes())) {
-                            return false;
                         } else if (Arrays.equals(ack, ACK_MESSAGE.getBytes())) {
-                            return true;
+                            return new ProcessControllerAckResult(true);
+                        } else if (Arrays.equals(ack, NCK_MESSAGE.getBytes())) {
+                            return new ProcessControllerAckResult(false);
+                        } else if (Arrays.equals(ack, NCK_WITH_MESSAGE_MESSAGE.getBytes())) {
+                            return getNckWithMessageResult();
                         } else {
-                            logger.error("Unrecognized string written to ack fifo");
-                            return false;
+                            final String badAckMessage = "An unrecognized ack string message was written to ack fifo";
+                            logger.error(badAckMessage);
+                            return new ProcessControllerAckResult(false, badAckMessage);
                         }
                     } catch (IOException e) {
                         throw new GATKException("IOException reading from ack fifo", e);
@@ -230,13 +239,48 @@ public final class StreamingProcessController extends ProcessControllerBase<Capt
 
         try {
             // blocking call to wait for the ack
-            boolean isAck = ackFuture.get();
-            processJournal.writeLogMessage(isAck ? ACK_LOG_MESSAGE : NCK_LOG_MESSAGE);
+            final ProcessControllerAckResult pcAck = ackFuture.get();
+            processJournal.writeLogMessage(pcAck.getDisplayMessage());
             ackFuture = null;
-            return isAck;
+            return pcAck;
         } catch (InterruptedException | ExecutionException e) {
             throw new GATKException("Exception waiting for ack from Python: " + e.getMessage(), e);
         }
+    }
+
+    // Retrieve a nkm message from the input stream and package it up as a ProcessControllerAckResult
+    private ProcessControllerAckResult getNckWithMessageResult() throws IOException {
+        // look for a 4 byte long string with a 4 byte decimal integer with a value < 9999
+        final byte[] nckMessageLengthBuffer = new byte[NCK_WITH_MESSAGE_MESSAGE_LEN_SIZE];
+        final int nMessageLengthBytes = ackFIFOInputStream.read(nckMessageLengthBuffer, 0, NCK_WITH_MESSAGE_MESSAGE_LEN_SIZE);
+        if (nMessageLengthBytes < NCK_WITH_MESSAGE_MESSAGE_LEN_SIZE) {
+            throw new GATKException(String.format("Nck message length value must be %d bytes", NCK_WITH_MESSAGE_MESSAGE_LEN_SIZE));
+        }
+
+        final int expectedNckMessageLength = Integer.valueOf(new String(nckMessageLengthBuffer));
+        if (expectedNckMessageLength < 0) {
+            throw new GATKException("Negative ack message length  must be > 0");
+        }
+
+        final String nckMessage = getNckMessage(expectedNckMessageLength);
+        return new ProcessControllerAckResult(false, nckMessage);
+    }
+
+    // Given the expected message length, retrieve the entire message from the input stream.
+    private String getNckMessage(int expectedNckMessageLength) throws IOException {
+        int nBytesReceived = 0;
+        final StringBuilder sb = new StringBuilder();
+        while (nBytesReceived < expectedNckMessageLength) {
+            final byte[] nckMessage = new byte[expectedNckMessageLength];
+            int readLen = ackFIFOInputStream.read(nckMessage, 0, expectedNckMessageLength);
+            sb.append(new String(nckMessage, 0, readLen));
+            nBytesReceived += readLen;
+        }
+        if (nBytesReceived != expectedNckMessageLength) {
+            throw new GATKException(
+                    String.format("Expected message of length %d but found %d", expectedNckMessageLength, nBytesReceived));
+        }
+        return sb.toString();
     }
 
     /**
