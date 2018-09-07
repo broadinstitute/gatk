@@ -190,14 +190,6 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
     }
 
     @Test
-    public void test() {
-        final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addOutput(createTempFile("output","bam"));
-        args.addInput(new File("/Users/emeryj/hellbender/gatk/compareDuplicates/picarddiffs.sam"));
-        runCommandLine(args);
-    }
-
-    @Test
     public void testHashCollisionHandling() {
         // This test asserts that the handling of two read pairs with the same start positions but on different in such a way
         // that they might cause hash collisions are handled properly.

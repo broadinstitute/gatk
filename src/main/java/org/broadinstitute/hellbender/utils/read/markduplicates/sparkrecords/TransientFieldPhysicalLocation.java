@@ -36,12 +36,14 @@ public abstract class TransientFieldPhysicalLocation extends PairedEnds implemen
     @Override
     public int getX() { return this.x; }
 
+    // NOTE picard in practice compresses the pixel values to signed shorts for space purposes despite the api using an integer
     @Override
     public void setX(final int x) { this.x = (short)x; }
 
     @Override
     public int getY() { return this.y; }
 
+    // NOTE picard in practice compresses the pixel values to signed shorts for space purposes despite the api using an integer
     @Override
     public void setY(final int y) { this.y = (short)y; }
 
