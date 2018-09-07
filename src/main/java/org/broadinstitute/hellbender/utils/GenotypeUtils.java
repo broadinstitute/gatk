@@ -62,14 +62,14 @@ public final class GenotypeUtils {
                 final Allele a1 = g.getAllele(0);
                 final Allele a2 = g.getAllele(1);
                 if (a2.isNonReference()) {
-                    final int[] idxVector = vc.getGLIndecesOfAlternateAllele(a2);
+                    final int[] idxVector = vc.getGLIndicesOfAlternateAllele(a2);
                     idxAA = idxVector[0];
                     idxAB = idxVector[1];
                     idxBB = idxVector[2];
                 }
                 //I expect hets to be reference first, but there are no guarantees (e.g. phasing)
                 else if (a1.isNonReference()) {
-                    final int[] idxVector = vc.getGLIndecesOfAlternateAllele(a1);
+                    final int[] idxVector = vc.getGLIndicesOfAlternateAllele(a1);
                     idxAA = idxVector[0];
                     idxAB = idxVector[1];
                     idxBB = idxVector[2];
