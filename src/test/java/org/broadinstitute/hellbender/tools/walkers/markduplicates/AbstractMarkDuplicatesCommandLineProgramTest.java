@@ -156,67 +156,6 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
         tester.runTest();
     }
 
-    @DataProvider
-    public Object[][] readNameData(){
-        return new Object[][]{
-                {"RUNID:7:1203:2886:82292", "RUNID:7:1205:3886:16834"},
-
-                {"RUNID:7:1203:2886:16756", "RUNID:7:1205:3886:16756"},
-                {"RUNID:7:1204:2886:16756", "RUNID:7:1205:3886:16756"},
-                {"RUNID:7:1205:2886:16756", "RUNID:7:1205:3886:16756"},
-                {"RUNID:7:1206:2886:16756", "RUNID:7:1205:3886:16756"},
-                {"RUNID:7:1207:2886:16756", "RUNID:7:1205:3886:16756"},
-
-                {"RUNID:7:1203:2886:16756", "RUNID:7:1203:4886:26756"},
-                {"RUNID:7:1203:3886:16756", "RUNID:7:1203:4886:26756"},
-                {"RUNID:7:1203:4886:16756", "RUNID:7:1203:4886:26756"},
-                {"RUNID:7:1203:5886:16756", "RUNID:7:1203:4886:26756"},
-                {"RUNID:7:1203:6886:16756", "RUNID:7:1203:4886:26756"},
-
-                {"RUNID:7:1203:2886:34756", "RUNID:7:1203:2886:36756"},
-                {"RUNID:7:1203:2886:35756", "RUNID:7:1203:2886:36756"},
-                {"RUNID:7:1203:2886:37756", "RUNID:7:1203:2886:36756"},
-                {"RUNID:7:1203:2886:38756", "RUNID:7:1203:2886:36756"},
-
-                //Added a test for tiebreaking accounting for the short casting done in picard
-                {"HK3T5CCXX160204:3:1112:11586:37067", "HK3T5CCXX160204:3:1112:11586:32144"}
-        };
-    }
-
-    @Test(dataProvider = "readNameData")
-    public void testOpticalDuplicateClusterSamePositionNoOpticalDuplicates(final String readName1, final String readName2) {
-        // This tests the readname based tiebreaking code in mark duplicates. Since it's ambiguous which read should be marked
-        // as duplicate or not if scores match we break ties by evaluating the readname for consistencies sake.
-
-        final ReadNameParser parser = new ReadNameParser();
-
-        final PhysicalLocationInt position1 = new PhysicalLocationInt();
-        final PhysicalLocationInt position2 = new PhysicalLocationInt();
-
-        parser.addLocationInformation(readName1, position1);
-        parser.addLocationInformation(readName2, position2);
-
-        final AbstractMarkDuplicatesTester tester = getTester();
-        tester.getSamRecordSetBuilder().setReadLength(101);
-        tester.setExpectedOpticalDuplicate(0);
-
-        int compare = position1.tile - position2.tile;
-        if (compare == 0) {
-            compare = (short)position1.x - (short)position2.x;
-        }
-
-        if (compare == 0) {
-            compare = (short)position1.y - (short)position2.y;
-        }
-
-        final boolean isDuplicate = compare < 0;
-
-        tester.addMatePair(readName1, 1,485253, 485253, false, false, !isDuplicate, !isDuplicate, "42M59S", "59S42M", false, true, false, false, false, DEFAULT_BASE_QUALITY);
-        tester.addMatePair(readName2, 1,485253, 485253, false, false, isDuplicate, isDuplicate, "59S42M", "42M59S", true, false, false, false, false, DEFAULT_BASE_QUALITY);
-
-        tester.runTest();
-    }
-
     @Test
     public void testOpticalDuplicatesDifferentReadGroups() {
         final AbstractMarkDuplicatesTester tester = getTester();
