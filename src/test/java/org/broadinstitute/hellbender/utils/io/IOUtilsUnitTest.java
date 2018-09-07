@@ -58,7 +58,13 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
             final List<String> actualFiles = getSortedRecursiveDirectoryContentsFileNames(baseActualPath);
 
             // Make sure the list of output files is what we expect:
-            Assert.assertEquals(actualFiles, expectedFiles);
+            if (!actualFiles.equals(expectedFiles)) {
+                final String actualFilesString = actualFiles.stream().collect(Collectors.joining(","));
+                final String expectedFilesString = expectedFiles.stream().collect(Collectors.joining(","));
+
+                // Duplicating a little work here for a good error message:
+                Assert.assertEquals(actualFiles, expectedFiles, "Actual file list differs from expected file list: ACTUAL=[" + actualFilesString + "] , EXPECTED=[" + expectedFilesString + "]");
+            }
 
             // Check that the files and directories are the same:
             Files.find(baseActualPath, Integer.MAX_VALUE,
