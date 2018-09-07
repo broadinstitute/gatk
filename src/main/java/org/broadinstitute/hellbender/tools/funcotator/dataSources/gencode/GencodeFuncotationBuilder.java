@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.tribble.annotation.Strand;
 import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -22,7 +23,8 @@ public class GencodeFuncotationBuilder {
     /**
      * The {@link GencodeFuncotation} that is being populated by this {@link GencodeFuncotationBuilder}.
      */
-    private GencodeFuncotation gencodeFuncotation;
+    @VisibleForTesting
+    GencodeFuncotation gencodeFuncotation;
 
     //==================================================================================================================
 

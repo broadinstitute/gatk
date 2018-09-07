@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode;
 
 import htsjdk.tribble.annotation.Strand;
+import org.broadinstitute.hellbender.tools.funcotator.FuncotatorTestConstants;
 import org.broadinstitute.hellbender.utils.codecs.gencode.*;
 
 import java.util.Collections;
@@ -305,44 +306,44 @@ public class DataProviderForExampleGencodeGtfGene {
         // Here we'll set the version number of each feature.
         // Normally this is set in the decode method, so we need to do it manually.
 
-        gene.setUcscGenomeVersion("hg38");
+        gene.setUcscGenomeVersion(FuncotatorTestConstants.REFERENCE_VERSION_HG38);
 
-        transcript1.setUcscGenomeVersion("hg38");
-        exon1.setUcscGenomeVersion("hg38");
-        exon2.setUcscGenomeVersion("hg38");
-        exon3.setUcscGenomeVersion("hg38");
-        exon4.setUcscGenomeVersion("hg38");
-        exon5.setUcscGenomeVersion("hg38");
-        cds1.setUcscGenomeVersion("hg38");
-        cds2.setUcscGenomeVersion("hg38");
-        cds3.setUcscGenomeVersion("hg38");
-        startCodon1.setUcscGenomeVersion("hg38");
-        stopCodon1.setUcscGenomeVersion("hg38");
-        utr1.setUcscGenomeVersion("hg38");
-        utr2.setUcscGenomeVersion("hg38");
+        transcript1.setUcscGenomeVersion(FuncotatorTestConstants.REFERENCE_VERSION_HG38);
+        exon1.setUcscGenomeVersion(FuncotatorTestConstants.REFERENCE_VERSION_HG38);
+        exon2.setUcscGenomeVersion(FuncotatorTestConstants.REFERENCE_VERSION_HG38);
+        exon3.setUcscGenomeVersion(FuncotatorTestConstants.REFERENCE_VERSION_HG38);
+        exon4.setUcscGenomeVersion(FuncotatorTestConstants.REFERENCE_VERSION_HG38);
+        exon5.setUcscGenomeVersion(FuncotatorTestConstants.REFERENCE_VERSION_HG38);
+        cds1.setUcscGenomeVersion(FuncotatorTestConstants.REFERENCE_VERSION_HG38);
+        cds2.setUcscGenomeVersion(FuncotatorTestConstants.REFERENCE_VERSION_HG38);
+        cds3.setUcscGenomeVersion(FuncotatorTestConstants.REFERENCE_VERSION_HG38);
+        startCodon1.setUcscGenomeVersion(FuncotatorTestConstants.REFERENCE_VERSION_HG38);
+        stopCodon1.setUcscGenomeVersion(FuncotatorTestConstants.REFERENCE_VERSION_HG38);
+        utr1.setUcscGenomeVersion(FuncotatorTestConstants.REFERENCE_VERSION_HG38);
+        utr2.setUcscGenomeVersion(FuncotatorTestConstants.REFERENCE_VERSION_HG38);
 
-        transcript1.setUcscGenomeVersion("hg38");
-        exon6.setUcscGenomeVersion("hg38");
-        exon7.setUcscGenomeVersion("hg38");
-        exon8.setUcscGenomeVersion("hg38");
-        exon9.setUcscGenomeVersion("hg38");
-        exon10.setUcscGenomeVersion("hg38");
-        cds4.setUcscGenomeVersion("hg38");
-        cds5.setUcscGenomeVersion("hg38");
-        cds6.setUcscGenomeVersion("hg38");
-        cds7.setUcscGenomeVersion("hg38");
-        cds8.setUcscGenomeVersion("hg38");
-        startCodon2.setUcscGenomeVersion("hg38");
-        stopCodon2.setUcscGenomeVersion("hg38");
-        utr3.setUcscGenomeVersion("hg38");
-        utr4.setUcscGenomeVersion("hg38");
+        transcript1.setUcscGenomeVersion(FuncotatorTestConstants.REFERENCE_VERSION_HG38);
+        exon6.setUcscGenomeVersion(FuncotatorTestConstants.REFERENCE_VERSION_HG38);
+        exon7.setUcscGenomeVersion(FuncotatorTestConstants.REFERENCE_VERSION_HG38);
+        exon8.setUcscGenomeVersion(FuncotatorTestConstants.REFERENCE_VERSION_HG38);
+        exon9.setUcscGenomeVersion(FuncotatorTestConstants.REFERENCE_VERSION_HG38);
+        exon10.setUcscGenomeVersion(FuncotatorTestConstants.REFERENCE_VERSION_HG38);
+        cds4.setUcscGenomeVersion(FuncotatorTestConstants.REFERENCE_VERSION_HG38);
+        cds5.setUcscGenomeVersion(FuncotatorTestConstants.REFERENCE_VERSION_HG38);
+        cds6.setUcscGenomeVersion(FuncotatorTestConstants.REFERENCE_VERSION_HG38);
+        cds7.setUcscGenomeVersion(FuncotatorTestConstants.REFERENCE_VERSION_HG38);
+        cds8.setUcscGenomeVersion(FuncotatorTestConstants.REFERENCE_VERSION_HG38);
+        startCodon2.setUcscGenomeVersion(FuncotatorTestConstants.REFERENCE_VERSION_HG38);
+        stopCodon2.setUcscGenomeVersion(FuncotatorTestConstants.REFERENCE_VERSION_HG38);
+        utr3.setUcscGenomeVersion(FuncotatorTestConstants.REFERENCE_VERSION_HG38);
+        utr4.setUcscGenomeVersion(FuncotatorTestConstants.REFERENCE_VERSION_HG38);
 
-        transcript3.setUcscGenomeVersion("hg38");
-        exon11.setUcscGenomeVersion("hg38");
-        exon12.setUcscGenomeVersion("hg38");
-        exon13.setUcscGenomeVersion("hg38");
-        exon14.setUcscGenomeVersion("hg38");
-        exon15.setUcscGenomeVersion("hg38");
+        transcript3.setUcscGenomeVersion(FuncotatorTestConstants.REFERENCE_VERSION_HG38);
+        exon11.setUcscGenomeVersion(FuncotatorTestConstants.REFERENCE_VERSION_HG38);
+        exon12.setUcscGenomeVersion(FuncotatorTestConstants.REFERENCE_VERSION_HG38);
+        exon13.setUcscGenomeVersion(FuncotatorTestConstants.REFERENCE_VERSION_HG38);
+        exon14.setUcscGenomeVersion(FuncotatorTestConstants.REFERENCE_VERSION_HG38);
+        exon15.setUcscGenomeVersion(FuncotatorTestConstants.REFERENCE_VERSION_HG38);
 
         // ======================
 

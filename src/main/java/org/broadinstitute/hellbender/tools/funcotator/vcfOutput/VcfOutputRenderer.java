@@ -258,9 +258,8 @@ public class VcfOutputRenderer extends OutputRenderer {
                 //    Increment the End_Position by M-1 where M = length(ref_allele) (end position should be inclusive of the last base deleted)
                 outFuncotation.setRefAllele(gencodeFuncotation.getRefAllele().substring(altAlleleLength));
                 outFuncotation.setTumorSeqAllele2("-");
-//                outputMap.put(MafOutputRendererConstants.FieldName_Tumor_Seq_Allele2, MafOutputRendererConstants.EmptyAllele);
                 outFuncotation.setStart(gencodeFuncotation.getStart() + 1);
-                outFuncotation.setEnd(gencodeFuncotation.getEnd() + refAlleleLength - 1);
+                outFuncotation.setEnd(gencodeFuncotation.getStart() + refAlleleLength - 1);
             }
         }
 

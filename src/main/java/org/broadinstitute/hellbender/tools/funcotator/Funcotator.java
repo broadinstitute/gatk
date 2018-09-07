@@ -11,10 +11,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.*;
-import org.broadinstitute.hellbender.engine.filters.VariantFilter;
 import org.broadinstitute.hellbender.engine.filters.CountingVariantFilter;
-import org.broadinstitute.hellbender.engine.filters.VariantFilterLibrary;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.DataSourceUtils;
 import org.broadinstitute.hellbender.tools.funcotator.metadata.VcfFuncotationMetadata;
@@ -171,7 +168,7 @@ import java.util.*;
  * <h3>Notes</h3>
  * <ul>
  *     <li>This is a beta tool, and as such may generate errors or warnings.</li>
- *     <li>This tool is the GATK analog of <a href="http://portals.broadinstitute.org/oncotator/">Oncotator</a>.</li>
+ *     <li>This tool is the successor to <a href="http://portals.broadinstitute.org/oncotator/">Oncotator</a>, with better support for germline data.</li>
  * </ul>
  *
  * <h3>Known Issues</h3>
@@ -342,6 +339,23 @@ public class Funcotator extends VariantWalker {
 
     @Override
     public Object onTraversalSuccess() {
+
+        // If we only saw IGRs, we most likely have a configuration issue.
+        // Make sure the user knows this by making a HUGE stink about it.
+        if ( funcotatorEngine.onlyProducedIGRs() ) {
+            logger.warn("================================================================================");
+            logger.warn("\u001B[43m     _  _  _   __        __               _                   _  _  _           ");
+            logger.warn("    | || || |  \\ \\      / /_ _ _ __ _ __ (_)_ __   __ _      | || || |        ");
+            logger.warn("    | || || |   \\ \\ /\\ / / _` | '__| '_ \\| | '_ \\ / _` |     | || || |     ");
+            logger.warn("    |_||_||_|    \\ \\V V / (_| | |  | | | | | | | | (_| |     |_||_||_|        ");
+            logger.warn("    (_)(_)(_)     \\_/\\_/ \\__,_|_|  |_| |_|_|_| |_|\\__, |     (_)(_)(_)      ");
+            logger.warn("                                                  |___/                         \u001B[0;0m");
+            logger.warn("--------------------------------------------------------------------------------");
+            logger.warn(" Only IGRs were produced for this dataset.  This STRONGLY indicates that this   ");
+            logger.warn(" run was misconfigured.     ");
+            logger.warn(" You MUST check your data sources to make sure they are correct for these data.");
+            logger.warn("================================================================================");
+        }
         return true;
     }
 
@@ -354,6 +368,7 @@ public class Funcotator extends VariantWalker {
         if ( outputRenderer != null ) {
             outputRenderer.close();
         }
+
     }
 
     //==================================================================================================================

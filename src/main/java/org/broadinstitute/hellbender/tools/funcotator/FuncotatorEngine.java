@@ -70,6 +70,12 @@ public final class FuncotatorEngine implements AutoCloseable {
     private final boolean mustConvertInputContigsToHg19;
 
     /**
+     * Whether this {@link FuncotatorEngine} has only produced annotations on variants that have been labeled by the
+     * {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationFactory} as {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification#IGR}.
+     */
+    private boolean onlyProducedIGRs = true;
+
+    /**
      * Create a {@link FuncotatorEngine} using the given {@code metadata} and {@code funcotationFactories} representing
      * the kinds of {@link Funcotation}s to be created and the data sources from which they should be created,
      * respectively.
@@ -129,7 +135,15 @@ public final class FuncotatorEngine implements AutoCloseable {
         final List<GencodeFuncotation> transcriptFuncotations = retrieveGencodeFuncotationFactoryStream()
                 .map(gf -> gf.createFuncotations(variantContext, referenceContext, featureContext))
                 .flatMap(List::stream)
-                .map(gf -> (GencodeFuncotation) gf).collect(Collectors.toList());
+                .map(f -> {
+                        final GencodeFuncotation gf = (GencodeFuncotation) f;
+                        if (onlyProducedIGRs && (gf.getVariantClassification() != GencodeFuncotation.VariantClassification.IGR)) {
+                            onlyProducedIGRs = false;
+                        }
+                        return gf;
+                    }
+                )
+                .collect(Collectors.toList());
 
         //==============================================================================================================
         // Create the funcotations for non-Gencode data sources:
@@ -320,6 +334,15 @@ public final class FuncotatorEngine implements AutoCloseable {
         }
 
         return correctReferenceContext;
+    }
+
+    /**
+     * Returns whether this {@link FuncotatorEngine} has only produced annotations on variants that have been labeled by the
+     * {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationFactory} as {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification#IGR}.
+     * @return {@code true} IFF this {@link FuncotatorEngine} has only produced IGR annotations.
+     */
+    public boolean onlyProducedIGRs() {
+        return onlyProducedIGRs;
     }
 
     // =================================================================================================================

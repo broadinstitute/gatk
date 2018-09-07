@@ -5,7 +5,6 @@ import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
-import org.broadinstitute.hellbender.tools.funcotator.FuncotatorUtils;
 import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetadata;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
 import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfFeature;
@@ -180,40 +179,6 @@ public class GencodeFuncotation implements Funcotation {
         return Allele.create(tumorSeqAllele2.getBytes(), false);
     }
 
-    public String serializeToVcfString() {
-        // Alias for the FIELD_DELIMITER so we can have nicer looking code:
-        final String DELIMITER = VcfOutputRenderer.FIELD_DELIMITER;
-        //TODO See issue https://github.com/broadinstitute/gatk/issues/4797
-
-        // After the manual string, we check to see if we have an override first and if not we get the set field value:
-        final List<String> funcotations = Arrays.asList((hugoSymbolSerializedOverride != null ? hugoSymbolSerializedOverride : (hugoSymbol != null ? hugoSymbol : "")),
-                (ncbiBuildSerializedOverride != null ? ncbiBuildSerializedOverride : (ncbiBuild != null ? ncbiBuild : "")),
-                (chromosomeSerializedOverride != null ? chromosomeSerializedOverride : (chromosome != null ? chromosome : "")),
-                (startSerializedOverride != null ? startSerializedOverride : String.valueOf(start)),
-                (endSerializedOverride != null ? endSerializedOverride : String.valueOf(end)),
-                (variantClassificationSerializedOverride != null ? variantClassificationSerializedOverride : (variantClassification != null ? variantClassification.toString() : "")),
-                (secondaryVariantClassificationSerializedOverride != null ? secondaryVariantClassificationSerializedOverride : (secondaryVariantClassification != null ? secondaryVariantClassification.toString() : "")),
-                (variantTypeSerializedOverride != null ? variantTypeSerializedOverride : (variantType != null ? variantType.toString() : "")),
-                (refAlleleSerializedOverride != null ? refAlleleSerializedOverride : (refAllele != null ? refAllele : "")),
-                // NOTE: Ref allele gets serialized as the tumorSeqAllele1 as well, but we have to account for the override:
-                (tumorSeqAllele1SerializedOverride != null ? tumorSeqAllele1SerializedOverride : (refAllele != null ? refAllele : "")),
-                (tumorSeqAllele2SerializedOverride != null ? tumorSeqAllele2SerializedOverride : (tumorSeqAllele2 != null ? tumorSeqAllele2 : "")),
-                (genomeChangeSerializedOverride != null ? genomeChangeSerializedOverride : (genomeChange != null ? genomeChange : "")),
-                (annotationTranscriptSerializedOverride != null ? annotationTranscriptSerializedOverride : (annotationTranscript != null ? annotationTranscript : "")),
-                (transcriptStrandSerializedOverride != null ? transcriptStrandSerializedOverride : (transcriptStrand != null ? transcriptStrand : "")),
-                (transcriptExonSerializedOverride != null ? transcriptExonSerializedOverride : (transcriptExon != null ? transcriptExon.toString() : "")),
-                (transcriptPosSerializedOverride != null ? transcriptPosSerializedOverride : (transcriptPos != null ? transcriptPos.toString() : "")),
-                (cDnaChangeSerializedOverride != null ? cDnaChangeSerializedOverride : (cDnaChange != null ? cDnaChange : "")),
-                (codonChangeSerializedOverride != null ? codonChangeSerializedOverride : (codonChange != null ? codonChange : "")),
-                (proteinChangeSerializedOverride != null ? proteinChangeSerializedOverride : (proteinChange != null ? proteinChange : "")),
-                (gcContentSerializedOverride != null ? gcContentSerializedOverride : (gcContent != null ? gcContent.toString() : "")),
-                (referenceContextSerializedOverride != null ? referenceContextSerializedOverride : (referenceContext != null ? referenceContext : "")),
-                (otherTranscriptsSerializedOverride != null ? otherTranscriptsSerializedOverride : (otherTranscripts != null ? otherTranscripts.stream().map(Object::toString).collect(Collectors.joining(VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER)) : ""))
-            );
-
-        return funcotations.stream().map(FuncotatorUtils::sanitizeFuncotationFieldForVcf).collect(Collectors.joining(DELIMITER));
-    }
-
     @Override
     public void setFieldSerializationOverrideValue( final String fieldName, final String overrideValue ) {
 
@@ -293,7 +258,7 @@ public class GencodeFuncotation implements Funcotation {
         if ( fieldNames.contains(fieldName) || fieldNames.contains(altFieldName) ) {
             switch(fieldName.replace(getDataSourceName() + "_" + version + "_", "")) {
                 case "hugoSymbol":
-                    return (hugoSymbolSerializedOverride != null ? hugoSymbolSerializedOverride : (hugoSymbol != null ? hugoSymbol : ""));
+                    return (hugoSymbolSerializedOverride != null ? hugoSymbolSerializedOverride : ((hugoSymbol == null) || hugoSymbol.isEmpty()) ? "Unknown" : hugoSymbol);
                 case "ncbiBuild":
                     return (ncbiBuildSerializedOverride != null ? ncbiBuildSerializedOverride : (ncbiBuild != null ? ncbiBuild : ""));
                 case "chromosome":
@@ -876,10 +841,21 @@ public class GencodeFuncotation implements Funcotation {
         /** Deletion that overlaps the start codon. */
         START_CODON_DEL("START_CODON_DEL", 3),
 
-        // These can only be in 5' UTRs:
-        /** New start codon is created by the given variant using the chosen transcript. However, it is in frame relative to the coded protein. */
+        /** New start codon is created by the given variant using the chosen transcript.
+         * However, it is in frame relative to the coded protein, meaning that if the coding sequence were extended
+         * (either before the start codon or after the stop codon) then the new start codon would be in frame with the
+         * existing start and stop codons.
+         *
+         * This can only occur in a 5' UTR.
+         */
         DE_NOVO_START_IN_FRAME("DE_NOVO_START_IN_FRAME", 1),
-        /** New start codon is created by the given variant using the chosen transcript. However, it is out of frame relative to the coded protein. */
+        /** New start codon is created by the given variant using the chosen transcript.
+         * However, it is out of frame relative to the coded protein, meaning that if the coding sequence were extended
+         * (either before the start codon or after the stop codon) then the new start codon would NOT be in frame with
+         * the existing start and stop codons.
+         *
+         * This can only occur in a 5' UTR.
+         */
         DE_NOVO_START_OUT_FRAME("DE_NOVO_START_OUT_FRAME", 0),
 
         // These are special / catch-all cases:

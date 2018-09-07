@@ -1,8 +1,6 @@
 package org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode;
 
 import com.google.common.collect.Sets;
-import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.CloseableTribbleIterator;
@@ -17,14 +15,13 @@ import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
-import org.broadinstitute.hellbender.engine.ReferenceMemorySource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.testutils.FuncotatorReferenceTestUtils;
 import org.broadinstitute.hellbender.tools.funcotator.*;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.codecs.gencode.*;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
+import org.broadinstitute.hellbender.utils.test.FuncotatorTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -52,9 +49,8 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 
     private static final double doubleEqualsEpsilon = 0.000001;
 
-    private static final FeatureReader<GencodeGtfFeature> muc16FeatureReader;
+    private static final FeatureReader<GencodeGtfFeature> gencodeFeatureReader;
     private static final FeatureReader<GencodeGtfFeature> muc16NonBasicFeatureReader;
-    private static final FeatureReader<GencodeGtfFeature> pik3caFeatureReader;
 
     private static final ReferenceDataSource refDataSourceHg19Ch19;
     private static final ReferenceDataSource refDataSourceHg19Ch3;
@@ -63,16 +59,15 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 
     // Initialization of static variables:
     static {
-        muc16NonBasicFeatureReader = AbstractFeatureReader.getFeatureReader(FuncotatorTestConstants.MUC16_GENCODE_NON_BASIC_ANNOTATIONS_FILE_NAME, new GencodeGtfCodec() );
-        muc16FeatureReader = AbstractFeatureReader.getFeatureReader(FuncotatorTestConstants.MUC16_GENCODE_ANNOTATIONS_FILE_NAME, new GencodeGtfCodec() );
-        pik3caFeatureReader = AbstractFeatureReader.getFeatureReader( FuncotatorTestConstants.PIK3CA_GENCODE_ANNOTATIONS_FILE_NAME, new GencodeGtfCodec() );
-        refDataSourceHg19Ch19 = ReferenceDataSource.of( IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref()) );
+        muc16NonBasicFeatureReader = AbstractFeatureReader.getFeatureReader(FuncotatorTestConstants.MUC16_GENCODE_NON_BASIC_ANNOTATIONS_FILE_NAME, new GencodeGtfCodec());
+        gencodeFeatureReader = AbstractFeatureReader.getFeatureReader(FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19, new GencodeGtfCodec());
+        refDataSourceHg19Ch19 = ReferenceDataSource.of(IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref()));
         refDataSourceHg19Ch3 = ReferenceDataSource.of( IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref()) );
 
         // Gets cleaned up in `cleanupAfterTests()`
         // NOTE: This is initialized here to save time in testing.
         testMuc16SnpCreateFuncotationsFuncotationFactory = new GencodeFuncotationFactory(
-                IOUtils.getPath(FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE),
+                IOUtils.getPath(FuncotatorTestConstants.GENCODE_TRANSCRIPT_FASTA_FILE_NAME),
                 "VERSION",
                 GencodeFuncotationFactory.DEFAULT_NAME,
                 FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE,
@@ -174,7 +169,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
             final Integer locusLevel,
             final GencodeFuncotation.VariantClassification variantClassification,
             final Integer transcriptLength
-            ) {
+    ) {
 
         final GencodeFuncotationBuilder builder = new GencodeFuncotationBuilder();
 
@@ -187,25 +182,111 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         return builder.build();
     }
 
-    private static ReferenceContext referenceHelperForTestCalculateGcContent(final String sequence,
-                                                                             final String contigName,
-                                                                             final int refStartPos,
-                                                                             final int refEndPos) {
-        // Create an in-memory ReferenceContext:
-        final SimpleInterval wholeReferenceInterval = new SimpleInterval( contigName, 1, sequence.length() );
-
-        return new ReferenceContext(
-                new ReferenceMemorySource(
-                        new ReferenceBases(sequence.getBytes(), wholeReferenceInterval),
-                        new SAMSequenceDictionary(
-                                Collections.singletonList(
-                                        new SAMSequenceRecord(contigName, sequence.length())
-                                )
-                        )
-                ),
-                new SimpleInterval( contigName, refStartPos, refEndPos )
-        );
+    private GencodeGtfFeatureBaseData createGtfBaseDataForTestIs5Prime(final SimpleInterval interval) {
+        return new GencodeGtfFeatureBaseData(
+                1,
+                interval.getContig(),
+                GencodeGtfFeature.AnnotationSource.ENSEMBL,
+                GencodeGtfFeature.FeatureType.GENE,
+                interval.getStart(),
+                interval.getEnd(),
+                Strand.POSITIVE,
+                GencodeGtfFeature.GenomicPhase.DOT,
+                "TEST-GENE-ID",
+                "TEST-TX-ID",
+                GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                GencodeGtfFeature.GeneTranscriptStatus.PUTATIVE,
+                "TEST-GENE",
+                GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                GencodeGtfFeature.GeneTranscriptStatus.PUTATIVE,
+                "TEST-TX",
+                1,
+                "",
+                GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null,
+                "");
     }
+
+    private GencodeGtfExonFeature helpCreateExonFeature(final SimpleInterval interval,
+                                                        final GencodeGtfStartCodonFeature startCodonFeature) {
+
+        final GencodeGtfFeatureBaseData baseData = createGtfBaseDataForTestIs5Prime(interval);
+        baseData.featureType = GencodeGtfFeature.FeatureType.EXON;
+        final GencodeGtfExonFeature exon = (GencodeGtfExonFeature)GencodeGtfExonFeature.create(baseData);
+
+        if ( startCodonFeature != null ) {
+            exon.setStartCodon(startCodonFeature);
+        }
+
+        return exon;
+    }
+
+    private GencodeGtfTranscriptFeature provideForTestIs5PrimeUtrTranscriptHelper(
+                                            final SimpleInterval interval,
+                                            final Strand strand,
+                                            final GencodeGtfStartCodonFeature startCodonFeature) {
+        //    All that is needed for the Transcript is:
+        //      Strand
+        //      Exons
+        //          start codon within an exon
+
+        final GencodeGtfFeatureBaseData baseData = createGtfBaseDataForTestIs5Prime(interval);
+        baseData.featureType = GencodeGtfFeature.FeatureType.TRANSCRIPT;
+        baseData.genomicStrand = strand;
+
+        final GencodeGtfTranscriptFeature transcriptFeature = (GencodeGtfTranscriptFeature) GencodeGtfTranscriptFeature.create(baseData);
+
+        if ( startCodonFeature == null ) {
+            // Always create a list of 3 exons:
+            final int NUM_EXONS = 3;
+
+            final int step = (interval.getEnd()-interval.getStart())/NUM_EXONS;
+            for (int i = interval.getStart() ; i < interval.getEnd() ; i += step ) {
+                transcriptFeature.addExon(
+                        helpCreateExonFeature(new SimpleInterval(interval.getContig(), i, i+step-1), null)
+                );
+            }
+        }
+        else {
+            // Create 2 exons - 1 to contain the start codon, the other to be a placeholder:
+            final int NUM_EXONS = 2;
+
+            boolean firstExon = true;
+            final int step = (interval.getEnd()-interval.getStart())/NUM_EXONS;
+            for (int i = interval.getStart() ; i < interval.getEnd() ; i += step ) {
+                GencodeGtfStartCodonFeature startCodonLoopFeature = null;
+                if (firstExon) {
+                    startCodonLoopFeature = startCodonFeature;
+                    firstExon = false;
+                }
+
+                transcriptFeature.addExon(
+                        helpCreateExonFeature(new SimpleInterval(interval.getContig(), i, i+step-1), startCodonLoopFeature)
+                );
+            }
+        }
+
+        return transcriptFeature;
+    }
+
+    private GencodeGtfUTRFeature provideForTestIs5PrimeUtrUTRHelper(final SimpleInterval interval) {
+        //    All that is needed for the UTR is:
+        //      start
+        //      end
+        final GencodeGtfFeatureBaseData baseData = createGtfBaseDataForTestIs5Prime(interval);
+        baseData.featureType = GencodeGtfFeature.FeatureType.UTR;
+        return (GencodeGtfUTRFeature) GencodeGtfUTRFeature.create(baseData);
+    }
+
+    private GencodeGtfStartCodonFeature provideForTestIs5PrimeUtrStartCodonHelper(final SimpleInterval interval) {
+        //    All that is needed for the StartCodon is:
+        //      start
+        //      end
+        final GencodeGtfFeatureBaseData baseData = createGtfBaseDataForTestIs5Prime(interval);
+        baseData.featureType = GencodeGtfFeature.FeatureType.START_CODON;
+        return (GencodeGtfStartCodonFeature)GencodeGtfStartCodonFeature.create(baseData);
+    }
+
 
     //==================================================================================================================
     // Data Providers:
@@ -375,26 +456,98 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         final List<Object[]> outList = new ArrayList<>();
 
         // MUC16 SNPs / DNPs:
-        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideMnpDataForMuc16_1(),       FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), muc16FeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE, FuncotatorTestConstants.MUC16_GENCODE_ANNOTATIONS_FILE_NAME ) );
-        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideMnpDataForMuc16_2(),       FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), muc16FeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE, FuncotatorTestConstants.MUC16_GENCODE_ANNOTATIONS_FILE_NAME  ) );
-        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideMnpDataForMuc16_3(),       FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), muc16FeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE, FuncotatorTestConstants.MUC16_GENCODE_ANNOTATIONS_FILE_NAME  ) );
-        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideMnpDataForMuc16_4(),       FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), muc16FeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE, FuncotatorTestConstants.MUC16_GENCODE_ANNOTATIONS_FILE_NAME  ) );
-        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideMnpDataForMuc16_5(),       FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), muc16FeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE, FuncotatorTestConstants.MUC16_GENCODE_ANNOTATIONS_FILE_NAME  ) );
-        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideEdgeCasesForMUC16Data_1(), FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), muc16FeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE, FuncotatorTestConstants.MUC16_GENCODE_ANNOTATIONS_FILE_NAME  ) );
+        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideMnpDataForMuc16_1(),       FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), gencodeFeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19 ) );
+        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideMnpDataForMuc16_2(),       FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), gencodeFeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19  ) );
+        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideMnpDataForMuc16_3(),       FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), gencodeFeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19  ) );
+        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideMnpDataForMuc16_4(),       FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), gencodeFeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19  ) );
+        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideMnpDataForMuc16_5(),       FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), gencodeFeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19  ) );
+        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideEdgeCasesForMUC16Data_1(), FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), gencodeFeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19  ) );
 
         // MUC16 INDELs:
-        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16IndelData.provideIndelDataForMuc16(), FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), muc16FeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE, FuncotatorTestConstants.MUC16_GENCODE_ANNOTATIONS_FILE_NAME ) );
+        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16IndelData.provideIndelDataForMuc16(), FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), gencodeFeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19 ) );
 
         // PIK3CA SNPs / DNPs:
-        outList.addAll( addReferenceDataToUnitTestData(DataProviderForPik3caTestData.providePik3caMnpData(), FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(), pik3caFeatureReader, refDataSourceHg19Ch3, FuncotatorTestConstants.PIK3CA_GENCODE_TRANSCRIPT_FASTA_FILE, FuncotatorTestConstants.PIK3CA_GENCODE_ANNOTATIONS_FILE_NAME ) );
+        outList.addAll( addReferenceDataToUnitTestData(DataProviderForPik3caTestData.providePik3caMnpData(), FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(), gencodeFeatureReader, refDataSourceHg19Ch3, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19 ) );
 
         // PIK3CA INDELs:
-        outList.addAll( addReferenceDataToUnitTestData(DataProviderForPik3caTestData.providePik3caInDelData(), FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(), pik3caFeatureReader, refDataSourceHg19Ch3, FuncotatorTestConstants.PIK3CA_GENCODE_TRANSCRIPT_FASTA_FILE, FuncotatorTestConstants.PIK3CA_GENCODE_ANNOTATIONS_FILE_NAME ) );
+        outList.addAll( addReferenceDataToUnitTestData(DataProviderForPik3caTestData.providePik3caInDelData(), FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(), gencodeFeatureReader, refDataSourceHg19Ch3, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19 ) );
 
         // PIK3CA Other Indels:
-        outList.addAll( addReferenceDataToUnitTestData(DataProviderForPik3caTestData.providePik3caInDelData2(), FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(), pik3caFeatureReader, refDataSourceHg19Ch3, FuncotatorTestConstants.PIK3CA_GENCODE_TRANSCRIPT_FASTA_FILE, FuncotatorTestConstants.PIK3CA_GENCODE_ANNOTATIONS_FILE_NAME ) );
+        outList.addAll( addReferenceDataToUnitTestData(DataProviderForPik3caTestData.providePik3caInDelData2(), FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(), gencodeFeatureReader, refDataSourceHg19Ch3, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19 ) );
 
         return outList.toArray(new Object[][]{{}});
+    }
+
+    @DataProvider
+    Object[][] provideForTestCreateGencodeFuncotationBuilderWithTrivialFieldsPopulated() {
+
+        //Line 1229 or so
+
+        // Just simple field checks are OK.
+        // Doesn't need to be fancy.
+
+//        final VariantContext variant,
+//        final Allele altAllele,
+//        final GencodeGtfGeneFeature gtfFeature,
+//        final GencodeGtfTranscriptFeature transcript
+
+        final SimpleInterval variantInterval =  new SimpleInterval("chr3", 178921515, 178921517);
+        final Allele refAllele = Allele.create("GCA", true);
+        final Allele altAllele = Allele.create("TTG");
+        final VariantContext variant = new VariantContextBuilder(
+                    FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(),
+                    variantInterval.getContig(),
+                    variantInterval.getStart(),
+                    variantInterval.getEnd(),
+                    Arrays.asList(refAllele, altAllele)
+                ).make();
+
+
+        final GencodeGtfGeneFeature gene = DataProviderForExampleGencodeGtfGene.createGencodeGtfGeneFeature();
+
+        return new Object[][] {
+                { variant, altAllele, gene, gene.getTranscripts().get(0) }
+        };
+    }
+
+    @DataProvider
+    Object[][] provideForTestIs5PrimeUtr() {
+
+        // Need:
+        //    Transcript:
+        //      Strand
+        //      Exons
+        //          start codon within an exon
+        //
+        //    StartCodon:
+        //      start
+        //      end
+        //
+        //    UTR:
+        //      start
+        //      end
+
+        final SimpleInterval transcriptInterval = new SimpleInterval("T", 1, 2000);
+
+        final GencodeGtfStartCodonFeature startCodonFeatureFront = provideForTestIs5PrimeUtrStartCodonHelper(new SimpleInterval("T", 500, 502));
+        final GencodeGtfStartCodonFeature startCodonFeatureBack = provideForTestIs5PrimeUtrStartCodonHelper(new SimpleInterval("T", 1498, 1500));
+
+        final GencodeGtfUTRFeature utr = provideForTestIs5PrimeUtrUTRHelper(new SimpleInterval("T", 750, 1250));
+
+        return new Object[][] {
+                // Strand +
+                    // Start Codon is Null
+                { utr, provideForTestIs5PrimeUtrTranscriptHelper(transcriptInterval, Strand.POSITIVE, null), false },
+                    // Start Codon non-null
+                { utr, provideForTestIs5PrimeUtrTranscriptHelper(transcriptInterval, Strand.POSITIVE, startCodonFeatureFront), false },
+                { utr, provideForTestIs5PrimeUtrTranscriptHelper(transcriptInterval, Strand.POSITIVE, startCodonFeatureBack), true },
+                // Strand -
+                    // Start Codon is Null
+                { utr, provideForTestIs5PrimeUtrTranscriptHelper(transcriptInterval, Strand.NEGATIVE, null), false },
+                    // Start Codon non-null
+                { utr, provideForTestIs5PrimeUtrTranscriptHelper(transcriptInterval, Strand.NEGATIVE, startCodonFeatureFront), true },
+                { utr, provideForTestIs5PrimeUtrTranscriptHelper(transcriptInterval, Strand.NEGATIVE, startCodonFeatureBack), false },
+        };
     }
 
     @DataProvider
@@ -807,213 +960,44 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 
         return new Object[][] {
                 // MNPs:
-                { Allele.create("A", true), Allele.create("G"), referenceHelperForTestCalculateGcContent(seq, contig,  1,  1),  1, 0.0 },
-                { Allele.create("A", true), Allele.create("G"), referenceHelperForTestCalculateGcContent(seq, contig,  1,  1),  9, 0.0 },
-                { Allele.create("A", true), Allele.create("G"), referenceHelperForTestCalculateGcContent(seq, contig,  1,  1), 10, 1.0/11.0 },
-                { Allele.create("C", true), Allele.create("G"), referenceHelperForTestCalculateGcContent(seq, contig,100,100),  1, 1 },
-                { Allele.create("C", true), Allele.create("G"), referenceHelperForTestCalculateGcContent(seq, contig,100,100),  9, 1 },
-                { Allele.create("C", true), Allele.create("G"), referenceHelperForTestCalculateGcContent(seq, contig,100,100), 10, 10.0/11.0 },
-                { Allele.create("T", true), Allele.create("G"), referenceHelperForTestCalculateGcContent(seq, contig, 50, 50),  1, 1.0/3.0 },
-                { Allele.create("T", true), Allele.create("G"), referenceHelperForTestCalculateGcContent(seq, contig, 50, 50),  9, 9.0/19.0 },
-                { Allele.create("T", true), Allele.create("G"), referenceHelperForTestCalculateGcContent(seq, contig, 50, 50), 10, 11.0/21.0 },
-                { Allele.create("T", true), Allele.create("G"), referenceHelperForTestCalculateGcContent(seq, contig, 50, 50), 50, 50.0/100.0 },
-                { Allele.create("AAAAA",  true), Allele.create("GGGGG"), referenceHelperForTestCalculateGcContent(seq, contig, 1,  5),   1, 0.0 },
-                { Allele.create("AAAAA",  true), Allele.create("GGGGG"), referenceHelperForTestCalculateGcContent(seq, contig, 1,  5),   9, 4.0 / 14.0 },
-                { Allele.create("AAAAA",  true), Allele.create("GGGGG"), referenceHelperForTestCalculateGcContent(seq, contig, 1,  5),  10, 5.0/15.0 },
-                { Allele.create("GCCCCC", true), Allele.create("AGGGGG"), referenceHelperForTestCalculateGcContent(seq, contig,95,100),   1, 1 },
-                { Allele.create("GCCCCC", true), Allele.create("AGGGGG"), referenceHelperForTestCalculateGcContent(seq, contig,95,100),   9, 10.0/15.0 },
-                { Allele.create("GCCCCC", true), Allele.create("AGGGGG"), referenceHelperForTestCalculateGcContent(seq, contig,95,100),  10, 10.0/16.0 },
-                { Allele.create("TGGGGG", true), Allele.create("AAAAAA"), referenceHelperForTestCalculateGcContent(seq, contig,50, 55),   1, 6.0/8.0 },
-                { Allele.create("TGGGGG", true), Allele.create("AAAAAA"), referenceHelperForTestCalculateGcContent(seq, contig,50, 55),   9, 10.0/24.0 },
-                { Allele.create("TGGGGG", true), Allele.create("AAAAAA"), referenceHelperForTestCalculateGcContent(seq, contig,50, 55),  10, 11.0/26.0 },
-                { Allele.create("TGGGGG", true), Allele.create("AAAAAA"), referenceHelperForTestCalculateGcContent(seq, contig,50, 55),  50, 50.0/100.0 },
+                { Allele.create("A", true), Allele.create("G"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,  1,  1),  1, 0.0 },
+                { Allele.create("A", true), Allele.create("G"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,  1,  1),  9, 0.0 },
+                { Allele.create("A", true), Allele.create("G"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,  1,  1), 10, 1.0/11.0 },
+                { Allele.create("C", true), Allele.create("G"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,100,100),  1, 1 },
+                { Allele.create("C", true), Allele.create("G"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,100,100),  9, 1 },
+                { Allele.create("C", true), Allele.create("G"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,100,100), 10, 10.0/11.0 },
+                { Allele.create("T", true), Allele.create("G"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig, 50, 50),  1, 1.0/3.0 },
+                { Allele.create("T", true), Allele.create("G"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig, 50, 50),  9, 9.0/19.0 },
+                { Allele.create("T", true), Allele.create("G"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig, 50, 50), 10, 11.0/21.0 },
+                { Allele.create("T", true), Allele.create("G"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig, 50, 50), 50, 50.0/100.0 },
+                { Allele.create("AAAAA",  true), Allele.create("GGGGG"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig, 1,  5),   1, 0.0 },
+                { Allele.create("AAAAA",  true), Allele.create("GGGGG"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig, 1,  5),   9, 4.0 / 14.0 },
+                { Allele.create("AAAAA",  true), Allele.create("GGGGG"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig, 1,  5),  10, 5.0/15.0 },
+                { Allele.create("GCCCCC", true), Allele.create("AGGGGG"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,95,100),   1, 1 },
+                { Allele.create("GCCCCC", true), Allele.create("AGGGGG"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,95,100),   9, 10.0/15.0 },
+                { Allele.create("GCCCCC", true), Allele.create("AGGGGG"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,95,100),  10, 10.0/16.0 },
+                { Allele.create("TGGGGG", true), Allele.create("AAAAAA"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,50, 55),   1, 6.0/8.0 },
+                { Allele.create("TGGGGG", true), Allele.create("AAAAAA"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,50, 55),   9, 10.0/24.0 },
+                { Allele.create("TGGGGG", true), Allele.create("AAAAAA"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,50, 55),  10, 11.0/26.0 },
+                { Allele.create("TGGGGG", true), Allele.create("AAAAAA"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,50, 55),  50, 50.0/100.0 },
 
                 // Insertions:
-                { Allele.create("A", true), Allele.create("AG"),    referenceHelperForTestCalculateGcContent(seq, contig,  1,  1),  1, 0.0 },
-                { Allele.create("A", true), Allele.create("AGG"),   referenceHelperForTestCalculateGcContent(seq, contig,  1,  1),  9, 0.0 },
-                { Allele.create("A", true), Allele.create("AGGG"),  referenceHelperForTestCalculateGcContent(seq, contig,  1,  1), 10, 1.0/11.0 },
-                { Allele.create("C", true), Allele.create("CG"),    referenceHelperForTestCalculateGcContent(seq, contig,100,100),  1, 1 },
-                { Allele.create("C", true), Allele.create("CGG"),   referenceHelperForTestCalculateGcContent(seq, contig,100,100),  9, 1 },
-                { Allele.create("C", true), Allele.create("CGGG"),  referenceHelperForTestCalculateGcContent(seq, contig,100,100), 10, 1 },
-                { Allele.create("T", true), Allele.create("TG"),    referenceHelperForTestCalculateGcContent(seq, contig, 50, 50),  1, 1.0/2.0 },
-                { Allele.create("T", true), Allele.create("TGG"),   referenceHelperForTestCalculateGcContent(seq, contig, 50, 50),  9, 9.0/18.0 },
-                { Allele.create("T", true), Allele.create("TGGG"),  referenceHelperForTestCalculateGcContent(seq, contig, 50, 50), 10, 10.0/20.0 },
-                { Allele.create("T", true), Allele.create("TGGGG"), referenceHelperForTestCalculateGcContent(seq, contig, 50, 50), 49, 49.0/98.0 },
+                { Allele.create("A", true), Allele.create("AG"),    FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,  1,  1),  1, 0.0 },
+                { Allele.create("A", true), Allele.create("AGG"),   FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,  1,  1),  9, 0.0 },
+                { Allele.create("A", true), Allele.create("AGGG"),  FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,  1,  1), 10, 1.0/11.0 },
+                { Allele.create("C", true), Allele.create("CG"),    FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,100,100),  1, 1 },
+                { Allele.create("C", true), Allele.create("CGG"),   FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,100,100),  9, 1 },
+                { Allele.create("C", true), Allele.create("CGGG"),  FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,100,100), 10, 1 },
+                { Allele.create("T", true), Allele.create("TG"),    FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig, 50, 50),  1, 1.0/2.0 },
+                { Allele.create("T", true), Allele.create("TGG"),   FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig, 50, 50),  9, 9.0/18.0 },
+                { Allele.create("T", true), Allele.create("TGGG"),  FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig, 50, 50), 10, 10.0/20.0 },
+                { Allele.create("T", true), Allele.create("TGGGG"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig, 50, 50), 49, 49.0/98.0 },
 
                 // Deletions:
-                { Allele.create("AAAAA",  true), Allele.create("A"), referenceHelperForTestCalculateGcContent(seq, contig, 1,  5),  10,  5.0/15.0 },
-                { Allele.create("GCCCCC", true), Allele.create("G"), referenceHelperForTestCalculateGcContent(seq, contig,95,100),  10, 10.0/15.0  },
-                { Allele.create("TGGGGG", true), Allele.create("T"), referenceHelperForTestCalculateGcContent(seq, contig,50, 55),  10, 10.0/25.0 },
-                { Allele.create("TG", true),     Allele.create("T"), referenceHelperForTestCalculateGcContent(seq, contig,50, 51),  10, 10.0/21.0 },
-        };
-    }
-
-    @DataProvider
-    private Object[][] provideDataForTestGetReferenceBases() {
-
-        // NOTE: Genome positions start at 1, not 0.
-        //                                                                                                                          1
-        //                       0        1         2         3         4    *    5         6         7         8         9         0
-        //                       1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
-        final String sequence = "CGTCGACGGAACAAAAGTAGACCATCCCTCTTGGTAAGTACGTCTTCATACTCTACAAATACCCATAGCACAATTCGGAGCCCAACGCCCGACGGGTCAT";
-        //   REVERSE COMPLEMENT: ATGACCCGTCGGGCGTTGGGCTCCGAATTGTGCTATGGGTATTTGTAGAGTATGAAGACGTACTTACCAAGAGGGATGGTCTACTTTTGTTCCGTCGACG
-
-        final String contig = "specialTestContig";
-
-        final int startPos = 45;
-        final int endPos = 45;
-
-        // NOTE: Variants are always described in the + direction.
-        //       The start/end positions are for the REFERENCE allele ONLY.
-
-        return new Object[][] {
-                // SNP in + direction
-                {
-                        Allele.create("T", true),
-                        Allele.create("C"),
-                        referenceHelperForTestCalculateGcContent(sequence, contig,  startPos,  endPos),
-                        Strand.POSITIVE,
-                        "TAAGTACGTCTTCATACTCTA"
-                },
-                // DNP in + direction
-                {
-                        Allele.create("TT", true),
-                        Allele.create("CC"),
-                        referenceHelperForTestCalculateGcContent(sequence, contig,  startPos,  endPos+1),
-                        Strand.POSITIVE,
-                        "TAAGTACGTCTTCATACTCTAC"
-                },
-                // TNP in + direction
-                {
-                        Allele.create("TTC", true),
-                        Allele.create("CGG"),
-                        referenceHelperForTestCalculateGcContent(sequence, contig,  startPos,  endPos+2),
-                        Strand.POSITIVE,
-                        "TAAGTACGTCTTCATACTCTACA"
-                },
-                // Insertion - 1 base in + direction
-                {
-                        Allele.create("T", true),
-                        Allele.create("TC"),
-                        referenceHelperForTestCalculateGcContent(sequence, contig,  startPos,  endPos),
-                        Strand.POSITIVE,
-                        "TAAGTACGTCTTCATACTCTAC"
-                },
-                // Insertion - 2 bases in + direction
-                {
-                        Allele.create("T", true),
-                        Allele.create("TCC"),
-                        referenceHelperForTestCalculateGcContent(sequence, contig,  startPos,  endPos),
-                        Strand.POSITIVE,
-                        "TAAGTACGTCTTCATACTCTACA"
-                },
-                // Insertion - 3 bases in + direction
-                {
-                        Allele.create("T", true),
-                        Allele.create("TCCA"),
-                        referenceHelperForTestCalculateGcContent(sequence, contig,  startPos,  endPos),
-                        Strand.POSITIVE,
-                        "TAAGTACGTCTTCATACTCTACAA"
-                },
-                // Deletion - 1 base in + direction
-                {
-                        Allele.create("CT", true),
-                        Allele.create("T"),
-                        referenceHelperForTestCalculateGcContent(sequence, contig,  startPos-1,  endPos),
-                        Strand.POSITIVE,
-                        "GTAAGTACGTCTTCATACTCTA"
-                },
-                // Deletion - 2 bases in + direction
-                {
-                        Allele.create("CTT", true),
-                        Allele.create("T"),
-                        referenceHelperForTestCalculateGcContent(sequence, contig,  startPos-1,  endPos+1),
-                        Strand.POSITIVE,
-                        "GTAAGTACGTCTTCATACTCTAC"
-                },
-                // Deletion - 3 bases in + direction
-                {
-                        Allele.create("CTTC", true),
-                        Allele.create("T"),
-                        referenceHelperForTestCalculateGcContent(sequence, contig, startPos - 1, endPos + 2),
-                        Strand.POSITIVE,
-                        "GTAAGTACGTCTTCATACTCTACA"
-                },
-
-                // ================================================================================
-
-                // SNP in - direction
-                {
-                        Allele.create("T", true),
-                        Allele.create("C"),
-                        referenceHelperForTestCalculateGcContent(sequence, contig,  startPos,  endPos),
-                        Strand.NEGATIVE,
-                        "TAGAGTATGAAGACGTACTTA"
-                },
-                // DNP in - direction
-                {
-                        Allele.create("CT", true),
-                        Allele.create("TA"),
-                        referenceHelperForTestCalculateGcContent(sequence, contig,  startPos-1,  endPos),
-                        Strand.NEGATIVE,
-                        "TAGAGTATGAAGACGTACTTAC"
-                },
-                // TNP in - direction
-                {
-                        Allele.create("TCT", true),
-                        Allele.create("ATG"),
-                        referenceHelperForTestCalculateGcContent(sequence, contig,  startPos-2,  endPos),
-                        Strand.NEGATIVE,
-                        "TAGAGTATGAAGACGTACTTACC"
-                },
-                // Insertion - 1 base in - direction
-                {
-                        Allele.create("T", true),
-                        Allele.create("TC"),
-                        referenceHelperForTestCalculateGcContent(sequence, contig,  startPos,  endPos),
-                        Strand.NEGATIVE,
-                        "GTAGAGTATGAAGACGTACTTA"
-                },
-                // Insertion - 2 bases in - direction
-                {
-                        Allele.create("T", true),
-                        Allele.create("TCC"),
-                        referenceHelperForTestCalculateGcContent(sequence, contig,  startPos,  endPos),
-                        Strand.NEGATIVE,
-                        "TGTAGAGTATGAAGACGTACTTA"
-                },
-                // Insertion - 3 bases in - direction
-                {
-                        Allele.create("T", true),
-                        Allele.create("TCCA"),
-                        referenceHelperForTestCalculateGcContent(sequence, contig,  startPos,  endPos),
-                        Strand.NEGATIVE,
-                        "TTGTAGAGTATGAAGACGTACTTA"
-                },
-                // Deletion - 1 base in - direction
-                {
-                        Allele.create("TT", true),
-                        Allele.create("T"),
-                        referenceHelperForTestCalculateGcContent(sequence, contig,  startPos-1,  endPos),
-                        Strand.NEGATIVE,
-                        "TAGAGTATGAAGACGTACTTAC"
-                },
-                // Deletion - 2 bases in - direction
-                {
-                        Allele.create("CTT", true),
-                        Allele.create("C"),
-                        referenceHelperForTestCalculateGcContent(sequence, contig,  startPos-2,  endPos),
-                        Strand.NEGATIVE,
-                        "TAGAGTATGAAGACGTACTTACC"
-                },
-                // Deletion - 3 bases in - direction
-                {
-                        Allele.create("TCTT", true),
-                        Allele.create("T"),
-                        referenceHelperForTestCalculateGcContent(sequence, contig,  startPos-3,  endPos),
-                        Strand.NEGATIVE,
-                        "TAGAGTATGAAGACGTACTTACCA"
-                },
+                { Allele.create("AAAAA",  true), Allele.create("A"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig, 1,  5),  10,  5.0/15.0 },
+                { Allele.create("GCCCCC", true), Allele.create("G"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,95,100),  10, 10.0/15.0  },
+                { Allele.create("TGGGGG", true), Allele.create("T"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,50, 55),  10, 10.0/25.0 },
+                { Allele.create("TG", true),     Allele.create("T"), FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(seq, contig,50, 51),  10, 10.0/21.0 },
         };
     }
 
@@ -1078,7 +1062,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         // Get our gene feature iterator:
         final CloseableTribbleIterator<GencodeGtfFeature> gtfFeatureIterator;
         try {
-            gtfFeatureIterator = muc16FeatureReader.query(contig, start, end);
+            gtfFeatureIterator = gencodeFeatureReader.query(contig, start, end);
         }
         catch (final IOException ex) {
             throw new GATKException("Could not finish the test!", ex);
@@ -1094,7 +1078,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 
         final List<? extends Locatable> exonPositionList = GencodeFuncotationFactory.getSortedCdsAndStartStopPositions(transcript);
 
-        final ReferenceDataSource muc16TranscriptDataSource = ReferenceDataSource.of(new File(FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE).toPath());
+        final ReferenceDataSource muc16TranscriptDataSource = ReferenceDataSource.of(new File(FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19).toPath());
         final Map<String, GencodeFuncotationFactory.MappedTranscriptIdInfo> muc16TranscriptIdMap = GencodeFuncotationFactory. createTranscriptIdMap(muc16TranscriptDataSource);
 
         final SequenceComparison seqComp =
@@ -1147,7 +1131,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         // Get our gene feature iterator:
         final CloseableTribbleIterator<GencodeGtfFeature> gtfFeatureIterator;
         try {
-            gtfFeatureIterator = muc16FeatureReader.query(contig, start, end);
+            gtfFeatureIterator = gencodeFeatureReader.query(contig, start, end);
         }
         catch (final IOException ex) {
             throw new GATKException("Could not finish the test!", ex);
@@ -1163,7 +1147,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 
         // Create a factory for our funcotations:
         try (final GencodeFuncotationFactory funcotationFactory = new GencodeFuncotationFactory(
-                IOUtils.getPath(FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE),
+                IOUtils.getPath(FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19),
                 "VERSION",
                 GencodeFuncotationFactory.DEFAULT_NAME,
                 FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE,
@@ -1220,7 +1204,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 
         // Create a factory for our funcotations:
         try (final GencodeFuncotationFactory funcotationFactory = new GencodeFuncotationFactory(
-                                                                    IOUtils.getPath(FuncotatorTestConstants.MUC16_GENCODE_TRANSCRIPT_FASTA_FILE),
+                                                                    IOUtils.getPath(FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19),
                                                                     "VERSION",
                                                                     GencodeFuncotationFactory.DEFAULT_NAME,
                                                                     FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE,
@@ -1239,7 +1223,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
     }
 
     @Test (dataProvider = "provideDataForCreateFuncotations")
-    void testCreateFuncotations(final String expectedGeneName,
+    public void testCreateFuncotations(final String expectedGeneName,
                                 final int chromosomeNumber,
                                 final int start,
                                 final int end,
@@ -1396,6 +1380,43 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         }
     }
 
+    @Test(dataProvider = "provideForTestCreateGencodeFuncotationBuilderWithTrivialFieldsPopulated")
+    void testCreateGencodeFuncotationBuilderWithTrivialFieldsPopulated(final VariantContext variant,
+                                                                       final Allele altAllele,
+                                                                       final GencodeGtfGeneFeature gtfFeature,
+                                                                       final GencodeGtfTranscriptFeature transcript ) {
+
+        final GencodeFuncotationBuilder builder =
+                GencodeFuncotationFactory.createGencodeFuncotationBuilderWithTrivialFieldsPopulated(variant, altAllele,
+                        gtfFeature, transcript);
+        final GencodeFuncotation gf = builder.gencodeFuncotation;
+
+        // Ultra-trivial checks:
+        Assert.assertEquals( gf.getRefAllele(), variant.getReference().getBaseString() );
+        Assert.assertEquals( gf.getTranscriptStrand(), transcript.getGenomicStrand().encode() );
+        Assert.assertEquals( gf.getHugoSymbol(), gtfFeature.getGeneName() );
+        Assert.assertEquals( gf.getNcbiBuild(), gtfFeature.getUcscGenomeVersion() );
+        Assert.assertEquals( gf.getChromosome(), gtfFeature.getChromosomeName() );
+        Assert.assertEquals( gf.getStart(), variant.getStart() );
+        Assert.assertEquals( gf.getGeneTranscriptType(), transcript.getTranscriptType() );
+        Assert.assertEquals( gf.getEnd(), variant.getStart() + altAllele.length() - 1 );
+        Assert.assertEquals( gf.getTumorSeqAllele2(), altAllele.getBaseString() );
+        Assert.assertEquals( gf.getAnnotationTranscript(), transcript.getTranscriptId() );
+        Assert.assertEquals( gf.getLocusLevel(), Integer.valueOf(transcript.getLocusLevel().toString()) );
+
+        // Still simple, but computational, checks:
+        Assert.assertEquals( gf.getVariantType(), GencodeFuncotationFactory.getVariantType(variant.getReference(), altAllele));
+        Assert.assertEquals( gf.getGenomeChange(), GencodeFuncotationFactory.getGenomeChangeString(variant, altAllele, gtfFeature) );
+        Assert.assertTrue( gf.getTranscriptPos() == FuncotatorUtils.getTranscriptAlleleStartPosition(variant, transcript.getExons(), transcript.getGenomicStrand()) );
+        Assert.assertEquals( gf.getApprisRank(), GencodeFuncotationFactory.getApprisRank( transcript ) );
+        Assert.assertTrue( gf.getTranscriptLength() == transcript.getExons().stream().mapToInt(Locatable::getLengthOnReference).sum() );
+    }
+
+    @Test(dataProvider = "provideForTestIs5PrimeUtr")
+    void testIs5PrimeUtr(final GencodeGtfUTRFeature utr, final GencodeGtfTranscriptFeature transcript, final boolean expected) {
+        Assert.assertEquals(GencodeFuncotationFactory.is5PrimeUtr( utr, transcript), expected);
+    }
+
     @Test (dataProvider = "provideDataForTestIsVariantInCodingRegion")
     void testIsVariantInCodingRegion(final GencodeFuncotation.VariantClassification varClass, final GencodeFuncotation.VariantClassification secondaryVarClass, final boolean expected) {
         Assert.assertEquals( GencodeFuncotationFactory.isVariantInCodingRegion(varClass, secondaryVarClass), expected );
@@ -1416,11 +1437,6 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                                 final int windowSize,
                                 final double expected) {
         Assert.assertEquals( GencodeFuncotationFactory.calculateGcContent( refAllele, altAllele, referenceContext, windowSize ), expected, doubleEqualsEpsilon);
-    }
-
-    @Test(dataProvider = "provideDataForTestGetReferenceBases")
-    void testGetReferenceBases(final Allele refAllele, final Allele altAllele, final ReferenceContext reference, final Strand strand, final String expected ) {
-        Assert.assertEquals( GencodeFuncotationFactory.getReferenceBases(refAllele, altAllele, reference, strand) , expected);
     }
 
     @DataProvider
@@ -1600,7 +1616,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
     }
 
     private static FeatureInput<? extends Feature> createFeatureInputForMuc16Ds(final String dsName) {
-        return new FeatureInput<>(FuncotatorTestConstants.MUC16_GENCODE_ANNOTATIONS_FILE_NAME, dsName, Collections.emptyMap());
+        return new FeatureInput<>(FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, dsName, Collections.emptyMap());
     }
 
     private static FeatureInput<? extends Feature> createFeatureInputForCntn4Ds(final String dsName) {
