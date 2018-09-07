@@ -23,9 +23,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.Arrays;
-import java.util.Random;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public final class IOUtilsUnitTest extends GATKBaseTest {
 
@@ -44,14 +43,25 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
         }
     }
 
+    private List<String> getSortedRecursiveDirectoryContentsFileNames(final Path directoryPath) throws IOException {
+        final List<String> fileList = Files.walk(directoryPath)
+                .map(f -> f.toFile().getName())
+                .collect(Collectors.toList());
+        fileList.sort(Comparator.naturalOrder());
+        return fileList;
+    }
+
     private void assertContentsTheSame(final Path baseActualPath, final Path baseExpectedPath) {
 
         try {
-            // First get the number of expected entries in the path:
-            final long expectedNumFiles = Files.walk(baseExpectedPath).count();
+            final List<String> expectedFiles = getSortedRecursiveDirectoryContentsFileNames(baseExpectedPath);
+            final List<String> actualFiles = getSortedRecursiveDirectoryContentsFileNames(baseActualPath);
+
+            // Make sure the list of output files is what we expect:
+            Assert.assertEquals(actualFiles, expectedFiles);
 
             // Check that the files and directories are the same:
-            final long actualNumFiles = Files.find(baseActualPath, Integer.MAX_VALUE,
+            Files.find(baseActualPath, Integer.MAX_VALUE,
                     (actualPath, fileAttributes) -> {
 
                         // First check that the corresponding file exists in our expected unzipped archive:
@@ -77,10 +87,7 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
 
                         return true;
                     }
-            ).count();
-
-            // Make sure the same number of files exists in both entries:
-            Assert.assertEquals(actualNumFiles, expectedNumFiles);
+            );
         }
         catch (final IOException ex) {
             throw new GATKException("Could not verify identical contents of test directories!");
