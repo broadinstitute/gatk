@@ -21,8 +21,9 @@ import java.util.stream.*;
 
 public class LeftAlignAndTrimVariantsUnitTest extends GATKBaseTest {
     final String refBases1 = "ACAGAGCTGACCCTCCCTCCCCTCTCCCAGTGCAACAGCACGGGCGGCGACTGCTTTTACCGAGGCTACACGTCAGGCGTGGCGGCTGTCCAGGACTGGTACCACTTCCACTATGTGGATCTCTGCTGAGGACCAGGAAAGCCAGCACCCGCAGAGACTCTTCCCCAGTGCTCCATACGATCACCATTCTCTGCAGAAGG";
-    final List<String> longPieces = Arrays.asList("AAAAAAAAAAAAAAAAAAAAAAAAAAAA", "TCTCTCTCTCTCTC", "CAGTCCAGTCCAGTCCAGTCCAGTCCAGTCCAGTCCAGTCCAGTCCAGTCCAGTC", Utils.dupString("A", 120)); // where we'll perform tests
-    final List<Integer> strLengths = Arrays.asList(1, 2, 5, 1); //
+    final String longStr = "AGTCGCTCGAGCTCGAGCTCGAGTGTGCGCTCTACAGCTCAGCTCGCTCGCACACAT";
+    final List<String> longPieces = Arrays.asList("AAAAAAAAAAAAAAAAAAAAAAAAAAAA", "TCTCTCTCTCTCTC", "CAGTCCAGTCCAGTCCAGTCCAGTCCAGTCCAGTCCAGTCCAGTCCAGTCCAGTC", Utils.dupString("A", 120), Utils.dupString("TCACGTC",60),Utils.dupString(longStr,2)); // where we'll perform tests
+    final List<Integer> strLengths = Arrays.asList(1, 2, 5, 1,7,57); //
     final List<String> refBasesStrings = longPieces.stream().map(l -> refBases1 + l + refBases1).collect(Collectors.toList());
 
     final List<Integer> contigStops = refBasesStrings.stream().map(String::length).collect(Collectors.toList());
@@ -57,7 +58,7 @@ public class LeftAlignAndTrimVariantsUnitTest extends GATKBaseTest {
             }
 
             for (int indelIndex = indelIndexStart; indelIndex < indelIndexStop; indelIndex++) {
-                for (int indelRepeats = Math.max(-(longPiece.length() - (indelIndex - repeatStart + 1)), -10) / strLength; indelRepeats < 10; indelRepeats++) {
+                for (int indelRepeats = Math.max(-(longPiece.length() - (indelIndex - repeatStart + 1)), -50) / strLength; indelRepeats < 50; indelRepeats++) {
                     if (indelRepeats == 0) {
                         continue;
                     }
@@ -90,7 +91,9 @@ public class LeftAlignAndTrimVariantsUnitTest extends GATKBaseTest {
                     ReferenceContext ref = new ReferenceContext(refSource, interval);
 
                     final VariantContext vc = new VariantContextBuilder("test", artificialContig, indelIndex + 1, indelIndex + alleles.get(0).length(), alleles).make();
-                    tests.add(new Object[]{vc, ref, indelIndex != repeatStart - 1, repeatStart});
+                    final boolean expectRealigned=(indelIndex != repeatStart - 1) && (indelRepeats*strLength<=LeftAlignAndTrimVariants.maxIndelSize);
+                    final int expectedStart=expectRealigned? repeatStart : indelIndex+1;
+                    tests.add(new Object[]{vc, ref, expectRealigned, expectedStart});
                 }
             }
         }
@@ -100,6 +103,7 @@ public class LeftAlignAndTrimVariantsUnitTest extends GATKBaseTest {
     @Test(dataProvider = "LeftAlignDataProvider")
     public void testLeftAlign(final VariantContext vc, final ReferenceContext ref, final boolean expectRealigned, final int expectedStart) {
         final LeftAlignAndTrimVariants leftAligner = new LeftAlignAndTrimVariants();
+        //leftAligner.dontTrimAlleles=true;
         final VariantContext realignedV = leftAligner.leftAlign(vc, ref);
         Assert.assertEquals(realignedV != vc, expectRealigned);
         Assert.assertEquals(realignedV.getStart(), expectedStart);

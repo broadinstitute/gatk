@@ -20,10 +20,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.tools.copynumber.CollectAllelicCounts;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAlleleCounts;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculator;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculators;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -59,11 +56,19 @@ public final class GATKVariantContextUtils {
     /**
      * A method that constructs a mutable set of VCF header lines containing the tool name, version, date and command line,
      * and return to the requesting tool.
+<<<<<<< HEAD
      * @param toolkitShortName  short name for the tool kit, e.g. "gatk"
      * @param toolName          name of the tool
      * @param versionString     version of the tool
      * @param dateTime          date and time at invocation of the tool
      * @param cmdLine           command line (e.g. options, flags) when the tool is invoked.
+=======
+     * @param toolkitShortName short name for the tool kit, e.g. "gatk"
+     * @param toolName         name of the tool
+     * @param versionString    version of the tool
+     * @param dateTime         date and time at invocation of the tool
+     * @param cmdLine          command line (e.g. options, flags) when the tool is invoked.
+>>>>>>> consolidating subsetAlleles code as requested by James
      * @return A mutable set of VCF header lines containing the tool name, version, date and command line.
      */
     public static Set<VCFHeaderLine> getDefaultVCFHeaderLines(final String toolkitShortName, final String toolName,
@@ -194,7 +199,11 @@ public final class GATKVariantContextUtils {
 
     /**
      * Calculates the total ploidy of a variant context as the sum of all plodies across genotypes.
+<<<<<<< HEAD
      * @param vc the target variant context.
+=======
+     * @param vc            the target variant context.
+>>>>>>> consolidating subsetAlleles code as requested by James
      * @param defaultPloidy the default ploidy to be assume when there is no ploidy information for a genotype.
      * @return never {@code null}.
      */
@@ -249,13 +258,20 @@ public final class GATKVariantContextUtils {
      * @param gb the builder where we should put our newly called alleles, cannot be null
      * @param assignmentMethod the method to use to do the assignment, cannot be null
      * @param genotypeLikelihoods a vector of likelihoods to use if the method requires PLs, should be log10 likelihoods, cannot be null
+<<<<<<< HEAD
      * @param allelesToUse the alleles with respect to which the likelihoods are defined
+=======
+     * @param allelesToUse        the alleles with respect to which the likelihoods are defined
+     * @param originalGT          the original genotype calls, cannot be null if assignmentMethod is BEST_MATCH_TO_ORIGINAL
+>>>>>>> consolidating subsetAlleles code as requested by James
      */
     public static void makeGenotypeCall(final int ploidy,
                                         final GenotypeBuilder gb,
                                         final GenotypeAssignmentMethod assignmentMethod,
                                         final double[] genotypeLikelihoods,
-                                        final List<Allele> allelesToUse) {
+                                        final List<Allele> allelesToUse,
+                                        final List<Allele> originalGT) {
+        if(originalGT == null && assignmentMethod == GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL) throw new IllegalArgumentException("origianlGT cannot be null if assignmentMethod is BEST_MATCH_TO_ORIGINAL");
         if (assignmentMethod == GenotypeAssignmentMethod.SET_TO_NO_CALL) {
             gb.alleles(noCallAlleles(ploidy)).noGQ();
         } else if (assignmentMethod == GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN) {
@@ -272,7 +288,24 @@ public final class GATKVariantContextUtils {
                     gb.log10PError(GenotypeLikelihoods.getGQLog10FromLikelihoods(maxLikelihoodIndex, genotypeLikelihoods));
                 }
             }
+        } else if (assignmentMethod == GenotypeAssignmentMethod.SET_TO_NO_CALL_NO_ANNOTATIONS) {
+            gb.alleles(noCallAlleles(ploidy)).noGQ().noAD().noPL().noAttributes();
+        } else if (assignmentMethod == GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL) {
+            final List<Allele> best = new LinkedList<>();
+            final Allele ref = allelesToUse.get(0);
+            for (final Allele originalAllele : originalGT) {
+                best.add((allelesToUse.contains(originalAllele) || originalAllele.isNoCall()) ? originalAllele : ref);
+            }
+            gb.alleles(best);
         }
+    }
+
+    public static void makeGenotypeCall(final int ploidy,
+                                        final GenotypeBuilder gb,
+                                        final GenotypeAssignmentMethod assignmentMethod,
+                                        final double[] genotypeLikelihoods,
+                                        final List<Allele> allelesToUse){
+        makeGenotypeCall(ploidy,gb,assignmentMethod,genotypeLikelihoods,allelesToUse,null);
     }
 
     public enum GenotypeMergeType {
@@ -457,6 +490,7 @@ public final class GATKVariantContextUtils {
     /**
      * Finds number of repetitions a string consists of.
      * For example, for string ATAT and repeat unit AT, number of repetitions = 2
+<<<<<<< HEAD
      * @param repeatUnit             Non-empty substring represented by byte array
      * @param testString             String to test (represented by byte array), may be empty
      * @param leadingRepeats         Look for leading (at the beginning of string) or trailing (at end of string) repetitions
@@ -466,6 +500,16 @@ public final class GATKVariantContextUtils {
      *    CCCCCCCC has 2 leading and 2 trailing repeats of CCC
      *
      * @return  Number of repetitions (0 if testString is not a concatenation of n repeatUnit's, including the case of empty testString)
+=======
+     * @param repeatUnit     Non-empty substring represented by byte array
+     * @param testString     String to test (represented by byte array), may be empty
+     * @param leadingRepeats Look for leading (at the beginning of string) or trailing (at end of string) repetitions
+     *                       For example:
+     *                       GATAT has 0 leading repeats of AT but 2 trailing repeats of AT
+     *                       ATATG has 1 leading repeat of A but 2 leading repeats of AT
+     *                       CCCCCCCC has 2 leading and 2 trailing repeats of CCC
+     * @return Number of repetitions (0 if testString is not a concatenation of n repeatUnit's, including the case of empty testString)
+>>>>>>> consolidating subsetAlleles code as requested by James
      */
     public static int findNumberOfRepetitions(byte[] repeatUnit, byte[] testString, boolean leadingRepeats) {
         Utils.nonNull(repeatUnit, "repeatUnit");
@@ -481,12 +525,21 @@ public final class GATKVariantContextUtils {
      * Finds number of repetitions a string consists of.
      * Same as {@link #findNumberOfRepetitions} but operates on subarrays of a bigger array to save on copying.
      * For example, for string ATAT and repeat unit AT, number of repetitions = 2
+<<<<<<< HEAD
      * @param repeatUnitFull             Non-empty substring represented by byte array
      * @param offsetInRepeatUnitFull     the offset in repeatUnitFull from which to read the repeat unit
      * @param repeatUnitLength           length of the repeat unit
      * @param testStringFull             string to test (represented by byte array), may be empty
      * @param offsetInTestStringFull     the offset in offsetInRepeatUnitFull from which to read the test string
      * @param testStringLength           length of the test string
+=======
+     * @param repeatUnitFull         Non-empty substring represented by byte array
+     * @param offsetInRepeatUnitFull the offset in repeatUnitFull from which to read the repeat unit
+     * @param repeatUnitLength       length of the repeat unit
+     * @param testStringFull         string to test (represented by byte array), may be empty
+     * @param offsetInTestStringFull the offset in offsetInRepeatUnitFull from which to read the test string
+     * @param testStringLength       length of the test string
+>>>>>>> consolidating subsetAlleles code as requested by James
      * @param leadingRepeats         Look for leading (at the beginning of string) or trailing (at end of string) repetitions
      * For example:
      *    GATAT has 0 leading repeats of AT but 2 trailing repeats of AT
@@ -1277,7 +1330,7 @@ public final class GATKVariantContextUtils {
                         genotypeAssignmentMethodUsed != GenotypeAssignmentMethod.SET_TO_NO_CALL )
                     addInfoFieldAnnotations(vc, builder, keepOriginalChrCounts);
 
-                builder.genotypes(subsetAlleles(vc, alleles, genotypeAssignmentMethodUsed));
+                builder.genotypes(AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(),2,vc.getAlleles(), alleles, genotypeAssignmentMethodUsed,vc.getAttributeAsInt("DP",0)));
                 final VariantContext trimmed = trimAlleles(builder.make(), trimLeft, true);
                 biallelics.add(trimmed);
             }
@@ -1323,6 +1376,7 @@ public final class GATKVariantContextUtils {
     }
 
     /**
+<<<<<<< HEAD
      * Subset the Variant Context to the specific set of alleles passed in (pruning the PLs appropriately)
      *
      * @param vc                 variant context with genotype likelihoods
@@ -1717,6 +1771,8 @@ public final class GATKVariantContextUtils {
 
 
     /**
+=======
+>>>>>>> consolidating subsetAlleles code as requested by James
      * Check if any of the genotypes is heterozygous, non-reference (i.e. 1/2)
      *
      * @param genotypesContext  genotype information

@@ -1297,7 +1297,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         return tests.toArray(new Object[][]{});
     }
 
-    @Test(dataProvider = "SubsetAllelesData")
+    /*@Test(dataProvider = "SubsetAllelesData")
     public void testSubsetAlleles(final VariantContext inputVC,
                                   final List<Allele> allelesToUse,
                                   final List<Genotype> expectedGenotypes) {
@@ -1306,7 +1306,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
             GenotypeLikelihoods.initializeAnyploidPLIndexToAlleleIndices(inputVC.getNAlleles() - 1, genotype.getPloidy());
         }
 
-        final GenotypesContext actual = GATKVariantContextUtils.subsetAlleles(inputVC, allelesToUse, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN);
+        final GenotypesContext actual = AlleleSubsettingUtils.subsetAlleles(inputVC, allelesToUse, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN);
 
         Assert.assertEquals(actual.size(), expectedGenotypes.size());
         for ( final Genotype expected : expectedGenotypes ) {
@@ -1314,7 +1314,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
             Assert.assertNotNull(actualGT);
             VariantContextTestUtils.assertGenotypesAreEqual(actualGT, expected);
         }
-    }
+    }*/
 
     @DataProvider(name = "UpdateGenotypeAfterSubsettingData")
     public Object[][] makeUpdateGenotypeAfterSubsettingData() {
@@ -1432,28 +1432,6 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         tests.add(new Object[]{3, GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL, allTriploidPLs.get(0), GGG, AAA, AAA});
 
         return tests.toArray(new Object[][]{});
-    }
-
-    @Test(dataProvider = "UpdateGenotypeAfterSubsettingData")
-    public void testUpdateGenotypeAfterSubsetting(final int ploidy,
-                                                  final GenotypeAssignmentMethod mode,
-                                                  final double[] likelihoods,
-                                                  final List<Allele> originalGT,
-                                                  final List<Allele> allelesToUse,
-                                                  final List<Allele> expectedAlleles) {
-        final int numAltAlleles = originalGT.size() > 1 ? originalGT.size() - 1 : 1;
-        GenotypeLikelihoods.initializeAnyploidPLIndexToAlleleIndices(numAltAlleles, ploidy);
-        final GenotypeBuilder gb = new GenotypeBuilder("test");
-        double maxValue = likelihoods[0];
-        for (int i = 1; i < likelihoods.length; i++) {
-            if (likelihoods[i] > maxValue) {
-                maxValue = likelihoods[i];
-            }
-        }
-        final double[] log10Likelhoods = MathUtils.normalizeLog10(likelihoods, true, false);
-        GATKVariantContextUtils.updateGenotypeAfterSubsetting(originalGT, ploidy, gb, mode, log10Likelhoods, allelesToUse);
-        final Genotype g = gb.make();
-        Assert.assertEquals(new HashSet<>(g.getAlleles()), new HashSet<>(expectedAlleles));
     }
 
     @DataProvider(name = "MakeGenotypeCallData")
@@ -2433,20 +2411,5 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
                     Assert.assertTrue(actualGenotype.isNoCall());
             }
         }
-    }
-
-    @Test
-    public void testDetermineSACIndexesToUse() {
-        final VariantContext vc = makeVC("vc", Arrays.asList(Aref, T, C));
-        Assert.assertEquals(GATKVariantContextUtils.determineSACIndexesToUse(vc, Arrays.asList(Aref, C)), Arrays.asList(0, 1, 4, 5));
-        Assert.assertEquals(GATKVariantContextUtils.determineSACIndexesToUse(vc, Arrays.asList(G)), Arrays.asList(0, 1));
-    }
-
-    @Test
-    public void testMakeNewSACs() {
-        int[] expected = {10, 20};
-        final Genotype g = new GenotypeBuilder().alleles(Arrays.asList(Allele.create("A", true), Allele.create("G"))).
-                attribute(GATKVCFConstants.STRAND_COUNT_BY_SAMPLE_KEY, new int[]{5, 10, 15, 20}).make();
-        Assert.assertEquals(GATKVariantContextUtils.makeNewSACs(g, Arrays.asList(1, 3)), expected);
     }
 }
