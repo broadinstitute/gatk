@@ -22,6 +22,7 @@ import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.read.markduplicates.*;
 import org.broadinstitute.hellbender.utils.read.markduplicates.sparkrecords.*;
 import picard.sam.markduplicates.util.OpticalDuplicateFinder;
+import picard.sam.markduplicates.util.ReadEnds;
 import scala.Tuple2;
 
 import java.io.Serializable;

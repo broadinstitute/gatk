@@ -400,83 +400,6 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
         tester.runTest();
     }
 
-    @Test( dataProvider = "md")
-    public void testMarkDuplicatesSparkIntegrationTestLocal(
-        final File input, final long totalExpected, final long dupsExpected,
-        Map<String, List<String>> metricsExpected) throws IOException {
-
-        ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--"+ StandardArgumentDefinitions.INPUT_LONG_NAME);
-        args.add(input.getPath());
-        args.add("--"+StandardArgumentDefinitions.OUTPUT_LONG_NAME);
-
-        File outputFile = createTempFile("markdups", ".bam");
-        outputFile.delete();
-        args.add(outputFile.getAbsolutePath());
-
-        args.add("--"+StandardArgumentDefinitions.METRICS_FILE_LONG_NAME);
-        File metricsFile = createTempFile("markdups_metrics", ".txt");
-        args.add(metricsFile.getAbsolutePath());
-
-        runCommandLine(args.getArgsArray());
-
-        Assert.assertTrue(outputFile.exists(), "Can't find expected MarkDuplicates output file at " + outputFile.getAbsolutePath());
-
-        int totalReads = 0;
-        int duplicateReads = 0;
-        try ( final ReadsDataSource outputReads = new ReadsDataSource(outputFile.toPath()) ) {
-            for ( GATKRead read : outputReads ) {
-                ++totalReads;
-
-                if ( read.isDuplicate() ) {
-                    ++duplicateReads;
-                }
-            }
-        }
-
-        Assert.assertEquals(totalReads, totalExpected, "Wrong number of reads in output BAM");
-        Assert.assertEquals(duplicateReads, dupsExpected, "Wrong number of duplicate reads in output BAM");
-
-        final MetricsFile<GATKDuplicationMetrics, Comparable<?>> metricsOutput = new MetricsFile<>();
-        try {
-            metricsOutput.read(new FileReader(metricsFile));
-        } catch (final FileNotFoundException ex) {
-            System.err.println("Metrics file not found: " + ex);
-        }
-        final List<GATKDuplicationMetrics> nonEmptyMetrics = metricsOutput.getMetrics().stream().filter(
-                metric ->
-                    metric.UNPAIRED_READS_EXAMINED != 0L ||
-                    metric.READ_PAIRS_EXAMINED != 0L ||
-                    metric.UNMAPPED_READS != 0L ||
-                    metric.UNPAIRED_READ_DUPLICATES != 0L ||
-                    metric.READ_PAIR_DUPLICATES != 0L ||
-                    metric.READ_PAIR_OPTICAL_DUPLICATES != 0L ||
-                    (metric.PERCENT_DUPLICATION != null && metric.PERCENT_DUPLICATION != 0.0 && !Double.isNaN(metric.PERCENT_DUPLICATION)) ||
-                    (metric.ESTIMATED_LIBRARY_SIZE != null && metric.ESTIMATED_LIBRARY_SIZE != 0L)
-        ).collect(Collectors.toList());
-
-        Assert.assertEquals(nonEmptyMetrics.size(), metricsExpected.size(),
-                            "Wrong number of metrics with non-zero fields.");
-        for (int i = 0; i < nonEmptyMetrics.size(); i++ ){
-            final GATKDuplicationMetrics observedMetrics = nonEmptyMetrics.get(i);
-            List<?> expectedList = metricsExpected.get(observedMetrics.LIBRARY);
-            Assert.assertNotNull(expectedList, "Unexpected library found: " + observedMetrics.LIBRARY);
-            Assert.assertEquals(observedMetrics.UNPAIRED_READS_EXAMINED, expectedList.get(0));
-            Assert.assertEquals(observedMetrics.READ_PAIRS_EXAMINED, expectedList.get(1));
-            Assert.assertEquals(observedMetrics.UNMAPPED_READS, expectedList.get(2));
-            Assert.assertEquals(observedMetrics.UNPAIRED_READ_DUPLICATES, expectedList.get(3));
-            Assert.assertEquals(observedMetrics.READ_PAIR_DUPLICATES, expectedList.get(4));
-            Assert.assertEquals(observedMetrics.READ_PAIR_OPTICAL_DUPLICATES, expectedList.get(5));
-            Assert.assertEquals(observedMetrics.PERCENT_DUPLICATION, expectedList.get(6));
-
-            //Note: IntelliJ does not like it when a parameter for a test is null (can't print it and skips the test)
-            //so we work around it by passing in an 'expected 0L' and only comparing to it if the actual value is non-null
-            if (observedMetrics.ESTIMATED_LIBRARY_SIZE != null && (Long)expectedList.get(7) != 0L)  {
-                Assert.assertEquals(observedMetrics.ESTIMATED_LIBRARY_SIZE, expectedList.get(7));
-            }
-        }
-    }
-
     @Test
     public void testSupplementaryReadUnmappedMate() {
         File output = createTempFile("supplementaryReadUnmappedMate", "bam");
@@ -493,27 +416,6 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
             }
 
             Assert.assertEquals(actualReads.size(), 3, "Wrong number of reads output");
-        }
-    }
-
-    @Test
-    public void testHashCollisionHandling() {
-        // This test asserts that the handling of two read pairs with the same start positions but on different in such a way
-        // that they might cause hash collisions are handled properly.
-        final File output = createTempFile("supplementaryReadUnmappedMate", "bam");
-        final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addOutput(output);
-        args.addInput(getTestFile("hashCollisionedReads.bam"));
-        runCommandLine(args);
-
-        try ( final ReadsDataSource outputReadsSource = new ReadsDataSource(output.toPath()) ) {
-            final List<GATKRead> actualReads = new ArrayList<>();
-            for ( final GATKRead read : outputReadsSource ) {
-                Assert.assertFalse(read.isDuplicate());
-                actualReads.add(read);
-            }
-
-            Assert.assertEquals(actualReads.size(), 4, "Wrong number of reads output");
         }
     }
 
