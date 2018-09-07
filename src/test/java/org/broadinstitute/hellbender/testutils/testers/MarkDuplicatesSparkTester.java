@@ -9,6 +9,8 @@ import htsjdk.samtools.util.FormatUtil;
 import htsjdk.samtools.util.TestUtil;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.MarkDuplicatesSparkArgumentCollection;
+import org.broadinstitute.hellbender.tools.spark.transforms.markduplicates.MarkDuplicatesSpark;
 import org.testng.Assert;
 import picard.sam.DuplicationMetrics;
 
@@ -20,16 +22,17 @@ import java.io.FileReader;
  * This class is an extension of SamFileTester used to test AbstractMarkDuplicatesCommandLineProgram's with SAM files generated on the fly.
  * This performs the underlying tests defined by classes such as AbstractMarkDuplicatesCommandLineProgramTest.
  */
-public abstract class AbstractMarkDuplicatesTester extends SamFileTester {
+public class MarkDuplicatesSparkTester extends SamFileTester {
 
     final private File metricsFile;
     final DuplicationMetrics expectedMetrics;
+    boolean markUnmappedReads = false;
 
-    public AbstractMarkDuplicatesTester(final ScoringStrategy duplicateScoringStrategy, final SAMFileHeader.SortOrder sortOrder) {
+    public MarkDuplicatesSparkTester(final ScoringStrategy duplicateScoringStrategy, final SAMFileHeader.SortOrder sortOrder) {
         this(duplicateScoringStrategy, sortOrder, true);
     }
 
-    public AbstractMarkDuplicatesTester(final ScoringStrategy duplicateScoringStrategy,  final SAMFileHeader.SortOrder sortOrder, final boolean recordNeedSorting) {
+    public MarkDuplicatesSparkTester(final ScoringStrategy duplicateScoringStrategy, final SAMFileHeader.SortOrder sortOrder, final boolean recordNeedSorting) {
         super(50, true, SAMRecordSetBuilder.DEFAULT_CHROMOSOME_LENGTH, duplicateScoringStrategy, sortOrder, recordNeedSorting);
 
         expectedMetrics = new DuplicationMetrics();
@@ -40,16 +43,17 @@ public abstract class AbstractMarkDuplicatesTester extends SamFileTester {
         addArg("--"+StandardArgumentDefinitions.DUPLICATE_SCORING_STRATEGY_LONG_NAME, duplicateScoringStrategy.name());
     }
 
-    public AbstractMarkDuplicatesTester(final ScoringStrategy duplicateScoringStrategy) {
+    public MarkDuplicatesSparkTester(final ScoringStrategy duplicateScoringStrategy, boolean markUnmappedReads) {
         this(duplicateScoringStrategy, SAMFileHeader.SortOrder.coordinate);
+        this.markUnmappedReads = markUnmappedReads;
     }
 
-    public AbstractMarkDuplicatesTester() {
-        this(SAMRecordSetBuilder.DEFAULT_DUPLICATE_SCORING_STRATEGY);
+    public MarkDuplicatesSparkTester(boolean markUnmappedReads) {
+        this(DuplicateScoringStrategy.ScoringStrategy.TOTAL_MAPPED_REFERENCE_LENGTH, markUnmappedReads);
     }
 
-    public File getMetricsFile() {
-        return metricsFile;
+    public MarkDuplicatesSparkTester() {
+        this(false);
     }
 
     @Override
@@ -158,5 +162,12 @@ public abstract class AbstractMarkDuplicatesTester extends SamFileTester {
         }
     }
 
-    protected abstract CommandLineProgram getProgram();
+    protected CommandLineProgram getProgram() { return new MarkDuplicatesSpark(); }
+
+    @Override
+    protected void addArgs() {
+        if (!markUnmappedReads) {
+            addArg("--" + MarkDuplicatesSparkArgumentCollection.DO_NOT_MARK_UNMAPPED_MATES_LONG_NAME);
+        }
+    }
 }
