@@ -254,7 +254,7 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
     public void testOpticalDuplicatesAndPCRDuplicatesOrientationDifference() {
         final AbstractMarkDuplicatesTester tester = getTester();
         tester.setExpectedOpticalDuplicate(0);
-        tester.addMatePair("RUNID:7:1203:2886:82292",  19, 19, 485253, 486253, false, false, true, true, "101M", "101M", true, false, false, false, false, DEFAULT_BASE_QUALITY, "1");  // duplicate
+        tester.addMatePair("RUNID:7:1203:2886:16838",  19, 19, 485253, 486253, false, false, true, true, "101M", "101M", true, false, false, false, false, DEFAULT_BASE_QUALITY, "1");  // duplicate
         tester.addMatePair("RUNID:7:1203:2886:16834", 19, 19, 486253, 485253, false, false, false, false, "101M", "101M", false, true, false, false, false, DEFAULT_BASE_QUALITY, "1");
         // Even though these reads are in a duplicate group together, we don't want to mark them as Optical Duplicates because their orientation is flipped (which doesn't matter for PCR duplicates)
         tester.runTest();

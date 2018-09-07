@@ -275,11 +275,11 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
 
         int compare = position1.tile - position2.tile;
         if (compare == 0) {
-            compare = position1.x - position2.x;
+            compare = (short)position1.x - (short)position2.x;
         }
 
         if (compare == 0) {
-            compare = position1.y - position2.y;
+            compare = (short)position1.y - (short)position2.y;
         }
 
         final boolean isDuplicate = compare < 0;

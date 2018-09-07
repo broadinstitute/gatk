@@ -12,8 +12,8 @@ public abstract class TransientFieldPhysicalLocation extends PairedEnds implemen
     // Information used to detect optical dupes
     protected short readGroupIndex = -1;
     protected transient short tile = -1;
-    protected transient int x = -1;
-    protected transient int y = -1;
+    protected transient short x = -1;
+    protected transient short y = -1;
     protected transient short libraryId = -1;
 
     public TransientFieldPhysicalLocation(int partitionIndex, String name) {
