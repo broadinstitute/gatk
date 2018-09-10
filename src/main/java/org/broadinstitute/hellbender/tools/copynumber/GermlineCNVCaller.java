@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.collections.Annota
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleCountCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleIntervalCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.SimpleCount;
+import org.broadinstitute.hellbender.tools.copynumber.utils.CopyNumberUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -406,21 +407,21 @@ public final class GermlineCNVCaller extends CommandLineProgram {
 
         //add required arguments
         final List<String> arguments = new ArrayList<>(Arrays.asList(
-                "--ploidy_calls_path=" + inputContigPloidyCallsDir,
-                "--output_calls_path=" + outputDirArg + outputPrefix + CALLS_PATH_SUFFIX,
-                "--output_tracking_path=" + outputDirArg + outputPrefix + TRACKING_PATH_SUFFIX));
+                "--ploidy_calls_path=" + CopyNumberUtils.getCanonicalPath(inputContigPloidyCallsDir),
+                "--output_calls_path=" + CopyNumberUtils.getCanonicalPath(outputDirArg + outputPrefix + CALLS_PATH_SUFFIX),
+                "--output_tracking_path=" + CopyNumberUtils.getCanonicalPath(outputDirArg + outputPrefix + TRACKING_PATH_SUFFIX)));
 
         //if a model path is given, add it to the argument (both COHORT and CASE modes)
         if (inputModelDir != null) {
-            arguments.add("--input_model_path=" + inputModelDir);
+            arguments.add("--input_model_path=" + CopyNumberUtils.getCanonicalPath(inputModelDir));
         }
 
         final String script;
         if (runMode == RunMode.COHORT) {
             script = COHORT_DENOISING_CALLING_PYTHON_SCRIPT;
             //these are the annotated intervals, if provided
-            arguments.add("--modeling_interval_list=" + specifiedIntervalsFile.getAbsolutePath());
-            arguments.add("--output_model_path=" + outputDirArg + outputPrefix + MODEL_PATH_SUFFIX);
+            arguments.add("--modeling_interval_list=" + CopyNumberUtils.getCanonicalPath(specifiedIntervalsFile));
+            arguments.add("--output_model_path=" + CopyNumberUtils.getCanonicalPath(outputDirArg + outputPrefix + MODEL_PATH_SUFFIX));
             if (inputAnnotatedIntervalsFile != null) {
                 arguments.add("--enable_explicit_gc_bias_modeling=True");
             } else {
@@ -432,7 +433,7 @@ public final class GermlineCNVCaller extends CommandLineProgram {
         }
 
         arguments.add("--read_count_tsv_files");
-        arguments.addAll(intervalSubsetReadCountFiles.stream().map(File::getAbsolutePath).collect(Collectors.toList()));
+        arguments.addAll(intervalSubsetReadCountFiles.stream().map(CopyNumberUtils::getCanonicalPath).collect(Collectors.toList()));
 
         arguments.addAll(germlineDenoisingModelArgumentCollection.generatePythonArguments(runMode));
         arguments.addAll(germlineCallingArgumentCollection.generatePythonArguments(runMode));
