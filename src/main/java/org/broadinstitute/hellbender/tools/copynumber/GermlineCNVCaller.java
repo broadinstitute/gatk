@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.copynumber;
 
-import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
@@ -13,8 +12,7 @@ import org.broadinstitute.hellbender.tools.copynumber.arguments.*;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AnnotatedIntervalCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleCountCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleIntervalCollection;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.LocatableMetadata;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleLocatableMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.records.SimpleCount;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -318,20 +316,8 @@ public final class GermlineCNVCaller extends CommandLineProgram {
             //get sequence dictionary and intervals from the first read-count file to use to validate remaining files
             //(this first file is read again below, which is slightly inefficient but is probably not worth the extra code)
             final File firstReadCountFile = inputReadCountFiles.get(0);
-            final SimpleCountCollection firstReadCounts = SimpleCountCollection.read(firstReadCountFile);
-            final SAMSequenceDictionary sequenceDictionary = firstReadCounts.getMetadata().getSequenceDictionary();
-            final LocatableMetadata metadata = new SimpleLocatableMetadata(sequenceDictionary);
-
-            if (intervalArgumentCollection.intervalsSpecified()) {
-                logger.info("Intervals specified...");
-                CopyNumberArgumentValidationUtils.validateIntervalArgumentCollection(intervalArgumentCollection);
-                specifiedIntervals = new SimpleIntervalCollection(metadata,
-                        intervalArgumentCollection.getIntervals(sequenceDictionary));
-            } else {
-                logger.info(String.format("Retrieving intervals from first read-count file (%s)...",
-                        firstReadCountFile));
-                specifiedIntervals = new SimpleIntervalCollection(metadata, firstReadCounts.getIntervals());
-            }
+            specifiedIntervals = CopyNumberArgumentValidationUtils.resolveIntervals(
+                    firstReadCountFile, intervalArgumentCollection, logger);
 
             //in cohort mode, intervals are specified via -L; we write them to a temporary file
             specifiedIntervalsFile = IOUtils.createTempFile("intervals", ".tsv");
@@ -340,8 +326,10 @@ public final class GermlineCNVCaller extends CommandLineProgram {
                     CopyNumberArgumentValidationUtils.validateAnnotatedIntervalsSubset(
                             inputAnnotatedIntervalsFile, specifiedIntervals, logger);
             if (subsetAnnotatedIntervals != null) {
+                logger.info("GC-content annotations for intervals found; explicit GC-bias correction will be performed...");
                 subsetAnnotatedIntervals.write(specifiedIntervalsFile);
             } else {
+                logger.info("No GC-content annotations for intervals found; explicit GC-bias correction will not be performed...");
                 specifiedIntervals.write(specifiedIntervalsFile);
             }
         }
@@ -397,15 +385,15 @@ public final class GermlineCNVCaller extends CommandLineProgram {
                 logger.warn("Sequence dictionary for read-count file %s does not match that " +
                         "in other read-count files.", inputReadCountFile);
             }
-            Utils.validateArg(new HashSet<>(readCounts.getIntervals()).containsAll(intervalSubset),
+            final List<SimpleCount> subsetReadCounts = readCounts.getRecords().stream()
+                    .filter(c -> intervalSubset.contains(c.getInterval()))
+                    .collect(Collectors.toList());
+            Utils.validateArg(subsetReadCounts.size() == intervalSubset.size(),
                     String.format("Intervals for read-count file %s do not contain all specified intervals.",
                             inputReadCountFile));
             final File intervalSubsetReadCountFile = IOUtils.createTempFile("sample-" + sampleIndex, ".tsv");
-            new SimpleCountCollection(
-                    readCounts.getMetadata(),
-                    readCounts.getRecords().stream()
-                            .filter(c -> intervalSubset.contains(c.getInterval()))
-                            .collect(Collectors.toList())).write(intervalSubsetReadCountFile);
+            new SimpleCountCollection(readCounts.getMetadata(), subsetReadCounts)
+                    .write(intervalSubsetReadCountFile);
             intervalSubsetReadCountFiles.add(intervalSubsetReadCountFile);
         }
         return intervalSubsetReadCountFiles;
