@@ -12,8 +12,8 @@ public abstract class TransientFieldPhysicalLocation extends PairedEnds implemen
     // Information used to detect optical dupes
     protected short readGroupIndex = -1;
     protected transient short tile = -1;
-    protected transient int x = -1;
-    protected transient int y = -1;
+    protected transient short x = -1;
+    protected transient short y = -1;
     protected transient short libraryId = -1;
 
     public TransientFieldPhysicalLocation(int partitionIndex, String name) {
@@ -36,14 +36,16 @@ public abstract class TransientFieldPhysicalLocation extends PairedEnds implemen
     @Override
     public int getX() { return this.x; }
 
+    // NOTE picard in practice compresses the pixel values to signed shorts for space purposes despite the api using an integer
     @Override
-    public void setX(final int x) { this.x = x; }
+    public void setX(final int x) { this.x = (short)x; }
 
     @Override
     public int getY() { return this.y; }
 
+    // NOTE picard in practice compresses the pixel values to signed shorts for space purposes despite the api using an integer
     @Override
-    public void setY(final int y) { this.y = y; }
+    public void setY(final int y) { this.y = (short)y; }
 
     @Override
     public short getLibraryId() { return this.libraryId; }

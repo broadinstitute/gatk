@@ -4,6 +4,7 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeaderLineType;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
+import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -25,10 +26,11 @@ import java.util.Map;
  *
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Annotate with local reference bases (REF_BASES)")
-public class ReferenceBases extends InfoFieldAnnotation implements StandardMutectAnnotation {
+public class ReferenceBases extends InfoFieldAnnotation implements OrientationBiasMixtureModelAnnotation {
     public static final String REFERENCE_BASES_KEY = "REF_BASES";
 
     private int NUM_BASES_ON_EITHER_SIDE = 10;
+    private int REFERENCE_CONTEXT_LENGTH = 2*NUM_BASES_ON_EITHER_SIDE + 1;
 
     protected final OneShotLogger warning = new OneShotLogger(this.getClass());
 
@@ -45,7 +47,12 @@ public class ReferenceBases extends InfoFieldAnnotation implements StandardMutec
         }
         final int basesToDiscardInFront = Math.max(vc.getStart() - ref.getWindow().getStart() - NUM_BASES_ON_EITHER_SIDE, 0);
         final String allBases = new String(ref.getBases());
-        final String localBases = allBases.substring(basesToDiscardInFront, basesToDiscardInFront + 2 * NUM_BASES_ON_EITHER_SIDE + 1);
+        final int endIndex = Math.min(basesToDiscardInFront + 2 * NUM_BASES_ON_EITHER_SIDE + 1, allBases.length());
+        String localBases = allBases.substring(basesToDiscardInFront, endIndex);
+        if (localBases.length() < REFERENCE_CONTEXT_LENGTH) {
+            localBases = String.join("", localBases, StringUtils.repeat("N", REFERENCE_CONTEXT_LENGTH - localBases.length()));
+        }
+
         return Collections.singletonMap(REFERENCE_BASES_KEY, localBases );
     }
 

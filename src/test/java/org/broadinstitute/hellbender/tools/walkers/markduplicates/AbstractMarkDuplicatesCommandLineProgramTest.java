@@ -156,64 +156,6 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
         tester.runTest();
     }
 
-    @DataProvider
-    public Object[][] readNameData(){
-        return new Object[][]{
-                {"RUNID:7:1203:2886:82292", "RUNID:7:1205:3886:16834"},
-
-                {"RUNID:7:1203:2886:16756", "RUNID:7:1205:3886:16756"},
-                {"RUNID:7:1204:2886:16756", "RUNID:7:1205:3886:16756"},
-                {"RUNID:7:1205:2886:16756", "RUNID:7:1205:3886:16756"},
-                {"RUNID:7:1206:2886:16756", "RUNID:7:1205:3886:16756"},
-                {"RUNID:7:1207:2886:16756", "RUNID:7:1205:3886:16756"},
-
-                {"RUNID:7:1203:2886:16756", "RUNID:7:1203:4886:26756"},
-                {"RUNID:7:1203:3886:16756", "RUNID:7:1203:4886:26756"},
-                {"RUNID:7:1203:4886:16756", "RUNID:7:1203:4886:26756"},
-                {"RUNID:7:1203:5886:16756", "RUNID:7:1203:4886:26756"},
-                {"RUNID:7:1203:6886:16756", "RUNID:7:1203:4886:26756"},
-
-                {"RUNID:7:1203:2886:34756", "RUNID:7:1203:2886:36756"},
-                {"RUNID:7:1203:2886:35756", "RUNID:7:1203:2886:36756"},
-                {"RUNID:7:1203:2886:37756", "RUNID:7:1203:2886:36756"},
-                {"RUNID:7:1203:2886:38756", "RUNID:7:1203:2886:36756"},
-        };
-    }
-
-    @Test(dataProvider = "readNameData")
-    public void testOpticalDuplicateClusterSamePositionNoOpticalDuplicates(final String readName1, final String readName2) {
-        // This tests the readname based tiebreaking code in mark duplicates. Since it's ambiguous which read should be marked
-        // as duplicate or not if scores match we break ties by evaluating the readname for consistencies sake.
-
-        final ReadNameParser parser = new ReadNameParser();
-
-        final PhysicalLocationInt position1 = new PhysicalLocationInt();
-        final PhysicalLocationInt position2 = new PhysicalLocationInt();
-
-        parser.addLocationInformation(readName1, position1);
-        parser.addLocationInformation(readName2, position2);
-
-        final AbstractMarkDuplicatesTester tester = getTester();
-        tester.getSamRecordSetBuilder().setReadLength(101);
-        tester.setExpectedOpticalDuplicate(0);
-
-        int compare = position1.tile - position2.tile;
-        if (compare == 0) {
-            compare = position1.x - position2.x;
-        }
-
-        if (compare == 0) {
-            compare = position1.y - position2.y;
-        }
-
-        final boolean isDuplicate = compare < 0;
-
-        tester.addMatePair(readName1, 1,485253, 485253, false, false, !isDuplicate, !isDuplicate, "42M59S", "59S42M", false, true, false, false, false, DEFAULT_BASE_QUALITY);
-        tester.addMatePair(readName2, 1,485253, 485253, false, false, isDuplicate, isDuplicate, "59S42M", "42M59S", true, false, false, false, false, DEFAULT_BASE_QUALITY);
-
-        tester.runTest();
-    }
-
     @Test
     public void testOpticalDuplicatesDifferentReadGroups() {
         final AbstractMarkDuplicatesTester tester = getTester();
@@ -251,7 +193,7 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
     public void testOpticalDuplicatesAndPCRDuplicatesOrientationDifference() {
         final AbstractMarkDuplicatesTester tester = getTester();
         tester.setExpectedOpticalDuplicate(0);
-        tester.addMatePair("RUNID:7:1203:2886:82292",  19, 19, 485253, 486253, false, false, true, true, "101M", "101M", true, false, false, false, false, DEFAULT_BASE_QUALITY, "1");  // duplicate
+        tester.addMatePair("RUNID:7:1203:2886:16838",  19, 19, 485253, 486253, false, false, true, true, "101M", "101M", true, false, false, false, false, DEFAULT_BASE_QUALITY, "1");  // duplicate
         tester.addMatePair("RUNID:7:1203:2886:16834", 19, 19, 486253, 485253, false, false, false, false, "101M", "101M", false, true, false, false, false, DEFAULT_BASE_QUALITY, "1");
         // Even though these reads are in a duplicate group together, we don't want to mark them as Optical Duplicates because their orientation is flipped (which doesn't matter for PCR duplicates)
         tester.runTest();

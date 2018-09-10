@@ -37,6 +37,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
     Allele ATCref;
     Allele Anoref;
     Allele GT;
+    SimpleInterval baseLoc = new SimpleInterval("20", 1000, 1000);
 
     @BeforeClass
     public void setup() throws IOException {
@@ -293,7 +294,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
                 .collect(Collectors.toList());
 
         final VariantContext merged = GATKVariantContextUtils.simpleMerge(
-                inputs, null,
+                inputs,null,
                 GATKVariantContextUtils.FilteredRecordMergeType.KEEP_IF_ANY_UNFILTERED,
                 GATKVariantContextUtils.GenotypeMergeType.UNSORTED, false, false, "set", false, false);
         Assert.assertEquals(merged.getID(), cfg.expected);

@@ -417,7 +417,10 @@ public final class XGBoostEvidenceFilter implements Iterator<BreakpointEvidence>
     private static double getGenomeIntervalsOverlap(final BreakpointEvidence evidence,
                                                     final FeatureDataSource<BEDFeature> genomeIntervals,
                                                     final ReadMetadata readMetadata) {
-        final SimpleInterval simpleInterval = evidence.getLocation().toSimpleInterval(readMetadata);
+        final SVInterval location = evidence.getLocation();
+        final SimpleInterval simpleInterval = new SimpleInterval(readMetadata.getContigName(location.getContig()),
+                location.getStart(),
+                location.getEnd() - 1); // "end - 1" because SimpleIntervals are closed on both ends
         int overlap = 0;
         for(final Iterator<BEDFeature> overlapperItr = genomeIntervals.query(simpleInterval); overlapperItr.hasNext();) {
             final BEDFeature overlapper = overlapperItr.next();

@@ -903,20 +903,22 @@ public final class GATKVariantContextUtils {
 
         final Map<Allele, Allele> map = new LinkedHashMap<>();
         for ( final Allele a : oneVC.getAlternateAlleles() ) {
-            if ( isUsableAlternateAllele(a) ) {
+            if ( isNonSymbolicExtendableAllele(a) ) {
                 Allele extended = Allele.extend(a, extraBases);
                 for ( final Allele b : currentAlleles )
                     if ( extended.equals(b) )
                         extended = b;
                 map.put(a, extended);
+            } else if (a.equals(Allele.SPAN_DEL)) {
+                map.put(a, a);
             }
         }
 
         return map;
     }
 
-    private static boolean isUsableAlternateAllele(final Allele allele) {
-        return ! (allele.isReference() || allele.isSymbolic() );
+    private static boolean isNonSymbolicExtendableAllele(final Allele allele) {
+        return ! (allele.isReference() || allele.isSymbolic() || allele.equals(Allele.SPAN_DEL));
     }
 
     public static List<VariantContext> sortVariantContextsByPriority(Collection<VariantContext> unsortedVCs, List<String> priorityListOfVCs, GenotypeMergeType mergeOption ) {

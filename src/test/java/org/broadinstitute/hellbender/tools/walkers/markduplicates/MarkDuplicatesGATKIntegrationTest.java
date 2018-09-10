@@ -14,8 +14,6 @@ import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-import picard.sam.util.PhysicalLocationInt;
-import picard.sam.util.ReadNameParser;
 
 import java.io.File;
 import java.util.*;
