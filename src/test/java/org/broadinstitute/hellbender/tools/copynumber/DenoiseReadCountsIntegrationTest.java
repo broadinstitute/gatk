@@ -67,7 +67,6 @@ public final class DenoiseReadCountsIntegrationTest extends CommandLineProgramTe
         final String[] arguments = argumentsBuilder
                 .addFileArgument(CopyNumberStandardArgument.STANDARDIZED_COPY_RATIOS_FILE_LONG_NAME, standardizedCRFile)
                 .addFileArgument(CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, denoisedCRFile)
-                .addArgument(StandardArgumentDefinitions.VERBOSITY_NAME, "INFO")
                 .getArgsArray();
         runCommandLine(arguments);
 

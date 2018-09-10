@@ -8,6 +8,11 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AbstractLocatableCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AnnotatedIntervalCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleCountCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleIntervalCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.LocatableMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleLocatableMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.records.AnnotatedInterval;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
@@ -97,6 +102,33 @@ public final class CopyNumberArgumentValidationUtils {
     }
 
     /**
+     * Resolve intervals from an {@link IntervalArgumentCollection} and a read-count file.
+     * If intervals are not specified in the {@link IntervalArgumentCollection}, they are taken from the
+     * read-count file.  The sequence dictionary is taken from the read-count file.  A {@link SimpleIntervalCollection}
+     * constructed using these intervals and sequence dictionary is returned and can be used for further validation.
+     */
+    public static SimpleIntervalCollection resolveIntervals(final File readCountFile,
+                                                            final IntervalArgumentCollection intervalArgumentCollection,
+                                                            final Logger logger) {
+        IOUtils.canReadFile(readCountFile);
+        Utils.nonNull(intervalArgumentCollection);
+        Utils.nonNull(logger);
+        final SimpleCountCollection firstReadCounts = SimpleCountCollection.read(readCountFile);
+        final SAMSequenceDictionary sequenceDictionary = firstReadCounts.getMetadata().getSequenceDictionary();
+        final LocatableMetadata metadata = new SimpleLocatableMetadata(sequenceDictionary);
+
+        if (intervalArgumentCollection.intervalsSpecified()) {
+            logger.info("Intervals specified...");
+            validateIntervalArgumentCollection(intervalArgumentCollection);
+            return new SimpleIntervalCollection(metadata,
+                    intervalArgumentCollection.getIntervals(sequenceDictionary));
+        } else {
+            logger.info(String.format("Retrieving intervals from read-count file (%s)...", readCountFile));
+            return new SimpleIntervalCollection(metadata, firstReadCounts.getIntervals());
+        }
+    }
+
+    /**
      * Checks equality of the sequence dictionary and intervals contained in an {@code locatableCollection}
      * against those contained in an {@link AnnotatedIntervalCollection} represented by {@code annotatedIntervalsFile}.
      * If the latter is {@code null}, then {@code null} is returned; otherwise,
@@ -109,10 +141,10 @@ public final class CopyNumberArgumentValidationUtils {
         Utils.nonNull(locatableCollection);
         Utils.nonNull(logger);
         if (annotatedIntervalsFile == null) {
-            logger.info("No GC-content annotations for intervals found; explicit GC-bias correction will not be performed...");
+            logger.info("No annotated intervals were provided...");
             return null;
         }
-        logger.info("Reading and validating GC-content annotations for intervals...");
+        logger.info("Reading and validating annotated intervals...");
         final AnnotatedIntervalCollection annotatedIntervals = new AnnotatedIntervalCollection(annotatedIntervalsFile);
         final SAMSequenceDictionary sequenceDictionary = locatableCollection.getMetadata().getSequenceDictionary();
         if (!CopyNumberArgumentValidationUtils.isSameDictionary(annotatedIntervals.getMetadata().getSequenceDictionary(), sequenceDictionary)) {
@@ -134,10 +166,10 @@ public final class CopyNumberArgumentValidationUtils {
         Utils.nonNull(locatableCollection);
         Utils.nonNull(logger);
         if (annotatedIntervalsFile == null) {
-            logger.info("No GC-content annotations for intervals found; explicit GC-bias correction will not be performed...");
+            logger.info("No annotated intervals were provided...");
             return null;
         }
-        logger.info("Reading and validating GC-content annotations for intervals...");
+        logger.info("Reading and validating annotated intervals...");
         IOUtils.canReadFile(annotatedIntervalsFile);
         final AnnotatedIntervalCollection annotatedIntervals = new AnnotatedIntervalCollection(annotatedIntervalsFile);
         final SAMSequenceDictionary sequenceDictionary = locatableCollection.getMetadata().getSequenceDictionary();
@@ -145,12 +177,11 @@ public final class CopyNumberArgumentValidationUtils {
             logger.warn("Sequence dictionary in annotated-intervals file does not match the master sequence dictionary.");
         }
         final Set<SimpleInterval> intervalsSubset = new HashSet<>(locatableCollection.getIntervals());
-        Utils.validateArg(annotatedIntervals.getIntervals().containsAll(intervalsSubset),
+        final List<AnnotatedInterval> subsetAnnotatedIntervals = annotatedIntervals.getRecords().stream()
+                .filter(i -> intervalsSubset.contains(i.getInterval()))
+                .collect(Collectors.toList());
+        Utils.validateArg(subsetAnnotatedIntervals.size() == intervalsSubset.size(),
                 "Annotated intervals do not contain all specified intervals.");
-        return new AnnotatedIntervalCollection(
-                locatableCollection.getMetadata(),
-                annotatedIntervals.getRecords().stream()
-                        .filter(i -> intervalsSubset.contains(i.getInterval()))
-                        .collect(Collectors.toList()));
+        return new AnnotatedIntervalCollection(locatableCollection.getMetadata(), subsetAnnotatedIntervals);
     }
 }
