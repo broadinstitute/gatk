@@ -89,7 +89,6 @@ public final class AlignmentUtils {
         final Cigar extendedHaplotypeCigar = haplotype.getConsolidatedPaddedCigar(1000);
         final int readStartOnHaplotype = calcFirstBaseMatchingReferenceInCigar(extendedHaplotypeCigar, swPairwiseAlignment.getAlignmentOffset());
         final int readStartOnReference = referenceStart + haplotype.getAlignmentStartHapwrtRef() + readStartOnHaplotype;
-        read.setPosition(read.getContig(), readStartOnReference);
 
         // compute the read -> ref alignment by mapping read -> hap -> ref from the
         // SW of read -> hap mapped through the given by hap -> ref
@@ -97,8 +96,10 @@ public final class AlignmentUtils {
         final Cigar readToRefCigarRaw = applyCigarToCigar(swCigar, haplotypeToRef);
         final Cigar readToRefCigarClean = cleanUpCigar(readToRefCigarRaw);
         final Cigar readToRefCigar = leftAlignIndel(readToRefCigarClean, refHaplotype.getBases(),
-                                                    originalRead.getBases(), swPairwiseAlignment.getAlignmentOffset(), 0, true);
+                originalRead.getBases(), readStartOnHaplotype, 0, true);
 
+        final int leadingDeletions = readToRefCigarClean.getReferenceLength() - readToRefCigar.getReferenceLength();
+        read.setPosition(read.getContig(), readStartOnReference + leadingDeletions);
 
         // the SW Cigar does not contain the hard clips of the original read
         final Cigar originalCigar = originalRead.getCigar();
@@ -1283,11 +1284,11 @@ public final class AlignmentUtils {
             // 2: xxx M yyy
             // 1: xxx D yyy
             new CigarPairTransform(CigarOperator.D, CigarOperator.M, CigarOperator.D, 1, 1),
-            // 3: xxx D1 D2 yyy
+            // 3: xxx D2 D1 yyy
             // ^^^^^^^^^^^^
             // 2: xxx D2 yyy
             // 1: xxx D1 yyy
-            new CigarPairTransform(CigarOperator.D, CigarOperator.D, CigarOperator.D, 1, 0),
+            new CigarPairTransform(CigarOperator.D, CigarOperator.D, CigarOperator.D, 0, 1),
             // 3: xxx X yyy => no-op, we skip emitting anything here
             // ^^^^^^^^^^^^
             // 2: xxx I yyy

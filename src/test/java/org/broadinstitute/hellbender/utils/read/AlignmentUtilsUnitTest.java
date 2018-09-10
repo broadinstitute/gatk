@@ -102,19 +102,19 @@ public final class AlignmentUtilsUnitTest {
                 bases[i] = (byte)'A';
             }
             read.setBases(bases);
-            tests.add(new Object[]{read, allM, 10, 10, allM.getCigar().toString()});
+            tests.add(new Object[]{read, allM, allM, 10, 10, allM.getCigar().toString()});
         }
 
         // make sure insertions at the front are correctly handled
         for ( int padFront = 1; padFront < 10; padFront++ ) {
             final GATKRead read = makeReadForAlignedToRefTest(Utils.dupString("N", padFront) + hapBases);
-            tests.add(new Object[]{read, allM, 10, 10, padFront + "I" + allM.getCigar().toString()});
+            tests.add(new Object[]{read, allM, allM, 10, 10, padFront + "I" + allM.getCigar().toString()});
         }
 
         // make sure insertions at the back are correctly handled
         for ( int padBack = 1; padBack < 10; padBack++ ) {
             final GATKRead read = makeReadForAlignedToRefTest(hapBases + Utils.dupString("N", padBack));
-            tests.add(new Object[]{read, allM, 10, 10, allM.getCigar().toString() + padBack + "I"});
+            tests.add(new Object[]{read, allM, allM, 10, 10, allM.getCigar().toString() + padBack + "I"});
         }
 
         // make sure refStart and hapStart are respected
@@ -125,14 +125,14 @@ public final class AlignmentUtilsUnitTest {
                 hap.setAlignmentStartHapwrtRef(hapStart);
 
                 final GATKRead read = makeReadForAlignedToRefTest(new String(hap.getBases()));
-                tests.add(new Object[]{read, hap, refStart, refStart + hapStart, allM.getCigar().toString()});
+                tests.add(new Object[]{read, hap, allM, refStart, refStart + hapStart, allM.getCigar().toString()});
             }
         }
 
         // example case of bad alignment because SW doesn't necessarily left-align indels
         {
             final String hap = "ACTGTGGGTTCCTCTTATTTTATTTCTACATCAATGTTCATATTTAACTTATTATTTTATCTTATTTTTAAATTTCTTTTATGTTGAGCCTTGATGAAAGCCATAGGTTCTCTCATATAATTGTATGTGTATGTATGTATATGTACATAATATATACATATATGTATATGTATGTGTATGTACATAATATATACGTATATGTATGTGTATGTACATAATATATACGTATATGTATGTGTATGTACATAATATATACGTATATGTATGTGTATGTACATAATATATACGTATATGTATGTGTATGTACATAATATATACGTATATGTATGTGTATGTGTATTACATAATATATACATATATGTATATATTATGTATATGTACATAATATATACATATATG";
-            final String hapCigar = "399M";
+            final String hapCigar = hap.length() + "M";
             final String readBases = "ATGTACATAATATATACATATATGTATATGTATGTACATAATATATACGTATATGTATGTGTATGTACATAATATATACGTATATGTATGTGTATGTACATAATATATACGTATATGTATGTGTATGTACATAATATATACGTATATGTATGTGTATGTACATAATATATACGTATATGTATGTGTATGTGTATTACATAATATATACATATATGTATATATTATGTATATGTACATAATAT";
             final GATKRead read = makeReadForAlignedToRefTest(readBases);
             final int refStart = 10130100;
@@ -144,22 +144,68 @@ public final class AlignmentUtilsUnitTest {
             badHap.setAlignmentStartHapwrtRef(hapStart);
 
             final int expectedPos = 10130740;
-            tests.add(new Object[]{read, badHap, refStart, expectedPos, goodCigar});
+            tests.add(new Object[]{read, badHap, badHap, refStart, expectedPos, goodCigar});
         }
+
+        // example where left-align generates a leading deletion
+        {
+            final String ref = "CTGAACGTAACCAAAATCAATATGGATACTGAGAAATACTATTTAATAAAGACATAAATTAGACTGCTAAAAAAAATTAAAGAAATTTCAAAAGAGAATCCACCTCTTTTCCTTGCCAGTGCTCAAAAGTGAGTGTGAATCTGGTGGCTGTGGGGCTGTTTTTGGTGTGGCTCTTTGGACCAGCCTGCCTGGTAATTCAAGCCTGCCTCTCATTTCTG";
+            // ref-to-hap:      ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||.|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+            final String hap = "CTGAACGTAACCAAAATCAATATGGATACTGAGAAATACTATTTAATAAAGACATAAATTAGACTGCTAAAAAAAATTAAAGAAATTTCAAAAGAGAATCCACCTCTTTTCCTTGCCAGTGCTCAAAAGTGAGTGTGAATCTGGTGGCTGCGGGGCTGTTTTTGGTGTGGCTCTTTGGACCAGCCTGCCTGGTAATTCAAGCCTGCCTCTCATTTCTG";
+            // hap-to-read:                                                                                                                                                               ||||.|||||||||||||||||
+            // aligned read:                                                                                                                                                              GCTGCTTTTGGTGTGGCTCTTT
+            final String readBases = "GCTGCTTTTGGTGTGGCTCTTT";
+            final String hapCigar = hap.length() + "M";
+            final GATKRead read = makeReadForAlignedToRefTest(readBases);
+            final int refStart = 215239171;
+            final int hapStart = 575;
+            final int alignmentOffset = 154;
+            final String goodCigar = "22M";
+            final Haplotype badHap = new Haplotype(hap.getBytes());
+            badHap.setCigar(TextCigarCodec.decode(hapCigar));
+            badHap.setAlignmentStartHapwrtRef(hapStart);
+            final Haplotype refHap = makeHaplotypeForAlignedToRefTest(ref, ref.length() + "M");
+
+            final int expectedPos = refStart + hapStart + alignmentOffset;
+            tests.add(new Object[]{read, badHap, refHap, refStart, expectedPos, goodCigar});
+         }
+
+        // example where the haplotype has an indel relative to reference
+        {
+            final String ref = "GGGATCCTGCTACAAAGGTGAAACCCAGGAGAGTGTGGAGTCCAGAGTGTTGCCAGGACCCAGGCACAGGCATTAGTGCCCGTTGGAGAAAACAGGGGAATCCCGAAGAAATGGTGGGTCCTGGCCATCCGTGAGATCTTCCCAGGGCAGCTCCCCTCTGTGGAATCCAATCTGTCTTCCATCCTGC";
+            // ref-to-hap:      |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||^^||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+            final String hap = "GGGATCCTGCTACAAAGGTGAAACCCAGGAGAGTGTGGAGTCCAGAGTGTTGCCAGGACCCAGGCACAGGCATTAGTGCCCGTTGGAGAAAACGGGAATCCCGAAGAAATGGTGGGTCCTGGCCATCCGTGAGATCTTCCCAGGGCAGCTCCCCTCTGTGGAATCCAATCTGTCTTCCATCCTGC";
+            // hap-to-read:                                                                                                                              .|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+            // aligned read:                                                                                                                             CCCATCCGTGAGATCTTCCCAGGGCAGCTCCCCTCTGTGGAATCCAATCTGTCTTCCATCCTGC
+            final String readBases = "CCCATCCGTGAGATCTTCCCAGGGCAGCTCCCCTCTGTGGAATCCAATCTGTCTTCCATCCTGC";
+            final String hapCigar = "93M2D92M";
+            final GATKRead read = makeReadForAlignedToRefTest(readBases);
+            final int refStart = 13011;
+            final int hapStart = 553;
+            final int alignmentOffset = 123;
+            final String goodCigar = "64M";
+            final Haplotype badHap = new Haplotype(hap.getBytes());
+            badHap.setCigar(TextCigarCodec.decode(hapCigar));
+            badHap.setAlignmentStartHapwrtRef(hapStart);
+            final Haplotype refHap = makeHaplotypeForAlignedToRefTest(ref, ref.length() + "M");
+
+            final int expectedPos = refStart + hapStart + alignmentOffset;
+            tests.add(new Object[]{read, badHap, refHap, refStart, expectedPos, goodCigar});
+         }
 
         return tests.toArray(new Object[][]{});
     }
 
     @Test(dataProvider = "ReadAlignedToRefData")
-    public void testReadAlignedToRef(final GATKRead read, final Haplotype haplotype, final int refStart, final int expectedReadStart, final String expectedReadCigar) throws Exception {
+    public void testReadAlignedToRef(final GATKRead read, final Haplotype haplotype, final Haplotype refHaplotype, final int refStart, final int expectedReadStart, final String expectedReadCigar) throws Exception {
         final GATKRead originalReadCopy = read.copy();
 
         if ( expectedReadCigar == null ) {
-            Assert.assertNull(AlignmentUtils.createReadAlignedToRef(read, haplotype, haplotype, refStart, true, SmithWatermanJavaAligner
+            Assert.assertNull(AlignmentUtils.createReadAlignedToRef(read, haplotype, refHaplotype, refStart, true, SmithWatermanJavaAligner
                     .getInstance()));
         } else {
             final Cigar expectedCigar = TextCigarCodec.decode(expectedReadCigar);
-            final GATKRead alignedRead = AlignmentUtils.createReadAlignedToRef(read, haplotype, haplotype, refStart, true, SmithWatermanJavaAligner
+            final GATKRead alignedRead = AlignmentUtils.createReadAlignedToRef(read, haplotype, refHaplotype, refStart, true, SmithWatermanJavaAligner
                     .getInstance());
 
             Assert.assertEquals(alignedRead.getName(), originalReadCopy.getName());
@@ -991,6 +1037,18 @@ public final class AlignmentUtilsUnitTest {
 //        * read  : AC-GxTA  - 3M1I2M
 //        * result: AC-GxTA => 2M1D1M1I2M
         tests.add(new Object[]{"3M1I2M", "2M1D3M", "2M1D1M1I2M"});
+
+//        * ref   : ACGTA
+//        * hap   : A-GTA  - 1M1D3M
+//        * read  : A--TA  - 1M1D2M
+//        * result: A--TA => 1M2D2M
+        tests.add(new Object[]{"1M1D2M", "1M1D3M", "1M2D2M"});
+
+//        * ref   : ACG-TA
+//        * hap   : A-GxTA  - 1M1D1M1I2M
+//        * read  : A---TA  - 1M2D2M
+//        * result: A---TA => 1M2D2M
+        tests.add(new Object[]{"1M2D2M", "1M1D1M1I2M", "1M2D2M"});
 
 //        * ref   : A-CGTA
 //        * hap   : A-CGTA  - 5M
