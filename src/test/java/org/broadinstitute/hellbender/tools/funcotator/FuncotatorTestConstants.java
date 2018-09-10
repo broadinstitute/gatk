@@ -11,6 +11,10 @@ import java.io.File;
  */
 public class FuncotatorTestConstants {
 
+    public static final String DUMMY_DATA_SOURCES_TAR_GZ             = GATKBaseTest.largeFileTestDir + "funcotator" + File.separator + "dummyDataSources.tar.gz";
+    public static final String DUMMY_DATA_SOURCES_TAR_GZ_SHA256_FILE = GATKBaseTest.largeFileTestDir + "funcotator" + File.separator + "dummyDataSources.sha256";
+    public static final String DUMMY_DATA_SOURCES_FOLDER             = GATKBaseTest.largeFileTestDir + "funcotator" + File.separator + "dummyDataSources";
+
     public static final double FUNCOTATOR_DOUBLE_COMPARISON_EPSILON = 0.0001;
 
     public static final String FUNCOTATOR_TEST_DIR = GATKBaseTest.toolsTestDir + "funcotator" + File.separator;
