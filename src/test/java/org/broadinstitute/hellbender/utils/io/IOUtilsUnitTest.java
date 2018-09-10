@@ -389,4 +389,42 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(IOUtils.isHDF5File(testPath), expected);
     }
 
+    @DataProvider(name = "GenomicsDBTestPathData")
+    public Object[][] genomicsDBTestPathData() {
+        return new Object[][]{
+                //path, getGenomicsDBPath, getAbsolutePathWithGenDBScheme, isGenomicsDBPath
+                {null, null, null, false},
+                {"", null, null, false},
+                {"dfdfdf://fdfdf", null, null, false},
+                {"fdfdf", null, null, false},
+                {"gendbdfdfdf://fdfdf", null, null, false},
+                {"gendb-dfdfdf://fdfdf", null, null, false},
+                {"gendb-dfdfdf://", null, null, false},
+                {"gendb", null, null, false},
+                {"gendbdfdf", null, null, false},
+                {"agendb://dfdfd", null, null, false},
+                {"gendb.://fdfdf", null, null, false},
+                {"gendb.", null, null, false},
+
+                {"gendb.dfdfdf://fdfdf", "dfdfdf://fdfdf", "gendb.dfdfdf://fdfdf", true},
+                {"gendb://fdfdf", "fdfdf", "gendb://" + new File("fdfdf").getAbsolutePath(), true},
+                {"gendb://", "", "gendb://" + new File("").getAbsolutePath(), true},
+                {"gendb:///fdfd", "/fdfd", "gendb:///fdfd", true},
+                {"gendb:///", "/", "gendb:///", true},
+                {"gendb.hdfs://this-node:9000/dir", "hdfs://this-node:9000/dir", "gendb.hdfs://this-node:9000/dir", true},
+                {"gendb.gs://my-bucket/dir", "gs://my-bucket/dir", "gendb.gs://my-bucket/dir", true},
+                {"gendb.s3://my-bucket/dir", "s3://my-bucket/dir", "gendb.s3://my-bucket/dir", true},
+
+                {"gendb-hdfs://this-node:9000/dir", null, null, false},
+                {"gendb-gs://this-node:9000/dir", null, null, false}
+        };
+    }
+
+    @Test(dataProvider = "GenomicsDBTestPathData")
+    public void testGenomicsDBPathParsing(String path, String expectedPath, String gendbExpectedAbsolutePath, boolean expectedComparison) {
+        Assert.assertEquals(IOUtils.getGenomicsDBPath(path), expectedPath, "Got 1 "+IOUtils.getGenomicsDBPath(path));
+        Assert.assertEquals(IOUtils.getAbsolutePathWithGenDBScheme(path), gendbExpectedAbsolutePath);
+        Assert.assertEquals(IOUtils.isGenomicsDBPath(path), expectedComparison, "Got 3 " + IOUtils.isGenomicsDBPath(path));
+    }
+
 }

@@ -781,55 +781,19 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         writeToGenomicsDB(LOCAL_GVCFS, INTERVAL, workspace, 0, false, 0, 1);
     }
 
-    private void cleanupGCSFolder(String path) {
-        try {
-            if (BucketUtils.isCloudStorageUrl(path)) {
-                Files.list(Paths.get(path)).forEach(f -> {
-                    try {
-                        Files.deleteIfExists(Paths.get(f.toString()));
-                    } catch (DirectoryNotEmptyException e1) {
-                        cleanupGCSFolder(f.toString());
-                    } catch (IOException e) {
-                        // Ignore for now
-                    }
-                });
-                Files.deleteIfExists(BucketUtils.getPathOnGcs(path));
-            }
-        } catch (IOException e) {
-            // Ignore for now.
-        }
-    }
-
     @Test(groups = {"bucket"})
     public void testWriteToAndQueryFromGCS() throws IOException {
-        String workspace = BucketUtils.randomRemotePath(getGCPTestInputPath(), "","");
-        try {
-            Assert.assertNotNull(getGoogleServiceAccountKeyPath());
-            // System.gc();
-            writeToGenomicsDB(LOCAL_GVCFS, INTERVAL, workspace, 0, false, 0, 1);
-            checkJSONFilesAreWritten(workspace);
-            checkGenomicsDBAgainstExpected(workspace, INTERVAL, COMBINED, b38_reference_20_21, true);
-        } catch (UserException e) {
-            // Don't run this test as GOOGLE_APPLICATION_CREDENTIALS is not set
-        } finally {
-            cleanupGCSFolder(workspace);
-        }
+        final String workspace = BucketUtils.randomRemotePath(getGCPTestStaging(), "", "");
+        writeToGenomicsDB(LOCAL_GVCFS, INTERVAL, workspace, 0, false, 0, 1);
+        checkJSONFilesAreWritten(workspace);
+        checkGenomicsDBAgainstExpected(workspace, INTERVAL, COMBINED, b38_reference_20_21, true);
     }
 
     @Test(groups = {"bucket"}, expectedExceptions = GenomicsDBImport.UnableToCreateGenomicsDBWorkspace.class)
     public void testWriteToExistingGCSDirectory() throws IOException {
-        String workspace = BucketUtils.randomRemotePath(getGCPTestInputPath(), "","");
-        try {
-            Assert.assertNotNull(getGoogleServiceAccountKeyPath());
-            int rc = GenomicsDBUtils.createTileDBWorkspace(workspace, false);
-            Assert.assertEquals(rc, 0);
-            writeToGenomicsDB(LOCAL_GVCFS, INTERVAL, workspace, 0, false, 0, 1);
-        } catch (GenomicsDBImport.UnableToCreateGenomicsDBWorkspace e1) {
-            throw e1;
-        } catch (UserException e) {
-            // Don't run this test as GOOGLE_APPLICATION_CREDENTIALS is not set
-        } finally {
-            cleanupGCSFolder(workspace);
-        }
+        final String workspace = BucketUtils.randomRemotePath(getGCPTestStaging(), "", "");
+        int rc = GenomicsDBUtils.createTileDBWorkspace(workspace, false);
+        Assert.assertEquals(rc, 0);
+        writeToGenomicsDB(LOCAL_GVCFS, INTERVAL, workspace, 0, false, 0, 1);
     }
 }

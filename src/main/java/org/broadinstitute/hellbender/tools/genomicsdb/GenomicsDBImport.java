@@ -470,6 +470,7 @@ public final class GenomicsDBImport extends GATKTool {
         logger.info("Vid Map JSON file will be written to " + vidMapJSONFile);
         logger.info("Callset Map JSON file will be written to " + callsetMapJSONFile);
         logger.info("Complete VCF Header will be written to " + vcfHeaderFile);
+        logger.info("Importing to array - " + workspaceDir + "/" + GenomicsDBConstants.DEFAULT_ARRAY_NAME);
 
         initializeInputPreloadExecutorService();
     }
@@ -654,10 +655,10 @@ public final class GenomicsDBImport extends GATKTool {
     private String overwriteOrCreateWorkspace() {
         String workspaceDir = BucketUtils.makeFilePathAbsolute(workspace);
         // From JavaDoc for GenomicsDBUtils.createTileDBWorkspace
-        //   returnCode = 0 : OK
+        //   returnCode = 0 : OK. If overwriteExistingWorkspace is true and the workspace exists, it is deleted first.
         //   returnCode = -1 : path was not a directory
         //   returnCode = -2 : failed to create workspace
-        //   returnCode = 1 : existing directory, nothing changed
+        //   returnCode = 1 : if overwriteExistingWorkspace is false, return 1 if directory already exists
         int returnCode = GenomicsDBUtils.createTileDBWorkspace(workspaceDir, overwriteExistingWorkspace);
         if (returnCode < 0) {
             throw new UnableToCreateGenomicsDBWorkspace("Error creating GenomicsDB workspace: " + workspace);
