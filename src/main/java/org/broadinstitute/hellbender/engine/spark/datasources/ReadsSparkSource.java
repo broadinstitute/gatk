@@ -76,7 +76,7 @@ public final class ReadsSparkSource implements Serializable {
             String cramReferencePath = checkCramReference(ctx, readFileName, referencePath);
             HtsjdkReadsTraversalParameters<SimpleInterval> tp = traversalParameters == null ? null :
                     new HtsjdkReadsTraversalParameters<>(traversalParameters.getIntervalsForTraversal(), traversalParameters.traverseUnmappedReads());
-            HtsjdkReadsRdd htsjdkReadsRdd = HtsjdkReadsRddStorage.makeDefault(ctx)
+            HtsjdkReadsRdd htsjdkReadsRdd = HtsjdkReadsRddStorage.makeDefault(ctx).useNio(true)
                     .splitSize((int) splitSize)
                     .validationStringency(validationStringency)
                     .referenceSourcePath(cramReferencePath)
