@@ -18,7 +18,6 @@ import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -788,7 +787,8 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
 
     @Test(groups = {"bucket"})
     public void testWriteToAndQueryFromGCS() throws IOException {
-        final String workspace = BucketUtils.randomRemotePath(getGCPTestStaging(), "", "");
+        final String workspace = BucketUtils.randomRemotePath(getGCPTestStaging(), "", "") + "/";
+        BucketUtils.deleteOnExit(workspace);
         writeToGenomicsDB(LOCAL_GVCFS, INTERVAL, workspace, 0, false, 0, 1);
         checkJSONFilesAreWritten(workspace);
         checkGenomicsDBAgainstExpected(workspace, INTERVAL, COMBINED, b38_reference_20_21, true);
@@ -796,7 +796,8 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
 
     @Test(groups = {"bucket"}, expectedExceptions = GenomicsDBImport.UnableToCreateGenomicsDBWorkspace.class)
     public void testWriteToExistingGCSDirectory() throws IOException {
-        final String workspace = BucketUtils.randomRemotePath(getGCPTestStaging(), "", "");
+        final String workspace = BucketUtils.randomRemotePath(getGCPTestStaging(), "", "") + "/";
+        BucketUtils.deleteOnExit(workspace);
         int rc = GenomicsDBUtils.createTileDBWorkspace(workspace, false);
         Assert.assertEquals(rc, 0);
         writeToGenomicsDB(LOCAL_GVCFS, INTERVAL, workspace, 0, false, 0, 1);
