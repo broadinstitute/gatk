@@ -163,11 +163,13 @@ workflow CNVSomaticPairWorkflow {
             disk_space_gb = preprocess_intervals_disk,
             preemptible_attempts = preemptible_attempts
     }
+    File file_preprocessed_intervals = PreprocessIntervals.preprocessed_intervals
+    Int preprocessed_intervals_size = ceil(size(PreprocessIntervals.preprocessed_intervals, "GB"))
 
-    Int collect_counts_tumor_disk = tumor_bam_size + ceil(size(CNVTasks.PreprocessIntervals.preprocessed_intervals, "GB")) + disk_pad
+    Int collect_counts_tumor_disk = tumor_bam_size + preprocessed_intervals_size + disk_pad
     call CNVTasks.CollectCounts as CollectCountsTumor {
         input:
-            intervals = CNVTasks.PreprocessIntervals.preprocessed_intervals,
+            intervals = file_preprocessed_intervals,
             bam = tumor_bam,
             bam_idx = tumor_bam_idx,
             ref_fasta = ref_fasta,
@@ -297,11 +299,11 @@ workflow CNVSomaticPairWorkflow {
             preemptible_attempts = preemptible_attempts
     }
 
-    Int collect_counts_normal_disk = normal_bam_size + ceil(size(CNVTasks.PreprocessIntervals.preprocessed_intervals, "GB")) + disk_pad
+    Int collect_counts_normal_disk = normal_bam_size + preprocessed_intervals_size + disk_pad
     if (defined(normal_bam)) {
         call CNVTasks.CollectCounts as CollectCountsNormal {
             input:
-                intervals = CNVTasks.PreprocessIntervals.preprocessed_intervals,
+                intervals = file_preprocessed_intervals,
                 bam = final_normal_bam,
                 bam_idx = final_normal_bam_idx,
                 ref_fasta = ref_fasta,
@@ -442,7 +444,7 @@ workflow CNVSomaticPairWorkflow {
     }
 
     output {
-        File preprocessed_intervals = CNVTasks.PreprocessIntervals.preprocessed_intervals
+        File preprocessed_intervals = file_preprocessed_intervals
         File read_counts_entity_id_tumor = CollectCountsTumor.entity_id
         File read_counts_tumor = CollectCountsTumor.counts
         File allelic_counts_entity_id_tumor = CollectAllelicCountsTumor.entity_id
