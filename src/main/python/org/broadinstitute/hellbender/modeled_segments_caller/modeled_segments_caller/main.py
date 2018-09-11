@@ -552,7 +552,7 @@ class ModeledSegmentsCaller:
                  interactive_output_copy_ratio_clustering_suffix:str="_copy_ratio_clusters.png",
                  normal_minor_allele_fraction_threshold: float=0.475,
                  copy_ratio_peak_min_relative_height: float=0.04,
-                 copy_ratio_kernel_density_bandwidth: float=None,
+                 copy_ratio_kernel_density_bandwidth: float=0.,
                  min_weight_first_cr_peak_cr_data_only: float=0.35,
                  min_fraction_of_points_in_normal_allele_fraction_region: float=0.15,
                  responsibility_threshold_normal: float=0.5
@@ -1038,7 +1038,7 @@ class ModeledSegmentsCaller:
                                                                                      max_n_Gaussians = n_peaks + 2,
                                                                                      alpha = 0.1, min_std_dev = 0.05)
         ind = self.__indices_increasing_order(list(mu_peaks))
-        if self.__copy_ratio_kernel_density_bandwidth == None:
+        if self.__copy_ratio_kernel_density_bandwidth <= 0.:
             if len(sd_peaks) == 1:
                 bandwidth = 0.5 * sd_peaks[ind[0]]
             else:

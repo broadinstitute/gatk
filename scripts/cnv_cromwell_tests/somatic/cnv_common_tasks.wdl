@@ -1,1 +1,0 @@
-/Users/mkanaszn/Broad_Institute/Code/gatk_ssh/gatk/scripts/cnv_wdl/cnv_common_tasks.wdl

@@ -20,7 +20,7 @@ import java.util.*;
  * <h3>Introduction</h3>
  *
  * <p>Performing copy number variation calls is a common task in genomics and in cancer research. Hereby, we implement
- * a caller that determines the copy number events based on both copy number and alleodle fraction data. </p>
+ * a caller that determines the copy number events based on both copy number and allele fraction data. </p>
  *
  * <p>The input data are provided by {@link ModelSegments}, and they characterize the posterior copy number
  * and allele fraction distribution of each segment. {@link CallModeledSegments} recovers the distributions from this
@@ -55,7 +55,7 @@ import java.util.*;
  *   --load-allele-fraction true \
  *   --output-prefix my_somatic_run_001 \
  *   --normal-minor-allele-fraction-threshold 0.475 \
- *   --copy-ratio-peak-min-weight 0.03 \
+ *   --copy-ratio-peak-min-relative-height 0.04 \
  *   --min-fraction-of-points-in-normal-allele-fraction-region 0.15
  *
  * </pre>
@@ -189,7 +189,7 @@ public final class CallModeledSegments extends CommandLineProgram {
             fullName = COPY_RATIO_PEAK_MIN_RELATIVE_HEIGHT,
             optional = true
     )
-    private double copyRatioPeakMinRelativeHeight=0.05;
+    private double copyRatioPeakMinRelativeHeight=0.03;
 
     @Argument(
             doc = "During the copy ratio clustering, we smoothen the data using a Gaussian kernel of "
@@ -197,7 +197,7 @@ public final class CallModeledSegments extends CommandLineProgram {
             fullName = COPY_RATIO_KERNEL_DENSITY_BANDWIDTH,
             optional = true
     )
-    private double copyRatioKernelDensityBandwidth=0.05;
+    private double copyRatioKernelDensityBandwidth=0.;
 
     @Argument(
             doc = "If only copy ratio data is taken into account, and we find more than one cluster in the "

@@ -121,9 +121,10 @@ group.add_argument("--copy_ratio_peak_min_relative_height",
 group.add_argument("--copy_ratio_kernel_density_bandwidth",
                    type=float,
                    required=False,
-                   default=None,
+                   default=0.,
                    help="During the copy ratio clustering, we smoothen the data using a Gaussian kernel of "
-                        "this bandwidth.")
+                        "this bandwidth. If it is set to 0 or a negative value, its value is set automatically, "
+                        "using the data.")
 
 group.add_argument("--min_weight_first_cr_peak_cr_data_only",
                    type=float,

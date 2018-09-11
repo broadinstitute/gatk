@@ -1,1 +1,0 @@
-/Users/mkanaszn/Broad_Institute/Code/gatk_ssh/gatk/scripts/cnv_wdl/somatic/cnv_somatic_oncotator_workflow.wdl
