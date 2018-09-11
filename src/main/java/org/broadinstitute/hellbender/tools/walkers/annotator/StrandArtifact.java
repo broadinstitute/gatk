@@ -82,7 +82,7 @@ public class StrandArtifact extends GenotypeAnnotation implements StandardMutect
         pi.put(ART_FWD, PRIOR_PROBABILITY_OF_ARTIFACT);
         pi.put(ART_REV, PRIOR_PROBABILITY_OF_ARTIFACT);
 
-        // We use the allele with highest LOD score
+        // We use the allele with highest log odds score
         final double[] tumorLods = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.TUMOR_LOD_KEY, () -> null, -1);
 
         if (tumorLods==null) {

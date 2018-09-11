@@ -132,6 +132,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
                 ReadFilterLibrary.NOT_SECONDARY_ALIGNMENT,
                 ReadFilterLibrary.NOT_DUPLICATE,
                 ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK,
+                ReadFilterLibrary.NON_CHIMERIC_ORIGINAL_ALIGNMENT_READ_FILTER,
                 ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT,
                 new ReadLengthReadFilter(MIN_READ_LENGTH, Integer.MAX_VALUE),
                 ReadFilterLibrary.GOOD_CIGAR,
@@ -168,7 +169,9 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         headerInfo.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY));
         headerInfo.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY));
 
-        headerInfo.add(new VCFHeaderLine(TUMOR_SAMPLE_KEY_IN_VCF_HEADER, tumorSample));
+        if (!MTAC.mitochondria) {
+            headerInfo.add(new VCFHeaderLine(TUMOR_SAMPLE_KEY_IN_VCF_HEADER, tumorSample));
+        }
         if (hasNormal()) {
             headerInfo.add(new VCFHeaderLine(NORMAL_SAMPLE_KEY_IN_VCF_HEADER, normalSample));
         }
@@ -270,7 +273,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         final List<Byte> tumorAltQuals = altQuals(tumorPileup, refBase, MTAC.initialPCRErrorQual);
         final double tumorLog10Odds = MathUtils.logToLog10(lnLikelihoodRatio(tumorPileup.size()-tumorAltQuals.size(), tumorAltQuals));
 
-        if (tumorLog10Odds < MTAC.initialTumorLod) {
+        if (tumorLog10Odds < MTAC.getInitialLod()) {
             return new ActivityProfileState(refInterval, 0.0);
         } else if (hasNormal() && !MTAC.genotypeGermlineSites) {
             final ReadPileup normalPileup = pileup.getPileupForSample(normalSample, header);

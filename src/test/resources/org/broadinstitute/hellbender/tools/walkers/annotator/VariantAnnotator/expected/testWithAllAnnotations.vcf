@@ -19,6 +19,8 @@
 ##FORMAT=<ID=SA_POST_PROB,Number=3,Type=Float,Description="posterior probabilities of the presence of strand artifact">
 ##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fisher's Exact Test to detect strand bias.">
 ##FORMAT=<ID=UNIQ_ALT_READ_COUNT,Number=1,Type=Integer,Description="Number of ALT reads with unique start and mate end positions at a variant site">
+##FORMAT=<ID=POTENTIAL_POLYMORPHIC_NUMT,Number=1,Type=String,Description="Potentially a polymorphic NuMT false positive rather than a real mitochondrial variant.">
+##FORMAT=<ID=ORIGINAL_CONTIG_MISMATCH,Number=1,Type=Integer,Description="Number of alt reads whose original alignment doesn't match the current contig.">
 ##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
 ##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">
 ##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">
