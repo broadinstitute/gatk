@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.transforms.markduplicates;
 
+import htsjdk.samtools.Defaults;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.metrics.MetricsFile;
 import org.apache.spark.Partitioner;
@@ -106,6 +107,8 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
 
         // Here we combine the original bam with the repartitioned unmarked readnames to produce our marked reads
         return sortedReadsForMarking.zipPartitions(repartitionedReadNames, (readsIter, readNamesIter)  -> {
+            System.out.println("system property says: " + System.getProperty("samjdk.compression_level"));
+            System.out.println("htsjdk says: " + Defaults.COMPRESSION_LEVEL);
             final Map<String,Integer> namesOfNonDuplicateReadsAndOpticalCounts = new HashMap<>();
             readNamesIter.forEachRemaining(tup -> { if (namesOfNonDuplicateReadsAndOpticalCounts.putIfAbsent(tup._1,tup._2)!=null) {
                 throw new GATKException(String.format("Detected multiple mark duplicate records objects corresponding to read with name '%s', this could be the result of the file sort order being incorrect or that a previous tool has let readnames span multiple partitions",tup._1()));
