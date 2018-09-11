@@ -117,12 +117,12 @@ import java.util.*;
 @DocumentedFeature
 public class LeftAlignAndTrimVariants extends VariantWalker {
 
-    public static final String DONT_TRIM_ALLELES_LONG_NAME="dont-trim-alleles";
-    public static final String DONT_TRIM_ALLELES_SHORT_NAME="no-trim";
-    public static final String SPLIT_MULTIALLELEICS_LONG_NAME="split-multi-allelics";
-    public static final String KEEP_ORIGINAL_AC_LONG_NAME="keep-original-ac";
-    public static final String MAX_INDEL_LENGTH_LONG_NAME="max-indel-length";
-    public static final String MAX_LEADING_BASES_LONG_NAME="max-leading-bases";
+    public static final String DONT_TRIM_ALLELES_LONG_NAME = "dont-trim-alleles";
+    public static final String DONT_TRIM_ALLELES_SHORT_NAME = "no-trim";
+    public static final String SPLIT_MULTIALLELEICS_LONG_NAME = "split-multi-allelics";
+    public static final String KEEP_ORIGINAL_AC_LONG_NAME = "keep-original-ac";
+    public static final String MAX_INDEL_LENGTH_LONG_NAME = "max-indel-length";
+    public static final String MAX_LEADING_BASES_LONG_NAME = "max-leading-bases";
     /**
      * Output file to which to write left aligned variants
      */
@@ -168,13 +168,13 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
             doc = "Suppress reference path in output for test result differencing")
     private boolean suppressReferencePath = false;
 
-    private VariantContextWriter vcfWriter = null;
-    private int numRealignedVariants;
-    private int numVariantsSplit;
-    private int numVariantsSplitTo;
-    private int numVariantsTrimmed;
-    private int numSkippedForLength;
-    private int longestSkippedVariant;
+    protected VariantContextWriter vcfWriter = null;
+    protected int numRealignedVariants;
+    protected int numVariantsSplit;
+    protected int numVariantsSplitTo;
+    protected int numVariantsTrimmed;
+    protected int numSkippedForLength;
+    protected int longestSkippedVariant;
     private int furthestEndOfEarlierVariant;
     private String currentContig;
 
@@ -184,10 +184,10 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
     @Override
     public void onTraversalStart() {
         numRealignedVariants = 0;
-        numVariantsSplit=0;
-        numVariantsSplitTo=0;
-        numVariantsTrimmed=0;
-        longestSkippedVariant=0;
+        numVariantsSplit = 0;
+        numVariantsSplitTo = 0;
+        numVariantsTrimmed = 0;
+        longestSkippedVariant = 0;
         furthestEndOfEarlierVariant = 0;
         numSkippedForLength = 0;
         final Map<String, VCFHeader> vcfHeaders = Collections.singletonMap(getDrivingVariantsFeatureInput().getName(), getHeaderForVariants());
@@ -238,7 +238,7 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
         final List<VariantContext> vcList = splitMultiallelics ? GATKVariantContextUtils.splitVariantContextToBiallelics(vc, false,
                 GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL, keepOriginalChrCounts) : Collections.singletonList(vc);
 
-        if (vcList.size() > 1 ) {
+        if (vcList.size() > 1) {
             numVariantsSplit++;
             numVariantsSplitTo += vcList.size();
         }
@@ -307,8 +307,8 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
             logger.info(String.format("%s (%d) at position %s:%d; skipping that record. Set --max-indel-length >= %d",
                     "Reference allele is too long", refLength, vc.getContig(), vc.getStart(), refLength));
             numSkippedForLength++;
-            if (refLength>longestSkippedVariant) {
-                longestSkippedVariant=refLength;
+            if (refLength > longestSkippedVariant) {
+                longestSkippedVariant = refLength;
             }
             //still write out variant, just don't try to left align
             vcfWriter.add(vc);
@@ -357,14 +357,14 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
             logger.info(String.format("%s (%d) at position %s:%d; skipping that record. Set --max-indel-length >= %d",
                     "Indel is too long", indelLength, vc.getContig(), vc.getStart(), indelLength));
             numSkippedForLength++;
-            if (indelLength>longestSkippedVariant) {
-                longestSkippedVariant=indelLength;
+            if (indelLength > longestSkippedVariant) {
+                longestSkippedVariant = indelLength;
             }
             //still write out variant, just don't try to left align
             return vc;
         }
 
-        int leadingBases = Math.max(50,indelLength);
+        int leadingBases = Math.max(50, indelLength);
 
         while (leadingBases < maxLeadingBases) {
             ref.setWindow(leadingBases, maxIndelSize);
@@ -388,7 +388,7 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
             if (newCigar.equals(originalCigar)) {
                 return vc;
             }
-            if (newCigar.getCigarElement(0).getLength() != refSeq.length && newCigar.getCigarElement(0).getOperator() == CigarOperator.M ) {
+            if (newCigar.getCigarElement(0).getLength() != refSeq.length && newCigar.getCigarElement(0).getOperator() == CigarOperator.M) {
                 int difference = originalIndex - newCigar.getCigarElement(0).getLength();
                 VariantContext newVC = new VariantContextBuilder(vc).start(vc.getStart() - difference).stop(vc.getEnd() - difference).make();
 

@@ -15,6 +15,8 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.*;
+import java.util.stream.Stream;
+import java.util.stream.Collectors;
 
 public final class AlignmentUtilsUnitTest {
     private final static boolean DEBUG = false;
@@ -894,6 +896,8 @@ public final class AlignmentUtilsUnitTest {
         Assert.assertTrue(expectedCigar.equals(actualCigar), "Wrong left alignment detected for cigar " + originalCigar.toString() + " to " + actualCigar.toString() + " but expected " + expectedCigar.toString() + " with repeat length " + repeatLength);
     }
 
+    //additionally test that will not align past leftmostAllowedAlignment.  Dataset is same as provided by LeftAlignIndelDataProvider
+    // with additional parameter of leftmostAllowedAlignment, and adjusted expected results
     @DataProvider(name = "LeftAlignIndelWithLimitDataProvider")
     public Object[][] makeLeftAlignIndelWithLimitDataProvider() {
         List<Object[]> tests = new ArrayList<>();
@@ -983,6 +987,91 @@ public final class AlignmentUtilsUnitTest {
         final Cigar actualCigar = AlignmentUtils.leftAlignIndel(originalCigar, reference, read, 0, 0, leftmostAllowedAlignment, true);
         Assert.assertTrue(expectedCigar.equals(actualCigar), "Wrong left alignment detected for cigar " + originalCigar.toString() + " to " + actualCigar.toString() + " but expected " + expectedCigar.toString() + " with repeat length " + repeatLength + " and leftmostAllowedAlignment " + leftmostAllowedAlignment);
     }
+
+    @DataProvider(name = "LeftAlignIndelStartOfRead")
+    public Object[][] makeLeftAlignIndelStartOfReadDataProvider() {
+        List<Object[]> tests = new ArrayList<>();
+
+        final byte[] repeat1Reference = "XXXXXXXXXXXXABCDEFGHIJKLMNOP".getBytes();
+        final byte[] repeat2Reference = "XYXYXYXYXYXYABCDEFGHIJKLMNOP".getBytes();
+        final byte[] repeat3Reference = "XYZXYZXYZXYZABCDEFGHIJKLMNOP".getBytes();
+        final int referenceLength = repeat1Reference.length;
+        final int repeatLength=12;
+
+        for (int indelStart = 1; indelStart < repeat1Reference.length; indelStart++) {
+            for (final int indelSize : Arrays.asList(0, 1, 2, 3, 4)) {
+                for (final char indelOp : Arrays.asList('D', 'I')) {
+                    if (indelOp == 'D' && indelStart + indelSize >= repeatLength)
+                        continue;
+                    final int readLength = referenceLength - (indelOp == 'D' ? indelSize : -indelSize);
+
+                    // create the original CIGAR string
+                    final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "myRead", 0, 1, readLength);
+                    read.setCigar(buildTestCigarString(indelSize == 0 ? 'M' : indelOp, 0, indelStart, indelSize, readLength));
+                    final Cigar originalCigar = read.getCigar();
+
+                    Cigar expectedCigar = originalCigar;
+
+                    //create expected CIGAR string if the indel will be realigned
+                    if (indelStart < 13 && indelSize > 0) {
+                        if (indelOp == 'D') {
+                            final List<CigarElement> elements = Stream.of(new CigarElement(readLength, CigarOperator.M)).collect(Collectors.toList());
+
+                            expectedCigar = new Cigar(elements);
+                        } else {
+                            final List<CigarElement> elements = Stream.of(new CigarElement(indelSize, CigarOperator.I), new CigarElement(referenceLength, CigarOperator.M)).collect(Collectors.toList());
+                            expectedCigar = new Cigar(elements);
+                        }
+                    }
+
+                    //create readString
+                    final byte[] readString1 = makeReadStringStartOfRead(repeat1Reference, indelOp, indelStart, indelSize, readLength, 1);
+                    tests.add(new Object[]{originalCigar, expectedCigar, repeat1Reference, readString1});
+                    if( indelSize % 2 == 0) {
+                        final byte[] readString2 = makeReadStringStartOfRead(repeat2Reference, indelOp, indelStart, indelSize, readLength, 2);
+                        tests.add(new Object[]{originalCigar, expectedCigar, repeat2Reference, readString2});
+                    }
+                    if (indelSize % 3 ==0) {
+                        final byte[] readString3 = makeReadStringStartOfRead(repeat3Reference, indelOp, indelStart, indelSize, readLength, 3);
+                        tests.add(new Object[]{originalCigar, expectedCigar, repeat3Reference, readString3});
+                    }
+                }
+            }
+        }
+        return tests.toArray(new Object[][]{});
+    }
+
+    private static byte[] makeReadStringStartOfRead(final byte[] reference, final char indelOp, final int indelStart, final int indelSize, final int readLength, final int repeatLength) {
+        final byte[] readString = new byte[readLength];
+
+        if ( indelOp == 'D' && indelSize > 0 ) {
+            System.arraycopy(reference, 0, readString, 0, indelStart);
+            System.arraycopy(reference, indelStart + indelSize, readString, indelStart, readLength - indelStart);
+        } else if ( indelOp == 'I' && indelSize > 0 ) {
+            System.arraycopy(reference, 0, readString, 0, indelStart);
+            for ( int i = indelStart; i < indelSize+indelStart; i++ ) {
+                if ( i % repeatLength == 0 )
+                    readString[i] = 'X';
+                else if ( i % repeatLength == 1 )
+                    readString[i] = 'Y';
+                else
+                    readString[i] = 'Z';
+            }
+            System.arraycopy(reference, indelStart, readString, indelStart + indelSize, readLength - indelStart - indelSize);
+        } else {
+            System.arraycopy(reference, 0, readString, 0, readLength);
+        }
+
+        return readString;
+    }
+
+
+    @Test(dataProvider = "LeftAlignIndelStartOfRead")
+    public void testLeftAlignToStartOfRead(final Cigar originalCigar, final Cigar expectedCigar, final byte[] reference, final byte[] read) {
+        final Cigar actualCigar = AlignmentUtils.leftAlignIndel(originalCigar, reference, read, 0, 0, true);
+        Assert.assertTrue(expectedCigar.equals(actualCigar));
+    }
+
 
     //////////////////////////////////////////
     // Test AlignmentUtils.IsIndelAlignedTooFarLeft //
