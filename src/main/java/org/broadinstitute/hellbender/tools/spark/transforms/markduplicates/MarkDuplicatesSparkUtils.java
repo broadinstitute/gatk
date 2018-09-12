@@ -43,6 +43,29 @@ public class MarkDuplicatesSparkUtils {
             .thenComparing(TransientFieldPhysicalLocationComparator.INSTANCE.reversed());
 
     /**
+     * Returns the library associated with the provided read's read group.
+     * Or the specified default if no library is found
+     *
+     * @param read read whose library to retrieve
+     * @param header SAM header containing read groups
+     * @return the library for the provided read's read group as a String,
+     *         or the default value if the read has no read group.
+     */
+    public static String getLibraryForRead(final GATKRead read, final SAMFileHeader header, String defaultLibrary) {
+        final SAMReadGroupRecord readGroup = ReadUtils.getSAMReadGroupRecord(read, header);
+        if (readGroup != null) {
+            String library = readGroup.getLibrary();
+            return library==null? defaultLibrary : library;
+        } else {
+            if (read.getReadGroup() == null) {
+                throw new UserException.ReadMissingReadGroup(read);
+            } else {
+                throw new UserException.HeaderMissingReadGroup(read);
+            }
+        }
+    }
+
+    /**
      * Wrapper object used for storing an object and some type of index information.
      *
      * MarkDuplicates uses this object remember which partition of the original bam each read came from in order to
@@ -197,6 +220,9 @@ public class MarkDuplicatesSparkUtils {
         final List<SAMReadGroupRecord> readGroups = header.getReadGroups();
         if (readGroups.size() > 65535) {
             throw new GATKException("Detected too many read groups in the header, currently MarkDuplicatesSpark only supports up to 65535 unique readgroup IDs but " + readGroups.size() + " were found");
+        }
+        if (readGroups.size()==0) {
+            throw new UserException.BadInput("Sam file header missing Read Group fields. MarkDuplicatesSpark currently requires reads to be labeled with read group tags, please add read groups tags to your reads");
         }
         final Iterator<Short> iterator = IntStream.range(0, readGroups.size()).boxed().map(Integer::shortValue).iterator();
         return Maps.uniqueIndex(iterator, idx -> readGroups.get(idx).getId() );

@@ -1,9 +1,9 @@
 package org.broadinstitute.hellbender.utils.read.markduplicates.sparkrecords;
 
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.tools.spark.transforms.markduplicates.MarkDuplicatesSparkUtils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.markduplicates.LibraryIdGenerator;
 import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesScoringStrategy;
 import org.testng.Assert;
@@ -48,7 +48,7 @@ public class PairedEndsUnitTest extends GATKBaseTest {
 
 
         // Creating a PairedEnds object and asserting the orientation is correct
-        Pair pair = PairedEnds.newPair(primaryRead, secondaryRead, hg19Header, 0, MarkDuplicatesScoringStrategy.SUM_OF_BASE_QUALITIES, Collections.singletonMap(ReadUtils.getLibrary(primaryRead, hg19Header, LibraryIdGenerator.UNKNOWN_LIBRARY), (byte) 0));
+        Pair pair = PairedEnds.newPair(primaryRead, secondaryRead, hg19Header, 0, MarkDuplicatesScoringStrategy.SUM_OF_BASE_QUALITIES, Collections.singletonMap(MarkDuplicatesSparkUtils.getLibraryForRead(primaryRead, hg19Header, LibraryIdGenerator.UNKNOWN_LIBRARY), (byte) 0));
         Assert.assertEquals(pair.getOrientationForPCRDuplicates(), PCROrientation);
         Assert.assertEquals(pair.getOrientationForOpticalDuplicates(), opticalOrientation);
     }
