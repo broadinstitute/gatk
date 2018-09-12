@@ -7,6 +7,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.collections.IteratorUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.runtime.ProcessController;
 import org.broadinstitute.hellbender.utils.runtime.ProcessOutput;
@@ -407,4 +408,14 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(nextcromlast.getGenotypes().size(), 2);
     }
 
+    /** Should throw a BadInput exception as combining GVCFs with MNPs is unsupported. */
+    @Test(expectedExceptions={UserException.BadInput.class})
+    public void testCombineGvcfsWithMnps() throws Exception {
+        final File output = createTempFile("combinegvcfs", ".vcf");
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addReference(new File(b37_reference_20_21));
+        args.addOutput(output);
+        args.addVCF(getTestFile("mnp.g.vcf"));
+        runCommandLine(args);
+    }
 }

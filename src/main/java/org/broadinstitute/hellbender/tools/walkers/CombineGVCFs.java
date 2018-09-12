@@ -4,6 +4,7 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
+import htsjdk.variant.variantcontext.VariantContext.Type;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
@@ -18,6 +19,7 @@ import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCo
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.MultiVariantWalkerGroupedOnStart;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StandardAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
@@ -121,6 +123,14 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
 
     @Override
     public void apply(List<VariantContext> variantContexts, ReferenceContext referenceContext) {
+        // Check that the input variant contexts do not contain MNPs as these may not be properly merged
+        for (final VariantContext ctx : variantContexts) {
+            if (GATKVariantContextUtils.isMnpWithoutNonRef(ctx)) {
+                throw new UserException.BadInput("Combining gVCFs containing MNPs is not supported. " + ctx.getSource() +
+                        " contained an MNP at " + ctx.getContig() + ":" + ctx.getStart());
+            }
+        }
+
         // If we need to stop at an intermediate site since the last apply, do so (caused by gvcfBlocks, contexts ending, etc...)
         if (!variantContextsOverlappingCurrentMerge.isEmpty()) {
             Locatable last = prevPos!=null && prevPos.getContig().equals(variantContextsOverlappingCurrentMerge.get(0).getContig()) ?  prevPos : variantContextsOverlappingCurrentMerge.get(0);

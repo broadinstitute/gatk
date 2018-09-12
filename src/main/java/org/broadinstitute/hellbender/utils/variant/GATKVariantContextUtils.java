@@ -1846,5 +1846,32 @@ public final class GATKVariantContextUtils {
 
         return result;
     }
+
+    /**
+     * Returns true if the context represents an MNP. If the context supplied contains the GVCF NON_REF symbolic
+     * allele, then the determination is performed after discarding the NON_REF symbolic allele.
+     *
+     * @param ctx a Variant context
+     * @return true if the context represents an unmixed MNP (i.e. all alleles are non-symbolic and of the same
+     *         length > 1), false otherwise
+     */
+    public static boolean isMnpWithoutNonRef(final VariantContext ctx) {
+        final List<Allele> alleles = ctx.getAlleles();
+        int length = -1;
+        for (final Allele a : alleles) {
+            if (a.isSymbolic()) {
+                if (!Allele.NON_REF_ALLELE.equals(a)) return false; // Don't allow any non-NON_REF symbolic alleles
+            }
+            else if (length == -1) {
+                length = a.length();
+                if (length < 2) return false;
+            }
+            else if (a.length() != length) {
+                return false;
+            }
+        }
+
+        return true;
+    }
 }
 

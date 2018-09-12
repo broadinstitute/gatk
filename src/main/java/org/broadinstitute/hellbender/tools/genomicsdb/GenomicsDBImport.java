@@ -14,7 +14,6 @@ import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.CloseableTribbleIterator;
 import htsjdk.tribble.FeatureReader;
 import htsjdk.tribble.TribbleException;
-import htsjdk.tribble.readers.LineIterator;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFCodec;
 import htsjdk.variant.vcf.VCFHeader;
@@ -34,6 +33,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.nio.SeekableByteChannelPrefetcher;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -376,7 +376,7 @@ public final class GenomicsDBImport extends GATKTool {
     }
 
     private VCFHeader getHeaderFromPath(final Path variantPath) {
-        try(final AbstractFeatureReader<VariantContext, LineIterator> reader = getReaderFromPath(variantPath)) {
+        try(final FeatureReader<VariantContext> reader = getReaderFromPath(variantPath)) {
             return (VCFHeader) reader.getHeader();
         } catch (final IOException e) {
             throw new UserException("Error while reading vcf header from " + variantPath.toUri(), e);
@@ -622,7 +622,7 @@ public final class GenomicsDBImport extends GATKTool {
         final List<String> sampleNames = new ArrayList<>(sampleNameToPath.keySet());
         for(int i = lowerSampleIndex; i < sampleNameToPath.size() && i < lowerSampleIndex+batchSize; ++i) {
             final String sampleName = sampleNames.get(i);
-            final AbstractFeatureReader<VariantContext, LineIterator> reader = getReaderFromPath(sampleNameToPath.get(sampleName));
+            final FeatureReader<VariantContext> reader = getReaderFromPath(sampleNameToPath.get(sampleName));
             sampleToReaderMap.put(sampleName, reader);
         }
         logger.info("Importing batch " + this.batchCount + " with " + sampleToReaderMap.size() + " samples");
@@ -635,12 +635,54 @@ public final class GenomicsDBImport extends GATKTool {
      * @return  Feature reader
      * @param variantPath
      */
-    private AbstractFeatureReader<VariantContext, LineIterator> getReaderFromPath(final Path variantPath) {
+    private FeatureReader<VariantContext> getReaderFromPath(final Path variantPath) {
         final String variantURI = variantPath.toAbsolutePath().toUri().toString();
         final Function<SeekableByteChannel, SeekableByteChannel> cloudWrapper = (cloudPrefetchBuffer > 0 ? is -> SeekableByteChannelPrefetcher.addPrefetcher(cloudPrefetchBuffer, is) : Function.identity());
         final Function<SeekableByteChannel, SeekableByteChannel> cloudIndexWrapper = (cloudIndexPrefetchBuffer > 0 ? is -> SeekableByteChannelPrefetcher.addPrefetcher(cloudIndexPrefetchBuffer, is) : Function.identity());
         try {
-            return AbstractFeatureReader.getFeatureReader(variantURI, null, new VCFCodec(), true, cloudWrapper, cloudIndexWrapper);
+            final FeatureReader<VariantContext> r = AbstractFeatureReader.getFeatureReader(variantURI, null, new VCFCodec(), true, cloudWrapper, cloudIndexWrapper);
+
+            /* Anonymous FeatureReader subclass that wraps returned iterators to ensure that the GVCFs do not
+             * contain MNPs.
+             */
+            return new FeatureReader<VariantContext>() {
+                /** Iterator that checks that variants are not MNPs on their way by. */
+                class NoMnpIterator implements CloseableTribbleIterator<VariantContext> {
+                    private final CloseableTribbleIterator<VariantContext> inner;
+                    NoMnpIterator(CloseableTribbleIterator<VariantContext> inner) { this.inner = inner; }
+                    @Override public void close() { this.inner.close(); }
+                    @Override public Iterator<VariantContext> iterator() { return this; }
+                    @Override public boolean hasNext() { return this.inner.hasNext(); }
+                    @Override
+                    public VariantContext next() {
+                        final VariantContext vc = this.inner.next();
+                        if (GATKVariantContextUtils.isMnpWithoutNonRef(vc)) {
+                            throw new UserException.BadInput("GenomicsDBImport does not support GVCFs with MNPs. " +
+                                    "MNP found at " + vc.getContig() + ":" + vc.getStart() + " in VCF " +
+                                    variantPath.toAbsolutePath()
+                            );
+                        }
+
+                        return vc;
+                    }
+                }
+
+                @Override public void close() throws IOException { r.close(); }
+                @Override public List<String> getSequenceNames() { return r.getSequenceNames(); }
+                @Override public Object getHeader() { return r.getHeader(); }
+                @Override public boolean isQueryable() { return r.isQueryable(); }
+
+                @Override public CloseableTribbleIterator<VariantContext> query(Locatable locus) throws IOException {
+                    return new NoMnpIterator(r.query(locus));
+                }
+                @Override public CloseableTribbleIterator<VariantContext> query(String chr, int start, int end) throws IOException {
+                    return new NoMnpIterator(r.query(chr, start, end));
+                }
+
+                @Override public CloseableTribbleIterator<VariantContext> iterator() throws IOException {
+                    return new NoMnpIterator(r.iterator());
+                }
+            };
         } catch (final TribbleException e){
             throw new UserException("Failed to create reader from " + variantURI, e);
         }

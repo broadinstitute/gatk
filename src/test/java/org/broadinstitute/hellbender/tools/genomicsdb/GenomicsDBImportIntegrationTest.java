@@ -17,6 +17,7 @@ import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -36,6 +37,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
+import java.util.concurrent.CompletionException;
 import java.util.stream.Collectors;
 
 @Test(groups = {"variantcalling"})
@@ -53,6 +55,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     private static final String MULTIPLOID_DATA_HG37 = largeFileTestDir + "gvcfs/HapMap5plex.ploidy10.b37.g.vcf";
     private static final String NA12878_HG37 = toolsTestDir + "haplotypecaller/expected.testGVCFMode.gatk4.g.vcf";
     private static final String MULTIPLOID_EXPECTED_RESULT = toolsTestDir + "GenomicsDBImport/expected.testGenomicsDBImportWithNonDiploidData.vcf";
+    private static final String MNP_GVCF = toolsTestDir + "GenomicsDBImport/mnp.input.g.vcf";
     private static final String ARTIFICIAL_PHASED = getTestDataDir() + "/ArtificalPhasedData.1.g.vcf";
     private static final String HG_00268_WITH_SPACES = largeFileTestDir + "gvcfs/HG00268.spaceInSampleName.g.vcf";
     private static final List<String> LOCAL_GVCFS = Arrays.asList(HG_00096, HG_00268, NA_19625);
@@ -206,6 +209,17 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
                     new SimpleInterval("chr20", 1, 64444167),
                     new SimpleInterval("chr21", 1, 46709983)));
         testGenomicsDBImporterWithGenotypes(LOCAL_GVCFS, intervals, COMBINED_SITES_ONLY, b38_reference_20_21, true, true, true);
+    }
+
+    @Test(expectedExceptions={UserException.BadInput.class, CompletionException.class}, expectedExceptionsMessageRegExp=".*GenomicsDBImport does not support GVCFs.*")
+    public void testGenomicsDbImportThrowsOnMnp() throws IOException {
+        testGenomicsDBImporter(
+                Collections.singletonList(MNP_GVCF),
+                Collections.singletonList(new SimpleInterval("20", 69700, 69900)),
+                null, // Should never produce a VCF
+                b38_reference_20_21,
+                true
+        );
     }
 
     private void testGenomicsDBImporterWithGenotypes(final List<String> vcfInputs, final List<SimpleInterval> intervals,
