@@ -17,6 +17,9 @@ import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.Gencod
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationFactory;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfFeature;
+import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfFeatureBaseData;
+import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfTranscriptFeature;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 
@@ -219,6 +222,44 @@ public class FuncotatorTestUtils {
                         )
                 ),
                 new SimpleInterval( contigName, refStartPos, refEndPos )
+        );
+    }
+
+    /**
+     * Creates an artifical GencodeGtfTranscriptFeature for testing with dummy values for all fields except
+     * for the contig, start, stop, and strand.
+     *
+     * @param contig Contig that should be assigned to the new GencodeGtfTranscriptFeature
+     * @param start Start position that should be assigned to the new GencodeGtfTranscriptFeature
+     * @param stop Stop position that should be assigned to the new GencodeGtfTranscriptFeature
+     * @param strand Strand that should be assigned to the new GencodeGtfTranscriptFeature
+     * @return A new GencodeGtfTranscriptFeature with the specified contig, start, stop, and strand, and dummy
+     *         values for all other fields
+     */
+    public static GencodeGtfTranscriptFeature createArtificialGencodeGtfTranscriptFeatureForTesting( final String contig, final int start, final int stop, final Strand strand) {
+        return (GencodeGtfTranscriptFeature)GencodeGtfTranscriptFeature.create(
+                new GencodeGtfFeatureBaseData(
+                        2,
+                        contig,
+                        GencodeGtfFeature.AnnotationSource.ENSEMBL,
+                        GencodeGtfFeature.FeatureType.TRANSCRIPT,
+                        start,
+                        stop,
+                        strand,
+                        GencodeGtfFeature.GenomicPhase.DOT,
+                        "FakeGeneID",
+                        "FakeTranscriptID",
+                        GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                        null,
+                        "FakeGeneName",
+                        GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                        null,
+                        "FakeTranscriptName",
+                        -1,
+                        null,
+                        GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                        Collections.emptyList(),
+                        null)
         );
     }
 }

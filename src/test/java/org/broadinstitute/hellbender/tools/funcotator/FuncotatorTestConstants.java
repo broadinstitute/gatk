@@ -73,15 +73,44 @@ public class FuncotatorTestConstants {
     public static final String HG38_3_REFERENCE_FILE_NAME     = FUNCOTATOR_LARGE_FILES_DIR + "hg38.3.tar.gz";
     public static final String HG19_2_REFERENCE_FILE_NAME     = FUNCOTATOR_LARGE_FILES_DIR + "b37.2.tar.gz";
 
-    // MUC16 info:
-    public static final SimpleInterval MUC16_POSITION                                = new SimpleInterval("chr19", 8959520, 9092018);
+    // A MUC16-only datasource that contains all transcripts:
+    public static final String MUC16_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME = FUNCOTATOR_LARGE_FILES_DIR + "pik3ca_muc16_all_transcripts_ds" + File.separator + "gencode_muc16" + File.separator + "hg19" + File.separator + "gencode.v19.MUC16.gtf";
+    public static final String MUC16_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE = FUNCOTATOR_LARGE_FILES_DIR + "pik3ca_muc16_all_transcripts_ds" + File.separator + "gencode_muc16" + File.separator + "hg19" + File.separator + "gencode.v19.MUC16_transcript.fasta";
+
+    // A PIK3CA-only datasource that contains all transcripts:
+    public static final String PIK3CA_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME = FUNCOTATOR_LARGE_FILES_DIR + "pik3ca_muc16_all_transcripts_ds" + File.separator + "gencode_pik3ca" + File.separator + "hg19" + File.separator + "gencode.v19.PIK3CA.gtf";
+    public static final String PIK3CA_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE = FUNCOTATOR_LARGE_FILES_DIR + "pik3ca_muc16_all_transcripts_ds" + File.separator + "gencode_pik3ca" + File.separator + "hg19" + File.separator + "gencode.v19.PIK3CA_transcript.fasta";
+
+    /*
+     * MUC16 info:
+     */
+
+    // The full span of the MUC16 gene on HG19 (including non-basic transcripts):
+    public static final SimpleInterval MUC16_HG19_GENE_POSITION = new SimpleInterval("chr19", 8959520, 9092018);
+
+    // The union of the spans of just the *basic* transcripts for the MUC16 gene on HG19:
+    // (MUC16 basic transcripts: chr19:8959520-9092018, chr19:8959522-9003586, chr19:8973992-8977690)
+    public static final SimpleInterval MUC16_HG19_BASIC_TRANSCRIPTS_SPAN = new SimpleInterval("chr19", 8959520, 9092018);
+
     public static final String         MUC16_TRANSCRIPT                              = "ENST00000397910.4";
     public static final String         MUC16_PATHOLOGICAL_TRANSCRIPT                 = "ENST00000599436.1";
     public static final String         MUC16_GENCODE_NON_BASIC_ANNOTATIONS_FILE_NAME = FUNCOTATOR_TEST_DIR + "gencode.v19.MUC16.non-basic.gtf";
 
-    // PIK3CA info:
-    public static final SimpleInterval PIK3CA_POSITION   = new SimpleInterval("chr3", 178866311, 178957881);
+    /*
+     * PIK3CA info:
+     */
+
+    // The full span of the PIK3CA gene on HG19 (including non-basic transcripts):
+    public static final SimpleInterval PIK3CA_HG19_GENE_POSITION = new SimpleInterval("chr3", 178865902, 178957881);
+
+    // The union of the spans of just the *basic* transcripts for the PIK3CA gene on HG19:
+    // (PIK3CA basic transcripts: chr3: 178866311-178957881)
+    public static final SimpleInterval PIK3CA_HG19_BASIC_TRANSCRIPTS_SPAN = new SimpleInterval("chr3", 178866311, 178957881);
+
     public static final String         PIK3CA_TRANSCRIPT = "ENST00000263967.3";
+    // Position on HG19 of the PIK3CA_TRANSCRIPT
+    public static final SimpleInterval PIK3CA_TRANSCRIPT_POSITION = new SimpleInterval("chr3", 178866311, 178957881);
+
 
     public static final String GTF_CHR3_FILE_NAME = FUNCOTATOR_LARGE_FILES_DIR + "gencode.v19.chr_patch_hapl_scaff.chr3.gtf";
 

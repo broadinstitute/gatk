@@ -767,9 +767,11 @@ public class GencodeFuncotation implements Funcotation {
         // Only for IGRs:
         /** Intergenic region. Does not overlap any transcript. */
         IGR("IGR", 20),
-        /** The variant is upstream of the chosen transcript (within 3kb) */
+        /** The variant is upstream of the chosen transcript */
         FIVE_PRIME_FLANK("FIVE_PRIME_FLANK", 15),
-
+        /** The variant is downstream of the chosen transcript */
+        THREE_PRIME_FLANK("THREE_PRIME_FLANK", 16),
+        
         // These can be in Coding regions or Introns (only SPLICE_SITE):
         /** The point mutation alters the protein structure by one amino acid. */
         MISSENSE("MISSENSE", 1),

@@ -160,8 +160,7 @@ public abstract class DataSourceFuncotationFactory implements Closeable {
         Utils.nonNull(featureContext);
 
         // Query this funcotation factory to get the list of overlapping features.
-        @SuppressWarnings("unchecked")
-        final List<Feature> featureList = (List<Feature>) featureContext.getValues(mainSourceFileAsFeatureInput);
+        final List<Feature> featureList = queryFeaturesFromFeatureContext(featureContext);
 
         final List<Funcotation> outputFuncotations;
 
@@ -208,6 +207,20 @@ public abstract class DataSourceFuncotationFactory implements Closeable {
             }
         }
         return foundCompatibleFeature;
+    }
+
+    /**
+     * Queries the provided FeatureContext for Features from our FeatureInput {@link #mainSourceFileAsFeatureInput}.
+     * The default implementation returns all Features from our FeatureInput that overlap the FeatureContext's
+     * interval, but subclasses may override (for example, to pad the query).
+     *
+     * @param featureContext the FeatureContext to query
+     * @return Features from our FeatureInput {@link #mainSourceFileAsFeatureInput} queried from the FeatureContext
+     */
+    protected List<Feature> queryFeaturesFromFeatureContext(final FeatureContext featureContext) {
+        @SuppressWarnings("unchecked")
+        final List<Feature> features = (List<Feature>)featureContext.getValues(mainSourceFileAsFeatureInput);
+        return features;
     }
 
     /**
