@@ -13,6 +13,7 @@ from sklearn.neighbors import KernelDensity
 import math
 import random
 from pymc3 import MvNormal, Dirichlet, DensityDist
+from pymc3.variational.callbacks import CheckParametersConvergence
 import pymc3 as pm
 from pymc3.math import logsumexp
 import theano.tensor as tt
@@ -851,28 +852,14 @@ class ModeledSegmentsCaller:
         with model:
             inference = pm.ADVI()
 
-        # changed the line below for testing purposes
-        # approx = inference.fit(n=110000, total_grad_norm_constraint=50)
-        approx = inference.fit(n=11000, total_grad_norm_constraint=1)
+        approx = inference.fit(n=120000, total_grad_norm_constraint=50,
+                               callbacks=[CheckParametersConvergence(every=50,
+                                                                     diff='relative',
+                                                                     tolerance=0.001)]
+                               )
         means = approx.bij.rmap(approx.mean.eval())
         cov = approx.cov.eval()
         sds = approx.bij.rmap(np.diag(cov)**.5)
-
-        elbo = approx.hist
-        fig = plt.figure(1, dpi=400)
-        plt.plot(elbo[::10])
-        plt.xlabel("Steps")
-        plt.ylabel("ELBO")
-        elbo_tail = elbo[-int(np.ceil(0.1 * len(elbo))): -1]
-        plt.ylim(min(elbo_tail), max(elbo_tail))
-        plt.show()
-        plt.plot(elbo[::10])
-        plt.xlabel("Steps")
-        plt.ylabel("ELBO")
-        elbo_tail = elbo[-int(np.ceil(0.1 * len(elbo))): -1]
-        plt.show()
-        plt.close(fig)
-
 
         mu_result = []
         pi_result = pm.distributions.transforms.t_stick_breaking(epsilon).backward(means['pis_stickbreaking__']).eval()
