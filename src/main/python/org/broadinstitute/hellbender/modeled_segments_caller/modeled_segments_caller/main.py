@@ -851,7 +851,9 @@ class ModeledSegmentsCaller:
         with model:
             inference = pm.ADVI()
 
-        approx = inference.fit(n=110000, total_grad_norm_constraint=50)
+        # changed the line below for testing purposes
+        # approx = inference.fit(n=110000, total_grad_norm_constraint=50)
+        approx = inference.fit(n=11000, total_grad_norm_constraint=1)
         means = approx.bij.rmap(approx.mean.eval())
         cov = approx.cov.eval()
         sds = approx.bij.rmap(np.diag(cov)**.5)
