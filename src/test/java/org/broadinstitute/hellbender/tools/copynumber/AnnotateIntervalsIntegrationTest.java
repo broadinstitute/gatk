@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AnnotatedIntervalCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AnnotatedIntervalCollectionUnitTest;
@@ -37,6 +38,8 @@ public final class AnnotateIntervalsIntegrationTest extends CommandLineProgramTe
             "annotate-intervals-hg19-umap-k100-single-read-mappability-merged-20-21.bed.gz");
     private static final File SEGMENTAL_DUPLICATION_TRACK_FILE = new File(TEST_SUB_DIR,
             "annotate-intervals-hg19-segmental-duplication-20-21.bed.gz");
+    private static final File SEGMENTAL_DUPLICATION_WITH_OVERLAPS_TRACK_FILE = new File(TEST_SUB_DIR,
+            "annotate-intervals-hg19-segmental-duplication-20-21-with-overlaps.bed.gz");
 
     private static final SAMSequenceDictionary SEQUENCE_DICTIONARY = ReferenceDataSource.of(REFERENCE_FILE.toPath()).getSequenceDictionary();
     private static final LocatableMetadata LOCATABLE_METADATA = new SimpleLocatableMetadata(SEQUENCE_DICTIONARY);
@@ -45,7 +48,7 @@ public final class AnnotateIntervalsIntegrationTest extends CommandLineProgramTe
      * Test case checks that intervals are sorted according to {@link #SEQUENCE_DICTIONARY} and
      * adjacent intervals are not merged.  This test case is also used in {@link AnnotatedIntervalCollectionUnitTest}.
      */
-    private static final AnnotatedIntervalCollection EXPECTED_ALL_ANNOTATIONS = new AnnotatedIntervalCollection(
+    public static final AnnotatedIntervalCollection EXPECTED_ALL_ANNOTATIONS = new AnnotatedIntervalCollection(
             LOCATABLE_METADATA,
             Arrays.asList(
                     new AnnotatedInterval(new SimpleInterval("20", 1000001,	1001000),
@@ -68,6 +71,11 @@ public final class AnnotateIntervalsIntegrationTest extends CommandLineProgramTe
                                     Pair.of(CopyNumberAnnotations.GC_CONTENT, 0.448),
                                     Pair.of(CopyNumberAnnotations.MAPPABILITY, 1.),
                                     Pair.of(CopyNumberAnnotations.SEGMENTAL_DUPLICATION_CONTENT, 0.)))),
+                    new AnnotatedInterval(new SimpleInterval("20", 1238001,	1239000),
+                            new AnnotationMap(Arrays.asList(
+                                    Pair.of(CopyNumberAnnotations.GC_CONTENT, 0.3),
+                                    Pair.of(CopyNumberAnnotations.MAPPABILITY, 1.),
+                                    Pair.of(CopyNumberAnnotations.SEGMENTAL_DUPLICATION_CONTENT, 0.218)))),
                     new AnnotatedInterval(new SimpleInterval("21", 1,	100),
                             new AnnotationMap(Arrays.asList(
                                     Pair.of(CopyNumberAnnotations.GC_CONTENT, Double.NaN),
@@ -151,6 +159,18 @@ public final class AnnotateIntervalsIntegrationTest extends CommandLineProgramTe
         final AnnotatedIntervalCollection expected = EXPECTED_ALL_ANNOTATIONS;
         Assert.assertEquals(result, expected);
         Assert.assertNotSame(result, expected);
+    }
+
+    @Test(expectedExceptions = UserException.BadInput.class)
+    public void testSegmentalDuplicationContentWithOverlaps() {
+        final File outputFile = createTempFile("annotate-intervals-test", ".tsv");
+        final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
+                .addReference(REFERENCE_FILE)
+                .addFileArgument(AnnotateIntervals.SEGMENTAL_DUPLICATION_TRACK_PATH_LONG_NAME, SEGMENTAL_DUPLICATION_WITH_OVERLAPS_TRACK_FILE)
+                .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, INTERVALS_FILE.getAbsolutePath())
+                .addArgument(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString())
+                .addOutput(outputFile);
+        runCommandLine(argsBuilder);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)

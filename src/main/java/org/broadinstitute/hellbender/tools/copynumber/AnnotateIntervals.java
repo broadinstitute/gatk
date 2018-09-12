@@ -4,6 +4,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.CoordMath;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.bed.BEDFeature;
+import org.apache.commons.collections4.IteratorUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
@@ -49,15 +50,15 @@ import java.util.stream.Collectors;
  *         This is a BED file in .bed or .bed.gz format that identifies uniquely mappable regions of the genome.
  *         The track should correspond to the appropriate read length and overlapping intervals must be merged.
  *         See <a href ="https://bismap.hoffmanlab.org/">https://bismap.hoffmanlab.org/</a>.  If scores are provided,
- *         intervals will be annotated with the length-weighted average; scores may not be NaN.  Otherwise, scores
- *         for covered and uncovered intervals will be taken as unity and zero, respectively.
+ *         intervals will be annotated with the length-weighted average; note that NaN scores will be taken as unity.
+ *         Otherwise, scores for covered and uncovered intervals will be taken as unity and zero, respectively.
  *     </li>
  *     <li>
  *         (Optional) Segmental-duplication track.
  *         This is a BED file in .bed or .bed.gz format that identifies segmental-duplication regions of the genome.
  *         Overlapping intervals must be merged.  If scores are provided, intervals will be annotated with the
- *         length-weighted average; scores may not be NaN.  Otherwise, scores for covered and uncovered intervals
- *         will be taken as unity and zero, respectively.
+ *         length-weighted average; note that NaN scores will be taken as unity. Otherwise, scores for covered and
+ *         uncovered intervals will be taken as unity and zero, respectively.
  *     </li>
  * </ul>
  *
@@ -124,7 +125,7 @@ public final class AnnotateIntervals extends GATKTool {
     private FeatureInput<BEDFeature> mappabilityTrackPath;
 
     @Argument(
-            doc = "Path to segmental-duplication track in .bed or .bed.gz format (see https://bismap.hoffmanlab.org/).  " +
+            doc = "Path to segmental-duplication track in .bed or .bed.gz format.  " +
                     "Overlapping intervals must be merged.",
             fullName = SEGMENTAL_DUPLICATION_TRACK_PATH_LONG_NAME,
             optional = true
@@ -178,10 +179,12 @@ public final class AnnotateIntervals extends GATKTool {
 
         // add optional annotators
         if (mappabilityTrackPath != null) {
+            checkForOverlaps(features, mappabilityTrackPath, sequenceDictionary);
             logger.info("Adding mappability annotator...");
             annotators.add(new MappabilityAnnotator(mappabilityTrackPath));
         }
         if (segmentalDuplicationTrackPath != null) {
+            checkForOverlaps(features, segmentalDuplicationTrackPath, sequenceDictionary);
             logger.info("Adding segmental-duplication-content annotator...");
             annotators.add(new SegmentalDuplicationContentAnnotator(segmentalDuplicationTrackPath));
         }
@@ -189,10 +192,26 @@ public final class AnnotateIntervals extends GATKTool {
         logger.info("Annotating intervals...");
     }
 
+    private static void checkForOverlaps(final FeatureManager featureManager,
+                                         final FeatureInput<BEDFeature> featureTrackPath,
+                                         final SAMSequenceDictionary sequenceDictionary) {
+        final List<BEDFeature> features = IteratorUtils.toList(featureManager.getFeatureIterator(featureTrackPath));
+        final GenomeLocParser parser = new GenomeLocParser(sequenceDictionary);
+        final List<GenomeLoc> genomeLocs = IntervalUtils.genomeLocsFromLocatables(parser, features);
+        final List<GenomeLoc> mergedGenomeLocs = IntervalUtils.mergeIntervalLocations(
+                genomeLocs, IntervalMergingRule.OVERLAPPING_ONLY);
+        if (genomeLocs.size() != mergedGenomeLocs.size()) {
+            throw new UserException.BadInput(String.format("Feature track %s contains overlapping intervals; " +
+                    "these should be merged.", featureTrackPath));
+        }
+    }
     @Override
     public void traverse() {
         final List<AnnotatedInterval> annotatedIntervalList = new ArrayList<>(intervals.size());
         for (final SimpleInterval interval : intervals) {
+            if (interval.getLengthOnReference() == 0) {
+                throw new UserException.BadInput(String.format("Interval cannot have zero length: %s", interval));
+            }
             final ReferenceContext referenceContext = new ReferenceContext(reference, interval);
             final FeatureContext featureContext = new FeatureContext(features, interval);
             final AnnotationMap annotations = new AnnotationMap(annotators.stream()
@@ -224,28 +243,32 @@ public final class AnnotateIntervals extends GATKTool {
     abstract static class IntervalAnnotator<T> {
         public abstract AnnotationKey<T> getAnnotationKey();
 
+        /**
+         * @param interval  assumed to have non-zero length
+         */
         abstract T apply(final Locatable interval,
                          final ReferenceContext referenceContext,
                          final FeatureContext featureContext);
 
+        /**
+         * @param interval  assumed to have non-zero length
+         */
         T applyAndValidate(final Locatable interval,
                            final ReferenceContext referenceContext,
                            final FeatureContext featureContext) {
-            try {
-                return getAnnotationKey().validate(apply(interval, referenceContext, featureContext));
-            } catch (final IllegalArgumentException e) {
-                throw new UserException.BadInput(String.format("%s  " +
-                        "Feature track may contain overlapping intervals; these should be merged.", e.getMessage()));
-            }
+            return getAnnotationKey().validate(apply(interval, referenceContext, featureContext));
         }
     }
 
-    public static class GCContentAnnotator extends IntervalAnnotator<Double> {
+    private static class GCContentAnnotator extends IntervalAnnotator<Double> {
         @Override
         public AnnotationKey<Double> getAnnotationKey() {
             return CopyNumberAnnotations.GC_CONTENT;
         }
 
+        /**
+         * @param interval  assumed to have non-zero length
+         */
         @Override
         Double apply(final Locatable interval,
                      final ReferenceContext referenceContext,
@@ -260,8 +283,9 @@ public final class AnnotateIntervals extends GATKTool {
     }
 
     /**
-     * If scores are provided, intervals will be annotated with the length-weighted average; scores may not be NaN.
-     * Otherwise, scores for covered and uncovered intervals will be taken as unity and zero, respectively.
+     * If scores are provided, intervals will be annotated with the length-weighted average; note that NaN scores will
+     * be taken as unity.  Otherwise, scores for covered and uncovered intervals will be taken as unity and zero,
+     * respectively.
      */
     abstract static class BEDLengthWeightedAnnotator extends IntervalAnnotator<Double> {
         private final FeatureInput<BEDFeature> trackPath;
@@ -270,19 +294,18 @@ public final class AnnotateIntervals extends GATKTool {
             this.trackPath = trackPath;
         }
 
+        /**
+         * @param interval  assumed to have non-zero length
+         */
         @Override
         Double apply(final Locatable interval,
                      final ReferenceContext referenceContext,
                      final FeatureContext featureContext) {
-            final int intervalLength = interval.getLengthOnReference();
-            if (intervalLength == 0) {
-                return Double.NaN;
-            }
             double lengthWeightedSum = 0.;
             final List<BEDFeature> features = featureContext.getValues(trackPath);
             for (final BEDFeature feature : features) {
                 final double scoreOrNaN = (double) feature.getScore();
-                final double score = Double.isNaN(scoreOrNaN) ? 1. : scoreOrNaN;    // missing score -> score = 1
+                final double score = Double.isNaN(scoreOrNaN) ? 1. : scoreOrNaN;    // missing or NaN score -> score = 1
                 lengthWeightedSum += score *
                         CoordMath.getOverlap(
                                 feature.getStart(), feature.getEnd() - 1,       // zero-based
@@ -292,7 +315,7 @@ public final class AnnotateIntervals extends GATKTool {
         }
     }
 
-    public static class MappabilityAnnotator extends BEDLengthWeightedAnnotator {
+    private static class MappabilityAnnotator extends BEDLengthWeightedAnnotator {
         MappabilityAnnotator(final FeatureInput<BEDFeature> mappabilityTrackPath) {
             super(mappabilityTrackPath);
         }
@@ -303,7 +326,7 @@ public final class AnnotateIntervals extends GATKTool {
         }
     }
 
-    public static class SegmentalDuplicationContentAnnotator extends BEDLengthWeightedAnnotator {
+    private static class SegmentalDuplicationContentAnnotator extends BEDLengthWeightedAnnotator {
         SegmentalDuplicationContentAnnotator(final FeatureInput<BEDFeature> segmentalDuplicationTrackPath) {
             super(segmentalDuplicationTrackPath);
         }
