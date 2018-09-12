@@ -351,7 +351,7 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
 
         Assert.assertEquals(ReadUtils.getPlatform(read, header), readGroup.getPlatform(), "Wrong platform returned from ReadUtils.getPlatform()");
         Assert.assertEquals(ReadUtils.getPlatformUnit(read, header), readGroup.getPlatformUnit(), "Wrong platform unit returned from ReadUtils.getPlatformUnit()");
-        Assert.assertEquals(ReadUtils.getLibrary(read, header), readGroup.getLibrary(), "Wrong library returned from ReadUtils.getLibraryForRead()");
+        Assert.assertEquals(ReadUtils.getLibrary(read, header), readGroup.getLibrary(), "Wrong library returned from ReadUtils.getLibrary()");
         Assert.assertEquals(ReadUtils.getSampleName(read, header), readGroup.getSample(), "Wrong sample name returned from ReadUtils.getSampleName()");
     }
 
