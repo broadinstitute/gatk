@@ -2328,24 +2328,28 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
 
     @DataProvider(name = "multiAllelic")
     public Object[][] multiAllelicDataProvider() {
-        Genotype g1 = makeG("sample1", Aref, T, -1);
-        Genotype g1Ref = makeG("sample1", Aref, Aref, -1);
+        Genotype g1 = makeG("sample1", Aref, T, -2.5,25,0,25,25,25,25);
+        Genotype g1Split=makeG("sample1",Aref,T,-2.5,25,0,25);
+        Genotype g1Ref = makeG("sample1", Aref, Aref, 0,0,0,0);
 
-        Genotype g2 = makeG("sample2", Aref, ATC, -1);
-        Genotype g2Ref = makeG("sample2", Aref, Aref, -1);
+        Genotype g2 = makeG("sample2", Aref, ATC, -2.5,25,25,25,0,25,25);
+        Genotype g2Split = makeG("sample2", Aref, ATC, -2.5,25,0,25);
+        Genotype g2Ref = makeG("sample2", Aref, Aref, 0,0,0,0);
 
-        Genotype g3 = makeG("sample3", Aref, T, -1);
-        Genotype g3Ref = makeG("sample3", Aref, Aref, -1);
+        Genotype g3 = makeG("sample3", Aref, T, -2.5,25,0,25,25,25,25);
+        Genotype g3Split = makeG("sample3", Aref, T, -2.5,25,0,25);
+        Genotype g3Ref = makeG("sample3", Aref, Aref, 0,0,0,0);
 
-        Genotype g4 = makeG("sample3", Aref, Aref, -1);
+        Genotype g4 = makeG("sample3", Aref, Aref, -2.5,0,25,25,25,25,25);
+        Genotype g4Split = makeG("sample3", Aref, Aref, -2.5,0,25,25);
 
         GenotypesContext gc1 = GenotypesContext.create(g1, g2, g3, g4);
 
-        GenotypesContext gc2 = GenotypesContext.create(g1, g2Ref, g3, g4);
-        GenotypesContext gc3 = GenotypesContext.create(g1Ref, g2, g3Ref, g4);
+        GenotypesContext gc2 = GenotypesContext.create(g1Split, g2Ref, g3Split, g4Split);
+        GenotypesContext gc3 = GenotypesContext.create(g1Ref, g2Split, g3Ref, g4Split);
 
         VariantContext vcIn = new VariantContextBuilder("source", "1", 10, 10, Arrays.asList(Aref, T, ATC)).genotypes(gc1)
-                .attribute("AC", Arrays.asList(2, 1)).attribute("AF", Arrays.asList(0.25, 0.125)).attribute("AN", 8).make();
+                .attribute("AC", Arrays.asList(2, 1)).attribute("AF", Arrays.asList(0.25, 0.125)).attribute("AN", 8).attribute("DP",10).make();
 
         VariantContext expectedVc1 = new VariantContextBuilder("source", "1", 10, 10, Arrays.asList(Aref, T)).genotypes(gc2)
                 .attribute("AC", 2).attribute("AF", 0.25).attribute("AN", 8).make();
