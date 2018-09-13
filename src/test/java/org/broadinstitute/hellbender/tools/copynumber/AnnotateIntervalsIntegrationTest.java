@@ -51,6 +51,11 @@ public final class AnnotateIntervalsIntegrationTest extends CommandLineProgramTe
     public static final AnnotatedIntervalCollection EXPECTED_ALL_ANNOTATIONS = new AnnotatedIntervalCollection(
             LOCATABLE_METADATA,
             Arrays.asList(
+                    new AnnotatedInterval(new SimpleInterval("20", 50001,	70000),
+                            new AnnotationMap(Arrays.asList(
+                                    Pair.of(CopyNumberAnnotations.GC_CONTENT, 0.3962),
+                                    Pair.of(CopyNumberAnnotations.MAPPABILITY, 0.5),
+                                    Pair.of(CopyNumberAnnotations.SEGMENTAL_DUPLICATION_CONTENT, 0.)))),
                     new AnnotatedInterval(new SimpleInterval("20", 1000001,	1001000),
                             new AnnotationMap(Arrays.asList(
                                     Pair.of(CopyNumberAnnotations.GC_CONTENT, 0.49),
