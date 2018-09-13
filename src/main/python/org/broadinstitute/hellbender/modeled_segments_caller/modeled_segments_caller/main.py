@@ -521,7 +521,10 @@ class LoadAndSampleCrAndAf:
 
     def __sample_points(self):
         total_number_of_points = 5000
-        avg_number_of_points = total_number_of_points / self.__n_segments
+        if self.__n_segments > 0:
+            avg_number_of_points = total_number_of_points / self.__n_segments
+        else:
+            avg_number_of_points = 0
         avg_weight = np.sum(self.__weights) / self.__n_segments
 
         copy_ratio_sampled = []
@@ -618,6 +621,12 @@ class ModeledSegmentsCaller:
          self.__n_points_af,
          self.__n_segments,
          self.__max_copy_ratio_possible] = self.__cr_af_data.get_data()
+
+        # Return if could not load any segments
+        if self.__n_segments == 0:
+            if not self.__log_filename == "":
+                self.__logger.info("No segments loaded. Exit.")
+            return
 
         # Get the weights associated with each segment
         self.__weights = self.__cr_af_data.get_weights()
@@ -870,11 +879,12 @@ class ModeledSegmentsCaller:
             cov_result.append([1/np.exp(means["tau_" + str(i) + "_" + str(j) + "_log__"]) for j in range(data_dim)])
         sd_result = [[np.sqrt(cov_result[i][j]) for j in range(2)] for i in range(len(cov_result))]
 
-        print("pi_result = ", pi_result)
-        print("mu_result = ", mu_result)
-        print("cov_result = ", cov_result)
-        print("sd_result = ", sd_result)
-        print("tau_result = ", [[1/cov_result[i][j] for j in range(2)] for i in range(len(cov_result))])
+        if self.__log_filename != "":
+            self.__logger.info("pi_result = ", pi_result)
+            self.__logger.info("mu_result = ", mu_result)
+            self.__logger.info("cov_result = ", cov_result)
+            self.__logger.info("sd_result = ", sd_result)
+            self.__logger.info("tau_result = ", [[1/cov_result[i][j] for j in range(2)] for i in range(len(cov_result))])
 
         return [pi_result, mu_result, cov_result]
 
