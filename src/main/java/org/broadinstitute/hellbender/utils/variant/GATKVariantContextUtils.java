@@ -253,7 +253,9 @@ public final class GATKVariantContextUtils {
                                         final double[] genotypeLikelihoods,
                                         final List<Allele> allelesToUse,
                                         final List<Allele> originalGT) {
-        if(originalGT == null && assignmentMethod == GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL) throw new IllegalArgumentException("origianlGT cannot be null if assignmentMethod is BEST_MATCH_TO_ORIGINAL");
+        if(originalGT == null && assignmentMethod == GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL) {
+            throw new IllegalArgumentException("origianlGT cannot be null if assignmentMethod is BEST_MATCH_TO_ORIGINAL");
+        }
         if (assignmentMethod == GenotypeAssignmentMethod.SET_TO_NO_CALL) {
             gb.alleles(noCallAlleles(ploidy)).noGQ();
         } else if (assignmentMethod == GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN) {
