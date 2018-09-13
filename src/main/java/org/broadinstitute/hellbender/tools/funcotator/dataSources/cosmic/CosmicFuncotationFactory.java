@@ -306,12 +306,8 @@ public class CosmicFuncotationFactory extends DataSourceFuncotationFactory {
     private void updateProteinChangeCountMap(final Map<String, Integer> proteinChangeCounts, final ResultSet resultSet) {
         final String proteinChange = getProteinChangeStringFromResults(resultSet);
         if ( !proteinChange.isEmpty() ) {
-            if ( proteinChangeCounts.containsKey(proteinChange) ) {
-                proteinChangeCounts.put(proteinChange, proteinChangeCounts.get(proteinChange) + 1);
-            }
-            else {
-                proteinChangeCounts.put(proteinChange, 1);
-            }
+            final int count = proteinChangeCounts.getOrDefault(proteinChange, 0);
+            proteinChangeCounts.put(proteinChange, count + 1);
         }
     }
 
@@ -390,7 +386,7 @@ public class CosmicFuncotationFactory extends DataSourceFuncotationFactory {
             return proteinChangeString == null ? "" : proteinChangeString;
         }
         catch (final SQLException ex) {
-            throw new GATKException("Cannot get Protein Change from column: " + GENOME_POSITION_COLUMN_NAME, ex);
+            throw new GATKException("Cannot get protein change from column: " + GENOME_POSITION_COLUMN_NAME, ex);
         }
     }
 
