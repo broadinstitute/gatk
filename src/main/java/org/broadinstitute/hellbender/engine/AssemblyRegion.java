@@ -289,7 +289,7 @@ public final class AssemblyRegion implements Locatable {
         final List<GATKRead> trimmedReads = new ArrayList<>(myReads.size());
         for( final GATKRead read : myReads ) {
             final GATKRead clippedRead = ReadClipper.hardClipToRegion(read, resultExtendedLocStart, resultExtendedLocStop);
-            if( result.readOverlapsRegion(clippedRead) && clippedRead.getLength() > 0 ) {
+            if( result.readOverlapsRegion(clippedRead) && !clippedRead.isEmpty() ) {
                 trimmedReads.add(clippedRead);
             }
         }

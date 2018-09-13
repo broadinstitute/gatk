@@ -359,7 +359,7 @@ public final class ClippingOp {
      * @param read a non-null read
      * @param start a start >= 0 and < read.length
      * @param stop a stop >= 0 and < read.length.
-     * @return a cloned version of read that has been properly trimmed down
+     * @return a cloned version of read that has been properly trimmed down (Could be an empty, unmapped read)
      */
     private GATKRead applyHardClipBases(final GATKRead read, final int start, final int stop) {
         // If the read is unmapped there is no Cigar string and neither should we create a new cigar string
