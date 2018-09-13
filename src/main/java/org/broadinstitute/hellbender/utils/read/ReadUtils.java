@@ -277,21 +277,6 @@ public final class ReadUtils {
     }
 
     /**
-     * Returns the library associated with the provided read's read group.
-     * Or the specified default if no library is found
-     *
-     * @param read read whose library to retrieve
-     * @param header SAM header containing read groups
-     * @return the library for the provided read's read group as a String,
-     *         or the default value if the read has no read group.
-     */
-    public static String getLibrary( final GATKRead read, final SAMFileHeader header, String defaultLibrary) {
-        final SAMReadGroupRecord readGroup = getSAMReadGroupRecord(read, header);
-        String library = readGroup != null ? readGroup.getLibrary() : null;
-        return library==null? defaultLibrary : library;
-    }
-
-    /**
      * Returns the sample name associated with the provided read's read group.
      *
      * @param read read whose sample name to retrieve
