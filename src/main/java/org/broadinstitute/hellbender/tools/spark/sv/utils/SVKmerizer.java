@@ -138,18 +138,99 @@ public class SVKmerizer<KmerType extends SVKmer> implements Iterator<KmerType> {
 
     // a shim to turn a byte array into a character sequence by treating the bytes as ASCII characters
     public static final class ASCIICharSequence implements CharSequence {
-        public ASCIICharSequence( final byte[] bytes ) { this.bytes = bytes; }
+        final byte[] bytes;
+
+        public ASCIICharSequence( final byte[] bytes ) {
+            this.bytes = bytes;
+        }
 
         @Override public int length() { return bytes.length; }
 
         @Override public char charAt( final int index ) { return (char)(bytes[index] & 0xff); }
 
         @Override public CharSequence subSequence( final int start, final int end ) {
-            return new ASCIICharSequence(Arrays.copyOfRange(bytes, start, end));
+            return new ASCIICharSubSequence(bytes, start, end);
         }
 
         @Override public String toString() { return new StringBuilder(this).toString(); }
+    }
 
+    public static final class ASCIICharSubSequence implements CharSequence {
         final byte[] bytes;
+        final int start;
+        final int length;
+
+        public ASCIICharSubSequence( final byte[] bytes, final int start, final int end ) {
+            this.bytes = bytes;
+            this.start = start;
+            this.length = end - start;
+        }
+
+        @Override public int length() { return length; }
+
+        @Override public char charAt( final int index ) { return (char)(bytes[start + index] & 0xff); }
+
+        @Override public CharSequence subSequence( final int start, final int end ) {
+            return new ASCIICharSubSequence(bytes, this.start + start, this.start + end);
+        }
+
+        @Override public String toString() { return new StringBuilder(this).toString(); }
+    }
+
+    public static final class ASCIICharSequenceRC implements CharSequence {
+        final byte[] bytes;
+
+        public ASCIICharSequenceRC( final byte[] bytes ) {
+            this.bytes = bytes;
+        }
+
+        @Override public int length() { return bytes.length; }
+
+        @Override public char charAt( final int index ) {
+            switch ( (char)(bytes[bytes.length - index - 1] & 0xff) ) {
+                case 'a': case 'A': return 'T';
+                case 'c': case 'C': return 'G';
+                case 'g': case 'G': return 'C';
+                case 't': case 'T': return 'A';
+                default: throw new IllegalStateException("sequence contains bogus base call");
+            }
+        }
+
+        @Override public CharSequence subSequence( final int start, final int end ) {
+            return new ASCIICharSubSequenceRC(bytes, start, end);
+        }
+
+        @Override public String toString() { return new StringBuilder(this).toString(); }
+    }
+
+    public static final class ASCIICharSubSequenceRC implements CharSequence {
+        final byte[] bytes;
+        final int offset;
+        final int length;
+
+        public ASCIICharSubSequenceRC( final byte[] bytes, final int start, final int end ) {
+            this.bytes = bytes;
+            this.offset = bytes.length  - start - 1;
+            this.length = end - start;
+        }
+
+        @Override public int length() { return length; }
+
+        @Override public char charAt( final int index ) {
+            switch ( (char)(bytes[offset - index] & 0xff) ) {
+                case 'a': case 'A': return 'T';
+                case 'c': case 'C': return 'G';
+                case 'g': case 'G': return 'C';
+                case 't': case 'T': return 'A';
+                default: throw new IllegalStateException("sequence contains bogus base call");
+            }
+        }
+
+        @Override public CharSequence subSequence( final int start, final int end ) {
+            final int startRC = bytes.length - offset - 1;
+            return new ASCIICharSubSequence(bytes, startRC + start, startRC + end);
+        }
+
+        @Override public String toString() { return new StringBuilder(this).toString(); }
     }
 }

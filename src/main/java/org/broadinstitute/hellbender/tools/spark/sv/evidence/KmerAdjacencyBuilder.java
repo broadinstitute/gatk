@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.*;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmerizer.ASCIICharSequence;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFastqUtils.FastqRead;
 import org.broadinstitute.hellbender.tools.spark.utils.HopscotchSet;
+import scala.Char;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
@@ -26,6 +27,7 @@ import java.util.*;
 public class KmerAdjacencyBuilder extends CommandLineProgram {
     private static final long serialVersionUID = 1L;
     private static final int GAP_CONTIG_ID = Integer.MIN_VALUE;
+    private static final int MAX_PATCHED_QUALITY_SUM = 30;
 
     @Argument(doc = "input fastq",
             shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
@@ -48,15 +50,12 @@ public class KmerAdjacencyBuilder extends CommandLineProgram {
 
     @Override protected Object doWork() {
         final List<FastqRead> reads = SVFastqUtils.readFastqFile(fastqFile);
-        if ( reads.size()%2 != 0 ) {
-            throw new UserException("FASTQ input must be interleaved pairs, but there are an odd number of reads.");
-        }
 
         final int kSize2 = kSize - 2;
         final Set<SVKmerLong> goodKmers = countKmers(reads, kSize, minQ, minKCount);
         final Map<SVKmerLong, Integer> contigEnds = new HashMap<>();
         final List<Contig> contigs = buildContigs(buildAdjacenciesSet(goodKmers, kSize), kSize2, contigEnds);
-        final List<List<SVInterval>> readPaths = pathReadPairs(reads, contigs, kSize2);
+        final List<List<SVInterval>> readPaths = pathReads(reads, contigs, kSize2);
         final int nCapturedGaps = countCapturedGaps(readPaths, kSize2);
         final Set<SVKmerLong> gapKmers = fillGaps(readPaths, contigs, reads, kSize);
         final Set<SVKmerLong> allKmers =
@@ -66,7 +65,7 @@ public class KmerAdjacencyBuilder extends CommandLineProgram {
 
         final Map<SVKmerLong, Integer> patchedEnds = new HashMap<>();
         final List<Contig> patchedContigs = buildContigs(buildAdjacenciesSet(allKmers, kSize), kSize2, patchedEnds);
-        final List<List<SVInterval>> patchedReadPaths = pathReadPairs(reads, patchedContigs, kSize2);
+        final List<List<SVInterval>> patchedReadPaths = pathReads(reads, patchedContigs, kSize2);
         final int nPatchedGaps = countCapturedGaps(patchedReadPaths, kSize2);
 
         System.out.println("Closed " + (nCapturedGaps-nPatchedGaps) + " of " + nCapturedGaps + " captured gaps.");
@@ -103,20 +102,22 @@ public class KmerAdjacencyBuilder extends CommandLineProgram {
         final int nKmers =
                 readPaths.stream().mapToInt(path ->
                         path.stream().mapToInt(interval ->
-                                interval.getContig() == GAP_CONTIG_ID ? interval.getLength() : 0).sum()).sum();
+                                interval.getContig() == GAP_CONTIG_ID ? interval.getLength()+2*kSize-2 : 0).sum()).sum();
         final Map<SVKmerLong, Integer> kmerCounts = new HashMap<>(SVUtils.hashMapCapacity(nKmers));
         final int nReads = readPaths.size();
         for ( int readIdx = 0; readIdx != nReads; ++readIdx ) {
             final List<SVInterval> path = readPaths.get(readIdx);
             final int nIntervals = path.size() - 1; // skip any final gap -- we only want captured gaps
-            int readOffset = -1; // we want to get the base before the gap into the extended kmer
+            int readOffset = 0;
             for ( int idx = 0; idx < nIntervals; ++idx ) {
                 final SVInterval interval = path.get(idx);
                 if ( idx > 0 && interval.getContig() == GAP_CONTIG_ID && interval.getLength() < kSize2 ) {
                     final FastqRead read = reads.get(readIdx);
-                    final int endOffset = readOffset + kSize - 1 + interval.getLength();
+                    final byte[] calls = read.getBases();
+                    final int gapStart = Math.max(0, readOffset - 2);
+                    final int gapEnd = Math.min(calls.length, readOffset + interval.getLength() + kSize - 1);
                     final CharSequence gapSequence =
-                            new ASCIICharSequence(read.getBases()).subSequence(readOffset, endOffset);
+                            new ASCIICharSequence(calls).subSequence(gapStart, gapEnd);
                     SVKmerizer.canonicalStream(gapSequence, kSize, new SVKmerLong(kSize))
                             .forEach(kmer -> kmerCounts.merge(kmer, 1, Integer::sum));
 /*
@@ -172,7 +173,7 @@ public class KmerAdjacencyBuilder extends CommandLineProgram {
         sb.append(contigs.get(contigId < 0 ? ~contigId : contigId).getSequence().length()-1).append(' ');
     }
 
-    private static List<List<SVInterval>> pathReadPairs( final List<FastqRead> reads,
+    private static List<List<SVInterval>> pathReads( final List<FastqRead> reads,
                                                          final List<Contig> contigs,
                                                          final int kSize2 ) {
         final int nKmers = contigs.stream().mapToInt(tig -> tig.getSequence().length()-kSize2+1).sum();
@@ -195,26 +196,146 @@ public class KmerAdjacencyBuilder extends CommandLineProgram {
             }
         }
 
+        final int[] contigLengths = new int[nContigs];
+        for ( int idx = 0; idx != nContigs; ++idx ) {
+            contigLengths[idx] = contigs.get(idx).getSequence().length();
+        }
+
         final int nReads = reads.size();
         final List<List<SVInterval>> readPaths = new ArrayList<>(nReads);
-        for ( int readId = 0; readId+1 < nReads; readId += 2 ) {
-            final FastqRead read1 = reads.get(readId);
-            readPaths.add(processRead(read1.getBases(), read1.getQuals(), kSize2, contigKmerMap, contigs));
-            final FastqRead read2 = reads.get(readId + 1);
-            final byte[] bases2 = Arrays.copyOf(read2.getBases(), read2.getBases().length);
-            SequenceUtil.reverseComplement(bases2);
-            final byte[] quals2 = Arrays.copyOf(read2.getQuals(), read2.getQuals().length);
-            SequenceUtil.reverseQualities(quals2);
-            readPaths.add(processRead(bases2, quals2, kSize2, contigKmerMap, contigs));
+        for ( final FastqRead read : reads ) {
+            final byte[] sequence = read.getBases();
+            final List<SVInterval> readPath = pathRead(sequence, kSize2, contigKmerMap, contigLengths);
+            while ( readPath.size() > 1 && readPath.get(readPath.size() - 1).getContig() == GAP_CONTIG_ID ) {
+                if ( !patchEndGap(sequence, readPath, kSize2, contigKmerMap, contigLengths) ) {
+                    break;
+                }
+            }
+            readPaths.add(readPath);
         }
         return readPaths;
     }
 
-    private static List<SVInterval> processRead( final byte[] sequence,
-                                                 final byte[] quals,
-                                                 final int kSize2,
-                                                 final Map<SVKmerLong, SVLocation> contigKmerMap,
-                                                 final List<Contig> contigs ) {
+    private static boolean patchEndGap( final byte[] sequenceArg,
+                                        final List<SVInterval> path,
+                                        final int kSize2,
+                                        final Map<SVKmerLong, SVLocation> contigKmerMap,
+                                        final int[] contigLengths ) {
+        final int subSequenceStart = sequenceArg.length - path.get(path.size() - 1).getLength() - kSize2 + 1;
+        final byte[] sequence = Arrays.copyOfRange(sequenceArg, subSequenceStart, sequenceArg.length);
+        final int patchOffset = kSize2 - 1;
+        final byte call = (byte)Character.toUpperCase((char)(sequence[patchOffset] & 0xff));
+        List<SVInterval> bestPathPatch = null;
+        int bestMatchLen = 0;
+        byte bestCall = call;
+        for ( final byte newCall : new byte[] {'A', 'C', 'G', 'T'} ) {
+            if ( call != newCall ) {
+                sequence[kSize2 - 1] = newCall;
+                List<SVInterval> pathPatch = pathRead(sequence, kSize2, contigKmerMap, contigLengths);
+                final int matchLen = pathPatch.stream()
+                        .mapToInt(interval -> interval.getContig() == GAP_CONTIG_ID ? 0 : interval.getLength())
+                        .sum();
+                if ( matchLen > bestMatchLen ) {
+                    bestMatchLen = matchLen;
+                    bestPathPatch = pathPatch;
+                    bestCall = newCall;
+                }
+            }
+        }
+        sequence[patchOffset] = bestCall;
+        if ( bestPathPatch != null ) {
+            path.remove(path.size() - 1);
+            final SVInterval last = path.get(path.size() - 1);
+            final SVInterval first = bestPathPatch.get(0);
+            if ( last.gapLen(first) == 0 ) {
+                path.remove(path.size() - 1);
+                bestPathPatch.set(0, last.join(first));
+            }
+            path.addAll(bestPathPatch);
+            System.arraycopy(sequence, 0, sequenceArg, subSequenceStart, sequence.length);
+        }
+        return bestPathPatch != null;
+    }
+/*
+    private static List<SVInterval> ecEnds( final byte[] sequenceArg,
+                                            final byte[] quals,
+                                            final int kSize2,
+                                            final Map<SVKmerLong, SVLocation> contigKmerMap,
+                                            final List<Contig> contigs,
+                                            final int[] contigLengths ) {
+        final byte[] sequence = Arrays.copyOf(sequenceArg, sequenceArg.length);
+        final List<SVInterval> path = pathRead(sequence, kSize2, contigKmerMap, contigLengths);
+        List<SVInterval> patchedPath = new ArrayList<>(path.size());
+        patchedPath.addAll(path);
+        int qualSum = 0;
+        while ( patchedPath.size() > 1 && patchedPath.get(0).getContig() == GAP_CONTIG_ID && patchedPath.get(1).getStart() > 0 ) {
+            final int gapLen = patchedPath.get(0).getLength();
+            final int patchOffset = gapLen - 1;
+            final int patchQual = quals[patchOffset] * 10 / 10;
+            if ( qualSum + patchQual > MAX_PATCHED_QUALITY_SUM ) {
+                break;
+            }
+            final SVInterval path1 = patchedPath.get(1);
+            final int contigOffset = path1.getStart() - 1;
+            sequence[patchOffset] =
+                    (byte)getContigSequence(path1.getContig(), contigs).charAt(contigOffset);
+            final CharSequence headSequence =
+                    new SVKmerizer.ASCIICharSubSequence(sequence, 0, gapLen + kSize2 - 1);
+            final List<SVInterval> gapPath = pathRead(headSequence, kSize2, contigKmerMap, contigLengths);
+            patchedPath.remove(0);
+            patchedPath.set(0, new SVInterval(path1.getContig(), path1.getStart() - 1, path1.getEnd()));
+            gapPath.remove(gapPath.size() - 1);
+            patchedPath.addAll(0, gapPath);
+            qualSum += patchQual;
+        }
+        if ( (path.get(0).getContig() == GAP_CONTIG_ID ? path.get(0).getLength() : 0) -
+                (patchedPath.get(0).getContig() == GAP_CONTIG_ID ? patchedPath.get(0).getLength() : 0) > 1 ) {
+            System.arraycopy(sequence, 0, sequenceArg, 0, sequence.length);
+            return patchedPath;
+        }
+        return path;
+    }
+*/
+
+    public static final class StringRC implements CharSequence {
+        final String sequence;
+        final int offset;
+
+        public StringRC( final String sequence ) {
+            this.sequence = sequence;
+            this.offset = sequence.length() - 1;
+        }
+
+        @Override public int length() { return sequence.length(); }
+
+        @Override public char charAt( final int index ) {
+            switch ( sequence.charAt(offset - index) ) {
+                case 'a': case 'A': return 'T';
+                case 'c': case 'C': return 'G';
+                case 'g': case 'G': return 'C';
+                case 't': case 'T': return 'A';
+                default: throw new IllegalStateException("sequence contains bogus base call");
+            }
+        }
+
+        @Override public CharSequence subSequence( final int start, final int end ) {
+            return new StringRC(sequence.substring(offset - end, offset - start));
+        }
+
+        @Override public String toString() { return new StringBuilder(this).toString(); }
+    }
+
+    private static CharSequence getContigSequence( final int contigId, final List<Contig> contigs ) {
+        if ( contigId < 0 ) {
+            return new StringRC(contigs.get(~contigId).sequence);
+        }
+        return contigs.get(contigId).sequence;
+    }
+
+    private static List<SVInterval> pathRead( final byte[] sequence,
+                                              final int kSize2,
+                                              final Map<SVKmerLong, SVLocation> contigKmerMap,
+                                              final int[] contigLengths ) {
         final List<SVInterval> readPath = new ArrayList<>();
         SVInterval currentSpan = null;
         int missCount = 0;
@@ -225,8 +346,7 @@ public class KmerAdjacencyBuilder extends CommandLineProgram {
             SVLocation location = contigKmerMap.get(kmerCanonical);
             if ( location != null && !kmer.equals(kmerCanonical) ) {
                 int contigId = location.getContig();
-                if ( contigId < 0 ) contigId = ~contigId;
-                final int contigLen = contigs.get(contigId).getSequence().length();
+                final int contigLen = contigLengths[contigId < 0 ? ~contigId : contigId];
                 location = new SVLocation(~location.getContig(), contigLen - location.getPosition() - kSize2);
             }
             if ( location == null ) {
@@ -249,14 +369,20 @@ public class KmerAdjacencyBuilder extends CommandLineProgram {
             } else {
                 readPath.add(currentSpan);
                 final int position = location.getPosition();
+                final int currentContigId = currentSpan.getContig();
+                final int contigLen = contigLengths[currentContigId < 0 ? ~currentContigId : currentContigId];
+                if ( currentSpan.getEnd() + kSize2 - 1 != contigLen || position > 0 ) {
+                    readPath.add(new SVInterval(GAP_CONTIG_ID, 0, 0));
+                }
                 currentSpan = new SVInterval(location.getContig(), position, position + 1);
             }
         }
         if ( missCount > 0 ) {
-            readPath.add(new SVInterval(-1, 0, missCount));
+            readPath.add(new SVInterval(GAP_CONTIG_ID, 0, missCount));
         } else if ( currentSpan != null ) {
             readPath.add(currentSpan);
         }
+
         return readPath;
     }
 

@@ -61,7 +61,7 @@ public class SVKmerLong extends SVKmer implements Comparable<SVKmerLong>  {
         // move all the bits up two places, OR in the top two bits from valLow at the bottom, and mask to kSize bits
         final long newV1 = ((valHigh << 2) | (valLow >> (kSize-2))) & mask;
         // move all the bits up two places, OR in the pair of successor bits at the bottom, and mask to kSize bits
-        final long newV2 = ((valLow << 2) | (base.value & 3L)) & mask;
+        final long newV2 = ((valLow << 2) | base.value) & mask;
         return new SVKmerLong(newV1, newV2);
     }
 
