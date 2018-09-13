@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+
+##############################################################
+#  Script to easily open a gcs dataproc cluster's spark UI   #
+##############################################################
+
+#################################
+# Stuff to make and cleanup tmp files
+TMPFILELIST=''
+GCLOUD_PID=''
+function makeTemp()
+{
+  local f
+  f=$( mktemp )
+  TMPFILELIST="${TMPFILELIST} $f"
+  echo $f
+}
+
+function cleanTempVars()
+{
+  rm -f ${TMPFILELIST}
+}
+
+function at_exit()
+{
+  cleanTempVars
+  kill ${GCLOUD_PID} &>/dev/null
+}
+
+trap at_exit EXIT 
+####################################
+
+cluster=$1
+if [[  -z "${cluster}" ]]; then
+	echo ""
+	echo "Usage: $0 <gcs-cluster-name>"
+	echo "Open the spark ui for a dataproc cluster in a new chrome window"
+	exit 1
+fi
+
+port=1080
+
+echo "Connecting to ${cluster} on port ${port}"
+echo ""
+
+tmp=makeTemp
+
+gcloud compute ssh ${cluster}-m -- \
+  -D ${port} -N -n -v 2>${tmp} &
+
+GCLOUD_PID=$!
+
+
+echo "Waiting for SSH connection to be established"
+while ! grep -q "Entering interactive session" ${tmp}; do
+  if ! ps -p ${GCLOUD_PID} >&-; then
+    error "SSH exited"
+    exit 1
+  fi
+  sleep .1
+done
+
+echo "Opening browser, it doesn't always open on top so you may have to look for it."
+
+if [[ $( uname -s ) == "Darwin" ]]; then
+  chrome="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+else
+  chrome="/usr/bin/google-chrome"
+fi
+
+"${chrome}" \
+  --proxy-server="socks5://localhost:${port}" \
+  --host-resolver-rules="MAP * 0.0.0.0 , EXCLUDE localhost" \
+  --user-data-dir=/tmp/${cluster}-m \
+  --disable-logging \
+  --new-window  http://${cluster}-m:8088 1>/dev/null 2>/dev/null &
+
+#Wait for chrome to shut down and then exit
+pid=$!
+while ps -p ${pid} >&-; do
+  sleep .1
+done
+exit 0
+
