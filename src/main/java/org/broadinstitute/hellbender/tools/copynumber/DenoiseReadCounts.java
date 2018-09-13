@@ -17,6 +17,7 @@ import org.broadinstitute.hellbender.tools.copynumber.denoising.*;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AnnotatedIntervalCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleCountCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.records.annotation.CopyNumberAnnotations;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
@@ -210,7 +211,9 @@ public final class DenoiseReadCounts extends CommandLineProgram {
                     inputAnnotatedIntervalsFile, readCounts, logger);
             final double[] intervalGCContent = annotatedIntervals == null
                     ? null
-                    : annotatedIntervals.getRecords().stream().mapToDouble(i -> i.getAnnotationSet().getGCContent()).toArray();
+                    : annotatedIntervals.getRecords().stream()
+                    .mapToDouble(i -> i.getAnnotationMap().getValue(CopyNumberAnnotations.GC_CONTENT))
+                    .toArray();
 
             if (intervalGCContent == null) {
                 logger.warn("Neither a panel of normals nor GC-content annotations were provided, so only standardization will be performed...");
