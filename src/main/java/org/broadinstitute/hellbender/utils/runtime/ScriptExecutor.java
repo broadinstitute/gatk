@@ -123,6 +123,7 @@ public abstract class ScriptExecutor {
                             po.getStdout().getBufferString(),
                             po.getStderr().getBufferString()));
                 }
+                System.out.err(message.toString());
                 throw getScriptException(message.toString());
             }
 
