@@ -1,15 +1,13 @@
-package org.broadinstitute.hellbender.engine;
+package org.broadinstitute.hellbender.engine.spark.datasources;
 
 import org.apache.spark.SparkConf;
-import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
-import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.SparkTestUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-public class ReferenceMultiSourceUnitTest extends GATKBaseTest {
+public class ReferenceMultiSparkSourceUnitTest extends GATKBaseTest {
 
     private static String twoBitRefURL = publicTestDir + "large/human_g1k_v37.20.21.2bit";
 
