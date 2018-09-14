@@ -4,7 +4,7 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import org.apache.spark.api.java.JavaRDD;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.utils.SerializableFunction;
@@ -33,7 +33,7 @@ public final class PSBwaUtils {
 
     private static List<SAMSequenceRecord> getReferenceSequences(final String referencePath,
                                                                  final SerializableFunction<GATKRead, SimpleInterval> windowFunction) {
-        final ReferenceMultiSource referenceSource = new ReferenceMultiSource(referencePath, windowFunction);
+        final ReferenceMultiSparkSource referenceSource = new ReferenceMultiSparkSource(referencePath, windowFunction);
         final SAMSequenceDictionary referenceDictionary = referenceSource.getReferenceSequenceDictionary(null);
         if (referenceDictionary == null) {
             throw new UserException.MissingReferenceDictFile(referencePath);

@@ -7,7 +7,7 @@ import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.broadcast.Broadcast;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.*;
@@ -48,7 +48,7 @@ public final class SimpleNovelAdjacencyInterpreter {
                     .map(SimpleNovelAdjacencyAndChimericAlignmentEvidence::getNovelAdjacencyReferenceLocations).collect();
             evaluateNarls(svDiscoveryInputMetaData, narls);
 
-            final Broadcast<ReferenceMultiSource> referenceBroadcast = svDiscoveryInputMetaData.getReferenceData().getReferenceBroadcast();
+            final Broadcast<ReferenceMultiSparkSource> referenceBroadcast = svDiscoveryInputMetaData.getReferenceData().getReferenceBroadcast();
             final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast =
                     svDiscoveryInputMetaData.getReferenceData().getReferenceSequenceDictionaryBroadcast();
             final String sampleId = svDiscoveryInputMetaData.getSampleSpecificData().getSampleId();
@@ -92,7 +92,7 @@ public final class SimpleNovelAdjacencyInterpreter {
                                            final SvDiscoveryInputMetaData svDiscoveryInputMetaData) {
 
         final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast = svDiscoveryInputMetaData.getReferenceData().getReferenceSequenceDictionaryBroadcast();
-        final Broadcast<ReferenceMultiSource> referenceBroadcast = svDiscoveryInputMetaData.getReferenceData().getReferenceBroadcast();
+        final Broadcast<ReferenceMultiSparkSource> referenceBroadcast = svDiscoveryInputMetaData.getReferenceData().getReferenceBroadcast();
 
         return
                 assemblyContigs
@@ -121,7 +121,7 @@ public final class SimpleNovelAdjacencyInterpreter {
     private static Tuple2<SimpleNovelAdjacencyAndChimericAlignmentEvidence, List<SvType>> inferType
             (final Tuple2<NovelAdjacencyAndAltHaplotype, Iterable<SimpleChimera>> noveltyAndEvidence,
              final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast,
-             final Broadcast<ReferenceMultiSource> referenceBroadcast) {
+             final Broadcast<ReferenceMultiSparkSource> referenceBroadcast) {
 
         final NovelAdjacencyAndAltHaplotype novelAdjacencyAndAltHaplotype = noveltyAndEvidence._1;
         final Iterable<SimpleChimera> simpleChimeras = noveltyAndEvidence._2;
@@ -160,7 +160,7 @@ public final class SimpleNovelAdjacencyInterpreter {
      */
     private static Iterator<VariantContext> turnIntoVariantContexts(final Tuple2<SimpleNovelAdjacencyAndChimericAlignmentEvidence, List<SvType>> pair,
                                                                     final String sampleId,
-                                                                    final Broadcast<ReferenceMultiSource> referenceBroadcast,
+                                                                    final Broadcast<ReferenceMultiSparkSource> referenceBroadcast,
                                                                     final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast,
                                                                     final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast) {
         final SimpleNovelAdjacencyAndChimericAlignmentEvidence simpleNovelAdjacencyAndChimericAlignmentEvidence = pair._1;

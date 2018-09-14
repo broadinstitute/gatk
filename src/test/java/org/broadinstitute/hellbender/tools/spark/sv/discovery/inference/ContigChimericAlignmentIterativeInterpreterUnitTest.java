@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.sv.discovery.inference;
 import com.google.common.collect.ImmutableSet;
 import htsjdk.samtools.TextCigarCodec;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvType;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.TestUtilsForAssemblyBasedSVDiscovery;
@@ -57,7 +57,7 @@ public class ContigChimericAlignmentIterativeInterpreterUnitTest extends GATKBas
     // -----------------------------------------------------------------------------------------------
     @DataProvider
     private Object[][] forInferSimpleTypeFromNovelAdjacency() {
-        final ReferenceMultiSource referenceMultiSource = TestUtilsForAssemblyBasedSVDiscovery.b37_reference;
+        final ReferenceMultiSparkSource referenceMultiSource = TestUtilsForAssemblyBasedSVDiscovery.b37_reference;
         final List<Object[]> data = new ArrayList<>(20);
         // inversion
         data.add(new Object[]{assemblyBasedSVDiscoveryTestDataProviderForInversionBreakpoints.forSimpleInversionWithHomology_RightBreakpoint_minus.expectedNovelAdjacencyAndAltSeq, INV.name(), ImmutableSet.of(INV33), referenceMultiSource});
@@ -103,7 +103,7 @@ public class ContigChimericAlignmentIterativeInterpreterUnitTest extends GATKBas
     public void testInferSimpleTypeFromNovelAdjacency(final NovelAdjacencyAndAltHaplotype biPathBubble,
                                                       final String expectedTypeString,
                                                       final Set<String> expectedAttributeIDs,
-                                                      final ReferenceMultiSource reference) {
+                                                      final ReferenceMultiSparkSource reference) {
 
         final SvType variant = ContigChimericAlignmentIterativeInterpreter.inferSimpleTypeFromNovelAdjacency(biPathBubble, reference);
         Assert.assertEquals(variant.toString(), expectedTypeString);

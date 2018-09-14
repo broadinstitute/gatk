@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.engine.datasources;
+package org.broadinstitute.hellbender.engine.spark.datasources;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequence;
@@ -13,7 +13,7 @@ import java.io.Serializable;
 /**
  * Class to load a reference sequence from a fasta file on HDFS.
  */
-public class ReferenceHadoopSource implements ReferenceSource, Serializable {
+public class ReferenceHadoopSparkSource implements ReferenceSparkSource, Serializable {
     private static final long serialVersionUID = 1L;
 
     private final String referencePath;
@@ -21,7 +21,7 @@ public class ReferenceHadoopSource implements ReferenceSource, Serializable {
     /**
      * @param referencePath the path to the reference file on HDFS
      */
-    public ReferenceHadoopSource(final String referencePath) {
+    public ReferenceHadoopSparkSource( final String referencePath) {
         this.referencePath = referencePath;
     }
 

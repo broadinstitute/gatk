@@ -1,11 +1,10 @@
-package org.broadinstitute.hellbender.engine.datasources;
+package org.broadinstitute.hellbender.engine.spark.datasources;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.broadinstitute.hellbender.utils.SerializableFunction;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceTwoBitSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -21,33 +20,33 @@ import java.io.Serializable;
  *
  * This class needs to subclassed by test code, so it cannot be declared final.
  */
-public class ReferenceMultiSource implements ReferenceSource, Serializable {
+public class ReferenceMultiSparkSource implements ReferenceSparkSource, Serializable {
     private static final long serialVersionUID = 1L;
 
-    private ReferenceSource referenceSource;
+    private ReferenceSparkSource referenceSource;
     private SerializableFunction<GATKRead, SimpleInterval> referenceWindowFunction;
 
     @VisibleForTesting
-    protected ReferenceMultiSource() {};
+    protected ReferenceMultiSparkSource() {};
 
     /**
      * @param referenceURL the name of the reference (if using the Google Genomics API), or a path to the reference file
      * @param referenceWindowFunction the custom reference window function used to map reads to desired reference bases
      */
-    public ReferenceMultiSource(final String referenceURL,
-                                final SerializableFunction<GATKRead, SimpleInterval> referenceWindowFunction) {
+    public ReferenceMultiSparkSource( final String referenceURL,
+                                      final SerializableFunction<GATKRead, SimpleInterval> referenceWindowFunction) {
         Utils.nonNull(referenceWindowFunction);
-        if (ReferenceTwoBitSource.isTwoBit(referenceURL)) {
+        if ( ReferenceTwoBitSparkSource.isTwoBit(referenceURL)) {
             try {
-                referenceSource = new ReferenceTwoBitSource(referenceURL);
+                referenceSource = new ReferenceTwoBitSparkSource(referenceURL);
             } catch (IOException e) {
                 throw new UserException("Failed to create a ReferenceTwoBitSource object" + e.getMessage());
             }
         } else if (isFasta(referenceURL)) {
             if (BucketUtils.isHadoopUrl(referenceURL)) {
-                referenceSource = new ReferenceHadoopSource(referenceURL);
+                referenceSource = new ReferenceHadoopSparkSource(referenceURL);
             } else {
-                referenceSource = new ReferenceFileSource(referenceURL);
+                referenceSource = new ReferenceFileSparkSource(referenceURL);
             }
         } else {
             throw new UserException.CouldNotReadInputFile("Couldn't read the given reference, reference must be a .fasta or .2bit file.\n" +

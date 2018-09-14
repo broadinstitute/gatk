@@ -20,7 +20,7 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.ShardToMultiIntervalShardAdapter;
@@ -185,7 +185,7 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
             final JavaSparkContext ctx,
             final JavaRDD<GATKRead> reads,
             final SAMFileHeader header,
-            final ReferenceMultiSource reference,
+            final ReferenceMultiSparkSource reference,
             final List<SimpleInterval> intervals,
             final HaplotypeCallerArgumentCollection hcArgs,
             final ShardingArgumentCollection shardingArgs,
@@ -228,7 +228,7 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
             final JavaSparkContext ctx,
             final JavaRDD<GATKRead> reads,
             final SAMFileHeader header,
-            final ReferenceMultiSource reference,
+            final ReferenceMultiSparkSource reference,
             final List<SimpleInterval> intervals,
             final HaplotypeCallerArgumentCollection hcArgs,
             final ShardingArgumentCollection shardingArgs,
@@ -240,7 +240,7 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
             throw new UserException.Require2BitReferenceForBroadcast();
         }
 
-        final Broadcast<ReferenceMultiSource> referenceBroadcast = ctx.broadcast(reference);
+        final Broadcast<ReferenceMultiSparkSource> referenceBroadcast = ctx.broadcast(reference);
         final Broadcast<HaplotypeCallerArgumentCollection> hcArgsBroadcast = ctx.broadcast(hcArgs);
 
         final Broadcast<VariantAnnotatorEngine> annotatorEngineBroadcast = ctx.broadcast(variantannotatorEngine);
@@ -265,12 +265,12 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
      */
     private static FlatMapFunction<Iterator<Tuple2<AssemblyRegion, SimpleInterval>>, VariantContext> callVariantsFromAssemblyRegions(
             final SAMFileHeader header,
-            final Broadcast<ReferenceMultiSource> referenceBroadcast,
+            final Broadcast<ReferenceMultiSparkSource> referenceBroadcast,
             final Broadcast<HaplotypeCallerArgumentCollection> hcArgsBroadcast,
             final Broadcast<VariantAnnotatorEngine> annotatorEngineBroadcast) {
         return regionAndIntervals -> {
             //HaplotypeCallerEngine isn't serializable but is expensive to instantiate, so construct and reuse one for every partition
-            final ReferenceMultiSource referenceMultiSource = referenceBroadcast.value();
+            final ReferenceMultiSparkSource referenceMultiSource = referenceBroadcast.value();
             final ReferenceMultiSourceAdapter referenceSource = new ReferenceMultiSourceAdapter(referenceMultiSource);
             final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgsBroadcast.value(), false, false, header, referenceSource, annotatorEngineBroadcast.getValue());
             return Utils.stream(regionAndIntervals).flatMap(regionToVariants(hcEngine)).iterator();
@@ -302,13 +302,13 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
      * interval it was generated in
      */
     private static FlatMapFunction<Iterator<Shard<GATKRead>>, Tuple2<AssemblyRegion, SimpleInterval>> shardsToAssemblyRegions(
-            final Broadcast<ReferenceMultiSource> reference,
+            final Broadcast<ReferenceMultiSparkSource> reference,
             final Broadcast<HaplotypeCallerArgumentCollection> hcArgsBroadcast,
             final ShardingArgumentCollection assemblyArgs,
             final SAMFileHeader header,
             final Broadcast<VariantAnnotatorEngine> annotatorEngineBroadcast) {
         return shards -> {
-            final ReferenceMultiSource referenceMultiSource = reference.value();
+            final ReferenceMultiSparkSource referenceMultiSource = reference.value();
             final ReferenceMultiSourceAdapter referenceSource = new ReferenceMultiSourceAdapter(referenceMultiSource);
             final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgsBroadcast.value(), false, false, header, referenceSource, annotatorEngineBroadcast.getValue());
 
@@ -348,10 +348,10 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
     public static final class ReferenceMultiSourceAdapter implements ReferenceSequenceFile, ReferenceDataSource, Serializable{
         private static final long serialVersionUID = 1L;
 
-        private final ReferenceMultiSource source;
+        private final ReferenceMultiSparkSource source;
         private final SAMSequenceDictionary sequenceDictionary;
 
-        public ReferenceMultiSourceAdapter(final ReferenceMultiSource source) {
+        public ReferenceMultiSourceAdapter(final ReferenceMultiSparkSource source) {
             this.source = source;
             sequenceDictionary = source.getReferenceSequenceDictionary(null);
         }

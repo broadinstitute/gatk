@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.engine.datasources;
+package org.broadinstitute.hellbender.engine.spark.datasources;
 
 import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.broadinstitute.hellbender.utils.SimpleInterval;

@@ -33,11 +33,9 @@ import org.seqdoop.hadoop_bam.util.SAMHeaderReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Stream;
 
 /** Loads the reads from disk either serially (using samReaderFactory) or in parallel using Hadoop-BAM.
  * The parallel code is a modified version of the example writing code from Hadoop-BAM.
@@ -266,7 +264,7 @@ public final class ReadsSparkSource implements Serializable {
                 throw new UserException.MissingReference("A reference is required for CRAM input");
             }
             else {
-                if (ReferenceTwoBitSource.isTwoBit(referenceName)) { // htsjdk can't handle 2bit reference files
+                if ( ReferenceTwoBitSparkSource.isTwoBit(referenceName)) { // htsjdk can't handle 2bit reference files
                     throw new UserException("A 2bit file cannot be used as a CRAM file reference");
                 }
                 else { // Hadoop-BAM requires the reference to be a URI, including scheme

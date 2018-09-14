@@ -8,7 +8,6 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -17,8 +16,8 @@ import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.engine.TraversalParameters;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
@@ -117,7 +116,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     private ReadsSparkSource readsSource;
     private SAMFileHeader readsHeader;
     private String readInput;
-    private ReferenceMultiSource referenceSource;
+    private ReferenceMultiSparkSource referenceSource;
     private SAMSequenceDictionary referenceDictionary;
     private List<SimpleInterval> userIntervals;
     protected FeatureManager features;
@@ -443,7 +442,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     /**
      * @return our reference source, or null if no reference is present
      */
-    public ReferenceMultiSource getReference() {
+    public ReferenceMultiSparkSource getReference() {
         return referenceSource;
     }
 
@@ -497,7 +496,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     private void initializeReference() {
         final String referenceURL = referenceArguments.getReferenceFileName();
         if ( referenceURL != null ) {
-            referenceSource = new ReferenceMultiSource(referenceURL, getReferenceWindowFunction());
+            referenceSource = new ReferenceMultiSparkSource(referenceURL, getReferenceWindowFunction());
             referenceDictionary = referenceSource.getReferenceSequenceDictionary(readsHeader != null ? readsHeader.getSequenceDictionary() : null);
             if (referenceDictionary == null) {
                 throw new UserException.MissingReferenceDictFile(referenceURL);

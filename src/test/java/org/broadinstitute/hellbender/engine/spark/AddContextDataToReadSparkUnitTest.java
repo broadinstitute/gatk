@@ -10,8 +10,8 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.ReadContextData;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.utils.KV;
 import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -80,7 +80,7 @@ public class AddContextDataToReadSparkUnitTest extends GATKBaseTest {
     // Provide a fake implementation of this class for testing. We can't use a real mock since this is used as a Spark
     // broadcast variable. Mocks are mutated when they're accessed, which can result in ConcurrentModificationExceptions
     // during serialization/broadcast.
-    static class TestMultiReferenceSource extends ReferenceMultiSource implements Serializable {
+    static class TestMultiReferenceSource extends ReferenceMultiSparkSource implements Serializable {
         private static final long serialVersionUID = 1L;
 
         final SAMSequenceDictionary sequenceDictionary;

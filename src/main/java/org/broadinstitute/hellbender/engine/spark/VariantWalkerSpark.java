@@ -10,7 +10,7 @@ import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.*;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.engine.filters.VariantFilter;
 import org.broadinstitute.hellbender.engine.filters.VariantFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSource;
@@ -127,13 +127,13 @@ public abstract class VariantWalkerSpark extends GATKSparkTool {
         VariantFilter variantFilter = makeVariantFilter();
         variants = variants.filter(variantFilter::test);
         JavaRDD<Shard<VariantContext>> shardedVariants = SparkSharder.shard(ctx, variants, VariantContext.class, sequenceDictionary, intervalShards, variantShardSize, shuffle);
-        Broadcast<ReferenceMultiSource> bReferenceSource = hasReference() ? ctx.broadcast(getReference()) : null;
+        Broadcast<ReferenceMultiSparkSource> bReferenceSource = hasReference() ? ctx.broadcast(getReference()) : null;
         Broadcast<FeatureManager> bFeatureManager = features == null ? null : ctx.broadcast(features);
         return shardedVariants.flatMap(getVariantsFunction(bReferenceSource, bFeatureManager, sequenceDictionary, variantShardPadding));
     }
 
     private static FlatMapFunction<Shard<VariantContext>, VariantWalkerContext> getVariantsFunction(
-            final Broadcast<ReferenceMultiSource> bReferenceSource,
+            final Broadcast<ReferenceMultiSparkSource> bReferenceSource,
             final Broadcast<FeatureManager> bFeatureManager,
             final SAMSequenceDictionary sequenceDictionary, final int variantShardPadding) {
         return (FlatMapFunction<Shard<VariantContext>, VariantWalkerContext>) shard -> {

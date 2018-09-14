@@ -1,8 +1,8 @@
 package org.broadinstitute.hellbender.engine;
 
 import org.apache.spark.SparkConf;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.SparkTestUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
@@ -15,9 +15,9 @@ public class ReferenceMultiSourceUnitTest extends GATKBaseTest {
 
     @Test
     public void testSerializeRoundTrip2Bit() {
-        ReferenceMultiSource referenceMultiSource = new ReferenceMultiSource(twoBitRefURL, ReferenceWindowFunctions.IDENTITY_FUNCTION);
+        ReferenceMultiSparkSource referenceMultiSource = new ReferenceMultiSparkSource(twoBitRefURL, ReferenceWindowFunctions.IDENTITY_FUNCTION);
 
-        final ReferenceMultiSource roundTrippedReference = SparkTestUtils.roundTripInKryo(referenceMultiSource, ReferenceMultiSource.class, new SparkConf());
+        final ReferenceMultiSparkSource roundTrippedReference = SparkTestUtils.roundTripInKryo(referenceMultiSource, ReferenceMultiSparkSource.class, new SparkConf());
 
         Assert.assertEquals(roundTrippedReference.getReferenceSequenceDictionary(null), referenceMultiSource.getReferenceSequenceDictionary(null),
                 "\nActual ref: " + roundTrippedReference.getReferenceSequenceDictionary(null) + "\nExpected ref: " + referenceMultiSource.getReferenceSequenceDictionary(null));
@@ -26,7 +26,7 @@ public class ReferenceMultiSourceUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions = UserException.MissingReference.class)
     public void testBadReferenceFile() {
-        new ReferenceMultiSource(
+        new ReferenceMultiSparkSource(
                 GATKBaseTest.getSafeNonExistentFile("NonExistentReference.fasta").getAbsolutePath(),
                 ReferenceWindowFunctions.IDENTITY_FUNCTION);
     }

@@ -14,7 +14,7 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.FlatMapFunction;
 import org.broadinstitute.hellbender.engine.ReadContextData;
 import org.broadinstitute.hellbender.engine.ContextShard;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -59,7 +59,7 @@ public final class AddContextDataToReadSparkOptimized implements Serializable {
      public static JavaRDD<ContextShard> add(JavaSparkContext ctx,
          final List<SimpleInterval> intervals,
          String bam, final List<GATKVariant> variants,
-         final ReadFilter optFilter, final ReferenceMultiSource rds) {
+         final ReadFilter optFilter, final ReferenceMultiSparkSource rds) {
         // prepare shards for the intervals of interest
         List<SimpleInterval> shardedIntervals = IntervalUtils.cutToShards(intervals, bigShardSize);
         // add variants
@@ -119,7 +119,7 @@ public final class AddContextDataToReadSparkOptimized implements Serializable {
      * Given a shard that has reads and variants, query Google Genomics' Reference server and get reference info
      * (including an extra margin on either side), and fill that and the correct variants into readContext.
      */
-    public static ContextShard fillContext(ReferenceMultiSource refSource, ContextShard shard) {
+    public static ContextShard fillContext( ReferenceMultiSparkSource refSource, ContextShard shard) {
         if (null==shard) return null;
         // use the function to make sure we get the exact correct amount of reference bases
         int start = Integer.MAX_VALUE;

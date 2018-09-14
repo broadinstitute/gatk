@@ -7,7 +7,6 @@ import org.bdgenomics.adam.models.ReferenceRegion;
 import org.bdgenomics.adam.util.TwoBitFile;
 import org.bdgenomics.adam.util.TwoBitRecord;
 import org.bdgenomics.utils.io.ByteAccess;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
@@ -25,7 +24,7 @@ import java.util.stream.Collectors;
  * file into a byte array that is encapsulated by this object.  This is particularly useful for fast reference queries
  * if the entire reference can fit into memory.
  */
-public class ReferenceTwoBitSource implements ReferenceSource, Serializable {
+public class ReferenceTwoBitSparkSource implements ReferenceSparkSource, Serializable {
     private static final long serialVersionUID = 1L;
 
     public static final String TWO_BIT_EXTENSION = ".2bit";
@@ -34,7 +33,7 @@ public class ReferenceTwoBitSource implements ReferenceSource, Serializable {
     private final TwoBitFile twoBitFile;
     private final Map<String, TwoBitRecord> twoBitSeqEntries;
 
-    public ReferenceTwoBitSource(String referenceURL) throws IOException {
+    public ReferenceTwoBitSparkSource( String referenceURL) throws IOException {
         this.referenceURL = referenceURL;
         Utils.validateArg(isTwoBit(this.referenceURL), "ReferenceTwoBitSource can only take .2bit files");
         byte[] bytes = ByteStreams.toByteArray(BucketUtils.openFile(this.referenceURL));
