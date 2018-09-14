@@ -535,10 +535,11 @@ public class MannWhitneyU {
          * a p-value of 1 in the most extreme case which doesn't result in a usable z-score.
          */
         double sumOfAllSmallerBins;
-        if ( histo.get(testStatU) == null ) {
+        final Histogram.Bin<Double> testStatBin = histo.get( testStatU );
+        if ( testStatBin == null ) {
             sumOfAllSmallerBins = 0.0;
         } else {
-            sumOfAllSmallerBins = histo.get(testStatU).getValue() / 2.0;
+            sumOfAllSmallerBins = testStatBin.getValue() / 2.0;
         }
 
         for (final Histogram.Bin<Double> bin : histo.values()) {
