@@ -270,7 +270,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
-    public void testMissingAlleleSpecificAnnotationGroup() throws IOException {
+    public void testMissingAlleleSpecificAnnotationGroupWarning() throws IOException {
         final File output = createTempFile("test", ".g.vcf");
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .addVCF(getTestFile("alleleSpecific.g.vcf"))
