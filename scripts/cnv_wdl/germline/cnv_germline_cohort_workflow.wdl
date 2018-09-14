@@ -54,6 +54,14 @@ workflow CNVGermlineCohortWorkflow {
     Int? padding
     Int? bin_length
 
+    ##################################################
+    #### optional arguments for AnnotateIntervals ####
+    ##################################################
+    File? mappability_track
+    File? segmental_duplication_track
+    Int? feature_query_lookahead
+    Int? mem_gb_for_annotate_intervals
+
     ##############################################
     #### optional arguments for CollectCounts ####
     ##############################################
@@ -146,8 +154,12 @@ workflow CNVGermlineCohortWorkflow {
                 ref_fasta = ref_fasta,
                 ref_fasta_fai = ref_fasta_fai,
                 ref_fasta_dict = ref_fasta_dict,
+                mappability_track = mappability_track,
+                segmental_duplication_track = segmental_duplication_track,
+                feature_query_lookahead = feature_query_lookahead,
                 gatk4_jar_override = gatk4_jar_override,
                 gatk_docker = gatk_docker,
+                mem_gb = mem_gb_for_annotate_intervals,
                 preemptible_attempts = preemptible_attempts
         }
     }

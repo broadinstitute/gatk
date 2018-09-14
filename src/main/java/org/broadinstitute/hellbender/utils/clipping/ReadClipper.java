@@ -120,7 +120,7 @@ public class ReadClipper {
      * Clips a read according to ops and the chosen algorithm.
      *
      * @param algorithm What mode of clipping do you want to apply for the stacked operations.
-     * @return the read with the clipping applied.
+     * @return the read with the clipping applied (Could be an empty, unmapped read if the clip removed all bases)
      */
     public GATKRead clipRead(final ClippingRepresentation algorithm) {
         return clipRead(algorithm, true);
@@ -159,7 +159,7 @@ public class ReadClipper {
      * coordinates.
      *
      * @param refStop the last base to be hard clipped in the left tail of the read.
-     * @return a new read, without the left tail.
+     * @return a new read, without the left tail (Could be an empty, unmapped read if the clip removed all bases).
      */
     private GATKRead hardClipByReferenceCoordinatesLeftTail(final int refStop) {
         return clipByReferenceCoordinates(-1, refStop, ClippingRepresentation.HARDCLIP_BASES, true);
@@ -173,7 +173,7 @@ public class ReadClipper {
      * coordinates.
      *
      * @param refStart refStop the first base to be hard clipped in the right tail of the read.
-     * @return a new read, without the right tail.
+     * @return a new read, without the right tail (Could be an empty, unmapped read if the clip removed all bases).
      */
     private GATKRead hardClipByReferenceCoordinatesRightTail(final int refStart) {
         return clipByReferenceCoordinates(refStart, -1, ClippingRepresentation.HARDCLIP_BASES, true);
@@ -187,7 +187,7 @@ public class ReadClipper {
      *
      * @param start the first base to clip (inclusive)
      * @param stop the last base to clip (inclusive)
-     * @return a new read, without the clipped bases
+     * @return a new read, without the clipped bases (Could return an empty, unmapped read)
      */
     private GATKRead hardClipByReadCoordinates(final int start, final int stop) {
         if (read.isEmpty() || (start == 0 && stop == read.getLength() - 1)) {
@@ -210,7 +210,7 @@ public class ReadClipper {
      *
      * @param left the coordinate of the last base to be clipped in the left tail (inclusive)
      * @param right the coordinate of the first base to be clipped in the right tail (inclusive)
-     * @return a new read, without the clipped bases
+     * @return a new read, without the clipped bases (Could return an empty, unmapped read)
      */
     private GATKRead hardClipBothEndsByReferenceCoordinates(final int left, final int right) {
         if (read.isEmpty() || left == right) {
@@ -241,7 +241,7 @@ public class ReadClipper {
      *
      * @param algorithm the algorithm to use (HardClip, SoftClip, Write N's,...)
      * @param lowQual every base quality lower than or equal to this in the tail of the read will be hard clipped
-     * @return a new read without low quality tails
+     * @return a new read without low quality tails (Could be an empty, unmapped read if the clip removed all bases).
      */
     private GATKRead clipLowQualEnds(final ClippingRepresentation algorithm, final byte lowQual) {
         if (read.isEmpty()) {
@@ -289,7 +289,7 @@ public class ReadClipper {
     /**
      * Will hard clip every soft clipped bases in the read.
      *
-     * @return a new read without the soft clipped bases
+     * @return a new read without the soft clipped bases (Could be an empty, unmapped read if it was all soft and hard clips).
      */
     private GATKRead hardClipSoftClippedBases () {
         if (read.isEmpty()) {
@@ -339,7 +339,7 @@ public class ReadClipper {
      * @param read     the read to be clipped
      * @param refStart the beginning of the variant region (inclusive)
      * @param refStop  the end of the variant region (inclusive)
-     * @return the read hard clipped to the variant region
+     * @return the read hard clipped to the variant region (Could return an empty, unmapped read)
      */
     public static GATKRead hardClipToRegion( final GATKRead read, final int refStart, final int refStop ) {
         final int start = read.getStart();
@@ -353,7 +353,7 @@ public class ReadClipper {
      * @param read     the read to be clipped
      * @param refStart the beginning of the variant region (inclusive)
      * @param refStop  the end of the variant region (inclusive)
-     * @return the read hard clipped to the variant region
+     * @return the read hard clipped to the variant region (Could return an empty, unmapped read)
      */
     public static GATKRead hardClipToRegionIncludingClippedBases( final GATKRead read, final int refStart, final int refStop ) {
         final int start = read.getUnclippedStart();
@@ -383,7 +383,7 @@ public class ReadClipper {
      *
      * Note: To see how a read is checked for adaptor sequence see ReadUtils.getAdaptorBoundary()
      *
-     * @return a new read without adaptor sequence
+     * @return a new read without adaptor sequence (Could return an empty, unmapped read)
      */
     private GATKRead hardClipAdaptorSequence () {
         final int adaptorBoundary = read.getAdaptorBoundary();
@@ -401,7 +401,7 @@ public class ReadClipper {
     /**
      * Hard clips any leading insertions in the read. Only looks at the beginning of the read, not the end.
      *
-     * @return a new read without leading insertions
+     * @return a new read without leading insertions (Could return an empty, unmapped read)
      */
     private GATKRead hardClipLeadingInsertions() {
         if (read.isEmpty()) {
@@ -441,7 +441,7 @@ public class ReadClipper {
      * Reverts ALL soft-clipped bases
      *
      * @param read the read
-     * @return the read with all soft-clipped bases turned into matches
+     * @return the read with all soft-clipped bases turned into matches (May return empty, unclipped reads close to the beginning of a contig)
      */
     public static GATKRead revertSoftClippedBases(final GATKRead read) {
         return new ReadClipper(read).revertSoftClippedBases();
@@ -461,7 +461,7 @@ public class ReadClipper {
      * @param refStart  first base to clip (inclusive)
      * @param refStop last base to clip (inclusive)
      * @param clippingOp clipping operation to be performed
-     * @return a new read, without the clipped bases
+     * @return a new read, without the clipped bases (May return empty, unclipped reads)
      */
     protected GATKRead clipByReferenceCoordinates(final int refStart, final int refStop, ClippingRepresentation clippingOp, boolean runAsserts) {
         if (read.isEmpty()) {
@@ -515,7 +515,7 @@ public class ReadClipper {
      * @param read     the read to be clipped
      * @param refStart the beginning of the variant region (inclusive)
      * @param refStop  the end of the variant region (inclusive)
-     * @return the read soft clipped to the variant region
+     * @return the read soft clipped to the variant region (May return empty, unclipped reads)
      */
     public static GATKRead softClipToRegionIncludingClippedBases( final GATKRead read, final int refStart, final int refStop ) {
         final int start = read.getUnclippedStart();
@@ -544,7 +544,7 @@ public class ReadClipper {
      *
      * @param left the coordinate of the last base to be clipped in the left tail (inclusive)
      * @param right the coordinate of the first base to be clipped in the right tail (inclusive)
-     * @return a new read, without the clipped bases
+     * @return a new read, without the clipped bases (May return empty, unclipped reads)
      */
     private GATKRead softClipBothEndsByReferenceCoordinates(final int left, final int right) {
         if (read.isEmpty()) {
@@ -590,7 +590,7 @@ public class ReadClipper {
      *
      * @param start the first base to clip (inclusive)
      * @param stop the last base to clip (inclusive)
-     * @return a new read, without the clipped bases
+     * @return a new read, without the clipped bases (May return empty, unclipped reads)
      */
     private GATKRead softClipByReadCoordinates(final int start, final int stop) {
         if (read.isEmpty()) {

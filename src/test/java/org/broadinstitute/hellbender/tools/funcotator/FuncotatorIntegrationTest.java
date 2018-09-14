@@ -52,6 +52,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     // This should always be false when checked in.
     private static final boolean doDebugTests = false;
     private static final String LARGE_DATASOURCES_FOLDER = "funcotator_dataSources_latest";
+    private static final String GERMLINE_DATASOURCES_FOLDER = "funcotator_dataSources_germline_latest";
 
     private static final String XSV_CLINVAR_MULTIHIT_TEST_VCF = toolsTestDir + "funcotator" + File.separator + "clinvar_hg19_multihit_test.vcf";
     private static final String DS_XSV_CLINVAR_TESTS          = largeFileTestDir + "funcotator" + File.separator + "small_ds_clinvar_hg19" + File.separator;
@@ -271,32 +272,44 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                         "M2_01115161-TA1-filtered.vcf",
                         "Homo_sapiens_assembly19.fasta",
                         FuncotatorTestConstants.REFERENCE_VERSION_HG19,
+                        getFuncotatorLargeDataValidationTestInputPath() + LARGE_DATASOURCES_FOLDER
                 },
                 {
                         "C828.TCGA-D3-A2JP-06A-11D-A19A-08.3-filtered.PASS.vcf",
                         "Homo_sapiens_assembly19.fasta",
-                        FuncotatorTestConstants.REFERENCE_VERSION_HG19
+                        FuncotatorTestConstants.REFERENCE_VERSION_HG19,
+                        getFuncotatorLargeDataValidationTestInputPath() + LARGE_DATASOURCES_FOLDER
                 },
                 {
                         "hg38_test_variants.vcf",
                         "Homo_sapiens_assembly38.fasta",
-                        FuncotatorTestConstants.REFERENCE_VERSION_HG38
+                        FuncotatorTestConstants.REFERENCE_VERSION_HG38,
+                        getFuncotatorLargeDataValidationTestInputPath() + LARGE_DATASOURCES_FOLDER
                 },
                 {
                         "sample21.trimmed.vcf",
                         "Homo_sapiens_assembly38.fasta",
-                        FuncotatorTestConstants.REFERENCE_VERSION_HG38
+                        FuncotatorTestConstants.REFERENCE_VERSION_HG38,
+                        getFuncotatorLargeDataValidationTestInputPath() + LARGE_DATASOURCES_FOLDER
                 },
                 {
                         "0816201804HC0_R01C01.vcf",
                         "Homo_sapiens_assembly19.fasta",
-                        FuncotatorTestConstants.REFERENCE_VERSION_HG19
+                        FuncotatorTestConstants.REFERENCE_VERSION_HG19,
+                        getFuncotatorLargeDataValidationTestInputPath() + LARGE_DATASOURCES_FOLDER
                 },
                 {
                         "hg38_trio.vcf",
                         "Homo_sapiens_assembly38.fasta",
-                        FuncotatorTestConstants.REFERENCE_VERSION_HG38
-                }
+                        FuncotatorTestConstants.REFERENCE_VERSION_HG38,
+                        getFuncotatorLargeDataValidationTestInputPath() + LARGE_DATASOURCES_FOLDER
+                },
+                {
+                        "0816201804HC0_R01C01.vcf",
+                        "Homo_sapiens_assembly19.fasta",
+                        FuncotatorTestConstants.REFERENCE_VERSION_HG19,
+                        getFuncotatorLargeDataValidationTestInputPath() + GERMLINE_DATASOURCES_FOLDER
+                },
         };
     }
 
@@ -348,7 +361,8 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
           dataProvider = "provideForLargeDataValidationTest")
     public void largeDataValidationTest(final String inputVcfName,
                                         final String referencePath,
-                                        final String referenceVersion) throws IOException {
+                                        final String referenceVersion,
+                                        final String dataSourcesPath) throws IOException {
 
         // Get our main test folder path from our environment:
         final String testFolderInputPath = getFuncotatorLargeDataValidationTestInputPath();
