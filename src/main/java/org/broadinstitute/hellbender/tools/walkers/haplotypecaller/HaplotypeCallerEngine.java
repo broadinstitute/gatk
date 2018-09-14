@@ -614,7 +614,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             if ( hcArgs.disableOptimizations ) {
                 calledHaplotypeSet.add(assemblyResult.getReferenceHaplotype());
             }
-            haplotypeBAMWriter.get().writeReadsAlignedToHaplotypes(haplotypes, assemblyResult.getPaddedReferenceLoc(),regionForGenotyping.getSpan(), haplotypes,
+            haplotypeBAMWriter.get().writeReadsAlignedToHaplotypes(haplotypes, assemblyResult.getPaddedReferenceLoc(),regionForGenotyping.getSpan(),trimmingResult.getCallableRegion().getExtendedSpan(), haplotypes,
                                                              calledHaplotypeSet, readLikelihoods);
         }
 
