@@ -12,7 +12,7 @@ import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryPipelineSpark;
@@ -52,7 +52,7 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
 
         final String testSample = "testSample";
         final JavaSparkContext testSparkContext = SparkContextFactory.getTestSparkContext();
-        final Broadcast<ReferenceMultiSource> referenceBroadcast = testSparkContext.broadcast(TestUtilsForAssemblyBasedSVDiscovery.b37_reference);
+        final Broadcast<ReferenceMultiSparkSource> referenceBroadcast = testSparkContext.broadcast(TestUtilsForAssemblyBasedSVDiscovery.b37_reference);
         final Broadcast<SAMSequenceDictionary> refSeqDictBroadcast = testSparkContext.broadcast(TestUtilsForAssemblyBasedSVDiscovery.b37_seqDict);
 
         for (final AssemblyBasedSVDiscoveryTestDataProvider.AssemblyBasedSVDiscoveryTestDataForSimpleChimera testData : new AssemblyBasedSVDiscoveryTestDataProviderForSimpleSV().getAllTestData()) {
@@ -64,7 +64,7 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
                                   testData.expectedVariantContexts});
         }
 
-        final Broadcast<ReferenceMultiSource> referenceBroadcast_b38 = testSparkContext.broadcast(TestUtilsForAssemblyBasedSVDiscovery.b38_reference_chr20_chr21);
+        final Broadcast<ReferenceMultiSparkSource> referenceBroadcast_b38 = testSparkContext.broadcast(TestUtilsForAssemblyBasedSVDiscovery.b38_reference_chr20_chr21);
         final Broadcast<SAMSequenceDictionary> refSeqDictBroadcast_b38 = testSparkContext.broadcast(TestUtilsForAssemblyBasedSVDiscovery.b38_seqDict_chr20_chr21);
 
         for (final AssemblyBasedSVDiscoveryTestDataProvider.AssemblyBasedSVDiscoveryTestDataForSimpleChimera testData : new AssemblyBasedSVDiscoveryTestDataProviderForBreakEndVariants().getAllTestData()) {
@@ -77,7 +77,7 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
     @Test(groups = "sv", dataProvider = "forAssemblyBasedAnnotation")
     public void testAssemblyBasedAnnotation(final List<SvType> inferredTypes,
                                             final SimpleNovelAdjacencyAndChimericAlignmentEvidence novelAdjacencyAndAssemblyEvidence,
-                                            final Broadcast<ReferenceMultiSource> broadcastReference,
+                                            final Broadcast<ReferenceMultiSparkSource> broadcastReference,
                                             final Broadcast<SAMSequenceDictionary> broadcastSequenceDictionary,
                                             final String sampleId,
                                             final String linkKey,
@@ -97,7 +97,7 @@ public class AnnotatedVariantProducerUnitTest extends GATKBaseTest {
     @Test(groups = "sv")
     public void testMiscCases() {
         final JavaSparkContext testSparkContext = SparkContextFactory.getTestSparkContext();
-        Broadcast<ReferenceMultiSource> referenceBroadcast = testSparkContext.broadcast(TestUtilsForAssemblyBasedSVDiscovery.b38_reference_chr20_chr21);
+        Broadcast<ReferenceMultiSparkSource> referenceBroadcast = testSparkContext.broadcast(TestUtilsForAssemblyBasedSVDiscovery.b38_reference_chr20_chr21);
         Broadcast<SAMSequenceDictionary> refSeqDictBroadcast = testSparkContext.broadcast(TestUtilsForAssemblyBasedSVDiscovery.b38_seqDict_chr20_chr21);
 
         // the following works for: multiple evidence contigs, insertion sequence mapping available, good non-canonical chromosome mapping available

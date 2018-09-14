@@ -5,8 +5,8 @@ import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.utils.KV;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -47,7 +47,7 @@ public class JoinReadsWithRefBasesSparkUnitTest extends GATKBaseTest {
 
         JavaRDD<GATKRead> rddReads = ctx.parallelize(reads);
 
-        ReferenceMultiSource mockSource = mock(ReferenceMultiSource.class, withSettings().serializable());
+        ReferenceMultiSparkSource mockSource = mock(ReferenceMultiSparkSource.class, withSettings().serializable());
         for (SimpleInterval i : intervals) {
             when(mockSource.getReferenceBases(eq(i))).thenReturn(FakeReferenceSource.bases(i));
         }
@@ -70,7 +70,7 @@ public class JoinReadsWithRefBasesSparkUnitTest extends GATKBaseTest {
 
         JavaRDD<GATKRead> rddReads = ctx.parallelize(reads);
 
-        ReferenceMultiSource mockSource = mock(ReferenceMultiSource.class, withSettings().serializable());
+        ReferenceMultiSparkSource mockSource = mock(ReferenceMultiSparkSource.class, withSettings().serializable());
         for (SimpleInterval i : intervals) {
             when(mockSource.getReferenceBases(eq(i))).thenReturn(FakeReferenceSource.bases(i));
         }

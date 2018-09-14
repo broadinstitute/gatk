@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.engine.datasources;
+package org.broadinstitute.hellbender.engine.spark.datasources;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequence;
@@ -13,16 +13,15 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Class to load a reference sequence from a fasta file.
+ * Class to load a reference sequence from a fasta file on Spark.
  */
-public class ReferenceFileSource implements ReferenceSource, Serializable {
+public class ReferenceFileSparkSource implements ReferenceSparkSource, Serializable {
     private static final long serialVersionUID = 1L;
 
     private final URI referenceUri;
@@ -34,14 +33,14 @@ public class ReferenceFileSource implements ReferenceSource, Serializable {
     /**
      * @param referenceUri the path to the reference file
      */
-    public ReferenceFileSource(final String referenceUri) {
+    public ReferenceFileSparkSource( final String referenceUri) {
         this(IOUtils.getPath(referenceUri));
     }
 
     /**
      * @param referencePath the path to the reference file
      */
-    public ReferenceFileSource(final Path referencePath) {
+    public ReferenceFileSparkSource( final Path referencePath) {
         this.referencePath = referencePath;
         this.referenceUri = referencePath.toUri();
         if (!Files.exists(this.referencePath)) {

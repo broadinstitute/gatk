@@ -1,21 +1,21 @@
-package org.broadinstitute.hellbender.engine.datasources;
+package org.broadinstitute.hellbender.engine.spark.datasources;
 
 import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
 import java.io.*;
-import java.nio.ByteBuffer;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceFileSparkSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.testng.annotations.Test;
 
-public class ReferenceFileSourceUnitTest extends GATKBaseTest {
+public class ReferenceFileSparkSourceUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions = UserException.MissingReference.class)
     public void testMissingReferenceFile() throws IOException {
-        new ReferenceFileSource(
+        new ReferenceFileSparkSource(
                 GATKBaseTest.getSafeNonExistentFile("NonExistentReference.fasta")
                         .getAbsolutePath());
     }
@@ -30,7 +30,7 @@ public class ReferenceFileSourceUnitTest extends GATKBaseTest {
             final Path dictPath = jimfs.getPath("reference.dict");
             Files.createFile(dictPath);
 
-            new ReferenceFileSource(refPath);
+            new ReferenceFileSparkSource(refPath);
         }
     }
 
@@ -40,7 +40,7 @@ public class ReferenceFileSourceUnitTest extends GATKBaseTest {
         GATKBaseTest.createTempFile("reference", ".fasta.fai");
         GATKBaseTest.createTempFile("reference", ".dict");
 
-        final ReferenceFileSource referenceFileSource = new ReferenceFileSource(refPath);
+        final ReferenceFileSparkSource referenceFileSource = new ReferenceFileSparkSource(refPath);
 
         // Can we serialize it?
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -48,7 +48,7 @@ public class ReferenceFileSourceUnitTest extends GATKBaseTest {
         os.writeObject(referenceFileSource);
 
         ObjectInputStream is = new ObjectInputStream(new ByteArrayInputStream(baos.toByteArray()));
-        ReferenceFileSource otherSide = (ReferenceFileSource)is.readObject();
+        ReferenceFileSparkSource otherSide = (ReferenceFileSparkSource)is.readObject();
         // After deserialization, will it crash?
         otherSide.getReferenceSequenceDictionary(null);
 

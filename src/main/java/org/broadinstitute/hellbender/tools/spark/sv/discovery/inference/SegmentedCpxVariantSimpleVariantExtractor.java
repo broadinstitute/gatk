@@ -8,7 +8,7 @@ import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.broadcast.Broadcast;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvDiscoverFromLocalAssemblyContigAlignmentsSpark;
@@ -101,7 +101,7 @@ public abstract class SegmentedCpxVariantSimpleVariantExtractor implements Seria
                                                   final SvDiscoveryInputMetaData svDiscoveryInputMetaData,
                                                   final JavaRDD<GATKRead> assemblyRawAlignments) {
 
-        final Broadcast<ReferenceMultiSource> referenceBroadcast = svDiscoveryInputMetaData.getReferenceData().getReferenceBroadcast();
+        final Broadcast<ReferenceMultiSparkSource> referenceBroadcast = svDiscoveryInputMetaData.getReferenceData().getReferenceBroadcast();
 
         // still does an in-efficient 2-pass on the input RDD: 1 pass for zero- and one-segment calls, the other for multi-segment calls
         // that was due to restriction from how multi-segment calls are to be re-interpreted
@@ -192,7 +192,7 @@ public abstract class SegmentedCpxVariantSimpleVariantExtractor implements Seria
         List<VariantContext> pairIterationReInterpreted = ContigChimericAlignmentIterativeInterpreter
                 .discoverVariantsFromChimeras(svDiscoveryInputMetaData, analysisReadyContigs);
 
-        final Broadcast<ReferenceMultiSource> referenceBroadcast = svDiscoveryInputMetaData.getReferenceData().getReferenceBroadcast();
+        final Broadcast<ReferenceMultiSparkSource> referenceBroadcast = svDiscoveryInputMetaData.getReferenceData().getReferenceBroadcast();
         return pairIterationReInterpreted.stream()
                 .map(vc -> {
                     final List<String> consistentComplexVariantIDs =
@@ -248,7 +248,7 @@ public abstract class SegmentedCpxVariantSimpleVariantExtractor implements Seria
      */
     @VisibleForTesting
     static Stream<VariantContext> postProcessConvertReplacementToFatInsOrInsAndDel(final VariantContext simple,
-                                                                                   final ReferenceMultiSource reference) {
+                                                                                   final ReferenceMultiSparkSource reference) {
         final String type = simple.getAttributeAsString(SVTYPE, "");
         if ( type.equals(SimpleSVType.SupportedType.DEL.name()) ) {
             final int deletionLen = - simple.getAttributeAsInt(SVLEN, 0);
@@ -460,7 +460,7 @@ public abstract class SegmentedCpxVariantSimpleVariantExtractor implements Seria
 
     //==================================================================================================================
 
-    abstract List<VariantContext> extract(final VariantContext complexVC, final ReferenceMultiSource reference);
+    abstract List<VariantContext> extract(final VariantContext complexVC, final ReferenceMultiSparkSource reference);
 
     @VisibleForTesting
     static final class ZeroAndOneSegmentCpxVariantExtractor extends SegmentedCpxVariantSimpleVariantExtractor {
@@ -498,7 +498,7 @@ public abstract class SegmentedCpxVariantSimpleVariantExtractor implements Seria
          * </p>
          */
         @Override
-        List<VariantContext> extract(final VariantContext complexVC, final ReferenceMultiSource reference) {
+        List<VariantContext> extract(final VariantContext complexVC, final ReferenceMultiSparkSource reference) {
 
             final List<String> segments = SVUtils.getAttributeAsStringList(complexVC, CPX_SV_REF_SEGMENTS);
             if (segments.isEmpty()) return whenZeroSegments(complexVC, reference);
@@ -530,7 +530,7 @@ public abstract class SegmentedCpxVariantSimpleVariantExtractor implements Seria
                     .collect(Collectors.toList());
         }
 
-        private List<VariantContext> whenZeroSegments(final VariantContext complexVC, final ReferenceMultiSource reference) {
+        private List<VariantContext> whenZeroSegments(final VariantContext complexVC, final ReferenceMultiSparkSource reference) {
             final Allele anchorBaseRefAllele = getAnchorBaseRefAllele(complexVC.getContig(), complexVC.getStart(), reference);
             final int altSeqLength = complexVC.getAttributeAsString(SEQ_ALT_HAPLOTYPE, "").length() - 2;
             final List<String> mappingQualities = SVUtils.getAttributeAsStringList(complexVC, MAPPING_QUALITIES);
@@ -545,7 +545,7 @@ public abstract class SegmentedCpxVariantSimpleVariantExtractor implements Seria
         }
 
         private static void whenInversionIsWarranted(final SimpleInterval refSegment, final int invertedAppearanceIdx,
-                                                     final List<String> altArrangement, final ReferenceMultiSource reference,
+                                                     final List<String> altArrangement, final ReferenceMultiSparkSource reference,
                                                      final List<VariantContextBuilder> result) {
 
             final Allele anchorBaseRefAllele = getAnchorBaseRefAllele(refSegment.getContig(), refSegment.getStart(), reference);
@@ -560,9 +560,9 @@ public abstract class SegmentedCpxVariantSimpleVariantExtractor implements Seria
                     anchorBaseRefAlleleFront, anchorBaseRefAlleleRear, result);
         }
 
-        private static void whenNoDeletionIsAllowed(final SimpleInterval refSegment, final int asIsAppearanceIdx,
-                                                    final List<String> altArrangement, final int altSeqLength,
-                                                    final ReferenceMultiSource reference, final List<VariantContextBuilder> result) {
+        private static void whenNoDeletionIsAllowed( final SimpleInterval refSegment, final int asIsAppearanceIdx,
+                                                     final List<String> altArrangement, final int altSeqLength,
+                                                     final ReferenceMultiSparkSource reference, final List<VariantContextBuilder> result) {
             final int segmentSize = refSegment.size();
             if (altSeqLength - segmentSize > EVENT_SIZE_THRESHOLD ) { // long enough net gain to trigger insertion calls
                 // distinguish between cases {"1", ....}, {....., "1"}, and {....., "1", ....} to know where to place the insertion
@@ -587,8 +587,8 @@ public abstract class SegmentedCpxVariantSimpleVariantExtractor implements Seria
             }
         }
 
-        private static void whenNoInvAndNoAsIsAppearance(final SimpleInterval refSegment, final int altSeqLength,
-                                                         final ReferenceMultiSource reference, final List<VariantContextBuilder> result) {
+        private static void whenNoInvAndNoAsIsAppearance( final SimpleInterval refSegment, final int altSeqLength,
+                                                          final ReferenceMultiSparkSource reference, final List<VariantContextBuilder> result) {
             if ( refSegment.size() > EVENT_SIZE_THRESHOLD ) { // a deletion call must be present
 
                 final Allele anchorBaseRefAlleleFront = getAnchorBaseRefAllele(refSegment.getContig(), refSegment.getStart(), reference);
@@ -636,7 +636,7 @@ public abstract class SegmentedCpxVariantSimpleVariantExtractor implements Seria
         private static final long serialVersionUID = 1L;
 
         @Override
-        List<VariantContext> extract(final VariantContext complexVC, final ReferenceMultiSource reference) {
+        List<VariantContext> extract(final VariantContext complexVC, final ReferenceMultiSparkSource reference) {
 
             final List<SimpleInterval> refSegments =
                     SVUtils.getAttributeAsStringList(complexVC, CPX_SV_REF_SEGMENTS).stream()
@@ -716,7 +716,7 @@ public abstract class SegmentedCpxVariantSimpleVariantExtractor implements Seria
             return idx;
         }
 
-        private static void whenAllSegmentsAppearAsIs(final VariantContext complexVC, final ReferenceMultiSource reference,
+        private static void whenAllSegmentsAppearAsIs(final VariantContext complexVC, final ReferenceMultiSparkSource reference,
                                                       final List<SimpleInterval> refSegments, final List<String> altArrangement,
                                                       final List<VariantContextBuilder> result, final int idx) {
             final List<Integer> refSegmentLengths = refSegments.stream().map(SimpleInterval::size).collect(Collectors.toList());
@@ -739,9 +739,9 @@ public abstract class SegmentedCpxVariantSimpleVariantExtractor implements Seria
             }
         }
 
-        private void extractInversions(final ReferenceMultiSource reference, final List<SimpleInterval> refSegmentIntervals,
-                                       final Set<Integer> presentSegments, final List<Integer> invertedSegments,
-                                       final List<VariantContextBuilder> result) {
+        private void extractInversions( final ReferenceMultiSparkSource reference, final List<SimpleInterval> refSegmentIntervals,
+                                        final Set<Integer> presentSegments, final List<Integer> invertedSegments,
+                                        final List<VariantContextBuilder> result) {
             final List<VariantContextBuilder> inversions =
                     invertedSegments.stream()
                             // large enough; in addition, if both as-is and inverted versions exist, treat as insertions instead of inversions: unlike 1-segment calls, where we don't have consistency problems
@@ -756,8 +756,8 @@ public abstract class SegmentedCpxVariantSimpleVariantExtractor implements Seria
             result.addAll(inversions);
         }
 
-        private void extractDeletions(final ReferenceMultiSource reference, final Set<SimpleInterval> missingSegments,
-                                      final List<VariantContextBuilder> result) {
+        private void extractDeletions( final ReferenceMultiSparkSource reference, final Set<SimpleInterval> missingSegments,
+                                       final List<VariantContextBuilder> result) {
             final List<VariantContextBuilder> deletions = compactifyMissingSegments(missingSegments).stream()
                     .filter(gone -> gone.size() > EVENT_SIZE_THRESHOLD) // large enough
                     .map(gone -> {
@@ -799,7 +799,7 @@ public abstract class SegmentedCpxVariantSimpleVariantExtractor implements Seria
         }
 
         private void extractFrontAndRearInsertions(final VariantContext complexVC, final List<SimpleInterval> refSegmentIntervals,
-                                                   final List<String> altArrangement, final ReferenceMultiSource reference,
+                                                   final List<String> altArrangement, final ReferenceMultiSparkSource reference,
                                                    final List<VariantContextBuilder> result) {
             final List<Integer> refSegmentLengths = refSegmentIntervals.stream().map(SimpleInterval::size).collect(Collectors.toList());
             // index pointing to first appearance of ref segment (inverted or not) in altArrangement, from either side
@@ -926,12 +926,12 @@ public abstract class SegmentedCpxVariantSimpleVariantExtractor implements Seria
 
     // boiler-plate code block =========================================================================================
 
-    private static Allele getAnchorBaseRefAllele(final String chr, final int pos, final ReferenceMultiSource reference) {
+    private static Allele getAnchorBaseRefAllele(final String chr, final int pos, final ReferenceMultiSparkSource reference) {
         return Allele.create(getReferenceBases(SVUtils.makeOneBpInterval(chr, pos), reference), true);
     }
 
     // try not to have many try's
-    static byte[] getReferenceBases(final SimpleInterval interval, final ReferenceMultiSource reference) {
+    static byte[] getReferenceBases(final SimpleInterval interval, final ReferenceMultiSparkSource reference) {
         try {
             return reference.getReferenceBases(interval).getBases();
         } catch (final IOException ioex) {
