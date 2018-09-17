@@ -100,7 +100,7 @@ public class HaplotypeCallerSparkIntegrationTest extends CommandLineProgramTest 
     /*
    * Test that in GVCF mode we're >= 99% concordant with GATK3 results
    */
-    @Test
+    @Test(enabled=false) //disabled after reference confidence change in #5172
     public void testGVCFModeIsConcordantWithGATK3_8Results() throws Exception {
         Utils.resetRandomGenerator();
 
@@ -157,7 +157,7 @@ public class HaplotypeCallerSparkIntegrationTest extends CommandLineProgramTest 
         };
     }
 
-    @Test(dataProvider = "gvcfCases")
+    @Test(dataProvider = "gvcfCases", enabled=false) //disabled after reference confidence change in #5172
     public void testGVCFModeIsConcordantWithGATK3_8AlelleSpecificResults(String extension) throws Exception {
         Utils.resetRandomGenerator();
         final File output = createTempFile("testGVCFModeIsConcordantWithGATK3_8AlelleSpecificResults", extension);

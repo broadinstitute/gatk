@@ -6,6 +6,7 @@ import htsjdk.samtools.CigarOperator;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
+import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
@@ -13,12 +14,14 @@ import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignment;
 
 import java.util.*;
+import java.util.function.Function;
 
 
 public final class AlignmentUtils {
     private static final EnumSet<CigarOperator> ALIGNED_TO_GENOME_OPERATORS = EnumSet.of(CigarOperator.M, CigarOperator.EQ, CigarOperator.X);
     private static final EnumSet<CigarOperator> ALIGNED_TO_GENOME_PLUS_SOFTCLIPS = EnumSet.of(CigarOperator.M, CigarOperator.EQ, CigarOperator.X, CigarOperator.S);
     public final static String HAPLOTYPE_TAG = "HC";
+    public final static byte GAP_CHARACTER = (byte)'-';
 
     // cannot be instantiated
     private AlignmentUtils() { }
@@ -195,6 +198,51 @@ public final class AlignmentUtils {
             throw new IllegalStateException("Never found start " + basesStart + " or stop " + basesStop + " given cigar " + basesToRefCigar);
 
         return Arrays.copyOfRange(bases, basesStart, basesStop + 1);
+    }
+
+    public static byte[] getBasesAlignedOneToOne(final GATKRead read) {
+        return getSequenceAlignedOneToOne(read, r -> r.getBasesNoCopy(), GAP_CHARACTER);
+    }
+
+    public static byte[] getBaseQualsAlignedOneToOne(final GATKRead read) {
+        return getSequenceAlignedOneToOne(read, r -> r.getBaseQualitiesNoCopy(), (byte)0);
+    }
+
+    public static byte[] getSequenceAlignedOneToOne(final GATKRead read, final Function<GATKRead, byte[]> bytesProvider, final byte padWith) {
+        Utils.nonNull(read);
+        Utils.nonNull(bytesProvider);
+        final Cigar cigar = read.getCigar();
+        final byte[] sequence = bytesProvider.apply(read);
+
+        if (!cigar.containsOperator(CigarOperator.DELETION) && !cigar.containsOperator(CigarOperator.INSERTION)) {
+            return sequence;
+        }
+        else {
+            final byte[] paddedBases = new byte[CigarUtils.countRefBasesIncludingSoftClips(read, 0, cigar.numCigarElements())];
+            int literalPos = 0;
+            int paddedPos = 0;
+            for ( int i = 0; i < cigar.numCigarElements(); i++ ) {
+                final CigarElement ce = cigar.getCigarElement(i);
+                final CigarOperator co = ce.getOperator();
+                if (co.consumesReadBases()) {
+                    if (!co.consumesReferenceBases()) {
+                        literalPos += ce.getLength();  //skip inserted bases
+                    }
+                    else {
+                        System.arraycopy(sequence, literalPos, paddedBases, paddedPos, ce.getLength());
+                        literalPos += ce.getLength();
+                        paddedPos += ce.getLength();
+                    }
+                }
+                else if (co.consumesReferenceBases()) {
+                    for ( int j = 0; j < ce.getLength(); j++ ) {  //pad deleted bases
+                        paddedBases[paddedPos] = padWith;
+                        paddedPos++;
+                    }
+                }
+            }
+            return paddedBases;
+        }
     }
 
     /**
