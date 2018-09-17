@@ -3,20 +3,21 @@ package org.broadinstitute.hellbender.tools.spark.transforms.markduplicates;
 import com.google.api.client.util.Lists;
 import com.google.common.collect.ImmutableList;
 import htsjdk.samtools.*;
+import org.apache.spark.SparkException;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
-import org.broadinstitute.hellbender.utils.read.*;
-import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesScoringStrategy;
-
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
+import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesScoringStrategy;
 import org.broadinstitute.hellbender.utils.read.markduplicates.SerializableOpticalDuplicatesFinder;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 import scala.Tuple2;
 
 import java.io.IOException;
-
 import java.util.*;
 
 public class MarkDuplicatesSparkUtilsUnitTest extends GATKBaseTest {
@@ -58,6 +59,41 @@ public class MarkDuplicatesSparkUtilsUnitTest extends GATKBaseTest {
 
     private static Tuple2<String, Iterable<GATKRead>> pairIterable(String key, GATKRead... reads) {
         return new Tuple2<>(key, ImmutableList.copyOf(reads));
+    }
+
+    @Test(expectedExceptions = UserException.BadInput.class)
+    public void testHeaderMissingReadGroupFilds() {
+        JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
+
+        SAMRecordSetBuilder samRecordSetBuilder = new SAMRecordSetBuilder(true, SAMFileHeader.SortOrder.queryname,
+                true, SAMRecordSetBuilder.DEFAULT_CHROMOSOME_LENGTH, SAMRecordSetBuilder.DEFAULT_DUPLICATE_SCORING_STRATEGY);
+
+        JavaRDD<GATKRead> reads = ctx.parallelize(new ArrayList<>(), 2);
+        SAMFileHeader header = samRecordSetBuilder.getHeader();
+        header.setReadGroups(new ArrayList<>());
+
+        MarkDuplicatesSparkUtils.transformToDuplicateNames(header, MarkDuplicatesScoringStrategy.SUM_OF_BASE_QUALITIES, null, reads, 2).collect();
+    }
+
+    @Test
+    public void testReadsMissingReadGroups() {
+        JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
+
+        SAMRecordSetBuilder samRecordSetBuilder = new SAMRecordSetBuilder(true, SAMFileHeader.SortOrder.queryname,
+                true, SAMRecordSetBuilder.DEFAULT_CHROMOSOME_LENGTH, SAMRecordSetBuilder.DEFAULT_DUPLICATE_SCORING_STRATEGY);
+        samRecordSetBuilder.addFrag("READ" , 0, 10000, false);
+
+        JavaRDD<GATKRead> reads = ctx.parallelize(Lists.newArrayList(samRecordSetBuilder.getRecords()), 2).map(SAMRecordToGATKReadAdapter::new);
+        reads = reads.map(r -> {r.setReadGroup(null); return r;});
+        SAMFileHeader header = samRecordSetBuilder.getHeader();
+
+        try {
+            MarkDuplicatesSparkUtils.transformToDuplicateNames(header, MarkDuplicatesScoringStrategy.SUM_OF_BASE_QUALITIES, null, reads, 2).collect();
+            Assert.fail("Should have thrown an exception");
+        } catch (Exception e){
+            Assert.assertTrue(e instanceof SparkException);
+            Assert.assertTrue(e.getCause() instanceof UserException.ReadMissingReadGroup);
+        }
     }
 
     @Test

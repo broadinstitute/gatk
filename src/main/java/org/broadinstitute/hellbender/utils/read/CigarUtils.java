@@ -85,16 +85,11 @@ public final class CigarUtils {
 
     /**
      * Compute the number of reference bases between the start (inclusive) and end (exclusive) cigar elements.
-     * Note: The method does NOT use CigarOperator.consumesReferenceBases, since it checks something different.
-     * The idea is you remove some elements from the beginning of the cigar string,
-     * and want to recalculate what if the new starting reference position,
-     * you want to count all the elements that indicate existing bases in the reference
-     * (everything but I and P).
+     * Reference bases are counted as the number of positions w.r.t. the reference spanned by an alignment to that reference.
      * For example original position = 10. cigar: 2M3I2D1M. If you remove the 2M the new starting position is 12.
      * If you remove the 2M3I it is still 12. If you remove 2M3I2D (not reasonable cigar), you will get position 14.
      */
-    @SuppressWarnings("fallthru")
-    public static int countRefBasesBasedOnCigar(final GATKRead read, final int cigarStartIndex, final int cigarEndIndex){
+    public static int countRefBasesBasedOnUnclippedAlignment(final GATKRead read, final int cigarStartIndex, final int cigarEndIndex){
         if (read == null){
             throw new IllegalArgumentException("null read");
         }
@@ -105,21 +100,26 @@ public final class CigarUtils {
         int result = 0;
         for(int i = cigarStartIndex; i < cigarEndIndex; i++){
             final CigarElement cigarElement = elems.get(i);
-            switch (cigarElement.getOperator()) {
-                case M:
-                case D:
-                case N:
-                case EQ:
-                case X:
-                case S:
-                case H:
-                    result += cigarElement.getLength();
-                    break;
-                case I:
-                case P:        //for these two, nothing happens.
-                    break;
-                default:
-                    throw new GATKException("Unsupported cigar operator: " + cigarElement.getOperator());
+            final CigarOperator operator = cigarElement.getOperator();
+            if (operator.consumesReferenceBases() || operator.isClipping()) {
+                result += cigarElement.getLength();
+            }
+        }
+        return result;
+    }
+
+    public static int countRefBasesIncludingSoftClips(final GATKRead read, final int cigarStartIndex, final int cigarEndIndex){
+        Utils.nonNull(read, "null read");
+        final List<CigarElement> elems = read.getCigarElements();
+        if (cigarStartIndex < 0 || cigarEndIndex > elems.size() || cigarStartIndex > cigarEndIndex){
+            throw new IllegalArgumentException("invalid index:" + 0 + " -" + elems.size());
+        }
+        int result = 0;
+        for(int i = cigarStartIndex; i < cigarEndIndex; i++){
+            final CigarElement cigarElement = elems.get(i);
+            final CigarOperator operator = cigarElement.getOperator();
+            if (operator.consumesReferenceBases() || operator == CigarOperator.S) {
+                result += cigarElement.getLength();
             }
         }
         return result;

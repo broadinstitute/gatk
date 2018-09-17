@@ -1,7 +1,5 @@
 package org.broadinstitute.hellbender.engine.spark.datasources;
 
-import org.broadinstitute.hellbender.engine.datasources.ReferenceFileSource;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import org.broadinstitute.hellbender.GATKBaseTest;
@@ -11,14 +9,14 @@ import org.testng.annotations.Test;
 
 import java.io.IOException;
 
-public class ReferenceTwoBitSourceUnitTest extends GATKBaseTest {
+public class ReferenceTwoBitSparkSourceUnitTest extends GATKBaseTest {
     private static String fastaRefURL = publicTestDir + "large/human_g1k_v37.20.21.fasta";
     private static String twoBitRefURL = publicTestDir + "large/human_g1k_v37.20.21.2bit";
 
     @DataProvider(name = "goodIntervals")
     public Object[][] goodIntervals() throws IOException {
-        ReferenceSource fastaRef = new ReferenceFileSource(fastaRefURL);
-        ReferenceSource twoBitRef = new ReferenceTwoBitSource(twoBitRefURL);
+        ReferenceSparkSource fastaRef = new ReferenceFileSparkSource(fastaRefURL);
+        ReferenceSparkSource twoBitRef = new ReferenceTwoBitSparkSource(twoBitRefURL);
         return new Object[][]{
                 {fastaRef, twoBitRef, "20:2-10"},
                 {fastaRef, twoBitRef, "20:4-5"},
@@ -28,7 +26,7 @@ public class ReferenceTwoBitSourceUnitTest extends GATKBaseTest {
     }
 
     @Test(dataProvider = "goodIntervals")
-    public void testIntervalConversion(ReferenceSource fastaRef, ReferenceSource twoBitRef, String intervalString) throws IOException {
+    public void testIntervalConversion( ReferenceSparkSource fastaRef, ReferenceSparkSource twoBitRef, String intervalString) throws IOException {
         SimpleInterval interval = new SimpleInterval(intervalString);
         ReferenceBases expected = fastaRef.getReferenceBases(interval);
         ReferenceBases actual = twoBitRef.getReferenceBases(interval);
@@ -37,7 +35,7 @@ public class ReferenceTwoBitSourceUnitTest extends GATKBaseTest {
 
     @DataProvider(name = "outOfBoundsIntervals")
     public Object[][] getOutOfBoundsIntervals() throws IOException {
-        final ReferenceTwoBitSource twoBitRef = new ReferenceTwoBitSource(publicTestDir + "large/human_g1k_v37.20.21.2bit");
+        final ReferenceTwoBitSparkSource twoBitRef = new ReferenceTwoBitSparkSource(publicTestDir + "large/human_g1k_v37.20.21.2bit");
         final int chr20End = 63025520;
 
         return new Object[][] {
@@ -49,7 +47,7 @@ public class ReferenceTwoBitSourceUnitTest extends GATKBaseTest {
     }
 
     @Test(dataProvider = "outOfBoundsIntervals")
-    public void testQueryPastContigEnd( final ReferenceTwoBitSource refSource, final SimpleInterval outOfBoundsInterval, final int expectedNumBases, final int contigEnd ) throws IOException {
+    public void testQueryPastContigEnd( final ReferenceTwoBitSparkSource refSource, final SimpleInterval outOfBoundsInterval, final int expectedNumBases, final int contigEnd ) throws IOException {
         final ReferenceBases bases = refSource.getReferenceBases(outOfBoundsInterval);
 
         // Verify that the ReferenceTwoBitSource cropped our out-of-bounds interval at the contig end, as expected,

@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.spark.pipelines;
 
 import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceTwoBitSource;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceTwoBitSparkSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.bqsr.BQSRTestData;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
@@ -106,7 +106,7 @@ public class BQSRPipelineSparkIntegrationTest extends CommandLineProgramTest {
 
         runCommandLine(args);
 
-        if (referenceFile != null && !ReferenceTwoBitSource.isTwoBit(referenceFile.getName())) { // htsjdk can't handle 2bit reference files
+        if (referenceFile != null && !ReferenceTwoBitSparkSource.isTwoBit(referenceFile.getName())) { // htsjdk can't handle 2bit reference files
             SamAssertionUtils.assertEqualBamFiles(outFile, new File(params.expectedFileName), referenceFile, true, ValidationStringency.SILENT);
         }
         else {

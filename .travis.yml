@@ -56,6 +56,15 @@ cache:
     - $HOME/gcloud/
     - $HOME/site-library
 before_install:
+  #skip push builds if there's an associated PR because we don't look at them anway
+- if [[ ${TRAVIS_EVENT_TYPE} == push ]];
+  then
+    PULL_REQUESTS=$( scripts/check_for_pull_request );
+    if [[ $( grep -c "commits" <<< ${PULL_REQUESTS} ) -gt 0 ]];
+    then
+      travis_terminate 0;
+    fi
+  fi
 - REPORT_PATH=${TRAVIS_BRANCH}_${TRAVIS_JOB_NUMBER};
 - if [[ $TRAVIS_SECURE_ENV_VARS == true && $TRAVIS_EVENT_TYPE != cron ]]; then
     echo "Test report will be written to  https://storage.googleapis.com$HELLBENDER_TEST_LOGS$REPORT_PATH/tests/test/index.html";

@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.spark.sv.discovery;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.variantcontext.Allele;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.StrandSwitch;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.BreakpointComplications;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.NovelAdjacencyAndAltHaplotype;
@@ -56,7 +56,7 @@ public abstract class SimpleSVType extends SvType {
         // TODO: 6/12/18 note the following implementation sets POS and REF at the anchor base, which is not requested by the VCF spec
         // TODO: 6/12/18 also, this interface lets one call inversion with SVLEN !=0, which is not the same as VCF spec examples
         public Inversion(final NovelAdjacencyAndAltHaplotype novelAdjacencyAndAltHaplotype, final int svLength,
-                         final ReferenceMultiSource reference) {
+                         final ReferenceMultiSparkSource reference) {
             super(novelAdjacencyAndAltHaplotype.getLeftJustifiedLeftRefLoc().getContig(),
                     novelAdjacencyAndAltHaplotype.getLeftJustifiedLeftRefLoc().getStart(),
                     novelAdjacencyAndAltHaplotype.getLeftJustifiedRightRefLoc().getEnd(),
@@ -89,7 +89,7 @@ public abstract class SimpleSVType extends SvType {
         }
 
         public Deletion(final NovelAdjacencyAndAltHaplotype novelAdjacencyAndAltHaplotype,
-                        final ReferenceMultiSource reference) {
+                        final ReferenceMultiSparkSource reference) {
             super(novelAdjacencyAndAltHaplotype.getLeftJustifiedLeftRefLoc().getContig(),
                     novelAdjacencyAndAltHaplotype.getLeftJustifiedLeftRefLoc().getStart(),
                     novelAdjacencyAndAltHaplotype.getLeftJustifiedRightRefLoc().getEnd(),
@@ -122,7 +122,7 @@ public abstract class SimpleSVType extends SvType {
         }
 
         public Insertion(final NovelAdjacencyAndAltHaplotype novelAdjacencyAndAltHaplotype,
-                         final ReferenceMultiSource reference) {
+                         final ReferenceMultiSparkSource reference) {
             super(novelAdjacencyAndAltHaplotype.getLeftJustifiedLeftRefLoc().getContig(),
                     novelAdjacencyAndAltHaplotype.getLeftJustifiedLeftRefLoc().getStart(),
                     getEnd(novelAdjacencyAndAltHaplotype),
@@ -141,7 +141,7 @@ public abstract class SimpleSVType extends SvType {
         }
 
         private static byte[] getRefBases(final NovelAdjacencyAndAltHaplotype novelAdjacencyAndAltHaplotype,
-                                          final ReferenceMultiSource reference) {
+                                          final ReferenceMultiSparkSource reference) {
             return extractRefBases(novelAdjacencyAndAltHaplotype.isCandidateForFatInsertion()
                     ? novelAdjacencyAndAltHaplotype.getIntervalForFatInsertion()
                     : novelAdjacencyAndAltHaplotype.getLeftJustifiedLeftRefLoc(), reference);
@@ -182,7 +182,7 @@ public abstract class SimpleSVType extends SvType {
 
         // TODO: 6/12/18 the following implementation treats DuplicationTandem as simple insertions, and duplication annotations will be saved in INFO columns
         public DuplicationTandem(final NovelAdjacencyAndAltHaplotype novelAdjacencyAndAltHaplotype,
-                                 final ReferenceMultiSource reference) {
+                                 final ReferenceMultiSparkSource reference) {
             super(novelAdjacencyAndAltHaplotype.getLeftJustifiedLeftRefLoc().getContig(),
                     novelAdjacencyAndAltHaplotype.getLeftJustifiedLeftRefLoc().getStart(),
                     novelAdjacencyAndAltHaplotype.getLeftJustifiedLeftRefLoc().getStart(),
@@ -212,7 +212,7 @@ public abstract class SimpleSVType extends SvType {
         }
 
         public ImpreciseDeletion(final EvidenceTargetLink evidenceTargetLink, final int svLength, final ReadMetadata metadata,
-                                 final ReferenceMultiSource reference) {
+                                 final ReferenceMultiSparkSource reference) {
 
             super(metadata.getContigName(evidenceTargetLink.getPairedStrandedIntervals().getLeft().getInterval().getContig()),
                     evidenceTargetLink.getPairedStrandedIntervals().getLeft().getInterval().midpoint(),
@@ -225,7 +225,7 @@ public abstract class SimpleSVType extends SvType {
         }
 
         private static byte[] getRefBases(final EvidenceTargetLink evidenceTargetLink, final ReadMetadata metadata,
-                                          final ReferenceMultiSource reference) {
+                                          final ReferenceMultiSparkSource reference) {
             final SVInterval leftInterval = evidenceTargetLink.getPairedStrandedIntervals().getLeft().getInterval();
             return extractRefBases(
                     new SimpleInterval(metadata.getContigName(leftInterval.getContig()), leftInterval.midpoint(), leftInterval.midpoint()),
@@ -257,7 +257,7 @@ public abstract class SimpleSVType extends SvType {
         }
 
         public DuplicationInverted(final NovelAdjacencyAndAltHaplotype novelAdjacencyAndAltHaplotype,
-                                   final ReferenceMultiSource reference) {
+                                   final ReferenceMultiSparkSource reference) {
             super(novelAdjacencyAndAltHaplotype.getLeftJustifiedLeftRefLoc().getContig(),
                     novelAdjacencyAndAltHaplotype.getLeftJustifiedLeftRefLoc().getStart(),
                     novelAdjacencyAndAltHaplotype.getLeftJustifiedLeftRefLoc().getStart(),

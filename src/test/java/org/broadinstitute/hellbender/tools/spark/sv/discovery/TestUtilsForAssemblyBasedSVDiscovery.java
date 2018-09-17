@@ -4,8 +4,8 @@ import htsjdk.samtools.*;
 import htsjdk.samtools.util.SequenceUtil;
 import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.*;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SvCigarUtils;
@@ -24,11 +24,11 @@ import static org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils.getCano
 
 public final class TestUtilsForAssemblyBasedSVDiscovery {
 
-    public static final ReferenceMultiSource b37_reference = new ReferenceMultiSource(
+    public static final ReferenceMultiSparkSource b37_reference = new ReferenceMultiSparkSource(
             GATKBaseTest.b37_reference_20_21, ReferenceWindowFunctions.IDENTITY_FUNCTION);
     public static final SAMSequenceDictionary b37_seqDict = b37_reference.getReferenceSequenceDictionary(null);
     public static final Set<String> b37_canonicalChromosomes = getCanonicalChromosomes(null, b37_seqDict);
-    public static final ReferenceMultiSource b38_reference_chr20_chr21 = new ReferenceMultiSource(
+    public static final ReferenceMultiSparkSource b38_reference_chr20_chr21 = new ReferenceMultiSparkSource(
             GATKBaseTest.b38_reference_20_21, ReferenceWindowFunctions.IDENTITY_FUNCTION);
     public static final SAMSequenceDictionary b38_seqDict_chr20_chr21 = b38_reference_chr20_chr21.getReferenceSequenceDictionary(null);
     public static final Set<String> b38_canonicalChromosomes = getCanonicalChromosomes(null, b38_seqDict_chr20_chr21);

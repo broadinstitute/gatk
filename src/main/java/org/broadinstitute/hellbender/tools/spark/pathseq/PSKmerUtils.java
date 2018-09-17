@@ -5,7 +5,7 @@ import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceFileSource;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceFileSparkSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmerShort;
@@ -32,8 +32,8 @@ public class PSKmerUtils {
     /**
      * Gets all kmers from a given reference as a Collection of long arrays, while logging handy progress messages.
      */
-    protected static Collection<long[]> getMaskedKmersFromLocalReference(final ReferenceFileSource ref, final int kSize,
-                                                                         final int kSpace, final SVKmerShort mask) {
+    protected static Collection<long[]> getMaskedKmersFromLocalReference( final ReferenceFileSparkSource ref, final int kSize,
+                                                                          final int kSpace, final SVKmerShort mask) {
 
         //Load reference records
         final Map<String, ReferenceBases> records;

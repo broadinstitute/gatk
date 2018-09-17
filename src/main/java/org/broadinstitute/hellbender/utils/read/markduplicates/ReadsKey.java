@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.read.markduplicates;
 
 import htsjdk.samtools.SAMFileHeader;
+import org.broadinstitute.hellbender.tools.spark.transforms.markduplicates.MarkDuplicatesSparkUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
@@ -37,7 +38,7 @@ public abstract class ReadsKey {
         return new KeyForPair(longKeyForFragment(ReadUtils.getStrandedUnclippedStart(first),
                                 first.isReverseStrand(),
                                 ReadUtils.getReferenceIndex(first, header),
-                                libraryKeyMap.get(ReadUtils.getLibrary(first, header, LibraryIdGenerator.UNKNOWN_LIBRARY))),
+                                libraryKeyMap.get(MarkDuplicatesSparkUtils.getLibraryForRead(first, header, LibraryIdGenerator.UNKNOWN_LIBRARY))),
                 longKeyForPair(ReadUtils.getStrandedUnclippedStart(second),
                         second.isReverseStrand(),
                         ReadUtils.getReferenceIndex(second, header))

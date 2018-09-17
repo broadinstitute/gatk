@@ -163,12 +163,12 @@ public final class CompareDuplicatesSpark extends GATKSparkTool {
                 ReadUtils.getStrandedUnclippedStart(read),
                 read.isReverseStrand(),
                 ReadUtils.getReferenceIndex(read,bHeader.getValue()),
-                libraryIndex.getValue().get(ReadUtils.getLibrary(read, bHeader.getValue(), LibraryIdGenerator.UNKNOWN_LIBRARY))), read));
+                libraryIndex.getValue().get(MarkDuplicatesSparkUtils.getLibraryForRead(read, bHeader.getValue(), LibraryIdGenerator.UNKNOWN_LIBRARY))), read));
         JavaPairRDD<ReadsKey, GATKRead> secondKeyed = secondReads.mapToPair(read -> new Tuple2<>(ReadsKey.getKeyForFragment(
                 ReadUtils.getStrandedUnclippedStart(read),
                 read.isReverseStrand(),
                 ReadUtils.getReferenceIndex(read,bHeader.getValue()),
-                libraryIndex.getValue().get(ReadUtils.getLibrary(read, bHeader.getValue(), LibraryIdGenerator.UNKNOWN_LIBRARY))), read));
+                libraryIndex.getValue().get(MarkDuplicatesSparkUtils.getLibraryForRead(read, bHeader.getValue(), LibraryIdGenerator.UNKNOWN_LIBRARY))), read));
         JavaPairRDD<ReadsKey, Tuple2<Iterable<GATKRead>, Iterable<GATKRead>>> cogroup = firstKeyed.cogroup(secondKeyed, getRecommendedNumReducers());
 
         JavaRDD<Tuple2<Iterable<GATKRead>, Iterable<GATKRead>>> subsettedByStart = cogroup.flatMap(v1 -> {

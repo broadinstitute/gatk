@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.sv.discovery;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.util.SequenceUtil;
 import htsjdk.variant.variantcontext.Allele;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.StrandSwitch;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.NovelAdjacencyAndAltHaplotype;
@@ -84,7 +84,7 @@ public abstract class BreakEndVariantType extends SvType {
     }
 
     private static String getRefBaseString(final NovelAdjacencyAndAltHaplotype narl, final boolean forUpstreamLoc,
-                                           final ReferenceMultiSource reference) {
+                                           final ReferenceMultiSparkSource reference) {
         try {
             byte[] refBases = reference.getReferenceBases(forUpstreamLoc ? narl.getLeftJustifiedLeftRefLoc() :
                     narl.getLeftJustifiedRightRefLoc())
@@ -143,7 +143,7 @@ public abstract class BreakEndVariantType extends SvType {
         }
 
         private IntraChromosomalStrandSwitch55BreakEnd(final NovelAdjacencyAndAltHaplotype narl,
-                                                       final ReferenceMultiSource reference,
+                                                       final ReferenceMultiSparkSource reference,
                                                        final boolean isTheUpstreamMate) {
             super(isTheUpstreamMate ? narl.getLeftJustifiedLeftRefLoc().getContig() : narl.getLeftJustifiedRightRefLoc().getContig(),
                     isTheUpstreamMate ? narl.getLeftJustifiedLeftRefLoc().getStart() : narl.getLeftJustifiedRightRefLoc().getEnd(),
@@ -156,7 +156,7 @@ public abstract class BreakEndVariantType extends SvType {
         }
 
         public static Tuple2<BreakEndVariantType, BreakEndVariantType> getOrderedMates(final NovelAdjacencyAndAltHaplotype narl,
-                                                                                       final ReferenceMultiSource reference) {
+                                                                                       final ReferenceMultiSparkSource reference) {
             return new Tuple2<>(new IntraChromosomalStrandSwitch55BreakEnd(narl, reference, true),
                                 new IntraChromosomalStrandSwitch55BreakEnd(narl, reference, false));
         }
@@ -175,7 +175,7 @@ public abstract class BreakEndVariantType extends SvType {
             super(variantCHR, variantPOS, variantId, refAllele, altAllele, extraAttributes, isTheUpstreamMate);
         }
 
-        private IntraChromosomalStrandSwitch33BreakEnd(final NovelAdjacencyAndAltHaplotype narl, final ReferenceMultiSource reference,
+        private IntraChromosomalStrandSwitch33BreakEnd(final NovelAdjacencyAndAltHaplotype narl, final ReferenceMultiSparkSource reference,
                                                        final boolean isTheUpstreamMate) {
             super(isTheUpstreamMate ? narl.getLeftJustifiedLeftRefLoc().getContig() : narl.getLeftJustifiedRightRefLoc().getContig(),
                     isTheUpstreamMate ? narl.getLeftJustifiedLeftRefLoc().getStart() : narl.getLeftJustifiedRightRefLoc().getEnd(),
@@ -188,7 +188,7 @@ public abstract class BreakEndVariantType extends SvType {
         }
 
         public static Tuple2<BreakEndVariantType, BreakEndVariantType> getOrderedMates(final NovelAdjacencyAndAltHaplotype narl,
-                                                                                       final ReferenceMultiSource reference) {
+                                                                                       final ReferenceMultiSparkSource reference) {
             return new Tuple2<>(new IntraChromosomalStrandSwitch33BreakEnd(narl, reference, true),
                                 new IntraChromosomalStrandSwitch33BreakEnd(narl, reference, false));
         }
@@ -207,7 +207,7 @@ public abstract class BreakEndVariantType extends SvType {
             super(variantCHR, variantPOS, variantId, refAllele, altAllele, extraAttributes, isTheUpstreamMate);
         }
 
-        private IntraChromosomeRefOrderSwap(final NovelAdjacencyAndAltHaplotype narl, final ReferenceMultiSource reference,
+        private IntraChromosomeRefOrderSwap(final NovelAdjacencyAndAltHaplotype narl, final ReferenceMultiSparkSource reference,
                                             final boolean isTheUpstreamMate) {
             super(isTheUpstreamMate ? narl.getLeftJustifiedLeftRefLoc().getContig() : narl.getLeftJustifiedRightRefLoc().getContig(),
                     isTheUpstreamMate ? narl.getLeftJustifiedLeftRefLoc().getStart() : narl.getLeftJustifiedRightRefLoc().getEnd(),
@@ -221,7 +221,7 @@ public abstract class BreakEndVariantType extends SvType {
         }
 
         public static Tuple2<BreakEndVariantType, BreakEndVariantType> getOrderedMates(final NovelAdjacencyAndAltHaplotype narl,
-                                                                                       final ReferenceMultiSource reference) {
+                                                                                       final ReferenceMultiSparkSource reference) {
             return new Tuple2<>(new IntraChromosomeRefOrderSwap(narl, reference, true),
                                 new IntraChromosomeRefOrderSwap(narl, reference, false));
         }
@@ -245,7 +245,7 @@ public abstract class BreakEndVariantType extends SvType {
             super(variantCHR, variantPOS, variantId, refAllele, altAllele, extraAttributes, isTheUpstreamMate);
         }
 
-        private InterChromosomeBreakend(final NovelAdjacencyAndAltHaplotype narl, final ReferenceMultiSource reference,
+        private InterChromosomeBreakend(final NovelAdjacencyAndAltHaplotype narl, final ReferenceMultiSparkSource reference,
                                         final boolean isTheUpstreamMate) {
             super(isTheUpstreamMate ? narl.getLeftJustifiedLeftRefLoc().getContig() : narl.getLeftJustifiedRightRefLoc().getContig(),
                     isTheUpstreamMate ? narl.getLeftJustifiedLeftRefLoc().getStart() : narl.getLeftJustifiedRightRefLoc().getEnd(),
@@ -256,14 +256,14 @@ public abstract class BreakEndVariantType extends SvType {
         }
 
         public static Tuple2<BreakEndVariantType, BreakEndVariantType> getOrderedMates(final NovelAdjacencyAndAltHaplotype narl,
-                                                                                       final ReferenceMultiSource reference) {
+                                                                                       final ReferenceMultiSparkSource reference) {
 
             return new Tuple2<>(new InterChromosomeBreakend(narl, reference, true),
                                 new InterChromosomeBreakend(narl, reference, false));
         }
 
         // see VCF spec 4.2 for BND format ALT allele field for SV, in particular the examples shown in Fig.1, Fig.2 and Fig.5 of Section 5.4
-        private static Allele constructAltAllele(final NovelAdjacencyAndAltHaplotype narl, final ReferenceMultiSource reference,
+        private static Allele constructAltAllele(final NovelAdjacencyAndAltHaplotype narl, final ReferenceMultiSparkSource reference,
                                                  final boolean forUpstreamLoc) {
             final String refBase = BreakEndVariantType.getRefBaseString(narl, forUpstreamLoc, reference);
             final String insertedSequence = extractInsertedSequence(narl, forUpstreamLoc);

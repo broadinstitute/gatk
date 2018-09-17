@@ -11,8 +11,9 @@ import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.engine.ReadContextData;
 import org.broadinstitute.hellbender.engine.Shard;
 import org.broadinstitute.hellbender.engine.ShardBoundary;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -37,8 +38,8 @@ import java.util.stream.Collectors;
  * This transform will filter out any unmapped reads.
  *
  * The reference bases paired with each read can be customized by passing in a reference window function
- * inside the {@link org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource} argument to {@link #add}. See
- * {@link org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions} for examples.
+ * inside the {@link ReferenceMultiSparkSource} argument to {@link #add}. See
+ * {@link ReferenceWindowFunctions} for examples.
  */
 public class AddContextDataToReadSpark {
     /**
@@ -56,7 +57,7 @@ public class AddContextDataToReadSpark {
      */
     public static JavaPairRDD<GATKRead, ReadContextData> add(
             final JavaSparkContext ctx,
-            final JavaRDD<GATKRead> reads, final ReferenceMultiSource referenceSource,
+            final JavaRDD<GATKRead> reads, final ReferenceMultiSparkSource referenceSource,
             final JavaRDD<GATKVariant> variants, final List<String> variantsPaths, final JoinStrategy joinStrategy,
             final SAMSequenceDictionary sequenceDictionary,
             final int shardSize, final int shardPadding) {
@@ -95,7 +96,7 @@ public class AddContextDataToReadSpark {
      */
     private static JavaPairRDD<GATKRead, ReadContextData> addUsingOverlapsPartitioning(
             final JavaSparkContext ctx,
-            final JavaRDD<GATKRead> mappedReads, final ReferenceMultiSource referenceSource,
+            final JavaRDD<GATKRead> mappedReads, final ReferenceMultiSparkSource referenceSource,
             final JavaRDD<GATKVariant> variants, final List<String> variantsPaths, final SAMSequenceDictionary sequenceDictionary,
             final int shardSize, final int shardPadding) {
 
@@ -105,7 +106,7 @@ public class AddContextDataToReadSpark {
                 .flatMap(interval -> Shard.divideIntervalIntoShards(interval, shardSize, 0, sequenceDictionary).stream())
                 .collect(Collectors.toList());
 
-        final Broadcast<ReferenceMultiSource> bReferenceSource = ctx.broadcast(referenceSource);
+        final Broadcast<ReferenceMultiSparkSource> bReferenceSource = ctx.broadcast(referenceSource);
         final Broadcast<IntervalsSkipList<GATKVariant>> variantsBroadcast = variantsPaths == null ? ctx.broadcast(new IntervalsSkipList<>(variants.collect())) : null;
 
         int maxLocatableSize = Math.min(shardSize, shardPadding);
