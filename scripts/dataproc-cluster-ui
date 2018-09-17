@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+port=1080
+DARWIN_CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+LINUX_CHROME="/usr/bin/google-chrome"
+SSH_OUTPUT_TO_GREP="Entering interactive session"
 ##############################################################
 #  Script to easily open a gcs dataproc cluster's spark UI   #
 ##############################################################
@@ -21,6 +25,11 @@ function cleanTempVars()
   rm -f ${TMPFILELIST}
 }
 
+function error() 
+{
+  echo "$1" 2>&1 
+}
+
 function at_exit()
 {
   cleanTempVars
@@ -35,10 +44,10 @@ if [[  -z "${cluster}" ]]; then
 	echo ""
 	echo "Usage: $0 <gcs-cluster-name>"
 	echo "Open the spark ui for a dataproc cluster in a new chrome window"
+	echo ""
 	exit 1
 fi
 
-port=1080
 
 echo "Connecting to ${cluster} on port ${port}"
 echo ""
@@ -46,26 +55,41 @@ echo ""
 tmp=makeTemp
 
 gcloud compute ssh ${cluster}-m -- \
-  -D ${port} -N -n -v 2>${tmp} &
+  -D ${port} -N -n -v &>${tmp} &
 
 GCLOUD_PID=$!
 
-
-echo "Waiting for SSH connection to be established"
-while ! grep -q "Entering interactive session" ${tmp}; do
+x=0
+echo "Waiting for ssh connection to be established."
+while ! grep -q "${SSH_OUTPUT_TO_GREP}" ${tmp}; do
   if ! ps -p ${GCLOUD_PID} >&-; then
-    error "SSH exited"
+    error ""
+    error "ssh exited unexpectedly"
+    error ""
     exit 1
   fi
+
+  x=$(( x + 1 ))
+  if [ $x -gt 300 ]; then
+    error ""
+    error "Exiting because ssh took too long to connect."
+    error ""
+  fi
+  
+  if [ $(( $x % 10 )) -eq 0 ]; then
+    echo -n "."
+  fi
+
   sleep .1
 done
 
-echo "Opening browser, it doesn't always open on top so you may have to look for it."
+echo ""
+echo "Opening chrome, it doesn't always open on top so you may have to look for it."
 
 if [[ $( uname -s ) == "Darwin" ]]; then
-  chrome="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+  chrome=${DARWIN_CHROME}
 else
-  chrome="/usr/bin/google-chrome"
+  chrome=${LINUX_CHROME}
 fi
 
 "${chrome}" \
@@ -73,7 +97,7 @@ fi
   --host-resolver-rules="MAP * 0.0.0.0 , EXCLUDE localhost" \
   --user-data-dir=/tmp/${cluster}-m \
   --disable-logging \
-  --new-window  http://${cluster}-m:8088 1>/dev/null 2>/dev/null &
+  --new-window  http://${cluster}-m:8088 &>/dev/null &
 
 #Wait for chrome to shut down and then exit
 pid=$!

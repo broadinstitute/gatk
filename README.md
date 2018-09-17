@@ -294,7 +294,7 @@ You can download and run pre-built versions of GATK4 from the following places:
   * When using Dataproc you can access the web interfaces for YARN, Hadoop and HDFS by opening an SSH tunnel and connecting with your browser.  This can be done easily using included `gcs-cluster-ui` script.
   
     ```
-    scripts/gcs-cluster-ui myGCSCluster
+    scripts/dataproc-cluster-ui myGCSCluster
     ```
     Or see these [these instructions](https://cloud.google.com/dataproc/cluster-web-interfaces) for more details.
   * Note that the spark-specific arguments are separated from the tool-specific arguments by a `--`.
