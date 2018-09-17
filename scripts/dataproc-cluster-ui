@@ -33,7 +33,6 @@ function error()
 function at_exit()
 {
   cleanTempVars
-  kill ${GCLOUD_PID} &>/dev/null
 }
 
 trap at_exit EXIT 
@@ -99,10 +98,15 @@ fi
   --disable-logging \
   --new-window  http://${cluster}-m:8088 &>/dev/null &
 
-#Wait for chrome to shut down and then exit
-pid=$!
-while ps -p ${pid} >&-; do
-  sleep .1
-done
-exit 0
+function lurkAndMurder(){
+  local gcloudPID=$1
+  local chromePID=$2
+  while ps -p ${chromePID} >&-; do
+    sleep .1
+  done
 
+  kill ${gcloudPID} &>/dev/null
+  exit 0
+}
+
+lurkAndMurder $GCLOUD_PID $! &
