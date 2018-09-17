@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers;
 
 import htsjdk.samtools.seekablestream.SeekablePathStream;
 import htsjdk.samtools.util.Locatable;
+import htsjdk.samtools.util.Log;
 import htsjdk.tribble.Tribble;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
@@ -16,7 +17,6 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.runtime.ProcessController;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.testutils.GenomicsDBTestUtils;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.seqdoop.hadoop_bam.util.VCFHeaderReader;
@@ -24,7 +24,6 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import javax.validation.constraints.AssertTrue;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -276,7 +275,8 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
                 .addVCF(getTestFile("alleleSpecific.g.vcf"))
                 .addOutput(output)
                 .addReference(new File(b37_reference_20_21))
-                .addArgument("verbosity", "WARNING");
-        assertContains(captureStderr(() -> runCommandLine(args)), "-G Standard -G AS_Standard to the command");
+                .addArgument(StandardArgumentDefinitions.VERBOSITY_NAME, Log.LogLevel.WARNING.name());
+        String actual = captureStderr(() -> runCommandLine(args));
+        assertContains(actual, "-G Standard -G AS_Standard");
     }
 }
