@@ -83,7 +83,7 @@ while ! grep -q "${SSH_OUTPUT_TO_GREP}" ${tmp}; do
 done
 
 echo ""
-echo "Opening chrome, it doesn't always open on top so you may have to look for it."
+echo "Opening new chrome instance, it doesn't always open on top so you may have to look for it."
 
 if [[ $( uname -s ) == "Darwin" ]]; then
   chrome=${DARWIN_CHROME}
