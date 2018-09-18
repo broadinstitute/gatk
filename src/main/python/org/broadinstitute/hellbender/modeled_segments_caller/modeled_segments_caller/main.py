@@ -1,9 +1,9 @@
 import matplotlib
 matplotlib.use('Agg')
+from matplotlib import pyplot as plt
 from matplotlib.collections import LineCollection
 from matplotlib.colors import LogNorm
-from matplotlib import  ticker
-from matplotlib import pyplot as plt
+from matplotlib import ticker
 import numpy as np
 import scipy
 from scipy.stats import multivariate_normal
@@ -81,11 +81,11 @@ class LoadAndSampleCrAndAf:
                                 filename=self.__log_filename,
                                 filemode="w")
             self.__logger = logging.getLogger()
-            self.__logger.info("* ---- %s ---- *" % str(datetime.datetime.now()))
+            self.__logger.info("* ---- {0} ---- *".format(str(datetime.datetime.now())))
             self.__logger.info("Initializing class LoadAndSampleCrAndAf")
-            self.__logger.info("Input file: %s" % filename)
-            self.__logger.info("load_copy_ratio: %s" % load_cr)
-            self.__logger.info("load_allele_fraction: %s" % load_af)
+            self.__logger.info("Input file: {0}".format(filename))
+            self.__logger.info("load_copy_ratio: {0}".format(load_cr))
+            self.__logger.info("load_allele_fraction: {0}".format(load_af))
         else:
             # In the future, whenever we find that self.__log_filename is an empty string, we don't do logging,
             # otherwise we do.
@@ -238,13 +238,13 @@ class LoadAndSampleCrAndAf:
             af_nan_ratio = af_nan / all_sites
         if cr_nan_ratio >= cr_nan_ratio_threshold:
             if self.__load_cr and not self.__log_filename == "":
-                self.__logger.info("More than %s%% " % (100 * cr_nan_ratio_threshold) +
+                self.__logger.info("More than {0}%% ".format(100 * cr_nan_ratio_threshold) +
                                    "of the lines have NaN copy ratio values. " +
                                    "We will thus not load copy ratio data.")
             self.__load_cr = False
         if af_nan_ratio >= af_nan_ratio_threshold:
             if self.__load_cr and not self.__log_filename == "":
-                self.__logger.info("More than %s%% " % (100 * af_nan_ratio_threshold) +
+                self.__logger.info("More than {0}%% ".format(100 * af_nan_ratio_threshold) +
                                    "of the lines have NaN allele fraction values. " +
                                    "We will thus not load copy ratio data.")
             self.__load_af = False
@@ -495,8 +495,8 @@ class LoadAndSampleCrAndAf:
             weights.append(w)
         avg_weight = np.mean([weights[i] for i in range(len(weights))]) if len(weights) > 0 else 0.
         avg_weight = np.mean([weights[i] for i in range(len(weights)) if weights[i] > 0.001 * avg_weight]) \
-                     if len([weights[i] for i in range(len(weights)) if weights[i] > 0.001 * avg_weight]) > 0 \
-                     else 0.
+            if len([weights[i] for i in range(len(weights)) if weights[i] > 0.001 * avg_weight]) > 0 \
+            else 0.
         max_weight = float(self.__weight_ratio_max) * float(avg_weight)
         weights = [min([weights[i], max_weight]) for i in range(len(weights))]
         return weights
@@ -573,7 +573,7 @@ class ModeledSegmentsCaller:
         self.__log_filename=cr_af_data.get_log_filename()
         self.__logger=cr_af_data.get_logger()
         if not self.__log_filename == "":
-            self.__logger.info("* ---- %s ---- *" % str(datetime.datetime.now()))
+            self.__logger.info("* ---- {0} ---- *".format(str(datetime.datetime.now())))
             self.__logger.info("Initializing class CNVCaller")
 
         # Copy input data
@@ -641,16 +641,14 @@ class ModeledSegmentsCaller:
          self.__fig_copy_ratio_clusters] = self.__set_output_filenames()
         if not self.__log_filename == "":
             self.__logger.info("Setting output filenames:")
-            self.__logger.info("   Normal segments image file : %s" % self.__fig_normal_segments_filename)
-            self.__logger.info("   Calls file : %s" % self.__output_calls_filename)
+            self.__logger.info("   Normal segments image file : {0}".format(self.__fig_normal_segments_filename))
+            self.__logger.info("   Calls file : {0}".format(self.__output_calls_filename))
             if self.__interactive:
-                self.__logger.info("   (interactive mode) Image of deletions and amplifications: %s"
-                                   % self.__fig_del_ampl_filename)
-                self.__logger.info("   (interactive mode) Scatter plot of segments: %s" % self.__fig_scatter_plot)
+                self.__logger.info("   (interactive mode) Image of deletions and amplifications: {0}".format(self.__fig_del_ampl_filename))
+                self.__logger.info("   (interactive mode) Scatter plot of segments: {0}".format(self.__fig_scatter_plot))
                 self.__logger.info("   (interactive mode) Plots of allele fraction data with copy ratios in the " +
-                                   "copy number 1 and 2 candidate intervals: %s"
-                                   % self.__fig_allele_fraction_cn1_cn2_intervals)
-                self.__logger.info("   (interactive mode) Gaussian fit to the copy ratio data: %s" % self.__fig_copy_ratio_fit)
+                                   "copy number 1 and 2 candidate intervals: {0}".format(self.__fig_allele_fraction_cn1_cn2_intervals))
+                self.__logger.info("   (interactive mode) Gaussian fit to the copy ratio data: {0}".format(self.__fig_copy_ratio_fit))
 
         # Find normal segments
         if not self.__log_filename == "":
@@ -861,11 +859,15 @@ class ModeledSegmentsCaller:
         with model:
             inference = pm.ADVI()
 
-        approx = inference.fit(n=120000, total_grad_norm_constraint=50,
-                               callbacks=[CheckParametersConvergence(every=50,
-                                                                     diff='relative',
-                                                                     tolerance=0.001)]
+        approx = inference.fit(n=70000, total_grad_norm_constraint=50, progressbar=False,
+                               callbacks=[CheckParametersConvergence(every=50, diff='relative',
+                                                                     tolerance=0.005)]
                                )
+        #gbij = approx.gbij
+        #means = gbij.rmap(approx.mean.eval())
+        #cov = approx.cov.eval()
+        #sds = gbij.rmap(np.diag(cov)**.5)
+
         means = approx.bij.rmap(approx.mean.eval())
         cov = approx.cov.eval()
         sds = approx.bij.rmap(np.diag(cov)**.5)
@@ -880,11 +882,11 @@ class ModeledSegmentsCaller:
         sd_result = [[np.sqrt(cov_result[i][j]) for j in range(2)] for i in range(len(cov_result))]
 
         if self.__log_filename != "":
-            self.__logger.info("pi_result = ", pi_result)
-            self.__logger.info("mu_result = ", mu_result)
-            self.__logger.info("cov_result = ", cov_result)
-            self.__logger.info("sd_result = ", sd_result)
-            self.__logger.info("tau_result = ", [[1/cov_result[i][j] for j in range(2)] for i in range(len(cov_result))])
+            self.__logger.info("pi_result = {0}".format(pi_result))
+            self.__logger.info("mu_result = {0}".format(mu_result))
+            self.__logger.info("cov_result = {0}".format(cov_result))
+            self.__logger.info("sd_result = {0}".format(sd_result))
+            self.__logger.info("tau_result = {0}".format([[1/cov_result[i][j] for j in range(2)] for i in range(len(cov_result))]))
 
         return [pi_result, mu_result, cov_result]
 
