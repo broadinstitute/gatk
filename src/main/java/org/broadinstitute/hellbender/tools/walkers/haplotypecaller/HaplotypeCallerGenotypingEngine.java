@@ -108,7 +108,8 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
                                                       final List<VariantContext> activeAllelesToGenotype,
                                                       final boolean emitReferenceConfidence,
                                                       final int maxMnpDistance,
-                                                      final SAMFileHeader header) {
+                                                      final SAMFileHeader header,
+                                                      final boolean withBamOut) {
         // sanity check input arguments
         Utils.nonEmpty(haplotypes, "haplotypes input should be non-empty and non-null");
         Utils.validateArg(readLikelihoods != null && readLikelihoods.numberOfSamples() > 0, "readLikelihoods input should be non-empty and non-null");
@@ -181,6 +182,10 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
                 final VariantContext annotatedCall = makeAnnotatedCall(ref, refLoc, tracker, header, mergedVC, readAlleleLikelihoods, call);
                 returnCalls.add( annotatedCall );
 
+                if(withBamOut) {
+                    AssemblyBasedCallerUtils.annotateReadLikelihoodsWithRegionsAndSupportedGenotypes(call, readAlleleLikelihoods);
+                }
+
                 // maintain the set of all called haplotypes
                 call.getAlleles().stream().map(alleleMapper::get).filter(Objects::nonNull).forEach(calledHaplotypes::addAll);
             }
@@ -188,6 +193,21 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
 
         final List<VariantContext> phasedCalls = doPhysicalPhasing ? phaseCalls(returnCalls, calledHaplotypes) : returnCalls;
         return new CalledHaplotypes(phasedCalls, calledHaplotypes);
+    }
+
+    public CalledHaplotypes assignGenotypeLikelihoods(final List<Haplotype> haplotypes,
+                                                      final ReadLikelihoods<Haplotype> readLikelihoods,
+                                                      final Map<String, List<GATKRead>> perSampleFilteredReadList,
+                                                      final byte[] ref,
+                                                      final SimpleInterval refLoc,
+                                                      final SimpleInterval activeRegionWindow,
+                                                      final FeatureContext tracker,
+                                                      final List<VariantContext> activeAllelesToGenotype,
+                                                      final boolean emitReferenceConfidence,
+                                                      final int maxMnpDistance,
+                                                      final SAMFileHeader header) {
+        return assignGenotypeLikelihoods(haplotypes,readLikelihoods,perSampleFilteredReadList,ref,refLoc,
+                activeRegionWindow,tracker,activeAllelesToGenotype,emitReferenceConfidence,maxMnpDistance,header,false);
     }
 
     private List<VariantContext> replaceSpanDels(final List<VariantContext> eventsAtThisLoc, final Allele refAllele, final int loc) {
