@@ -645,6 +645,18 @@ public final class IOUtils {
     }
 
     /**
+     *
+     * @param paths paths to test, as Strings
+     * @throws org.broadinstitute.hellbender.exceptions.UserException.CouldNotReadInputFile if any of the paths aren't
+     *         readable and a regular file
+     */
+    public static void assertPathsAreReadable(final String ... paths) {
+        for (String path : paths) {
+            IOUtils.assertFileIsReadable(IOUtils.getPath(path));
+        }
+    }
+
+    /**
      * Checks that one or more user provided files are in fact regular (i.e. not a directory or a special device) readable files.
      *
      * @param files the input files to test.

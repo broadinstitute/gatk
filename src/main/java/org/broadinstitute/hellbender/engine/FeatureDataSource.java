@@ -352,13 +352,6 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         }
     }
 
-    private static void verifyPathsAreReadable(final String ... paths) {
-        for (String path : paths) {
-           IOUtils.assertFileIsReadable(IOUtils.getPath(path));
-        }
-    }
-
-
     private static FeatureReader<VariantContext> getGenomicsDBFeatureReader(final String path, final File reference) {
         final String workspace = IOUtils.getGenomicsDBAbsolutePath(path);
         if (workspace == null) {
@@ -371,7 +364,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         final String vidmapJson = IOUtils.appendPathToDir(workspace, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME);
         final String vcfHeader = IOUtils.appendPathToDir(workspace, GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME);
 
-        verifyPathsAreReadable(callsetJson, vidmapJson, vcfHeader);
+        IOUtils.assertPathsAreReadable(callsetJson, vidmapJson, vcfHeader);
 
         try {
             final GenomicsDBExportConfiguration.ExportConfiguration exportConfigurationBuilder =

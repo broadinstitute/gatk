@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.io;
 
 import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
+import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.logging.log4j.core.util.FileUtils;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -214,14 +215,23 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(IOUtils.appendPathToDir("/path/to/dir", "anotherdir/file"), "/path/to/dir/anotherdir/file");
 
         // hdfs: URI
-        Path tempPath = IOUtils.getPath(MiniClusterUtils.getWorkingDir(MiniClusterUtils.getMiniCluster()).toUri().toString());
-        Assert.assertEquals(IOUtils.appendPathToDir(tempPath.toString(), "temp"), tempPath.toString()+"/temp");
+        MiniDFSCluster cluster = null;
+        try {
+            cluster = MiniClusterUtils.getMiniCluster();
+            Path tempPath = IOUtils.getPath(MiniClusterUtils.getWorkingDir(cluster).toUri().toString());
+            Assert.assertEquals(IOUtils.appendPathToDir(tempPath.toString(), "temp"), tempPath.toString() + "/temp");
+        }
+        finally {
+            MiniClusterUtils.stopCluster(cluster);
+        }
 
         // gs: URI
         Assert.assertEquals(IOUtils.appendPathToDir("gs://abucket/dir", "file"), "gs://abucket/dir/file");
+        Assert.assertEquals(IOUtils.appendPathToDir("gs://abucket/dir/", "file"), "gs://abucket/dir/file");
 
         // file: URI
         Assert.assertEquals(IOUtils.appendPathToDir("file:///dir", "file"), "file:///dir/file");
+        Assert.assertEquals(IOUtils.appendPathToDir("file:///dir/", "file"), "file:///dir/file");
     }
 
     @Test
@@ -422,9 +432,9 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "GenomicsDBTestPathData")
     public void testGenomicsDBPathParsing(String path, String expectedPath, String gendbExpectedAbsolutePath, boolean expectedComparison) {
-        Assert.assertEquals(IOUtils.getGenomicsDBPath(path), expectedPath, "Got 1 "+IOUtils.getGenomicsDBPath(path));
-        Assert.assertEquals(IOUtils.getAbsolutePathWithGenDBScheme(path), gendbExpectedAbsolutePath);
-        Assert.assertEquals(IOUtils.isGenomicsDBPath(path), expectedComparison, "Got 3 " + IOUtils.isGenomicsDBPath(path));
+        Assert.assertEquals(IOUtils.getGenomicsDBPath(path), expectedPath, "getGenomicsDBPath() returned the wrong value");
+        Assert.assertEquals(IOUtils.getAbsolutePathWithGenDBScheme(path), gendbExpectedAbsolutePath, "getAbsolutePathWithGenDBScheme() returned the wrong value");
+        Assert.assertEquals(IOUtils.isGenomicsDBPath(path), expectedComparison, "isGenomicsDBPath() returned the wrong value");
     }
 
 }
