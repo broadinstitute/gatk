@@ -94,6 +94,7 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
      *                       are merged until a substitution is separated from the previous one by a greater distance.
      *                       That is, if maxMnpDistance = 1, substitutions at 10,11,12,14,15,17 are partitioned into a MNP
      *                       at 10-12, a MNP at 14-15, and a SNP at 17.  May not be negative.
+     * @param withBamOut whether to annotate reads in readLikelihoods for future writing to bamout
      *
      * @return                                       A CalledHaplotypes object containing a list of VC's with genotyped events and called haplotypes
      *
@@ -183,7 +184,7 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
                 returnCalls.add( annotatedCall );
 
                 if(withBamOut) {
-                    AssemblyBasedCallerUtils.annotateReadLikelihoodsWithRegionsAndSupportedGenotypes(call, readAlleleLikelihoods);
+                    AssemblyBasedCallerUtils.annotateReadLikelihoodsWithRegionsAndSupportedGenotypes(call, readAlleleLikelihoods, readLikelihoods, activeRegionWindow);
                 }
 
                 // maintain the set of all called haplotypes
