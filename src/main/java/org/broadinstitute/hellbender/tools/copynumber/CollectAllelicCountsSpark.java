@@ -14,10 +14,8 @@ import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.LocusWalkerContext;
 import org.broadinstitute.hellbender.engine.spark.LocusWalkerSpark;
-import org.broadinstitute.hellbender.tools.copynumber.allelic.alleliccount.AllelicCountCollector;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleMetadata;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleNameUtils;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.datacollection.AllelicCountCollector;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.*;
 import org.broadinstitute.hellbender.utils.Nucleotide;
 
 import java.io.File;
@@ -69,12 +67,11 @@ public class CollectAllelicCountsSpark extends LocusWalkerSpark {
 
     @Override
     protected void processAlignments(JavaRDD<LocusWalkerContext> rdd, JavaSparkContext ctx) {
-        final String sampleName = SampleNameUtils.readSampleName(getHeaderForReads());
-        final SampleMetadata sampleMetadata = new SimpleSampleMetadata(sampleName);
-        final Broadcast<SampleMetadata> sampleMetadataBroadcast = ctx.broadcast(sampleMetadata);
+        final SampleLocatableMetadata metadata = MetadataUtils.fromHeader(getHeaderForReads(), Metadata.Type.SAMPLE_LOCATABLE);
+        final Broadcast<SampleLocatableMetadata> sampleMetadataBroadcast = ctx.broadcast(metadata);
 
         final AllelicCountCollector finalAllelicCountCollector =
-                rdd.mapPartitions(distributedCount(sampleMetadataBroadcast.getValue(), minimumBaseQuality))
+                rdd.mapPartitions(distributedCount(sampleMetadataBroadcast, minimumBaseQuality))
                 .reduce((a1, a2) -> combineAllelicCountCollectors(a1, a2, sampleMetadataBroadcast.getValue()));
         // TODO: In integration test, we come back with 8 entries, when we should get 11.  Also, at least one of those 8 will have incorrect counts.
         // TODO: Delete the next line (and other TODOs) when the integration test is fixed.
@@ -86,14 +83,14 @@ public class CollectAllelicCountsSpark extends LocusWalkerSpark {
         finalAllelicCountCollector.getAllelicCounts().write(outputAllelicCountsFile);
     }
 
-    private static FlatMapFunction<Iterator<LocusWalkerContext>, AllelicCountCollector> distributedCount(final SampleMetadata sampleMetadata,
+    private static FlatMapFunction<Iterator<LocusWalkerContext>, AllelicCountCollector> distributedCount(final Broadcast<SampleLocatableMetadata> sampleMetadataBroadcast,
                                                                                                          final int minimumBaseQuality) {
         return (FlatMapFunction<Iterator<LocusWalkerContext>, AllelicCountCollector>) contextIterator -> {
-            final AllelicCountCollector result = new AllelicCountCollector(sampleMetadata);
+            final AllelicCountCollector result = new AllelicCountCollector(sampleMetadataBroadcast.getValue());
 
             contextIterator.forEachRemaining( ctx -> {
                 final byte refAsByte = ctx.getReferenceContext().getBase();
-                result.collectAtLocus(Nucleotide.valueOf(refAsByte), ctx.getAlignmentContext().getBasePileup(),
+                result.collectAtLocus(Nucleotide.decode(refAsByte), ctx.getAlignmentContext().getBasePileup(),
                         ctx.getAlignmentContext().getLocation(), minimumBaseQuality);
                 }
             );
@@ -103,7 +100,7 @@ public class CollectAllelicCountsSpark extends LocusWalkerSpark {
 
     private static AllelicCountCollector combineAllelicCountCollectors(final AllelicCountCollector allelicCountCollector1,
                                                                        final AllelicCountCollector allelicCountCollector2,
-                                                                       final SampleMetadata sampleMetadata) {
+                                                                       final SampleLocatableMetadata sampleMetadata) {
         return AllelicCountCollector.combine(allelicCountCollector1, allelicCountCollector2, sampleMetadata);
     }
 

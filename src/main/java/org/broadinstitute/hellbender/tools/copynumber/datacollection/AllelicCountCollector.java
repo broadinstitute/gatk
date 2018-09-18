@@ -113,7 +113,7 @@ public final class AllelicCountCollector {
      * @return a new allelic count collector with the combined contents of the two inputs
      */
     public static AllelicCountCollector combine(final AllelicCountCollector allelicCountCollector1, final AllelicCountCollector allelicCountCollector2,
-                                                final SampleMetadata sampleMetadata) {
+                                                final SampleLocatableMetadata sampleMetadata) {
         final AllelicCountCollector result = new AllelicCountCollector(sampleMetadata);
         result.collectFromCollector(allelicCountCollector1);
         result.collectFromCollector(allelicCountCollector2);
