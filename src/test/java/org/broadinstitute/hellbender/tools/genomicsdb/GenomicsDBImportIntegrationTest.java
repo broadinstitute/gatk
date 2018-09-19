@@ -788,7 +788,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     }
 
     @Test(groups = {"bucket"})
-    public void testYDebugGenomicsDBSupport() throws IOException {
+    public void testDebugGenomicsDBSupport() throws IOException {
         String creds = System.getenv("GOOGLE_APPLICATION_CREDENTIALS");
         Assert.assertNotNull(creds);
         System.out.println("GOOG_CRED= " + creds);
