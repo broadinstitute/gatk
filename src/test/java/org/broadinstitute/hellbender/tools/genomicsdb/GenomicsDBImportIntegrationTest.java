@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.tools.genomicsdb;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.intel.genomicsdb.GenomicsDBUtils;
 import com.intel.genomicsdb.model.GenomicsDBExportConfiguration;
 import com.intel.genomicsdb.reader.GenomicsDBFeatureReader;
@@ -786,6 +788,37 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     }
 
     @Test(groups = {"bucket"})
+    public void testYDebugGenomicsDBSupport() throws IOException {
+        String creds = System.getenv("GOOGLE_APPLICATION_CREDENTIALS");
+        Assert.assertNotNull(creds);
+        System.out.println("GOOG_CRED= " + creds);
+
+        String hellbender_creds = System.getenv("HELLBENDER_JSON_SERVICE_ACCOUNT_KEY");
+        Assert.assertNotNull(hellbender_creds);
+        System.out.print("HELLBENDER_CRED=" + hellbender_creds);
+
+        if (new File(creds).getAbsolutePath().equals(new File(hellbender_creds).getAbsolutePath())) {
+            System.out.println("Both creds identical");
+        } else {
+            System.out.println("creds:"+new File(creds).getAbsolutePath());
+            System.out.println("hellbender_creds:"+new File(hellbender_creds).getAbsolutePath());
+        }
+
+        byte[] mapData = Files.readAllBytes(IOUtils.getPath(System.getenv("GOOGLE_APPLICATION_CREDENTIALS")));
+        HashMap<String, String> myMap = new HashMap<String, String>();
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        myMap = objectMapper.readValue(mapData, new TypeReference<HashMap<String, String>>() {});
+        myMap.forEach((key, value) -> {
+            if (key.contains("private") || key.contains("id")) {
+                System.out.println("Key=" + key);
+            } else {
+                System.out.println("Key=" + key + " Value=" + value);
+            }
+        });
+    }
+
+    /*@Test(groups = {"bucket"})
     public void testWriteToAndQueryFromGCS() throws IOException {
         final String workspace = BucketUtils.randomRemotePath(getGCPTestStaging(), "", "") + "/";
         BucketUtils.deleteOnExit(workspace);
@@ -801,5 +834,5 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         int rc = GenomicsDBUtils.createTileDBWorkspace(workspace, false);
         Assert.assertEquals(rc, 0);
         writeToGenomicsDB(LOCAL_GVCFS, INTERVAL, workspace, 0, false, 0, 1);
-    }
+    }*/
 }
