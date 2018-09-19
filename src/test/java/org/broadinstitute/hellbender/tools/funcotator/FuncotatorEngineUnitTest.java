@@ -4,6 +4,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.engine.DummyPlaceholderGatkTool;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
@@ -57,7 +58,7 @@ public class FuncotatorEngineUnitTest extends GATKBaseTest {
                                 new LinkedHashMap<>(),
                                 TranscriptSelectionMode.CANONICAL,
                                 new HashSet<>(),
-                                new DummyPlaceholderGatkTool().initialize(),
+                                new DummyPlaceholderGatkTool(),
                                 FuncotatorArgumentDefinitions.LOOKAHEAD_CACHE_IN_BP_DEFAULT_VALUE)
                 );
 

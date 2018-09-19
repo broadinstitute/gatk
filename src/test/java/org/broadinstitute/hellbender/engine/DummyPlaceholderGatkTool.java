@@ -1,11 +1,12 @@
-package org.broadinstitute.hellbender.tools.funcotator;
+package org.broadinstitute.hellbender.engine;
 
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
-import org.broadinstitute.hellbender.engine.GATKTool;
 
 /**
  * A Dummy / Placeholder class that can be used where a {@link GATKTool} is required.
+ * DO NOT USE THIS FOR ANYTHING OTHER THAN TESTING.
+ * THIS MUST BE IN THE ENGINE PACKAGE DUE TO SCOPE ON `features`!
  * Created by jonn on 9/19/18.
  */
 @CommandLineProgramProperties(
@@ -15,17 +16,19 @@ import org.broadinstitute.hellbender.engine.GATKTool;
 )
 public final class DummyPlaceholderGatkTool extends GATKTool {
 
+    public DummyPlaceholderGatkTool() {
+        parseArgs(new String[]{});
+        onStartup();
+    }
+
     @Override
     public void traverse() {
 
     }
 
-    /**
-     * Initialize this {@link DummyPlaceholderGatkTool} by running {@link GATKTool#onStartup()}.
-     * @return {@code this} {@link DummyPlaceholderGatkTool}.
-     */
-    public DummyPlaceholderGatkTool initialize() {
-        onStartup();
-        return this;
+    @Override
+    void initializeFeatures(){
+        features = new FeatureManager(this, FeatureDataSource.DEFAULT_QUERY_LOOKAHEAD_BASES, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
+                referenceArguments.getReferencePath());
     }
 }

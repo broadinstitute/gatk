@@ -21,7 +21,7 @@ public final class OptionalReadInputArgumentCollection extends ReadInputArgument
             doc = "BAM/SAM/CRAM file containing reads",
             optional = true,
             common = true)
-    private List<String> readFilesNames;
+    private List<String> readFilesNames = new ArrayList<>();
 
     @Override
     public List<File> getReadFiles() {
