@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
+import htsjdk.samtools.util.RuntimeIOException;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
@@ -45,6 +46,7 @@ import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 import org.broadinstitute.hellbender.utils.variant.writers.GVCFWriter;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -144,7 +146,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      * @param createBamOutIndex true to create an index file for the bamout
      * @param createBamOutMD5 true to create an md5 file for the bamout
      * @param readsHeader header for the reads
-     * @param referenceReader reader to provide reference data
+     * @param referenceReader reader to provide reference data, this reference reader will be closed when {@link #shutdown()} is called
      * @param annotationEngine variantAnnotatorEngine with annotations to process already added
      */
     public HaplotypeCallerEngine( final HaplotypeCallerArgumentCollection hcArgs, boolean createBamOutIndex, boolean createBamOutMD5, final SAMFileHeader readsHeader, ReferenceSequenceFile referenceReader, VariantAnnotatorEngine annotationEngine ) {
@@ -709,6 +711,13 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         aligner.close();
         if ( haplotypeBAMWriter.isPresent() ) {
             haplotypeBAMWriter.get().close();
+        }
+        if ( referenceReader != null){
+            try {
+                referenceReader.close();
+            } catch (IOException e) {
+                throw new RuntimeIOException(e);
+            }
         }
 
 

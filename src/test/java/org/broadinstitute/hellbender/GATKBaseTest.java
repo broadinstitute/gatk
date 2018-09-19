@@ -105,7 +105,7 @@ public abstract class GATKBaseTest extends BaseTest {
     protected SAMFileHeader hg19Header;
 
     @BeforeClass
-    public void initGenomeLocParser() {
+    public void initializeHG19Reference() {
         hg19ReferenceReader = new CachingIndexedFastaSequenceFile(IOUtils.getPath(hg19MiniReference));
         hg19Header = new SAMFileHeader();
         hg19Header.setSequenceDictionary(hg19ReferenceReader.getSequenceDictionary());
@@ -113,7 +113,7 @@ public abstract class GATKBaseTest extends BaseTest {
     }
 
     @AfterClass
-    public void closeReference(){
+    public void closeHg19Reference(){
         hg19ReferenceReader.close();
     }
 

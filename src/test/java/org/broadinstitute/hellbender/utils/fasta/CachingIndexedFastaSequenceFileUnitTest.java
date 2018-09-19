@@ -140,7 +140,7 @@ public final class CachingIndexedFastaSequenceFileUnitTest extends GATKBaseTest 
     public void testMixedCasesInExample() throws IOException {
         try(final IndexedFastaSequenceFile original = new IndexedFastaSequenceFile(new File(exampleFASTA));
             final CachingIndexedFastaSequenceFile casePreserving = new CachingIndexedFastaSequenceFile(IOUtils.getPath(exampleFASTA), true);
-            final CachingIndexedFastaSequenceFile allUpper = new CachingIndexedFastaSequenceFile(IOUtils.getPath(exampleFASTA));
+            final CachingIndexedFastaSequenceFile allUpper = new CachingIndexedFastaSequenceFile(IOUtils.getPath(exampleFASTA), CachingIndexedFastaSequenceFile.DEFAULT_CACHE_SIZE, false, true);
         ) {
 
             int nMixedCase = 0;
@@ -188,7 +188,7 @@ public final class CachingIndexedFastaSequenceFileUnitTest extends GATKBaseTest 
     public void testIupacChanges() throws IOException {
         final String testFasta = publicTestDir + "iupacFASTA.fasta";
         try(final CachingIndexedFastaSequenceFile iupacPreserving = new CachingIndexedFastaSequenceFile(IOUtils.getPath(testFasta), CachingIndexedFastaSequenceFile.DEFAULT_CACHE_SIZE, false, true);
-            final CachingIndexedFastaSequenceFile makeNs = new CachingIndexedFastaSequenceFile(IOUtils.getPath(testFasta))) {
+            final CachingIndexedFastaSequenceFile makeNs = new CachingIndexedFastaSequenceFile(IOUtils.getPath(testFasta), CachingIndexedFastaSequenceFile.DEFAULT_CACHE_SIZE, true, false)) {
 
             int preservingNs = 0;
             int changingNs = 0;
