@@ -61,7 +61,9 @@ public class FuncotationMap {
      * @param transcriptId the specified transcript ID.  Use {@see NO_TRANSCRIPT_AVAILABLE_KEY} if there are no transcripts.  Never {@code null}
      * @param fieldName The field name to search.  Never {@code null}
      * @param allele Only return fields from funcotations with the specified allele.  Never {@code null}
-     * @return Value of the given field for the transcript ID and allele.  Return {@code null} if field not found.
+     * @return Value of the given field for the transcript ID and allele.  Return {@code null} if field not found in any
+     *  funcotation.  Note that if the funcotations support the given field name, but the variant did not overlap any
+     *  records, an empty string will be returned.
      */
     public String getFieldValue(final String transcriptId, final String fieldName, final Allele allele) {
         Utils.nonNull(transcriptId);

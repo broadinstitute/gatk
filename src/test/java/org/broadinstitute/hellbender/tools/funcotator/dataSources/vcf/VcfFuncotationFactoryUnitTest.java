@@ -12,21 +12,23 @@ import org.apache.commons.lang.RandomStringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
+import org.broadinstitute.hellbender.testutils.FuncotatorReferenceTestUtils;
+import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
 import org.broadinstitute.hellbender.tools.funcotator.FuncotatorArgumentDefinitions;
 import org.broadinstitute.hellbender.tools.funcotator.FuncotatorTestConstants;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.testutils.FuncotatorReferenceTestUtils;
-import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -188,26 +190,26 @@ public class VcfFuncotationFactoryUnitTest extends GATKBaseTest {
 
     @Test
     public void testGetAnnotationFeatureClass() {
-        final VcfFuncotationFactory vcfFuncotationFactory = new VcfFuncotationFactory(FACTORY_NAME, FACTORY_VERSION, IOUtils.getPath(FuncotatorTestConstants.VARIANT_FILE_HG19_CHR3));
+        final VcfFuncotationFactory vcfFuncotationFactory = createVcfFuncotationFactory(FACTORY_NAME, FACTORY_VERSION, IOUtils.getPath(FuncotatorTestConstants.VARIANT_FILE_HG19_CHR3));
         Assert.assertEquals(vcfFuncotationFactory.getAnnotationFeatureClass(), VariantContext.class);
     }
 
     @Test
     public void testGetType() {
-        final VcfFuncotationFactory vcfFuncotationFactory = new VcfFuncotationFactory(FACTORY_NAME, FACTORY_VERSION, IOUtils.getPath(FuncotatorTestConstants.VARIANT_FILE_HG19_CHR3));
+        final VcfFuncotationFactory vcfFuncotationFactory = createVcfFuncotationFactory(FACTORY_NAME, FACTORY_VERSION, IOUtils.getPath(FuncotatorTestConstants.VARIANT_FILE_HG19_CHR3));
         Assert.assertEquals(vcfFuncotationFactory.getType(), FuncotatorArgumentDefinitions.DataSourceType.VCF);
     }
 
     @Test(dataProvider = "provideForTestGetName")
     public void testGetName(final String name) {
-        final VcfFuncotationFactory vcfFuncotationFactory = new VcfFuncotationFactory(name, FACTORY_VERSION, IOUtils.getPath(FuncotatorTestConstants.VARIANT_FILE_HG19_CHR3));
+        final VcfFuncotationFactory vcfFuncotationFactory = createVcfFuncotationFactory(name, FACTORY_VERSION, IOUtils.getPath(FuncotatorTestConstants.VARIANT_FILE_HG19_CHR3));
         Assert.assertEquals(vcfFuncotationFactory.getName(), name);
     }
 
     @Test
     public void testGetSupportedFuncotationFields() {
         final VcfFuncotationFactory vcfFuncotationFactory =
-                new VcfFuncotationFactory(FACTORY_NAME, FACTORY_VERSION, IOUtils.getPath(FuncotatorTestConstants.DBSNP_HG19_SNIPPET_FILE_PATH));
+                createVcfFuncotationFactory(FACTORY_NAME, FACTORY_VERSION, IOUtils.getPath(FuncotatorTestConstants.DBSNP_HG19_SNIPPET_FILE_PATH));
 
         final LinkedHashSet<String> expectedFieldNames = new LinkedHashSet<>();
 
@@ -225,7 +227,7 @@ public class VcfFuncotationFactoryUnitTest extends GATKBaseTest {
 
         // Make our factory:
         final VcfFuncotationFactory vcfFuncotationFactory =
-                new VcfFuncotationFactory(FACTORY_NAME, FACTORY_VERSION, IOUtils.getPath(FuncotatorTestConstants.DBSNP_HG19_SNIPPET_FILE_PATH));
+                createVcfFuncotationFactory(FACTORY_NAME, FACTORY_VERSION, IOUtils.getPath(FuncotatorTestConstants.DBSNP_HG19_SNIPPET_FILE_PATH));
 
         // Create features from the file:
         final List<Feature> vcfFeatures;
@@ -262,7 +264,7 @@ public class VcfFuncotationFactoryUnitTest extends GATKBaseTest {
         // Don't need the expected gt for this test, but useful to reuse the data provider.
         // Make our factory:
         final VcfFuncotationFactory vcfFuncotationFactory =
-                new VcfFuncotationFactory(FACTORY_NAME, FACTORY_VERSION, IOUtils.getPath(FuncotatorTestConstants.DBSNP_HG19_SNIPPET_FILE_PATH));
+                createVcfFuncotationFactory(FACTORY_NAME, FACTORY_VERSION, IOUtils.getPath(FuncotatorTestConstants.DBSNP_HG19_SNIPPET_FILE_PATH));
 
         // Create features from the file:
         final List<Feature> vcfFeatures;
@@ -346,7 +348,7 @@ public class VcfFuncotationFactoryUnitTest extends GATKBaseTest {
 
         // Make the factory
         final VcfFuncotationFactory vcfFuncotationFactory =
-                new VcfFuncotationFactory(FACTORY_NAME, FACTORY_VERSION, IOUtils.getPath(EXAC_SNIPPET));
+                createVcfFuncotationFactory(FACTORY_NAME, FACTORY_VERSION, IOUtils.getPath(EXAC_SNIPPET));
 
         final ReferenceContext referenceContext = new ReferenceContext(ReferenceDataSource.of(Paths.get(FuncotatorReferenceTestUtils.retrieveB37Chr3Ref())), variantInterval);
 
@@ -414,7 +416,7 @@ public class VcfFuncotationFactoryUnitTest extends GATKBaseTest {
 
         // Create our funcotation factory to test
         final VcfFuncotationFactory vcfFuncotationFactory =
-                new VcfFuncotationFactory(FACTORY_NAME, FACTORY_VERSION, IOUtils.getPath(EXAC_SNIPPET));
+                createVcfFuncotationFactory(FACTORY_NAME, FACTORY_VERSION, IOUtils.getPath(EXAC_SNIPPET));
 
         for (int i = 0; i < VcfFuncotationFactory.LRUCache.MAX_ENTRIES; i++) {
             funcotateForCacheTest(vcfFuncotationFactory, dummyTriples.get(i));
@@ -460,5 +462,11 @@ public class VcfFuncotationFactoryUnitTest extends GATKBaseTest {
         }
 
         return Triple.of(vc, referenceContext, vcfFeatures);
+    }
+
+    private VcfFuncotationFactory createVcfFuncotationFactory(final String name,
+                                                              final String version,
+                                                              final Path sourceFilePath) {
+        return new VcfFuncotationFactory(name, version, sourceFilePath, new LinkedHashMap<>(), new FeatureInput<VariantContext>(sourceFilePath.toString(), name, new HashMap<>()));
     }
 }

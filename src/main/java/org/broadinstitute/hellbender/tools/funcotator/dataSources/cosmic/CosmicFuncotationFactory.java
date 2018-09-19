@@ -129,8 +129,8 @@ public class CosmicFuncotationFactory extends DataSourceFuncotationFactory {
     public CosmicFuncotationFactory(final Path pathToCosmicDb,
                                     final LinkedHashMap<String, String> annotationOverridesMap,
                                     final String version) {
-        this.pathToCosmicDb = pathToCosmicDb;
 
+        this.pathToCosmicDb = pathToCosmicDb;
         this.version = version;
 
         // Connect to the DB:
@@ -165,7 +165,7 @@ public class CosmicFuncotationFactory extends DataSourceFuncotationFactory {
     // Override Methods:
 
     @Override
-    protected Class<? extends Feature> getAnnotationFeatureClass() {
+    public Class<? extends Feature> getAnnotationFeatureClass() {
         // Returning Feature.class here implies that this class doesn't care about what features it gets.
         return Feature.class;
     }

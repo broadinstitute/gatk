@@ -6,6 +6,7 @@ import htsjdk.tribble.readers.AsciiLineReader;
 import htsjdk.tribble.readers.AsciiLineReaderIterator;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
+import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -71,35 +72,30 @@ public class LocatableXsvFuncotationFactory extends DataSourceFuncotationFactory
     //==================================================================================================================
     // Constructors:
 
-    public LocatableXsvFuncotationFactory(){
-        this(DEFAULT_NAME, DEFAULT_VERSION_STRING);
-    }
+    /**
+     * Create a {@link LocatableXsvFuncotationFactory}.
+     * @param name A {@link String} containing the name of this {@link LocatableXsvFuncotationFactory}.
+     * @param version  The version {@link String} of the backing data source from which {@link Funcotation}s will be made.
+     * @param annotationOverridesMap A {@link LinkedHashMap<String,String>} containing user-specified overrides for specific {@link Funcotation}s.
+     * @param mainSourceFileAsFeatureInput The backing {@link FeatureInput} for this {@link LocatableXsvFuncotationFactory}, from which all {@link Funcotation}s will be created.
+     */
+    public LocatableXsvFuncotationFactory(final String name, final String version, final LinkedHashMap<String, String> annotationOverridesMap,
+                                          final FeatureInput<? extends Feature> mainSourceFileAsFeatureInput){
 
-    public LocatableXsvFuncotationFactory(final String name, final String version){
-        this(name, version, new LinkedHashMap<>());
-    }
+        super(mainSourceFileAsFeatureInput);
 
-    public LocatableXsvFuncotationFactory(final String name, final String version, final LinkedHashMap<String, String> annotationOverridesMap){
         this.name = name;
         this.version = version;
 
         this.annotationOverrideMap = new LinkedHashMap<>(annotationOverridesMap);
     }
 
-    @VisibleForTesting
-    LocatableXsvFuncotationFactory(final String name, final String version, final List<String> supportedFields){
-        this.name = name;
-        this.version = version;
-
-        supportedFieldNames = new LinkedHashSet<>(supportedFields);
-        initializeFieldNameLists();
-    }
 
     //==================================================================================================================
     // Override Methods:
 
     @Override
-    protected Class<? extends Feature> getAnnotationFeatureClass() {
+    public Class<? extends Feature> getAnnotationFeatureClass() {
         return XsvTableFeature.class;
     }
 
@@ -200,6 +196,11 @@ public class LocatableXsvFuncotationFactory extends DataSourceFuncotationFactory
         return funcotationList;
     }
 
+    /**
+     * Set the field names that this {@link LocatableXsvFuncotationFactory} can create.
+     * Does so by reading the headers of backing data files for this {@link LocatableXsvFuncotationFactory}.
+     * @param inputDataFilePaths {@link List<Path>} to backing data files from which annotations can be made for this {@link LocatableXsvFuncotationFactory}.
+     */
     public void setSupportedFuncotationFields(final List<Path> inputDataFilePaths) {
 
         if ( supportedFieldNames == null ) {
