@@ -33,16 +33,33 @@ public class FuncotatorEngineUnitTest extends GATKBaseTest {
         };
     }
     @Test(dataProvider = "provideGt")
-    public void testGetFuncotationFactoriesAndCreateFuncotationMapForVariant(final File vcfFile, final List<String> correspondingGeneName, final boolean[] hasClinvarHit) {
+    public void testGetFuncotationFactoriesAndCreateFuncotationMapForVariant(final File vcfFile,
+                                                                             final List<String> correspondingGeneName,
+                                                                             final boolean[] hasClinvarHit) {
 
         final Pair<VCFHeader, List<VariantContext>> entireVcf = VariantContextTestUtils.readEntireVCFIntoMemory(vcfFile.getAbsolutePath());
         final Map<Path, Properties> configData = DataSourceUtils.getAndValidateDataSourcesFromPaths("hg19", Collections.singletonList(DS_PIK3CA_DIR));
 
+        final Pair<VCFHeader, List<VariantContext>> vcfFileContents = VariantContextTestUtils.readEntireVCFIntoMemory(vcfFile.getAbsolutePath());
+
+        // Set up our arguments:
+        final FuncotatorArgumentCollection funcotatorArguments = new FuncotatorArgumentCollection();
+        funcotatorArguments.referenceVersion = FuncotatorArgumentDefinitions.HG19_REFERENCE_VERSION_STRING;
+
         // Create the metadata directly from the input.
-        final FuncotatorEngine funcotatorEngine = new FuncotatorEngine(VcfFuncotationMetadata.create(
-                new ArrayList<>(entireVcf.getLeft().getInfoHeaderLines())),
-                DataSourceUtils.createDataSourceFuncotationFactoriesForDataSourcesForTesting(configData, new LinkedHashMap<>(),
-                        TranscriptSelectionMode.CANONICAL, new HashSet<>()));
+        final FuncotatorEngine funcotatorEngine =
+                new FuncotatorEngine(
+                        funcotatorArguments,
+                        vcfFileContents.getLeft().getSequenceDictionary(),
+                        VcfFuncotationMetadata.create(new ArrayList<>(entireVcf.getLeft().getInfoHeaderLines())),
+                        DataSourceUtils.createDataSourceFuncotationFactoriesForDataSources(
+                                configData,
+                                new LinkedHashMap<>(),
+                                TranscriptSelectionMode.CANONICAL,
+                                new HashSet<>(),
+                                new DummyPlaceholderGatkTool().initialize(),
+                                FuncotatorArgumentDefinitions.LOOKAHEAD_CACHE_IN_BP_DEFAULT_VALUE)
+                );
 
         for (int i = 0; i < entireVcf.getRight().size(); i++) {
             final VariantContext vc = entireVcf.getRight().get(i);

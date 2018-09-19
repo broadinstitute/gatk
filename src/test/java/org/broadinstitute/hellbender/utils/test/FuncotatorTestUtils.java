@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.test;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.tribble.Feature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -33,6 +34,7 @@ public class FuncotatorTestUtils {
      * @param reference See {@link FeatureManager#FeatureManager(CommandLineProgram, int, int, int, Path)}  If uncertain, use {@code null}.
      * @return a {@link FeatureContext} ready for querying the funcotation factories on the given interval.  Never {@code null}.
      */
+    @VisibleForTesting
     public static FeatureContext createFeatureContext(final List<DataSourceFuncotationFactory> funcotationFactories, final String dummyToolInstanceName,
                                                       final SimpleInterval interval, final int featureQueryLookahead, final int cloudPrefetchBuffer,
                                                       final int cloudIndexPrefetchBuffer, final Path reference) {
@@ -44,7 +46,7 @@ public class FuncotatorTestUtils {
                 funcotationFactories.stream()
                         .collect(Collectors.toMap(ff -> ff.getMainSourceFileAsFeatureInput(), ff -> ff.getAnnotationFeatureClass()));
 
-        return FeatureContext.create(featureInputsWithType, dummyToolInstanceName, interval,
+        return FeatureContext.createFeatureContextForTesting(featureInputsWithType, dummyToolInstanceName, interval,
                 featureQueryLookahead, cloudPrefetchBuffer, cloudIndexPrefetchBuffer, reference);
     }
 }

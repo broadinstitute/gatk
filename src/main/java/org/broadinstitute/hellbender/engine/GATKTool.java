@@ -863,8 +863,8 @@ public abstract class GATKTool extends CommandLineProgram {
     }
 
     /**
-     * A method to allow a user to inject data sources after initialization that were not specified as command-line
-     * arguments.
+     * A method to allow a user to inject {@link FeatureInput}s after initialization that were not
+     * specified as command-line arguments.
      *
      * @param filePath path to the Feature file to register
      * @param name what to call the Feature input
@@ -879,8 +879,8 @@ public abstract class GATKTool extends CommandLineProgram {
 
         final FeatureInput<? extends Feature> featureInput = new FeatureInput<>(filePath, name);
 
-        // Add datasource to the feature manager too so that it can be queried.
-        // Setting lookahead to user-requested value:
+        // Add the FeatureInput to our FeatureManager so that it will be available for FeatureContext queries
+        // from the tool
         features.addToFeatureSources(
                 featureQueryLookahead,
                 featureInput,

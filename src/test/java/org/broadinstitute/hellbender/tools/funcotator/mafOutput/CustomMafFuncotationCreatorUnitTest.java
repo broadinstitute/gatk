@@ -9,6 +9,7 @@ import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFFileReader;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.tools.funcotator.DataSourceFuncotationFactory;
@@ -26,11 +27,9 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static org.broadinstitute.hellbender.tools.funcotator.mafOutput.CustomMafFuncotationCreator.MAF_DBSNP_VAL_STATUS_DELIMITER;
@@ -147,8 +146,15 @@ public class CustomMafFuncotationCreatorUnitTest extends GATKBaseTest {
      */
     @Test(dataProvider = "provideDbSnpVariants")
     public void testCreateDbSnpCustomFields(final VariantContext variant, final int gtNumHits, final String gtDbSnpValStatusField) {
+
+        final Path sourceFilePath = IOUtils.getPath(FuncotatorTestConstants.DBSNP_HG19_SNIPPET_FILE_PATH);
         final DataSourceFuncotationFactory vcfFuncotationFactory =
-                new VcfFuncotationFactory(DBSNP_DS_NAME, "snippetTest", IOUtils.getPath(FuncotatorTestConstants.DBSNP_HG19_SNIPPET_FILE_PATH));
+                new VcfFuncotationFactory(DBSNP_DS_NAME,
+                        "snippetTest",
+                        sourceFilePath,
+                        new LinkedHashMap<>(),
+                        new FeatureInput<VariantContext>(sourceFilePath.toString(), DBSNP_DS_NAME, new HashMap<>())
+                );
 
         /* dbSNP records of relevance.
         1	10177	rs367896724	A	AC	.	.	RS=367896724;RSPOS=10177;dbSNPBuildID=138;SSR=0;SAO=0;VP=0x050000020005170026000200;GENEINFO=DDX11L1:100287102;WGT=1;VC=DIV;R5;ASP;VLD;G5A;G5;KGPhase3;CAF=0.5747,0.4253;COMMON=1

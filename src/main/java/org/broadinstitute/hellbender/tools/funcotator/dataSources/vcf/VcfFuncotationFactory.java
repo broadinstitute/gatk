@@ -89,15 +89,17 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
     // Constructors:
 
     /**
-     * Use this only for testing,
+     * Create a {@link VcfFuncotationFactory}.
+     * @param name A {@link String} containing the name of this {@link VcfFuncotationFactory}.
+     * @param version  The version {@link String} of the backing data source from which {@link Funcotation}s will be made.
+     * @param sourceFilePath {@link Path} to the VCF file from which {@link VariantContext}s will be read in and used as Features from which to create {@link Funcotation}s.
+     * @param annotationOverridesMap A {@link LinkedHashMap<String,String>} containing user-specified overrides for specific {@link Funcotation}s.
+     * @param mainSourceFileAsFeatureInput The backing {@link FeatureInput} for this {@link VcfFuncotationFactory}, from which all {@link Funcotation}s will be created.
      */
-    @VisibleForTesting
-    public VcfFuncotationFactory(final String name, final String version, final Path sourceFilePath) {
-        // The class in the FeatureInput must always match what is returned from {@link VcfFuncotationFactory#getAnnotationFeatureClass}
-        this(name, version, sourceFilePath, new LinkedHashMap<>(), new FeatureInput<VariantContext>(sourceFilePath.toString(), name, new HashMap<>()));
-    }
-
-    public VcfFuncotationFactory(final String name, final String version, final Path sourceFilePath, final LinkedHashMap<String, String> annotationOverridesMap,
+    public VcfFuncotationFactory(final String name,
+                                 final String version,
+                                 final Path sourceFilePath,
+                                 final LinkedHashMap<String, String> annotationOverridesMap,
                                  final FeatureInput<? extends Feature> mainSourceFileAsFeatureInput) {
 
         super(mainSourceFileAsFeatureInput);

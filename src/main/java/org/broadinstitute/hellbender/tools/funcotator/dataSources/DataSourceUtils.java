@@ -229,7 +229,7 @@ final public class DataSourceUtils {
      * @param annotationOverridesMap {@link LinkedHashMap} of {@link String}->{@link String} containing any annotation overrides to include in data sources.  Must not be {@code null}.
      * @param transcriptSelectionMode {@link TranscriptSelectionMode} to use when choosing the transcript for detailed reporting.  Must not be {@code null}.
      * @param userTranscriptIdSet {@link Set} of {@link String}s containing transcript IDs of interest to be selected for first.  Must not be {@code null}.
-     * @param funcotatorToolInstance Instance of the {@link Funcotator} {@link GATKTool} into which to add {@link FeatureInput}s.
+     * @param gatkToolInstance Instance of the {@link GATKTool} into which to add {@link FeatureInput}s.  Must not be {@code null}.
      * @param lookaheadFeatureCachingInBp Number of base-pairs to cache when querying variants.
      * @return A {@link List} of {@link DataSourceFuncotationFactory} given the data source metadata, overrides, and transcript reporting priority information.
      */
@@ -237,12 +237,13 @@ final public class DataSourceUtils {
                                                                                                         final LinkedHashMap<String, String> annotationOverridesMap,
                                                                                                         final TranscriptSelectionMode transcriptSelectionMode,
                                                                                                         final Set<String> userTranscriptIdSet,
-                                                                                                        final GATKTool funcotatorToolInstance,
+                                                                                                        final GATKTool gatkToolInstance,
                                                                                                         final int lookaheadFeatureCachingInBp) {
         Utils.nonNull(dataSourceMetaData);
         Utils.nonNull(annotationOverridesMap);
         Utils.nonNull(transcriptSelectionMode);
         Utils.nonNull(userTranscriptIdSet);
+        Utils.nonNull(gatkToolInstance);
 
         final List<DataSourceFuncotationFactory> dataSourceFactories = new ArrayList<>(dataSourceMetaData.size());
 
@@ -263,7 +264,7 @@ final public class DataSourceUtils {
             final FeatureInput<? extends Feature> featureInput;
             switch ( FuncotatorArgumentDefinitions.DataSourceType.getEnum(stringType) ) {
                 case LOCATABLE_XSV:
-                    featureInput = createAndRegisterFeatureInputs(path, properties, funcotatorToolInstance, lookaheadFeatureCachingInBp, XsvTableFeature.class);
+                    featureInput = createAndRegisterFeatureInputs(path, properties, gatkToolInstance, lookaheadFeatureCachingInBp, XsvTableFeature.class);
                     funcotationFactory = DataSourceUtils.createLocatableXsvDataSource(path, properties, annotationOverridesMap, featureInput);
                     break;
                 case SIMPLE_XSV:
@@ -273,11 +274,11 @@ final public class DataSourceUtils {
                     funcotationFactory = DataSourceUtils.createCosmicDataSource(path, properties, annotationOverridesMap);
                     break;
                 case GENCODE:
-                    featureInput = createAndRegisterFeatureInputs(path, properties, funcotatorToolInstance, lookaheadFeatureCachingInBp, GencodeGtfFeature.class);
+                    featureInput = createAndRegisterFeatureInputs(path, properties, gatkToolInstance, lookaheadFeatureCachingInBp, GencodeGtfFeature.class);
                     funcotationFactory = DataSourceUtils.createGencodeDataSource(path, properties, annotationOverridesMap, transcriptSelectionMode, userTranscriptIdSet, featureInput);
                     break;
                 case VCF:
-                    featureInput = createAndRegisterFeatureInputs(path, properties, funcotatorToolInstance, lookaheadFeatureCachingInBp, VariantContext.class);
+                    featureInput = createAndRegisterFeatureInputs(path, properties, gatkToolInstance, lookaheadFeatureCachingInBp, VariantContext.class);
                     funcotationFactory = DataSourceUtils.createVcfDataSource(path, properties, annotationOverridesMap, featureInput);
                     break;
                 default:
@@ -371,7 +372,8 @@ final public class DataSourceUtils {
         final String name      = dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_NAME);
         final String sourceFile = dataSourceFile.resolveSibling(dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_SRC_FILE)).toString();
 
-        // Get feature inputs by creating them with the funcotator tool instance itself:
+        // Get feature inputs by creating them with the tool instance itself.
+        // This has the side effect of registering the FeatureInputs with the engine, so that they can be later queried.
         return funcotatorToolInstance.addFeatureInputsAfterInitialization(sourceFile, name, featureType, lookaheadFeatureCachingInBp);
     }
 

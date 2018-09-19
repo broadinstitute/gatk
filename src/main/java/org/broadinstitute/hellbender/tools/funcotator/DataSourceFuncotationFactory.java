@@ -45,6 +45,7 @@ public abstract class DataSourceFuncotationFactory implements Closeable {
      */
     protected final FeatureInput<? extends Feature> mainSourceFileAsFeatureInput;
 
+    @VisibleForTesting
     public FeatureInput<? extends Feature> getMainSourceFileAsFeatureInput() {
         return mainSourceFileAsFeatureInput;
     }
@@ -142,7 +143,7 @@ public abstract class DataSourceFuncotationFactory implements Closeable {
     }
 
     /**
-     * Creates a {@link List} of {@link Funcotation} for the given {@code variant}, {@code referenceContext}, {@code List<Feature>}, and {@code gencodeFuncotations}.
+     * Creates a {@link List} of {@link Funcotation} for the given {@code variant}, {@code referenceContext}, {@code featureContext}, and {@code gencodeFuncotations}.
      * For some Data Sources knowledge of Gene Name or Transcript ID is required for annotation.
      * Accounts for override values passed into the constructor as well.
      * @param variant {@link VariantContext} to annotate.  Never {@code null}.
@@ -152,7 +153,6 @@ public abstract class DataSourceFuncotationFactory implements Closeable {
      *   {@code null} is acceptable if there are no corresponding gencode funcotations.
      * @return {@link List} of {@link Funcotation} given the {@code variant}, {@code referenceContext}, and {@code featureContext}.  This should never be empty.
      */
-    @SuppressWarnings("unchecked")
     public List<Funcotation> createFuncotations(final VariantContext variant, final ReferenceContext referenceContext, final FeatureContext featureContext, final List<GencodeFuncotation> gencodeFuncotations) {
 
         Utils.nonNull(variant);
@@ -160,6 +160,7 @@ public abstract class DataSourceFuncotationFactory implements Closeable {
         Utils.nonNull(featureContext);
 
         // Query this funcotation factory to get the list of overlapping features.
+        @SuppressWarnings("unchecked")
         final List<Feature> featureList = (List<Feature>) featureContext.getValues(mainSourceFileAsFeatureInput);
 
         final List<Funcotation> outputFuncotations;

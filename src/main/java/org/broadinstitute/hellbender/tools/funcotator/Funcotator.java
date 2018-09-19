@@ -1,9 +1,8 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.tribble.util.ParsingUtils;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.vcf.VCFHeader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
@@ -13,24 +12,15 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.VariantFilter;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.DataSourceUtils;
-import org.broadinstitute.hellbender.tools.funcotator.mafOutput.MafOutputRenderer;
 import org.broadinstitute.hellbender.tools.funcotator.metadata.VcfFuncotationMetadata;
-import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
 import org.broadinstitute.hellbender.transformers.VariantTransformer;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * Funcotator (FUNCtional annOTATOR) analyzes given variants for their function (as retrieved from a set of data sources) and produces the analysis in a specified output file.
@@ -216,21 +206,13 @@ public class Funcotator extends VariantWalker {
     // Arguments:
 
     @ArgumentCollection
-    private FuncotatorArgumentCollection funcotatorArgs = new FuncotatorArgumentCollection();
+    private final FuncotatorArgumentCollection funcotatorArgs = new FuncotatorArgumentCollection();
 
     //==================================================================================================================
 
     private OutputRenderer outputRenderer;
 
     private FuncotatorEngine funcotatorEngine;
-
-    /**
-     * Whether the input variant contigs must be converted to hg19.
-     * This is only the case when the input reference is b37 AND when
-     * the reference version is hg19 (i.e. {@link FuncotatorArgumentCollection#referenceVersion} == {@link FuncotatorArgumentDefinitions#HG19_REFERENCE_VERSION_STRING}).
-     */
-    private boolean mustConvertInputContigsToHg19 = false;
-
 
     //==================================================================================================================
 
@@ -260,10 +242,14 @@ public class Funcotator extends VariantWalker {
         }
 
         // Next set up our transcript list:
-        final Set<String> finalUserTranscriptIdSet = processTranscriptList(funcotatorArgs.userTranscriptIdSet);
+        final Set<String> finalUserTranscriptIdSet = FuncotatorEngine.processTranscriptList(funcotatorArgs.userTranscriptIdSet);
 
-        final LinkedHashMap<String, String> annotationDefaultsMap = splitAnnotationArgsIntoMap(funcotatorArgs.annotationDefaults);
-        final LinkedHashMap<String, String> annotationOverridesMap = splitAnnotationArgsIntoMap(funcotatorArgs.annotationOverrides);
+        // Get our overrides for annotations:
+        final LinkedHashMap<String, String> annotationDefaultsMap = FuncotatorEngine.splitAnnotationArgsIntoMap(funcotatorArgs.annotationDefaults);
+        final LinkedHashMap<String, String> annotationOverridesMap = FuncotatorEngine.splitAnnotationArgsIntoMap(funcotatorArgs.annotationOverrides);
+
+        // Get the header for our variants:
+        final VCFHeader vcfHeader = getHeaderForVariants();
 
         // Initialize all of our data sources:
         // Sort data sources to make them process in the same order each time:
@@ -284,42 +270,23 @@ public class Funcotator extends VariantWalker {
 
         // Create our engine to do our work and drive this Funcotation train!
         funcotatorEngine = new FuncotatorEngine(
+                funcotatorArgs,
+                getSequenceDictionaryForDrivingVariants(),
                 VcfFuncotationMetadata.create(
-                    new ArrayList<>(getHeaderForVariants().getInfoHeaderLines())
+                    new ArrayList<>(vcfHeader.getInfoHeaderLines())
                 ),
                 dataSourceFuncotationFactories
         );
 
-        // Determine which annotations are accounted for (by the funcotation factories) and which are not.
-        final LinkedHashMap<String, String> unaccountedForDefaultAnnotations = getUnaccountedForAnnotations( funcotatorEngine.getFuncotationFactories(), annotationDefaultsMap );
-        final LinkedHashMap<String, String> unaccountedForOverrideAnnotations = getUnaccountedForAnnotations( funcotatorEngine.getFuncotationFactories(), annotationOverridesMap );
-
-        // Set up our output renderer:
-        switch (funcotatorArgs.outputFormatType) {
-            case MAF:
-                outputRenderer = new MafOutputRenderer(funcotatorArgs.outputFile.toPath(),
-                        funcotatorEngine.getFuncotationFactories(),
-                        getHeaderForVariants(),
-                        unaccountedForDefaultAnnotations,
-                        unaccountedForOverrideAnnotations,
-                        getDefaultToolVCFHeaderLines().stream().map(Object::toString).collect(Collectors.toCollection(LinkedHashSet::new)),
-                        funcotatorArgs.referenceVersion);
-                break;
-            case VCF:
-                outputRenderer = new VcfOutputRenderer(createVCFWriter(funcotatorArgs.outputFile),
-                        funcotatorEngine.getFuncotationFactories(),
-                        getHeaderForVariants(),
-                        unaccountedForDefaultAnnotations,
-                        unaccountedForOverrideAnnotations,
-                        getDefaultToolVCFHeaderLines());
-                break;
-            default:
-                throw new GATKException("Unsupported output format type specified: " + funcotatorArgs.outputFormatType.toString());
-        }
+        // Create our output renderer:
         logger.info("Creating a " + funcotatorArgs.outputFormatType + " file for output: " + funcotatorArgs.outputFile.toURI());
-
-        // Check for reference version (in)compatibility:
-        determineReferenceAndDatasourceCompatibility();
+        outputRenderer = funcotatorEngine.createOutputRenderer(
+                annotationDefaultsMap,
+                annotationOverridesMap,
+                vcfHeader,
+                getDefaultToolVCFHeaderLines(),
+                this
+        );
     }
 
     /**
@@ -349,74 +316,22 @@ public class Funcotator extends VariantWalker {
                 );
     }
 
-    private void determineReferenceAndDatasourceCompatibility() {
-        if ( funcotatorArgs.forceB37ToHg19ContigNameConversion ||
-                ( funcotatorArgs.referenceVersion.equals(FuncotatorArgumentDefinitions.HG19_REFERENCE_VERSION_STRING) &&
-                  FuncotatorUtils.isSequenceDictionaryUsingB37Reference(getSequenceDictionaryForDrivingVariants()) )) {
-
-            // NOTE AND WARNING:
-            // hg19 is from ucsc. b37 is from the genome reference consortium.
-            // ucsc decided the grc version had some bad data in it, so they blocked out some of the bases, aka "masked" them
-            // so the lengths of the contigs are the same, the bases are just _slightly_ different.
-            // ALSO, the contig naming convention is different between hg19 and hg38:
-            //      hg19 uses contigs of the form "chr1"
-            //      b37 uses contigs of the form  "1"
-            // This naming convention difference causes a LOT of issues and was a bad idea.
-
-            logger.warn("WARNING: You are using B37 as a reference.  " +
-                    "Funcotator will convert your variants to GRCh37, and this will be fine in the vast majority of cases.  " +
-                    "There MAY be some errors (e.g. in the Y chromosome, but possibly in other places as well) due to changes between the two references.");
-
-            mustConvertInputContigsToHg19 = true;
-        }
-    }
-
-    private VariantContext getCorrectVariantContextForReference(final VariantContext variant) {
-        if ( mustConvertInputContigsToHg19 ) {
-            final VariantContextBuilder vcb = new VariantContextBuilder(variant);
-            vcb.chr(FuncotatorUtils.convertB37ContigToHg19Contig(variant.getContig()));
-            return vcb.make();
-        }
-        else {
-            return variant;
-        }
-    }
-
     @Override
     protected VariantFilter makeVariantFilter() {
-        return  variant -> {
-            // Ignore variants that have been filtered if the user requests it:
-            if ( funcotatorArgs.removeFilteredVariants && variant.isFiltered() ) {
-                return false;
-            }
-            return true;
-        };
+        return funcotatorEngine.makeVariantFilter();
     }
 
     @Override
     public VariantTransformer makePostVariantFilterTransformer(){
-        return variantContext -> getCorrectVariantContextForReference(variantContext);
+        return funcotatorEngine.getDefaultVariantTransformer();
     }
 
     @Override
     public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
 
-        final ReferenceContext correctReferenceContext;
-
-        // Check to see if we need to revert the ReferenceContext's interval to the original variant interval
-        // (This would only happen in the case where we were given b37 variants with hg19 data sources):
-        if ( mustConvertInputContigsToHg19 ) {
-
-            // Convert our contig back to B37 here so it matches the variant:
-            final SimpleInterval interval = new SimpleInterval(
-                    FuncotatorUtils.convertHG19ContigToB37Contig(variant.getContig()), variant.getStart(), variant.getEnd()
-            );
-
-            correctReferenceContext = new ReferenceContext(referenceContext, interval);
-        }
-        else {
-            correctReferenceContext = referenceContext;
-        }
+        // Get the correct reference for B37/HG19 compliance:
+        // This is necessary because of the variant transformation that gets applied in VariantWalkerBase::apply.
+        final ReferenceContext correctReferenceContext = funcotatorEngine.getCorrectReferenceContext(variant, referenceContext);
 
         // Place the variant on our queue to be funcotated:
         enqueueAndHandleVariant(variant, correctReferenceContext, featureContext);
@@ -441,34 +356,6 @@ public class Funcotator extends VariantWalker {
     //==================================================================================================================
 
     /**
-     * Creates a {@link LinkedHashMap} of annotations in the given {@code annotationMap} that do not occur in the given {@code dataSourceFactories}.
-     * @param dataSourceFactories {@link List} of {@link DataSourceFuncotationFactory} to check for whether each annotation in the {@code annotationMap} is handled.
-     * @param annotationMap {@link Map} (of ANNOTATION_NAME : ANNOTATION_VALUE) to check
-     * @return A {@link LinkedHashMap} of annotations in the given {@code annotationMap} that do not occur in the given {@code dataSourceFactories}.
-     */
-    private LinkedHashMap<String, String> getUnaccountedForAnnotations( final List<DataSourceFuncotationFactory> dataSourceFactories,
-                                                                        final Map<String, String> annotationMap ) {
-        final LinkedHashMap<String, String> outAnnotations = new LinkedHashMap<>();
-
-        // Check each field in each factory:
-        for ( final String field : annotationMap.keySet() ) {
-            boolean accountedFor = false;
-            for ( final DataSourceFuncotationFactory funcotationFactory : dataSourceFactories ) {
-
-                if ( funcotationFactory.getSupportedFuncotationFields().contains(field) ) {
-                    accountedFor = true;
-                    break;
-                }
-            }
-            if ( !accountedFor ) {
-                outAnnotations.put(field, annotationMap.get(field));
-            }
-        }
-
-        return outAnnotations;
-    }
-
-    /**
      * Creates an annotation on the given {@code variant} or enqueues it to be processed during a later call to this method.
      * @param variant {@link VariantContext} to annotate.
      * @param referenceContext {@link ReferenceContext} corresponding to the given {@code variant}.
@@ -480,64 +367,5 @@ public class Funcotator extends VariantWalker {
 
         // At this point there is only one transcript ID in the funcotation map if canonical or best effect are selected
         outputRenderer.write(variant, funcotationMap);
-    }
-
-    /**
-     * Split each element of the given {@link List} into a key and value.
-     * Assumes each element of the given {@link List} is formatted as follows:
-     *     KEY:VALUE
-     * @param annotationArgs {@link List} of strings formatted KEY:VALUE to turn into a {@link Map}.
-     * @return A {@link LinkedHashMap} of KEY:VALUE pairs corresponding to entries in the given list.
-     */
-    private LinkedHashMap<String, String> splitAnnotationArgsIntoMap( final List<String> annotationArgs ) {
-
-        final LinkedHashMap<String, String> annotationMap = new LinkedHashMap<>();
-
-        for ( final String s : annotationArgs ) {
-            final List<String> keyVal = ParsingUtils.split(s, FuncotatorArgumentDefinitions.MAP_NAME_VALUE_DELIMITER);
-            if ( keyVal.size() != 2) {
-                throw new UserException.BadInput( "Argument annotation incorrectly formatted: " + s );
-            }
-
-            annotationMap.put( keyVal.get(0), keyVal.get(1) );
-        }
-
-        return annotationMap;
-    }
-
-    /**
-     * Processes the given {@link Set} into a list of transcript IDs.
-     * This is necessary because the command-line input argument is overloaded to be either a file containing transcript
-     * IDs (1 per line) OR as a list of transcript IDs.
-     * @param rawTranscriptSet {@link Set} of {@link String}s from which to create a list of Transcript IDs.  If of size 1, will try to open as a file.
-     * @return A {@link Set} of {@link String} contianing Transcript IDs in which the user is interested.
-     */
-    private Set<String> processTranscriptList(final Set<String> rawTranscriptSet) {
-        if ( rawTranscriptSet.size() == 1 ) {
-            final String filePathString = rawTranscriptSet.iterator().next();
-            try ( final BufferedReader bufferedReader = Files.newBufferedReader(IOUtils.getPath(filePathString)) ) {
-                logger.info("Opened transcript file: " + filePathString);
-
-                // Create a place to put our output:
-                final Set<String> transcriptIdSet = new HashSet<>();
-
-                String line = bufferedReader.readLine();
-                while ( line != null ) {
-                    logger.info("    Adding transcript ID to transcript set: " + line);
-                    transcriptIdSet.add(line);
-                    line = bufferedReader.readLine();
-                }
-                logger.info("Transcript parsing complete.");
-
-                return transcriptIdSet;
-            }
-            catch ( final IOException ex ) {
-                logger.warn("Could not open transcript selection list as a file.  Using it as a singleton list of transcript IDs: [" + filePathString + "]");
-                return rawTranscriptSet;
-            }
-        }
-        else {
-            return rawTranscriptSet;
-        }
     }
 }

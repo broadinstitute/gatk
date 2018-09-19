@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.engine;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.tribble.Feature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -291,10 +292,8 @@ public class FeatureContext {
     }
 
     /**
-     * Since funcotation factories need an instance of {@link FeatureContext} to funcotate, this convenience method can
-     *  create a new instance for test methods.
-     *
-     *  Typically, this method should be used for testing only.
+     * Convenience method to create a new instance for test methods.
+     * This method should be used for testing only.
      *
      * @param featureInputsWithType {@link Map} of a {@link FeatureInput} to the output type that must extend {@link Feature}.
      *                                         Never {@code null}, but empty list is acceptable.
@@ -306,7 +305,8 @@ public class FeatureContext {
      * @param cloudIndexPrefetchBuffer See {@link FeatureManager#FeatureManager(CommandLineProgram, int, int, int, Path)}  If uncertain, use zero.
      * @param reference See {@link FeatureManager#FeatureManager(CommandLineProgram, int, int, int, Path)}  If uncertain, use {@code null}.
      */
-    public static FeatureContext create(final Map<FeatureInput<? extends Feature>, Class<? extends Feature>> featureInputsWithType, final String dummyToolInstanceName,
+    @VisibleForTesting
+    public static FeatureContext createFeatureContextForTesting(final Map<FeatureInput<? extends Feature>, Class<? extends Feature>> featureInputsWithType, final String dummyToolInstanceName,
                                                       final SimpleInterval interval, final int featureQueryLookahead, final int cloudPrefetchBuffer,
                                                       final int cloudIndexPrefetchBuffer, final Path reference) {
         Utils.nonNull(featureInputsWithType);
