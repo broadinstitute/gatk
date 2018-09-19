@@ -38,7 +38,6 @@ public final class AssemblyRegionUnitTest extends GATKBaseTest {
     @AfterClass
     public void close() throws IOException {
         seq.close();
-        throw new IOException("kaboom");
     }
 
     @Test
