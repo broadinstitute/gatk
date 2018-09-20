@@ -2,11 +2,9 @@ package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequence;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 
-import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Iterator;
 
@@ -34,7 +32,7 @@ public final class ReferenceFileSource implements ReferenceDataSource {
      */
     public ReferenceFileSource(final Path fastaPath) {
         // Will throw a UserException if the .fai and/or .dict are missing
-        reference = CachingIndexedFastaSequenceFile.checkAndCreate(Utils.nonNull(fastaPath));
+        reference = new CachingIndexedFastaSequenceFile(Utils.nonNull(fastaPath));
     }
 
     /**
@@ -50,7 +48,7 @@ public final class ReferenceFileSource implements ReferenceDataSource {
      */
     public ReferenceFileSource(final Path fastaPath, final boolean preserveFileBases) {
         // Will throw a UserException if the .fai and/or .dict are missing
-        reference = CachingIndexedFastaSequenceFile.checkAndCreate(Utils.nonNull(fastaPath), preserveFileBases);
+        reference = new CachingIndexedFastaSequenceFile(Utils.nonNull(fastaPath), preserveFileBases);
     }
 
     /**
@@ -96,11 +94,6 @@ public final class ReferenceFileSource implements ReferenceDataSource {
      */
     @Override
     public void close() {
-        try {
-            reference.close();
-        }
-        catch ( IOException e ) {
-            throw new GATKException("Error closing reference file", e);
-        }
+        reference.close();
     }
 }

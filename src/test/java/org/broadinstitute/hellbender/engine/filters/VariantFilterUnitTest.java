@@ -30,7 +30,7 @@ public class VariantFilterUnitTest extends GATKBaseTest {
     VariantContext mnpVC;
 
     public VariantFilterUnitTest() throws FileNotFoundException {
-        initGenomeLocParser();
+        initializeHG19Reference();
         snpVC = createArtificialVC(
                 "id1",
                 new SimpleInterval("1", 42, 42),

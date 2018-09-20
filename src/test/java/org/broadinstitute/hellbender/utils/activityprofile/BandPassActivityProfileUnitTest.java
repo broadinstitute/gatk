@@ -1,11 +1,13 @@
 package org.broadinstitute.hellbender.utils.activityprofile;
 
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.reference.ReferenceSequenceFile;
 import org.apache.commons.lang.ArrayUtils;
-import org.broadinstitute.hellbender.utils.*;
-import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.GenomeLoc;
+import org.broadinstitute.hellbender.utils.GenomeLocParser;
+import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
@@ -27,10 +29,11 @@ public class BandPassActivityProfileUnitTest extends GATKBaseTest {
     @BeforeClass
     public void init() throws FileNotFoundException {
         // sequence
-        ReferenceSequenceFile seq = new CachingIndexedFastaSequenceFile(IOUtils.getPath(b37_reference_20_21));
-        genomeLocParser = new GenomeLocParser(seq);
-        header = new SAMFileHeader();
-        seq.getSequenceDictionary().getSequences().forEach(sequence -> header.addSequence(sequence));
+        try(final CachingIndexedFastaSequenceFile seq = new CachingIndexedFastaSequenceFile(IOUtils.getPath(b37_reference_20_21))) {
+            genomeLocParser = new GenomeLocParser(seq);
+            header = new SAMFileHeader();
+            seq.getSequenceDictionary().getSequences().forEach(sequence -> header.addSequence(sequence));
+        }
     }
 
     @DataProvider(name = "BandPassBasicTest")

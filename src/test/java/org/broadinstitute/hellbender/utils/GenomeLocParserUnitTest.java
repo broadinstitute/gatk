@@ -11,27 +11,25 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFFileReader;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
-import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertTrue;
-import static org.testng.Assert.assertFalse;
+import static org.testng.Assert.*;
 
 /**
  * Test out the functionality of the new genome loc parser
@@ -436,16 +434,18 @@ public final class GenomeLocParserUnitTest extends GATKBaseTest {
     }
 
     @Test
-    public void testcreateGenomeLocOnContig() throws FileNotFoundException {
-        final CachingIndexedFastaSequenceFile seq = new CachingIndexedFastaSequenceFile(IOUtils.getPath(exampleReference));
-        final SAMSequenceDictionary dict = seq.getSequenceDictionary();
-        final GenomeLocParser genomeLocParser = new GenomeLocParser(dict);
+    public void testCreateGenomeLocOnContig() throws IOException {
+        try(final CachingIndexedFastaSequenceFile seq = new CachingIndexedFastaSequenceFile(
+                IOUtils.getPath(exampleReference))) {
+            final SAMSequenceDictionary dict = seq.getSequenceDictionary();
+            final GenomeLocParser genomeLocParser = new GenomeLocParser(dict);
 
-        for ( final SAMSequenceRecord rec : dict.getSequences() ) {
-            final GenomeLoc loc = genomeLocParser.createOverEntireContig(rec.getSequenceName());
-            Assert.assertEquals(loc.getContig(), rec.getSequenceName());
-            Assert.assertEquals(loc.getStart(), 1);
-            Assert.assertEquals(loc.getStop(), rec.getSequenceLength());
+            for (final SAMSequenceRecord rec : dict.getSequences()) {
+                final GenomeLoc loc = genomeLocParser.createOverEntireContig(rec.getSequenceName());
+                Assert.assertEquals(loc.getContig(), rec.getSequenceName());
+                Assert.assertEquals(loc.getStart(), 1);
+                Assert.assertEquals(loc.getStop(), rec.getSequenceLength());
+            }
         }
     }
 

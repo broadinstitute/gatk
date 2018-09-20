@@ -6,19 +6,19 @@ package org.broadinstitute.hellbender.utils;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
-import htsjdk.samtools.reference.IndexedFastaSequenceFile;
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.reference.ReferenceSequenceFile;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.File;
-import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -26,13 +26,13 @@ import java.util.Map;
 
 public final class NGSPlatformUnitTest extends GATKBaseTest {
 
-    // example fasta index file, can be deleted if you don't use the reference
-    private IndexedFastaSequenceFile seq;
+    private SAMSequenceDictionary sequenceDictionary;
 
     @BeforeClass
-    public void setup() throws FileNotFoundException {
-        // sequence
-        seq = new CachingIndexedFastaSequenceFile(IOUtils.getPath(exampleReference));
+    public void setup() throws IOException {
+        try(ReferenceSequenceFile seq = new CachingIndexedFastaSequenceFile(IOUtils.getPath(exampleReference))){
+            sequenceDictionary = seq.getSequenceDictionary();
+        }
     }
 
     @DataProvider(name = "TestPrimary")
@@ -109,7 +109,7 @@ public final class NGSPlatformUnitTest extends GATKBaseTest {
      */
     @Test(dataProvider = "TestMappings")
     public void testPLFromReadWithRG(final String plField, final NGSPlatform expected) {
-        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(seq.getSequenceDictionary());
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(sequenceDictionary);
         final String rgID = "ID";
         final SAMReadGroupRecord rg = new SAMReadGroupRecord(rgID);
         if ( plField != null )
@@ -122,7 +122,7 @@ public final class NGSPlatformUnitTest extends GATKBaseTest {
 
     @Test()
     public void testPLFromReadWithRGButNoPL() {
-        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(seq.getSequenceDictionary());
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(sequenceDictionary);
         final String rgID = "ID";
         final SAMReadGroupRecord rg = new SAMReadGroupRecord(rgID);
         header.addReadGroup(rg);
@@ -133,7 +133,7 @@ public final class NGSPlatformUnitTest extends GATKBaseTest {
 
     @Test
     public void testReadWithoutRG() {
-        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(seq.getSequenceDictionary());
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(sequenceDictionary);
         final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "myRead", 0, 1, 10);
         Assert.assertEquals(NGSPlatform.fromRead(read, header), NGSPlatform.UNKNOWN);
     }

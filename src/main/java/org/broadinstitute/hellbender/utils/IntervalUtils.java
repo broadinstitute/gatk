@@ -4,11 +4,7 @@ import htsjdk.samtools.QueryInterval;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
-import htsjdk.samtools.reference.ReferenceSequenceFile;
-import htsjdk.samtools.util.Interval;
-import htsjdk.samtools.util.IntervalList;
-import htsjdk.samtools.util.Locatable;
-import htsjdk.samtools.util.OverlapDetector;
+import htsjdk.samtools.util.*;
 import htsjdk.tribble.Feature;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -553,13 +549,15 @@ public final class IntervalUtils {
      * @return A map of contig names with their sizes.
      */
     public static Map<String, Integer> getContigSizes(final Path reference) {
-        final ReferenceSequenceFile referenceSequenceFile = createReference(reference);
-        final List<GenomeLoc> locs = GenomeLocSortedSet.createSetFromSequenceDictionary(referenceSequenceFile.getSequenceDictionary()).toList();
-        final Map<String, Integer> lengths = new LinkedHashMap<>();
-        for (final GenomeLoc loc: locs) {
-            lengths.put(loc.getContig(), loc.size());
+        try(final CachingIndexedFastaSequenceFile referenceSequenceFile = new CachingIndexedFastaSequenceFile(reference)) {
+            final List<GenomeLoc> locs = GenomeLocSortedSet.createSetFromSequenceDictionary(
+                    referenceSequenceFile.getSequenceDictionary()).toList();
+            final Map<String, Integer> lengths = new LinkedHashMap<>();
+            for (final GenomeLoc loc : locs) {
+                lengths.put(loc.getContig(), loc.size());
+            }
+            return lengths;
         }
-        return lengths;
     }
 
     /**
@@ -998,10 +996,6 @@ public final class IntervalUtils {
         }
 
         return intervalGroups;
-    }
-
-    private static ReferenceSequenceFile createReference(final Path fastaPath) {
-            return CachingIndexedFastaSequenceFile.checkAndCreate(fastaPath);
     }
 
     private static LinkedHashMap<String, List<GenomeLoc>> splitByContig(final List<GenomeLoc> sorted) {
