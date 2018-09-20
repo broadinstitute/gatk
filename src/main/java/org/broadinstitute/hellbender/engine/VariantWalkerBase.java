@@ -16,12 +16,13 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 /**
- * Base class for variant walkers, which process one variant at a time from one or more sources of variants,
+ * Base class for variant walkers, which process variants from one or more sources of variants,
  * with optional contextual information from a reference, sets of reads, and/or supplementary sources of
  * Features.
  *
- * Subclasses must implement the {@link #apply} method to process each variant, {@link #initializeDrivingVariants},
- * {@link #getHeaderForVariants}, {@link #getSequenceDictionaryForDrivingVariants},
+ * Subclasses must implement the {@link #traverse} method to process variants, {@link #initializeDrivingVariants},
+ * {@link #getHeaderForVariants},
+ * {@link #getSequenceDictionaryForDrivingVariants},
  * {@link #getSpliteratorForDrivingVariants}, and may optionally implement {@link #onTraversalStart},
  * {@link #onTraversalSuccess} and/or {@link #closeTool}.
  */
@@ -139,29 +140,6 @@ public abstract class VariantWalkerBase extends GATKTool {
     }
 
     /**
-     * Implementation of variant-based traversal.
-     * Subclasses can override to provide their own behavior but default implementation should be suitable for most uses.
-     */
-    @Override
-    public void traverse() {
-        final CountingVariantFilter countingVariantfilter = makeVariantFilter();
-        final CountingReadFilter readFilter = makeReadFilter();
-        // Process each variant in the input stream.
-        getTransformedVariantStream(countingVariantfilter)
-                .forEach(variant -> {
-                    final SimpleInterval variantInterval = new SimpleInterval(variant);
-                    apply(variant,
-                            new ReadsContext(reads, variantInterval, readFilter),
-                            new ReferenceContext(reference, variantInterval),
-                            new FeatureContext(features, variantInterval));
-
-                    progressMeter.update(variantInterval);
-                });
-
-        logger.info(countingVariantfilter.getSummaryLine());
-    }
-
-    /**
      * Returns the variant filter (simple or composite) that will be applied to the variants before calling {@link #apply}.
      * The default implementation filters nothing.
      * Default implementation of {@link #traverse()} calls this method once before iterating
@@ -173,25 +151,5 @@ public abstract class VariantWalkerBase extends GATKTool {
     protected CountingVariantFilter makeVariantFilter() {
         return new CountingVariantFilter(VariantFilterLibrary.ALLOW_ALL_VARIANTS);
     }
-
-    /**
-     * Process an individual variant. Must be implemented by tool authors.
-     * In general, tool authors should simply stream their output from apply(), and maintain as little internal state
-     * as possible.
-     *
-     * @param variant Current variant being processed.
-     * @param readsContext Reads overlapping the current variant. Will be an empty, but non-null, context object
-     *                     if there is no backing source of reads data (in which case all queries on it will return
-     *                     an empty array/iterator)
-     * @param referenceContext Reference bases spanning the current variant. Will be an empty, but non-null, context object
-     *                         if there is no backing source of reference data (in which case all queries on it will return
-     *                         an empty array/iterator). Can request extra bases of context around the current variant's interval
-     *                         by invoking {@link ReferenceContext#setWindow}
-     *                         on this object before calling {@link ReferenceContext#getBases}
-     * @param featureContext Features spanning the current variant. Will be an empty, but non-null, context object
-     *                       if there is no backing source of Feature data (in which case all queries on it will return an
-     *                       empty List).
-     */
-    public abstract void apply( VariantContext variant, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext );
 
 }
