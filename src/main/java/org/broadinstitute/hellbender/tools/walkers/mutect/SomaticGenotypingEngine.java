@@ -103,6 +103,11 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
         final Set<Haplotype> calledHaplotypes = new HashSet<>();
         final List<VariantContext> returnCalls = new ArrayList<>();
 
+        if(withBamOut){
+            ////add annotations to reads for alignment regions and calling regions
+            AssemblyBasedCallerUtils.annotateReadLikelihoodsWithRegions(log10ReadLikelihoods, activeRegionWindow);
+        }
+
         for( final int loc : startPosKeySet ) {
             final List<VariantContext> eventsAtThisLoc = getVariantContextsFromActiveHaplotypes(loc, haplotypes, false);
             final VariantContext mergedVC = AssemblyBasedCallerUtils.makeMergedVariantContext(eventsAtThisLoc);
@@ -173,7 +178,8 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
 
             final VariantContext annotatedCall =  annotationEngine.annotateContext(trimmedCall, featureContext, referenceContext, trimmedLikelihoods, a -> true);
             if(withBamOut) {
-                AssemblyBasedCallerUtils.annotateReadLikelihoodsWithRegionsAndSupportedGenotypes(trimmedCall, trimmedLikelihoods, log10ReadLikelihoods, activeRegionWindow);
+                //add annotations to reads for which genotypes are supported by each read
+                AssemblyBasedCallerUtils.annotateReadLikelihoodsWithSupportedGenotypes(trimmedCall, trimmedLikelihoods);
             }
 
             call.getAlleles().stream().map(alleleMapper::get).filter(Objects::nonNull).forEach(calledHaplotypes::addAll);

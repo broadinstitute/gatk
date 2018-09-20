@@ -40,8 +40,8 @@ public final class AssemblyBasedCallerUtils {
 
     static final int REFERENCE_PADDING_FOR_ASSEMBLY = 500;
     static final String SUPPORTED_GENOTYPES_TAG="SG";
-    static final String CALLABLE_REGION_TAG = "CR";
-    static final String ALIGNMENT_REGION_TAG = "AR";
+    public static final String CALLABLE_REGION_TAG = "CR";
+    public static final String ALIGNMENT_REGION_TAG = "AR";
 
     /**
      * Returns a map with the original read as a key and the realigned read as the value.
@@ -282,10 +282,27 @@ public final class AssemblyBasedCallerUtils {
         }
     }
 
-    public static void annotateReadLikelihoodsWithRegionsAndSupportedGenotypes(final VariantContext vc,
-                                                                               final ReadLikelihoods<Allele> likelihoodsAllele,
-                                                                               final ReadLikelihoods<Haplotype> likelihoodsHaplotype,
-                                                                               final Locatable callableRegion) {
+    public static void annotateReadLikelihoodsWithRegions(final ReadLikelihoods<Haplotype> likelihoodsHaplotype,
+                                                          final Locatable callableRegion) {
+        //assign alignment regions to each read
+        final Collection<ReadLikelihoods<Haplotype>.BestAllele> bestHaplotypes = likelihoodsHaplotype.bestAllelesBreakingTies();
+        for (final ReadLikelihoods<Haplotype>.BestAllele bestHaplotype : bestHaplotypes) {
+            final GATKRead read = bestHaplotype.read;
+            final Haplotype haplotype = bestHaplotype.allele;
+            read.setAttribute(ALIGNMENT_REGION_TAG, haplotype.getGenomeLocation().toString());
+        }
+
+        //assign callable region to each read
+        final int sampleCount = likelihoodsHaplotype.numberOfSamples();
+        for (int i = 0; i < sampleCount; i++) {
+            for (final GATKRead read : likelihoodsHaplotype.sampleReads(i)) {
+                read.setAttribute(CALLABLE_REGION_TAG, callableRegion.toString());
+            }
+        }
+    }
+
+    public static void annotateReadLikelihoodsWithSupportedGenotypes(final VariantContext vc,
+                                                                     final ReadLikelihoods<Allele> likelihoodsAllele) {
         //assign supported Genotypes to each read
         final Set<Allele> alleles = new LinkedHashSet<>(vc.getAlleles());
         final Map<Allele, List<Allele>> alleleSubset = alleles.stream().collect(Collectors.toMap(a -> a, Arrays::asList));
@@ -301,22 +318,6 @@ public final class AssemblyBasedCallerUtils {
             }
             attribute += vc.getContig() + ":" + vc.getStart() + "=" + vc.getAlleleIndex(allele);
             read.setAttribute(SUPPORTED_GENOTYPES_TAG, attribute);
-        }
-
-        //assign alignment regions to each read
-        final Collection<ReadLikelihoods<Haplotype>.BestAllele> bestHaplotypes = likelihoodsHaplotype.bestAllelesBreakingTies();
-        for (final ReadLikelihoods<Haplotype>.BestAllele bestHaplotype : bestHaplotypes) {
-            final GATKRead read = bestHaplotype.read;
-            final Haplotype haplotype = bestHaplotype.allele;
-            read.setAttribute(ALIGNMENT_REGION_TAG, haplotype.getGenomeLocation().toString());
-        }
-
-        //assign callable region to each read
-        final int sampleCount = likelihoodsHaplotype.numberOfSamples();
-        for (int i = 0; i < sampleCount; i++) {
-            for (final GATKRead read : likelihoodsHaplotype.sampleReads(i)) {
-                read.setAttribute(CALLABLE_REGION_TAG, callableRegion.toString());
-            }
         }
     }
 }

@@ -7,6 +7,8 @@ import htsjdk.samtools.SAMTag;
 
 import htsjdk.samtools.util.Locatable;
 import java.nio.file.Path;
+
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerUtils;
 import org.broadinstitute.hellbender.utils.read.*;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
@@ -35,10 +37,6 @@ public class HaplotypeBAMWriter implements AutoCloseable {
     private final HaplotypeBAMDestination output;
     private WriterType writerType;
     private boolean writeHaplotypes = true;
-
-    protected static final String CALLABLE_REGION_TAG = "CR";
-    protected static final String ALIGNMENT_REGION_TAG = "AR";
-
     /**
      * Possible modes for writing haplotypes to BAMs
      */
@@ -134,10 +132,10 @@ public class HaplotypeBAMWriter implements AutoCloseable {
             if (calledHaplotypes.isEmpty()){
                 return;
             }
-            writeHaplotypesAsReads(calledHaplotypes, calledHaplotypes, paddedReferenceLoc,callableRegion);
+            writeHaplotypesAsReads(calledHaplotypes, calledHaplotypes, paddedReferenceLoc, callableRegion);
 
         } else {
-            writeHaplotypesAsReads(haplotypes, new LinkedHashSet<>(bestHaplotypes), paddedReferenceLoc,callableRegion);
+            writeHaplotypesAsReads(haplotypes, new LinkedHashSet<>(bestHaplotypes), paddedReferenceLoc, callableRegion);
         }
 
         final int sampleCount = readLikelihoods.numberOfSamples();
@@ -149,11 +147,11 @@ public class HaplotypeBAMWriter implements AutoCloseable {
     }
 
     public void writeReadsAlignedToHaplotypes(final Collection<Haplotype> haplotypes,
-                                                       final Locatable paddedReferenceLoc,
-                                                       final Collection<Haplotype> bestHaplotypes,
-                                                       final Set<Haplotype> calledHaplotypes,
-                                                       final ReadLikelihoods<Haplotype> readLikelihoods) {
-        writeReadsAlignedToHaplotypes(haplotypes,paddedReferenceLoc,bestHaplotypes,calledHaplotypes,readLikelihoods,null);
+                                              final Locatable paddedReferenceLoc,
+                                              final Collection<Haplotype> bestHaplotypes,
+                                              final Set<Haplotype> calledHaplotypes,
+                                              final ReadLikelihoods<Haplotype> readLikelihoods) {
+        writeReadsAlignedToHaplotypes(haplotypes, paddedReferenceLoc, bestHaplotypes, calledHaplotypes, readLikelihoods, null);
     }
 
     /**
@@ -185,7 +183,7 @@ public class HaplotypeBAMWriter implements AutoCloseable {
 
         if (writeHaplotypes) {
             for (final Haplotype haplotype : haplotypes) {
-                writeHaplotype(haplotype, paddedReferenceLoc, bestHaplotypes.contains(haplotype),callableRegion);
+                writeHaplotype(haplotype, paddedReferenceLoc, bestHaplotypes.contains(haplotype), callableRegion);
             }
         }
     }
@@ -219,7 +217,7 @@ public class HaplotypeBAMWriter implements AutoCloseable {
         record.setAttribute(SAMTag.RG.toString(), output.getHaplotypeReadGroupID());
         record.setFlags(SAMFlag.READ_REVERSE_STRAND.intValue());
         if (callableRegion != null) {
-            record.setAttribute(CALLABLE_REGION_TAG, callableRegion.toString());
+            record.setAttribute(AssemblyBasedCallerUtils.CALLABLE_REGION_TAG, callableRegion.toString());
         }
 
         output.add(new SAMRecordToGATKReadAdapter(record));
