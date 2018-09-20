@@ -90,7 +90,7 @@ public final class ExtractOriginalAlignmentRecordsByNameSpark extends GATKSparkT
         final Function<GATKRead, Boolean> predicate = getGatkReadBooleanFunction(namesToLookForBroadcast, invertFilter);
 
         final JavaRDD<GATKRead> reads = getUnfilteredReads().filter(predicate).cache();
-        writeReads(ctx, outputSAM, reads, getHeaderForReads());
+        writeReads(ctx, outputSAM, reads, getHeaderForReads(), false);
 
         logger.info("Found " + reads.count() + " alignment records for " +
                     namesToLookForBroadcast.getValue().size() + " unique read names.");

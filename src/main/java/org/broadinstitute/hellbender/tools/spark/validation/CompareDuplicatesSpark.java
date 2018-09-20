@@ -216,8 +216,8 @@ public final class CompareDuplicatesSpark extends GATKSparkTool {
             SAMFileHeader headerForwrite = bHeader.getValue();
             headerForwrite.setAttribute("in","original read file source");
 
-            writeReads(ctx, output,  firstReads.filter(read -> nameSet.value().contains(read.getName())), headerForwrite);
-            writeReads(ctx, output2,  secondReads.filter(read -> nameSet.value().contains(read.getName())), headerForwrite);
+            writeReads(ctx, output,  firstReads.filter(read -> nameSet.value().contains(read.getName())), headerForwrite, false);
+            writeReads(ctx, output2,  secondReads.filter(read -> nameSet.value().contains(read.getName())), headerForwrite, false);
         }
 
         // Produces an RDD of MatchTypes, e.g., EQUAL, DIFFERENT_REPRESENTATIVE_READ, etc. per MarkDuplicates key,
