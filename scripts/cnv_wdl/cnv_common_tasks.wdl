@@ -71,6 +71,10 @@ task AnnotateIntervals {
 
     Int machine_mem_mb = select_first([mem_gb, 2]) * 1000
     Int command_mem_mb = machine_mem_mb - 500
+    
+    # Determine output filename
+    String filename = select_first([intervals, "wgs.preprocessed"])
+    String base_filename = basename(filename, ".interval_list")
 
     command <<<
         set -e
@@ -83,7 +87,7 @@ task AnnotateIntervals {
             ${"--segmental-duplication-track " + segmental_duplication_track} \
             --feature-query-lookahead ${default=1000000 feature_query_lookahead} \
             --interval-merging-rule OVERLAPPING_ONLY \
-            --output annotated_intervals.tsv
+            --output ${base_filename}.annotated.tsv
     >>>
 
     runtime {
@@ -95,7 +99,77 @@ task AnnotateIntervals {
     }
 
     output {
-        File annotated_intervals = "annotated_intervals.tsv"
+        File annotated_intervals = "${base_filename}.annotated.tsv"
+    }
+}
+
+task FilterIntervals {
+    File intervals
+    File? blacklist_intervals
+    File? annotated_intervals
+    Array[File]? read_count_files
+    Float? minimum_gc_content
+    Float? maximum_gc_content
+    Float? minimum_mappability
+    Float? maximum_mappability
+    Float? minimum_segmental_duplication_content
+    Float? maximum_segmental_duplication_content
+    Int? low_count_filter_count_threshold
+    Float? low_count_filter_percentage_of_samples
+    Float? extreme_count_filter_minimum_percentile
+    Float? extreme_count_filter_maximum_percentile
+    Float? extreme_count_filter_percentage_of_samples
+    File? gatk4_jar_override
+
+    # Runtime parameters
+    String gatk_docker
+    Int? mem_gb
+    Int? disk_space_gb
+    Boolean use_ssd = false
+    Int? cpu
+    Int? preemptible_attempts
+
+    Int machine_mem_mb = select_first([mem_gb, 7]) * 1000
+    Int command_mem_mb = machine_mem_mb - 500
+    
+    # Determine output filename
+    String filename = select_first([intervals, "wgs.preprocessed"])
+    String base_filename = basename(filename, ".interval_list")
+
+    command <<<
+        set -e
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
+
+        gatk --java-options "-Xmx${command_mem_mb}m" FilterIntervals \
+            -L ${intervals} \
+            -XL ${blacklist_intervals} \
+            ${"--annotated-intervals " + annotated_intervals} \
+            ${if read_count_files then "--input " else ""} ${sep=" --input " read_count_files} \
+            --minimum-gc-content ${default=0.1 minimum_gc_content} \
+            --maximum-gc-content ${default=0.9 maximum_gc_content} \
+            --minimum-mappability ${default=0.9 minimum_mappability} \
+            --maximum-mappability ${default=1.0 maximum_mappability} \
+            --minimum-segmental-duplication-content ${default=0.0 minimum_segmental_duplication_content} \
+            --maximum-segmental-duplication-content ${default=0.5 maximum_segmental_duplication_content} \
+            --low-count-filter-count-threshold ${default=5 low_count_filter_count_threshold} \
+            --low-count-filter-percentage-of-samples ${default=90.0 low_count_filter_percentage_of_samples} \
+            --extreme-count-filter-minimum-percentile ${default=1.0 extreme_count_filter_minimum_percentile} \
+            --extreme-count-filter-maximum-percentile ${default=99.0 extreme_count_filter_maximum_percentile} \
+            --extreme-count-filter-percentage-of-samples ${default=90.0 extreme_count_filter_percentage_of_samples} \
+            --interval-merging-rule OVERLAPPING_ONLY \
+            --output ${base_filename}.filtered.interval_list
+    >>>
+
+    runtime {
+        docker: "${gatk_docker}"
+        memory: machine_mem_mb + " MB"
+        disks: "local-disk " + select_first([disk_space_gb, 50]) + if use_ssd then " SSD" else " HDD"
+        cpu: select_first([cpu, 1])
+        preemptible: select_first([preemptible_attempts, 5])
+    }
+
+    output {
+        File filtered_intervals = "${base_filename}.filtered.interval_list"
     }
 }
 
