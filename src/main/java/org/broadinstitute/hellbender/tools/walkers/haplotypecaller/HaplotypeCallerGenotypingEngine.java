@@ -136,7 +136,7 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
             ////add annotations to reads for alignment regions and calling regions
             AssemblyBasedCallerUtils.annotateReadLikelihoodsWithRegions(readLikelihoods, activeRegionWindow);
         }
-        
+
         for( final int loc : startPosKeySet ) {
             if( loc < activeRegionWindow.getStart() || loc > activeRegionWindow.getEnd() ) {
                 continue;
