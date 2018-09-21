@@ -46,8 +46,8 @@ matrix:
      - jdk: oraclejdk8
        env: TEST_TYPE=integration TEST_VERBOSITY=minimal
 stages:
-        lfs_cache
-        test
+        - lfs_cache
+        - test
 jobs:
   include:
      stage: lfs_cache 
