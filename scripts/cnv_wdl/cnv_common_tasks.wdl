@@ -142,9 +142,9 @@ task FilterIntervals {
 
         gatk --java-options "-Xmx${command_mem_mb}m" FilterIntervals \
             -L ${intervals} \
-            -XL ${blacklist_intervals} \
+            ${"-XL " + blacklist_intervals} \
             ${"--annotated-intervals " + annotated_intervals} \
-            ${if read_count_files then "--input " else ""} ${sep=" --input " read_count_files} \
+            ${if defined(read_count_files) then "--input " else ""} ${sep=" --input " read_count_files} \
             --minimum-gc-content ${default="0.1" minimum_gc_content} \
             --maximum-gc-content ${default="0.9" maximum_gc_content} \
             --minimum-mappability ${default="0.9" minimum_mappability} \
