@@ -58,7 +58,6 @@ jobs:
      - git lfs version
      - git lfs install
      - git lfs fetch
-     - git lfs checkout
      after_success: true
      after_script: true
 
