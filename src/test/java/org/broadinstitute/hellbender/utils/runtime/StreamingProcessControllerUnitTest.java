@@ -162,14 +162,14 @@ public class StreamingProcessControllerUnitTest extends BaseTest {
                 { "1", "1" },   // message of length 1
                 { "Test roundtrip negative ack with message protocol", "Test roundtrip negative ack with message protocol" },
                 // one byte less than max
-                { Utils.dupChar('s', StreamingProcessController.NCK_WITH_MESSAGE_MAX_MESSAGE_LENGTH - 1),
-                        Utils.dupChar('s', StreamingProcessController.NCK_WITH_MESSAGE_MAX_MESSAGE_LENGTH - 1) },
+                { Utils.dupChar('s', StreamingToolConstants.STREAMING_NCK_WITH_MESSAGE_MAX_MESSAGE_LENGTH - 1),
+                        Utils.dupChar('s', StreamingToolConstants.STREAMING_NCK_WITH_MESSAGE_MAX_MESSAGE_LENGTH - 1) },
                 // exactly max bytes
-                { Utils.dupChar('s', StreamingProcessController.NCK_WITH_MESSAGE_MAX_MESSAGE_LENGTH),
-                        Utils.dupChar('s', StreamingProcessController.NCK_WITH_MESSAGE_MAX_MESSAGE_LENGTH) },  // 9999
+                { Utils.dupChar('s', StreamingToolConstants.STREAMING_NCK_WITH_MESSAGE_MAX_MESSAGE_LENGTH),
+                        Utils.dupChar('s', StreamingToolConstants.STREAMING_NCK_WITH_MESSAGE_MAX_MESSAGE_LENGTH) },  // 9999
                 // max bytes + 1000, trimmed to max
-                { Utils.dupChar('s', StreamingProcessController.NCK_WITH_MESSAGE_MAX_MESSAGE_LENGTH + 1000),
-                        Utils.dupChar('s', StreamingProcessController.NCK_WITH_MESSAGE_MAX_MESSAGE_LENGTH) }, // > 9999 is trimmed to 9999
+                { Utils.dupChar('s', StreamingToolConstants.STREAMING_NCK_WITH_MESSAGE_MAX_MESSAGE_LENGTH + 1000),
+                        Utils.dupChar('s', StreamingToolConstants.STREAMING_NCK_WITH_MESSAGE_MAX_MESSAGE_LENGTH) }, // > 9999 is trimmed to 9999
         };
     }
 

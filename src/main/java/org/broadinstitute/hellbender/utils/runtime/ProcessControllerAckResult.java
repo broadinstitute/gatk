@@ -12,17 +12,27 @@ public class ProcessControllerAckResult {
     private final String message;
 
     // three message types can be used by the remote process
-    private static String ACK_LOG_MESSAGE               = "Ack received\n\n";
-    private static String NCK_LOG_MESSAGE               = "Nck received\n\n";
-    private static String NCK_WITH_MESSAGE_LOG_MESSAGE  = "Nkm received\n\n";
+    private static String displayMessageFormat = "%s received\n\n";
+    private static String ACK_LOG_MESSAGE               = String.format(displayMessageFormat, StreamingToolConstants.STREAMING_ACK_MESSAGE);
+    private static String NCK_LOG_MESSAGE               = String.format(displayMessageFormat, StreamingToolConstants.STREAMING_NCK_MESSAGE);
+    private static String NCK_WITH_MESSAGE_LOG_MESSAGE  = String.format(displayMessageFormat, StreamingToolConstants.STREAMING_NCK_WITH_MESSAGE_MESSAGE);
 
+    /**
+     * Creates an ack result, for ACK or NCK.
+     * @param isPositiveAck true for a positive ack (ACK), false for negative ack (NCK)
+     */
     public ProcessControllerAckResult(final boolean isPositiveAck) {
-        this(isPositiveAck, "");
+        this.isPositiveAck = isPositiveAck;
+        this.message = null;
     }
 
-    public ProcessControllerAckResult(final boolean isPositiveAck, final String message) {
-        this.isPositiveAck = isPositiveAck;
-        this.message = message;
+    /**
+     * Creates an (negative NKM) ack result, with a message.
+     * @param nckMessage Message detail indicating reason for negative ack (NKM).
+     */
+    public ProcessControllerAckResult(final String nckMessage) {
+        this.isPositiveAck = false;
+        this.message = nckMessage;
     }
 
     /**
@@ -40,7 +50,6 @@ public class ProcessControllerAckResult {
     }
 
     /**
-     *
      * @return A (possibly empty) String with any message sent from the remote process.
      * Only defined for negative acknowledgements {@link #hasMessage()}.
      */

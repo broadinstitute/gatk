@@ -16,6 +16,7 @@ import sys
 import os
 import cProfile, pstats, io
 import traceback
+from gatktool import toolconstants
 
 _ackFIFO = None
 _dataFIFO = None
@@ -152,9 +153,6 @@ class AckFIFO:
     Manage the FIFO used to notify GATK (via an ack) that a command has
     completed, or failed due to an unhandled exception (via a nck).
     """
-    _ackString = "ack"
-    _nackString = "nck"
-    _nkmString = "nkm"
 
     def __init__(self, ackFIFOName: str) -> None:
         """Open the ack fifo stream for writing only"""
@@ -168,7 +166,7 @@ class AckFIFO:
         """
         if self.fileWriter is None:
             raise RuntimeError("ack FIFO has not been initialized")
-        self.fileWriter.write(AckFIFO._ackString)
+        self.fileWriter.write(toolconstants._ackString)
         self.fileWriter.flush()
 
     def writeNack(self):
@@ -180,7 +178,7 @@ class AckFIFO:
         """
         if self.fileWriter is None:
             raise RuntimeError("ack FIFO has not been initialized")
-        self.fileWriter.write(AckFIFO._nackString)
+        self.fileWriter.write(toolconstants._nackString)
         self.fileWriter.flush()
 
     def writeNackWithMessage(self, message: str) -> None:
@@ -197,21 +195,18 @@ class AckFIFO:
         Calling this method will result in an exception being thrown
         in the GATK tool on whose behalf this module is running.
         """
-        """The length of the message to be written must be 4 bytes long when serialized as a string"""
-        nckMaxMessageLength = 9999
-        nckMessageLengthSerializedSize = 4
         if self.fileWriter is None:
             raise RuntimeError("ack FIFO has not been initialized")
-        self.fileWriter.write(AckFIFO._nkmString)
+        self.fileWriter.write(toolconstants._nkmString)
         actualMessageLength = len(message)
         """The message length must be exactly 4 bytes"""
-        if len(str(actualMessageLength)) <= nckMessageLengthSerializedSize:
-            self.fileWriter.write(str(actualMessageLength).zfill(nckMessageLengthSerializedSize))
+        if len(str(actualMessageLength)) <= toolconstants._nckMessageLengthSerializedSize:
+            self.fileWriter.write(str(actualMessageLength).zfill(toolconstants._nckMessageLengthSerializedSize))
             self.fileWriter.write(message)
         else:
             """Message is too long, trim to 9999 bytes"""
-            self.fileWriter.write(str(nckMaxMessageLength))
-            self.fileWriter.write(message[:nckMaxMessageLength])
+            self.fileWriter.write(str(toolconstants._nckMaxMessageLength))
+            self.fileWriter.write(message[:toolconstants._nckMaxMessageLength])
         self.fileWriter.flush()
 
 
