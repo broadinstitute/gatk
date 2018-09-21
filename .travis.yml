@@ -123,6 +123,7 @@ before_install:
   fi
 # Checkout lfs files from cache
 - git config lfs.storage $HOME/lfs-cache
+- git lfs fetch
 - git lfs checkout
 install:
 - if [[ $TRAVIS_SECURE_ENV_VARS == false && $TEST_TYPE == cloud ]]; then
