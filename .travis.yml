@@ -55,6 +55,7 @@ jobs:
      install: true
      script: 
       # Download git lfs files
+     - git config lfs.storage $HOME/lfs-cache
      - git lfs version
      - git lfs install
      - git lfs fetch
@@ -71,7 +72,7 @@ cache:
     - $HOME/.m2
     - $HOME/gcloud/
     - $HOME/site-library
-    - $HOME/.git/lfs
+    - $HOME/lfs-cache
 before_install:
   #skip push builds if there's an associated PR because we don't look at them anway
 - if [[ ${TRAVIS_EVENT_TYPE} == push ]];
@@ -121,6 +122,7 @@ before_install:
     wget -O $CROMWELL_JAR https://github.com/broadinstitute/cromwell/releases/download/30.2/cromwell-30.2.jar;
   fi
 # Checkout lfs files from cache
+- git config lfs.storage $HOME/lfs-cache
 - git lfs checkout
 install:
 - if [[ $TRAVIS_SECURE_ENV_VARS == false && $TEST_TYPE == cloud ]]; then
