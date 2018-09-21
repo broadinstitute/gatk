@@ -51,12 +51,16 @@ stages:
 jobs:
   include:
      stage: lfs_cache 
+     before_install: true
+     install: true
      script: 
       # Download git lfs files
      - git lfs version
      - git lfs install
      - git lfs fetch
      - git lfs checkout
+     after_success: true
+     after_script: true
 
 before_cache:
   - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
@@ -117,6 +121,8 @@ before_install:
 - if [[ $RUN_CNV_GERMLINE_WDL == true || $RUN_CNV_SOMATIC_WDL == true || $RUN_M2_WDL == true || $RUN_CNN_WDL == true ]]; then
     wget -O $CROMWELL_JAR https://github.com/broadinstitute/cromwell/releases/download/30.2/cromwell-30.2.jar;
   fi
+# Checkout lfs files from cache
+- git lfs checkout
 install:
 - if [[ $TRAVIS_SECURE_ENV_VARS == false && $TEST_TYPE == cloud ]]; then
     echo "Can't run cloud tests without keys so don't bother building";
