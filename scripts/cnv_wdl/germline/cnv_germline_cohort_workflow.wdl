@@ -62,6 +62,22 @@ workflow CNVGermlineCohortWorkflow {
     Int? feature_query_lookahead
     Int? mem_gb_for_annotate_intervals
 
+    #################################################
+    #### optional arguments for FilterIntervals ####
+    ################################################
+    Float? minimum_gc_content
+    Float? maximum_gc_content
+    Float? minimum_mappability
+    Float? maximum_mappability
+    Float? minimum_segmental_duplication_content
+    Float? maximum_segmental_duplication_content
+    Int? low_count_filter_count_threshold
+    Float? low_count_filter_percentage_of_samples
+    Float? extreme_count_filter_minimum_percentile
+    Float? extreme_count_filter_maximum_percentile
+    Float? extreme_count_filter_percentage_of_samples
+    Int? mem_gb_for_filter_intervals
+
     ##############################################
     #### optional arguments for CollectCounts ####
     ##############################################
@@ -181,6 +197,28 @@ workflow CNVGermlineCohortWorkflow {
         }
     }
 
+    call CNVTasks.FilterIntervals {
+        input:
+            intervals = PreprocessIntervals.preprocessed_intervals,
+            annotated_intervals = AnnotateIntervals.annotated_intervals,
+            read_count_files = CollectCounts.counts,
+            minimum_gc_content = minimum_gc_content,
+            maximum_gc_content = maximum_gc_content,
+            minimum_mappability = minimum_mappability,
+            maximum_mappability = maximum_mappability,
+            minimum_segmental_duplication_content = minimum_segmental_duplication_content,
+            maximum_segmental_duplication_content = maximum_segmental_duplication_content,
+            low_count_filter_count_threshold = low_count_filter_count_threshold,
+            low_count_filter_percentage_of_samples = low_count_filter_percentage_of_samples,
+            extreme_count_filter_minimum_percentile = extreme_count_filter_minimum_percentile,
+            extreme_count_filter_maximum_percentile = extreme_count_filter_maximum_percentile,
+            extreme_count_filter_percentage_of_samples = extreme_count_filter_percentage_of_samples,
+            gatk4_jar_override = gatk4_jar_override,
+            gatk_docker = gatk_docker,
+            mem_gb = mem_gb_for_filter_intervals,
+            preemptible_attempts = preemptible_attempts
+    }
+
     call DetermineGermlineContigPloidyCohortMode {
         input:
             cohort_entity_id = cohort_entity_id,
@@ -199,7 +237,7 @@ workflow CNVGermlineCohortWorkflow {
 
     call CNVTasks.ScatterIntervals {
         input:
-            interval_list = PreprocessIntervals.preprocessed_intervals,
+            interval_list = FilterIntervals.filtered_intervals,
             num_intervals_per_scatter = num_intervals_per_scatter,
             gatk_docker = gatk_docker,
             preemptible_attempts = preemptible_attempts
@@ -283,6 +321,8 @@ workflow CNVGermlineCohortWorkflow {
         File preprocessed_intervals = PreprocessIntervals.preprocessed_intervals
         Array[File] read_counts_entity_ids = CollectCounts.entity_id
         Array[File] read_counts = CollectCounts.counts
+        File? annotated_intervals = AnnotateIntervals.annotated_intervals
+        File filtered_intervals = FilterIntervals.filtered_intervals
         File contig_ploidy_model_tar = DetermineGermlineContigPloidyCohortMode.contig_ploidy_model_tar
         File contig_ploidy_calls_tar = DetermineGermlineContigPloidyCohortMode.contig_ploidy_calls_tar
         Array[File] gcnv_model_tars = GermlineCNVCallerCohortMode.gcnv_model_tar
