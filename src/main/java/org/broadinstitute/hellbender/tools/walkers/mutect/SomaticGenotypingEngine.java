@@ -24,16 +24,12 @@ import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.*;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-
-import org.broadinstitute.hellbender.utils.MathUtils;
-import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
-
-import static org.broadinstitute.hellbender.utils.OptimizationUtils.argmax;
 
 public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine {
 
@@ -242,13 +238,13 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
                 getAsRealMatrix(tumorLog10Matrix), flatPriorPseudocounts);
         if (!MTAC.calculateAFfromAD) {
             // first way: mean field value of the allele fraction
-            // final double [] tumorLog10AlleleFractionsMeanField = new Dirichlet(alleleFractionsPosterior).effectiveLog10MultinomialWeights();
-            // final double [] tumorAlleleFractionsMeanField = MathUtils.normalizeFromLog10ToLinearSpace(tumorLog10AlleleFractionsMeanField);
-            // gb.attribute(GATKVCFConstants.ALLELE_FRACTION_KEY, Arrays.copyOfRange(tumorAlleleFractionsMeanField, 1, tumorAlleleFractionsMeanField.length));
+            final double [] tumorLog10AlleleFractionsMeanField = new Dirichlet(alleleFractionsPosterior).effectiveLog10MultinomialWeights();
+            final double [] tumorAlleleFractionsMeanField = MathUtils.normalizeFromLog10ToLinearSpace(tumorLog10AlleleFractionsMeanField);
+            gb.attribute(GATKVCFConstants.ALLELE_FRACTION_KEY, Arrays.copyOfRange(tumorAlleleFractionsMeanField, 1, tumorAlleleFractionsMeanField.length));
 
             // second way: mean of the allele fraction distribution
-            double [] tumorAlleleFractionsMean = MathUtils.normalizeFromRealSpace(alleleFractionsPosterior);
-            gb.attribute(GATKVCFConstants.ALLELE_FRACTION_KEY, Arrays.copyOfRange(tumorAlleleFractionsMean, 1, tumorAlleleFractionsMean.length));
+            // double [] tumorAlleleFractionsMean = MathUtils.normalizeFromRealSpace(alleleFractionsPosterior);
+            // gb.attribute(GATKVCFConstants.ALLELE_FRACTION_KEY, Arrays.copyOfRange(tumorAlleleFractionsMean, 1, tumorAlleleFractionsMean.length));
         }
         // Marton end
         final Genotype tumorGenotype = gb.make();

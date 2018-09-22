@@ -1,15 +1,15 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
 import com.google.common.annotations.VisibleForTesting;
-import htsjdk.variant.variantcontext.Allele;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.special.Gamma;
 import org.apache.commons.math3.util.MathArrays;
-import org.broadinstitute.hellbender.utils.*;
-import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
+import org.broadinstitute.hellbender.utils.Dirichlet;
+import org.broadinstitute.hellbender.utils.IndexRange;
+import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Arrays;
-import java.util.Collections;
 
 /**
  * Created by David Benjamin on 3/9/17.
