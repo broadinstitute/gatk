@@ -263,7 +263,7 @@ public final class FilterIntervals extends CommandLineProgram {
         logger.info(String.format("Writing filtered intervals to %s...", outputFilteredIntervalsFile));
         final IntervalList filteredIntervalList = new IntervalList(filteredIntervals.getMetadata().getSequenceDictionary());
         filteredIntervals.getIntervals().forEach(i -> filteredIntervalList.add(new Interval(i)));
-        filteredIntervals.write(outputFilteredIntervalsFile);
+        filteredIntervalList.write(outputFilteredIntervalsFile);
 
         return "SUCCESS";
     }
