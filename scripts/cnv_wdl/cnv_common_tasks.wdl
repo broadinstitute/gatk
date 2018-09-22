@@ -56,8 +56,8 @@ task AnnotateIntervals {
     File ref_fasta
     File ref_fasta_fai
     File ref_fasta_dict
-    File? mappability_track
-    File? segmental_duplication_track
+    String? mappability_track
+    String? segmental_duplication_track
     Int? feature_query_lookahead
     File? gatk4_jar_override
 

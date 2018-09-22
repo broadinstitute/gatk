@@ -57,8 +57,8 @@ workflow CNVGermlineCohortWorkflow {
     ##################################################
     #### optional arguments for AnnotateIntervals ####
     ##################################################
-    File? mappability_track
-    File? segmental_duplication_track
+    String? mappability_track
+    String? segmental_duplication_track
     Int? feature_query_lookahead
     Int? mem_gb_for_annotate_intervals
 
