@@ -22,7 +22,6 @@ import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-import scala.Char;
 
 public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
     final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(1, 1, 100000000);
@@ -89,6 +88,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         List<String> haplotypeStrings = new ArrayList<String>();
 
         for (int iSnp = 0; iSnp < snpIndecies.size(); iSnp++) {
+            //create set of haplotype sequences with different combinations of snps, deletions, indels
             Integer snpIndex = snpIndecies.get(iSnp);
             Character snpReplacement = snpReplacements.get(iSnp);
             for (int iDel = 0; iDel < delIndecies.size(); iDel++) {
@@ -117,6 +117,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         List<GATKRead> reads = new ArrayList<>();
         Map<GATKRead, Haplotype> readHaplotypeMap = new HashMap<>();
         for (Haplotype haplotype : haplotypesList) {
+            //create a bunch of reads for different haplotypes
             final String hapString = haplotype.getBaseString();
             for (int readStart = 0; readStart < hapString.length() - 6; readStart += 3) {
                 for (int readEnd = Math.min(hapString.length(), readStart + 20); readEnd < Math.min(hapString.length(), readStart + 40); readEnd += 4) {
@@ -138,6 +139,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         final ReadLikelihoods<Haplotype> readLikelihoods = new ReadLikelihoods<>(samples, haplotypes, sampleReadMap);
         LikelihoodMatrix<Haplotype> sampleMatrix = readLikelihoods.sampleMatrix(0);
         for (GATKRead read : reads) {
+            //set likelihoods, -1.0 for haplotype read assigned to, -8.0 for all other haplotypes
             final int readIndex = sampleMatrix.indexOfRead(read);
             for (Haplotype haplotype : haplotypesList) {
                 final int haplotypeIndex = sampleMatrix.indexOfAllele(haplotype);
@@ -226,6 +228,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         final Cigar refCigar = new Cigar(Arrays.asList(new CigarElement(refString.length(), CigarOperator.M)));
         refHaplotype.setCigar(refCigar);
 
+        //add three variants (2 snps and an indel)
         List<VariantContext> vcs = new ArrayList<>();
         vcs.add(new VariantContextBuilder("source", contig, start + 3, start + 3, Arrays.asList(
                 Allele.create("T".getBytes(), true), Allele.create("G".getBytes(), false))).make());
@@ -241,6 +244,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         }
 
         int qNameIndex = 0;
+        //three true haplotypes.  All alt for first snp and indel, cycle through 3 alleles for second snp
         for (int readStart = loc.getStart(); readStart < loc.getEnd() - 6; readStart += 4) {
             for (int readEnd = Math.min(readStart + 20, loc.getEnd()); readEnd < Math.min(readStart + 50, loc.getEnd()); readEnd += 3) {
                 final SimpleInterval readLoc = new SimpleInterval(contig, readStart, readEnd);

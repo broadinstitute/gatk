@@ -6,7 +6,6 @@ import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
-import ngs.Read;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -282,6 +281,13 @@ public final class AssemblyBasedCallerUtils {
         }
     }
 
+    /**
+     * Annotates reads in ReadLikelihoods with alignment region (the ref region spanned by the haplotype the read is aligned to) and
+     * callable region (the ref region over which a caller is using these ReadLikelihoods to call variants)
+     *
+     * @param likelihoodsHaplotype ReadLikelihoods containing reads to be annotated along with haplotypes to which these reads have been aligned
+     * @param callableRegion ref region over which caller is using these ReadLikelihoods to call variants
+     */
     public static void annotateReadLikelihoodsWithRegions(final ReadLikelihoods<Haplotype> likelihoodsHaplotype,
                                                           final Locatable callableRegion) {
         //assign alignment regions to each read
@@ -301,6 +307,12 @@ public final class AssemblyBasedCallerUtils {
         }
     }
 
+    /**
+     * Annotates reads in ReadLiklihoods with genotype supported by each read a particular variant.  If a read already has a
+     * supported genotypes annotation this additional annotation is appended to the previous annotation, it does not replace it.
+     * @param vc The variant for which to annotate the reads
+     * @param likelihoodsAllele ReadLiklihoods containing reads to be annotated along with alleles of the variant vc
+     */
     public static void annotateReadLikelihoodsWithSupportedGenotypes(final VariantContext vc,
                                                                      final ReadLikelihoods<Allele> likelihoodsAllele) {
         //assign supported Genotypes to each read
