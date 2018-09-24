@@ -25,7 +25,8 @@ import org.testng.annotations.Test;
 import scala.Char;
 
 public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
-    private SAMFileHeader header;
+    final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(1, 1, 100000000);
+    final SAMLineParser parser = new SAMLineParser(header);
 
     // In finalizeRegion(), the base qualities of overlapped read clips pairs are adjusted.
     // Most of read clips are clipped/copy from original reads, and the base qualities of original reads are not affected.
@@ -65,6 +66,11 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         Assert.assertTrue(reads.get(1).convertToSAMRecord(header).equals(orgRead1));
     }
 
+    // ------------------------------------------------------------------------
+    //
+    //  Test annotation of reads for bamout
+    //
+    // ------------------------------------------------------------------------
     @DataProvider(name = "testAnnotateReadLikelihoodsWithRegionsDataProvider")
     public Object[][] testAnnotateReadLikelihoodsWithRegionsDataProvider() {
 
@@ -107,9 +113,6 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         }
         final List<Haplotype> haplotypesList = haplotypeStrings.stream().map(h -> new Haplotype(h.getBytes(), loc)).collect(Collectors.toList());
 
-        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(1, 1, 100000000);
-        SAMLineParser parser = new SAMLineParser(header);
-
         int qNameIndex = 0;
         List<GATKRead> reads = new ArrayList<>();
         Map<GATKRead, Haplotype> readHaplotypeMap = new HashMap<>();
@@ -118,21 +121,10 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
             for (int readStart = 0; readStart < hapString.length() - 6; readStart += 3) {
                 for (int readEnd = Math.min(hapString.length(), readStart + 20); readEnd < Math.min(hapString.length(), readStart + 40); readEnd += 4) {
                     final String readString = hapString.substring(readStart, readEnd);
-                    final String baseQuals = StringUtils.repeat("<", readString.length());  //actual basequals is unimportant for this test
                     final String cigar = readString.length() + "M"; //actual cigar is unimportant for this test
                     final String qname = "r" + qNameIndex;
                     qNameIndex++;
-                    final int flag = 83;
-                    final String rname = contig;
-                    final int pos = start + readStart;
-                    final int mapq = 39;
-                    final String rnext = "=";
-                    final int pnext = pos + 100;
-                    final int tlen = 200;
-                    final String samLine = qname + "\t" + flag + "\t" + rname + "\t" + pos + "\t" + mapq + "\t" + cigar + "\t" + rnext + "\t" +
-                            pnext + "\t" + tlen + "\t" + readString + "\t" + baseQuals;
-                    final SAMRecord samRead = parser.parseLine(samLine);
-                    final SAMRecordToGATKReadAdapter read = new SAMRecordToGATKReadAdapter(samRead);
+                    final SAMRecordToGATKReadAdapter read = buildRead(readString,cigar,start+readStart,qname,contig);
                     reads.add(read);
                     readHaplotypeMap.put(read, haplotype);
                 }
@@ -197,6 +189,21 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         return retSeq;
     }
 
+    private SAMRecordToGATKReadAdapter buildRead(final String seq, final String cigar, final int pos, final String qName,final String rName) {
+        final String baseQuals = StringUtils.repeat("<", seq.length());
+        final int mapq = 39;
+        final String rnext = "=";
+        final int pnext = pos + 100;
+        final int tlen = 200;
+        final int flag = 83;
+        final String samLine = qName + "\t" + flag + "\t" + rName + "\t" + pos + "\t" + mapq + "\t" + cigar + "\t" + rnext + "\t" +
+                pnext + "\t" + tlen + "\t" + seq + "\t" + baseQuals;
+        final SAMRecord samRead = parser.parseLine(samLine);
+        final SAMRecordToGATKReadAdapter read = new SAMRecordToGATKReadAdapter(samRead);
+
+        return read;
+    }
+
     @Test(dataProvider = "testAnnotateReadLikelihoodsWithRegionsDataProvider")
     public void testAnnotateReadLikelihoodsWithRegions(ReadLikelihoods<Haplotype> readLikelihoods, final Locatable loc, final Locatable callableLoc) {
         AssemblyBasedCallerUtils.annotateReadLikelihoodsWithRegions(readLikelihoods, callableLoc);
@@ -245,21 +252,10 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
                     }
                     readHaplotype = applyVariant(vcs.get(2), readHaplotype, 0);
                     final String readString = readHaplotype.getBaseString();
-                    final String baseQuals = StringUtils.repeat("<", readString.length());  //actual basequals is unimportant for this test
                     final String cigar = readString.length() + "M"; //actual cigar is unimportant for this test
                     final String qname = "r" + qNameIndex;
                     qNameIndex++;
-                    final int flag = 83;
-                    final String rname = contig;
-                    final int pos = readStart;
-                    final int mapq = 39;
-                    final String rnext = "=";
-                    final int pnext = pos + 100;
-                    final int tlen = 200;
-                    final String samLine = qname + "\t" + flag + "\t" + rname + "\t" + pos + "\t" + mapq + "\t" + cigar + "\t" + rnext + "\t" +
-                            pnext + "\t" + tlen + "\t" + readString + "\t" + baseQuals;
-                    final SAMRecord samRead = parser.parseLine(samLine);
-                    final SAMRecordToGATKReadAdapter read = new SAMRecordToGATKReadAdapter(samRead);
+                    final SAMRecordToGATKReadAdapter read = buildRead(readString,cigar,readStart,qname,contig);
                     supportedGenotypeMap.put(read, phase);
                     for (final VariantContext vc : vcs) {
                         if (read.getStart() <= vc.getStart() && read.getEnd() >= vc.getEnd()) {
