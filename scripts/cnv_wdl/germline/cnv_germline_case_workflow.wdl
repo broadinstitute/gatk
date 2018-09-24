@@ -30,7 +30,7 @@ workflow CNVGermlineCaseWorkflow {
     ##################################
     File intervals
     File? blacklist_intervals
-    File? filtered_intervals
+    File filtered_intervals
     Array[String]+ normal_bams
     Array[String]+ normal_bais
     File contig_ploidy_model_tar
