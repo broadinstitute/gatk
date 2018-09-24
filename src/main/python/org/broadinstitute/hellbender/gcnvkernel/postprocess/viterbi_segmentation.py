@@ -21,11 +21,8 @@ _logger = logging.getLogger(__name__)
 
 
 class ViterbiSegmentationEngine:
-    """This class runs the forward-backward and Viterbi algorithm on gCNV model/calls shards, obtains
-    constant copy-number segments, calculates various quality metrics, and saves the result to disk.
-
-    Note:
-        This class is callable. Upon calling, all samples in the call-set will be processed sequentially.
+    """This class runs the forward-backward and Viterbi algorithm on gCNV model/calls shards for a single sample,
+     obtains constant copy-number segments, calculates various quality metrics, and saves the result to disk.
 
     Note:
         It is assumed that the model and calls shards are provided in order according to the SAM sequence dictionary.
@@ -35,20 +32,23 @@ class ViterbiSegmentationEngine:
                  model_shards_paths: List[str],
                  calls_shards_paths: List[str],
                  sample_metadata_collection: SampleMetadataCollection,
+                 sample_index: int,
                  output_path: str):
         """Initializer.
         
         Args:
             model_shards_paths: list of paths to model shards
             calls_shards_paths: list of paths to calls shards
-            sample_metadata_collection: sample metadata collection (must contain all samples)
+            sample_metadata_collection: sample metadata collection (must contain sample being analyzed)
+            sample_index: index of the sample in the callset
             output_path: output path for writing segmentation results
         """
         try:
-            self._validate_args(model_shards_paths, calls_shards_paths, sample_metadata_collection)
+            self._validate_args(model_shards_paths, calls_shards_paths, sample_metadata_collection, sample_index)
         except AssertionError as ex:
             raise Exception("Inconsistency detected in the provided model and calls shards.") from ex
 
+        self.sample_index = sample_index
         self.output_path = output_path
         self.calls_shards_paths = calls_shards_paths
         self.sample_metadata_collection = sample_metadata_collection
@@ -69,8 +69,7 @@ class ViterbiSegmentationEngine:
             os.path.join(model_shards_paths[0], io_consts.default_interval_list_filename))
 
         # sample names
-        self.sample_names = self._get_sample_names_from_calls_shard(calls_shards_paths[0])
-        self.num_samples = len(self.sample_names)
+        self.sample_name = self._get_sample_name_from_calls_shard(calls_shards_paths[0], sample_index)
 
         # interval list metadata
         interval_list_metadata: IntervalListMetadata = IntervalListMetadata(self.interval_list)
@@ -107,50 +106,23 @@ class ViterbiSegmentationEngine:
         self.get_copy_number_hmm_specs = HHMMClassAndCopyNumberBasicCaller\
             .get_compiled_copy_number_hmm_specs_theano_func()
 
-    def __call__(self):
-        """Perform Viterbi segmentation for all samples, calculates segment qualities and writes the results
-        to disk.
-        """
-        io_commons.assert_output_path_writable(self.output_path)
-
-        # write configs and gcnvkernel version to output path
-        shutil.copy(os.path.join(self.calls_shards_paths[0], io_consts.default_denoising_config_json_filename),
-                    self.output_path)
-        shutil.copy(os.path.join(self.calls_shards_paths[0], io_consts.default_calling_config_json_filename),
-                    self.output_path)
-        io_commons.write_gcnvkernel_version(self.output_path)
-
-        # write concatenated interval list to output path
-        io_intervals_and_counts.write_interval_list_to_tsv_file(
-            os.path.join(self.output_path, io_consts.default_interval_list_filename),
-            self.interval_list,
-            self.interval_list_sam_header_lines)
-
-        for si in range(self.num_samples):
-            self.write_copy_number_segments_for_single_sample(si)
-
-    def _viterbi_segments_generator_for_single_sample(self, sample_index: int)\
-            -> Generator[IntegerCopyNumberSegment, None, None]:
+    def _viterbi_segments_generator(self) -> Generator[IntegerCopyNumberSegment, None, None]:
         """Performs Viterbi segmentation and segment quality calculation for a single sample in
         the call-set and returns a generator for segments.
-
-        Args:
-            sample_index: index of the sample in the collection
 
         Returns:
             a generator for segments
         """
-        assert 0 <= sample_index < self.num_samples, "Sample index is out of range."
 
         # load copy number log emission for the sample
         copy_number_log_emission_tc_shards = ()
         for calls_path in self.calls_shards_paths:
             copy_number_log_emission_tc_shards += (self._get_log_copy_number_emission_tc_from_calls_shard(
-                calls_path, sample_index),)
+                calls_path, self.sample_index),)
         copy_number_log_emission_tc = np.concatenate(copy_number_log_emission_tc_shards, axis=0)
 
         # iterate over contigs and perform segmentation
-        sample_name = self.sample_names[sample_index]
+        sample_name = self.sample_name
         for contig_index, contig in enumerate(self.ordered_contig_list):
             _logger.info("Segmenting contig ({0}/{1}) (contig name: {2})...".format(
                 contig_index + 1, len(self.ordered_contig_list), contig))
@@ -228,17 +200,14 @@ class ViterbiSegmentationEngine:
 
                 yield segment
 
-    def write_copy_number_segments_for_single_sample(self, sample_index: int):
+    def write_copy_number_segments(self):
         """Performs Viterbi segmentation and segment quality calculation for a single sample in
         the call-set and saves the results to disk.
 
-        Args:
-            sample_index: sample index in the call-set
         """
-        assert 0 <= sample_index < self.num_samples, "Sample index is out of range."
-        sample_name = self.sample_names[sample_index]
-        _logger.info("Processing sample index: {0}, sample name: {1}...".format(sample_index, sample_name))
-        sample_output_path = os.path.join(self.output_path, io_consts.sample_folder_prefix + repr(sample_index))
+        sample_name = self.sample_name
+        _logger.info("Processing sample index: {0}, sample name: {1}...".format(self.sample_index, sample_name))
+        sample_output_path = os.path.join(self.output_path, io_consts.sample_folder_prefix + repr(self.sample_index))
         io_commons.assert_output_path_writable(sample_output_path, try_creating_output_path=True)
 
         # write configs, gcnvkernel version and sample name to output path
@@ -262,19 +231,21 @@ class ViterbiSegmentationEngine:
             of.write(IntegerCopyNumberSegment.get_header_column_string() + '\n')
 
             # add segments
-            for segment in self._viterbi_segments_generator_for_single_sample(sample_index):
+            for segment in self._viterbi_segments_generator():
                 of.write(repr(segment) + '\n')
 
     @staticmethod
     def _validate_args(model_shards_paths: List[str],
                        calls_shards_paths: List[str],
-                       sample_metadata_collection: SampleMetadataCollection):
+                       sample_metadata_collection: SampleMetadataCollection,
+                       sample_index: int):
         assert len(model_shards_paths) > 0, "At least one model shard must be provided."
         assert len(calls_shards_paths) == len(model_shards_paths),\
             "The number of model shards ({0}) and calls shards ({1}) must match.".format(
                 len(model_shards_paths), len(calls_shards_paths))
+        assert sample_index >= 0, "Sample index must be an integer non-negative number"
 
-        scattered_sample_names: List[Tuple[str]] = []
+        scattered_sample_names: List[str] = []
         for model_path, calls_path in zip(model_shards_paths, calls_shards_paths):
             # assert interval lists are identical
             model_interval_list_file = os.path.join(model_path, io_consts.default_interval_list_filename)
@@ -308,7 +279,8 @@ class ViterbiSegmentationEngine:
                                 "proceeding at your own risk!")
 
             # extract and store sample names for the current shard
-            scattered_sample_names.append(ViterbiSegmentationEngine._get_sample_names_from_calls_shard(calls_path))
+            scattered_sample_names.append(
+                ViterbiSegmentationEngine._get_sample_name_from_calls_shard(calls_path, sample_index))
 
         # all scattered calls have the same set of samples and in the same order
         assert len(set(scattered_sample_names)) == 1,\
@@ -319,19 +291,13 @@ class ViterbiSegmentationEngine:
         sample_metadata_collection.all_samples_have_ploidy_metadata(sample_names)
 
     @staticmethod
-    def _get_sample_names_from_calls_shard(calls_path: str) -> Tuple[str]:
-        sample_names: Tuple[str] = ()
-        sample_index = 0
-        while True:
-            sample_posteriors_path = io_denoising_calling.get_sample_posterior_path(calls_path, sample_index)
-            if not os.path.isdir(sample_posteriors_path):
-                break
-            sample_names += (io_commons.get_sample_name_from_txt_file(sample_posteriors_path),)
-            sample_index += 1
-        if len(sample_names) == 0:
-            raise Exception("Could not find any sample posterior calls in {0}.".format(calls_path))
-        else:
-            return tuple(sample_names)
+    def _get_sample_name_from_calls_shard(calls_path: str, sample_index: int) -> str:
+        sample_posteriors_path = io_denoising_calling.get_sample_posterior_path(calls_path, sample_index)
+        if not os.path.isdir(sample_posteriors_path):
+            raise Exception("Could not find any sample posterior calls in {0} for sample with index {1}.".
+                            format(calls_path, sample_index))
+        sample_name = io_commons.get_sample_name_from_txt_file(sample_posteriors_path)
+        return sample_name
 
     @staticmethod
     def _get_denoising_config(input_path: str) -> DenoisingModelConfig:
