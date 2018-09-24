@@ -24,6 +24,8 @@ import org.broadinstitute.hellbender.testutils.SamAssertionUtils;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.AlleleSubsettingUtils;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.variantutils.ValidateVariants;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
@@ -78,19 +80,27 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
 
         final File output = createTempFile("testVCFModeIsConsistentWithPastResults", ".vcf");
         final File expected = new File(TEST_FILES_DIR, "expected.testVCFMode.gatk4.vcf");
+        final String interval = "20:10000000-10100000";
 
         final String outputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : output.getAbsolutePath();
 
         final String[] args = {
                 "-I", inputFileName,
                 "-R", referenceFileName,
-                "-L", "20:10000000-10100000",
+                "-L", interval,
                 "-O", outputPath,
                 "-pairHMM", "AVX_LOGLESS_CACHING",
                 "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
         };
 
         runCommandLine(args);
+
+        final ArgumentsBuilder validateVariantsArgs = new ArgumentsBuilder()
+                .addArgument("R", referenceFileName)
+                .addArgument("V", outputPath)
+                .addArgument("L", IntervalUtils.locatableToString(new SimpleInterval(interval)))
+                .addArgument("optional-type", "VQSR");
+        runCommandLine(validateVariantsArgs, ValidateVariants.class.getSimpleName());
 
         // Test for an exact match against past results
         if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
@@ -211,11 +221,12 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         // --disableDithering --no_cmdline_in_header  -dt NONE --maxReadsInRegionPerSample 100000000 --minReadsPerAlignmentStart 100000 \
         // -pairHMM VECTOR_LOGLESS_CACHING
         final File gatk3Output = new File(TEST_FILES_DIR + "expected.testVCFMode.gatk3.8-4-g7b0250253f.alleleSpecific.vcf");
+        final String interval = "20:10000000-10100000";
 
         final String[] args = {
                 "-I", inputFileName,
                 "-R", referenceFileName,
-                "-L", "20:10000000-10100000",
+                "-L", interval,
                 "-O", output.getAbsolutePath(),
                 "-G", "StandardAnnotation",
                 "-G", "StandardHCAnnotation",
@@ -238,13 +249,14 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
 
         final File output = createTempFile("testGVCFModeIsConsistentWithPastResults", ".g.vcf");
         final File expected = new File(TEST_FILES_DIR, "expected.testGVCFMode.gatk4.g.vcf");
+        final String interval = "20:10000000-10100000";
 
         final String outputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : output.getAbsolutePath();
 
         final String[] args = {
                 "-I", inputFileName,
                 "-R", referenceFileName,
-                "-L", "20:10000000-10100000",
+                "-L", interval,
                 "-O", outputPath,
                 "--" + AssemblyBasedCallerArgumentCollection.EMIT_REF_CONFIDENCE_LONG_NAME, ReferenceConfidenceMode.GVCF.toString(),
                 "-pairHMM", "AVX_LOGLESS_CACHING",
@@ -252,6 +264,14 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         };
 
         runCommandLine(args);
+
+        final ArgumentsBuilder validateVariantsArgs = new ArgumentsBuilder()
+                .addArgument("R", referenceFileName)
+                .addArgument("V", outputPath)
+                .addArgument("L", IntervalUtils.locatableToString(new SimpleInterval(interval)))
+                .add("-gvcf")
+                .addArgument("optional-type", "VQSR");
+        runCommandLine(validateVariantsArgs, ValidateVariants.class.getSimpleName());
 
         // Test for an exact match against past results
         if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
@@ -306,13 +326,14 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
 
         final File output = createTempFile("testGVCFModeIsConsistentWithPastResults_AlleleSpecificAnnotations", ".g.vcf");
         final File expected = new File(TEST_FILES_DIR + "expected.testGVCFMode.gatk4.alleleSpecific.g.vcf");
+        final String interval = "20:10000000-10100000";
 
         final String outputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : output.getAbsolutePath();
 
         final String[] args = {
                 "-I", inputFileName,
                 "-R", referenceFileName,
-                "-L", "20:10000000-10100000",
+                "-L", interval,
                 "-O", outputPath,
                 "-G", "StandardAnnotation",
                 "-G", "StandardHCAnnotation",
@@ -323,6 +344,15 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         };
 
         runCommandLine(args);
+
+        final ArgumentsBuilder validateVariantsArgs = new ArgumentsBuilder()
+                .addArgument("R", referenceFileName)
+                .addArgument("V", outputPath)
+                .addArgument("L", IntervalUtils.locatableToString(new SimpleInterval(interval)))
+                .add("-gvcf")
+                .addArgument("optional-type", "VQSR")
+                .addArgument("optional-type", "AS_ANNOTATIONS");
+        runCommandLine(validateVariantsArgs, ValidateVariants.class.getSimpleName());
 
         // Test for an exact match against past results
         if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {

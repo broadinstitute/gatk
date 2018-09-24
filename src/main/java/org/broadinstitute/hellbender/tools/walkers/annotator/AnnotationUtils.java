@@ -5,7 +5,7 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.*;
 import java.util.*;
 
 public final class AnnotationUtils {
-    public static final String ALLELE_SPECIFIC_PRINT_DELIM = "|";
+    public static final String ALLELE_SPECIFIC_RAW_DELIM = "|";
     public static final String ALLELE_SPECIFIC_REDUCED_DELIM = ",";
     public static final String ALLELE_SPECIFIC_SPLIT_REGEX = "\\|"; //String.split takes a regex, so we need to escape the pipe
     public static final String BRACKET_REGEX = "\\[|\\]";
@@ -41,16 +41,33 @@ public final class AnnotationUtils {
      * @return a pipe-separated String
      */
     public static String encodeAnyASList( final List<?> somethingList) {
-        return StringUtils.join(somethingList, ALLELE_SPECIFIC_PRINT_DELIM).replaceAll(BRACKET_REGEX, "");  //Who actually wants brackets at the ends of their string?  Who???
+        return StringUtils.join(somethingList, ALLELE_SPECIFIC_RAW_DELIM).replaceAll(BRACKET_REGEX, "");  //Who actually wants brackets at the ends of their string?  Who???
     }
 
     /**
-     * Helper function to convert a comma-separated String (such as a vc.getAttrbute().toString() output) to a List of Strings
-     * @param somethingList the allele-specific annotations string; may have brackets
-     * @return a list of allele-specific annotation entries
+     * Extract a list of strings from a delimited annotation string (which may or may not have spaces and brackets)
+     * @param somethingList input string
+     * @param isRaw does the annotation use the delimiter for raw allele-specific annotations
+     * @return a list of allele-specific annotation entries as Strings
      */
-    public static List<String> decodeAnyASList( final String somethingList) {
-        return Arrays.asList(StringUtils.splitByWholeSeparatorPreserveAllTokens(somethingList.replaceAll(BRACKET_REGEX, ""), ALLELE_SPECIFIC_REDUCED_DELIM));
+    public static List<String> decodeAnyASList( final String somethingList, final boolean isRaw) {
+        if (isRaw) {
+            return decodeAnyASList(somethingList, ALLELE_SPECIFIC_RAW_DELIM);
+        } else {
+            return decodeAnyASList(somethingList, ALLELE_SPECIFIC_REDUCED_DELIM);
+        }
+    }
+
+
+    /**
+     * Helper function to convert a delimited String (which may or may not have spaces and brackets,
+     * such as a vc.getAttrbute().toString() output) to a List of Strings
+     * @param somethingList the allele-specific annotations string; may have brackets
+     * @param splitDelim the delimiter that separates list entries
+     * @return a list of allele-specific annotation entries as Strings
+     */
+    public static List<String> decodeAnyASList( final String somethingList, final String splitDelim) {
+        return Arrays.asList(StringUtils.splitByWholeSeparatorPreserveAllTokens(somethingList.replaceAll(BRACKET_REGEX, "").replaceAll(" ", ""), splitDelim));
     }
 
     /**

@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.GenomicsDBTestUtils;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -72,6 +73,11 @@ public class GnarlyGenotyperIntegrationTest extends CommandLineProgramTest {
         final List<VariantContext> expectedVC = getVariantContexts(expected);
         final List<VariantContext> actualVC = getVariantContexts(output);
         VariantContextTestUtils.assertEqualVariants(actualVC, expectedVC);
+
+        for (final VariantContext vc : actualVC) {
+            GATKVariantContextUtils.assertAlleleSpecificAnnotationsHaveCorrectLength(vc);
+        }
+
         if (expectedDb != null) {
             final List<VariantContext> expectedDB = getVariantContexts(expectedDb);
             final List<VariantContext> actualDB = getVariantContexts(outputDatabase);

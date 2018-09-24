@@ -7,16 +7,15 @@ import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder;
-import htsjdk.variant.vcf.VCFConstants;
-import htsjdk.variant.vcf.VCFHeaderLine;
-import htsjdk.variant.vcf.VCFSimpleHeaderLine;
-import htsjdk.variant.vcf.VCFStandardHeaderLines;
+import htsjdk.variant.vcf.*;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
@@ -307,6 +306,73 @@ public final class GATKVariantContextUtils {
             return false;
         } else {
             return true;
+        }
+    }
+
+    public static UserException assertAlleleSpecificAnnotationsHaveCorrectLength(final VariantContext vc) {
+        UserException e = assertAlleleSpecificAnnotationLengthsCorrect(vc, GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY,
+                VCFHeaderLineCount.R);
+        if (e == null) {
+            e = assertAlleleSpecificAnnotationLengthsCorrect(vc, GATKVCFConstants.AS_RMS_MAPPING_QUALITY_KEY,
+                    VCFHeaderLineCount.A, false);
+        } if (e == null) {
+            e = assertAlleleSpecificAnnotationLengthsCorrect(vc, GATKVCFConstants.AS_RAW_MAP_QUAL_RANK_SUM_KEY,
+                    VCFHeaderLineCount.R);
+        } if (e == null) {
+            e = assertAlleleSpecificAnnotationLengthsCorrect(vc, GATKVCFConstants.AS_MAP_QUAL_RANK_SUM_KEY,
+                    VCFHeaderLineCount.A, false);
+        } if (e == null) {
+            e = assertAlleleSpecificAnnotationLengthsCorrect(vc, GATKVCFConstants.AS_RAW_READ_POS_RANK_SUM_KEY,
+                    VCFHeaderLineCount.R);
+        } if (e == null) {
+            e = assertAlleleSpecificAnnotationLengthsCorrect(vc, GATKVCFConstants.AS_READ_POS_RANK_SUM_KEY,
+                    VCFHeaderLineCount.A, false);
+        } if (e == null) {
+            e = assertAlleleSpecificAnnotationLengthsCorrect(vc, GATKVCFConstants.AS_SB_TABLE_KEY,
+                    VCFHeaderLineCount.R);
+        } if (e == null) {
+            e = assertAlleleSpecificAnnotationLengthsCorrect(vc, GATKVCFConstants.AS_FISHER_STRAND_KEY,
+                    VCFHeaderLineCount.A, false);
+        } if (e == null) {
+            e = assertAlleleSpecificAnnotationLengthsCorrect(vc, GATKVCFConstants.AS_STRAND_ODDS_RATIO_KEY,
+                    VCFHeaderLineCount.A, false);
+        }
+        return e;
+    }
+
+    public static UserException assertAlleleSpecificAnnotationLengthsCorrect(final VariantContext actual, final String annotation, final VCFHeaderLineCount expectedCount) {
+        return assertAlleleSpecificAnnotationLengthsCorrect(actual, annotation, expectedCount, true, false);
+    }
+
+    public static UserException assertAlleleSpecificAnnotationLengthsCorrect(final VariantContext actual, final String annotation, final VCFHeaderLineCount expectedCount, final boolean isRawFormat) {
+        return assertAlleleSpecificAnnotationLengthsCorrect(actual, annotation, expectedCount, isRawFormat, false);
+    }
+
+    /**
+     * Check the counts of AS annotation values based on the alleles in the VariantContext
+     * @param vc    current VariantContext output
+     * @param annotation    key for the annotation to be tested (e.g. 'MQ' not the class 'RMSMappingQuality')
+     * @param expectedCount number of allele values represented, i.e. with or without reference allele
+     * @param isRawFormat   true if the AS annotation is in the "raw" format, which uses the pipe delimiter
+     * @return null if length is correct, else UserException
+     */
+    public static UserException assertAlleleSpecificAnnotationLengthsCorrect(final VariantContext vc, final String annotation, final VCFHeaderLineCount expectedCount, final boolean isRawFormat, final boolean failIfMissing) {
+        final List<Allele> alleles = vc.getAlleles();
+        final String regex = isRawFormat ? AnnotationUtils.ALLELE_SPECIFIC_SPLIT_REGEX : AnnotationUtils.ALLELE_SPECIFIC_REDUCED_DELIM;
+        if (vc.hasAttribute(annotation)) {
+            final String[] actualAnnotation = vc.getAttributeAsString(annotation, "").split(regex, -1);
+            final int expectedLength = (expectedCount == VCFHeaderLineCount.R ? alleles.size() : alleles.size() - 1);
+            if (actualAnnotation.length != expectedLength) {
+                return new UserException.BadInput("Annotation " + annotation + " at " + vc.getContig() + ":" + vc.getStart()
+                        + " expected to have length " + expectedLength + " but found length " + actualAnnotation.length);
+            }
+            return null;
+        } else {
+            if (failIfMissing) {
+                return new UserException.BadInput("Annotation " + annotation + " at " + vc.getContig() + ":" + vc.getStart()
+                        + " is missing.");
+            }
+            return null;
         }
     }
 
