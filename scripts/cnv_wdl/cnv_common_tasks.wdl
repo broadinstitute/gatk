@@ -287,8 +287,8 @@ task PostprocessGermlineCNVCalls {
         calls_args=""
         for index in ${dollar}{!gcnv_calls_tar_array[@]}; do
             gcnv_calls_tar=${dollar}{gcnv_calls_tar_array[$index]}
-            mkdir -p CALLS_$index/SAMPLE_${sample_index}
-            tar xzf $gcnv_calls_tar -C CALLS_$index/SAMPLE_${sample_index}
+            mkdir CALLS_$index
+            tar xzf $gcnv_calls_tar -C CALLS_$index
             cp ${dollar}{calling_configs_array[$index]} CALLS_$index/
             cp ${dollar}{denoising_configs_array[$index]} CALLS_$index/
             cp ${dollar}{gcnvkernel_version_array[$index]} CALLS_$index/
