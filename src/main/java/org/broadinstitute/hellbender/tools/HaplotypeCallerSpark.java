@@ -201,7 +201,7 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
         final VariantAnnotatorEngine variantannotatorEngine = new VariantAnnotatorEngine(annotations,  hcArgs.dbsnp.dbsnp, hcArgs.comps, hcArgs.emitReferenceConfidence != ReferenceConfidenceMode.NONE);
 
         final Path referencePath = IOUtils.getPath(reference);
-        final ReferenceSequenceFile driverReferenceSequenceFile = CachingIndexedFastaSequenceFile.checkAndCreate(referencePath);
+        final ReferenceSequenceFile driverReferenceSequenceFile = new CachingIndexedFastaSequenceFile(referencePath);
         final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgs, false, false, header, driverReferenceSequenceFile, variantannotatorEngine);
         final String referenceFileName = referencePath.getFileName().toString();
         final JavaRDD<VariantContext> variants = callVariantsWithHaplotypeCaller(ctx, reads, header, referenceFileName, intervals, hcArgs, shardingArgs, variantannotatorEngine);
@@ -272,7 +272,7 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
         return regionAndIntervals -> {
             //HaplotypeCallerEngine isn't serializable but is expensive to instantiate, so construct and reuse one for every partition
             final String pathOnExecutor = SparkFiles.get(referenceFileName);
-            final ReferenceSequenceFile taskReferenceSequenceFile = CachingIndexedFastaSequenceFile.checkAndCreate(IOUtils.getPath(pathOnExecutor));
+            final ReferenceSequenceFile taskReferenceSequenceFile = new CachingIndexedFastaSequenceFile(IOUtils.getPath(pathOnExecutor));
             final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgsBroadcast.value(), false, false, header, taskReferenceSequenceFile, annotatorEngineBroadcast.getValue());
             return Utils.stream(regionAndIntervals).flatMap(regionToVariants(hcEngine)).iterator();
         };
@@ -310,7 +310,7 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
             final Broadcast<VariantAnnotatorEngine> annotatorEngineBroadcast) {
         return shards -> {
             final String pathOnExecutor = SparkFiles.get(referenceFileName);
-            final ReferenceSequenceFile taskReferenceSequenceFile = CachingIndexedFastaSequenceFile.checkAndCreate(IOUtils.getPath(pathOnExecutor));
+            final ReferenceSequenceFile taskReferenceSequenceFile = new CachingIndexedFastaSequenceFile(IOUtils.getPath(pathOnExecutor));
             final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgsBroadcast.value(), false, false, header, taskReferenceSequenceFile, annotatorEngineBroadcast.getValue());
 
             final ReferenceDataSource taskReferenceDataSource = new ReferenceFileSource(IOUtils.getPath(pathOnExecutor)); // TODO: share with taskReferenceSequenceFile
