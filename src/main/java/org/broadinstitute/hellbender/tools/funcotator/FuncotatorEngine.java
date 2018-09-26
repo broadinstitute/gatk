@@ -192,7 +192,7 @@ public final class FuncotatorEngine implements AutoCloseable {
                         unaccountedForDefaultAnnotations,
                         unaccountedForOverrideAnnotations,
                         defaultToolVcfHeaderLines.stream().map(Object::toString).collect(Collectors.toCollection(LinkedHashSet::new)),
-                        funcotatorArgs.referenceVersion);
+                        funcotatorArgs.referenceVersion, funcotatorArgs.excludedFields);
                 break;
 
             case VCF:
@@ -202,7 +202,7 @@ public final class FuncotatorEngine implements AutoCloseable {
                         headerForVariants,
                         unaccountedForDefaultAnnotations,
                         unaccountedForOverrideAnnotations,
-                        defaultToolVcfHeaderLines
+                        defaultToolVcfHeaderLines, funcotatorArgs.excludedFields
                 );
                 break;
             default:

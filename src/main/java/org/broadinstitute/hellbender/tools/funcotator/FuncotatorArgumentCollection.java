@@ -101,4 +101,11 @@ public class FuncotatorArgumentCollection implements Serializable {
             doc = "(Advanced / DO NOT USE*) If you select this flag, Funcotator will force a conversion of variant contig names from b37 to hg19.  *This option is useful in integration tests (written by devs) only."
     )
     public boolean forceB37ToHg19ContigNameConversion = false;
+
+    @Argument(
+            fullName  = FuncotatorArgumentDefinitions.EXCLUSION_FIELDS_LONG_NAME,
+            optional = true,
+            doc = "Fields that should not be rendered in the final output."
+    )
+    public Set<String> excludedFields = new HashSet<>();
 }

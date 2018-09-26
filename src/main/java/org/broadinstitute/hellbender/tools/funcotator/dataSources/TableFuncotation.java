@@ -5,12 +5,10 @@ import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
-import org.broadinstitute.hellbender.tools.funcotator.FuncotatorUtils;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.xsv.LocatableXsvFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.xsv.SimpleKeyXsvFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetadata;
 import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetadataUtils;
-import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.codecs.xsvLocatableTable.XsvTableFeature;
 
@@ -99,13 +97,6 @@ public class TableFuncotation implements Funcotation {
                     + fieldName + " is not one of [" + String.join(",", fieldMap.keySet()) + "]");
         }
         fieldMap.put(fieldName, overrideValue);
-    }
-
-    @Override
-    public String serializeToVcfString() {
-        return fieldMap.values().stream()
-                .map(f -> (f == null ? "" : FuncotatorUtils.sanitizeFuncotationForVcf(f)))
-                .collect(Collectors.joining(VcfOutputRenderer.FIELD_DELIMITER));
     }
 
     @Override
@@ -213,6 +204,21 @@ public class TableFuncotation implements Funcotation {
     public static TableFuncotation create(final Map<String, Object> data, final Allele altAllele, final String dataSourceName, final FuncotationMetadata metadata ) {
         final List<String> fieldNames = new ArrayList<>(data.keySet());
         final List<String> fieldValues = fieldNames.stream().map(f -> data.get(f).toString()).collect(Collectors.toList());
+        return create(fieldNames, fieldValues, altAllele, dataSourceName, metadata);
+    }
+
+    /**
+     *  See {@link TableFuncotation#create(List, List, Allele, String, FuncotationMetadata)}
+     *
+     * @param data Map for field name to field value.  Never {@code null}
+     * @param altAllele See {@link TableFuncotation#create(List, List, Allele, String, FuncotationMetadata)}
+     * @param dataSourceName See {@link TableFuncotation#create(List, List, Allele, String, FuncotationMetadata)}
+     * @param metadata See {@link TableFuncotation#create(List, List, Allele, String, FuncotationMetadata)}
+     * @return See {@link TableFuncotation#create(List, List, Allele, String, FuncotationMetadata)}
+     */
+    public static TableFuncotation create(final LinkedHashMap<String, String> data, final Allele altAllele, final String dataSourceName, final FuncotationMetadata metadata ) {
+        final List<String> fieldNames = new ArrayList<>(data.keySet());
+        final List<String> fieldValues = fieldNames.stream().map(f -> data.get(f)).collect(Collectors.toList());
         return create(fieldNames, fieldValues, altAllele, dataSourceName, metadata);
     }
 

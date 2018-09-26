@@ -180,7 +180,6 @@ public class GencodeFuncotation implements Funcotation {
         return Allele.create(tumorSeqAllele2.getBytes(), false);
     }
 
-    @Override
     public String serializeToVcfString() {
         // Alias for the FIELD_DELIMITER so we can have nicer looking code:
         final String DELIMITER = VcfOutputRenderer.FIELD_DELIMITER;
@@ -212,7 +211,7 @@ public class GencodeFuncotation implements Funcotation {
                 (otherTranscriptsSerializedOverride != null ? otherTranscriptsSerializedOverride : (otherTranscripts != null ? otherTranscripts.stream().map(Object::toString).collect(Collectors.joining(VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER)) : ""))
             );
 
-        return funcotations.stream().map(FuncotatorUtils::sanitizeFuncotationForVcf).collect(Collectors.joining(DELIMITER));
+        return funcotations.stream().map(FuncotatorUtils::sanitizeFuncotationFieldForVcf).collect(Collectors.joining(DELIMITER));
     }
 
     @Override
