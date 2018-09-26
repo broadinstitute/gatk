@@ -313,7 +313,7 @@ To get the log odds we subtract the log likelihood, $\sum_n \ln \epsilon_n$, fro
 \section{Calculating Contamination}
 Below, we present the GATK's fast, simple, and accurate method for calculating the contamination of a sample.  This methods does not require a matched normal, makes no assumptions about the number of contaminating samples, and remains accurate even when the sample has a lot of copy number variation.
 
-The inputs to our tool are a bam file and a vcf of common variants -- for example ExAC, gnomAD, or 1000 Genomes -- with their allele frequencies.  The basic idea is simply to count ref reads at hom alt sites and subtract the number of ref reads expected from sequencing error to obtain the number of ref reads contaminating these hom alt sites.  Finally, we use the allele frequencies to account for the fact that some contaminating reads have the alt allele.  The only subtlety is in distinguishing hom alt sites from loss of heterozygosity events, which we describe below.
+The inputs to our tool are a bam file and a vcf of common variants -- for example ExAC, gnomAD, or 1000 Genomes -- with their allele frequencies.  The basic idea, which comes from ContEst\footnote{ContEst: estimating cross-contamination of human samples in next-generation sequencing data, \textit{Bioinformatics} \textbf{27}, 2601 (2011)} by Kristian Cibulskis and others in the Broad Institute Cancer Genome Analysis group, is simply to count ref reads at hom alt sites and subtract the number of ref reads expected from sequencing error to obtain the number of ref reads contaminating these hom alt sites.  Finally, we use the allele frequencies to account for the fact that some contaminating reads have the alt allele.  The only subtlety is in distinguishing hom alt sites from loss of heterozygosity events, which we describe below.
 
 Suppose we have a set $\mathbb{H}$ of SNPs at which our sample is homozygous for the alternate allele.  Let $N_{\rm ref}$ be the total number of ref reads at these sites.  We can decompose $N_{\rm ref}$ as follows:
 \begin{align}
@@ -361,6 +361,9 @@ Once the minor allele fraction is determined we compare the posterior probabilit
 
 
 \section{Proposed tumor in normal estimation tool}
+
+Note: the following notes are just a proposal for which no GATK tool yet exists.  A popular tool is DeTiN\footnote{DeTiN: overcoming tumor-in-normal contamination, \textit{Nature Methods} \textbf{15}, 531 (2018)} by Amaro Taylor-Weiner and others at the Broad Institute Cancer Genome Analysis group.
+
 Similar to the spirit of CalculateContamination, the fraction of tumor reads in the normal bam is a single number with a large amount of evidence and is probably well-estimated by simple descriptive statistics rather than a full-fledged probabilistic model.  It shouldn't be much more complicated than finding somatic variants and comparing their signal in the normal sample to that in the tumor.
 
 We propose the following steps to obtain our input of confident somatic SNVs:
