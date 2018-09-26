@@ -296,9 +296,8 @@ public final class ModelSegments extends CommandLineProgram {
                     "For matched-normal mode, the VCF should only contain two samples, " +
                     "the first of which should be the matched normal; otherwise, " +
                     "the VCF should only contain the case sample.  Only biallelic variants will be used and the " +
-                    "cutoff given by " + MINIMUM_TOTAL_ALLELE_COUNT_LONG_NAME + " will be applied, " +
-                    "but no additional genotyping will be performed and the corresponding parameters " +
-                    "will be ignored.",
+                    "cutoff given by " + MINIMUM_TOTAL_ALLELE_COUNT_LONG_NAME + " will be applied; " +
+                    "variants will regenotyped using the allele depths.",
             fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME,
             shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME,
             optional = true
@@ -328,8 +327,7 @@ public final class ModelSegments extends CommandLineProgram {
 
     @Argument(
             doc = "Log-ratio threshold for genotyping and filtering homozygous allelic counts, if available.  " +
-                    "Increasing this value will increase the number of sites assumed to be heterozygous for modeling.  " +
-                    "(Ignored if a VCF is provided.)",
+                    "Increasing this value will increase the number of sites assumed to be heterozygous for modeling.",
             fullName = GENOTYPING_HOMOZYGOUS_LOG_RATIO_THRESHOLD_LONG_NAME,
             optional = true
     )
@@ -339,8 +337,7 @@ public final class ModelSegments extends CommandLineProgram {
             doc = "Maximum base-error rate for genotyping and filtering homozygous allelic counts, if available.  " +
                     "The likelihood for an allelic count to be generated from a homozygous site will be integrated " +
                     "from zero base-error rate up to this value.  Decreasing this value will increase " +
-                    "the number of sites assumed to be heterozygous for modeling.  " +
-                    "(Ignored if a VCF is provided.)",
+                    "the number of sites assumed to be heterozygous for modeling.",
             fullName = GENOTYPING_BASE_ERROR_RATE_LONG_NAME,
             optional = true
     )
