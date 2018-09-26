@@ -623,9 +623,9 @@ task testUtilsJavadocJar(type: Jar, dependsOn: testUtilsJavadoc){
     from "$docBuildDir/testUtilsJavadoc"
 }
 
-task testUtilsSourceJar(type: Jar){
+task testUtilsSourcesJar(type: Jar){
     baseName = "$project.name-test-utils"
-    classifier = 'source'
+    classifier = 'sources'
     from sourceSets.testUtils.allSource
 }
 
@@ -732,7 +732,7 @@ artifacts {
     archives sourcesJar
     archives testUtilsJar
     archives testUtilsJavadocJar
-    archives testUtilsSourceJar
+    archives testUtilsSourcesJar
 
 }
 //remove zip and tar added by the application plugin
@@ -749,12 +749,44 @@ signing {
 
 def gatkArtifactFilter = { artifact, file -> artifact.name == 'gatk' }
 def gatkTestUtilsArtifactFilter = {artifact, file -> artifact.name == 'gatk-test-utils' }
+def basePomConfiguration = {
+    packaging 'jar'
+    description 'Development on GATK 4'
+    url 'http://github.com/broadinstitute/gatk'
+
+    scm {
+        url 'scm:git@github.com:broadinstitute/gatk.git'
+        connection 'scm:git@github.com:broadinstitute/gatk.git'
+        developerConnection 'scm:git@github.com:broadinstitute/gatk.git'
+    }
+
+    developers {
+        developer {
+            id = "gatkdev"
+            name = "GATK Development Team"
+            email = "gatk-dev-public@broadinstitute.org"
+        }
+    }
+
+    licenses {
+        license {
+            name 'BSD 3-Clause'
+            url 'https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT'
+            distribution 'repo'
+        }
+    }
+}
 
 install {
     install {
         repositories.mavenInstaller {
             addFilter('gatk', gatkArtifactFilter)
+                    .project(basePomConfiguration)
+                    .project{ name "GATK4"}
+            
             addFilter('gatk-test-utils', gatkTestUtilsArtifactFilter)
+                    .project(basePomConfiguration)
+                    .project{ name "GATK4 Test Utilities" }
         }
     }
 }
@@ -780,37 +812,14 @@ uploadArchives {
                 authentication(userName: System.env.ARTIFACTORY_USERNAME, password: System.env.ARTIFACTORY_PASSWORD)
             }
 
-            addFilter('gatk', gatkArtifactFilter)
             addFilter('gatk-test-utils', gatkTestUtilsArtifactFilter)
+                    .project(basePomConfiguration)
+                    .project{ name "GATK4 Test Utilities" }
 
-            pom.project {
-                name 'GATK4'
-                packaging 'jar'
-                description 'Development on GATK 4'
-                url 'http://github.com/broadinstitute/gatk'
+            addFilter('gatk', gatkArtifactFilter)
+                    .project(basePomConfiguration)
+                    .project{ name "GATK4"}
 
-                scm {
-                    url 'scm:git@github.com:broadinstitute/gatk.git'
-                    connection 'scm:git@github.com:broadinstitute/gatk.git'
-                    developerConnection 'scm:git@github.com:broadinstitute/gatk.git'
-                }
-
-                developers {
-                    developer {
-                        id = "gatkdev"
-                        name = "GATK Development Team"
-                        email = "gatk-dev-public@broadinstitute.org"
-                    }
-                }
-
-                licenses {
-                    license {
-                        name 'BSD 3-Clause'
-                        url 'https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT'
-                        distribution 'repo'
-                    }
-                }
-            }
         }
     }
 }
