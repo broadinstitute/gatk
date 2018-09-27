@@ -262,10 +262,6 @@ workflow CNVGermlineCohortWorkflow {
     scatter (sample_index in range(length(CollectCounts.entity_id))) {
         call CNVTasks.PostprocessGermlineCNVCalls {
             input:
-                calling_configs = GermlineCNVCallerCohortMode.calling_config_json,
-                denoising_configs = GermlineCNVCallerCohortMode.denoising_config_json,
-                gcnvkernel_version = GermlineCNVCallerCohortMode.gcnvkernel_version_json,
-                sharded_interval_lists = GermlineCNVCallerCohortMode.sharded_interval_list,
                 entity_id = CollectCounts.entity_id[sample_index],
                 gcnv_calls_tars = GermlineCNVCallerCohortMode.gcnv_calls_tar,
                 gcnv_model_tars = GermlineCNVCallerCohortMode.gcnv_model_tar,

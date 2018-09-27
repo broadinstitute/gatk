@@ -179,6 +179,9 @@ workflow CNVGermlineCaseScatteredWorkflow {
     }
 
     output {
+        Array[File] preprocessed_intervals = CNVGermlineCaseWorkflow.preprocessed_intervals
+        Array[Array[File]] read_counts_entity_id = CNVGermlineCaseWorkflow.read_counts_entity_id
+        Array[Array[File]] read_counts = CNVGermlineCaseWorkflow.read_counts
         Array[File] contig_ploidy_calls_tars = CNVGermlineCaseWorkflow.contig_ploidy_calls_tar
         Array[Array[File]] gcnv_calls_tars = CNVGermlineCaseWorkflow.gcnv_calls_tars
         Array[Array[File]] gcnv_tracking_tars = CNVGermlineCaseWorkflow.gcnv_tracking_tars
