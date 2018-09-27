@@ -211,17 +211,11 @@ workflow CNVGermlineCaseWorkflow {
         }
     }
 
-    Array[Array[File]] call_tars_sample_by_shard = transpose(GermlineCNVCallerCaseMode.gcnv_call_tars)
-
     scatter (sample_index in range(length(normal_bams))) {
         call CNVTasks.PostprocessGermlineCNVCalls {
             input:
-                calling_configs = GermlineCNVCallerCaseMode.calling_config_json,
-                denoising_configs = GermlineCNVCallerCaseMode.denoising_config_json,
-                gcnvkernel_version = GermlineCNVCallerCaseMode.gcnvkernel_version_json,
-                sharded_interval_lists = GermlineCNVCallerCaseMode.sharded_interval_list,
                 entity_id = CollectCounts.entity_id[sample_index],
-                gcnv_calls_tars = call_tars_sample_by_shard[sample_index],
+                gcnv_calls_tars = GermlineCNVCallerCaseMode.gcnv_calls_tar,
                 gcnv_model_tars = gcnv_model_tars,
                 allosomal_contigs = allosomal_contigs,
                 ref_copy_number_autosomal_contigs = ref_copy_number_autosomal_contigs,
@@ -238,7 +232,7 @@ workflow CNVGermlineCaseWorkflow {
         Array[File] read_counts_entity_id = CollectCounts.entity_id
         Array[File] read_counts = CollectCounts.counts
         File contig_ploidy_calls_tar = DetermineGermlineContigPloidyCaseMode.contig_ploidy_calls_tar
-        Array[Array[File]] gcnv_calls_tars = GermlineCNVCallerCaseMode.gcnv_call_tars
+        Array[File] gcnv_calls_tars = GermlineCNVCallerCaseMode.gcnv_calls_tar
         Array[File] gcnv_tracking_tars = GermlineCNVCallerCaseMode.gcnv_tracking_tar
         Array[File] genotyped_intervals_vcf = PostprocessGermlineCNVCalls.genotyped_intervals_vcf
         Array[File] genotyped_segments_vcf = PostprocessGermlineCNVCalls.genotyped_segments_vcf
@@ -364,7 +358,6 @@ task GermlineCNVCallerCaseMode {
     # If optional output_dir not specified, use "out"
     String output_dir_ = select_first([output_dir, "out"])
 
-    Int num_samples = length(read_count_files)
     command <<<
         set -e
         mkdir ${output_dir_}
@@ -415,11 +408,7 @@ task GermlineCNVCallerCaseMode {
             --caller-external-admixing-rate ${default="1.00" caller_external_admixing_rate} \
             --disable-annealing ${default="false" disable_annealing}
 
-        CURRENT_SAMPLE=0
-        while [ $CURRENT_SAMPLE -lt ${num_samples} ]; do
-            tar czf case-gcnv-shard-${scatter_index}-sample-$CURRENT_SAMPLE-gcnv-calls.tar.gz -C ${output_dir_}/case-calls/SAMPLE_$CURRENT_SAMPLE .
-            let CURRENT_SAMPLE=CURRENT_SAMPLE+1
-        done
+        tar czf case-gcnv-calls-${scatter_index}.tar.gz -C ${output_dir_}/case-calls .
         tar czf case-gcnv-tracking-${scatter_index}.tar.gz -C ${output_dir_}/case-tracking .
     >>>
 
@@ -432,11 +421,11 @@ task GermlineCNVCallerCaseMode {
     }
 
     output {
+        File gcnv_calls_tar = "case-gcnv-calls-${scatter_index}.tar.gz"
+        File gcnv_tracking_tar = "case-gcnv-tracking-${scatter_index}.tar.gz"
         File calling_config_json = "${output_dir_}/case-calls/calling_config.json"
         File denoising_config_json = "${output_dir_}/case-calls/denoising_config.json"
         File gcnvkernel_version_json = "${output_dir_}/case-calls/gcnvkernel_version.json"
         File sharded_interval_list = "${output_dir_}/case-calls/interval_list.tsv"
-        Array[File] gcnv_call_tars = glob("*-gcnv-calls.tar.gz")
-        File gcnv_tracking_tar = "case-gcnv-tracking-${scatter_index}.tar.gz"
     }
 }

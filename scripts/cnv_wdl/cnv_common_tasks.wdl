@@ -242,11 +242,6 @@ task ScatterIntervals {
 }
 
 task PostprocessGermlineCNVCalls {
-    Array[File] calling_configs
-    Array[File] denoising_configs
-    Array[File] gcnvkernel_version
-    Array[File] sharded_interval_lists
-
     String entity_id
     Array[File] gcnv_calls_tars
     Array[File] gcnv_model_tars
@@ -278,21 +273,12 @@ task PostprocessGermlineCNVCalls {
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk4_jar_override}
 
         # untar calls to CALLS_0, CALLS_1, etc directories and build the command line
-        # also copy over shard config and interval files
         gcnv_calls_tar_array=(${sep=" " gcnv_calls_tars})
-        calling_configs_array=(${sep=" " calling_configs})
-        denoising_configs_array=(${sep=" " denoising_configs})
-        gcnvkernel_version_array=(${sep=" " gcnvkernel_version})
-        sharded_interval_lists_array=(${sep=" " sharded_interval_lists})
         calls_args=""
         for index in ${dollar}{!gcnv_calls_tar_array[@]}; do
             gcnv_calls_tar=${dollar}{gcnv_calls_tar_array[$index]}
-            mkdir -p CALLS_$index/SAMPLE_${sample_index}
-            tar xzf $gcnv_calls_tar -C CALLS_$index/SAMPLE_${sample_index}
-            cp ${dollar}{calling_configs_array[$index]} CALLS_$index/
-            cp ${dollar}{denoising_configs_array[$index]} CALLS_$index/
-            cp ${dollar}{gcnvkernel_version_array[$index]} CALLS_$index/
-            cp ${dollar}{sharded_interval_lists_array[$index]} CALLS_$index/
+            mkdir CALLS_$index
+            tar xzf $gcnv_calls_tar -C CALLS_$index
             calls_args="$calls_args --calls-shard-path CALLS_$index"
         done
 
