@@ -96,12 +96,9 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
 
                 // all sites/--include-non-variant-sites tests
 
-                // Test disabled due to GATK3 differences, i.e.:
-                // Input: 20      10001666        .       A       G,<NON_REF>     0       .       BaseQRankSum=-2.013;ClippingRankSum=2.159;DP=34;MLEAC=0,0;MLEAF=0.00,0.00;MQ=218.41;MQ0=0;MQRankSum=2.086;ReadPosRankSum=-0.340 GT:AD:DP:GQ:PL:SB       0/0:32,2,0:34:53:0,53,1090,96,1096,1139:0,0,0,0
-                // GATK3: 20      10001666        .       A       .       81.23   .       AN=2;ClippingRankSum=2.16;DP=34;MQ0=0   GT:DP:RGQ       0/0:34:53
-                // GATK4: 20      10001666        .       A       .       81.23   .       BaseQRankSum=-2.013e+00;ClippingRankSum=2.16;DP=34;MQ=218.41;MQ0=0;MQRankSum=2.09;ReadPosRankSum=-3.400e-01     GT:DP:RGQ       0/0:34:53
-                //{getTestFile(BASE_PAIR_GVCF), getTestFile( "gvcf.basepairResolution.includeNonVariantSites.gatk3.8-1.expected.vcf"), Collections.singletonList("--" + GenotypeGVCFs.ALL_SITES_LONG_NAME), b37_reference_20_21 },
-
+                // The results from this test differ slightly from gatk3 since sites where the only alternate allele is a spanning
+                // deletion are not emitted by gatk4.
+                {getTestFile(BASE_PAIR_GVCF), getTestFile( "expected/gvcf.basepairResolution.includeNonVariantSites.vcf"), Collections.singletonList("--" + GenotypeGVCFs.ALL_SITES_LONG_NAME), b37_reference_20_21 },
                 {getTestFile( "combine.single.sample.pipeline.1.vcf"),
                         getTestFile( "expected/combine.single.sample.pipeline.1.include_nonvariant.vcf"),
                         Arrays.asList( "  --include-non-variant-sites -L 20:10,030,000-10,033,000 -L 20:10,386,000-10,386,500 "),
@@ -119,18 +116,11 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
                         getTestFile( "expected/combined.single.sample.pipeline.include_nonvariant.vcf"),
                         Arrays.asList( "  --include-non-variant-sites -L 20:10,030,000-10,033,000 -L 20:10,386,000-10,386,500 "),
                         b37_reference_20_21},
-                // test site 10096905 - 10096907 to force coverage around a spanning deletion
+                // test site 10096905 - 10096907 to force coverage around a spanning deletion only site
                 {getTestFile( "combined.single.sample.pipeline.gatk3.vcf"),
                         getTestFile( "expected/testSpanningDeletion.vcf"),
                         Arrays.asList( " --include-non-variant-sites -L 20:10,096,905-10,096,907 "),
                         b37_reference_20_21},
-                // combined, with no intervals
-                // TODO remove this before merge - the result file is too big for the comparison utils to handle
-                //{getTestFile( "combined.single.sample.pipeline.gatk3.vcf"),
-                //        // NOTE: this file is big and not the results for this test
-                //        getTestFile( "expected/combined.single.sample.pipeline.include_nonvariant.vcf"),
-                //        Arrays.asList( " --include-non-variant-sites"),
-                //        b37_reference_20_21},
         };
     }
 

@@ -493,9 +493,7 @@ public final class GenotypeGVCFs extends VariantWalkerGroupedByLocus {
         uac.genotypeArgs = new GenotypeCalculationArgumentCollection(genotypeArgs);
 
         //whether to emit non-variant sites is not contained in genotypeArgs and must be passed to uac separately
-        //Note: GATK3 uses OutputMode.EMIT_ALL_CONFIDENT_SITES when includeNonVariants is requested
-        //Using EMIT_ALL_SITES results in GATK4 including some sites with LowQual set in the filter field.
-        uac.outputMode = includeNonVariants ? OutputMode.EMIT_ALL_SITES : OutputMode.EMIT_VARIANTS_ONLY;
+        uac.outputMode = includeNonVariants ? OutputMode.EMIT_ALL_CONFIDENT_SITES : OutputMode.EMIT_VARIANTS_ONLY;
         return uac;
     }
 

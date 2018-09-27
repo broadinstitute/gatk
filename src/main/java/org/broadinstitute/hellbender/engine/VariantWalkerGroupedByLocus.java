@@ -20,7 +20,7 @@ import java.util.stream.StreamSupport;
 
 /**
  * VariantWalkerGroupedByLocus processes variants from a single source, either one at a time in order, or optionally
- * grouped by locus, with optional contextual information from a reference, sets of reads, and/or supplementary sources
+ * grouped by locus overlap, with optional contextual information from a reference, sets of reads, and/or supplementary sources
  * of Features. By-locus traversal is opt in, via {@link #setGroupByLocus()}, and only loci with overlapping
  * variants are traversed.
  *
