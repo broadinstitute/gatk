@@ -640,47 +640,48 @@ public final class GenomicsDBImport extends GATKTool {
         final Function<SeekableByteChannel, SeekableByteChannel> cloudWrapper = (cloudPrefetchBuffer > 0 ? is -> SeekableByteChannelPrefetcher.addPrefetcher(cloudPrefetchBuffer, is) : Function.identity());
         final Function<SeekableByteChannel, SeekableByteChannel> cloudIndexWrapper = (cloudIndexPrefetchBuffer > 0 ? is -> SeekableByteChannelPrefetcher.addPrefetcher(cloudIndexPrefetchBuffer, is) : Function.identity());
         try {
-            final FeatureReader<VariantContext> r = AbstractFeatureReader.getFeatureReader(variantURI, null, new VCFCodec(), true, cloudWrapper, cloudIndexWrapper);
+            final FeatureReader<VariantContext> reader = AbstractFeatureReader.getFeatureReader(variantURI, null, new VCFCodec(), true, cloudWrapper, cloudIndexWrapper);
 
             /* Anonymous FeatureReader subclass that wraps returned iterators to ensure that the GVCFs do not
              * contain MNPs.
              */
             return new FeatureReader<VariantContext>() {
-                /** Iterator that checks that variants are not MNPs on their way by. */
+                /** Iterator that asserts that variants are not MNPs. */
                 class NoMnpIterator implements CloseableTribbleIterator<VariantContext> {
                     private final CloseableTribbleIterator<VariantContext> inner;
                     NoMnpIterator(CloseableTribbleIterator<VariantContext> inner) { this.inner = inner; }
-                    @Override public void close() { this.inner.close(); }
+                    @Override public void close() { inner.close(); }
                     @Override public Iterator<VariantContext> iterator() { return this; }
-                    @Override public boolean hasNext() { return this.inner.hasNext(); }
+                    @Override public boolean hasNext() { return inner.hasNext(); }
                     @Override
                     public VariantContext next() {
-                        final VariantContext vc = this.inner.next();
-                        if (GATKVariantContextUtils.isMnpWithoutNonRef(vc)) {
-                            throw new UserException.BadInput("GenomicsDBImport does not support GVCFs with MNPs. " +
-                                    "MNP found at " + vc.getContig() + ":" + vc.getStart() + " in VCF " +
-                                    variantPath.toAbsolutePath()
-                            );
+                        if (!hasNext()) throw new NoSuchElementException();
+                        final VariantContext vc = inner.next();
+                        if (GATKVariantContextUtils.isUnmixedMnpIgnoringNonRef(vc)) {
+                            throw new UserException.BadInput(String.format(
+                                    "GenomicsDBImport does not support GVCFs with MNPs. MNP found at %1s:%2d in VCF %3s",
+                                    vc.getContig(), vc.getStart(), variantPath.toAbsolutePath()
+                            ));
                         }
 
                         return vc;
                     }
                 }
 
-                @Override public void close() throws IOException { r.close(); }
-                @Override public List<String> getSequenceNames() { return r.getSequenceNames(); }
-                @Override public Object getHeader() { return r.getHeader(); }
-                @Override public boolean isQueryable() { return r.isQueryable(); }
+                @Override public void close() throws IOException { reader.close(); }
+                @Override public List<String> getSequenceNames() { return reader.getSequenceNames(); }
+                @Override public Object getHeader() { return reader.getHeader(); }
+                @Override public boolean isQueryable() { return reader.isQueryable(); }
 
                 @Override public CloseableTribbleIterator<VariantContext> query(Locatable locus) throws IOException {
-                    return new NoMnpIterator(r.query(locus));
+                    return new NoMnpIterator(reader.query(locus));
                 }
                 @Override public CloseableTribbleIterator<VariantContext> query(String chr, int start, int end) throws IOException {
-                    return new NoMnpIterator(r.query(chr, start, end));
+                    return new NoMnpIterator(reader.query(chr, start, end));
                 }
 
                 @Override public CloseableTribbleIterator<VariantContext> iterator() throws IOException {
-                    return new NoMnpIterator(r.iterator());
+                    return new NoMnpIterator(reader.iterator());
                 }
             };
         } catch (final TribbleException e){

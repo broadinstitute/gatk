@@ -4,7 +4,6 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
-import htsjdk.variant.variantcontext.VariantContext.Type;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
@@ -125,9 +124,10 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
     public void apply(List<VariantContext> variantContexts, ReferenceContext referenceContext) {
         // Check that the input variant contexts do not contain MNPs as these may not be properly merged
         for (final VariantContext ctx : variantContexts) {
-            if (GATKVariantContextUtils.isMnpWithoutNonRef(ctx)) {
-                throw new UserException.BadInput("Combining gVCFs containing MNPs is not supported. " + ctx.getSource() +
-                        " contained an MNP at " + ctx.getContig() + ":" + ctx.getStart());
+            if (GATKVariantContextUtils.isUnmixedMnpIgnoringNonRef(ctx)) {
+                throw new UserException.BadInput(String.format(
+                        "Combining gVCFs containing MNPs is not supported. %1s contained a MNP at %2s:%3d",
+                        ctx.getSource(), ctx.getContig(), ctx.getStart()));
             }
         }
 

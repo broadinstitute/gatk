@@ -134,6 +134,6 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     @Advanced
     @Argument(fullName = MAX_MNP_DISTANCE_LONG_NAME, shortName = MAX_MNP_DISTANCE_SHORT_NAME,
             doc = "Two or more phased substitutions separated by this distance or less are merged into MNPs. " +
-            "When used in conjunction GVCF mode, resulting GVCFs cannot be joint-genotyped.", optional = true)
+            "WARNING: When used in GVCF mode, resulting GVCFs cannot be joint-genotyped.", optional = true)
     public int maxMnpDistance = 0;
 }
