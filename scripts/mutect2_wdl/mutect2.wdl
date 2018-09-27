@@ -52,6 +52,7 @@
 ## funco_data_sources_tar_gz:  Funcotator datasources tar gz file.  Bucket location is recommended when running on the cloud.
 ## funco_annotation_defaults:  Default values for annotations, when values are unspecified.  Specified as  <ANNOTATION>:<VALUE>.  For example:  "Center:Broad"
 ## funco_annotation_overrides:  Values for annotations, even when values are unspecified.  Specified as  <ANNOTATION>:<VALUE>.  For example:  "Center:Broad"
+## funcotator_excluded_fields:  Annotations that should not appear in the output (VCF or MAF).  Specified as  <ANNOTATION>.  For example:  "ClinVar_ALLELEID"
 ##
 ## Outputs :
 ## - One VCF file and its index with primary filtering applied; secondary filtering and functional annotation if requested; a bamout.bam
@@ -111,6 +112,7 @@ workflow Mutect2 {
     String? sequencing_center
     String? sequence_source
     File? default_config_file
+    String? oncotator_extra_args
 
     # funcotator inputs
     Boolean? run_funcotator
@@ -121,6 +123,8 @@ workflow Mutect2 {
     File? funco_transcript_selection_list
     Array[String]? funco_annotation_defaults
     Array[String]? funco_annotation_overrides
+    Array[String]? funcotator_excluded_fields
+    String? funcotator_extra_args
 
     File? gatk_override
 
@@ -133,8 +137,6 @@ workflow Mutect2 {
     Boolean filter_oncotator_maf_or_default = select_first([filter_oncotator_maf, true])
     Boolean? filter_funcotations
     Boolean filter_funcotations_or_default = select_first([filter_funcotations, true])
-    String? oncotator_extra_args
-    String? funcotator_extra_args
 
     Int? preemptible_attempts
     Int? max_retries
@@ -424,6 +426,7 @@ workflow Mutect2 {
                 gatk_docker = gatk_docker,
                 gatk_override = gatk_override,
                 filter_funcotations = filter_funcotations_or_default,
+                funcotator_excluded_fields = funcotator_excluded_fields,
                 sequencing_center = sequencing_center,
                 sequence_source = sequence_source,
                 disk_space_gb = ceil(size(funcotate_vcf_input, "GB") * large_input_to_output_multiplier) + onco_tar_size + disk_pad,
@@ -1191,6 +1194,7 @@ task FuncotateMaf {
      File? transcript_selection_list
      Array[String]? annotation_defaults
      Array[String]? annotation_overrides
+     Array[String]? funcotator_excluded_fields
      Boolean filter_funcotations
      File? interval_list
 
@@ -1201,6 +1205,7 @@ task FuncotateMaf {
      String annotation_def_arg = if defined(annotation_defaults) then " --annotation-default " else ""
      String annotation_over_arg = if defined(annotation_overrides) then " --annotation-override " else ""
      String filter_funcotations_args = if (filter_funcotations) then " --remove-filtered-variants " else ""
+     String excluded_fields_args = if defined(funcotator_excluded_fields) then " --exclusion-list " else ""
      String final_output_filename = basename(input_vcf, ".vcf") + ".maf.annotated"
      # ==============
 
@@ -1263,6 +1268,7 @@ task FuncotateMaf {
             --annotation-default source:${default="Unknown" sequence_source} \
              ${annotation_def_arg}${default="" sep=" --annotation-default " annotation_defaults} \
              ${annotation_over_arg}${default="" sep=" --annotation-override " annotation_overrides} \
+             ${excluded_fields_args}${default="" sep=" --exclusion-list " funcotator_excluded_fields} \
              ${filter_funcotations_args} \
              ${extra_args}
      >>>
