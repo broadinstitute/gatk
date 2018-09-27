@@ -105,7 +105,7 @@ class LoadAndSampleCrAndAf:
         if not output_log_prefix == "":
             self.__logger.info("Loading data from file.")
 
-        self.__max_copy_ratio_possible = 40   # we do not load any copy ratio value that is larger than this
+        self.__max_copy_ratio_possible = 40  # we do not load any copy ratio value that is larger than this
         [self.__copy_ratio_median,           # median of the copy ratio posterior for each segment
          self.__copy_ratio_10th_perc,        # 10th percentile ...
          self.__copy_ratio_90th_perc,        # 90th percentile ...
@@ -859,18 +859,18 @@ class ModeledSegmentsCaller:
         with model:
             inference = pm.ADVI()
 
-        approx = inference.fit(n=70000, total_grad_norm_constraint=50, progressbar=False,
+        approx = inference.fit(n=60000, total_grad_norm_constraint=50, progressbar=False,
                                callbacks=[CheckParametersConvergence(every=50, diff='relative',
                                                                      tolerance=0.005)]
                                )
-        #gbij = approx.gbij
-        #means = gbij.rmap(approx.mean.eval())
-        #cov = approx.cov.eval()
-        #sds = gbij.rmap(np.diag(cov)**.5)
-
-        means = approx.bij.rmap(approx.mean.eval())
+        gbij = approx.gbij
+        means = gbij.rmap(approx.mean.eval())
         cov = approx.cov.eval()
-        sds = approx.bij.rmap(np.diag(cov)**.5)
+        sds = gbij.rmap(np.diag(cov)**.5)
+
+        #means = approx.bij.rmap(approx.mean.eval())
+        #cov = approx.cov.eval()
+        #sds = approx.bij.rmap(np.diag(cov)**.5)
 
         mu_result = []
         pi_result = pm.distributions.transforms.t_stick_breaking(epsilon).backward(means['pis_stickbreaking__']).eval()

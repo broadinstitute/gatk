@@ -22,10 +22,10 @@ public class CallModeledSegmentsIntegrationTest extends CommandLineProgramTest {
     private static final File INPUT_SIMULATED_NORMAL_TRUTH = new File(SIMULATED_DATA_DIR, "normal_sample_truth.seg");
     private static final File INPUT_SIMULATED_NORMAL_NOISY_DATA = new File(SIMULATED_DATA_DIR, "normal_noisy_sample_data.seg");
     private static final File INPUT_SIMULATED_NORMAL_NOISY_TRUTH = new File(SIMULATED_DATA_DIR, "normal_noisy_sample_truth.seg");
-    private static final File INPUT_SIMULATED_SOMATIC_40P_PURITY_DATA = new File(SIMULATED_DATA_DIR, "cancer_0p40_purity_data.seg");
-    private static final File INPUT_SIMULATED_SOMATIC_40P_PURITY_TRUTH = new File(SIMULATED_DATA_DIR, "cancer_0p40_purity_truth.seg");
-    private static final File INPUT_SIMULATED_SOMATIC_60P_PURITY_DATA = new File(SIMULATED_DATA_DIR, "cancer_0p60_purity_data.seg");
-    private static final File INPUT_SIMULATED_SOMATIC_60P_PURITY_TRUTH = new File(SIMULATED_DATA_DIR, "cancer_0p60_purity_truth.seg");
+    // private static final File INPUT_SIMULATED_SOMATIC_40P_PURITY_DATA = new File(SIMULATED_DATA_DIR, "cancer_0p40_purity_data.seg");
+    // private static final File INPUT_SIMULATED_SOMATIC_40P_PURITY_TRUTH = new File(SIMULATED_DATA_DIR, "cancer_0p40_purity_truth.seg");
+    // private static final File INPUT_SIMULATED_SOMATIC_60P_PURITY_DATA = new File(SIMULATED_DATA_DIR, "cancer_0p60_purity_data.seg");
+    // private static final File INPUT_SIMULATED_SOMATIC_60P_PURITY_TRUTH = new File(SIMULATED_DATA_DIR, "cancer_0p60_purity_truth.seg");
     private static final File INPUT_SIMULATED_SOMATIC_100P_PURITY_DATA = new File(SIMULATED_DATA_DIR, "cancer_1p00_purity_data.seg");
     private static final File INPUT_SIMULATED_SOMATIC_100P_PURITY_TRUTH = new File(SIMULATED_DATA_DIR, "cancer_1p00_purity_truth.seg");
 
@@ -38,10 +38,10 @@ public class CallModeledSegmentsIntegrationTest extends CommandLineProgramTest {
                 true, true, true, "normal_simulated"});
         result.add(new Object[] {INPUT_SIMULATED_NORMAL_NOISY_DATA, INPUT_SIMULATED_NORMAL_NOISY_TRUTH,
                 true, true, true, "normal_noisy_simulated"});
-        result.add(new Object[] {INPUT_SIMULATED_SOMATIC_40P_PURITY_DATA, INPUT_SIMULATED_SOMATIC_40P_PURITY_TRUTH,
-                true, true, true, "somatic_40per_cent"});
-        result.add(new Object[] {INPUT_SIMULATED_SOMATIC_60P_PURITY_DATA, INPUT_SIMULATED_SOMATIC_60P_PURITY_TRUTH,
-                true, true, true, "somatic_60per_cent"});
+        // result.add(new Object[] {INPUT_SIMULATED_SOMATIC_40P_PURITY_DATA, INPUT_SIMULATED_SOMATIC_40P_PURITY_TRUTH,
+        //         true, true, true, "somatic_40per_cent"});
+        // result.add(new Object[] {INPUT_SIMULATED_SOMATIC_60P_PURITY_DATA, INPUT_SIMULATED_SOMATIC_60P_PURITY_TRUTH,
+        //         true, true, true, "somatic_60per_cent"});
         result.add(new Object[] {INPUT_SIMULATED_SOMATIC_100P_PURITY_DATA, INPUT_SIMULATED_SOMATIC_100P_PURITY_TRUTH,
                 true, true, true, "somatic_100per_cent"});
         return result.iterator();
