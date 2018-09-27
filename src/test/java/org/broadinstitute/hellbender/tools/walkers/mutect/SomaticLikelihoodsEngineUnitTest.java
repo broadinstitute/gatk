@@ -92,7 +92,7 @@ public class SomaticLikelihoodsEngineUnitTest extends GATKBaseTest {
         final RealMatrix log10Likelihoods = new Array2DRowRealMatrix(2, 4);
         log10Likelihoods.setRow(0, new double[] {0.1, 4.0, 3.0, -10});
         log10Likelihoods.setRow(1, new double[] {-12, -9, -5.0, 0.5});
-        final double calculatedLog10Evidence = SomaticLikelihoodsEngine.log10Evidence(log10Likelihoods, prior);
+        final double calculatedLog10Evidence = SomaticLikelihoodsEngine. (log10Likelihoods, prior);
         final double[] maxLikelihoodCounts = new double[] {3, 1};
         final double expectedLog10Evidence = SomaticLikelihoodsEngine.log10DirichletNormalization(prior)
                 - SomaticLikelihoodsEngine.log10DirichletNormalization(MathArrays.ebeAdd(prior, maxLikelihoodCounts))
