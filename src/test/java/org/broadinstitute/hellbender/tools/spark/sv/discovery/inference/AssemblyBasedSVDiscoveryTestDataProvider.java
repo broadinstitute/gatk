@@ -5,7 +5,7 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFConstants;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.BreakEndVariantType;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType;
@@ -65,7 +65,7 @@ public abstract class AssemblyBasedSVDiscoveryTestDataProvider {
 
         public abstract SAMSequenceDictionary getAppropriateDictionary();
 
-        public abstract ReferenceMultiSource getAppropriateRef();
+        public abstract ReferenceMultiSparkSource getAppropriateRef();
 
         public abstract Class<? extends BreakpointsInference> getAppropriateBreakpointInferencer();
     }

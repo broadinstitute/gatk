@@ -19,6 +19,7 @@ import java.util.List;
 public final class ReferenceDataSourceUnitTest extends GATKBaseTest {
 
     private static final Path TEST_REFERENCE = IOUtils.getPath(hg19MiniReference);
+    private static final Path TEST_REFERENCE_BGZ = IOUtils.getPath(hg19MiniReference + ".gz");
 
     @Test(expectedExceptions = UserException.class)
     public void testNonExistentReference() {
@@ -54,20 +55,28 @@ public final class ReferenceDataSourceUnitTest extends GATKBaseTest {
     @DataProvider(name = "ReferenceIntervalDataProvider")
     public Object[][] getReferenceIntervals() {
         return new Object[][] {
-                { new SimpleInterval("1", 1, 3), "NNN" },
-                { new SimpleInterval("1", 11041, 11045), "GCAAA" },
-                { new SimpleInterval("1", 11210, 11220), "CGGTGCTGTGC" },
-                { new SimpleInterval("2", 9995, 10005), "NNNNNNCGTAT" },
-                { new SimpleInterval("2", 10001, 10080), "CGTATCCCACACACCACACCCACACACCACACCCACACACACCCACACCCACACCCACACACACCACACCCACACACCAC" },
-                { new SimpleInterval("2", 10005, 10084), "TCCCACACACCACACCCACACACCACACCCACACACACCCACACCCACACCCACACACACCACACCCACACACCACACCC" },
-                { new SimpleInterval("2", 15995, 16000), "TGTCAG" }
+            { TEST_REFERENCE, new SimpleInterval("1", 1, 3), "NNN" },
+            { TEST_REFERENCE, new SimpleInterval("1", 11041, 11045), "GCAAA" },
+            { TEST_REFERENCE, new SimpleInterval("1", 11210, 11220), "CGGTGCTGTGC" },
+            { TEST_REFERENCE, new SimpleInterval("2", 9995, 10005), "NNNNNNCGTAT" },
+            { TEST_REFERENCE, new SimpleInterval("2", 10001, 10080), "CGTATCCCACACACCACACCCACACACCACACCCACACACACCCACACCCACACCCACACACACCACACCCACACACCAC" },
+            { TEST_REFERENCE, new SimpleInterval("2", 10005, 10084), "TCCCACACACCACACCCACACACCACACCCACACACACCCACACCCACACCCACACACACCACACCCACACACCACACCC" },
+            { TEST_REFERENCE, new SimpleInterval("2", 15995, 16000), "TGTCAG" },
+
+            { TEST_REFERENCE_BGZ, new SimpleInterval("1", 1, 3), "NNN" },
+            { TEST_REFERENCE_BGZ, new SimpleInterval("1", 11041, 11045), "GCAAA" },
+            { TEST_REFERENCE_BGZ, new SimpleInterval("1", 11210, 11220), "CGGTGCTGTGC" },
+            { TEST_REFERENCE_BGZ, new SimpleInterval("2", 9995, 10005), "NNNNNNCGTAT" },
+            { TEST_REFERENCE_BGZ, new SimpleInterval("2", 10001, 10080), "CGTATCCCACACACCACACCCACACACCACACCCACACACACCCACACCCACACCCACACACACCACACCCACACACCAC" },
+            { TEST_REFERENCE_BGZ, new SimpleInterval("2", 10005, 10084), "TCCCACACACCACACCCACACACCACACCCACACACACCCACACCCACACCCACACACACCACACCCACACACCACACCC" },
+            { TEST_REFERENCE_BGZ, new SimpleInterval("2", 15995, 16000), "TGTCAG" }
         };
     }
 
 
     @Test(dataProvider = "ReferenceIntervalDataProvider")
-    public void testQueryAndPrefetch( final SimpleInterval interval, final String expectedBases ) {
-        try (ReferenceDataSource reference = new ReferenceFileSource(TEST_REFERENCE))  {
+    public void testQueryAndPrefetch(final Path testReference, final SimpleInterval interval, final String expectedBases ) {
+        try (ReferenceDataSource reference = new ReferenceFileSource(testReference))  {
             ReferenceSequence queryResult = reference.queryAndPrefetch(interval);
 
             Assert.assertEquals(new String(queryResult.getBases()), expectedBases,
@@ -76,8 +85,8 @@ public final class ReferenceDataSourceUnitTest extends GATKBaseTest {
     }
 
     @Test(dataProvider = "ReferenceIntervalDataProvider")
-    public void testQueryAndIterate( final SimpleInterval interval, final String expectedBases ) {
-        try (ReferenceDataSource reference = new ReferenceFileSource(TEST_REFERENCE)) {
+    public void testQueryAndIterate(final Path testReference, final SimpleInterval interval, final String expectedBases ) {
+        try (ReferenceDataSource reference = new ReferenceFileSource(testReference)) {
             Iterator<Byte> queryResultIterator = reference.query(interval);
             List<Byte> queryResult = new ArrayList<>();
 

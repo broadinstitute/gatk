@@ -149,6 +149,6 @@ public final class CollectAllelicCounts extends LocusWalker {
     @Override
     public void apply(AlignmentContext alignmentContext, ReferenceContext referenceContext, FeatureContext featureContext) {
         final byte refAsByte = referenceContext.getBase();
-        allelicCountCollector.collectAtLocus(Nucleotide.valueOf(refAsByte), alignmentContext.getBasePileup(), alignmentContext.getLocation(), minimumBaseQuality);
+        allelicCountCollector.collectAtLocus(Nucleotide.decode(refAsByte), alignmentContext.getBasePileup(), alignmentContext.getLocation(), minimumBaseQuality);
     }
 }

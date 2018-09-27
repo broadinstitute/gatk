@@ -9,6 +9,7 @@ import org.apache.commons.lang3.tuple.Triple;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.funcotator.DataSourceFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
@@ -87,11 +88,22 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
     //==================================================================================================================
     // Constructors:
 
-    public VcfFuncotationFactory(final String name, final String version, final Path sourceFilePath) {
-        this(name, version, sourceFilePath, new LinkedHashMap<>());
-    }
+    /**
+     * Create a {@link VcfFuncotationFactory}.
+     * @param name A {@link String} containing the name of this {@link VcfFuncotationFactory}.
+     * @param version  The version {@link String} of the backing data source from which {@link Funcotation}s will be made.
+     * @param sourceFilePath {@link Path} to the VCF file from which {@link VariantContext}s will be read in and used as Features from which to create {@link Funcotation}s.
+     * @param annotationOverridesMap A {@link LinkedHashMap<String,String>} containing user-specified overrides for specific {@link Funcotation}s.
+     * @param mainSourceFileAsFeatureInput The backing {@link FeatureInput} for this {@link VcfFuncotationFactory}, from which all {@link Funcotation}s will be created.
+     */
+    public VcfFuncotationFactory(final String name,
+                                 final String version,
+                                 final Path sourceFilePath,
+                                 final LinkedHashMap<String, String> annotationOverridesMap,
+                                 final FeatureInput<? extends Feature> mainSourceFileAsFeatureInput) {
 
-    public VcfFuncotationFactory(final String name, final String version, final Path sourceFilePath, final LinkedHashMap<String, String> annotationOverridesMap) {
+        super(mainSourceFileAsFeatureInput);
+
         this.name = name;
         this.version = version;
         this.sourceFilePath = sourceFilePath;
@@ -157,7 +169,7 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
     // Override Methods:
 
     @Override
-    protected Class<? extends Feature> getAnnotationFeatureClass() {
+    public Class<? extends Feature> getAnnotationFeatureClass() {
         return VariantContext.class;
     }
 

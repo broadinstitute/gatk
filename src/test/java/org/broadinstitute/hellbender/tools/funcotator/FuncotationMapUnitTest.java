@@ -8,37 +8,66 @@ import htsjdk.tribble.FeatureReader;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFInfoHeaderLine;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.testutils.BaseTest;
+import org.broadinstitute.hellbender.testutils.FuncotatorReferenceTestUtils;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationBuilder;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationFactory;
+import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfCodec;
 import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfFeature;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.test.FuncotatorTestUtils;
+import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.broadinstitute.hellbender.testutils.FuncotatorReferenceTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static org.broadinstitute.hellbender.tools.funcotator.FuncotatorUtils.extractFuncotatorKeysFromHeaderDescription;
+
 public class FuncotationMapUnitTest extends BaseTest{
 
     private static final String DS_PIK3CA_DIR = GATKBaseTest.largeFileTestDir + "funcotator/small_ds_pik3ca/";
     private static final String DS_PIK3CA_HG19_GENCODE_FASTA = DS_PIK3CA_DIR + "gencode_pik3ca/hg19/gencode.v19.PIK3CA_transcript.fasta";
+    private static final String DS_PIK3CA_HG19_GENCODE_GTF = DS_PIK3CA_DIR + "gencode_pik3ca/hg19/gencode.v19.PIK3CA.gtf";
     private static final String DS_MUC16_DIR = GATKBaseTest.largeFileTestDir + "funcotator/small_ds_muc16/";
     private static final String DS_MUC16_HG19_GENCODE_FASTA = DS_MUC16_DIR + "gencode_muc16/hg19/gencode.v19.MUC16_transcript.fasta";
+    private static final String DS_MUC16_HG19_GENCODE_GTF = DS_MUC16_DIR + "gencode_muc16/hg19/gencode.v19.MUC16.gtf";
     private static final FeatureReader<GencodeGtfFeature> pik3caFeatureReader = AbstractFeatureReader.getFeatureReader( FuncotatorTestConstants.PIK3CA_GENCODE_ANNOTATIONS_FILE_NAME, new GencodeGtfCodec() );
     private static final FeatureReader<GencodeGtfFeature> muc16FeatureReader = AbstractFeatureReader.getFeatureReader(FuncotatorTestConstants.MUC16_GENCODE_ANNOTATIONS_FILE_NAME, new GencodeGtfCodec() );
+
+    private SortedMap<String, String> createSortedMap(final List<String> mapElements) {
+        if ( mapElements.size() % 2 != 0) {
+            throw new GATKException("Could not construct map - uneven number of elements in list: " + mapElements.stream().map(Object::toString).collect(Collectors.joining(",")));
+        }
+
+        final SortedMap<String, String> map = new TreeMap<>();
+
+        for ( int i = 0 ; i < mapElements.size() ; i=i+2) {
+            map.put(mapElements.get(i), mapElements.get(i+1));
+        }
+
+        return map;
+    }
 
     @DataProvider
     public Object[][] provideCreationFromFuncotationVcfHeaderString() {
@@ -159,12 +188,23 @@ public class FuncotationMapUnitTest extends BaseTest{
                         ImmutableSortedMap.of("Gencode_19_hugoSymbol", "BAR", "Gencode_19_ncbiBuild", "hg38", "Gencode_19_annotationTranscript", "txID2"),
                         ImmutableSortedMap.of("Gencode_19_hugoSymbol", "BAZ", "Gencode_19_ncbiBuild", "hg38", "Gencode_19_annotationTranscript", "txID3")
                         )
-                }
+                },
+                {
+                    Allele.create("CATATAT"), "TEST",
+                    "Functional annotation from the Funcotator tool.  Funcotation fields are: Gencode_28_hugoSymbol|Gencode_28_ncbiBuild|Gencode_28_chromosome|Gencode_28_start|Gencode_28_end|Gencode_28_variantClassification|Gencode_28_secondaryVariantClassification|Gencode_28_variantType|Gencode_28_refAllele|Gencode_28_tumorSeqAllele1|Gencode_28_tumorSeqAllele2|Gencode_28_genomeChange|Gencode_28_annotationTranscript|Gencode_28_transcriptStrand|Gencode_28_transcriptExon|Gencode_28_transcriptPos|Gencode_28_cDnaChange|Gencode_28_codonChange|Gencode_28_proteinChange|Gencode_28_gcContent|Gencode_28_referenceContext|Gencode_28_otherTranscripts|dummy_ClinVar_VCF_AC|dummy_ClinVar_VCF_AF|dummy_ClinVar_VCF_AF_ESP|dummy_ClinVar_VCF_AF_EXAC|dummy_ClinVar_VCF_AF_TGP|dummy_ClinVar_VCF_ALLELEID|dummy_ClinVar_VCF_AN|dummy_ClinVar_VCF_CLNDISDB|dummy_ClinVar_VCF_CLNDISDBINCL|dummy_ClinVar_VCF_CLNDN|dummy_ClinVar_VCF_CLNDNINCL|dummy_ClinVar_VCF_CLNHGVS|dummy_ClinVar_VCF_CLNREVSTAT|dummy_ClinVar_VCF_CLNSIG|dummy_ClinVar_VCF_CLNSIGCONF|dummy_ClinVar_VCF_CLNSIGINCL|dummy_ClinVar_VCF_CLNVC|dummy_ClinVar_VCF_CLNVCSO|dummy_ClinVar_VCF_CLNVI|dummy_ClinVar_VCF_DBVARID|dummy_ClinVar_VCF_DP|dummy_ClinVar_VCF_GENEINFO|dummy_ClinVar_VCF_MC|dummy_ClinVar_VCF_ORIGIN|dummy_ClinVar_VCF_RS|dummy_ClinVar_VCF_SSR",
+                    "[||chr3|179135392|179135393|IGR||INS|-|-|AT||no_transcript|+||||||0.3292079207920792|AAAATGTGATCATATATATATATATATATAT|||||||||||||||||||||||||||]",
+                    Arrays.asList(FuncotationMap.NO_TRANSCRIPT_AVAILABLE_KEY),
+                    Arrays.asList(
+                            createSortedMap(Arrays.asList("Gencode_28_hugoSymbol","","Gencode_28_ncbiBuild","","Gencode_28_chromosome","chr3","Gencode_28_start","179135392","Gencode_28_end","179135393","Gencode_28_variantClassification","IGR","Gencode_28_secondaryVariantClassification","","Gencode_28_variantType","INS","Gencode_28_refAllele","-","Gencode_28_tumorSeqAllele1","-","Gencode_28_tumorSeqAllele2","AT","Gencode_28_genomeChange","","Gencode_28_annotationTranscript","no_transcript","Gencode_28_transcriptStrand","+","Gencode_28_transcriptExon","","Gencode_28_transcriptPos","","Gencode_28_cDnaChange","","Gencode_28_codonChange","","Gencode_28_proteinChange","","Gencode_28_gcContent","0.329207921","Gencode_28_referenceContext","AAAATGTGATCATATATATATATATATATAT","Gencode_28_otherTranscripts","","dummy_ClinVar_VCF_AC","","dummy_ClinVar_VCF_AF","","dummy_ClinVar_VCF_AF_ESP","","dummy_ClinVar_VCF_AF_EXAC","","dummy_ClinVar_VCF_AF_TGP","","dummy_ClinVar_VCF_ALLELEID","","dummy_ClinVar_VCF_AN","","dummy_ClinVar_VCF_CLNDISDB","","dummy_ClinVar_VCF_CLNDISDBINCL","","dummy_ClinVar_VCF_CLNDN","","dummy_ClinVar_VCF_CLNDNINCL","","dummy_ClinVar_VCF_CLNHGVS","","dummy_ClinVar_VCF_CLNREVSTAT","","dummy_ClinVar_VCF_CLNSIG","","dummy_ClinVar_VCF_CLNSIGCONF","","dummy_ClinVar_VCF_CLNSIGINCL","","dummy_ClinVar_VCF_CLNVC","","dummy_ClinVar_VCF_CLNVCSO","","dummy_ClinVar_VCF_CLNVI","","dummy_ClinVar_VCF_DBVARID","","dummy_ClinVar_VCF_DP","","dummy_ClinVar_VCF_GENEINFO","","dummy_ClinVar_VCF_MC","","dummy_ClinVar_VCF_ORIGIN","","dummy_ClinVar_VCF_RS","","dummy_ClinVar_VCF_SSR",""))
+                    )
+                },
         };
     }
 
     @Test(dataProvider = "provideCreationFromFuncotationVcfHeaderString")
-    public void testCreationFromFuncotationVcfHeaderString(final Allele gtAllele, final String gtDatasourceName, final String headerDescription, final String funcotationValue, final List<String> gtTranscriptIDs, final List<SortedMap<String, String>> gtMaps) {
+    public void testCreationFromFuncotationVcfHeaderString(final Allele gtAllele, final String gtDatasourceName,
+                                                           final String headerDescription, final String funcotationValue,
+                                                           final List<String> gtTranscriptIDs, final List<SortedMap<String, String>> gtMaps) {
 
         final FuncotationMap testMap = FuncotationMap.createAsAllTableFuncotationsFromVcf("Gencode_19_annotationTranscript",
                 FuncotatorUtils.extractFuncotatorKeysFromHeaderDescription(headerDescription),
@@ -176,10 +216,141 @@ public class FuncotationMapUnitTest extends BaseTest{
             final String transcriptId = transcriptIds.get(i);
             Assert.assertEquals(testMap.get(transcriptId).get(0).getFieldNames().size(), gtMap.keySet().size());
             Assert.assertEquals(testMap.get(transcriptId).size(), 1); // We have one funcotation with X fields.
-            Assert.assertTrue(gtMap.keySet().stream().allMatch(k -> gtMap.get(k).equals(testMap.getFieldValue(transcriptId, k, gtAllele))));
+            for (final String k : gtMap.keySet() ) {
+                // This is a workaround for double precision problems:
+                if ( k.toLowerCase().contains("gccontent")) {
+                    final Double actual = Double.valueOf(testMap.getFieldValue(transcriptId, k, gtAllele));
+                    final Double expected = Double.valueOf(gtMap.get(k));
+                    Assert.assertTrue(Math.abs(expected-actual) < FuncotatorTestConstants.FUNCOTATOR_DOUBLE_COMPARISON_EPSILON);
+                }
+                else {
+                    Assert.assertEquals(testMap.getFieldValue(transcriptId, k, gtAllele), gtMap.get(k), "Fields did not match for key: " + k);
+                }
+            }
             Assert.assertTrue(testMap.get(transcriptId).stream().allMatch(f -> f.getAltAllele().equals(gtAllele)));
             Assert.assertTrue(testMap.get(transcriptId).stream().allMatch(f -> f.getDataSourceName().equals(gtDatasourceName)));
         }
+    }
+
+    @Test
+    public void testMultiAlleleicFuncotationMapCreation() {
+
+        final File vcfFile = new File(FuncotatorTestConstants.FUNCOTATOR_TEST_DIR + "triple_allele.vcf");
+
+        final Pair<VCFHeader, List<VariantContext>> vcfInfo               = VariantContextTestUtils.readEntireVCFIntoMemory(vcfFile.getAbsolutePath());
+        final List<VariantContext>                  variantContexts       = vcfInfo.getRight();
+        final VCFHeader                             vcfHeader             = vcfInfo.getLeft();
+        final VCFInfoHeaderLine                     funcotationHeaderLine = vcfHeader.getInfoHeaderLine(VcfOutputRenderer.FUNCOTATOR_VCF_FIELD_NAME);
+        final String[]                              funcotationKeys       = extractFuncotatorKeysFromHeaderDescription(funcotationHeaderLine.getDescription());
+
+        Assert.assertTrue(variantContexts.size() > 0);
+
+        // Check the multi-allele, single-transcript case (Empty Hugo Symbols only):
+        {
+            final Map<Allele, FuncotationMap> alleleFuncotationMapMap = FuncotatorUtils.createAlleleToFuncotationMapFromFuncotationVcfAttribute(funcotationKeys,
+                    variantContexts.get(0), "Gencode_28_annotationTranscript", "TEST");
+
+            Assert.assertEquals(alleleFuncotationMapMap.keySet().size(), 3);
+            for ( final Allele allele : alleleFuncotationMapMap.keySet() ) {
+                Assert.assertEquals(alleleFuncotationMapMap.get(allele).get(FuncotationMap.NO_TRANSCRIPT_AVAILABLE_KEY).get(0).getField("Gencode_28_hugoSymbol"), "");
+            }
+        }
+
+        // Check the single-allele, single-transcript case (Empty Hugo Symbols only):
+        {
+            final Map<Allele, FuncotationMap> alleleFuncotationMapMap = FuncotatorUtils.createAlleleToFuncotationMapFromFuncotationVcfAttribute(funcotationKeys,
+                    variantContexts.get(1), "Gencode_28_annotationTranscript", "TEST");
+
+            Assert.assertEquals(alleleFuncotationMapMap.keySet().size(), 1);
+            for ( final Allele allele : alleleFuncotationMapMap.keySet() ) {
+                Assert.assertEquals(alleleFuncotationMapMap.get(allele).get(FuncotationMap.NO_TRANSCRIPT_AVAILABLE_KEY).get(0).getField("Gencode_28_hugoSymbol"), "");
+            }
+        }
+
+        // Check the single-allele, multi-transcript case (Empty Hugo Symbols only):
+        {
+            final Map<Allele, FuncotationMap> alleleFuncotationMapMap = FuncotatorUtils.createAlleleToFuncotationMapFromFuncotationVcfAttribute(funcotationKeys,
+                    variantContexts.get(2), "Gencode_28_annotationTranscript", "TEST");
+
+            Assert.assertEquals(alleleFuncotationMapMap.keySet().size(), 1);
+            for ( final Allele allele : alleleFuncotationMapMap.keySet() ) {
+                Assert.assertEquals(alleleFuncotationMapMap.get(allele).get("TRANSCRIPT_ALPHA").get(0).getField("Gencode_28_hugoSymbol"), "");
+                Assert.assertEquals(alleleFuncotationMapMap.get(allele).get("TRANSCRIPT_BRAVO").get(0).getField("Gencode_28_hugoSymbol"), "");
+                Assert.assertEquals(alleleFuncotationMapMap.get(allele).get("TRANSCRIPT_CHARLIE").get(0).getField("Gencode_28_hugoSymbol"), "");
+            }
+        }
+
+        // Check the multi-allele, multi-transcript case (Empty Hugo Symbols only):
+        {
+            final Map<Allele, FuncotationMap> alleleFuncotationMapMap = FuncotatorUtils.createAlleleToFuncotationMapFromFuncotationVcfAttribute(funcotationKeys,
+                    variantContexts.get(3), "Gencode_28_annotationTranscript", "TEST");
+
+            Assert.assertEquals(alleleFuncotationMapMap.keySet().size(), 2);
+
+            final Allele allele1 = Allele.create("CAT");
+            Assert.assertEquals(alleleFuncotationMapMap.get(allele1).get("TRANSCRIPT_ALPHA").get(0).getField("Gencode_28_hugoSymbol"), "");
+            Assert.assertEquals(alleleFuncotationMapMap.get(allele1).get("TRANSCRIPT_BRAVO").get(0).getField("Gencode_28_hugoSymbol"), "");
+            Assert.assertEquals(alleleFuncotationMapMap.get(allele1).get("TRANSCRIPT_CHARLIE").get(0).getField("Gencode_28_hugoSymbol"), "");
+
+            final Allele allele2 = Allele.create("TAC");
+            Assert.assertEquals(alleleFuncotationMapMap.get(allele2).get("TRANSCRIPT_ALPHA_2").get(0).getField("Gencode_28_hugoSymbol"), "");
+            Assert.assertEquals(alleleFuncotationMapMap.get(allele2).get("TRANSCRIPT_BRAVO_2").get(0).getField("Gencode_28_hugoSymbol"), "");
+            Assert.assertEquals(alleleFuncotationMapMap.get(allele2).get("TRANSCRIPT_CHARLIE_2").get(0).getField("Gencode_28_hugoSymbol"), "");
+        }
+
+        // Check the multi-allele, single-transcript case (filled-in Hugo Symbols only):
+        {
+            final Map<Allele, FuncotationMap> alleleFuncotationMapMap = FuncotatorUtils.createAlleleToFuncotationMapFromFuncotationVcfAttribute(funcotationKeys,
+                    variantContexts.get(4), "Gencode_28_annotationTranscript", "TEST");
+
+            Assert.assertEquals(alleleFuncotationMapMap.keySet().size(), 3);
+            for ( final Allele allele : alleleFuncotationMapMap.keySet() ) {
+                Assert.assertEquals(alleleFuncotationMapMap.get(allele).get(FuncotationMap.NO_TRANSCRIPT_AVAILABLE_KEY).get(0).getField("Gencode_28_hugoSymbol"), allele.getBaseString());
+            }
+        }
+
+        // Check the single-allele, single-transcript case (filled-in Hugo Symbols only):
+        {
+            final Map<Allele, FuncotationMap> alleleFuncotationMapMap = FuncotatorUtils.createAlleleToFuncotationMapFromFuncotationVcfAttribute(funcotationKeys,
+                    variantContexts.get(5), "Gencode_28_annotationTranscript", "TEST");
+
+            Assert.assertEquals(alleleFuncotationMapMap.keySet().size(), 1);
+            for ( final Allele allele : alleleFuncotationMapMap.keySet() ) {
+                Assert.assertEquals(alleleFuncotationMapMap.get(allele).get(FuncotationMap.NO_TRANSCRIPT_AVAILABLE_KEY).get(0).getField("Gencode_28_hugoSymbol"), allele.getBaseString());
+            }
+        }
+
+        // Check the single-allele, multi-transcript case (filled-in Hugo Symbols only):
+        {
+            final Map<Allele, FuncotationMap> alleleFuncotationMapMap = FuncotatorUtils.createAlleleToFuncotationMapFromFuncotationVcfAttribute(funcotationKeys,
+                    variantContexts.get(6), "Gencode_28_annotationTranscript", "TEST");
+
+            Assert.assertEquals(alleleFuncotationMapMap.keySet().size(), 1);
+            for ( final Allele allele : alleleFuncotationMapMap.keySet() ) {
+                Assert.assertEquals(alleleFuncotationMapMap.get(allele).get("TRANSCRIPT_ALPHA").get(0).getField("Gencode_28_hugoSymbol"), "ALPHA");
+                Assert.assertEquals(alleleFuncotationMapMap.get(allele).get("TRANSCRIPT_BRAVO").get(0).getField("Gencode_28_hugoSymbol"), "BRAVO");
+                Assert.assertEquals(alleleFuncotationMapMap.get(allele).get("TRANSCRIPT_CHARLIE").get(0).getField("Gencode_28_hugoSymbol"), "CHARLIE");
+            }
+        }
+
+        // Check the multi-allele, multi-transcript case (filled-in Hugo Symbols only):
+        {
+            final Map<Allele, FuncotationMap> alleleFuncotationMapMap = FuncotatorUtils.createAlleleToFuncotationMapFromFuncotationVcfAttribute(funcotationKeys,
+                    variantContexts.get(7), "Gencode_28_annotationTranscript", "TEST");
+
+            Assert.assertEquals(alleleFuncotationMapMap.keySet().size(), 2);
+
+            final Allele allele1 = Allele.create("CAT");
+            Assert.assertEquals(alleleFuncotationMapMap.get(allele1).get("TRANSCRIPT_ALPHA").get(0).getField("Gencode_28_hugoSymbol"), "ALPHA_CAT");
+            Assert.assertEquals(alleleFuncotationMapMap.get(allele1).get("TRANSCRIPT_BRAVO").get(0).getField("Gencode_28_hugoSymbol"), "BRAVO_CAT");
+            Assert.assertEquals(alleleFuncotationMapMap.get(allele1).get("TRANSCRIPT_CHARLIE").get(0).getField("Gencode_28_hugoSymbol"), "CHARLIE_CAT");
+
+            final Allele allele2 = Allele.create("TAC");
+            Assert.assertEquals(alleleFuncotationMapMap.get(allele2).get("TRANSCRIPT_ALPHA_2").get(0).getField("Gencode_28_hugoSymbol"), "ALPHA_TAC");
+            Assert.assertEquals(alleleFuncotationMapMap.get(allele2).get("TRANSCRIPT_BRAVO_2").get(0).getField("Gencode_28_hugoSymbol"), "BRAVO_TAC");
+            Assert.assertEquals(alleleFuncotationMapMap.get(allele2).get("TRANSCRIPT_CHARLIE_2").get(0).getField("Gencode_28_hugoSymbol"), "CHARLIE_TAC");
+        }
+
     }
 
     @DataProvider
@@ -188,34 +359,34 @@ public class FuncotationMapUnitTest extends BaseTest{
         return new Object[][] {
                 {"chr3", 178916538, 178916538, "G", "C", FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(),
                         ReferenceDataSource.of( IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref())),
-                        pik3caFeatureReader, DS_PIK3CA_HG19_GENCODE_FASTA,
+                        pik3caFeatureReader, DS_PIK3CA_HG19_GENCODE_FASTA, DS_PIK3CA_HG19_GENCODE_GTF,
                         TranscriptSelectionMode.ALL, Collections.singletonList("ENST00000263967.3")
                 },{"chr3", 178916538, 178916538, "G", "C", FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(),
                         ReferenceDataSource.of( IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref())),
-                        pik3caFeatureReader, DS_PIK3CA_HG19_GENCODE_FASTA,
+                        pik3caFeatureReader, DS_PIK3CA_HG19_GENCODE_FASTA, DS_PIK3CA_HG19_GENCODE_GTF,
                         TranscriptSelectionMode.CANONICAL, Collections.singletonList("ENST00000263967.3")
                 },{"chr19", 8994200, 8994200, "G", "C", FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(),
                         ReferenceDataSource.of( IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref())),
-                        muc16FeatureReader, DS_MUC16_HG19_GENCODE_FASTA,
+                        muc16FeatureReader, DS_MUC16_HG19_GENCODE_FASTA, DS_MUC16_HG19_GENCODE_GTF,
                         TranscriptSelectionMode.ALL, Arrays.asList("ENST00000397910.4", "ENST00000380951.5")
 
                 // Next one tests where we would be in a gene with more than one basic transcript, but variant only overlaps one.  And we still ask for all,
                 //   but since one is IGR, it will never get added the the FuncotationMap.
                 }, {"chr19", 9014550, 9014550, "T", "A", FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(),
                         ReferenceDataSource.of(IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref())),
-                        muc16FeatureReader, DS_MUC16_HG19_GENCODE_FASTA,
+                        muc16FeatureReader, DS_MUC16_HG19_GENCODE_FASTA, DS_MUC16_HG19_GENCODE_GTF,
                         TranscriptSelectionMode.ALL, Collections.singletonList("ENST00000397910.4")
 
                 // Next one tests where we would be in a gene with more than one basic transcript, variant overlaps both, but we are in canonical mode.
                 },{"chr19", 8994200, 8994200, "G", "C", FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(),
                         ReferenceDataSource.of( IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref())),
-                        muc16FeatureReader, DS_MUC16_HG19_GENCODE_FASTA,
+                        muc16FeatureReader, DS_MUC16_HG19_GENCODE_FASTA, DS_MUC16_HG19_GENCODE_GTF,
                         TranscriptSelectionMode.CANONICAL, Collections.singletonList("ENST00000397910.4")
 
                 // Next one tests where we would be in a gene with more than one basic transcript, variant overlaps both, but we are in effect mode.
                 },{"chr19", 8994200, 8994200, "G", "C", FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(),
                         ReferenceDataSource.of( IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref())),
-                        muc16FeatureReader, DS_MUC16_HG19_GENCODE_FASTA,
+                        muc16FeatureReader, DS_MUC16_HG19_GENCODE_FASTA, DS_MUC16_HG19_GENCODE_GTF,
                         TranscriptSelectionMode.BEST_EFFECT, Collections.singletonList("ENST00000397910.4")
                 }
         };
@@ -230,10 +401,11 @@ public class FuncotationMapUnitTest extends BaseTest{
                                                final ReferenceDataSource referenceDataSource,
                                                final FeatureReader<GencodeGtfFeature> featureReader,
                                                final String transcriptFastaFile,
+                                               final String transcriptGtfFile,
                                                final TranscriptSelectionMode transcriptSelectionMode,
                                                final List<String> gtTranscripts) {
 
-        final List<GencodeFuncotation> gencodeFuncotations = createGencodeFuncotations(contig, start, end, ref, alt, referenceFileName, referenceDataSource, featureReader, transcriptFastaFile, transcriptSelectionMode);
+        final List<GencodeFuncotation> gencodeFuncotations = createGencodeFuncotations(contig, start, end, ref, alt, referenceFileName, referenceDataSource, featureReader, transcriptFastaFile, transcriptGtfFile, transcriptSelectionMode);
 
         final FuncotationMap funcotationMap = FuncotationMap.createFromGencodeFuncotations(gencodeFuncotations);
 
@@ -245,7 +417,7 @@ public class FuncotationMapUnitTest extends BaseTest{
                 .noneMatch(k -> ((GencodeFuncotation) funcotationMap.get(k).get(0)).getVariantClassification().equals(GencodeFuncotation.VariantClassification.COULD_NOT_DETERMINE) ));
     }
 
-    private static List<GencodeFuncotation> createGencodeFuncotations(final String contig, final int start, final int end, final String ref, final String alt, final String referenceFileName, final ReferenceDataSource referenceDataSource, final FeatureReader<GencodeGtfFeature> featureReader, final String transcriptFastaFile, final TranscriptSelectionMode transcriptSelectionMode) {
+    private static List<GencodeFuncotation> createGencodeFuncotations(final String contig, final int start, final int end, final String ref, final String alt, final String referenceFileName, final ReferenceDataSource referenceDataSource, final FeatureReader<GencodeGtfFeature> featureReader, final String transcriptFastaFile, final String transcriptGtfFile, final TranscriptSelectionMode transcriptSelectionMode) {
         final SimpleInterval variantInterval = new SimpleInterval( contig, start, end );
         final VariantContext variantContext = createVariantContext(contig, start, end, ref, alt, referenceFileName);
 
@@ -263,10 +435,14 @@ public class FuncotationMapUnitTest extends BaseTest{
 
         final String gencode_test = "GENCODE_TEST";
         final GencodeFuncotationFactory gencodeFactory = new GencodeFuncotationFactory(Paths.get(transcriptFastaFile),
-        "TEST", gencode_test, transcriptSelectionMode, new HashSet<>(), new LinkedHashMap<>());
+        "TEST", gencode_test, transcriptSelectionMode, new HashSet<>(), new LinkedHashMap<>(),
+                new FeatureInput<>(transcriptGtfFile, gencode_test, Collections.emptyMap()));
 
-        return gencodeFactory.createFuncotations(variantContext, referenceContext, Collections.singletonMap(gencode_test, featureList)).stream()
-        .map(f -> (GencodeFuncotation) f).collect(Collectors.toList());
+        final FeatureContext featureContext = FuncotatorTestUtils.createFeatureContext(Collections.singletonList(gencodeFactory), "FuncotationMapUnitTest",
+                variantInterval, 0, 0, 0, null);
+
+        return gencodeFactory.createFuncotations(variantContext, referenceContext, featureContext).stream()
+            .map(f -> (GencodeFuncotation) f).collect(Collectors.toList());
     }
 
     private List<String> createFieldValuesFromNameList(final String prefix, final List<String> baseFieldList) {
@@ -343,7 +519,7 @@ public class FuncotationMapUnitTest extends BaseTest{
         return new Object[][]{
                 {"chr3", 178916538, 178916538, "G", "C", FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(),
                         ReferenceDataSource.of( IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref())),
-                        pik3caFeatureReader, DS_PIK3CA_HG19_GENCODE_FASTA,
+                        pik3caFeatureReader, DS_PIK3CA_HG19_GENCODE_FASTA, DS_PIK3CA_HG19_GENCODE_GTF,
                         TranscriptSelectionMode.ALL, Collections.singletonList("ENST00000263967.3"),
                         Arrays.asList(
                                 TableFuncotation.create(
@@ -367,7 +543,7 @@ public class FuncotationMapUnitTest extends BaseTest{
                         )
                 },{"chr19", 8994200, 8994200, "G", "C", FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(),
                         ReferenceDataSource.of( IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref())),
-                        muc16FeatureReader, DS_MUC16_HG19_GENCODE_FASTA,
+                        muc16FeatureReader, DS_MUC16_HG19_GENCODE_FASTA, DS_MUC16_HG19_GENCODE_GTF,
                         TranscriptSelectionMode.BEST_EFFECT, Collections.singletonList("ENST00000397910.4"),
                         Arrays.asList(
                         TableFuncotation.create(
@@ -391,7 +567,7 @@ public class FuncotationMapUnitTest extends BaseTest{
                 )
                 }, {"chr19", 8994200, 8994200, "G", "C", FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(),
                         ReferenceDataSource.of( IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref())),
-                        muc16FeatureReader, DS_MUC16_HG19_GENCODE_FASTA,
+                        muc16FeatureReader, DS_MUC16_HG19_GENCODE_FASTA, DS_MUC16_HG19_GENCODE_GTF,
                         TranscriptSelectionMode.ALL, Arrays.asList("ENST00000397910.4", "ENST00000380951.5"),
                         Arrays.asList(
                                 TableFuncotation.create(
@@ -430,9 +606,10 @@ public class FuncotationMapUnitTest extends BaseTest{
                               final ReferenceDataSource referenceDataSource,
                               final FeatureReader<GencodeGtfFeature> featureReader,
                               final String transcriptFastaFile,
+                              final String transcriptGtfFile,
                               final TranscriptSelectionMode transcriptSelectionMode,
                               final List<String> gtTranscripts, final List<Funcotation> funcotationsToAdd){
-        final List<GencodeFuncotation> gencodeFuncotations = createGencodeFuncotations(contig, start, end, ref, alt, referenceFileName, referenceDataSource, featureReader, transcriptFastaFile, transcriptSelectionMode);
+        final List<GencodeFuncotation> gencodeFuncotations = createGencodeFuncotations(contig, start, end, ref, alt, referenceFileName, referenceDataSource, featureReader, transcriptFastaFile, transcriptGtfFile, transcriptSelectionMode);
         final FuncotationMap funcotationMap = FuncotationMap.createFromGencodeFuncotations(gencodeFuncotations);
 
         // Let's make sure that the gtTranscripts match what is in the map, even if this is tested elsewhere
@@ -508,7 +685,7 @@ public class FuncotationMapUnitTest extends BaseTest{
         // Create some gencode funcotations.  The content does not really matter here.
         final List<Funcotation> gencodeFuncotations = createGencodeFuncotations("chr19", 8994200, 8994200, "G", "C", FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(),
                 ReferenceDataSource.of( IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref())),
-                muc16FeatureReader, DS_MUC16_HG19_GENCODE_FASTA,
+                muc16FeatureReader, DS_MUC16_HG19_GENCODE_FASTA, DS_MUC16_HG19_GENCODE_GTF,
                 TranscriptSelectionMode.ALL).stream().map(gf -> (Funcotation) gf).collect(Collectors.toList());
 
         // Create a funcotationMap with some pre-made funcotations.  Content does not really matter.

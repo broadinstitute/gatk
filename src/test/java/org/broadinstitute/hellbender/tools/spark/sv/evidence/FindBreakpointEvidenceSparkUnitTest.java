@@ -28,7 +28,7 @@ public final class FindBreakpointEvidenceSparkUnitTest extends GATKBaseTest {
     private static final SVInterval[] testIntervals =
             { new SVInterval(1, 43349482, 43350671), new SVInterval(1, 43353045, 43353870) };
 
-    private final String readsFile = largeFileTestDir + "SVIntegrationTest.bam";
+    private final String readsFile = largeFileTestDir + "/sv/SVIntegrationTest_hg19.bam";
     private final String toolDir = getToolTestDataDir();
     private final String qNamesFile = toolDir+"SVBreakpointsTest.qnames";
     private final String kmersFile = toolDir+"SVBreakpointsTest.kmers";

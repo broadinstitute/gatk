@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
+import htsjdk.samtools.util.RuntimeIOException;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
@@ -45,6 +46,7 @@ import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 import org.broadinstitute.hellbender.utils.variant.writers.GVCFWriter;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -144,7 +146,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      * @param createBamOutIndex true to create an index file for the bamout
      * @param createBamOutMD5 true to create an md5 file for the bamout
      * @param readsHeader header for the reads
-     * @param referenceReader reader to provide reference data
+     * @param referenceReader reader to provide reference data, this reference reader will be closed when {@link #shutdown()} is called
      * @param annotationEngine variantAnnotatorEngine with annotations to process already added
      */
     public HaplotypeCallerEngine( final HaplotypeCallerArgumentCollection hcArgs, boolean createBamOutIndex, boolean createBamOutMD5, final SAMFileHeader readsHeader, ReferenceSequenceFile referenceReader, VariantAnnotatorEngine annotationEngine ) {
@@ -442,8 +444,9 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
     public ActivityProfileState isActive( final AlignmentContext context, final ReferenceContext ref, final FeatureContext features ) {
 
         if ( hcArgs.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES ) {
-            final VariantContext vcFromAllelesRod = GenotypingGivenAllelesUtils.composeGivenAllelesVariantContextFromRod(features, ref.getInterval(), false, hcArgs.genotypeFilteredAlleles, logger, hcArgs.alleles);
-            if( vcFromAllelesRod != null ) {
+            final VariantContext vcFromGivenAlleles = GenotypingGivenAllelesUtils.composeGivenAllelesVariantContextFromVariantList(features,
+                    ref.getInterval(), hcArgs.genotypeFilteredAlleles, hcArgs.alleles);
+            if( vcFromGivenAlleles != null ) {
                 return new ActivityProfileState(ref.getInterval(), 1.0);
             }
         }
@@ -473,7 +476,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         for( final Map.Entry<String, AlignmentContext> sample : splitContexts.entrySet() ) {
             // The ploidy here is not dictated by the sample but by the simple genotyping-engine used to determine whether regions are active or not.
             final int activeRegionDetectionHackishSamplePloidy = activeRegionEvaluationGenotyperEngine.getConfiguration().genotypeArgs.samplePloidy;
-            final double[] genotypeLikelihoods = referenceConfidenceModel.calcGenotypeLikelihoodsOfRefVsAny(activeRegionDetectionHackishSamplePloidy,sample.getValue().getBasePileup(), ref.getBase(), hcArgs.minBaseQualityScore, averageHQSoftClips).genotypeLikelihoods;
+            final double[] genotypeLikelihoods = referenceConfidenceModel.calcGenotypeLikelihoodsOfRefVsAny(activeRegionDetectionHackishSamplePloidy,sample.getValue().getBasePileup(), ref.getBase(), hcArgs.minBaseQualityScore, averageHQSoftClips, false).genotypeLikelihoods;
             genotypes.add( new GenotypeBuilder(sample.getKey()).alleles(noCall).PL(genotypeLikelihoods).make() );
         }
 
@@ -708,6 +711,13 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         aligner.close();
         if ( haplotypeBAMWriter.isPresent() ) {
             haplotypeBAMWriter.get().close();
+        }
+        if ( referenceReader != null){
+            try {
+                referenceReader.close();
+            } catch (IOException e) {
+                throw new RuntimeIOException(e);
+            }
         }
 
 

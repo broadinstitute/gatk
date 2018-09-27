@@ -1,9 +1,10 @@
 package org.broadinstitute.hellbender.tools.copynumber;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CalledCopyRatioSegmentCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioSegmentCollection;
-import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedIntervalCollection;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -29,5 +30,13 @@ public final class CallCopyRatioSegmentsIntegrationTest extends CommandLineProgr
         Assert.assertEquals(calledCopyRatioSegments.getMetadata(), copyRatioSegments.getMetadata());
         Assert.assertEquals(calledCopyRatioSegments.getIntervals(), copyRatioSegments.getIntervals());
         Assert.assertEquals(calledCopyRatioSegments.getRecords().stream().map(s -> s.getCall().getOutputString()).toArray(), new String[] {"+", "-", "0", "0"});
+
+        // Test writing the legacy format.  Note that reading cannot be done through the CNV tools, since the header has been stripped away.
+        final File legacySegmentFile = CallCopyRatioSegments.createCalledLegacyOutputFilename(outputFile);
+        Assert.assertTrue(legacySegmentFile.exists());
+        Assert.assertTrue(legacySegmentFile.length() > 0);
+
+        final AnnotatedIntervalCollection annotatedIntervalCollection = AnnotatedIntervalCollection.create(legacySegmentFile.toPath(), null);
+        Assert.assertEquals(annotatedIntervalCollection.getRecords().size(), 4);
     }
 }

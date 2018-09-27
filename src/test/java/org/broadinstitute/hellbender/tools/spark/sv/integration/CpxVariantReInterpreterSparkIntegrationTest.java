@@ -25,7 +25,7 @@ public class CpxVariantReInterpreterSparkIntegrationTest extends CommandLineProg
     private static final String THIS_TEST_FOLDER = getTestDataDir() + "/spark/sv/integration/inputs/";
 
     private static final String complexVCF = THIS_TEST_FOLDER + "CpxVariantReInterpreterSparkIntegrationTest_complex.vcf";
-    private static final String assemblyAlignmentsAccompanyingComplexVCF = largeFileTestDir + "CpxVariantReInterpreterSparkIntegrationTest_complex_assembly.bam";
+    private static final String assemblyAlignmentsAccompanyingComplexVCF = largeFileTestDir + "/sv/CpxVariantReInterpreterSparkIntegrationTest_complex_assembly.bam";
     private static final File fastaReference = new File(b38_reference_20_21);
     private static final String nonCanonicalChromosomeNamesFile = THIS_TEST_FOLDER + "Homo_sapiens_assembly38.kill.alts";
     private static final String outPrefix = "cpx_reinterpreted_simple";

@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedInterval;
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedIntervalCollection;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.xsv.SimpleKeyXsvFuncotationFactory;
@@ -28,10 +29,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -54,6 +52,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     // This should always be false when checked in.
     private static final boolean doDebugTests = false;
     private static final String LARGE_DATASOURCES_FOLDER = "funcotator_dataSources_latest";
+    private static final String GERMLINE_DATASOURCES_FOLDER = "funcotator_dataSources_germline_latest";
 
     private static final String XSV_CLINVAR_MULTIHIT_TEST_VCF = toolsTestDir + "funcotator" + File.separator + "clinvar_hg19_multihit_test.vcf";
     private static final String DS_XSV_CLINVAR_TESTS          = largeFileTestDir + "funcotator" + File.separator + "small_ds_clinvar_hg19" + File.separator;
@@ -77,6 +76,12 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     private static final String EMPTY_VCF  = publicTestDir + File.separator + "empty.vcf";
     private static final String PIK3CA_DBSNP_DS          = toolsTestDir + "funcotator" + File.separator + "small_pik3ca_dbsnp_ds";
     private static final String MAF_DBSNP_TEST           = toolsTestDir + "funcotator" + File.separator + "maf_dbsnp_test_input.vcf";
+
+    private static final List<String> VCF_FIELDS_GENCODE_19_DS = Arrays.asList("Gencode_19_hugoSymbol","Gencode_19_ncbiBuild","Gencode_19_chromosome","Gencode_19_start","Gencode_19_end","Gencode_19_variantClassification","Gencode_19_variantType","Gencode_19_refAllele","Gencode_19_tumorSeqAllele1","Gencode_19_tumorSeqAllele2","Gencode_19_genomeChange","Gencode_19_annotationTranscript","Gencode_19_transcriptStrand","Gencode_19_transcriptExon","Gencode_19_transcriptPos","Gencode_19_cDnaChange","Gencode_19_codonChange","Gencode_19_proteinChange","Gencode_19_gcContent","Gencode_19_referenceContext","Gencode_19_otherTranscripts");//,"Achilles_Top_Genes","CGC_Name","CGC_GeneID","CGC_Chr","CGC_Chr_Band","CGC_Cancer_Somatic_Mut","CGC_Cancer_Germline_Mut","CGC_Tumour_Types__(Somatic_Mutations)","CGC_Tumour_Types_(Germline_Mutations)","CGC_Cancer_Syndrome","CGC_Tissue_Type","CGC_Cancer_Molecular_Genetics","CGC_Mutation_Type","CGC_Translocation_Partner","CGC_Other_Germline_Mut","CGC_Other_Syndrome/Disease","ClinVar_HGMD_ID","ClinVar_SYM","ClinVar_TYPE","ClinVar_ASSEMBLY","ClinVar_rs","Cosmic_overlapping_mutations","CosmicFusion_fusion_genes","CosmicFusion_fusion_id","CosmicTissue_total_alterations_in_gene","CosmicTissue_tissue_types_affected","DNARepairGenes_Activity_linked_to_OMIM","DNARepairGenes_Chromosome_location_linked_to_NCBI_MapView","DNARepairGenes_Accession_number_linked_to_NCBI_Entrez","Familial_Cancer_Genes_Syndrome","Familial_Cancer_Genes_Synonym","Familial_Cancer_Genes_Reference","Gencode_XHGNC_hgnc_id","Gencode_XRefSeq_mRNA_id","Gencode_XRefSeq_prot_acc","HGNC_HGNC_ID","HGNC_Approved_Name","HGNC_Status","HGNC_Locus_Type","HGNC_Locus_Group","HGNC_Previous_Symbols","HGNC_Previous_Name","HGNC_Synonyms","HGNC_Name_Synonyms","HGNC_Chromosome","HGNC_Date_Modified","HGNC_Date_Symbol_Changed","HGNC_Date_Name_Changed","HGNC_Accession_Numbers","HGNC_Enzyme_IDs","HGNC_Entrez_Gene_ID","HGNC_Ensembl_Gene_ID","HGNC_Pubmed_IDs","HGNC_RefSeq_IDs","HGNC_Gene_Family_ID","HGNC_Gene_Family_Name","HGNC_CCDS_IDs","HGNC_Vega_ID","HGNC_Entrez_Gene_ID(supplied_by_NCBI)","HGNC_OMIM_ID(supplied_by_OMIM)","HGNC_RefSeq(supplied_by_NCBI)","HGNC_UniProt_ID(supplied_by_UniProt)","HGNC_Ensembl_ID(supplied_by_Ensembl)","HGNC_UCSC_ID(supplied_by_UCSC)","Oreganno_Build","Oreganno_ID","Oreganno_Values","Simple_Uniprot_uniprot_entry_name","Simple_Uniprot_DrugBank","Simple_Uniprot_alt_uniprot_accessions","Simple_Uniprot_uniprot_accession","Simple_Uniprot_GO_Biological_Process","Simple_Uniprot_GO_Cellular_Component","Simple_Uniprot_GO_Molecular_Function","dbSNP_ASP","dbSNP_ASS","dbSNP_CAF","dbSNP_CDA","dbSNP_CFL","dbSNP_COMMON","dbSNP_DSS","dbSNP_G5","dbSNP_G5A","dbSNP_GENEINFO","dbSNP_GNO","dbSNP_HD","dbSNP_INT","dbSNP_KGPhase1","dbSNP_KGPhase3","dbSNP_LSD","dbSNP_MTP","dbSNP_MUT","dbSNP_NOC","dbSNP_NOV","dbSNP_NSF","dbSNP_NSM","dbSNP_NSN","dbSNP_OM","dbSNP_OTH","dbSNP_PM","dbSNP_PMC","dbSNP_R3","dbSNP_R5","dbSNP_REF","dbSNP_RS","dbSNP_RSPOS","dbSNP_RV","dbSNP_S3D","dbSNP_SAO","dbSNP_SLO","dbSNP_SSR","dbSNP_SYN","dbSNP_TOPMED","dbSNP_TPA","dbSNP_U3","dbSNP_U5","dbSNP_VC","dbSNP_VLD","dbSNP_VP","dbSNP_WGT","dbSNP_WTD","dbSNP_dbSNPBuildID");
+    private static final List<String> VCF_FIELDS_GENCODE_28_DS = Arrays.asList("Gencode_28_hugoSymbol","Gencode_28_ncbiBuild","Gencode_28_chromosome","Gencode_28_start","Gencode_28_end","Gencode_28_variantClassification","Gencode_28_variantType","Gencode_28_refAllele","Gencode_28_tumorSeqAllele1","Gencode_28_tumorSeqAllele2","Gencode_28_genomeChange","Gencode_28_annotationTranscript","Gencode_28_transcriptStrand","Gencode_28_transcriptExon","Gencode_28_transcriptPos","Gencode_28_cDnaChange","Gencode_28_codonChange","Gencode_28_proteinChange","Gencode_28_gcContent","Gencode_28_referenceContext","Gencode_28_otherTranscripts");//,"Achilles_Top_Genes","CGC_Name","CGC_GeneID","CGC_Chr","CGC_Chr_Band","CGC_Cancer_Somatic_Mut","CGC_Cancer_Germline_Mut","CGC_Tumour_Types__(Somatic_Mutations)","CGC_Tumour_Types_(Germline_Mutations)","CGC_Cancer_Syndrome","CGC_Tissue_Type","CGC_Cancer_Molecular_Genetics","CGC_Mutation_Type","CGC_Translocation_Partner","CGC_Other_Germline_Mut","CGC_Other_Syndrome/Disease","ClinVar_HGMD_ID","ClinVar_SYM","ClinVar_TYPE","ClinVar_ASSEMBLY","ClinVar_rs","Cosmic_overlapping_mutations","CosmicFusion_fusion_genes","CosmicFusion_fusion_id","CosmicTissue_total_alterations_in_gene","CosmicTissue_tissue_types_affected","DNARepairGenes_Activity_linked_to_OMIM","DNARepairGenes_Chromosome_location_linked_to_NCBI_MapView","DNARepairGenes_Accession_number_linked_to_NCBI_Entrez","Familial_Cancer_Genes_Syndrome","Familial_Cancer_Genes_Synonym","Familial_Cancer_Genes_Reference","Gencode_XHGNC_hgnc_id","Gencode_XRefSeq_mRNA_id","Gencode_XRefSeq_prot_acc","HGNC_HGNC_ID","HGNC_Approved_Name","HGNC_Status","HGNC_Locus_Type","HGNC_Locus_Group","HGNC_Previous_Symbols","HGNC_Previous_Name","HGNC_Synonyms","HGNC_Name_Synonyms","HGNC_Chromosome","HGNC_Date_Modified","HGNC_Date_Symbol_Changed","HGNC_Date_Name_Changed","HGNC_Accession_Numbers","HGNC_Enzyme_IDs","HGNC_Entrez_Gene_ID","HGNC_Ensembl_Gene_ID","HGNC_Pubmed_IDs","HGNC_RefSeq_IDs","HGNC_Gene_Family_ID","HGNC_Gene_Family_Name","HGNC_CCDS_IDs","HGNC_Vega_ID","HGNC_Entrez_Gene_ID(supplied_by_NCBI)","HGNC_OMIM_ID(supplied_by_OMIM)","HGNC_RefSeq(supplied_by_NCBI)","HGNC_UniProt_ID(supplied_by_UniProt)","HGNC_Ensembl_ID(supplied_by_Ensembl)","HGNC_UCSC_ID(supplied_by_UCSC)","Oreganno_Build","Oreganno_ID","Oreganno_Values","Simple_Uniprot_uniprot_entry_name","Simple_Uniprot_DrugBank","Simple_Uniprot_alt_uniprot_accessions","Simple_Uniprot_uniprot_accession","Simple_Uniprot_GO_Biological_Process","Simple_Uniprot_GO_Cellular_Component","Simple_Uniprot_GO_Molecular_Function","dbSNP_ASP","dbSNP_ASS","dbSNP_CAF","dbSNP_CDA","dbSNP_CFL","dbSNP_COMMON","dbSNP_DSS","dbSNP_G5","dbSNP_G5A","dbSNP_GENEINFO","dbSNP_GNO","dbSNP_HD","dbSNP_INT","dbSNP_KGPhase1","dbSNP_KGPhase3","dbSNP_LSD","dbSNP_MTP","dbSNP_MUT","dbSNP_NOC","dbSNP_NOV","dbSNP_NSF","dbSNP_NSM","dbSNP_NSN","dbSNP_OM","dbSNP_OTH","dbSNP_PM","dbSNP_PMC","dbSNP_R3","dbSNP_R5","dbSNP_REF","dbSNP_RS","dbSNP_RSPOS","dbSNP_RV","dbSNP_S3D","dbSNP_SAO","dbSNP_SLO","dbSNP_SSR","dbSNP_SYN","dbSNP_TOPMED","dbSNP_TPA","dbSNP_U3","dbSNP_U5","dbSNP_VC","dbSNP_VLD","dbSNP_VP","dbSNP_WGT","dbSNP_WTD","dbSNP_dbSNPBuildID");
+    private static final List<String> MAF_FIELDS_GENCODE_DS = Arrays.asList(MafOutputRendererConstants.FieldName_Hugo_Symbol, MafOutputRendererConstants.FieldName_NCBI_Build, MafOutputRendererConstants.FieldName_Chromosome,
+            MafOutputRendererConstants.FieldName_Start_Position, MafOutputRendererConstants.FieldName_End_Position, MafOutputRendererConstants.FieldName_Variant_Classification,  MafOutputRendererConstants.FieldName_Variant_Type,
+            MafOutputRendererConstants.FieldName_Reference_Allele, MafOutputRendererConstants.FieldName_Tumor_Seq_Allele1, MafOutputRendererConstants.FieldName_Tumor_Seq_Allele2, MafOutputRendererConstants.FieldName_Genome_Change, MafOutputRendererConstants.FieldName_Annotation_Transcript, MafOutputRendererConstants.FieldName_Transcript_Strand, MafOutputRendererConstants.FieldName_Transcript_Exon, MafOutputRendererConstants.FieldName_Transcript_Position, MafOutputRendererConstants.FieldName_cDNA_Change, MafOutputRendererConstants.FieldName_Codon_Change, MafOutputRendererConstants.FieldName_Protein_Change, MafOutputRendererConstants.FieldName_gc_content, MafOutputRendererConstants.FieldName_ref_context, MafOutputRendererConstants.FieldName_Other_Transcripts);
 
     private static String hg38Chr3Ref;
     private static String b37Chr3Ref;
@@ -267,32 +272,44 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                         "M2_01115161-TA1-filtered.vcf",
                         "Homo_sapiens_assembly19.fasta",
                         FuncotatorTestConstants.REFERENCE_VERSION_HG19,
+                        getFuncotatorLargeDataValidationTestInputPath() + LARGE_DATASOURCES_FOLDER
                 },
                 {
                         "C828.TCGA-D3-A2JP-06A-11D-A19A-08.3-filtered.PASS.vcf",
                         "Homo_sapiens_assembly19.fasta",
-                        FuncotatorTestConstants.REFERENCE_VERSION_HG19
+                        FuncotatorTestConstants.REFERENCE_VERSION_HG19,
+                        getFuncotatorLargeDataValidationTestInputPath() + LARGE_DATASOURCES_FOLDER
                 },
                 {
                         "hg38_test_variants.vcf",
                         "Homo_sapiens_assembly38.fasta",
-                        FuncotatorTestConstants.REFERENCE_VERSION_HG38
+                        FuncotatorTestConstants.REFERENCE_VERSION_HG38,
+                        getFuncotatorLargeDataValidationTestInputPath() + LARGE_DATASOURCES_FOLDER
                 },
                 {
                         "sample21.trimmed.vcf",
                         "Homo_sapiens_assembly38.fasta",
-                        FuncotatorTestConstants.REFERENCE_VERSION_HG38
+                        FuncotatorTestConstants.REFERENCE_VERSION_HG38,
+                        getFuncotatorLargeDataValidationTestInputPath() + LARGE_DATASOURCES_FOLDER
                 },
                 {
                         "0816201804HC0_R01C01.vcf",
                         "Homo_sapiens_assembly19.fasta",
-                        FuncotatorTestConstants.REFERENCE_VERSION_HG19
+                        FuncotatorTestConstants.REFERENCE_VERSION_HG19,
+                        getFuncotatorLargeDataValidationTestInputPath() + LARGE_DATASOURCES_FOLDER
                 },
                 {
                         "hg38_trio.vcf",
                         "Homo_sapiens_assembly38.fasta",
-                        FuncotatorTestConstants.REFERENCE_VERSION_HG38
-                }
+                        FuncotatorTestConstants.REFERENCE_VERSION_HG38,
+                        getFuncotatorLargeDataValidationTestInputPath() + LARGE_DATASOURCES_FOLDER
+                },
+                {
+                        "0816201804HC0_R01C01.vcf",
+                        "Homo_sapiens_assembly19.fasta",
+                        FuncotatorTestConstants.REFERENCE_VERSION_HG19,
+                        getFuncotatorLargeDataValidationTestInputPath() + GERMLINE_DATASOURCES_FOLDER
+                },
         };
     }
 
@@ -344,7 +361,8 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
           dataProvider = "provideForLargeDataValidationTest")
     public void largeDataValidationTest(final String inputVcfName,
                                         final String referencePath,
-                                        final String referenceVersion) throws IOException {
+                                        final String referenceVersion,
+                                        final String dataSourcesPath) throws IOException {
 
         // Get our main test folder path from our environment:
         final String testFolderInputPath = getFuncotatorLargeDataValidationTestInputPath();
@@ -584,26 +602,56 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                 .count(), NUM_CLINVAR_HITS);
     }
 
-    @DataProvider(name = "provideForMafVcfConcordanceProteinChange")
-    final Object[][] provideForMafVcfConcordanceProteinChange() {
+    @DataProvider(name = "provideForMafVcfConcordance")
+    final Object[][] provideForMafVcfConcordance() {
         return new Object[][]{
                 {PIK3CA_VCF_HG19_SNPS, b37Chr3Ref, FuncotatorTestConstants.REFERENCE_VERSION_HG19, Collections.singletonList("Gencode_19_proteinChange"), Collections.singletonList(MafOutputRendererConstants.FieldName_Protein_Change), DS_PIK3CA_DIR, true, 15},
                 {PIK3CA_VCF_HG19_INDELS, b37Chr3Ref, FuncotatorTestConstants.REFERENCE_VERSION_HG19, Collections.singletonList("Gencode_19_proteinChange"), Collections.singletonList(MafOutputRendererConstants.FieldName_Protein_Change), DS_PIK3CA_DIR, true, 57},
-                {MUC16_VCF_HG19, hg19Chr19Ref, FuncotatorTestConstants.REFERENCE_VERSION_HG19, Collections.singletonList("Gencode_19_proteinChange"), Collections.singletonList(MafOutputRendererConstants.FieldName_Protein_Change), DS_MUC16_DIR, false, 2057}
+                {MUC16_VCF_HG19, hg19Chr19Ref, FuncotatorTestConstants.REFERENCE_VERSION_HG19, Collections.singletonList("Gencode_19_proteinChange"), Collections.singletonList(MafOutputRendererConstants.FieldName_Protein_Change), DS_MUC16_DIR, false, 2057},
+                {
+                        PIK3CA_VCF_HG38,
+                        hg38Chr3Ref,
+                        FuncotatorTestConstants.REFERENCE_VERSION_HG38,
+                        VCF_FIELDS_GENCODE_28_DS,
+                        MAF_FIELDS_GENCODE_DS,
+                        DS_PIK3CA_DIR,
+                        false,
+                        104,
+                },
+                {PIK3CA_VCF_HG19_INDELS, b37Chr3Ref, FuncotatorTestConstants.REFERENCE_VERSION_HG19, VCF_FIELDS_GENCODE_19_DS, MAF_FIELDS_GENCODE_DS, DS_PIK3CA_DIR, true, 57},
         };
     }
 
+    private void createConfigFileForMAF(final File mafConfigFile) {
+        try ( final PrintWriter printWriter = new PrintWriter(mafConfigFile) ) {
+            printWriter.println("contig_column = " + MafOutputRendererConstants.FieldName_Chromosome);
+            printWriter.println("start_column = " + MafOutputRendererConstants.FieldName_Start_Position);
+            printWriter.println("end_column = " + MafOutputRendererConstants.FieldName_End_Position);
+            printWriter.println("xsv_delimiter = \\t");
+            printWriter.println("name = ");
+        }
+        catch (final FileNotFoundException ex) {
+            throw new GATKException("Could not create the tmp config file to test maf/vcf concorance: " + mafConfigFile.toURI().toString(), ex);
+        }
+    }
+
     /**
-     * Make sure that VCFs and MAFs have exactly the same protein change strings.  This test does not look for
-     *  multiallelics.  This test is really only meant to test the rendering itself.
+     * Make sure that VCFs and MAFs have exactly the same annotation strings.  This test does not look for
+     *  multiallelics.
      */
-    @Test(dataProvider = "provideForMafVcfConcordanceProteinChange")
-    public void testVcfMafConcordanceForProteinChange(final String inputVcf, final String inputRef,
-                                                      final String funcotatorRef, final List<String> annotationsToCheckVcf,
-                                                      final List<String> annotationsToCheckMaf,
-                                                      final String datasourceDir,
-                                                      final boolean forceB37Hg19Conversion,
-                                                      final int gtNumVariants) {
+    @Test(dataProvider = "provideForMafVcfConcordance")
+    public void testVcfMafConcordance(final String inputVcf,
+                                      final String inputRef,
+                                      final String funcotatorRef,
+                                      final List<String> annotationsToCheckVcf,
+                                      final List<String> annotationsToCheckMaf,
+                                      final String datasourceDir,
+                                      final boolean forceB37Hg19Conversion,
+                                      final int gtNumVariants) {
+
+        // ===========================================================================================
+        // Run in VCF Mode:
+        // ===========================================
         final FuncotatorArgumentDefinitions.OutputFormatType vcfOutputFormatType = FuncotatorArgumentDefinitions.OutputFormatType.VCF;
         final File vcfOutputFile = getOutputFile(vcfOutputFormatType);
 
@@ -625,6 +673,10 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         }
 
         runCommandLine(argumentsVcf);
+
+        // ===========================================================================================
+        // Run in MAF Mode:
+        // ===========================================
 
         final FuncotatorArgumentDefinitions.OutputFormatType mafOutputFormatType = FuncotatorArgumentDefinitions.OutputFormatType.MAF;
         final File mafOutputFile = getOutputFile(mafOutputFormatType);
@@ -648,44 +700,73 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 
         runCommandLine(argumentsMaf);
 
+        // TODO: Create another config file for this MAF that has good column headers in it.
+        final File mafConfigFile = createTempFile(mafOutputFile.getName(), ".config");
+        createConfigFileForMAF(mafConfigFile);
+
+        // ===========================================================================================
+        // Read in and validate VCF:
+        // ===========================================
+
         final Pair<VCFHeader, List<VariantContext>> vcfInfo = VariantContextTestUtils.readEntireVCFIntoMemory(vcfOutputFile.getAbsolutePath());
         final List<VariantContext> variantContexts = vcfInfo.getRight();
         final VCFHeader vcfHeader = vcfInfo.getLeft();
         final VCFInfoHeaderLine funcotationHeaderLine = vcfHeader.getInfoHeaderLine(VcfOutputRenderer.FUNCOTATOR_VCF_FIELD_NAME);
 
+        Assert.assertEquals(variantContexts.stream().map(vc -> vc.getAlleles().size() - 1).mapToInt(Integer::intValue).sum(), gtNumVariants);
         Assert.assertTrue(variantContexts.stream().allMatch(v -> v.hasAttribute(VcfOutputRenderer.FUNCOTATOR_VCF_FIELD_NAME)));
 
-        final AnnotatedIntervalCollection maf = AnnotatedIntervalCollection.create(mafOutputFile.toPath(), null);
+        // ===========================================================================================
+        // Read in and validate MAF:
+        // ===========================================
+
+        final AnnotatedIntervalCollection maf = AnnotatedIntervalCollection.create(mafOutputFile.toPath(), mafConfigFile.toPath(), null);
         Assert.assertEquals(maf.getRecords().size(), gtNumVariants);
 
         // Some errors manifest as all of the variant classifications being IGR.  Check to make sure that is not the case.
         Assert.assertTrue(maf.getRecords().stream()
                 .anyMatch(v -> !v.getAnnotationValue(MafOutputRendererConstants.FieldName_Variant_Classification).equals("IGR")), "Output produced only IGR annotations!");
 
-        Assert.assertTrue(maf.getRecords().stream()
-                .anyMatch(v -> v.getAnnotationValue(MafOutputRendererConstants.FieldName_Variant_Classification).equals("Missense_Mutation") ||
-                        v.getAnnotationValue(MafOutputRendererConstants.FieldName_Variant_Classification).startsWith("Frame_Shift")), "Output produced unexpected VariantClassification");
+        // ===========================================================================================
+        // Compare VCF and MAF Annotations:
+        // ===========================================
 
-        // Get the protein changes:
+        // Get the annotation fields:
         final String[] funcotationKeys = extractFuncotatorKeysFromHeaderDescription(funcotationHeaderLine.getDescription());
 
         for (int i = 0; i < annotationsToCheckMaf.size(); i++) {
             final String annotationToCheckVcf = annotationsToCheckVcf.get(i);
             final String annotationToCheckMaf = annotationsToCheckMaf.get(i);
-            final List<String> mafProteinChanges = maf.getRecords().stream().map(v -> v.getAnnotationValue(annotationToCheckMaf)).collect(Collectors.toList());
+
+            // Have to get the contig / start / end from the interval itself for MAF:
+            List<String> mafFieldValues;
+            if ( annotationsToCheckMaf.get(i).equals(MafOutputRendererConstants.FieldName_Chromosome) ) {
+                mafFieldValues = maf.getRecords().stream().map(AnnotatedInterval::getContig).collect(Collectors.toList());
+            }
+            else if ( annotationsToCheckMaf.get(i).equals(MafOutputRendererConstants.FieldName_Start_Position) ) {
+                mafFieldValues = maf.getRecords().stream().map(AnnotatedInterval::getStart).map(x -> new Integer(x)).map(Object::toString).collect(Collectors.toList());
+            }
+            else if ( annotationsToCheckMaf.get(i).equals(MafOutputRendererConstants.FieldName_End_Position) ) {
+                mafFieldValues = maf.getRecords().stream().map(AnnotatedInterval::getEnd).map(x -> new Integer(x)).map(Object::toString).collect(Collectors.toList());
+            }
+            else {
+                mafFieldValues = maf.getRecords().stream().map(v -> v.getAnnotationValue(annotationToCheckMaf)).collect(Collectors.toList());
+            }
+            mafFieldValues = mafFieldValues.stream().map(val -> MafOutputRenderer.mafTransformInvert(annotationToCheckMaf, val, funcotatorRef)).collect(Collectors.toList());
 
             // Note that we assume that each variant context has one allele and one transcript.  This is true due to the
-            //  datasources and input VCF.
+            // datasources and input VCF.
             // Don't try to refactor this for-loop to a stream here.
-            final List<String> vcfProteinChanges = new ArrayList<>();
+            final List<String> vcfFieldValues = new ArrayList<>();
             for (final VariantContext v: variantContexts) {
                 final Map<Allele, FuncotationMap> alleleFuncotationMapMap = FuncotatorUtils.createAlleleToFuncotationMapFromFuncotationVcfAttribute(
                         funcotationKeys, v, "Gencode_19_annotationTranscript", "TEST");
-                final Allele alternateAllele = v.getAlternateAllele(0);
-                final FuncotationMap funcotationMap = alleleFuncotationMapMap.get(alternateAllele);
-                vcfProteinChanges.add(funcotationMap.getFieldValue(funcotationMap.getTranscriptList().get(0), annotationToCheckVcf, alternateAllele));
+                for (final Allele alternateAllele : v.getAlternateAlleles() ) {
+                    final FuncotationMap funcotationMap = alleleFuncotationMapMap.get(alternateAllele);
+                    vcfFieldValues.add(funcotationMap.getFieldValue(funcotationMap.getTranscriptList().get(0), annotationToCheckVcf, alternateAllele));
+                }
             }
-            Assert.assertEquals(mafProteinChanges, vcfProteinChanges, "Failed matching " + annotationToCheckVcf);
+            Assert.assertEquals(mafFieldValues, vcfFieldValues, "Failed matching (VCF: " + annotationToCheckVcf + " , MAF: " + annotationToCheckMaf + ")");
         }
     }
 
@@ -834,7 +915,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         // Needs to get aliases from the MAF, since AF (and maybe more) has its name changed.  So create a dummy
         //  MafOutputRenderer that mimics the one that is used in the command line invocation above and get the aliases.
         final File dummyOutputFile = getOutputFile(outputFormatType);
-        final MafOutputRenderer dummyMafOutputRenderer = new MafOutputRenderer(dummyOutputFile.toPath(), Collections.emptyList(), new VCFHeader(), new LinkedHashMap<>(), new LinkedHashMap<>(), new HashSet<>());
+        final MafOutputRenderer dummyMafOutputRenderer = new MafOutputRenderer(dummyOutputFile.toPath(), Collections.emptyList(), new VCFHeader(), new LinkedHashMap<>(), new LinkedHashMap<>(), new HashSet<>(), "b37");
         final Map<String, Set<String>> mafAliasMap = dummyMafOutputRenderer.getReverseOutputFieldNameMap();
 
         // Get all of the alias lists

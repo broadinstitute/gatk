@@ -52,6 +52,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     private static final String NA_12878_PHASED = largeFileTestDir + "NA12878.phasedData.Chr20.vcf"; //NOTE: this is not phased according to the vcf spec but it reflects phasing currently produced by haplotype caller
     private static final String MULTIPLOID_DATA_HG37 = largeFileTestDir + "gvcfs/HapMap5plex.ploidy10.b37.g.vcf";
     private static final String NA12878_HG37 = toolsTestDir + "haplotypecaller/expected.testGVCFMode.gatk4.g.vcf";
+    private static final String MULTIPLOID_EXPECTED_RESULT = toolsTestDir + "GenomicsDBImport/expected.testGenomicsDBImportWithNonDiploidData.vcf";
     private static final String ARTIFICIAL_PHASED = getTestDataDir() + "/ArtificalPhasedData.1.g.vcf";
     private static final String HG_00268_WITH_SPACES = largeFileTestDir + "gvcfs/HG00268.spaceInSampleName.g.vcf";
     private static final List<String> LOCAL_GVCFS = Arrays.asList(HG_00096, HG_00268, NA_19625);
@@ -136,11 +137,11 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
 
     private void testGenomicsDBImportWith1000Intervals() throws IOException {
         final String workspace = createTempDir("genomicsdb-tests-").getAbsolutePath() + "/workspace";
-        LinkedList<SimpleInterval> intervals= new LinkedList<SimpleInterval>();
+        LinkedList<SimpleInterval> intervals = new LinkedList<SimpleInterval>();
         //[ 17960187, 17981445 ]
         int base = 17960187;
-        for(int i=0;i<1000;++i)
-            intervals.add(new SimpleInterval("chr20", base+20*i, base+20*i+10)); //intervals of size 10 separated by 10
+        for (int i = 0; i < 1000; ++i)
+            intervals.add(new SimpleInterval("chr20", base + 20 * i, base + 20 * i + 10)); //intervals of size 10 separated by 10
         writeToGenomicsDB(new ArrayList<String>(Arrays.asList(LOCAL_GVCFS.get(0))), intervals, workspace, 0, false, 0, 1);
     }
 
@@ -170,7 +171,11 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
 
     @Test
     public void testGenomicsDBImportFileInputsAgainstCombineGVCFWithNonDiploidData() throws IOException {
-        testGenomicsDBAgainstCombineGVCFs(Arrays.asList(NA12878_HG37, MULTIPLOID_DATA_HG37), INTERVAL_NONDIPLOID, b37_reference_20_21, new String[0]);
+        testGenomicsDBImporterWithGenotypes(Arrays.asList(NA12878_HG37, MULTIPLOID_DATA_HG37), INTERVAL_NONDIPLOID,
+                MULTIPLOID_EXPECTED_RESULT, b37_reference_20_21,
+                true,
+                false,
+                false);
     }
 
     @Test

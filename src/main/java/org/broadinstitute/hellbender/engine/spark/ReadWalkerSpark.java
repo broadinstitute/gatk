@@ -7,7 +7,7 @@ import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.engine.*;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -65,13 +65,13 @@ public abstract class ReadWalkerSpark extends GATKSparkTool {
                 .flatMap(interval -> Shard.divideIntervalIntoShards(interval, readShardSize, 0, sequenceDictionary).stream())
                 .collect(Collectors.toList());
         JavaRDD<Shard<GATKRead>> shardedReads = SparkSharder.shard(ctx, getReads(), GATKRead.class, sequenceDictionary, intervalShards, readShardSize, shuffle);
-        Broadcast<ReferenceMultiSource> bReferenceSource = hasReference() ? ctx.broadcast(getReference()) : null;
+        Broadcast<ReferenceMultiSparkSource> bReferenceSource = hasReference() ? ctx.broadcast(getReference()) : null;
         Broadcast<FeatureManager> bFeatureManager = features == null ? null : ctx.broadcast(features);
         return shardedReads.flatMap(getReadsFunction(bReferenceSource, bFeatureManager, sequenceDictionary, readShardPadding));
     }
 
     private static FlatMapFunction<Shard<GATKRead>, ReadWalkerContext> getReadsFunction(
-            Broadcast<ReferenceMultiSource> bReferenceSource, Broadcast<FeatureManager> bFeatureManager,
+            Broadcast<ReferenceMultiSparkSource> bReferenceSource, Broadcast<FeatureManager> bFeatureManager,
             SAMSequenceDictionary sequenceDictionary, int readShardPadding) {
         return (FlatMapFunction<Shard<GATKRead>, ReadWalkerContext>) shard -> {
             // get reference bases for this shard (padded)

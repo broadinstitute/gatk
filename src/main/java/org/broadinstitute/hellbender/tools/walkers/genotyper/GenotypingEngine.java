@@ -281,6 +281,13 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
             return limitedContext ? null : estimateReferenceConfidence(vc, stratifiedContexts, AFpriors[INDEX_FOR_AC_EQUALS_1], true, probOfAtLeastOneAltAllele);
         }
 
+        // return a null call if we aren't forcing site emission and the only alt allele is a spanning deletion
+        if (! forceSiteEmission()
+                && outputAlternativeAlleles.alleles.size() == 1
+                && Allele.SPAN_DEL.equals(outputAlternativeAlleles.alleles.get(0))) {
+            return null;
+        }
+
         // start constructing the resulting VC
         final List<Allele> outputAlleles = outputAlternativeAlleles.outputAlleles(vc.getReference());
         final VariantContextBuilder builder = new VariantContextBuilder(callSourceString(), vc.getContig(), vc.getStart(), vc.getEnd(), outputAlleles);
@@ -508,8 +515,8 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         VariantContext vc;
 
         if ( configuration.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES ) {
-            final VariantContext ggaVc = GenotypingGivenAllelesUtils.composeGivenAllelesVariantContextFromRod(features,
-                    rawContext.getLocation(), false, configuration.genotypeFilteredAlleles, logger, configuration.alleles);
+            final VariantContext ggaVc = GenotypingGivenAllelesUtils.composeGivenAllelesVariantContextFromVariantList(features,
+                    rawContext.getLocation(), configuration.genotypeFilteredAlleles, configuration.alleles);
             if (ggaVc == null) {
                 return null;
             }

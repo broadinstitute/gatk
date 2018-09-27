@@ -86,6 +86,7 @@ import java.util.stream.Collectors;
  *      -V data/gvcfs/father.g.vcf.gz \
  *      -V data/gvcfs/son.g.vcf.gz \
  *      --genomicsdb-workspace-path my_database \
+ *      --tmp-dir=/path/to/large/tmp \
  *      -L 20
  *  </pre>
  *
@@ -98,6 +99,7 @@ import java.util.stream.Collectors;
  *       --batch-size 50 \
  *       -L chr1:1000-10000 \
  *       --sample-name-map cohort.sample_map \
+ *       --tmp-dir=/path/to/large/tmp \
  *       --reader-threads 5
  *  </pre>
  *
@@ -117,6 +119,7 @@ import java.util.stream.Collectors;
  *     <li>At least one interval must be provided</li>
  *     <li>Input GVCFs cannot contain multiple entries for a single genomic position</li>
  *     <li>The --genomicsdb-workspace-path must point to a non-existent or empty directory.</li>
+ *     <li>GenomicsDBImport uses temporary disk storage during import. The amount of temporary disk storage required can exceed the space available, especially when specifying a large number of intervals. The command line argument `--tmp-dir` can be used to specify an alternate temporary storage location with sufficient space..</li>
  * </ul>
  *
  * <h3>Developer Note</h3>

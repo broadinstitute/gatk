@@ -8,6 +8,8 @@ import htsjdk.variant.vcf.*;
 import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.hellbender.tools.funcotator.*;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.DataSourceUtils;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationBuilder;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.*;
@@ -154,6 +156,7 @@ public class VcfOutputRenderer extends OutputRenderer {
                                 .filter(f -> f.getAltAllele().equals(altAllele))
                                 .filter(f -> f.getFieldNames().size() > 0)
                                 .filter(f -> !f.getDataSourceName().equals(FuncotatorConstants.DATASOURCE_NAME_FOR_INPUT_VCFS))
+                                .map(VcfOutputRenderer::adjustIndelAlleleInformation)
                                 .map(f -> retrieveSanitizedFuncotation(f, manualAnnotationSerializedString))
                                 .collect(Collectors.joining(FIELD_DELIMITER))
                 );
@@ -178,6 +181,63 @@ public class VcfOutputRenderer extends OutputRenderer {
     }
 
     //==================================================================================================================
+
+    /**
+     * Adjusts the given {@link Funcotation} if it is a {@link GencodeFuncotation}.
+     * @param funcotation The {@link Funcotation} to adjust.
+     */
+    private static Funcotation adjustIndelAlleleInformation(final Funcotation funcotation) {
+        if ( funcotation instanceof GencodeFuncotation ) {
+            return adjustIndelAlleleInformation((GencodeFuncotation)funcotation);
+        }
+        return funcotation;
+    }
+
+    /**
+     * Adjusts the given {@link GencodeFuncotation}'s start, end, reference, and alternate alleles if the variant to
+     * which the funcotation is associated was an insertion or deletion.
+     * Makes adjustments in place.
+     * @param gencodeFuncotation The {@link GencodeFuncotation} to adjust.
+     */
+    private static GencodeFuncotation adjustIndelAlleleInformation(final GencodeFuncotation gencodeFuncotation) {
+
+        final GencodeFuncotation outFuncotation = new GencodeFuncotationBuilder(gencodeFuncotation).build();
+
+        if ( (gencodeFuncotation.getVariantType().equals(GencodeFuncotation.VariantType.DEL)) ||
+                (gencodeFuncotation.getVariantType().equals(GencodeFuncotation.VariantType.INS)) ) {
+
+            final int refAlleleLength = gencodeFuncotation.getRefAllele().length();
+            final int altAlleleLength = gencodeFuncotation.getTumorSeqAllele2().length();
+
+            // Check to see if it's an insertion:
+            if ( refAlleleLength < altAlleleLength ) {
+                // We must:
+                //    Remove the first N bases from the ALT_allele where N = length(ref_allele)
+                //    Replace the ref_allele with "-"
+                //    Replace the Tumor_Seq_Allele1 with "-"
+                //    Set the End_Position to be Start_Position + 1 (All Insertions should have length 1 to represent the bases between which the insertion occurs).
+                outFuncotation.setTumorSeqAllele2(gencodeFuncotation.getTumorSeqAllele2().substring(refAlleleLength));
+                outFuncotation.setRefAllele("-");
+                outFuncotation.setEnd(gencodeFuncotation.getStart() + 1);
+            }
+            // Check to see if it's a deletion:
+            else if ( refAlleleLength > altAlleleLength ) {
+                // We must:
+                //    Remove the first N bases from the REF_allele where N = length(alt_allele)
+                //    Remove the first N bases from the Tumor_Seq_Allele1
+                //    Replace the alt_allele with "-"
+                //    Increment the Start_Position by 1 (start position should be inclusive of the first base deleted)
+                //    Increment the End_Position by M-1 where M = length(ref_allele) (end position should be inclusive of the last base deleted)
+                outFuncotation.setRefAllele(gencodeFuncotation.getRefAllele().substring(altAlleleLength));
+                outFuncotation.setTumorSeqAllele2("-");
+//                outputMap.put(MafOutputRendererConstants.FieldName_Tumor_Seq_Allele2, MafOutputRendererConstants.EmptyAllele);
+                outFuncotation.setStart(gencodeFuncotation.getStart() + 1);
+                outFuncotation.setEnd(gencodeFuncotation.getEnd() + refAlleleLength - 1);
+            }
+        }
+
+        return outFuncotation;
+    }
 
     /**
      * Create a header for a VCF file.

@@ -58,10 +58,10 @@ public final class RandomDNA {
     protected final Random random;
 
     private final byte[] codeToBase = new byte[] {
-            Nucleotide.A.toBase(),
-            Nucleotide.C.toBase(),
-            Nucleotide.G.toBase(),
-            Nucleotide.T.toBase()
+            Nucleotide.A.encodeAsByte(),
+            Nucleotide.C.encodeAsByte(),
+            Nucleotide.G.encodeAsByte(),
+            Nucleotide.T.encodeAsByte()
     };
 
     private final byte[] nextBases;

@@ -863,22 +863,8 @@ public abstract class GATKTool extends CommandLineProgram {
     }
 
     /**
-     * Call {@link GATKTool#addFeatureInputsAfterInitialization(String, String, Class, int)} with no caching.
-     *
-     * @param filePath See {@link #addFeatureInputsAfterInitialization(String, String, Class, int)}
-     * @param name See {@link #addFeatureInputsAfterInitialization(String, String, Class, int)}
-     * @param featureType See {@link #addFeatureInputsAfterInitialization(String, String, Class, int)}
-     * @return The {@link FeatureInput} used as the key for this data source.
-     */
-    protected FeatureInput<? extends Feature> addFeatureInputsAfterInitialization(final String filePath, final String name,
-                                                                                  final Class<? extends Feature> featureType) {
-
-        return addFeatureInputsAfterInitialization(filePath, name, featureType, 0);
-    }
-
-    /**
-     * A method to allow a user to inject data sources after initialization that were not specified as command-line
-     * arguments.
+     * A method to allow a user to inject {@link FeatureInput}s after initialization that were not
+     * specified as command-line arguments.
      *
      * @param filePath path to the Feature file to register
      * @param name what to call the Feature input
@@ -886,14 +872,15 @@ public abstract class GATKTool extends CommandLineProgram {
      * @param featureQueryLookahead look ahead this many bases during queries that produce cache misses
      * @return The {@link FeatureInput} used as the key for this data source.
      */
-    protected FeatureInput<? extends Feature> addFeatureInputsAfterInitialization(final String filePath,
-                                                                                  final String name,
-                                                                                  final Class<? extends Feature> featureType, final int featureQueryLookahead) {
+    public FeatureInput<? extends Feature> addFeatureInputsAfterInitialization(final String filePath,
+                                                                               final String name,
+                                                                               final Class<? extends Feature> featureType,
+                                                                               final int featureQueryLookahead) {
 
         final FeatureInput<? extends Feature> featureInput = new FeatureInput<>(filePath, name);
 
-        //Add datasource to the feature manager too so that it can be queried. Setting lookahead to 0 to avoid caching.
-        //Note: we are disabling lookahead here because of windowed queries that need to "look behind" as well.
+        // Add the FeatureInput to our FeatureManager so that it will be available for FeatureContext queries
+        // from the tool
         features.addToFeatureSources(
                 featureQueryLookahead,
                 featureInput,

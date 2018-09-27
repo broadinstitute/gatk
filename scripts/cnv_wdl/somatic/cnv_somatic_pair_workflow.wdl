@@ -66,7 +66,7 @@ workflow CNVSomaticPairWorkflow {
     ##############################################
     #### optional arguments for CollectCounts ####
     ##############################################
-    String? format
+    String? collect_counts_format
     Int? mem_gb_for_collect_counts
 
     #####################################################
@@ -171,7 +171,7 @@ workflow CNVSomaticPairWorkflow {
             ref_fasta = ref_fasta,
             ref_fasta_fai = ref_fasta_fai,
             ref_fasta_dict = ref_fasta_dict,
-            format = format,
+            format = collect_counts_format,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
             mem_gb = mem_gb_for_collect_counts,
@@ -305,7 +305,7 @@ workflow CNVSomaticPairWorkflow {
                 ref_fasta = ref_fasta,
                 ref_fasta_fai = ref_fasta_fai,
                 ref_fasta_dict = ref_fasta_dict,
-                format = format,
+                format = collect_counts_format,
                 gatk4_jar_override = gatk4_jar_override,
                 gatk_docker = gatk_docker,
                 mem_gb = mem_gb_for_collect_counts,
@@ -458,6 +458,8 @@ workflow CNVSomaticPairWorkflow {
         File called_modeled_segments_data_tumor = CallModeledSegmentsTumor.called_modeled_segments_data
         File copy_ratio_parameters_tumor = ModelSegmentsTumor.copy_ratio_parameters
         File allele_fraction_parameters_tumor = ModelSegmentsTumor.allele_fraction_parameters
+        File called_copy_ratio_segments_tumor = CallCopyRatioSegmentsTumor.called_copy_ratio_segments
+        File called_copy_ratio_legacy_segments_tumor = CallCopyRatioSegmentsTumor.called_copy_ratio_legacy_segments
         File denoised_copy_ratios_plot_tumor = PlotDenoisedCopyRatiosTumor.denoised_copy_ratios_plot
         File denoised_copy_ratios_lim_4_plot_tumor = PlotDenoisedCopyRatiosTumor.denoised_copy_ratios_lim_4_plot
         File standardized_MAD_tumor = PlotDenoisedCopyRatiosTumor.standardized_MAD
@@ -483,7 +485,8 @@ workflow CNVSomaticPairWorkflow {
         File? modeled_segments_normal_data = ModelSegmentsNormal.modeled_segments
         File? copy_ratio_parameters_normal = ModelSegmentsNormal.copy_ratio_parameters
         File? allele_fraction_parameters_normal = ModelSegmentsNormal.allele_fraction_parameters
-        File? called_modeled_segments_data_normal = CallModeledSegmentsNormal.called_modeled_segments_data
+        File? called_copy_ratio_segments_normal = CallCopyRatioSegmentsNormal.called_copy_ratio_segments
+        File? called_copy_ratio_legacy_segments_normal = CallCopyRatioSegmentsNormal.called_copy_ratio_legacy_segments
         File? denoised_copy_ratios_plot_normal = PlotDenoisedCopyRatiosNormal.denoised_copy_ratios_plot
         File? denoised_copy_ratios_lim_4_plot_normal = PlotDenoisedCopyRatiosNormal.denoised_copy_ratios_lim_4_plot
         File? standardized_MAD_normal = PlotDenoisedCopyRatiosNormal.standardized_MAD
@@ -697,7 +700,8 @@ task CallModeledSegments {
     }
 
     output {
-        File called_modeled_segments_data = "${output_dir_}${output_prefix_}.called.seg"
+        File called_copy_ratio_segments = "${entity_id}.called.seg"
+        File called_copy_ratio_legacy_segments = "${entity_id}.called.igv.seg"
     }
 }
 

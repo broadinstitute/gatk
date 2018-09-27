@@ -152,7 +152,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
     public void writeHeader(final VariantContextWriter vcfWriter, final Set<VCFHeaderLine> defaultToolHeaderLines) {
         final Set<VCFHeaderLine> headerInfo = new HashSet<>();
-        headerInfo.add(new VCFHeaderLine("Mutect Version", MUTECT_VERSION));
+        headerInfo.add(new VCFHeaderLine("MutectVersion", MUTECT_VERSION));
         headerInfo.add(new VCFHeaderLine(Mutect2FilteringEngine.FILTERING_STATUS_VCF_KEY, "Warning: unfiltered Mutect 2 calls.  Please run " + FilterMutectCalls.class.getSimpleName() + " to remove false positives."));
         headerInfo.addAll(annotationEngine.getVCFAnnotationDescriptions(false));
         headerInfo.addAll(defaultToolHeaderLines);
@@ -245,13 +245,15 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         likelihoodCalculationEngine.close();
         aligner.close();
         haplotypeBAMWriter.ifPresent(writer -> writer.close());
+        referenceReader.close();
     }
 
     @Override
     public ActivityProfileState isActive(final AlignmentContext context, final ReferenceContext ref, final FeatureContext featureContext) {
         if ( MTAC.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES ) {
-            final VariantContext vcFromAllelesRod = GenotypingGivenAllelesUtils.composeGivenAllelesVariantContextFromRod(featureContext, ref.getInterval(), false, MTAC.genotypeFilteredAlleles, logger, MTAC.alleles);
-            if( vcFromAllelesRod != null ) {
+            final VariantContext vcFromGivenAlleles = GenotypingGivenAllelesUtils.composeGivenAllelesVariantContextFromVariantList(featureContext,
+                    ref.getInterval(), MTAC.genotypeFilteredAlleles, MTAC.alleles);
+            if( vcFromGivenAlleles != null ) {
                 return new ActivityProfileState(ref.getInterval(), 1.0);
             }
         }

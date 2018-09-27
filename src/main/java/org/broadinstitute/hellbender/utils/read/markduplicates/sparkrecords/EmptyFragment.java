@@ -1,11 +1,12 @@
 package org.broadinstitute.hellbender.utils.read.markduplicates.sparkrecords;
 
 import htsjdk.samtools.SAMFileHeader;
+import org.broadinstitute.hellbender.tools.spark.transforms.markduplicates.MarkDuplicatesSparkUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.markduplicates.LibraryIdGenerator;
-import org.broadinstitute.hellbender.utils.read.markduplicates.ReadEnds;
 import org.broadinstitute.hellbender.utils.read.markduplicates.ReadsKey;
+import picard.sam.markduplicates.util.ReadEnds;
 
 import java.util.Map;
 
@@ -32,7 +33,7 @@ public final class EmptyFragment extends PairedEnds {
         this.key = ReadsKey.getKeyForFragment(ReadUtils.getStrandedUnclippedStart(read),
                 isRead1ReverseStrand(),
                 ReadUtils.getReferenceIndex(read, header),
-                headerLibraryMap.get(ReadUtils.getLibrary(read, header, LibraryIdGenerator.UNKNOWN_LIBRARY)));
+                headerLibraryMap.get(MarkDuplicatesSparkUtils.getLibraryForRead(read, header, LibraryIdGenerator.UNKNOWN_LIBRARY)));
     }
 
     @Override

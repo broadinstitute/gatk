@@ -12,7 +12,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import picard.cmdline.programgroups.ReferenceProgramGroup;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
@@ -102,7 +102,7 @@ public final class FindBadGenomicKmersSpark extends GATKSparkTool {
         final SAMFileHeader hdr = getHeaderForReads();
         SAMSequenceDictionary dict = null;
         if ( hdr != null ) dict = hdr.getSequenceDictionary();
-        final ReferenceMultiSource referenceMultiSource = getReference();
+        final ReferenceMultiSparkSource referenceMultiSource = getReference();
         Collection<SVKmer> killList = findBadGenomicKmers(ctx, kSize, maxDUSTScore, referenceMultiSource, dict);
         if ( highCopyFastaFilename != null ) {
             killList = SVUtils.uniquify(killList, processFasta(kSize, maxDUSTScore, highCopyFastaFilename));
@@ -116,7 +116,7 @@ public final class FindBadGenomicKmersSpark extends GATKSparkTool {
     static List<SVKmer> findBadGenomicKmers( final JavaSparkContext ctx,
                                              final int kSize,
                                              final int maxDUSTScore,
-                                             final ReferenceMultiSource ref,
+                                             final ReferenceMultiSparkSource ref,
                                              final SAMSequenceDictionary readsDict ) {
         // Generate reference sequence RDD.
         final SAMSequenceDictionary dict = ref.getReferenceSequenceDictionary(readsDict);

@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.cmdline;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Strings;
 import com.intel.gkl.compression.IntelDeflaterFactory;
 import com.intel.gkl.compression.IntelInflaterFactory;
 import htsjdk.samtools.Defaults;
@@ -81,6 +82,9 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
 
     @Argument(fullName = StandardArgumentDefinitions.NIO_MAX_REOPENS_LONG_NAME, shortName = StandardArgumentDefinitions.NIO_MAX_REOPENS_SHORT_NAME, doc = "If the GCS bucket channel errors out, how many times it will attempt to re-initiate the connection", optional = true)
     public int NIO_MAX_REOPENS = ConfigFactory.getInstance().getGATKConfig().gcsMaxRetries();
+
+    @Argument(fullName = StandardArgumentDefinitions.NIO_PROJECT_FOR_REQUESTER_PAYS_LONG_NAME, doc = "Project to bill when accessing \"requester pays\" buckets. If unset, these buckets cannot be accessed.", optional = true)
+    public String NIO_PROJECT_FOR_REQUESTER_PAYS = ConfigFactory.getInstance().getGATKConfig().gcsProjectForRequesterPays();
 
     // This option is here for documentation completeness.
     // This is actually parsed out in Main to initialize configuration files because
@@ -176,7 +180,7 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
             BlockGunzipper.setDefaultInflaterFactory(new IntelInflaterFactory());
         }
 
-        BucketUtils.setGlobalNIODefaultOptions(NIO_MAX_REOPENS);
+        BucketUtils.setGlobalNIODefaultOptions(NIO_MAX_REOPENS, NIO_PROJECT_FOR_REQUESTER_PAYS);
 
         if (!QUIET) {
             printStartupMessage(startDateTime);
@@ -435,7 +439,12 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
         final boolean usingIntelInflater = (BlockGunzipper.getDefaultInflaterFactory() instanceof IntelInflaterFactory && ((IntelInflaterFactory)BlockGunzipper.getDefaultInflaterFactory()).usingIntelInflater());
         logger.info("Inflater: " + (usingIntelInflater ? "IntelInflater": "JdkInflater"));
 
-        logger.info("GCS max retries/reopens: " + BucketUtils.getCloudStorageConfiguration(NIO_MAX_REOPENS).maxChannelReopens());
+        logger.info("GCS max retries/reopens: " + BucketUtils.getCloudStorageConfiguration(NIO_MAX_REOPENS, "").maxChannelReopens());
+        if (Strings.isNullOrEmpty(NIO_PROJECT_FOR_REQUESTER_PAYS)) {
+            logger.info("Requester pays: disabled");
+        } else {
+            logger.info("Requester pays: enabled. Billed to: " + NIO_PROJECT_FOR_REQUESTER_PAYS);
+        }
     }
 
     /**

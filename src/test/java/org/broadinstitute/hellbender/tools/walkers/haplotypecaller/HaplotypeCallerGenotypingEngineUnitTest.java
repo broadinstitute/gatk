@@ -474,6 +474,7 @@ public final class HaplotypeCallerGenotypingEngineUnitTest extends GATKBaseTest 
         final Allele altT = Allele.create("T", false);
         final Allele altT2 = Allele.create("TT", false);
         final Allele altG = Allele.create("G", false);
+        final Allele altT3 = Allele.create("TTT", false);
 
         // then create several haplotypes, assign ad-hoc scores
         final Haplotype hapRef = new Haplotype("AAAAA".getBytes());
@@ -536,6 +537,13 @@ public final class HaplotypeCallerGenotypingEngineUnitTest extends GATKBaseTest 
         Assert.assertEquals(it.next(), ref);
         Assert.assertEquals(it.next(), altT);
 
+        allelesToKeep = HaplotypeCallerGenotypingEngine.whichAllelesToKeepBasedonHapScores(alleleMapper, 1);
+        Assert.assertEquals(allelesToKeep.size(), 1);
+        it = allelesToKeep.iterator();
+        Assert.assertEquals(it.next(), ref);
+
+        // in the case of GGA mode there could be an allele with no haplotype support
+        alleleMapper.put(altT3, new ArrayList<>());
         allelesToKeep = HaplotypeCallerGenotypingEngine.whichAllelesToKeepBasedonHapScores(alleleMapper, 1);
         Assert.assertEquals(allelesToKeep.size(), 1);
         it = allelesToKeep.iterator();

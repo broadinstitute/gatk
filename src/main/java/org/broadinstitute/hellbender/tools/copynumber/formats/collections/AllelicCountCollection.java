@@ -40,8 +40,8 @@ public final class AllelicCountCollection extends AbstractSampleLocatableCollect
         final int position = dataLine.getInt(AllelicCountTableColumn.POSITION);
         final int refReadCount = dataLine.getInt(AllelicCountTableColumn.REF_COUNT);
         final int altReadCount = dataLine.getInt(AllelicCountTableColumn.ALT_COUNT);
-        final Nucleotide refNucleotide = Nucleotide.valueOf(dataLine.get(AllelicCountTableColumn.REF_NUCLEOTIDE.name()).getBytes()[0]);
-        final Nucleotide altNucleotide = Nucleotide.valueOf(dataLine.get(AllelicCountTableColumn.ALT_NUCLEOTIDE.name()).getBytes()[0]);
+        final Nucleotide refNucleotide = Nucleotide.decode(dataLine.get(AllelicCountTableColumn.REF_NUCLEOTIDE.name()).charAt(0));
+        final Nucleotide altNucleotide = Nucleotide.decode(dataLine.get(AllelicCountTableColumn.ALT_NUCLEOTIDE.name()).charAt(0));
         final SimpleInterval interval = new SimpleInterval(contig, position, position);
         return new AllelicCount(interval, refReadCount, altReadCount, refNucleotide, altNucleotide);
     };

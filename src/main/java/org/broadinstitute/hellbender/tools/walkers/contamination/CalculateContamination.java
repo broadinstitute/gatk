@@ -42,7 +42,7 @@ import java.util.stream.IntStream;
  *     <a href="https://github.com/broadinstitute/gatk/tree/master/scripts/mutect2_wdl">Mutect2 WDL scripts directory</a>.
  * </p>
  *
- * <p>This tool and GetPileupSummaries together replace GATK3's ContEst. Like ContEst, this tool estimates contamination based on the signal
+ * <p>This tool borrows from <a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3167057/">ContEst</a> by Cibulskis et al the idea of estimating contamination
  * from ref reads at hom alt sites.  However, ContEst uses a probabilistic model that assumes a diploid genotype with no copy number
  * variation and independent contaminating reads.  That is, ContEst assumes that each contaminating read is drawn randomly and
  * independently from a different human.  This tool uses a simpler estimate of contamination that relaxes these assumptions.  In particular,

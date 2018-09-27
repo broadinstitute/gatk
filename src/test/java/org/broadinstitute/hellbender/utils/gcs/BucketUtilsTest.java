@@ -1,11 +1,13 @@
 package org.broadinstitute.hellbender.utils.gcs;
 
+import com.google.cloud.storage.contrib.nio.CloudStorageConfiguration;
 import htsjdk.samtools.util.IOUtil;
 import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.testutils.MiniClusterUtils;
+import org.broadinstitute.hellbender.utils.config.ConfigFactory;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -17,7 +19,9 @@ import java.security.GeneralSecurityException;
 public final class BucketUtilsTest extends GATKBaseTest {
 
     static {
-        BucketUtils.setGlobalNIODefaultOptions();
+        BucketUtils.setGlobalNIODefaultOptions(
+            ConfigFactory.getInstance().getGATKConfig().gcsMaxRetries(),
+            ConfigFactory.getInstance().getGATKConfig().gcsProjectForRequesterPays());
     }
 
     @Test(groups={"bucket"})
@@ -34,6 +38,15 @@ public final class BucketUtilsTest extends GATKBaseTest {
 
         // this does not throw NullPointerException.
         String x = "" + null + "://";
+    }
+
+    @Test
+    public void testGetCloudStorageConfiguration() {
+        String mockProject = "yes";
+        int mockReopens = 100;
+        CloudStorageConfiguration config = BucketUtils.getCloudStorageConfiguration(mockReopens, mockProject);
+        Assert.assertEquals(config.maxChannelReopens(), mockReopens);
+        Assert.assertEquals(config.userProject(), mockProject);
     }
 
     @Test

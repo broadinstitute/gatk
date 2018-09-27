@@ -7,7 +7,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -343,7 +343,7 @@ public class SegmentedCpxVariantSimpleVariantExtractorUnitTest extends GATKBaseT
         return data.toArray(new Object[data.size()][]);
     }
     @Test(groups = "sv", dataProvider = "forTestSegmentedCpxVariantExtractor")
-    public void testSegmentedCpxVariantExtractor(final VariantContext complexVC, final ReferenceMultiSource reference,
+    public void testSegmentedCpxVariantExtractor(final VariantContext complexVC, final ReferenceMultiSparkSource reference,
                                                  final SegmentedCpxVariantSimpleVariantExtractor worker,
                                                  final List<VariantContext> expected) {
         assertVariantsAreEqual(worker.extract(complexVC, reference), expected, Collections.emptyList(), b38_seqDict_chr20_chr21);

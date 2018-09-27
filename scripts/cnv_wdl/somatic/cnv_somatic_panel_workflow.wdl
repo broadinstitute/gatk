@@ -58,12 +58,15 @@ workflow CNVSomaticPanelWorkflow {
     ##################################################
     #### optional arguments for AnnotateIntervals ####
     ##################################################
+    File? mappability_track
+    File? segmental_duplication_track
+    Int? feature_query_lookahead
     Int? mem_gb_for_annotate_intervals
 
     ##############################################
     #### optional arguments for CollectCounts ####
     ##############################################
-    String? format
+    String? collect_counts_format
     Int? mem_gb_for_collect_counts
 
     ##############################################################
@@ -103,6 +106,9 @@ workflow CNVSomaticPanelWorkflow {
                 ref_fasta = ref_fasta,
                 ref_fasta_fai = ref_fasta_fai,
                 ref_fasta_dict = ref_fasta_dict,
+                mappability_track = mappability_track,
+                segmental_duplication_track = segmental_duplication_track,
+                feature_query_lookahead = feature_query_lookahead,
                 gatk4_jar_override = gatk4_jar_override,
                 gatk_docker = gatk_docker,
                 mem_gb = mem_gb_for_annotate_intervals,
@@ -119,7 +125,7 @@ workflow CNVSomaticPanelWorkflow {
                 ref_fasta = ref_fasta,
                 ref_fasta_fai = ref_fasta_fai,
                 ref_fasta_dict = ref_fasta_dict,
-                format = format,
+                format = collect_counts_format,
                 gatk4_jar_override = gatk4_jar_override,
                 gatk_docker = gatk_docker,
                 mem_gb = mem_gb_for_collect_counts,

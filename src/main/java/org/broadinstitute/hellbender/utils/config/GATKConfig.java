@@ -157,6 +157,9 @@ public interface GATKConfig extends Mutable, Accessible {
     @DefaultValue("20")
     int gcsMaxRetries();
 
+    @DefaultValue("")
+    String gcsProjectForRequesterPays();
+
     @DefaultValue("true")
     boolean createOutputBamIndex();
 }

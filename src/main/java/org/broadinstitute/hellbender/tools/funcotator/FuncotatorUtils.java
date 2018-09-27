@@ -2109,8 +2109,7 @@ public final class FuncotatorUtils {
         Utils.nonNull(v);
         Utils.nonNull(transcriptIdFuncotationName);
         Utils.nonNull(dummyDatasourceName);
-        final String rawFuncotationAttribute = v.getAttributeAsString(VcfOutputRenderer.FUNCOTATOR_VCF_FIELD_NAME, "");
-        final List<String> funcotationPerAllele = Arrays.asList(StringUtils.split(rawFuncotationAttribute, ","));
+        final List<String> funcotationPerAllele = v.getAttributeAsList(VcfOutputRenderer.FUNCOTATOR_VCF_FIELD_NAME).stream().map(Object::toString).collect(Collectors.toList());
         if (v.getAlternateAlleles().size() != funcotationPerAllele.size()) {
             throw new GATKException.ShouldNeverReachHereException("Could not parse FUNCOTATION field properly.");
         }

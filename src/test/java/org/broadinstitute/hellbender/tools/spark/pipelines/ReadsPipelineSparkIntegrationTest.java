@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.pipelines;
 import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.MarkDuplicatesSparkArgumentCollection;
-import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceTwoBitSource;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceTwoBitSparkSource;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerIntegrationTest;
 import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.broadinstitute.hellbender.GATKBaseTest;
@@ -130,7 +130,7 @@ public class ReadsPipelineSparkIntegrationTest extends CommandLineProgramTest {
         runCommandLine(args);
 
         if (params.expectedBamFileName != null) {
-            if (referenceFile != null && !ReferenceTwoBitSource.isTwoBit(referenceFile.getName())) { // htsjdk can't handle 2bit reference files
+            if (referenceFile != null && !ReferenceTwoBitSparkSource.isTwoBit(referenceFile.getName())) { // htsjdk can't handle 2bit reference files
                 SamAssertionUtils.assertEqualBamFiles(outFileBam, new File(params.expectedBamFileName), referenceFile, true, ValidationStringency.SILENT);
             } else {
                 SamAssertionUtils.assertEqualBamFiles(outFileBam, new File(params.expectedBamFileName), true, ValidationStringency.SILENT);

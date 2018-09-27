@@ -338,4 +338,24 @@ public final class TableColumnCollection {
         }
         return columnNames;
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        final TableColumnCollection that = (TableColumnCollection) o;
+        return names.equals(that.names) && indexByName.equals(that.indexByName);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = names.hashCode();
+        result = 31 * result + indexByName.hashCode();
+        return result;
+    }
 }

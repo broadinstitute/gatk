@@ -3,10 +3,11 @@ package org.broadinstitute.hellbender.tools.spark.sv.discovery;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFHeaderLine;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.PairedStrandedIntervalTree;
@@ -42,13 +43,17 @@ public final class SvDiscoveryInputMetaData {
         return outputPath;
     }
 
+    public Set<VCFHeaderLine> getDefaultToolVCFHeaderLines() {
+        return defaultToolVCFHeaderLines;
+    }
+
     public static final class ReferenceData {
         private final Broadcast<Set<String>> canonicalChromosomesBroadcast;
-        private final Broadcast<ReferenceMultiSource> referenceBroadcast;
+        private final Broadcast<ReferenceMultiSparkSource> referenceBroadcast;
         private final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast;
 
         ReferenceData(final Broadcast<Set<String>> canonicalChromosomesBroadcast,
-                      final Broadcast<ReferenceMultiSource> referenceBroadcast,
+                      final Broadcast<ReferenceMultiSparkSource> referenceBroadcast,
                       final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast) {
             this.canonicalChromosomesBroadcast = canonicalChromosomesBroadcast;
             this.referenceBroadcast = referenceBroadcast;
@@ -59,7 +64,7 @@ public final class SvDiscoveryInputMetaData {
             return canonicalChromosomesBroadcast;
         }
 
-        public Broadcast<ReferenceMultiSource> getReferenceBroadcast() {
+        public Broadcast<ReferenceMultiSparkSource> getReferenceBroadcast() {
             return referenceBroadcast;
         }
 
@@ -121,6 +126,8 @@ public final class SvDiscoveryInputMetaData {
 
     private final DiscoverVariantsFromContigAlignmentsSparkArgumentCollection discoverStageArgs;
 
+    private final Set<VCFHeaderLine> defaultToolVCFHeaderLines;
+
     private final Logger toolLogger;
 
     private String outputPath;
@@ -134,18 +141,20 @@ public final class SvDiscoveryInputMetaData {
                                     final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks,
                                     final Broadcast<SVIntervalTree<VariantContext>> cnvCallsBroadcast,
                                     final SAMFileHeader headerForReads,
-                                    final ReferenceMultiSource reference,
+                                    final ReferenceMultiSparkSource reference,
+                                    final Set<VCFHeaderLine> defaultToolVCFHeaderLines,
                                     final Logger toolLogger) {
 
         final SAMSequenceDictionary sequenceDictionary = headerForReads.getSequenceDictionary();
         final Broadcast<Set<String>> canonicalChromosomesBroadcast =
-                ctx.broadcast(SvDiscoveryUtils.getCanonicalChromosomes(nonCanonicalChromosomeNamesFile, sequenceDictionary));
+                ctx.broadcast(SVUtils.getCanonicalChromosomes(nonCanonicalChromosomeNamesFile, sequenceDictionary));
         final String sampleId = SVUtils.getSampleId(headerForReads);
 
         this.referenceData = new ReferenceData(canonicalChromosomesBroadcast, ctx.broadcast(reference), ctx.broadcast(sequenceDictionary));
         this.sampleSpecificData = new SampleSpecificData(sampleId, cnvCallsBroadcast, assembledIntervals, evidenceTargetLinks, readMetadata, ctx.broadcast(headerForReads));
         this.discoverStageArgs = discoverStageArgs;
         this.outputPath = outputPath;
+        this.defaultToolVCFHeaderLines = defaultToolVCFHeaderLines;
         this.toolLogger = toolLogger;
     }
 

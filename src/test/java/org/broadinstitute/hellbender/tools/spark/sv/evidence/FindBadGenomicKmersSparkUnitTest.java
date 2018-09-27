@@ -4,8 +4,8 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
@@ -57,7 +57,7 @@ public class FindBadGenomicKmersSparkUnitTest extends GATKBaseTest {
     @Test(groups = "sv")
     public void miniRefTest() throws IOException {
         final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
-        final ReferenceMultiSource ref = new ReferenceMultiSource(
+        final ReferenceMultiSparkSource ref = new ReferenceMultiSparkSource(
                 REFERENCE_FILE_NAME, ReferenceWindowFunctions.IDENTITY_FUNCTION);
         final SAMSequenceDictionary dict = ref.getReferenceSequenceDictionary(null);
         if ( dict == null ) throw new GATKException("No reference dictionary available.");

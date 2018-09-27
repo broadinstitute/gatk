@@ -569,8 +569,13 @@ public final class SelectVariants extends VariantWalker {
         }
         final VariantContext filteredGenotypeToNocall = setFilteredGenotypesToNocall ? builder.make(): sub;
 
-        // Not excluding non-variants or subsetted polymorphic variants AND including filtered loci or subsetted variant is not filtered
-        if ((!XLnonVariants || filteredGenotypeToNocall.isPolymorphicInSamples()) && (!XLfiltered || !filteredGenotypeToNocall.isFiltered())) {
+        // Not excluding non-variants OR (subsetted polymorphic variants AND not spanning deletion) AND (including filtered loci OR subsetted variant) is not filtered
+        // If exclude non-variants argument is not called, filtering will NOT occur.
+        // If exclude non-variants is called, and a spanning deletion exists, the spanning deletion will be filtered
+        // If exclude non-variants is called, it is a polymorphic variant, but not a spanning deletion, filtering will not occur
+        // True iff exclude-filtered is not called or the filteredGenotypeToNocall is not already filtered
+
+        if ((!XLnonVariants || (filteredGenotypeToNocall.isPolymorphicInSamples() && !checkOnlySpanDel(filteredGenotypeToNocall))) && (!XLfiltered || !filteredGenotypeToNocall.isFiltered())) {
 
             // Write the subsetted variant if it matches all of the expressions
             boolean failedJexlMatch = false;
@@ -594,6 +599,10 @@ public final class SelectVariants extends VariantWalker {
                 vcfWriter.add(filteredGenotypeToNocall);
             }
         }
+    }
+
+    private boolean checkOnlySpanDel(VariantContext vc){
+        return vc.getAlternateAlleles().size() == 1 && vc.getAlternateAllele(0).basesMatch(Allele.SPAN_DEL);
     }
 
     /**

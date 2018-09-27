@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.copynumber.formats.collections;
 
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.copynumber.formats.CopyNumberFormatsUtils;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyNumberPosteriorDistribution;
 import org.broadinstitute.hellbender.tools.copynumber.gcnv.GermlineCNVNamingConstants;
 import org.broadinstitute.hellbender.tools.copynumber.gcnv.IntegerCopyNumberState;
@@ -84,13 +85,10 @@ public final class CopyNumberPosteriorDistributionCollection extends AbstractSam
         private final List<IntegerCopyNumberState> copyNumberStates;
         private final TableColumnCollection columnCollection;
 
-        private static final String COMMENT_PREFIX = "@";
-
         IntegerCopyNumberStateCollection(final File inputFile) {
-            final List<String> copyNumberStatesColumns = extractCopyNumberColumnsFromHeader(inputFile);
-            this.columnCollection = new TableColumnCollection(copyNumberStatesColumns);
+            this.columnCollection = CopyNumberFormatsUtils.readColumnsFromHeader(inputFile);
             this.copyNumberStates = new ArrayList<>();
-            copyNumberStatesColumns
+            columnCollection.names()
                     .forEach(copyNumberString -> copyNumberStates.add(parseIntegerCopyNumber(copyNumberString)));
         }
 
@@ -136,30 +134,6 @@ public final class CopyNumberPosteriorDistributionCollection extends AbstractSam
                 throw new UserException.BadInput(String.format(
                         "Could not parse copy-number column string (%s) to an integer copy-number.", copyNumberStateString));
             }
-        }
-
-        /**
-         * Extracts column names from a TSV file
-         */
-        private List<String> extractCopyNumberColumnsFromHeader(final File inputFile) {
-            List<String> columns = null;
-            try (final XReadLines reader = new XReadLines(inputFile)) {
-                while (reader.hasNext()) {
-                    String nextLine = reader.next();
-                    if (!nextLine.startsWith(COMMENT_PREFIX)) {
-                        columns = Arrays.asList(nextLine.split(TableUtils.COLUMN_SEPARATOR_STRING));
-                        break;
-                    }
-                }
-            } catch (final IOException e) {
-                throw new UserException.CouldNotReadInputFile(inputFile);
-            }
-            if (columns == null) {
-                throw new UserException.BadInput(String.format(
-                        "The input file %s does not have a header (starting with comment character %s).",
-                        inputFile.getAbsolutePath(), COMMENT_PREFIX));
-            }
-            return columns;
         }
     }
 }

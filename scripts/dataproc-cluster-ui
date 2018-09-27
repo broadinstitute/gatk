@@ -1,0 +1,112 @@
+#!/usr/bin/env bash
+
+port=1080
+DARWIN_CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+LINUX_CHROME="/usr/bin/google-chrome"
+SSH_OUTPUT_TO_GREP="Entering interactive session"
+##############################################################
+#  Script to easily open a gcs dataproc cluster's spark UI   #
+##############################################################
+
+#################################
+# Stuff to make and cleanup tmp files
+TMPFILELIST=''
+GCLOUD_PID=''
+function makeTemp()
+{
+  local f
+  f=$( mktemp )
+  TMPFILELIST="${TMPFILELIST} $f"
+  echo $f
+}
+
+function cleanTempVars()
+{
+  rm -f ${TMPFILELIST}
+}
+
+function error() 
+{
+  echo "$1" 2>&1 
+}
+
+function at_exit()
+{
+  cleanTempVars
+}
+
+trap at_exit EXIT 
+####################################
+
+cluster=$1
+if [[  -z "${cluster}" ]]; then
+	echo ""
+	echo "Usage: $0 <gcs-cluster-name>"
+	echo "Open the spark ui for a dataproc cluster in a new chrome window"
+	echo ""
+	exit 1
+fi
+
+
+echo "Connecting to ${cluster} on port ${port}"
+echo ""
+
+tmp=makeTemp
+
+gcloud compute ssh ${cluster}-m -- \
+  -D ${port} -N -n -v &>${tmp} &
+
+GCLOUD_PID=$!
+
+x=0
+echo "Waiting for ssh connection to be established."
+while ! grep -q "${SSH_OUTPUT_TO_GREP}" ${tmp}; do
+  if ! ps -p ${GCLOUD_PID} >&-; then
+    error ""
+    error "ssh exited unexpectedly"
+    error ""
+    exit 1
+  fi
+
+  x=$(( x + 1 ))
+  if [ $x -gt 300 ]; then
+    error ""
+    error "Exiting because ssh took too long to connect."
+    error ""
+  fi
+  
+  if [ $(( $x % 10 )) -eq 0 ]; then
+    echo -n "."
+  fi
+
+  sleep .1
+done
+
+echo ""
+echo "Opening new chrome instance, it doesn't always open on top so you may have to look for it."
+
+if [[ $( uname -s ) == "Darwin" ]]; then
+  chrome=${DARWIN_CHROME}
+else
+  chrome=${LINUX_CHROME}
+fi
+
+"${chrome}" \
+  --proxy-server="socks5://localhost:${port}" \
+  --host-resolver-rules="MAP * 0.0.0.0 , EXCLUDE localhost" \
+  --user-data-dir=/tmp/${cluster}-m \
+  --disable-logging \
+  --new-window  http://${cluster}-m:8088 &>/dev/null &
+
+function lurkAndMurder(){
+  local gcloudPID=$1
+  local chromePID=$2
+  while ps -p ${chromePID} >&-; do
+    sleep .1
+  done
+
+  kill ${gcloudPID} &>/dev/null
+  exit 0
+}
+
+lurkAndMurder $GCLOUD_PID $! &

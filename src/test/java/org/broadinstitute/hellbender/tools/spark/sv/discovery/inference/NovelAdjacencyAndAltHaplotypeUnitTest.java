@@ -4,7 +4,7 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import htsjdk.samtools.SAMSequenceDictionary;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvType;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -63,7 +63,7 @@ public class NovelAdjacencyAndAltHaplotypeUnitTest extends AssemblyBasedSVDiscov
     @Test(groups = "sv", dataProvider = "forToSimpleOrBNDTypes")
     public void testToSimpleOrBNDTypes(final NovelAdjacencyAndAltHaplotype breakpoints,
                                        final List<SvType> expectedInferredTypes,
-                                       final ReferenceMultiSource ref,
+                                       final ReferenceMultiSparkSource ref,
                                        final SAMSequenceDictionary dict) {
         final List<SvType> actual = breakpoints.toSimpleOrBNDTypes(ref, dict);
         Assert.assertEquals(actual, expectedInferredTypes);

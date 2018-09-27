@@ -134,13 +134,26 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
             if( loc < activeRegionWindow.getStart() || loc > activeRegionWindow.getEnd() ) {
                 continue;
             }
-            final List<VariantContext> eventsAtThisLoc = getVCsAtThisLocation(haplotypes, loc, activeAllelesToGenotype);
-            VariantContext mergedVC = AssemblyBasedCallerUtils.makeMergedVariantContext(eventsAtThisLoc);
+
+            final List<VariantContext> activeEventVariantContexts;
+            if( activeAllelesToGenotype.isEmpty() ) {
+                activeEventVariantContexts = getVariantContextsFromActiveHaplotypes(loc, haplotypes, true);
+            } else { // we are in GGA mode!
+                activeEventVariantContexts = getVariantContextsFromGivenAlleles(loc, activeAllelesToGenotype, true);
+            }
+
+            final List<VariantContext> eventsAtThisLocWithSpanDelsReplaced =
+                    replaceSpanDels(activeEventVariantContexts,
+                            Allele.create(ref[loc - refLoc.getStart()], true),
+                            loc);
+
+            VariantContext mergedVC = AssemblyBasedCallerUtils.makeMergedVariantContext(eventsAtThisLocWithSpanDelsReplaced);
+
             if( mergedVC == null ) {
                 continue;
             }
 
-            final Map<Allele, List<Haplotype>> alleleMapper = createAlleleMapper(eventsAtThisLoc, mergedVC, loc, haplotypes);
+            final Map<Allele, List<Haplotype>> alleleMapper = createAlleleMapper(mergedVC, loc, haplotypes, activeAllelesToGenotype);
 
             if( configuration.debug && logger != null ) {
                 logger.info("Genotyping event at " + loc + " with alleles = " + mergedVC.getAlleles());
@@ -175,6 +188,23 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
 
         final List<VariantContext> phasedCalls = doPhysicalPhasing ? phaseCalls(returnCalls, calledHaplotypes) : returnCalls;
         return new CalledHaplotypes(phasedCalls, calledHaplotypes);
+    }
+
+    private List<VariantContext> replaceSpanDels(final List<VariantContext> eventsAtThisLoc, final Allele refAllele, final int loc) {
+        return eventsAtThisLoc.stream().map(vc -> replaceWithSpanDelVC(vc, refAllele, loc)).collect(Collectors.toList());
+    }
+
+    private VariantContext replaceWithSpanDelVC(final VariantContext variantContext, final Allele refAllele, final int loc) {
+        if (variantContext.getStart() == loc) {
+            return variantContext;
+        } else {
+            VariantContextBuilder builder = new VariantContextBuilder(variantContext)
+                    .start(loc)
+                    .stop(loc)
+                    .alleles(Arrays.asList(refAllele, Allele.SPAN_DEL));
+            return builder.make();
+        }
+
     }
 
     /**
@@ -231,7 +261,7 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
         final PriorityQueue<AlleleScoredByHaplotypeScores> alleleMaxPriorityQ = new PriorityQueue<>();
         for(final Allele allele : alleleMapper.keySet()){
             final List<Double> hapScores = alleleMapper.get(allele).stream().map(Haplotype::getScore).sorted().collect(Collectors.toList());
-            final Double highestScore = hapScores.get(hapScores.size()-1);
+            final Double highestScore = hapScores.size() > 0 ? hapScores.get(hapScores.size()-1) : Double.NEGATIVE_INFINITY;
             final Double secondHighestScore = hapScores.size()>1 ? hapScores.get(hapScores.size()-2) : Double.NEGATIVE_INFINITY;
 
             alleleMaxPriorityQ.add(new AlleleScoredByHaplotypeScores(allele, highestScore, secondHighestScore));

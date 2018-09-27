@@ -80,8 +80,8 @@ public final class XsvLocatableTableCodec extends AsciiFeatureCodec<XsvTableFeat
     //==================================================================================================================
     // Private Static Members:
 
-
-    private static final String CONFIG_FILE_EXTENSION = ".config";
+    @VisibleForTesting
+    public static final String CONFIG_FILE_EXTENSION = ".config";
 
     //==================================================================================================================
     // Private Members:
