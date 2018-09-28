@@ -1633,22 +1633,34 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
     public Object[][] provideForRenderSanitizedFuncotationForVcf() {
 
         return new Object[][]{
+                // Test a very basic case where all fields are included
                 {OutputRenderer.createFuncotationFromLinkedHashMap(
                         (LinkedHashMap) MapUtils.putAll(new LinkedHashMap<String, String>(),
                         new String[][]{{"FOO", "BAR"},{"BAZ", "HUH?"}}),
                         Allele.create("T"), "FAKEDATA"), Arrays.asList("FOO", "BAZ"),
                         "BAR|HUH?"
-                }, {OutputRenderer.createFuncotationFromLinkedHashMap(
+                },
+
+                // Test case where only one field is included
+                {OutputRenderer.createFuncotationFromLinkedHashMap(
                         (LinkedHashMap) MapUtils.putAll(new LinkedHashMap<String, String>(),
                         new String[][]{{"FOO", "BAR"},{"BAZ", "HUH?"}}),
                         Allele.create("T"), "FAKEDATA"), Arrays.asList("FOO"),
                         "BAR"
-                }, {OutputRenderer.createFuncotationFromLinkedHashMap(
+                },
+
+                // Make sure that specifying a non-existent included field (NOTHERE) has no effect on the output,
+                //  even when another field is excluded.
+                {OutputRenderer.createFuncotationFromLinkedHashMap(
                         (LinkedHashMap) MapUtils.putAll(new LinkedHashMap<String, String>(),
                         new String[][]{{"FOO", "BAR"},{"BAZ", "HUH?"}}),
                         Allele.create("T"), "FAKEDATA"), Arrays.asList("FOO", "NOTHERE"),
                         "BAR"
-                }, {OutputRenderer.createFuncotationFromLinkedHashMap(
+                },
+
+                // Make sure that specifying a non-existent included field (NOTHERE) has no effect on the output,
+                //  even when all fields are included..
+                {OutputRenderer.createFuncotationFromLinkedHashMap(
                         (LinkedHashMap) MapUtils.putAll(new LinkedHashMap<String, String>(),
                         new String[][]{{"FOO", "BAR"},{"BAZ", "HUH?"}}),
                         Allele.create("T"), "FAKEDATA"), Arrays.asList("FOO", "BAZ", "NOTHERE"),

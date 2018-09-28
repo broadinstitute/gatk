@@ -64,29 +64,38 @@ public class FuncotatorTestUtils {
      * Create a dummy gencode funcotation in the most manual way possible.  This method does not check for consistency
      *  or reasonable values.
      *
-     * @param hugoSymbol
-     * @param ncbiBuild
-     * @param chromosome
-     * @param start
-     * @param end
-     * @param variantClassification
-     * @param secondaryVariantClassification
-     * @param variantType
-     * @param refAllele
-     * @param tumorSeqAllele2
-     * @param genomeChange
-     * @param annotationTranscript
-     * @param transcriptStrand
-     * @param transcriptExon
-     * @param transcriptPos
-     * @param cDnaChange
-     * @param codonChange
-     * @param proteinChange
-     * @param gcContent
-     * @param referenceContext
-     * @param otherTranscripts
-     * @param version Use "19" for hg19/b37 and "28" for hg38.
-     * @return
+     *  This method is meant for use in test cases where the developer can provide reasonable values.  Please use
+     *   caution as it is easy to specify parameters that would result in a funcotation that would never be seen in the wild.
+     *
+     *  {@code null} is not recommended, but this method will not throw an exception.
+     *
+     * @param hugoSymbol gene name, such as PIK3CA or TEST_GENE
+     * @param ncbiBuild Associated build.  Typically, "hg38" or "hg19"
+     * @param chromosome Contig name.  Please note that this method will not enforce the value here.
+     * @param start Must be greater than zero.  No other checks provided.  For example, this method will not check whether a chromosome is of an appropriate length for this value.
+     * @param end Must be greater than zero.  No other checks provided.  For example, this method will not check whether a chromosome is of an appropriate length for this value.
+     * @param variantClassification Variant classification.
+     * @param secondaryVariantClassification Typically, only used for {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification#SPLICE_SITE} and other variant classifications that need more information to disambiguate.  For example, a splice site can be in an exon or an intron.  So if the Splice site is in an intron, this field would be {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification#INTRON}
+     * @param variantType Variant type to use.  Again, this method will not check consistency.  For example, this method will not throw an exception if you have {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantType#SNP} with an indel-specific variant classification.
+     * @param refAllele reference allele
+     * @param tumorSeqAllele2 alternate allele
+     * @param genomeChange Genome change string.  This method will not check validity.
+     * @param annotationTranscript Transcript ID to use.  If you wish to fake a no transcript gencode funcotation, use {@link org.broadinstitute.hellbender.tools.funcotator.FuncotationMap#NO_TRANSCRIPT_AVAILABLE_KEY}
+     * @param transcriptStrand This method will not check validity against the annotation transcript.
+     * @param transcriptExon 1-based exon number.  In the Funcotator main code, this field takes into account coding direction, so exon 1 will be at the highest genomic position on a negative strand.
+     *                       This method will not check validity of the specified value.  Must be >= 1.
+     * @param transcriptPos 1-based position in the transcript genome sequence.  In the Funcotator main code, this field takes into account the coding direction, so it is possible to have
+     *                      a higher transcript position that is a lower position in genomic coordinate space.
+     *                      This method will not check validity against the annotation transcript and transcript exon. Must be >= 1.
+     * @param cDnaChange This method will not check validity of the specified value.
+     * @param codonChange This method will not check validity of the specified value.
+     * @param proteinChange This method will not check validity of the specified value.
+     * @param gcContent This method will not check validity.  Must be >= 0.0 and =< 1.0
+     * @param referenceContext This method will not check validity of the specified value.  This method will not even check that you are specifying valid bases.
+     * @param otherTranscripts This method will not check validity of the specified value.
+     * @param version Gencode version.  Use "19" for hg19/b37 and "28" for hg38.  This method will not check validity,
+     *                but much of the rendering code will fail if this field is not valid.
+     * @return a gencode funcotation representing the above parameters.  Never {@code null}
      */
     public static GencodeFuncotation createGencodeFuncotation(final String hugoSymbol, final String ncbiBuild,
                                                                              final String chromosome, final int start, final int end,
@@ -101,6 +110,13 @@ public class FuncotatorTestUtils {
                                                                              final String proteinChange, final Double gcContent,
                                                                              final String referenceContext,
                                                                              final List<String> otherTranscripts, final String version) {
+
+
+        ParamUtils.isPositive(start, "Start position is 1-based and must be greater that zero.");
+        ParamUtils.isPositive(end, "End position is 1-based and must be greater that zero.");
+        ParamUtils.isPositive(transcriptExon, "Transcript exon is a 1-based index.");
+        ParamUtils.isPositive(transcriptPos, "Transcript position is a 1-based index.");
+        ParamUtils.inRange(gcContent, 0.0, 1.0, "GC Content must be between 0.0 and 1.0.");
 
         final GencodeFuncotationBuilder funcotationBuilder = new GencodeFuncotationBuilder();
 

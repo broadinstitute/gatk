@@ -35,7 +35,7 @@ public class GencodeFuncotationBuilder {
     }
 
     public GencodeFuncotation build() {
-        // TODO: In the future, we will need a mechanism for populating the metadata  (https://github.com/broadinstitute/gatk/issues/4857)
+        // TODO: In the future, we will need a mechanism for populating the metadata, especially if we want to support separate INFO fields in a VCF for each funcotation field (https://github.com/broadinstitute/gatk/issues/4857)
         gencodeFuncotation.setMetadata(FuncotationMetadataUtils.createWithUnknownAttributes(new ArrayList<>(gencodeFuncotation.getFieldNames())));
         return gencodeFuncotation;
     }

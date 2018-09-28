@@ -258,9 +258,6 @@ public class MafOutputRenderer extends OutputRenderer {
         defaultMap.put(MafOutputRendererConstants.FieldName_Score, MafOutputRendererConstants.UNUSED_STRING);
         defaultMap.put(MafOutputRendererConstants.FieldName_BAM_File, MafOutputRendererConstants.UNUSED_STRING);
 
-        // Cache the manual annotation string so we can pass it easily into any Funcotations:
-        //manualAnnotationSerializedString = (manualAnnotations.size() != 0 ? MafOutputRendererConstants.FIELD_DELIMITER + String.join( MafOutputRendererConstants.FIELD_DELIMITER, manualAnnotations.values() ) + MafOutputRendererConstants.FIELD_DELIMITER : "");
-
         // Open the output object:
         try {
             printWriter = new PrintWriter(Files.newOutputStream(outputFilePath));
@@ -334,7 +331,6 @@ public class MafOutputRenderer extends OutputRenderer {
                     writeString(entry.getValue());
                     writeString(MafOutputRendererConstants.FIELD_DELIMITER);
                 }
-//                writeLine(manualAnnotationSerializedString);
                 writeLine("");
             }
         }
@@ -377,7 +373,7 @@ public class MafOutputRenderer extends OutputRenderer {
         // Now translate fields to the field names that MAF likes:
         final LinkedHashMap<String, String> mafCompliantMap = replaceFuncotationValuesWithMafCompliantValues(outputMap);
 
-        // Remove any fields that are excluded.
+        // Remove any fields that are excluded and sanitize any field values.
         return mafCompliantMap.keySet().stream()
             .filter(k -> !excludedOutputFields.contains(k))
             .collect(Collectors.toMap(

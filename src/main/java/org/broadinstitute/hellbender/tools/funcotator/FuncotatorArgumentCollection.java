@@ -105,7 +105,7 @@ public class FuncotatorArgumentCollection implements Serializable {
     @Argument(
             fullName  = FuncotatorArgumentDefinitions.EXCLUSION_FIELDS_LONG_NAME,
             optional = true,
-            doc = "Fields that should not be rendered in the final output."
+            doc = "Fields that should not be rendered in the final output.  Only exact name matches will be excluded."
     )
     public Set<String> excludedFields = new HashSet<>();
 }
