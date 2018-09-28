@@ -104,7 +104,7 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
         final List<VariantContext> returnCalls = new ArrayList<>();
 
         if(withBamOut){
-            ////add annotations to reads for alignment regions and calling regions
+            //add annotations to reads for alignment regions and calling regions
             AssemblyBasedCallerUtils.annotateReadLikelihoodsWithRegions(log10ReadLikelihoods, activeRegionWindow);
         }
 
@@ -178,7 +178,6 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
 
             final VariantContext annotatedCall =  annotationEngine.annotateContext(trimmedCall, featureContext, referenceContext, trimmedLikelihoods, a -> true);
             if(withBamOut) {
-                //add annotations to reads for which genotypes are supported by each read
                 AssemblyBasedCallerUtils.annotateReadLikelihoodsWithSupportedGenotypes(trimmedCall, trimmedLikelihoods);
             }
 

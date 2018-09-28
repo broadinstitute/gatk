@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
 public final class AssemblyBasedCallerUtils {
 
     static final int REFERENCE_PADDING_FOR_ASSEMBLY = 500;
-    static final String SUPPORTED_GENOTYPES_TAG="SG";
+    public static final String SUPPORTED_GENOTYPES_TAG="SG";
     public static final String CALLABLE_REGION_TAG = "CR";
     public static final String ALIGNMENT_REGION_TAG = "AR";
 
@@ -285,13 +285,13 @@ public final class AssemblyBasedCallerUtils {
      * Annotates reads in ReadLikelihoods with alignment region (the ref region spanned by the haplotype the read is aligned to) and
      * callable region (the ref region over which a caller is using these ReadLikelihoods to call variants)
      *
-     * @param likelihoodsHaplotype ReadLikelihoods containing reads to be annotated along with haplotypes to which these reads have been aligned
+     * @param likelihoods ReadLikelihoods containing reads to be annotated along with haplotypes to which these reads have been aligned
      * @param callableRegion ref region over which caller is using these ReadLikelihoods to call variants
      */
-    public static void annotateReadLikelihoodsWithRegions(final ReadLikelihoods<Haplotype> likelihoodsHaplotype,
+    public static void annotateReadLikelihoodsWithRegions(final ReadLikelihoods<Haplotype> likelihoods,
                                                           final Locatable callableRegion) {
         //assign alignment regions to each read
-        final Collection<ReadLikelihoods<Haplotype>.BestAllele> bestHaplotypes = likelihoodsHaplotype.bestAllelesBreakingTies();
+        final Collection<ReadLikelihoods<Haplotype>.BestAllele> bestHaplotypes = likelihoods.bestAllelesBreakingTies();
         for (final ReadLikelihoods<Haplotype>.BestAllele bestHaplotype : bestHaplotypes) {
             final GATKRead read = bestHaplotype.read;
             final Haplotype haplotype = bestHaplotype.allele;
@@ -299,16 +299,16 @@ public final class AssemblyBasedCallerUtils {
         }
 
         //assign callable region to each read
-        final int sampleCount = likelihoodsHaplotype.numberOfSamples();
+        final int sampleCount = likelihoods.numberOfSamples();
         for (int i = 0; i < sampleCount; i++) {
-            for (final GATKRead read : likelihoodsHaplotype.sampleReads(i)) {
+            for (final GATKRead read : likelihoods.sampleReads(i)) {
                 read.setAttribute(CALLABLE_REGION_TAG, callableRegion.toString());
             }
         }
     }
 
     /**
-     * Annotates reads in ReadLiklihoods with genotype supported by each read a particular variant.  If a read already has a
+     * Annotates reads in ReadLiklihoods with genotype supported by each read.  If a read already has a
      * supported genotypes annotation this additional annotation is appended to the previous annotation, it does not replace it.
      * @param vc The variant for which to annotate the reads
      * @param likelihoodsAllele ReadLiklihoods containing reads to be annotated along with alleles of the variant vc
@@ -316,20 +316,16 @@ public final class AssemblyBasedCallerUtils {
     public static void annotateReadLikelihoodsWithSupportedGenotypes(final VariantContext vc,
                                                                      final ReadLikelihoods<Allele> likelihoodsAllele) {
         //assign supported Genotypes to each read
-        final Set<Allele> alleles = new LinkedHashSet<>(vc.getAlleles());
-        final Map<Allele, List<Allele>> alleleSubset = alleles.stream().collect(Collectors.toMap(a -> a, Arrays::asList));
-        final ReadLikelihoods<Allele> subsettedLikelihoodsAllele = likelihoodsAllele.marginalize(alleleSubset);
-        final Collection<ReadLikelihoods<Allele>.BestAllele> bestAlleles = subsettedLikelihoodsAllele.bestAllelesBreakingTies().stream()
+        final Map<Allele, List<Allele>> alleleSubset = vc.getAlleles().stream().collect(Collectors.toMap(a -> a, Arrays::asList));
+        final ReadLikelihoods<Allele> subsettedLikelihoods = likelihoodsAllele.marginalize(alleleSubset);
+        final Collection<ReadLikelihoods<Allele>.BestAllele> bestAlleles = subsettedLikelihoods.bestAllelesBreakingTies().stream()
                 .filter(ba -> ba.isInformative()).collect(Collectors.toList());
         for (ReadLikelihoods<Allele>.BestAllele bestAllele : bestAlleles) {
-            String attribute = "";
             GATKRead read = bestAllele.read;
             Allele allele = bestAllele.allele;
-            if (read.hasAttribute(SUPPORTED_GENOTYPES_TAG)) {
-                attribute = read.getAttributeAsString(SUPPORTED_GENOTYPES_TAG) + ", ";
-            }
-            attribute += vc.getContig() + ":" + vc.getStart() + "=" + vc.getAlleleIndex(allele);
-            read.setAttribute(SUPPORTED_GENOTYPES_TAG, attribute);
+            final String prevGenotypesString = read.hasAttribute(SUPPORTED_GENOTYPES_TAG) ? read.getAttributeAsString(SUPPORTED_GENOTYPES_TAG) + ", " : "";
+            final String newGenotypeString = vc.getContig() + ":" + vc.getStart() + "=" + vc.getAlleleIndex(allele);
+            read.setAttribute(SUPPORTED_GENOTYPES_TAG, prevGenotypesString + newGenotypeString);
         }
     }
 }

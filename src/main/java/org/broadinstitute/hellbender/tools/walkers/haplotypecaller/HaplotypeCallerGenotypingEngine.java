@@ -133,7 +133,7 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
         final List<Allele> noCallAlleles = GATKVariantContextUtils.noCallAlleles(ploidy);
 
         if (withBamOut) {
-            ////add annotations to reads for alignment regions and calling regions
+            //add annotations to reads for alignment regions and calling regions
             AssemblyBasedCallerUtils.annotateReadLikelihoodsWithRegions(readLikelihoods, activeRegionWindow);
         }
 
@@ -189,7 +189,6 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
                 returnCalls.add( annotatedCall );
 
                 if (withBamOut) {
-                    //add annotations to reads for which genotypes are supported by each read
                     AssemblyBasedCallerUtils.annotateReadLikelihoodsWithSupportedGenotypes(call, readAlleleLikelihoods);
                 }
 

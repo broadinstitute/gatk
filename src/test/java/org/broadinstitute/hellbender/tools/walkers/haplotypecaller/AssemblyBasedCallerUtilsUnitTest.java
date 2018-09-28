@@ -78,24 +78,24 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         final int start = 13763;
         final SimpleInterval loc = new SimpleInterval(contig, start, start + hap1String.length());
         final SimpleInterval loc2 = new SimpleInterval(contig, loc.getStart() + 4, loc.getEnd() - 4);
-        List<Integer> snpIndecies = Arrays.asList(null, 12, 23);
+        List<Integer> snpIndices = Arrays.asList(null, 12, 23);
         List<Character> snpReplacements = Arrays.asList(null, 'G', 'C');
-        List<Integer> delIndecies = Arrays.asList(null, 27);
+        List<Integer> delIndices = Arrays.asList(null, 27);
         List<Integer> delLenghts = Arrays.asList(null, 4);
-        List<Integer> insIndecies = Arrays.asList(null, 34);
+        List<Integer> insIndices = Arrays.asList(null, 34);
         List<String> insStrings = Arrays.asList(null, "GGCTGGATCGAG");
 
         List<String> haplotypeStrings = new ArrayList<String>();
 
-        for (int iSnp = 0; iSnp < snpIndecies.size(); iSnp++) {
+        for (int iSnp = 0; iSnp < snpIndices.size(); iSnp++) {
             //create set of haplotype sequences with different combinations of snps, deletions, indels
-            Integer snpIndex = snpIndecies.get(iSnp);
+            Integer snpIndex = snpIndices.get(iSnp);
             Character snpReplacement = snpReplacements.get(iSnp);
-            for (int iDel = 0; iDel < delIndecies.size(); iDel++) {
-                Integer delIndex = delIndecies.get(iDel);
+            for (int iDel = 0; iDel < delIndices.size(); iDel++) {
+                Integer delIndex = delIndices.get(iDel);
                 Integer delLength = delLenghts.get(iDel);
-                for (int iIns = 0; iIns < insIndecies.size(); iIns++) {
-                    Integer insIndex = insIndecies.get(iIns);
+                for (int iIns = 0; iIns < insIndices.size(); iIns++) {
+                    Integer insIndex = insIndices.get(iIns);
                     String insString = insStrings.get(iIns);
                     String haplotypeString = hap1String;
                     if (snpIndex != null) {
