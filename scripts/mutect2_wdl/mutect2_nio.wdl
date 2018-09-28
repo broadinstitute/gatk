@@ -1027,7 +1027,7 @@ task FuncotateMaf {
      String annotation_def_arg = if defined(annotation_defaults) then " --annotation-default " else ""
      String annotation_over_arg = if defined(annotation_overrides) then " --annotation-override " else ""
      String filter_funcotations_args = if (filter_funcotations) then " --remove-filtered-variants " else ""
-     String excluded_fields_args = if defined(funcotator_excluded_fields) then " --exclusion-list " else ""
+     String excluded_fields_args = if defined(funcotator_excluded_fields) then " --exclude-field " else ""
      String final_output_filename = basename(input_vcf, ".vcf") + ".maf.annotated"
      # ==============
 
@@ -1090,7 +1090,7 @@ task FuncotateMaf {
             --annotation-default source:${default="Unknown" sequence_source} \
              ${annotation_def_arg}${default="" sep=" --annotation-default " annotation_defaults} \
              ${annotation_over_arg}${default="" sep=" --annotation-override " annotation_overrides} \
-             ${excluded_fields_args}${default="" sep=" --exclusion-list " funcotator_excluded_fields} \
+             ${excluded_fields_args}${default="" sep=" --exclude-field " funcotator_excluded_fields} \
              ${filter_funcotations_args} \
              ${extra_args}
      >>>
