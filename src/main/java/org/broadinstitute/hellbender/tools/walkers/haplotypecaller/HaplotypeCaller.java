@@ -213,7 +213,11 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
     @Override
     public void onTraversalStart() {
         if (hcArgs.emitReferenceConfidence == ReferenceConfidenceMode.GVCF && hcArgs.maxMnpDistance > 0) {
-            throw new CommandLineException.BadArgumentValue("Non-zero maxMnpDistance is incompatible with GVCF mode.");
+            logger.warn("*************************************************************************");
+            logger.warn("* MNP support enabled in GVCF mode.                                     *");
+            logger.warn("* Generated GVCFs that contain MNPs can only be genotyped individually. *");
+            logger.warn("* Multi-sample calling from MNP-enabled GVCFs is unsupported.           *");
+            logger.warn("*************************************************************************");
         }
 
         final VariantAnnotatorEngine variantAnnotatorEngine = new VariantAnnotatorEngine(makeVariantAnnotations(),

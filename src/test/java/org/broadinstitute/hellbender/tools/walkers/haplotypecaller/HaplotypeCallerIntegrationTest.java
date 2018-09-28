@@ -808,24 +808,6 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         }
     }
 
-    @Test(expectedExceptions = CommandLineException.BadArgumentValue.class)
-    public void testMnpsThrowErrorInGVCFMode() throws Exception {
-        Utils.resetRandomGenerator();
-        final File bam = new File(toolsTestDir, "mnp.bam");
-        final int maxMnpDistance = 1;
-        final String ercMode = "GVCF";
-
-        final File outputVcf = createTempFile("unfiltered", ".vcf");
-
-        final List<String> args = Arrays.asList("-I", bam.getAbsolutePath(),
-                "-R", b37_reference_20_21,
-                "-L", "20:10019000-10022000",
-                "-O", outputVcf.getAbsolutePath(),
-                "-" + HaplotypeCallerArgumentCollection.MAX_MNP_DISTANCE_SHORT_NAME, Integer.toString(maxMnpDistance),
-                "-ERC", ercMode);
-        runCommandLine(args);
-}
-
     @Test(dataProvider = "getContaminationCorrectionTestData")
     public void testContaminationCorrection( final String contaminatedBam,
                                    final double contaminationFraction,
