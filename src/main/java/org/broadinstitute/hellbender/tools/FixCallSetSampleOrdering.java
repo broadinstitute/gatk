@@ -28,6 +28,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.net.URI;
 
 @ExperimentalFeature
 @DocumentedFeature
@@ -80,7 +81,7 @@ public final class FixCallSetSampleOrdering extends VariantWalker {
 
     private VariantContextWriter writer;
 
-    private LinkedHashMap<String, Path> sampleNameMapFromGenomicsDBImport;
+    private LinkedHashMap<String, URI> sampleNameMapFromGenomicsDBImport;
 
     private Map<Path, String> gvcfToHeaderSampleMap;
 
@@ -134,7 +135,10 @@ public final class FixCallSetSampleOrdering extends VariantWalker {
         }
 
         Map<Path, String> mapping = new HashMap<>();
-        final Set<Path> gvcfPathsFromSampleNameMap = new HashSet<>(sampleNameMapFromGenomicsDBImport.values());
+        final Set<URI> gvcfURIsFromSampleNameMap = new HashSet<>(sampleNameMapFromGenomicsDBImport.values());
+        final Set<Path> gvcfPathsFromSampleNameMap = new HashSet<>();
+        for(final URI currEntry : gvcfURIsFromSampleNameMap)
+            gvcfPathsFromSampleNameMap.add(IOUtils.getPath(currEntry.toString()));
 
         try {
             final List<String> lines = Files.readAllLines(IOUtils.getPath(gvcfToHeaderSampleMapFile));
@@ -216,7 +220,7 @@ public final class FixCallSetSampleOrdering extends VariantWalker {
                 Map<String, String> sampleNameInHeaderToSampleNameInMap = new HashMap<>();
 
                 for ( final String batchSample : batch ) {
-                    final Path vcfPath = sampleNameMapFromGenomicsDBImport.get(batchSample);
+                    final Path vcfPath = IOUtils.getPath(sampleNameMapFromGenomicsDBImport.get(batchSample).toString());
                     if ( vcfPath == null ) {
                         throw new GATKException("Hash lookup failed for sample " + batchSample);
                     }

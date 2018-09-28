@@ -1,7 +1,5 @@
 package org.broadinstitute.hellbender.engine;
 
-import com.intel.genomicsdb.model.GenomicsDBExportConfiguration;
-import com.intel.genomicsdb.reader.GenomicsDBFeatureReader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.tribble.*;
@@ -22,6 +20,12 @@ import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.nio.SeekableByteChannelPrefetcher;
 
+import com.intel.genomicsdb.model.GenomicsDBExportConfiguration;
+import com.intel.genomicsdb.reader.GenomicsDBFeatureReader;
+import com.googlecode.protobuf.format.JsonFormat;
+import com.intel.genomicsdb.model.GenomicsDBVidMapProto;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.channels.SeekableByteChannel;
@@ -32,6 +36,10 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
+import java.io.FileReader;
+import java.io.FileNotFoundException;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Enables traversals and queries over sources of Features, which are metadata associated with a location
@@ -435,7 +443,106 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
             exportConfigurationBuilder.setGenerateArrayNameFromPartitionBounds(true);
         }
 
+        //Modify combine operations for INFO fields using the Protobuf API
+        //Parse the vid json and create an in-memory Protobuf structure representing the
+        //information in the JSON file
+        GenomicsDBVidMapProto.VidMappingPB vidMapPB = null;
+        try {
+            vidMapPB = getProtobufVidMappingFromJsonFile(vidmapJson);
+        }
+        catch (final IOException e) {
+            throw new UserException("Could not open vid json file "+vidmapJson, e);
+        }
+
+        //In vidMapPB, fields is a list of GenomicsDBVidMapProto.GenomicsDBFieldInfo objects
+        //Each GenomicsDBFieldInfo object contains information about a specific field in the TileDB/GenomicsDB store
+        //We iterate over the list and create a field name to list index map
+        HashMap<String, Integer> fieldNameToIndexInVidFieldsList =
+                getFieldNameToListIndexInProtobufVidMappingObject(vidMapPB);
+
+        //Update combine operations for GnarlyGenotyper
+        vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList, "MQ_DP", "sum");
+        vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList, "QUALapprox", "sum");
+        vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList, "VarDP", "sum");
+
+
+        vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList, GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY, "element_wise_sum");
+
+        if(vidMapPB != null) {
+            //Use rebuilt vidMap in exportConfiguration
+            //NOTE: this does NOT update the JSON file, the vidMapPB is a temporary structure that's passed to
+            //C++ modules of GenomicsDB for this specific query. Other queries will continue to use the information
+            //in the JSON file
+            exportConfigurationBuilder.setVidMapping(vidMapPB);
+        }
+
+
         return exportConfigurationBuilder.build();
+    }
+
+    /**
+     *  Parse the vid json and create an in-memory Protobuf structure representing the
+     *  information in the JSON file
+     *  @param vidmapJson vid JSON file
+     *  @return Protobuf object
+     */
+    public static GenomicsDBVidMapProto.VidMappingPB getProtobufVidMappingFromJsonFile(final File vidmapJson)
+            throws IOException {
+        GenomicsDBVidMapProto.VidMappingPB.Builder vidMapBuilder = GenomicsDBVidMapProto.VidMappingPB.newBuilder();
+        JsonFormat.merge(new FileReader(vidmapJson), vidMapBuilder);
+        return vidMapBuilder.build();
+    }
+
+    /**
+     * In vidMapPB, fields is a list of GenomicsDBVidMapProto.GenomicsDBFieldInfo objects
+     * Each GenomicsDBFieldInfo object contains information about a specific field in the TileDB/GenomicsDB store
+     * We iterate over the list and create a field name to list index map
+     * @param vidMapPB Protobuf vid mapping object
+     * @return map from field name to index in vidMapPB.fields list
+     */
+    public static HashMap<String, Integer> getFieldNameToListIndexInProtobufVidMappingObject(
+            final GenomicsDBVidMapProto.VidMappingPB vidMapPB) {
+        HashMap<String, Integer> fieldNameToIndexInVidFieldsList = new HashMap<String, Integer>();
+        for(int fieldIdx=0;fieldIdx<vidMapPB.getFieldsCount();++fieldIdx)
+            fieldNameToIndexInVidFieldsList.put(vidMapPB.getFields(fieldIdx).getName(), fieldIdx);
+        return fieldNameToIndexInVidFieldsList;
+    }
+
+    /**
+     * Update vid Protobuf object with new combine operation for field
+     * @param vidMapPB input vid object
+     * @param fieldNameToIndexInVidFieldsList name to index in list
+     * @param fieldName INFO field name
+     * @param newCombineOperation combine op ("sum", "median")
+     * @return updated vid Protobuf object if field exists, else null
+     */
+    public static GenomicsDBVidMapProto.VidMappingPB updateINFOFieldCombineOperation(
+            final GenomicsDBVidMapProto.VidMappingPB vidMapPB,
+            final Map<String, Integer> fieldNameToIndexInVidFieldsList,
+            final String fieldName,
+            final String newCombineOperation)
+    {
+        int fieldIdx = fieldNameToIndexInVidFieldsList.containsKey(fieldName)
+                ? fieldNameToIndexInVidFieldsList.get(fieldName) : -1;
+        if(fieldIdx >= 0) {
+            //Would need to rebuild vidMapPB - so get top level builder first
+            GenomicsDBVidMapProto.VidMappingPB.Builder updatedVidMapBuilder = vidMapPB.toBuilder();
+            //To update the list element corresponding to fieldName, we get the builder for that specific list element
+            GenomicsDBVidMapProto.GenomicsDBFieldInfo.Builder fieldBuilder =
+                    updatedVidMapBuilder.getFieldsBuilder(fieldIdx);
+            //And update its combine operation
+            fieldBuilder.setVCFFieldCombineOperation(newCombineOperation);
+
+            //Shorter way of writing the same operation
+            /*
+            updatedVidMapBuilder.getFieldsBuilder(fieldIdx)
+                .setVCFFieldCombineOperation(newCombineOperation);
+            */
+
+            //Rebuild full vidMap
+            return updatedVidMapBuilder.build();
+        }
+        return vidMapPB;
     }
 
     /**
