@@ -39,6 +39,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.concurrent.CompletionException;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Test(groups = {"variantcalling"})
 public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTest {
@@ -130,12 +131,12 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
 
     @Test
     public void testGenomicsDBImportFileInputs() throws IOException {
-        testGenomicsDBImporter(LOCAL_GVCFS, INTERVAL, COMBINED, b38_reference_20_21, true);
+        testGenomicsDBImporter(LOCAL_GVCFS, INTERVAL, COMBINED, b38_reference_20_21, true, 1);
     }
 
     @Test
     public void testGenomicsDBImportFileInputsWithMultipleIntervals() throws IOException {
-        testGenomicsDBImporter(LOCAL_GVCFS, MULTIPLE_INTERVALS, COMBINED_MULTI_INTERVAL, b38_reference_20_21, true);
+        testGenomicsDBImporter(LOCAL_GVCFS, MULTIPLE_INTERVALS, COMBINED_MULTI_INTERVAL, b38_reference_20_21, true, 1);
     }
 
     private void testGenomicsDBImportWith1000Intervals() throws IOException {
@@ -211,19 +212,22 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         testGenomicsDBImporterWithGenotypes(LOCAL_GVCFS, intervals, COMBINED_SITES_ONLY, b38_reference_20_21, true, true, true);
     }
 
-    @Test(expectedExceptions={UserException.BadInput.class, CompletionException.class}, expectedExceptionsMessageRegExp=".*GenomicsDBImport does not support GVCFs.*")
+    @Test(expectedExceptions={UserException.BadInput.class}, expectedExceptionsMessageRegExp=".*GenomicsDBImport does not support GVCFs.*")
     public void testGenomicsDbImportThrowsOnMnp() throws IOException {
-        testGenomicsDBImporter(
-                Collections.singletonList(MNP_GVCF),
-                Collections.singletonList(new SimpleInterval("20", 69700, 69900)),
-                null, // Should never produce a VCF
-                b38_reference_20_21,
-                true
-        );
+        for (int threads = 1; threads <= 2; ++threads) {
+            testGenomicsDBImporter(
+                    Collections.singletonList(MNP_GVCF),
+                    Collections.singletonList(new SimpleInterval("20", 69700, 69900)),
+                    null, // Should never produce a VCF
+                    b38_reference_20_21,
+                    true,
+                    threads
+            );
+        }
     }
 
     private void testGenomicsDBImporterWithGenotypes(final List<String> vcfInputs, final List<SimpleInterval> intervals,
-                                                      final String expectedCombinedVCF,
+                                                     final String expectedCombinedVCF,
                                                       final String referenceFile) throws IOException {
         testGenomicsDBImporterWithGenotypes(vcfInputs, intervals,
                 expectedCombinedVCF, referenceFile,
@@ -286,7 +290,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
 
     @Test(groups = {"bucket"})
     public void testGenomicsDBImportGCSInputs() throws IOException {
-        testGenomicsDBImporter(resolveLargeFilesAsCloudURIs(LOCAL_GVCFS), INTERVAL, COMBINED, b38_reference_20_21, true);
+        testGenomicsDBImporter(resolveLargeFilesAsCloudURIs(LOCAL_GVCFS), INTERVAL, COMBINED, b38_reference_20_21, true, 1);
     }
 
     @Test
@@ -376,10 +380,10 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
 
     private void testGenomicsDBImporter(final List<String> vcfInputs, final List<SimpleInterval> intervals,
                                         final String expectedCombinedVCF, final String referenceFile,
-                                        final boolean testAll) throws IOException {
+                                        final boolean testAll, final int threads) throws IOException {
         final String workspace = createTempDir("genomicsdb-tests-").getAbsolutePath() + "/workspace";
 
-        writeToGenomicsDB(vcfInputs, intervals, workspace, 0, false, 0, 1);
+        writeToGenomicsDB(vcfInputs, intervals, workspace, 0, false, 0, threads);
         checkJSONFilesAreWritten(workspace);
         checkGenomicsDBAgainstExpected(workspace, intervals, expectedCombinedVCF, referenceFile, testAll);
     }

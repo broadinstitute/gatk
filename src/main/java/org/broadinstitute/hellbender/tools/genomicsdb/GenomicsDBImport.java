@@ -562,6 +562,8 @@ public final class GenomicsDBImport extends GATKTool {
             throw new UserException("Error initializing GenomicsDBImporter", e);
         } catch (final IllegalArgumentException iae) {
             throw new GATKException("Null feature reader found in sampleNameMap file: " + sampleNameMapFile, iae);
+        } catch (final CompletionException ce) {
+            throw (ce.getCause() instanceof RuntimeException ? (RuntimeException) ce.getCause() : ce);
         }
     }
 
