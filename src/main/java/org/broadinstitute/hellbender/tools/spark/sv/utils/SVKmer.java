@@ -52,6 +52,7 @@ public abstract class SVKmer {
     public abstract int firstTrimer(final int kSize );
     public abstract int lastTrimer();
     public abstract String toString( final int kSize );
+    public abstract SVKmer removeFirstAndLastBase( final int kSize );
 
     // Reverse-complement a long by taking the reverse-complement of each of its bytes in reverse order.
     protected static long reverseComplement( long val ) {

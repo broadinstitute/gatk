@@ -123,6 +123,13 @@ public final class SVKmerHuge extends SVKmer implements Comparable<SVKmerHuge> {
     }
 
     @Override
+    public SVKmerHuge removeFirstAndLastBase( final int kSize ) {
+        final SVKmerHuge result = predecessor(Base.T, kSize);
+        result.vals[vals.length-1] &= (1L << (((kSize - 2) & 0x1f) << 1)) - 1L;
+        return result;
+    }
+
+    @Override
     public boolean equals( final Object obj ) {
         return obj instanceof SVKmerHuge && equals((SVKmerHuge)obj);
     }

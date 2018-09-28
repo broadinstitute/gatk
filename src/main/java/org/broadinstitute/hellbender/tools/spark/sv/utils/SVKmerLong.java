@@ -133,6 +133,7 @@ public class SVKmerLong extends SVKmer implements Comparable<SVKmerLong>  {
     public final int lastTrimer() { return (int)valLow & 0x3F; }
 
     /** Returns a kmer of size kSize-2 by removing the first and last base */
+    @Override
     public final SVKmerLong removeFirstAndLastBase( final int kSize ) {
         return new SVKmerLong(valHigh & ((1L << (kSize-2)) - 1L), valLow >> 2);
     }

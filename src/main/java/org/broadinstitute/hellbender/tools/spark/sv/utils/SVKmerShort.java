@@ -124,6 +124,11 @@ public class SVKmerShort extends SVKmer implements Comparable<SVKmerShort> {
     public final int lastTrimer() { return (int)valLow & 0x3F; }
 
     @Override
+    public SVKmerShort removeFirstAndLastBase( final int kSize ) {
+        return new SVKmerShort((valLow >>> 2) & (((1L << (kSize - 2)) << 1) - 1L));
+    }
+
+    @Override
     public boolean equals( final Object obj ) {
         return obj instanceof SVKmerShort && equals((SVKmerShort)obj);
     }

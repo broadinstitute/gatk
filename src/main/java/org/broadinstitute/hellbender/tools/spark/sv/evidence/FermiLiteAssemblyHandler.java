@@ -123,9 +123,9 @@ public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpa
     }
 
     @VisibleForTesting
-    static FermiLiteAssembly reviseAssembly(final FermiLiteAssembly initialAssembly,
-                                            final boolean removeShadowedContigs,
-                                            final boolean expandAssemblyGraph) {
+    public static FermiLiteAssembly reviseAssembly(final FermiLiteAssembly initialAssembly,
+                                                   final boolean removeShadowedContigs,
+                                                   final boolean expandAssemblyGraph) {
         final FermiLiteAssembly result;
         if ( removeShadowedContigs ) {
             if ( expandAssemblyGraph ) {

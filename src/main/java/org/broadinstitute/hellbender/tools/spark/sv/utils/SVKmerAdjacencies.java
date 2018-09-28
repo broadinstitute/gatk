@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmer.Base;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.ArrayList;
@@ -8,7 +9,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-public class SVKmerAdjacencies extends SVKmerLong {
+public final class SVKmerAdjacencies {
+    private SVKmer kmer;
     private int adjacentKmers;
 
     // bit-wise reverse of binary representation of all integers 0 to 255
@@ -17,22 +19,36 @@ public class SVKmerAdjacencies extends SVKmerLong {
     // number of bits set in the binary representation of the integers from 0 to 15
     private static int[] bitCount = { 0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4 };
 
-    public SVKmerAdjacencies( final SVKmerLong kmer, final Base predecessor, final Base successor ) {
-        super(kmer);
+    public SVKmerAdjacencies( final SVKmer kmer ) { this(kmer, null, null); }
+
+    public SVKmerAdjacencies( final SVKmer kmer, final Base predecessor, final Base successor ) {
+        this.kmer = kmer;
         adjacentKmers = (predecessor == null ? 0 : (0x10 << predecessor.ordinal())) |
                         (successor == null ? 0 : (1 << successor.ordinal()));
     }
 
-    private SVKmerAdjacencies( final SVKmerLong kmer, final int adjacentKmers ) {
-        super(kmer);
+    @Override
+    public int hashCode() { return kmer.hashCode(); }
+
+    @Override
+    public boolean equals( final Object obj ) {
+        return obj instanceof SVKmerAdjacencies && ((SVKmerAdjacencies)obj).kmer.equals(kmer);
+    }
+
+    private SVKmerAdjacencies( final SVKmer kmer, final int adjacentKmers ) {
+        this.kmer = kmer;
         this.adjacentKmers = adjacentKmers;
     }
 
+    public SVKmer getKmer() { return kmer; }
     public int getAdjacencies() { return adjacentKmers; }
 
-    @Override
+    public SVKmerAdjacencies canonical( final int kSize ) {
+        return kmer.isCanonical(kSize) ? this : reverseComplement(kSize);
+    }
+
     public SVKmerAdjacencies reverseComplement( final int kSize ) {
-        return new SVKmerAdjacencies(super.reverseComplement(kSize), reverseComplementAdjacencies(adjacentKmers));
+        return new SVKmerAdjacencies(kmer.reverseComplement(kSize), reverseComplementAdjacencies(adjacentKmers));
     }
 
     public void mergeAdjacencies( final SVKmerAdjacencies that ) {
@@ -52,27 +68,27 @@ public class SVKmerAdjacencies extends SVKmerLong {
         return ((1 << base.ordinal()) & adjacentKmers) != 0;
     }
 
-    public SVKmerLong getSolePredecessor( final int kSize ) {
+    public SVKmer getSolePredecessor( final int kSize ) {
         switch (adjacentKmers >> 4) {
-            case 1: return predecessor(Base.A, kSize);
-            case 2: return predecessor(Base.C, kSize);
-            case 4: return predecessor(Base.G, kSize);
-            case 8: return predecessor(Base.T, kSize);
+            case 1: return kmer.predecessor(Base.A, kSize);
+            case 2: return kmer.predecessor(Base.C, kSize);
+            case 4: return kmer.predecessor(Base.G, kSize);
+            case 8: return kmer.predecessor(Base.T, kSize);
             default: return null;
         }
     }
 
-    public SVKmerLong getSoleSuccessor( final int kSize ) {
+    public SVKmer getSoleSuccessor( final int kSize ) {
         switch (adjacentKmers & 0x0f) {
-            case 1: return successor(Base.A, kSize);
-            case 2: return successor(Base.C, kSize);
-            case 4: return successor(Base.G, kSize);
-            case 8: return successor(Base.T, kSize);
+            case 1: return kmer.successor(Base.A, kSize);
+            case 2: return kmer.successor(Base.C, kSize);
+            case 4: return kmer.successor(Base.G, kSize);
+            case 8: return kmer.successor(Base.T, kSize);
             default: return null;
         }
     }
 
-    public List<Integer> getPredecessorContigs( Map<SVKmerLong, Integer> contigEnds, final int kSize ) {
+    public List<Integer> getPredecessorContigs( Map<SVKmer, Integer> contigEnds, final int kSize ) {
         final int nPredecessors = predecessorCount();
         if (nPredecessors == 0 ) return Collections.emptyList();
         List<Integer> predecessorList = new ArrayList<>(nPredecessors);
@@ -80,7 +96,7 @@ public class SVKmerAdjacencies extends SVKmerLong {
         for ( int baseIdx = 0; baseIdx != 4; ++baseIdx ) {
             if ( (predecessorBits & (1 << baseIdx)) != 0 ) {
                 final Integer contigId =
-                        contigEnds.get(predecessor(baseValues.get(baseIdx), kSize).reverseComplement(kSize));
+                        contigEnds.get(kmer.predecessor(SVKmer.baseValues.get(baseIdx), kSize).reverseComplement(kSize));
                 if ( contigId == null ) {
                     throw new GATKException("can't find predecessor contig");
                 }
@@ -90,14 +106,14 @@ public class SVKmerAdjacencies extends SVKmerLong {
         return predecessorList;
     }
 
-    public List<Integer> getSuccessorContigs( Map<SVKmerLong, Integer> contigEnds, final int kSize ) {
+    public List<Integer> getSuccessorContigs( Map<SVKmer, Integer> contigEnds, final int kSize ) {
         final int nSuccessors = successorCount();
         if ( nSuccessors == 0 ) return Collections.emptyList();
         List<Integer> successorList = new ArrayList<>(nSuccessors);
         final int successorBits = adjacentKmers & 0x0f;
         for ( int baseIdx = 0; baseIdx != 4; ++baseIdx ) {
             if ( (successorBits & (1 << baseIdx)) != 0 ) {
-                final Integer contigId = contigEnds.get(successor(baseValues.get(baseIdx), kSize));
+                final Integer contigId = contigEnds.get(kmer.successor(SVKmer.baseValues.get(baseIdx), kSize));
                 if ( contigId == null ) {
                     throw new GATKException("can't find successor contig");
                 }
