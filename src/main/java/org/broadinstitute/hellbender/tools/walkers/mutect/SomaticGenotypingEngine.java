@@ -233,11 +233,11 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
         final int dp = (int) MathUtils.sum(adArray);
         final GenotypeBuilder gb = new GenotypeBuilder(tumorSample, tumorLog10Matrix.alleles());
         final double[] flatPriorPseudocounts = new IndexRange(0, tumorLog10Matrix.numberOfAlleles()).mapToDouble(n -> 1);
-        final double [] alleleFractionsPosterior = SomaticLikelihoodsEngine.alleleFractionsPosterior(
+        final double[] alleleFractionsPosterior = SomaticLikelihoodsEngine.alleleFractionsPosterior(
                 getAsRealMatrix(tumorLog10Matrix), flatPriorPseudocounts);
         if (!MTAC.calculateAFfromAD) {
             // Use mean of the allele fraction posterior distribution
-            double [] tumorAlleleFractionsMean = MathUtils.normalizeFromRealSpace(alleleFractionsPosterior);
+            double[] tumorAlleleFractionsMean = MathUtils.normalizeFromRealSpace(alleleFractionsPosterior);
             gb.attribute(GATKVCFConstants.ALLELE_FRACTION_KEY, Arrays.copyOfRange(tumorAlleleFractionsMean, 1, tumorAlleleFractionsMean.length));
         }
         final Genotype tumorGenotype = gb.make();
