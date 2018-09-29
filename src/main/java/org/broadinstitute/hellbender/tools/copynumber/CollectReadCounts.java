@@ -35,6 +35,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -134,12 +135,17 @@ public final class CollectReadCounts extends ReadWalker {
 
     @Override
     public List<ReadFilter> getDefaultReadFilters() {
-        final List<ReadFilter> filters = new ArrayList<>(super.getDefaultReadFilters());
-        filters.add(ReadFilterLibrary.MAPPED);
-        filters.add(ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT);
-        filters.add(ReadFilterLibrary.NOT_DUPLICATE);
-        filters.add(new MappingQualityReadFilter(DEFAULT_MINIMUM_MAPPING_QUALITY));
-        return filters;
+        return Collections.singletonList(new ReadFilter() {
+
+            private static final long serialVersionUID = 1L;
+            @Override
+            public boolean test(final GATKRead read) {
+                return !read.isUnmapped() &&
+                       !read.isDuplicate() &&
+                        read.getMappingQuality() >= DEFAULT_MINIMUM_MAPPING_QUALITY &&
+                        read.getCigar().getReferenceLength() > 0;
+            }
+        });
     }
 
     @Override
@@ -172,8 +178,8 @@ public final class CollectReadCounts extends ReadWalker {
 
     @Override
     public void apply(GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext) {
-        final SimpleInterval overlappingInterval = intervalCachedOverlapDetector.getOverlap(
-                new SimpleInterval(read.getContig(), read.getStart(), read.getStart()));
+        final SimpleInterval readInterval = new SimpleInterval(read.getContig(), read.getStart());
+        final SimpleInterval overlappingInterval = intervalCachedOverlapDetector.getOverlap(readInterval);
 
         //if read doesn't overlap any of the provided intervals, do nothing
         if (overlappingInterval == null) {

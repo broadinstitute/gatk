@@ -8,6 +8,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.io.Serializable;
 
@@ -44,7 +45,10 @@ public final class SimpleInterval implements Locatable, Serializable {
       * Create a single base interval
       */
      public SimpleInterval(final String contig, final int position) {
-         this(contig, position, position);
+         Utils.nonNull(contig);
+         ParamUtils.isPositive(position, "the position must be positive");
+         this.contig = contig;
+         this.start = this.end = position;
      }
 
     /**
@@ -77,6 +81,8 @@ public final class SimpleInterval implements Locatable, Serializable {
      public static boolean isValid(final String contig, final int start, final int end) {
          return contig != null && start > 0 && end >= start;
      }
+
+
 
      /**
       * Returns a {@link SimpleInterval} that represent the interval that a locatable extends.

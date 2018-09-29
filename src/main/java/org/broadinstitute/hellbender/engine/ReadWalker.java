@@ -104,7 +104,22 @@ public abstract class ReadWalker extends GATKTool {
      * So here we check this condition and create null intervals for such reads.
      */
     SimpleInterval getReadInterval(final GATKRead read) {
-        return !read.isUnmapped() && SimpleInterval.isValid(read.getContig(), read.getStart(), read.getEnd()) ? new SimpleInterval(read) : null;
+        if (!read.isUnmapped()) {
+            final String contig = read.getContig();
+            if (contig == null) {
+                return null;
+            } else {
+                final int start = read.getStart();
+                if (start > 0) {
+                    final int end = read.getEnd();
+                    return end >= start ? new SimpleInterval(contig, start, end) : null;
+                } else {
+                    return null;
+                }
+            }
+        } else {
+            return null;
+        }
     }
 
     /**
