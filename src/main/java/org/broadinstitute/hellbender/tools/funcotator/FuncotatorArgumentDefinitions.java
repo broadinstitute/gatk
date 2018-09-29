@@ -48,6 +48,11 @@ public class FuncotatorArgumentDefinitions {
      */
     public static final String ANNOTATION_OVERRIDES_LONG_NAME = "annotation-override";
 
+    /**
+     * List of final rendered fields to exclude from a final rendering
+     */
+    public static final String EXCLUSION_FIELDS_LONG_NAME = "exclude-field";
+
     public static final String HG19_REFERENCE_VERSION_STRING = "hg19";
     public static final String HG38_REFERENCE_VERSION_STRING = "hg38";
 

@@ -238,8 +238,7 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
                                 GencodeFuncotation.VariantClassification.NONSENSE, GencodeFuncotation.VariantClassification.INTRON, GencodeFuncotation.VariantType.SNP,
                                 "A", "T", "big_%20_changes", "T1",
                                 "3'", 1, 1, "A", "ATC", "Lys",  1.0, "ATGCGCAT", Arrays.asList("ONE", "TWO", "THREE")),
-                        "CRUMB BUM!!!!!",
-                        "CRUMB BUM!!!!!" + "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
+                        "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big_%20_changes" + D + "T1" + D +
                                 "3'" + D + "1" + D + 1 + D + "A" + D + "ATC" + D + "Lys" + D + "1.0" + D + "ATGCGCAT" + D + "ONE" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "TWO" + VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER + "THREE"
@@ -250,7 +249,6 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
                                 GencodeFuncotation.VariantClassification.NONSENSE, GencodeFuncotation.VariantClassification.INTRON, GencodeFuncotation.VariantType.SNP,
                                 "A", "T", "big_%20_changes", "T1",
                                 "3'", 1, 1, "A", "ATC", "Lys",  1.0, "ATGCGCAT", Arrays.asList("ONE", "TWO", "THREE")),
-                        null,
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big_%20_changes" + D + "T1" + D +
@@ -261,7 +259,6 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
                                 GencodeFuncotation.VariantClassification.NONSENSE, GencodeFuncotation.VariantClassification.INTRON, GencodeFuncotation.VariantType.SNP,
                                 "A", "T", "big_%20_changes", "T1",
                                 "3'", 1, 1, "A", "ATC", "Lys", 1.0, "ATGCGCAT", Arrays.asList("ONE", "TWO", "THREE")),
-                        null,
                         D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big_%20_changes" + D + "T1" + D +
@@ -272,7 +269,6 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
                                 GencodeFuncotation.VariantClassification.NONSENSE, GencodeFuncotation.VariantClassification.INTRON, GencodeFuncotation.VariantType.SNP,
                                 "A", "T", "big_%20_changes", "T1",
                                 "3'", 1, 1, "A", "ATC", "Lys",  1.0, "ATGCGCAT", Arrays.asList("ONE", "TWO", "THREE")),
-                        null,
                         "TESTGENE" + D + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big_%20_changes" + D + "T1" + D +
@@ -283,7 +279,6 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
                                 GencodeFuncotation.VariantClassification.NONSENSE, GencodeFuncotation.VariantClassification.INTRON, GencodeFuncotation.VariantType.SNP,
                                 "A", "T", "big_%20_changes", "T1",
                                 "3'", 1, 1, "A", "ATC", "Lys",  1.0, "ATGCGCAT", Arrays.asList("ONE", "TWO", "THREE")),
-                        null,
                         "TESTGENE" + D + "BUILD1" + D + D + 50 + D + 60 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big_%20_changes" + D + "T1" + D +
@@ -294,7 +289,6 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
                                 null, GencodeFuncotation.VariantClassification.INTRON, GencodeFuncotation.VariantType.SNP,
                                 "A", "T", "big_%20_changes", "T1",
                                 "3'", 1, 1, "A", "ATC", "Lys",  1.0, "ATGCGCAT", Arrays.asList("ONE", "TWO", "THREE")),
-                        null,
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big_%20_changes" + D + "T1" + D +
@@ -305,7 +299,6 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
                                 GencodeFuncotation.VariantClassification.NONSENSE, null, GencodeFuncotation.VariantType.SNP,
                                 "A", "T", "big_%20_changes", "T1",
                                 "3'", 1, 1, "A", "ATC", "Lys",  1.0, "ATGCGCAT", Arrays.asList("ONE", "TWO", "THREE")),
-                        null,
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big_%20_changes" + D + "T1" + D +
@@ -316,7 +309,6 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
                                 GencodeFuncotation.VariantClassification.NONSENSE, GencodeFuncotation.VariantClassification.INTRON, null,
                                 "A", "T", "big_%20_changes", "T1",
                                 "3'", 1, 1, "A", "ATC", "Lys",  1.0, "ATGCGCAT", Arrays.asList("ONE", "TWO", "THREE")),
-                        null,
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + D +
                                 "A" + D + "A" + D + "T" + D + "big_%20_changes" + D + "T1" + D +
@@ -327,7 +319,6 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
                                 GencodeFuncotation.VariantClassification.NONSENSE, GencodeFuncotation.VariantClassification.INTRON, GencodeFuncotation.VariantType.SNP,
                                 "G", "C", null, "T1",
                                 "3'", 1, 1, "A", "ACC", "Lys",  1.0, "ATGCGCAT", Arrays.asList("ONE", "TWO", "THREE")),
-                        null,
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "G" + D + "G" + D + "C" + D + D + "T1" + D +
@@ -338,7 +329,6 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
                                 GencodeFuncotation.VariantClassification.NONSENSE, GencodeFuncotation.VariantClassification.INTRON, GencodeFuncotation.VariantType.SNP,
                                 "A", "T", "big_%20_changes", null,
                                 null, 1, 1, "A", "ATC", "Lys",  1.0, "ATGCGCAT", Arrays.asList("ONE", "TWO", "THREE")),
-                        null,
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big_%20_changes" + D + D +
@@ -349,7 +339,6 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
                                 GencodeFuncotation.VariantClassification.NONSENSE, GencodeFuncotation.VariantClassification.INTRON, GencodeFuncotation.VariantType.SNP,
                                 "A", "T", "big_%20_changes", "T1",
                                 "3'", null, null, "A", "ATC", "Lys",  1.0, "ATGCGCAT", Arrays.asList("ONE", "TWO", "THREE")),
-                        null,
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big_%20_changes" + D + "T1" + D +
@@ -360,7 +349,6 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
                                 GencodeFuncotation.VariantClassification.NONSENSE, GencodeFuncotation.VariantClassification.INTRON, GencodeFuncotation.VariantType.SNP,
                                 "A", "T", "big_%20_changes", "T1",
                                 "3'", 1, 1, null,  "ATC", "Lys",  1.0, "ATGCGCAT", Arrays.asList("ONE", "TWO", "THREE")),
-                        null,
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big_%20_changes" + D + "T1" + D +
@@ -371,7 +359,6 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
                                 GencodeFuncotation.VariantClassification.NONSENSE, GencodeFuncotation.VariantClassification.INTRON, GencodeFuncotation.VariantType.SNP,
                                 "A", "T", "big_%20_changes", "T1",
                                 "3'", 1, 1, "A", null, "Lys",  1.0, "ATGCGCAT", Arrays.asList("ONE", "TWO", "THREE")),
-                        null,
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big_%20_changes" + D + "T1" + D +
@@ -382,7 +369,6 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
                                 GencodeFuncotation.VariantClassification.NONSENSE, GencodeFuncotation.VariantClassification.INTRON, GencodeFuncotation.VariantType.SNP,
                                 "A", "T", "big_%20_changes", "T1",
                                 "3'", 1, 1, "A", "ATC", null,  1.0, "ATGCGCAT", Arrays.asList("ONE", "TWO", "THREE")),
-                        null,
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big_%20_changes" + D + "T1" + D +
@@ -393,7 +379,6 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
                                 GencodeFuncotation.VariantClassification.NONSENSE, GencodeFuncotation.VariantClassification.INTRON, GencodeFuncotation.VariantType.SNP,
                                 "A", "T", "big_%20_changes", "T1",
                                 "3'", 1, 1, "A", "ATC", "Lys", null, "ATGCGCAT", Arrays.asList("ONE", "TWO", "THREE")),
-                        null,
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big_%20_changes" + D + "T1" + D +
@@ -404,7 +389,6 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
                                 GencodeFuncotation.VariantClassification.NONSENSE, GencodeFuncotation.VariantClassification.INTRON, GencodeFuncotation.VariantType.SNP,
                                 "A", "T", "big_%20_changes", "T1",
                                 "3'", 1, 1, "A", "ATC", "Lys", 1.0, null, Arrays.asList("ONE", "TWO", "THREE")),
-                        null,
                         "TESTGENE" + D + "BUILD1" + D + "chr1" + D + 1 + D + 100 + D +
                                 GencodeFuncotation.VariantClassification.NONSENSE + D + GencodeFuncotation.VariantClassification.INTRON + D + GencodeFuncotation.VariantType.SNP + D +
                                 "A" + D + "A" + D + "T" + D + "big_%20_changes" + D + "T1" + D +
@@ -724,8 +708,8 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
     }
 
     @Test(dataProvider = "createGencodeFuncotationsAndStringSerializations")
-    void testSerializeToVcfString(final GencodeFuncotation gencodeFuncotation, final String manualAnnotationString, final String expected) {
-        Assert.assertEquals(gencodeFuncotation.serializeToVcfString(manualAnnotationString), expected);
+    void testSerializeToVcfString(final GencodeFuncotation gencodeFuncotation, final String expected) {
+        Assert.assertEquals(gencodeFuncotation.serializeToVcfString(), expected);
     }
 
     @Test(dataProvider = "provideForTestGetFieldNames")

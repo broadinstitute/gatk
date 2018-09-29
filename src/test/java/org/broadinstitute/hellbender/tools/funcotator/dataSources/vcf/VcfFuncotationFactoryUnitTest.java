@@ -23,6 +23,7 @@ import org.broadinstitute.hellbender.tools.funcotator.FuncotatorTestConstants;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.test.FuncotatorTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -108,25 +109,7 @@ public class VcfFuncotationFactoryUnitTest extends GATKBaseTest {
     //==================================================================================================================
     // Helper Methods:
 
-    private VariantContext createVariantContext(final String contig,
-                                                final int start,
-                                                final int end,
-                                                final String refString,
-                                                final String altString) {
 
-        final Allele refAllele = Allele.create(refString, true);
-        final Allele altAllele = Allele.create(altString);
-
-        final VariantContextBuilder variantContextBuilder = new VariantContextBuilder(
-                FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(),
-                contig,
-                start,
-                end,
-                Arrays.asList(refAllele, altAllele)
-        );
-
-        return variantContextBuilder.make();
-    }
 
     private Object[] helpProvideForTestCreateFuncotations(final String contig,
                                                           final int start,
@@ -135,7 +118,7 @@ public class VcfFuncotationFactoryUnitTest extends GATKBaseTest {
                                                           final String altAlleleString,
                                                           final List<Funcotation> expected) {
         return new Object[]{
-                createVariantContext(contig, start, end, refAlleleString, altAlleleString),
+                FuncotatorTestUtils.createSimpleVariantContext(FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(), contig, start, end, refAlleleString, altAlleleString),
                 new ReferenceContext(CHR3_REF_DATA_SOURCE, new SimpleInterval(contig, start, end)),
                 expected
         };

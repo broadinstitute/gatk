@@ -1,11 +1,11 @@
 package org.broadinstitute.hellbender.tools.funcotator.vcfOutput;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
-import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.hellbender.tools.funcotator.*;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.DataSourceUtils;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * A Funcotator output renderer for writing to VCF files.
@@ -65,9 +66,14 @@ public class VcfOutputRenderer extends OutputRenderer {
     //==================================================================================================================
 
     private final VariantContextWriter vcfWriter;
+
+    /** VCF Header that came in with the input VCF */
     private final VCFHeader existingHeader;
 
     private final LinkedHashSet<VCFHeaderLine> defaultToolVcfHeaderLines;
+
+    /** List of the fields that will get rendered in the funcotation annotation.  Excluded fields have been removed.  */
+    private final List<String> finalFuncotationFieldNames;
 
     //==================================================================================================================
 
@@ -82,7 +88,19 @@ public class VcfOutputRenderer extends OutputRenderer {
                              final VCFHeader existingHeader,
                              final LinkedHashMap<String, String> unaccountedForDefaultAnnotations,
                              final LinkedHashMap<String, String> unaccountedForOverrideAnnotations) {
-        this(vcfWriter, dataSources, existingHeader, unaccountedForDefaultAnnotations, unaccountedForOverrideAnnotations, new LinkedHashSet<>());
+        this(vcfWriter, dataSources, existingHeader, unaccountedForDefaultAnnotations, unaccountedForOverrideAnnotations,
+                new LinkedHashSet<>(), new LinkedHashSet<>());
+    }
+
+    @VisibleForTesting
+    public VcfOutputRenderer(final VariantContextWriter vcfWriter,
+                             final List<DataSourceFuncotationFactory> dataSources,
+                             final VCFHeader existingHeader,
+                             final LinkedHashMap<String, String> unaccountedForDefaultAnnotations,
+                             final LinkedHashMap<String, String> unaccountedForOverrideAnnotations,
+                             final Set<VCFHeaderLine> defaultToolVcfHeaderLines) {
+        this(vcfWriter, dataSources, existingHeader, unaccountedForDefaultAnnotations, unaccountedForOverrideAnnotations,
+               defaultToolVcfHeaderLines, new HashSet<>());
     }
 
     public VcfOutputRenderer(final VariantContextWriter vcfWriter,
@@ -90,7 +108,7 @@ public class VcfOutputRenderer extends OutputRenderer {
                              final VCFHeader existingHeader,
                              final LinkedHashMap<String, String> unaccountedForDefaultAnnotations,
                              final LinkedHashMap<String, String> unaccountedForOverrideAnnotations,
-                             final Set<VCFHeaderLine> defaultToolVcfHeaderLines) {
+                             final Set<VCFHeaderLine> defaultToolVcfHeaderLines, final Set<String> excludedOutputFields) {
 
         this.vcfWriter = vcfWriter;
         this.existingHeader = existingHeader;
@@ -104,8 +122,11 @@ public class VcfOutputRenderer extends OutputRenderer {
         // Get our default tool VCF header lines:
         this.defaultToolVcfHeaderLines = new LinkedHashSet<>(defaultToolVcfHeaderLines);
 
-        // Cache the manual annotation string so we can pass it easily into any Funcotations:
-        manualAnnotationSerializedString = (manualAnnotations.size() != 0 ? String.join( FIELD_DELIMITER, manualAnnotations.values() ) + FIELD_DELIMITER : "");
+        // Please note that this assumes that there is no conversion between the name given by the datasource (or user)
+        //  and the output name.
+        finalFuncotationFieldNames = Stream.concat(getDataSourceFieldNamesForHeaderAsList(dataSourceFactories).stream(), manualAnnotations.keySet().stream())
+                .filter(f -> !excludedOutputFields.contains(f))
+                .collect(Collectors.toList());
 
         // Open the output file and set up the header:
         final VCFHeader newHeader = createVCFHeader();
@@ -151,15 +172,18 @@ public class VcfOutputRenderer extends OutputRenderer {
             for (final String txId : txToFuncotationMap.getTranscriptList()) {
                 funcotatorAnnotationStringBuilder.append(START_TRANSCRIPT_DELIMITER);
                 final List<Funcotation> funcotations = txToFuncotationMap.get(txId);
+                final Funcotation manualAnnotationFuncotation = createManualAnnotationFuncotation(altAllele);
+
                 funcotatorAnnotationStringBuilder.append(
-                        funcotations.stream()
+                        Stream.concat(funcotations.stream(), Stream.of(manualAnnotationFuncotation))
                                 .filter(f -> f.getAltAllele().equals(altAllele))
                                 .filter(f -> f.getFieldNames().size() > 0)
                                 .filter(f -> !f.getDataSourceName().equals(FuncotatorConstants.DATASOURCE_NAME_FOR_INPUT_VCFS))
                                 .map(VcfOutputRenderer::adjustIndelAlleleInformation)
-                                .map(f -> retrieveSanitizedFuncotation(f, manualAnnotationSerializedString))
+                                .map(f -> FuncotatorUtils.renderSanitizedFuncotationForVcf(f, finalFuncotationFieldNames))
                                 .collect(Collectors.joining(FIELD_DELIMITER))
                 );
+
                 funcotatorAnnotationStringBuilder.append(END_TRANSCRIPT_DELIMITER + ALL_TRANSCRIPT_DELIMITER);
             }
             // We have a trailing "#" - we need to remove it:
@@ -178,6 +202,10 @@ public class VcfOutputRenderer extends OutputRenderer {
 
         // Render and add our VCF line:
         vcfWriter.add( variantContextOutputBuilder.make() );
+    }
+
+    private Funcotation createManualAnnotationFuncotation(final Allele altAllele) {
+        return OutputRenderer.createFuncotationFromLinkedHashMap(manualAnnotations, altAllele, "UnaccountedManualAnnotations");
     }
 
     //==================================================================================================================
@@ -252,12 +280,8 @@ public class VcfOutputRenderer extends OutputRenderer {
         // Add all lines of our existing VCF header:
         headerLines.addAll( existingHeader.getMetaDataInInputOrder() );
 
-        final String dataSourceFields = getDataSourceFieldNamesForHeader(dataSourceFactories);
-        final String manualAnnotationFields = String.join( HEADER_LISTED_FIELD_DELIMITER, manualAnnotations.keySet() );
-
         // Construct (only) the field list delimited by HEADER_LISTED_FIELD_DELIMITER
-        final String delimitedFields = StringUtils.isEmpty(manualAnnotationFields) ? dataSourceFields :
-                manualAnnotationFields + HEADER_LISTED_FIELD_DELIMITER + dataSourceFields;
+        final String delimitedFields = String.join(HEADER_LISTED_FIELD_DELIMITER, finalFuncotationFieldNames);
 
         // Add in the lines about Funcotations:
         headerLines.addAll(defaultToolVcfHeaderLines);
@@ -273,22 +297,17 @@ public class VcfOutputRenderer extends OutputRenderer {
     }
 
     /**
-     * Creates a {@link String} containing the field names from our {@link VcfOutputRenderer#dataSourceFactories} suitable for putting in the VCF header.
+     * Creates a {@link List} of {@link String} containing the field names from our {@link VcfOutputRenderer#dataSourceFactories} suitable for putting in the VCF header.
      *
      * Gencode annotations are put first and then the rest.
      *
      * @param dataSourceFactories A {@link List} of {@link DataSourceFuncotationFactory} objects from which to pull field names.
      * @return A {@link String} containing the field names from our {@link VcfOutputRenderer#dataSourceFactories} suitable for putting in the VCF header.
      */
-    private static String getDataSourceFieldNamesForHeader(final List<DataSourceFuncotationFactory> dataSourceFactories) {
+    private static List<String> getDataSourceFieldNamesForHeaderAsList(final List<DataSourceFuncotationFactory> dataSourceFactories) {
         return dataSourceFactories.stream().sorted(DataSourceUtils::datasourceComparator)
                         .map(DataSourceFuncotationFactory::getSupportedFuncotationFields)
                         .flatMap(LinkedHashSet::stream)
-                        .map(Object::toString).collect(Collectors.joining(HEADER_LISTED_FIELD_DELIMITER));
-    }
-
-    private static String retrieveSanitizedFuncotation(final Funcotation funcotation, final String manualAnnotationSerializedString) {
-       return funcotation.serializeToVcfString(manualAnnotationSerializedString);
-
+                        .map(Object::toString).collect(Collectors.toList());
     }
 }

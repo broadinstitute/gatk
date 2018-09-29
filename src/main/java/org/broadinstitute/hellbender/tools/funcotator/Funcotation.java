@@ -26,12 +26,6 @@ public interface Funcotation {
     void setFieldSerializationOverrideValue( final String fieldName, final String overrideValue );
 
     /**
-     * Converts this {@link Funcotation} to a string suitable for insertion into a VCF file.
-     * @return a {@link String} representing this {@link Funcotation} suitable for insertion into a VCF file.
-     */
-    String serializeToVcfString();
-
-    /**
      * @return The name of the data source behind the {@link DataSourceFuncotationFactory} used to create this {@link Funcotation}.
      */
     String getDataSourceName();
@@ -74,17 +68,6 @@ public interface Funcotation {
                 setFieldSerializationOverrideValue(field, fieldSerializationOverrides.get(field));
             }
         }
-    }
-
-    /**
-     * TODO: This interface should have nothing specific to a VCF.  That should be the job of the VCFOutputRenderer to sanitize any strings.  https://github.com/broadinstitute/gatk/issues/4797
-     * Converts this {@link Funcotation} to a string suitable for insertion into a VCF file.
-     * {@code manualAnnotationString} should be written first, followed by the inherent annotations in this {@link Funcotation}.
-     * @param manualAnnotationString A {@link String} of manually-provided annotations to add to this {@link Funcotation}.
-     * @return a {@link String} representing this {@link Funcotation} suitable for insertion into a VCF file.
-     */
-    default String serializeToVcfString(final String manualAnnotationString) {
-        return (manualAnnotationString == null ? "" : manualAnnotationString) + serializeToVcfString();
     }
 
     /**

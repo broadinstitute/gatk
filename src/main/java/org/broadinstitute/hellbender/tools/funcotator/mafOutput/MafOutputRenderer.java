@@ -9,6 +9,7 @@ import htsjdk.variant.vcf.VCFHeaderLine;
 import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.*;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
@@ -23,6 +24,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -144,6 +146,9 @@ public class MafOutputRenderer extends OutputRenderer {
     /** The version of the reference used to create annotations that will be output by this {@link MafOutputRenderer}.*/
     private final String referenceVersion;
 
+    /** Fields that should be removed in the final MAF file. */
+    private final Set<String> excludedOutputFields;
+
     //==================================================================================================================
     // Constructors:
 
@@ -163,7 +168,7 @@ public class MafOutputRenderer extends OutputRenderer {
                              final LinkedHashMap<String, String> unaccountedForDefaultAnnotations,
                              final LinkedHashMap<String, String> unaccountedForOverrideAnnotations,
                              final Set<String> toolHeaderLines,
-                             final String referenceVersion) {
+                             final String referenceVersion, final Set<String> excludedOutputFields) {
 
         // Set our internal variables from the input:
         this.outputFilePath = outputFilePath;
@@ -253,9 +258,6 @@ public class MafOutputRenderer extends OutputRenderer {
         defaultMap.put(MafOutputRendererConstants.FieldName_Score, MafOutputRendererConstants.UNUSED_STRING);
         defaultMap.put(MafOutputRendererConstants.FieldName_BAM_File, MafOutputRendererConstants.UNUSED_STRING);
 
-        // Cache the manual annotation string so we can pass it easily into any Funcotations:
-        manualAnnotationSerializedString = (manualAnnotations.size() != 0 ? MafOutputRendererConstants.FIELD_DELIMITER + String.join( MafOutputRendererConstants.FIELD_DELIMITER, manualAnnotations.values() ) + MafOutputRendererConstants.FIELD_DELIMITER : "");
-
         // Open the output object:
         try {
             printWriter = new PrintWriter(Files.newOutputStream(outputFilePath));
@@ -263,6 +265,8 @@ public class MafOutputRenderer extends OutputRenderer {
         catch (final IOException ex) {
             throw new UserException("Error opening output file path: " + outputFilePath.toUri().toString(), ex);
         }
+
+        this.excludedOutputFields = excludedOutputFields;
     }
 
     //==================================================================================================================
@@ -327,12 +331,13 @@ public class MafOutputRenderer extends OutputRenderer {
                     writeString(entry.getValue());
                     writeString(MafOutputRendererConstants.FIELD_DELIMITER);
                 }
-                writeLine(manualAnnotationSerializedString);
+                writeLine("");
             }
         }
     }
 
-    private LinkedHashMap<String, String> createMafCompliantOutputMap(final Allele altAllele, final List<Funcotation> funcotations) {
+    @VisibleForTesting
+    LinkedHashMap<String, String> createMafCompliantOutputMap(final Allele altAllele, final List<Funcotation> funcotations) {
         // Create our output maps:
         final LinkedHashMap<String, Object> outputMap = new LinkedHashMap<>(defaultMap);
         final LinkedHashMap<String, Object> extraFieldOutputMap = new LinkedHashMap<>();
@@ -366,7 +371,17 @@ public class MafOutputRenderer extends OutputRenderer {
         outputMap.putAll(extraFieldOutputMap);
 
         // Now translate fields to the field names that MAF likes:
-        return replaceFuncotationValuesWithMafCompliantValues(outputMap);
+        final LinkedHashMap<String, String> mafCompliantMap = replaceFuncotationValuesWithMafCompliantValues(outputMap);
+
+        // Remove any fields that are excluded and sanitize any field values.
+        return mafCompliantMap.keySet().stream()
+            .filter(k -> !excludedOutputFields.contains(k))
+            .collect(Collectors.toMap(
+                    Function.identity(), k -> FuncotatorUtils.sanitizeFuncotationFieldForMaf(mafCompliantMap.get(k)),
+                    (u, v) -> {
+                        throw new GATKException.ShouldNeverReachHereException("Found duplicate keys for MAF output");
+                        },
+                    LinkedHashMap::new));
     }
 
     //==================================================================================================================

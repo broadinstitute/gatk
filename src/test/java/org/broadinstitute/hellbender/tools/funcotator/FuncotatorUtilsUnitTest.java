@@ -9,11 +9,13 @@ import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFHeaderLineCount;
 import htsjdk.variant.vcf.VCFHeaderLineType;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
+import org.apache.commons.collections.MapUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.engine.ReferenceFileSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.testutils.FuncotatorReferenceTestUtils;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationBuilder;
 import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetadata;
@@ -23,7 +25,6 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
-import org.broadinstitute.hellbender.testutils.FuncotatorReferenceTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -1609,5 +1610,68 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
         Assert.assertTrue(funcotations.stream().allMatch(f -> f.getDataSourceName().equals(datasourceName)));
         Assert.assertEquals(funcotations.stream().map(f -> f.getAltAllele()).collect(Collectors.toSet()), new HashSet<>(vc.getAlternateAlleles()));
         Assert.assertEquals(funcotations.stream().map(f -> f.getMetadata()).collect(Collectors.toSet()), new HashSet<>(Collections.singletonList(metadata)));
+    }
+
+    @DataProvider
+    public Object[][] provideMafSanitizing() {
+        return new Object[][] {
+                {"\tHAHAHAH\t", "_%09_HAHAHAH_%09_"},
+                {"\tHAHAHAH\n", "_%09_HAHAHAH_%0A_"},
+                {"FOO", "FOO"}
+        };
+    }
+
+    @Test(dataProvider = "provideMafSanitizing")
+    public void testSanitizeFuncotationFieldForMaf(final String individualFuncotationField, final String gt) {
+        final String guess = FuncotatorUtils.sanitizeFuncotationFieldForMaf(individualFuncotationField);
+        Assert.assertEquals(guess, gt);
+
+    }
+
+    @SuppressWarnings("unchecked")
+    @DataProvider
+    public Object[][] provideForRenderSanitizedFuncotationForVcf() {
+
+        return new Object[][]{
+                // Test a very basic case where all fields are included
+                {OutputRenderer.createFuncotationFromLinkedHashMap(
+                        (LinkedHashMap) MapUtils.putAll(new LinkedHashMap<String, String>(),
+                        new String[][]{{"FOO", "BAR"},{"BAZ", "HUH?"}}),
+                        Allele.create("T"), "FAKEDATA"), Arrays.asList("FOO", "BAZ"),
+                        "BAR|HUH?"
+                },
+
+                // Test case where only one field is included
+                {OutputRenderer.createFuncotationFromLinkedHashMap(
+                        (LinkedHashMap) MapUtils.putAll(new LinkedHashMap<String, String>(),
+                        new String[][]{{"FOO", "BAR"},{"BAZ", "HUH?"}}),
+                        Allele.create("T"), "FAKEDATA"), Arrays.asList("FOO"),
+                        "BAR"
+                },
+
+                // Make sure that specifying a non-existent included field (NOTHERE) has no effect on the output,
+                //  even when another field is excluded.
+                {OutputRenderer.createFuncotationFromLinkedHashMap(
+                        (LinkedHashMap) MapUtils.putAll(new LinkedHashMap<String, String>(),
+                        new String[][]{{"FOO", "BAR"},{"BAZ", "HUH?"}}),
+                        Allele.create("T"), "FAKEDATA"), Arrays.asList("FOO", "NOTHERE"),
+                        "BAR"
+                },
+
+                // Make sure that specifying a non-existent included field (NOTHERE) has no effect on the output,
+                //  even when all fields are included..
+                {OutputRenderer.createFuncotationFromLinkedHashMap(
+                        (LinkedHashMap) MapUtils.putAll(new LinkedHashMap<String, String>(),
+                        new String[][]{{"FOO", "BAR"},{"BAZ", "HUH?"}}),
+                        Allele.create("T"), "FAKEDATA"), Arrays.asList("FOO", "BAZ", "NOTHERE"),
+                        "BAR|HUH?"
+                }
+        };
+    }
+
+    @Test(dataProvider = "provideForRenderSanitizedFuncotationForVcf" )
+    public void testRenderSanitizedFuncotationForVcf(final Funcotation funcotation, final List<String> includedFields, final String gt) {
+        final String guess = FuncotatorUtils.renderSanitizedFuncotationForVcf(funcotation, includedFields);
+        Assert.assertEquals(guess, gt);
     }
 }
