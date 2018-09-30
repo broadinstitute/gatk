@@ -24,16 +24,12 @@ import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.*;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-
-import org.broadinstitute.hellbender.utils.MathUtils;
-import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
-
-import static org.broadinstitute.hellbender.utils.OptimizationUtils.argmax;
 
 public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine {
 
@@ -236,8 +232,13 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
         final int[] adArray = Arrays.stream(tumorAlleleCounts).mapToInt(x -> (int) FastMath.round(x)).toArray();
         final int dp = (int) MathUtils.sum(adArray);
         final GenotypeBuilder gb = new GenotypeBuilder(tumorSample, tumorLog10Matrix.alleles());
+        final double[] flatPriorPseudocounts = new IndexRange(0, tumorLog10Matrix.numberOfAlleles()).mapToDouble(n -> 1);
+        final double[] alleleFractionsPosterior = SomaticLikelihoodsEngine.alleleFractionsPosterior(
+                getAsRealMatrix(tumorLog10Matrix), flatPriorPseudocounts);
         if (!MTAC.calculateAFfromAD) {
-            gb.attribute(GATKVCFConstants.ALLELE_FRACTION_KEY, getAltAlleleFractions(Arrays.stream(tumorAlleleCounts).map(x -> (double) FastMath.round(x)/dp).toArray()));
+            // Use mean of the allele fraction posterior distribution
+            double[] tumorAlleleFractionsMean = MathUtils.normalizeFromRealSpace(alleleFractionsPosterior);
+            gb.attribute(GATKVCFConstants.ALLELE_FRACTION_KEY, Arrays.copyOfRange(tumorAlleleFractionsMean, 1, tumorAlleleFractionsMean.length));
         }
         final Genotype tumorGenotype = gb.make();
         final List<Genotype> genotypes = new ArrayList<>(Arrays.asList(tumorGenotype));
