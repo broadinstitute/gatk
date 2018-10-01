@@ -121,6 +121,11 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
                         getTestFile( "expected/testSpanningDeletion.vcf"),
                         Arrays.asList( " --include-non-variant-sites -L 20:10,096,905-10,096,907 "),
                         b37_reference_20_21},
+                // test site 20:10,012,730-10,012,740 to force coverage around LowQual site
+                {getTestFile( "combined.single.sample.pipeline.gatk3.vcf"),
+                        getTestFile( "expected/includeLowQualSites.vcf"),
+                        Arrays.asList( " --include-non-variant-sites -L 20:10,012,730-10,012,740"),
+                        b37_reference_20_21},
         };
     }
 

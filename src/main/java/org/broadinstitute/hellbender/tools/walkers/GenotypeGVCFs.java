@@ -241,7 +241,8 @@ public final class GenotypeGVCFs extends VariantWalkerGroupedByLocus {
         final VariantContext regenotypedVC = regenotypeVC(mergedVC, ref, features, includeNonVariants);
         if (regenotypedVC != null) {
             final SimpleInterval variantStart = new SimpleInterval(regenotypedVC.getContig(), regenotypedVC.getStart(), regenotypedVC.getStart());
-            if (!onlyOutputCallsStartingInIntervals || intervals.stream().anyMatch(interval -> interval.contains (variantStart))) {
+            if (!GATKVariantContextUtils.isSpanningDeletionOnly(regenotypedVC) &&
+                    (!onlyOutputCallsStartingInIntervals || intervals.stream().anyMatch(interval -> interval.contains (variantStart)))) {
                 vcfWriter.add(regenotypedVC);
             }
         }
@@ -493,7 +494,9 @@ public final class GenotypeGVCFs extends VariantWalkerGroupedByLocus {
         uac.genotypeArgs = new GenotypeCalculationArgumentCollection(genotypeArgs);
 
         //whether to emit non-variant sites is not contained in genotypeArgs and must be passed to uac separately
-        uac.outputMode = includeNonVariants ? OutputMode.EMIT_ALL_CONFIDENT_SITES : OutputMode.EMIT_VARIANTS_ONLY;
+        //Note: GATK3 uses OutputMode.EMIT_ALL_CONFIDENT_SITES when includeNonVariants is requested
+        //GATK4 uses EMIT_ALL_SITES to ensure LowQual sites are emitted.
+        uac.outputMode = includeNonVariants ? OutputMode.EMIT_ALL_SITES : OutputMode.EMIT_VARIANTS_ONLY;
         return uac;
     }
 

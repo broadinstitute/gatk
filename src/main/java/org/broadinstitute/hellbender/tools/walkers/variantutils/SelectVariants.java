@@ -34,12 +34,12 @@ import org.broadinstitute.hellbender.utils.samples.PedigreeValidationType;
 import org.broadinstitute.hellbender.utils.samples.SampleDB;
 import org.broadinstitute.hellbender.utils.samples.SampleDBBuilder;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.*;
 
 import java.io.File;
 import java.util.*;
 import java.util.function.Predicate;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -590,7 +590,9 @@ public final class SelectVariants extends VariantWalker {
         // If exclude non-variants is called, it is a polymorphic variant, but not a spanning deletion, filtering will not occur
         // True iff exclude-filtered is not called or the filteredGenotypeToNocall is not already filtered
 
-        if ((!XLnonVariants || (filteredGenotypeToNocall.isPolymorphicInSamples() && !checkOnlySpanDel(filteredGenotypeToNocall))) && (!XLfiltered || !filteredGenotypeToNocall.isFiltered())) {
+        if ((!XLnonVariants || (filteredGenotypeToNocall.isPolymorphicInSamples() && !GATKVariantContextUtils.isSpanningDeletionOnly(filteredGenotypeToNocall)))
+                && (!XLfiltered || !filteredGenotypeToNocall.isFiltered()))
+        {
 
             // Write the subsetted variant if it matches all of the expressions
             boolean failedJexlMatch = false;
@@ -640,10 +642,6 @@ public final class SelectVariants extends VariantWalker {
             rmAnnotationsBuilder.genotypes(GenotypesContext.create(genotypesToWrite));
         }
         return rmAnnotationsBuilder.make();
-    }
-
-    private boolean checkOnlySpanDel(VariantContext vc){
-        return vc.getAlternateAlleles().size() == 1 && vc.getAlternateAllele(0).basesMatch(Allele.SPAN_DEL);
     }
 
     /**

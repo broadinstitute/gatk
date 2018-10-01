@@ -1751,6 +1751,14 @@ public final class GATKVariantContextUtils {
     }
 
     /**
+     * @param vc {@link VariantContext to test}
+     * @return true if the only alternate allele for this VariantContext is a spanning deletion, otherwise false.
+     */
+    public static boolean isSpanningDeletionOnly(final VariantContext vc){
+        return vc.getAlternateAlleles().size() == 1 && vc.getAlternateAllele(0).basesMatch(Allele.SPAN_DEL);
+    }
+
+    /**
      *
      * Attempt to match allele ref/alt pairs, even if the allele pairs in the given variant contexts are equivalent,
      *  but not exact.
