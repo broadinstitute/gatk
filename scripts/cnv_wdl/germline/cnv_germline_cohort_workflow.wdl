@@ -57,8 +57,10 @@ workflow CNVGermlineCohortWorkflow {
     ##################################################
     #### optional arguments for AnnotateIntervals ####
     ##################################################
-    String? mappability_track
-    String? segmental_duplication_track
+    File? mappability_track_bed
+    File? mappability_track_bed_idx
+    File? segmental_duplication_track_bed
+    File? segmental_duplication_track_bed_idx
     Int? feature_query_lookahead
     Int? mem_gb_for_annotate_intervals
 
@@ -171,8 +173,10 @@ workflow CNVGermlineCohortWorkflow {
                 ref_fasta = ref_fasta,
                 ref_fasta_fai = ref_fasta_fai,
                 ref_fasta_dict = ref_fasta_dict,
-                mappability_track = mappability_track,
-                segmental_duplication_track = segmental_duplication_track,
+                mappability_track_bed = mappability_track_bed,
+                mappability_track_bed_idx = mappability_track_bed_idx,
+                segmental_duplication_track_bed = segmental_duplication_track_bed,
+                segmental_duplication_track_bed_idx = segmental_duplication_track_bed_idx,
                 feature_query_lookahead = feature_query_lookahead,
                 gatk4_jar_override = gatk4_jar_override,
                 gatk_docker = gatk_docker,

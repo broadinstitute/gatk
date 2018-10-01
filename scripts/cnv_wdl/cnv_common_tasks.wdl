@@ -56,8 +56,10 @@ task AnnotateIntervals {
     File ref_fasta
     File ref_fasta_fai
     File ref_fasta_dict
-    String? mappability_track
-    String? segmental_duplication_track
+    File? mappability_track_bed
+    File? mappability_track_bed_idx
+    File? segmental_duplication_track_bed
+    File? segmental_duplication_track_bed_idx
     Int? feature_query_lookahead
     File? gatk4_jar_override
 
@@ -83,8 +85,8 @@ task AnnotateIntervals {
         gatk --java-options "-Xmx${command_mem_mb}m" AnnotateIntervals \
             -L ${intervals} \
             --reference ${ref_fasta} \
-            ${"--mappability-track " + mappability_track} \
-            ${"--segmental-duplication-track " + segmental_duplication_track} \
+            ${"--mappability-track " + mappability_track_bed} \
+            ${"--segmental-duplication-track " + segmental_duplication_track_bed} \
             --feature-query-lookahead ${default=1000000 feature_query_lookahead} \
             --interval-merging-rule OVERLAPPING_ONLY \
             --output ${base_filename}.annotated.tsv
