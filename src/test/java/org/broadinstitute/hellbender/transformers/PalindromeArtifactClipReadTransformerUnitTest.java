@@ -25,8 +25,9 @@ public class PalindromeArtifactClipReadTransformerUnitTest {
     @Test
     public void test() {
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
-        final String contig = header.getSequence(0).toString();
+        final String contig = header.getSequence(0).getSequenceName();
         final int refStart = 1000;
+        final int contigLength = header.getSequence(0).getSequenceLength();
 
         // some random reference sequence -- no ITR yet
         final byte[] refBases = ("GATTCCCCAAGGGGGCTGCTCCCAGAGGGTGTGTTGCTGGGATTGCCCAGGACAGGGATGGCCCTCTCATCAGGTGGGGG" +
@@ -83,6 +84,13 @@ public class PalindromeArtifactClipReadTransformerUnitTest {
         // definitely no artifact
         final GATKRead definitelyNotArtifactRead = makeRead(header, contig, readStart, fragmentLength, readBasesMatchingRef, quals, cigar);
         Assert.assertTrue(transformer.apply(definitelyNotArtifactRead).getCigar().getFirstCigarElement().getOperator() == CigarOperator.SOFT_CLIP);
+
+        // reads would cause chromosome out-of-bounds error if we didn't check explicitly for this edge case
+        final GATKRead mateOffContigRead = makeRead(header, contig, readStart, contigLength, readBasesMatchingRef, quals, cigar);
+        Assert.assertTrue(transformer.apply(mateOffContigRead) == mateOffContigRead);
+
+        final GATKRead mateOffContigRead2 = makeRead(header, contig, readStart, -contigLength, readBasesMatchingRef, quals, cigar);
+        Assert.assertTrue(transformer.apply(mateOffContigRead2) == mateOffContigRead2);
 
     }
 

@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.transformers;
 
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarOperator;
+import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.utils.BaseUtils;
@@ -53,12 +54,15 @@ public final class PalindromeArtifactClipReadTransformer implements ReadTransfor
 
     private final ReferenceDataSource referenceDataSource;
 
+    private final SAMSequenceDictionary sequenceDictionary;
+
     // the artifact requires a minimum number of palindromic bases to create the single-strand loop
     private final int minPalindromeSize;
 
     public PalindromeArtifactClipReadTransformer(final ReferenceDataSource referenceDataSource, final int minPalindromeSize) {
         this.referenceDataSource = referenceDataSource;
         this.minPalindromeSize = minPalindromeSize;
+        sequenceDictionary = referenceDataSource.getSequenceDictionary();
     }
 
     @Override
@@ -85,15 +89,22 @@ public final class PalindromeArtifactClipReadTransformer implements ReadTransfor
         final int numBasesToCompare = Math.min(potentialArtifactBaseCount + minPalindromeSize, read.getLength());
 
         // the reference position of bases that are the reverse complement of the suspected artifact
+        final String contig = read.getContig();
         final int refStart = readIsUpstreamOfMate ? adaptorBoundary - numBasesToCompare : adaptorBoundary + 1;
         final int refEnd = readIsUpstreamOfMate ? adaptorBoundary - 1 : adaptorBoundary + numBasesToCompare;
+        
+        // it's possible that the read's assigned fragment length / mate start were incompatible with the contig length,
+        // so we explicitly check for this case to avoid errors below.  We can't rely on the alignment!
+        if (refStart < 1 || refEnd > sequenceDictionary.getSequence(contig).getSequenceLength()) {
+            return read;
+        }
 
         // if the reference bases overlap the soft-clipped bases, it's not an artifact.  Note that read.getStart() is the unclipped start
         // this can happen, for a read with a huge soft-clip that overlaps its mate significantly.
         if ( (readIsUpstreamOfMate && refStart < read.getStart()) || (!readIsUpstreamOfMate && read.getEnd() < refEnd)) {
             return read;
         }
-        final SimpleInterval refInterval = new SimpleInterval(read.getContig(), refStart, refEnd);
+        final SimpleInterval refInterval = new SimpleInterval(contig, refStart, refEnd);
         final MutableInt numMatch = new MutableInt(0);
 
         // we traverse the reference in the forward direction, hence the read in the reverse direction
