@@ -19,11 +19,16 @@
 ## ** Workflow options **
 ## intervals: genomic intervals (will be used for scatter)
 ## scatter_count: number of parallel jobs to generate when scattering over intervals
-## artifact_modes: types of artifacts to consider in the orientation bias filter (optional)
+## artifact_modes: (optional) types of artifacts to consider in the orientation bias filter
 ## m2_extra_args, m2_extra_filtering_args: additional arguments for Mutect2 calling and filtering (optional)
 ## split_intervals_extra_args: additional arguments for splitting intervals before scattering (optional)
-## run_orientation_bias_filter: (deprecated) if true, run the orientation bias filter (optional)
-## run_orientation_bias_mixture_model_filter: if true, filter orientation bias sites based on the posterior probabilities computed by the read orientation artifact mixture model (optional)
+## run_orientation_bias_filter: (optional) if true, run the orientation bias filter, which is the GATK implementation of
+##         D-ToxoG with modifications to allow multiple artifact modes.
+##         For more information on D-ToxoG, see https://software.broadinstitute.org/cancer/cga/dtoxog
+## run_orientation_bias_mixture_model_filter: (optional) if true, filter orientation bias sites with the read orientation artifact mixture model.
+##         This is the recommended orientation bias filter, particularly for data sequenced on Illumina NovaSeq.
+##         If set to true, artifact_mode will be ignored, as the model learns the artifact modes on its own.
+##         While we offer both options, there's no need to run both the mixture model filter and the one based on D-ToxoG. 
 ## run_oncotator: if true, annotate the M2 VCFs using oncotator (to produce a TCGA MAF).  Important:  This requires a
 ##                   docker image and should  not be run in environments where docker is unavailable (e.g. SGE cluster on
 ##                   a Broad on-prem VM).  Access to docker hub is also required, since the task downloads a public docker image.
@@ -692,7 +697,6 @@ task MergeBamOuts {
     }
 }
 
-# This task is deprecated and is no longer supported
 task CollectSequencingArtifactMetrics {
     # inputs
     File ref_fasta
@@ -737,6 +741,7 @@ task CollectSequencingArtifactMetrics {
     }
 }
 
+# Data collection step of the orientation bias mixture model, which is the recommended orientation bias filter as of September 2018
 task CollectF1R2Counts {
     # input
     File ref_fasta
@@ -796,6 +801,7 @@ task CollectF1R2Counts {
     }
 }
 
+# Learning step of the orientation bias mixture model, which is the recommended orientation bias filter as of September 2018
 task LearnReadOrientationModel {
     File alt_table
     File ref_histogram
