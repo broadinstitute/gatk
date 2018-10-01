@@ -215,8 +215,8 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         }
     }
 
-    @DataProvider(name = "testAnnotateReadLikelihoodsWithSupportedGenotypesDataProvider")
-    public Object[][] testAnnotateReadLikelihoodsWithSupportedGenotypesDataProvider() {
+    @DataProvider(name = "testAnnotateReadLikelihoodsWithSupportedAllelesDataProvider")
+    public Object[][] testAnnotateReadLikelihoodsWithSupportedAllelesDataProvider() {
         final String refString = "ACGTGGCGTTGCACTTCAGATCGATCGGATCGATCGGCTAGTCGTCGCACTTCGCTAGGCTAG";
         final String contig = "1";
         final int start = 13763;
@@ -238,7 +238,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
                 Allele.create("TCGA", true), Allele.create("T", false))).make());
 
         Map<VariantContext, List<GATKRead>> vcReadsMap = new HashMap<>();
-        Map<GATKRead, Integer> supportedGenotypeMap = new HashMap<>();
+        Map<GATKRead, Integer> supportedAlleleMap = new HashMap<>();
         for (VariantContext vc : vcs) {
             vcReadsMap.put(vc, new ArrayList<>());
         }
@@ -260,7 +260,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
                     final String qname = "r" + qNameIndex;
                     qNameIndex++;
                     final SAMRecordToGATKReadAdapter read = buildRead(readString,cigar,readStart,qname,contig);
-                    supportedGenotypeMap.put(read, phase);
+                    supportedAlleleMap.put(read, phase);
                     for (final VariantContext vc : vcs) {
                         if (read.getStart() <= vc.getStart() && read.getEnd() >= vc.getEnd()) {
                             vcReadsMap.get(vc).add(read);
@@ -284,7 +284,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
                 final int readIndex = sampleMatrix.indexOfRead(read);
                 String attribute = contig + ":" + vc.getStart() + "=";
                 if (vc == vcs.get(1)) {
-                    attribute += supportedGenotypeMap.get(read);
+                    attribute += supportedAlleleMap.get(read);
                 } else {
                     attribute += "1";
                 }
@@ -292,7 +292,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
                 for (Allele allele : vc.getAlleles()) {
                     final int alleleIndex = sampleMatrix.indexOfAllele(allele);
                     if (vc == vcs.get(1)) {
-                        if (vc.getAlleleIndex(allele) == supportedGenotypeMap.get(read)) {
+                        if (vc.getAlleleIndex(allele) == supportedAlleleMap.get(read)) {
                             sampleMatrix.set(alleleIndex, readIndex, -1.0);
                         } else {
                             sampleMatrix.set(alleleIndex, readIndex, -8.0);
@@ -323,8 +323,8 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         return retHaplotype;
     }
 
-    @Test(dataProvider = "testAnnotateReadLikelihoodsWithSupportedGenotypesDataProvider")
-    public void testAnnotateReadLikelihoodsWithSupportedGenotypes(List<ReadLikelihoods<Allele>> readLikelihoodsList, final List<VariantContext> vcs, final List<List<String>> readAttributeListList) {
+    @Test(dataProvider = "testAnnotateReadLikelihoodsWithSupportedAllelesDataProvider")
+    public void testAnnotateReadLikelihoodsWithSupportedAlleles(List<ReadLikelihoods<Allele>> readLikelihoodsList, final List<VariantContext> vcs, final List<List<String>> readAttributeListList) {
         for (int i = 0; i < readLikelihoodsList.size(); i++) {
             ReadLikelihoods<Allele> readLikelihoods = readLikelihoodsList.get(i);
             VariantContext vc = vcs.get(i);
@@ -333,14 +333,14 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
 
             List<String> initReadAttributes = new ArrayList<>();
             for (GATKRead read : readLikelihoods.sampleReads(0)) {
-                initReadAttributes.add(read.getAttributeAsString(AssemblyBasedCallerUtils.SUPPORTED_GENOTYPES_TAG));
+                initReadAttributes.add(read.getAttributeAsString(AssemblyBasedCallerUtils.SUPPORTED_ALLELES_TAG));
             }
-            AssemblyBasedCallerUtils.annotateReadLikelihoodsWithSupportedGenotypes(vc, readLikelihoods);
+            AssemblyBasedCallerUtils.annotateReadLikelihoodsWithSupportedAlleles(vc, readLikelihoods);
             for (int j = 0; j < readLikelihoods.sampleReadCount(0); j++) {
                 GATKRead read = readLikelihoods.sampleReads(0).get(j);
 
                 String expectedAttribute = (initReadAttributes.get(j) != null ? initReadAttributes.get(j) + ", " : "") + readAttributeList.get(j);
-                Assert.assertEquals(read.getAttributeAsString(AssemblyBasedCallerUtils.SUPPORTED_GENOTYPES_TAG), expectedAttribute);
+                Assert.assertEquals(read.getAttributeAsString(AssemblyBasedCallerUtils.SUPPORTED_ALLELES_TAG), expectedAttribute);
             }
         }
     }

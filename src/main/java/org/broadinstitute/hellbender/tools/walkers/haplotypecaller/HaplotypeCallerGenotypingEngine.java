@@ -189,7 +189,7 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
                 returnCalls.add( annotatedCall );
 
                 if (withBamOut) {
-                    AssemblyBasedCallerUtils.annotateReadLikelihoodsWithSupportedGenotypes(call, readAlleleLikelihoods);
+                    AssemblyBasedCallerUtils.annotateReadLikelihoodsWithSupportedAlleles(call, readAlleleLikelihoods);
                 }
 
                 // maintain the set of all called haplotypes

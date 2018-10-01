@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
 public final class AssemblyBasedCallerUtils {
 
     static final int REFERENCE_PADDING_FOR_ASSEMBLY = 500;
-    public static final String SUPPORTED_GENOTYPES_TAG="SG";
+    public static final String SUPPORTED_ALLELES_TAG="SA";
     public static final String CALLABLE_REGION_TAG = "CR";
     public static final String ALIGNMENT_REGION_TAG = "AR";
 
@@ -308,14 +308,14 @@ public final class AssemblyBasedCallerUtils {
     }
 
     /**
-     * Annotates reads in ReadLiklihoods with genotype supported by each read.  If a read already has a
-     * supported genotypes annotation this additional annotation is appended to the previous annotation, it does not replace it.
+     * For the given variant, reads are annotated with which alleles they support, if any.  If a read already has a
+     * supported alleles annotation this additional annotation is appended to the previous annotation, it does not replace it.
      * @param vc The variant for which to annotate the reads
      * @param likelihoodsAllele ReadLiklihoods containing reads to be annotated along with alleles of the variant vc
      */
-    public static void annotateReadLikelihoodsWithSupportedGenotypes(final VariantContext vc,
+    public static void annotateReadLikelihoodsWithSupportedAlleles(final VariantContext vc,
                                                                      final ReadLikelihoods<Allele> likelihoodsAllele) {
-        //assign supported Genotypes to each read
+        //assign supported alleles to each read
         final Map<Allele, List<Allele>> alleleSubset = vc.getAlleles().stream().collect(Collectors.toMap(a -> a, Arrays::asList));
         final ReadLikelihoods<Allele> subsettedLikelihoods = likelihoodsAllele.marginalize(alleleSubset);
         final Collection<ReadLikelihoods<Allele>.BestAllele> bestAlleles = subsettedLikelihoods.bestAllelesBreakingTies().stream()
@@ -323,9 +323,9 @@ public final class AssemblyBasedCallerUtils {
         for (ReadLikelihoods<Allele>.BestAllele bestAllele : bestAlleles) {
             GATKRead read = bestAllele.read;
             Allele allele = bestAllele.allele;
-            final String prevGenotypesString = read.hasAttribute(SUPPORTED_GENOTYPES_TAG) ? read.getAttributeAsString(SUPPORTED_GENOTYPES_TAG) + ", " : "";
-            final String newGenotypeString = vc.getContig() + ":" + vc.getStart() + "=" + vc.getAlleleIndex(allele);
-            read.setAttribute(SUPPORTED_GENOTYPES_TAG, prevGenotypesString + newGenotypeString);
+            final String prevAllelesString = read.hasAttribute(SUPPORTED_ALLELES_TAG) ? read.getAttributeAsString(SUPPORTED_ALLELES_TAG) + ", " : "";
+            final String newAllelesString = vc.getContig() + ":" + vc.getStart() + "=" + vc.getAlleleIndex(allele);
+            read.setAttribute(SUPPORTED_ALLELES_TAG, prevAllelesString + newAllelesString);
         }
     }
 }

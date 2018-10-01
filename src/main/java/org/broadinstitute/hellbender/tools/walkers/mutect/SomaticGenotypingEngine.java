@@ -178,7 +178,7 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
 
             final VariantContext annotatedCall =  annotationEngine.annotateContext(trimmedCall, featureContext, referenceContext, trimmedLikelihoods, a -> true);
             if(withBamOut) {
-                AssemblyBasedCallerUtils.annotateReadLikelihoodsWithSupportedGenotypes(trimmedCall, trimmedLikelihoods);
+                AssemblyBasedCallerUtils.annotateReadLikelihoodsWithSupportedAlleles(trimmedCall, trimmedLikelihoods);
             }
 
             call.getAlleles().stream().map(alleleMapper::get).filter(Objects::nonNull).forEach(calledHaplotypes::addAll);
