@@ -582,6 +582,9 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      * @return the reference file name; the absolute path of the file can be found by a Spark task using {@code SparkFiles#get()}
      */
     protected static String addReferenceFilesForSpark(JavaSparkContext ctx, String referenceFile) {
+        if (referenceFile == null) {
+            return null;
+        }
         Path referencePath = IOUtils.getPath(referenceFile);
         Path indexPath = ReferenceSequenceFileFactory.getFastaIndexFileName(referencePath);
         Path dictPath = ReferenceSequenceFileFactory.getDefaultDictionaryForReferenceSequence(referencePath);

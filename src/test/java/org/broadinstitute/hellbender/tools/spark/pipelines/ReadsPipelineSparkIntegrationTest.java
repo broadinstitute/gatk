@@ -77,13 +77,11 @@ public class ReadsPipelineSparkIntegrationTest extends CommandLineProgramTest {
                 //        -stand_call_conf 30.0
                 {new PipelineTest(GRCh37Ref_2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, null, null, getResourceDir() + expectedSingleKnownSitesVcf)}, // don't write intermediate BAM
                 {new PipelineTest(GRCh37Ref_2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, null, getResourceDir() + expectedSingleKnownSites, getResourceDir() + expectedSingleKnownSitesVcf)},
-                {new PipelineTest(GRCh37Ref_2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "--read-shard-padding 1000", getResourceDir() + expectedSingleKnownSites, getResourceDir() + expectedSingleKnownSitesVcf)},
                 {new PipelineTest(GRCh37Ref_2021, hiSeqBam_chr20_queryNameSorted, ".bam", dbSNPb37_20, null, getResourceDir() + expectedMultipleKnownSites, getResourceDir() + expectedSingleKnownSitesVcf)},
 
                 // Output generated with GATK4
                 {new PipelineTest(GRCh37Ref_2021, hiSeqCram_chr20, ".cram", dbSNPb37_20, "--known-sites " + more20Sites, getResourceDir() + expectedMultipleKnownSitesCram, getResourceDir() + expectedMultipleKnownSitesVcf)},
                 {new PipelineTest(GRCh37Ref_2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "--known-sites " + more20Sites, getResourceDir() + expectedMultipleKnownSites, getResourceDir() + expectedMultipleKnownSitesVcf)},
-                {new PipelineTest(GRCh37Ref_2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "--read-shard-padding 1000 --known-sites " + more20Sites, getResourceDir() + expectedMultipleKnownSites, getResourceDir() + expectedMultipleKnownSitesVcf)},
 
                 // BWA-MEM
                 {new PipelineTest(GRCh37Ref_2021, unalignedBam, ".bam", dbSNPb37_20, "--align --bwa-mem-index-image " + GRCh37Ref_2021_img + " --known-sites " + more20Sites, null, largeFileTestDir + expectedMultipleKnownSitesFromUnalignedVcf)},
