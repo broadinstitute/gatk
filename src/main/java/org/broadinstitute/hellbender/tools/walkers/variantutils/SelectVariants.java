@@ -10,11 +10,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.VariantContextUtils;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
-import htsjdk.variant.vcf.VCFHeader;
-import htsjdk.variant.vcf.VCFConstants;
-import htsjdk.variant.vcf.VCFHeaderLine;
-import htsjdk.variant.vcf.VCFStandardHeaderLines;
-import htsjdk.variant.vcf.VCFUtils;
+import htsjdk.variant.vcf.*;
 
 import java.nio.file.Path;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -404,6 +400,18 @@ public final class SelectVariants extends VariantWalker {
     @Argument(fullName="set-filtered-gt-to-nocall", optional=true, doc="Set filtered genotypes to no-call")
     private boolean setFilteredGenotypesToNocall = false;
 
+    /**
+     * Info annotation fields to be dropped
+     */
+    @Argument(fullName="drop-annotation",shortName = "DA",optional = true, doc="Set info fields to drop from output vcf")
+    private List<String> infoFieldsToDrop=new ArrayList<>();
+
+    /**
+     * Genotype annotation fields to be dropped
+     */
+    @Argument(fullName="drop-genotype-annotation",shortName = "DGA",optional = true, doc="Set genotype annotations to drop from output vcf")
+    private List<String> genotypeAnnotationsToDrop=new ArrayList<>();
+
     @Hidden
     @Argument(fullName="allow-nonoverlapping-command-line-samples", optional=true,
                     doc="Allow samples other than those in the VCF to be specified on the command line. These samples will be ignored.")
@@ -508,6 +516,11 @@ public final class SelectVariants extends VariantWalker {
                 actualLines = headerLines;
             }
         }
+        if(!infoFieldsToDrop.isEmpty()) {
+            for(String infoField : infoFieldsToDrop) {
+                logger.info("Will drop info field: "+infoField);
+            }
+        }
 
         vcfWriter = createVCFWriter(outFile);
         vcfWriter.writeHeader(new VCFHeader(actualLines, samples));
@@ -569,6 +582,28 @@ public final class SelectVariants extends VariantWalker {
         }
         final VariantContext filteredGenotypeToNocall = setFilteredGenotypesToNocall ? builder.make(): sub;
 
+        final VariantContextBuilder rmAnnotationsBuilder=new VariantContextBuilder(filteredGenotypeToNocall);
+
+        for (String infoField : infoFieldsToDrop) {
+            rmAnnotationsBuilder.rmAttribute(infoField);
+        }
+
+        ArrayList<Genotype> genotypesToWrite=new ArrayList<>();
+        for (Genotype genotype : filteredGenotypeToNocall.getGenotypes()) {
+            final GenotypeBuilder genotypeBuilder=new GenotypeBuilder(genotype).noAttributes();
+            Map<String, Object> attributes=genotype.getExtendedAttributes();
+            for(String genotypeAnnotation : genotypeAnnotationsToDrop) {
+                if (attributes.containsKey(genotypeAnnotation)) {
+                    attributes.remove(genotypeAnnotation);
+                }
+            }
+            genotypeBuilder.attributes(attributes);
+            genotypesToWrite.add(genotypeBuilder.make());
+        }
+        rmAnnotationsBuilder.genotypes(GenotypesContext.create(genotypesToWrite));
+        final VariantContext variantContextToWrite=rmAnnotationsBuilder.make();
+
+
         // Not excluding non-variants OR (subsetted polymorphic variants AND not spanning deletion) AND (including filtered loci OR subsetted variant) is not filtered
         // If exclude non-variants argument is not called, filtering will NOT occur.
         // If exclude non-variants is called, and a spanning deletion exists, the spanning deletion will be filtered
@@ -596,7 +631,7 @@ public final class SelectVariants extends VariantWalker {
 
             if (!failedJexlMatch &&
                     (!selectRandomFraction || Utils.getRandomGenerator().nextDouble() < fractionRandom)) {
-                vcfWriter.add(filteredGenotypeToNocall);
+                vcfWriter.add(variantContextToWrite);
             }
         }
     }
@@ -779,6 +814,22 @@ public final class SelectVariants extends VariantWalker {
 
         headerLines.addAll(Arrays.asList(ChromosomeCounts.descriptions));
         headerLines.add(VCFStandardHeaderLines.getInfoLine(VCFConstants.DEPTH_KEY));
+
+        //remove header lines for info field and genotype annotations being dropped
+        List<VCFHeaderLine> headerLinesToRemove=new ArrayList<>();
+        List<VCFInfoHeaderLine> infoHeaderLines = headerLines.stream().filter(l -> l instanceof VCFInfoHeaderLine).map(l->(VCFInfoHeaderLine)l).collect(Collectors.toList());
+        for (VCFInfoHeaderLine infoHeaderLine : infoHeaderLines) {
+            if (infoFieldsToDrop.contains(infoHeaderLine.getID())) {
+                headerLinesToRemove.add(infoHeaderLine);
+            }
+        }
+        List<VCFFormatHeaderLine> formatHeaderLines = headerLines.stream().filter(l -> l instanceof VCFFormatHeaderLine).map(l->(VCFFormatHeaderLine)l).collect(Collectors.toList());
+        for (VCFFormatHeaderLine formatHeaderLine : formatHeaderLines) {
+            if (genotypeAnnotationsToDrop.contains(formatHeaderLine.getID())) {
+                headerLinesToRemove.add(formatHeaderLine);
+            }
+        }
+        headerLines.removeAll(headerLinesToRemove);
 
         return headerLines;
     }

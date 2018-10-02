@@ -3,10 +3,12 @@ package org.broadinstitute.hellbender.engine;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFHeaderLine;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
+import java.util.Set;
 import java.util.Spliterator;
 
 /**
