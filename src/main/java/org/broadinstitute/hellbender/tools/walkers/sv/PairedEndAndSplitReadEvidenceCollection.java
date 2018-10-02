@@ -68,10 +68,11 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
         splitCounts = new TreeMap<>(comparator);
 
         final Comparator<GATKRead> discReadComparator =
-                Comparator.comparing(GATKRead::getContig)
+                Comparator.comparing((GATKRead r) -> getBestAvailableSequenceDictionary().getSequenceIndex(r.getContig()))
                         .thenComparing(GATKRead::getStart)
-                        .thenComparing(GATKRead::getMateContig)
-                        .thenComparing(GATKRead::getMateStart);
+                        .thenComparing((GATKRead r) -> getBestAvailableSequenceDictionary().getSequenceIndex(r.getMateContig()))
+                        .thenComparing(GATKRead::getMateStart)
+                        .thenComparing(GATKRead::getName);
 
         discordantPairs = new TreeSet<>(discReadComparator);
 
