@@ -1,6 +1,6 @@
 # Run the hap.py VCF evaluation over input vcfs given a validated truth vcf and confidence region
 workflow HappyWorkflow {
-    File vcf_fofn           # Text file with list of VCFs to evaluate with hap.py
+    Array[File] vcf_files   # VCF files to evaluate with hap.py
 
     File reference_fasta
     File reference_dict
@@ -19,7 +19,7 @@ workflow HappyWorkflow {
 
     call RunHappy {
         input:
-            vcf_fofn = vcf_fofn,
+            vcf_files = vcf_files,
             truth_vcf = truth_vcf,
             truth_vcf_index = truth_vcf_index,
             truth_bed = truth_bed,
@@ -49,8 +49,7 @@ workflow HappyWorkflow {
 }
 
 task RunHappy {
-    File vcf_fofn
-    Array[File] vcf_files=read_lines(vcf_fofn)
+    Array[File] vcf_files
 
     File reference_fasta
     File reference_dict
