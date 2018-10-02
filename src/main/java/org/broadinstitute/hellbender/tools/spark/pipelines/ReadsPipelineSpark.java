@@ -153,7 +153,7 @@ public class ReadsPipelineSpark extends GATKSparkTool {
     @Override
     protected void runTool(final JavaSparkContext ctx) {
         String referenceFileName = addReferenceFilesForSpark(ctx, referenceArguments.getReferenceFileName());
-        List<String> localKnownSitesFilePaths = addKnownSitesForSpark(ctx, knownVariants);
+        List<String> localKnownSitesFilePaths = addVCFsForSpark(ctx, knownVariants);
 
         final JavaRDD<GATKRead> alignedReads;
         final SAMFileHeader header;

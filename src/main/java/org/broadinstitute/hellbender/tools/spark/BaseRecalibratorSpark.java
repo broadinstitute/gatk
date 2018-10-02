@@ -125,7 +125,7 @@ public class BaseRecalibratorSpark extends GATKSparkTool {
     @Override
     protected void runTool( JavaSparkContext ctx ) {
         String referenceFileName = addReferenceFilesForSpark(ctx, referenceArguments.getReferenceFileName());
-        List<String> localKnownSitesFilePaths = addKnownSitesForSpark(ctx, knownVariants);
+        List<String> localKnownSitesFilePaths = addVCFsForSpark(ctx, knownVariants);
 
         JavaPairRDD<GATKRead, Iterable<GATKVariant>> readsWithVariants = JoinReadsWithVariants.join(getReads(), localKnownSitesFilePaths);
 

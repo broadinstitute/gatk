@@ -37,6 +37,7 @@ import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.ZonedDateTime;
 import java.util.*;
@@ -580,14 +581,18 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      * @param referenceFile the reference file, can be a local file or a remote path
      * @return the reference file name; the absolute path of the file can be found by a Spark task using {@code SparkFiles#get()}
      */
-    protected String addReferenceFilesForSpark(JavaSparkContext ctx, String referenceFile) {
+    protected static String addReferenceFilesForSpark(JavaSparkContext ctx, String referenceFile) {
         Path referencePath = IOUtils.getPath(referenceFile);
         Path indexPath = ReferenceSequenceFileFactory.getFastaIndexFileName(referencePath);
         Path dictPath = ReferenceSequenceFileFactory.getDefaultDictionaryForReferenceSequence(referencePath);
 
         ctx.addFile(referenceFile);
-        ctx.addFile(indexPath.toUri().toString());
-        ctx.addFile(dictPath.toUri().toString());
+        if (Files.exists(indexPath)) {
+            ctx.addFile(indexPath.toUri().toString());
+        }
+        if (Files.exists(dictPath)) {
+            ctx.addFile(dictPath.toUri().toString());
+        }
 
         return referencePath.getFileName().toString();
     }
@@ -596,11 +601,11 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      * Register the VCF file (and associated index) to be downloaded to every node using Spark's copying mechanism
      * ({@code SparkContext#addFile()}).
      * @param ctx the Spark context
-     * @param knownVariants the known variant (VCF) files, can be local files or remote paths
+     * @param vcfFileNames the VCF files, can be local files or remote paths
      * @return the reference file name; the absolute path of the file can be found by a Spark task using {@code SparkFiles#get()}
      */
-    protected List<String> addKnownSitesForSpark(JavaSparkContext ctx, List<String> knownVariants) {
-        for (String vcfFileName : knownVariants) {
+    protected static List<String> addVCFsForSpark(JavaSparkContext ctx, List<String> vcfFileNames) {
+        for (String vcfFileName : vcfFileNames) {
             String vcfIndexFileName;
             if (vcfFileName.endsWith(IOUtil.VCF_FILE_EXTENSION)) {
                 vcfIndexFileName = vcfFileName + IOUtil.VCF_INDEX_EXTENSION;
@@ -610,9 +615,11 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
                 throw new IllegalArgumentException("Unrecognized known sites file extension. Must be .vcf or .vcf.gz");
             }
             ctx.addFile(vcfFileName);
-            ctx.addFile(vcfIndexFileName);
+            if (Files.exists(IOUtils.getPath(vcfIndexFileName))) {
+                ctx.addFile(vcfIndexFileName);
+            }
         }
-        return knownVariants.stream().map(name -> IOUtils.getPath(name).getFileName().toString()).collect(Collectors.toList());
+        return vcfFileNames.stream().map(name -> IOUtils.getPath(name).getFileName().toString()).collect(Collectors.toList());
     }
 
     /**
