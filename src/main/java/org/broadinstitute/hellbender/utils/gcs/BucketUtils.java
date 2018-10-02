@@ -28,7 +28,10 @@ import shaded.cloud_nio.org.threeten.bp.Duration;
 import java.io.*;
 import java.nio.file.Files;
 import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Utilities for dealing with google buckets.
@@ -174,6 +177,21 @@ public final class BucketUtils {
     }
 
     /**
+     * Delete rootPath recursively using nio2
+     * @param rootPath is the file/directory to be deleted. rootPath can point to a <code>File</code> or a <code>URI</code>.
+     * @throws IOException
+     */
+    public static void deleteRecursively(final String rootPath) throws IOException {
+        final List<java.nio.file.Path> pathsToDelete =
+                Files.walk(IOUtils.getPath(rootPath))
+                        .sorted(Comparator.reverseOrder())
+                        .collect(Collectors.toList());
+        for (java.nio.file.Path path : pathsToDelete) {
+            Files.deleteIfExists(path);
+        }
+    }
+
+    /**
      * Get a temporary file path based on the prefix and extension provided.
      * This file (and possible indexes associated with it) will be scheduled for deletion on shutdown
      *
@@ -209,7 +227,11 @@ public final class BucketUtils {
             @Override
             public void run() {
                 try {
-                    deleteFile(fileToDelete);
+                    if (Files.isDirectory(IOUtils.getPath(fileToDelete))) {
+                        deleteRecursively(fileToDelete);
+                    } else {
+                        deleteFile(fileToDelete);
+                    }
                 } catch (IOException e) {
                     logger.warn("Failed to delete file: " + fileToDelete+ ".", e);
                 }
