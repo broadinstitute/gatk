@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 
 @CommandLineProgramProperties(
         oneLineSummary = "(EXPERIMENTAL) Merge annotated genomic regions within specified distance if annotation value(s) are exactly the same.",
-        summary = "(EXPERIMENTAL) This tool is currently unsupported. ",
+        summary = "(EXPERIMENTAL) This simple tool will merge genomic regions (specified in a tsv) when given annotations (columns) contain exact values in neighboring segments and the segments are within a specified maximum genomic distance.",
         programGroup = CopyNumberProgramGroup.class)
 
 @ExperimentalFeature
