@@ -89,7 +89,8 @@ public class SparkSharderUnitTest extends GATKBaseTest implements Serializable {
         List<SimpleInterval> intervals = ImmutableList.of(
                 new SimpleInterval("1", 2, 4),
                 new SimpleInterval("1", 8, 12),
-                new SimpleInterval("1", 11, 22));
+                new SimpleInterval("1", 11, 22),
+                new SimpleInterval("1", 31, 42));
 
         Iterator<Tuple2<SimpleInterval, Iterable<TestRead>>> it = SparkSharder.locatablesPerShard(reads.iterator(), intervals.iterator(), sequenceDictionary, STANDARD_READ_LENGTH);
         assertTrue(it.hasNext());
@@ -107,7 +108,10 @@ public class SparkSharderUnitTest extends GATKBaseTest implements Serializable {
         assertEquals(next._1(), intervals.get(2));
         assertEquals(next._2(), ImmutableList.of(reads.get(7), reads.get(8), reads.get(9), reads.get(10)));
 
-        assertFalse(it.hasNext());
+        assertTrue(it.hasNext());
+        next = it.next();
+        assertEquals(next._1(), intervals.get(3));
+        assertEquals(next._2(), ImmutableList.of());
     }
 
     @Test
