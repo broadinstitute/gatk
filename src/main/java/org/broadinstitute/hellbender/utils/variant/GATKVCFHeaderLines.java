@@ -204,6 +204,7 @@ public class GATKVCFHeaderLines {
         addInfoLine(new VCFInfoHeaderLine(NORMAL_LOD_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Normal LOD score"));
         addInfoLine(new VCFInfoHeaderLine(REALIGNMENT_COUNTS_VCF_ATTRIBUTE, 2, VCFHeaderLineType.Integer, "Number of reads passing and failing realignment."));
         addInfoLine(new VCFInfoHeaderLine(TUMOR_LOD_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Log odds ratio score for variant"));
+        addFormatLine(new VCFFormatHeaderLine(TUMOR_LOD_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Log odds ratio score for variant"));
         addInfoLine(new VCFInfoHeaderLine(IN_PON_VCF_ATTRIBUTE, 0, VCFHeaderLineType.Flag, "site found in panel of normals"));
         addInfoLine(new VCFInfoHeaderLine(POPULATION_AF_VCF_ATTRIBUTE, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "negative-log-10 population allele frequencies of alt alleles"));
         addInfoLine(new VCFInfoHeaderLine(GERMLINE_QUAL_VCF_ATTRIBUTE, VCFHeaderLineCount.A, VCFHeaderLineType.Integer, "Phred-scaled qualities that alt allele are not germline variants"));

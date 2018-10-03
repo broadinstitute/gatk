@@ -40,10 +40,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 import java.util.function.Supplier;
 
 /**
@@ -185,7 +182,7 @@ public final class HaplotypeCallerSpark extends AssemblyRegionWalkerSpark {
         variants.cache(); // without caching, computations are run twice as a side effect of finding partition boundaries for sorting
         try {
             VariantsSparkSink.writeVariants(ctx, output, variants, hcEngine.makeVCFHeader(header.getSequenceDictionary(), new HashSet<>()),
-                    hcArgs.emitReferenceConfidence == ReferenceConfidenceMode.GVCF, hcArgs.GVCFGQBands, hcArgs.genotypeArgs.samplePloidy);
+                    hcArgs.emitReferenceConfidence == ReferenceConfidenceMode.GVCF, new ArrayList<Number>(hcArgs.GVCFGQBands), hcArgs.genotypeArgs.samplePloidy);
         } catch (IOException e) {
             throw new UserException.CouldNotCreateOutputFile(output, "writing failed", e);
         }

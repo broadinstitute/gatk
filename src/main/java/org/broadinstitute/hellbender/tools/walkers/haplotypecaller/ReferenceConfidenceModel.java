@@ -9,7 +9,6 @@ import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFSimpleHeaderLine;
-import org.broadinstitute.hellbender.engine.AlignmentContext;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.PloidyModel;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.PosteriorProbabilitiesUtils;
@@ -17,20 +16,16 @@ import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
-import org.broadinstitute.hellbender.utils.locusiterator.LocusIteratorByState;
-import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.DoubleStream;
 
 /**
  * Code for estimating the reference confidence
@@ -39,7 +34,7 @@ import java.util.stream.DoubleStream;
  * well-determined REF/REF diploid genotype.
  *
  */
-public final class ReferenceConfidenceModel {
+public class ReferenceConfidenceModel {
 
     private final SampleList samples;
     private final int indelInformativeDepthIndelSize;
@@ -103,62 +98,6 @@ public final class ReferenceConfidenceModel {
     private static final boolean ignoreInputSamplesForMissingVariants = true;
     private static final boolean useFlatPriorsForIndels = false;
 
-
-    /**
-     * Holds information about a genotype call of a single sample reference vs. any non-ref event
-     *
-     * IMPORTANT PERFORMANCE NOTE!!! Allowing direct field access (within this class only) speeds up
-     * the HaplotypeCaller by ~10% vs. accessing the fields indirectly via setters, as seen in a profiler.
-     */
-    @VisibleForTesting
-    static final class RefVsAnyResult {
-        /**
-         * The genotype likelihoods for ref/ref ref/non-ref non-ref/non-ref
-         *
-         * Fields are visible because direct field access for this particular class has a major performance
-         * impact on the HaplotypeCaller, as noted above, and the class itself is nested within
-         * ReferenceConfidenceModel anyway.
-         */
-        final double[] genotypeLikelihoods;
-
-        int refDepth = 0;
-        int nonRefDepth = 0;
-
-        /**
-         * Creates a new ref-vs-alt result indicating the genotype likelihood vector capacity.
-         * @param likelihoodCapacity the required capacity of the likelihood array, should match the possible number of
-         *                           genotypes given the number of alleles (always 2), ploidy (arbitrary) less the genotyping
-         *                           model non-sense genotype count if applies.
-         * @throws IllegalArgumentException if {@code likelihoodCapacity} is negative.
-         */
-        public RefVsAnyResult(final int likelihoodCapacity) {
-            ParamUtils.isPositiveOrZero(likelihoodCapacity, "likelihood capacity is negative");
-            genotypeLikelihoods = new double[likelihoodCapacity];
-        }
-        
-        /**
-         * @return Get the DP (sum of AD values)
-         */
-        int getDP() {
-            return refDepth + nonRefDepth;
-        }
-
-        /**
-         * Return the AD fields. Returns a newly allocated array every time.
-         */
-        int[] getAD() {
-            return new int[]{refDepth, nonRefDepth};
-        }
-
-        /**
-         * Returns (a copy of) the array of genotype likelihoods
-         * Caps the het and hom var likelihood values by the hom ref likelihood.
-         * The capping is done on the fly.
-         */
-        double[] getGenotypeLikelihoodsCappedByHomRefLikelihood() {
-            return DoubleStream.of(genotypeLikelihoods).map(d -> Math.min(d, genotypeLikelihoods[0])).toArray();
-        }
-    }
 
     /**
      * Create a new ReferenceConfidenceModel
@@ -248,7 +187,7 @@ public final class ReferenceConfidenceModel {
         final int ploidy = ploidyModel.samplePloidy(0); // the first sample = the only sample in reference-confidence mode.
 
         final SimpleInterval refSpan = activeRegion.getSpan();
-        final List<ReadPileup> refPileups = getPileupsOverReference(refHaplotype, calledHaplotypes, paddedReferenceLoc, activeRegion, refSpan, readLikelihoods);
+        final List<ReadPileup> refPileups = AssemblyBasedCallerUtils.getPileupsOverReference(activeRegion.getHeader(), refSpan, readLikelihoods, samples);
         final byte[] ref = refHaplotype.getBases();
         final List<VariantContext> results = new ArrayList<>(refSpan.size());
         final String sampleName = readLikelihoods.getSample(0);
@@ -258,7 +197,7 @@ public final class ReferenceConfidenceModel {
             final Locatable curPos = pileup.getLocation();
             final int offset = curPos.getStart() - refSpan.getStart();
 
-            final VariantContext overlappingSite = getOverlappingVariantContext(curPos, variantCalls);
+            final VariantContext overlappingSite = GATKVariantContextUtils.getOverlappingVariantContext(curPos, variantCalls);
             final List<VariantContext> currentPriors = getMatchingPriors(curPos, overlappingSite, VCpriors);
             if ( overlappingSite != null && overlappingSite.getStart() == curPos.getStart() ) {
                 if (applyPriors) {
@@ -278,7 +217,7 @@ public final class ReferenceConfidenceModel {
     }
 
 
-   private VariantContext makeReferenceConfidenceVariantContext(final int ploidy,
+   public VariantContext makeReferenceConfidenceVariantContext(final int ploidy,
                                                                  final byte[] ref,
                                                                  final String sampleName,
                                                                  final int globalRefOffset,
@@ -290,7 +229,7 @@ public final class ReferenceConfidenceModel {
         // Assume infinite population on a single sample.
         final int refOffset = offset + globalRefOffset;
         final byte refBase = ref[refOffset];
-        final RefVsAnyResult homRefCalc = calcGenotypeLikelihoodsOfRefVsAny(ploidy, pileup, refBase, BASE_QUAL_THRESHOLD, null, true);
+        final ReferenceConfidenceResult homRefCalc = calcGenotypeLikelihoodsOfRefVsAny(ploidy, pileup, refBase, BASE_QUAL_THRESHOLD, null, true);
 
         final Allele refAllele = Allele.create(refBase, true);
         final List<Allele> refSiteAlleles = Arrays.asList(refAllele, Allele.NON_REF_ALLELE);
@@ -299,6 +238,20 @@ public final class ReferenceConfidenceModel {
         gb.AD(homRefCalc.getAD());
         gb.DP(homRefCalc.getDP());
 
+        doIndelRefConfCalc(ploidy, ref, pileup, refOffset, homRefCalc);
+
+       addGenotypeData(homRefCalc, gb);
+        if(!applyPriors) {
+            return vcb.genotypes(gb.make()).make();
+        }
+        else {
+            return PosteriorProbabilitiesUtils.calculatePosteriorProbs(vcb.genotypes(gb.make()).make(), VCpriors, numRefSamplesForPrior, options);
+            //TODO FIXME: after new-qual refactoring, these should be static calls to AF calculator
+        }
+    }
+
+    public void doIndelRefConfCalc(final int ploidy, final byte[] ref, final ReadPileup pileup, final int refOffset, final ReferenceConfidenceResult refResult) {
+        final RefVsAnyResult homRefCalc = (RefVsAnyResult)refResult;
         // genotype likelihood calculation
         final GenotypeLikelihoods snpGLs = GenotypeLikelihoods.fromLog10Likelihoods(homRefCalc.getGenotypeLikelihoodsCappedByHomRefLikelihood());
         final int nIndelInformativeReads = calcNIndelInformativeReads(pileup, refOffset, ref, indelInformativeDepthIndelSize);
@@ -312,17 +265,13 @@ public final class ReferenceConfidenceModel {
         // as our GLs for the site.
         final GenotypeLikelihoods leastConfidenceGLs = getGLwithWorstGQ(indelGLs, snpGLs);
 
-        final int[] leastConfidenceGLsAsPLs = leastConfidenceGLs.getAsPLs();
-        gb.GQ(GATKVariantContextUtils.calculateGQFromPLs(leastConfidenceGLsAsPLs));
-        gb.PL(leastConfidenceGLsAsPLs);
+        homRefCalc.finalPhredScaledGenotypeLikelihoods = leastConfidenceGLs.getAsPLs();
+    }
 
-        if(!applyPriors) {
-            return vcb.genotypes(gb.make()).make();
-        }
-        else {
-            return PosteriorProbabilitiesUtils.calculatePosteriorProbs(vcb.genotypes(gb.make()).make(), VCpriors, numRefSamplesForPrior, options);
-            //TODO FIXME: after new-qual refactoring, these should be static calls to AF calculator
-        }
+    public void addGenotypeData(final ReferenceConfidenceResult result, final GenotypeBuilder gb) {
+        final int[] pls = ((RefVsAnyResult)result).finalPhredScaledGenotypeLikelihoods;
+        gb.PL(pls);
+        gb.GQ(GATKVariantContextUtils.calculateGQFromPLs(pls));
     }
 
     /**
@@ -399,7 +348,7 @@ public final class ReferenceConfidenceModel {
      * @param hqSoftClips running average data structure (can be null) to collect information about the number of high quality soft clips
      * @return a RefVsAnyResult genotype call.
      */
-    public RefVsAnyResult calcGenotypeLikelihoodsOfRefVsAny(final int ploidy,
+    public ReferenceConfidenceResult calcGenotypeLikelihoodsOfRefVsAny(final int ploidy,
                                                         final ReadPileup pileup,
                                                         final byte refBase,
                                                         final byte minBaseQual,
@@ -454,69 +403,15 @@ public final class ReferenceConfidenceModel {
         }
     }
 
-    private boolean isAltBeforeAssembly(final PileupElement element, final byte refBase){
+    protected static boolean isAltBeforeAssembly(final PileupElement element, final byte refBase){
         return element.getBase() != refBase || element.isDeletion() || element.isBeforeDeletionStart()
                 || element.isAfterDeletionEnd() || element.isBeforeInsertion() || element.isAfterInsertion() || element.isNextToSoftClip();
     }
 
-    private boolean isAltAfterAssembly(final PileupElement element, final byte refBase){
+    protected static boolean isAltAfterAssembly(final PileupElement element, final byte refBase){
         return element.getBase() != refBase || element.isDeletion(); //we shouldn't have soft clips after assembly
     }
 
-    /**
-     * Get a list of pileups that span the entire active region span, in order, one for each position
-     */
-    private List<ReadPileup> getPileupsOverReference(final Haplotype refHaplotype,
-                                                           final Collection<Haplotype> calledHaplotypes,
-                                                           final SimpleInterval paddedReferenceLoc,
-                                                           final AssemblyRegion activeRegion,
-                                                           final SimpleInterval activeRegionSpan,
-                                                           final ReadLikelihoods<Haplotype> readLikelihoods) {
-        Utils.validateArg(calledHaplotypes.contains(refHaplotype), "calledHaplotypes must contain the refHaplotype");
-        Utils.validateArg(readLikelihoods.numberOfSamples() == 1, () -> "readLikelihoods must contain exactly one sample but it contained " + readLikelihoods.numberOfSamples());
-
-        final List<GATKRead> reads = new ArrayList<>(readLikelihoods.sampleReads(0));
-        reads.sort(new ReadCoordinateComparator(activeRegion.getHeader()));  //because we updated the reads based on the local realignments we have to re-sort or the pileups will be... unpredictable
-
-        final LocusIteratorByState libs = new LocusIteratorByState(reads.iterator(), LocusIteratorByState.NO_DOWNSAMPLING,
-                false, samples.asSetOfSamples(), activeRegion.getHeader(), true);
-
-        final int startPos = activeRegionSpan.getStart();
-        final List<ReadPileup> pileups = new ArrayList<>(activeRegionSpan.getEnd() - startPos);
-        AlignmentContext next = libs.advanceToLocus(startPos, true);
-        for ( int curPos = startPos; curPos <= activeRegionSpan.getEnd(); curPos++ ) {
-            if ( next != null && next.getLocation().getStart() == curPos ) {
-                pileups.add(next.getBasePileup());
-                next = libs.hasNext() ? libs.next() : null;
-            } else {
-                // no data, so we create empty pileups
-                pileups.add(new ReadPileup(new SimpleInterval(activeRegionSpan.getContig(), curPos, curPos)));
-            }
-        }
-
-        return pileups;
-    }
-
-    /**
-     * Return the rightmost variant context in maybeOverlapping that overlaps curPos
-     *
-     * @param curPos non-null genome loc
-     * @param maybeOverlapping a collection of variant contexts that might overlap curPos
-     * @return a VariantContext, or null if none overlaps
-     */
-    @VisibleForTesting
-    VariantContext getOverlappingVariantContext(final Locatable curPos, final Collection<VariantContext> maybeOverlapping) {
-        final SimpleInterval curPosSI = new SimpleInterval(curPos);
-        VariantContext overlaps = null;
-        for ( final VariantContext vc : maybeOverlapping ) {
-            if ( curPosSI.overlaps(vc) ) {
-                if ( overlaps == null || vc.getStart() > overlaps.getStart() ) {
-                    overlaps = vc;
-                }
-            }
-        }
-        return overlaps;
-    }
 
     /**
      * Note that we don't have to match alleles because the PosteriorProbabilitesUtils will take care of that

@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import com.google.common.base.Strings;
-import htsjdk.samtools.Cigar;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.variant.variantcontext.*;
@@ -237,7 +236,7 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
 
     private void checkOverlapping(final int pos, Collection<VariantContext> calls, final VariantContext expected) {
         final GenomeLoc loc = parser.createGenomeLoc(parser.getSequenceDictionary().getSequences().get(0).getSequenceName(), pos, pos);
-        final VariantContext actual = model.getOverlappingVariantContext(loc, calls);
+        final VariantContext actual = GATKVariantContextUtils.getOverlappingVariantContext(loc, calls);
         Assert.assertEquals(actual, expected);
     }
 
@@ -409,8 +408,8 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
 
         for ( int i = 0; i < loc.size(); i++ ) {
             final GenomeLoc curPos = parser.createGenomeLoc(loc.getContig(), loc.getStart() + i);
-            final VariantContext call = model.getOverlappingVariantContext(curPos, calls);
-            final VariantContext refModel = model.getOverlappingVariantContext(curPos, contexts);
+            final VariantContext call = GATKVariantContextUtils.getOverlappingVariantContext(curPos, calls);
+            final VariantContext refModel = GATKVariantContextUtils.getOverlappingVariantContext(curPos, contexts);
 
             if ( ! data.getActiveRegion().getSpan().contains(curPos) ) {
                 // part of the extended interval, but not the full interval
@@ -466,11 +465,11 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testRefVsAnyResultNotNegative() throws Exception {
-        new ReferenceConfidenceModel.RefVsAnyResult(-1);
+        new RefVsAnyResult(-1);
     }
     @Test
     public void testRefVsAnyResultConstructor() throws Exception {
-        final ReferenceConfidenceModel.RefVsAnyResult res = new ReferenceConfidenceModel.RefVsAnyResult(3);
+        final RefVsAnyResult res = new RefVsAnyResult(3);
         Assert.assertEquals(res.getAD().length, 2);
         Assert.assertEquals(res.getGenotypeLikelihoodsCappedByHomRefLikelihood().length, 3);
         Assert.assertEquals(res.getDP(), 0);
@@ -480,7 +479,7 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
 
     @Test
     public void testRefVsAnyResultADInc() throws Exception {
-        final ReferenceConfidenceModel.RefVsAnyResult res = new ReferenceConfidenceModel.RefVsAnyResult(3);
+        final RefVsAnyResult res = new RefVsAnyResult(3);
         res.refDepth += 2;
         res.nonRefDepth += 3;
         Assert.assertEquals(res.getAD(), new int[]{2, 3});
@@ -488,7 +487,7 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
 
     @Test
     public void testRefVsAnyResultCapByHomRefLikelihood() throws Exception {
-        final ReferenceConfidenceModel.RefVsAnyResult res = new ReferenceConfidenceModel.RefVsAnyResult(3);
+        final RefVsAnyResult res = new RefVsAnyResult(3);
         res.genotypeLikelihoods[0] += 100;
         res.genotypeLikelihoods[1] += 200;
         res.genotypeLikelihoods[2] += 60;
@@ -497,7 +496,7 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
 
     @Test
     public void testRefVsAnyResultArrays() throws Exception {
-        final ReferenceConfidenceModel.RefVsAnyResult res = new ReferenceConfidenceModel.RefVsAnyResult(3);
+        final RefVsAnyResult res = new RefVsAnyResult(3);
         res.refDepth += 2;
         res.nonRefDepth += 3;
         final int[] adArray = res.getAD();

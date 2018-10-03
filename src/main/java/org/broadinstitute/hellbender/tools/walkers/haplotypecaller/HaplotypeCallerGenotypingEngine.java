@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.variant.variantcontext.*;
-import org.apache.commons.collections4.ListUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -174,7 +173,7 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
             }
 
             if (emitReferenceConfidence) {
-                mergedVC = addNonRefSymbolicAllele(mergedVC);
+                mergedVC = ReferenceConfidenceUtils.addNonRefSymbolicAllele(mergedVC);
                 readAlleleLikelihoods.addNonReferenceAllele(Allele.NON_REF_ALLELE);
             }
 
@@ -377,11 +376,6 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
         final VariantContext untrimmedResult =  annotationEngine.annotateContext(call, tracker, referenceContext, readAlleleLikelihoods, a -> true);
         return call.getAlleles().size() == mergedVC.getAlleles().size() ? untrimmedResult
                 : GATKVariantContextUtils.reverseTrimAlleles(untrimmedResult);
-    }
-
-    private VariantContext addNonRefSymbolicAllele(final VariantContext mergedVC) {
-        final List<Allele> alleleList = ListUtils.union(mergedVC.getAlleles(), Arrays.asList(Allele.NON_REF_ALLELE));
-        return new VariantContextBuilder(mergedVC).alleles(alleleList).make();
     }
 
     /**
