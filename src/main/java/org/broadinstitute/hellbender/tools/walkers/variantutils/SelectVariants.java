@@ -597,9 +597,7 @@ public final class SelectVariants extends VariantWalker {
             final GenotypeBuilder genotypeBuilder = new GenotypeBuilder(genotype).noAttributes();
             Map<String, Object> attributes = new HashMap<>(genotype.getExtendedAttributes());
             for (String genotypeAnnotation : genotypeAnnotationsToDrop) {
-                if (attributes.containsKey(genotypeAnnotation)) {
                     attributes.remove(genotypeAnnotation);
-                }
             }
             genotypeBuilder.attributes(attributes);
             genotypesToWrite.add(genotypeBuilder.make());
