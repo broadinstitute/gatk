@@ -6,6 +6,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFCodec;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.testutils.SparkTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -210,22 +211,9 @@ public final class FeatureInputUnitTest extends GATKBaseTest {
     @SuppressWarnings("unchecked")
     @Test
     public void testFeatureCodecCacheSerialization() throws IOException, ClassNotFoundException {
-        FeatureInput<VariantContext> featureInput = getVariantFeatureInputWithCachedCodec();
+        final FeatureInput<VariantContext>featureInput = getVariantFeatureInputWithCachedCodec();
 
-        // serialize
-        byte[] serializedFeatureInput;
-        try (final ByteArrayOutputStream bos = new ByteArrayOutputStream();
-             final ObjectOutputStream oos = new ObjectOutputStream(bos)) {
-            oos.writeObject(featureInput);
-            serializedFeatureInput = bos.toByteArray();
-        }
-        Assert.assertNotNull(serializedFeatureInput);
-
-        // deserialize
-        FeatureInput<VariantContext> roundTrippedFeatureInput;
-        try (final ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(serializedFeatureInput))) {
-            roundTrippedFeatureInput = (FeatureInput<VariantContext>) ois.readObject();
-        }
+        final FeatureInput<VariantContext> roundTrippedFeatureInput = SparkTestUtils.roundTripThroughJavaSerialization(featureInput);
         Assert.assertNotNull(roundTrippedFeatureInput);
 
         // we expect to lose the cached feature codec class on serialization, but retain the feature path

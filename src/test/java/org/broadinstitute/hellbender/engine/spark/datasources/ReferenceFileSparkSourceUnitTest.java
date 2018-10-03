@@ -2,14 +2,15 @@ package org.broadinstitute.hellbender.engine.spark.datasources;
 
 import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
+import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.testutils.SparkTestUtils;
+import org.testng.annotations.Test;
+
 import java.io.*;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceFileSparkSource;
-import org.broadinstitute.hellbender.exceptions.UserException;
-import org.testng.annotations.Test;
 
 public class ReferenceFileSparkSourceUnitTest extends GATKBaseTest {
 
@@ -42,13 +43,9 @@ public class ReferenceFileSparkSourceUnitTest extends GATKBaseTest {
 
         final ReferenceFileSparkSource referenceFileSource = new ReferenceFileSparkSource(refPath);
 
-        // Can we serialize it?
-        final ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ObjectOutputStream os = new ObjectOutputStream(baos);
-        os.writeObject(referenceFileSource);
+        //can we serialize it?
+        ReferenceFileSparkSource otherSide = SparkTestUtils.roundTripThroughJavaSerialization(referenceFileSource);
 
-        ObjectInputStream is = new ObjectInputStream(new ByteArrayInputStream(baos.toByteArray()));
-        ReferenceFileSparkSource otherSide = (ReferenceFileSparkSource)is.readObject();
         // After deserialization, will it crash?
         otherSide.getReferenceSequenceDictionary(null);
 
