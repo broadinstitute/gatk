@@ -183,7 +183,7 @@ public class ReadsPipelineSpark extends GATKSparkTool {
             header = getHeaderForReads();
         }
 
-        final JavaRDD<GATKRead> markedReads = MarkDuplicatesSpark.mark(alignedReads, header, markDuplicatesSparkArgumentCollection.duplicatesScoringStrategy, new SerializableOpticalDuplicatesFinder(), getRecommendedNumReducers(), markDuplicatesSparkArgumentCollection.dontMarkUnmappedMates);
+        final JavaRDD<GATKRead> markedReads = MarkDuplicatesSpark.mark(alignedReads, header, new SerializableOpticalDuplicatesFinder(), markDuplicatesSparkArgumentCollection, getRecommendedNumReducers());
 
         // always coordinate-sort reads so BQSR can use queryLookaheadBases in FeatureDataSource
         final SAMFileHeader readsHeader = header.clone();

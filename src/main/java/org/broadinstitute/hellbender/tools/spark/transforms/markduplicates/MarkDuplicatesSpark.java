@@ -28,13 +28,11 @@ import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesSco
 import org.broadinstitute.hellbender.utils.read.markduplicates.SerializableOpticalDuplicatesFinder;
 import org.broadinstitute.hellbender.utils.spark.SparkUtils;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
+import picard.sam.markduplicates.MarkDuplicates;
 import picard.sam.markduplicates.util.OpticalDuplicateFinder;
 import scala.Tuple2;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @DocumentedFeature
@@ -64,10 +62,23 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
     @ArgumentCollection
     protected OpticalDuplicatesArgumentCollection opticalDuplicatesArgumentCollection = new OpticalDuplicatesArgumentCollection();
 
+    @Argument(fullName = MarkDuplicatesSparkArgumentCollection.REMOVE_ALL_DUPLICATE_READS, doc = "If true do not write duplicates to the output file instead of writing them with appropriate flags set.",
+            mutex = {MarkDuplicatesSparkArgumentCollection.DUPLICATE_TAGGING_POLICY_LONG_NAME, MarkDuplicatesSparkArgumentCollection.REMOVE_SEQUENCING_DUPLICATE_READS}, optional = true)
+    public boolean removeAllDuplicates = false;
+
+    @Argument(fullName = MarkDuplicatesSparkArgumentCollection.REMOVE_SEQUENCING_DUPLICATE_READS, doc = "If true do not write duplicates to the output file instead of writing them with appropriate flags set.",
+            mutex = {MarkDuplicatesSparkArgumentCollection.DUPLICATE_TAGGING_POLICY_LONG_NAME, MarkDuplicatesSparkArgumentCollection.REMOVE_ALL_DUPLICATE_READS}, optional = true)
+    public boolean removeSequencingDuplicates = false;
+
     @Override
     public List<ReadFilter> getDefaultReadFilters() {
         return Collections.singletonList(ReadFilterLibrary.ALLOW_ALL_READS);
     }
+
+    // Reads with this marker will be treated as non-duplicates always
+    public static int MARKDUPLICATES_NO_OPTICAL_MARKER = -1;
+    // Reads with this marker will be treated and marked as optical duplicates
+    public static int MARKDUPLICATES_OPPTICAL_DUPLICATE_MARKER = -2;
 
     /**
      * Main method for marking duplicates, takes an JavaRDD of GATKRead and an associated SAMFileHeader with corresponding
@@ -85,19 +96,24 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
      * @param opticalDuplicateFinder
      * @param numReducers number of partitions to separate the data into
      * @param dontMarkUnmappedMates when true, unmapped mates of duplicate fragments will be marked as non-duplicates
+     * @param taggingPolicy determines whether optical duplicates and library duplicates are labeled with the "DT" tag
      * @return A JavaRDD of GATKReads where duplicate flags have been set
      */
     public static JavaRDD<GATKRead> mark(final JavaRDD<GATKRead> reads, final SAMFileHeader header,
                                          final MarkDuplicatesScoringStrategy scoringStrategy,
                                          final OpticalDuplicateFinder opticalDuplicateFinder,
-                                         final int numReducers, final boolean dontMarkUnmappedMates) {
+                                         final int numReducers, final boolean dontMarkUnmappedMates,
+                                         final MarkDuplicates.DuplicateTaggingPolicy taggingPolicy) {
         final boolean markUnmappedMates = !dontMarkUnmappedMates;
         SAMFileHeader headerForTool = header.clone();
 
         // If the input isn't queryname sorted, sort it before duplicate marking
         final JavaRDD<GATKRead> sortedReadsForMarking = querynameSortReadsIfNecessary(reads, numReducers, headerForTool);
 
-        final JavaPairRDD<MarkDuplicatesSparkUtils.IndexPair<String>, Integer> namesOfNonDuplicates = MarkDuplicatesSparkUtils.transformToDuplicateNames(headerForTool, scoringStrategy, opticalDuplicateFinder, sortedReadsForMarking, numReducers);
+        // If we need to remove optical duplicates or tag them, then make sure we are keeping track
+        final boolean markOpticalDups = taggingPolicy != MarkDuplicates.DuplicateTaggingPolicy.DontTag;
+
+        final JavaPairRDD<MarkDuplicatesSparkUtils.IndexPair<String>, Integer> namesOfNonDuplicates = MarkDuplicatesSparkUtils.transformToDuplicateNames(headerForTool, scoringStrategy, opticalDuplicateFinder, sortedReadsForMarking, numReducers, markOpticalDups);
 
         // Here we explicitly repartition the read names of the unmarked reads to match the partitioning of the original bam
         final JavaRDD<Tuple2<String,Integer>> repartitionedReadNames = namesOfNonDuplicates
@@ -106,7 +122,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
                 .values();
 
         // Here we combine the original bam with the repartitioned unmarked readnames to produce our marked reads
-        return sortedReadsForMarking.zipPartitions(repartitionedReadNames, (readsIter, readNamesIter)  -> {
+        JavaRDD<GATKRead> readsMarked = sortedReadsForMarking.zipPartitions(repartitionedReadNames, (readsIter, readNamesIter)  -> {
             final Map<String,Integer> namesOfNonDuplicateReadsAndOpticalCounts = new HashMap<>();
             readNamesIter.forEachRemaining(tup -> { if (namesOfNonDuplicateReadsAndOpticalCounts.putIfAbsent(tup._1,tup._2)!=null) {
                 throw new GATKException(String.format("Detected multiple mark duplicate records objects corresponding to read with name '%s', this could be the result of the file sort order being incorrect or that a previous tool has let readnames span multiple partitions",tup._1()));
@@ -115,30 +131,58 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
 
             return Utils.stream(readsIter)
                     .peek(read -> read.setIsDuplicate(false))
+                    .peek(read -> read.setAttribute(MarkDuplicates.DUPLICATE_TYPE_TAG, (String) null))
                     .peek(read -> {
-                // Handle reads that have been marked as non-duplicates (which also get tagged with optical duplicate summary statistics)
-                if (namesOfNonDuplicateReadsAndOpticalCounts.containsKey(read.getName())) {
-                    read.setIsDuplicate(false);
-                    if (markUnmappedMates || !read.isUnmapped()) {
-                        int dupCount = namesOfNonDuplicateReadsAndOpticalCounts.replace(read.getName(), -1);
-                        if (dupCount > -1) {
-                            ((SAMRecordToGATKReadAdapter) read).setTransientAttribute(MarkDuplicatesSparkUtils.OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME, dupCount);
+                        // Handle reads that have been marked as non-duplicates (which also get tagged with optical duplicate summary statistics)
+                        if (namesOfNonDuplicateReadsAndOpticalCounts.containsKey(read.getName())) {
+                            // If its an optical duplicate, mark it.
+                            if (namesOfNonDuplicateReadsAndOpticalCounts.get(read.getName()) == MARKDUPLICATES_OPPTICAL_DUPLICATE_MARKER) {
+                                read.setIsDuplicate(true);
+                                read.setAttribute(MarkDuplicates.DUPLICATE_TYPE_TAG, MarkDuplicates.DUPLICATE_TYPE_SEQUENCING);
+
+                            // Otherwise treat it normally as a non-duplicate.
+                            } else {
+                                read.setIsDuplicate(false);
+                                if (markUnmappedMates || !read.isUnmapped()) {
+                                    int dupCount = namesOfNonDuplicateReadsAndOpticalCounts.replace(read.getName(), MARKDUPLICATES_NO_OPTICAL_MARKER);
+                                    if (dupCount > -1) {
+                                        ((SAMRecordToGATKReadAdapter) read).setTransientAttribute(MarkDuplicatesSparkUtils.OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME, dupCount);
+                                    }
+                                }
+                            }
+                            // Mark unmapped read pairs as non-duplicates
+                        } else if (ReadUtils.readAndMateAreUnmapped(read)) {
+                            read.setIsDuplicate(false);
+                            // Everything else is a duplicate
+                        } else {
+                            if (markUnmappedMates || !read.isUnmapped()) {
+                                read.setIsDuplicate(true);
+                                if (taggingPolicy == MarkDuplicates.DuplicateTaggingPolicy.All) {
+                                    read.setAttribute(MarkDuplicates.DUPLICATE_TYPE_TAG, MarkDuplicates.DUPLICATE_TYPE_LIBRARY);
+                                }
+                            } else {
+                                read.setIsDuplicate(false);
+                            }
                         }
-                    }
-                    // Mark unmapped read pairs as non-duplicates
-                } else if (ReadUtils.readAndMateAreUnmapped(read)) {
-                    read.setIsDuplicate(false);
-                    // Everything else is a duplicate
-                } else {
-                    if (markUnmappedMates || !read.isUnmapped()) {
-                        read.setIsDuplicate(true);
-                    } else {
-                        read.setIsDuplicate(false);
-                    }
-                }
-            }).iterator();
+                    }).iterator();
         });
+
+        return readsMarked;
     }
+
+    public static JavaRDD<GATKRead> mark(final JavaRDD<GATKRead> reads, final SAMFileHeader header,
+                                         final OpticalDuplicateFinder finder,
+                                         final MarkDuplicatesSparkArgumentCollection mdArgs,
+                                         final int numReducers) {
+        return mark(reads,
+                    header,
+                    mdArgs.duplicatesScoringStrategy,
+                    finder,
+                    numReducers,
+                    mdArgs.dontMarkUnmappedMates,
+                    mdArgs.taggingPolicy);
+    }
+
 
     /**
      * Sort reads into queryname order if they are not already sorted
@@ -187,9 +231,13 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
         JavaRDD<GATKRead> reads = getReads();
         final OpticalDuplicateFinder finder = opticalDuplicatesArgumentCollection.READ_NAME_REGEX != null ?
                 new SerializableOpticalDuplicatesFinder(opticalDuplicatesArgumentCollection.READ_NAME_REGEX, opticalDuplicatesArgumentCollection.OPTICAL_DUPLICATE_PIXEL_DISTANCE) : null;
+        // If we need to remove optical duplicates, set the engine to mark optical duplicates using the DT tag.
+        if (removeSequencingDuplicates && markDuplicatesSparkArgumentCollection.taggingPolicy == MarkDuplicates.DuplicateTaggingPolicy.DontTag) {
+            markDuplicatesSparkArgumentCollection.taggingPolicy = MarkDuplicates.DuplicateTaggingPolicy.OpticalOnly;
+        }
 
         final SAMFileHeader header = getHeaderForReads();
-        final JavaRDD<GATKRead> finalReadsForMetrics = mark(reads, header, markDuplicatesSparkArgumentCollection.duplicatesScoringStrategy, finder, getRecommendedNumReducers(),  markDuplicatesSparkArgumentCollection.dontMarkUnmappedMates);
+        final JavaRDD<GATKRead> finalReadsForMetrics = mark(reads, header, finder, markDuplicatesSparkArgumentCollection, getRecommendedNumReducers());
 
         if (metricsFile != null) {
             final JavaPairRDD<String, GATKDuplicationMetrics> metricsByLibrary = MarkDuplicatesSparkUtils.generateMetrics(
@@ -197,8 +245,16 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
             final MetricsFile<GATKDuplicationMetrics, Double> resultMetrics = getMetricsFile();
             MarkDuplicatesSparkUtils.saveMetricsRDD(resultMetrics, header, metricsByLibrary, metricsFile);
         }
+        JavaRDD<GATKRead> readsForWriting = finalReadsForMetrics;
+        // Filter out the duplicates if instructed to do so
+        if (removeAllDuplicates) {
+            readsForWriting = readsForWriting.filter(r -> !r.isDuplicate());
+        } else if (removeSequencingDuplicates) {
+            readsForWriting = readsForWriting.filter(r -> !MarkDuplicates.DUPLICATE_TYPE_SEQUENCING.equals(r.getAttributeAsString(MarkDuplicates.DUPLICATE_TYPE_TAG)));
+        }
+
         header.setSortOrder(SAMFileHeader.SortOrder.coordinate);
-        writeReads(ctx, output, finalReadsForMetrics, header);
+        writeReads(ctx, output, readsForWriting, header);
     }
 
 }
