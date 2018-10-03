@@ -31,6 +31,10 @@ import java.util.stream.Collectors;
 
 public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
     private static final List<String> NO_EXTRA_ARGS = Collections.emptyList();
+    private static final List<String> ATTRIBUTES_TO_IGNORE = Arrays.asList(
+            "RAW_MQ"); //MQ data format and key have changed since GATK3
+    private static final File NA12878_HG37 = new File(toolsTestDir + "haplotypecaller/expected.testGVCFMode.gatk4.g.vcf");
+
 
     private static <T> void assertForEachElementInLists(final List<T> actual, final List<T> expected, final BiConsumer<T, T> assertion) {
         Assert.assertEquals(actual.size(), expected.size(), "different number of elements in lists:\n"
@@ -77,6 +81,7 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
                         getTestFile("gvcfWithTrailingReferenceBlocksBandedExpected.g.vcf"),
                         Arrays.asList("--" + CombineGVCFs.BREAK_BANDS_LONG_NAME, "2000000"),
                         b38_reference_20_21},
+                {new File[]{NA12878_HG37, getTestFile("YRIoffspring.chr20snippet.g.vcf")}, getTestFile("newMQcalc.combined.g.vcf"), NO_EXTRA_ARGS, b37_reference_20_21},
         };
     }
 
@@ -122,12 +127,12 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
             System.out.println("Found precomputed gatk3Result");
         }
 
-        assertVariantContextsMatch(Arrays.asList(inputs), gatk3Result, extraArgs, reference);
+        assertVariantContextsMatch(Arrays.asList(inputs), gatk3Result, extraArgs, reference, ATTRIBUTES_TO_IGNORE);
     }
 
     @Test(dataProvider = "gvcfsToCombine")
     public void compareToGATK3ExpectedResults(File[] inputs, File outputFile, List<String> extraArgs, String reference) throws IOException, NoSuchAlgorithmException {
-        assertVariantContextsMatch(Arrays.asList(inputs), outputFile, extraArgs, reference);
+        assertVariantContextsMatch(Arrays.asList(inputs), outputFile, extraArgs, reference, ATTRIBUTES_TO_IGNORE);
     }
 
     public static void runProcess(ProcessController processController, String[] command) {
@@ -139,14 +144,14 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
     }
 
 
-
-    private void assertVariantContextsMatch(List<File> inputs, File expected, List<String> extraArgs, String reference) throws IOException {
+    public void assertVariantContextsMatch(List<File> inputs, File expected, List<String> extraArgs, String reference, List<String> attributesToIgnore) throws IOException {
         final VCFHeader header = getHeaderFromFile(expected);
 
         runCombineGVCFSandAssertSomething(inputs, expected, extraArgs, (a, e) -> {
-            VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, Arrays.asList(), header);
+            VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, attributesToIgnore, header);
         }, reference);
     }
+
 
     public void runCombineGVCFSandAssertSomething(List<File> inputs, File expected, List<String> additionalArguments, BiConsumer<VariantContext, VariantContext> assertion, String reference) throws IOException {
         final File output = createTempFile("combinegvcfs", ".vcf");

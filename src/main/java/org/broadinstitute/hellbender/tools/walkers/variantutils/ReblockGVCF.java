@@ -149,7 +149,8 @@ public final class ReblockGVCF extends VariantWalker {
         headerLines.add(VCFStandardHeaderLines.getInfoLine(VCFConstants.DEPTH_KEY));   // needed for gVCFs without DP tags
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.RAW_QUAL_APPROX_KEY));
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.VARIANT_DEPTH_KEY));
-        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.MAPPING_QUALITY_DEPTH));
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY));
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.MAPPING_QUALITY_DEPTH));  //NOTE: this is deprecated, but keep until we reprocess all GVCFs
 
         if ( dbsnp.dbsnp != null  ) {
             VCFStandardHeaderLines.addStandardInfoLines(headerLines, true, VCFConstants.DBSNP_KEY);
@@ -404,8 +405,14 @@ public final class ReblockGVCF extends VariantWalker {
             genotypesArray.add(g);
         }
 
-        //we're going to approximate MQ_DP with the site-level DP (should be informative and uninformative reads), which is pretty safe because it will only differ if reads are missing MQ
-        attrMap.put(GATKVCFConstants.MAPPING_QUALITY_DEPTH, originalVC.getAttributeAsInt(VCFConstants.DEPTH_KEY,0));
+        //we're going to approximate depth for MQ calculation with the site-level DP (should be informative and uninformative reads), which is pretty safe because it will only differ if reads are missing MQ
+        final Double rawMqValue = originalVC.hasAttribute(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY) ?
+                originalVC.getAttributeAsDouble(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY, 0) :
+                originalVC.getAttributeAsDouble(VCFConstants.RMS_MAPPING_QUALITY_KEY, 60.0) *
+                        originalVC.getAttributeAsInt(VCFConstants.DEPTH_KEY,0);
+        attrMap.put(GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY,
+                 String.format("%.2f,%d", rawMqValue, originalVC.getAttributeAsInt(VCFConstants.DEPTH_KEY,0)));
+        attrMap.put(GATKVCFConstants.MAPPING_QUALITY_DEPTH, originalVC.getAttributeAsInt(VCFConstants.DEPTH_KEY,0)); //NOTE: this annotation is deprecated, but keep it here so we don't have to reprocess gnomAD v3 GVCFs again
 
         if(allelesNeedSubsetting) {
             List<Allele> newAlleleSet = new ArrayList<>();

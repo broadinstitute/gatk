@@ -41,8 +41,8 @@ public class ReblockGVCFUnitTest {
         Assert.assertTrue(cleaned1.getAttribute(GATKVCFConstants.RAW_QUAL_APPROX_KEY).equals(41));
         Assert.assertTrue(cleaned1.hasAttribute(GATKVCFConstants.VARIANT_DEPTH_KEY));
         Assert.assertTrue(cleaned1.getAttribute(GATKVCFConstants.VARIANT_DEPTH_KEY).equals(30));
-        Assert.assertTrue(cleaned1.hasAttribute(GATKVCFConstants.MAPPING_QUALITY_DEPTH));
-        Assert.assertTrue(cleaned1.getAttribute(GATKVCFConstants.MAPPING_QUALITY_DEPTH).equals(32));
+        Assert.assertTrue(cleaned1.hasAttribute(GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY));
+        Assert.assertTrue(cleaned1.getAttributeAsString(GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY,"").split(",")[1].equals("32"));
 
         final Genotype hetNonRef = makeG("sample2", DELETION, LONG_SNP, 891,879,1128,84,0,30,891,879,84,891);
         final VariantContext keepAlts = makeDeletionVC("keepAllAlts", Arrays.asList(LONG_REF, DELETION, LONG_SNP, Allele.NON_REF_ALLELE), LONG_REF.length(), hetNonRef);

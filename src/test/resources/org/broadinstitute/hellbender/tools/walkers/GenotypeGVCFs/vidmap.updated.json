@@ -1,0 +1,318 @@
+{
+  "fields": [
+    {
+      "name": "ID",
+      "type": [
+        "char"
+      ],
+      "length": [
+        {
+          "variable_length_descriptor": "var"
+        }
+      ]
+    },
+    {
+      "name": "LowQual",
+      "type": [
+        "int"
+      ],
+      "vcf_field_class": [
+        "FILTER"
+      ]
+    },
+    {
+      "name": "AD",
+      "type": [
+        "Integer"
+      ],
+      "vcf_field_class": [
+        "FORMAT"
+      ],
+      "length": [
+        {
+          "variable_length_descriptor": "R"
+        }
+      ]
+    },
+    {
+      "name": "GQ",
+      "type": [
+        "Integer"
+      ],
+      "vcf_field_class": [
+        "FORMAT"
+      ],
+      "length": [
+        {
+          "variable_length_descriptor": "1"
+        }
+      ]
+    },
+    {
+      "name": "GT",
+      "type": [
+        "int"
+      ],
+      "vcf_field_class": [
+        "FORMAT"
+      ],
+      "length": [
+        {
+          "variable_length_descriptor": "PP"
+        }
+      ]
+    },
+    {
+      "name": "MIN_DP",
+      "type": [
+        "Integer"
+      ],
+      "vcf_field_class": [
+        "FORMAT"
+      ],
+      "length": [
+        {
+          "variable_length_descriptor": "1"
+        }
+      ]
+    },
+    {
+      "name": "PGT",
+      "type": [
+        "String"
+      ],
+      "vcf_field_class": [
+        "FORMAT"
+      ],
+      "length": [
+        {
+          "variable_length_descriptor": "VAR"
+        }
+      ]
+    },
+    {
+      "name": "PID",
+      "type": [
+        "String"
+      ],
+      "vcf_field_class": [
+        "FORMAT"
+      ],
+      "length": [
+        {
+          "variable_length_descriptor": "VAR"
+        }
+      ]
+    },
+    {
+      "name": "PL",
+      "type": [
+        "Integer"
+      ],
+      "vcf_field_class": [
+        "FORMAT"
+      ],
+      "length": [
+        {
+          "variable_length_descriptor": "G"
+        }
+      ]
+    },
+    {
+      "name": "SB",
+      "type": [
+        "Integer"
+      ],
+      "vcf_field_class": [
+        "FORMAT"
+      ],
+      "length": [
+        {
+          "variable_length_descriptor": "4"
+        }
+      ]
+    },
+    {
+      "name": "BaseQRankSum",
+      "type": [
+        "Float"
+      ],
+      "vcf_field_class": [
+        "INFO"
+      ],
+      "length": [
+        {
+          "variable_length_descriptor": "1"
+        }
+      ]
+    },
+    {
+      "name": "ClippingRankSum",
+      "type": [
+        "Float"
+      ],
+      "vcf_field_class": [
+        "INFO"
+      ],
+      "length": [
+        {
+          "variable_length_descriptor": "1"
+        }
+      ]
+    },
+    {
+      "name": "DP",
+      "type": [
+        "Integer"
+      ],
+      "vcf_field_class": [
+        "FORMAT",
+        "INFO"
+      ],
+      "length": [
+        {
+          "variable_length_descriptor": "1"
+        }
+      ]
+    },
+    {
+      "name": "DS",
+      "type": [
+        "Flag"
+      ],
+      "vcf_field_class": [
+        "INFO"
+      ],
+      "length": [
+        {
+          "variable_length_descriptor": "1"
+        }
+      ]
+    },
+    {
+      "name": "END",
+      "type": [
+        "Integer"
+      ],
+      "vcf_field_class": [
+        "INFO"
+      ],
+      "length": [
+        {
+          "variable_length_descriptor": "1"
+        }
+      ]
+    },
+    {
+      "name": "ExcessHet",
+      "type": [
+        "Float"
+      ],
+      "vcf_field_class": [
+        "INFO"
+      ],
+      "length": [
+        {
+          "variable_length_descriptor": "1"
+        }
+      ]
+    },
+    {
+      "name": "InbreedingCoeff",
+      "type": [
+        "Float"
+      ],
+      "vcf_field_class": [
+        "INFO"
+      ],
+      "length": [
+        {
+          "variable_length_descriptor": "1"
+        }
+      ]
+    },
+    {
+      "name": "MLEAC",
+      "type": [
+        "Integer"
+      ],
+      "vcf_field_class": [
+        "INFO"
+      ],
+      "length": [
+        {
+          "variable_length_descriptor": "A"
+        }
+      ]
+    },
+    {
+      "name": "MLEAF",
+      "type": [
+        "Float"
+      ],
+      "vcf_field_class": [
+        "INFO"
+      ],
+      "length": [
+        {
+          "variable_length_descriptor": "A"
+        }
+      ]
+    },
+    {
+      "name": "MQRankSum",
+      "type": [
+        "Float"
+      ],
+      "vcf_field_class": [
+        "INFO"
+      ],
+      "length": [
+        {
+          "variable_length_descriptor": "1"
+        }
+      ]
+    },
+    {
+      "name": "RAW_MQandDP",
+      "type": [
+        "Integer"
+      ],
+      "vcf_field_class": [
+        "INFO"
+      ],
+      "length": [
+        {
+          "variable_length_descriptor": "2"
+        }
+      ],
+      "VCF_field_combine_operation": "element_wise_sum"
+    },
+    {
+      "name": "ReadPosRankSum",
+      "type": [
+        "Float"
+      ],
+      "vcf_field_class": [
+        "INFO"
+      ],
+      "length": [
+        {
+          "variable_length_descriptor": "1"
+        }
+      ]
+    }
+  ],
+  "contigs": [
+    {
+      "name": "20",
+      "length": 63025520,
+      "tiledb_column_offset": 0
+    },
+    {
+      "name": "21",
+      "length": 48129895,
+      "tiledb_column_offset": 63025520
+    }
+  ]
+}

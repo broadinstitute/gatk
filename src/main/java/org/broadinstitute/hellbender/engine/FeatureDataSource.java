@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.engine;
 
+import com.netflix.servo.util.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.tribble.*;
@@ -24,6 +25,7 @@ import com.intel.genomicsdb.model.GenomicsDBExportConfiguration;
 import com.intel.genomicsdb.reader.GenomicsDBFeatureReader;
 import com.googlecode.protobuf.format.JsonFormat;
 import com.intel.genomicsdb.model.GenomicsDBVidMapProto;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.io.File;
 import java.io.IOException;
@@ -368,7 +370,8 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         }
     }
 
-    private static FeatureReader<VariantContext> getGenomicsDBFeatureReader(final String path, final File reference) {
+    @VisibleForTesting
+    public static FeatureReader<VariantContext> getGenomicsDBFeatureReader(final String path, final File reference) {
         if (!isGenomicsDBPath(path)) {
             throw new IllegalArgumentException("Trying to create a GenomicsDBReader from a non-GenomicsDB input");
         }
@@ -463,9 +466,10 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         final HashMap<String, Integer> fieldNameToIndexInVidFieldsList =
                 getFieldNameToListIndexInProtobufVidMappingObject(vidMapPB);
 
-        //Example: set MQ combine operation to median (default is also median, but this is just an example)
         vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
-                "MQ", "median");
+                GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY, "element_wise_sum");
+
+
         if (vidMapPB != null) {
             //Use rebuilt vidMap in exportConfiguration
             //NOTE: this does NOT update the JSON file, the vidMapPB is a temporary structure that's passed to

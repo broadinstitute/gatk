@@ -35,7 +35,7 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
     @Test
     public void testGVCFReblockingIsContiguous() throws Exception {
         final File output = createTempFile("reblockedgvcf", ".vcf");
-        final File expected = new File(largeFileTestDir + "testProductionGVCF.expected.g.vcf.gz");
+        final File expected = new File(largeFileTestDir + "testProductionGVCF.expected.g.vcf");
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addReference(new File(b37_reference_20_21))
