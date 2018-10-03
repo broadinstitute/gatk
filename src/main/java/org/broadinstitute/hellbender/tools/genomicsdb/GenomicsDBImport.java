@@ -788,21 +788,21 @@ public final class GenomicsDBImport extends GATKTool {
 
     private List<SimpleInterval> generateIntervalListFromVidMap() {
         try {
-            GenomicsDBVidMapProto.VidMappingPB vidMapPB = 
+            GenomicsDBVidMapProto.VidMappingPB vidMapPB =
                 GATKGenomicsDBUtils.getProtobufVidMappingFromJsonFile(vidMapJSONFile);
-    
+
             List<String> partitions = Arrays.asList(GenomicsDBUtils.listGenomicsDBArrays(workspace));
             return partitions.stream().flatMap(partition -> {
                 long[] bounds = GenomicsDBUtils.getArrayColumnBounds(workspace, partition);
                 // merge-contigs-into-num-partitions ensures entire contigs are within a given partition
                 // so we just check here that contig starts within the given bounds
                 return vidMapPB.getContigsList().stream()
-                        .filter(x -> x.getTiledbColumnOffset() >= bounds[ARRAY_COLUMN_BOUNDS_START] &&  
+                        .filter(x -> x.getTiledbColumnOffset() >= bounds[ARRAY_COLUMN_BOUNDS_START] &&
                         x.getTiledbColumnOffset() <= bounds[ARRAY_COLUMN_BOUNDS_END])
                         .map(x -> new SimpleInterval(x.getName(), 1, Math.toIntExact(x.getLength())));
             }).collect(Collectors.toList());
         } catch (final IOException e) {
-            throw new UserException("Could not get vid map protobuf from file:" + vidMapJSONFile + 
+            throw new UserException("Could not get vid map protobuf from file:" + vidMapJSONFile +
                     ". Is the workspace corrupted?", e);
         }
     }
@@ -824,7 +824,7 @@ public final class GenomicsDBImport extends GATKTool {
     }
 
     private ImportConfig createImportConfig(final int batchSize) {
-        final List<GenomicsDBImportConfiguration.Partition> partitions = (intervals == null || intervals.isEmpty()) ? 
+        final List<GenomicsDBImportConfiguration.Partition> partitions = (intervals == null || intervals.isEmpty()) ?
                 generatePartitionListFromWorkspace() : generatePartitionListFromIntervals();
         GenomicsDBImportConfiguration.ImportConfiguration.Builder importConfigurationBuilder =
                 GenomicsDBImportConfiguration.ImportConfiguration.newBuilder();
@@ -860,8 +860,6 @@ public final class GenomicsDBImport extends GATKTool {
             writeIntervalListToFile();
             return;
         }
-        // Force the progress meter to update after every batch
-        progressMeter.setRecordsBetweenTimeChecks(1L);
 
         final int sampleCount = sampleNameMap.getNumSamples();
         final int updatedBatchSize = (batchSize == DEFAULT_ZERO_BATCH_SIZE) ? sampleCount : batchSize;
@@ -880,7 +878,7 @@ public final class GenomicsDBImport extends GATKTool {
                 else {
                     logger.warn(INCREMENTAL_WORKSPACE_ARG_LONG_NAME+" was set, so ignoring " +
                         MERGE_CONTIGS_INTO_NUM_PARTITIONS + ". When updating workspaces, " +
-                        "GenomicsDBImport must use the same partition boundaries/intervals as the original import"); 
+                        "GenomicsDBImport must use the same partition boundaries/intervals as the original import");
                 }
             }
             importer.executeImport(maxNumIntervalsToImportInParallel);
