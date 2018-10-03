@@ -1,20 +1,27 @@
 package org.broadinstitute.hellbender.tools.spark.transforms.markduplicates;
 
+import com.esotericsoftware.kryo.Kryo;
 import com.google.api.client.util.Lists;
 import com.google.common.collect.ImmutableList;
 import htsjdk.samtools.*;
+import org.apache.spark.SparkConf;
 import org.apache.spark.SparkException;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.serializer.KryoRegistrator;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.engine.spark.SAMRecordSerializer;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.testutils.SparkTestUtils;
+import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesScoringStrategy;
 import org.broadinstitute.hellbender.utils.read.markduplicates.SerializableOpticalDuplicatesFinder;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+import picard.sam.markduplicates.util.OpticalDuplicateFinder;
 import scala.Tuple2;
 
 import java.io.IOException;
@@ -158,5 +165,25 @@ public class MarkDuplicatesSparkUtilsUnitTest extends GATKBaseTest {
 
         return ctx.parallelize(records, numPartitions).map(SAMRecordToGATKReadAdapter::new);
     }
+
+    @Test
+    public void testChangingContigsOnHeaderlessSAMRecord() {
+        final SparkConf conf = new SparkConf().set("spark.kryo.registrator",
+                "org.broadinstitute.hellbender.tools.spark.transforms.markduplicates.MarkDuplicatesSparkUtilsUnitTest$TestGATKRegistrator");
+        final SAMRecord read = ((SAMRecordToGATKReadAdapter) ArtificialReadUtils.createHeaderlessSamBackedRead("read1", "1", 100, 50)).getEncapsulatedSamRecord();
+        final SerializableOpticalDuplicatesFinder finder = new SerializableOpticalDuplicatesFinder(OpticalDuplicateFinder.DEFAULT_READ_NAME_REGEX,2500);
+
+        final SerializableOpticalDuplicatesFinder roundTrippedRead = SparkTestUtils.roundTripInKryo(finder, SerializableOpticalDuplicatesFinder.class, conf);
+        Assert.assertEquals(roundTrippedRead.opticalDuplicatePixelDistance, finder.opticalDuplicatePixelDistance);
+    }
+
+    public static class TestGATKRegistrator implements KryoRegistrator {
+        @SuppressWarnings("unchecked")
+        @Override
+        public void registerClasses(Kryo kryo) {
+            kryo.register(SAMRecord.class, new SAMRecordSerializer());
+        }
+    }
+
 
 }

@@ -1,6 +1,14 @@
 package org.broadinstitute.hellbender.utils.read.markduplicates;
 
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
+import org.broadinstitute.hellbender.tools.spark.pathseq.PSKmerBloomFilter;
 import picard.sam.markduplicates.util.OpticalDuplicateFinder;
+
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
 
 /**
