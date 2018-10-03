@@ -1,5 +1,5 @@
 # An unsupported workflow for post-processing CNV calls and making the files IGV- and absolute-compatible.
-
+#  Additionally, this will also create one seg file (compatible with IGV) for all samples specified.
 import "combine_tracks.wdl" as CombineTracks
 import "aggregate_combined_tracks.wdl" as AggregateCombineTracks
 
