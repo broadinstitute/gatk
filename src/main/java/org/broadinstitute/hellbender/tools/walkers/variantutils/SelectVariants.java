@@ -518,7 +518,12 @@ public final class SelectVariants extends VariantWalker {
         }
         if (!infoFieldsToDrop.isEmpty()) {
             for (String infoField : infoFieldsToDrop) {
-                logger.info("Will drop info field: " + infoField);
+                logger.info("Will drop info annotation: " + infoField);
+            }
+        }
+        if (!genotypeAnnotationsToDrop.isEmpty()) {
+            for (String genotypeAnnotation : genotypeAnnotationsToDrop) {
+                logger.info("Will drop genotype annotation: " + genotypeAnnotation);
             }
         }
 
