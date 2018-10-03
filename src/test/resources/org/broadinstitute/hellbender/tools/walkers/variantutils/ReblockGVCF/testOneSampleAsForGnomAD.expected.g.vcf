@@ -1,0 +1,36 @@
+##fileformat=VCFv4.2
+##ALT=<ID=NON_REF,Description="Represents any possible alternative allele at this location">
+##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=MIN_DP,Number=1,Type=Integer,Description="Minimum DP observed within the GVCF block">
+##FORMAT=<ID=MIN_GQ,Number=1,Type=Integer,Description="Minimum GQ observed within the GVCF block">
+##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
+##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fisher's Exact Test to detect strand bias.">
+##GVCFBlock0-20=minGQ=0(inclusive),maxGQ=20(exclusive)
+##GVCFBlock20-100=minGQ=20(inclusive),maxGQ=100(exclusive)
+##INFO=<ID=BLOCK_SIZE,Number=1,Type=Integer,Description="Size of the homozygous reference GVCF block">
+##INFO=<ID=BaseQRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt Vs. Ref base qualities">
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
+##INFO=<ID=END,Number=1,Type=Integer,Description="Stop position of the interval">
+##INFO=<ID=MQ,Number=1,Type=Float,Description="RMS Mapping Quality">
+##INFO=<ID=MQ0,Number=1,Type=Integer,Description="Total Mapping Quality Zero Reads">
+##INFO=<ID=MQRankSum,Number=1,Type=Float,Description="Z-score From Wilcoxon rank sum test of Alt vs. Ref read mapping qualities">
+##INFO=<ID=MQ_DP,Number=1,Type=Integer,Description="Depth over variant samples for better MQ calculation">
+##INFO=<ID=QUALapprox,Number=1,Type=Integer,Description="Sum of PL[0] values; used to approximate the QUAL score">
+##INFO=<ID=ReadPosRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt vs. Ref read position bias">
+##INFO=<ID=VarDP,Number=1,Type=Integer,Description="(informative) depth over variant genotypes">
+##contig=<ID=chr20,length=64444167,assembly=Homo_sapiens_assembly38.fasta>
+##source=SelectVariants
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA1
+chr20	69485	.	G	<NON_REF>	.	.	END=69510	GT:DP:GQ:MIN_DP:PL	0/0:94:99:94:0,120,1800
+chr20	69511	.	A	G,<NON_REF>	2255.77	.	DP=82;MQ=31.05;MQRankSum=-0.866;MQ_DP=82;QUALapprox=2284;ReadPosRankSum=1.689;VarDP=80	GT:AD:DP:GQ:PL:SB	1/1:1,79,0:80:99:2284,207,0,2287,237,2316:0,1,46,33
+chr20	69512	.	A	<NON_REF>	.	.	END=69521	GT:DP:GQ:MIN_DP:PL	0/0:96:99:96:0,120,1800
+chr20	69549	.	T	<NON_REF>	.	.	END=69634	GT:DP:GQ:MIN_DP:PL	0/0:6:16:6:0,16,90
+chr20	69635	.	A	T,<NON_REF>	0.06	.	DP=7;MQ=34.15;MQRankSum=1.300;MQ_DP=7;QUALapprox=10;ReadPosRankSum=1.754;VarDP=7	GT:AD:DP:GQ:PL:SB	0/1:4,3,0:7:10:10,0,119,101,128,229:0,4,0,3
+chr20	69762	.	A	<NON_REF>	.	.	END=69762	GT:DP:GQ:MIN_DP:PL	0/0:7:18:7:0,18,270
+chr20	69763	.	A	<NON_REF>	.	.	END=69766	GT:DP:GQ:MIN_DP:PL	0/0:7:21:7:0,21,253
+chr20	69767	.	A	<NON_REF>	.	.	END=69770	GT:DP:GQ:MIN_DP:PL	0/0:7:12:7:0,12,180
+chr20	69771	.	TAAAAA	T,<NON_REF>	0.61	.	DP=7;MQ=34.15;MQRankSum=1.300;MQ_DP=7;QUALapprox=20;ReadPosRankSum=1.754;VarDP=7	GT:AD:DP:GQ:PL:SB	0/1:4,3,0:7:20:20,0,119,101,128,229:0,4,0,3
+chr20	69785	.	T	G,<NON_REF>	2255.77	.	DP=82;MQ=31.05;MQRankSum=-0.866;MQ_DP=82;QUALapprox=2284;ReadPosRankSum=1.689;VarDP=80	GT:DP:GQ:PL:SB	1/1:80:99:2284,207,0,2287,237,2316:0,1,46,33

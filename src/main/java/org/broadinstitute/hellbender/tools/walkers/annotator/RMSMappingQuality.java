@@ -53,12 +53,12 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
 
     @Override
     public List<VCFInfoHeaderLine> getDescriptions() {
-        return Arrays.asList(VCFStandardHeaderLines.getInfoLine(getKeyNames().get(0)), GATKVCFHeaderLines.getInfoLine(getRawKeyName()));
+        return Arrays.asList(VCFStandardHeaderLines.getInfoLine(getKeyNames().get(0)));
     }
 
     @Override
     public List<VCFInfoHeaderLine> getRawDescriptions() {
-        return getDescriptions();
+        return Arrays.asList(GATKVCFHeaderLines.getInfoLine(getRawKeyName()));
     }
 
     /**

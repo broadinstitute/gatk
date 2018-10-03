@@ -38,9 +38,9 @@ public final class RMSMappingQualityUnitTest {
     @Test
     public void testDescriptions() throws Exception {
         final InfoFieldAnnotation cov = new RMSMappingQuality();
-        Assert.assertEquals(cov.getDescriptions().size(), 2);
+        Assert.assertEquals(cov.getDescriptions().size(), 1);
         Assert.assertEquals(cov.getDescriptions().get(0).getID(), VCFConstants.RMS_MAPPING_QUALITY_KEY);
-        Assert.assertEquals(cov.getDescriptions().get(1).getID(), GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY);
+        Assert.assertEquals(((RMSMappingQuality)cov).getRawDescriptions().get(0).getID(), GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY);
         Assert.assertEquals(new RMSMappingQuality().getRawKeyName(), GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY);
         Assert.assertEquals(new RMSMappingQuality().getKeyNames(), Sets.newHashSet(VCFConstants.RMS_MAPPING_QUALITY_KEY, GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY));
     }
@@ -54,7 +54,7 @@ public final class RMSMappingQualityUnitTest {
         Assert.assertTrue(annotate.isEmpty());
 
         Assert.assertEquals(cov.getDescriptions().get(0).getID(), VCFConstants.RMS_MAPPING_QUALITY_KEY);
-        Assert.assertEquals(cov.getDescriptions().get(1).getID(), GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY);
+        Assert.assertEquals(((RMSMappingQuality)cov).getRawDescriptions().get(0).getID(), GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY);
         Assert.assertEquals(cov.getDescriptions().get(0).getID(), VCFConstants.RMS_MAPPING_QUALITY_KEY);
     }
 

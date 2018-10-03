@@ -106,6 +106,17 @@ final class HomRefBlock implements Locatable {
      * @param genotype A non-null Genotype with GQ and DP attributes
      */
     public void add(final int pos, final Genotype genotype) {
+        add(pos, pos, genotype);
+    }
+
+    /**
+     * Add a homRef block to the current block
+     *
+     * @param pos current genomic position
+     * @param newEnd new calculated block end position
+     * @param genotype A non-null Genotype with GQ and DP attributes
+     */
+    public void add(final int pos, final int newEnd, final Genotype genotype) {
         Utils.nonNull(genotype, "genotype cannot be null");
         if ( ! genotype.hasPL() ) { throw new IllegalArgumentException("genotype must have PL field");}
         if ( pos != end + 1 ) { throw new IllegalArgumentException("adding genotype at pos " + pos + " isn't contiguous with previous end " + end); }
@@ -144,7 +155,7 @@ final class HomRefBlock implements Locatable {
             }
         }
 
-        end = pos;
+        end = newEnd;
         DPs.add(Math.max(genotype.getDP(), 0)); // DP must be >= 0
     }
 
@@ -186,7 +197,7 @@ final class HomRefBlock implements Locatable {
     }
 
     public boolean isContiguous(final VariantContext vc) {
-        return (vc.getEnd() == getEnd() + 1) && startingVC.getContig().equals(vc.getContig());
+        return (vc.getStart() == getEnd() + 1) && startingVC.getContig().equals(vc.getContig());
     }
 
     public VariantContext getStartingVC() {
