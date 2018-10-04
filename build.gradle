@@ -167,14 +167,9 @@ configurations.all {
     all*.exclude group: 'junit', module: 'junit'
 }
 
-//NOTE: we ignore contracts for now
-compileJava {
+tasks.withType(JavaCompile) {
   options.compilerArgs = ['-proc:none', '-Xlint:all', '-Werror', '-Xdiags:verbose']
 }
-compileTestJava {
-  options.compilerArgs = ['-proc:none', '-Xlint:all', '-Werror', '-Xdiags:verbose']
-}
-
 
 sourceSets {
     testUtils
