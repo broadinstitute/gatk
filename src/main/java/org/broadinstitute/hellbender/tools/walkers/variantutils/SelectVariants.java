@@ -620,10 +620,10 @@ public final class SelectVariants extends VariantWalker {
                     rmAnnotationsBuilder.rmAttribute(infoField);
                 }
 
-                ArrayList<Genotype> genotypesToWrite = new ArrayList<>();
+                final ArrayList<Genotype> genotypesToWrite = new ArrayList<>();
                 for (Genotype genotype : filteredGenotypeToNocall.getGenotypes()) {
                     final GenotypeBuilder genotypeBuilder = new GenotypeBuilder(genotype).noAttributes();
-                    Map<String, Object> attributes = new HashMap<>(genotype.getExtendedAttributes());
+                    final Map<String, Object> attributes = new HashMap<>(genotype.getExtendedAttributes());
                     for (String genotypeAnnotation : genotypeAnnotationsToDrop) {
                         attributes.remove(genotypeAnnotation);
                     }
