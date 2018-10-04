@@ -891,13 +891,13 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test(dataProvider = "dropAnnotationsDataProvider")
-    public void testDropAnnotations(String args, String expectedFile, String name) throws IOException {
+    public void testDropAnnotations(String args, String expectedFile, String testName) throws IOException {
         final String testFile = getToolTestDataDir() + "vcfexample2.vcf";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
                 baseTestString(args, testFile),
                 Collections.singletonList(getToolTestDataDir() + "expected/" + expectedFile)
         );
-        spec.executeTest("testDropAnnotations--" + name, this);
+        spec.executeTest("testDropAnnotations--" + testName, this);
     }
 }

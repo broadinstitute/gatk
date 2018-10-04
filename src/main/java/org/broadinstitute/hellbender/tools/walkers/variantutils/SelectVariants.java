@@ -403,13 +403,13 @@ public final class SelectVariants extends VariantWalker {
     /**
      * Info annotation fields to be dropped
      */
-    @Argument(fullName = "drop-annotation", shortName = "DA", optional = true, doc = "Set info fields to drop from output vcf")
-    private List<String> infoFieldsToDrop = new ArrayList<>();
+    @Argument(fullName = "drop-info-annotation", shortName = "DA", optional = true, doc = "Info annotations to drop from output vcf")
+    private List<String> infoAnnotationsToDrop = new ArrayList<>();
 
     /**
      * Genotype annotation fields to be dropped
      */
-    @Argument(fullName = "drop-genotype-annotation", shortName = "DGA", optional = true, doc = "Set genotype annotations to drop from output vcf")
+    @Argument(fullName = "drop-genotype-annotation", shortName = "DGA", optional = true, doc = "Genotype annotations to drop from output vcf")
     private List<String> genotypeAnnotationsToDrop = new ArrayList<>();
 
     @Hidden
@@ -516,14 +516,14 @@ public final class SelectVariants extends VariantWalker {
                 actualLines = headerLines;
             }
         }
-        if (!infoFieldsToDrop.isEmpty()) {
-            for (String infoField : infoFieldsToDrop) {
-                logger.info("Will drop info annotation: " + infoField);
+        if (!infoAnnotationsToDrop.isEmpty()) {
+            for (final String infoField : infoAnnotationsToDrop) {
+                logger.info(String.format("Will drop info annotation: %s",infoField));
             }
         }
         if (!genotypeAnnotationsToDrop.isEmpty()) {
-            for (String genotypeAnnotation : genotypeAnnotationsToDrop) {
-                logger.info("Will drop genotype annotation: " + genotypeAnnotation);
+            for (final String genotypeAnnotation : genotypeAnnotationsToDrop) {
+                logger.info(String.format("Will drop genotype annotation: %s",genotypeAnnotation));
             }
         }
 
@@ -587,24 +587,6 @@ public final class SelectVariants extends VariantWalker {
         }
         final VariantContext filteredGenotypeToNocall = setFilteredGenotypesToNocall ? builder.make(): sub;
 
-        final VariantContextBuilder rmAnnotationsBuilder = new VariantContextBuilder(filteredGenotypeToNocall);
-        for (String infoField : infoFieldsToDrop) {
-            rmAnnotationsBuilder.rmAttribute(infoField);
-        }
-
-        ArrayList<Genotype> genotypesToWrite = new ArrayList<>();
-        for (Genotype genotype : filteredGenotypeToNocall.getGenotypes()) {
-            final GenotypeBuilder genotypeBuilder = new GenotypeBuilder(genotype).noAttributes();
-            Map<String, Object> attributes = new HashMap<>(genotype.getExtendedAttributes());
-            for (String genotypeAnnotation : genotypeAnnotationsToDrop) {
-                    attributes.remove(genotypeAnnotation);
-            }
-            genotypeBuilder.attributes(attributes);
-            genotypesToWrite.add(genotypeBuilder.make());
-        }
-        rmAnnotationsBuilder.genotypes(GenotypesContext.create(genotypesToWrite));
-        final VariantContext variantContextToWrite = rmAnnotationsBuilder.make();
-
         // Not excluding non-variants OR (subsetted polymorphic variants AND not spanning deletion) AND (including filtered loci OR subsetted variant) is not filtered
         // If exclude non-variants argument is not called, filtering will NOT occur.
         // If exclude non-variants is called, and a spanning deletion exists, the spanning deletion will be filtered
@@ -632,6 +614,24 @@ public final class SelectVariants extends VariantWalker {
 
             if (!failedJexlMatch &&
                     (!selectRandomFraction || Utils.getRandomGenerator().nextDouble() < fractionRandom)) {
+                //remove annotations being dropped and write variantcontext
+                final VariantContextBuilder rmAnnotationsBuilder = new VariantContextBuilder(filteredGenotypeToNocall);
+                for (String infoField : infoAnnotationsToDrop) {
+                    rmAnnotationsBuilder.rmAttribute(infoField);
+                }
+
+                ArrayList<Genotype> genotypesToWrite = new ArrayList<>();
+                for (Genotype genotype : filteredGenotypeToNocall.getGenotypes()) {
+                    final GenotypeBuilder genotypeBuilder = new GenotypeBuilder(genotype).noAttributes();
+                    Map<String, Object> attributes = new HashMap<>(genotype.getExtendedAttributes());
+                    for (String genotypeAnnotation : genotypeAnnotationsToDrop) {
+                        attributes.remove(genotypeAnnotation);
+                    }
+                    genotypeBuilder.attributes(attributes);
+                    genotypesToWrite.add(genotypeBuilder.make());
+                }
+                rmAnnotationsBuilder.genotypes(GenotypesContext.create(genotypesToWrite));
+                final VariantContext variantContextToWrite = rmAnnotationsBuilder.make();
                 vcfWriter.add(variantContextToWrite);
             }
         }
@@ -817,20 +817,8 @@ public final class SelectVariants extends VariantWalker {
         headerLines.add(VCFStandardHeaderLines.getInfoLine(VCFConstants.DEPTH_KEY));
 
         //remove header lines for info field and genotype annotations being dropped
-        List<VCFHeaderLine> headerLinesToRemove = new ArrayList<>();
-        List<VCFInfoHeaderLine> infoHeaderLines = headerLines.stream().filter(l -> l instanceof VCFInfoHeaderLine).map(l -> (VCFInfoHeaderLine) l).collect(Collectors.toList());
-        for (VCFInfoHeaderLine infoHeaderLine : infoHeaderLines) {
-            if (infoFieldsToDrop.contains(infoHeaderLine.getID())) {
-                headerLinesToRemove.add(infoHeaderLine);
-            }
-        }
-        List<VCFFormatHeaderLine> formatHeaderLines = headerLines.stream().filter(l -> l instanceof VCFFormatHeaderLine).map(l -> (VCFFormatHeaderLine) l).collect(Collectors.toList());
-        for (VCFFormatHeaderLine formatHeaderLine : formatHeaderLines) {
-            if (genotypeAnnotationsToDrop.contains(formatHeaderLine.getID())) {
-                headerLinesToRemove.add(formatHeaderLine);
-            }
-        }
-        headerLines.removeAll(headerLinesToRemove);
+        headerLines.removeIf(l->l instanceof VCFInfoHeaderLine && infoAnnotationsToDrop.contains(((VCFInfoHeaderLine)l).getID()));
+        headerLines.removeIf(l->l instanceof VCFFormatHeaderLine && genotypeAnnotationsToDrop.contains(((VCFFormatHeaderLine)l).getID()));
 
         return headerLines;
     }
