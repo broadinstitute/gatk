@@ -673,7 +673,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             //TODO - why the activeRegion cannot manage its own one-time finalization and filtering?
             //TODO - perhaps we can remove the last parameter of this method and the three lines bellow?
             if ( needsToBeFinalized ) {
-                finalizeRegion(region);
+                AssemblyBasedCallerUtils.finalizeRegion(region, hcArgs.errorCorrectReads, hcArgs.dontUseSoftClippedBases, minTailQuality, readsHeader, samplesList, ! hcArgs.doNotCorrectOverlappingBaseQualities);
             }
             filterNonPassingReads(region);
 
@@ -721,10 +721,6 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         }
 
 
-    }
-
-    private void finalizeRegion(final AssemblyRegion region) {
-        AssemblyBasedCallerUtils.finalizeRegion(region, hcArgs.errorCorrectReads, hcArgs.dontUseSoftClippedBases, minTailQuality, readsHeader, samplesList);
     }
 
     private Set<GATKRead> filterNonPassingReads( final AssemblyRegion activeRegion ) {

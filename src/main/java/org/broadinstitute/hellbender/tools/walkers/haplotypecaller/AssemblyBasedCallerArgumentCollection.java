@@ -24,6 +24,7 @@ public abstract class AssemblyBasedCallerArgumentCollection extends StandardCall
 
     public static final String MIN_BASE_QUALITY_SCORE_LONG_NAME = "min-base-quality-score";
     public static final String SMITH_WATERMAN_LONG_NAME = "smith-waterman";
+    public static final String CORRECT_OVERLAPPING_BASE_QUALITIES_LONG_NAME = "correct-overlapping-quality";
 
     @ArgumentCollection
     public AssemblyRegionTrimmerArgumentCollection assemblyRegionTrimmerArgs = new AssemblyRegionTrimmerArgumentCollection();
@@ -122,5 +123,8 @@ public abstract class AssemblyBasedCallerArgumentCollection extends StandardCall
     @Advanced
     @Argument(fullName = SMITH_WATERMAN_LONG_NAME, doc = "Which Smith-Waterman implementation to use, generally FASTEST_AVAILABLE is the right choice", optional = true)
     public SmithWatermanAligner.Implementation smithWatermanImplementation = SmithWatermanAligner.Implementation.JAVA;
+
+    @Argument(fullName = CORRECT_OVERLAPPING_BASE_QUALITIES_LONG_NAME)
+    public boolean doNotCorrectOverlappingBaseQualities = false;
 
 }

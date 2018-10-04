@@ -16,7 +16,6 @@ import java.util.*;
 
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
-import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
@@ -53,7 +52,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         activeRegion.addAll(reads);
         SampleList sampleList = SampleList.singletonSampleList("tumor");
         Byte minbq = 9;
-        AssemblyBasedCallerUtils.finalizeRegion(activeRegion, false, false, minbq, header, sampleList);
+        AssemblyBasedCallerUtils.finalizeRegion(activeRegion, false, false, minbq, header, sampleList, false);
 
         // make sure reads are not changed due to finalizeRegion()
         Assert.assertTrue(reads.get(0).convertToSAMRecord(header).equals(orgRead0));
