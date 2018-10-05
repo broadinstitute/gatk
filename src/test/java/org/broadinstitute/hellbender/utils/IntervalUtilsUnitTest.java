@@ -2146,6 +2146,9 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
                 {new SimpleInterval("1", 1, 100), new SimpleInterval("1", 1, 50), 0.51, false},
                 {new SimpleInterval("1", 1, 100), new SimpleInterval("1", 1, 50), 0.49, true},
                 {new SimpleInterval("1", 1, 50), new SimpleInterval("1", 51, 100), 0., true},
+                {new SimpleInterval("1", 1, 50), new SimpleInterval("1", 51, 100), 1.0, false},
+                {new SimpleInterval("1", 51, 100), new SimpleInterval("1", 51, 100), 1.0, true},
+                {new SimpleInterval("1", 51, 100), new SimpleInterval("1", 51, 101), 1.0, false},
 
                 // Contig difference -- always false, unless threshold is zero
                 {new SimpleInterval("2", 1, 100), new SimpleInterval("1", 1, 50), 0.5, false},
