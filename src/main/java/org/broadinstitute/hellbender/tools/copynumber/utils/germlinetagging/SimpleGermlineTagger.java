@@ -92,8 +92,7 @@ public class SimpleGermlineTagger {
 
             final List<AnnotatedInterval> mergedTumorSegments = mergedRegionsByAnnotation(callAnnotation, overlappingTumorSegments);
             final boolean isReciprocalOverlapSeen = mergedTumorSegments.stream()
-                .anyMatch(s -> (normalSeg.getInterval().intersect(s).size() > (s.getInterval().size() * reciprocalThreshold)) &&
-                        (s.getInterval().intersect(normalSeg).size() > (normalSeg.getInterval().size() * reciprocalThreshold)));
+                .anyMatch(s -> IntervalUtils.isReciprocalOverlap(s.getInterval(), normalSeg.getInterval(), reciprocalThreshold));
 
             final boolean isStartPositionSeen = overlappingTumorSegments.stream()
                     .anyMatch(s -> Math.abs(s.getStart() - normalSeg.getStart()) <= paddingInBp);
