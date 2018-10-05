@@ -1519,14 +1519,14 @@ public final class IntervalUtils {
      *
      * @param interval1 Never {@code null}
      * @param interval2 Never {@code null}
-     * @param reciprocalOverlapThreshold proportion of the segments that must overlap.  Must be positive or zero.
+     * @param reciprocalOverlapThreshold proportion of the segments that must overlap.  Must be between 0.0 and 1.0 (inclusive).
      * @return whether there is a reciprocal overlap exceeding the given threshold.  If reciprocalOverlapThreshold is 0,
      * always returns true, even if intervals do not overlap.
      */
     public static boolean isReciprocalOverlap(final SimpleInterval interval1, final SimpleInterval interval2, final double reciprocalOverlapThreshold) {
         Utils.nonNull(interval1);
         Utils.nonNull(interval2);
-        ParamUtils.isPositiveOrZero(reciprocalOverlapThreshold, "Reciprocal threshold was negative.");
+        ParamUtils.inRange(reciprocalOverlapThreshold, 0.0, 1.0, "Reciprocal threshold must be between 0.0 and 1.0.");
 
         if (reciprocalOverlapThreshold == 0.) {
             return true;
