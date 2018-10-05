@@ -44,9 +44,6 @@ import java.util.concurrent.CompletionException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.broadinstitute.hellbender.engine.FeatureDataSource.getFieldNameToListIndexInProtobufVidMappingObject;
-import static org.broadinstitute.hellbender.engine.FeatureDataSource.updateINFOFieldCombineOperation;
-
 @Test(groups = {"variantcalling"})
 public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTest {
     private static final String HG_00096 = largeFileTestDir + "gvcfs/HG00096.g.vcf.gz";
@@ -816,15 +813,15 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
                .setGenerateArrayNameFromPartitionBounds(true);
         GenomicsDBVidMapProto.VidMappingPB vidMapPB = null;
         try {
-            vidMapPB = FeatureDataSource.getProtobufVidMappingFromJsonFile(new File(workspace, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME));
+            vidMapPB = GenomicsDBUtils.getProtobufVidMappingFromJsonFile(new File(workspace, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME));
         }
         catch (final IOException e) {
             throw new UserException("Could not open vid json file "+GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME, e);
         }
         HashMap<String, Integer> fieldNameToIndexInVidFieldsList =
-                getFieldNameToListIndexInProtobufVidMappingObject(vidMapPB);
+                GenomicsDBUtils.getFieldNameToListIndexInProtobufVidMappingObject(vidMapPB);
 
-        vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
+        vidMapPB = GenomicsDBUtils.updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
                 GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY, "element_wise_sum");
 
         if(vidMapPB != null) {
