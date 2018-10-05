@@ -69,6 +69,7 @@ public final class CalledSVGraphEvent {
     }
 
     public String bedString(final SAMSequenceDictionary dictionary) {
+        Utils.nonNull(dictionary, "Dictionary cannot be null");
         final SimpleInterval simpleInterval = SVIntervalUtils.convertToSimpleInterval(interval, dictionary);
         return simpleInterval.getContig() + "\t" + simpleInterval.getStart() + "\t" + simpleInterval.getEnd() + "\t" +
                 getType().toString() + "\t" + getInterval().getLength() + "\t" + getGroupId() + "\t" + getPathId();
