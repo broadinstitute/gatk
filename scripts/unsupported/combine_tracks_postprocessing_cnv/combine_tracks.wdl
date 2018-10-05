@@ -132,7 +132,8 @@ workflow CombineTracksWorkflow {
     call PrototypeACSConversion {
         input:
             model_seg = MergeSegmentByAnnotation.cnv_merged_seg,
-            af_param = af_param
+            af_param = af_param,
+            docker = gatk_docker
     }
 
     call IGVConvert as IGVConvertMergedTumorOutput {
@@ -409,6 +410,7 @@ task MergeSegmentByAnnotation {
 task PrototypeACSConversion {
     File model_seg
     File af_param
+    String docker
     Float? maf90_threshold
     String output_filename = basename(model_seg) + ".acs.seg"
     String output_skew_filename = output_filename + ".skew"
@@ -539,7 +541,7 @@ EOF
     >>>
 
     runtime {
-        docker: "continuumio/anaconda"
+        docker: docker
         memory: "2000 MB"
         disks: "local-disk 100 HDD"
         preemptible: 3
