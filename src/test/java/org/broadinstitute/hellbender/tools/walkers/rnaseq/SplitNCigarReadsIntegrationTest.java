@@ -91,15 +91,4 @@ public final class SplitNCigarReadsIntegrationTest extends CommandLineProgramTes
                 Arrays.asList(largeFileTestDir + "expected.NA12878.RNAseq.splitNcigarReads.noSecondaryAlignments.bam"));
         spec.executeTest("test splits with overhangs", this);
     }
-
-    @Test
-    public void test()  throws Exception {
-        final ArgumentsBuilder args = new ArgumentsBuilder()
-                .addReference(new File("splitNCigarReads/hg19.fa"))
-                .addInput(new File("splitNCigarReads/test4.bam"))
-                .addOutput(createTempFile("largeSplitNCigarReadsTest",".bam"));
-        //Just make sure this doesn't fail with NoClassDefFoundError
-        runCommandLine(args);
-
-    }
 }
