@@ -45,12 +45,14 @@ workflow MultiCombineTracks {
                     group_id = group_id,
                     tumor_with_germline_filtered_segs = CombineTracksWorkflow.cnv_postprocessing_tumor_with_tracks_filtered_merged_seg,
                     normals_igv_compat = CombineTracksWorkflow.cnv_postprocessing_normal_igv_compat,
-                    tumors_igv_compat = CombineTracksWorkflow.cnv_postprocessing_tumor_igv_compat
+                    tumors_igv_compat = CombineTracksWorkflow.cnv_postprocessing_tumor_igv_compat,
+                    tumors_gistic2_compat = CombineTracksWorkflow.cnv_postprocessing_tumor_with_tracks_filtered_merged_seg_gistic2
         }
         output {
             File tumor_with_germline_filtered_segs = Aggregate.cnv_postprocessing_aggregated_tumors_post
             File normals_igv_compat = Aggregate.cnv_postprocessing_aggregated_normals
             File tumors_igv_compat = Aggregate.cnv_postprocessing_aggregated_tumors_pre
+            File tumor_with_germline_filtered_segs_gistic2 = Aggregate.cnv_postprocessing_aggregated_tumors_post_gistic2
             Array[File] tumor_acs_compat = CombineTracksWorkflow.cnv_postprocessing_tumor_acs_seg
             Array[File] tumor_acs_skew = CombineTracksWorkflow.cnv_postprocessing_tumor_acs_skew
         }
