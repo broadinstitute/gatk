@@ -5,8 +5,8 @@
 #
 # - The intervals argument is required for both WGS and WES workflows and accepts formats compatible with the
 #   GATK -L argument (see https://gatkforums.broadinstitute.org/gatk/discussion/11009/intervals-and-interval-lists).
-#   These intervals will be padded on both sides by the amount specified by PreprocessIntervals.padding (default 250)
-#   and split into bins of length specified by PreprocessIntervals.bin_length (default 1000; specify 0 to skip binning,
+#   These intervals will be padded on both sides by the amount specified by padding (default 250)
+#   and split into bins of length specified by bin_length (default 1000; specify 0 to skip binning,
 #   e.g., for WES).  For WGS, the intervals should simply cover the chromosomes of interest.
 #
 # - Intervals can be blacklisted from coverage collection and all downstream steps by using the blacklist_intervals

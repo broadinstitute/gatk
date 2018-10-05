@@ -2137,4 +2137,52 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         final List<List<SimpleInterval>> result = IntervalUtils.groupIntervalsByContig(inputIntervals);
         Assert.assertEquals(result, expectedResult);
     }
+
+    @DataProvider
+    public Object[][] provideReciprocalOverlapTestData(){
+        return new Object[][] {
+                // Simple, obvious tests
+                {new SimpleInterval("1", 1, 100), new SimpleInterval("1", 1, 50), 0.5, true},
+                {new SimpleInterval("1", 1, 100), new SimpleInterval("1", 1, 50), 0.51, false},
+                {new SimpleInterval("1", 1, 100), new SimpleInterval("1", 1, 50), 0.49, true},
+                {new SimpleInterval("1", 1, 50), new SimpleInterval("1", 51, 100), 0., true},
+                {new SimpleInterval("1", 1, 50), new SimpleInterval("1", 51, 100), 1.0, false},
+                {new SimpleInterval("1", 51, 100), new SimpleInterval("1", 51, 100), 1.0, true},
+                {new SimpleInterval("1", 51, 100), new SimpleInterval("1", 51, 101), 1.0, false},
+
+                // Contig difference -- always false, unless threshold is zero
+                {new SimpleInterval("2", 1, 100), new SimpleInterval("1", 1, 50), 0.5, false},
+                {new SimpleInterval("1", 1, 100), new SimpleInterval("2", 1, 50), 0.51, false},
+                {new SimpleInterval("1", 1, 100), new SimpleInterval("2", 1, 50), 0.49, false},
+                {new SimpleInterval("2", 1, 100), new SimpleInterval("1", 1, 50), 0., true},
+
+                // Total overlap
+                {new SimpleInterval("1", 2, 101), new SimpleInterval("1", 1, 500), 0.5, false},
+                {new SimpleInterval("1", 2, 101), new SimpleInterval("1", 1, 500), 0.1, true},
+                {new SimpleInterval("1", 2, 101), new SimpleInterval("1", 1, 500), 0.199999, true},
+                {new SimpleInterval("1", 2, 101), new SimpleInterval("1", 1, 500), 0.2, true},
+                {new SimpleInterval("1", 2, 101), new SimpleInterval("1", 1, 500), 0.21, false},
+
+                // Partial overlap -- low side
+                {new SimpleInterval("1", 51, 150), new SimpleInterval("1", 101, 600), 0.5, false},
+                {new SimpleInterval("1", 51, 150), new SimpleInterval("1", 101, 600), 0.1, true},
+                {new SimpleInterval("1", 51, 150), new SimpleInterval("1", 101, 600), 0.09, true},
+                {new SimpleInterval("1", 51, 150), new SimpleInterval("1", 101, 600), 0.11, false},
+
+                // Partial overlap -- high side
+                {new SimpleInterval("1", 551, 650), new SimpleInterval("1", 101, 600), 0.5, false},
+                {new SimpleInterval("1", 551, 650), new SimpleInterval("1", 101, 600), 0.1, true},
+                {new SimpleInterval("1", 551, 650), new SimpleInterval("1", 101, 600), 0.09, true},
+                {new SimpleInterval("1", 551, 650), new SimpleInterval("1", 101, 600), 0.11, false},
+        };
+    }
+
+    /**
+     * Also tests that the reciprocal overlap is commutative.
+     */
+    @Test(dataProvider = "provideReciprocalOverlapTestData")
+    public void testIsReciprocalOverlap(final SimpleInterval interval1, final SimpleInterval interval2, final double reciprocalThreshold, final boolean gt) {
+        Assert.assertEquals(IntervalUtils.isReciprocalOverlap(interval1, interval2, reciprocalThreshold), gt);
+        Assert.assertEquals(IntervalUtils.isReciprocalOverlap(interval2, interval1, reciprocalThreshold), gt);
+    }
 }

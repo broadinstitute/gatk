@@ -10,6 +10,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 public class AnnotatedIntervalUtilsUnitTest extends GATKBaseTest {
@@ -31,7 +32,7 @@ public class AnnotatedIntervalUtilsUnitTest extends GATKBaseTest {
                                 ImmutableSortedMap.of("Foo", "bar", "Foo1", "bar1")),
                         new AnnotatedInterval( new SimpleInterval("1", 100, 200),
                                 ImmutableSortedMap.of("Foo", "bar", "Foo1", "bar1"))),
-                Arrays.asList(
+                Collections.singletonList(
                         new AnnotatedInterval( new SimpleInterval("1", 100, 200),
                                 ImmutableSortedMap.of("Foo", "bar", "Foo1", "bar1")))
             }, {
@@ -88,4 +89,149 @@ public class AnnotatedIntervalUtilsUnitTest extends GATKBaseTest {
         };
     }
 
+    @DataProvider
+    public Object[][] provideMergeByAnnotation() {
+        return new Object[][] {
+                {
+                    Arrays.asList(
+                            new AnnotatedInterval( new SimpleInterval("1", 100000, 200000),
+                                ImmutableSortedMap.of("Foo", "1234", "Bar", "abcd", "Baz", "wxyz")),
+                            new AnnotatedInterval( new SimpleInterval("1", 200001, 300000),
+                                ImmutableSortedMap.of("Foo", "1234", "Bar", "abcd", "Baz", "wxyz"))
+                    ), Arrays.asList("Foo", "Baz"), 100000,
+                        Collections.singletonList(
+                            new AnnotatedInterval( new SimpleInterval("1", 100000, 300000),
+                                    ImmutableSortedMap.of("Foo", "1234", "Bar", "abcd", "Baz", "wxyz"))
+                    )
+                }, {
+                    Collections.singletonList(
+                            new AnnotatedInterval( new SimpleInterval("1", 100000, 200000),
+                                ImmutableSortedMap.of("Foo", "1234", "Bar", "abcd", "Baz", "wxyz"))
+                    ), Arrays.asList("Foo", "Baz"), 100000,
+                    Collections.singletonList(
+                            new AnnotatedInterval( new SimpleInterval("1", 100000, 200000),
+                                    ImmutableSortedMap.of("Foo", "1234", "Bar", "abcd", "Baz", "wxyz"))
+                    )
+                }, {
+                    Arrays.asList(
+                            new AnnotatedInterval( new SimpleInterval("1", 200001, 300000),
+                                    ImmutableSortedMap.of("Foo", "1234", "Bar", "abcd", "Baz", "wxyz")),
+                            new AnnotatedInterval( new SimpleInterval("1", 100000, 200000),
+                                ImmutableSortedMap.of("Foo", "1234", "Bar", "abcd", "Baz", "wxyz"))
+
+                    ), Arrays.asList("Foo", "Baz"), 100000,
+                    Collections.singletonList(
+                            new AnnotatedInterval( new SimpleInterval("1", 100000, 300000),
+                                    ImmutableSortedMap.of("Foo", "1234", "Bar", "abcd", "Baz", "wxyz"))
+                    )
+                }, {
+                    Arrays.asList(
+                            new AnnotatedInterval( new SimpleInterval("1", 100000, 200000),
+                                ImmutableSortedMap.of("Foo", "1234", "Bar", "abcd", "Baz", "wxyz")),
+                            new AnnotatedInterval( new SimpleInterval("1", 200001, 300000),
+                                ImmutableSortedMap.of("Foo", "1234", "Bar", "abcd", "Baz", "wxyz"))
+                    ), Arrays.asList("Foo", "Baz"), 1,
+                    Collections.singletonList(
+                            new AnnotatedInterval( new SimpleInterval("1", 100000, 300000),
+                                    ImmutableSortedMap.of("Foo", "1234", "Bar", "abcd", "Baz", "wxyz"))
+                    )
+                }, {
+                    Arrays.asList(
+                            new AnnotatedInterval( new SimpleInterval("1", 100000, 200000),
+                                ImmutableSortedMap.of("Foo", "1234", "Bar", "abcd", "Baz", "wxyz")),
+                            new AnnotatedInterval( new SimpleInterval("1", 200002, 300000),
+                                ImmutableSortedMap.of("Foo", "1234", "Bar", "abcd", "Baz", "wxyz"))
+                    ), Arrays.asList("Foo", "Baz"), 1,
+                    Arrays.asList(
+                            new AnnotatedInterval( new SimpleInterval("1", 100000, 200000),
+                                    ImmutableSortedMap.of("Foo", "1234", "Bar", "abcd", "Baz", "wxyz")),
+                            new AnnotatedInterval( new SimpleInterval("1", 200002, 300000),
+                                    ImmutableSortedMap.of("Foo", "1234", "Bar", "abcd", "Baz", "wxyz"))
+                    )
+                }, {
+                    Arrays.asList(
+                            new AnnotatedInterval( new SimpleInterval("1", 100000, 200000),
+                                ImmutableSortedMap.of("Foo", "1234", "Bar", "abcd", "Baz", "wxyz")),
+                            new AnnotatedInterval( new SimpleInterval("1", 200001, 300000),
+                                ImmutableSortedMap.of("Foo", "1234", "Bar", "abcde", "Baz", "wxyz"))
+                    ), Arrays.asList("Foo", "Baz"), 100000,
+                    Collections.singletonList(
+                            new AnnotatedInterval( new SimpleInterval("1", 100000, 300000),
+                                    ImmutableSortedMap.of("Foo", "1234", "Bar", "abcd__abcde", "Baz", "wxyz"))
+                    )
+                }, {
+                    Arrays.asList(
+                            new AnnotatedInterval( new SimpleInterval("1", 100000, 200000),
+                                ImmutableSortedMap.of("Foo", "1234", "Bar", "abcd", "Baz", "wxyz")),
+                            new AnnotatedInterval( new SimpleInterval("1", 250001, 300000),
+                                ImmutableSortedMap.of("Foo", "1234", "Bar", "abcde", "Baz", "wxyz"))
+                    ), Arrays.asList("Foo", "Baz"), 100000,
+                    Collections.singletonList(
+                            new AnnotatedInterval( new SimpleInterval("1", 100000, 300000),
+                                    ImmutableSortedMap.of("Foo", "1234", "Bar", "abcd__abcde", "Baz", "wxyz"))
+                    )
+                }, {
+                    Arrays.asList(
+                            new AnnotatedInterval( new SimpleInterval("1", 100000, 200000),
+                                ImmutableSortedMap.of("Foo", "1234", "Bar", "abcd", "Baz", "wxyz")),
+                            new AnnotatedInterval( new SimpleInterval("1", 250001, 300000),
+                                ImmutableSortedMap.of("Foo", "1234", "Bar", "abcde", "Baz", "wxyz"))
+                    ), Arrays.asList("Foo", "Baz"), 10000,
+                    Arrays.asList(
+                            new AnnotatedInterval( new SimpleInterval("1", 100000, 200000),
+                                    ImmutableSortedMap.of("Foo", "1234", "Bar", "abcd", "Baz", "wxyz")),
+                            new AnnotatedInterval( new SimpleInterval("1", 250001, 300000),
+                                    ImmutableSortedMap.of("Foo", "1234", "Bar", "abcde", "Baz", "wxyz"))
+                    )
+                }, {
+                    Arrays.asList(
+                            new AnnotatedInterval( new SimpleInterval("1", 100000, 200000),
+                                    ImmutableSortedMap.of("Foo", "1234", "Bar", "abcd", "Baz", "wxyz")),
+                            new AnnotatedInterval( new SimpleInterval("1", 250001, 300000),
+                                    ImmutableSortedMap.of("Foo", "1234", "Bar", "abcde", "Baz", "wxyzabc"))
+                    ), Arrays.asList("Foo", "Baz"), 100000,
+                    Arrays.asList(
+                            new AnnotatedInterval( new SimpleInterval("1", 100000, 200000),
+                                    ImmutableSortedMap.of("Foo", "1234", "Bar", "abcd", "Baz", "wxyz")),
+                            new AnnotatedInterval( new SimpleInterval("1", 250001, 300000),
+                                    ImmutableSortedMap.of("Foo", "1234", "Bar", "abcde", "Baz", "wxyzabc"))
+                    )
+                }, {
+                    Arrays.asList(
+                            new AnnotatedInterval( new SimpleInterval("1", 100000, 200000),
+                                    ImmutableSortedMap.of("Foo", "1234", "Bar", "abcd", "Baz", "wxyz")),
+                            new AnnotatedInterval( new SimpleInterval("1", 250001, 300000),
+                                    ImmutableSortedMap.of("Foo", "1234", "Bar", "abcd", "Baz", "wxyzabc"))
+                    ), Collections.singletonList("Foo"), 100000,
+                    Collections.singletonList(
+                            new AnnotatedInterval( new SimpleInterval("1", 100000, 300000),
+                                    ImmutableSortedMap.of("Foo", "1234", "Bar", "abcd", "Baz", "wxyz__wxyzabc"))
+                    )
+                }, {
+                    Arrays.asList(
+                            new AnnotatedInterval( new SimpleInterval("1", 100000, 200000),
+                                    ImmutableSortedMap.of("Foo", "1234", "Bar", "abcd", "Baz", "wxyz")),
+                            new AnnotatedInterval( new SimpleInterval("1", 250001, 300000),
+                                    ImmutableSortedMap.of("Foo", "1234", "Bar", "abcd", "Baz", "wxyzabc")),
+                            new AnnotatedInterval( new SimpleInterval("1", 350001, 300000),
+                                    ImmutableSortedMap.of("Foo", "5678", "Bar", "abcd", "Baz", "wxyzabc"))
+                    ), Collections.singletonList("Foo"), 100000,
+                    Arrays.asList(
+                            new AnnotatedInterval( new SimpleInterval("1", 100000, 300000),
+                                    ImmutableSortedMap.of("Foo", "1234", "Bar", "abcd", "Baz", "wxyz__wxyzabc")),
+                            new AnnotatedInterval( new SimpleInterval("1", 350001, 400000),
+                                    ImmutableSortedMap.of("Foo", "5678", "Bar", "abcd", "Baz", "wxyzabc"))
+                    )
+                }
+        };
+    }
+
+    @Test(dataProvider = "provideMergeByAnnotation")
+    public void testMergeByAnnotation(List<AnnotatedInterval> initialRegions, List<String> annotationNames,
+                                      int maxDistanceInBp, List<AnnotatedInterval> gtMergedRegions) {
+        final List<AnnotatedInterval> mergedRegions = AnnotatedIntervalUtils.mergeRegionsByAnnotation(initialRegions,
+                ReferenceUtils.loadFastaDictionary(new File(ReferenceUtils.getFastaDictionaryFileName(hg19MiniReference))),
+                annotationNames, t -> {}, "__", maxDistanceInBp);
+        Assert.assertEquals(mergedRegions, gtMergedRegions);
+    }
 }
