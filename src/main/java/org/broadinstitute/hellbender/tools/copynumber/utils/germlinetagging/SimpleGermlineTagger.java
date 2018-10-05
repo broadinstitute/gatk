@@ -91,7 +91,7 @@ public class SimpleGermlineTagger {
             final List<AnnotatedInterval> overlappingTumorSegments = nonZeroMergedNormalSegmentsToTumorSegments.get(normalSeg);
 
             final List<AnnotatedInterval> mergedTumorSegments = mergedRegionsByAnnotation(callAnnotation, overlappingTumorSegments);
-            final boolean isReciprocolOverlapSeen = mergedTumorSegments.stream()
+            final boolean isReciprocalOverlapSeen = mergedTumorSegments.stream()
                 .anyMatch(s -> (normalSeg.getInterval().intersect(s).size() > (s.getInterval().size() * reciprocalThreshold)) &&
                         (s.getInterval().intersect(normalSeg).size() > (normalSeg.getInterval().size() * reciprocalThreshold)));
 
@@ -100,7 +100,7 @@ public class SimpleGermlineTagger {
 
             final boolean isEndPositionSeen = overlappingTumorSegments.stream()
                     .anyMatch(s -> Math.abs(s.getEnd() - normalSeg.getEnd()) <= paddingInBp);
-            if ((isStartPositionSeen && isEndPositionSeen) || isReciprocolOverlapSeen) {
+            if ((isStartPositionSeen && isEndPositionSeen) || isReciprocalOverlapSeen) {
                 final CalledCopyRatioSegment.Call normalCall = Arrays.stream(CalledCopyRatioSegment.Call.values())
                         .filter(c -> c.getOutputString().equals(normalSeg.getAnnotationValue(callAnnotation))).findFirst().orElse(null);
                 if (normalCall == null) {

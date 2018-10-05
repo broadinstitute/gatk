@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class MergeAnnotatedRegionsByAnnotationIntegrationTest extends CommandLineProgramTest {
-    private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/copynumber/utils/";
+    private static final String TEST_SUB_DIR = toolsTestDir + "/copynumber/utils/";
     private static final String SIMPLE_TEST_FILE = TEST_SUB_DIR + "merge-annotated-regions-by-annotation-legacy-test.seg";
     private static final String REF = hg19MiniReference;
 

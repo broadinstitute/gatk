@@ -43,12 +43,12 @@ workflow MultiCombineTracks {
         call AggregateCombineTracks.AggregateCombinedTracksWorkflow as Aggregate {
             input:
                     group_id = group_id,
-                    tumor_with_germline_pruned_segs = CombineTracksWorkflow.cnv_postprocessing_tumor_with_tracks_pruned_merged_seg,
+                    tumor_with_germline_filtered_segs = CombineTracksWorkflow.cnv_postprocessing_tumor_with_tracks_filtered_merged_seg,
                     normals_igv_compat = CombineTracksWorkflow.cnv_postprocessing_normal_igv_compat,
                     tumors_igv_compat = CombineTracksWorkflow.cnv_postprocessing_tumor_igv_compat
         }
         output {
-            File tumor_with_germline_pruned_segs = Aggregate.cnv_postprocessing_aggregated_tumors_post
+            File tumor_with_germline_filtered_segs = Aggregate.cnv_postprocessing_aggregated_tumors_post
             File normals_igv_compat = Aggregate.cnv_postprocessing_aggregated_normals
             File tumors_igv_compat = Aggregate.cnv_postprocessing_aggregated_tumors_pre
             Array[File] tumor_acs_compat = CombineTracksWorkflow.cnv_postprocessing_tumor_acs_seg

@@ -7,24 +7,24 @@
 #
 # UNSUPPORTED and we may modify this WDL before we fully support it.
 #
-# This will also generate absolute (https://software.broadinstitute.org/cancer/cga/absolute) compatible files.
-#  Currently, the balanced-segment calling is extremely ham-fisted.
+# This will also generate ABSOLUTE (https://software.broadinstitute.org/cancer/cga/absolute) compatible files.
+#  Currently, the balanced-segment calling is based on hard thresholds.
 #
 # This workflow:
 #  - Does conversion of output seg files to a format compatible with IGV.  This will be removed soon, since the GATK tools
 #     have been updated to produce files that can be easily read by IGV.
 #  - Tags possible germline events that appear in the tumor results.  This is done by comparing breakpoints and
 #     reciprocal overlaps.  This algorithm takes into account any hypersegmentation.
-#  - Tags tumor events that appear in the given blacklists (centromere and gistic blacklist)
-#  - Removes any events that have been tagged in the previous two steps.  Any resulting gaps are covered, so long as
+#  - Tags tumor events that appear in the given blacklists (centromere and GISTIC blacklist)
+#  - Removes any events that have been tagged in the previous two steps.  Any resulting gaps are imputed, so long as
 #     the segment mean would remain constant and the distance is less than max_merge_distance (default 1Mb as of
 #     this writing)
 #
 #  Outputs:
 #  - seg file that is has germline events removed (and gaps merged).  Same columns as a called seg file.
-#      This should be considered the final output.  IGV compatible.  The results have been evaluated.
+#      This should be considered the final output.  IGV compatible.
 #  - seg file that can be used as input to ABSOLUTE.  This uses an identical format as AllelicCapSeg.  This is NOT compatible with IGV.
-#      Please note that the balanced-segment calling in this file have not been evaluated heavily.
+#      Please note that the balanced-segment calling in this file has not been evaluated heavily.
 #  - skew file for the skew parameter in ABSOLUTE
 #  - skew as a float for the skew parameter in ABSOLUTE
 #  - Intermediate files for browsing various steps of the workflow.
@@ -36,10 +36,10 @@
 #  - Evaluation of the conversion to ACS format for ABSOLUTE is still pending.
 #  TODO: Post the auxiliary files in a public bucket.  Permission has already been granted.
 workflow CombineTracksWorkflow {
-	File tumor_called_seg
-	File tumor_modeled_seg
-	File af_param
-	File matched_normal_called_seg
+    File tumor_called_seg
+    File tumor_modeled_seg
+    File af_param
+    File matched_normal_called_seg
     File ref_fasta
     File ref_fasta_dict
     File ref_fasta_fai
@@ -52,7 +52,7 @@ workflow CombineTracksWorkflow {
     String gatk_docker
     Int? max_merge_distance
 
-    call CombineTracks {
+	call CombineTracks {
         input:
             tumor_called_seg = tumor_called_seg,
             matched_normal_called_seg = matched_normal_called_seg,
@@ -111,14 +111,15 @@ workflow CombineTracksWorkflow {
             SEGMENT_MEAN_COL = "MEAN_LOG2_COPY_RATIO"
     }
 
-    call PruneGermlineTagged {
+    call FilterGermlineTagged {
         input:
-            germline_tagged_seg = PrepareForACSConversion.model_and_calls_merged_gatk_seg
+            germline_tagged_seg = PrepareForACSConversion.model_and_calls_merged_gatk_seg,
+            docker = gatk_docker
     }
 
     call MergeSegmentByAnnotation {
         input:
-            seg_file = PruneGermlineTagged.tumor_with_germline_pruned_seg,
+            seg_file = FilterGermlineTagged.tumor_with_germline_filtered_seg,
             annotations = ["MEAN_LOG2_COPY_RATIO"],
             ref_fasta = ref_fasta,
             ref_fasta_dict = ref_fasta_dict,
@@ -148,8 +149,8 @@ workflow CombineTracksWorkflow {
     output {
         File cnv_postprocessing_tumor_igv_compat = IGVConvertTumor.outFile
         File cnv_postprocessing_normal_igv_compat = IGVConvertNormal.outFile
-        File cnv_postprocessing_tumor_with_tracks_pruned_seg = PruneGermlineTagged.tumor_with_germline_pruned_seg
-        File cnv_postprocessing_tumor_with_tracks_pruned_merged_seg = IGVConvertMergedTumorOutput.outFile
+        File cnv_postprocessing_tumor_with_tracks_filtered_seg = FilterGermlineTagged.tumor_with_germline_filtered_seg
+        File cnv_postprocessing_tumor_with_tracks_filtered_merged_seg = IGVConvertMergedTumorOutput.outFile
         File cnv_postprocessing_tumor_with_tracks_tagged_seg = CombineTracks.germline_tagged_with_tracks_seg
         File cnv_postprocessing_tumor_acs_seg = PrototypeACSConversion.cnv_acs_conversion_seg
         File cnv_postprocessing_tumor_acs_skew = PrototypeACSConversion.cnv_acs_conversion_skew
@@ -235,8 +236,9 @@ task CombineTracks {
     }
 }
 
-task PruneGermlineTagged {
+task FilterGermlineTagged {
     File germline_tagged_seg
+    String docker
 
     String output_filename = basename(germline_tagged_seg) + ".pruned.seg"
     command <<<
@@ -257,7 +259,7 @@ EOF
     >>>
 
     runtime {
-        docker: "amancevice/pandas"
+        docker: docker
         memory: "2000 MB"
         disks: "local-disk 100 HDD"
         preemptible: 3
@@ -265,7 +267,7 @@ EOF
     }
 
     output {
-        File tumor_with_germline_pruned_seg = "${output_filename}"
+        File tumor_with_germline_filtered_seg = "${output_filename}"
     }
 }
 
@@ -403,7 +405,7 @@ task MergeSegmentByAnnotation {
 }
 
 # TODO: No non-trivial heredocs in WDL.  Add this to the script directory and call via anaconda (future release)
-# TODO: This is a ham-fisted algorithm.  Better approaches exist if this does not meet needs.
+# TODO: This is a hard threholding algorithm.  Better approaches exist if this does not meet needs.
 task PrototypeACSConversion {
     File model_seg
     File af_param
@@ -485,11 +487,7 @@ def convert_model_segments_to_alleliccapseg(model_segments_seg_pd,
 
     #ModelSegments estimates posterior credible intervals, while AllelicCapSeg performs maximum a posteriori (MAP) estimation.
     #The copy-ratio and allele-fraction models fit by both also differ.
-    #We will attempt a rough translation of the model fits here.
-    #  Next line should be replaced with a function that uses the MS MAF estimates.
-
-    # Old version:
-    # alleliccapseg_seg_pd['f'] = model_segments_seg_pd['MINOR_ALLELE_FRACTION_POSTERIOR_50']
+    # We will attempt a rough translation of the model fits here.
 
     alleliccapseg_seg_pd['f'] = simple_determine_allelic_fraction(model_segments_seg_pd)
 
@@ -508,19 +506,18 @@ def convert_model_segments_to_alleliccapseg(model_segments_seg_pd,
     # Hopefully, ABSOLUTE is robust to this ...
     alleliccapseg_seg_pd['SegLabelCNLOH'] = 2
 
-    #One important caveat: for segments with less than 10 hets [TODO: Verify], AllelicCapSeg also tries to call whether a segment is "split" or not.
+    #One important caveat: for segments with less than 10 hets, AllelicCapSeg also tries to call whether a segment is "split" or not.
     #  This script will attempt to call "split" on all segments.
     # ACS performs a simple hypothesis test on the alternate-allele fractions to see if
     # a unimodal distribution peaked at 0.5 is supported over a bimodal distribution peaked at f and 1 - f.
     # If the former is supported, then AllelicCapSeg ignores the MAP estimate of f and simply sets it to be 0.5.
     # ABSOLUTE may actually be rather sensitive to this.  Again, let's ignore for now, and we can later port this
-    # statistical test if necessary.  I've done it above (ham-fistedly) and also have python code for the stat test
-    # somewhere.
+    # statistical test if necessary.
 
     #Finally, I believe that ABSOLUTE requires the value of the "skew" parameter from the AllelicCapSeg
-    #allele-fraction model.  This parameter is supposed to allow the model to account for reference bias, though correctness
-    # has been called into question.
-    #  We corrected this during the development of AllelicCNV and retain the same corrected model in ModelSegments.
+    #allele-fraction model.  This parameter is supposed to allow the model to account for reference bias,
+    #  but the model likelihood that AllelicCapSeg uses is not valid over the entire range of the skew parameter.
+    # We corrected this during the development of AllelicCNV and retain the same corrected model in ModelSegments.
     # We will try to transform the relevant parameter in the corrected model back to a "skew",
     # but this operation is ill defined.  Luckily, for WGS, the reference bias is typically negligible.
     model_segments_reference_bias = model_segments_af_param_pd[
@@ -556,6 +553,7 @@ EOF
     }
 }
 
+# Merge the model segments and the called file.
 task PrepareForACSConversion {
 	File called_seg
 	File modeled_seg
