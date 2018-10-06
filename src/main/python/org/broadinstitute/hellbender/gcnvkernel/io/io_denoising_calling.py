@@ -151,6 +151,10 @@ class SampleDenoisingAndCallingPosteriorsWriter:
         approx_var_set, approx_mu_map, approx_std_map = io_commons.extract_meanfield_posterior_parameters(
             self.denoising_model_approx)
 
+        # compute approximate denoised read counts
+        denoised_read_counts = np.transpose(
+            np.mean(self.denoising_model_approx.sample(draws=500)['denoised_counts'], axis=0))
+
         for si, sample_name in enumerate(self.denoising_calling_workspace.sample_names):
             sample_name_comment_line = [io_consts.sample_name_sam_header_prefix + sample_name]
             sample_posterior_path = get_sample_posterior_path(self.output_path, si)
@@ -189,6 +193,16 @@ class SampleDenoisingAndCallingPosteriorsWriter:
                 extra_comment_lines=sample_name_comment_line,
                 header=io_consts.baseline_copy_number_column_name,
                 write_shape_info=False)
+
+            # write denoised copy numbers
+            denoised_read_counts_s = denoised_read_counts[:, si]
+            io_commons.write_ndarray_to_tsv(
+                os.path.join(sample_posterior_path, io_consts.default_denoised_copy_numbers_tsv_filename),
+                denoised_read_counts_s,
+                extra_comment_lines=sample_name_comment_line,
+                header=io_consts.denoised_copy_number_column_name,
+                write_shape_info=False
+            )
 
 
 class SampleDenoisingAndCallingPosteriorsReader:

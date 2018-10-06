@@ -775,8 +775,13 @@ class DenoisingModel(GeneralizedContinuousModel):
         # useful expressions
         bias_st = tt.exp(log_bias_st)
 
-        # the expect number of erroneously mapped reads
+        # the expected number of erroneously mapped reads
         mean_mapping_error_correction_s = eps * read_depth_s * shared_workspace.average_ploidy_s
+
+        denoised_counts = ((shared_workspace.n_st - mean_mapping_error_correction_s.dimshuffle(0, 'x'))
+                           / ((1.0 - eps) * read_depth_s.dimshuffle(0, 'x') * bias_st))
+
+        Deterministic(name='denoised_counts', var=denoised_counts)
 
         mu_stc = ((1.0 - eps) * read_depth_s.dimshuffle(0, 'x', 'x')
                   * bias_st.dimshuffle(0, 1, 'x')
