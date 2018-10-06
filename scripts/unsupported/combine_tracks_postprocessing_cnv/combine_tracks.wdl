@@ -637,6 +637,7 @@ task PrepareForACSConversion {
     }
 }
 
+# Must be python3 in the docker image
 task Gistic2Convert {
     File input_file
     String docker
@@ -661,12 +662,12 @@ output_file = "${output_file}"
 """
 
 if __name__ == "__main__":
-    with open(input_file, 'rb') as tsvinfp, open(output_file, 'wb') as tsvoutfp:
+    with open(input_file, 'r') as tsvinfp, open(output_file, 'w') as tsvoutfp:
         tsvin = csv.DictReader(tsvinfp, delimiter='\t')
         tsvout = csv.writer(tsvoutfp, delimiter="\t")
         for r in tsvin:
-            int_ify_num_points = r["NUM_POINTS_COPY_RATIO"].replace(".0", "")
-            outrow = [r["SAMPLE"], r["Chromosome"], r["Start"], r["End"], int_ify_num_points, r["MEAN_LOG2_COPY_RATIO"]]
+            int_ify_num_points = r["NUM_POINTS_COPY_RATIO_1"].replace(".0", "")
+            outrow = [r["SAMPLE"], r["CONTIG"], r["START"], r["END"], int_ify_num_points, r["MEAN_LOG2_COPY_RATIO"]]
             print(outrow)
             tsvout.writerow(outrow)
 
