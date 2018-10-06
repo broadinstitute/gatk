@@ -496,7 +496,7 @@ model_segments_af_param_pd = pd.read_csv(model_segments_af_param_input_file, sep
 
 def simple_determine_allelic_fraction(model_segments_seg_pd):
     result = model_segments_seg_pd['MINOR_ALLELE_FRACTION_POSTERIOR_50']
-    result[model_segments_seg_pd['MINOR_ALLELE_FRACTION_POSTERIOR_90'].astype(float) > HAM_FIST_THRESHOLD] = 0.5
+    result[model_segments_seg_pd['MINOR_ALLELE_FRACTION_POSTERIOR_90'] > HAM_FIST_THRESHOLD] = 0.5
     return result
 
 def convert_model_segments_to_alleliccapseg(model_segments_seg_pd,
