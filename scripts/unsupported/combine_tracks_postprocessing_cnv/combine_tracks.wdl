@@ -35,7 +35,14 @@
 #  - This workflow has not been tested with hg38
 #  - Evaluation of germline tagging and blacklists on hg38 is still pending.
 #  - Evaluation of the conversion to ACS format for ABSOLUTE is still pending.
-#  TODO: Post the auxiliary files in a public bucket.  Permission has already been granted.
+#
+# Auxiliary files (hg19):
+#  - centromere_tracks_seg: gs://gatk-best-practices/somatic-b37/final_centromere_hg19.seg
+#  - gistic_blacklist_tracks_seg:  gs://gatk-best-practices/somatic-b37/CNV.hg19.bypos.v1.CR1_event_added.mod.seg
+#
+# Auxiliary files (hg38) -- these are untested and the gistic list is a liftover:
+#  - centromere_tracks_seg:  gs://gatk-best-practices/somatic-hg38/final_centromere_hg38.seg
+#  - gistic_blacklist_tracks_seg:  gs://gatk-best-practices/somatic-hg38/CNV.hg38liftover.bypos.v1.CR1_event_added.mod.seg
 #
 #  Dev note:  FYI...This workflow is easily tested on a laptop.
 #
