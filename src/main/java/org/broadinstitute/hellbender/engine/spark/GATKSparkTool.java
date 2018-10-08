@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.engine.spark;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
+import htsjdk.samtools.util.GZIIndex;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import org.apache.spark.api.java.JavaRDD;
@@ -588,6 +589,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
         Path referencePath = IOUtils.getPath(referenceFile);
         Path indexPath = ReferenceSequenceFileFactory.getFastaIndexFileName(referencePath);
         Path dictPath = ReferenceSequenceFileFactory.getDefaultDictionaryForReferenceSequence(referencePath);
+        Path gziPath = GZIIndex.resolveIndexNameForBgzipFile(referencePath);
 
         ctx.addFile(referenceFile);
         if (Files.exists(indexPath)) {
@@ -595,6 +597,9 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
         }
         if (Files.exists(dictPath)) {
             ctx.addFile(dictPath.toUri().toString());
+        }
+        if (Files.exists(gziPath)) {
+            ctx.addFile(gziPath.toUri().toString());
         }
 
         return referencePath.getFileName().toString();

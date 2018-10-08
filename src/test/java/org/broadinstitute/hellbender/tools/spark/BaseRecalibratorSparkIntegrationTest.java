@@ -63,6 +63,7 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
         final String localResources =  getResourceDir();
 
         final String GRCh37Ref_chr2021 = b37_reference_20_21;
+        final String GRCh37Ref_chr2021_gz = b37_reference_20_21_gz;
         final String hiSeqBam_chr20 = localResources + WGS_B37_CH20_1M_1M1K_BAM;
         final String hiSeqBam_1read = localResources + "overlappingRead.bam";
         final String dbSNPb37_chr20 = localResources + DBSNP_138_B37_CH20_1M_1M1K_VCF;
@@ -87,6 +88,7 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
                 // local input/computation/reference
                 {new BQSRTest(GRCh37Ref_chr2021, hiSeqBam_1read, dbSNPb37_chr2021, "-indels --enable-baq", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1READ_RECAL)},
                 {new BQSRTest(GRCh37Ref_chr2021, hiSeqBam_chr20, dbSNPb37_chr20, "-indels --enable-baq", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_RECAL)},
+                {new BQSRTest(GRCh37Ref_chr2021_gz, hiSeqBam_chr20, dbSNPb37_chr20, "-indels --enable-baq", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_RECAL)},
                 {new BQSRTest(GRCh37Ref_chr2021, hiSeqBam_chr20, dbSNPb37_chr20, "", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_NOINDEL_NOBAQ_RECAL)},
                 {new BQSRTest(GRCh37Ref_chr2021, hiSeqBam_chr20, dbSNPb37_chr20, "-indels --enable-baq --indels-context-size 4", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_INDELS_CONTEXT_SIZE_4_RECAL)},
                 {new BQSRTest(GRCh37Ref_chr2021, hiSeqBam_chr20, dbSNPb37_chr20, "-indels --enable-baq --low-quality-tail 5", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_LOW_QUALITY_TAIL_5_RECAL)},
