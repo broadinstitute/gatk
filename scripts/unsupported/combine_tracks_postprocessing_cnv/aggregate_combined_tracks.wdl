@@ -6,16 +6,16 @@ workflow AggregateCombinedTracksWorkflow {
     Array[File] tumors_igv_compat
     Array[File] tumors_gistic2_compat
 
-    call TsvCat as TsvCatTumorGermlinePruned {
+    call TsvCat as TsvCatTumorGermlineFiltered {
         input:
             input_files = tumor_with_germline_filtered_segs,
-            id = group_id + "_TumorGermlinePruned"
+            id = group_id + "_TumorGermlineFiltered"
     }
 
-    call TsvCatNoHeader as TsvCatTumorGermlinePrunedGistic2 {
+    call TsvCatNoHeader as TsvCatTumorGermlineFilteredGistic2 {
         input:
             input_files = tumors_gistic2_compat,
-            id = group_id + "_TumorGermlinePrunedGistic2"
+            id = group_id + "_TumorGermlineFilteredGistic2"
     }
 
     call TsvCat as TsvCatTumor {
@@ -32,8 +32,8 @@ workflow AggregateCombinedTracksWorkflow {
 
     output {
         File cnv_postprocessing_aggregated_tumors_pre = TsvCatTumor.aggregated_tsv
-        File cnv_postprocessing_aggregated_tumors_post = TsvCatTumorGermlinePruned.aggregated_tsv
-        File cnv_postprocessing_aggregated_tumors_post_gistic2 = TsvCatTumorGermlinePrunedGistic2.aggregated_tsv
+        File cnv_postprocessing_aggregated_tumors_post = TsvCatTumorGermlineFiltered.aggregated_tsv
+        File cnv_postprocessing_aggregated_tumors_post_gistic2 = TsvCatTumorGermlineFilteredGistic2.aggregated_tsv
         File cnv_postprocessing_aggregated_normals = TsvCatNormal.aggregated_tsv
     }
 }
@@ -62,7 +62,7 @@ task TsvCat {
 	runtime {
 		docker: "ubuntu:16.04"
 		memory: "2 GB"
-        cpu: "1"
+		cpu: "1"
 		disks: "local-disk 100 HDD"
 	}
 }
