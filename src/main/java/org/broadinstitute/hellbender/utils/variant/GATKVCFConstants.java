@@ -74,7 +74,7 @@ public final class GATKVCFConstants {
     public static final String NON_DIPLOID_RATIO_KEY =              "OND";
     public static final String ORIGINAL_CONTIG_KEY =                "OriginalChr"; //LiftoverVariants
     public static final String ORIGINAL_START_KEY =                 "OriginalStart"; //LiftoverVariants
-    public static final String N_BASE_COUNT_KEY =                   "PercentNBase";
+    public static final String N_BASE_COUNT_KEY =                   "NBaseCount";
     public static final String RBP_INCONSISTENT_KEY =               "PhasingInconsistent"; //ReadBackedPhasing
     public static final String GENOTYPE_PRIOR_KEY =                 "PG";
     public static final String POSITIVE_LABEL_KEY =                 "POSITIVE_TRAIN_SITE";
@@ -150,14 +150,15 @@ public final class GATKVCFConstants {
     public final static String MEDIAN_FRAGMENT_LENGTH_DIFFERENCE_FILTER_NAME = "fragment_length";
     public final static String READ_POSITION_FILTER_NAME =                      "read_position";
     public final static String CONTAMINATION_FILTER_NAME =                      "contamination";
-    public final static String BB_STRAND_BIAS_FILTER_NAME =                     "bb_strand_bias";
+    public final static String BB_N_RATIO_FILTER_NAME =                         "bb_n_ratio";
 
     public static final List<String> MUTECT_FILTER_NAMES = Arrays.asList(STR_CONTRACTION_FILTER_NAME,
             PON_FILTER_NAME, CLUSTERED_EVENTS_FILTER_NAME, TUMOR_LOD_FILTER_NAME, GERMLINE_RISK_FILTER_NAME,
             MULTIALLELIC_FILTER_NAME, STRAND_ARTIFACT_FILTER_NAME, ARTIFACT_IN_NORMAL_FILTER_NAME,
             MEDIAN_BASE_QUALITY_FILTER_NAME, MEDIAN_MAPPING_QUALITY_FILTER_NAME,
             MEDIAN_FRAGMENT_LENGTH_DIFFERENCE_FILTER_NAME,
-            READ_POSITION_FILTER_NAME, CONTAMINATION_FILTER_NAME, DUPLICATED_EVIDENCE_FILTER_NAME, BB_STRAND_BIAS_FILTER_NAME);
+            READ_POSITION_FILTER_NAME, CONTAMINATION_FILTER_NAME, DUPLICATED_EVIDENCE_FILTER_NAME,
+            BB_N_RATIO_FILTER_NAME);
 
     // Symbolic alleles
     public final static String SYMBOLIC_ALLELE_DEFINITION_HEADER_TAG = "ALT";

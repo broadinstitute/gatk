@@ -25,8 +25,8 @@ public class M2FiltersArgumentCollection extends AssemblyBasedCallerArgumentColl
     public static final String CONTAMINATION_TABLE_LONG_NAME = "contamination-table";
     public static final String MAX_CONTAMINATION_PROBABILITY_LONG_NAME = "max-contamination-probability";
     public static final String UNIQUE_ALT_READ_COUNT_LONG_NAME = "unique-alt-read-count";
-
     public static final String TUMOR_SEGMENTATION_LONG_NAME = "tumor-segmentation";
+    public static final String N_RATIO_LONG_NAME = "n-ratio";
 
     /**
      * A table containing tumor segments and the minor allele fraction of germline hets within each segment.
@@ -105,5 +105,8 @@ public class M2FiltersArgumentCollection extends AssemblyBasedCallerArgumentColl
 
     @Argument(fullName = UNIQUE_ALT_READ_COUNT_LONG_NAME, shortName = "unique", optional = true, doc = "Filter a variant if a site contains fewer than this many unique (i.e. deduplicated) reads supporting the alternate allele")
     public int uniqueAltReadCount = 0;
+
+    @Argument(fullName = N_RATIO_LONG_NAME, optional = true, doc = "Filter a variant if the ratio of Ns in the pileup.");
+    public double nRatio = 4.0;
 
 }

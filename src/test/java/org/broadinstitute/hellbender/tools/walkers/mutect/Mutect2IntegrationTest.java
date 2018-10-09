@@ -464,7 +464,84 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         }
     }
 
+    @Test
+    public void testBloodBiopsy() throws Exception {
 
+        Utils.resetRandomGenerator();
+
+        final File unfilteredVcfNoNs = createTempFile("unfiltered-noN", ".vcf");
+        final File filteredVcfNoNs = createTempFile("filtered-noN", ".vcf");
+
+        final File unfilteredVcfHasNs = createTempFile("unfiltered-N", ".vcf");
+        final File filteredVcfHasNs = createTempFile("filtered-N", ".vcf");
+
+
+        // run mutect with N annotation on non-duplex bam
+
+        final List<String> args = Arrays.asList(
+                "-I", NA12878_20_21_WGS_bam,
+                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, "NA12878",
+                "-R", b37_reference_20_21,
+                "-L", "20:10000000-10010000",
+                "-O", unfilteredVcfNoNs.getAbsolutePath(),
+                "--annotation", "CountNs",
+                "--" + M2ArgumentCollection., GNOMAD.getAbsolutePath());
+        runCommandLine(args);
+
+
+        // run mutect with N annotation on duplex called bam
+
+        final List<String> args = Arrays.asList(
+                "-I", DUPLEX_BAM,
+                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, "NA12878",
+                "-R", b37_reference_20_21,
+                "-L", "20:10000000-10010000",
+                "-O", unfilteredVcfHasNs.getAbsolutePath(),
+                "--annotation", "CountNs",
+                "--" + M2ArgumentCollection., GNOMAD.getAbsolutePath());
+        runCommandLine(args);
+
+
+
+        // run FilterMutectCalls on no N vcf and make sure nothing happens
+
+        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-V", unfilteredVcfNoNs.getAbsolutePath(), "-O", filteredVcfNoNs.getAbsolutePath()),"FilterMutectCalls"));
+
+        final Set<VariantContext> variantsAfterFilteringNoNs =
+                VariantContextTestUtils.streamVcf(filteredVcfNoContamination)
+                        .filter(vc -> vc.getFilters().contains(GATKVCFConstants.BB_N_RATIO_FILTER_NAME))
+                        .collect(Collectors.toSet());
+
+
+        Assert.assertTrue(variantsAfterFilteringNoNs.isEmpty());
+
+
+        // run FilterMutectCalls on N vcf and make sure it filters out some of the variants
+
+        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-V", unfilteredVcfHasNs.getAbsolutePath(), "-O", filteredVcfHasNs.getAbsolutePath()),"FilterMutectCalls"));
+
+        final long numVariantsBeforeFilteringHasNs = VariantContextTestUtils.streamVcf(unfilteredVcfHasNs).count();
+
+
+
+        // check that it doesn't do anything on vcfs without the N annotation
+
+        // check that it only filters sites with N ratio of 4 or higher
+
+
+        final Set<VariantContext> variantsFilteredAtRatioFour =
+                StreamSupport.stream(new FeatureDataSource<VariantContext>(filteredVcfHasNs).spliterator(), false)
+                        .filter(vc -> vc.getFilters().contains(GATKVCFConstants.BB_N_RATIO_FILTER_NAME))
+                        .collect(Collectors.toSet());
+
+
+        // check some things
+        Assert.assertTrue(numVariantsPassingFiltersHasNs < 10 );
+
+
+
+
+    }
 
     @DataProvider(name="bamoutVariations")
     public Object[][] bamoutVariations() {

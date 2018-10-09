@@ -261,19 +261,28 @@ public class Mutect2FilteringEngine {
         }
     }
 
-    private void applyBBStrandFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final VariantContextBuilder vcb) {
-        final Genotype tumorGenotype = vc.getGenotype(tumorSample);
 
-        if (!tumorGenotype.hasExtendedAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY)) {
+    // This filter checks for a high ratio of N at the variant site.
+    private void applyBBNRatioFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final VariantContextBuilder vcb) {
+
+        final Genotype tumorGenotype = vc.getGenotype(tumorSample);
+        final double[] alleleFractions = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(tumorGenotype, VCFConstants.ALLELE_FREQUENCY_KEY,
+                () -> new double[] {1.0}, 1.0);
+        final int maxFractionIndex = MathUtils.maxElementIndex(alleleFractions);
+        final int[] ADs = tumorGenotype.getAD();
+        final int altCount = ADs[maxFractionIndex + 1];
+
+        if (!tumorGenotype.hasExtendedAttribute(GATKVCFConstants.N_BASE_COUNT_KEY)) {
             return;
         }
 
-        final int[] strandBiasCounts = GATKProtectedVariantContextUtils.getAttributeAsIntArray(tumorGenotype, GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY, ()->null, -1);
+        final int NCount = GATKProtectedVariantContextUtils.getAttributeAsInt(tumorGenotype, GATKVCFConstants.N_BASE_COUNT_KEY,-1);
 
-        if ( strandBiasCounts[2] == 0 || strandBiasCounts[3] == 0) {
-            vcb.filter(GATKVCFConstants.BB_STRAND_BIAS_FILTER_NAME);
+        if ((double) NCount / altCount > MTFAC.nRatio ) {
+            vcb.filter(GATKVCFConstants.BB_N_RATIO_FILTER_NAME);
         }
     }
+
 
     public void applyFilters(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final VariantContextBuilder vcb) {
         vcb.filters(new HashSet<>());
@@ -291,7 +300,7 @@ public class Mutect2FilteringEngine {
         applyMedianMappingQualityDifferenceFilter(MTFAC, vc, vcb);
         applyMedianFragmentLengthDifferenceFilter(MTFAC, vc, vcb);
         applyReadPositionFilter(MTFAC, vc, vcb);
-        applyBBStrandFilter(MTFAC, vc, vcb);
+        applyBBNRatioFilter(MTFAC, vc, vcb);
     }
 
     private int[] getIntArrayTumorField(final VariantContext vc, final String key) {
