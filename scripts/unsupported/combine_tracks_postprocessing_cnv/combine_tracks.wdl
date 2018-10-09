@@ -25,6 +25,7 @@
 #      This should be considered the final output.  IGV compatible.
 #  - seg file that can be used as input to ABSOLUTE.  This uses an identical format as AllelicCapSeg.  This is NOT compatible with IGV.
 #      Please note that the balanced-segment calling in this file has not been evaluated heavily.
+#  - seg file that can be used as input to GISTIC2.  Note that since this workflow is meant for a single pair, users will need to aggregate the GISTIC2 seg files from this workflow for all pairs.
 #  - skew file for the skew parameter in ABSOLUTE
 #  - skew as a float for the skew parameter in ABSOLUTE
 #  - Intermediate files for browsing various steps of the workflow.
@@ -34,7 +35,17 @@
 #  - This workflow has not been tested with hg38
 #  - Evaluation of germline tagging and blacklists on hg38 is still pending.
 #  - Evaluation of the conversion to ACS format for ABSOLUTE is still pending.
-#  TODO: Post the auxiliary files in a public bucket.  Permission has already been granted.
+#
+# Auxiliary files (hg19):
+#  - centromere_tracks_seg: gs://gatk-best-practices/somatic-b37/final_centromere_hg19.seg
+#  - gistic_blacklist_tracks_seg:  gs://gatk-best-practices/somatic-b37/CNV.hg19.bypos.v1.CR1_event_added.mod.seg
+#
+# Auxiliary files (hg38) -- these are untested and the gistic list is a liftover:
+#  - centromere_tracks_seg:  gs://gatk-best-practices/somatic-hg38/final_centromere_hg38.seg
+#  - gistic_blacklist_tracks_seg:  gs://gatk-best-practices/somatic-hg38/CNV.hg38liftover.bypos.v1.CR1_event_added.mod.seg
+#
+#  Dev note:  FYI...This workflow is easily tested on a laptop.
+#
 workflow CombineTracksWorkflow {
     File tumor_called_seg
     File tumor_modeled_seg
@@ -51,6 +62,11 @@ workflow CombineTracksWorkflow {
     String group_id
     String gatk_docker
     Int? max_merge_distance
+    Array[String]? annotations_on_which_to_merge
+
+    Array[String]? annotations_on_which_to_merge_final = select_first([annotations_on_which_to_merge,
+    ["MEAN_LOG2_COPY_RATIO", "LOG2_COPY_RATIO_POSTERIOR_10", "LOG2_COPY_RATIO_POSTERIOR_50", "LOG2_COPY_RATIO_POSTERIOR_90",
+        "MINOR_ALLELE_FRACTION_POSTERIOR_10", "MINOR_ALLELE_FRACTION_POSTERIOR_50", "MINOR_ALLELE_FRACTION_POSTERIOR_90"]])
 
 	call CombineTracks {
         input:
@@ -120,7 +136,7 @@ workflow CombineTracksWorkflow {
     call MergeSegmentByAnnotation {
         input:
             seg_file = FilterGermlineTagged.tumor_with_germline_filtered_seg,
-            annotations = ["MEAN_LOG2_COPY_RATIO"],
+            annotations = annotations_on_which_to_merge_final,
             ref_fasta = ref_fasta,
             ref_fasta_dict = ref_fasta_dict,
             ref_fasta_fai = ref_fasta_fai,
@@ -147,6 +163,13 @@ workflow CombineTracksWorkflow {
             SEGMENT_MEAN_COL = "MEAN_LOG2_COPY_RATIO"
     }
 
+    call Gistic2Convert {
+        input:
+            input_file = IGVConvertMergedTumorOutput.outFile,
+            docker = gatk_docker
+    }
+
+
     output {
         File cnv_postprocessing_tumor_igv_compat = IGVConvertTumor.outFile
         File cnv_postprocessing_normal_igv_compat = IGVConvertNormal.outFile
@@ -156,6 +179,8 @@ workflow CombineTracksWorkflow {
         File cnv_postprocessing_tumor_acs_seg = PrototypeACSConversion.cnv_acs_conversion_seg
         File cnv_postprocessing_tumor_acs_skew = PrototypeACSConversion.cnv_acs_conversion_skew
         Float cnv_postprocessing_tumor_acs_skew_float = PrototypeACSConversion.cnv_acs_conversion_skew_float
+        String cnv_postprocessing_tumor_acs_skew_string = PrototypeACSConversion.cnv_acs_conversion_skew_string
+        File cnv_postprocessing_tumor_with_tracks_filtered_merged_seg_gistic2 = Gistic2Convert.output_file_gistic2
     }
 }
 
@@ -552,6 +577,7 @@ EOF
         File cnv_acs_conversion_seg = "${output_filename}"
         File cnv_acs_conversion_skew = "${output_skew_filename}"
         Float cnv_acs_conversion_skew_float = read_float(output_skew_filename)
+        String cnv_acs_conversion_skew_string = read_string(output_skew_filename)
     }
 }
 
@@ -617,5 +643,54 @@ task PrepareForACSConversion {
 
     output {
         File model_and_calls_merged_gatk_seg = "${output_name}.final.seg"
+    }
+}
+
+# Must be python3 in the docker image
+task Gistic2Convert {
+    File input_file
+    String docker
+    String output_file = basename(input_file) + ".gistic2.seg"
+
+    command <<<
+        set -e
+        python <<EOF
+import csv
+input_file = "${input_file}"
+output_file = "${output_file}"
+
+"""
+  The column headers are:
+
+(1)  Sample           (sample name)
+(2)  Chromosome  (chromosome number)
+(3)  Start Position  (segment start position, in bases)
+(4)  End Position   (segment end position, in bases)
+(5)  Num markers      (number of markers in segment)
+(6)  Seg.CN       (log2() -1 of copy number)
+"""
+
+if __name__ == "__main__":
+    with open(input_file, 'r') as tsvinfp, open(output_file, 'w') as tsvoutfp:
+        tsvin = csv.DictReader(tsvinfp, delimiter='\t')
+        tsvout = csv.writer(tsvoutfp, delimiter="\t")
+        for r in tsvin:
+            int_ify_num_points = r["NUM_POINTS_COPY_RATIO_1"].replace(".0", "")
+            outrow = [r["SAMPLE"], r["CONTIG"], r["START"], r["END"], int_ify_num_points, r["MEAN_LOG2_COPY_RATIO"]]
+            print(outrow)
+            tsvout.writerow(outrow)
+
+EOF
+    >>>
+
+    runtime {
+        docker: docker
+        memory: "2000 MB"
+        disks: "local-disk 100 HDD"
+        preemptible: 3
+        cpu: 1
+    }
+    output {
+        File output_file_gistic2 = "${output_file}"
     }
 }
