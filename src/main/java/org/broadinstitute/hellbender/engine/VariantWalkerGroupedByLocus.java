@@ -11,7 +11,9 @@ import org.broadinstitute.hellbender.engine.filters.VariantFilter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.transformers.VariantTransformer;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.iterators.IntervalLocusIterator;
+import org.broadinstitute.hellbender.utils.iterators.ShardedIntervalIterator;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -19,17 +21,17 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 /**
- * VariantWalkerGroupedByLocus processes variants from a single source, either one at a time in order, or optionally
- * grouped by locus overlap, with optional contextual information from a reference, sets of reads, and/or supplementary sources
- * of Features. By-locus traversal is opt in, via {@link #setGroupByLocus()}, and only loci with overlapping
- * variants are traversed.
+ * VariantWalkerGroupedByLocus processes variants from a single source, grouped by locus overlap, or optionally one
+ * at a time in order, with optional contextual information from a reference, sets of reads, and/or supplementary sources
+ * of Features. By-variant traversal is opt in, via {@link #changeTraversalModeToByVariant()}, otherwise only loci with
+ * overlapping variants are traversed.
  *
  * VariantWalkerGroupedByLocus authors must implement the {@link #apply} method to process each variant, and may optionally implement
  * {@link #onTraversalStart}, {@link #onTraversalSuccess} and/or {@link #closeTool}.
  */
 public abstract class VariantWalkerGroupedByLocus extends VariantWalkerBase {
 
-    // NOTE: using File rather than FeatureInput<VariantContext> here so that we can keep this driving source
+    // NOTE: using String rather than FeatureInput<VariantContext> here so that we can keep this driving source
     //       of variants separate from any other potential sources of Features
     @Argument(fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME, shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME, doc = "A VCF file containing variants", common = false, optional = false)
     public String drivingVariantFile;
@@ -39,13 +41,14 @@ public abstract class VariantWalkerGroupedByLocus extends VariantWalkerBase {
     private FeatureDataSource<VariantContext> drivingVariants;
     private FeatureInput<VariantContext> drivingVariantsFeatureInput;
 
-    private boolean traverseByLocus = false;
+    private boolean traverseByVariant = false;
 
     /**
-     * Enable grouped of variants by locus. When true, the {@link #apply} method will be called with all overlapping
-     * variants at each each locus that has overlapping variants.
+     * Traverse by variant instead of by grouped by locus. When true, the {@link #apply} method will be called for each
+     * individual variant in the driving variants input, instead of by locus, with all variants overlapping that locus.
+     * This mehtod must be called in OnTraversalStart();
      */
-    protected void setGroupByLocus() { traverseByLocus = true; }
+    protected void changeTraversalModeToByVariant() { traverseByVariant = true; }
 
     @Override
     protected SAMSequenceDictionary getSequenceDictionaryForDrivingVariants() { return drivingVariants.getSequenceDictionary(); }
@@ -115,30 +118,13 @@ public abstract class VariantWalkerGroupedByLocus extends VariantWalkerBase {
     public void traverse() {
         final CountingReadFilter readFilter = makeReadFilter();
         final VariantFilter variantFilter = makeVariantFilter();
+        final VariantTransformer preTransformer  = makePreVariantFilterTransformer();
+        final VariantTransformer postTransformer = makePostVariantFilterTransformer();
 
-        if (traverseByLocus) {
-            getLocusStream(getTraversalIntervals())
-                .forEach(locus -> {
-                    // Get all of the variants overlapping this locus, filter them and collect into a list
-                    final Iterator<VariantContext> overlappingVariants = drivingVariants.query(locus);
-                    final List<VariantContext> filteredVariants = getTransformedVariantStream(
-                            Spliterators.spliteratorUnknownSize(overlappingVariants, 0), variantFilter)
-                            .collect(Collectors.toList());
-                        if (!filteredVariants.isEmpty()) {
-                            apply(locus,
-                                    filteredVariants,
-                                    new ReadsContext(reads, locus, readFilter),
-                                    new ReferenceContext(reference, locus),
-                                    new FeatureContext(features, locus));
-
-                            progressMeter.update(locus);
-                        }
-                    }
-            );
-        } else {
-            // Process each variant in the input stream.
-            getTransformedVariantStream( getSpliteratorForDrivingVariants(), variantFilter )
-                    .forEach(variant -> {
+        if (traverseByVariant) {
+            // Process each variant in the input stream, one at a time.
+            getTransformedVariantStream( getSpliteratorForDrivingVariants(), preTransformer, variantFilter, postTransformer )
+                    .forEachOrdered(variant -> {
                         final SimpleInterval variantInterval = new SimpleInterval(variant);
                         apply(variant,
                                 Collections.singletonList(variant),
@@ -148,16 +134,37 @@ public abstract class VariantWalkerGroupedByLocus extends VariantWalkerBase {
 
                         progressMeter.update(variantInterval);
                     });
-        }
-    }
+        } else {
+            // Traverse loci in shards. For any shard with overlapping variants, drop down to per-locus iteration,
+            // calling apply for a single locus, only if there are overlapping variants, passing all such variants
+            // as a group.
+            Utils.stream(new ShardedIntervalIterator(getTraversalIntervals().iterator(), FEATURE_CACHE_LOOKAHEAD))
+                    .forEachOrdered (shard -> {
+                        if (drivingVariants.query(shard).hasNext()) {
+                            getLocusStream(Collections.singletonList(new SimpleInterval(shard.getContig(), shard.getStart(), shard.getEnd())))
+                                    .forEachOrdered(locus -> {
+                                        final Iterator<VariantContext> overlappingVariants = drivingVariants.query(locus);
+                                        if (overlappingVariants.hasNext()) {
+                                            final List<VariantContext> filteredVariants = getTransformedVariantStream(
+                                                    Spliterators.spliteratorUnknownSize(overlappingVariants, 0),
+                                                    preTransformer,
+                                                    variantFilter,
+                                                    postTransformer)
+                                                    .collect(Collectors.toList());
+                                            if (!filteredVariants.isEmpty()) {
+                                                apply(locus,
+                                                        filteredVariants,
+                                                        new ReadsContext(reads, locus, readFilter),
+                                                        new ReferenceContext(reference, locus),
+                                                        new FeatureContext(features, locus));
 
-    protected Stream<VariantContext> getTransformedVariantStream(final Spliterator<VariantContext> source, final VariantFilter filter) {
-        final VariantTransformer preTransformer  = makePreVariantFilterTransformer();
-        final VariantTransformer postTransformer = makePostVariantFilterTransformer();
-        return StreamSupport.stream(source, false)
-                .map(preTransformer)
-                .filter(filter)
-                .map(postTransformer);
+                                                progressMeter.update(locus);
+                                            }
+                                        }
+                                    });
+                        }
+                    });
+        }
     }
 
     // Return a Stream of SimpleInterval covering the entire territory sketched out by requestedIntervals
@@ -167,12 +174,17 @@ public abstract class VariantWalkerGroupedByLocus extends VariantWalkerBase {
     }
 
     /**
-     * Process an individual variant. Must be implemented by tool authors.
-     * In general, tool authors should simply stream their output from apply(), and maintain as little internal state
-     * as possible.
+     * Process by locus, with all variants overlapping the current locus, or by individual variant when in by-variants
+     * traversal mode. Must be implemented by tool authors. In general, tool authors should simply stream their output
+     * from apply(), and maintain as little internal state as possible.
      *
-     * @param loc
-     * @param variants Current variants being processed.
+     * @param loc the current locus being traversed (in group by locus), or the span of the current variant (in by-variants
+     *            traversal)
+     * @param variants The current variant(s) being processed. NOTE: When {@link #changeTraversalModeToByVariant()}
+     *                 has been called, the {@link #apply} method will be called for each individual variant in the
+     *                 driving variants input. Otherwise, this method is called once for every locus that has
+     *                 overlapping variants, with all variants overlapping that locus.
+     *
      * @param readsContext Reads overlapping the current variant. Will be an empty, but non-null, context object
      *                     if there is no backing source of reads data (in which case all queries on it will return
      *                     an empty array/iterator)

@@ -1755,7 +1755,7 @@ public final class GATKVariantContextUtils {
      * @return true if the only alternate allele for this VariantContext is a spanning deletion, otherwise false.
      */
     public static boolean isSpanningDeletionOnly(final VariantContext vc){
-        return vc.getAlternateAlleles().size() == 1 && vc.getAlternateAllele(0).basesMatch(Allele.SPAN_DEL);
+        return vc.getAlternateAlleles().size() == 1 && GATKVCFConstants.isSpanningDeletion(vc.getAlternateAllele(0));
     }
 
     /**

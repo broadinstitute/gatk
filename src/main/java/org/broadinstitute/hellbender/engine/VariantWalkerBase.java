@@ -133,7 +133,25 @@ public abstract class VariantWalkerBase extends GATKTool {
     protected Stream<VariantContext> getTransformedVariantStream(final VariantFilter filter) {
         final VariantTransformer preTransformer  = makePreVariantFilterTransformer();
         final VariantTransformer postTransformer = makePostVariantFilterTransformer();
-        return StreamSupport.stream(getSpliteratorForDrivingVariants(), false)
+        return getTransformedVariantStream(getSpliteratorForDrivingVariants(),
+                preTransformer,
+                filter,
+                postTransformer);
+    }
+
+    /**
+     * Returns a stream over the variants returned by source, which are:
+     *
+     * 1. Transformed with preTransformer.
+     * 2. Filtered with filter.
+     * 3. Transformed with postTransformer.
+     */
+    protected Stream<VariantContext> getTransformedVariantStream(
+            final Spliterator<VariantContext> source,
+            final VariantTransformer preTransformer,
+            final VariantFilter filter,
+            final VariantTransformer postTransformer) {
+        return StreamSupport.stream(source, false)
                 .map(preTransformer)
                 .filter(filter)
                 .map(postTransformer);

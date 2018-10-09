@@ -130,7 +130,7 @@ public final class GenotypeGVCFs extends VariantWalkerGroupedByLocus {
     private final List<String> infoFieldAnnotationKeyNamesToRemove = new ArrayList<>();
 
     // INFO Header names that require alt alleles
-    final Set<String> infoHeaderAltAllelesLineNames = new LinkedHashSet<>();
+    final LinkedHashSet<String> infoHeaderAltAllelesLineNames = new LinkedHashSet<>();
 
     private VariantContextWriter vcfWriter;
 
@@ -152,8 +152,8 @@ public final class GenotypeGVCFs extends VariantWalkerGroupedByLocus {
 
     @Override
     public void onTraversalStart() {
-        if (includeNonVariants) {
-            setGroupByLocus();
+        if (!includeNonVariants) {
+            changeTraversalModeToByVariant();
         }
 
         final VCFHeader inputVCFHeader = getHeaderForVariants();
@@ -252,11 +252,24 @@ public final class GenotypeGVCFs extends VariantWalkerGroupedByLocus {
     // see if there is a variant in the overlapping group that starts exactly at the locus start position, and if so
     // prioritize and process only that variant. Otherwise process all of the overlapping variants.
     private List<VariantContext> getVariantSubsetToProcess(final Locatable loc, List<VariantContext> preProcessedVariants) {
-        return includeNonVariants ?
-                preProcessedVariants.stream().anyMatch(vc -> vc.getStart() == loc.getStart()) ?
-                        preProcessedVariants.stream().filter(vc -> vc.getStart() == loc.getStart()).limit(1).collect(Collectors.toList()) :
-                        preProcessedVariants:
-                preProcessedVariants;
+        if (includeNonVariants) {
+            final List<VariantContext> matchingStart =
+                    preProcessedVariants.stream().filter(vc -> vc.getStart() == loc.getStart()).collect(Collectors.toList());
+            if (matchingStart.size() == 0) {
+                return preProcessedVariants;
+            }
+            else if (matchingStart.size() == 1) {
+                return matchingStart;
+            }
+            // since this tool only accepts a single input source, there should never be
+            // more than one variant at a given starting locus
+            throw new IllegalStateException(
+                    String.format(
+                            "Variant input contains more than one variant starting at location: %s",
+                            new SimpleInterval(matchingStart.get(0))));
+        } else {
+            return preProcessedVariants;
+        }
     }
 
     /**
@@ -322,27 +335,6 @@ public final class GenotypeGVCFs extends VariantWalkerGroupedByLocus {
     }
 
     /**
-     * Remove INFO field annotations if no alternate alleles
-     *
-     * @param vc    the variant context
-     * @return variant context with the INFO field annotations removed if no alternate alleles
-     */
-    private VariantContext removeInfoAnnotationsIfNoAltAllele(final VariantContext vc)  {
-
-        // If no alt alleles, remove any RankSumTest or RMSAnnotation attribute
-        if ( vc.getAlternateAlleles().isEmpty() ) {
-            final VariantContextBuilder builder = new VariantContextBuilder(vc);
-
-            for ( final String annotation : infoFieldAnnotationKeyNamesToRemove ) {
-                builder.rmAttribute(annotation);
-            }
-            return builder.make();
-        } else {
-            return vc;
-        }
-    }
-
-    /**
      * Remove NON-REF alleles from the variant context
      *
      * @param vc   the variant context
@@ -354,7 +346,7 @@ public final class GenotypeGVCFs extends VariantWalkerGroupedByLocus {
         final List<Allele> newAlleles = new ArrayList<>();
         // Only keep alleles that are not NON-REF
         for ( final Allele allele : vc.getAlleles() ) {
-            if ( !allele.equals(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE) ) {
+            if ( !allele.equals(Allele.NON_REF_ALLELE) ) {
                 newAlleles.add(allele);
             }
         }

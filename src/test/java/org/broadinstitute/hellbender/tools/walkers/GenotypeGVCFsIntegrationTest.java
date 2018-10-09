@@ -101,31 +101,31 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
                 {getTestFile(BASE_PAIR_GVCF), getTestFile( "expected/gvcf.basepairResolution.includeNonVariantSites.vcf"), Collections.singletonList("--" + GenotypeGVCFs.ALL_SITES_LONG_NAME), b37_reference_20_21 },
                 {getTestFile( "combine.single.sample.pipeline.1.vcf"),
                         getTestFile( "expected/combine.single.sample.pipeline.1.include_nonvariant.vcf"),
-                        Arrays.asList( "  --include-non-variant-sites -L 20:10,030,000-10,033,000 -L 20:10,386,000-10,386,500 "),
+                        Arrays.asList( " --" + GenotypeGVCFs.ALL_SITES_LONG_NAME + " -L 20:10,030,000-10,033,000 -L 20:10,386,000-10,386,500 "),
                         b37_reference_20_21},
                 {getTestFile( "combine.single.sample.pipeline.2.vcf"),
                         getTestFile( "expected/combine.single.sample.pipeline.2.include_nonvariant.vcf"),
-                        Arrays.asList( "  --include-non-variant-sites -L 20:10,030,000-10,033,000 -L 20:10,386,000-10,386,500 "),
+                        Arrays.asList( " --" + GenotypeGVCFs.ALL_SITES_LONG_NAME + " -L 20:10,030,000-10,033,000 -L 20:10,386,000-10,386,500 "),
                         b37_reference_20_21},
                 {getTestFile( "combine.single.sample.pipeline.3.vcf"),
                         getTestFile( "expected/combine.single.sample.pipeline.3.include_nonvariant.vcf"),
-                        Arrays.asList( "  --include-non-variant-sites -L 20:10,030,000-10,033,000 -L 20:10,386,000-10,386,500 "),
+                        Arrays.asList( " --" + GenotypeGVCFs.ALL_SITES_LONG_NAME + " -L 20:10,030,000-10,033,000 -L 20:10,386,000-10,386,500 "),
                         b37_reference_20_21},
                 // combined, with intervals
                 {getTestFile( "combined.single.sample.pipeline.gatk3.vcf"),
                         getTestFile( "expected/combined.single.sample.pipeline.include_nonvariant.vcf"),
-                        Arrays.asList( "  --include-non-variant-sites -L 20:10,030,000-10,033,000 -L 20:10,386,000-10,386,500 "),
+                        Arrays.asList( " --" + GenotypeGVCFs.ALL_SITES_LONG_NAME + " -L 20:10,030,000-10,033,000 -L 20:10,386,000-10,386,500 "),
                         b37_reference_20_21},
                 // test site 10096905 - 10096907 to force coverage around a spanning deletion only site
                 {getTestFile( "combined.single.sample.pipeline.gatk3.vcf"),
                         getTestFile( "expected/testSpanningDeletion.vcf"),
-                        Arrays.asList( " --include-non-variant-sites -L 20:10,096,905-10,096,907 "),
+                        Arrays.asList( " --" + GenotypeGVCFs.ALL_SITES_LONG_NAME + " -L 20:10,096,905-10,096,907 "),
                         b37_reference_20_21},
                 // test site 20:10,012,730-10,012,740 to force coverage around LowQual site
                 {getTestFile( "combined.single.sample.pipeline.gatk3.vcf"),
                         getTestFile( "expected/includeLowQualSites.vcf"),
-                        Arrays.asList( " --include-non-variant-sites -L 20:10,012,730-10,012,740"),
-                        b37_reference_20_21},
+                        Arrays.asList( " --" + GenotypeGVCFs.ALL_SITES_LONG_NAME + " -L 20:10,012,730-10,012,740"),
+                        b37_reference_20_21}
         };
     }
 
@@ -296,7 +296,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
      * @throws IOException if the file does not exist or can not be opened
      */
     @SuppressWarnings({"unchecked"})
-    private static List<VariantContext> getVariantContexts(final File vcfFile) throws IOException {
+    private static List<VariantContext> getVariantContexts(final File vcfFile) {
         try(final FeatureDataSource<VariantContext> variantContextFeatureDataSource = new FeatureDataSource<>(vcfFile)) {
             return IteratorUtils.toList(variantContextFeatureDataSource.iterator());
         }
