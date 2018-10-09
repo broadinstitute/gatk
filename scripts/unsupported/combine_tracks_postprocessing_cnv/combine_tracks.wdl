@@ -179,6 +179,7 @@ workflow CombineTracksWorkflow {
         File cnv_postprocessing_tumor_acs_seg = PrototypeACSConversion.cnv_acs_conversion_seg
         File cnv_postprocessing_tumor_acs_skew = PrototypeACSConversion.cnv_acs_conversion_skew
         Float cnv_postprocessing_tumor_acs_skew_float = PrototypeACSConversion.cnv_acs_conversion_skew_float
+        Float cnv_postprocessing_tumor_acs_skew_string = PrototypeACSConversion.cnv_acs_conversion_skew_string
         File cnv_postprocessing_tumor_with_tracks_filtered_merged_seg_gistic2 = Gistic2Convert.output_file_gistic2
     }
 }
@@ -576,6 +577,7 @@ EOF
         File cnv_acs_conversion_seg = "${output_filename}"
         File cnv_acs_conversion_skew = "${output_skew_filename}"
         Float cnv_acs_conversion_skew_float = read_float(output_skew_filename)
+        String cnv_acs_conversion_skew_string = read_string(output_skew_filename)
     }
 }
 
