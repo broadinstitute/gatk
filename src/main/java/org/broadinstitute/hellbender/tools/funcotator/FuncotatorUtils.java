@@ -8,6 +8,11 @@ import htsjdk.samtools.util.SequenceUtil;
 import htsjdk.tribble.annotation.Strand;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextUtils;
+import htsjdk.variant.vcf.VCFInfoHeaderLine;
+import org.apache.commons.configuration2.Configuration;
+import org.apache.commons.configuration2.builder.fluent.Configurations;
+import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
@@ -19,9 +24,11 @@ import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotati
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetadata;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
+import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
@@ -35,6 +42,7 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 public final class FuncotatorUtils {
 
@@ -1526,7 +1534,7 @@ public final class FuncotatorUtils {
      * Get the position (1-based, inclusive) of the given {@link VariantContext} start relative to the transcript it appears in.
      * The transcript is specified by {@code sortedTranscriptExonList}.
      * @param variant The {@link VariantContext} of which to find the start position in the given transcript (must not be {@code null}).
-     * @param exons {@link List} of {@Link Locatable}s representing the exons in the transcript in which the given {@code variant} occurs.
+     * @param exons {@link List} of {@link Locatable}s representing the exons in the transcript in which the given {@code variant} occurs.
      * @param strand The {@link Strand} on which the {@code variant} occurs.
      * @return The start position (1-based, inclusive) of the given {@code variant} in the transcript in which it appears.
      */
@@ -2023,7 +2031,7 @@ public final class FuncotatorUtils {
     public static boolean isFuncotationInTranscriptList( final GencodeFuncotation funcotation,
                                                   final Set<String> acceptableTranscripts ) {
         if ( funcotation.getAnnotationTranscript() != null ) {
-            final List<String> acceptableTranscriptsWithoutVersionNumbers = acceptableTranscripts.stream().map(tx -> getTranscriptIdWithoutVersionNumber(tx)).collect(Collectors.toList());
+            final List<String> acceptableTranscriptsWithoutVersionNumbers = acceptableTranscripts.stream().map(FuncotatorUtils::getTranscriptIdWithoutVersionNumber).collect(Collectors.toList());
             return acceptableTranscriptsWithoutVersionNumbers.contains( getTranscriptIdWithoutVersionNumber(funcotation.getAnnotationTranscript()) );
         }
         else {
@@ -2039,6 +2047,47 @@ public final class FuncotatorUtils {
     public static String getTranscriptIdWithoutVersionNumber( final String transcriptId ) {
         return transcriptId.replaceAll("\\.\\d+$", "");
     }
+
+    /**
+     * @param configFile Must be readable.
+     * @return Configuration instance.
+     */
+    public static Configuration retrieveConfiguration(final File configFile) {
+        IOUtils.assertFileIsReadable(configFile.toPath());
+
+        // Use Apache Commons configuration since it will preserve the order of the keys in the config file.
+        //  Properties will not preserve the ordering, since it is backed by a HashSet.
+        try {
+            return new Configurations().properties(configFile);
+        } catch (final ConfigurationException ce) {
+            throw new UserException.BadInput("Unable to read from XSV config file: " + configFile.toString(), ce);
+        }
+    }
+
+    /**
+     * @param vc Never {@code null}
+     * @return Boolean whether the given variant context could represent a copy number segment.
+     */
+    public static boolean isSegmentVariantContext(final VariantContext vc) {
+        Utils.nonNull(vc);
+        final int MIN_SIZE_FOR_SEGMENT = 150;
+        final List<String> ACCEPTABLE_ALT_ALLELES = Stream.concat(
+                Stream.of(SimpleSVType.SupportedType.values())
+                        .map(s -> SimpleSVType.createBracketedSymbAlleleString(s.toString())),
+                Stream.of(AnnotatedIntervalToSegmentVariantContextConverter.COPY_NEUTRAL_ALLELE.getDisplayString(), Allele.UNSPECIFIED_ALTERNATE_ALLELE_STRING)
+        ).collect(Collectors.toList());
+
+        boolean acceptableAlternateAllele = false;
+        for (final Allele a: vc.getAlternateAlleles()) {
+            final String representation = a.getDisplayString();
+            if (ACCEPTABLE_ALT_ALLELES.contains(representation)) {
+                acceptableAlternateAllele = true;
+            }
+        }
+
+        return acceptableAlternateAllele && (VariantContextUtils.getSize(vc) > MIN_SIZE_FOR_SEGMENT);
+    }
+
     // ========================================================================================
 
     /**
@@ -2075,7 +2124,7 @@ public final class FuncotatorUtils {
      * @param individualFuncotationField  value from a funcotation. Never {@code null}
      * @return input string with special characters replaced by _%HEX%_ where HEX is the 2 digit ascii hex code.  Never {@code null}
      */
-    public static String sanitizeFuncotationFieldForVcf(final String individualFuncotationField) {
+    static String sanitizeFuncotationFieldForVcf(final String individualFuncotationField) {
         Utils.nonNull(individualFuncotationField);
 
         // List of letters to encode:
@@ -2130,7 +2179,7 @@ public final class FuncotatorUtils {
 
         return IntStream.range(0, v.getAlternateAlleles().size()).boxed()
                 .collect(Collectors
-                        .toMap(i -> v.getAlternateAllele(i), i -> FuncotationMap.createAsAllTableFuncotationsFromVcf(transcriptIdFuncotationName,
+                        .toMap(v::getAlternateAllele, i -> FuncotationMap.createAsAllTableFuncotationsFromVcf(transcriptIdFuncotationName,
                                 funcotationHeaderKeys, funcotationPerAllele.get(i), v.getAlternateAllele(i), dummyDatasourceName)));
     }
 
@@ -2158,7 +2207,7 @@ public final class FuncotatorUtils {
      * metadata must include all variant attributes.
      *
      * @param vc The variant context to derive funcotations.  Never {@code null}
-     * @param metadata Existing metadata that matches the variant context info field attributes exactly.  Never {@code null}
+     * @param metadata Existing metadata that must be a superset of the variant context info field attributes.  Never {@code null}
      * @param datasourceName Name to use as the datasource in the funcotations.  Never {@code null}
      * @return A list of funcotations based on the variant context (INFO) attributes.  Never empty, unless the metadata has no fields.  Never {@code null}
      */
@@ -2168,23 +2217,42 @@ public final class FuncotatorUtils {
         Utils.nonNull(metadata);
         Utils.nonNull(datasourceName);
 
-        final List<Funcotation> result = new ArrayList<>();
-        final List<String> allFields = metadata.retrieveAllHeaderInfo().stream().map(h -> h.getID()).collect(Collectors.toList());
+        final List<String> allFields = metadata.retrieveAllHeaderInfo().stream().map(VCFInfoHeaderLine::getID).collect(Collectors.toList());
 
         final Set<String> attributesNotInMetadata = vc.getAttributes().keySet().stream().filter(k -> !allFields.contains(k)).collect(Collectors.toSet());
         if (attributesNotInMetadata.size() != 0) {
             throw new UserException.MalformedFile("Not all attributes in the variant context appear in the metadata: " + attributesNotInMetadata.stream().collect(Collectors.joining(", ")) + " .... Please add these attributes to the input metadata (e.g. VCF Header).");
         }
 
+        return createFuncotationsFromMetadata(vc, metadata, datasourceName);
+    }
+
+    /**
+     * Use the given metadata to create funcotations from a variant context attributes (and alt alleles)
+     * @param vc Never {@code null}
+     * @param metadata Fields that should be present in the funcotations.  Never {@code null}
+     * @param datasourceName Name to appear in all funcotations.  Never {@code null}
+     * @return Instances of {@link Funcotation} for each field in the metadata x alternate allele in the variant context.
+     * If a field is not present in the variant context attributes, the field will ave value empty string ("") in all output
+     * funcotations.  Fields will be the same names and values for each alternate allele in the funcotations.
+     */
+    static List<Funcotation> createFuncotationsFromMetadata(final VariantContext vc, final FuncotationMetadata metadata, final String datasourceName) {
+
+        Utils.nonNull(vc);
+        Utils.nonNull(metadata);
+        Utils.nonNull(datasourceName);
+
+        final List<String> fields = metadata.retrieveAllHeaderInfo().stream().map(VCFInfoHeaderLine::getID).collect(Collectors.toList());
+        final List<Funcotation> result = new ArrayList<>();
         for (final Allele allele: vc.getAlternateAlleles()) {
 
             // We must have fields for everything in the metadata.
             final List<String> funcotationFieldValues = new ArrayList<>();
-            for (final String funcotationFieldName : allFields) {
+            for (final String funcotationFieldName : fields) {
                 funcotationFieldValues.add(vc.getAttributeAsString(funcotationFieldName, ""));
             }
 
-            result.add(TableFuncotation.create(allFields, funcotationFieldValues, allele, datasourceName, metadata));
+            result.add(TableFuncotation.create(fields, funcotationFieldValues, allele, datasourceName, metadata));
         }
 
         return result;
@@ -2204,7 +2272,7 @@ public final class FuncotatorUtils {
             return "";
         }
         return funcotation.getFieldNames().stream()
-                .filter(f -> includedFields.contains(f))
+                .filter(includedFields::contains)
                 .map(field -> FuncotatorUtils.sanitizeFuncotationFieldForVcf(funcotation.getField(field)))
                 .collect(Collectors.joining(VcfOutputRenderer.FIELD_DELIMITER));
     }
@@ -2226,4 +2294,23 @@ public final class FuncotatorUtils {
         /** Unspecified genus / genus not in this list. */
         UNSPECIFIED;
     }
+
+    /**
+     * Create a linked hash map from two lists with corresponding values.
+     * @param keys Never {@code null}.  Length must be the same as values.
+     * @param values Never {@code null}.  Length must be the same as keys.
+     * @param <T> Type for keys
+     * @param <U> Type for values
+     * @return Never {@code null}
+     */
+    public static <T,U> LinkedHashMap<T,U> createLinkedHashMapFromLists(final List<T> keys, final List<U> values) {
+        Utils.nonNull(keys);
+        Utils.nonNull(values);
+        Utils.validateArg(keys.size() == values.size(), "Keys and values were not the same length.");
+        return IntStream.range(0, keys.size()).boxed().collect(Collectors.toMap(keys::get,
+                values::get, (x1, x2) -> {
+                    throw new IllegalArgumentException("Should not be able to have duplicate field names.");
+                }, LinkedHashMap::new));
+    }
+
 }

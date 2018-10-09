@@ -255,6 +255,8 @@ dependencies {
     compile 'org.apache.commons:commons-math3:3.5'
     compile 'org.apache.commons:commons-collections4:4.1'
     compile 'org.apache.commons:commons-vfs2:2.0'
+    compile 'org.apache.commons:commons-configuration2:2.4'
+    compile 'commons-beanutils:commons-beanutils:1.9.3'
     compile 'commons-io:commons-io:2.5'
     compile 'org.reflections:reflections:0.9.10'
 
@@ -324,6 +326,9 @@ dependencies {
     
     // Required for SV Discovery machine learning
     compile group: 'biz.k11i', name: 'xgboost-predictor', version: '0.3.0'
+
+    // natural sort
+    compile('net.grey-panther:natural-comparator:1.1')
 
     testUtilsCompile sourceSets.main.output
     testUtilsCompile 'org.testng:testng:' + testNGVersion

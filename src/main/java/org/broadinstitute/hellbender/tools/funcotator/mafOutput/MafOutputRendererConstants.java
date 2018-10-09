@@ -43,11 +43,6 @@ public class MafOutputRendererConstants {
     // High-Level Constants:
 
     /**
-     * Value to insert into columns with unspecified annotations.
-     */
-    static final String UNKNOWN_VALUE_STRING = "__UNKNOWN__";
-
-    /**
      * Value to insert into unused annotation columns.
      */
     static final String UNUSED_STRING = "NA";

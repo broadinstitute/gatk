@@ -239,6 +239,8 @@ final public class DataSourceUtils {
      * @param gatkToolInstance Instance of the {@link GATKTool} into which to add {@link FeatureInput}s.  Must not be {@code null}.
      * @param lookaheadFeatureCachingInBp Number of base-pairs to cache when querying variants.
      * @param flankSettings Settings object containing our 5'/3' flank sizes
+     * @param doAttemptSegmentFuncotationForTranscriptDatasources Allow the caller to specify whether segments should be annotated with a gencode/transcript datasource.  Not all datasources support this flag.
+     *                                    A datasource must already support segment funcotation in order to even process this flag.
      * @return A {@link List} of {@link DataSourceFuncotationFactory} given the data source metadata, overrides, and transcript reporting priority information.
      */
     public static List<DataSourceFuncotationFactory> createDataSourceFuncotationFactoriesForDataSources(final Map<Path, Properties> dataSourceMetaData,
@@ -247,7 +249,8 @@ final public class DataSourceUtils {
                                                                                                         final Set<String> userTranscriptIdSet,
                                                                                                         final GATKTool gatkToolInstance,
                                                                                                         final int lookaheadFeatureCachingInBp,
-                                                                                                        final FlankSettings flankSettings) {
+                                                                                                        final FlankSettings flankSettings,
+                                                                                                        final boolean doAttemptSegmentFuncotationForTranscriptDatasources) {
         Utils.nonNull(dataSourceMetaData);
         Utils.nonNull(annotationOverridesMap);
         Utils.nonNull(transcriptSelectionMode);
@@ -286,7 +289,7 @@ final public class DataSourceUtils {
                 case GENCODE:
                     featureInput = createAndRegisterFeatureInputs(path, properties, gatkToolInstance, lookaheadFeatureCachingInBp, GencodeGtfFeature.class, false);
                     funcotationFactory = DataSourceUtils.createGencodeDataSource(path, properties, annotationOverridesMap, transcriptSelectionMode,
-                            userTranscriptIdSet, featureInput, flankSettings);
+                            userTranscriptIdSet, featureInput, flankSettings, doAttemptSegmentFuncotationForTranscriptDatasources);
                     break;
                 case VCF:
                     featureInput = createAndRegisterFeatureInputs(path, properties, gatkToolInstance, lookaheadFeatureCachingInBp, VariantContext.class, false);
@@ -485,7 +488,7 @@ final public class DataSourceUtils {
                                                                      final TranscriptSelectionMode transcriptSelectionMode,
                                                                      final Set<String> userTranscriptIdSet,
                                                                      final FeatureInput<? extends Feature> featureInput,
-                                                                     final FlankSettings flankSettings) {
+                                                                     final FlankSettings flankSettings, final boolean isSegmentFuncotationEnabled) {
 
         Utils.nonNull(dataSourceFile);
         Utils.nonNull(dataSourceProperties);
@@ -513,7 +516,7 @@ final public class DataSourceUtils {
                 featureInput,
                 flankSettings,
                 isB37,
-                ncbiBuildVersion
+                ncbiBuildVersion, isSegmentFuncotationEnabled
             );
     }
 

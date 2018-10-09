@@ -13,6 +13,7 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.codecs.AnnotatedIntervalCodec;
 import org.broadinstitute.hellbender.utils.codecs.xsvLocatableTable.XsvLocatableTableCodec;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.io.Resource;
@@ -39,7 +40,6 @@ public class AnnotatedIntervalCollection {
     private static final Logger logger = LogManager.getLogger(AnnotatedIntervalCollection.class);
 
     // Rename to annotated interval default.config
-    public static final String ANNOTATED_INTERVAL_DEFAULT_CONFIG_RESOURCE = "org/broadinstitute/hellbender/tools/copynumber/utils/annotatedinterval/annotated_region_default.config";
     private final SAMFileHeader samFileHeader;
 
     /** Does not include the locatable fields. Always sorted alphabetically. */
@@ -138,7 +138,7 @@ public class AnnotatedIntervalCollection {
      */
     public static AnnotatedIntervalCollection create(final Path input, final Set<String> headersOfInterest) {
 
-        final String resourcePath = ANNOTATED_INTERVAL_DEFAULT_CONFIG_RESOURCE;
+        final String resourcePath = AnnotatedIntervalCodec.ANNOTATED_INTERVAL_DEFAULT_CONFIG_RESOURCE;
         try {
             final File tmpResourceFile = Resource.getResourceContentsAsFile(resourcePath);
             return create(input, tmpResourceFile.toPath(), headersOfInterest);

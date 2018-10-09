@@ -8,13 +8,13 @@ import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.testutils.FuncotatorReferenceTestUtils;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationBuilder;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.testutils.FuncotatorReferenceTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -284,5 +284,13 @@ public class CosmicFuncotationFactoryUnitTest extends GATKBaseTest {
             ),
             expected
         );
+    }
+
+    @Test
+    public void testNoSupportOfSegments() {
+        final CosmicFuncotationFactory factory = new CosmicFuncotationFactory(PATH_TO_TEST_DB);
+
+        Assert.assertFalse(factory.isSupportingSegmentFuncotation());
+        Assert.assertEquals(factory.getSupportedFuncotationFieldsForSegments(), Collections.emptyList());
     }
 }

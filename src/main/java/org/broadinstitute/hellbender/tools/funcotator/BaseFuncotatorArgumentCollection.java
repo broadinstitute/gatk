@@ -12,21 +12,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-/**
- * Arguments to be be used by the {@link Funcotator} {@link org.broadinstitute.hellbender.engine.GATKTool},
- * which are specific to {@link Funcotator}.
- * Created by jonn on 9/12/18.
- */
-public class FuncotatorArgumentCollection implements Serializable {
+abstract class BaseFuncotatorArgumentCollection implements Serializable {
     private static final long serialVersionUID = 1L;
-
-    //-----------------------------------------------------
-    // Required args:
 
     @Argument(
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName  = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
-            doc = "Output VCF file to which annotated variants should be written.")
+            doc = "Output file to which annotated variants should be written.")
     public File outputFile;
 
     @Argument(
@@ -43,19 +35,27 @@ public class FuncotatorArgumentCollection implements Serializable {
 
     @Argument(
             fullName =  FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME,
-            doc = "The output file format.  Either VCF or MAF.  Please note that MAF output for germline use case VCFs is unsupported."
+            doc = "The output file format.  Either VCF, MAF, or SEG.  Please note that MAF output for germline use case VCFs is unsupported.  SEG will generate two output files: a simple tsv and a gene list."
     )
     public FuncotatorArgumentDefinitions.OutputFormatType outputFormatType;
 
-    //-----------------------------------------------------
-    // Optional args:
+    // Optional fields ----------------------
 
     @Argument(
-            fullName = FuncotatorArgumentDefinitions.REMOVE_FILTERED_VARIANTS_LONG_NAME,
+            fullName  = FuncotatorArgumentDefinitions.EXCLUSION_FIELDS_LONG_NAME,
             optional = true,
-            doc = "Ignore/drop variants that have been filtered in the input.  These variants will not appear in the output file."
+            doc = "Fields that should not be rendered in the final output.  Only exact name matches will be excluded."
     )
-    public boolean removeFilteredVariants = false;
+    public Set<String> excludedFields = new HashSet<>();
+
+    @Advanced
+    @Hidden
+    @Argument(
+            fullName = FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION,
+            optional = true,
+            doc = "(Advanced / DO NOT USE*) If you select this flag, Funcotator will force a conversion of variant contig names from b37 to hg19.  *This option is useful in integration tests (written by devs) only."
+    )
+    public boolean forceB37ToHg19ContigNameConversion = false;
 
     @Argument(
             fullName  = FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME,
@@ -86,40 +86,11 @@ public class FuncotatorArgumentCollection implements Serializable {
     public List<String> annotationOverrides = new ArrayList<>();
 
     @Argument(
-            fullName = FuncotatorArgumentDefinitions.FIVE_PRIME_FLANK_SIZE_NAME,
-            optional = true,
-            doc = "Variants within this many bases of the 5' end of a transcript (and not overlapping any part of the transcript itself) will be annotated as being in the 5' flanking region of that transcript"
-    )
-    public int fivePrimeFlankSize = FuncotatorArgumentDefinitions.FIVE_PRIME_FLANK_SIZE_DEFAULT_VALUE;
-
-    @Argument(
-            fullName = FuncotatorArgumentDefinitions.THREE_PRIME_FLANK_SIZE_NAME,
-            optional = true,
-            doc = "Variants within this many bases of the 3' end of a transcript (and not overlapping any part of the transcript itself) will be annotated as being in the 3' flanking region of that transcript"
-    )
-    public int threePrimeFlankSize = FuncotatorArgumentDefinitions.THREE_PRIME_FLANK_SIZE_DEFAULT_VALUE;
-
-    @Argument(
             fullName = FuncotatorArgumentDefinitions.LOOKAHEAD_CACHE_IN_BP_NAME,
             optional = true,
             minValue = 0,
-            doc = "Number of base-pairs to cache when querying variants.  Can be overridden in individual data source configuration files."
+            doc = "Number of base-pairs to cache when querying variants."
     )
     public int lookaheadFeatureCachingInBp = FuncotatorArgumentDefinitions.LOOKAHEAD_CACHE_IN_BP_DEFAULT_VALUE;
 
-    @Advanced
-    @Hidden
-    @Argument(
-            fullName = FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION,
-            optional = true,
-            doc = "(Advanced / DO NOT USE*) If you select this flag, Funcotator will force a conversion of variant contig names from b37 to hg19.  *This option is useful in integration tests (written by devs) only."
-    )
-    public boolean forceB37ToHg19ContigNameConversion = false;
-
-    @Argument(
-            fullName  = FuncotatorArgumentDefinitions.EXCLUSION_FIELDS_LONG_NAME,
-            optional = true,
-            doc = "Fields that should not be rendered in the final output.  Only exact name matches will be excluded."
-    )
-    public Set<String> excludedFields = new HashSet<>();
 }

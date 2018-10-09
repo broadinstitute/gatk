@@ -16,6 +16,7 @@ import org.broadinstitute.hellbender.tools.funcotator.dataSources.DataSourceUtil
 import org.broadinstitute.hellbender.tools.funcotator.metadata.VcfFuncotationMetadata;
 import org.broadinstitute.hellbender.transformers.VariantTransformer;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
 import java.nio.file.Path;
@@ -707,7 +708,7 @@ import java.util.*;
  */
 @CommandLineProgramProperties(
         summary = "Create functional annotations on given variants cross-referenced by a given set of data sources.\n" +
-                "A GATK functional annotation tool.",
+                "A GATK functional annotation tool (similar functionality to Oncotator).",
         oneLineSummary = "Functional Annotator",
         programGroup = VariantEvaluationProgramGroup.class
 )
@@ -719,7 +720,7 @@ public class Funcotator extends VariantWalker {
     // Arguments:
 
     @ArgumentCollection
-    private final FuncotatorArgumentCollection funcotatorArgs = new FuncotatorArgumentCollection();
+    private final FuncotatorVariantArgumentCollection funcotatorArgs = new FuncotatorVariantArgumentCollection();
 
     //==================================================================================================================
 
@@ -732,7 +733,7 @@ public class Funcotator extends VariantWalker {
     /**
      * @return The {@link Funcotator}-specific arguments used to instantiate this {@link Funcotator} instance.
      */
-    public FuncotatorArgumentCollection getArguments() {
+    public FuncotatorVariantArgumentCollection getArguments() {
         return funcotatorArgs;
     }
 
@@ -751,6 +752,10 @@ public class Funcotator extends VariantWalker {
         }
 
         logger.info("Processing user transcripts/defaults/overrides...");
+        Utils.validateArg(funcotatorArgs.outputFormatType != FuncotatorArgumentDefinitions.OutputFormatType.SEG,
+                "This tool does not support segment output.  Please see FuncotateSegments.");
+
+
         // Next set up our transcript list:
         final Set<String> finalUserTranscriptIdSet = FuncotatorEngine.processTranscriptList(funcotatorArgs.userTranscriptIdSet);
 
@@ -778,7 +783,8 @@ public class Funcotator extends VariantWalker {
                 finalUserTranscriptIdSet,
                 this,
                 funcotatorArgs.lookaheadFeatureCachingInBp,
-                new FlankSettings(funcotatorArgs.fivePrimeFlankSize, funcotatorArgs.threePrimeFlankSize)
+                new FlankSettings(funcotatorArgs.fivePrimeFlankSize, funcotatorArgs.threePrimeFlankSize),
+                false
         );
 
         logger.info("Initializing Funcotator Engine...");
@@ -832,7 +838,7 @@ public class Funcotator extends VariantWalker {
 
     @Override
     protected CountingVariantFilter makeVariantFilter() {
-        return new CountingVariantFilter(funcotatorEngine.makeVariantFilter());
+        return new CountingVariantFilter(FuncotatorEngine.makeVariantFilter(funcotatorArgs.removeFilteredVariants));
     }
 
     @Override
@@ -882,7 +888,6 @@ public class Funcotator extends VariantWalker {
         if ( outputRenderer != null ) {
             outputRenderer.close();
         }
-
     }
 
     //==================================================================================================================

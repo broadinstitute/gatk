@@ -87,13 +87,17 @@ public abstract class FeatureWalker<F extends Feature> extends WalkerBase {
         CountingReadFilter readFilter = makeReadFilter();
         // Process each feature in the input stream.
         Utils.stream(drivingFeatures).forEach(feature -> {
-                    final SimpleInterval featureInterval = new SimpleInterval(feature);
+                    final SimpleInterval featureInterval = makeFeatureInterval(feature);
                     apply(feature,
                             new ReadsContext(reads, featureInterval, readFilter),
                             new ReferenceContext(reference, featureInterval),
                             new FeatureContext(features, featureInterval));
                     progressMeter.update(feature);
                 });
+    }
+
+    protected <T extends Feature> SimpleInterval makeFeatureInterval(T feature) {
+        return new SimpleInterval(feature);
     }
 
     /**

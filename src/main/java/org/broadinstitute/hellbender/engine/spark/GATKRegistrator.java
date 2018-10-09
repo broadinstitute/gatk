@@ -1,19 +1,34 @@
 package org.broadinstitute.hellbender.engine.spark;
 
 import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.Registration;
 import com.esotericsoftware.kryo.serializers.FieldSerializer;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import de.javakaffee.kryoserializers.UnmodifiableCollectionsSerializer;
 import de.javakaffee.kryoserializers.guava.ImmutableMapSerializer;
 import htsjdk.samtools.*;
+import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.vcf.VCFHeaderLineType;
+import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.spark.serializer.KryoRegistrator;
 import org.bdgenomics.adam.serialization.ADAMKryoRegistrator;
+import org.broadinstitute.hellbender.tools.funcotator.FuncotationMap;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
+import org.broadinstitute.hellbender.tools.funcotator.metadata.VcfFuncotationMetadata;
 import org.broadinstitute.hellbender.tools.spark.transforms.markduplicates.MarkDuplicatesSparkUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.read.markduplicates.ReadsKey;
-import org.broadinstitute.hellbender.utils.read.markduplicates.sparkrecords.*;
+import org.broadinstitute.hellbender.utils.read.markduplicates.sparkrecords.EmptyFragment;
+import org.broadinstitute.hellbender.utils.read.markduplicates.sparkrecords.Fragment;
+import org.broadinstitute.hellbender.utils.read.markduplicates.sparkrecords.Pair;
+import org.broadinstitute.hellbender.utils.read.markduplicates.sparkrecords.Passthrough;
+import org.objenesis.instantiator.ObjectInstantiator;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 
 /**
  * GATKRegistrator registers Serializers for our project. We need a JsonSerializer for the Google Genomics classes
@@ -24,6 +39,41 @@ public class GATKRegistrator implements KryoRegistrator {
     private final ADAMKryoRegistrator ADAMregistrator = new ADAMKryoRegistrator();
 
     public GATKRegistrator() {}
+
+    /**
+     * Make sure that all FuncotationMap (which incl. all Funcotation concrete classes and members) classes are registered
+     *  to support {@link org.broadinstitute.hellbender.tools.funcotator.FuncotationMap#create(FuncotationMap)}
+     *
+     * @param kryo Kryo instance to update in-place.  Never {@code null}
+     */
+    @VisibleForTesting
+    public static void registerFuncotationMapDependencies(final Kryo kryo) {
+        Utils.nonNull(kryo);
+        Registration registration = kryo.register(TableFuncotation.class);
+        registration.setInstantiator(new ObjectInstantiator<TableFuncotation>() {
+            public TableFuncotation newInstance() {
+                return TableFuncotation.create(new HashMap<>(), Allele.UNSPECIFIED_ALTERNATE_ALLELE, "TEMP", null);
+            }
+        });
+        registration = kryo.register(VcfFuncotationMetadata.class);
+        registration.setInstantiator(new ObjectInstantiator<VcfFuncotationMetadata>() {
+            public VcfFuncotationMetadata newInstance() {
+                return VcfFuncotationMetadata.create(new ArrayList<>());
+            }
+        });
+        registration = kryo.register(VCFInfoHeaderLine.class);
+        registration.setInstantiator(new ObjectInstantiator<VCFInfoHeaderLine>() {
+            public VCFInfoHeaderLine newInstance() {
+                return new VCFInfoHeaderLine("TMP", 2, VCFHeaderLineType.String, "");
+            }
+        });
+        registration = kryo.register(Allele.class);
+        registration.setInstantiator(new ObjectInstantiator<Allele>() {
+            public Allele newInstance() {
+                return Allele.create("TCGA");
+            }
+        });
+    }
 
     @Override
     public void registerClasses(Kryo kryo) {
@@ -92,5 +142,6 @@ public class GATKRegistrator implements KryoRegistrator {
         kryo.register(MarkDuplicatesSparkUtils.IndexPair.class, new FieldSerializer(kryo, MarkDuplicatesSparkUtils.IndexPair.class));
         kryo.register(ReadsKey.class, new FieldSerializer(kryo, ReadsKey.class));
         kryo.register(ReadsKey.KeyForFragment.class, new FieldSerializer(kryo, ReadsKey.KeyForFragment.class));
-        kryo.register(ReadsKey.KeyForPair.class, new FieldSerializer(kryo, ReadsKey.KeyForPair.class)); }
+        kryo.register(ReadsKey.KeyForPair.class, new FieldSerializer(kryo, ReadsKey.KeyForPair.class));
+    }
 }

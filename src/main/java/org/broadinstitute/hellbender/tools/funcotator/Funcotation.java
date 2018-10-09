@@ -9,6 +9,11 @@ import java.util.Map;
 /**
  * Abstract class representing a {@link Funcotator} annotation.
  * Created by jonn on 8/30/17.
+ *
+ * Important developer note:
+ *  - All implementing classes need to add serialization testing to
+ *  FuncotationUnitTest#testAllFuncotationConcreteClassCanSerialize()
+ *  - And that also implies that the equals() method must be implemented on all concrete classes.
  */
 public interface Funcotation {
 

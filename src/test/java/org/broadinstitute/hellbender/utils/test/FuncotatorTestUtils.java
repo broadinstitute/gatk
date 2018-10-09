@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.utils.test;
 
+import com.esotericsoftware.kryo.Kryo;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Lists;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.tribble.Feature;
@@ -11,7 +13,11 @@ import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.testutils.FuncotatorReferenceTestUtils;
+import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedInterval;
+import org.broadinstitute.hellbender.tools.funcotator.AnnotatedIntervalToSegmentVariantContextConverter;
 import org.broadinstitute.hellbender.tools.funcotator.DataSourceFuncotationFactory;
+import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
+import org.broadinstitute.hellbender.tools.funcotator.OutputRenderer;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationBuilder;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationFactory;
@@ -20,15 +26,20 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfFeature;
 import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfFeatureBaseData;
 import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfTranscriptFeature;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
+import org.broadinstitute.hellbender.utils.tsv.TableReader;
+import org.broadinstitute.hellbender.utils.tsv.TableUtils;
+import org.testng.Assert;
 
+import java.io.File;
+import java.io.IOException;
 import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class FuncotatorTestUtils {
     private FuncotatorTestUtils() {}
@@ -292,5 +303,177 @@ public class FuncotatorTestUtils {
                         Collections.emptyList(),
                         null)
         );
+    }
+
+    public static TableReader<LinkedHashMap<String, String>> createLinkedHashMapListTableReader(final File inputFile) throws IOException {
+        return TableUtils.reader(inputFile.toPath(),
+                (columns, exceptionFactory) ->
+                        (dataLine) -> {
+                            final int columnCount = columns.names().size();
+                            return IntStream.range(0, columnCount).boxed().collect(Collectors.toMap(i -> columns.names().get(i),
+                                    dataLine::get,
+                                    (x1, x2) -> {
+                                        throw new IllegalArgumentException("Should not be able to have duplicate field names.");
+                                    },
+                                    LinkedHashMap::new));
+                        }
+        );
+    }
+
+    /**
+     * Create a very simple dummy variant context that adheres to the conventions in
+     * {@link AnnotatedIntervalToSegmentVariantContextConverter#convert(AnnotatedInterval, ReferenceContext)}
+     *
+     * @return Never {@code null}
+     */
+    public static VariantContext createDummySegmentVariantContext() {
+        return createSimpleVariantContext(FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(),
+                "3", 2100000, 3200000, "T",
+                AnnotatedIntervalToSegmentVariantContextConverter.COPY_NEUTRAL_ALLELE.getDisplayString());
+    }
+
+    /**
+     * See {@link FuncotatorTestUtils#createDummySegmentVariantContext()}, but this allows caller to specify attributes
+     *   to add.
+     *
+     * @param attributes Never {@code null}
+     * @return Never {@code null}
+     */
+    public static VariantContext createDummySegmentVariantContextWithAttributes(final Map<String, String> attributes) {
+        Utils.nonNull(attributes);
+        return new VariantContextBuilder(createSimpleVariantContext(FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(),
+                "3", 2100000, 3200000, "T",
+                AnnotatedIntervalToSegmentVariantContextConverter.COPY_NEUTRAL_ALLELE.getDisplayString()))
+                .attributes(attributes).make();
+    }
+
+    /**
+     * Make sure that the tsv file written exactly matches the linked hashmap.  This includes the field ordering is the same as well.
+     *
+     * @param testFile Must be a readable file.  Does not have to contain records.
+     * @param gtOutputRecords a list of linked hashmaps.  Each hashmap representing one row in the tsv.  Never {@code null}
+     * @param gtFieldNames List of expected column headers/fields.  This should just be {@code Lists.newArrayList(gtOutputRecord.get(...).keySet()}, but
+     *                     must be stated explicitly to handle files with no records (i.e. only have a header).
+     * @throws IOException if the file reader cannot be created.
+     */
+    public static void assertTsvFile(final File testFile, final List<LinkedHashMap<String, String>> gtOutputRecords, final List<String> gtFieldNames) throws IOException {
+        Utils.nonNull(gtOutputRecords);
+        IOUtils.assertFileIsReadable(testFile.toPath());
+        assertTsvFieldNames(testFile, gtFieldNames);
+
+        try (final TableReader<LinkedHashMap<String, String>> outputReader = createLinkedHashMapListTableReader(testFile)) {
+
+            // Check that the ordering of the column is correct and that the values are all correct.
+            assertLinkedHashMapsEqual(outputReader.toList(), gtOutputRecords);
+        }
+    }
+    /**
+     * Same as {@link FuncotatorTestUtils#assertTsvFile(File, List, List)}, but this will assume that the first
+     *  groundtruth record ({@code gtOutputRecords.get(0)}) contains the field names.
+     *
+     * @param testFile Must be a readable file.  MUST contain records.
+     * @param gtOutputRecords a list of linked hashmaps.  Each hashmap representing one row in the tsv.  Never {@code null} and cannot be empty.
+     * @throws IOException if the file reader cannot be created.
+     */
+    public static void assertTsvFile(final File testFile, final List<LinkedHashMap<String, String>> gtOutputRecords) throws IOException {
+        Utils.validateArg(gtOutputRecords.size() > 0, "Ground truth records must have at least one entry to use this method.  Use `assertTsvFile(final File testFile, final List<LinkedHashMap<String, String>> gtOutputRecords, final List<String> gtFieldNames)` instead.");
+        assertTsvFile(testFile, gtOutputRecords, Lists.newArrayList(gtOutputRecords.get(0).keySet()));
+    }
+
+    /**
+     * Asserts that the tsv file has the exact same headers as the gtFieldNames.  Ordering too.
+     * @param testFile Must be a readable file.  Does not have to contain records.
+     * @param gtFieldNames Expected field/column names in the test file. Never {@code null}
+     */
+    public static void assertTsvFieldNames(final File testFile, final List<String> gtFieldNames)  throws IOException {
+        Utils.nonNull(gtFieldNames);
+        IOUtils.assertFileIsReadable(testFile.toPath());
+
+        try (final TableReader<LinkedHashMap<String, String>> outputReader = createLinkedHashMapListTableReader(testFile)) {
+            Assert.assertEquals(outputReader.columns().names(), gtFieldNames);
+        }
+    }
+
+    /**
+     * Assert that the key, values are all the same (including ordering) b/w two linked hashmaps.
+     * @param guess Never {@code null}
+     * @param gt Ground truth/expected.  Never {@code null}
+     * @param <T> key class
+     * @param <U> value class
+     */
+    public static <T, U> void assertLinkedHashMapsEqual(final LinkedHashMap<T, U> guess, final LinkedHashMap<T, U> gt) {
+        Utils.nonNull(guess);
+        Utils.nonNull(gt);
+
+        // Since these are linked hash maps, the tests below should also de facto test that the ordering is correct.
+        Assert.assertEquals(new ArrayList<>(guess.keySet()), new ArrayList<>(gt.keySet()));
+        Assert.assertEquals(new ArrayList<>(guess.values()), new ArrayList<>(gt.values()));
+    }
+
+    /**
+     * Same as {@link FuncotatorTestUtils#assertLinkedHashMapsEqual(LinkedHashMap, LinkedHashMap)}, but for bulk
+     * assertions.  The lists must have corresponding entries.
+     * @param guesses Never {@code null}
+     * @param groundTruths Never {@code null}
+     * @param <T> key class
+     * @param <U> value class
+     */
+    private static <T, U> void assertLinkedHashMapsEqual(final List<LinkedHashMap<T, U>> guesses, final List<LinkedHashMap<T, U>> groundTruths) {
+        Utils.nonNull(guesses);
+        Utils.nonNull(groundTruths);
+        IntStream.range(0, guesses.size()).boxed().forEach(i -> assertLinkedHashMapsEqual(guesses.get(i), groundTruths.get(i)));
+    }
+
+    /**
+     * Takes an input object and returns the value of the object after it has been serialized and then deserialized in Kryo.
+     * Requires the class of the input object as a parameter because it's not generally possible to get the class of a
+     * generified method parameter with reflection.
+     *
+     * @param input instance of inputClazz.  Never {@code null}
+     * @param inputClazz class to cast input
+     * @param <T> class to attempt.  Same or subclass of inputClazz
+     * @return serialized and deserialized instance of input.  Throws exception if serialization round trip fails.
+     */
+    public static <T> T assertRoundTripInKryo(final T input, final Class<?> inputClazz, final List<Consumer<Kryo>> preprocessingFunctions) {
+        Utils.nonNull(input);
+        final Kryo kryo = new Kryo();
+        preprocessingFunctions.stream().forEach(f -> f.accept(kryo));
+        kryo.register(inputClazz);
+        return kryo.copy(input);
+    }
+
+    /**
+     * No checking for validity is done in this method.
+     *
+     * @param dummyTranscriptName An aritrary string.  Never {@code null}
+     * @param dummyVariantContext An aritrary {@link VariantContext}.  Never {@code null}
+     * @return Never {@code null}
+     */
+    public static Funcotation createDummyGencodeFuncotation(final String dummyTranscriptName, final VariantContext dummyVariantContext) {
+        Utils.nonNull(dummyTranscriptName);
+        Utils.nonNull(dummyVariantContext);
+        return createGencodeFuncotation("GENE","b37", dummyVariantContext.getContig(), dummyVariantContext.getStart(),dummyVariantContext.getEnd(),
+                GencodeFuncotation.VariantClassification.DE_NOVO_START_IN_FRAME, null, GencodeFuncotation.VariantType.SNP,
+                dummyVariantContext.getReference().getDisplayString(),
+                dummyVariantContext.getAlternateAllele(0).getDisplayString(), "g.1000000"+ dummyVariantContext.getReference().getDisplayString() + ">" + dummyVariantContext.getAlternateAllele(0).getDisplayString(),
+                dummyTranscriptName, Strand.FORWARD,
+        1, 1500, 1500,
+        " ", " ",
+        "p.L300P", 0.5,
+        "ACTGATCGATCGA",Collections.singletonList("FAKE00002.5"), "27");
+    }
+
+    /**
+     * Create a simple TableFuncotation with some fields.
+     * @return Never {@code null}
+     */
+    public static Funcotation createDummyTableFuncotation() {
+        final String datasourceName = "FAKEDATA";
+        final LinkedHashMap<String, String> data = new LinkedHashMap<>();
+        data.put(datasourceName + "_FOO", "1");
+        data.put(datasourceName + "_BAR", "2");
+        data.put(datasourceName + "_BAZ", "\tYES\n");
+        final Allele altAllele = Allele.create("T");
+        return OutputRenderer.createFuncotationFromLinkedHashMap(data, altAllele, datasourceName);
     }
 }

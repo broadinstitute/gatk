@@ -471,4 +471,12 @@ public class VcfFuncotationFactoryUnitTest extends GATKBaseTest {
                                                               final Path sourceFilePath) {
         return new VcfFuncotationFactory(name, version, sourceFilePath, new LinkedHashMap<>(), new FeatureInput<VariantContext>(sourceFilePath.toString(), name, new HashMap<>()));
     }
+
+    @Test
+    public void testNoSupportOfSegments() {
+        final VcfFuncotationFactory factory = createVcfFuncotationFactory("FAKE", "MOCK1", IOUtils.getPath(EXAC_SNIPPET));
+
+        Assert.assertFalse(factory.isSupportingSegmentFuncotation());
+        Assert.assertEquals(factory.getSupportedFuncotationFieldsForSegments(), Collections.emptyList());
+    }
 }

@@ -233,7 +233,7 @@ public class MafOutputRenderer extends OutputRenderer {
                         }
                     }
                     if ( !found ) {
-                        defaultMap.put(field, MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+                        defaultMap.put(field, FuncotatorConstants.UNKNOWN_VALUE_STRING);
                     }
                 }
             }
@@ -605,7 +605,7 @@ public class MafOutputRenderer extends OutputRenderer {
             outputMap.put(key, value);
         }
         else {
-            outputMap.put(key, MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
+            outputMap.put(key, FuncotatorConstants.UNKNOWN_VALUE_STRING);
         }
     }
 
@@ -691,92 +691,92 @@ public class MafOutputRenderer extends OutputRenderer {
     protected void initializeDefaultMapWithKeys() {
         
         // Baseline required fields:
-        defaultMap.put(MafOutputRendererConstants.FieldName_Hugo_Symbol                   ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
-        defaultMap.put(MafOutputRendererConstants.FieldName_Entrez_Gene_Id                ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
-        defaultMap.put(MafOutputRendererConstants.FieldName_Center                        ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
-        defaultMap.put(MafOutputRendererConstants.FieldName_NCBI_Build                    ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
-        defaultMap.put(MafOutputRendererConstants.FieldName_Chromosome                    ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
-        defaultMap.put(MafOutputRendererConstants.FieldName_Start_Position                ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
-        defaultMap.put(MafOutputRendererConstants.FieldName_End_Position                  ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Hugo_Symbol                   ,               FuncotatorConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Entrez_Gene_Id                ,               FuncotatorConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Center                        ,               FuncotatorConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_NCBI_Build                    ,               FuncotatorConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Chromosome                    ,               FuncotatorConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Start_Position                ,               FuncotatorConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_End_Position                  ,               FuncotatorConstants.UNKNOWN_VALUE_STRING );
         defaultMap.put(MafOutputRendererConstants.FieldName_Strand                        ,               MafOutputRendererConstants.FieldValue_Strand );
-        defaultMap.put(MafOutputRendererConstants.FieldName_Variant_Classification        ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
-        defaultMap.put(MafOutputRendererConstants.FieldName_Variant_Type                  ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
-        defaultMap.put(MafOutputRendererConstants.FieldName_Reference_Allele              ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
-        defaultMap.put(MafOutputRendererConstants.FieldName_Tumor_Seq_Allele1             ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
-        defaultMap.put(MafOutputRendererConstants.FieldName_Tumor_Seq_Allele2             ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
-        defaultMap.put(MafOutputRendererConstants.FieldName_dbSNP_RS                      ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
-        defaultMap.put(MafOutputRendererConstants.FieldName_dbSNP_Val_Status              ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
-        defaultMap.put(MafOutputRendererConstants.FieldName_Tumor_Sample_Barcode          ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
-        defaultMap.put(MafOutputRendererConstants.FieldName_Matched_Norm_Sample_Barcode   ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
-        defaultMap.put(MafOutputRendererConstants.FieldName_Match_Norm_Seq_Allele1        ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
-        defaultMap.put(MafOutputRendererConstants.FieldName_Match_Norm_Seq_Allele2        ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
-        defaultMap.put(MafOutputRendererConstants.FieldName_Tumor_Validation_Allele1      ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
-        defaultMap.put(MafOutputRendererConstants.FieldName_Tumor_Validation_Allele2      ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
-        defaultMap.put(MafOutputRendererConstants.FieldName_Match_Norm_Validation_Allele1 ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
-        defaultMap.put(MafOutputRendererConstants.FieldName_Match_Norm_Validation_Allele2 ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
-        defaultMap.put(MafOutputRendererConstants.FieldName_Verification_Status           ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
-        defaultMap.put(MafOutputRendererConstants.FieldName_Validation_Status             ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
-        defaultMap.put(MafOutputRendererConstants.FieldName_Mutation_Status               ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
-        defaultMap.put(MafOutputRendererConstants.FieldName_Sequencing_Phase              ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
-        defaultMap.put(MafOutputRendererConstants.FieldName_Sequence_Source               ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
-        defaultMap.put(MafOutputRendererConstants.FieldName_Validation_Method             ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
-        defaultMap.put(MafOutputRendererConstants.FieldName_Score                         ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
-        defaultMap.put(MafOutputRendererConstants.FieldName_BAM_File                      ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
-        defaultMap.put(MafOutputRendererConstants.FieldName_Sequencer                     ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
-        defaultMap.put(MafOutputRendererConstants.FieldName_Tumor_Sample_UUID             ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
-        defaultMap.put(MafOutputRendererConstants.FieldName_Matched_Norm_Sample_UUID      ,               MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Variant_Classification        ,               FuncotatorConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Variant_Type                  ,               FuncotatorConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Reference_Allele              ,               FuncotatorConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Tumor_Seq_Allele1             ,               FuncotatorConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Tumor_Seq_Allele2             ,               FuncotatorConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_dbSNP_RS                      ,               FuncotatorConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_dbSNP_Val_Status              ,               FuncotatorConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Tumor_Sample_Barcode          ,               FuncotatorConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Matched_Norm_Sample_Barcode   ,               FuncotatorConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Match_Norm_Seq_Allele1        ,               FuncotatorConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Match_Norm_Seq_Allele2        ,               FuncotatorConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Tumor_Validation_Allele1      ,               FuncotatorConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Tumor_Validation_Allele2      ,               FuncotatorConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Match_Norm_Validation_Allele1 ,               FuncotatorConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Match_Norm_Validation_Allele2 ,               FuncotatorConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Verification_Status           ,               FuncotatorConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Validation_Status             ,               FuncotatorConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Mutation_Status               ,               FuncotatorConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Sequencing_Phase              ,               FuncotatorConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Sequence_Source               ,               FuncotatorConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Validation_Method             ,               FuncotatorConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Score                         ,               FuncotatorConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_BAM_File                      ,               FuncotatorConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Sequencer                     ,               FuncotatorConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Tumor_Sample_UUID             ,               FuncotatorConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Matched_Norm_Sample_UUID      ,               FuncotatorConstants.UNKNOWN_VALUE_STRING );
 
         // Required "optional" fields:
-        defaultMap.put(MafOutputRendererConstants.FieldName_Genome_Change                          ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_Annotation_Transcript                  ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_Transcript_Strand                      ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_Transcript_Exon                        ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_Transcript_Position                    ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_cDNA_Change                            ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_Codon_Change                           ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_Protein_Change                         ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_Other_Transcripts                      ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_Refseq_mRNA_Id                         ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_Refseq_prot_Id                         ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_SwissProt_acc_Id                       ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_SwissProt_entry_Id                     ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_Description                            ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_UniProt_AApos                          ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_UniProt_Region                         ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_UniProt_Site                           ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_UniProt_Natural_Variations             ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_UniProt_Experimental_Info              ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_GO_Biological_Process                  ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_GO_Cellular_Component                  ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_GO_Molecular_Function                  ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_COSMIC_overlapping_mutations           ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_COSMIC_fusion_genes                    ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_COSMIC_tissue_types_affected           ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_COSMIC_total_alterations_in_gene       ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_Tumorscape_Amplification_Peaks         ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_Tumorscape_Deletion_Peaks              ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_TCGAscape_Amplification_Peaks          ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_TCGAscape_Deletion_Peaks               ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_DrugBank                               ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_ref_context                            ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_gc_content                             ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_CCLE_ONCOMAP_overlapping_mutations     ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_CCLE_ONCOMAP_total_mutations_in_gene   ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_CGC_Mutation_Type                      ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_CGC_Translocation_Partner              ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_CGC_Tumor_Types_Somatic                ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_CGC_Tumor_Types_Germline               ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_CGC_Other_Diseases                     ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_DNARepairGenes_Activity_linked_to_OMIM ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_FamilialCancerDatabase_Syndromes       ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_MUTSIG_Published_Results               ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_OREGANNO_ID                            ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_OREGANNO_Values                        ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_tumor_f                                ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING);
-        defaultMap.put(MafOutputRendererConstants.FieldName_t_alt_count                            ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
-        defaultMap.put(MafOutputRendererConstants.FieldName_t_ref_count                            ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
-        defaultMap.put(MafOutputRendererConstants.FieldName_n_alt_count                            ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
-        defaultMap.put(MafOutputRendererConstants.FieldName_n_ref_count                            ,      MafOutputRendererConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_Genome_Change                          ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_Annotation_Transcript                  ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_Transcript_Strand                      ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_Transcript_Exon                        ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_Transcript_Position                    ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_cDNA_Change                            ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_Codon_Change                           ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_Protein_Change                         ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_Other_Transcripts                      ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_Refseq_mRNA_Id                         ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_Refseq_prot_Id                         ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_SwissProt_acc_Id                       ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_SwissProt_entry_Id                     ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_Description                            ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_UniProt_AApos                          ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_UniProt_Region                         ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_UniProt_Site                           ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_UniProt_Natural_Variations             ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_UniProt_Experimental_Info              ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_GO_Biological_Process                  ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_GO_Cellular_Component                  ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_GO_Molecular_Function                  ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_COSMIC_overlapping_mutations           ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_COSMIC_fusion_genes                    ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_COSMIC_tissue_types_affected           ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_COSMIC_total_alterations_in_gene       ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_Tumorscape_Amplification_Peaks         ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_Tumorscape_Deletion_Peaks              ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_TCGAscape_Amplification_Peaks          ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_TCGAscape_Deletion_Peaks               ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_DrugBank                               ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_ref_context                            ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_gc_content                             ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_CCLE_ONCOMAP_overlapping_mutations     ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_CCLE_ONCOMAP_total_mutations_in_gene   ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_CGC_Mutation_Type                      ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_CGC_Translocation_Partner              ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_CGC_Tumor_Types_Somatic                ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_CGC_Tumor_Types_Germline               ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_CGC_Other_Diseases                     ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_DNARepairGenes_Activity_linked_to_OMIM ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_FamilialCancerDatabase_Syndromes       ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_MUTSIG_Published_Results               ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_OREGANNO_ID                            ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_OREGANNO_Values                        ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_tumor_f                                ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_t_alt_count                            ,      FuncotatorConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_t_ref_count                            ,      FuncotatorConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_n_alt_count                            ,      FuncotatorConstants.UNKNOWN_VALUE_STRING );
+        defaultMap.put(MafOutputRendererConstants.FieldName_n_ref_count                            ,      FuncotatorConstants.UNKNOWN_VALUE_STRING );
 
     }
 
