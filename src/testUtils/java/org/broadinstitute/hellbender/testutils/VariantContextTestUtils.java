@@ -279,7 +279,6 @@ public final class VariantContextTestUtils {
 
     public static void assertGenotypesAreEqual(final Genotype actual, final Genotype expected) {
         Assert.assertEquals(actual.getSampleName(), expected.getSampleName(), "Genotype names");
-        Assert.assertEquals(actual.getGenotypeString(), expected.getGenotypeString(), "Genotype string");
         Assert.assertTrue(CollectionUtils.isEqualCollection(actual.getAlleles(), expected.getAlleles()), "Genotype alleles");
         Assert.assertEquals(actual.getGenotypeString(false), expected.getGenotypeString(false), "Genotype string");
         Assert.assertEquals(actual.getType(), expected.getType(), "Genotype type");
