@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.pipelines;
 
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -13,6 +14,8 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.MarkDuplicatesSparkArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
+import org.broadinstitute.hellbender.engine.Shard;
+import org.broadinstitute.hellbender.engine.ShardBoundary;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
 import org.broadinstitute.hellbender.engine.spark.AssemblyRegionReadShardArgumentCollection;
@@ -41,6 +44,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * ReadsPipelineSpark is our standard pipeline that takes unaligned or aligned reads and runs BWA (if specified), MarkDuplicates,
@@ -208,7 +212,13 @@ public class ReadsPipelineSpark extends GATKSparkTool {
         final ReadFilter hcReadFilter = ReadFilter.fromList(HaplotypeCallerEngine.makeStandardHCReadFilters(), header);
         final JavaRDD<GATKRead> filteredReadsForHC = finalReads.filter(hcReadFilter::test);
         final List<SimpleInterval> intervals = hasUserSuppliedIntervals() ? getIntervals() : IntervalUtils.getAllIntervalsForReference(header.getSequenceDictionary());
-        HaplotypeCallerSpark.callVariantsWithHaplotypeCallerAndWriteOutput(ctx, filteredReadsForHC, header, referenceArguments.getReferenceFileName(), intervals, hcArgs, shardingArgs, assemblyRegionArgs, numReducers, output, makeVariantAnnotations());
+
+        SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
+        List<ShardBoundary> intervalShards = intervals.stream()
+                .flatMap(interval -> Shard.divideIntervalIntoShards(interval, shardingArgs.readShardSize, shardingArgs.readShardPadding, sequenceDictionary).stream())
+                .collect(Collectors.toList());
+
+        HaplotypeCallerSpark.callVariantsWithHaplotypeCallerAndWriteOutput(ctx, filteredReadsForHC, readsHeader, sequenceDictionary, referenceArguments.getReferenceFileName(), intervalShards, hcArgs, shardingArgs, assemblyRegionArgs, true, output, makeVariantAnnotations(), logger);
 
         if (bwaEngine != null) {
             bwaEngine.close();
