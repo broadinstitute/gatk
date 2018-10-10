@@ -327,20 +327,27 @@ public class Mutect2FilteringEngine {
         }
     }
 
-    private void applyBBStrandFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final FilterResult filterResult) {
+    private void applyStrictStrandFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final FilterResult filterResult) {
+
+        if (! MTFAC.strictStrandBias)  {
+            return;
+        }
+
         final Genotype tumorGenotype = vc.getGenotype(tumorSample);
-        if (!tumorGenotype.hasExtendedAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY)) {
+        if (! tumorGenotype.hasExtendedAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY)) {
             return;
         }
         final int[] strandBiasCounts = GATKProtectedVariantContextUtils.getAttributeAsIntArray(tumorGenotype, GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY, ()->null, -1);
 
-        // if there is no alt evidence in the foward or reverse strand
+        // if there is no alt evidence in the forward or reverse strand
         if ( strandBiasCounts[2] == 0 || strandBiasCounts[3] == 0) {
-            filterResult.addFilter(GATKVCFConstants.BB_STRAND_BIAS_FILTER_NAME);
+            filterResult.addFilter(GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME);
         }
     }
 
-    private void applyBBNRatioFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final FilterResult filterResult) {
+    private void applyNRatioFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final FilterResult filterResult) {
+
+
         final Genotype tumorGenotype = vc.getGenotype(tumorSample);
         final double[] alleleFractions = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(tumorGenotype, VCFConstants.ALLELE_FREQUENCY_KEY,
                 () -> new double[] {1.0}, 1.0);
@@ -348,13 +355,15 @@ public class Mutect2FilteringEngine {
         final int[] ADs = tumorGenotype.getAD();
         final int altCount = ADs[maxFractionIndex + 1];
 
-        if (!tumorGenotype.hasExtendedAttribute(GATKVCFConstants.N_BASE_COUNT_KEY)) {
+        // if there is no NCount annotation or the altCount is 0, don't apply the filter
+        if (!tumorGenotype.hasExtendedAttribute(GATKVCFConstants.N_BASE_COUNT_KEY) || altCount == 0 ) {
             return;
         }
 
         final int NCount = GATKProtectedVariantContextUtils.getAttributeAsInt(tumorGenotype, GATKVCFConstants.N_BASE_COUNT_KEY,-1);
+
         if ((double) NCount / altCount > MTFAC.nRatio ) {
-            filterResult.addFilter(GATKVCFConstants.BB_N_RATIO_FILTER_NAME);
+            filterResult.addFilter(GATKVCFConstants.N_RATIO_FILTER_NAME);
         }
     }
 
@@ -380,8 +389,8 @@ public class Mutect2FilteringEngine {
         applyMedianFragmentLengthDifferenceFilter(MTFAC, vc, filterResult);
         applyReadPositionFilter(MTFAC, vc, filterResult);
 
-        applyBBStrandFilter(MTFAC, vc, filterResult);
-        applyBBNRatioFilter(MTFAC, vc, filterResult);
+        applyStrictStrandFilter(MTFAC, vc, filterResult);
+        applyNRatioFilter(MTFAC, vc, filterResult);
 
         // The following filters use the information gathered during the first pass
         applyReadOrientationFilter(vc, filterResult, firstPass);

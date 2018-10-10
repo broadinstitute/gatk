@@ -78,8 +78,8 @@ public class GATKVCFHeaderLines {
         addFilterLine(new VCFFilterHeaderLine(READ_ORIENTATION_ARTIFACT_FILTER_NAME, "orientation bias detected by the orientation bias mixture model"));
         addFilterLine(new VCFFilterHeaderLine(BAD_HAPLOTYPE_FILTER_NAME, "Variant near filtered variant on same haplotype."));
 
-        addFilterLine(new VCFFilterHeaderLine(BB_STRAND_BIAS_FILTER_NAME, "evidence for alt allele is not represented in both directions"));
-        addFilterLine(new VCFFilterHeaderLine(BB_N_RATIO_FILTER_NAME, "ratio of N to alt exceeds specified ratio"));
+        addFilterLine(new VCFFilterHeaderLine(STRICT_STRAND_BIAS_FILTER_NAME, "evidence for alt allele is not represented in both directions"));
+        addFilterLine(new VCFFilterHeaderLine(N_RATIO_FILTER_NAME, "ratio of N to alt exceeds specified ratio"));
 
         addFormatLine(new VCFFormatHeaderLine(ALLELE_BALANCE_KEY, 1, VCFHeaderLineType.Float, "Allele balance for each het genotype"));
         addFormatLine(new VCFFormatHeaderLine(MAPPING_QUALITY_ZERO_BY_SAMPLE_KEY, 1, VCFHeaderLineType.Integer, "Number of Mapping Quality Zero Reads per sample"));
