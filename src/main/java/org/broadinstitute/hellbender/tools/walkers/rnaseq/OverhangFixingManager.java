@@ -140,14 +140,16 @@ public class OverhangFixingManager {
      * @param contig  the contig
      * @param start   the start of the split, inclusive
      * @param end     the end of the split, inclusive
+     * @return the splice created, for testing purposes
      */
+    @VisibleForTesting
     public Splice addSplicePosition(final String contig, final int start, final int end) {
         if ( doNotFixOverhangs ) {
             return null;
         }
 
         // is this a new splice?  if not, we are done
-        final Splice splice = getSplice(contig, start, end);
+        final Splice splice = new Splice(contig, start, end);
         if ( splices.contains(splice) ) {
             return null;
         }
@@ -463,11 +465,9 @@ public class OverhangFixingManager {
         }
     }
 
-    public SplitRead getSplitRead(final GATKRead read){
+    @VisibleForTesting
+    SplitRead getSplitRead(final GATKRead read){
         return new SplitRead(read);
-    }
-    public Splice getSplice(final String contig, final int start, final int end){
-        return new Splice(contig, start, end);
     }
 
     // class to represent the split positions
