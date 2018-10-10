@@ -51,7 +51,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
             "AS_QD",
             "QD",//TODO QD and AS_QD have cap values and anything that reaches that is randomized.  It's difficult to reproduce the same random numbers across gatk3 -> 4
             "FS");//TODO There's some bug in either gatk3 or gatk4 fisherstrand that's making them not agree still, I'm not sure which is correct
-    private static final List<String> ATTRIBUTES_TO_IGNORE = Arrays.asList("AN","AS_QD","QD","FS","RAW_MQ","RGQ","MQ"); //MQ data format and key have changed since GATK3
+    private static final List<String> ATTRIBUTES_TO_IGNORE = Arrays.asList("AS_QD","QD","FS","RAW_MQ","RGQ","MQ"); //MQ data format and key have changed since GATK3
 
     private static final String ALLELE_SPECIFIC_DIRECTORY = toolsTestDir + "walkers/annotator/allelespecific";
 
@@ -95,9 +95,10 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
                 {getTestFile( "testAlleleSpecificAnnotations.CombineGVCF.output.g.vcf"), getTestFile( "testAlleleSpecificAnnotations.CombineGVCF.expected.g.vcf"), Arrays.asList( "-A", "ClippingRankSumTest", "-G", "AS_StandardAnnotation", "-G", "StandardAnnotation"), b37_reference_20_21},
 
                 // all sites/--include-non-variant-sites tests
-
-                // The results from this test differ slightly from gatk3 since sites where the only alternate allele is a spanning
-                // deletion are not emitted by gatk4.
+                // The results from these tests differ from GATK3 in the following ways:
+                //  - sites where the only alternate allele is a spanning deletion are emitted by GATK3, but not emitted by GATK4
+                //  - LowQual variants are not emitted by GATK3, but are emitted by GATK4
+                //  - GATK3 added `AN` annotations to non-variant sites, but GATK3 does not
                 {getTestFile(BASE_PAIR_GVCF), getTestFile( "expected/gvcf.basepairResolution.includeNonVariantSites.vcf"), Collections.singletonList("--" + GenotypeGVCFs.ALL_SITES_LONG_NAME), b37_reference_20_21 },
                 {getTestFile( "combine.single.sample.pipeline.1.vcf"),
                         getTestFile( "expected/combine.single.sample.pipeline.1.include_nonvariant.vcf"),
@@ -116,10 +117,11 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
                         getTestFile( "expected/combined.single.sample.pipeline.include_nonvariant.vcf"),
                         Arrays.asList( " --" + GenotypeGVCFs.ALL_SITES_LONG_NAME + " -L 20:10,030,000-10,033,000 -L 20:10,386,000-10,386,500 "),
                         b37_reference_20_21},
-                // test site 10096905 - 10096907 to force coverage around a spanning deletion only site
+                // test site 10096905 - 10096907 to force coverage around a spanning deletion only site, and 20:10624924-1062492 to
+                // force coverage around a multi-allelic variant that includes a spanning deletion
                 {getTestFile( "combined.single.sample.pipeline.gatk3.vcf"),
                         getTestFile( "expected/testSpanningDeletion.vcf"),
-                        Arrays.asList( " --" + GenotypeGVCFs.ALL_SITES_LONG_NAME + " -L 20:10,096,905-10,096,907 "),
+                        Arrays.asList( " --" + GenotypeGVCFs.ALL_SITES_LONG_NAME + " -L 20:10,096,905-10,096,907 -L 20:10624924-10624926"),
                         b37_reference_20_21},
                 // test site 20:10,012,730-10,012,740 to force coverage around LowQual site
                 {getTestFile( "combined.single.sample.pipeline.gatk3.vcf"),
