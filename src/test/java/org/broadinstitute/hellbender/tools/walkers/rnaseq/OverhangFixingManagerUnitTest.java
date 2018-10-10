@@ -285,4 +285,19 @@ public final class OverhangFixingManagerUnitTest extends GATKBaseTest {
         // Assert that no splitting happened (and no array exception) by asserting a copy of the read was not placed in split.read
         Assert.assertTrue(split.read==read);
     }
+
+    @Test
+    public void testReadWithOnlyInsertionInsideSpan() {
+        final OverhangFixingManager manager = new OverhangFixingManager(getHG19Header(), null, hg19GenomeLocParser, hg19ReferenceReader, 100, 100, 30, false, true);
+        // Create a splice that is going to overlap into the deletion of our read, forcing us to check for mismatches to the reference
+        OverhangFixingManager.Splice splice = manager.addSplicePosition("1",6816, 11247);
+        // Create a read that is entirely an insertion inside of the splice to demonstrate it is handled without creating an invalid loc
+        GATKRead read = ArtificialReadUtils.createArtificialRead(hg19Header, "read1", 0, 11244, new byte[100], new byte[100], "100I");
+        OverhangFixingManager.SplitRead split = manager.getSplitRead(read);
+        manager.fixSplit(split,splice);
+        // Assert that no splitting happened (and no array exception) by asserting a copy of the read was not placed in split.read
+        Assert.assertTrue(split.read==read);
+    }
+
+
 }
