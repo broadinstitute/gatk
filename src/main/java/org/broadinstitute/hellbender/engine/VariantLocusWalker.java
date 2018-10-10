@@ -21,15 +21,15 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 /**
- * VariantWalkerGroupedByLocus processes variants from a single source, grouped by locus overlap, or optionally one
+ * VariantLocusWalker processes variants from a single source, grouped by locus overlap, or optionally one
  * at a time in order, with optional contextual information from a reference, sets of reads, and/or supplementary sources
  * of Features. By-variant traversal is opt in, via {@link #changeTraversalModeToByVariant()}, otherwise only loci with
  * overlapping variants are traversed.
  *
- * VariantWalkerGroupedByLocus authors must implement the {@link #apply} method to process each variant, and may optionally implement
+ * VariantLocusWalker authors must implement the {@link #apply} method to process each variant, and may optionally implement
  * {@link #onTraversalStart}, {@link #onTraversalSuccess} and/or {@link #closeTool}.
  */
-public abstract class VariantWalkerGroupedByLocus extends VariantWalkerBase {
+public abstract class VariantLocusWalker extends VariantWalkerBase {
 
     // NOTE: using String rather than FeatureInput<VariantContext> here so that we can keep this driving source
     //       of variants separate from any other potential sources of Features

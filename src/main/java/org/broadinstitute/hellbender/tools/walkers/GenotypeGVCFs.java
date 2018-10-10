@@ -85,7 +85,7 @@ import java.util.stream.Collectors;
         oneLineSummary = "Perform joint genotyping on one or more samples pre-called with HaplotypeCaller",
         programGroup = ShortVariantDiscoveryProgramGroup.class)
 @DocumentedFeature
-public final class GenotypeGVCFs extends VariantWalkerGroupedByLocus {
+public final class GenotypeGVCFs extends VariantLocusWalker {
 
     public static final String PHASED_HOM_VAR_STRING = "1|1";
     public static final String ONLY_OUTPUT_CALLS_STARTING_IN_INTERVALS_FULL_NAME = "only-output-calls-starting-in-intervals";
