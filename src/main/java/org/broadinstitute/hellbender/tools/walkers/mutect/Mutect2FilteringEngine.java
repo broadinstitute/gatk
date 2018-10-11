@@ -356,11 +356,11 @@ public class Mutect2FilteringEngine {
         final int altCount = ADs[maxFractionIndex + 1];
 
         // if there is no NCount annotation or the altCount is 0, don't apply the filter
-        if (!tumorGenotype.hasExtendedAttribute(GATKVCFConstants.N_BASE_COUNT_KEY) || altCount == 0 ) {
+        if (!tumorGenotype.hasExtendedAttribute(GATKVCFConstants.N_COUNT_KEY) || altCount == 0 ) {
             return;
         }
 
-        final int NCount = GATKProtectedVariantContextUtils.getAttributeAsInt(tumorGenotype, GATKVCFConstants.N_BASE_COUNT_KEY,-1);
+        final int NCount = GATKProtectedVariantContextUtils.getAttributeAsInt(tumorGenotype, GATKVCFConstants.N_COUNT_KEY,-1);
 
         if ((double) NCount / altCount > MTFAC.nRatio ) {
             filterResult.addFilter(GATKVCFConstants.N_RATIO_FILTER_NAME);

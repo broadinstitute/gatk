@@ -100,6 +100,8 @@ public abstract class GATKBaseTest extends BaseTest {
     public static final String DREAM_BAMS_DIR = publicTestDir + "large/mutect/dream_synthetic_bams";
     public static final String DREAM_VCFS_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/mutect/dream/vcfs";
 
+    public static final String LIQUIDBIOPSY_BAMS_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/mutect/liquidbiopsy/bams";
+
     public CachingIndexedFastaSequenceFile hg19ReferenceReader;
     public GenomeLocParser hg19GenomeLocParser;
 

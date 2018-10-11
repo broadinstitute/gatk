@@ -16,7 +16,11 @@ import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.OrientationBiasUtils;
+<<<<<<< HEAD
 import org.broadinstitute.hellbender.tools.walkers.annotator.StrandBiasBySample;
+=======
+import org.broadinstitute.hellbender.tools.walkers.annotator.GenotypeAnnotation;
+>>>>>>> ecc753129... starting tests
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceSummaryRecord;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
@@ -617,6 +621,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         Assert.assertFalse(vc.get().getFilters().contains(GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME));
     }
 
+<<<<<<< HEAD
     public File createSamWithOverlappingReads(final int numAltPairs, final int refDepth) throws IOException {
         final byte altQuality = 50;
         final byte refQuality = 30;
@@ -744,7 +749,6 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 {new File(DREAM_BAMS_DIR, "tumor_1.bam"), "tumor sample", new File(DREAM_BAMS_DIR, "normal_1.bam"), "synthetic.challenge.set1.normal"}
         };
     }
-
     //TODO: bring this to HaplotypeCallerIntegrationTest
     private Pair<Double, Double> calculateConcordance(final File outputVcf, final File truthVcf ) {
         final Set<String> outputKeys = VariantContextTestUtils.streamVcf(outputVcf)
