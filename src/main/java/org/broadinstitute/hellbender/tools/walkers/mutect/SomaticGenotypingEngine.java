@@ -11,6 +11,7 @@ import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.util.FastMath;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.tools.walkers.annotator.StrandBiasTest;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AFCalculator;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AFCalculatorProvider;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerGenotypingEngine;
@@ -37,6 +38,7 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
     public final String tumorSample;
     private final String normalSample;
     final boolean hasNormal;
+    public static final String DISCARDED_MATE_READ_TAG = "DM";
 
     // {@link GenotypingEngine} requires a non-null {@link AFCalculatorProvider} but this class doesn't need it.  Thus we make a dummy
     private static final AFCalculatorProvider DUMMY_AF_CALCULATOR_PROVIDER = new AFCalculatorProvider() {
@@ -226,8 +228,8 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
     }
 
     private void addGenotypes(final LikelihoodMatrix<Allele> tumorLog10Matrix,
-                                        final Optional<LikelihoodMatrix<Allele>> normalLog10Matrix,
-                                        final VariantContextBuilder callVcb) {
+                              final Optional<LikelihoodMatrix<Allele>> normalLog10Matrix,
+                              final VariantContextBuilder callVcb) {
         final double[] tumorAlleleCounts = getEffectiveCounts(tumorLog10Matrix);
         final int[] adArray = Arrays.stream(tumorAlleleCounts).mapToInt(x -> (int) FastMath.round(x)).toArray();
         final int dp = (int) MathUtils.sum(adArray);
@@ -325,6 +327,13 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
                 if (read.allele.equals(mate.allele)) {
                     // keep the higher-quality read
                     readsToDiscard.add(read.likelihood < mate.likelihood ? read.read : mate.read);
+
+                    // mark the read to indicate that its mate was dropped - so that we can account for it in {@link StrandArtifact}
+                    // and {@link StrandBiasBySample}
+                    if (MTAC.annotateBasedOnReads){
+                        final GATKRead readToKeep = read.likelihood >= mate.likelihood ? read.read : mate.read;
+                        readToKeep.setAttribute(DISCARDED_MATE_READ_TAG, 1);
+                    }
                 } else if (retainMismatches) {
                     // keep the alt read
                     readsToDiscard.add(read.allele.equals(ref) ? read.read : mate.read);
