@@ -31,7 +31,6 @@ def parse_args():
                         help='Key which maps to an input symbol to index mapping.')
     parser.add_argument('--input_symbols', help='Dict mapping input symbols to their index within input tensors, '
                         + 'initialised via input_symbols_set argument')
-
     parser.add_argument('--batch_size', default=32, type=int,
                         help='Mini batch size for stochastic gradient descent algorithms.')
     parser.add_argument('--read_limit', default=128, type=int,
@@ -73,6 +72,7 @@ def parse_args():
                         help='Whether to skip positive examples when writing tensors.')
     parser.add_argument('--chrom', help='Chromosome to load for parallel tensor writing.')
 
+
     # I/O files and directories: vcfs, bams, beds, hd5, fasta
     parser.add_argument('--output_dir', default='./', help='Directory to write models or other data out.')
     parser.add_argument('--image_dir', default=None, help='Directory to write images and plots to.')
@@ -110,6 +110,32 @@ def parse_args():
                         help='Generic iteration limit for hyperparameter optimization, animation, and other counts.')
     parser.add_argument('--tensor_board', default=False, action='store_true',
                         help='Add the tensor board callback.')
+
+    # Architecture defining arguments
+    parser.add_argument('--conv_width', default=5, type=int, help='Width of convolutional kernels.')
+    parser.add_argument('--conv_height', default=5, type=int, help='Height of convolutional kernels.')
+    parser.add_argument('--conv_dropout', default=0.0, type=float,
+                        help='Dropout rate in convolutional layers.')
+    parser.add_argument('--conv_batch_normalize', default=False, action='store_true',
+                        help='Batch normalize convolutional layers.')
+    parser.add_argument('--conv_layers', nargs='+', default=[128, 96, 64, 48], type=int,
+                        help='List of sizes for each convolutional filter layer')
+    parser.add_argument('--padding', default='valid', choices=['valid', 'same'],
+                        help='Valid or same border padding for convolutional layers.')
+    parser.add_argument('--spatial_dropout', default=False, action='store_true',
+                        help='Spatial dropout on the convolutional layers.')
+    parser.add_argument('--max_pools', nargs='+', default=[], type=int,
+                        help='List of max-pooling layers.')
+    parser.add_argument('--fc_layers', nargs='+', default=[32], type=int,
+                        help='List of sizes for each fully connected layer')
+    parser.add_argument('--fc_dropout', default=0.0, type=float,
+                        help='Dropout rate in fully connected  layers.')
+    parser.add_argument('--fc_batch_normalize', default=False, action='store_true',
+                        help='Batch normalize fully connected layers.')
+    parser.add_argument('--annotation_units', default=16, type=int,
+                        help='Number of units connected to the annotation input layer.')
+    parser.add_argument('--annotation_shortcut', default=False, action='store_true',
+                        help='Shortcut connections on the annotations.')
 
     # Evaluation related arguments
     parser.add_argument('--score_keys', nargs='+', default=['VQSLOD'],
