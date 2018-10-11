@@ -400,8 +400,11 @@ public class OverhangFixingManager {
 
         public void setRead(final GATKRead read) {
             this.read = read;
-            if ( ! read.isUnmapped() ) {
-                unclippedLoc = genomeLocParser.createGenomeLoc(read.getContig(), read.getSoftStart(), read.getSoftEnd());
+            int softStart = read.getSoftStart();
+            int softEnd = read.getSoftEnd();
+            // Don't assign an unclipped loc if the read if it doesn't consume reference bases
+            if ( ! read.isUnmapped() && softStart < softEnd) {
+                unclippedLoc = genomeLocParser.createGenomeLoc(read.getContig(), softStart, softEnd);
             }
         }
 
