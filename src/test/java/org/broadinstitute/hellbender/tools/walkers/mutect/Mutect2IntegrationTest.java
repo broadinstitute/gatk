@@ -16,11 +16,7 @@ import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.OrientationBiasUtils;
-<<<<<<< HEAD
 import org.broadinstitute.hellbender.tools.walkers.annotator.StrandBiasBySample;
-=======
-import org.broadinstitute.hellbender.tools.walkers.annotator.GenotypeAnnotation;
->>>>>>> ecc753129... starting tests
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceSummaryRecord;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
@@ -31,7 +27,6 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
-import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -621,7 +616,6 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         Assert.assertFalse(vc.get().getFilters().contains(GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME));
     }
 
-<<<<<<< HEAD
     public File createSamWithOverlappingReads(final int numAltPairs, final int refDepth) throws IOException {
         final byte altQuality = 50;
         final byte refQuality = 30;
@@ -650,7 +644,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     }
 
 
-    // Test that the strand bias annotaitons can count the number of reads, not fragments, when requested
+    // Test that the strand bias annotations can count the number of reads, not fragments, when requested
     @Test
     public void testReadBasedAnnotations() throws IOException {
         // Case 1: with the read correction we lose the variant - blood biopsy-like case
@@ -690,6 +684,8 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         Assert.assertFalse(vc.get().getFilters().contains(GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME));
     }
+
+
 
     private void doMutect2Test(
             final String inputBam,
