@@ -615,26 +615,34 @@ public final class SelectVariants extends VariantWalker {
             if (!failedJexlMatch &&
                     (!selectRandomFraction || Utils.getRandomGenerator().nextDouble() < fractionRandom)) {
                 //remove annotations being dropped and write variantcontext
-                final VariantContextBuilder rmAnnotationsBuilder = new VariantContextBuilder(filteredGenotypeToNocall);
-                for (String infoField : infoAnnotationsToDrop) {
-                    rmAnnotationsBuilder.rmAttribute(infoField);
-                }
-
-                final ArrayList<Genotype> genotypesToWrite = new ArrayList<>();
-                for (Genotype genotype : filteredGenotypeToNocall.getGenotypes()) {
-                    final GenotypeBuilder genotypeBuilder = new GenotypeBuilder(genotype).noAttributes();
-                    final Map<String, Object> attributes = new HashMap<>(genotype.getExtendedAttributes());
-                    for (String genotypeAnnotation : genotypeAnnotationsToDrop) {
-                        attributes.remove(genotypeAnnotation);
-                    }
-                    genotypeBuilder.attributes(attributes);
-                    genotypesToWrite.add(genotypeBuilder.make());
-                }
-                rmAnnotationsBuilder.genotypes(GenotypesContext.create(genotypesToWrite));
-                final VariantContext variantContextToWrite = rmAnnotationsBuilder.make();
+                final VariantContext variantContextToWrite = buildVariantContextWithDroppedAnnotationsRemoved(filteredGenotypeToNocall);
                 vcfWriter.add(variantContextToWrite);
             }
         }
+    }
+
+    private VariantContext buildVariantContextWithDroppedAnnotationsRemoved(final VariantContext vc) {
+        if (infoAnnotationsToDrop.isEmpty() && genotypeAnnotationsToDrop.isEmpty()) {
+            return vc;
+        }
+        final VariantContextBuilder rmAnnotationsBuilder = new VariantContextBuilder(vc);
+        for (String infoField : infoAnnotationsToDrop) {
+            rmAnnotationsBuilder.rmAttribute(infoField);
+        }
+        if (!genotypeAnnotationsToDrop.isEmpty()) {
+            final ArrayList<Genotype> genotypesToWrite = new ArrayList<>();
+            for (Genotype genotype : vc.getGenotypes()) {
+                final GenotypeBuilder genotypeBuilder = new GenotypeBuilder(genotype).noAttributes();
+                final Map<String, Object> attributes = new HashMap<>(genotype.getExtendedAttributes());
+                for (String genotypeAnnotation : genotypeAnnotationsToDrop) {
+                    attributes.remove(genotypeAnnotation);
+                }
+                genotypeBuilder.attributes(attributes);
+                genotypesToWrite.add(genotypeBuilder.make());
+            }
+            rmAnnotationsBuilder.genotypes(GenotypesContext.create(genotypesToWrite));
+        }
+        return rmAnnotationsBuilder.make();
     }
 
     private boolean checkOnlySpanDel(VariantContext vc){
