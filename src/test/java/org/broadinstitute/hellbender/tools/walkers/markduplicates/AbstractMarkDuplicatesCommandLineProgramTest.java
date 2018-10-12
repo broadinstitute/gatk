@@ -186,6 +186,28 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
         tester.runTest();
     }
 
+    @Test(dataProvider = "secondarySupplementaryData")
+    public void testManyOpticalDuplicateClusterOneEndSamePositionOneCluster(final Boolean additionalFragSecondary, final Boolean additionalFragSupplementary, final Boolean fragLikeFirst) {
+        final MarkDuplicatesSparkTester tester = getTester();
+        tester.getSamRecordSetBuilder().setReadLength(101);
+        tester.setExpectedOpticalDuplicate(2);
+        //canonical
+        tester.addMatePair("RUNID:7:2205:17939:39728", 1, 485328, 485312, false, false, false, false, "55M46S", "30S71M", false, true, false, false, false, DEFAULT_BASE_QUALITY);
+        //library
+        tester.addMatePair("RUNID:7:2205:27949:39745", 1, 485328, 485328, false, false, true, true, "55M46S", "46S55M", false, true, false, false, false, DEFAULT_BASE_QUALITY);
+        //optical (of canonical)
+        tester.addMatePair("RUNID:7:2205:17949:39745", 1, 485328, 485328, false, false, true, true, "55M46S", "46S55M", false, true, false, false, false, DEFAULT_BASE_QUALITY);
+
+        //non-canonical
+        tester.addMappedFragment(fragLikeFirst ? "RUNID:7:2205:17939:39728" : "RUNID:7:2205:17949:39745", 1, 400, markSecondaryAndSupplementaryRecordsLikeTheCanonical() && !fragLikeFirst, null, null, additionalFragSecondary, additionalFragSupplementary, DEFAULT_BASE_QUALITY);
+
+        //library
+        tester.addMatePair("RUNID:7:2205:37949:39745", 1, 485328, 485328, false, false, true, true, "55M46S", "46S55M", false, true, false, false, false, DEFAULT_BASE_QUALITY);
+        //optical of canonical
+        tester.addMatePair("RUNID:7:2205:17959:39735", 1, 485328, 485328, false, false, true, true, "55M46S", "46S55M", false, true, false, false, false, DEFAULT_BASE_QUALITY);
+        tester.runTest();
+    }
+
 
     @Test
     public void testOpticalDuplicatesDifferentReadGroups() {
