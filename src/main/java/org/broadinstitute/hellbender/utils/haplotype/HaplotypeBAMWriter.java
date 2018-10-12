@@ -7,6 +7,8 @@ import htsjdk.samtools.SAMTag;
 
 import htsjdk.samtools.util.Locatable;
 import java.nio.file.Path;
+
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerUtils;
 import org.broadinstitute.hellbender.utils.read.*;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
@@ -35,7 +37,6 @@ public class HaplotypeBAMWriter implements AutoCloseable {
     private final HaplotypeBAMDestination output;
     private WriterType writerType;
     private boolean writeHaplotypes = true;
-
     /**
      * Possible modes for writing haplotypes to BAMs
      */
@@ -112,12 +113,14 @@ public class HaplotypeBAMWriter implements AutoCloseable {
      * @param bestHaplotypes a list of the best (a subset of all) haplotypes that actually went forward into genotyping, cannot be null
      * @param calledHaplotypes a list of the haplotypes that where actually called as non-reference, cannot be null
      * @param readLikelihoods a map from sample -> likelihoods for each read for each of the best haplotypes, cannot be null
+     * @param callableRegion the region over which variants are being called
      */
     public void writeReadsAlignedToHaplotypes(final Collection<Haplotype> haplotypes,
                                               final Locatable paddedReferenceLoc,
                                               final Collection<Haplotype> bestHaplotypes,
                                               final Set<Haplotype> calledHaplotypes,
-                                              final ReadLikelihoods<Haplotype> readLikelihoods) {
+                                              final ReadLikelihoods<Haplotype> readLikelihoods,
+                                              final Locatable callableRegion) {
 
         Utils.nonNull(haplotypes, "haplotypes cannot be null");
         Utils.nonNull(paddedReferenceLoc, "paddedReferenceLoc cannot be null");
@@ -129,10 +132,10 @@ public class HaplotypeBAMWriter implements AutoCloseable {
             if (calledHaplotypes.isEmpty()){
                 return;
             }
-            writeHaplotypesAsReads(calledHaplotypes, calledHaplotypes, paddedReferenceLoc);
+            writeHaplotypesAsReads(calledHaplotypes, calledHaplotypes, paddedReferenceLoc, callableRegion);
 
         } else {
-            writeHaplotypesAsReads(haplotypes, new LinkedHashSet<>(bestHaplotypes), paddedReferenceLoc);
+            writeHaplotypesAsReads(haplotypes, new LinkedHashSet<>(bestHaplotypes), paddedReferenceLoc, callableRegion);
         }
 
         final int sampleCount = readLikelihoods.numberOfSamples();
@@ -141,6 +144,14 @@ public class HaplotypeBAMWriter implements AutoCloseable {
                 writeReadAgainstHaplotype(read);
             }
         }
+    }
+
+    public void writeReadsAlignedToHaplotypes(final Collection<Haplotype> haplotypes,
+                                              final Locatable paddedReferenceLoc,
+                                              final Collection<Haplotype> bestHaplotypes,
+                                              final Set<Haplotype> calledHaplotypes,
+                                              final ReadLikelihoods<Haplotype> readLikelihoods) {
+        writeReadsAlignedToHaplotypes(haplotypes, paddedReferenceLoc, bestHaplotypes, calledHaplotypes, readLikelihoods, null);
     }
 
     /**
@@ -160,17 +171,19 @@ public class HaplotypeBAMWriter implements AutoCloseable {
      * @param bestHaplotypes a subset of haplotypes that contains those that are best "either good or called", must not
      *                       be null
      * @param paddedReferenceLoc the genome loc of the padded reference, must not be null
+     * @param callableRegion the region over which variants are being called
      */
     private void writeHaplotypesAsReads(final Collection<Haplotype> haplotypes,
                                           final Set<Haplotype> bestHaplotypes,
-                                          final Locatable paddedReferenceLoc) {
+                                          final Locatable paddedReferenceLoc,
+                                          final Locatable callableRegion) {
         Utils.nonNull(haplotypes, "haplotypes cannot be null");
         Utils.nonNull(bestHaplotypes, "bestHaplotypes cannot be null");
         Utils.nonNull(paddedReferenceLoc, "paddedReferenceLoc cannot be null");
 
         if (writeHaplotypes) {
             for (final Haplotype haplotype : haplotypes) {
-                writeHaplotype(haplotype, paddedReferenceLoc, bestHaplotypes.contains(haplotype));
+                writeHaplotype(haplotype, paddedReferenceLoc, bestHaplotypes.contains(haplotype), callableRegion);
             }
         }
     }
@@ -181,10 +194,12 @@ public class HaplotypeBAMWriter implements AutoCloseable {
      * @param haplotype a haplotype to write out, must not be null
      * @param paddedRefLoc the reference location, must not be null
      * @param isAmongBestHaplotypes true if among the best haplotypes, false if it was just one possible haplotype
+     * @param callableRegion the region over which variants are being called
      */
     private void writeHaplotype(final Haplotype haplotype,
                                 final Locatable paddedRefLoc,
-                                final boolean isAmongBestHaplotypes) {
+                                final boolean isAmongBestHaplotypes,
+                                final Locatable callableRegion) {
         Utils.nonNull(haplotype, "haplotype cannot be null");
         Utils.nonNull(paddedRefLoc, "paddedRefLoc cannot be null");
 
@@ -201,6 +216,9 @@ public class HaplotypeBAMWriter implements AutoCloseable {
         record.setReferenceIndex(output.getBAMOutputHeader().getSequenceIndex(paddedRefLoc.getContig()));
         record.setAttribute(SAMTag.RG.toString(), output.getHaplotypeReadGroupID());
         record.setFlags(SAMFlag.READ_REVERSE_STRAND.intValue());
+        if (callableRegion != null) {
+            record.setAttribute(AssemblyBasedCallerUtils.CALLABLE_REGION_TAG, callableRegion.toString());
+        }
 
         output.add(new SAMRecordToGATKReadAdapter(record));
     }

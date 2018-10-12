@@ -607,7 +607,8 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                 (hcArgs.assemblerArgs.consensusMode ? Collections.<VariantContext>emptyList() : givenAlleles),
                 emitReferenceConfidence(),
                 hcArgs.maxMnpDistance,
-                readsHeader);
+                readsHeader,
+                haplotypeBAMWriter.isPresent());
 
         if ( haplotypeBAMWriter.isPresent() ) {
             final Set<Haplotype> calledHaplotypeSet = new HashSet<>(calledHaplotypes.getCalledHaplotypes());
@@ -615,7 +616,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                 calledHaplotypeSet.add(assemblyResult.getReferenceHaplotype());
             }
             haplotypeBAMWriter.get().writeReadsAlignedToHaplotypes(haplotypes, assemblyResult.getPaddedReferenceLoc(), haplotypes,
-                                                             calledHaplotypeSet, readLikelihoods);
+                                                             calledHaplotypeSet, readLikelihoods,regionForGenotyping.getSpan());
         }
 
         if( hcArgs.debug) {

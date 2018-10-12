@@ -72,6 +72,7 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
      * The list of samples we're working with is obtained from the readLikelihoods
      * @param log10ReadLikelihoods                       Map from reads->(haplotypes,likelihoods)
      * @param activeRegionWindow                     Active window
+     * @param withBamOut                            whether to annotate reads in readLikelihoods for future writing to bamout
      *
      * @return                                       A CalledHaplotypes object containing a list of VC's with genotyped events and called haplotypes
      */
@@ -82,7 +83,8 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
             final SimpleInterval activeRegionWindow,
             final FeatureContext featureContext,
             final List<VariantContext> givenAlleles,
-            final SAMFileHeader header) {
+            final SAMFileHeader header,
+            final boolean withBamOut) {
         Utils.nonNull(log10ReadLikelihoods);
         Utils.validateArg(log10ReadLikelihoods.numberOfSamples() > 0, "likelihoods have no samples");
         Utils.nonNull(activeRegionWindow);
@@ -100,6 +102,11 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
 
         final Set<Haplotype> calledHaplotypes = new HashSet<>();
         final List<VariantContext> returnCalls = new ArrayList<>();
+
+        if(withBamOut){
+            //add annotations to reads for alignment regions and calling regions
+            AssemblyBasedCallerUtils.annotateReadLikelihoodsWithRegions(log10ReadLikelihoods, activeRegionWindow);
+        }
 
         for( final int loc : startPosKeySet ) {
             final List<VariantContext> eventsAtThisLoc = getVariantContextsFromActiveHaplotypes(loc, haplotypes, false);
@@ -170,6 +177,9 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
             final ReadLikelihoods<Allele> trimmedLikelihoods = log10Likelihoods.marginalize(trimmedToUntrimmedAlleleMap);
 
             final VariantContext annotatedCall =  annotationEngine.annotateContext(trimmedCall, featureContext, referenceContext, trimmedLikelihoods, a -> true);
+            if(withBamOut) {
+                AssemblyBasedCallerUtils.annotateReadLikelihoodsWithSupportedAlleles(trimmedCall, trimmedLikelihoods);
+            }
 
             call.getAlleles().stream().map(alleleMapper::get).filter(Objects::nonNull).forEach(calledHaplotypes::addAll);
             returnCalls.add( annotatedCall );
@@ -181,6 +191,17 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
                 .map(vc -> new VariantContextBuilder(vc).attribute(GATKVCFConstants.EVENT_COUNT_IN_HAPLOTYPE_KEY, eventCount).make())
                 .collect(Collectors.toList());
         return new CalledHaplotypes(outputCallsWithEventCountAnnotation, calledHaplotypes);
+    }
+
+    public CalledHaplotypes callMutations(
+            final ReadLikelihoods<Haplotype> log10ReadLikelihoods,
+            final AssemblyResultSet assemblyResultSet,
+            final ReferenceContext referenceContext,
+            final SimpleInterval activeRegionWindow,
+            final FeatureContext featureContext,
+            final List<VariantContext> givenAlleles,
+            final SAMFileHeader header) {
+        return callMutations(log10ReadLikelihoods,assemblyResultSet, referenceContext, activeRegionWindow, featureContext, givenAlleles, header, false);
     }
 
     private Set<Allele> getAllelesConsistentWithGivenAlleles(List<VariantContext> givenAlleles, int loc, VariantContext mergedVC) {
