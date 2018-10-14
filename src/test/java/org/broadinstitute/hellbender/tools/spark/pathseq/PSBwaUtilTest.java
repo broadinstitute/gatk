@@ -2,8 +2,8 @@ package org.broadinstitute.hellbender.tools.spark.pathseq;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceRecord;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -19,7 +19,7 @@ public class PSBwaUtilTest extends GATKBaseTest {
         final SerializableFunction<GATKRead, SimpleInterval> windowFunction = ReferenceWindowFunctions.IDENTITY_FUNCTION;
         final String referencePath = hg19MiniReference;
         PSBwaUtils.addReferenceSequencesToHeader(header, referencePath, windowFunction);
-        final ReferenceMultiSource ref = new ReferenceMultiSource(referencePath, windowFunction);
+        final ReferenceMultiSparkSource ref = new ReferenceMultiSparkSource(referencePath, windowFunction);
         Assert.assertEquals(ref.getReferenceSequenceDictionary(null).size(), header.getSequenceDictionary().size());
         for (final SAMSequenceRecord rec : ref.getReferenceSequenceDictionary(null).getSequences()) {
             final SAMSequenceRecord recTest = header.getSequenceDictionary().getSequence(rec.getSequenceName());

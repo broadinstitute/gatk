@@ -4,8 +4,8 @@
 #
 # - The intervals argument is required for both WGS and WES workflows and accepts formats compatible with the
 #   GATK -L argument (see https://gatkforums.broadinstitute.org/gatk/discussion/11009/intervals-and-interval-lists).
-#   These intervals will be padded on both sides by the amount specified by PreprocessIntervals.padding (default 250)
-#   and split into bins of length specified by PreprocessIntervals.bin_length (default 1000; specify 0 to skip binning,
+#   These intervals will be padded on both sides by the amount specified by padding (default 250)
+#   and split into bins of length specified by bin_length (default 1000; specify 0 to skip binning,
 #   e.g., for WES).  For WGS, the intervals should simply cover the chromosomes of interest.
 #
 # - Intervals can be blacklisted from coverage collection and all downstream steps by using the blacklist_intervals
@@ -29,8 +29,8 @@ workflow CNVGermlineCohortWorkflow {
     ##################################
     File intervals
     File? blacklist_intervals
-    Array[String] normal_bams
-    Array[String] normal_bais
+    Array[String]+ normal_bams
+    Array[String]+ normal_bais
     String cohort_entity_id
     File contig_ploidy_priors
     Int num_intervals_per_scatter
@@ -54,10 +54,18 @@ workflow CNVGermlineCohortWorkflow {
     Int? padding
     Int? bin_length
 
+    ##################################################
+    #### optional arguments for AnnotateIntervals ####
+    ##################################################
+    File? mappability_track
+    File? segmental_duplication_track
+    Int? feature_query_lookahead
+    Int? mem_gb_for_annotate_intervals
+
     ##############################################
     #### optional arguments for CollectCounts ####
     ##############################################
-    String? format
+    String? collect_counts_format
     Int? mem_gb_for_collect_counts
 
     ########################################################################
@@ -146,8 +154,12 @@ workflow CNVGermlineCohortWorkflow {
                 ref_fasta = ref_fasta,
                 ref_fasta_fai = ref_fasta_fai,
                 ref_fasta_dict = ref_fasta_dict,
+                mappability_track = mappability_track,
+                segmental_duplication_track = segmental_duplication_track,
+                feature_query_lookahead = feature_query_lookahead,
                 gatk4_jar_override = gatk4_jar_override,
                 gatk_docker = gatk_docker,
+                mem_gb = mem_gb_for_annotate_intervals,
                 preemptible_attempts = preemptible_attempts
         }
     }
@@ -161,7 +173,7 @@ workflow CNVGermlineCohortWorkflow {
                 ref_fasta = ref_fasta,
                 ref_fasta_fai = ref_fasta_fai,
                 ref_fasta_dict = ref_fasta_dict,
-                format = format,
+                format = collect_counts_format,
                 gatk4_jar_override = gatk4_jar_override,
                 gatk_docker = gatk_docker,
                 mem_gb = mem_gb_for_collect_counts,
@@ -484,5 +496,9 @@ task GermlineCNVCallerCohortMode {
         File gcnv_model_tar = "${cohort_entity_id}-gcnv-model-${scatter_index}.tar.gz"
         File gcnv_calls_tar = "${cohort_entity_id}-gcnv-calls-${scatter_index}.tar.gz"
         File gcnv_tracking_tar = "${cohort_entity_id}-gcnv-tracking-${scatter_index}.tar.gz"
+        File calling_config_json = "${output_dir_}/${cohort_entity_id}-calls/calling_config.json"
+        File denoising_config_json = "${output_dir_}/${cohort_entity_id}-calls/denoising_config.json"
+        File gcnvkernel_version_json = "${output_dir_}/${cohort_entity_id}-calls/gcnvkernel_version.json"
+        File sharded_interval_list = "${output_dir_}/${cohort_entity_id}-calls/interval_list.tsv"
     }
 }

@@ -163,7 +163,7 @@ public abstract class AbstractRecordCollection<METADATA extends Metadata, RECORD
     }
 
     final class RecordCollectionReader extends TableReader<RECORD> {
-        private static final String COMMENT_PREFIX = "@";   //SAMTextHeaderCodec.HEADER_LINE_START; we need TableReader to treat SAM header as comment lines
+        private static final String COMMENT_PREFIX = CopyNumberFormatsUtils.COMMENT_PREFIX;   //SAMTextHeaderCodec.HEADER_LINE_START; we need TableReader to treat SAM header as comment lines
         private final File file;
 
         RecordCollectionReader(final File file) throws IOException {

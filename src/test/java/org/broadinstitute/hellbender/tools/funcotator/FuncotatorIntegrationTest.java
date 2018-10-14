@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
-import avro.shaded.com.google.common.collect.Sets;
+import com.google.common.collect.Sets;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFCompoundHeaderLine;
@@ -13,6 +13,10 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.FuncotatorReferenceTestUtils;
+import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
+import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedInterval;
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedIntervalCollection;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
@@ -21,10 +25,6 @@ import org.broadinstitute.hellbender.tools.funcotator.mafOutput.CustomMafFuncota
 import org.broadinstitute.hellbender.tools.funcotator.mafOutput.MafOutputRenderer;
 import org.broadinstitute.hellbender.tools.funcotator.mafOutput.MafOutputRendererConstants;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
-import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
-import org.broadinstitute.hellbender.testutils.FuncotatorReferenceTestUtils;
-import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
-import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -34,6 +34,7 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static org.broadinstitute.hellbender.tools.funcotator.FuncotatorUtils.extractFuncotatorKeysFromHeaderDescription;
 
@@ -52,6 +53,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     // This should always be false when checked in.
     private static final boolean doDebugTests = false;
     private static final String LARGE_DATASOURCES_FOLDER = "funcotator_dataSources_latest";
+    private static final String GERMLINE_DATASOURCES_FOLDER = "funcotator_dataSources_germline_latest";
 
     private static final String XSV_CLINVAR_MULTIHIT_TEST_VCF = toolsTestDir + "funcotator" + File.separator + "clinvar_hg19_multihit_test.vcf";
     private static final String DS_XSV_CLINVAR_TESTS          = largeFileTestDir + "funcotator" + File.separator + "small_ds_clinvar_hg19" + File.separator;
@@ -162,6 +164,24 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                                                                   final String refVer,
                                                                   final FuncotatorArgumentDefinitions.OutputFormatType outputFormatType,
                                                                   final boolean shouldValidateSeqDicts) {
+        return createBaselineArgumentsForFuncotator(variantFileName,
+            outputFile,
+            referenceFileName,
+            dataSourcesPath,
+            refVer,
+            outputFormatType,
+            shouldValidateSeqDicts,
+            Collections.emptyList());
+    }
+
+    private ArgumentsBuilder createBaselineArgumentsForFuncotator(final String variantFileName,
+                                                                  final File outputFile,
+                                                                  final String referenceFileName,
+                                                                  final String dataSourcesPath,
+                                                                  final String refVer,
+                                                                  final FuncotatorArgumentDefinitions.OutputFormatType outputFormatType,
+                                                                  final boolean shouldValidateSeqDicts,
+                                                                  final List<String> excludedFields) {
 
         final ArgumentsBuilder arguments = new ArgumentsBuilder();
 
@@ -172,6 +192,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         arguments.addArgument(FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME, refVer);
         arguments.addArgument(FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME, outputFormatType.toString());
         arguments.addArgument("verbosity", "INFO");
+        excludedFields.forEach(ef -> arguments.addArgument(FuncotatorArgumentDefinitions.EXCLUSION_FIELDS_LONG_NAME, ef));
 
         if ( !shouldValidateSeqDicts ) {
             // Disable the sequence dictionary check for the tests:
@@ -271,32 +292,44 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                         "M2_01115161-TA1-filtered.vcf",
                         "Homo_sapiens_assembly19.fasta",
                         FuncotatorTestConstants.REFERENCE_VERSION_HG19,
+                        getFuncotatorLargeDataValidationTestInputPath() + LARGE_DATASOURCES_FOLDER
                 },
                 {
                         "C828.TCGA-D3-A2JP-06A-11D-A19A-08.3-filtered.PASS.vcf",
                         "Homo_sapiens_assembly19.fasta",
-                        FuncotatorTestConstants.REFERENCE_VERSION_HG19
+                        FuncotatorTestConstants.REFERENCE_VERSION_HG19,
+                        getFuncotatorLargeDataValidationTestInputPath() + LARGE_DATASOURCES_FOLDER
                 },
                 {
                         "hg38_test_variants.vcf",
                         "Homo_sapiens_assembly38.fasta",
-                        FuncotatorTestConstants.REFERENCE_VERSION_HG38
+                        FuncotatorTestConstants.REFERENCE_VERSION_HG38,
+                        getFuncotatorLargeDataValidationTestInputPath() + LARGE_DATASOURCES_FOLDER
                 },
                 {
                         "sample21.trimmed.vcf",
                         "Homo_sapiens_assembly38.fasta",
-                        FuncotatorTestConstants.REFERENCE_VERSION_HG38
+                        FuncotatorTestConstants.REFERENCE_VERSION_HG38,
+                        getFuncotatorLargeDataValidationTestInputPath() + LARGE_DATASOURCES_FOLDER
                 },
                 {
                         "0816201804HC0_R01C01.vcf",
                         "Homo_sapiens_assembly19.fasta",
-                        FuncotatorTestConstants.REFERENCE_VERSION_HG19
+                        FuncotatorTestConstants.REFERENCE_VERSION_HG19,
+                        getFuncotatorLargeDataValidationTestInputPath() + LARGE_DATASOURCES_FOLDER
                 },
                 {
                         "hg38_trio.vcf",
                         "Homo_sapiens_assembly38.fasta",
-                        FuncotatorTestConstants.REFERENCE_VERSION_HG38
-                }
+                        FuncotatorTestConstants.REFERENCE_VERSION_HG38,
+                        getFuncotatorLargeDataValidationTestInputPath() + LARGE_DATASOURCES_FOLDER
+                },
+                {
+                        "0816201804HC0_R01C01.vcf",
+                        "Homo_sapiens_assembly19.fasta",
+                        FuncotatorTestConstants.REFERENCE_VERSION_HG19,
+                        getFuncotatorLargeDataValidationTestInputPath() + GERMLINE_DATASOURCES_FOLDER
+                },
         };
     }
 
@@ -348,7 +381,8 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
           dataProvider = "provideForLargeDataValidationTest")
     public void largeDataValidationTest(final String inputVcfName,
                                         final String referencePath,
-                                        final String referenceVersion) throws IOException {
+                                        final String referenceVersion,
+                                        final String dataSourcesPath) throws IOException {
 
         // Get our main test folder path from our environment:
         final String testFolderInputPath = getFuncotatorLargeDataValidationTestInputPath();
@@ -588,6 +622,44 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                 .count(), NUM_CLINVAR_HITS);
     }
 
+    @Test
+    public void testExclusionFromDatasourceVcfToVcf() {
+        // Clinvar datasource did  go through one round of preprocessing to make contig names "1" --> "chr1" (for example).  This is an issue with ClinVar, not GATK.
+        final FuncotatorArgumentDefinitions.OutputFormatType outputFormatType = FuncotatorArgumentDefinitions.OutputFormatType.VCF;
+        final File outputFile = getOutputFile(outputFormatType);
+
+        final List<String> excludedFields = Arrays.asList("dummy_ClinVar_VCF_DBVARID", "dummy_ClinVar_VCF_CLNVI");
+        final ArgumentsBuilder arguments = createBaselineArgumentsForFuncotator(
+                PIK3CA_VCF_HG38,
+                outputFile,
+                hg38Chr3Ref,
+                DS_PIK3CA_DIR,
+                FuncotatorTestConstants.REFERENCE_VERSION_HG38,
+                outputFormatType,
+                false, excludedFields);
+
+        runCommandLine(arguments);
+
+        final Pair<VCFHeader, List<VariantContext>> tempVcf =  VariantContextTestUtils.readEntireVCFIntoMemory(outputFile.getAbsolutePath());
+
+        final String[] funcotatorKeys = FuncotatorUtils.extractFuncotatorKeysFromHeaderDescription(tempVcf.getLeft().getInfoHeaderLine(VcfOutputRenderer.FUNCOTATOR_VCF_FIELD_NAME).getDescription());
+
+        // Ensure that the header does not contain the excluded fields
+        Stream.of(funcotatorKeys).forEach(k -> Assert.assertFalse(excludedFields.contains(k)));
+
+        final List<VariantContext> variantContexts = tempVcf.getRight();
+        for (final VariantContext vc : variantContexts) {
+            final Map<Allele, FuncotationMap> funcs = FuncotatorUtils.createAlleleToFuncotationMapFromFuncotationVcfAttribute(
+                    funcotatorKeys, vc, "Gencode_28_annotationTranscript", "FAKE_SOURCE");
+            for (final String txId: funcs.get(vc.getAlternateAllele(0)).getTranscriptList()) {
+                final List<Funcotation> funcotations = funcs.get(vc.getAlternateAllele(0)).get(txId);
+                for (final Funcotation funcotation : funcotations) {
+                    funcotation.getFieldNames().forEach(f -> Assert.assertFalse(excludedFields.contains(f)));
+                }
+            }
+        }
+    }
+
     @DataProvider(name = "provideForMafVcfConcordance")
     final Object[][] provideForMafVcfConcordance() {
         return new Object[][]{
@@ -799,7 +871,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
             Assert.assertEquals(funcotations.size(), 1, "Found more than one funcotation in the funcotation map!");
             final Funcotation funcotation = funcotations.get(0);
 
-            Assert.assertEquals(funcotation.getField("dummy_ClinVar_VCF_CLNDISDB"), FuncotatorUtils.sanitizeFuncotationForVcf(gtString), "Field (dummy_ClinVar_VCF_CLNDISDB) was unsanititzed: " + funcotation.getField("dummy_ClinVar_VCF_CLNDISDB"));
+            Assert.assertEquals(funcotation.getField("dummy_ClinVar_VCF_CLNDISDB"), FuncotatorUtils.sanitizeFuncotationFieldForVcf(gtString), "Field (dummy_ClinVar_VCF_CLNDISDB) was unsanititzed: " + funcotation.getField("dummy_ClinVar_VCF_CLNDISDB"));
         }
     }
 
@@ -874,34 +946,15 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     @Test
     public void testVCFToMAFPreservesFields() {
 
-        final FuncotatorArgumentDefinitions.OutputFormatType outputFormatType = FuncotatorArgumentDefinitions.OutputFormatType.MAF;
-        final File outputFile = getOutputFile(outputFormatType);
-
-        final ArgumentsBuilder arguments = createBaselineArgumentsForFuncotator(
-                PIK3CA_VCF_HG19,
-                outputFile,
-                b37Chr3Ref,
-                DS_PIK3CA_DIR,
-                FuncotatorTestConstants.REFERENCE_VERSION_HG19,
-                outputFormatType,
-                false);
-
-        arguments.addArgument(FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME, TranscriptSelectionMode.CANONICAL.toString());
-
-        // Disable the sequence dictionary check for the tests:
-        arguments.addBooleanArgument(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
-
-        runCommandLine(arguments);
-
-        final AnnotatedIntervalCollection maf = AnnotatedIntervalCollection.create(outputFile.toPath(), null);
+        final AnnotatedIntervalCollection maf = runPik3caHg19VcfToMaf(new HashSet<>());
         Assert.assertTrue(maf.getRecords().size() > 0);
         Assert.assertTrue(maf.getRecords().stream().allMatch(r -> r.hasAnnotation("ILLUMINA_BUILD")));
         Assert.assertTrue(maf.getRecords().stream().allMatch(r -> r.getAnnotationValue("ILLUMINA_BUILD").startsWith("37")));
 
         // Needs to get aliases from the MAF, since AF (and maybe more) has its name changed.  So create a dummy
         //  MafOutputRenderer that mimics the one that is used in the command line invocation above and get the aliases.
-        final File dummyOutputFile = getOutputFile(outputFormatType);
-        final MafOutputRenderer dummyMafOutputRenderer = new MafOutputRenderer(dummyOutputFile.toPath(), Collections.emptyList(), new VCFHeader(), new LinkedHashMap<>(), new LinkedHashMap<>(), new HashSet<>(), "b37");
+        final File dummyOutputFile = getOutputFile(FuncotatorArgumentDefinitions.OutputFormatType.MAF);
+        final MafOutputRenderer dummyMafOutputRenderer = new MafOutputRenderer(dummyOutputFile.toPath(), Collections.emptyList(), new VCFHeader(), new LinkedHashMap<>(), new LinkedHashMap<>(), new HashSet<>(), "b37", new HashSet<String>());
         final Map<String, Set<String>> mafAliasMap = dummyMafOutputRenderer.getReverseOutputFieldNameMap();
 
         // Get all of the alias lists
@@ -913,6 +966,40 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                 .collect(Collectors.toSet());
         Assert.assertTrue(vcfHeaderInfoSet.size() > 0);
         Assert.assertTrue(maf.getAnnotations().containsAll(vcfHeaderInfoSet));
+    }
+
+    private AnnotatedIntervalCollection runPik3caHg19VcfToMaf(final Set<String> excludedFields) {
+        final File outputFile = getOutputFile(FuncotatorArgumentDefinitions.OutputFormatType.MAF);
+
+        final ArgumentsBuilder arguments = createBaselineArgumentsForFuncotator(
+                PIK3CA_VCF_HG19,
+                outputFile,
+                b37Chr3Ref,
+                DS_PIK3CA_DIR,
+                FuncotatorTestConstants.REFERENCE_VERSION_HG19,
+                FuncotatorArgumentDefinitions.OutputFormatType.MAF,
+                false);
+
+        arguments.addArgument(FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME, TranscriptSelectionMode.CANONICAL.toString());
+
+        excludedFields.forEach(f -> arguments.addArgument(FuncotatorArgumentDefinitions.EXCLUSION_FIELDS_LONG_NAME, f));
+
+        // Disable the sequence dictionary check for the tests:
+        arguments.addBooleanArgument(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
+
+        runCommandLine(arguments);
+
+        return AnnotatedIntervalCollection.create(outputFile.toPath(), null);
+    }
+
+    @Test
+    public void testVcfToMafHonorsExcludedFields() {
+        final String fieldToEnsureIsIncluded = "dummy_ClinVar_VCF_CLNVC";
+        final HashSet<String> excludedFields = com.google.common.collect.Sets.newHashSet("dummy_ClinVar_VCF_AF_EXAC", "dummy_ClinVar_VCF_CLNSIGCONF");
+        final AnnotatedIntervalCollection maf = runPik3caHg19VcfToMaf(excludedFields);
+        Assert.assertTrue(maf.getRecords().size() > 0);
+        maf.getRecords().forEach(r -> Assert.assertTrue(r.hasAnnotation(fieldToEnsureIsIncluded)));
+        maf.getRecords().forEach(r -> Assert.assertEquals(Sets.intersection(r.getAnnotations().keySet(), excludedFields).size(), 0));
     }
 
     @Test

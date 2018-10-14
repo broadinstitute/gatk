@@ -344,7 +344,7 @@ public final class ReadsSparkSink {
                 throw new UserException.MissingReference("A reference is required for CRAM output");
             }
             else {
-                if (ReferenceTwoBitSource.isTwoBit(referenceName)) { // htsjdk can't handle 2bit reference files
+                if ( ReferenceTwoBitSparkSource.isTwoBit(referenceName)) { // htsjdk can't handle 2bit reference files
                     throw new UserException("A 2bit file cannot be used as a CRAM file reference");
                 }
                 else { // Hadoop-BAM requires the reference to be a URI, including scheme

@@ -15,6 +15,8 @@ used to read data that had been passed to Python by GATK Java code.
 import sys
 import os
 import cProfile, pstats, io
+import traceback
+from gatktool import toolconstants
 
 _ackFIFO = None
 _dataFIFO = None
@@ -34,7 +36,7 @@ def initializeGATK(ackFIFOName: str):
     sys.excepthook = gatkExceptionHook
 
 
-def gatkExceptionHook(exceptionType, value, traceback):
+def gatkExceptionHook(exceptionType, value, tracebck):
     """
     GATK Handler for uncaught Python exceptions.
 
@@ -43,8 +45,8 @@ def gatkExceptionHook(exceptionType, value, traceback):
     sends a nack to GATK through the FIFO, which results in a
     PythonScriptExecutorException being thrown in the tool.
     """
-    sendNack()
-    sys.__excepthook__(exceptionType, value, traceback)
+    sendNackWithMessage(' '.join(map(str, traceback.format_exception(exceptionType, value, tracebck))))
+    sys.__excepthook__(exceptionType, value, tracebck)
 
 
 def sendAck():
@@ -65,6 +67,16 @@ def sendNack():
     """
     global _ackFIFO
     _ackFIFO.writeNack()
+
+
+def sendNackWithMessage(nckMessage: str):
+    """
+    Send a negative acknowledgment to GATK, along with a message. Generally only
+    called by the installed exception hook. This will result in a Java exception being
+    thrown that unless caught by Java code, will terminate the tool.
+    """
+    global _ackFIFO
+    _ackFIFO.writeNackWithMessage(nckMessage)
 
 
 def terminateGATK():
@@ -141,8 +153,6 @@ class AckFIFO:
     Manage the FIFO used to notify GATK (via an ack) that a command has
     completed, or failed due to an unhandled exception (via a nck).
     """
-    _ackString = "ack"
-    _nackString = "nck"
 
     def __init__(self, ackFIFOName: str) -> None:
         """Open the ack fifo stream for writing only"""
@@ -156,7 +166,7 @@ class AckFIFO:
         """
         if self.fileWriter is None:
             raise RuntimeError("ack FIFO has not been initialized")
-        self.fileWriter.write(AckFIFO._ackString)
+        self.fileWriter.write(toolconstants._ackString)
         self.fileWriter.flush()
 
     def writeNack(self):
@@ -164,12 +174,41 @@ class AckFIFO:
         Write a negative acknowledgement to the ACK FIFO.
 
         Calling this method will result in an exception being thrown
-        in the GATK tool on whos behalf this module is running.
+        in the GATK tool on whose behalf this module is running.
         """
         if self.fileWriter is None:
             raise RuntimeError("ack FIFO has not been initialized")
-        self.fileWriter.write(AckFIFO._nackString)
+        self.fileWriter.write(toolconstants._nackString)
         self.fileWriter.flush()
+
+    def writeNackWithMessage(self, message: str) -> None:
+        """
+        Write a negative acknowledgement with a supplemental message to the ACK FIFO.
+
+        The format of a nck message is:
+
+            ncknnnnssss....
+
+        where "nck" is literal, "nnnn" is a 4 byte long string of decimal digits representing the length
+        of the message that follows, and "ssss...." is a string of length nnnn
+
+        Calling this method will result in an exception being thrown
+        in the GATK tool on whose behalf this module is running.
+        """
+        if self.fileWriter is None:
+            raise RuntimeError("ack FIFO has not been initialized")
+        self.fileWriter.write(toolconstants._nkmString)
+        actualMessageLength = len(message)
+        """The message length must be exactly 4 bytes"""
+        if len(str(actualMessageLength)) <= toolconstants._nckMessageLengthSerializedSize:
+            self.fileWriter.write(str(actualMessageLength).zfill(toolconstants._nckMessageLengthSerializedSize))
+            self.fileWriter.write(message)
+        else:
+            """Message is too long, trim to 9999 bytes"""
+            self.fileWriter.write(str(toolconstants._nckMaxMessageLength))
+            self.fileWriter.write(message[:toolconstants._nckMaxMessageLength])
+        self.fileWriter.flush()
+
 
     def close(self):
         assert self.fileWriter != None

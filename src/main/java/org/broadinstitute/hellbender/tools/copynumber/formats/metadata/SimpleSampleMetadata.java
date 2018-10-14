@@ -4,12 +4,17 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
 import org.broadinstitute.hellbender.utils.Utils;
 
+import java.io.Serializable;
+
 /**
  * Metadata associated with a single sample.
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public class SimpleSampleMetadata implements SampleMetadata {
+public class SimpleSampleMetadata implements SampleMetadata, Serializable {
+
+    private static final long serialVersionUID = 0L;
+
     private final String sampleName;
 
     public SimpleSampleMetadata(final String sampleName) {

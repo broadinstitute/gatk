@@ -236,7 +236,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
     /*
      * Test that in GVCF mode we're >= 99% concordant with GATK3 results
      */
-    @Test(dataProvider="HaplotypeCallerTestInputs")
+    @Test(dataProvider="HaplotypeCallerTestInputs", enabled=false) //disabled after reference confidence change in #5172
     public void testGVCFModeIsConcordantWithGATK3_8Results(final String inputFileName, final String referenceFileName) throws Exception {
         Utils.resetRandomGenerator();
 
@@ -265,7 +265,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(concordance >= 0.99, "Concordance with GATK 3.8 in GVCF mode is < 99% (" +  concordance + ")");
     }
 
-    @Test(dataProvider="HaplotypeCallerTestInputs")
+    @Test(dataProvider="HaplotypeCallerTestInputs", enabled=false) //disabled after reference confidence change in #5172
     public void testGVCFModeIsConcordantWithGATK3_8AlelleSpecificResults(final String inputFileName, final String referenceFileName) throws Exception {
         Utils.resetRandomGenerator();
         final File output = createTempFile("testGVCFModeIsConcordantWithGATK3_8AlelleSpecificResults", ".g.vcf");
@@ -677,10 +677,8 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         // java -jar target/GenomeAnalysisTK.jar -T HaplotypeCaller -I ../hellbender/src/test/resources/large/contaminated_bams/CEUTrio.HiSeq.WGS.b37.NA12878.CONTAMINATED.WITH.HCC1143.NORMALS.AT.15PERCENT.bam -R ../hellbender/src/test/resources/large/human_g1k_v37.20.21.fasta -L 20:10100000-10150000 -contamination 0.15 -o ../hellbender/src/test/resources/org/broadinstitute/hellbender/tools/haplotypecaller/expected.CEUTrio.HiSeq.WGS.b37.NA12878.CONTAMINATED.WITH.HCC1143.NORMALS.15PCT.20.10100000-10150000.gatk3.8-1-1-gdde23f56a6.vcf
         final String expectedGATK3ContaminationCorrectedCallsVCF = TEST_FILES_DIR + "expected.CEUTrio.HiSeq.WGS.b37.NA12878.CONTAMINATED.WITH.HCC1143.NORMALS.15PCT.20.10100000-10150000.gatk3.8-1-1-gdde23f56a6.vcf";
 
-        // Expected calls from GATK 3.x on the contaminated bam running with -contamination
-        // Created in GATK 3.8-1-1-gdde23f56a6 using the command:
-        // java -jar target/GenomeAnalysisTK.jar -T HaplotypeCaller -I ../hellbender/src/test/resources/large/contaminated_bams/CEUTrio.HiSeq.WGS.b37.NA12878.CONTAMINATED.WITH.HCC1143.NORMALS.AT.15PERCENT.bam -R ../hellbender/src/test/resources/large/human_g1k_v37.20.21.fasta -L 20:10100000-10150000 -contamination 0.15 -o ../hellbender/src/test/resources/org/broadinstitute/hellbender/tools/haplotypecaller/expected.CEUTrio.HiSeq.WGS.b37.NA12878.CONTAMINATED.WITH.HCC1143.NORMALS.15PCT.20.10100000-10150000.gatk3.8-1-1-gdde23f56a6.g.vcf -ERC GVCF
-        final String expectedGATK3ContaminationCorrectedCallsGVCF = TEST_FILES_DIR + "expected.CEUTrio.HiSeq.WGS.b37.NA12878.CONTAMINATED.WITH.HCC1143.NORMALS.15PCT.20.10100000-10150000.gatk3.8-1-1-gdde23f56a6.g.vcf";
+        // Expected calls from GATK ~4.0.8.1 with indel reference confidence fix
+        final String expectedGATK4ContaminationCorrectedCallsGVCF = TEST_FILES_DIR + "expected.CEUTrio.HiSeq.WGS.b37.NA12878.CONTAMINATED.WITH.HCC1143.NORMALS.15PCT.20.10100000-10150000.postIndelRefConfUpdate.g.vcf";
 
         // Expected calls from GATK 4 on the uncontaminated bam (VCF mode)
         final String expectedGATK4UncontaminatedCallsVCF = TEST_FILES_DIR + "expected.CEUTrio.HiSeq.WGS.b37.NA12878.calls.20.10100000-10150000.vcf";
@@ -713,7 +711,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                   b37_reference_20_21,
                   true, // GVCF mode
                   expectedGATK4UncontaminatedCallsGVCF,
-                  expectedGATK3ContaminationCorrectedCallsGVCF
+                  expectedGATK4ContaminationCorrectedCallsGVCF
                 }
         };
     }
@@ -810,24 +808,6 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         }
     }
 
-    @Test(expectedExceptions = CommandLineException.BadArgumentValue.class)
-    public void testMnpsThrowErrorInGVCFMode() throws Exception {
-        Utils.resetRandomGenerator();
-        final File bam = new File(toolsTestDir, "mnp.bam");
-        final int maxMnpDistance = 1;
-        final String ercMode = "GVCF";
-
-        final File outputVcf = createTempFile("unfiltered", ".vcf");
-
-        final List<String> args = Arrays.asList("-I", bam.getAbsolutePath(),
-                "-R", b37_reference_20_21,
-                "-L", "20:10019000-10022000",
-                "-O", outputVcf.getAbsolutePath(),
-                "-" + HaplotypeCallerArgumentCollection.MAX_MNP_DISTANCE_SHORT_NAME, Integer.toString(maxMnpDistance),
-                "-ERC", ercMode);
-        runCommandLine(args);
-}
-
     @Test(dataProvider = "getContaminationCorrectionTestData")
     public void testContaminationCorrection( final String contaminatedBam,
                                    final double contaminationFraction,
@@ -836,14 +816,14 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                                    final String reference,
                                    final boolean gvcfMode,
                                    final String gatk4UncontaminatedCallsVCF,
-                                   final String gatk3ContaminationCorrectedCallsVCF ) throws Exception {
+                                   final String expectedContaminationCorrectedCallsVCF ) throws Exception {
         final File uncorrectedOutput = createTempFile("testContaminationCorrectionUncorrectedOutput", gvcfMode ? ".g.vcf" : ".vcf");
         final File correctedOutput = createTempFile("testContaminationCorrectionCorrectedOutput", gvcfMode ? ".g.vcf" : ".vcf");
         final File correctedOutputUsingContaminationFile = createTempFile("testContaminationCorrectionCorrectedOutputUsingContaminationFile", gvcfMode ? ".g.vcf" : ".vcf");
 
         // Generate raw uncorrected calls on the contaminated bam, for comparison purposes
         // Note that there are a huge number of MNPs in this bam, and that in {@code gatk4UncontaminatedCallsVCF} and
-        // {@code gatk3ContaminationCorrectedCallsVCF} these are represented as independent consecutive SNPs
+        // {@code expectedContaminationCorrectedCallsVCF} these are represented as independent consecutive SNPs
         // Thus if we ever turn on MNPs by default, this will fail
         final String[] noContaminationCorrectionArgs = {
                 "-I", contaminatedBam,
@@ -887,14 +867,14 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
 
         // Calculate concordance vs. the contamination-corrected calls from GATK3. Here we count
         // all records in the output, including reference blocks.
-        final double correctedCallsVSGATK3CorrectedCallsConcordance = calculateConcordance(correctedOutput, new File(gatk3ContaminationCorrectedCallsVCF));
-        final double correctedCallsFromFileVSGATK3CorrectedCallsConcordance = calculateConcordance(correctedOutputUsingContaminationFile, new File(gatk3ContaminationCorrectedCallsVCF));
+        final double correctedCallsVSExpectedCorrectedCallsConcordance = calculateConcordance(correctedOutput, new File(expectedContaminationCorrectedCallsVCF));
+        final double correctedCallsFromFileVSExpectedCorrectedCallsConcordance = calculateConcordance(correctedOutputUsingContaminationFile, new File(expectedContaminationCorrectedCallsVCF));
 
         // Sanity checks: the concordance when running with -contamination should be the same as the
         // concordance when running with -contamination-file
         assertEqualsDoubleSmart(correctedCallsVSUncontaminatedCallsConcordance, correctedCallsFromFileVSUncontaminatedCallsConcordance, 0.001,
                 "concordance running with -contamination and -contamination-file should be identical, but wasn't");
-        assertEqualsDoubleSmart(correctedCallsVSGATK3CorrectedCallsConcordance, correctedCallsFromFileVSGATK3CorrectedCallsConcordance, 0.001,
+        assertEqualsDoubleSmart(correctedCallsVSExpectedCorrectedCallsConcordance, correctedCallsFromFileVSExpectedCorrectedCallsConcordance, 0.001,
                 "concordance running with -contamination and -contamination-file should be identical, but wasn't");
 
         // With -contamination correction on, concordance vs. the calls on the uncontaminated bam
@@ -911,12 +891,12 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
 
         // -contamination corrected output in GATK4 should have >= 99% concordance
         // vs. -contamination corrected output in GATK3
-        Assert.assertTrue(correctedCallsVSGATK3CorrectedCallsConcordance >= 0.99,
+        Assert.assertTrue(correctedCallsVSExpectedCorrectedCallsConcordance >= 0.99,
                 "output with -contamination correction should have >= 99% concordance with contamination-corrected calls from GATK3, but it didn't");
 
         // -contamination-file corrected output in GATK4 should have >= 99% concordance
         // vs. -contamination corrected output in GATK3
-        Assert.assertTrue(correctedCallsFromFileVSGATK3CorrectedCallsConcordance >= 0.99,
+        Assert.assertTrue(correctedCallsFromFileVSExpectedCorrectedCallsConcordance >= 0.99,
                 "output with -contamination-file correction should have >= 99% concordance with contamination-corrected calls from GATK3, but it didn't");
     }
 

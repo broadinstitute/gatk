@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import com.google.common.base.Strings;
+import htsjdk.samtools.Cigar;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.variant.variantcontext.*;
@@ -18,6 +19,7 @@ import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
+import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -65,56 +67,74 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
         { // very basic testing
             final String ref  = "ACGT";
             final String read = "ACGT";
-            tests.add(new Object[]{read, ref, 1, Arrays.asList(1, 1, 1, 0)});
-            tests.add(new Object[]{read, ref, 2, Arrays.asList(1, 1, 0, 0)});
-            tests.add(new Object[]{read, ref, 3, Arrays.asList(1, 0, 0, 0)});
-            tests.add(new Object[]{read, ref, 4, Arrays.asList(0, 0, 0, 0)});
+            final String cigar = read.length() + "M";
+            tests.add(new Object[]{read, cigar, ref, 1, Arrays.asList(1, 1, 1, 0)});
+            tests.add(new Object[]{read, cigar, ref, 2, Arrays.asList(1, 1, 0, 0)});
+            tests.add(new Object[]{read, cigar, ref, 3, Arrays.asList(1, 0, 0, 0)});
+            tests.add(new Object[]{read, cigar, ref, 4, Arrays.asList(0, 0, 0, 0)});
         }
 
         { // actually interesting case where some sites aren't informative
-            final String ref   = "NNAAAANN";
-            final String read1 = "NNA";
-            final String read2 = "NNAA";
-            final String read3 = "NNAAA";
-            final String read4 = "NNAAAA";
-            final String read5 = "NNAAAAN";
-            tests.add(new Object[]{read1, ref, 1, Arrays.asList(1, 1, 0, 0, 0, 0, 0, 0)});
-            tests.add(new Object[]{read2, ref, 1, Arrays.asList(1, 1, 0, 0, 0, 0, 0, 0)});
-            tests.add(new Object[]{read3, ref, 1, Arrays.asList(1, 1, 0, 0, 0, 0, 0, 0)});
-            tests.add(new Object[]{read4, ref, 1, Arrays.asList(1, 1, 0, 0, 0, 0, 0, 0)});
-            tests.add(new Object[]{read5, ref, 1, Arrays.asList(1, 1, 1, 1, 1, 1, 0, 0)});
+            final String ref   = "TTAAAATT";
+            final String read1 = "TTA";
+            final String read2 = "TTAA";
+            final String read3 = "TTAAA";
+            final String read4 = "TTAAAA";
+            final String read5 = "TTAAAAT";
+            final String cigar1 = read1.length() + "M";
+            final String cigar2 = read2.length() + "M";
+            final String cigar3 = read3.length() + "M";
+            final String cigar4 = read4.length() + "M";
+            final String cigar5 = read5.length() + "M";
+
+            tests.add(new Object[]{read1, cigar1, ref, 1, Arrays.asList(1, 1, 0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{read2, cigar2, ref, 1, Arrays.asList(1, 1, 0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{read3, cigar3, ref, 1, Arrays.asList(1, 1, 0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{read4, cigar4, ref, 1, Arrays.asList(1, 1, 0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{read5, cigar5, ref, 1, Arrays.asList(1, 1, 1, 1, 1, 1, 0, 0)});
         }
 
-        for ( final String repeatUnit : Arrays.asList("A", "CA", "TAG", "TAGC", "TCAGA")) {
-            final String anchor = Strings.repeat("N", repeatUnit.length());
+        for ( final String repeatUnit : Arrays.asList("A", "CA", "TAC", "TAGC", "TCAGA")) {
+            final String anchor = Strings.repeat("G", repeatUnit.length());
             for ( int nUnits = 1; nUnits < 10; nUnits++ ) {
                 final String repeat = Strings.repeat(repeatUnit, nUnits);
                 final String ref = anchor + repeat + anchor;
+                final String refCigar = ref.length() + "M";
                 for ( int readLen = repeatUnit.length(); readLen < repeat.length(); readLen++ ) {
                     final String read = anchor + repeat.substring(0, readLen);
+                    final String readCigar = read.length() + "M";
                     final List<Integer> expected = new LinkedList<>();
                     for ( int i = 0; i < anchor.length(); i++ ) expected.add(1);
                     for ( int i = 0; i < repeat.length(); i++ ) expected.add(readLen == repeat.length() ? 1 : 0);
                     for ( int i = 0; i < anchor.length(); i++ ) expected.add(0);
-                    tests.add(new Object[]{read, ref, repeatUnit.length(), expected});
+                    tests.add(new Object[]{read, readCigar, ref, repeatUnit.length(), expected});
 
                     final List<Integer> result = new ArrayList<>(Collections.nCopies(ref.length() - anchor.length(), 1));
                     result.addAll(Collections.nCopies(anchor.length(), 0));
-                    tests.add(new Object[]{ref, ref, repeatUnit.length(), result});
+                    tests.add(new Object[]{ref, refCigar, ref, repeatUnit.length(), result});
                 }
             }
         }
 
+        {//regression tests for an issue from late Aug 2018
+            final String ref = "AATATCATCTTTGGTGTTT";
+            final String read = "AATATCATTGGTG";
+            final String cigar1 = read.length() + "M";
+            final String cigar2 = "7M3D6M";
+            //real issue is the informativeness for offset zero, but might as well run the rest of the offsets
+            tests.add(new Object[]{read, cigar1, ref, 3, Arrays.asList(0,0,0,0,0,0,0,0,0,0,0,0,0)});
+            tests.add(new Object[]{read, cigar2, ref, 3, Arrays.asList(1,1,1,1,1,1,0,0,0,0,0,0,0)});
+        }
         return tests.toArray(new Object[][]{});
     }
 
     @Test(dataProvider = "CalcNIndelInformativeReadsData")
-    public void testCalcNIndelInformativeReads(final String readBases, final String ref, final int maxIndelSize, final List<Integer> expected ) {
+    public void testCalcNIndelInformativeReads(final String readBases, final String cigar, final String ref, final int maxIndelSize, final List<Integer> expected ) {
         final byte qual = (byte)30;
         final byte[] quals = Utils.dupBytes(qual, readBases.length());
 
         for ( int i = 0; i < readBases.getBytes().length; i++ ) {
-            final GATKRead read = ArtificialReadUtils.createArtificialRead(readBases.getBytes(), quals, readBases.length() + "M");
+            final GATKRead read = ArtificialReadUtils.createArtificialRead(readBases.getBytes(), quals, cigar);
             final SimpleInterval loc = new SimpleInterval("20", i + 1, i + 1);
             final ReadPileup pileup = new ReadPileup(loc, Collections.singletonList(read), i);
             final int actual = model.calcNIndelInformativeReads(pileup, i, ref.getBytes(), maxIndelSize);
@@ -181,6 +201,38 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
         checkOverlapping(18, calls, vc18);
         checkOverlapping(19, calls, null);
         checkOverlapping(20, calls, null);
+    }
+
+    @DataProvider(name = "OffsetTestData")
+    public Object[][] getOffsetTestData() {
+        List<Object[]> tests = new ArrayList<>();
+
+        final String read1 = "AATATCATTGGTG";
+        final String cigar1 = "13M";
+        final String cigar2 = "7M3D6M";
+        final String cigar3 = "7M3I3M";
+        final String cigar4 = "7M3D3I3M";
+        //offset inside soft clip is not allowed
+        tests.add(new Object[]{read1, cigar1, 5, 5});
+        tests.add(new Object[]{read1, cigar2, 5, 5});
+        tests.add(new Object[]{read1, cigar2, 11, 14});
+        tests.add(new Object[]{read1, cigar3, 5, 5});
+        tests.add(new Object[]{read1, cigar3, 11, 8});
+        tests.add(new Object[]{read1, cigar4, 5, 5});
+        tests.add(new Object[]{read1, cigar4, 11, 11});
+
+        return tests.toArray(new Object[][]{});
+    }
+
+    @Test(dataProvider = "OffsetTestData")
+    public void testCigarModifiedOffset(final String readBases, final String cigar, final int pileupOffset, final int expectedNewOffset) {
+        final byte qual = (byte)30;
+        final byte[] quals = Utils.dupBytes(qual, readBases.length());
+
+        final GATKRead read = ArtificialReadUtils.createArtificialRead(readBases.getBytes(), quals, cigar);
+        final PileupElement pe = PileupElement.createPileupForReadAndOffset(read, pileupOffset);
+        final int newOffset = model.getCigarModifiedOffset(pe);
+        Assert.assertEquals(newOffset, expectedNewOffset);
     }
 
     private void checkOverlapping(final int pos, Collection<VariantContext> calls, final VariantContext expected) {

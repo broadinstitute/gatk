@@ -9,7 +9,8 @@ import org.apache.logging.log4j.Logger;
 import java.util.Arrays;
 
 /**
- * Genotype likelihood calculator utility.
+ * Genotype likelihood calculator utility. This class is thread-safe since access to shared mutable state is
+ * synchronized.
  *
  * <p>
  *     This class provide genotype likelihood calculators with any number of alleles able given an arbitrary ploidy and allele
@@ -257,7 +258,7 @@ public final class GenotypeLikelihoodCalculators {
      *
      * @return never {@code null}.
      */
-    public GenotypeLikelihoodCalculator getInstance(final int ploidy, final int alleleCount) {
+    public synchronized GenotypeLikelihoodCalculator getInstance(final int ploidy, final int alleleCount) {
         checkPloidyAndMaximumAllele(ploidy, alleleCount);
 
         if (calculateGenotypeCountUsingTables(ploidy, alleleCount) == GENOTYPE_COUNT_OVERFLOW) {
@@ -270,17 +271,16 @@ public final class GenotypeLikelihoodCalculators {
     }
 
     /**
-     * Update of shared tables
+     * Update of shared tables.
      *
      * @param requestedMaximumAllele the new requested maximum allele maximum.
      * @param requestedMaximumPloidy the new requested ploidy maximum.
      */
-    private void ensureCapacity(final int requestedMaximumAllele, final int requestedMaximumPloidy) {
+    private synchronized void ensureCapacity(final int requestedMaximumAllele, final int requestedMaximumPloidy) {
 
         final boolean needsToExpandAlleleCapacity = requestedMaximumAllele > maximumAllele;
         final boolean needsToExpandPloidyCapacity = requestedMaximumPloidy > maximumPloidy;
 
-        // Double check with the lock on to avoid double work.
         if (!needsToExpandAlleleCapacity && !needsToExpandPloidyCapacity) {
             return;
         }
@@ -380,11 +380,9 @@ public final class GenotypeLikelihoodCalculators {
         throw new GATKException("Code should never reach here.");
     }
 
-    private int calculateGenotypeCountUsingTables(int ploidy, int alleleCount) {
+    private synchronized int calculateGenotypeCountUsingTables(int ploidy, int alleleCount) {
         checkPloidyAndMaximumAllele(ploidy, alleleCount);
-        if (ploidy > maximumPloidy || alleleCount > maximumAllele) {
-            ensureCapacity(alleleCount, ploidy);
-        }
+        ensureCapacity(alleleCount, ploidy);
         return alleleFirstGenotypeOffsetByPloidy[ploidy][alleleCount];
     }
 }

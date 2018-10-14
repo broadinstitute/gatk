@@ -1,15 +1,15 @@
 package org.broadinstitute.hellbender;
 
 import htsjdk.samtools.SAMFileHeader;
+import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.testutils.BaseTest;
+import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -48,6 +48,8 @@ public abstract class GATKBaseTest extends BaseTest {
 
     // All of chromosomes 20 and 21 from the b37 reference
     public static final String b37_reference_20_21 = largeFileTestDir + "human_g1k_v37.20.21.fasta";
+
+    public static final String b37_reference_20_21_gz = largeFileTestDir + "human_g1k_v37.20.21.fasta.gz";
 
     public static final String b37_2bit_reference_20_21 = largeFileTestDir + "human_g1k_v37.20.21.2bit";
 
@@ -105,11 +107,16 @@ public abstract class GATKBaseTest extends BaseTest {
     protected SAMFileHeader hg19Header;
 
     @BeforeClass
-    public void initGenomeLocParser() throws FileNotFoundException {
+    public void initializeHG19Reference() {
         hg19ReferenceReader = new CachingIndexedFastaSequenceFile(IOUtils.getPath(hg19MiniReference));
         hg19Header = new SAMFileHeader();
         hg19Header.setSequenceDictionary(hg19ReferenceReader.getSequenceDictionary());
         hg19GenomeLocParser = new GenomeLocParser(hg19ReferenceReader);
+    }
+
+    @AfterClass
+    public void closeHg19Reference(){
+        hg19ReferenceReader.close();
     }
 
     protected List<GenomeLoc> intervalStringsToGenomeLocs( String... intervals) {

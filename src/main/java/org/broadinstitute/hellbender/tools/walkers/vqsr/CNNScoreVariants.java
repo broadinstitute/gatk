@@ -14,7 +14,7 @@ import org.broadinstitute.hellbender.engine.filters.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import  org.broadinstitute.hellbender.utils.io.Resource;
+import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.python.StreamingPythonScriptExecutor;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.runtime.AsynchronousStreamWriter;
@@ -24,7 +24,6 @@ import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 
 import java.io.*;
 import java.util.*;
-import java.util.stream.StreamSupport;
 
 
 /**
@@ -92,15 +91,15 @@ import java.util.stream.StreamSupport;
  *   -weights path/to/my_weights.hd5
  * </pre>
  */
-@DocumentedFeature
 @ExperimentalFeature
+@DocumentedFeature
 @CommandLineProgramProperties(
         summary = CNNScoreVariants.USAGE_SUMMARY,
         oneLineSummary = CNNScoreVariants.USAGE_ONE_LINE_SUMMARY,
         programGroup = VariantFilteringProgramGroup.class
 )
 
-public class CNNScoreVariants extends VariantWalker {
+public class CNNScoreVariants extends TwoPassVariantWalker {
     private final static String NL = String.format("%n");
     static final String USAGE_ONE_LINE_SUMMARY = "Apply a Convolutional Neural Net to filter annotated variants";
     static final String USAGE_SUMMARY = "Annotate a VCF with scores from a Convolutional Neural Network (CNN)." +
@@ -116,7 +115,6 @@ public class CNNScoreVariants extends VariantWalker {
     private static final int ALT_INDEX = 3;
     private static final int KEY_INDEX = 4;
     private static final int FIFO_STRING_INITIAL_CAPACITY = 1024;
-    private static final int MAX_READ_BATCH = 4098;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -137,6 +135,10 @@ public class CNNScoreVariants extends VariantWalker {
 
     @Argument(fullName = "filter-symbolic-and-sv", shortName = "filter-symbolic-and-sv", doc = "If set will filter symbolic and and structural variants from the input VCF", optional = true)
     private boolean filterSymbolicAndSV = false;
+
+    @Advanced
+    @Argument(fullName="info-annotation-keys", shortName="info-annotation-keys", doc="The VCF info fields to send to python.", optional=true)
+    private List<String> annotationKeys = new ArrayList<>(Arrays.asList("MQ", "DP", "SOR", "FS", "QD", "MQRankSum", "ReadPosRankSum"));
 
     @Advanced
     @Argument(fullName = "inference-batch-size", shortName = "inference-batch-size", doc = "Size of batches for python to do inference on.", minValue = 1, maxValue = 4096, optional = true)
@@ -180,9 +182,11 @@ public class CNNScoreVariants extends VariantWalker {
     private int windowEnd = windowSize / 2;
     private int windowStart = windowSize / 2;
     private boolean waitforBatchCompletion = false;
-    private File scoreFile;
 
+    private File scoreFile;
     private String scoreKey;
+    private Scanner scoreScan;
+    private VariantContextWriter vcfWriter;
 
     private static String resourcePathReadTensor = Resource.LARGE_RUNTIME_RESOURCES_PATH + "/cnn_score_variants/small_2d.json";
     private static String resourcePathReferenceTensor = Resource.LARGE_RUNTIME_RESOURCES_PATH + "/cnn_score_variants/1d_cnn_mix_train_full_bn.json";
@@ -207,12 +211,12 @@ public class CNNScoreVariants extends VariantWalker {
     }
 
     @Override
-    protected VariantFilter makeVariantFilter(){
-        if (filterSymbolicAndSV) {
-            return VariantFilterLibrary.NOT_SV_OR_SYMBOLIC;
-        } else {
-            return VariantFilterLibrary.ALLOW_ALL_VARIANTS;
-        }
+    protected CountingVariantFilter makeVariantFilter() {
+        return new CountingVariantFilter(
+                filterSymbolicAndSV ?
+                        VariantFilterLibrary.NOT_SV_OR_SYMBOLIC:
+                        VariantFilterLibrary.ALLOW_ALL_VARIANTS
+        );
     }
 
     @Override
@@ -228,15 +232,14 @@ public class CNNScoreVariants extends VariantWalker {
 
     @Override
     public void onTraversalStart() {
-        scoreKey = getScoreKeyAndCheckModelAndReadsHarmony();
-        if (architecture == null && weights == null) {
-            setArchitectureAndWeightsFromResources();
+        if (getHeaderForVariants().getGenotypeSamples().size() > 1) {
+            logger.warn("CNNScoreVariants is a single sample tool, but the input VCF has more than 1 sample.");
         }
 
         // Start the Python process and initialize a stream writer for streaming data to the Python code
         pythonExecutor.start(Collections.emptyList(), enableJournal, pythonProfileResults);
-
         pythonExecutor.initStreamWriter(AsynchronousStreamWriter.stringSerializer);
+
         batchList = new ArrayList<>(transferBatchSize);
 
         // Execute Python code to open our output file, where it will write the contents of everything it reads
@@ -248,26 +251,11 @@ public class CNNScoreVariants extends VariantWalker {
             } else {
                 logger.info("Saving temp file from python:" + scoreFile.getAbsolutePath());
             }
-
-            pythonExecutor.sendSynchronousCommand("from keras import backend" + NL);
-            pythonExecutor.sendSynchronousCommand(String.format("backend.set_session(backend.tf.Session(config=backend.tf.ConfigProto(intra_op_parallelism_threads=%d, inter_op_parallelism_threads=%d)))" + NL, intraOpThreads, interOpThreads));
-
             pythonExecutor.sendSynchronousCommand(String.format("tempFile = open('%s', 'w+')" + NL, scoreFile.getAbsolutePath()));
             pythonExecutor.sendSynchronousCommand("import vqsr_cnn" + NL);
 
-            String getArgsAndModel;
-            if (weights != null && architecture != null) {
-                getArgsAndModel = String.format("args, model = vqsr_cnn.args_and_model_from_semantics('%s', weights_hd5='%s')", architecture, weights) + NL;
-                logger.info("Using key:" + scoreKey + " for CNN architecture:" + architecture + " and weights:" + weights);
-            } else if (architecture == null) {
-                getArgsAndModel = String.format("args, model = vqsr_cnn.args_and_model_from_semantics(None, weights_hd5='%s', tensor_type='%s')", weights, tensorType.name()) + NL;
-                logger.info("Using key:" + scoreKey + " for CNN weights:" + weights);
-            } else {
-                getArgsAndModel = String.format("args, model = vqsr_cnn.args_and_model_from_semantics('%s')", architecture) + NL;
-                logger.info("Using key:" + scoreKey + " for CNN architecture:" + architecture);
-            }
-            pythonExecutor.sendSynchronousCommand(getArgsAndModel);
-
+            scoreKey = getScoreKeyAndCheckModelAndReadsHarmony();
+            initializePythonArgsAndModel();
         } catch (IOException e) {
             throw new GATKException("Error when creating temp file and initializing python executor.", e);
         }
@@ -275,7 +263,7 @@ public class CNNScoreVariants extends VariantWalker {
     }
 
     @Override
-    public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
+    public void firstPassApply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
         referenceContext.setWindow(windowStart, windowEnd);
         if (tensorType.isReadsRequired()) {
             transferReadsToPythonViaFifo(variant, readsContext, referenceContext);
@@ -283,6 +271,64 @@ public class CNNScoreVariants extends VariantWalker {
             transferToPythonViaFifo(variant, referenceContext);
         }
         sendBatchIfReady();
+    }
+
+    @Override
+    public void afterFirstPass() {
+        if (waitforBatchCompletion) {
+            pythonExecutor.waitForPreviousBatchCompletion();
+        }
+        if (curBatchSize > 0) {
+            executePythonCommand();
+            pythonExecutor.waitForPreviousBatchCompletion();
+        }
+
+        pythonExecutor.sendSynchronousCommand("tempFile.close()" + NL);
+        pythonExecutor.terminate();
+
+        try {
+            scoreScan = new Scanner(scoreFile);
+            vcfWriter = createVCFWriter(new File(outputFile));
+            scoreScan.useDelimiter("\\n");
+            writeVCFHeader(vcfWriter);
+        } catch (IOException e) {
+            throw new GATKException("Error when trying to temporary score file scanner.", e);
+        }
+
+    }
+
+    @Override
+    protected void secondPassApply(VariantContext variant, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext) {
+        String sv = scoreScan.nextLine();
+        String[] scoredVariant = sv.split("\\t");
+
+        if (variant.getContig().equals(scoredVariant[CONTIG_INDEX])
+                && Integer.toString(variant.getStart()).equals(scoredVariant[POS_INDEX])
+                && variant.getReference().getBaseString().equals(scoredVariant[REF_INDEX])
+                && variant.getAlternateAlleles().toString().equals(scoredVariant[ALT_INDEX])) {
+
+            final VariantContextBuilder builder = new VariantContextBuilder(variant);
+            if (scoredVariant.length > KEY_INDEX) {
+                builder.attribute(scoreKey, scoredVariant[KEY_INDEX]);
+            }
+            vcfWriter.add(builder.make());
+
+        } else {
+            String errorMsg = "Score file out of sync with original VCF. Score file has:" + sv;
+            errorMsg += "\n But VCF has:" + variant.toStringWithoutGenotypes();
+            throw new GATKException(errorMsg);
+        }
+    }
+
+    @Override
+    public void closeTool() {
+        logger.info("Done scoring variants with CNN.");
+        if (vcfWriter != null) {
+            vcfWriter.close();
+        }
+        if (scoreScan != null){
+            scoreScan.close();
+        }
     }
 
     private void transferToPythonViaFifo(final VariantContext variant, final ReferenceContext referenceContext) {
@@ -329,6 +375,7 @@ public class CNNScoreVariants extends VariantWalker {
         if (!readIt.hasNext()) {
             logger.warn("No reads at contig:" + variant.getContig() + " site:" + String.valueOf(variant.getStart()));
         }
+
         while (readIt.hasNext()) {
             sb.append(GATKReadToString(readIt.next()));
         }
@@ -374,29 +421,15 @@ public class CNNScoreVariants extends VariantWalker {
 
     private String getVariantInfoString(final VariantContext variant) {
         // Create a string that will easily be parsed as a python dictionary
-        String varInfo = "";
-        for (final String attributeKey : variant.getAttributes().keySet()) {
-            varInfo += attributeKey + "=" + variant.getAttribute(attributeKey).toString().replace(" ", "").replace("[", "").replace("]", "") + ";";
+        StringBuilder sb = new StringBuilder(FIFO_STRING_INITIAL_CAPACITY);
+        for (final String attributeKey : annotationKeys) {
+            if (variant.hasAttribute(attributeKey)) {
+                sb.append(attributeKey);
+                sb.append("=");
+                sb.append(variant.getAttribute(attributeKey).toString().replace(" ", "").replace("[", "").replace("]", "") + ";");
+            }
         }
-        return varInfo;
-    }
-
-    @Override
-    public Object onTraversalSuccess() {
-        if (waitforBatchCompletion) {
-            pythonExecutor.waitForPreviousBatchCompletion();
-        }
-        if (curBatchSize > 0) {
-            executePythonCommand();
-            pythonExecutor.waitForPreviousBatchCompletion();
-        }
-
-        pythonExecutor.sendSynchronousCommand("tempFile.close()" + NL);
-        pythonExecutor.terminate();
-
-        writeOutputVCFWithScores();
-
-        return true;
+        return sb.toString();
     }
 
     private void executePythonCommand() {
@@ -406,42 +439,6 @@ public class CNNScoreVariants extends VariantWalker {
                 inferenceBatchSize,
                 outputTensorsDir) + NL;
         pythonExecutor.startBatchWrite(pythonCommand, batchList);
-    }
-
-
-    private void writeOutputVCFWithScores() {
-        try (final Scanner scoreScan = new Scanner(scoreFile);
-             final VariantContextWriter vcfWriter = createVCFWriter(new File(outputFile))) {
-            scoreScan.useDelimiter("\\n");
-            writeVCFHeader(vcfWriter);
-            final VariantFilter variantfilter = makeVariantFilter();
-
-            // Annotate each variant in the input stream, as in variantWalkerBase.traverse()
-            StreamSupport.stream(getSpliteratorForDrivingVariants(), false)
-                    .filter(variantfilter)
-                    .forEach(variant -> {
-                        String sv = scoreScan.nextLine();
-                        String[] scoredVariant = sv.split("\\t");
-                        if (variant.getContig().equals(scoredVariant[CONTIG_INDEX])
-                                && Integer.toString(variant.getStart()).equals(scoredVariant[POS_INDEX])
-                                && variant.getReference().getBaseString().equals(scoredVariant[REF_INDEX])
-                                && variant.getAlternateAlleles().toString().equals(scoredVariant[ALT_INDEX])) {
-                            final VariantContextBuilder builder = new VariantContextBuilder(variant);
-                            if (scoredVariant.length > KEY_INDEX) {
-                                builder.attribute(scoreKey, scoredVariant[KEY_INDEX]);
-                            }
-                            vcfWriter.add(builder.make());
-                        } else {
-                            String errorMsg = "Score file out of sync with original VCF. Score file has:" + sv;
-                            errorMsg += "\n But VCF has:" + variant.toStringWithoutGenotypes();
-                            throw new GATKException(errorMsg);
-                        }
-                    });
-
-        } catch (IOException e) {
-            throw new GATKException("Error when trying to write annotated VCF.", e);
-        }
-
     }
 
     private void writeVCFHeader(VariantContextWriter vcfWriter) {
@@ -471,20 +468,33 @@ public class CNNScoreVariants extends VariantWalker {
         }
     }
 
-    private void setArchitectureAndWeightsFromResources() {
-        if (tensorType.equals(TensorType.read_tensor)) {
-            architecture = IOUtils.writeTempResourceFromPath(resourcePathReadTensor, null).getAbsolutePath();
-            weights = IOUtils.writeTempResourceFromPath(
-                    resourcePathReadTensor.replace(".json", ".hd5"),
-                    null).getAbsolutePath();
-        } else if (tensorType.equals(TensorType.reference)) {
-            architecture = IOUtils.writeTempResourceFromPath(resourcePathReferenceTensor, null).getAbsolutePath();
-            weights = IOUtils.writeTempResourceFromPath(
-                     resourcePathReferenceTensor.replace(".json", ".hd5"), null).getAbsolutePath();
-        } else {
-            throw new GATKException("No default architecture for tensor type:" + tensorType.name());
+    private void initializePythonArgsAndModel(){
+        if (weights == null && architecture == null) {
+            if (tensorType.equals(TensorType.read_tensor)) {
+                architecture = IOUtils.writeTempResourceFromPath(resourcePathReadTensor, null).getAbsolutePath();
+                weights = IOUtils.writeTempResourceFromPath(
+                        resourcePathReadTensor.replace(".json", ".hd5"),
+                        null).getAbsolutePath();
+            } else if (tensorType.equals(TensorType.reference)) {
+                architecture = IOUtils.writeTempResourceFromPath(resourcePathReferenceTensor, null).getAbsolutePath();
+                weights = IOUtils.writeTempResourceFromPath(
+                        resourcePathReferenceTensor.replace(".json", ".hd5"), null).getAbsolutePath();
+            } else {
+                throw new GATKException("No default architecture for tensor type:" + tensorType.name());
+            }
         }
+
+        String getArgsAndModel;
+        if (weights != null && architecture != null) {
+            getArgsAndModel = String.format("args, model = vqsr_cnn.start_session_get_args_and_model(%d, %d, '%s', weights_hd5='%s')", intraOpThreads, interOpThreads, architecture, weights) + NL;
+            logger.info("Using key:" + scoreKey + " for CNN architecture:" + architecture + " and weights:" + weights);
+        } else if (architecture == null) {
+            getArgsAndModel = String.format("args, model = vqsr_cnn.start_session_get_args_and_model(%d, %d, None, weights_hd5='%s', tensor_type='%s')", intraOpThreads, interOpThreads, weights, tensorType.name()) + NL;
+            logger.info("Using key:" + scoreKey + " for CNN weights:" + weights);
+        } else {
+            getArgsAndModel = String.format("args, model = vqsr_cnn.start_session_get_args_and_model(%d, %d, '%s')", intraOpThreads, interOpThreads, architecture) + NL;
+            logger.info("Using key:" + scoreKey + " for CNN architecture:" + architecture);
+        }
+        pythonExecutor.sendSynchronousCommand(getArgsAndModel);
     }
-
 }
-

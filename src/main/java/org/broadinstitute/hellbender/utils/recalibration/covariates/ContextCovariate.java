@@ -114,7 +114,7 @@ public final class ContextCovariate implements Covariate {
      * reverse-complementing for negative-strand reads.
      * @param read the read
      * @param lowQTail every base quality lower than or equal to this in the tail of the read will be replaced with N.
-     * @return bases of the read.
+     * @return bases of the read (Could be an empty array if all bases are below lowQTail).
      */
     @VisibleForTesting
     static byte[] getStrandedClippedBytes(final GATKRead read, final byte lowQTail) {

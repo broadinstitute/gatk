@@ -11,6 +11,7 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -177,12 +178,25 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     //==================================================================================================================
     // Constructors:
 
+    /**
+     * Create a {@link GencodeFuncotationFactory}.
+     * @param gencodeTranscriptFastaFile {@link Path} to the FASTA file contianing the sequences of all transcripts in the Gencode data source.
+     * @param version The version {@link String} of Gencode from which {@link Funcotation}s will be made.
+     * @param name A {@link String} containing the name of this {@link GencodeFuncotationFactory}.
+     * @param transcriptSelectionMode The {@link TranscriptSelectionMode} by which representative/verbose transcripts will be chosen for overlapping variants.
+     * @param userRequestedTranscripts A {@link Set<String>} containing Gencode TranscriptIDs that the user requests to be annotated with priority over all other transcripts for overlapping variants.
+     * @param annotationOverrides A {@link LinkedHashMap<String, String>} containing user-specified overrides for specific {@link Funcotation}s.
+     * @param mainFeatureInput The backing {@link FeatureInput} for this {@link GencodeFuncotationFactory}, from which all {@link Funcotation}s will be created.
+     */
     public GencodeFuncotationFactory(final Path gencodeTranscriptFastaFile,
                                      final String version,
                                      final String name,
                                      final TranscriptSelectionMode transcriptSelectionMode,
                                      final Set<String> userRequestedTranscripts,
-                                     final LinkedHashMap<String, String> annotationOverrides) {
+                                     final LinkedHashMap<String, String> annotationOverrides,
+                                     final FeatureInput<? extends Feature> mainFeatureInput) {
+
+        super(mainFeatureInput);
 
         this.gencodeTranscriptFastaFile = gencodeTranscriptFastaFile;
 
@@ -212,7 +226,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     // Override Methods:
 
     @Override
-    protected Class<? extends Feature> getAnnotationFeatureClass() {
+    public Class<? extends Feature> getAnnotationFeatureClass() {
         return GencodeGtfFeature.class;
     }
 
@@ -590,7 +604,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             }
             catch ( final FuncotatorUtils.TranscriptCodingSequenceException ex ) {
                  logger.error("Unable to create a GencodeFuncotation on transcript " + transcript.getTranscriptId() + " for variant: " +
-                        variant.getContig() + ":" + variant.getStart() + "-" + variant.getEnd() + "(" + variant.getReference() + " -> " + altAllele + ")"
+                        variant.getContig() + ":" + variant.getStart() + "-" + variant.getEnd() + "(" + variant.getReference() + " -> " + altAllele + "): " +
+                         ex.getMessage()
                 );
             }
         }
@@ -663,7 +678,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         }
         else if ( GencodeGtfTranscriptFeature.class.isAssignableFrom(containingSubfeature.getClass()) ) {
             // We have an intron variant
-            gencodeFuncotation = createIntronFuncotation(variantToUse, altAllele, reference, gtfFeature, transcript, reference);
+            gencodeFuncotation = createIntronFuncotation(variantToUse, altAllele, reference, gtfFeature, transcript);
         }
         else {
             // Uh-oh!  Problemz.
@@ -1229,15 +1244,13 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      * @param reference The {@link ReferenceContext} for the given {@code variant}.
      * @param gtfFeature The {@link GencodeGtfGeneFeature} in which the given {@code variant} occurs.
      * @param transcript The {@link GencodeGtfTranscriptFeature} in which the given {@code variant} occurs.
-     * @param referenceContext The {@link ReferenceContext} in which the given variant appears.
      * @return A {@link GencodeFuncotation} containing information about the given {@code variant} given the corresponding {@code transcript}.
      */
     private GencodeFuncotation createIntronFuncotation(final VariantContext variant,
                                                        final Allele altAllele,
                                                        final ReferenceContext reference,
                                                        final GencodeGtfGeneFeature gtfFeature,
-                                                       final GencodeGtfTranscriptFeature transcript,
-                                                       final ReferenceContext referenceContext) {
+                                                       final GencodeGtfTranscriptFeature transcript) {
 
         // Get the strand-corrected alleles from the inputs.
         // Also get the reference sequence for the variant region.

@@ -1,12 +1,17 @@
 package org.broadinstitute.hellbender.tools.funcotator.mafOutput;
 
+import htsjdk.tribble.annotation.Strand;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.collections.MapUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.engine.DummyPlaceholderGatkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.testutils.FuncotatorReferenceTestUtils;
+import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
+import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedIntervalCollection;
 import org.broadinstitute.hellbender.tools.funcotator.*;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.DataSourceUtils;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
@@ -14,7 +19,7 @@ import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.Gencod
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
+import org.broadinstitute.hellbender.utils.test.FuncotatorTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -97,6 +102,10 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
     }
 
     private MafOutputRenderer createMafOutputRenderer(final File outputFile, final String referenceVersion) {
+        return createMafOutputRenderer(outputFile, referenceVersion, new HashSet<>());
+    }
+
+    private MafOutputRenderer createMafOutputRenderer(final File outputFile, final String referenceVersion, final Set<String> excludedFields) {
 
         final Map<Path, Properties> configData =
                 DataSourceUtils.getAndValidateDataSourcesFromPaths(
@@ -108,7 +117,9 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
                 configData,
                 new LinkedHashMap<>(),
                 TranscriptSelectionMode.BEST_EFFECT,
-                new HashSet<>()
+                new HashSet<>(),
+                new DummyPlaceholderGatkTool(),
+                FuncotatorArgumentDefinitions.LOOKAHEAD_CACHE_IN_BP_DEFAULT_VALUE
         );
 
         // Sort the datasources to ensure the same order every time:
@@ -121,7 +132,7 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
                 new LinkedHashMap<>(),
                 new LinkedHashMap<>(),
                 new HashSet<>(),
-                referenceVersion
+                referenceVersion, excludedFields
         );
     }
 
@@ -1129,5 +1140,71 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
         catch (final IOException ex) {
             throw new GATKException("ERROR comparing text files: " + outFile.toURI().toString() + " and " + expectedFile.toURI().toString(), ex);
         }
+    }
+
+    /**
+     * Creatse a dummy gencode funcotation and a dummy funcotation from a fake datasource named FAKEDATA.
+     * Then exclude one of the FAKEDATA fields and make sure that it does not appear in the output.
+     */
+    @Test
+    public void testCreateMafCompliantOutputMapExclusion() {
+        final File outFile = getSafeNonExistentFile("TestMafOutputExclusionFile.maf");
+        final String dummyTranscriptName = "FAKE00001.1";
+        final VariantContext dummyVariantContext = FuncotatorTestUtils.createSimpleVariantContext(FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(),"3", 1000000, 1000000, "C", "T");
+        final GencodeFuncotation dummyGencodeFuncotation = (GencodeFuncotation) createDummyGencodeFuncotation(dummyTranscriptName, dummyVariantContext);
+        final Set<String> excludedFields = Collections.singleton("FAKEDATA_FOO");
+        try ( final MafOutputRenderer mafOutputRenderer = createMafOutputRenderer( outFile, "hg19", excludedFields) ) {
+            final FuncotationMap funcotationMap = FuncotationMap.createFromGencodeFuncotations(Collections.singletonList(dummyGencodeFuncotation));
+            funcotationMap.add(dummyTranscriptName, createDummyTableFuncotation());
+            mafOutputRenderer.write(dummyVariantContext, funcotationMap);
+        }
+
+        final AnnotatedIntervalCollection maf = AnnotatedIntervalCollection.create(outFile.toPath(), null);
+        Assert.assertTrue(maf.getRecords().size() > 0);
+        maf.getRecords().forEach(r -> Assert.assertFalse(r.hasAnnotation("FAKEDATA_FOO")));
+        maf.getRecords().forEach(r -> Assert.assertTrue(r.hasAnnotation("FAKEDATA_BAR")));
+    }
+
+    private static Funcotation createDummyGencodeFuncotation(final String dummyTranscriptName, final VariantContext dummyVariantContext) {
+        return FuncotatorTestUtils.createGencodeFuncotation("GENE","b37", dummyVariantContext.getContig(), dummyVariantContext.getStart(),dummyVariantContext.getEnd(),
+                GencodeFuncotation.VariantClassification.DE_NOVO_START_IN_FRAME, null, GencodeFuncotation.VariantType.SNP,
+                dummyVariantContext.getReference().getDisplayString(),
+                dummyVariantContext.getAlternateAllele(0).getDisplayString(), "g.1000000"+ dummyVariantContext.getReference().getDisplayString() + ">" + dummyVariantContext.getAlternateAllele(0).getDisplayString(),
+                dummyTranscriptName, Strand.FORWARD,
+        1, 1500,
+        " ", " ",
+        "p.L300P", 0.5,
+        "ACTGATCGATCGA",Collections.singletonList("FAKE00002.5"), "27");
+    }
+
+    private static Funcotation createDummyTableFuncotation() {
+        final String datasourceName = "FAKEDATA";
+        final LinkedHashMap<String, String> data = new LinkedHashMap<>();
+        data.put(datasourceName + "_FOO", "1");
+        data.put(datasourceName + "_BAR", "2");
+        data.put(datasourceName + "_BAZ", "\tYES\n");
+        final Allele altAllele = Allele.create("T");
+        return OutputRenderer.createFuncotationFromLinkedHashMap(data, altAllele, datasourceName);
+    }
+
+    @Test
+    public void testCreateMafCompliantOutputMapSanitized() {
+        final File outFile = getSafeNonExistentFile("TestMafOutputSanitized.maf");
+        final String dummyTranscriptName = "FAKE00001.1";
+        final VariantContext dummyVariantContext = FuncotatorTestUtils.createSimpleVariantContext(FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(),"3", 1000000, 1000000, "C", "T");
+        final GencodeFuncotation dummyGencodeFuncotation = (GencodeFuncotation) createDummyGencodeFuncotation(dummyTranscriptName, dummyVariantContext);
+        final Set<String> excludedFields = Collections.emptySet();
+        try ( final MafOutputRenderer mafOutputRenderer = createMafOutputRenderer( outFile, "hg19", excludedFields) ) {
+            final FuncotationMap funcotationMap = FuncotationMap.createFromGencodeFuncotations(Collections.singletonList(dummyGencodeFuncotation));
+            funcotationMap.add(dummyTranscriptName, createDummyTableFuncotation());
+            mafOutputRenderer.write(dummyVariantContext, funcotationMap);
+        }
+
+        final AnnotatedIntervalCollection maf = AnnotatedIntervalCollection.create(outFile.toPath(), null);
+        Assert.assertTrue(maf.getRecords().size() > 0);
+        maf.getRecords().forEach(r -> Assert.assertTrue(r.hasAnnotation("FAKEDATA_FOO")));
+        maf.getRecords().forEach(r -> Assert.assertTrue(r.hasAnnotation("FAKEDATA_BAR")));
+        maf.getRecords().forEach(r -> Assert.assertTrue(r.hasAnnotation("FAKEDATA_BAZ")));
+        maf.getRecords().forEach(r -> Assert.assertEquals(r.getAnnotationValue("FAKEDATA_BAZ"), "_%09_YES_%0A_"));
     }
 }

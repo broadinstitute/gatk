@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.variant;
 
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.util.CollectionUtil;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.TribbleException;
@@ -18,10 +19,7 @@ import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAlleleCounts;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculator;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculators;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -251,7 +249,11 @@ public final class GATKVariantContextUtils {
                                         final GenotypeBuilder gb,
                                         final GenotypeAssignmentMethod assignmentMethod,
                                         final double[] genotypeLikelihoods,
-                                        final List<Allele> allelesToUse) {
+                                        final List<Allele> allelesToUse,
+                                        final List<Allele> originalGT) {
+        if(originalGT == null && assignmentMethod == GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL) {
+            throw new IllegalArgumentException("origianlGT cannot be null if assignmentMethod is BEST_MATCH_TO_ORIGINAL");
+        }
         if (assignmentMethod == GenotypeAssignmentMethod.SET_TO_NO_CALL) {
             gb.alleles(noCallAlleles(ploidy)).noGQ();
         } else if (assignmentMethod == GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN) {
@@ -268,7 +270,24 @@ public final class GATKVariantContextUtils {
                     gb.log10PError(GenotypeLikelihoods.getGQLog10FromLikelihoods(maxLikelihoodIndex, genotypeLikelihoods));
                 }
             }
+        } else if (assignmentMethod == GenotypeAssignmentMethod.SET_TO_NO_CALL_NO_ANNOTATIONS) {
+            gb.alleles(noCallAlleles(ploidy)).noGQ().noAD().noPL().noAttributes();
+        } else if (assignmentMethod == GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL) {
+            final List<Allele> best = new LinkedList<>();
+            final Allele ref = allelesToUse.get(0);
+            for (final Allele originalAllele : originalGT) {
+                best.add((allelesToUse.contains(originalAllele) || originalAllele.isNoCall()) ? originalAllele : ref);
+            }
+            gb.alleles(best);
         }
+    }
+
+    public static void makeGenotypeCall(final int ploidy,
+                                        final GenotypeBuilder gb,
+                                        final GenotypeAssignmentMethod assignmentMethod,
+                                        final double[] genotypeLikelihoods,
+                                        final List<Allele> allelesToUse){
+        makeGenotypeCall(ploidy,gb,assignmentMethod,genotypeLikelihoods,allelesToUse,null);
     }
 
     public enum GenotypeMergeType {
@@ -1225,6 +1244,78 @@ public final class GATKVariantContextUtils {
     }
 
     /**
+     * Split variant context into its biallelic components if there are more than 2 alleles
+     * <p>
+     * For VC has A/B/C alleles, returns A/B and A/C contexts.
+     * Alleles are right trimmed to satisfy VCF conventions
+     * <p>
+     * If vc is biallelic or non-variant it is just returned
+     * <p>
+     * Chromosome counts are updated (but they are by definition 0)
+     *
+     * @param vc                       a potentially multi-allelic variant context
+     * @param trimLeft                 if true, we will also left trim alleles, potentially moving the resulting vcs forward on the genome
+     * @param genotypeAssignmentMethod assignment strategy for the (subsetted) PLs
+     * @param keepOriginalChrCounts    keep the orignal chromosome counts before subsetting
+     * @return a list of bi-allelic (or monomorphic) variant context
+     */
+    public static List<VariantContext> splitVariantContextToBiallelics(final VariantContext vc, final boolean trimLeft, final GenotypeAssignmentMethod genotypeAssignmentMethod,
+                                                                       final boolean keepOriginalChrCounts) {
+        Utils.nonNull(vc);
+
+        if (!vc.isVariant() || vc.isBiallelic())
+            // non variant or biallelics already satisfy the contract
+            return Collections.singletonList(vc);
+        else {
+            final List<VariantContext> biallelics = new LinkedList<>();
+
+            // if any of the genotypes are het-not-ref (i.e. 1/2), set all of them to no-call
+            final GenotypeAssignmentMethod genotypeAssignmentMethodUsed = hasHetNonRef(vc.getGenotypes()) ? GenotypeAssignmentMethod.SET_TO_NO_CALL_NO_ANNOTATIONS : genotypeAssignmentMethod;
+
+            for (final Allele alt : vc.getAlternateAlleles()) {
+                final VariantContextBuilder builder = new VariantContextBuilder(vc);
+
+                // make biallelic alleles
+                final List<Allele> alleles = Arrays.asList(vc.getReference(), alt);
+                builder.alleles(alleles);
+
+                // since the VC has been subset, remove the invalid attributes
+                for (final String key : vc.getAttributes().keySet()) {
+                    if (!(key.equals(VCFConstants.ALLELE_COUNT_KEY) || key.equals(VCFConstants.ALLELE_FREQUENCY_KEY) || key.equals(VCFConstants.ALLELE_NUMBER_KEY)) ||
+                            genotypeAssignmentMethodUsed == GenotypeAssignmentMethod.SET_TO_NO_CALL_NO_ANNOTATIONS) {
+                        builder.rmAttribute(key);
+                    }
+                }
+
+                // subset INFO field annotations if available if genotype is called
+                if (genotypeAssignmentMethodUsed != GenotypeAssignmentMethod.SET_TO_NO_CALL_NO_ANNOTATIONS &&
+                        genotypeAssignmentMethodUsed != GenotypeAssignmentMethod.SET_TO_NO_CALL)
+                    AlleleSubsettingUtils.addInfoFieldAnnotations(vc, builder, keepOriginalChrCounts);
+
+                builder.genotypes(AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(),2,vc.getAlleles(), alleles, genotypeAssignmentMethodUsed,vc.getAttributeAsInt("DP",0)));
+                final VariantContext trimmed = trimAlleles(builder.make(), trimLeft, true);
+                biallelics.add(trimmed);
+            }
+
+            return biallelics;
+        }
+    }
+
+    /**
+     * Check if any of the genotypes is heterozygous, non-reference (i.e. 1/2)
+     *
+     * @param genotypesContext genotype information
+     * @return true if any of the genotypes are heterozygous, non-reference, false otherwise
+     */
+    private static boolean hasHetNonRef(final GenotypesContext genotypesContext) {
+        for (final Genotype gt : genotypesContext) {
+            if (gt.isHetNonRef())
+                return true;
+        }
+        return false;
+    }
+
+    /**
      * Splits the alleles for the provided variant context into its primitive parts.
      * Requires that the input VC be bi-allelic, so calling methods should first call splitVariantContextToBiallelics() if needed.
      * Currently works only for MNPs.
@@ -1754,6 +1845,27 @@ public final class GATKVariantContextUtils {
         }
 
         return result;
+    }
+
+    /**
+     * Returns true if the context represents a MNP. If the context supplied contains the GVCF NON_REF symbolic
+     * allele, then the determination is performed after discarding the NON_REF symbolic allele.
+     *
+     * @param vc a Variant context
+     * @return true if the context represents an unmixed MNP (i.e. all alleles are non-symbolic and of the same
+     *         length > 1), false otherwise
+     */
+    public static boolean isUnmixedMnpIgnoringNonRef(final VariantContext vc) {
+        final List<Allele> alleles = vc.getAlleles();
+        int length = vc.getReference().length(); // ref allele cannot be symbolic
+        if (length < 2) { return false; }
+
+        for (final Allele a : alleles) {
+            if (a.isSymbolic() && !Allele.NON_REF_ALLELE.equals(a)) { return false; }
+            else if (!a.isSymbolic() && a.length() != length) { return false; }
+        }
+
+        return true;
     }
 }
 

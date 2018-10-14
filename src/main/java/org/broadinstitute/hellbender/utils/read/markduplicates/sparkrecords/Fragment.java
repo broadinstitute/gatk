@@ -1,14 +1,13 @@
 package org.broadinstitute.hellbender.utils.read.markduplicates.sparkrecords;
 
 import htsjdk.samtools.SAMFileHeader;
-import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.tools.spark.transforms.markduplicates.MarkDuplicatesSparkUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.markduplicates.LibraryIdGenerator;
 import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesScoringStrategy;
-import org.broadinstitute.hellbender.utils.read.markduplicates.ReadEnds;
 import org.broadinstitute.hellbender.utils.read.markduplicates.ReadsKey;
-import picard.sam.util.PhysicalLocation;
+import picard.sam.markduplicates.util.ReadEnds;
 
 import java.util.Map;
 
@@ -33,7 +32,7 @@ public class Fragment extends TransientFieldPhysicalLocation {
         this.key = ReadsKey.getKeyForFragment(ReadUtils.getStrandedUnclippedStart(first),
                 isRead1ReverseStrand(),
                 (short)ReadUtils.getReferenceIndex(first, header),
-                headerLibraryMap.get(ReadUtils.getLibrary(first, header, LibraryIdGenerator.UNKNOWN_LIBRARY)));
+                headerLibraryMap.get(MarkDuplicatesSparkUtils.getLibraryForRead(first, header, LibraryIdGenerator.UNKNOWN_LIBRARY)));
     }
 
     @Override

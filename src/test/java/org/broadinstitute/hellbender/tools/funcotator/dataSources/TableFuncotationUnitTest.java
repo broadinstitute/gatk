@@ -3,14 +3,12 @@ package org.broadinstitute.hellbender.tools.funcotator.dataSources;
 import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.funcotator.FuncotatorUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.LinkedHashSet;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -263,7 +261,7 @@ public class TableFuncotationUnitTest extends GATKBaseTest {
     @Test(dataProvider = "provideForTestSerializeToVcfString")
     public void testSerializeToVcfString(final TableFuncotation funcotation,
                                          final String expected) {
-        Assert.assertEquals( funcotation.serializeToVcfString(), expected );
+        Assert.assertEquals(FuncotatorUtils.renderSanitizedFuncotationForVcf(funcotation, new ArrayList<>(funcotation.getFieldNames())), expected );
     }
 
     @Test(dataProvider = "provideListOfStrings")

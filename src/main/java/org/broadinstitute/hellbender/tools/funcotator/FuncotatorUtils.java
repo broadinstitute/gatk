@@ -2077,14 +2077,25 @@ public final class FuncotatorUtils {
     }
 
     /**
-     * Make sure that an individual funcotation (i.e. single value of a funcotation) is sanitized for VCF consumption.
+     * Make sure that an individual funcotation field (i.e. single value of a funcotation) is sanitized for VCF consumption.
      * Particularly, make sure that it does not allow special characters that would interfere with VCF parsing.
-     * @param individualFuncotation  value from a funcotation Never {@code null}
-     * @return input string with special characters replaced by _%HEX%_ where HEX is the 2 digit ascii hex code.
+     * @param individualFuncotationField  value from a funcotation. Never {@code null}
+     * @return input string with special characters replaced by _%HEX%_ where HEX is the 2 digit ascii hex code.  Never {@code null}
      */
-    public static String sanitizeFuncotationForVcf(final String individualFuncotation) {
-        Utils.nonNull(individualFuncotation);
-        return StringUtils.replaceEach(individualFuncotation, new String[]{",", ";", "=", "\t", "|", " "}, new String[]{"_%2C_", "_%3B_", "_%3D_", "_%09_", "_%7C_", "_%20_"});
+    public static String sanitizeFuncotationFieldForVcf(final String individualFuncotationField) {
+        Utils.nonNull(individualFuncotationField);
+        return StringUtils.replaceEach(individualFuncotationField, new String[]{",", ";", "=", "\t", "|", " ", "\n"}, new String[]{"_%2C_", "_%3B_", "_%3D_", "_%09_", "_%7C_", "_%20_", "_%0A_"});
+    }
+
+    /**
+     * Make sure that an individual funcotation field (i.e. single value of a funcotation) is sanitized for MAF consumption.
+     * Particularly, make sure that it does not allow special characters that would interfere with MAF parsing.
+     * @param individualFuncotationField  value from a funcotation. Never {@code null}
+     * @return input string with special characters replaced by _%HEX%_ where HEX is the 2 digit ascii hex code.  Never {@code null}
+     */
+    public static String sanitizeFuncotationFieldForMaf(final String individualFuncotationField) {
+        Utils.nonNull(individualFuncotationField);
+        return StringUtils.replaceEach(individualFuncotationField, new String[]{"\t", "\n"}, new String[]{"_%09_", "_%0A_"});
     }
 
     /**
@@ -2174,6 +2185,25 @@ public final class FuncotatorUtils {
         }
 
         return result;
+    }
+
+    /**
+     * @param funcotation Funcotation to render for a VCF.  Never {@code null}
+     * @param includedFields List of fields to include.  Any that match fields in the funcotation will be rendered.
+     *                       Never {@code null}
+     * @return string with the VCF representation of a {@link VcfOutputRenderer#FUNCOTATOR_VCF_FIELD_NAME} for the given
+     * Funcotation.  Never {@code null}, but empty string is possible.
+     */
+    public static String renderSanitizedFuncotationForVcf(final Funcotation funcotation, final List<String> includedFields) {
+        Utils.nonNull(funcotation);
+        Utils.nonNull(includedFields);
+        if (includedFields.size() == 0) {
+            return "";
+        }
+        return funcotation.getFieldNames().stream()
+                .filter(f -> includedFields.contains(f))
+                .map(field -> FuncotatorUtils.sanitizeFuncotationFieldForVcf(funcotation.getField(field)))
+                .collect(Collectors.joining(VcfOutputRenderer.FIELD_DELIMITER));
     }
 }
 

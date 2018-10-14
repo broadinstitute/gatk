@@ -7,9 +7,10 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.StructuralVariantType;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFFileReader;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.tools.spark.sv.integration.SVIntegrationTestDataProvider;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -42,7 +43,7 @@ public class SVContextUnitTest extends GATKBaseTest {
      * @param vc input variant context.
      */
     @Test(dataProvider="validVariantContexts", groups = "sv")
-    public void testCreate(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) {
+    public void testCreate(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSparkSource reference) {
         final SVContext svc = SVContext.of(vc);
         Assert.assertNotNull(svc);
     }
@@ -52,7 +53,7 @@ public class SVContextUnitTest extends GATKBaseTest {
      * @param vc input variant context.
      */
     @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate"}, groups = "sv")
-    public void testLength(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) {
+    public void testLength(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSparkSource reference) {
         final SVContext svc = SVContext.of(vc);
         final int length = svc.getStructuralVariantLength();
         if (!vc.hasAttribute(GATKSVVCFConstants.SVLEN)) {
@@ -67,7 +68,7 @@ public class SVContextUnitTest extends GATKBaseTest {
      * @param vc input variant context.
      */
     @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate"}, groups = "sv")
-    public void testType(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) {
+    public void testType(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSparkSource reference) {
         final SVContext svc = SVContext.of(vc);
         final StructuralVariantType type = svc.getStructuralVariantType();
         Assert.assertNotNull(type);
@@ -81,7 +82,7 @@ public class SVContextUnitTest extends GATKBaseTest {
      * @param vc input variant context.
      */
     @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate"}, groups = "sv")
-    public void testInsertedSequence(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) {
+    public void testInsertedSequence(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSparkSource reference) {
         final SVContext svc = SVContext.of(vc);
         final byte[] actual = svc.getInsertedSequence();
         Assert.assertEquals(actual == null ? "<null>" : new String(actual), vc.getAttributeAsString(GATKSVVCFConstants.INSERTED_SEQUENCE, "<null>"));
@@ -92,18 +93,18 @@ public class SVContextUnitTest extends GATKBaseTest {
      * @param vc input variant context.
      */
     @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate"}, groups = "sv")
-    public void testEnd(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) {
+    public void testEnd(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSparkSource reference) {
         final SVContext svc = SVContext.of(vc);
         Assert.assertEquals(svc.getEnd(), vc.getEnd());
     }
 
     /**
-     * Tests {@link SVContext#composeHaplotypeBasedOnReference(int, int, ReferenceMultiSource)}} when used
+     * Tests {@link SVContext#composeHaplotypeBasedOnReference(int, int, ReferenceMultiSparkSource)}} when used
      * to obtain the reference haplotype.
      * @param vc input variant context.
      */
     @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate", "testType", "testLength"}, groups = "sv")
-    public void testComposeReferenceHaplotype(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) throws IOException {
+    public void testComposeReferenceHaplotype(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSparkSource reference) throws IOException {
         final SVContext svc = SVContext.of(vc);
         final int paddingSize = 10;
         final Haplotype refHaplotype = svc.composeHaplotypeBasedOnReference(0, paddingSize, reference);
@@ -116,12 +117,12 @@ public class SVContextUnitTest extends GATKBaseTest {
     }
 
     /**
-     * Tests {@link SVContext#composeHaplotypeBasedOnReference(int, int, ReferenceMultiSource)}} when used
+     * Tests {@link SVContext#composeHaplotypeBasedOnReference(int, int, ReferenceMultiSparkSource)}} when used
      * to obtain the reference alternative haplotype.
      * @param vc input variant context.
      */
-    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate", "testType", "testLength"}, groups = "sv")
-    public void testComposeAlternativeHaplotype(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) throws IOException {
+    @Test(dataProvider="validInsertionsAndDeletions", dependsOnMethods = {"testCreate", "testType", "testLength"}, groups = "sv")
+    public void testComposeAlternativeHaplotype(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSparkSource reference) throws IOException {
         final SVContext svc = SVContext.of(vc);
         if (svc.getStructuralVariantType() != StructuralVariantType.INS && svc.getStructuralVariantType() != StructuralVariantType.DEL) {
             throw new SkipException("unsupported type; skipped for now");
@@ -151,19 +152,18 @@ public class SVContextUnitTest extends GATKBaseTest {
         Assert.assertEquals(altHaplotype.getBases(), expectedBases, svc.getStructuralVariantType().name() + " " + new String(altHaplotype.getBases()) + " vs " + new String(expectedBases));
     }
 
-
     /**
      * Tests {@link SVContext#getBreakPointIntervals(int, SAMSequenceDictionary, boolean)}.
      * to obtain the reference haplotype.
      * @param vc input variant context.
      */
-    @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate", "testType", "testLength"}, groups = "sv")
-    public void testGetBreakPoints(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) throws IOException {
+    @Test(dataProvider="validInsertionsAndDeletions", dependsOnMethods = {"testCreate", "testType", "testLength"}, groups = "sv")
+    public void testGetBreakPoints(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSparkSource reference) throws IOException {
         testGetBreakPoints(vc, reference, 0);
         testGetBreakPoints(vc, reference, 10);
     }
 
-    private void testGetBreakPoints(final VariantContext vc, final ReferenceMultiSource reference, final int paddingSize) throws IOException {
+    private void testGetBreakPoints( final VariantContext vc, final ReferenceMultiSparkSource reference, final int paddingSize) throws IOException {
         final SVContext svc = SVContext.of(vc);
         if (svc.getStructuralVariantType() != StructuralVariantType.INS && svc.getStructuralVariantType() != StructuralVariantType.DEL) {
             throw new SkipException("unsupported type; skipped for now");
@@ -189,7 +189,7 @@ public class SVContextUnitTest extends GATKBaseTest {
      * @param vc input variant context.
      */
     @Test(dataProvider="validVariantContexts", dependsOnMethods = {"testCreate"}, groups = "sv")
-    public void testContigNames(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSource reference) {
+    public void testContigNames(final VariantContext vc, @SuppressWarnings("unused") final ReferenceMultiSparkSource reference) {
         final SVContext svc = SVContext.of(vc);
         final List<String> actual = svc.getSupportingContigIds();
         final List<String> expected = vc.getAttributeAsStringList(GATKSVVCFConstants.CONTIG_NAMES, null);
@@ -197,7 +197,7 @@ public class SVContextUnitTest extends GATKBaseTest {
     }
 
     @Test(dataProvider = "outputVariantTestFilesData", dependsOnMethods = {"testCreate"}, groups = "sv")
-    public void testTestOutputFileContent(final VariantContext vc, final ReferenceMultiSource reference, final String file) throws IOException {
+    public void testTestOutputFileContent( final VariantContext vc, final ReferenceMultiSparkSource reference, final String file) throws IOException {
         testCreate(vc, reference);
         testLength(vc, reference);
         testEnd(vc, reference);
@@ -212,9 +212,25 @@ public class SVContextUnitTest extends GATKBaseTest {
 
     @DataProvider(name="validVariantContexts")
     public Object[][] validVariantContexts(){
-        final ReferenceMultiSource reference = referenceMultiSource(REFERENCE_FILE.getAbsolutePath());
+        final ReferenceMultiSparkSource reference = referenceMultiSource(REFERENCE_FILE.getAbsolutePath());
         try (final VCFFileReader reader = new VCFFileReader(VALID_VARIANTS_FILE, false)) {
             return Utils.stream(reader)
+                    .map(vc -> new Object[]{vc, reference})
+                    .toArray(Object[][]::new);
+        } catch (final Throwable ex) {
+            throw new TestException("could not load the valid context file: " + VALID_VARIANTS_FILE.getAbsolutePath(), ex);
+        }
+    }
+
+    @DataProvider(name="validInsertionsAndDeletions")
+    public Object[][] validInsertionsAndDeletions(){
+        final ReferenceMultiSparkSource reference = referenceMultiSource(REFERENCE_FILE.getAbsolutePath());
+        try (final VCFFileReader reader = new VCFFileReader(VALID_VARIANTS_FILE, false)) {
+            return Utils.stream(reader)
+                    .filter(vc -> {
+                        final StructuralVariantType svtype = StructuralVariantType.valueOf(vc.getAttributeAsString(VCFConstants.SVTYPE, ""));
+                        return svtype.equals(StructuralVariantType.INS) || svtype.equals(StructuralVariantType.DEL);
+                    })
                     .map(vc -> new Object[]{vc, reference})
                     .toArray(Object[][]::new);
         } catch (final Throwable ex) {
@@ -235,7 +251,7 @@ public class SVContextUnitTest extends GATKBaseTest {
         for (final Tuple2<String, String> outputAndReference : outputFilesAndReference) {
             final String file = outputAndReference._1();
             final String referenceName = outputAndReference._2();
-            final ReferenceMultiSource reference = referenceMultiSource(referenceName);
+            final ReferenceMultiSparkSource reference = referenceMultiSource(referenceName);
             try (final VCFFileReader reader = new VCFFileReader(new File(file), false)) {
                 reader.forEach(vc -> result.add(new Object[] {vc, reference, file}));
             } catch (final Throwable ex) {
@@ -245,8 +261,8 @@ public class SVContextUnitTest extends GATKBaseTest {
         return result.toArray(new Object[result.size()][]);
     }
 
-    private static ReferenceMultiSource referenceMultiSource(final String fastaFileName) {
-        return new ReferenceMultiSource(fastaFileName,
+    private static ReferenceMultiSparkSource referenceMultiSource( final String fastaFileName) {
+        return new ReferenceMultiSparkSource(fastaFileName,
                                         (r) -> new SimpleInterval(r.getContig(), r.getAssignedStart(), r.getEnd()));
     }
 }

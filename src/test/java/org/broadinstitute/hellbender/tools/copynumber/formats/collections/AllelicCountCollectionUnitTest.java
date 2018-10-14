@@ -79,8 +79,7 @@ public final class AllelicCountCollectionUnitTest extends GATKBaseTest {
     @Test
     public void testWrite() throws IOException {
         final File outputFile = createTempFile("allelic-count-collection-test-output", ".tsv");
-        final AllelicCountCollection allelicCounts = new AllelicCountCollection(ALLELIC_COUNTS_FILE);
-        allelicCounts.write(outputFile);
+        ALLELIC_COUNTS_EXPECTED.write(outputFile);
         Assert.assertTrue(FileUtils.contentEquals(outputFile, ALLELIC_COUNTS_FILE));
     }
 }

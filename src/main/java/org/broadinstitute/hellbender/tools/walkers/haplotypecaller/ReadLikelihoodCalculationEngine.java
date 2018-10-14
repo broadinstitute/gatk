@@ -11,7 +11,7 @@ import java.util.Map;
 /**
  * Common interface for assembly-haplotype vs reads likelihood engines.
  */
-public interface ReadLikelihoodCalculationEngine {
+public interface ReadLikelihoodCalculationEngine extends AutoCloseable {
 
     enum Implementation {
         /**
@@ -46,5 +46,6 @@ public interface ReadLikelihoodCalculationEngine {
      * This method must be called when the client is done with likelihood calculations.
      * It closes any open resources.
      */
+    @Override
     public void close();
 }

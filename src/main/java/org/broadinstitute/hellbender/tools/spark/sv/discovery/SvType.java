@@ -4,7 +4,7 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.lang3.EnumUtils;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.NovelAdjacencyAndAltHaplotype;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
@@ -156,7 +156,7 @@ public abstract class SvType {
         return makeLocationString(leftContig, pos1, rightContig, pos2);
     }
 
-    static byte[] extractRefBases(final SimpleInterval interval, final ReferenceMultiSource reference) {
+    static byte[] extractRefBases(final SimpleInterval interval, final ReferenceMultiSparkSource reference) {
         try {
             return reference.getReferenceBases(interval).getBases();
         } catch (final IOException ioex) {

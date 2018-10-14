@@ -197,22 +197,24 @@ public class StreamingPythonScriptExecutor<T> extends PythonExecutorBase {
 
     /**
      * Wait for an acknowledgement (which must have been previously requested).
-     * @return true if a positive acknowledgement (ack) is received, false if negative (nck)
+     * @return {@link ProcessOutput} when positive acknowledgement (ack) has been received, otherwise throws
+     * @throws PythonScriptExecutorException if nck was received
      */
     public ProcessOutput waitForAck() {
         if (!isAckRequestOutstanding) {
             throw new GATKException("No ack request is outstanding. An ack request must be issued first");
         }
-        final boolean isAck = spController.waitForAck();
+        final ProcessControllerAckResult pcAckResult = spController.waitForAck();
         isAckRequestOutstanding = false;
         // At every ack receipt, we want to retrieve the stdout/stderr output in case we're journaling
         final ProcessOutput po = getAccumulatedOutput();
-        // if the ack was negative, throw, since the ack queue is no longer reliably in sync
-        if (!isAck) {
+        if (!pcAckResult.isPositiveAck()) {
             throw new PythonScriptExecutorException(
                     String.format(
                             "A nack was received from the Python process (most likely caused by a raised exception caused by): %s",
-                            po.toString()));
+                            pcAckResult.getDisplayMessage()
+                    )
+            );
         }
         return po;
     }

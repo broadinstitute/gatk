@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.engine.spark;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
+import org.apache.spark.SparkFiles;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.FlatMapFunction;
@@ -9,13 +10,14 @@ import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.engine.*;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.ArrayList;
@@ -104,6 +106,8 @@ public abstract class AssemblyRegionWalkerSpark extends GATKSparkTool {
     @Argument(doc = "whether to use the shuffle implementation or not", shortName = "shuffle", fullName = "shuffle", optional = true)
     public boolean shuffle = false;
 
+    private String referenceFileName;
+
     @Override
     public final boolean requiresReads() { return true; }
 
@@ -151,16 +155,14 @@ public abstract class AssemblyRegionWalkerSpark extends GATKSparkTool {
     protected JavaRDD<AssemblyRegionWalkerContext> getAssemblyRegions(JavaSparkContext ctx) {
         SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
         JavaRDD<Shard<GATKRead>> shardedReads = SparkSharder.shard(ctx, getReads(), GATKRead.class, sequenceDictionary, intervalShards, readShardSize, shuffle);
-        Broadcast<ReferenceMultiSource> bReferenceSource = hasReference() ? ctx.broadcast(getReference()) : null;
         Broadcast<FeatureManager> bFeatureManager = features == null ? null : ctx.broadcast(features);
-        return shardedReads.flatMap(getAssemblyRegionsFunction(bReferenceSource, bFeatureManager, sequenceDictionary, getHeaderForReads(),
+        return shardedReads.flatMap(getAssemblyRegionsFunction(referenceFileName, bFeatureManager, getHeaderForReads(),
                 assemblyRegionEvaluator(), minAssemblyRegionSize, maxAssemblyRegionSize, assemblyRegionPadding, activeProbThreshold, maxProbPropagationDistance, includeReadsWithDeletionsInIsActivePileups()));
     }
 
     private static FlatMapFunction<Shard<GATKRead>, AssemblyRegionWalkerContext> getAssemblyRegionsFunction(
-            final Broadcast<ReferenceMultiSource> bReferenceSource,
+            final String referenceFileName,
             final Broadcast<FeatureManager> bFeatureManager,
-            final SAMSequenceDictionary sequenceDictionary,
             final SAMFileHeader header,
             final AssemblyRegionEvaluator evaluator,
             final int minAssemblyRegionSize,
@@ -170,11 +172,7 @@ public abstract class AssemblyRegionWalkerSpark extends GATKSparkTool {
             final int maxProbPropagationDistance,
             final boolean includeReadsWithDeletionsInIsActivePileups) {
         return (FlatMapFunction<Shard<GATKRead>, AssemblyRegionWalkerContext>) shardedRead -> {
-            final SimpleInterval paddedInterval = shardedRead.getPaddedInterval();
-            final SimpleInterval assemblyRegionPaddedInterval = paddedInterval.expandWithinContig(assemblyRegionPadding, sequenceDictionary);
-
-            final ReferenceDataSource reference = bReferenceSource == null ? null :
-                    new ReferenceMemorySource(bReferenceSource.getValue().getReferenceBases(assemblyRegionPaddedInterval), sequenceDictionary);
+            ReferenceDataSource reference = referenceFileName == null ? null : new ReferenceFileSource(IOUtils.getPath(SparkFiles.get(referenceFileName)));
             final FeatureManager features = bFeatureManager == null ? null : bFeatureManager.getValue();
 
             final Iterator<AssemblyRegion> assemblyRegionIter = new AssemblyRegionIterator(
@@ -192,6 +190,7 @@ public abstract class AssemblyRegionWalkerSpark extends GATKSparkTool {
 
     @Override
     protected void runTool(JavaSparkContext ctx) {
+        referenceFileName = addReferenceFilesForSpark(ctx, referenceArguments.getReferenceFileName());
         processAssemblyRegions(getAssemblyRegions(ctx), ctx);
     }
 

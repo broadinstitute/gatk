@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.copynumber;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import org.apache.commons.collections4.ListUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math3.linear.*;
 import org.apache.commons.math3.random.RandomDataGenerator;
 import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
@@ -18,8 +19,9 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.collections.Simple
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.AnnotatedInterval;
-import org.broadinstitute.hellbender.tools.copynumber.formats.records.AnnotationSet;
+import org.broadinstitute.hellbender.tools.copynumber.formats.records.annotation.AnnotationMap;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.SimpleCount;
+import org.broadinstitute.hellbender.tools.copynumber.formats.records.annotation.CopyNumberAnnotations;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.testng.Assert;
@@ -102,7 +104,8 @@ public final class CreateReadCountPanelOfNormalsIntegrationTest extends CommandL
         final AnnotatedIntervalCollection annotatedIntervals = new AnnotatedIntervalCollection(
                 new SimpleLocatableMetadata(SEQUENCE_DICTIONARY),
                 IntStream.range(0, NUM_INTERVALS)
-                        .mapToObj(i -> new AnnotatedInterval(intervals.get(i), new AnnotationSet(intervalGCContent[i])))
+                        .mapToObj(i -> new AnnotatedInterval(intervals.get(i),
+                                new AnnotationMap(Collections.singletonList(Pair.of(CopyNumberAnnotations.GC_CONTENT, intervalGCContent[i])))))
                         .collect(Collectors.toList()));
         final File annotatedIntervalsFile = createTempFile("annotated-intervals", ".tsv");
         annotatedIntervals.write(annotatedIntervalsFile);

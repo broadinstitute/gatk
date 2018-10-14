@@ -14,7 +14,8 @@ env:
   - TEST_TYPE=unit TEST_DOCKER=true TEST_VERBOSITY=minimal
   - TEST_TYPE=variantcalling TEST_DOCKER=true TEST_VERBOSITY=minimal
   - TEST_TYPE=python TEST_DOCKER=true TEST_VERBOSITY=minimal
-  - RUN_CNV_GERMLINE_WDL=true
+  - RUN_CNV_GERMLINE_COHORT_WDL=true
+  - RUN_CNV_GERMLINE_CASE_WDL=true
   - RUN_CNV_SOMATIC_WDL=true
   - RUN_M2_WDL=true
   - RUN_CNN_WDL=true
@@ -56,6 +57,15 @@ cache:
     - $HOME/gcloud/
     - $HOME/site-library
 before_install:
+  #skip push builds if there's an associated PR because we don't look at them anway
+- if [[ ${TRAVIS_EVENT_TYPE} == push ]];
+  then
+    PULL_REQUESTS=$( scripts/check_for_pull_request );
+    if [[ $( grep -c "commits" <<< ${PULL_REQUESTS} ) -gt 0 ]];
+    then
+      travis_terminate 0;
+    fi
+  fi
 - REPORT_PATH=${TRAVIS_BRANCH}_${TRAVIS_JOB_NUMBER};
 - if [[ $TRAVIS_SECURE_ENV_VARS == true && $TRAVIS_EVENT_TYPE != cron ]]; then
     echo "Test report will be written to  https://storage.googleapis.com$HELLBENDER_TEST_LOGS$REPORT_PATH/tests/test/index.html";
@@ -83,7 +93,7 @@ before_install:
    sudo mkdir -p /usr/local/lib/R/;
    sudo mkdir -p site-library;
    sudo ln -sFv ~/site-library /usr/local/lib/R/site-library;
-   sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E084DAB9;
+   sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E298A3A825C0D65DFD57CBB651716619E084DAB9;
    sudo add-apt-repository "deb http://cran.rstudio.com/bin/linux/ubuntu trusty/";
    sudo apt-get update;
    sudo apt-get install -y --force-yes r-base-dev=3.1.3-1trusty;
@@ -91,7 +101,7 @@ before_install:
    sudo Rscript scripts/docker/gatkbase/install_R_packages.R;
   fi
 # Download Cromwell jar -- if you change the version, please change the CROMWELL_JAR env variable above, too.
-- if [[ $RUN_CNV_GERMLINE_WDL == true || $RUN_CNV_SOMATIC_WDL == true || $RUN_M2_WDL == true || $RUN_CNN_WDL == true ]]; then
+- if [[ $RUN_CNV_GERMLINE_COHORT_WDL == true || $RUN_CNV_GERMLINE_CASE_WDL == true || $RUN_CNV_SOMATIC_WDL == true || $RUN_M2_WDL == true || $RUN_CNN_WDL == true ]]; then
     wget -O $CROMWELL_JAR https://github.com/broadinstitute/cromwell/releases/download/30.2/cromwell-30.2.jar;
   fi
 # Download git lfs files
@@ -107,7 +117,7 @@ install:
   else
     ./gradlew assemble;
     ./gradlew installDist;
-    if [[ $RUN_CNV_GERMLINE_WDL == true || $RUN_CNV_SOMATIC_WDL == true || $RUN_M2_WDL == true || $RUN_CNN_WDL == true ]]; then
+    if [[ $RUN_CNV_GERMLINE_COHORT_WDL == true || $RUN_CNV_GERMLINE_CASE_WDL == true || $RUN_CNV_SOMATIC_WDL == true || $RUN_M2_WDL == true || $RUN_CNN_WDL == true ]]; then
       echo "building a shadow jar for the wdl";
       ./gradlew shadowJar;
     elif [[ $TEST_TYPE == cloud ]]; then
@@ -122,9 +132,12 @@ script:
     echo "Not running any tests for nightly builds";
   elif [[ $TRAVIS_SECURE_ENV_VARS == false && $TEST_TYPE == cloud ]]; then
     echo "Can't run cloud tests without keys so don't run tests";
-  elif [[ $RUN_CNV_GERMLINE_WDL == true ]]; then
-    echo "Running CNV germline workflows";
-    bash scripts/cnv_cromwell_tests/germline/run_cnv_germline_workflows.sh;
+  elif [[ $RUN_CNV_GERMLINE_COHORT_WDL == true ]]; then
+    echo "Running CNV germline cohort workflow";
+    travis_wait 60 bash scripts/cnv_cromwell_tests/germline/run_cnv_germline_workflows.sh COHORT;
+  elif [[ $RUN_CNV_GERMLINE_CASE_WDL == true ]]; then
+    echo "Running CNV germline case workflow";
+    travis_wait 60 bash scripts/cnv_cromwell_tests/germline/run_cnv_germline_workflows.sh CASE;
   elif [[ $RUN_CNV_SOMATIC_WDL == true ]]; then
     echo "Running CNV somatic workflows";
     bash scripts/cnv_cromwell_tests/somatic/run_cnv_somatic_workflows.sh;

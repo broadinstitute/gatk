@@ -8,6 +8,9 @@ import htsjdk.samtools.util.BlockCompressedInputStream;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.tribble.Tribble;
 import htsjdk.tribble.util.TabixUtils;
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
+import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -18,6 +21,9 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.GetSampleName;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.runtime.ProcessController;
+import org.broadinstitute.hellbender.utils.runtime.ProcessOutput;
+import org.broadinstitute.hellbender.utils.runtime.ProcessSettings;
 
 import java.io.*;
 import java.net.URI;
@@ -415,6 +421,205 @@ public final class IOUtils {
         } else {
             return new GZIPInputStream(in);
         }
+    }
+
+    /**
+     * Extracts the tar.gz file given by {@code tarGzFilePath}.
+     * Input {@link Path} MUST be to a gzipped tar file.
+     * Will extract contents in the containing folder of {@code tarGzFilePath}.
+     * Will throw an exception if files exist already.
+     * @param tarGzFilePath {@link Path} to a gzipped tar file for extraction.
+     */
+    public static void extractTarGz(final Path tarGzFilePath) {
+        extractTarGz(tarGzFilePath, tarGzFilePath.getParent(), false);
+    }
+
+    /**
+     * Extracts the tar.gz file given by {@code tarGzFilePath}.
+     * Input {@link Path} MUST be to a gzipped tar file.
+     * Will throw an exception if files exist already.
+     * @param tarGzFilePath {@link Path} to a gzipped tar file for extraction.
+     * @param destDir {@link Path} to the directory where the contents of {@code tarGzFilePath} will be extracted.
+     */
+    public static void extractTarGz(final Path tarGzFilePath, final Path destDir) {
+        extractTarGz(tarGzFilePath, destDir, false);
+    }
+
+    /**
+     * Extracts the tar.gz file given by {@code tarGzFilePath}.
+     * Input {@link Path} MUST be to a gzipped tar file.
+     * @param tarGzFilePath {@link Path} to a gzipped tar file for extraction.
+     * @param destDir {@link Path} to the directory where the contents of {@code tarGzFilePath} will be extracted.
+     * @param overwriteExistingFiles If {@code true}, will enable overwriting of existing files.  If {@code false}, will cause an exception to be thrown if files exist already.
+     */
+    public static void extractTarGz(final Path tarGzFilePath, final Path destDir, final boolean overwriteExistingFiles) {
+
+        logger.info("Extracting data from archive: " + tarGzFilePath.toUri());
+
+        // Create a stream for the data sources input.
+        // (We know it will be a tar.gz):
+        try ( final InputStream fi = Files.newInputStream(tarGzFilePath);
+              final InputStream bi = new BufferedInputStream(fi);
+              final InputStream gzi = new GzipCompressorInputStream(bi);
+              final TarArchiveInputStream archiveStream = new TarArchiveInputStream(gzi)) {
+
+            extractFilesFromArchiveStream(archiveStream, tarGzFilePath, destDir, overwriteExistingFiles);
+        }
+        catch (final IOException ex) {
+            throw new UserException("Could not extract data from: " + tarGzFilePath.toUri(), ex);
+        }
+    }
+
+    private static void extractFilesFromArchiveStream(final TarArchiveInputStream archiveStream,
+                                                      final Path localTarGzPath,
+                                                      final Path destDir,
+                                                      final boolean overwriteExistingFiles) throws IOException {
+
+        // Adapted from: http://commons.apache.org/proper/commons-compress/examples.html
+
+        // Go through the archive and get the entries:
+        TarArchiveEntry entry;
+        while ((entry = archiveStream.getNextTarEntry()) != null) {
+
+            logger.info("Extracting file: " + entry.getName());
+
+            // Make sure we can read the data for the entry:
+            if (!archiveStream.canReadEntryData(entry)) {
+                throw new UserException("Could not read data from archive file(" + localTarGzPath.toUri() + "): " + entry.getName());
+            }
+
+            // Get the path for the entry on disk and make sure it's OK:
+            final Path extractedEntryPath = destDir.resolve(entry.getName()).normalize();
+            ensurePathIsOkForOutput(extractedEntryPath, overwriteExistingFiles);
+
+            // Now we can create the entry in our output location:
+            if (entry.isDirectory()) {
+                Files.createDirectories(extractedEntryPath);
+            }
+            else {
+                // Make sure the parent directory exists:
+                Files.createDirectories(extractedEntryPath.getParent());
+
+                if ( entry.isFIFO() ) {
+                    // Handle a fifo file:
+                    createFifoFile(extractedEntryPath, overwriteExistingFiles);
+                }
+                else if ( entry.isSymbolicLink() ) {
+                    // Handle a symbolic link:
+                    final String linkName = entry.getLinkName();
+
+                    // If the link already exists, we must clear it:
+                    if ( Files.exists(extractedEntryPath) && overwriteExistingFiles ) {
+                        removeFileWithWarning(extractedEntryPath);
+                    }
+
+                    Files.createSymbolicLink(extractedEntryPath, Paths.get(linkName));
+                }
+                else if ( entry.isLink() ) {
+                    // Handle a hard link:
+                    final String linkName = entry.getLinkName();
+
+                    // If the link already exists, we must clear it:
+                    if ( Files.exists(extractedEntryPath) && overwriteExistingFiles ) {
+                        removeFileWithWarning(extractedEntryPath);
+                    }
+
+                    Files.createLink(extractedEntryPath, Paths.get(linkName));
+                }
+                else if ( entry.isFile() ) {
+                    // Handle a (default) file entry:
+
+                    // Create the output file from the stream:
+                    try (final OutputStream o = Files.newOutputStream(extractedEntryPath)) {
+                        org.apache.commons.io.IOUtils.copy(archiveStream, o);
+                    }
+                }
+                else {
+                    // Right now we don't know how to handle any other file types:
+                    throw new UserException("Cannot extract file from tar.gz (unknown type): " + entry.toString());
+                }
+            }
+        }
+    }
+
+    private static void ensurePathIsOkForOutput(final Path p, final boolean overwriteExistingFiles) {
+        if ( Files.exists(p) ) {
+            if ( overwriteExistingFiles ) {
+                logger.warn("Overwriting existing output destination: " + p.toUri());
+            }
+            else {
+                throw new UserException("Output destination already exists: " + p.toUri());
+            }
+        }
+    }
+
+    /**
+     * Create a Unix FIFO file with the given path string.
+     * If requested file already exists, will throw an exception.
+     * Will throw an Exception on failure.
+     * @param fifoFilePath {@link Path} to the FIFO file to be created.
+     * @return The {@link File} object pointing to the created FIFO file.
+     */
+    public static File createFifoFile(final Path fifoFilePath) {
+        return createFifoFile(fifoFilePath, false);
+    }
+
+    private static void removeFileWithWarning(final Path filePath) {
+        logger.warn("File already exists in path.  Replacing existing file: " + filePath.toUri());
+        try {
+            Files.delete(filePath);
+        }
+        catch (final IOException ex) {
+            throw new UserException("Could not replace existing file: " + filePath.toUri());
+        }
+    }
+
+    /**
+     * Create a Unix FIFO file with the given path string.
+     * Will throw an Exception on failure.
+     * @param fifoFilePath {@link Path} to the FIFO file to be created.
+     * @param overwriteExisting If {@code true} will overwrite an existing file in the requested location for the FIFO file.  If {@code false} will throw an exception if the file exists.
+     * @return The {@link File} object pointing to the created FIFO file.
+     */
+    public static File createFifoFile(final Path fifoFilePath, final boolean overwriteExisting) {
+
+        // Make sure we're allowed to create the file:
+        if ( Files.exists(fifoFilePath) ) {
+            if ( (!overwriteExisting) ) {
+                throw new UserException("Cannot create fifo file.  File already exists: " + fifoFilePath.toUri());
+            }
+            else {
+                removeFileWithWarning(fifoFilePath);
+            }
+        }
+
+        // Create the FIFO by executing mkfifo via another ProcessController
+        final ProcessSettings mkFIFOSettings = new ProcessSettings(new String[]{"mkfifo", fifoFilePath.toFile().getAbsolutePath()});
+        mkFIFOSettings.getStdoutSettings().setBufferSize(-1);
+        mkFIFOSettings.setRedirectErrorStream(true);
+
+        // Now perform the system call:
+        final ProcessController mkFIFOController = new ProcessController();
+        final ProcessOutput     result           = mkFIFOController.exec(mkFIFOSettings);
+        final int               exitValue        = result.getExitValue();
+
+        final File fifoFile = fifoFilePath.toFile();
+
+        // Make sure we're OK:
+        if (exitValue != 0) {
+            throw new GATKException(String.format(
+                    "Failure creating FIFO named (%s). Got exit code (%d) stderr (%s) and stdout (%s)",
+                    fifoFilePath.toFile().getAbsolutePath(),
+                    exitValue,
+                    result.getStderr() == null ? "" : result.getStderr().getBufferString(),
+                    result.getStdout() == null ? "" : result.getStdout().getBufferString()));
+        } else if (!fifoFile.exists()) {
+            throw new GATKException(String.format("FIFO (%s) created but doesn't exist", fifoFilePath.toFile().getAbsolutePath()));
+        } else if (!fifoFile.canWrite()) {
+            throw new GATKException(String.format("FIFO (%s) created isn't writable", fifoFilePath.toFile().getAbsolutePath()));
+        }
+
+        return fifoFile;
     }
 
     /**

@@ -4,7 +4,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -29,7 +29,7 @@ public final class SVReferenceUtils {
      */
     public static JavaRDD<byte[]> getReferenceBasesRDD(final JavaSparkContext ctx,
                                                        final int kSize,
-                                                       final ReferenceMultiSource ref,
+                                                       final ReferenceMultiSparkSource ref,
                                                        final SAMSequenceDictionary dict,
                                                        final int refRecordLen,
                                                        final int refRecordsPerPartition) {

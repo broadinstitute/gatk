@@ -6,7 +6,7 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.MetagenomicsProgramGroup;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceFileSource;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceFileSparkSource;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmerShort;
 import org.broadinstitute.hellbender.tools.spark.utils.LargeLongHopscotchSet;
 import org.broadinstitute.hellbender.tools.spark.utils.LongBloomFilter;
@@ -152,7 +152,7 @@ public final class PathSeqBuildKmers extends CommandLineProgram {
     @Override
     protected Object doWork() {
 
-        final ReferenceFileSource reference = new ReferenceFileSource(this.reference);
+        final ReferenceFileSparkSource reference = new ReferenceFileSparkSource(this.reference);
 
         final byte[] maskBytes = PSUtils.parseMask(kmerMaskString, kmerSize);
         final SVKmerShort kmerMask = SVKmerShort.getMask(maskBytes, kmerSize);

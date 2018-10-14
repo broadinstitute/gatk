@@ -9,7 +9,7 @@ import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFConstants;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.broadcast.Broadcast;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignmentInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigWithFineTunedAlignments;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.NovelAdjacencyAndAltHaplotype;
@@ -41,7 +41,7 @@ public class AnnotatedVariantProducer implements Serializable {
      */
     public static List<VariantContext> produceLinkedAssemblyBasedVariants(final Tuple2<SvType, SvType> linkedVariants,
                                                                           final SimpleNovelAdjacencyAndChimericAlignmentEvidence simpleNovelAdjacencyAndChimericAlignmentEvidence,
-                                                                          final Broadcast<ReferenceMultiSource> broadcastReference,
+                                                                          final Broadcast<ReferenceMultiSparkSource> broadcastReference,
                                                                           final Broadcast<SAMSequenceDictionary> broadcastSequenceDictionary,
                                                                           final Broadcast<SVIntervalTree<VariantContext>> broadcastCNVCalls,
                                                                           final String sampleId,
@@ -87,7 +87,7 @@ public class AnnotatedVariantProducer implements Serializable {
      */
     public static VariantContextBuilder produceAnnotatedVcFromAssemblyEvidence(final SvType inferredType,
                                                                                final SimpleNovelAdjacencyAndChimericAlignmentEvidence simpleNovelAdjacencyAndChimericAlignmentEvidence,
-                                                                               final Broadcast<ReferenceMultiSource> broadcastReference,
+                                                                               final Broadcast<ReferenceMultiSparkSource> broadcastReference,
                                                                                final Broadcast<SAMSequenceDictionary> broadcastSequenceDictionary,
                                                                                final Broadcast<SVIntervalTree<VariantContext>> broadcastCNVCalls,
                                                                                final String sampleId) {
@@ -135,7 +135,7 @@ public class AnnotatedVariantProducer implements Serializable {
     public static List<VariantContext> annotateBreakpointBasedCallsWithImpreciseEvidenceLinks(final List<VariantContext> assemblyDiscoveredVariants,
                                                                                               final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks,
                                                                                               final ReadMetadata metadata,
-                                                                                              final ReferenceMultiSource reference,
+                                                                                              final ReferenceMultiSparkSource reference,
                                                                                               final DiscoverVariantsFromContigAlignmentsSparkArgumentCollection parameters,
                                                                                               final Logger localLogger) {
 

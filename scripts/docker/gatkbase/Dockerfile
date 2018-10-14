@@ -13,6 +13,7 @@ RUN apt-get update && \
     bedtools \
     samtools \
     openjdk-8-jdk \
+    tabix \
     software-properties-common && \
     apt-get -y clean  && \
     apt-get -y autoclean  && \

@@ -82,6 +82,7 @@ public final class CallCopyRatioSegments extends CommandLineProgram {
     public static final String OUTLIER_NEUTRAL_SEGMENT_COPY_RATIO_Z_SCORE_THRESHOLD_LONG_NAME = "outlier-neutral-segment-copy-ratio-z-score-threshold";
     public static final String CALLING_COPY_RATIO_Z_SCORE_THRESHOLD_LONG_NAME = "calling-copy-ratio-z-score-threshold";
     public static final String LEGACY_SEGMENTS_FILE_SUFFIX = ".igv.seg";
+
     @Argument(
             doc = "Input file containing copy-ratio segments (.cr.seg output of ModelSegments).",
             fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,

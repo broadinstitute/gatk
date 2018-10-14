@@ -20,7 +20,7 @@
 #     annotation_defaults            -  Annotations to include in all annotated variants if the annotation is not specified in the data sources (in the format <ANNOTATION>:<VALUE>).  This will add the specified annotation to every annotated variant if it is not already present.
 #     annotation_overrides           -  Override values for annotations (in the format <ANNOTATION>:<VALUE>).  Replaces existing annotations of the given name with given values.
 #     gatk4_jar_override             -  Override Jar file containing GATK 4.0.  Use this when overriding the docker JAR or when using a backend without docker.
-#     funcotator_extra_args          -  Extra command-line arguments to pass through to Funcotator.
+#     funcotator_extra_args          -  Extra command-line arguments to pass through to Funcotator.  (e.g. " --exclude-field foo_field --exclude-field bar_field ")
 #
 # This WDL needs to decide whether to use the ``gatk_jar`` or ``gatk_jar_override`` for the jar location.  As of cromwell-0.24,
 # this logic *must* go into each task.  Therefore, there is a lot of duplicated code.  This allows users to specify a jar file

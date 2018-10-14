@@ -71,6 +71,31 @@ public class StreamingPythonScriptExecutorUnitTest extends GATKBaseTest {
         }
     }
 
+    @Test(groups = "python", dataProvider="supportedPythonVersions", timeOut = 50000, expectedExceptions={PythonScriptExecutorException.class})
+    public void testNckWithMessage(final PythonScriptExecutor.PythonExecutableName executableName) throws PythonScriptExecutorException {
+
+        final StreamingPythonScriptExecutor<String> streamingPythonExecutor =
+                new StreamingPythonScriptExecutor<>(executableName,true);
+        Assert.assertNotNull(streamingPythonExecutor);
+        Assert.assertTrue(streamingPythonExecutor.start(Collections.emptyList(), true, null));
+
+        try {
+            // force a division by 0 error to raise an exception on the Python side, and verify that
+            // the exeception details get propagated back through the ack fifo (as a negative ack with
+            // a message - "nkm") containing the details of the error, as well as to the exception
+            // thrown by the executor
+            streamingPythonExecutor.sendSynchronousCommand("0/0" + NL);
+        }
+        catch (PythonScriptExecutorException e) {
+            Assert.assertTrue(e.getMessage().contains("division"));
+            throw e;
+        }
+        finally {
+            streamingPythonExecutor.terminate();
+            Assert.assertFalse(streamingPythonExecutor.getProcess().isAlive());
+        }
+    }
+
     @Test(groups = "python", dataProvider="supportedPythonVersions", dependsOnMethods = "testPythonExists")
     public void testTerminateWhilePythonBlocked(final PythonScriptExecutor.PythonExecutableName executableName) {
         // Test termination on a Python process that is blocked on I/O to ensure that we don't leave
@@ -232,7 +257,7 @@ public class StreamingPythonScriptExecutorUnitTest extends GATKBaseTest {
     @Test(groups = "python", dataProvider="supportedPythonVersions", dependsOnMethods = "testPythonExists",
             expectedExceptions = PythonScriptExecutorException.class)
     public void testRaisePythonAssert(final PythonScriptExecutor.PythonExecutableName executableName) {
-        executeBadPythonCode(executableName,"assert false");
+        executeBadPythonCode(executableName,"assert 0");
     }
 
     private void executeBadPythonCode(final PythonScriptExecutor.PythonExecutableName executableName, final String errorCommand) {

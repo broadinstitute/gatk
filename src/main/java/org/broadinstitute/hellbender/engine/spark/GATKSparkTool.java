@@ -2,13 +2,15 @@ package org.broadinstitute.hellbender.engine.spark;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
+import htsjdk.samtools.util.GZIIndex;
+import htsjdk.samtools.util.IOUtil;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -17,8 +19,8 @@ import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.engine.TraversalParameters;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
@@ -36,8 +38,11 @@ import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.ZonedDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Base class for GATK spark tools that accept standard kinds of inputs (reads, reference, and/or intervals).
@@ -117,7 +122,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     private ReadsSparkSource readsSource;
     private SAMFileHeader readsHeader;
     private String readInput;
-    private ReferenceMultiSource referenceSource;
+    private ReferenceMultiSparkSource referenceSource;
     private SAMSequenceDictionary referenceDictionary;
     private List<SimpleInterval> userIntervals;
     protected FeatureManager features;
@@ -443,7 +448,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     /**
      * @return our reference source, or null if no reference is present
      */
-    public ReferenceMultiSource getReference() {
+    public ReferenceMultiSparkSource getReference() {
         return referenceSource;
     }
 
@@ -497,7 +502,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     private void initializeReference() {
         final String referenceURL = referenceArguments.getReferenceFileName();
         if ( referenceURL != null ) {
-            referenceSource = new ReferenceMultiSource(referenceURL, getReferenceWindowFunction());
+            referenceSource = new ReferenceMultiSparkSource(referenceURL, getReferenceWindowFunction());
             referenceDictionary = referenceSource.getReferenceSequenceDictionary(readsHeader != null ? readsHeader.getSequenceDictionary() : null);
             if (referenceDictionary == null) {
                 throw new UserException.MissingReferenceDictFile(referenceURL);
@@ -568,6 +573,61 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
                 }
             }
         }
+    }
+
+    /**
+     * Register the reference file (and associated dictionary and index) to be downloaded to every node using Spark's
+     * copying mechanism ({@code SparkContext#addFile()}).
+     * @param ctx the Spark context
+     * @param referenceFile the reference file, can be a local file or a remote path
+     * @return the reference file name; the absolute path of the file can be found by a Spark task using {@code SparkFiles#get()}
+     */
+    protected static String addReferenceFilesForSpark(JavaSparkContext ctx, String referenceFile) {
+        if (referenceFile == null) {
+            return null;
+        }
+        Path referencePath = IOUtils.getPath(referenceFile);
+        Path indexPath = ReferenceSequenceFileFactory.getFastaIndexFileName(referencePath);
+        Path dictPath = ReferenceSequenceFileFactory.getDefaultDictionaryForReferenceSequence(referencePath);
+        Path gziPath = GZIIndex.resolveIndexNameForBgzipFile(referencePath);
+
+        ctx.addFile(referenceFile);
+        if (Files.exists(indexPath)) {
+            ctx.addFile(indexPath.toUri().toString());
+        }
+        if (Files.exists(dictPath)) {
+            ctx.addFile(dictPath.toUri().toString());
+        }
+        if (Files.exists(gziPath)) {
+            ctx.addFile(gziPath.toUri().toString());
+        }
+
+        return referencePath.getFileName().toString();
+    }
+
+    /**
+     * Register the VCF file (and associated index) to be downloaded to every node using Spark's copying mechanism
+     * ({@code SparkContext#addFile()}).
+     * @param ctx the Spark context
+     * @param vcfFileNames the VCF files, can be local files or remote paths
+     * @return the reference file name; the absolute path of the file can be found by a Spark task using {@code SparkFiles#get()}
+     */
+    protected static List<String> addVCFsForSpark(JavaSparkContext ctx, List<String> vcfFileNames) {
+        for (String vcfFileName : vcfFileNames) {
+            String vcfIndexFileName;
+            if (vcfFileName.endsWith(IOUtil.VCF_FILE_EXTENSION)) {
+                vcfIndexFileName = vcfFileName + IOUtil.VCF_INDEX_EXTENSION;
+            } else if (vcfFileName.endsWith(IOUtil.COMPRESSED_VCF_FILE_EXTENSION)) {
+                vcfIndexFileName = vcfFileName + IOUtil.COMPRESSED_VCF_INDEX_EXTENSION;
+            } else {
+                throw new IllegalArgumentException("Unrecognized known sites file extension. Must be .vcf or .vcf.gz");
+            }
+            ctx.addFile(vcfFileName);
+            if (Files.exists(IOUtils.getPath(vcfIndexFileName))) {
+                ctx.addFile(vcfIndexFileName);
+            }
+        }
+        return vcfFileNames.stream().map(name -> IOUtils.getPath(name).getFileName().toString()).collect(Collectors.toList());
     }
 
     /**

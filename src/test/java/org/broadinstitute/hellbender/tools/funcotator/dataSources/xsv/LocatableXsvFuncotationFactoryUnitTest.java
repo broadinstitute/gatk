@@ -4,10 +4,12 @@ import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
+import org.apache.commons.io.FilenameUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.testutils.FuncotatorReferenceTestUtils;
 import org.broadinstitute.hellbender.tools.funcotator.DataSourceFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
 import org.broadinstitute.hellbender.tools.funcotator.FuncotatorTestConstants;
@@ -15,16 +17,20 @@ import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotati
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationBuilder;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.codecs.xsvLocatableTable.XsvLocatableTableCodec;
 import org.broadinstitute.hellbender.utils.codecs.xsvLocatableTable.XsvTableFeature;
-import org.broadinstitute.hellbender.testutils.FuncotatorReferenceTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Unit tests for {@link LocatableXsvFuncotationFactory}.
@@ -277,10 +283,10 @@ public class LocatableXsvFuncotationFactoryUnitTest extends GATKBaseTest {
     public void testGetName(final String name, final String expected) {
         final LocatableXsvFuncotationFactory locatableXsvFuncotationFactory;
         if ( name == null ) {
-            locatableXsvFuncotationFactory = new LocatableXsvFuncotationFactory(LocatableXsvFuncotationFactory.DEFAULT_NAME, DataSourceFuncotationFactory.DEFAULT_VERSION_STRING);
+            locatableXsvFuncotationFactory = new LocatableXsvFuncotationFactory(LocatableXsvFuncotationFactory.DEFAULT_NAME, DataSourceFuncotationFactory.DEFAULT_VERSION_STRING, new LinkedHashMap<>(), null);
         }
         else {
-            locatableXsvFuncotationFactory = new LocatableXsvFuncotationFactory(name, DataSourceFuncotationFactory.DEFAULT_VERSION_STRING);
+            locatableXsvFuncotationFactory = new LocatableXsvFuncotationFactory(name, DataSourceFuncotationFactory.DEFAULT_VERSION_STRING, new LinkedHashMap<>(), null);
         }
 
         Assert.assertEquals( locatableXsvFuncotationFactory.getName(), expected );
@@ -294,8 +300,20 @@ public class LocatableXsvFuncotationFactoryUnitTest extends GATKBaseTest {
                                        final List<GencodeFuncotation> gencodeFuncotations,
                                        final List<Funcotation> expected) {
 
-        final LocatableXsvFuncotationFactory locatableXsvFuncotationFactory = new LocatableXsvFuncotationFactory(defaultDataSourceName, DataSourceFuncotationFactory.DEFAULT_VERSION_STRING, reportableFuncotationFieldNames);
+        // Create a temporary file for the "backing data" which will only contain the header:
+        final Path headerBackingDataFilePath = createTempPath("headerBackingDataFile", "csv");
+        try {
+            Files.write(headerBackingDataFilePath, ("CONTIG,START,END," + reportableFuncotationFieldNames.stream().collect(Collectors.joining(","))).getBytes());
 
+            // Create a temporary file for the config file that points to the temporary file for the backing data:
+            createTemporaryConfigFile(headerBackingDataFilePath);
+        }
+        catch (final IOException ex) {
+            throw new GATKException("Could not write to temp file for testing: " + headerBackingDataFilePath.toUri(), ex);
+        }
+
+        final LocatableXsvFuncotationFactory locatableXsvFuncotationFactory = new LocatableXsvFuncotationFactory(defaultDataSourceName, DataSourceFuncotationFactory.DEFAULT_VERSION_STRING, new LinkedHashMap<>(), null);
+        locatableXsvFuncotationFactory.setSupportedFuncotationFields(new ArrayList<>(Collections.singletonList(headerBackingDataFilePath)));
 
         Assert.assertEquals(
                 locatableXsvFuncotationFactory.createFuncotationsOnVariant( variant, referenceContext, featureList ),
@@ -311,7 +329,7 @@ public class LocatableXsvFuncotationFactoryUnitTest extends GATKBaseTest {
     @Test(dataProvider = "provideForTestSetSupportedFuncotationFields")
     public void testSetSupportedFuncotationFields(final List<Path> dataFilePaths,
                                                   final LinkedHashSet<String> expected) {
-        final LocatableXsvFuncotationFactory locatableXsvFuncotationFactory = new LocatableXsvFuncotationFactory();
+        final LocatableXsvFuncotationFactory locatableXsvFuncotationFactory = new LocatableXsvFuncotationFactory(LocatableXsvFuncotationFactory.DEFAULT_NAME, DataSourceFuncotationFactory.DEFAULT_VERSION_STRING, new LinkedHashMap<>(), null);
 
         locatableXsvFuncotationFactory.setSupportedFuncotationFields(dataFilePaths);
 
@@ -323,7 +341,71 @@ public class LocatableXsvFuncotationFactoryUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions = GATKException.class)
     public void testGetSupportedFuncotationFields() {
-        final LocatableXsvFuncotationFactory locatableXsvFuncotationFactory = new LocatableXsvFuncotationFactory();
+        final LocatableXsvFuncotationFactory locatableXsvFuncotationFactory = new LocatableXsvFuncotationFactory(LocatableXsvFuncotationFactory.DEFAULT_NAME, DataSourceFuncotationFactory.DEFAULT_VERSION_STRING, new LinkedHashMap<>(), null);
         locatableXsvFuncotationFactory.getSupportedFuncotationFields();
+    }
+
+    private void createTemporaryConfigFile(final Path backingDataSourcePath) throws IOException {
+
+        // Config file must be next to backingDataSourcePath, and have the same base name, with the .config extension:
+        final String backingDataSourceFileName = backingDataSourcePath.toFile().getName();
+        final String configFileBaseName = FilenameUtils.removeExtension(backingDataSourceFileName);
+        final Path configPath = backingDataSourcePath.resolveSibling(configFileBaseName + XsvLocatableTableCodec.CONFIG_FILE_EXTENSION);
+
+        final File configFile = configPath.toAbsolutePath().toFile();
+        configFile.createNewFile();
+
+        try(final PrintWriter writer = new PrintWriter(configPath.toAbsolutePath().toFile())) {
+            writer.println("name = ");
+            writer.println("version = TEST");
+            writer.println("src_file = " + backingDataSourceFileName);
+            writer.println("origin_location = LocatableXsvFuncotationFactoryUnitTest.java");
+            writer.println("preprocessing_script = ");
+            writer.println("");
+            writer.println("# Supported types:");
+            writer.println("# simpleXSV    -- Arbitrary separated value table (e.g. CSV), keyed off Gene Name OR Transcript ID");
+            writer.println("# locatableXSV -- Arbitrary separated value table (e.g. CSV), keyed off a genome location");
+            writer.println("# gencode      -- Custom datasource class for GENCODE");
+            writer.println("# cosmic       -- Custom datasource class for COSMIC");
+            writer.println("# vcf          -- Custom datasource class for Variant Call Format (VCF) files");
+            writer.println("                    type = locatableXSV");
+            writer.println("");
+            writer.println("# Required field for GENCODE files.");
+            writer.println("# Path to the FASTA file from which to load the sequences for GENCODE transcripts:");
+            writer.println("            gencode_fasta_path =");
+            writer.println("");
+            writer.println("# Required field for simpleXSV files.");
+            writer.println("# Valid values:");
+            writer.println("#     GENE_NAME");
+            writer.println("#     TRANSCRIPT_ID");
+            writer.println("                    xsv_key = ");
+            writer.println("");
+            writer.println("# Required field for simpleXSV files.");
+            writer.println("# The 0-based index of the column containing the key on which to match");
+            writer.println("                    xsv_key_column =");
+            writer.println("");
+            writer.println("# Required field for simpleXSV AND locatableXSV files.");
+            writer.println("# The delimiter by which to split the XSV file into columns.");
+            writer.println("                    xsv_delimiter = ,");
+            writer.println("");
+            writer.println("# Required field for simpleXSV files.");
+            writer.println("# Whether to permissively match the number of columns in the header and data rows");
+            writer.println("# Valid values:");
+            writer.println("#     true");
+            writer.println("#     false");
+            writer.println("            xsv_permissive_cols = ");
+            writer.println("");
+            writer.println("# Required field for locatableXSV files.");
+            writer.println("# The 0-based index of the column containing the contig for each row");
+            writer.println("            contig_column = 0 ");
+            writer.println("");
+            writer.println("# Required field for locatableXSV files.");
+            writer.println("# The 0-based index of the column containing the start position for each row");
+            writer.println("            start_column = 1 ");
+            writer.println("");
+            writer.println("# Required field for locatableXSV files.");
+            writer.println("# The 0-based index of the column containing the end position for each row");
+            writer.println("            end_column = 2");
+        }
     }
 }

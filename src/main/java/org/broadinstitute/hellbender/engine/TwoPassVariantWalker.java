@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.engine;
 
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
+import org.broadinstitute.hellbender.engine.filters.CountingVariantFilter;
 import org.broadinstitute.hellbender.engine.filters.VariantFilter;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
@@ -18,12 +19,12 @@ public abstract class TwoPassVariantWalker extends VariantWalker {
      */
     @Override
     public void traverse(){
-        final VariantFilter variantContextFilter = makeVariantFilter();
+        final CountingVariantFilter countingVariantFilter = makeVariantFilter();
         final CountingReadFilter readFilter = makeReadFilter();
 
         // First pass through the variants
         logger.info("Starting first pass through the variants");
-        traverseVariants(variantContextFilter, readFilter, this::firstPassApply);
+        traverseVariants(countingVariantFilter, readFilter, this::firstPassApply);
         logger.info("Finished first pass through the variants");
 
         // Process the data accumulated during the first pass
@@ -31,8 +32,9 @@ public abstract class TwoPassVariantWalker extends VariantWalker {
 
         // Second pass
         logger.info("Starting second pass through the variants");
-        traverseVariants(variantContextFilter, readFilter, this::secondPassApply);
+        traverseVariants(countingVariantFilter, readFilter, this::secondPassApply);
 
+        logger.info(countingVariantFilter.getSummaryLine());
         logger.info(readFilter.getSummaryLine());
     }
 

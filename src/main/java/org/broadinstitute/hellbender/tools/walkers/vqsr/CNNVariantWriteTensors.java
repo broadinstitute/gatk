@@ -47,10 +47,10 @@ import java.util.List;
  * gatk CNNVariantWriteTensors \
  *   -R reference.fasta \
  *   -V input.vcf.gz \
- *   --truth-vcf platinum-genomes.vcf \
- *   --truth-bed platinum-confident-region.bed \
- *   --tensor-type reference \
- *   --output-tensor-dir my-tensor-folder
+ *   -truth-vcf platinum-genomes.vcf \
+ *   -truth-bed platinum-confident-region.bed \
+ *   -tensor-type reference \
+ *   -output-tensor-dir my-tensor-folder
  * </pre>
  *
  * <h4>Write Read Tensors</h4>
@@ -58,11 +58,11 @@ import java.util.List;
  * gatk CNNVariantWriteTensors \
  *   -R reference.fasta \
  *   -V input.vcf.gz \
- *   --truth-vcf platinum-genomes.vcf \
- *   --truth-bed platinum-confident-region.bed \
- *   --tensor-type read_tensor \
- *   --bam-file input.bam \
- *   --output-tensor-dir my-tensor-folder
+ *   -truth-vcf platinum-genomes.vcf \
+ *   -truth-bed platinum-confident-region.bed \
+ *   -tensor-type read_tensor \
+ *   -bam-file input.bam \
+ *   -output-tensor-dir my-tensor-folder
  * </pre>
  *
  */
@@ -100,6 +100,12 @@ public class CNNVariantWriteTensors extends CommandLineProgram {
     @Argument(fullName = "tensor-type", shortName = "tensor-type", doc = "Name of the tensors to generate.")
     private TensorType tensorType = TensorType.reference;
 
+    @Argument(fullName = "downsample-snps", shortName = "downsample-snps", doc = "Fraction of SNPs to write tensors for.", optional = true)
+    private float downsampleSnps = 0.05f;
+
+    @Argument(fullName = "downsample-indels", shortName = "downsample-indels", doc = "Fraction of INDELs to write tensors for.", optional = true)
+    private float downsampleIndels = 0.5f;
+
     @Advanced
     @Argument(fullName = "channels-last", shortName = "channels-last", doc = "Store the channels in the last axis of tensors, tensorflow->true, theano->false", optional = true)
     private boolean channelsLast = true;
@@ -131,6 +137,8 @@ public class CNNVariantWriteTensors extends CommandLineProgram {
                 "--tensor_name", tensorType.name(),
                 "--annotation_set", annotationSet,
                 "--samples", Integer.toString(maxTensors),
+                "--downsample_snps", Float.toString(downsampleSnps),
+                "--downsample_indels", Float.toString(downsampleIndels),
                 "--data_dir", outputTensorsDir));
 
         if(channelsLast){

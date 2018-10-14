@@ -289,7 +289,7 @@ public final class AssemblyRegion implements Locatable {
         final List<GATKRead> trimmedReads = new ArrayList<>(myReads.size());
         for( final GATKRead read : myReads ) {
             final GATKRead clippedRead = ReadClipper.hardClipToRegion(read, resultExtendedLocStart, resultExtendedLocStop);
-            if( result.readOverlapsRegion(clippedRead) && clippedRead.getLength() > 0 ) {
+            if( result.readOverlapsRegion(clippedRead) && !clippedRead.isEmpty() ) {
                 trimmedReads.add(clippedRead);
             }
         }
@@ -410,14 +410,14 @@ public final class AssemblyRegion implements Locatable {
     /**
      * See #getActiveRegionReference but using the span including regions not the extended span
      */
-    public byte[] getFullReference( final IndexedFastaSequenceFile referenceReader ) {
+    public byte[] getFullReference( final ReferenceSequenceFile referenceReader ) {
         return getFullReference(referenceReader, 0);
     }
 
     /**
      * See #getActiveRegionReference but using the span including regions not the extended span
      */
-    public byte[] getFullReference( final IndexedFastaSequenceFile referenceReader, final int padding ) {
+    public byte[] getFullReference( final ReferenceSequenceFile referenceReader, final int padding ) {
         return getReference(referenceReader, padding, spanIncludingReads);
     }
 

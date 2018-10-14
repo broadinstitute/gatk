@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.examples;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
@@ -12,15 +13,26 @@ public final class ExampleReadWalkerWithReferenceIntegrationTest extends Command
     private static final String TEST_DATA_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/";
     private static final String TEST_OUTPUT_DIRECTORY = exampleTestDir;
 
-    @Test
-    public void testExampleReadWalkerWithReference() throws IOException {
+    @DataProvider
+    public Object[][] getReferences(){
+        return new Object[][]{
+                {hg19MiniReference},
+                {hg19MiniReference + ".gz"}
+        };
+    }
+
+
+    @Test(dataProvider = "getReferences")
+    public void testExampleReadWalkerWithReference(String reference) throws IOException {
         final IntegrationTestSpec testSpec = new IntegrationTestSpec(
-                " -R " + hg19MiniReference +
+                " -R " + reference +
                 " -I " + TEST_DATA_DIRECTORY + "reads_data_source_test1.bam" +
                 " -O %s",
                 Arrays.asList(TEST_OUTPUT_DIRECTORY + "expected_ExampleReadWalkerWithReferenceIntegrationTest_output.txt")
         );
         testSpec.executeTest("testExampleReadWalkerWithReference", this);
     }
+
+
 
 }

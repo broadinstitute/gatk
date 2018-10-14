@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.spark.sv.discovery.inference;
 
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.AnnotatedVariantProducer;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SimpleSVType;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvType;
@@ -19,7 +19,7 @@ public class ImpreciseVariantDetector {
 
     public static List<VariantContext> callImpreciseDeletionFromEvidenceLinks(final PairedStrandedIntervalTree<EvidenceTargetLink> evidenceTargetLinks,
                                                                               final ReadMetadata metadata,
-                                                                              final ReferenceMultiSource reference,
+                                                                              final ReferenceMultiSparkSource reference,
                                                                               final int impreciseVariantEvidenceThreshold,
                                                                               final int maxCallableImpreciseVariantDeletionSize,
                                                                               final Logger localLogger) {
@@ -39,7 +39,7 @@ public class ImpreciseVariantDetector {
 
     private static VariantContext createImpreciseDeletionVariant(final EvidenceTargetLink e,
                                                                  final ReadMetadata metadata,
-                                                                 final ReferenceMultiSource reference) {
+                                                                 final ReferenceMultiSparkSource reference) {
         final int svLength = e.getPairedStrandedIntervals().getLeft().getInterval().midpoint() -
                              e.getPairedStrandedIntervals().getRight().getInterval().midpoint();
         final SvType svType = new SimpleSVType.ImpreciseDeletion(e, svLength, metadata, reference);

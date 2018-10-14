@@ -1,8 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.reference.ReferenceSequenceFile;
-import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
@@ -14,18 +12,14 @@ import org.broadinstitute.hellbender.cmdline.argumentcollections.ReferenceInputA
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
-import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.walkers.annotator.*;
+import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
+import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
-import java.io.FileNotFoundException;
-import java.util.*;
-import java.util.ArrayList;
-import java.util.List;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 import java.nio.file.Path;
+import java.util.Collection;
+import java.util.List;
 
 
 /**
@@ -219,12 +213,16 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
     @Override
     public void onTraversalStart() {
         if (hcArgs.emitReferenceConfidence == ReferenceConfidenceMode.GVCF && hcArgs.maxMnpDistance > 0) {
-            throw new CommandLineException.BadArgumentValue("Non-zero maxMnpDistance is incompatible with GVCF mode.");
+            logger.warn("*************************************************************************");
+            logger.warn("* MNP support enabled in GVCF mode.                                     *");
+            logger.warn("* Generated GVCFs that contain MNPs can only be genotyped individually. *");
+            logger.warn("* Multi-sample calling from MNP-enabled GVCFs is unsupported.           *");
+            logger.warn("*************************************************************************");
         }
-        final ReferenceSequenceFile referenceReader = getReferenceReader(referenceArguments);
+
         final VariantAnnotatorEngine variantAnnotatorEngine = new VariantAnnotatorEngine(makeVariantAnnotations(),
                 hcArgs.dbsnp.dbsnp, hcArgs.comps,  hcArgs.emitReferenceConfidence != ReferenceConfidenceMode.NONE);
-        hcEngine = new HaplotypeCallerEngine(hcArgs, createOutputBamIndex, createOutputBamMD5, getHeaderForReads(), referenceReader, variantAnnotatorEngine);
+        hcEngine = new HaplotypeCallerEngine(hcArgs, createOutputBamIndex, createOutputBamMD5, getHeaderForReads(), getReferenceReader(referenceArguments), variantAnnotatorEngine);
 
         // The HC engine will make the right kind (VCF or GVCF) of writer for us
         final SAMSequenceDictionary sequenceDictionary = getHeaderForReads().getSequenceDictionary();
@@ -233,14 +231,8 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
     }
 
     private static CachingIndexedFastaSequenceFile getReferenceReader(ReferenceInputArgumentCollection referenceArguments) {
-        final CachingIndexedFastaSequenceFile referenceReader;
         final Path reference = IOUtils.getPath(referenceArguments.getReferenceFileName());
-        try {
-            referenceReader = new CachingIndexedFastaSequenceFile(reference);
-        } catch (FileNotFoundException e) {
-            throw new UserException.CouldNotReadInputFile(reference, e);
-        }
-        return referenceReader;
+        return new CachingIndexedFastaSequenceFile(reference);
     }
 
     @Override
@@ -257,5 +249,6 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
         if ( hcEngine != null ) {
             hcEngine.shutdown();
         }
+
     }
 }
