@@ -627,7 +627,7 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
     @DataProvider(name = "GenomicsDBTestPathData")
     public Object[][] genomicsDBTestPathData() {
         return new Object[][]{
-                //path, getGenomicsDBPath, getAbsolutePathWithGenDBScheme, isGenomicsDBPath
+                //path, getGenomicsDBPath, getAbsolutePathWithGenomicsDBURIScheme, isGenomicsDBPath
                 {null, null, null, false},
                 {"", null, null, false},
                 {"dfdfdf://fdfdf", null, null, false},
@@ -658,7 +658,7 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
     @Test(dataProvider = "GenomicsDBTestPathData")
     public void testGenomicsDBPathParsing(String path, String expectedPath, String gendbExpectedAbsolutePath, boolean expectedComparison) {
         Assert.assertEquals(IOUtils.getGenomicsDBPath(path), expectedPath, "getGenomicsDBPath() returned the wrong value");
-        Assert.assertEquals(IOUtils.getAbsolutePathWithGenDBScheme(path), gendbExpectedAbsolutePath, "getAbsolutePathWithGenDBScheme() returned the wrong value");
+        Assert.assertEquals(IOUtils.getAbsolutePathWithGenomicsDBURIScheme(path), gendbExpectedAbsolutePath, "getAbsolutePathWithGenDBScheme() returned the wrong value");
         Assert.assertEquals(IOUtils.isGenomicsDBPath(path), expectedComparison, "isGenomicsDBPath() returned the wrong value");
     }
 

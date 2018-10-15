@@ -719,7 +719,9 @@ public final class GenomicsDBImport extends GATKTool {
         //   returnCode = -2 : failed to create workspace
         //   returnCode = 1 : if overwriteExistingWorkspace is false, return 1 if directory already exists
         int returnCode = GenomicsDBUtils.createTileDBWorkspace(workspaceDir, overwriteExistingWorkspace);
-        if (returnCode < 0) {
+        if (returnCode == -1) {
+            throw new UnableToCreateGenomicsDBWorkspace("Error creating GenomicsDB workspace: " + workspace + " already exists and is not a directory");
+        } else if (returnCode < 0) {
             throw new UnableToCreateGenomicsDBWorkspace("Error creating GenomicsDB workspace: " + workspace);
         } else if (!overwriteExistingWorkspace && returnCode == 1) {
             throw new UnableToCreateGenomicsDBWorkspace("Error creating GenomicsDB workspace: " + workspace + " already exists");

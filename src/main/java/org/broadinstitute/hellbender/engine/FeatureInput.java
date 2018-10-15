@@ -245,7 +245,7 @@ public final class FeatureInput<T extends Feature> implements Serializable {
      */
     private static String makeIntoAbsolutePath(final String filePath){
         if(IOUtils.isGenomicsDBPath(filePath)){
-            return IOUtils.getAbsolutePathWithGenDBScheme(filePath);
+            return IOUtils.getAbsolutePathWithGenomicsDBURIScheme(filePath);
         } else if (URI.create(filePath).getScheme() != null) {
             return IOUtils.getPath(filePath).toAbsolutePath().toUri().toString();
         } else {

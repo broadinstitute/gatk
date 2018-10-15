@@ -920,11 +920,11 @@ public final class IOUtils {
     /**
      * Get the GenomicsDB equivalent absolute URL for a given path
      *
-     * @param gendbPath String representing legal gendb URI
+     * @param genomicsDBPath String representing legal gendb URI
      * @return absolute gendb URI to the path
      */
-    public static String getAbsolutePathWithGenDBScheme(final String gendbPath) {
-        String path = getGenomicsDBAbsolutePath(gendbPath);
+    public static String getAbsolutePathWithGenomicsDBURIScheme(final String genomicsDBPath) {
+        String path = getGenomicsDBAbsolutePath(genomicsDBPath);
         if (path == null) {
             return null;
         } else if (path.contains("://")) {
