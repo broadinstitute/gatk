@@ -73,7 +73,7 @@ before_install:
 #setup google cloud and github authentication
 - if [ $TRAVIS_SECURE_ENV_VARS == true ]; then
     export BOTO_CONFIG=/dev/null;
-    openssl aes-256-cbc -K $encrypted_29f3b7c4d8c3_key -iv $encrypted_29f3b7c4d8c3_iv  -in resources_for_CI/servicekey.json.enc -out servicekey.json -d;
+    openssl aes-256-cbc -K $encrypted_703d76169d63_key -iv $encrypted_703d76169d63_iv -in resources_for_CI/servicekey.json.enc -out servicekey.json -d;
     scripts/install_gcloud.sh;
     printf 'y\n' | $GCLOUD_HOME/gcloud components update;
     if [[ $TEST_TYPE == cloud ]]; then
