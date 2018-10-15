@@ -339,8 +339,11 @@ public class Mutect2FilteringEngine {
         }
         final int[] strandBiasCounts = GATKProtectedVariantContextUtils.getAttributeAsIntArray(tumorGenotype, GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY, ()->null, -1);
 
-        // if there is no alt evidence in the forward or reverse strand
-        if ( strandBiasCounts[2] == 0 || strandBiasCounts[3] == 0) {
+        final int ALT_FWD_INDEX = 2;
+        final int ALT_REV_INDEX = 3;
+
+        // filter if there is no alt evidence in the forward or reverse strand
+        if ( strandBiasCounts[ALT_FWD_INDEX] == 0 || strandBiasCounts[ALT_REV_INDEX] == 0) {
             filterResult.addFilter(GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME);
         }
     }

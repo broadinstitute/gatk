@@ -686,6 +686,46 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     }
 
 
+    @Test
+    public void testLiquidBiopsy() throws Exception {
+        Utils.resetRandomGenerator();
+
+        final File tumor = new File(LIQUIDBIOPSY_DIR, "tiny_duplex.bam");
+        final String tumorName = "A04_denovo_bloodbiopsy_1pct_rep1";
+
+        final File duplexVcf = new File(LIQUIDBIOPSY_DIR, "GGA.vcf");
+        final File StrandBiasNVcf = createTempFile("strandBiasN", ".vcf");
+        final File filteredVcf = createTempFile("filtered", ".vcf");
+
+        // 1 N, SB
+        final List<String> args = Arrays.asList(
+                "-I", tumor.getAbsolutePath(),
+                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, tumorName,
+                "-R", hg19_chr1_1M_Reference,
+                "-A", "StrandBiasBySample",
+                "-A", "CountNs",
+                "--genotyping-mode", "GENOTYPE_GIVEN_ALLELES",
+                "--alleles", duplexVcf.getAbsolutePath(),
+                "-O", StrandBiasNVcf.getAbsolutePath());
+        runCommandLine(args);
+
+        // run FilterMutectCalls
+        new Main().instanceMain(makeCommandLineArgs(Arrays.asList(
+                "-V", StrandBiasNVcf.getAbsolutePath(),
+                "-O", filteredVcf.getAbsolutePath(),
+                "-" + M2FiltersArgumentCollection.STRICT_STRAND_BIAS_LONG_NAME, "true",
+                "-" + M2FiltersArgumentCollection.N_RATIO_LONG_NAME, "1",
+                FilterMutectCalls.class.getSimpleName())));
+
+
+        final Optional<VariantContext> vc = VariantContextTestUtils.streamVcf(filteredVcf).findAny();
+
+        // This site should be filtered by the strict strand bias and n-ratio filter
+        Assert.assertTrue(vc.get().getFilters().contains(GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME));
+        Assert.assertTrue(vc.get().getFilters().contains(GATKVCFConstants.N_RATIO_FILTER_NAME));
+
+    }
+
 
     private void doMutect2Test(
             final String inputBam,
