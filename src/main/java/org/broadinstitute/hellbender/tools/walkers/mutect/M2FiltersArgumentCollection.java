@@ -32,6 +32,12 @@ public class M2FiltersArgumentCollection extends AssemblyBasedCallerArgumentColl
 
     public static final String FILTERING_STATS_LONG_NAME = "stats";
 
+    public static final String N_RATIO_LONG_NAME = "n-ratio";
+<<<<<<< HEAD
+    public static final String STRICT_STRAND_BIAS_LONG_NAME = "strict-strand-bias";
+=======
+>>>>>>> moving to one branch
+
     /**
      * A table containing tumor segments and the minor allele fraction of germline hets within each segment.
      * This allows us to refine the germline event filter by, for example, not filtering an allele
@@ -112,6 +118,17 @@ public class M2FiltersArgumentCollection extends AssemblyBasedCallerArgumentColl
 
     @Argument(fullName = UNIQUE_ALT_READ_COUNT_LONG_NAME, shortName = "unique", optional = true, doc = "Filter a variant if a site contains fewer than this many unique (i.e. deduplicated) reads supporting the alternate allele")
     public int uniqueAltReadCount = 0;
+
+<<<<<<< HEAD
+    @Argument(fullName = N_RATIO_LONG_NAME, optional = true, doc = "Filter a variant if the ratio of Ns in the pileup. A nRatio of 0 will not apply filter.")
+    public double nRatio = Double.POSITIVE_INFINITY;
+
+    @Argument(fullName = STRICT_STRAND_BIAS_LONG_NAME, optional = true, doc = "Always filter if reads are not found in both directions for supporting allele.")
+    public boolean strictStrandBias = false;
+=======
+    @Argument(fullName = N_RATIO_LONG_NAME, optional = true, doc = "Filter a variant if the ratio of Ns in the pileup.");
+    public double nRatio = 4.0;
+>>>>>>> moving to one branch
 
     /**
      * We set the filtering threshold for the read orientation filter such that the false discovery rate (FDR), which equals
