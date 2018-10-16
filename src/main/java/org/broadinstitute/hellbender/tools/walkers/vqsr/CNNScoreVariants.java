@@ -22,6 +22,8 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 
+import com.intel.gkl.IntelGKLUtils;
+
 import java.io.*;
 import java.util.*;
 import java.util.stream.StreamSupport;
@@ -109,6 +111,7 @@ public class CNNScoreVariants extends VariantWalker {
             "1D models will look at the reference sequence and variant annotations." +
             "2D models look at aligned reads, reference sequence, and variant annotations." +
             "2D models require a BAM file as input as well as the tensor-type argument to be set.";
+    static final String AVXREQUIRED_ERROR = "This functionality requires hardware that supports the AVX instruction set.";
 
     private static final int CONTIG_INDEX = 0;
     private static final int POS_INDEX = 1;
@@ -198,6 +201,13 @@ public class CNNScoreVariants extends VariantWalker {
                 return new String[]{"No default architecture for tensor type:" + tensorType.name()};
             }
         }
+
+        IntelGKLUtils utils = new IntelGKLUtils();
+        if (utils.isAvxSupported() == false)
+        {
+            return AVXREQUIRED_ERROR;
+        }
+
         return null;
     }
 
