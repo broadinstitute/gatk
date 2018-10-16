@@ -365,7 +365,7 @@ public class Mutect2FilteringEngine {
 
         final int NCount = GATKProtectedVariantContextUtils.getAttributeAsInt(tumorGenotype, GATKVCFConstants.N_COUNT_KEY,-1);
 
-        if ((double) NCount / altCount > MTFAC.nRatio ) {
+        if ((double) NCount / altCount >= MTFAC.nRatio ) {
             filterResult.addFilter(GATKVCFConstants.N_RATIO_FILTER_NAME);
         }
     }

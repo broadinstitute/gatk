@@ -29,6 +29,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+import scala.tools.cmd.gen.AnyVals;
 
 import java.io.File;
 import java.io.IOException;
@@ -686,37 +687,71 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     }
 
 
+    public File createSamWithNsandStrandBias(final int numAlts, final int numNs, final int numRefs) throws IOException {
+        final byte altQuality = 50;
+        final byte refQuality = 30;
+        final File samFile = File.createTempFile("duplex", ".bam");
+        final SAMFileHeader samHeader = M2TestingUtils.createSamHeader();
+        final SAMFileGATKReadWriter writer = M2TestingUtils.getBareBonesSamWriter(samFile, samHeader);
+
+        // create 2 Ts with strand bias
+
+        final List<GATKRead> altReads = M2TestingUtils.createReads(numAlts, M2TestingUtils.DEFAULT_ALT_BASES, samHeader, altQuality, "alt");
+        altReads.forEach(read -> {
+            read.setReadGroup(M2TestingUtils.DEFAULT_READ_GROUP_NAME);
+            read.setMappingQuality(60);
+            read.setIsReverseStrand(false);
+            read.setBases(M2TestingUtils.DEFAULT_ALT_BASES);
+            read.setBaseQualities(M2TestingUtils.getUniformBQArray(altQuality, M2TestingUtils.DEFAULT_READ_LENGTH));
+            writer.addRead(read);
+        });
+
+        // create some reads with Ns
+        final byte[] DEFAULT_N_BASES = "CATCACACTNACTAAGCACACAGAGAATAAT".getBytes();
+
+        final List<GATKRead> NReads = M2TestingUtils.createReads(numNs, DEFAULT_N_BASES, samHeader, altQuality, "N");
+        NReads.forEach(writer::addRead);
+
+        // create some ref reads
+        final List<GATKRead> refReads = M2TestingUtils.createReads(numRefs, M2TestingUtils.DEFAULT_REF_BASES, samHeader, refQuality, "ref");
+        refReads.forEach(writer::addRead);
+
+        writer.close();
+        return samFile;
+    }
+
     @Test
     public void testLiquidBiopsy() throws Exception {
         Utils.resetRandomGenerator();
 
-        final File tumor = new File(LIQUIDBIOPSY_DIR, "tiny_duplex.bam");
-        final String tumorName = "A04_denovo_bloodbiopsy_1pct_rep1";
+        final int numAlts = 2;
+        final int numNs = 10;
+        final int numRefs = 5;
+        final File samWithNsandStrandBias = createSamWithNsandStrandBias(numAlts, numNs, numRefs);
 
-        final File duplexVcf = new File(LIQUIDBIOPSY_DIR, "GGA.vcf");
         final File StrandBiasNVcf = createTempFile("strandBiasN", ".vcf");
         final File filteredVcf = createTempFile("filtered", ".vcf");
 
-        // 1 N, SB
         final List<String> args = Arrays.asList(
-                "-I", tumor.getAbsolutePath(),
-                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, tumorName,
+                "-I", samWithNsandStrandBias.getAbsolutePath(),
+                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, M2TestingUtils.DEFAULT_SAMPLE_NAME,
                 "-R", hg19_chr1_1M_Reference,
                 "-A", "StrandBiasBySample",
                 "-A", "CountNs",
-                "--genotyping-mode", "GENOTYPE_GIVEN_ALLELES",
-                "--alleles", duplexVcf.getAbsolutePath(),
+                "--count-reads", "true",
                 "-O", StrandBiasNVcf.getAbsolutePath());
         runCommandLine(args);
 
+        // going to try filtering at this ratio
+        final double nRatio = numNs / numAlts;
+
         // run FilterMutectCalls
         new Main().instanceMain(makeCommandLineArgs(Arrays.asList(
-                "-V", StrandBiasNVcf.getAbsolutePath(),
                 "-O", filteredVcf.getAbsolutePath(),
+                "-V", StrandBiasNVcf.getAbsolutePath(),
                 "-" + M2FiltersArgumentCollection.STRICT_STRAND_BIAS_LONG_NAME, "true",
-                "-" + M2FiltersArgumentCollection.N_RATIO_LONG_NAME, "1",
-                FilterMutectCalls.class.getSimpleName())));
-
+                "-" + M2FiltersArgumentCollection.N_RATIO_LONG_NAME, Double.toString(nRatio)),
+                FilterMutectCalls.class.getSimpleName()));
 
         final Optional<VariantContext> vc = VariantContextTestUtils.streamVcf(filteredVcf).findAny();
 
@@ -725,7 +760,6 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(vc.get().getFilters().contains(GATKVCFConstants.N_RATIO_FILTER_NAME));
 
     }
-
 
     private void doMutect2Test(
             final String inputBam,
