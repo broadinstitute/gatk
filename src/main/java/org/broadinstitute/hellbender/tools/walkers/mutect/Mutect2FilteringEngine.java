@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.mutect;
 
 import com.google.common.primitives.Doubles;
 import htsjdk.samtools.util.OverlapDetector;
+import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
@@ -187,13 +188,13 @@ public class Mutect2FilteringEngine {
     }
 
     private void applyMappingQualityFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final FilterResult filterResult) {
-        if (!vc.hasAttribute(MappingQuality.KEY)) {
+        if (!vc.hasAttribute(GATKVCFConstants.MEDIAN_MAPPING_QUALITY_KEY)) {
             return;
         }
 
         final List<Integer> indelLengths = vc.getIndelLengths();
         final int indelLength = indelLengths == null ? 0 : indelLengths.stream().mapToInt(Math::abs).max().orElseGet(() -> 0);
-        final List<Integer> mappingQualityByAllele = vc.getAttributeAsIntList(MappingQuality.KEY, 0);
+        final List<Integer> mappingQualityByAllele = vc.getAttributeAsIntList(GATKVCFConstants.MEDIAN_MAPPING_QUALITY_KEY, 0);
 
         // we use the mapping quality annotation of the alt allele in most cases, but for long indels we use the reference
         // annotation.  We have to do this because the indel, even if it maps uniquely, gets a poor mapping quality
@@ -204,11 +205,11 @@ public class Mutect2FilteringEngine {
     }
 
     private void applyMedianFragmentLengthDifferenceFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final FilterResult filterResult) {
-        if (!vc.hasAttribute(FragmentLength.KEY)) {
+        if (!vc.hasAttribute(GATKVCFConstants.MEDIAN_FRAGMENT_LENGTH_KEY)) {
             return;
         }
 
-        final List<Integer> fragmentLengthByAllele = vc.getAttributeAsIntList(FragmentLength.KEY, 0);
+        final List<Integer> fragmentLengthByAllele = vc.getAttributeAsIntList(GATKVCFConstants.MEDIAN_FRAGMENT_LENGTH_KEY, 0);
 
         if (Math.abs(fragmentLengthByAllele.get(1) - fragmentLengthByAllele.get(0)) > MTFAC.maxMedianFragmentLengthDifference) {
             filterResult.addFilter(GATKVCFConstants.MEDIAN_FRAGMENT_LENGTH_DIFFERENCE_FILTER_NAME);
@@ -216,11 +217,11 @@ public class Mutect2FilteringEngine {
     }
 
     private void applyReadPositionFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final FilterResult filterResult) {
-        if (!vc.hasAttribute(ReadPosition.KEY)) {
+        if (!vc.hasAttribute(GATKVCFConstants.MEDIAN_READ_POSITON_KEY)) {
             return;
         }
 
-        final List<Integer> readPositionByAllele = vc.getAttributeAsIntList(ReadPosition.KEY, 0);
+        final List<Integer> readPositionByAllele = vc.getAttributeAsIntList(GATKVCFConstants.MEDIAN_READ_POSITON_KEY, 0);
 
         // a negative value is possible due to a bug: https://github.com/broadinstitute/gatk/issues/5492
         if (readPositionByAllele.get(0) > -1 && readPositionByAllele.get(0) < MTFAC.minMedianReadPosition) {
@@ -510,6 +511,9 @@ public class Mutect2FilteringEngine {
                                          final Optional<FilteringFirstPass> firstPass) {
         firstPass.ifPresent(ffp -> Utils.validate(ffp.isReadyForSecondPass(), "First pass information has not been processed into a model for the second pass."));
         final FilterResult filterResult = new FilterResult();
+        if (vc.getAlternateAlleles().contains(Allele.NON_REF_ALLELE) && vc.getAlternateAlleles().size() == 1) {
+            return null;
+        }
         applyInsufficientEvidenceFilter(MTFAC, vc, filterResult);
         applyDuplicatedAltReadFilter(MTFAC, vc, filterResult);
         applyStrandArtifactFilter(MTFAC, vc, filterResult);

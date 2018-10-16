@@ -5,10 +5,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
-import htsjdk.variant.vcf.VCFConstants;
-import htsjdk.variant.vcf.VCFHeader;
-import htsjdk.variant.vcf.VCFHeaderLine;
-import htsjdk.variant.vcf.VCFStandardHeaderLines;
+import htsjdk.variant.vcf.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -25,6 +22,7 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEng
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.File;
@@ -80,6 +78,9 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
 
     public static final String BP_RES_LONG_NAME = "convert-to-base-pair-resolution";
     public static final String BREAK_BANDS_LONG_NAME = "break-bands-at-multiples-of";
+    public static final String USE_SOMATIC_LONG_NAME = "input-is-somatic";
+    public static final String DROP_SOMATIC_FILTERING_ANNOTATIONS_LONG_NAME = "drop-somatic-filtering-annotations";
+    public static final String ALLELE_FRACTION_DELTA_LONG_NAME = "allele-fraction-error";
 
     @Argument(fullName= StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName=StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -98,6 +99,20 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
      */
     @Argument(fullName=BREAK_BANDS_LONG_NAME, doc = "If > 0, reference bands will be broken up at genomic positions that are multiples of this number", optional=true)
     protected int multipleAtWhichToBreakBands = 0;
+
+    /**
+     * Merge somatic GVCFs, retaining LOD and haplotype event count information in FORMAT field
+     * Note that the Mutect2 reference confidence mode is in BETA -- the likelihoods model and output format are subject to change in subsequent versions.
+     */
+    @Argument(fullName=USE_SOMATIC_LONG_NAME, doc = "Merge input GVCFs according to somatic (i.e. Mutect2) annotations (BETA)")
+    protected boolean somaticInput = false;
+
+    /**
+     * Rather than move the per-sample INFO annotations used for filtering to the FORMAT field, drop them entirely.
+     * This makes the FORMAT field more readable and reduces file sizes for large cohorts.
+     */
+    @Argument(fullName=DROP_SOMATIC_FILTERING_ANNOTATIONS_LONG_NAME, doc = "For input somatic GVCFs (i.e. from Mutect2) drop filtering annotations")
+    protected boolean dropSomaticFilteringAnnotations = false;
 
     @Override
     public boolean useVariantAnnotations() { return true;}
@@ -233,12 +248,16 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
 
     @Override
     public void onTraversalStart() {
+        if (somaticInput) {
+            logger.warn("Note that the Mutect2 reference confidence mode is in BETA -- the likelihoods model and output format are subject to change in subsequent versions.");
+        }
+
         // create the annotation engine
         annotationEngine = new VariantAnnotatorEngine(makeVariantAnnotations(), dbsnp.dbsnp, Collections.emptyList(), false);
 
         vcfWriter = getVCFWriter();
 
-        referenceConfidenceVariantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, getHeaderForVariants());
+        referenceConfidenceVariantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, getHeaderForVariants(), somaticInput, dropSomaticFilteringAnnotations);
 
         //now that we have all the VCF headers, initialize the annotations (this is particularly important to turn off RankSumTest dithering in integration tests)'
         sequenceDictionary = getBestAvailableSequenceDictionary();
@@ -264,6 +283,23 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
         headerLines.add(VCFStandardHeaderLines.getInfoLine(VCFConstants.DEPTH_KEY));   // needed for gVCFs without DP tags
         if ( dbsnp.dbsnp != null  ) {
             VCFStandardHeaderLines.addStandardInfoLines(headerLines, true, VCFConstants.DBSNP_KEY);
+        }
+
+        if (somaticInput) {
+            //single-sample M2 variant filter status will get moved to genotype filter
+            headerLines.add(VCFStandardHeaderLines.getFormatLine(VCFConstants.GENOTYPE_FILTER_KEY));
+
+            if (!dropSomaticFilteringAnnotations) {
+                //standard M2 INFO annotations for filtering will get moved to FORMAT field
+                //TODO: I don't have a great solution for using the same descriptions other than copying
+                headerLines.add(new VCFFormatHeaderLine(GATKVCFConstants.MEDIAN_BASE_QUALITY_KEY, VCFHeaderLineCount.R, VCFHeaderLineType.Integer, "median base quality"));
+                headerLines.add(new VCFFormatHeaderLine(GATKVCFConstants.MEDIAN_MAPPING_QUALITY_KEY, VCFHeaderLineCount.R, VCFHeaderLineType.Integer, "median mapping quality"));
+                headerLines.add(new VCFFormatHeaderLine(GATKVCFConstants.MEDIAN_READ_POSITON_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Integer, "median distance from end of read"));
+                headerLines.add(new VCFFormatHeaderLine(GATKVCFConstants.MEDIAN_FRAGMENT_LENGTH_KEY, VCFHeaderLineCount.R, VCFHeaderLineType.Integer, "median fragment length"));
+                headerLines.add(new VCFFormatHeaderLine(GATKVCFConstants.EVENT_COUNT_IN_HAPLOTYPE_KEY, 1, VCFHeaderLineType.Integer, "Number of events in this haplotype"));
+                headerLines.add(new VCFFormatHeaderLine(GATKVCFConstants.STRAND_ARTIFACT_AF_KEY, 3, VCFHeaderLineType.Float, "MAP estimates of allele fraction given z"));
+                headerLines.add(new VCFFormatHeaderLine(GATKVCFConstants.STRAND_ARTIFACT_POSTERIOR_KEY, 3, VCFHeaderLineType.Float, "posterior probabilities of the presence of strand artifact"));
+            }
         }
 
         VariantContextWriter writer = createVCFWriter(outputFile);
@@ -406,12 +442,11 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
 
         // genotypes
         final GenotypesContext genotypes = GenotypesContext.create();
-        for ( final VariantContext vc : vcs ) {
-            for ( final Genotype g : vc.getGenotypes() ) {
+        for (final VariantContext vc : vcs) {
+            for (final Genotype g : vc.getGenotypes()) {
                 genotypes.add(new GenotypeBuilder(g).alleles(GATKVariantContextUtils.noCallAlleles(g.getPloidy())).make());
             }
         }
-
         return new VariantContextBuilder("", first.getContig(), start, end, Arrays.asList(refAllele, Allele.NON_REF_ALLELE)).attributes(attrs).genotypes(genotypes).make();
     }
 

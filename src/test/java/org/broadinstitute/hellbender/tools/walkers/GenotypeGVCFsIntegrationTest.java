@@ -4,7 +4,10 @@ import htsjdk.samtools.seekablestream.SeekablePathStream;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.Tribble;
 import htsjdk.variant.utils.VCFHeaderReader;
+import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.collections.IteratorUtils;
@@ -12,6 +15,8 @@ import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.tools.walkers.mutect.M2FiltersArgumentCollection;
+import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -19,6 +24,7 @@ import org.broadinstitute.hellbender.utils.runtime.ProcessController;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.GenomicsDBTestUtils;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -44,6 +50,8 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
      private static final String BASE_PAIR_EXPECTED = "gvcf.basepairResolution.gatk3.7_30_ga4f720357.output.vcf";
     private static final String b38_reference_20_21 = largeFileTestDir + "Homo_sapiens_assembly38.20.21.fasta";
     private static final String BASE_PAIR_GVCF = "gvcf.basepairResolution.gvcf";
+    private static final File MITO_REF = new File(toolsTestDir, "mutect/mito/Homo_sapiens_assembly38.mt_only.fasta");
+    private static final double tlodThreshold = 0.8 * M2FiltersArgumentCollection.DEFAULT_TLOD_FILTER_THRESHOLD;
 
     private static final File CEUTRIO_20_21_GATK3_4_G_VCF = new File(largeFileTestDir, "gvcfs/CEUTrio.20.21.gatk3.4.g.vcf");
     private static final String CEUTRIO_20_21_EXPECTED_VCF = "CEUTrio.20.21.gatk3.7_30_ga4f720357.expected.vcf";
@@ -94,7 +102,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
                 {new File(ALLELE_SPECIFIC_DIRECTORY, "NA12878.AS.chr20snippet.g.vcf"), getTestFile( "AS_Annotations.gatk3.7_30_ga4f720357.expected.g.vcf"), Arrays.asList( "-A", "ClippingRankSumTest", "-G", "AS_StandardAnnotation", "-G", "StandardAnnotation"), b37_reference_20_21},
                 {getTestFile( "multiSamples.g.vcf"), getTestFile( "multiSamples.GATK3expected.g.vcf"), Arrays.asList( "-A", "ClippingRankSumTest", "-G", "AS_StandardAnnotation", "-G", "StandardAnnotation"), b37_reference_20_21},
                 {getTestFile( "testAlleleSpecificAnnotations.CombineGVCF.output.g.vcf"), getTestFile( "testAlleleSpecificAnnotations.CombineGVCF.expected.g.vcf"), Arrays.asList( "-A", "ClippingRankSumTest", "-G", "AS_StandardAnnotation", "-G", "StandardAnnotation"), b37_reference_20_21},
-
+                
                 // all sites/--include-non-variant-sites tests
                 // The results from these tests differ from GATK3 in the following ways:
                 //  - sites where the only alternate allele is a spanning deletion are emitted by GATK3, but not emitted by GATK4
@@ -332,5 +340,96 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         Assert.assertThrows(CommandLineException.MissingArgument.class, () -> runCommandLine(args));
         args.addArgument("L", "20:69512-69513");
         runCommandLine(args);
+    }
+
+    @Test
+    public void testGenotypingForSomaticGVCFs() throws IOException{
+        final List<Integer> starPositions = new ArrayList();
+        starPositions.add(319);
+        starPositions.add(321);
+        starPositions.add(322);
+        starPositions.add(323);
+
+        final File output = createTempFile("tmp", ".vcf");
+        ArgumentsBuilder args =   new ArgumentsBuilder()
+                .addVCF(getTestFile("threeSamples.MT.g.vcf"))
+                .addReference(new File(b37Reference))
+                .addOutput(output)
+                .addBooleanArgument(CombineGVCFs.USE_SOMATIC_LONG_NAME, true);
+        runCommandLine(args);
+
+        //compared with the combined GVCF, this output should have called GTs and no alts with LODs less than tlodThreshold
+        //uncalled alleles should be removed
+
+        final List<VariantContext> results = getVariantContexts(output);
+
+        //qualitative match
+        for (final VariantContext vc : results) {
+            Assert.assertTrue(!vc.getAlleles().contains(Allele.NON_REF_ALLELE));
+            Assert.assertTrue(vc.getAlternateAlleles().size() >= 1);
+            Assert.assertTrue(vc.filtersWereApplied());  //filtering should happen during combine, but make sure filters aren't dropped
+
+            for (final Genotype g : vc.getGenotypes()) {
+                Assert.assertTrue(g.isCalled());
+                //homRef sites are sometimes filtered because they had low quality, filtered alleles that GGVCFs genotyped out
+                //ideally if the site wasn't homRef and had a good allele it would be PASS, but htsjdk will only output genotype filters if at least one genotype is filtered
+            }
+
+            //MT:302 has an alphabet soup of alleles in the GVCF -- make sure the ones we keep are good
+            if (vc.getStart() == 302) {
+                Assert.assertEquals(vc.getNAlleles(), 6);
+                double[] sample0LODs = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc.getGenotype(0), GATKVCFConstants.TUMOR_LOD_KEY, () -> null, 0.0);
+                double[] sample1LODs = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc.getGenotype(1), GATKVCFConstants.TUMOR_LOD_KEY, () -> null, 0.0);
+                double[] sample2LODs = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc.getGenotype(2), GATKVCFConstants.TUMOR_LOD_KEY, () -> null, 0.0);
+                for (int i = 0; i < vc.getNAlleles() - 1; i++) {
+                    Assert.assertTrue(sample0LODs[i] > tlodThreshold || sample1LODs[i] > tlodThreshold || sample2LODs[i] > tlodThreshold);
+                }
+            }
+
+            //make sure phasing is retained
+            if (vc.getStart() == 317 || vc.getStart() == 320) {
+                VariantContextTestUtils.assertGenotypeIsPhasedWithAttributes(vc.getGenotype(2));
+            }
+
+            //make sure *-only variants are dropped
+            Assert.assertFalse(starPositions.contains(vc.getStart()));
+
+            //sample 0 is also phased
+            if (vc.getStart() == 4713 || vc.getStart() == 4720) {
+                VariantContextTestUtils.assertGenotypeIsPhasedWithAttributes(vc.getGenotype(0));
+            }
+
+            //MT:4769 in combined GVCF has uncalled alleles
+            if (vc.getStart() == 4769) {
+                Assert.assertEquals(vc.getNAlleles(), 2);
+                Assert.assertTrue(vc.getAlternateAlleles().get(0).basesMatch("G"));
+            }
+        }
+
+        //exact match
+        final File expectedFile = getTestFile("threeSamples.MT.vcf");
+        final List<VariantContext> expected = getVariantContexts(expectedFile);
+        final VCFHeader header = VCFHeaderReader.readHeaderFrom(new SeekablePathStream(IOUtils.getPath(expectedFile.getAbsolutePath())));
+        assertForEachElementInLists(results, expected,
+                (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, ATTRIBUTES_TO_IGNORE, header));
+
+    }
+
+    @Test
+    public void testGenotypingForSomaticGVCFs_subsetAlts() {
+        final File output = createTempFile("tmp", ".vcf");
+        ArgumentsBuilder args =   new ArgumentsBuilder()
+                .addVCF(new File(getToolTestDataDir() + "../CombineGVCFs/twoSamples.MT.g.vcf"))
+                .addReference(new File(b37Reference))
+                .addOutput(output)
+                .addBooleanArgument(CombineGVCFs.USE_SOMATIC_LONG_NAME, true)
+                .addArgument("max-alternate-alleles", "2");
+        runCommandLine(args);
+
+        List<VariantContext> results = getVariantContexts(output);
+        //MT:302 originally had 5 alts
+        for (final VariantContext vc : results) {
+            Assert.assertTrue(vc.getNAlleles() <= 3);  //NAlleles includes ref
+        }
     }
 }

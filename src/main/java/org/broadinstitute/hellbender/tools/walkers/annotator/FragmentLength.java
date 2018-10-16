@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.List;
 import java.util.OptionalInt;
@@ -20,7 +21,6 @@ import java.util.OptionalInt;
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Median fragment length of reads supporting each allele (MFRL)")
 public class FragmentLength extends PerAlleleAnnotation implements StandardMutectAnnotation {
-    public static final String KEY = "MFRL";
 
     @Override
     protected int aggregate(final List<Integer> values) {
@@ -31,7 +31,7 @@ public class FragmentLength extends PerAlleleAnnotation implements StandardMutec
     protected boolean includeRefAllele() { return true; }
 
     @Override
-    protected String getVcfKey() { return KEY; }
+    protected String getVcfKey() { return GATKVCFConstants.MEDIAN_FRAGMENT_LENGTH_KEY; }
 
     @Override
     protected String getDescription() { return "median fragment length"; }

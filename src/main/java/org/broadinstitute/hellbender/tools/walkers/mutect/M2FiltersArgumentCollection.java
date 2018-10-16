@@ -39,6 +39,8 @@ public class M2FiltersArgumentCollection {
 
     public static final String FILTERING_STATS_LONG_NAME = "stats";
 
+    public static final Double DEFAULT_TLOD_FILTER_THRESHOLD = 5.3;
+
     /**
      * A table containing tumor segments and the minor allele fraction of germline hets within each segment.
      * This allows us to refine the germline event filter by, for example, not filtering an allele
@@ -63,7 +65,7 @@ public class M2FiltersArgumentCollection {
      * Only variants with log odds ratios exceeding this threshold can pass filtering.
      */
     @Argument(fullName = TUMOR_LOD_LONG_NAME, optional = true, doc = "LOD threshold for calling variant")
-    public double TUMOR_LOD_THRESHOLD = 5.3;
+    public double TUMOR_LOD_THRESHOLD = DEFAULT_TLOD_FILTER_THRESHOLD;
 
     /**
      * This is a measure of the minimum evidence to support that a variant observed in the tumor is not also present in the normal

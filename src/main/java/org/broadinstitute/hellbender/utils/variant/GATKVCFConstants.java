@@ -108,15 +108,18 @@ public final class GATKVCFConstants {
     public static final String IN_PON_VCF_ATTRIBUTE =               "PON";
     public static final String NORMAL_ARTIFACT_LOD_ATTRIBUTE =      "NALOD";
     public static final String POPULATION_AF_VCF_ATTRIBUTE =        "POPAF";
-    public static final String GERMLINE_QUAL_VCF_ATTRIBUTE =  "GERMQ";
+    public static final String GERMLINE_QUAL_VCF_ATTRIBUTE =        "GERMQ";
     public static final String REALIGNMENT_COUNTS_VCF_ATTRIBUTE =   "RCNTS";
-    public static final String CONTAMINATION_QUAL_ATTRIBUTE =  "CONTQ";
+    public static final String CONTAMINATION_QUAL_ATTRIBUTE =       "CONTQ";
     public static final String ORIGINAL_CONTIG_MISMATCH_KEY =       "OCM";
     public static final String N_COUNT_KEY =                        "NCount";
-    public static final String UNIQUE_ALT_READ_SET_COUNT_KEY = "UNIQ_ALT_READ_COUNT";
+    public static final String UNIQUE_ALT_READ_SET_COUNT_KEY =      "UNIQ_ALT_READ_COUNT";
     public static final String STRAND_ARTIFACT_POSTERIOR_KEY =      "SAPP"; // Strand Artifact Filter
     public static final String STRAND_ARTIFACT_AF_KEY =             "SAAF"; // Strand Artifact Filter
-    public static final String MEDIAN_BASE_QUALITY_KEY = "MBQ";
+    public static final String MEDIAN_BASE_QUALITY_KEY =            "MBQ";
+    public static final String MEDIAN_MAPPING_QUALITY_KEY =         "MMQ";
+    public static final String MEDIAN_READ_POSITON_KEY =            "MPOS";
+    public static final String MEDIAN_FRAGMENT_LENGTH_KEY =         "MFRL";
 
     // FORMAT keys
     public static final String ALLELE_BALANCE_KEY =                 "AB";

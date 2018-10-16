@@ -16,9 +16,7 @@ import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.lang.reflect.Array;
-import java.util.List;
-import java.util.Objects;
-import java.util.OptionalInt;
+import java.util.*;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.function.ToDoubleFunction;
@@ -275,6 +273,26 @@ public class GATKProtectedVariantContextUtils {
                 throw new NumberFormatException(String.format("attribute '%s' does not have a valid double value: '%s'", key, String.valueOf(value)));
             }
         }
+    }
+
+    //copied from htsjdk.variant.variantcontext.CommonInfo.getAttributeAsList for simplicity
+    //maybe we should expose this as a static method in htsjdk?
+    @SuppressWarnings("unchecked")
+    public static List<Object> attributeToList(final Object attribute){
+        if ( attribute == null ) return Collections.emptyList();
+        if ( attribute instanceof List) return (List<Object>)attribute;
+        if ( attribute.getClass().isArray() ) {
+            if (attribute instanceof int[]) {
+                return Arrays.stream((int[])attribute).boxed().collect(Collectors.toList());
+            } else if (attribute instanceof double[]) {
+                return Arrays.stream((double[])attribute).boxed().collect(Collectors.toList());
+            }
+            return Arrays.asList((Object[])attribute);
+        }
+        if (attribute instanceof String) {
+            return Arrays.asList((Object[])((String)attribute).split(","));
+        }
+        return Collections.singletonList(attribute);
     }
 
     /**
