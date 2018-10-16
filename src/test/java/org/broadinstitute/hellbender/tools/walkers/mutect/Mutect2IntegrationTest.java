@@ -29,7 +29,6 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-import scala.tools.cmd.gen.AnyVals;
 
 import java.io.File;
 import java.io.IOException;
@@ -819,6 +818,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 {new File(DREAM_BAMS_DIR, "tumor_1.bam"), "tumor sample", new File(DREAM_BAMS_DIR, "normal_1.bam"), "synthetic.challenge.set1.normal"}
         };
     }
+
     //TODO: bring this to HaplotypeCallerIntegrationTest
     private Pair<Double, Double> calculateConcordance(final File outputVcf, final File truthVcf ) {
         final Set<String> outputKeys = VariantContextTestUtils.streamVcf(outputVcf)

@@ -350,7 +350,6 @@ public class Mutect2FilteringEngine {
 
     private void applyNRatioFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final FilterResult filterResult) {
 
-
         final Genotype tumorGenotype = vc.getGenotype(tumorSample);
         final double[] alleleFractions = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(tumorGenotype, VCFConstants.ALLELE_FREQUENCY_KEY,
                 () -> new double[] {1.0}, 1.0);
@@ -369,8 +368,6 @@ public class Mutect2FilteringEngine {
             filterResult.addFilter(GATKVCFConstants.N_RATIO_FILTER_NAME);
         }
     }
-
-
 
     public FilterResult calculateFilters(final M2FiltersArgumentCollection MTFAC, final VariantContext vc,
                                          final Optional<FilteringFirstPass> firstPass) {
