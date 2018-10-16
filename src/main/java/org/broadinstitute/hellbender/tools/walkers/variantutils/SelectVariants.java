@@ -10,11 +10,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.VariantContextUtils;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
-import htsjdk.variant.vcf.VCFHeader;
-import htsjdk.variant.vcf.VCFConstants;
-import htsjdk.variant.vcf.VCFHeaderLine;
-import htsjdk.variant.vcf.VCFStandardHeaderLines;
-import htsjdk.variant.vcf.VCFUtils;
+import htsjdk.variant.vcf.*;
 
 import java.nio.file.Path;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -401,6 +397,18 @@ public final class SelectVariants extends VariantWalker {
     @Argument(fullName="set-filtered-gt-to-nocall", optional=true, doc="Set filtered genotypes to no-call")
     private boolean setFilteredGenotypesToNocall = false;
 
+    /**
+     * Info annotation fields to be dropped (specified by key)
+     */
+    @Argument(fullName = "drop-info-annotation", shortName = "DA", optional = true, doc = "Info annotations to drop from output vcf.  Annotations to be dropped are specified by their key.")
+    private List<String> infoAnnotationsToDrop = new ArrayList<>();
+
+    /**
+     * Genotype annotation fields to be dropped (specified by key)
+     */
+    @Argument(fullName = "drop-genotype-annotation", shortName = "DGA", optional = true, doc = "Genotype annotations to drop from output vcf.  Annotations to be dropped are specified by their key.")
+    private List<String> genotypeAnnotationsToDrop = new ArrayList<>();
+
     @Hidden
     @Argument(fullName="allow-nonoverlapping-command-line-samples", optional=true,
                     doc="Allow samples other than those in the VCF to be specified on the command line. These samples will be ignored.")
@@ -505,6 +513,16 @@ public final class SelectVariants extends VariantWalker {
                 actualLines = headerLines;
             }
         }
+        if (!infoAnnotationsToDrop.isEmpty()) {
+            for (final String infoField : infoAnnotationsToDrop) {
+                logger.info(String.format("Will drop info annotation: %s",infoField));
+            }
+        }
+        if (!genotypeAnnotationsToDrop.isEmpty()) {
+            for (final String genotypeAnnotation : genotypeAnnotationsToDrop) {
+                logger.info(String.format("Will drop genotype annotation: %s",genotypeAnnotation));
+            }
+        }
 
         vcfWriter = createVCFWriter(outFile);
         vcfWriter.writeHeader(new VCFHeader(actualLines, samples));
@@ -593,9 +611,35 @@ public final class SelectVariants extends VariantWalker {
 
             if (!failedJexlMatch &&
                     (!selectRandomFraction || Utils.getRandomGenerator().nextDouble() < fractionRandom)) {
-                vcfWriter.add(filteredGenotypeToNocall);
+                //remove annotations being dropped and write variantcontext
+                final VariantContext variantContextToWrite = buildVariantContextWithDroppedAnnotationsRemoved(filteredGenotypeToNocall);
+                vcfWriter.add(variantContextToWrite);
             }
         }
+    }
+
+    private VariantContext buildVariantContextWithDroppedAnnotationsRemoved(final VariantContext vc) {
+        if (infoAnnotationsToDrop.isEmpty() && genotypeAnnotationsToDrop.isEmpty()) {
+            return vc;
+        }
+        final VariantContextBuilder rmAnnotationsBuilder = new VariantContextBuilder(vc);
+        for (String infoField : infoAnnotationsToDrop) {
+            rmAnnotationsBuilder.rmAttribute(infoField);
+        }
+        if (!genotypeAnnotationsToDrop.isEmpty()) {
+            final ArrayList<Genotype> genotypesToWrite = new ArrayList<>();
+            for (Genotype genotype : vc.getGenotypes()) {
+                final GenotypeBuilder genotypeBuilder = new GenotypeBuilder(genotype).noAttributes();
+                final Map<String, Object> attributes = new HashMap<>(genotype.getExtendedAttributes());
+                for (String genotypeAnnotation : genotypeAnnotationsToDrop) {
+                    attributes.remove(genotypeAnnotation);
+                }
+                genotypeBuilder.attributes(attributes);
+                genotypesToWrite.add(genotypeBuilder.make());
+            }
+            rmAnnotationsBuilder.genotypes(GenotypesContext.create(genotypesToWrite));
+        }
+        return rmAnnotationsBuilder.make();
     }
 
     private boolean checkOnlySpanDel(VariantContext vc){
@@ -776,6 +820,10 @@ public final class SelectVariants extends VariantWalker {
 
         headerLines.addAll(Arrays.asList(ChromosomeCounts.descriptions));
         headerLines.add(VCFStandardHeaderLines.getInfoLine(VCFConstants.DEPTH_KEY));
+
+        //remove header lines for info field and genotype annotations being dropped
+        headerLines.removeIf(l->l instanceof VCFInfoHeaderLine && infoAnnotationsToDrop.contains(((VCFInfoHeaderLine)l).getID()));
+        headerLines.removeIf(l->l instanceof VCFFormatHeaderLine && genotypeAnnotationsToDrop.contains(((VCFFormatHeaderLine)l).getID()));
 
         return headerLines;
     }
