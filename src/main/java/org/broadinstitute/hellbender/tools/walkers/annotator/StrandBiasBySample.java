@@ -55,7 +55,7 @@ public final class StrandBiasBySample extends GenotypeAnnotation {
 
     @Override
     public void annotate(final ReferenceContext ref,
-                         final VariantContext vc,∂
+                         final VariantContext vc,
                          final Genotype g,
                          final GenotypeBuilder gb,
                          final ReadLikelihoods<Allele> likelihoods) {
