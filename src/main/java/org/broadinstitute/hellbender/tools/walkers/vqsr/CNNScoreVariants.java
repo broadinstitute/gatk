@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import  org.broadinstitute.hellbender.utils.io.Resource;
@@ -111,7 +112,9 @@ public class CNNScoreVariants extends VariantWalker {
             "1D models will look at the reference sequence and variant annotations." +
             "2D models look at aligned reads, reference sequence, and variant annotations." +
             "2D models require a BAM file as input as well as the tensor-type argument to be set.";
-    static final String AVXREQUIRED_ERROR = "This functionality requires hardware that supports the AVX instruction set.";
+    static final String AVXREQUIRED_ERROR = "This tool requires AVX instruction set support by default due to its dependency on recent versions of the TensorFlow library.\n" +
+            " If you have an older (pre-1.6) version of TensorFlow installed that does not require AVX, you may attempt to re-run the tool with the --disable-avx-check argument to bypass this check.\n" +
+            " Note that such configurations are not officially supported.";
 
     private static final int CONTIG_INDEX = 0;
     private static final int POS_INDEX = 1;
@@ -140,6 +143,11 @@ public class CNNScoreVariants extends VariantWalker {
 
     @Argument(fullName = "filter-symbolic-and-sv", shortName = "filter-symbolic-and-sv", doc = "If set will filter symbolic and and structural variants from the input VCF", optional = true)
     private boolean filterSymbolicAndSV = false;
+
+    @Advanced
+    @Argument(fullName = "disable-avx-check", shortName = "disable-avx-check", doc = "If set, no check will be made for AVX support.  " +
+            "Use only if you have installed a pre-1.6 TensorFlow build. ", optional = true)
+    private boolean disableAVXCheck = false;
 
     @Advanced
     @Argument(fullName = "inference-batch-size", shortName = "inference-batch-size", doc = "Size of batches for python to do inference on.", minValue = 1, maxValue = 4096, optional = true)
@@ -202,12 +210,6 @@ public class CNNScoreVariants extends VariantWalker {
             }
         }
 
-        IntelGKLUtils utils = new IntelGKLUtils();
-        if (utils.isAvxSupported() == false)
-        {
-            return AVXREQUIRED_ERROR;
-        }
-
         return null;
     }
 
@@ -238,9 +240,18 @@ public class CNNScoreVariants extends VariantWalker {
 
     @Override
     public void onTraversalStart() {
-        scoreKey = getScoreKeyAndCheckModelAndReadsHarmony();
-        if (architecture == null && weights == null) {
-            setArchitectureAndWeightsFromResources();
+        // Users can disable the AVX check to allow an older version of TF that doesn't require AVX to be used.
+        if(this.disableAVXCheck == false) {
+            IntelGKLUtils utils = new IntelGKLUtils();
+            if (utils.isAvxSupported() == false) {
+                // Give user the bad news, suggest remedies.
+                throw new UserException.HardwareFeatureException(CNNScoreVariants.AVXREQUIRED_ERROR);
+            }
+
+            scoreKey = getScoreKeyAndCheckModelAndReadsHarmony();
+            if (architecture == null && weights == null) {
+                setArchitectureAndWeightsFromResources();
+            }
         }
 
         // Start the Python process and initialize a stream writer for streaming data to the Python code
