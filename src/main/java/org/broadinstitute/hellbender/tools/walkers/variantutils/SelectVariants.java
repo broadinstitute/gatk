@@ -401,15 +401,15 @@ public final class SelectVariants extends VariantWalker {
     private boolean setFilteredGenotypesToNocall = false;
 
     /**
-     * Info annotation fields to be dropped
+     * Info annotation fields to be dropped (specified by key)
      */
-    @Argument(fullName = "drop-info-annotation", shortName = "DA", optional = true, doc = "Info annotations to drop from output vcf")
+    @Argument(fullName = "drop-info-annotation", shortName = "DA", optional = true, doc = "Info annotations to drop from output vcf.  Annotations to be dropped are specified by their key.")
     private List<String> infoAnnotationsToDrop = new ArrayList<>();
 
     /**
-     * Genotype annotation fields to be dropped
+     * Genotype annotation fields to be dropped (specified by key)
      */
-    @Argument(fullName = "drop-genotype-annotation", shortName = "DGA", optional = true, doc = "Genotype annotations to drop from output vcf")
+    @Argument(fullName = "drop-genotype-annotation", shortName = "DGA", optional = true, doc = "Genotype annotations to drop from output vcf.  Annotations to be dropped are specified by their key.")
     private List<String> genotypeAnnotationsToDrop = new ArrayList<>();
 
     @Hidden
