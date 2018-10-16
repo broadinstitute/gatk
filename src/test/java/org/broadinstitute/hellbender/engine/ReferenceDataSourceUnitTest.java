@@ -103,4 +103,28 @@ public final class ReferenceDataSourceUnitTest extends GATKBaseTest {
             }
         }
     }
+
+    /**
+     * Test that we can successfully load and query our full-sized B37 reference.
+     */
+    @Test
+    public void testLoadAndQueryB37Reference() {
+        try (final ReferenceDataSource ref = new ReferenceFileSource(IOUtils.getPath(b37Reference))) {
+            Assert.assertEquals(ref.getSequenceDictionary().getSequences().size(), 85, "Wrong number of contigs in reference sequence dictionary");
+
+            Assert.assertTrue(Arrays.equals(ref.queryAndPrefetch("1", 10000000, 10000005).getBases(), new byte[]{ 'A', 'A', 'C', 'C', 'C', 'C' }), "Wrong reference bases returned for query on 1:10000000-10000005");
+        }
+    }
+
+    /**
+     * Test that we can successfully load and query our full-sized HG38 reference.
+     */
+    @Test
+    public void testLoadAndQueryHG38Reference() {
+        try (final ReferenceDataSource ref = new ReferenceFileSource(IOUtils.getPath(hg38Reference))) {
+            Assert.assertEquals(ref.getSequenceDictionary().getSequences().size(), 3366, "Wrong number of contigs in reference sequence dictionary");
+
+            Assert.assertTrue(Arrays.equals(ref.queryAndPrefetch("chr1", 10000000, 10000005).getBases(), new byte[]{ 'C', 'A', 'G', 'G', 'T', 'G' }), "Wrong reference bases returned for query on chr1:10000000-10000005");
+        }
+    }
 }
