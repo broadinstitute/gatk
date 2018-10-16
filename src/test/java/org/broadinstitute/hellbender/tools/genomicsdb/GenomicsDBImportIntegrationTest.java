@@ -844,13 +844,18 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         writeToGenomicsDB(LOCAL_GVCFS, INTERVAL, workspace, 0, false, 0, 1);
     }
 
-    /*@Test(groups = {"bucket"})
+    @Test(groups= {"bucket"})
+    public void testDebugGCSAuth() {
+        helpDebugAuthError();
+    }
+
+    @Test(groups = {"bucket"})
     public void testWriteToAndQueryFromGCS() throws IOException {
         final String workspace = BucketUtils.randomRemotePath(getGCPTestStaging(), "", "") + "/";
         BucketUtils.deleteOnExit(workspace);
         writeToGenomicsDB(LOCAL_GVCFS, INTERVAL, workspace, 0, false, 0, 1);
         checkJSONFilesAreWritten(workspace);
-        checkGenomicsDBAgainstExpected(workspace, INTERVAL, COMBINED, b38_reference_20_21, true);
+        checkGenomicsDBAgainstExpected(workspace, INTERVAL, COMBINED, b38_reference_20_21, true, ATTRIBUTES_TO_IGNORE);
     }
 
     @Test(groups = {"bucket"}, expectedExceptions = GenomicsDBImport.UnableToCreateGenomicsDBWorkspace.class)
@@ -860,5 +865,5 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         int rc = GenomicsDBUtils.createTileDBWorkspace(workspace, false);
         Assert.assertEquals(rc, 0);
         writeToGenomicsDB(LOCAL_GVCFS, INTERVAL, workspace, 0, false, 0, 1);
-    }*/
+    }
 }
