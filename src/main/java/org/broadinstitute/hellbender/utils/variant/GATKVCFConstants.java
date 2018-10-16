@@ -76,11 +76,7 @@ public final class GATKVCFConstants {
     public static final String NON_DIPLOID_RATIO_KEY =              "OND";
     public static final String ORIGINAL_CONTIG_KEY =                "OriginalChr"; //LiftoverVariants
     public static final String ORIGINAL_START_KEY =                 "OriginalStart"; //LiftoverVariants
-<<<<<<< HEAD
     public static final String N_COUNT_KEY =                        "NCount";
-=======
-    public static final String N_BASE_COUNT_KEY =                   "NBaseCount";
->>>>>>> moving to one branch
     public static final String RBP_INCONSISTENT_KEY =               "PhasingInconsistent"; //ReadBackedPhasing
     public static final String GENOTYPE_PRIOR_KEY =                 "PG";
     public static final String POSITIVE_LABEL_KEY =                 "POSITIVE_TRAIN_SITE";
@@ -180,11 +176,7 @@ public final class GATKVCFConstants {
             MEDIAN_FRAGMENT_LENGTH_DIFFERENCE_FILTER_NAME,
             READ_POSITION_FILTER_NAME, CONTAMINATION_FILTER_NAME, DUPLICATED_EVIDENCE_FILTER_NAME,
             READ_ORIENTATION_ARTIFACT_FILTER_NAME, BAD_HAPLOTYPE_FILTER_NAME,
-<<<<<<< HEAD
             STRICT_STRAND_BIAS_FILTER_NAME, N_RATIO_FILTER_NAME);
-=======
-            BB_STRAND_BIAS_FILTER_NAME, BB_N_RATIO_FILTER_NAME);
->>>>>>> moving to one branch
 
     // Symbolic alleles
     public final static String SYMBOLIC_ALLELE_DEFINITION_HEADER_TAG = "ALT";
