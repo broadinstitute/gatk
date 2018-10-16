@@ -318,7 +318,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final List<String> args = Arrays.asList("-I", NA12878_20_21_WGS_bam,
                 "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, "NA12878",
                 "-R", b37_reference_20_21,
-                "-L", "20:10000000-10010000",
+                "-L", "20:9998500-10010000",
                 "-O", unfilteredVcf.getAbsolutePath(),
                 "--genotyping-mode", "GENOTYPE_GIVEN_ALLELES",
                 "--alleles", givenAllelesVcf.getAbsolutePath());
@@ -330,6 +330,25 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
             final List<Allele> altAllelesAtThisLocus = altAllelesByPosition.get(vc.getStart());
             vc.getAlternateAlleles().forEach(a -> Assert.assertTrue(altAllelesAtThisLocus.contains(a)));
         }
+    }
+
+    // make sure that GGA mode with given alleles that normally wouldn't be called due to complete lack of coverage
+    // doesn't run into any edge case bug involving empty likelihoods matrices
+    @Test
+    public void testGivenAllelesZeroCoverage() throws Exception {
+        Utils.resetRandomGenerator();
+        final File bam = new File(DREAM_BAMS_DIR, "tumor_3.bam");
+        final String sample = "IS3.snv.indel.sv";
+        final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
+        final File givenAllelesVcf = new File(toolsTestDir, "mutect/gga_mode_2.vcf");
+        final List<String> args = Arrays.asList("-I", bam.getAbsolutePath(),
+                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, sample,
+                "-R", b37_reference_20_21,
+                "-L", "20:1119000-1120000",
+                "-O", unfilteredVcf.getAbsolutePath(),
+                "--genotyping-mode", "GENOTYPE_GIVEN_ALLELES",
+                "--alleles", givenAllelesVcf.getAbsolutePath());
+        runCommandLine(args);
     }
 
     @Test
