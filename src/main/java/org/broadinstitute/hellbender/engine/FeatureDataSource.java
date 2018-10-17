@@ -351,7 +351,8 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
 
     protected static FeatureReader<VariantContext> getGenomicsDBFeatureReader(final String path, final File reference) {
         final String workspace = IOUtils.getGenomicsDBAbsolutePath(path) ;
-        if (workspace == null) {    throw new IllegalArgumentException("Trying to create a GenomicsDBReader from  non-GenomicsDB inputpath " + path);
+        if (workspace == null) {   
+            throw new IllegalArgumentException("Trying to create a GenomicsDBReader from  non-GenomicsDB inputpath " + path);
         } else if (Files.notExists(IOUtils.getPath(workspace))) {
             throw new UserException("GenomicsDB workspace " + path + " does not exist");
         }
