@@ -5,11 +5,12 @@ import com.intel.genomicsdb.model.GenomicsDBExportConfiguration;
 import com.intel.genomicsdb.model.GenomicsDBVidMapProto;
 import htsjdk.variant.variantcontext.GenotypeLikelihoods;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
+import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -111,7 +112,7 @@ public class GenomicsDBUtils {
     public static GenomicsDBVidMapProto.VidMappingPB getProtobufVidMappingFromJsonFile(final String vidmapJson)
             throws IOException {
         final GenomicsDBVidMapProto.VidMappingPB.Builder vidMapBuilder = GenomicsDBVidMapProto.VidMappingPB.newBuilder();
-        try (final FileReader reader = new FileReader(vidmapJson)) {
+        try (final Reader reader = Files.newBufferedReader(IOUtils.getPath(vidmapJson))) {
             JsonFormat.merge(reader, vidMapBuilder);
         }
         return vidMapBuilder.build();
