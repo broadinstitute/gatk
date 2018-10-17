@@ -122,7 +122,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
                     if (markUnmappedMates || !read.isUnmapped()) {
                         int dupCount = namesOfNonDuplicateReadsAndOpticalCounts.replace(read.getName(), -1);
                         if (dupCount > -1) {
-                            ((SAMRecordToGATKReadAdapter) read).setTransientAttribute(MarkDuplicatesSparkUtils.OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME, dupCount);
+                            ((SAMRecordToGATKReadAdapter) read).setAttribute(MarkDuplicatesSparkUtils.OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME, dupCount);
                         }
                     }
                     // Mark unmapped read pairs as non-duplicates
@@ -198,7 +198,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
             MarkDuplicatesSparkUtils.saveMetricsRDD(resultMetrics, header, metricsByLibrary, metricsFile);
         }
         header.setSortOrder(SAMFileHeader.SortOrder.coordinate);
-        writeReads(ctx, output, finalReadsForMetrics, header);
+        writeReads(ctx, output, finalReadsForMetrics.map(r -> {r.setAttribute(MarkDuplicatesSparkUtils.OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME, (String)null); return r}), header);
     }
 
 }
