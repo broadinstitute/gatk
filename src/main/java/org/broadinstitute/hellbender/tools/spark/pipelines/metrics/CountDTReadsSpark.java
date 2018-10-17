@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.cmdline.programgroups.CoverageAnalysisProgr
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.io.PrintStream;
 
@@ -73,6 +74,9 @@ public final class CountDTReadsSpark extends GATKSparkTool {
 
         final long dtReadscount = reads.filter(r -> r.hasAttribute("DT")).count();
         System.out.println("Reads marked as OpticalDuplicates: "+dtReadscount);
+
+        final long mappeddtReadscount = reads.filter(r -> r.hasAttribute("DT")).filter(ReadUtils::readHasMappedMate).count();
+        System.out.println("Mapped Reads marked as OpticalDuplicates: "+mappeddtReadscount);
 
         if(out != null) {
             try (final PrintStream ps = new PrintStream(BucketUtils.createFile(out))) {
