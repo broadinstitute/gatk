@@ -27,8 +27,6 @@ public class Mutect2FilteringEngine {
     private final Optional<String> normalSample;
     final OverlapDetector<MinorAlleleFractionRecord> tumorSegments;
     public static final String FILTERING_STATUS_VCF_KEY = "filtering_status";
-    private final int ALT_FWD_INDEX = 2;
-    private final int ALT_REV_INDEX = 3;
 
     public Mutect2FilteringEngine(final M2FiltersArgumentCollection MTFAC, final String tumorSample, final Optional<String> normalSample) {
         this.MTFAC = MTFAC;
