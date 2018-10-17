@@ -5,11 +5,12 @@ import com.intel.genomicsdb.model.GenomicsDBExportConfiguration;
 import com.intel.genomicsdb.model.GenomicsDBVidMapProto;
 import htsjdk.variant.variantcontext.GenotypeLikelihoods;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
+import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -29,19 +30,6 @@ import java.util.Map;
 public class GenomicsDBUtils {
 
     /**
-     * identifies a path as a GenomicsDB URI
-     */
-    public static final String GENOMIC_DB_URI_SCHEME = "gendb://";
-
-    /**
-     * @param path String containing the path to test
-     * @return true if path represent a GenomicsDB URI, otherwise false
-     */
-    public static boolean isGenomicsDBPath(final String path) {
-        return path != null && path.startsWith(GENOMIC_DB_URI_SCHEME);
-    }
-
-    /**
      *
      * @param reference reference sequence
      * @param workspace path to the GenomicsDB workspace
@@ -50,21 +38,21 @@ public class GenomicsDBUtils {
      * @param vcfHeader VCF with header information to use for header lines on export
      * @return a configuration to determine the output format when the GenomicsDB is queried
      */
-    public static GenomicsDBExportConfiguration.ExportConfiguration createExportConfiguration(final File reference, final File workspace,
-                                                                                               final File callsetJson, final File vidmapJson,
-                                                                                               final File vcfHeader) {
+    public static GenomicsDBExportConfiguration.ExportConfiguration createExportConfiguration(final File reference, final String workspace,
+                                                                                               final String callsetJson, final String vidmapJson,
+                                                                                               final String vcfHeader) {
         final GenomicsDBExportConfiguration.ExportConfiguration.Builder exportConfigurationBuilder =
                 GenomicsDBExportConfiguration.ExportConfiguration.newBuilder()
-                        .setWorkspace(workspace.getAbsolutePath())
+                        .setWorkspace(workspace)
                         .setReferenceGenome(reference.getAbsolutePath())
-                        .setVidMappingFile(vidmapJson.getAbsolutePath())
-                        .setCallsetMappingFile(callsetJson.getAbsolutePath())
-                        .setVcfHeaderFilename(vcfHeader.getAbsolutePath())
+                        .setVidMappingFile(vidmapJson)
+                        .setCallsetMappingFile(callsetJson)
+                        .setVcfHeaderFilename(vcfHeader)
                         .setProduceGTField(false)
                         .setProduceGTWithMinPLValueForSpanningDeletions(false)
                         .setSitesOnlyQuery(false)
                         .setMaxDiploidAltAllelesThatCanBeGenotyped(GenotypeLikelihoods.MAX_DIPLOID_ALT_ALLELES_THAT_CAN_BE_GENOTYPED);
-        final Path arrayFolder = Paths.get(workspace.getAbsolutePath(), GenomicsDBConstants.DEFAULT_ARRAY_NAME).toAbsolutePath();
+        final Path arrayFolder = Paths.get(workspace, GenomicsDBConstants.DEFAULT_ARRAY_NAME).toAbsolutePath();
 
         // For the multi-interval support, we create multiple arrays (directories) in a single workspace -
         // one per interval. So, if you wish to import intervals ("chr1", [ 1, 100M ]) and ("chr2", [ 1, 100M ]),
@@ -121,10 +109,10 @@ public class GenomicsDBUtils {
      * @param vidmapJson vid JSON file
      * @return Protobuf object
      */
-    public static GenomicsDBVidMapProto.VidMappingPB getProtobufVidMappingFromJsonFile(final File vidmapJson)
+    public static GenomicsDBVidMapProto.VidMappingPB getProtobufVidMappingFromJsonFile(final String vidmapJson)
             throws IOException {
         final GenomicsDBVidMapProto.VidMappingPB.Builder vidMapBuilder = GenomicsDBVidMapProto.VidMappingPB.newBuilder();
-        try (final FileReader reader = new FileReader(vidmapJson)) {
+        try (final Reader reader = Files.newBufferedReader(IOUtils.getPath(vidmapJson))) {
             JsonFormat.merge(reader, vidMapBuilder);
         }
         return vidMapBuilder.build();
@@ -177,4 +165,5 @@ public class GenomicsDBUtils {
         }
         return null;
     }
+
 }

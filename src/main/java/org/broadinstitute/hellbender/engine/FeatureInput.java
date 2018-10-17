@@ -4,7 +4,6 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureCodec;
 import org.broadinstitute.barclay.argparser.CommandLineException;
-import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
@@ -245,8 +244,8 @@ public final class FeatureInput<T extends Feature> implements Serializable {
      * creates a name from the given filePath by finding the absolute path of the given input
      */
     private static String makeIntoAbsolutePath(final String filePath){
-        if(GenomicsDBUtils.isGenomicsDBPath(filePath)){
-            return GenomicsDBUtils.GENOMIC_DB_URI_SCHEME + new File(filePath.replace(GenomicsDBUtils.GENOMIC_DB_URI_SCHEME,"")).getAbsolutePath();
+        if(IOUtils.isGenomicsDBPath(filePath)){
+            return IOUtils.getAbsolutePathWithGenomicsDBURIScheme(filePath);
         } else if (URI.create(filePath).getScheme() != null) {
             return IOUtils.getPath(filePath).toAbsolutePath().toUri().toString();
         } else {

@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.genomicsdb;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.intel.genomicsdb.GenomicsDBUtils;
 import com.intel.genomicsdb.importer.GenomicsDBImporter;
 import com.intel.genomicsdb.importer.model.ChromosomeInterval;
 import com.intel.genomicsdb.model.Coordinates;
@@ -33,11 +34,11 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.nio.SeekableByteChannelPrefetcher;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
@@ -298,13 +299,13 @@ public final class GenomicsDBImport extends GATKTool {
     private SAMSequenceDictionary mergedHeaderSequenceDictionary;
 
     // Path to vidmap file to be written by GenomicsDBImporter
-    private File vidMapJSONFile;
+    private String vidMapJSONFile;
 
     // Path to callsetmap file to be written by GenomicsDBImporter
-    private File callsetMapJSONFile;
+    private String callsetMapJSONFile;
 
     // Path to combined VCF header file to be written by GenomicsDBImporter
-    private File vcfHeaderFile;
+    private String vcfHeaderFile;
 
     // GenomicsDB callset map protobuf structure containing all callset names
     // used to write the callset json file on traversal success
@@ -475,17 +476,15 @@ public final class GenomicsDBImport extends GATKTool {
      */
     @Override
     public void onTraversalStart() {
-
-        final File workspaceDir = overwriteOrCreateWorkspace();
-
-        vidMapJSONFile = new File(workspaceDir + "/" + GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME);
-        callsetMapJSONFile = new File(workspaceDir + "/" + GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME);
-        vcfHeaderFile = new File(workspaceDir + "/" + GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME);
+        String workspaceDir = BucketUtils.makeFilePathAbsolute(overwriteOrCreateWorkspace());
+        vidMapJSONFile = IOUtils.appendPathToDir(workspaceDir, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME);
+        callsetMapJSONFile = IOUtils.appendPathToDir(workspaceDir, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME);
+        vcfHeaderFile = IOUtils.appendPathToDir(workspaceDir, GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME);
 
         logger.info("Vid Map JSON file will be written to " + vidMapJSONFile);
         logger.info("Callset Map JSON file will be written to " + callsetMapJSONFile);
         logger.info("Complete VCF Header will be written to " + vcfHeaderFile);
-        logger.info("Importing to array - " + workspace + "/" + GenomicsDBConstants.DEFAULT_ARRAY_NAME);
+        logger.info("Importing to array - " + workspaceDir + "/" + GenomicsDBConstants.DEFAULT_ARRAY_NAME);
 
         initializeInputPreloadExecutorService();
     }
@@ -547,9 +546,9 @@ public final class GenomicsDBImport extends GATKTool {
         importConfigurationBuilder.setConsolidateTiledbArrayAfterLoad(doConsolidation);
         ImportConfig importConfig = new ImportConfig(importConfigurationBuilder.build(), validateSampleToReaderMap, true,
                 batchSize, mergedHeaderLines, sampleNameToVcfPath, this::createSampleToReaderMap);
-        importConfig.setOutputCallsetmapJsonFile(callsetMapJSONFile.getAbsolutePath());
-        importConfig.setOutputVidmapJsonFile(vidMapJSONFile.getAbsolutePath());
-        importConfig.setOutputVcfHeaderFile(vcfHeaderFile.getAbsolutePath());
+        importConfig.setOutputCallsetmapJsonFile(callsetMapJSONFile);
+        importConfig.setOutputVidmapJsonFile(vidMapJSONFile);
+        importConfig.setOutputVcfHeaderFile(vcfHeaderFile);
         importConfig.setUseSamplesInOrder(true);
         importConfig.setFunctionToCallOnBatchCompletion(this::logMessageOnBatchCompletion);
         return importConfig;
@@ -712,26 +711,22 @@ public final class GenomicsDBImport extends GATKTool {
      *
      * @return  The workspace directory
      */
-    private File overwriteOrCreateWorkspace() {
-        final File workspaceDir = new File(workspace);
-
-        if (overwriteExistingWorkspace) {
-            IOUtils.tryDelete(workspaceDir);
-        }
-
-        if (!workspaceDir.exists()) {
-            final int ret = GenomicsDBUtils.createTileDBWorkspace(workspaceDir.getAbsolutePath(), false);
-            if (ret > 0) {
-                checkIfValidWorkspace(workspaceDir);
-                logger.info("Importing data to GenomicsDB workspace: " + workspaceDir);
-            } else if (ret < 0) {
-                throw new UnableToCreateGenomicsDBWorkspace("Error creating GenomicsDB workspace: " + workspaceDir);
-            }
-            return workspaceDir;
+    private String overwriteOrCreateWorkspace() {
+        String workspaceDir = BucketUtils.makeFilePathAbsolute(workspace);
+        // From JavaDoc for GenomicsDBUtils.createTileDBWorkspace
+        //   returnCode = 0 : OK. If overwriteExistingWorkspace is true and the workspace exists, it is deleted first.
+        //   returnCode = -1 : path was not a directory
+        //   returnCode = -2 : failed to create workspace
+        //   returnCode = 1 : if overwriteExistingWorkspace is false, return 1 if directory already exists
+        int returnCode = GenomicsDBUtils.createTileDBWorkspace(workspaceDir, overwriteExistingWorkspace);
+        if (returnCode == -1) {
+            throw new UnableToCreateGenomicsDBWorkspace("Error creating GenomicsDB workspace: " + workspace + " already exists and is not a directory");
+        } else if (returnCode < 0) {
+            throw new UnableToCreateGenomicsDBWorkspace("Error creating GenomicsDB workspace: " + workspace);
+        } else if (!overwriteExistingWorkspace && returnCode == 1) {
+            throw new UnableToCreateGenomicsDBWorkspace("Error creating GenomicsDB workspace: " + workspace + " already exists");
         } else {
-            throw new UnableToCreateGenomicsDBWorkspace("The workspace you're trying to create already exists. ( " + workspaceDir.getAbsolutePath() + " ) " +
-                                                  "Writing into an existing workspace can cause data corruption. " +
-                                                  "Please choose an output path that doesn't already exist. ");
+            return workspaceDir;
         }
     }
 
@@ -740,13 +735,6 @@ public final class GenomicsDBImport extends GATKTool {
 
         UnableToCreateGenomicsDBWorkspace(final String message){
             super(message);
-        }
-    }
-
-    private static void checkIfValidWorkspace(final File workspaceDir) {
-        final File tempFile = new File(workspaceDir.getAbsolutePath() + "/__tiledb_workspace.tdb");
-        if (!tempFile.exists()) {
-            throw new UserException(workspaceDir.getAbsolutePath() + " is not a valid GenomicsDB workspace");
         }
     }
 

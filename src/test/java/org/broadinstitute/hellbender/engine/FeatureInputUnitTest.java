@@ -74,7 +74,19 @@ public final class FeatureInputUnitTest extends GATKBaseTest {
                 {"myname:gendb://myJsons", "gendb://myJsons", "myname"},
                 {"myname,key1=value1:gendb://myJsons", "gendb://myJsons", "myname"},
                 {"myname//:gendb://myJsons", "gendb://myJsons", "myname//"},
-                {"myname:gendb://", "gendb://", "myname"}
+                {"myname:gendb://", "gendb://", "myname"},
+
+                {"gendb.gs://myBucket/myJsons", "gendb.gs://myBucket/myJsons", "gendb.gs://myBucket/myJsons"},
+                {"myname:gendb.gs://myJsons", "gendb.gs://myJsons", "myname"},
+                {"myname,key1=value1:gendb.gs://myJsons", "gendb.gs://myJsons", "myname"},
+                {"myname//:gendb.gs://myJsons", "gendb.gs://myJsons", "myname//"},
+                {"myname:gendb.gs://", "gendb.gs://", "myname"},
+
+                {"gendb.hdfs://localhost/myJsons", "gendb.hdfs://localhost/myJsons", "gendb.hdfs://localhost/myJsons"},
+                {"myname:gendb.hdfs://myJsons", "gendb.hdfs://myJsons", "myname"},
+                {"myname,key1=value1:gendb.hdfs://myJsons", "gendb.hdfs://myJsons", "myname"},
+                {"myname//:gendb.hdfs://myJsons", "gendb.hdfs://myJsons", "myname//"},
+                {"myname:gendb.hdfs://", "gendb.hdfs://", "myname"}
         };
     }
     

@@ -25,13 +25,12 @@ import static org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBUtils.*;
 import java.io.File;
 import java.io.IOException;
 import java.nio.channels.SeekableByteChannel;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
-
-
 
 /**
  * Enables traversals and queries over sources of Features, which are metadata associated with a location
@@ -255,7 +254,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         // a query by interval is attempted.
         this.featureReader = getFeatureReader(featureInput, targetFeatureType, cloudWrapper, cloudIndexWrapper, reference);
 
-        if (isGenomicsDBPath(featureInput.getFeaturePath())) {
+        if (IOUtils.isGenomicsDBPath(featureInput.getFeaturePath())) {
             //genomics db uri's have no associated index file to read from, but they do support random access
             this.hasIndex = false;
             this.supportsRandomAccess = true;
@@ -277,12 +276,13 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         this.queryLookaheadBases = queryLookaheadBases;
     }
 
+
     @SuppressWarnings("unchecked")
     private static <T extends Feature> FeatureReader<T> getFeatureReader(final FeatureInput<T> featureInput, final Class<? extends Feature> targetFeatureType,
                                                                          final Function<SeekableByteChannel, SeekableByteChannel> cloudWrapper,
                                                                          final Function<SeekableByteChannel, SeekableByteChannel> cloudIndexWrapper,
                                                                          final Path reference) {
-        if (isGenomicsDBPath(featureInput.getFeaturePath())) {
+        if (IOUtils.isGenomicsDBPath(featureInput.getFeaturePath())) {
             try {
                 if (reference == null) {
                     throw new UserException.MissingReference("You must provide a reference if you want to load from GenomicsDB");
@@ -350,36 +350,23 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
     }
 
     protected static FeatureReader<VariantContext> getGenomicsDBFeatureReader(final String path, final File reference) {
-        if (!isGenomicsDBPath(path)) {
-            throw new IllegalArgumentException("Trying to create a GenomicsDBReader from a non-GenomicsDB input");
+        final String workspace = IOUtils.getGenomicsDBAbsolutePath(path) ;
+        if (workspace == null) {   
+            throw new IllegalArgumentException("Trying to create a GenomicsDBReader from  non-GenomicsDB inputpath " + path);
+        } else if (Files.notExists(IOUtils.getPath(workspace))) {
+            throw new UserException("GenomicsDB workspace " + path + " does not exist");
         }
 
-        final String noheader = path.replace(GENOMIC_DB_URI_SCHEME, "");
-        final File workspace = new File(noheader);
-        final File callsetJson = new File(noheader, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME);
-        final File vidmapJson = new File(noheader, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME);
-        final File vcfHeader = new File(noheader, GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME);
+        final String callsetJson = IOUtils.appendPathToDir(workspace, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME);
+        final String vidmapJson = IOUtils.appendPathToDir(workspace, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME);
+        final String vcfHeader = IOUtils.appendPathToDir(workspace, GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME);
 
-        if (!workspace.exists() || !workspace.canRead() || !workspace.isDirectory()) {
-            throw new UserException("GenomicsDB workspace " + workspace.getAbsolutePath() + " does not exist, " +
-                    " is not readable, or is not a directory");
-        }
+        IOUtils.assertPathsAreReadable(callsetJson, vidmapJson, vcfHeader);
 
         try {
-            IOUtils.canReadFile(callsetJson);
-            IOUtils.canReadFile(vidmapJson);
-            IOUtils.canReadFile(vcfHeader);
-        } catch (final UserException.CouldNotReadInputFile e) {
-            throw new UserException("Couldn't connect to GenomicsDB because the vidmap, callset JSON files, or gVCF Header (" +
-                    GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME + "," + GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME + "," +
-                    GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME + ") could not be read from GenomicsDB workspace " + workspace.getAbsolutePath(), e);
-        }
-
-        final GenomicsDBExportConfiguration.ExportConfiguration exportConfiguration =
-                createExportConfiguration(reference, workspace, callsetJson, vidmapJson, vcfHeader);
-
-        try {
-            return new GenomicsDBFeatureReader<>(exportConfiguration, new BCF2Codec(), Optional.empty());
+            final GenomicsDBExportConfiguration.ExportConfiguration exportConfigurationBuilder =
+                    createExportConfiguration(reference, workspace, callsetJson, vidmapJson, vcfHeader);
+            return new GenomicsDBFeatureReader<>(exportConfigurationBuilder, new BCF2Codec(), Optional.empty());
         } catch (final IOException e) {
             throw new UserException("Couldn't create GenomicsDBFeatureReader", e);
         }

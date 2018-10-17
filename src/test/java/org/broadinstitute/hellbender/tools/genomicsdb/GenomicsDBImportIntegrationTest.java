@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.genomicsdb;
 
+import com.intel.genomicsdb.GenomicsDBUtils;
 import com.intel.genomicsdb.model.GenomicsDBExportConfiguration;
 import com.intel.genomicsdb.model.GenomicsDBVidMapProto;
 import com.intel.genomicsdb.reader.GenomicsDBFeatureReader;
@@ -36,9 +37,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
+import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.CompletionException;
 import java.util.stream.Collectors;
@@ -445,9 +444,9 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     }
 
     private static void checkJSONFilesAreWritten(final String workspace) {
-        Assert.assertTrue(new File(workspace, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME).exists());
-        Assert.assertTrue(new File(workspace, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME).exists());
-        Assert.assertTrue(new File(workspace, GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME).exists());
+        Assert.assertTrue(BucketUtils.fileExists(IOUtils.appendPathToDir(workspace, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME)));
+        Assert.assertTrue(BucketUtils.fileExists(IOUtils.appendPathToDir(workspace, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME)));
+        Assert.assertTrue(BucketUtils.fileExists(IOUtils.appendPathToDir(workspace, GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME)));
     }
 
     private static void checkGenomicsDBAgainstExpected(final String workspace, final List<SimpleInterval> intervals,
@@ -802,26 +801,27 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
             final String workspace, final String reference,
             final boolean produceGTField,
             final boolean sitesOnlyQuery) throws IOException {
-        GenomicsDBExportConfiguration.ExportConfiguration.Builder exportConfigurationBuilder = GenomicsDBExportConfiguration.ExportConfiguration.newBuilder()
+       String workspaceAbsPath = BucketUtils.makeFilePathAbsolute(workspace);
+       GenomicsDBExportConfiguration.ExportConfiguration.Builder exportConfigurationBuilder = GenomicsDBExportConfiguration.ExportConfiguration.newBuilder()
                 .setWorkspace(workspace)
                 .setReferenceGenome(reference)
-                .setVidMappingFile(new File(workspace, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME).getAbsolutePath())
-                .setCallsetMappingFile(new File(workspace, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME).getAbsolutePath())
-                .setVcfHeaderFilename(new File(workspace, GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME).getAbsolutePath())
+                .setVidMappingFile(IOUtils.appendPathToDir(workspaceAbsPath, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME))
+                .setCallsetMappingFile(IOUtils.appendPathToDir(workspaceAbsPath, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME))
+                .setVcfHeaderFilename(IOUtils.appendPathToDir(workspaceAbsPath, GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME))
                 .setProduceGTField(produceGTField)
                 .setSitesOnlyQuery(sitesOnlyQuery)
                .setGenerateArrayNameFromPartitionBounds(true);
         GenomicsDBVidMapProto.VidMappingPB vidMapPB = null;
         try {
-            vidMapPB = GenomicsDBUtils.getProtobufVidMappingFromJsonFile(new File(workspace, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME));
+            vidMapPB = org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBUtils.getProtobufVidMappingFromJsonFile(IOUtils.appendPathToDir(workspace, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME));
         }
         catch (final IOException e) {
             throw new UserException("Could not open vid json file "+GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME, e);
         }
         HashMap<String, Integer> fieldNameToIndexInVidFieldsList =
-                GenomicsDBUtils.getFieldNameToListIndexInProtobufVidMappingObject(vidMapPB);
+                org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBUtils.getFieldNameToListIndexInProtobufVidMappingObject(vidMapPB);
 
-        vidMapPB = GenomicsDBUtils.updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
+        vidMapPB = org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBUtils.updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
                 GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY, "element_wise_sum");
 
         if(vidMapPB != null) {
@@ -840,6 +840,24 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     public void testYouCantWriteIntoAnExistingDirectory(){
         // this actually creates the directory on disk, not just the file name.
         final String workspace = createTempDir("workspace").getAbsolutePath();
+        writeToGenomicsDB(LOCAL_GVCFS, INTERVAL, workspace, 0, false, 0, 1);
+    }
+
+    @Test(groups = {"bucket"})
+    public void testWriteToAndQueryFromGCS() throws IOException {
+        final String workspace = BucketUtils.randomRemotePath(getGCPTestStaging(), "", "") + "/";
+        BucketUtils.deleteOnExit(workspace);
+        writeToGenomicsDB(LOCAL_GVCFS, INTERVAL, workspace, 0, false, 0, 1);
+        checkJSONFilesAreWritten(workspace);
+        checkGenomicsDBAgainstExpected(workspace, INTERVAL, COMBINED, b38_reference_20_21, true, ATTRIBUTES_TO_IGNORE);
+    }
+
+    @Test(groups = {"bucket"}, expectedExceptions = GenomicsDBImport.UnableToCreateGenomicsDBWorkspace.class)
+    public void testWriteToExistingGCSDirectory() throws IOException {
+        final String workspace = BucketUtils.randomRemotePath(getGCPTestStaging(), "", "") + "/";
+        BucketUtils.deleteOnExit(workspace);
+        int rc = GenomicsDBUtils.createTileDBWorkspace(workspace, false);
+        Assert.assertEquals(rc, 0);
         writeToGenomicsDB(LOCAL_GVCFS, INTERVAL, workspace, 0, false, 0, 1);
     }
 }
