@@ -7,6 +7,7 @@ import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
+import org.broadinstitute.hellbender.engine.filters.CountingVariantFilter;
 import org.broadinstitute.hellbender.engine.filters.VariantFilter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.transformers.VariantTransformer;
@@ -117,7 +118,7 @@ public abstract class VariantLocusWalker extends VariantWalkerBase {
     @Override
     public void traverse() {
         final CountingReadFilter readFilter = makeReadFilter();
-        final VariantFilter variantFilter = makeVariantFilter();
+        final CountingVariantFilter variantFilter = makeVariantFilter();
         final VariantTransformer preTransformer  = makePreVariantFilterTransformer();
         final VariantTransformer postTransformer = makePostVariantFilterTransformer();
 
