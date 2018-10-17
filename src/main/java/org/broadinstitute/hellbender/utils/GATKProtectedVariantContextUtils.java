@@ -50,6 +50,18 @@ public class GATKProtectedVariantContextUtils {
     }
 
     /**
+     * Composes the double array from a genotype annotation. Provides default and missing values.
+     *
+     * @param variantContext the target variant-context.
+     * @param attribute the name of the attribute containing the double array.
+     * @return never {@code null}.
+     * @throws IllegalArgumentException if {@code variantContext} is {@code null} or {@code key} is {@code null}.
+     */
+    public static double[] getAttributeAsDoubleArray(final VariantContext variantContext, final String attribute) {
+        return getAttributeAsDoubleArray(variantContext, attribute, () -> null, -1);
+    }
+
+    /**
      * Composes the double array from a genotype annotation.
      *
      * @param genotype the target variant-context.
