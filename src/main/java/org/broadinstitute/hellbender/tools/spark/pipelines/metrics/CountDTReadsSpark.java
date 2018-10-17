@@ -72,7 +72,7 @@ public final class CountDTReadsSpark extends GATKSparkTool {
         System.out.println("Total reads: "+count);
 
         final long dtReadscount = reads.filter(r -> r.hasAttribute("DT")).count();
-        System.out.println("Reads marked as OpticalDuplicates: "+count);
+        System.out.println("Reads marked as OpticalDuplicates: "+dtReadscount);
 
         if(out != null) {
             try (final PrintStream ps = new PrintStream(BucketUtils.createFile(out))) {
