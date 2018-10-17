@@ -121,7 +121,7 @@ public class M2FiltersArgumentCollection extends AssemblyBasedCallerArgumentColl
     @Argument(fullName = UNIQUE_ALT_READ_COUNT_LONG_NAME, shortName = "unique", optional = true, doc = "Filter a variant if a site contains fewer than this many unique (i.e. deduplicated) reads supporting the alternate allele")
     public int uniqueAltReadCount = 0;
 
-    @Argument(fullName = N_RATIO_LONG_NAME, optional = true, doc = "Filter a variant if the ratio of Ns in the pileup. A nRatio of 0 will not apply filter.")
+    @Argument(fullName = N_RATIO_LONG_NAME, optional = true, doc = "Filter a variant if the ratio of Ns in the pileup is greater or equal to this value. A ratio of 0 will not apply filter.")
     public double nRatio = Double.POSITIVE_INFINITY;
 
     @Argument(fullName = STRICT_STRAND_BIAS_LONG_NAME, optional = true, doc = "Always filter if reads are not found in both directions for supporting allele.")

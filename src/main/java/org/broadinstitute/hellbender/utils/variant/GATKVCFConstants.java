@@ -167,7 +167,6 @@ public final class GATKVCFConstants {
     public final static String BAD_HAPLOTYPE_FILTER_NAME =          "bad_haplotype";
     public final static String STRICT_STRAND_BIAS_FILTER_NAME =                     "strict_strand_bias";
     public final static String N_RATIO_FILTER_NAME =                         "n_ratio";
-    public final static String BAD_HAPLOTYPE_FILTER_NAME =                      "bad_haplotype";
     public final static String CHIMERIC_ORIGINAL_ALIGNMENT_FILTER_NAME =        "chimeric_original_alignment"; //mitochondria
     public final static String LOW_AVG_ALT_QUALITY_FILTER_NAME =                "low_avg_alt_quality"; //mitochondria
 
@@ -179,7 +178,6 @@ public final class GATKVCFConstants {
             READ_POSITION_FILTER_NAME, CONTAMINATION_FILTER_NAME, DUPLICATED_EVIDENCE_FILTER_NAME,
             READ_ORIENTATION_ARTIFACT_FILTER_NAME, BAD_HAPLOTYPE_FILTER_NAME, CHIMERIC_ORIGINAL_ALIGNMENT_FILTER_NAME,
             LOW_AVG_ALT_QUALITY_FILTER_NAME, STRICT_STRAND_BIAS_FILTER_NAME, N_RATIO_FILTER_NAME);
-            );
 
     // Symbolic alleles
     public final static String SYMBOLIC_ALLELE_DEFINITION_HEADER_TAG = "ALT";

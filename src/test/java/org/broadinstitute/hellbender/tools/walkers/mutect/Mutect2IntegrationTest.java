@@ -731,7 +731,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     }
 
 
-    public File createSamWithNsandStrandBias(final int numAlts, final int numNs, final int numRefs) throws IOException {
+    private File createSamWithNsandStrandBias(final int numAlts, final int numNs, final int numRefs) throws IOException {
         final byte altQuality = 50;
         final byte refQuality = 30;
         final File samFile = File.createTempFile("duplex", ".bam");

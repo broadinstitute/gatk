@@ -43,15 +43,17 @@ public class CountNs extends GenotypeAnnotation {
 
         gb.attribute(GATKVCFConstants.N_COUNT_KEY, Count);
     }
+
     @Override
     public List<VCFFormatHeaderLine> getDescriptions() {
         return Arrays.asList(new VCFFormatHeaderLine(GATKVCFConstants.N_COUNT_KEY, 1, VCFHeaderLineType.Integer, "Counts Ns at site"));
     }
+
     @Override
     public List<String> getKeyNames() { return Arrays.asList(GATKVCFConstants.N_COUNT_KEY); }
+
     private Boolean doesReadHaveN(final GATKRead read, final VariantContext vc) {
         final int offset = ReadUtils.getReadCoordinateForReferenceCoordinate(read.getSoftStart(), read.getCigar(), vc.getStart(), ReadUtils.ClippingTail.RIGHT_TAIL, true);
-        if (offset == ReadUtils.CLIPPING_GOAL_NOT_REACHED || AlignmentUtils.isInsideDeletion(read.getCigar(), offset)) { return false;}
-        return (read.getBase(offset) == 'N');
+        return ( offset != ReadUtils.CLIPPING_GOAL_NOT_REACHED && !AlignmentUtils.isInsideDeletion(read.getCigar(), offset) && read.getBase(offset) == 'N');
     }
 }
