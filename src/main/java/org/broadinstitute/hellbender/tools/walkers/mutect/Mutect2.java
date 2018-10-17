@@ -9,18 +9,15 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
-import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
-import org.broadinstitute.hellbender.tools.walkers.annotator.ReadOrientationArtifact;
-import org.broadinstitute.hellbender.tools.walkers.annotator.ReferenceBases;
-import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.downsampling.MutectDownsampler;
 import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsampler;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.io.File;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 /**
  * <p>Call somatic short variants via local assembly of haplotypes.
@@ -186,7 +183,22 @@ public final class Mutect2 extends AssemblyRegionWalker {
     public AssemblyRegionEvaluator assemblyRegionEvaluator() { return m2Engine; }
 
     @Override
+    protected String[] customCommandLineValidation() {
+        if (MTAC.tumorSample == null && !MTAC.mitochondria) {
+            return new String[]{"Argument tumor-sample was missing: Argument 'tumor-sample' is required when not in mitochondria mode."};
+        }
+        return null;
+    }
+
+    @Override
     public void onTraversalStart() {
+        if (MTAC.mitochondria) {
+            final Set<String> samples = ReadUtils.getSamplesFromHeader(getHeaderForReads());
+            if (samples.size() != 1) {
+                throw new UserException(String.format("The input bam has more than one sample: %s", Arrays.toString(samples.toArray())));
+            }
+            MTAC.tumorSample = samples.iterator().next();
+        }
         VariantAnnotatorEngine annotatorEngine = new VariantAnnotatorEngine(makeVariantAnnotations(), null, Collections.emptyList(), false);
         m2Engine = new Mutect2Engine(MTAC, createOutputBamIndex, createOutputBamMD5, getHeaderForReads(), referenceArguments.getReferenceFileName(), annotatorEngine);
         vcfWriter = createVCFWriter(outputVCF);
@@ -201,6 +213,9 @@ public final class Mutect2 extends AssemblyRegionWalker {
             // Enable the annotations associated with the read orientation model
             annotations.add(new ReadOrientationArtifact(MTAC.artifactPriorTable));
             annotations.add(new ReferenceBases());
+        }
+        if (MTAC.autosomalCoverage > 0) {
+            annotations.add(new PolymorphicNuMT(MTAC.autosomalCoverage));
         }
         return annotations;
     }
