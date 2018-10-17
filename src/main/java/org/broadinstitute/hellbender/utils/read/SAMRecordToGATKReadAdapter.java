@@ -424,10 +424,27 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
     }
 
     @Override
+    public boolean isUnplaced() {
+        return samRecord.getReferenceName() == null || samRecord.getReferenceName().equals(SAMRecord.NO_ALIGNMENT_REFERENCE_NAME) ||
+                samRecord.getAlignmentStart() == SAMRecord.NO_ALIGNMENT_START;
+    }
+
+    @Override
     public void setIsUnmapped() {
         clearCachedValues();
 
         samRecord.setReadUnmappedFlag(true);
+    }
+
+
+    @Override
+    public void setIsUnplaced() {
+        clearCachedValues();
+
+        samRecord.setReadUnmappedFlag(true);
+        samRecord.setReferenceIndex(SAMRecord.NO_ALIGNMENT_REFERENCE_INDEX);
+        samRecord.setAlignmentStart(SAMRecord.NO_ALIGNMENT_START);
+        samRecord.setMappingQuality(SAMRecord.NO_MAPPING_QUALITY);
     }
 
     @Override
@@ -440,6 +457,14 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
     }
 
     @Override
+    public boolean mateIsUnplaced() {
+        Utils.validate(isPaired(), "Cannot get mate information for an unpaired read");
+
+        return samRecord.getMateReferenceName() == null || samRecord.getMateReferenceName().equals(SAMRecord.NO_ALIGNMENT_REFERENCE_NAME) ||
+                samRecord.getMateAlignmentStart() == SAMRecord.NO_ALIGNMENT_START;
+    }
+
+    @Override
     public void setMateIsUnmapped() {
         clearCachedValues();
 
@@ -448,6 +473,19 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
 
         samRecord.setMateUnmappedFlag(true);
     }
+
+    @Override
+    public void setMateIsUnplaced() {
+        clearCachedValues();
+
+        // Calling this method has the side effect of marking the read as paired.
+        setIsPaired(true);
+
+        samRecord.setMateUnmappedFlag(true);
+        samRecord.setMateReferenceIndex(SAMRecord.NO_ALIGNMENT_REFERENCE_INDEX);
+        samRecord.setMateAlignmentStart(SAMRecord.NO_ALIGNMENT_START);
+    }
+
 
     @Override
     public boolean isReverseStrand() {
@@ -675,6 +713,13 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
     @Override
     public String getSAMString() {
         return samRecord.getSAMString();
+    }
+
+    @Override
+    public void reverseComplement() {
+        clearCachedValues();
+
+        samRecord.reverseComplement(true);
     }
 
     @Override

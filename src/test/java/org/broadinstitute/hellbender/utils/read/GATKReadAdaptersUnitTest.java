@@ -1294,4 +1294,91 @@ public class GATKReadAdaptersUnitTest extends GATKBaseTest {
 
         Assert.assertEquals(read, read.deepCopy());
     }
+
+    @DataProvider
+    public Object[][] unmappedReadDataProvider() {
+        List<Object[]> testCases = new ArrayList<>();
+
+        SAMRecord unmappedUnplacedRead = new SAMRecord(hg19Header);
+        SAMRecord unmappedPlacedRead = new SAMRecord(hg19Header);
+        SAMRecord mappedUnplacedRead = new SAMRecord(hg19Header);
+        SAMRecord mappedPlacedRead = new SAMRecord(hg19Header);
+
+        unmappedUnplacedRead.setReferenceIndex(SAMRecord.NO_ALIGNMENT_REFERENCE_INDEX);
+        unmappedUnplacedRead.setMateReferenceIndex(SAMRecord.NO_ALIGNMENT_REFERENCE_INDEX);
+        unmappedUnplacedRead.setAlignmentStart(SAMRecord.NO_ALIGNMENT_START);
+        unmappedUnplacedRead.setMateAlignmentStart(SAMRecord.NO_ALIGNMENT_START);
+        unmappedUnplacedRead.setReadUnmappedFlag(true);
+        unmappedUnplacedRead.setMateUnmappedFlag(true);
+        unmappedUnplacedRead.setReadPairedFlag(true);
+        testCases.add(new Object[]{new SAMRecordToGATKReadAdapter(unmappedUnplacedRead), true, true});
+
+
+        unmappedPlacedRead.setReferenceIndex(0);
+        unmappedPlacedRead.setMateReferenceIndex(0);
+        unmappedPlacedRead.setAlignmentStart(100);
+        unmappedPlacedRead.setMateAlignmentStart(100);
+        unmappedPlacedRead.setReadUnmappedFlag(true);
+        unmappedPlacedRead.setMateUnmappedFlag(true);
+        unmappedPlacedRead.setReadPairedFlag(true);
+        testCases.add(new Object[]{new SAMRecordToGATKReadAdapter(unmappedPlacedRead), true, false});
+
+
+        mappedUnplacedRead.setReferenceIndex(SAMRecord.NO_ALIGNMENT_REFERENCE_INDEX);
+        mappedUnplacedRead.setMateReferenceIndex(SAMRecord.NO_ALIGNMENT_REFERENCE_INDEX);
+        mappedUnplacedRead.setAlignmentStart(SAMRecord.NO_ALIGNMENT_START);
+        mappedUnplacedRead.setMateAlignmentStart(SAMRecord.NO_ALIGNMENT_START);
+        mappedUnplacedRead.setReadUnmappedFlag(false);
+        mappedUnplacedRead.setMateUnmappedFlag(false);
+        mappedUnplacedRead.setReadPairedFlag(true);
+        testCases.add(new Object[]{new SAMRecordToGATKReadAdapter(mappedUnplacedRead), true, true}); // Unmapped is true here because it tests alignment info second
+
+
+        mappedPlacedRead.setReferenceIndex(0);
+        mappedPlacedRead.setMateReferenceIndex(0);
+        mappedPlacedRead.setAlignmentStart(100);
+        mappedPlacedRead.setMateAlignmentStart(100);
+        mappedPlacedRead.setReadUnmappedFlag(false);
+        mappedPlacedRead.setMateUnmappedFlag(false);
+        mappedPlacedRead.setReadPairedFlag(true);
+        testCases.add(new Object[]{new SAMRecordToGATKReadAdapter(mappedPlacedRead), false, false});
+
+        return testCases.toArray(new Object[][]{});
+    }
+
+    @Test(dataProvider="unmappedReadDataProvider")
+    public void testUnmappedUnpairedDistinction(final GATKRead read, final boolean unmapped, final boolean unplaced) {
+        Assert.assertEquals(read.isUnmapped(), unmapped);
+        Assert.assertEquals(read.isUnplaced(), unplaced);
+
+        read.setIsUnmapped();
+
+        Assert.assertEquals(read.isUnmapped(), true);
+        Assert.assertEquals(read.isUnplaced(), unplaced);
+
+        read.setIsUnplaced();
+        Assert.assertEquals(read.isUnmapped(), true);
+        Assert.assertEquals(read.isUnplaced(), true);
+
+        read.convertToSAMRecord(hg19Header).setReadUnmappedFlag(false); // have to unset unmapped to allow SAMRecord to show its underlying data
+        Assert.assertEquals(read.convertToSAMRecord(hg19Header).getStart(), SAMRecord.NO_ALIGNMENT_START);
+        Assert.assertEquals(read.convertToSAMRecord(hg19Header).getMappingQuality(), SAMRecord.NO_MAPPING_QUALITY);
+    }
+
+    @Test(dataProvider="unmappedReadDataProvider")
+    public void testUnmappedUnpairedDistinctionmates(final GATKRead read, final boolean unmapped, final boolean unplaced) {
+        Assert.assertEquals(read.mateIsUnmapped(), unmapped);
+        Assert.assertEquals(read.mateIsUnplaced(), unplaced);
+
+        read.setMateIsUnmapped();
+
+        Assert.assertEquals(read.mateIsUnmapped(), true);
+        Assert.assertEquals(read.mateIsUnplaced(), unplaced);
+
+        read.setMateIsUnplaced();
+        Assert.assertEquals(read.mateIsUnmapped(), true);
+        Assert.assertEquals(read.mateIsUnplaced(), true);
+
+        read.convertToSAMRecord(hg19Header).setReadUnmappedFlag(false); // have to unset unmapped to allow SAMRecord to show its underlying data
+        Assert.assertEquals(read.convertToSAMRecord(hg19Header).getMateAlignmentStart(), SAMRecord.NO_ALIGNMENT_START); }
 }

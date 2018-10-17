@@ -470,6 +470,20 @@ public interface GATKRead extends Locatable {
     void setIsUnmapped();
 
     /**
+     * @return True if this read is unmapped, not including reads where the position is set but the read is marked as unmapped. Otherwise false.
+     */
+    boolean isUnplaced();
+
+    /**
+     * Mark the read as unmapped, and also removes mapping information from the read (i.e. sets contig to "*" and position to 0).
+     *
+     * NOTE: this does not remove the cigar string from the read, use {@link #setCigar(Cigar)}
+     *
+     * To mark a read as mapped, use {@link #setPosition}
+     */
+    void setIsUnplaced();
+
+    /**
      * @return True if this read's mate is unmapped (this includes mates that have a position but are explicitly marked as unmapped,
      *         as well as mates that lack a fully-defined position but are not explicitly marked as unmapped). Otherwise false.
      * @throws IllegalStateException if the read is not paired (has no mate)
@@ -485,6 +499,22 @@ public interface GATKRead extends Locatable {
      * were invoked with true.
      */
     void setMateIsUnmapped();
+
+    /**
+     * @return True if this read's mate is unmapped, not including reads where the position is set but the read is marked as unmapped. Otherwise false.
+     */
+    boolean mateIsUnplaced();
+
+    /**
+     * Mark the read's mate as unmapped (lacking a defined position on the genome). In contrast with {@link #setMateIsUnmapped},
+     * this method will revert the mapping information for the mate (i.e. sets the mate's contig to "*" and position to 0).
+     *
+     * To mark the read's mate as mapped, use {@link #setMatePosition}
+     *
+     * Calling this method has the additional effect of marking the read as paired, as if {@link #setIsPaired}
+     * were invoked with true.
+     */
+    void setMateIsUnplaced();
 
     /**
      * @return True if this read is on the reverse strand as opposed to the forward strand, otherwise false.
@@ -714,6 +744,15 @@ public interface GATKRead extends Locatable {
      * @return SAM string representation of this read.
      */
     String getSAMString();
+
+    /**
+     * Reverse-complement bases and reverse quality scores along with known optional attributes that
+     * need the same treatment. Changes made after making a copy of the bases, qualities,
+     * and any attributes that will be altered. If in-place update is needed use
+     * {@link SAMRecord#reverseComplement(boolean)}.
+     * for the default set of tags that are handled.
+     */
+    public void reverseComplement();
 
     /**
      * A human-digestable representation of the read.
