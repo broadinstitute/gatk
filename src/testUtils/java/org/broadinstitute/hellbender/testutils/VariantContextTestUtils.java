@@ -23,6 +23,13 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.testng.Assert;
 
+// This should be:
+//import org.apache.logging.log4j.LogManager;
+//import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+
 import java.io.File;
 import java.io.PrintStream;
 import java.util.*;
@@ -33,6 +40,9 @@ import java.util.stream.StreamSupport;
 public final class VariantContextTestUtils {
 
     private VariantContextTestUtils() {}
+
+    /** Standard Logger.  */
+    protected static final Logger logger = LogManager.getLogger(VariantContextTestUtils.class);
 
     /**
      * Reads an entire VCF into memory, returning both its VCFHeader and all VariantContext records in
@@ -379,10 +389,19 @@ public final class VariantContextTestUtils {
         if (v1.size() != v2.size()){
             throw new AssertionError("different sizes " + v1.size()+ " vs " + v2.size());
         }
+
+        boolean passed = true;
+        int numFailed = 0;
+
         for (int i = 0; i < v1.size(); i++) {
             if (! v1.get(i).toStringDecodeGenotypes().equals(v2.get(i).toStringDecodeGenotypes())){
-                throw new AssertionError("different element (compared by toStringDecodeGenotypes) " + i + "\n" + v1.get(i) + "\n" + v2.get(i) );
+                logger.error("Variant Comparison Error: " + "different element (compared by toStringDecodeGenotypes) " + i + ":\n" + v1.get(i) + "\n" + v2.get(i));
+                passed = false;
+                ++numFailed;
             }
+        }
+        if (!passed) {
+            throw new AssertionError("Variant comparison failed!  Num non-matching variant pairs: " + numFailed);
         }
     }
 

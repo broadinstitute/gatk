@@ -1650,6 +1650,90 @@ public final class FuncotatorUtils {
     }
 
     /**
+     * Create a cDNA string for an intronic variant.
+     * The cDNA string contains information about the coding position of a variant and the alleles involved.
+     * If the transcript in which the variant occurs contains at least 1 exon, the string will be non-empty and of
+     * the form:
+     *     c.e[EXON NUMBER][+|-][BASES FROM EXON][REF ALLELE]>[ALT ALLELE]
+     * Concretely:
+     *     c.e2-1A>G
+     * Where:
+     *      2 = the number of the exon to which the given variant start is closest
+     *     -1 = number of bases away from the exon (1 before)
+     *      A = Reference allele
+     *      G = Alternate allele
+     * @param variantStart The start position (1-based, inclusive) in genomic coordinates of the variant.
+     * @param exonList The {@link List<Locatable>} representing the exons in the transcript in which this variant occurs.  Must not be {@code null}.
+     * @param strandCorrectedRefAllele A {@link String} containing the bases of the reference allele, which are correct for strandedness (i.e. if on a transcript on the {@link Strand#NEGATIVE} strand, the string has already been reverse-complemented).  Must not be {@code null}.
+     * @param strandCorrectedAltAllele A {@link String} containing the bases of the alternate allele, which are correct for strandedness (i.e. if on a transcript on the {@link Strand#NEGATIVE} strand, the string has already been reverse-complemented).  Must not be {@code null}.
+     * @return A {@link String} representing the cDNA change for the given data.  Will be empty if the given {@code exonList} is empty.
+     */
+    public static String createIntronicCDnaString(final int variantStart,
+                                                  final List<? extends Locatable> exonList,
+                                                  final String strandCorrectedRefAllele,
+                                                  final String strandCorrectedAltAllele) {
+
+        Utils.nonNull(exonList);
+        Utils.nonNull(strandCorrectedRefAllele);
+        Utils.nonNull(strandCorrectedAltAllele);
+
+        // Get the exon that is closest to our variant:
+        final int exonIndex = getClosestExonIndex(variantStart, exonList);
+
+        if ( exonIndex != -1 ) {
+            final Locatable closestExon = exonList.get(exonIndex);
+
+            final int startDiff = variantStart - closestExon.getStart();
+            final int endDiff =  variantStart - closestExon.getEnd();
+
+            // Get the offset from our start:
+            final int exonOffset;
+            if ( Math.abs(startDiff) <= Math.abs(endDiff) ) {
+                exonOffset = startDiff;
+            }
+            else {
+                exonOffset = endDiff;
+            }
+
+            // Get the cDNA string itself:
+            return "c.e" + (exonIndex+1) + (exonOffset < 0 ? "-" : "+") + Math.abs(exonOffset) + strandCorrectedRefAllele + ">" + strandCorrectedAltAllele;
+        }
+        else {
+            return "NA";
+        }
+    }
+
+
+    /**
+     * Get the index of the exon that is closest to the given start position of a variant.
+     * Checks both before and after the start position to get the closest exon such that it may occur before the
+     * variant, within the variant, or after the variant.
+     * If there are no exons in the transcript, will return {@code null}.
+     * @param variantStartPos Start position (1-based, inclusive) in genomic coordinates of a variant.
+     * @param exonList The {@link List<Locatable>} representing the exons in the transcript in which this variant occurs.  Must not be {@code null}.
+     * @return The index into the given {@code exonList} corresponding to the entry which is the fewest bases away from the given variant positions.  If {@code exonList} is empty, will return {@code -1}.
+     */
+     public static int getClosestExonIndex( final int variantStartPos,
+                                             final List<? extends Locatable> exonList) {
+        Utils.nonNull(exonList);
+
+        int exonIndex = -1;
+        int distFromVariant = Integer.MAX_VALUE;
+
+        for ( int i = 0; i < exonList.size() ; ++i ) {
+            for ( final int exonPos : Arrays.asList(exonList.get(i).getStart(), exonList.get(i).getEnd()) ) {
+                final int dist = Math.abs(variantStartPos - exonPos);
+                if ( dist < distFromVariant ) {
+                    exonIndex = i;
+                    distFromVariant = dist;
+                }
+            }
+        }
+
+        return exonIndex;
+    }
+
+    /**
      * Get the overlapping exon start/stop as a {@link SimpleInterval} for the given altAllele / reference.
      * @param refAllele {@link Allele} for the given {@code altAllele}.  Must not be {@code null}.
      * @param altAllele {@link Allele} to locate on an exon.  Must not be {@code null}.

@@ -144,6 +144,16 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
         };
     }
 
+    private static Object[] helpProvideForCreateIntronicCDnaString(final int start, final List<Locatable> exonList, final String ref, final String alt, final Integer index, final Integer dist) {
+        if ( index == null ) {
+            return new Object[]{ start, exonList, ref, alt, "NA" };
+        }
+        else {
+            return new Object[]{ start, exonList, ref, alt, "c.e" + (index+1) + (dist > 0 ? '+' : '-') + Math.abs(dist) + ref + '>' + alt };
+        }
+    }
+
+
     //==================================================================================================================
     // Data Providers:
 
@@ -914,6 +924,69 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
                 //       9 bases:
                 { 545, 545, "EQE", "", "ACTGAGCAGG", "A", startCodon, 1632, "p.EQE545del" },
                 { 545, 545, "EQE", "", "CTGAGCAGGA", "C", startCodon, 1633, "p.EQE545del" },
+        };
+    }
+
+    @DataProvider
+    Object[][] provideForGetClosestExonIndex() {
+
+        final List<Locatable> exonList = new ArrayList<>();
+        exonList.add( new SimpleInterval("testContig", 20, 30) );
+        exonList.add( new SimpleInterval("testContig", 40, 50) );
+        exonList.add( new SimpleInterval("testContig", 60, 70) );
+        exonList.add( new SimpleInterval("testContig", 80, 90) );
+        exonList.add( new SimpleInterval("testContig", 10000, 15000) );
+        exonList.add( new SimpleInterval("testContig", 10000000, 15000000) );
+
+        return new Object[][] {
+                // No exons:
+                {  8, Collections.emptyList(), -1 },
+                // Start before first exon start:
+                {  8, exonList, 0 },
+                // Start inside first exon:
+                { 25, exonList, 0 },
+                // Start after first exon end:
+                { 31, exonList, 0 },
+                // Start after exon start, just before a "break point":
+                { 35, exonList, 0 },
+                // Start between exons, just after a "break point":
+                { 36, exonList, 1 },
+                // Start between exons:
+                { 500, exonList, 3 },
+                // Start after last exon:
+                { 50000000, exonList, 5 },
+        };
+    }
+
+    @DataProvider
+    Object[][] provideForCreateIntronicCDnaString() {
+
+        final List<Locatable> exonList = new ArrayList<>();
+        exonList.add( new SimpleInterval("testContig", 20, 30) );
+        exonList.add( new SimpleInterval("testContig", 40, 50) );
+        exonList.add( new SimpleInterval("testContig", 60, 70) );
+        exonList.add( new SimpleInterval("testContig", 80, 90) );
+        exonList.add( new SimpleInterval("testContig", 10000, 15000) );
+        exonList.add( new SimpleInterval("testContig", 10000000, 15000000) );
+
+        return new Object[][] {
+                // No exons:
+                helpProvideForCreateIntronicCDnaString(  8, Collections.emptyList(), "A", "C", null, null ),
+                // Start before first exon start:
+                helpProvideForCreateIntronicCDnaString(  8, exonList,"A", "T", 0, -12 ),
+                // Start inside first exon:
+                helpProvideForCreateIntronicCDnaString( 25, exonList,"C", "T", 0, 5 ),
+                // Start after first exon end:
+                helpProvideForCreateIntronicCDnaString( 31, exonList, "G", "T", 0, 1 ),
+                // Start after exon start, just before a "break point":
+                helpProvideForCreateIntronicCDnaString( 35, exonList, "ATG", "GCT", 0, 5),
+                // Start between exons, just after a "break point":
+                helpProvideForCreateIntronicCDnaString( 36, exonList, "ATG", "GCT", 1, -4),
+                // Start between exons:
+                helpProvideForCreateIntronicCDnaString( 500, exonList, "TTTTTTTTT", "AAAAAAAAA", 3, 410),
+                // Start after last exon:
+                helpProvideForCreateIntronicCDnaString( 50000000, exonList, "A", "GTG",5, 35000000 ),
+
         };
     }
 
@@ -1886,6 +1959,22 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
         }
 
         Assert.assertEquals( FuncotatorUtils.renderProteinChangeString(seqComp, startCodon), expected );
+    }
+
+    @Test(dataProvider = "provideForGetClosestExonIndex")
+    void testGetClosestExonIndex( final int variantStartPos,
+                             final List<? extends Locatable> exonList,
+                             final int expected ) {
+        Assert.assertEquals( FuncotatorUtils.getClosestExonIndex(variantStartPos, exonList), expected );
+    }
+
+    @Test(dataProvider = "provideForCreateIntronicCDnaString")
+    void testCreateIntronicCDnaString(final int variantStartPos,
+                                      final List<? extends Locatable> exonList,
+                                      final String strandCorrectedRefAllele,
+                                      final String strandCorrectedAltAllele,
+                                      final String expected ) {
+        Assert.assertEquals( FuncotatorUtils.createIntronicCDnaString(variantStartPos, exonList, strandCorrectedRefAllele, strandCorrectedAltAllele), expected );
     }
 
     @Test(dataProvider = "provideForTestGetCodingSequenceChangeString")

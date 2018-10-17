@@ -23,11 +23,11 @@ public class DataProviderForMuc16MnpFullData {
                 // Had to change gt transcript change.  Had to change protein change for proper codon
                 new Object[]{"MUC16", 19, 9002672, 9002672, GencodeFuncotation.VariantClassification.SPLICE_SITE, GencodeFuncotation.VariantType.SNP, "G", "A", "g.chr19:9002672G>A", "-", "c.40144C>T", "c.(40144-40146)Cct>Tct", "p.P13382S"},
                 // Had to change GT for the protein change, since this is an intron splice site.
-                new Object[]{"MUC16", 19, 8994416, 8994416, GencodeFuncotation.VariantClassification.SPLICE_SITE, GencodeFuncotation.VariantType.SNP, "C", "T", "g.chr19:8994416C>T", "-", null, "c.e64+1", null},
+                new Object[]{"MUC16", 19, 8994416, 8994416, GencodeFuncotation.VariantClassification.SPLICE_SITE, GencodeFuncotation.VariantType.SNP, "C", "T", "g.chr19:8994416C>T", "-", "c.e64-1G>A", "c.e64+1", null},
                 // Had to change GT for the transcript change
                 new Object[]{"MUC16", 19, 9008345, 9008345, GencodeFuncotation.VariantClassification.SPLICE_SITE, GencodeFuncotation.VariantType.SNP, "C", "T", "g.chr19:9008345C>T", "-", "c.39207G>A", "c.(39205-39207)agG>agA", "p.R13069R"},
                 // Had to change GT for the protein change, since this is an intron splice site.
-                new Object[]{"MUC16", 19, 9050244, 9050244, GencodeFuncotation.VariantClassification.SPLICE_SITE, GencodeFuncotation.VariantType.SNP, "C", "A", "g.chr19:9050244C>A", "-", null, "c.e5-1", null},
+                new Object[]{"MUC16", 19, 9050244, 9050244, GencodeFuncotation.VariantClassification.SPLICE_SITE, GencodeFuncotation.VariantType.SNP, "C", "A", "g.chr19:9050244C>A", "-", "c.e5+1G>T", "c.e5-1", null},
                 new Object[]{"MUC16", 19, 9057555, 9057555, GencodeFuncotation.VariantClassification.MISSENSE, GencodeFuncotation.VariantType.SNP, "C", "A", "g.chr19:9057555C>A", "-", "c.29891G>T", "c.(29890-29892)gGg>gTg", "p.G9964V"},
                 new Object[]{"MUC16", 19, 9064688, 9064688, GencodeFuncotation.VariantClassification.SILENT, GencodeFuncotation.VariantType.SNP, "G", "T", "g.chr19:9064688G>T", "-", "c.22758C>A", "c.(22756-22758)tcC>tcA", "p.S7586S"},
                 new Object[]{"MUC16", 19, 9067291, 9067291, GencodeFuncotation.VariantClassification.MISSENSE, GencodeFuncotation.VariantType.SNP, "G", "T", "g.chr19:9067291G>T", "-", "c.20155C>A", "c.(20155-20157)Ccc>Acc", "p.P6719T"},
@@ -279,7 +279,7 @@ public class DataProviderForMuc16MnpFullData {
                 new Object[]{"MUC16", 19, 9088114, 9088114, GencodeFuncotation.VariantClassification.MISSENSE, GencodeFuncotation.VariantType.SNP, "C", "A", "g.chr19:9088114C>A", "-", "c.3701G>T", "c.(3700-3702)gGg>gTg", "p.G1234V"},
                 new Object[]{"MUC16", 19, 9088804, 9088804, GencodeFuncotation.VariantClassification.MISSENSE, GencodeFuncotation.VariantType.SNP, "G", "T", "g.chr19:9088804G>T", "-", "c.3011C>A", "c.(3010-3012)cCa>cAa", "p.P1004Q"},
                 // Had to change GT for the protein change, since this is an intron splice site.
-                new Object[]{"MUC16", 19, 9080450, 9080450, GencodeFuncotation.VariantClassification.SPLICE_SITE, GencodeFuncotation.VariantType.SNP, "C", "T", "g.chr19:9080450C>T", "-", null, "c.e2+1", null},
+                new Object[]{"MUC16", 19, 9080450, 9080450, GencodeFuncotation.VariantClassification.SPLICE_SITE, GencodeFuncotation.VariantType.SNP, "C", "T", "g.chr19:9080450C>T", "-", "c.e2-1G>A", "c.e2+1", null},
                 new Object[]{"MUC16", 19, 9045956, 9045956, GencodeFuncotation.VariantClassification.MISSENSE, GencodeFuncotation.VariantType.SNP, "G", "A", "g.chr19:9045956G>A", "-", "c.35675C>T", "c.(35674-35676)aCt>aTt", "p.T11892I"},
                 new Object[]{"MUC16", 19, 9047693, 9047693, GencodeFuncotation.VariantClassification.MISSENSE, GencodeFuncotation.VariantType.SNP, "G", "A", "g.chr19:9047693G>A", "-", "c.33938C>T", "c.(33937-33939)cCt>cTt", "p.P11313L"},
                 new Object[]{"MUC16", 19, 9068223, 9068223, GencodeFuncotation.VariantClassification.MISSENSE, GencodeFuncotation.VariantType.SNP, "C", "T", "g.chr19:9068223C>T", "-", "c.19223G>A", "c.(19222-19224)aGa>aAa", "p.R6408K"},
@@ -746,7 +746,7 @@ public class DataProviderForMuc16MnpFullData {
                 new Object[]{"MUC16", 19, 9090729, 9090729, GencodeFuncotation.VariantClassification.SILENT, GencodeFuncotation.VariantType.SNP, "C", "T", "g.chr19:9090729C>T", "-", "c.1086G>A", "c.(1084-1086)gaG>gaA", "p.E362E"},
                 new Object[]{"MUC16", 19, 9082508, 9082508, GencodeFuncotation.VariantClassification.MISSENSE, GencodeFuncotation.VariantType.SNP, "C", "T", "g.chr19:9082508C>T", "-", "c.9307G>A", "c.(9307-9309)Gaa>Aaa", "p.E3103K"},
                 new Object[]{"MUC16", 19, 8976641, 8976641, GencodeFuncotation.VariantClassification.MISSENSE, GencodeFuncotation.VariantType.SNP, "G", "A", "g.chr19:8976641G>A", "-", "c.42335C>T", "c.(42334-42336)cCc>cTc", "p.P14112L"},
-                new Object[]{"MUC16", 19, 8996320, 8996320, GencodeFuncotation.VariantClassification.SPLICE_SITE, GencodeFuncotation.VariantType.SNP, "C", "A", "g.chr19:8996320C>A", "-", null, "c.e61+1", null},
+                new Object[]{"MUC16", 19, 8996320, 8996320, GencodeFuncotation.VariantClassification.SPLICE_SITE, GencodeFuncotation.VariantType.SNP, "C", "A", "g.chr19:8996320C>A", "-", "c.e61-1G>T", "c.e61+1", null},
                 new Object[]{"MUC16", 19, 9046168, 9046168, GencodeFuncotation.VariantClassification.SILENT, GencodeFuncotation.VariantType.SNP, "A", "C", "g.chr19:9046168A>C", "-", "c.35463T>G", "c.(35461-35463)tcT>tcG", "p.S11821S"},
                 new Object[]{"MUC16", 19, 9048344, 9048344, GencodeFuncotation.VariantClassification.MISSENSE, GencodeFuncotation.VariantType.SNP, "C", "T", "g.chr19:9048344C>T", "-", "c.33287G>A", "c.(33286-33288)gGa>gAa", "p.G11096E"},
                 new Object[]{"MUC16", 19, 9049397, 9049397, GencodeFuncotation.VariantClassification.MISSENSE, GencodeFuncotation.VariantType.SNP, "C", "A", "g.chr19:9049397C>A", "-", "c.32234G>T", "c.(32233-32235)gGg>gTg", "p.G10745V"},
@@ -1274,7 +1274,7 @@ public class DataProviderForMuc16MnpFullData {
                 new Object[]{"MUC16", 19, 9056625, 9056625, GencodeFuncotation.VariantClassification.MISSENSE, GencodeFuncotation.VariantType.SNP, "G", "A", "g.chr19:9056625G>A", "-", "c.30821C>T", "c.(30820-30822)tCc>tTc", "p.S10274F"},
                 new Object[]{"MUC16", 19, 8974052, 8974052, GencodeFuncotation.VariantClassification.MISSENSE, GencodeFuncotation.VariantType.SNP, "G", "A", "g.chr19:8974052G>A", "-", "c.42619C>T", "c.(42619-42621)Cac>Tac", "p.H14207Y"},
                 // Had to change GT for the protein change, since this is an intron splice site.
-                new Object[]{"MUC16", 19, 9000146, 9000146, GencodeFuncotation.VariantClassification.SPLICE_SITE, GencodeFuncotation.VariantType.SNP, "C", "T", "g.chr19:9000146C>T", "-", null, "c.e55+1", null},
+                new Object[]{"MUC16", 19, 9000146, 9000146, GencodeFuncotation.VariantClassification.SPLICE_SITE, GencodeFuncotation.VariantType.SNP, "C", "T", "g.chr19:9000146C>T", "-", "c.e55-1G>A", "c.e55+1", null},
                 new Object[]{"MUC16", 19, 9049484, 9049484, GencodeFuncotation.VariantClassification.MISSENSE, GencodeFuncotation.VariantType.SNP, "G", "A", "g.chr19:9049484G>A", "-", "c.32147C>T", "c.(32146-32148)cCt>cTt", "p.P10716L"},
                 new Object[]{"MUC16", 19, 9058095, 9058095, GencodeFuncotation.VariantClassification.MISSENSE, GencodeFuncotation.VariantType.SNP, "G", "A", "g.chr19:9058095G>A", "-", "c.29351C>T", "c.(29350-29352)cCa>cTa", "p.P9784L"},
                 new Object[]{"MUC16", 19, 9060904, 9060904, GencodeFuncotation.VariantClassification.MISSENSE, GencodeFuncotation.VariantType.SNP, "C", "T", "g.chr19:9060904C>T", "-", "c.26542G>A", "c.(26542-26544)Gaa>Aaa", "p.E8848K"},
