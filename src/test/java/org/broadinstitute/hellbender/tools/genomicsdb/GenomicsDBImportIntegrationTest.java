@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.genomicsdb;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.intel.genomicsdb.GenomicsDBUtils;
 import com.intel.genomicsdb.model.GenomicsDBExportConfiguration;
 import com.intel.genomicsdb.model.GenomicsDBVidMapProto;
