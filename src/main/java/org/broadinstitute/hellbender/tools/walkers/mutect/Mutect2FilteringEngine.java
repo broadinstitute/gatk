@@ -27,6 +27,8 @@ public class Mutect2FilteringEngine {
     private final Optional<String> normalSample;
     final OverlapDetector<MinorAlleleFractionRecord> tumorSegments;
     public static final String FILTERING_STATUS_VCF_KEY = "filtering_status";
+    private final int ALT_FWD_INDEX = 2;
+    private final int ALT_REV_INDEX = 3;
 
     public Mutect2FilteringEngine(final M2FiltersArgumentCollection MTFAC, final String tumorSample, final Optional<String> normalSample) {
         this.MTFAC = MTFAC;
@@ -329,7 +331,7 @@ public class Mutect2FilteringEngine {
 
     private void applyStrictStrandFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final FilterResult filterResult) {
 
-        if (! MTFAC.strictStrandBias)  {
+        if (! MTFAC.strictStrandBias) {
             return;
         }
 
@@ -338,9 +340,6 @@ public class Mutect2FilteringEngine {
             return;
         }
         final int[] strandBiasCounts = GATKProtectedVariantContextUtils.getAttributeAsIntArray(tumorGenotype, GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY, ()->null, -1);
-
-        final int ALT_FWD_INDEX = 2;
-        final int ALT_REV_INDEX = 3;
 
         // filter if there is no alt evidence in the forward or reverse strand
         if ( strandBiasCounts[ALT_FWD_INDEX] == 0 || strandBiasCounts[ALT_REV_INDEX] == 0) {
@@ -368,7 +367,6 @@ public class Mutect2FilteringEngine {
             filterResult.addFilter(GATKVCFConstants.N_RATIO_FILTER_NAME);
         }
     }
-
 
     public FilterResult calculateFilters(final M2FiltersArgumentCollection MTFAC, final VariantContext vc,
                                          final Optional<FilteringFirstPass> firstPass) {

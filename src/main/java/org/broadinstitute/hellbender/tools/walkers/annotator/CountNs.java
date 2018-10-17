@@ -19,9 +19,8 @@ import java.util.*;
 
 
 /**
- * Apply an annotation that reports the number of Ns seen at a given site. This is intended for use on consensus called data.
+ * Apply a read-based annotation that reports the number of Ns seen at a given site. This is intended for use on consensus called data.
  */
-
 @DocumentedFeature(groupName= HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Number of Ns at the pileup")
 public class CountNs extends GenotypeAnnotation {
     /**

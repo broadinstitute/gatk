@@ -712,8 +712,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final SAMFileHeader samHeader = M2TestingUtils.createSamHeader();
         final SAMFileGATKReadWriter writer = M2TestingUtils.getBareBonesSamWriter(samFile, samHeader);
 
-        // create 2 Ts with strand bias
-
+        // create some alt reads with a strand bias
         final List<GATKRead> altReads = M2TestingUtils.createReads(numAlts, M2TestingUtils.DEFAULT_ALT_BASES, samHeader, altQuality, "alt");
         altReads.forEach(read -> {
             read.setReadGroup(M2TestingUtils.DEFAULT_READ_GROUP_NAME);
@@ -739,7 +738,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
-    public void testLiquidBiopsy() throws Exception {
+    public void testStrictStrandBiasAndNRatio () throws Exception {
         Utils.resetRandomGenerator();
 
         final int numAlts = 2;

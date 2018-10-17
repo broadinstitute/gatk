@@ -34,7 +34,6 @@ public class M2FiltersArgumentCollection extends AssemblyBasedCallerArgumentColl
 
     public static final String FILTERING_STATS_LONG_NAME = "stats";
 
-
     /**
      * A table containing tumor segments and the minor allele fraction of germline hets within each segment.
      * This allows us to refine the germline event filter by, for example, not filtering an allele
