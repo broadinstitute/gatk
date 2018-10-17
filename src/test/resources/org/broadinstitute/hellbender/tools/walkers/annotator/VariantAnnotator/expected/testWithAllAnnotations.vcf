@@ -50,6 +50,7 @@
 ##INFO=<ID=MQRankSum,Number=1,Type=Float,Description="Z-score From Wilcoxon rank sum test of Alt vs. Ref read mapping qualities">
 ##INFO=<ID=NCC,Number=1,Type=Integer,Description="Number of no-called samples">
 ##INFO=<ID=QD,Number=1,Type=Float,Description="Variant Confidence/Quality by Depth">
+##INFO=<ID=RAW_MQ,Number=1,Type=Float,Description="Raw data for RMS Mapping Quality">
 ##INFO=<ID=RPA,Number=.,Type=Integer,Description="Number of times tandem repeat unit is repeated, for each allele (including reference)">
 ##INFO=<ID=RU,Number=1,Type=String,Description="Tandem repeat unit (bases)">
 ##INFO=<ID=ReadPosRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt vs. Ref read position bias">
@@ -60,7 +61,7 @@
 ##INFO=<ID=loConfDeNovo,Number=1,Type=String,Description="Low confidence possible de novo mutation (GQ >= 10 for child, GQ > 0 for parents)=[comma-delimited list of child samples]">
 ##contig=<ID=20,length=63025520,assembly=b37>
 ##contig=<ID=21,length=48129895,assembly=b37>
-##reference=file:///Users/mduran/gatk/src/test/resources/large/human_g1k_v37.20.21.fasta
+##reference=file:///Users/gauthier/workspaces/gatk/src/test/resources/large/human_g1k_v37.20.21.fasta
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA12878
 20	10000117	.	C	T	905.77	.	AC=1;AF=0.500;AN=2;AS_MQ;BaseQRankSum=2.136;ClippingRankSum=0.000;DP=64;ExcessHet=3.0103;FS=0.000;GQ_MEAN=99.00;MQ=59.71;MQ0=0;MQRankSum=0.913;NCC=0;QD=14.15;ReadPosRankSum=-0.481;SOR=0.693;Samples=NA12878	GT:AD:AF:DP:F1R2:F2R1:GQ:MBQ:MFRL:MMQ:MPOS:NCount:PL:SB:UNIQ_ALT_READ_COUNT	0/1:36,28:0.438:0:0,0:0,0:99:0,0:0,0:0:0:0:934,0,1248:0,0,0,0:0
 20	10000211	.	C	T	941.77	.	AC=1;AF=0.500;AN=2;AS_MQ;BaseQRankSum=2.000;ClippingRankSum=0.000;DP=56;ExcessHet=3.0103;FS=0.000;GQ_MEAN=99.00;MQ=59.67;MQ0=0;MQRankSum=1.037;NCC=0;QD=16.82;ReadPosRankSum=0.996;SOR=0.693;Samples=NA12878	GT:AD:AF:DP:F1R2:F2R1:GQ:MBQ:MFRL:MMQ:MPOS:NCount:PL:SB:UNIQ_ALT_READ_COUNT	0/1:28,28:0.509:0:0,0:0,0:99:0,0:0,0:0:0:0:970,0,906:0,0,0,0:0
