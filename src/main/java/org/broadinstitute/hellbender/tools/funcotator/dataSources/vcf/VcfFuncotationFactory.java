@@ -147,12 +147,20 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
     List<VCFInfoHeaderLine> createFuncotationVcfInfoHeaderLines(final VCFHeader vcfHeader) {
         final List<VCFInfoHeaderLine> supportedVcfInfoHeaderLines = vcfHeader.getInfoHeaderLines().stream()
                 .filter(vcfInfoHeaderLine -> supportedFieldNames.contains(createFinalFieldName(name, vcfInfoHeaderLine.getID())))
-                .collect(Collectors.toList());
-
-        // Make sure to rename the input VCF field names to the output funcotation field names for this funcotation factory.
-        return supportedVcfInfoHeaderLines.stream()
                 .map(vcfInfoHeaderLine -> copyWithRename(vcfInfoHeaderLine, name))
                 .collect(Collectors.toList());
+
+        // Add in the ID field to the meta data:
+        final VCFInfoHeaderLine idHeaderLine = new VCFInfoHeaderLine(
+                createFinalFieldName(name, "ID"),
+                VCFHeaderLineCount.A,
+                VCFHeaderLineType.String,
+                "ID of the variant from the data source creating this annotation."
+                );
+        supportedVcfInfoHeaderLines.add( idHeaderLine );
+
+        // Make sure to rename the input VCF field names to the output funcotation field names for this funcotation factory.
+        return supportedVcfInfoHeaderLines;
     }
 
     private static VCFInfoHeaderLine copyWithRename(final VCFInfoHeaderLine vcfInfoHeaderLine, final String name) {
@@ -249,6 +257,9 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
                         for (final Map.Entry<String, Object> entry : funcotationFactoryVariant.getAttributes().entrySet()) {
                             populateAnnotationMap(funcotationFactoryVariant, variant, matchIndex, annotations, entry);
                         }
+
+                        // Add the ID of the variant:
+                        annotations.put(createFinalFieldName(name, "ID"), variant.getID());
 
                         final TableFuncotation newFuncotation = TableFuncotation.create(annotations, queryAltAllele, name, supportedFieldMetadata);
                         outputOrderedMap.merge(queryAltAllele, newFuncotation, VcfFuncotationFactory::mergeDuplicateFuncotationFactoryVariant);
@@ -439,6 +450,10 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
             }
             supportedFieldNames.add(createFinalFieldName(name, key));
         }
+
+        // Add our ID to the supported fields:
+        supportedFieldNamesAndDefaults.put(createFinalFieldName(name, "ID"), "" );
+        supportedFieldNames.add(createFinalFieldName(name, "ID"));
     }
 
     @VisibleForTesting
