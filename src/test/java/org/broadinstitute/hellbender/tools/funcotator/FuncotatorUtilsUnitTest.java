@@ -412,7 +412,7 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
     }
 
     @DataProvider
-    Object[][] provideDataForGetStartPositionInCodingSequence() {
+    Object[][] provideDataForGetStartPositionInTranscript() {
 
         final List<? extends Locatable> exons_forward = Arrays.asList(
                 new SimpleInterval("chr1", 10,19),
@@ -791,6 +791,9 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
 
         // NOTE: The ref and alt alleles only matter for length - content is not checked.
 
+        // Arrays have the following fields:
+        // protChangeStartPos,protChangeEndPos,refAminoAcidSeq,altAminoAcidSeq,refAllele,altAllele,startCodon,refAlleleStartPosition,expected
+
         return new Object[][] {
                 // SNPs:
                 //    No protein change:
@@ -915,205 +918,6 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
     }
 
     @DataProvider
-    Object[][] provideForTestCreateProteinChangeInfo() {
-
-        // PIK3CA is on chr3 and is transcribed in the FORWARD direction:
-        final ReferenceDataSource pik3caTranscriptDataSource = ReferenceDataSource.of(new File(FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19).toPath());
-        final String              pik3caFullTranscriptName   = pik3caTranscriptDataSource.getSequenceDictionary().getSequences().stream().filter(s -> s.getSequenceName().startsWith(FuncotatorTestConstants.PIK3CA_TRANSCRIPT)).map(SAMSequenceRecord::getSequenceName).collect(Collectors.joining());
-        final ReferenceSequence   pik3caReferenceSequence    = pik3caTranscriptDataSource.queryAndPrefetch(pik3caFullTranscriptName, 158, 3364);
-
-        // MUC16 is on chr19 and is transcribed in the REVERSE direction:
-        // (The magic numbers here are the coding region for this transscript for MUC16)
-        final ReferenceDataSource muc16TranscriptDataSource = ReferenceDataSource.of(new File(FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19).toPath());
-        final String              muc16FullTranscriptName   = muc16TranscriptDataSource.getSequenceDictionary().getSequences().stream().filter(s -> s.getSequenceName().startsWith(FuncotatorTestConstants.MUC16_TRANSCRIPT)).map(SAMSequenceRecord::getSequenceName).collect(Collectors.joining());
-        final ReferenceSequence   muc16ReferenceSequence    = muc16TranscriptDataSource.queryAndPrefetch(muc16FullTranscriptName, 205, 43728);
-
-        return new Object[][] {
-                // MNPs:
-                //    length 1:
-                {
-                    Allele.create("A", true),
-                    Allele.create("T"),
-                    1,
-                    1,
-                    pik3caReferenceSequence.getBaseString(),
-                    Strand.POSITIVE,
-                    FuncotatorUtils.ProteinChangeInfo.create(1,1,"M", "L")
-                },
-                //    length >=3:
-                {
-                        Allele.create("CACT", true),
-                        Allele.create("GGGA"),
-                        1629,
-                        1627,
-                        pik3caReferenceSequence.getBaseString(),
-                        Strand.POSITIVE,
-                        FuncotatorUtils.ProteinChangeInfo.create(543,544,"IT", "MG")
-                },
-
-                // Insertions:
-                //     FS
-                {
-                        Allele.create("C", true),
-                        Allele.create("CG"),
-                        1629,
-                        1627,
-                        pik3caReferenceSequence.getBaseString(),
-                        Strand.POSITIVE,
-                        FuncotatorUtils.ProteinChangeInfo.create(544,544,"T", "")
-                },
-                //     Non-FS between codons
-                //         + strand
-                {
-                        Allele.create("C", true),
-                        Allele.create("CGGA"),
-                        1629,
-                        1627,
-                        pik3caReferenceSequence.getBaseString(),
-                        Strand.POSITIVE,
-                        FuncotatorUtils.ProteinChangeInfo.create(543,544,"", "G")
-                },
-                //         - strand
-                {
-                        Allele.create("T", true),
-                        Allele.create("TTGG"),
-                        10083,
-                        10081,
-                        muc16ReferenceSequence.getBaseString(),
-                        Strand.NEGATIVE,
-                        FuncotatorUtils.ProteinChangeInfo.create(3361,3362,"", "W")
-                },
-                //     Non-FS within codons
-                {
-                        Allele.create("A", true),
-                        Allele.create("ACTG"),
-                        1630,
-                        1630,
-                        pik3caReferenceSequence.getBaseString(),
-                        Strand.POSITIVE,
-                        FuncotatorUtils.ProteinChangeInfo.create(544,545,"", "A")
-                },
-                {
-                        Allele.create("A", true),
-                        Allele.create("ATCG"),
-                        1630,
-                        1630,
-                        pik3caReferenceSequence.getBaseString(),
-                        Strand.POSITIVE,
-                        FuncotatorUtils.ProteinChangeInfo.create(544,544,"T", "IA")
-                },
-
-                // Deletions:
-                //     FS
-                {
-                        Allele.create("CA", true),
-                        Allele.create("C"),
-                        1629,
-                        1627,
-                        pik3caReferenceSequence.getBaseString(),
-                        Strand.POSITIVE,
-                        FuncotatorUtils.ProteinChangeInfo.create(544,544,"T", "")
-                },
-                //     Non-FS between codons
-                //         + strand
-                {
-                        Allele.create("CACT", true),
-                        Allele.create("C"),
-                        1629,
-                        1627,
-                        pik3caReferenceSequence.getBaseString(),
-                        Strand.POSITIVE,
-                        FuncotatorUtils.ProteinChangeInfo.create(544,544,"T", "")
-                },
-                //         - strand
-                {
-                        Allele.create("TCTG", true),
-                        Allele.create("T"),
-                        10083,
-                        10081,
-                        muc16ReferenceSequence.getBaseString(),
-                        Strand.NEGATIVE,
-                        FuncotatorUtils.ProteinChangeInfo.create(3362,3362,"L", "")
-                },
-                {
-                        Allele.create("TCTGAGC", true),
-                        Allele.create("T"),
-                        10083,
-                        10081,
-                        muc16ReferenceSequence.getBaseString(),
-                        Strand.NEGATIVE,
-                        FuncotatorUtils.ProteinChangeInfo.create(3362,3362,"LS", "")
-                },
-                //     Non-FS within codons
-                //         + strand
-                {
-                        Allele.create("ACTG", true),
-                        Allele.create("A"),
-                        1630,
-                        1630,
-                        pik3caReferenceSequence.getBaseString(),
-                        Strand.POSITIVE,
-                        FuncotatorUtils.ProteinChangeInfo.create(544,545,"TE", "K")
-                },
-                {
-                        Allele.create("CTGA", true),
-                        Allele.create("C"),
-                        1631,
-                        1630,
-                        pik3caReferenceSequence.getBaseString(),
-                        Strand.POSITIVE,
-                        FuncotatorUtils.ProteinChangeInfo.create(545,545,"E", "")
-                },
-                {
-                        Allele.create("CTGAGCA", true),
-                        Allele.create("C"),
-                        1631,
-                        1630,
-                        pik3caReferenceSequence.getBaseString(),
-                        Strand.POSITIVE,
-                        FuncotatorUtils.ProteinChangeInfo.create(545,545,"EQ", "")
-                },
-                {
-                        Allele.create("ACTGAGC", true),
-                        Allele.create("A"),
-                        1630,
-                        1630,
-                        pik3caReferenceSequence.getBaseString(),
-                        Strand.POSITIVE,
-                        FuncotatorUtils.ProteinChangeInfo.create(544,546,"TEQ", "K")
-                },
-                //         - strand
-                {
-                        Allele.create("CTCT", true),
-                        Allele.create("C"),
-                        10082,
-                        10081,
-                        muc16ReferenceSequence.getBaseString(),
-                        Strand.NEGATIVE,
-                        FuncotatorUtils.ProteinChangeInfo.create(3362,3362,"L", "")
-                },
-                {
-                        Allele.create("TCTC", true),
-                        Allele.create("T"),
-                        10081,
-                        10081,
-                        muc16ReferenceSequence.getBaseString(),
-                        Strand.NEGATIVE,
-                        FuncotatorUtils.ProteinChangeInfo.create(3361,3361,"S", "")
-                },
-                {
-                        Allele.create("CTCTGAG", true),
-                        Allele.create("C"),
-                        10082,
-                        10081,
-                        muc16ReferenceSequence.getBaseString(),
-                        Strand.NEGATIVE,
-                        FuncotatorUtils.ProteinChangeInfo.create(3362,3362,"LS", "")
-                },
-        };
-    }
-
-    @DataProvider
     Object[][] provideForTestGetCodingSequenceChangeString() {
 
 //        final int codingSequenceAlleleStart,
@@ -1145,6 +949,9 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
 
     @DataProvider
     Object[][] provideForTestIsIndelBetweenCodons() {
+
+        // Arrays have the following fields:
+        // codingSequenceAlleleStart, alignedCodingSequenceAlleleStart, refAllele, strand, expected
 
         return new Object[][] {
                 // + Strand:
@@ -1241,8 +1048,8 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
 //        final Strand strand
 //        expected
 
-        // TODO: Make tests with Strand.NEGATIVE!!!!
-        // TODO: Make tests with alt allele longer/shorter than ref allele!
+        // TODO: Make tests with Strand.NEGATIVE!!!!  (issue #5351 - https://github.com/broadinstitute/gatk/issues/5351)
+        // TODO: Make tests with alt allele longer/shorter than ref allele!  (issue #5351 - https://github.com/broadinstitute/gatk/issues/5351)
 
 //                                                 11111111112222222222333333333344444444445555555555666666
 //                                       012345678901234567890123456789012345678901234567890123456789012345
@@ -1904,9 +1711,9 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals( FuncotatorUtils.getNonOverlappingAltAlleleBaseString(refAllele, altAllele, copyRefBasesWhenAltIsPastEnd), expected);
     }
 
-    @Test(dataProvider = "provideDataForGetStartPositionInCodingSequence")
-    void testGetStartPositionInCodingSequence(final Locatable variant, final List<? extends Locatable> transcript, final Strand strand, final int expected) {
-        Assert.assertEquals( FuncotatorUtils.getStartPositionInCodingSequence(variant, transcript, strand), expected );
+    @Test(dataProvider = "provideDataForGetStartPositionInTranscript")
+    void testGetStartPositionInTranscript(final Locatable variant, final List<? extends Locatable> transcript, final Strand strand, final int expected) {
+        Assert.assertEquals( FuncotatorUtils.getStartPositionInTranscript(variant, transcript, strand), expected );
     }
 
     @Test(dataProvider = "providePositionAndExpectedAlignedPosition")
@@ -1921,7 +1728,7 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "provideDataForGetAlternateSequence")
     void testGetAlternateSequence(final String refCodingSeq, final int startPos, final Allele refAllele, final Allele altAllele, final String expected) {
-        Assert.assertEquals(FuncotatorUtils.getAlternateSequence(refCodingSeq, startPos, refAllele, altAllele, Strand.POSITIVE), expected);
+        Assert.assertEquals(FuncotatorUtils.getAlternateSequence(new FuncotatorUtils.StrandCorrectedReferenceBases(refCodingSeq), startPos, refAllele, altAllele, Strand.POSITIVE), expected);
     }
 
     @Test(dataProvider = "provideDataForGetEukaryoticAminoAcidByCodon")
@@ -2059,7 +1866,7 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
         final SequenceComparison seqComp = new SequenceComparison();
 
         seqComp.setProteinChangeInfo(
-                FuncotatorUtils.ProteinChangeInfo.create(
+                ProteinChangeInfo.create(
                         protChangeStartPos,
                         protChangeEndPos,
                         refAminoAcidSeq,
@@ -2079,27 +1886,6 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
         }
 
         Assert.assertEquals( FuncotatorUtils.renderProteinChangeString(seqComp, startCodon), expected );
-    }
-
-    @Test(dataProvider = "provideForTestCreateProteinChangeInfo")
-    void testCreateProteinChangeInfo( final Allele refAllele,
-                                      final Allele altAllele,
-                                      final int codingSequenceAlleleStart,
-                                      final int alignedCodingSequenceAlleleStart,
-                                      final String codingSequence,
-                                      final Strand strand,
-                                      final FuncotatorUtils.ProteinChangeInfo expected ) {
-
-        Assert.assertEquals(
-                FuncotatorUtils.createProteinChangeInfo(
-                        refAllele,
-                        altAllele,
-                        codingSequenceAlleleStart,
-                        alignedCodingSequenceAlleleStart,
-                        codingSequence,
-                        strand),
-                expected
-        );
     }
 
     @Test(dataProvider = "provideForTestGetCodingSequenceChangeString")
@@ -2158,7 +1944,7 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
 
         Assert.assertEquals(
                 FuncotatorUtils.getAlignedRefAllele(
-                        referenceSnippet,
+                        new FuncotatorUtils.StrandCorrectedReferenceBases(referenceSnippet),
                         referencePadding,
                         refAllele,
                         altAllele,
@@ -2222,14 +2008,14 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
                                                    final int referenceWindow,
                                                    final String expected) {
 
-        final String basesInWindow = FuncotatorUtils.getBasesInWindowAroundReferenceAllele(refAllele, referenceContext, strand, referenceWindow);
-        Assert.assertEquals( basesInWindow, expected );
+        final FuncotatorUtils.StrandCorrectedReferenceBases basesInWindow = FuncotatorUtils.getBasesInWindowAroundReferenceAllele(refAllele, referenceContext, strand, referenceWindow);
+        Assert.assertEquals( basesInWindow, new FuncotatorUtils.StrandCorrectedReferenceBases(expected) );
     }
 
     @Test(dataProvider = "provideDataForTestCreateReferenceSnippet")
     void testCreateReferenceSnippet(final Allele refAllele, final Allele altAllele, final ReferenceContext reference, final Strand strand, final String expected ) {
         final int referenceWindow = 10;
-        Assert.assertEquals( FuncotatorUtils.createReferenceSnippet(refAllele, altAllele, reference, strand, referenceWindow), expected);
+        Assert.assertEquals( FuncotatorUtils.createReferenceSnippet(refAllele, altAllele, reference, strand, referenceWindow), new FuncotatorUtils.StrandCorrectedReferenceBases(expected));
     }
 
     @Test(enabled = false)

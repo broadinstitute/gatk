@@ -53,6 +53,12 @@ public class GencodeFuncotation implements Funcotation {
     private String                  proteinChange;                      //           CDS
     private Double                  gcContent;
 
+    /**
+     * The reference context string is a string of N (configurable) bases around the
+     * locus of the variant on the reference genome.
+     * The reference context string is always represented by bases from the + strand around the variant, regardless of
+     * the strandedness of the variant itself.
+     */
     private String                  referenceContext;                   // Already calculated.
 
     private List<String>            otherTranscripts;                   // TRIVIAL
@@ -712,6 +718,13 @@ public class GencodeFuncotation implements Funcotation {
         return referenceContext;
     }
 
+    /**
+     * Set the reference context string.  The reference context string is a string of N (configurable) bases around the
+     * locus of the variant on the reference genome.
+     * The reference context string is always represented by bases from the + strand around the variant, regardless of
+     * the strandedness of the variant itself.
+     * @param referenceContext The string of bases around a variant to set as the referenceContext.
+     */
     public void setReferenceContext(final String referenceContext) {
         this.referenceContext = referenceContext;
     }
@@ -826,13 +839,13 @@ public class GencodeFuncotation implements Funcotation {
         SILENT("SILENT", 5),
         /** The variant is within a configurable number of bases (default=2) of a splice site. See the secondary classification to determine if it lies on the exon or intron side. */
         SPLICE_SITE("SPLICE_SITE", 4),
-        /** Deletion that keeps the sequence in frame (i.e. deletion of a length evenly divisible by 3). */
+        /** Deletion that keeps the sequence in frame (i.e. deletion of a length evenly divisible by {@link org.broadinstitute.hellbender.tools.funcotator.AminoAcid#CODON_LENGTH}). */
         IN_FRAME_DEL("IN_FRAME_DEL", 1),
-        /** Insertion that keeps the sequence in frame (i.e. insertion of a length evenly divisible by 3). */
+        /** Insertion that keeps the sequence in frame (i.e. insertion of a length evenly divisible by {@link org.broadinstitute.hellbender.tools.funcotator.AminoAcid#CODON_LENGTH}). */
         IN_FRAME_INS("IN_FRAME_INS", 1),
-        /** Insertion that moves the coding sequence out of frame (i.e. insertion of a length not evenly divisible by 3). */
+        /** Insertion that moves the coding sequence out of frame (i.e. insertion of a length not evenly divisible by {@link org.broadinstitute.hellbender.tools.funcotator.AminoAcid#CODON_LENGTH}). */
         FRAME_SHIFT_INS("FRAME_SHIFT_INS", 2),
-        /** Deletion that moves the sequence out of frame (i.e. deletion of a length not evenly divisible by 3). */
+        /** Deletion that moves the sequence out of frame (i.e. deletion of a length not evenly divisible by {@link org.broadinstitute.hellbender.tools.funcotator.AminoAcid#CODON_LENGTH}). */
         FRAME_SHIFT_DEL("FRAME_SHIFT_DEL", 2),
         /** Point mutation that overlaps the start codon. */
         START_CODON_SNP("START_CODON_SNP", 3),

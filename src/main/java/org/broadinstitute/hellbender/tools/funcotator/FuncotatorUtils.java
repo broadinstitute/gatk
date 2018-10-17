@@ -51,6 +51,10 @@ public final class FuncotatorUtils {
     private static final Map<String, String> B37_To_HG19_CONTIG_NAME_MAP;
     private static final Map<String, String> HG19_TO_B37_CONTIG_NAME_MAP;
 
+    private static final String CODON_CHANGE_FORMAT_STRING   = "c.(%d-%d)%s";
+    private static final String PROTEIN_CHANGE_FORMAT_STRING = "p.%s%s%s%s";
+    private static final String CDNA_CHANGE_FORMAT_STRING    = "c.%s%s%s%s";
+
     /**
      * Initialize our hashmaps of lookup tables:
      */
@@ -170,7 +174,7 @@ public final class FuncotatorUtils {
 
         ParamUtils.isPositive(position, "Genomic positions start at 1.");
 
-        return (((position - 1) % 3) == 0);
+        return (((position - 1) % AminoAcid.CODON_LENGTH) == 0);
     }
 
     /**
@@ -313,9 +317,9 @@ public final class FuncotatorUtils {
      * @param strand The strand on which the transcript is read.    Must not be {@code null}.  Must not be {@link Strand#NONE}.
      * @return The position (1-based, inclusive) describing where the given {@code allele} lies in the given {@code transcript}.  If the variant is not in the given {@code transcript}, then this returns -1.
      */
-    public static int getStartPositionInCodingSequence(final Locatable variant,
-                                                       final List<? extends Locatable> transcript,
-                                                       final Strand strand) {
+    public static int getStartPositionInTranscript(final Locatable variant,
+                                                   final List<? extends Locatable> transcript,
+                                                   final Strand strand) {
         Utils.nonNull(variant);
         Utils.nonNull(transcript);
         assertValidStrand( strand );
@@ -371,12 +375,12 @@ public final class FuncotatorUtils {
 
         ParamUtils.isPositive( alleleEndPosition, "Genomic positions must be > 0." );
 
-        return (int)(Math.ceil(alleleEndPosition / 3.0) * 3);
+        return (int)(Math.ceil(alleleEndPosition / ((double)AminoAcid.CODON_LENGTH)) * AminoAcid.CODON_LENGTH);
     }
 
     /**
      * Gets the sequence aligned position (1-based, inclusive) for the given coding sequence position.
-     * This will produce the next lowest position evenly divisible by 3, such that a codon starting at this returned
+     * This will produce the next lowest position evenly divisible by {@link AminoAcid#CODON_LENGTH}, such that a codon starting at this returned
      * position would include the given position.  This can be a negative number, in which case the codon would start
      * at the given position relative to the normal starting position (1) (this would be the case for an upstream
      * UTR or flank).
@@ -387,17 +391,17 @@ public final class FuncotatorUtils {
     public static int getAlignedPosition(final int position) {
 
         if ( position > 0 ) {
-            return position - ((position - 1) % 3);
+            return position - ((position - 1) % AminoAcid.CODON_LENGTH);
         }
         else {
             final int adjustedPos = 1 - position;
-            return -(adjustedPos - ((adjustedPos - 1) % 3) + 1);
+            return -(adjustedPos - ((adjustedPos - 1) % AminoAcid.CODON_LENGTH) + 1);
         }
     }
 
     /**
      * Calculates whether the given {@code startPosition} (1-based, inclusive) is in frame relative to the end of the region.
-     * @param startPosition The position (1-based, inclusive) relative to the start of a region to check for frame alignment.
+     * @param startPosition The position (1-based, inclusive) relative to the start of a region to check for frame alignment.  Must be relative to the given {@code regionLength}.  Concretely, {@code 0} < {@code startPosition} <= {@code regionLength}.
      * @param regionLength The length of the region containing {@code startPosition}.  Must be >= 0.
      * @return {@code true} if the given {@code startPosition} is in frame relative to the given {@code regionLength} ; {@code false} otherwise.
      */
@@ -409,7 +413,7 @@ public final class FuncotatorUtils {
         // the if statement so we don't have to do unnecessary math in the "normal" case:
         if ( startPosition > 0 ) {
             // Add 1 because of the 1-based/inclusive positions:
-            return (((regionLength - startPosition + 1) % 3) == 0);
+            return (((regionLength - startPosition + 1) % AminoAcid.CODON_LENGTH) == 0);
         }
         else {
             // If we have a position before our region starts, we must calculate an offset
@@ -417,7 +421,7 @@ public final class FuncotatorUtils {
             // We can then add this offset to the start and region length to simplify the calculation.
             final int preFlankOffset = 1 - startPosition;
 
-            return ((((regionLength + preFlankOffset) - (startPosition + preFlankOffset) + 1) % 3) == 0);
+            return ((((regionLength + preFlankOffset) - (startPosition + preFlankOffset) + 1) % AminoAcid.CODON_LENGTH) == 0);
         }
     }
 
@@ -441,7 +445,7 @@ public final class FuncotatorUtils {
         if ( strand == Strand.POSITIVE ) {
             // Check normally for positive strands:
             final int codonOffset = codingSequenceAlleleStart - alignedCodingSequenceAlleleStart;
-            return (((codonOffset + refAllele.length()) % 3) == 0);
+            return (((codonOffset + refAllele.length()) % AminoAcid.CODON_LENGTH) == 0);
         }
         else {
             // This is a little strange. Because we're on the reverse strand the bases will be inserted in
@@ -540,7 +544,6 @@ public final class FuncotatorUtils {
 
         // ONP:
         if ( GATKVariantContextUtils.isXnp(seqComp.getAlignedCodingSequenceReferenceAllele(), seqComp.getAlignedCodingSequenceAlternateAllele()) ) {
-//        if ( seqComp.getAlignedCodingSequenceReferenceAllele().length() == seqComp.getAlignedCodingSequenceAlternateAllele().length() ) {
             return getCodonChangeStringForOnp(
                     seqComp.getAlignedCodingSequenceReferenceAllele(),
                     seqComp.getAlignedCodingSequenceAlternateAllele(),
@@ -562,12 +565,12 @@ public final class FuncotatorUtils {
             final boolean isInsertion = GATKVariantContextUtils.isInsertion(seqComp.getAlignedCodingSequenceReferenceAllele(), seqComp.getAlignedCodingSequenceAlternateAllele());
 
             // Get our baseic aligned start and stop positions:
-            int alignedCodonStart = seqComp.getAlignedCodingSequenceAlleleStart();
+            final int alignedCodonStart = seqComp.getAlignedCodingSequenceAlleleStart();
             // Subtract 1 for the inclusive variant positions:
-            int alignedCodonEnd = seqComp.getAlignedCodingSequenceAlleleStart() + seqComp.getAlignedCodingSequenceReferenceAllele().length() - 1;
+            final int alignedCodonEnd = seqComp.getAlignedCodingSequenceAlleleStart() + seqComp.getAlignedCodingSequenceReferenceAllele().length() - 1;
 
             // Get the ref codon for the positions where the indel is:
-            String refCodon = seqComp.getAlignedCodingSequenceReferenceAllele().toLowerCase();
+            final String refCodon = seqComp.getAlignedCodingSequenceReferenceAllele().toLowerCase();
 
             // If we have a start codon indel, we do not need to render the codon change string.
             // (This is an oncotator convention that has been carried over.)
@@ -576,161 +579,194 @@ public final class FuncotatorUtils {
             }
             // Frameshifts are all the same:
             else if ( GATKVariantContextUtils.isFrameshift(seqComp.getAlignedCodingSequenceReferenceAllele(), seqComp.getAlignedCodingSequenceAlternateAllele()) ) {
-
-                // ONCOTATOR CODE FOR REFERENCE:
-                // codon_change = 'c.(%d-%d)%sfs' % (codon_position_start, codon_position_end, updated_ref_seq)
-
-                // Some special deletion adjustments to account for the VCF leading base problem.
-                //
-                if ( ((seqComp.getCodingSequenceAlleleStart() % 3) == 0) ) {
-                    // If we're an insertion and we start at the begining of a codon, we have to adjust for
-                    // the preceding base in the input VCF.  This means we have to skip the first or last 3 bases in the aligned
-                    // codon, because we have included them to grab the aligned data for the preceding base.
-                    // Note: This is not the aligned coding sequence position, but the raw coding sequence position:
-                    if ( isInsertion ) {
-                        if ( seqComp.getStrand() == Strand.POSITIVE ) {
-                            // Skip the first 3 bases in the aligned codon:
-                            alignedCodonStart += 3;
-                            alignedCodonEnd += 3;
-                            // Get the next bases in the coding sequence:
-                            // TODO: Make sure this won't fail for insertions at the end of a transcript!
-                            refCodon = seqComp.getTranscriptCodingSequence()
-                                    .getBaseString()
-                                    // Subtract 1 because we're 1-based for genomic coordinates:
-                                    .substring(alignedCodonStart-1, alignedCodonEnd)
-                                    .toLowerCase();
-                        }
-                    }
-                    // If we're a deletion and we start at the begining of a codon, we have to adjust for
-                    // the preceding base in the input VCF.  This means we have to skip the first or last 3 bases in the aligned
-                    // codon, because we have included them to grab the aligned data for the preceding base.
-                    // Note: This is not the aligned coding sequence position, but the raw coding sequence position:
-                    else {
-                        if ( seqComp.getStrand() == Strand.POSITIVE ) {
-                            // Skip the first 3 bases in the aligned codon:
-                            alignedCodonStart += 3;
-                            refCodon = refCodon.substring(3);
-                        }
-                        else {
-                            // Skip the last 3 bases in the aligned codon:
-                            alignedCodonEnd -= 3;
-                            refCodon = refCodon.substring(0, refCodon.length() - 3);
-                        }
-                    }
-                }
-
-                return "c.(" + alignedCodonStart + "-" + alignedCodonEnd + ")" +
-                        refCodon + "fs";
+                return getCodonChangeStringForFrameShifts(seqComp, isInsertion, alignedCodonStart, alignedCodonEnd, refCodon);
             }
             else {
                 // Insertions:
                 if ( isInsertion ) {
-                    if ( indelIsBetweenCodons ) {
-
-                        // Get the codon that is either after or before this position:
-                        final String adjacentRefCodon = getAdjacentReferenceCodon(
-                                seqComp.getTranscriptCodingSequence(),
-                                seqComp.getAlignedCodingSequenceAlleleStart(),
-                                seqComp.getAlignedReferenceAlleleStop(),
-                                seqComp.getStrand()
-                        );
-
-                        // If we're at the start or end of the sequence, we need to handle it as a special case:
-                        if ( adjacentRefCodon.isEmpty() ) {
-                            // We're at the very start/end of our coding sequence, so it doesn't make sense to include an
-                            // extra codon at the beginning/end (because there is no extra codon).
-
-                            // Get the capitalization correct in the alt string:
-                            final String capitalizedAltString = createCapitalizedAlternateAlleleInsertionCodonChangeString(
-                                    seqComp.getAlignedCodingSequenceAlternateAllele(),
-                                    seqComp.getAlternateAllele(),
-                                    seqComp.getCodingSequenceAlleleStart() - seqComp.getAlignedCodingSequenceAlleleStart() -
-                                            // Need to subtract 1 if we're going on the other strand to line up correctly with
-                                            // the start of the variant alleles:
-                                            (seqComp.getStrand() == Strand.POSITIVE ? 0 : 1)
-                            );
-
-                            return "c.(" + seqComp.getAlignedCodingSequenceAlleleStart() + "-" +
-                                    // -1 here to account for inclusive positions:
-                                    (seqComp.getAlignedCodingSequenceAlleleStart() + seqComp.getAlignedCodingSequenceReferenceAllele().length()-1) + ")" +
-                                    seqComp.getAlignedCodingSequenceReferenceAllele().toLowerCase() + ">" + capitalizedAltString;
-                        }
-                        // For + strand, we just get the changed codon, then the ref codon:
-                        else if (seqComp.getStrand() == Strand.POSITIVE ) {
-
-                            // in the + direction, the adjacent codon is the NEXT codon:
-                            final String nextRefCodon = adjacentRefCodon;
-
-                            // Here we adjust everything "right" by 3 bases (1 codon) because of the leading base that is
-                            // required for indels in VCF:
-                            return "c.(" + (seqComp.getAlignedCodingSequenceAlleleStart() + 3) + "-" +
-                                    (seqComp.getAlignedCodingSequenceAlleleStart() + 5) + ")" +
-                                    nextRefCodon.toLowerCase() + ">" + seqComp.getAlignedAlternateAllele().substring(3) + nextRefCodon.toLowerCase();
-                        }
-                        // For - strand we get both the codon before and after the insertion:
-                        else {
-                            // in the - direction, the adjacent codon is the PREVIOUS codon:
-                            final String prevRefCodon = adjacentRefCodon;
-
-                            // Adjust start for the extra codons:
-                            alignedCodonStart -= 3;
-
-                            // NOTE: The alt allele will contain the NEXT ref codon as well as the alt.
-                            //       The first codons in `seqComp.getAlignedAlternateAllele()` will be the alt, the last
-                            //       will be the ref.
-
-                            // Get the real alt codon:
-                            final String altCodon = seqComp.getAlignedAlternateAllele().substring(0, seqComp.getAlignedAlternateAllele().length() - 3);
-
-                            // NOTE: `nextRefCodon` will actually contain the previous ref codon because we're on the -
-                            //       strand.  Yes, it's confusing.  Sorry about that.
-                            return "c.(" + alignedCodonStart + "-" +
-                                    alignedCodonEnd + ")" +
-                                    prevRefCodon.toLowerCase() + refCodon.toLowerCase() + ">" + prevRefCodon.toLowerCase() + altCodon.toUpperCase() + refCodon.toLowerCase();
-                        }
-                    }
-                    else {
-
-                        // Get the capitalization correct in the alt string:
-                        final String capitalizedAltString = createCapitalizedAlternateAlleleInsertionCodonChangeString(
-                                seqComp.getAlignedCodingSequenceAlternateAllele(),
-                                seqComp.getAlternateAllele(),
-                                seqComp.getCodingSequenceAlleleStart() - seqComp.getAlignedCodingSequenceAlleleStart() -
-                                        // Need to subtract 1 if we're going on the other strand to line up correctly with
-                                        // the start of the variant alleles:
-                                        (seqComp.getStrand() == Strand.POSITIVE ? 0 : 1)
-                        );
-
-                        return "c.(" + alignedCodonStart + "-" + alignedCodonEnd + ")" +
-                                refCodon + ">" +
-                                capitalizedAltString;
-                    }
+                    return getCodonChangeStringForInsertion(seqComp, indelIsBetweenCodons, alignedCodonStart, alignedCodonEnd, refCodon);
                 }
                 // Deletions:
                 else {
-                    if ( indelIsBetweenCodons ) {
-
-                        if ( seqComp.getStrand() == Strand.POSITIVE ) {
-                            // Skip the first 3 bases in the aligned codon:
-                            alignedCodonStart += 3;
-                            refCodon = refCodon.substring(3);
-                        }
-                        else {
-                            // Skip the last 3 bases in the aligned codon:
-                            alignedCodonEnd -= 3;
-                            refCodon = refCodon.substring(0, refCodon.length() - 3);
-                        }
-
-                        return "c.(" + alignedCodonStart + "-" + alignedCodonEnd + ")" +
-                                refCodon + "del";
-                    }
-                    else {
-                        return "c.(" + alignedCodonStart + "-" + alignedCodonEnd
-                                + ")" + refCodon + ">" + seqComp.getAlignedCodingSequenceAlternateAllele().toLowerCase();
-                    }
+                    return getCodonChangeStringForDeletion(seqComp, indelIsBetweenCodons, alignedCodonStart, alignedCodonEnd, refCodon);
                 }
             }
         }
+    }
+
+    private static String getCodonChangeStringForDeletion(final SequenceComparison seqComp, final boolean indelIsBetweenCodons, int alignedCodonStart, int alignedCodonEnd, String refCodon) {
+
+        // Requires:
+        //     seqComp.getStrand()
+        //     seqComp.getAlignedCodingSequenceAlternateAllele()
+
+        if ( indelIsBetweenCodons ) {
+
+            if ( seqComp.getStrand() == Strand.POSITIVE ) {
+                // Skip the first AminoAcid.CODON_LENGTH bases in the aligned codon:
+                alignedCodonStart += AminoAcid.CODON_LENGTH;
+                refCodon = refCodon.substring(AminoAcid.CODON_LENGTH);
+            }
+            else {
+                // Skip the last AminoAcid.CODON_LENGTH bases in the aligned codon:
+                alignedCodonEnd -= AminoAcid.CODON_LENGTH;
+                refCodon = refCodon.substring(0, refCodon.length() - AminoAcid.CODON_LENGTH);
+            }
+
+            return String.format(CODON_CHANGE_FORMAT_STRING, alignedCodonStart, alignedCodonEnd, refCodon + "del");
+        }
+        else {
+            return String.format(CODON_CHANGE_FORMAT_STRING, alignedCodonStart, alignedCodonEnd, refCodon + ">" + seqComp.getAlignedCodingSequenceAlternateAllele().toLowerCase());
+        }
+    }
+
+    private static String getCodonChangeStringForInsertion(final SequenceComparison seqComp, final boolean indelIsBetweenCodons, int alignedCodonStart, final int alignedCodonEnd, final String refCodon) {
+
+        // Requires:
+        //     seqComp.getTranscriptCodingSequence()
+        //     seqComp.getAlignedCodingSequenceAlleleStart()
+        //     seqComp.getAlignedReferenceAlleleStop()
+        //     seqComp.getStrand()
+        //     seqComp.getAlignedCodingSequenceAlternateAllele()
+        //     seqComp.getAlternateAllele()
+        //     seqComp.getCodingSequenceAlleleStart()
+        //     seqComp.getAlignedCodingSequenceReferenceAllele()
+        //     seqComp.getAlignedAlternateAllele()
+        //     seqComp.getStrand()
+        //     seqComp.getStrand()
+
+        if ( indelIsBetweenCodons ) {
+
+            // Get the codon that is either after or before this position:
+            final String adjacentRefCodon = getAdjacentReferenceCodon(
+                    seqComp.getTranscriptCodingSequence(),
+                    seqComp.getAlignedCodingSequenceAlleleStart(),
+                    seqComp.getAlignedReferenceAlleleStop(),
+                    seqComp.getStrand()
+            );
+
+            // If we're at the start or end of the sequence, we need to handle it as a special case:
+            if ( adjacentRefCodon.isEmpty() ) {
+                // We're at the very start/end of our coding sequence, so it doesn't make sense to include an
+                // extra codon at the beginning/end (because there is no extra codon).
+
+                // Get the capitalization correct in the alt string:
+                final String capitalizedAltString = createCapitalizedAlternateAlleleInsertionCodonChangeString(
+                        seqComp.getAlignedCodingSequenceAlternateAllele(),
+                        seqComp.getAlternateAllele(),
+                        seqComp.getCodingSequenceAlleleStart() - seqComp.getAlignedCodingSequenceAlleleStart() -
+                                // Need to subtract 1 if we're going on the other strand to line up correctly with
+                                // the start of the variant alleles:
+                                (seqComp.getStrand() == Strand.POSITIVE ? 0 : 1)
+                );
+
+                return String.format(CODON_CHANGE_FORMAT_STRING,
+                        seqComp.getAlignedCodingSequenceAlleleStart(),
+                        (seqComp.getAlignedCodingSequenceAlleleStart() + seqComp.getAlignedCodingSequenceReferenceAllele().length()-1),
+                        seqComp.getAlignedCodingSequenceReferenceAllele().toLowerCase() + ">" + capitalizedAltString);
+            }
+            // For + strand, we just get the changed codon, then the ref codon:
+            else if (seqComp.getStrand() == Strand.POSITIVE ) {
+
+                // in the + direction, the adjacent codon is the NEXT codon:
+                final String nextRefCodon = adjacentRefCodon;
+
+                // Here we adjust everything "right" by AminoAcid.CODON_LENGTH bases (1 codon) because of the leading base that is
+                // required for indels in VCF:
+                return String.format(CODON_CHANGE_FORMAT_STRING,
+                        (seqComp.getAlignedCodingSequenceAlleleStart() + AminoAcid.CODON_LENGTH),
+                        (seqComp.getAlignedCodingSequenceAlleleStart() + AminoAcid.CODON_LENGTH + 2),
+                        nextRefCodon.toLowerCase() + ">" + seqComp.getAlignedAlternateAllele().substring(AminoAcid.CODON_LENGTH) + nextRefCodon.toLowerCase());
+            }
+            // For - strand we get both the codon before and after the insertion:
+            else {
+                // in the - direction, the adjacent codon is the PREVIOUS codon:
+                final String prevRefCodon = adjacentRefCodon;
+
+                // Adjust start for the extra codons:
+                alignedCodonStart -= AminoAcid.CODON_LENGTH;
+
+                // NOTE: The alt allele will contain the NEXT ref codon as well as the alt.
+                //       The first codons in `seqComp.getAlignedAlternateAllele()` will be the alt, the last
+                //       will be the ref.
+
+                // Get the real alt codon:
+                final String altCodon = seqComp.getAlignedAlternateAllele().substring(0, seqComp.getAlignedAlternateAllele().length() - AminoAcid.CODON_LENGTH);
+
+                // NOTE: `nextRefCodon` will actually contain the previous ref codon because we're on the -
+                //       strand.  Yes, it's confusing.  Sorry about that.
+                return String.format(CODON_CHANGE_FORMAT_STRING,
+                        alignedCodonStart,
+                        alignedCodonEnd,
+                        prevRefCodon.toLowerCase() + refCodon.toLowerCase() + ">" + prevRefCodon.toLowerCase() + altCodon.toUpperCase() + refCodon.toLowerCase());
+            }
+        }
+        else {
+
+            // Get the capitalization correct in the alt string:
+            final String capitalizedAltString = createCapitalizedAlternateAlleleInsertionCodonChangeString(
+                    seqComp.getAlignedCodingSequenceAlternateAllele(),
+                    seqComp.getAlternateAllele(),
+                    seqComp.getCodingSequenceAlleleStart() - seqComp.getAlignedCodingSequenceAlleleStart() -
+                            // Need to subtract 1 if we're going on the other strand to line up correctly with
+                            // the start of the variant alleles:
+                            (seqComp.getStrand() == Strand.POSITIVE ? 0 : 1)
+            );
+
+            return String.format(CODON_CHANGE_FORMAT_STRING,
+                    alignedCodonStart,
+                    alignedCodonEnd,
+                    refCodon + ">" + capitalizedAltString);
+        }
+    }
+
+    private static String getCodonChangeStringForFrameShifts(final SequenceComparison seqComp, final boolean isInsertion, int alignedCodonStart, int alignedCodonEnd, String refCodon) {
+
+        // Requires:
+        //     seqComp.getCodingSequenceAlleleStart()
+        //     seqComp.getStrand()
+        //     seqComp.getTranscriptCodingSequence()
+
+        // Some special deletion adjustments to account for the VCF leading base problem.
+        //
+        if ( ((seqComp.getCodingSequenceAlleleStart() % AminoAcid.CODON_LENGTH) == 0) ) {
+            // If we're an insertion and we start at the begining of a codon, we have to adjust for
+            // the preceding base in the input VCF.  This means we have to skip the first or last AminoAcid.CODON_LENGTH bases in the aligned
+            // codon, because we have included them to grab the aligned data for the preceding base.
+            // Note: This is not the aligned coding sequence position, but the raw coding sequence position:
+            if ( isInsertion ) {
+                if ( seqComp.getStrand() == Strand.POSITIVE ) {
+                    // Skip the first AminoAcid.CODON_LENGTH bases in the aligned codon:
+                    alignedCodonStart += AminoAcid.CODON_LENGTH;
+                    alignedCodonEnd += AminoAcid.CODON_LENGTH;
+                    // Get the next bases in the coding sequence:
+                    // TODO: Make sure this won't fail for insertions at the end of a transcript!
+                    refCodon = seqComp.getTranscriptCodingSequence()
+                            .getBaseString()
+                            // Subtract 1 because we're 1-based for genomic coordinates:
+                            .substring(alignedCodonStart-1, alignedCodonEnd)
+                            .toLowerCase();
+                }
+            }
+            // If we're a deletion and we start at the begining of a codon, we have to adjust for
+            // the preceding base in the input VCF.  This means we have to skip the first or last AminoAcid.CODON_LENGTH bases in the aligned
+            // codon, because we have included them to grab the aligned data for the preceding base.
+            // Note: This is not the aligned coding sequence position, but the raw coding sequence position:
+            else {
+                if ( seqComp.getStrand() == Strand.POSITIVE ) {
+                    // Skip the first AminoAcid.CODON_LENGTH bases in the aligned codon:
+                    alignedCodonStart += AminoAcid.CODON_LENGTH;
+                    refCodon = refCodon.substring(AminoAcid.CODON_LENGTH);
+                }
+                else {
+                    // Skip the last AminoAcid.CODON_LENGTH bases in the aligned codon:
+                    alignedCodonEnd -= AminoAcid.CODON_LENGTH;
+                    refCodon = refCodon.substring(0, refCodon.length() - AminoAcid.CODON_LENGTH);
+                }
+            }
+        }
+
+        return String.format(CODON_CHANGE_FORMAT_STRING, alignedCodonStart, alignedCodonEnd, refCodon + "fs");
     }
 
     private static boolean isStartCodonIndel(final SequenceComparison seqComp, final Locatable startCodon) {
@@ -793,7 +829,7 @@ public final class FuncotatorUtils {
     /**
      * Gets the next (+ strand) or previous (- strand) complete in-frame codon from the given {@link ReferenceSequence}
      * according to the current codon position and strand.
-     * @param referenceSequence The {@link ReferenceSequence} for the current codon.  Must not be {@code null}.
+     * @param referenceSequence The {@link ReferenceSequence} containing the complete coding sequence for the transcript on which the current variant occurs.  Must not be {@code null}.
      * @param currentAlignedCodingSequenceAlleleStart The starting position (1-based, inclusive) of the current codon.  Must be > 0.
      * @param currentAlignedCodingSequenceAlleleStop The ending position (1-based, inclusive) of the current codon.  Must be > 0.
      * @param strand The {@link Strand} on which the current codon resides.  Must not be {@code null}.  Must not be {@link Strand#NONE}.
@@ -812,8 +848,8 @@ public final class FuncotatorUtils {
         final String nextRefCodon;
         if ( strand == Strand.POSITIVE ) {
 
-            // Add 3 to get the "next" codon on the - strand:
-            final int endex = currentAlignedCodingSequenceAlleleStop + 3;
+            // Add AminoAcid.CODON_LENGTH to get the "next" codon on the - strand:
+            final int endex = currentAlignedCodingSequenceAlleleStop + AminoAcid.CODON_LENGTH;
 
             // Make sure we don't try to get bases after the end of our reference sequence:
             if ( endex >= referenceSequence.getBaseString().length() ) {
@@ -830,8 +866,8 @@ public final class FuncotatorUtils {
             }
             else {
                 // Subtract 1 because of 1-inclusive genomic positions
-                // Subtract 3 to get the "next" codon on the - strand:
-                nextRefCodon = referenceSequence.getBaseString().substring(currentAlignedCodingSequenceAlleleStart - 1 - 3, currentAlignedCodingSequenceAlleleStart - 1);
+                // Subtract AminoAcid.CODON_LENGTH to get the "next" codon on the - strand:
+                nextRefCodon = referenceSequence.getBaseString().substring(currentAlignedCodingSequenceAlleleStart - 1 - AminoAcid.CODON_LENGTH, currentAlignedCodingSequenceAlleleStart - 1);
             }
         }
         return nextRefCodon;
@@ -915,7 +951,7 @@ public final class FuncotatorUtils {
      * @return A {@link String} representing the codon change for the given {@link SequenceComparison}.
      */
     public static String renderProteinChangeString(final SequenceComparison seqComp,
-                                                final Locatable startCodon) {
+                                                   final Locatable startCodon) {
         Utils.nonNull(seqComp.getProteinChangeInfo());
         Utils.nonNull(seqComp.getReferenceAllele());
         Utils.nonNull(seqComp.getAlternateAllele());
@@ -924,50 +960,51 @@ public final class FuncotatorUtils {
             Utils.nonNull(seqComp.getAlleleStart());
         }
 
-        final String refAaSeq        = seqComp.getProteinChangeInfo().refAaSeq;
-        final String altAaSeq        = seqComp.getProteinChangeInfo().altAaSeq;
-        final int protChangeStartPos = seqComp.getProteinChangeInfo().aaStartPos;
-        final int protChangeEndPos   = seqComp.getProteinChangeInfo().aaEndPos;
+        final String refAaSeq        = seqComp.getProteinChangeInfo().getRefAaSeq();
+        final String altAaSeq        = seqComp.getProteinChangeInfo().getAltAaSeq();
+        final int protChangeStartPos = seqComp.getProteinChangeInfo().getAaStartPos();
+        final int protChangeEndPos   = seqComp.getProteinChangeInfo().getAaEndPos();
 
         if ( isStartCodonIndel(seqComp, startCodon) ) {
             return "";
         }
         else if ( GATKVariantContextUtils.isFrameshift( seqComp.getReferenceAllele(), seqComp.getAlternateAllele() ) ) {
-            return "p." + refAaSeq + protChangeStartPos + "fs";
+            return String.format(PROTEIN_CHANGE_FORMAT_STRING, "", refAaSeq, protChangeStartPos, "fs");
         }
         else if (GATKVariantContextUtils.isInsertion( seqComp.getReferenceAllele(), seqComp.getAlternateAllele() )) {
             //  In-Frame Insertion
             if ( protChangeStartPos == protChangeEndPos) {
-                return "p." + refAaSeq + protChangeStartPos + altAaSeq;
+                return String.format(PROTEIN_CHANGE_FORMAT_STRING, "", refAaSeq, protChangeStartPos, altAaSeq);
             }
             else if ( refAaSeq.isEmpty() ) {
-                return "p." + protChangeStartPos + '_' + protChangeEndPos + "ins" + altAaSeq;
+                return String.format(PROTEIN_CHANGE_FORMAT_STRING, "", protChangeStartPos + "_" + protChangeEndPos , "ins", altAaSeq);
             }
             else {
-                return "p." + protChangeStartPos + '_' + protChangeEndPos + refAaSeq + ">" + altAaSeq;
+                return String.format(PROTEIN_CHANGE_FORMAT_STRING, protChangeStartPos + "_" + protChangeEndPos, refAaSeq , ">", altAaSeq);
             }
         }
         else if (GATKVariantContextUtils.isDeletion( seqComp.getReferenceAllele(), seqComp.getAlternateAllele() )) {
             //  In-Frame Deletion
             if ( protChangeStartPos != protChangeEndPos ) {
-                return "p." + protChangeStartPos + '_' + protChangeEndPos + refAaSeq + ">" + altAaSeq;
+                return String.format(PROTEIN_CHANGE_FORMAT_STRING, protChangeStartPos + "_" + protChangeEndPos, refAaSeq , ">", altAaSeq);
             }
             else {
-                return "p." + refAaSeq + protChangeStartPos + "del";
+                return String.format(PROTEIN_CHANGE_FORMAT_STRING, "", refAaSeq , protChangeStartPos, "del");
             }
         }
         else {
             if ( protChangeStartPos != protChangeEndPos ) {
-                return "p." + protChangeStartPos + "_" + protChangeEndPos + refAaSeq + '>' + altAaSeq;
+                return String.format(PROTEIN_CHANGE_FORMAT_STRING, protChangeStartPos + "_" + protChangeEndPos, refAaSeq , ">", altAaSeq);
             }
             else {
-                return "p." + refAaSeq + protChangeStartPos + altAaSeq;
+                return String.format(PROTEIN_CHANGE_FORMAT_STRING, "", refAaSeq , protChangeStartPos, altAaSeq);
             }
         }
     }
 
     /**
      * Get the coding sequence change string from the given variant information.
+     * Also known as cDNA string.
      * This method is assumed to be called only when the variant occurs in a coding region of the genome.
      * @param codingSequenceAlleleStart The start position (1-based, inclusive) of the ref allele in the coding sequence.
      * @param refAllele A {@link String} containing the bases of the reference allele.  MUST BE Reverse Complemented if strand == {@link Strand#NEGATIVE}
@@ -992,23 +1029,24 @@ public final class FuncotatorUtils {
         // Check for ONP:
         if ( GATKVariantContextUtils.isXnp(refAllele, altAllele) ) {
             if (altAllele.length() > 1) {
-                return "c." + codingSequenceAlleleStart + "_" + (codingSequenceAlleleStart + refAllele.length() - 1) +
-                        refAllele + ">" + altAllele;
+                return String.format(CDNA_CHANGE_FORMAT_STRING,
+                        codingSequenceAlleleStart + "_" + (codingSequenceAlleleStart + refAllele.length() - 1),
+                        refAllele,
+                        ">",
+                        altAllele);
             } else {
-                return "c." + codingSequenceAlleleStart +
-                        refAllele + ">" + altAllele;
+                return String.format(CDNA_CHANGE_FORMAT_STRING, codingSequenceAlleleStart, refAllele, ">", altAllele);
             }
         }
         // Check for Insertion:
         else if ( GATKVariantContextUtils.isInsertion(refAllele, altAllele) ) {
             // Must account for strandedness when dealing with insertions:
+            // NOTE: Purposefully removing last base in allele to get rid of padding base.
             if ( strand == Strand.NEGATIVE ) {
-                return "c." + (codingSequenceAlleleStart-1) + "_" + codingSequenceAlleleStart +
-                        "ins" + altAllele.substring(0,altAllele.length()-1).toUpperCase();
+                return String.format(CDNA_CHANGE_FORMAT_STRING, (codingSequenceAlleleStart-1) + "_" + codingSequenceAlleleStart, "", "ins", altAllele.substring(0,altAllele.length()-1).toUpperCase());
             }
             else {
-                return "c." + codingSequenceAlleleStart + "_" + (codingSequenceAlleleStart + 1) +
-                        "ins" + altAllele.substring(refAllele.length()).toUpperCase();
+                return String.format(CDNA_CHANGE_FORMAT_STRING, codingSequenceAlleleStart + "_" + (codingSequenceAlleleStart + 1), "", "ins", altAllele.substring(refAllele.length()).toUpperCase());
             }
         }
         // Must be a Deletion:
@@ -1047,13 +1085,14 @@ public final class FuncotatorUtils {
 
             // Only add end extent if we have to:
             final String endBoundString = start == end ? "" : "_" + end;
-            return "c." + start + endBoundString + "del" + deletedBases;
+
+            return String.format(CDNA_CHANGE_FORMAT_STRING, start + endBoundString, "", "del", deletedBases);
         }
     }
 
     /**
      * Creates an amino acid sequence from a given coding sequence.
-     * If the coding sequence is not evenly divisible by 3, the remainder bases will not be included in the coding sequence.
+     * If the coding sequence is not evenly divisible by {@link AminoAcid#CODON_LENGTH}, the remainder bases will not be included in the coding sequence.
      * @param codingSequence The coding sequence from which to create an amino acid sequence.  Must not be {@code null}.
      * @param isFrameshift Whether the given {@code codingSequence} was derived from a frameshift mutation.  In this case, no warning will be issued for incorrect sequence length.
      * @param extraLoggingInfo A {@link String} containing extra info for logging purposes.
@@ -1067,17 +1106,17 @@ public final class FuncotatorUtils {
 
         // Ensure that we don't have remainder bases:
         int maxIndex = codingSequence.length();
-        if ( maxIndex % 3 != 0 ) {
-            maxIndex = (int)Math.floor(maxIndex / 3) * 3;
+        if ( maxIndex % AminoAcid.CODON_LENGTH != 0 ) {
+            maxIndex = (int)Math.floor(maxIndex / AminoAcid.CODON_LENGTH) * AminoAcid.CODON_LENGTH;
             if ( !isFrameshift ) {
-                logger.warn("createAminoAcidSequence given a coding sequence of length not divisible by 3.  Dropping bases from the end: " + (codingSequence.length() % 3) + (extraLoggingInfo.isEmpty() ? "" : " " + extraLoggingInfo));
+                logger.warn("createAminoAcidSequence given a coding sequence of length not divisible by " + AminoAcid.CODON_LENGTH + ".  Dropping bases from the end: " + (codingSequence.length() % AminoAcid.CODON_LENGTH) + (extraLoggingInfo.isEmpty() ? "" : " " + extraLoggingInfo));
             }
         }
 
-        for ( int i = 0; i < maxIndex; i += 3 ) {
-            final AminoAcid aa = getEukaryoticAminoAcidByCodon(codingSequence.substring(i, i+3));
+        for ( int i = 0; i < maxIndex; i += AminoAcid.CODON_LENGTH ) {
+            final AminoAcid aa = getEukaryoticAminoAcidByCodon(codingSequence.substring(i, i+AminoAcid.CODON_LENGTH));
             if ( aa == null ) {
-                throw new UserException.MalformedFile("File contains a bad codon sequence that has no amino acid equivalent: " + codingSequence.substring(i, i+3));
+                throw new UserException.MalformedFile("File contains a bad codon sequence that has no amino acid equivalent: " + codingSequence.substring(i, i+AminoAcid.CODON_LENGTH));
             }
             else {
                 sb.append(aa.getLetter());
@@ -1185,7 +1224,7 @@ public final class FuncotatorUtils {
             // Oh noes!
             // Ref allele is different from reference sequence!
             // Oh well, we should use the reference we were given anyways...
-            final String substitutedAlignedSeq = getAlternateSequence(codingSequence, refAlleleStart, refAllele, refAllele, strand);
+            final String substitutedAlignedSeq = getAlternateSequence(new StrandCorrectedReferenceBases(codingSequence), refAlleleStart, refAllele, refAllele, strand);
 
             // We use the positive strand here because we have already reverse complemented the sequence in the call
             // above.
@@ -1204,7 +1243,7 @@ public final class FuncotatorUtils {
     /**
      * Get the aligned coding sequence for the given reference allele.
      * NOTE: alignedRefAlleleStart must be less than or equal to codingSequenceRefAlleleStart.
-     * @param referenceSnippet {@link String} containing a short excerpt of the reference sequence around the given reference allele.  Must not be {@code null}.
+     * @param referenceSnippet {@link StrandCorrectedReferenceBases} containing a short excerpt of the reference sequence around the given reference allele.  Must not be {@code null}.
      * @param referencePadding Number of bases in {@code referenceSnippet} before the reference allele starts.  This padding exists at the end as well (plus some other bases to account for the length of the alternate allele if it is longer than the reference).  Must be >= 0.
      * @param refAllele The reference {@link Allele}.  Must not be {@code null}.
      * @param altAllele The alternate {@link Allele}.  Must not be {@code null}.
@@ -1214,7 +1253,7 @@ public final class FuncotatorUtils {
      * @param variantGenomicPositionForLogging The {@link Locatable} representing the position of the variant in genomic coordinates.  Used for logging purposes only.
      * @return A {@link String} of in-frame codons that contain the entire reference allele.
      */
-    public static String getAlignedRefAllele(final String referenceSnippet,
+    public static String getAlignedRefAllele(final StrandCorrectedReferenceBases referenceSnippet,
                                              final int referencePadding,
                                              final Allele refAllele,
                                              final Allele altAllele,
@@ -1240,7 +1279,7 @@ public final class FuncotatorUtils {
         final int extraBasesNeededForCodonAlignment = (codingSequenceRefAlleleStart - alignedRefAlleleStart);
 
         // We must add bases to the start to adjust for indels because of the required preceding base in VCF format:
-        final int indelAdjustment = altAllele.length() != refAllele.length() ? 1 : 0;
+        final int indelAdjustment = GATKVariantContextUtils.isIndel(refAllele, altAllele) ? 1 : 0;
 
         // We need to adjust coordinates for deletions on the - strand in the reference snippet:
         final int negativeDeletionAdjustment = (altAllele.length() < refAllele.length()) && (strand == Strand.NEGATIVE) ? 1 : 0;
@@ -1261,13 +1300,13 @@ public final class FuncotatorUtils {
             refStartAlignedIndex = 0;
         }
 
-        // Round to the nearest multiple of 3 to get the end position.
+        // Round to the nearest multiple of AminoAcid.CODON_LENGTH to get the end position.
         // Note this is the position of the first base NOT in the REF allele
         // (because it's used for substring coordinates).
-        int refEndPosExclusive = refStartAlignedIndex + (int)(Math.ceil((extraBasesNeededForCodonAlignment + refAllele.length()) / 3.0) * 3);
+        int refEndPosExclusive = refStartAlignedIndex + (int)(Math.ceil((extraBasesNeededForCodonAlignment + refAllele.length()) / ((double)AminoAcid.CODON_LENGTH)) * AminoAcid.CODON_LENGTH);
 
         // Create the aligned reference:
-        String alignedReferenceAllele = referenceSnippet.substring(refStartAlignedIndex, refEndPosExclusive);
+        String alignedReferenceAllele = referenceSnippet.getBaseString().substring(refStartAlignedIndex, refEndPosExclusive);
 
         final String computedReferenceAlleleWithSubstitution = alignedReferenceAllele.substring(extraBasesNeededForCodonAlignment, extraBasesNeededForCodonAlignment + refAllele.length());
 
@@ -1278,7 +1317,7 @@ public final class FuncotatorUtils {
 
             // Oh well, we should use the reference we were given anyways...
             final String substitutedReferenceSnippet = getAlternateSequence(referenceSnippet, referencePadding + 1, refAllele, refAllele, strand);
-            refEndPosExclusive = refStartAlignedIndex + (int)(Math.ceil((extraBasesNeededForCodonAlignment + refAllele.length()) / 3.0) * 3);
+            refEndPosExclusive = refStartAlignedIndex + (int)(Math.ceil((extraBasesNeededForCodonAlignment + refAllele.length()) / ((double)AminoAcid.CODON_LENGTH)) * AminoAcid.CODON_LENGTH);
 
             final String substitutedAlignedAlleleSeq = substitutedReferenceSnippet.substring(refStartAlignedIndex, refEndPosExclusive);
 
@@ -1298,18 +1337,26 @@ public final class FuncotatorUtils {
      * The number of bases before and after the variant is specified by {@code referenceWindow}.
      * The result will be trimmed down by 1 base in the event that the variant is an indel in order to account for
      * the required preceding base in VCF format.
+     *
      * ASSUMES: that the given {@link ReferenceContext} is already centered on the variant location.
+     *
      * @param refAllele The reference {@link Allele} for the variant.  Used
      * @param altAllele The alternate {@link Allele} for the variant.
-     * @param reference The {@link ReferenceContext} for the variant, with the current window around the variant.
+     * @param reference The {@link ReferenceContext} for the variant, with the current window centered on the variant with no padding around it.
      * @param strand The {@link Strand} on which the variant occurs.
      * @param referenceWindow The number of bases on either side of the variant to add to the resulting string.
-     * @return A {@link String} of bases of length either {@code referenceWindow} * 2 + |ref allele| OR {@code referenceWindow} * 2 + |ref allele| - 1 , corrected for strandedness.
+     * @return A {@link StrandCorrectedReferenceBases} of bases of length either {@code referenceWindow} * 2 + |ref allele| OR {@code referenceWindow} * 2 + |ref allele| - 1 , corrected for strandedness.
      */
-    public static String createReferenceSnippet(final Allele refAllele, final Allele altAllele, final ReferenceContext reference, final Strand strand, final int referenceWindow ) {
+    public static StrandCorrectedReferenceBases createReferenceSnippet(final Allele refAllele, final Allele altAllele, final ReferenceContext reference, final Strand strand, final int referenceWindow ) {
+
+        // Make sure our window in the reference includes only our variant:
+        Utils.validate(
+                (reference.numWindowLeadingBases() == reference.numWindowTrailingBases()) && (reference.numWindowLeadingBases() == 0),
+                "Reference must have no extra bases around the variant.  Found: " + reference.numWindowLeadingBases() + " before / + "  + reference.numWindowTrailingBases() + " + after"
+        );
 
         // We must add bases to the start to adjust for indels because of the required preceding base in VCF format:
-        final int indelStartBaseAdjustment = refAllele.length() != altAllele.length() ? 1 : 0;
+        final int indelStartBaseAdjustment = GATKVariantContextUtils.isIndel(refAllele, altAllele) ? 1 : 0;
 
         final int start = reference.getWindow().getStart() - referenceWindow + indelStartBaseAdjustment;
         final int end   = reference.getWindow().getEnd() + referenceWindow;
@@ -1322,10 +1369,10 @@ public final class FuncotatorUtils {
 
         // Get the bases in the correct direction:
         if ( strand == Strand.POSITIVE ) {
-            return new String(referenceBases);
+            return new StrandCorrectedReferenceBases(referenceBases);
         }
         else {
-            return ReadUtils.getBasesReverseComplement(referenceBases);
+            return new StrandCorrectedReferenceBases(ReadUtils.getBasesReverseComplement(referenceBases));
         }
     }
 
@@ -1336,9 +1383,9 @@ public final class FuncotatorUtils {
      * @param referenceContext The {@link ReferenceContext} centered around the variant in question.  Must not be {@code null}.
      * @param strand The {@link Strand} on which the variant in question lives.  Must not be {@code null}.  Must not be {@link Strand#NONE}.
      * @param referenceWindowInBases The number of bases to the left and right of the variant to return.  Must be > 0.
-     * @return A string containing {@code referenceWindowInBases} bases to either side of the specified refAllele.
+     * @return A {@link StrandCorrectedReferenceBases} containing {@code referenceWindowInBases} bases to either side of the specified refAllele.
      */
-    public static String getBasesInWindowAroundReferenceAllele( final Allele refAllele,
+    public static StrandCorrectedReferenceBases getBasesInWindowAroundReferenceAllele( final Allele refAllele,
                                                                 final ReferenceContext referenceContext,
                                                                 final Strand strand,
                                                                 final int referenceWindowInBases) {
@@ -1357,7 +1404,7 @@ public final class FuncotatorUtils {
         Utils.nonNull(alignedCodingSequenceAlleleStart);
         ParamUtils.isPositive( alignedCodingSequenceAlleleStart, "Genome positions must be > 0." );
 
-        return ((alignedCodingSequenceAlleleStart-1) / 3) + 1; // Add 1 because we're 1-based.
+        return ((alignedCodingSequenceAlleleStart-1) / AminoAcid.CODON_LENGTH) + 1; // Add 1 because we're 1-based.
     }
 
     /**
@@ -1387,7 +1434,7 @@ public final class FuncotatorUtils {
      * @param strand The {@link Strand} on which the variant occurs.  Must not be {@code null}.  Must not be {@link Strand#NONE}.
      * @return The coding sequence that includes the given alternate allele in place of the given reference allele.
      */
-    public static String getAlternateSequence(final String referenceSequence,
+    public static String getAlternateSequence(final StrandCorrectedReferenceBases referenceSequence,
                                               final int alleleStartPos,
                                               final Allele refAllele,
                                               final Allele altAllele,
@@ -1403,9 +1450,9 @@ public final class FuncotatorUtils {
         // the start and end of the coding region:
         final int alleleIndex = Math.abs(alleleStartPos - 1);
 
-        return referenceSequence.substring(0, alleleIndex) +
+        return referenceSequence.getBaseString().substring(0, alleleIndex) +
                 altAllele.getBaseString() +
-                referenceSequence.substring(alleleIndex + refAllele.length());
+                referenceSequence.getBaseString().substring(alleleIndex + refAllele.length());
     }
 
     /**
@@ -1983,336 +2030,6 @@ public final class FuncotatorUtils {
     }
 
     /**
-     * Create a {@link ProteinChangeInfo} object which will represent the change in the protein sequence
-     * which would be caused by a variant.
-     * @param refAllele The strand-corrected (i.e. if on the - strand, it has been reverse-complemented) reference {@link Allele} for the variant.  Must not be {@code null}.
-     * @param altAllele The strand-corrected (i.e. if on the - strand, it has been reverse-complemented) alternate {@link Allele} for the variant.  Must not be {@code null}.
-     * @param codingSequenceAlleleStart The position (1-based, inclusive) in the _coding sequence_ at which the variant begins.  (NOTE: This is _not_ the same the genomic position, nor is it necessarily the same as the transcript position of the variant).
-     * @param alignedCodingSequenceAlleleStart The codon-aligned position (1-based, inclusive) in the _coding sequence_ at which the variant begins.  (NOTE: This is _not_ the same the genomic position, nor is it necessarily the same as the transcript position of the variant).
-     * @param codingSequence The strand-corrected (i.e. if on the - strand, it has been reverse-complemented) sequence of bases containing the _coding sequence_ for a particular transcript of a gene, from which we should render a protein change.  (NOTE: This is _not_ the same the gene sequence, nor is it necessarily the same as the whole transcript sequence).  Must not be {@code null}.
-     * @param strand The {@link Strand} on which the transcript for this protein change occurs.  Must not be {@link Strand#NONE}.  Must not be {@code null}.
-     * @return
-     */
-    public static ProteinChangeInfo createProteinChangeInfo(final Allele refAllele,
-                                                            final Allele altAllele,
-                                                            final int codingSequenceAlleleStart,
-                                                            final int alignedCodingSequenceAlleleStart,
-                                                            final String codingSequence,
-                                                            final Strand strand) {
-        Utils.nonNull(refAllele);
-        Utils.nonNull(altAllele);
-        Utils.nonNull(codingSequence);
-        Utils.nonNull(strand);
-
-        // Cache whether it's a frameshift variant:
-        final boolean isFrameshift =  GATKVariantContextUtils.isFrameshift( refAllele, altAllele );
-
-        // Get our protein sequences:
-        final String referenceProteinSequence = FuncotatorUtils.createAminoAcidSequence(codingSequence, false, "(size=" + codingSequence.length() + ", ref allele: " + refAllele.getBaseString() + ")");
-        final String alternateProteinSequence = FuncotatorUtils.createAminoAcidSequence(
-                // Subtract 1 to account for 1-based genomic positions:
-                codingSequence.substring(0, codingSequenceAlleleStart - 1) +
-                        altAllele.getBaseString() +
-                        codingSequence.substring(codingSequenceAlleleStart + refAllele.length() -1),
-                isFrameshift,
-                "(size=" + codingSequence.length() + ", alt allele: " + altAllele.getBaseString() + ")"
-        );
-
-        // Get the _index_ of the first different amino acid (not the protein position!):
-        // Default to the amino acid corresponding to the aligned coding sequence allele start:
-        int proteinChangeStartIndex = (alignedCodingSequenceAlleleStart-1) / 3;
-        final int maxProteinSequenceLength = Math.max(referenceProteinSequence.length(), alternateProteinSequence.length());
-        for ( int i = 0; i < maxProteinSequenceLength; ++i ) {
-            if ( (i >= referenceProteinSequence.length()) || (i >= alternateProteinSequence.length()) ||
-                 (referenceProteinSequence.charAt(i) != alternateProteinSequence.charAt(i)) ) {
-                proteinChangeStartIndex = i;
-                break;
-            }
-        }
-
-        // Start pos is correct.
-        // Now get the end pos (need to check for FS).
-
-        int aaStartPos;
-        int aaEndPos;
-        String refAaSeq;
-        String altAaSeq;
-
-        final boolean indelIsBetweenCodons =
-                FuncotatorUtils.isIndelBetweenCodons(
-                        codingSequenceAlleleStart,
-                        alignedCodingSequenceAlleleStart,
-                        refAllele.getBaseString(),
-                        strand
-                );
-
-        // Get the number of amino acids for which the alt allele codes:
-        // Subtract 1 to remove leading base required by VCFs
-        final int numAltAminoAcids = (int)Math.ceil((altAllele.length() - 1)/3.0);
-
-        // Get the number of amino acids to use as the reference:
-        // subtract 1 to remove leading base required by VCFs
-        final int numRefAminoAcids = (int)Math.ceil((refAllele.length() - 1)/3.0);
-
-        // Frameshifts are always rendered the same way:
-        if (isFrameshift)  {
-            aaStartPos = proteinChangeStartIndex + 1;
-            aaEndPos = aaStartPos;
-
-            // If we run off the end of the protein without finding a difference, we say the last codon is affected:
-            if ( aaEndPos > referenceProteinSequence.length() ) {
-                refAaSeq = referenceProteinSequence.substring(referenceProteinSequence.length()-1, referenceProteinSequence.length());
-                altAaSeq = "";
-            }
-            else {
-                refAaSeq = referenceProteinSequence.substring(proteinChangeStartIndex, aaEndPos);
-                altAaSeq = "";
-            }
-        }
-        // Handle insertions and deletions:
-        else if ( GATKVariantContextUtils.isInsertion( refAllele, altAllele ) ) {
-            // We render the protein change differently if it's an insertion directly between two codons:
-            if (indelIsBetweenCodons) {
-
-                // Get the position of the Amino Acid before the insertion:
-                aaStartPos = ((alignedCodingSequenceAlleleStart-1) / 3) +
-                        // If we're on the + strand we need to add 1 to make the amino acid position line up correctly:
-                        (strand == Strand.POSITIVE ? 1 : 0);
-                aaEndPos = aaStartPos + 1;
-                refAaSeq = "";
-                altAaSeq = alternateProteinSequence.substring(proteinChangeStartIndex, proteinChangeStartIndex + numAltAminoAcids );
-            }
-            else {
-                // To start with, we fill in the information naively corresponding to the potentially
-                // changed amino acid sequence:
-                proteinChangeStartIndex = ((alignedCodingSequenceAlleleStart-1) / 3);
-
-                aaStartPos = proteinChangeStartIndex + 1;
-                aaEndPos = aaStartPos + numRefAminoAcids;
-
-                refAaSeq = referenceProteinSequence.substring(proteinChangeStartIndex, aaEndPos);
-                altAaSeq = alternateProteinSequence.substring(proteinChangeStartIndex, aaStartPos + numAltAminoAcids);
-
-                // OK, now we have a naive, but correct protein change.
-                // We should attempt to simplify it into a simple insertion.
-                // To do this we must detect the bases that have been inserted into the reference amino acid
-                // string.
-                // For this case, we check the first and last amino acids in the ref and alt strings to
-                // see if they match.  If so we remove that amino acid from the change string.
-                //
-                // Note this case is similar to the complementary deletion case.
-                // Note that we must attempte to alternate looking at the front and the back to get the proper
-                //      and correct protein change.
-                boolean frontMustBeTrimmed = (!refAaSeq.isEmpty()) && (!altAaSeq.isEmpty()) && (refAaSeq.charAt(0) == altAaSeq.charAt(0));
-                boolean backMustBeTrimmed  = true;
-
-                while ( frontMustBeTrimmed || backMustBeTrimmed ) {
-                    if ( frontMustBeTrimmed ) {
-                        aaEndPos++;
-                        refAaSeq = refAaSeq.substring(1);
-                        altAaSeq = altAaSeq.substring(1);
-                    }
-
-                    backMustBeTrimmed = (!refAaSeq.isEmpty()) && (refAaSeq.charAt(refAaSeq.length() - 1) == altAaSeq.charAt(altAaSeq.length() - 1));
-                    if ( backMustBeTrimmed ) {
-
-                        // Must adjust start position so that insertions can occur with a correct range:
-                        if ( aaStartPos == aaEndPos ) {
-                            --aaStartPos;
-                        }
-                        else {
-                            --aaEndPos;
-                        }
-
-                        refAaSeq = refAaSeq.substring(0, refAaSeq.length() - 1);
-                        altAaSeq = altAaSeq.substring(0, altAaSeq.length() - 1);
-                    }
-
-                    frontMustBeTrimmed = (!refAaSeq.isEmpty()) && (!altAaSeq.isEmpty()) && (refAaSeq.charAt(0) == altAaSeq.charAt(0));
-                }
-            }
-        }
-        else if ( GATKVariantContextUtils.isDeletion( refAllele, altAllele ) ) {
-
-            // We render the protein change differently if it's a deletion directly between two codons:
-            if (indelIsBetweenCodons) {
-                // Because we're inbetween codons / have full codons deleted, we can use the start position of the
-                // variant:
-                // Add 1 to account for the required leading base when on + strands:
-                proteinChangeStartIndex = ((alignedCodingSequenceAlleleStart-1) / 3) + (strand == Strand.POSITIVE ? 1 : 0);
-
-                aaStartPos = proteinChangeStartIndex + 1;
-                aaEndPos = aaStartPos + numRefAminoAcids - 1;
-                refAaSeq = referenceProteinSequence.substring(proteinChangeStartIndex, proteinChangeStartIndex + numRefAminoAcids);
-                altAaSeq = "";
-            }
-            else {
-                // To start with, we fill in the information naively corresponding to the potentially
-                // changed amino acid sequence:
-                proteinChangeStartIndex = ((alignedCodingSequenceAlleleStart - 1) / 3);
-
-                // If we're on the - strand, we need to grab 1 fewer amino acid from the end of the sequence:
-                final int endOffset = strand == Strand.POSITIVE ? 1 : 0;
-
-                aaStartPos = proteinChangeStartIndex + 1;
-                aaEndPos = aaStartPos + numRefAminoAcids + endOffset;
-
-                refAaSeq = referenceProteinSequence.substring(proteinChangeStartIndex, aaEndPos);
-                altAaSeq = alternateProteinSequence.substring(proteinChangeStartIndex, aaStartPos + numAltAminoAcids + endOffset);
-
-                // OK, now we have a naive, but correct protein change.
-                // We should attempt to simplify it
-                // into a simple deletion.
-                // To do this we must detect the bases that have been deleted from the reference amino acid
-                // string.  Because of the properties of in-frame deletions, we know that the middle amino
-                // acids are the ones that could be deleted.  Therefore, we can detect this case by checking
-                // if first and last amino acids are the same (between refAaSeq and altAaSeq).  If they are
-                // then we can safely identify the middle bases as the deleted bases.
-                // In the case where only the first or last amino acid is the same, we know that that
-                // refAaSeq.length() must be 2, and that it is the other amino acid that has been deleted.
-                //
-                // Note this case is similar to the complementary insertion case.
-                // Note that we must attempte to alternate looking at the front and the back to get the proper
-                //      and correct protein change.
-                boolean frontMustBeTrimmed = (!refAaSeq.isEmpty()) && (!altAaSeq.isEmpty()) && (refAaSeq.charAt(0) == altAaSeq.charAt(0));
-                boolean backMustBeTrimmed  = true;
-
-                while ( frontMustBeTrimmed || backMustBeTrimmed ) {
-                    if ( frontMustBeTrimmed ) {
-                        // Set up our data as a simple deletion:
-                        aaStartPos++;
-                        aaEndPos = aaStartPos;
-                        refAaSeq = refAaSeq.substring(1);
-                        altAaSeq = altAaSeq.substring(1);
-                    }
-
-                    backMustBeTrimmed = (!altAaSeq.isEmpty()) && (refAaSeq.charAt(refAaSeq.length() - 1) == altAaSeq.charAt(altAaSeq.length() - 1));
-                    if ( backMustBeTrimmed ) {
-                        // Set up our data as a simple deletion:
-                        --aaEndPos;
-                        refAaSeq = refAaSeq.substring(0, refAaSeq.length() - 1);
-                        altAaSeq = altAaSeq.substring(0, altAaSeq.length() - 1);
-                    }
-
-                    frontMustBeTrimmed = (!refAaSeq.isEmpty()) && (!altAaSeq.isEmpty()) && (refAaSeq.charAt(0) == altAaSeq.charAt(0));
-                }
-            }
-
-            // Check to make sure we have any alt amino acids left:
-            if ( altAaSeq.isEmpty() ) {
-                // We have actually just deleted a set of amino acids.
-                // Just set the end to the start to complete the deletion:
-                aaEndPos = aaStartPos;
-            }
-        }
-        else {
-            // MNP - get the length of the change and render the changed bases:
-            int i = proteinChangeStartIndex;
-            // Go through the protein sequences and find the first Amino Acid that is the same again:
-            while (( i < referenceProteinSequence.length()) && (i < alternateProteinSequence.length()) &&
-                    (referenceProteinSequence.charAt(i) != alternateProteinSequence.charAt(i))) {
-                ++i;
-            }
-            // Get the protein change end index:
-            final int proteinChangeEndIndex = i;
-
-            if ( proteinChangeStartIndex == proteinChangeEndIndex ) {
-                // We have a single-position / silent change:
-                // Add 1 to go from index to 1-based genomic position:
-                aaStartPos = proteinChangeStartIndex + 1;
-                aaEndPos = aaStartPos;
-                refAaSeq = referenceProteinSequence.substring(proteinChangeStartIndex, proteinChangeStartIndex + 1);
-                altAaSeq = refAaSeq;
-            }
-            else {
-                // Add 1 to go from index to 1-based genomic position:
-                aaStartPos = proteinChangeStartIndex + 1;
-                // Leave the end position as we found it to have correct bounds on the Amino Acids:
-                aaEndPos = proteinChangeEndIndex;
-                refAaSeq = referenceProteinSequence.substring(proteinChangeStartIndex, proteinChangeEndIndex);
-                altAaSeq = alternateProteinSequence.substring(proteinChangeStartIndex, proteinChangeEndIndex);
-            }
-        }
-
-        return ProteinChangeInfo.create(aaStartPos, aaEndPos, refAaSeq, altAaSeq);
-    }
-
-    /**
-     * A simple container class that holds the required information about a protein change.
-     */
-    public static final class ProteinChangeInfo {
-
-        /** 1-based inclusive position of the first amino acid changed in this {@link ProteinChangeInfo}. */
-        final public int    aaStartPos;
-        /** 1-based inclusive position of the last amino acid changed in this {@link ProteinChangeInfo}. */
-        final public int    aaEndPos;
-        /**
-         * {@link String} representation of the reference amino acid sequence in this {@link ProteinChangeInfo}.
-         * May be empty.  Must not be {@code null}.
-         */
-        final public String refAaSeq;
-        /**
-         * {@link String} representation of the alternate amino acid sequence in this {@link ProteinChangeInfo}.
-         * May be empty.  Must not be {@code null}.
-         */
-        final public String altAaSeq;
-
-        private ProteinChangeInfo(final int    aaStartPos,
-                                  final int    aaEndPos,
-                                  final String refAaSeq,
-                                  final String altAaSeq) {
-            this.aaStartPos = aaStartPos;
-            this.aaEndPos   = aaEndPos;
-            this.refAaSeq   = refAaSeq;
-            this.altAaSeq   = altAaSeq;
-        }
-
-        /**
-         * Create a {@link ProteinChangeInfo} object containing given information about a protein change.
-         * @param aaStartPos 1-based inclusive position of the first amino acid changed in this {@link ProteinChangeInfo}.
-         * @param aaEndPos 1-based inclusive position of the last amino acid changed in this {@link ProteinChangeInfo}.
-         * @param refAaSeq {@link String} representation of the reference amino acid sequence in this {@link ProteinChangeInfo}.  May be empty.  Must not be {@code null}.
-         * @param altAaSeq {@link String} representation of the alternate amino acid sequence in this {@link ProteinChangeInfo}.  May be empty.  Must not be {@code null}.
-         * @return
-         */
-        public static ProteinChangeInfo create(final int    aaStartPos,
-                                        final int    aaEndPos,
-                                        final String refAaSeq,
-                                        final String altAaSeq) {
-            return new ProteinChangeInfo(aaStartPos,
-                                           aaEndPos,
-                                           refAaSeq,
-                                           altAaSeq);
-        }
-
-        @Override
-        public boolean equals(final Object that){
-            if ( that instanceof ProteinChangeInfo ) {
-                final ProteinChangeInfo thatPCI = (ProteinChangeInfo)that;
-                return  (aaStartPos == thatPCI.aaStartPos) &&
-                        (aaEndPos    == thatPCI.aaEndPos) &&
-                        (refAaSeq.equals(thatPCI.refAaSeq)) &&
-                        (altAaSeq.equals(thatPCI.altAaSeq));
-                }
-            return false;
-        }
-
-        @Override
-        public String toString() {
-            return "ProteinChangeInfo{" + aaStartPos + ", " + aaEndPos  + ", " + (refAaSeq.isEmpty() ? "\"\"" : refAaSeq) + ", " + (altAaSeq.isEmpty() ? "\"\"" : altAaSeq) + "}";
-        }
-
-        @Override
-        public int hashCode() {
-            int result = aaStartPos;
-            result = 31 * result + aaEndPos;
-            result = 31 * result + (refAaSeq != null ? refAaSeq.hashCode() : 0);
-            result = 31 * result + (altAaSeq != null ? altAaSeq.hashCode() : 0);
-            return result;
-        }
-    }
-
-    /**
      * @param funcotation Funcotation to render for a VCF.  Never {@code null}
      * @param includedFields List of fields to include.  Any that match fields in the funcotation will be rendered.
      *                       Never {@code null}
@@ -2329,6 +2046,54 @@ public final class FuncotatorUtils {
                 .filter(f -> includedFields.contains(f))
                 .map(field -> FuncotatorUtils.sanitizeFuncotationFieldForVcf(funcotation.getField(field)))
                 .collect(Collectors.joining(VcfOutputRenderer.FIELD_DELIMITER));
+    }
+
+    /**
+     * Simple container class to represent bases that have been corrected for strandedness already.
+     * That is, if they would occur on {@link Strand#NEGATIVE}, they have been reverse-complemented.
+     * If they would occur on {@link Strand#POSITIVE}, they have not been altered.
+     */
+    public static class StrandCorrectedReferenceBases {
+
+        private final String strandCorrectedReferenceBases;
+
+        public StrandCorrectedReferenceBases(final String bases) {
+            strandCorrectedReferenceBases = bases;
+        }
+
+        public StrandCorrectedReferenceBases(final byte[] bases) {
+            strandCorrectedReferenceBases = new String(bases);
+        }
+
+        public String getBaseString() {
+            return strandCorrectedReferenceBases;
+        }
+
+        public byte[] getBases() {
+            return strandCorrectedReferenceBases.getBytes();
+        }
+
+        @Override
+        public String toString() {
+            return "StrandCorrectedReferenceBases{" +
+                    strandCorrectedReferenceBases +
+                    '}';
+        }
+
+        @Override
+        public boolean equals(final Object o) {
+            if ( this == o ) return true;
+            if ( o == null || getClass() != o.getClass() ) return false;
+
+            final StrandCorrectedReferenceBases that = (StrandCorrectedReferenceBases) o;
+
+            return strandCorrectedReferenceBases != null ? strandCorrectedReferenceBases.equals(that.strandCorrectedReferenceBases) : that.strandCorrectedReferenceBases == null;
+        }
+
+        @Override
+        public int hashCode() {
+            return strandCorrectedReferenceBases != null ? strandCorrectedReferenceBases.hashCode() : 0;
+        }
     }
 }
 

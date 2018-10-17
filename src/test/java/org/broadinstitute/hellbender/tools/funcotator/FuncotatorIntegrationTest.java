@@ -6,6 +6,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFCompoundHeaderLine;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
+import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
@@ -25,11 +26,13 @@ import org.broadinstitute.hellbender.tools.funcotator.mafOutput.CustomMafFuncota
 import org.broadinstitute.hellbender.tools.funcotator.mafOutput.MafOutputRenderer;
 import org.broadinstitute.hellbender.tools.funcotator.mafOutput.MafOutputRendererConstants;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.*;
+import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -52,9 +55,9 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     // Whether to do debug output (i.e. leave output around).
     // This should always be false when checked in.
     // These tests would take ~30 minutes to complete each.
-    private static final boolean enableFullScaleTests = false;
-    private static final String LARGE_DATASOURCES_FOLDER = "funcotator_dataSources_latest";
-    private static final String GERMLINE_DATASOURCES_FOLDER = "funcotator_dataSources_germline_latest";
+    private static final boolean enableFullScaleValidationTest = false;
+    private static final String  LARGE_DATASOURCES_FOLDER      = "funcotator_dataSources_latest";
+    private static final String  GERMLINE_DATASOURCES_FOLDER   = "funcotator_dataSources_germline_latest";
 
     private static final String XSV_CLINVAR_MULTIHIT_TEST_VCF = toolsTestDir + "funcotator" + File.separator + "clinvar_hg19_multihit_test.vcf";
     private static final String DS_XSV_CLINVAR_TESTS          = largeFileTestDir + "funcotator" + File.separator + "small_ds_clinvar_hg19" + File.separator;
@@ -71,7 +74,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     private static final String PIK3CA_VCF_HG19_ALTS     = toolsTestDir + "funcotator" + File.separator + "PIK3CA_3_miss_clinvar_alt_only.vcf";
     private static final String SPANNING_DEL_VCF         = toolsTestDir + "funcotator" + File.separator + "spanning_del.vcf";
 
-    // TODO: Get rid of this variable and use the general data sources path:
+    // TODO: Get rid of this variable and use the general data sources path (issue #5350 - https://github.com/broadinstitute/gatk/issues/5350):
     private static final String DS_PIK3CA_DIR            = largeFileTestDir + "funcotator" + File.separator + "small_ds_pik3ca" + File.separator;
     private static final String MAF_TEST_CONFIG          = toolsTestDir + "funcotator" + File.separator + "maf.config";
     private static final String XSV_CLINVAR_COL_TEST_VCF = toolsTestDir + "funcotator" + File.separator + "clinvar_hg19_column_test.vcf";
@@ -93,7 +96,8 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     private static String hg19Chr19Ref;
 
     static {
-        if (!enableFullScaleTests ) {
+        // This is intentionally set here so that output can be examined in the case of running full scale tests.
+        if (!enableFullScaleValidationTest ) {
             tmpOutDir = createTempDir("funcotatorTmpFolder");
         } else {
             tmpOutDir = new File("funcotatorTmpFolder" + File.separator);
@@ -110,6 +114,47 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     }
 
     //==================================================================================================================
+    // Disabled tests to regenerate expected outputs for integration tests:
+    @Test(dataProvider = "provideForNonTrivialLargeDataValidationTest",
+            enabled = false)
+    public void regenerateExpectedOutputsForNonTrivialLargeDataValidationTest(
+                                                  final String inputVcfName,
+                                                  final String referencePath,
+                                                  final String referenceVersion,
+                                                  final String dataSourcesPath,
+                                                  final String expectedOutputPath ) {
+
+        for ( final FuncotatorArgumentDefinitions.OutputFormatType outputFormatType : FuncotatorArgumentDefinitions.OutputFormatType.values() ) {
+
+            final File outputFile = createTempFile(tmpOutDir + File.separator + inputVcfName + ".funcotator", "." + outputFormatType.toString().toLowerCase());
+
+            final ArgumentsBuilder arguments = createBaselineArgumentsForFuncotator(
+                    inputVcfName,
+                    outputFile,
+                    referencePath,
+                    dataSourcesPath,
+                    referenceVersion,
+                    outputFormatType,
+                    true);
+
+            // Run the tool with our args:
+            runCommandLine(arguments);
+
+            // ---------------------------------
+
+            final String typeCorrectedExpectedOutputPath = FilenameUtils.removeExtension(expectedOutputPath) + "." + outputFormatType.toString().toLowerCase();
+
+            // Copy the output file to our expected output area:
+            try {
+                Files.copy(outputFile.toPath(), IOUtils.getPath(typeCorrectedExpectedOutputPath));
+            }
+            catch ( final IOException ex ) {
+                throw new GATKException("Unable to copy over generated data to expected output path!", ex);
+            }
+        }
+    }
+
+    //==================================================================================================================
     // Helper methods to create output files and maybe leave them around to debug the test output.
 
     private static File getOutputFile(final FuncotatorArgumentDefinitions.OutputFormatType outputFormatType) {
@@ -119,7 +164,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     private static File getOutputFile(final String outfileBaseName,
                                       final String outFileExtension) {
         final File outputFile;
-        if (!enableFullScaleTests ) {
+        if (!enableFullScaleValidationTest ) {
             outputFile = createTempFile(tmpOutDir + File.separator + outfileBaseName, "." + outFileExtension);
         } else {
             outputFile = new File(tmpOutDir, outfileBaseName + "." + outFileExtension);
@@ -127,6 +172,9 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         return outputFile;
     }
 
+    /**
+     * @return A standard list of manual annotations and their values that can be added to tests in order to test the manual annotations piping.
+     */
     private static List<String> getManualAnnotations() {
 
         final List<String> annotationList = new ArrayList<>();
@@ -226,29 +274,36 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     //==================================================================================================================
 
     @DataProvider
-    private Object[][] provideForRegressionTest() {
+    private Object[][] provideForNonTrivialLargeDataValidationTest() {
 
         return new Object[][] {
                 {
-                        FuncotatorTestConstants.REGRESSION_TEST_HG19_DATA_SET_1,
+                        FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_DATA_SET_1,
                         b37Reference,
                         FuncotatorTestConstants.REFERENCE_VERSION_HG19,
                         FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER,
-                        FuncotatorTestConstants.REGRESSION_TEST_HG19_DATA_SET_1_EXPECTED_OUTPUT
+                        FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_DATA_SET_1_EXPECTED_OUTPUT
                 },
                 {
-                        FuncotatorTestConstants.REGRESSION_TEST_HG19_DATA_SET_2,
+                        FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_DATA_SET_2,
                         b37Reference,
                         FuncotatorTestConstants.REFERENCE_VERSION_HG19,
                         FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER,
-                        FuncotatorTestConstants.REGRESSION_TEST_HG19_DATA_SET_2_EXPECTED_OUTPUT
+                        FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_DATA_SET_2_EXPECTED_OUTPUT
                 },
                 {
-                        FuncotatorTestConstants.REGRESSION_TEST_HG38,
+                        FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_HG38,
                         hg38Reference,
                         FuncotatorTestConstants.REFERENCE_VERSION_HG38,
                         FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER,
-                        FuncotatorTestConstants.REGRESSION_TEST_HG38_EXPECTED_OUTPUT
+                        FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_EXPECTED_OUTPUT
+                },
+                {
+                        FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_LARGE_DATA_SET,
+                        b37Reference,
+                        FuncotatorTestConstants.REFERENCE_VERSION_HG19,
+                        FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER,
+                        FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_LARGE_DATA_SET_EXPECTED_OUTPUT
                 },
         };
     }
@@ -338,33 +393,9 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     public Object[][] provideForLargeDataValidationTest() {
         return new Object[][]{
                 {
-                        "M2_01115161-TA1-filtered.vcf",
-                        b37Reference,
-                        FuncotatorTestConstants.REFERENCE_VERSION_HG19,
-                        LARGE_DATASOURCES_FOLDER
-                },
-                {
-                        "C828.TCGA-D3-A2JP-06A-11D-A19A-08.3-filtered.PASS.vcf",
-                        b37Reference,
-                        FuncotatorTestConstants.REFERENCE_VERSION_HG19,
-                        LARGE_DATASOURCES_FOLDER
-                },
-                {
                         "hg38_test_variants.vcf",
                         hg38Reference,
                         FuncotatorTestConstants.REFERENCE_VERSION_HG38,
-                        LARGE_DATASOURCES_FOLDER
-                },
-                {
-                        "sample21.trimmed.vcf",
-                        hg38Reference,
-                        FuncotatorTestConstants.REFERENCE_VERSION_HG38,
-                        LARGE_DATASOURCES_FOLDER
-                },
-                {
-                        "0816201804HC0_R01C01.vcf",
-                        b37Reference,
-                        FuncotatorTestConstants.REFERENCE_VERSION_HG19,
                         LARGE_DATASOURCES_FOLDER
                 },
                 {
@@ -380,22 +411,28 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                         GERMLINE_DATASOURCES_FOLDER
                 },
                 {
-                        "regressionTestVariantSet1.vcf",
+                        FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_DATA_SET_1,
                         b37Reference,
                         FuncotatorTestConstants.REFERENCE_VERSION_HG19,
-                        LARGE_DATASOURCES_FOLDER
+                        FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER,
                 },
                 {
-                        "regressionTestVariantSet2.vcf",
+                        FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_DATA_SET_2,
                         b37Reference,
                         FuncotatorTestConstants.REFERENCE_VERSION_HG19,
-                        LARGE_DATASOURCES_FOLDER
+                        FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER
                 },
                 {
-                        "regressionTestVariantSetHG38.vcf",
+                        FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_HG38,
                         hg38Reference,
                         FuncotatorTestConstants.REFERENCE_VERSION_HG38,
-                        LARGE_DATASOURCES_FOLDER
+                        FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER
+                },
+                {
+                        FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_LARGE_DATA_SET,
+                        b37Reference,
+                        FuncotatorTestConstants.REFERENCE_VERSION_HG19,
+                        FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER
                 },
         };
     }
@@ -406,7 +443,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     // It will force anyone who changes the outputToTmpDir flag to make it true when they check in this test file.
     @Test(groups = {"funcotatorValidation"})
     public void metaTestEnsureTempDirs() {
-        Assert.assertEquals(enableFullScaleTests, false);
+        Assert.assertEquals(enableFullScaleValidationTest, false);
     }
 
     @Test(dataProvider = "provideForIntegrationTest")
@@ -443,7 +480,8 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         }
     }
 
-    @Test(enabled = enableFullScaleTests,
+    // This test will take no less than 2 hours to run, hence it is disabled by default.
+    @Test(enabled = enableFullScaleValidationTest,
           groups = {"funcotatorValidation"},
           dataProvider = "provideForLargeDataValidationTest")
     public void largeDataValidationTest(final String inputVcfName,
@@ -487,7 +525,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 
             endTime = System.nanoTime();
 
-            System.out.println("  Elapsed Time (" + outFormat.toString() + "): " + (endTime - startTime) / 1e9 + "s");
+            logger.warn("  Elapsed Time (" + outFormat.toString() + "): " + (endTime - startTime) / 1e9 + "s");
 
             // Perform a simple validation if the file was a VCF:
             if ( outFormat == FuncotatorArgumentDefinitions.OutputFormatType.VCF) {
@@ -505,53 +543,68 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
             }
         }
 
-        System.out.println("Total Elapsed Time: " + (endTime - overallStartTime) / 1e9 + "s");
+        logger.warn("Total Elapsed Time: " + (endTime - overallStartTime) / 1e9 + "s");
     }
 
-    @Test(dataProvider = "provideForRegressionTest")
-    public void regressionTest(final String inputVcfName,
+    @Test(dataProvider = "provideForNonTrivialLargeDataValidationTest")
+    public void nonTrivialLargeDataValidationTest(final String inputVcfName,
                                final String referencePath,
                                final String referenceVersion,
                                final String dataSourcesPath,
                                final String expectedOutputPath ) {
 
-        final File outputFile = createTempFile(tmpOutDir + File.separator + inputVcfName + ".funcotator", ".vcf");
+        for ( final FuncotatorArgumentDefinitions.OutputFormatType outputFormatType : FuncotatorArgumentDefinitions.OutputFormatType.values()) {
 
-        final ArgumentsBuilder arguments = createBaselineArgumentsForFuncotator(
-                inputVcfName,
-                outputFile,
-                referencePath,
-                dataSourcesPath,
-                referenceVersion,
-                FuncotatorArgumentDefinitions.OutputFormatType.VCF,
-                true);
+            final String typeCorrectedExpectedOutPath = FilenameUtils.removeExtension(expectedOutputPath) + "." + outputFormatType.toString().toLowerCase();
 
-        // Run the tool with our args:
-        long startTime = 0, endTime = 0;
-        startTime = System.nanoTime();
-        runCommandLine(arguments);
-        endTime = System.nanoTime();
+            final File outputFile = createTempFile(tmpOutDir + File.separator + inputVcfName + ".funcotator", "." + outputFormatType.toString().toLowerCase());
 
-        System.out.println("  Elapsed Time: " + (endTime - startTime) / 1e9 + "s");
+            final ArgumentsBuilder arguments = createBaselineArgumentsForFuncotator(
+                    inputVcfName,
+                    outputFile,
+                    referencePath,
+                    dataSourcesPath,
+                    referenceVersion,
+                    outputFormatType,
+                    true);
 
-        // ========================================================
-        // Validate our output:
+            // Run the tool with our args:
+            long startTime = 0, endTime = 0;
+            startTime = System.nanoTime();
+            runCommandLine(arguments);
+            endTime = System.nanoTime();
 
-        // Get the actual data:
-        final Pair<VCFHeader, List<VariantContext>> actualVcfInfo = VariantContextTestUtils.readEntireVCFIntoMemory(outputFile.getAbsolutePath());
-        final List<VariantContext> actualVariantContexts = actualVcfInfo.getRight();
-        final VCFHeader actualVcfHeader = actualVcfInfo.getLeft();
-        final VCFInfoHeaderLine actualFuncotationHeaderLine = actualVcfHeader.getInfoHeaderLine(VcfOutputRenderer.FUNCOTATOR_VCF_FIELD_NAME);
+            logger.warn("  " + outputFormatType.toString() + " Elapsed Time: " + (endTime - startTime) / 1e9 + "s");
 
-        // Get the expected data:
-        final Pair<VCFHeader, List<VariantContext>> expectedVcfInfo = VariantContextTestUtils.readEntireVCFIntoMemory(new File(expectedOutputPath).getAbsolutePath());
-        final List<VariantContext> expectedVariantContexts = expectedVcfInfo.getRight();
-        final VCFHeader expectedVcfHeader = expectedVcfInfo.getLeft();
-        final VCFInfoHeaderLine expectedFuncotationHeaderLine = expectedVcfHeader.getInfoHeaderLine(VcfOutputRenderer.FUNCOTATOR_VCF_FIELD_NAME);
+            // ========================================================
+            // Validate our output:
 
-        // Check that they're equal:
-        Assert.assertEquals( actualFuncotationHeaderLine, expectedFuncotationHeaderLine );
-        VariantContextTestUtils.assertEqualVariants(actualVariantContexts, expectedVariantContexts);
+            if ( outputFormatType == FuncotatorArgumentDefinitions.OutputFormatType.VCF ) {
+                // Get the actual data:
+                final Pair<VCFHeader, List<VariantContext>> actualVcfInfo               = VariantContextTestUtils.readEntireVCFIntoMemory(outputFile.getAbsolutePath());
+                final List<VariantContext>                  actualVariantContexts       = actualVcfInfo.getRight();
+                final VCFHeader                             actualVcfHeader             = actualVcfInfo.getLeft();
+                final VCFInfoHeaderLine                     actualFuncotationHeaderLine = actualVcfHeader.getInfoHeaderLine(VcfOutputRenderer.FUNCOTATOR_VCF_FIELD_NAME);
+
+                // Get the expected data:
+                final Pair<VCFHeader, List<VariantContext>> expectedVcfInfo               = VariantContextTestUtils.readEntireVCFIntoMemory(new File(typeCorrectedExpectedOutPath).getAbsolutePath());
+                final List<VariantContext>                  expectedVariantContexts       = expectedVcfInfo.getRight();
+                final VCFHeader                             expectedVcfHeader             = expectedVcfInfo.getLeft();
+                final VCFInfoHeaderLine                     expectedFuncotationHeaderLine = expectedVcfHeader.getInfoHeaderLine(VcfOutputRenderer.FUNCOTATOR_VCF_FIELD_NAME);
+
+                // Check that they're equal:
+                Assert.assertEquals(actualFuncotationHeaderLine, expectedFuncotationHeaderLine);
+                VariantContextTestUtils.assertEqualVariants(actualVariantContexts, expectedVariantContexts);
+            }
+            else {
+                try {
+                    IntegrationTestSpec.assertEqualTextFiles(outputFile, new File(typeCorrectedExpectedOutPath), "#");
+                }
+                catch ( final IOException ex ) {
+                    throw new GATKException("Error opening expected file: " + expectedOutputPath, ex);
+                }
+            }
+        }
     }
 
     @Test(dataProvider = "provideForIntegrationTest")
@@ -643,6 +696,9 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                 .count(), NUM_CLINVAR_HITS, "Found unexpected number of ClinVar hits!");
     }
 
+    /**
+     * Test that the manual annotations and overrides will be correctly rendered on output, and will occur only once each.
+     */
     @Test
     public void testManualAnnotationsCorrectness() {
 
@@ -985,6 +1041,8 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         // Get the annotation fields:
         final String[] funcotationKeys = extractFuncotatorKeysFromHeaderDescription(funcotationHeaderLine.getDescription());
 
+        final Map<String, Pair<Pair<String, String>, Pair<String, String>>> unequalFieldValuesMap = new HashMap<>();
+
         for (int i = 0; i < annotationsToCheckMaf.size(); i++) {
             final String annotationToCheckVcf = annotationsToCheckVcf.get(i);
             final String annotationToCheckMaf = annotationsToCheckMaf.get(i);
@@ -1030,12 +1088,70 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
             // TODO: Update with better comparison using aliases when they are fully implemented.
             if ( !Objects.equals(mafFieldValues, vcfFieldValues) ) {
                 Assert.assertEquals(mafFieldValues.size(), vcfFieldValues.size());
-                mafFieldValues.stream().map( v -> {Assert.assertEquals(v, "Unknown"); return true;} );
-                vcfFieldValues.stream().map( v -> {Assert.assertEquals(v, ""); return true;} );
+
+                int numDifferentValues = 0;
+                String diffVcfValueString = "";
+                String diffMafValueString = "";
+
+                for ( int valueIndex = 0 ; valueIndex < mafFieldValues.size(); ++valueIndex ) {
+
+                    final String vcfValue = vcfFieldValues.get(valueIndex);
+                    final String mafValue = mafFieldValues.get(valueIndex);
+
+                    if ( mafValue.isEmpty() ) {
+                        if (!vcfValue.equals("Unknown")) {
+                            diffVcfValueString = diffVcfValueString + "\t" + vcfValue + "[" + valueIndex + "]";
+                            diffMafValueString = diffMafValueString + "\t" + mafValue + "[" + valueIndex + "]";
+                            ++numDifferentValues;
+                        }
+                    }
+                    else {
+                        if (!vcfValue.equals(mafValue)) {
+                            diffVcfValueString = diffVcfValueString + "\t" + vcfValue + "[" + valueIndex + "]";
+                            diffMafValueString = diffMafValueString + "\t" + mafValue + "[" + valueIndex + "]";
+                            ++numDifferentValues;
+                        }
+                    }
+                }
+
+                // Special case for end coordinates:
+                if ( annotationToCheckMaf.equals("End_Position") ) {
+                    // End position is post-processed in MAF for indels,
+                    // and therefore is not expected to always be equal to the same value as in the VCF:
+                    logger.info("End positions are not the same (this is OK): \nVCF:\t" + diffVcfValueString + "\nMAF:\t" + diffMafValueString);
+                }
+                else {
+                    // Add our info to our map:
+                    unequalFieldValuesMap.put(annotationToCheckVcf,
+                            Pair.of(
+                                    Pair.of(annotationToCheckVcf, diffVcfValueString),
+                                    Pair.of(annotationToCheckMaf, diffMafValueString)
+                            ));
+                }
             }
-            else {
-                Assert.assertEquals(mafFieldValues, vcfFieldValues, "Failed matching (VCF: " + annotationToCheckVcf + " , MAF: " + annotationToCheckMaf + ")");
+        }
+
+        // We have had a problem.  Alert the user in as helpful a manner as possible:
+        if ( !unequalFieldValuesMap.isEmpty() ) {
+            final StringBuilder stringBuilder = new StringBuilder();
+            stringBuilder.append("Failed Matching VCF and MAF fields:\n");
+            for ( final Map.Entry<String, Pair<Pair<String, String>, Pair<String, String>>> entry : unequalFieldValuesMap.entrySet() ) {
+
+                final int formatLength = 5 + Math.max(entry.getValue().getLeft().getLeft().length(), entry.getValue().getRight().getLeft().length());
+                final String formatString = "\t%s (%-" + formatLength + "s";
+
+                stringBuilder.append( String.format(formatString, "VCF", entry.getValue().getLeft().getLeft() + "):") );
+                stringBuilder.append( entry.getValue().getLeft().getRight() );
+                stringBuilder.append('\n');
+
+                stringBuilder.append( String.format(formatString, "MAF", entry.getValue().getRight().getLeft() + "):") );
+                stringBuilder.append( entry.getValue().getRight().getRight() );
+                stringBuilder.append('\n');
+
+                stringBuilder.append("----\n");
             }
+
+            throw new AssertionError(stringBuilder.toString());
         }
     }
 

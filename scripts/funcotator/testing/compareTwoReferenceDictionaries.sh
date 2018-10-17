@@ -1,6 +1,23 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 ################################################################################
+#
+# DESCRIPTION:
+#
+# This script will create a table comparing two internally configured reference
+# dictionary files.
+# It must be internally configured to point at valid reference fasta dictionaries
+# and may need to be modified to correctly grab the md5 and contig columns for
+# the given files.
+# 
+# This will not work for you out-of-the-box unless you are Jonn Smith.
+#
+# EXAMPLE:
+#     ./compareTwoReferenceDictionaries.sh
+#
+# AUTHOR: Jonn Smith
+#
+###############################################################################
 
 #Setup variables for the script:
 SCRIPTDIR="$( cd -P "$( dirname "$0" )" && pwd )"

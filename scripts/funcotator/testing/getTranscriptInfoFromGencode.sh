@@ -1,6 +1,21 @@
 #!/usr/bin/env bash
 
 ################################################################################
+#
+# DESCRIPTION:
+#
+# This script displays Gencode Transript information given a reference version
+# and a list of transcript IDs.
+# It must be internally configured to point at a valid funcotatior data sources
+# directory, and will not work for you out-of-the-box unless you are Jonn Smith.
+#
+# EXAMPLE:
+#     ./getTranscriptInfoFromGencode.sh hg19 ENST00000602725.1 ENST00000424989.1 ENST00000373087.6
+#
+# AUTHOR: Jonn Smith
+#
+###############################################################################
+
 
 #Setup variables for the script:
 SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"

@@ -1,6 +1,20 @@
 #!/usr/bin/env bash
 
 ################################################################################
+#
+# DESCRIPTION:
+#
+# This script will give you the overlapping encode gene entries for a given 
+# reference and genomic position.
+# It must be internally configured to point at a valid funcotatior data sources
+# directory, and will not work for you out-of-the-box unless you are Jonn Smith.
+#
+# EXAMPLE:
+#     ./getGeneFromGenomicCoordinates.sh hg19 1 38 1789
+#
+# AUTHOR: Jonn Smith
+#
+################################################################################
 
 #Setup variables for the script:
 SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -9,7 +23,6 @@ MINARGS=4
 MAXARGS=4
 
 ################################################################################
-
 
 DATA_SOURCES_PATH=/Users/jonn/Development/funcotator_dataSources_latest
 

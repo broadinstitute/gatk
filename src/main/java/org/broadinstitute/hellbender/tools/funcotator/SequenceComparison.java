@@ -155,7 +155,7 @@ public class SequenceComparison {
     /**
      * Container holding information on the protein change represented by this {@link SequenceComparison} object.
      */
-    private FuncotatorUtils.ProteinChangeInfo proteinChangeInfo = null;
+    private ProteinChangeInfo proteinChangeInfo = null;
 
     // =============================================================================================================
 
@@ -344,9 +344,9 @@ public class SequenceComparison {
         return this;
     }
 
-    public SequenceComparison setProteinChangeInfo(final FuncotatorUtils.ProteinChangeInfo p) { proteinChangeInfo = p; return this;}
+    public SequenceComparison setProteinChangeInfo(final ProteinChangeInfo p) { proteinChangeInfo = p; return this;}
 
-    public FuncotatorUtils.ProteinChangeInfo getProteinChangeInfo() {
+    public ProteinChangeInfo getProteinChangeInfo() {
         return proteinChangeInfo;
     }
 }

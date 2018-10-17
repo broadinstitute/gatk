@@ -281,6 +281,7 @@ public class GencodeFuncotationBuilder {
 
     /**
      * Set the Reference Context {@link String} in the {@link GencodeFuncotation}.
+     * The Reference Context string should always be for the bases on the + strand.
      * @param referenceContext The {@link String} containing the ReferenceContext for the {@link GencodeFuncotation}.
      * @return {@code this} {@link GencodeFuncotationBuilder}
      */

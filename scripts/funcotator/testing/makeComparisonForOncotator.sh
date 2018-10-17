@@ -1,6 +1,22 @@
 #!/usr/bin/env bash
 
 ################################################################################
+#
+# DESCRIPTION:
+#
+# This script processes files created by Funcotator and Oncotator to create 
+# output files that can be diffed by Beyond Compare (or your favorite diff 
+# viewer).
+# It must be internally configured to point at valid Funcotator and Oncotator
+# output files, and will not work for you out-of-the-box unless you are Jonn Smith.
+#
+# EXAMPLE:
+#     ./makeComparisonForOncotator.sh
+#
+# AUTHOR: Jonn Smith
+#
+###############################################################################
+
 
 #Setup variables for the script:
 SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -53,9 +69,10 @@ function crossReferenceWithGencode() {
 
 		error -n "Looking up $tx in GENCODE..." 
 
+		local cached=false
 		if [[ -f $CACHEDTRANSCRIPTS ]] ; then 
 			gencodeLine=$( grep -m1 "$tx" $CACHEDTRANSCRIPTS )
-			[[ ${#gencodeLine} -eq 0 ]] && gencodeLine=$( grep -m1 "$tx" $GENCODE ) && echo "$gencodeLine" >> $CACHEDTRANSCRIPTS
+			[[ ${#gencodeLine} -eq 0 ]] && gencodeLine=$( grep -m1 "$tx" $GENCODE ) && echo "$gencodeLine" >> $CACHEDTRANSCRIPTS && cached=true
 		else 
 			gencodeLine=$( grep -m1 "$tx" $GENCODE )
 			echo "$gencodeLine" >> $CACHEDTRANSCRIPTS
@@ -65,8 +82,12 @@ function crossReferenceWithGencode() {
 		tx_start=$( echo "${gencodeLine}" | awk '{print $4}')
 		tx_end=$( echo "${gencodeLine}" | awk '{print $5}')
 		
-		#error " Found at [${tx_gene}] - $tx_contig : $tx_start -> $tx_end"
-		error " Found"
+		if $cached ; then 
+			#error " Found (CACHE) at [${tx_gene}] - $tx_contig : $tx_start -> $tx_end"
+			error " Found (CACHE)"
+		else
+			error " Found" 
+		fi
 
 		insideTranscript="False"
 		if [[ $tx_start -le $variantStart ]] && [[ $variantStart -le $tx_end ]] && [[ $tx_start -le $variantEnd ]] && [[ $variantEnd -le $tx_end ]] ; then

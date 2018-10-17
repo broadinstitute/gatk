@@ -1,6 +1,20 @@
 #!/usr/bin/env bash
 
 ################################################################################
+#
+# DESCRIPTION:
+#
+# This script will give you the overlapping encode gene entries for all variants
+# in a given VCF file.
+# It must be internally configured to point at a valid funcotatior data sources
+# directory, and will not work for you out-of-the-box unless you are Jonn Smith.
+#
+# EXAMPLE:
+#     ./getGencodeGenesForVcfVariants.sh hg19 TEST.VCF
+#
+# AUTHOR: Jonn Smith
+#
+###############################################################################
 
 #Setup variables for the script:
 SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -174,4 +188,9 @@ while read geneId ; do
 
 done < ${tmpGeneIdList}
 error "Done"
+
+# To get the transcripts from the gencode transcript file:
+#for g in $( grep '\tgene\t' gencode.v28.regressionTestVariantSet.gtf | awk '{print $10}' | tr -d '"' ) ; do 
+#	grep -A1 $g /Users/jonn/Development/funcotator_dataSources_latest/gencode/hg38/gencode.v28.pc_transcripts.fa
+#done | grep -v '^--' > gencode.v28.regressionTestVariantSet.pc_transcripts.fa
 

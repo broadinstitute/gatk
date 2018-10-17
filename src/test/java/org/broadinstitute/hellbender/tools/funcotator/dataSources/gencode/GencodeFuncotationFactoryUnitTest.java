@@ -88,11 +88,45 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
     public static void cleanupAfterTests() {
         System.out.println("Cleaning up after tests...");
 
-        testMuc16SnpCreateFuncotationsFuncotationFactory.close();
+        try {
+            testMuc16SnpCreateFuncotationsFuncotationFactory.close();
+            muc16NonBasicFeatureReader.close();
+            gencodeFeatureReader.close();
+            refDataSourceHg19Ch19.close();
+            refDataSourceHg19Ch3.close();
+        }
+        catch (final IOException ex) {
+            throw new GATKException("Could not close all readers!", ex);
+        }
     }
 
     //==================================================================================================================
     // Helper Methods:
+
+    private static Object[] helpProvideForTestGetTranscriptEndPaddingBases( final String refAllele,
+                                                                            final String altAllele,
+                                                                            final int startPos,
+                                                                            final List<? extends Locatable> exonPositionList,
+                                                                            final String refSequence,
+                                                                            final String expected) {
+        final String contig = "TEST";
+
+        final VariantContext vc = new VariantContextBuilder(
+                "TEST_SOURCE",
+                contig,
+                startPos,
+                startPos + refAllele.length() - 1,
+                Arrays.asList(Allele.create(refAllele, true), Allele.create(altAllele, false))
+        ).make();
+
+        return new Object[] {
+            vc,
+            vc.getAlleles().get(1),
+            exonPositionList,
+            FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(refSequence, vc.getContig(),  vc.getEnd(),  vc.getEnd()),
+            expected
+        };
+    }
 
     private static GencodeGtfExonFeature getExonForVariant( final CloseableTribbleIterator<GencodeGtfFeature> gtfFeatureIterator,
                                                             final SimpleInterval variantLocation ) {
@@ -476,6 +510,84 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         outList.addAll( addReferenceDataToUnitTestData(DataProviderForPik3caTestData.providePik3caInDelData2(), FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(), gencodeFeatureReader, refDataSourceHg19Ch3, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19 ) );
 
         return outList.toArray(new Object[][]{{}});
+    }
+
+    @DataProvider
+    Object[][] provideForTestGetTranscriptEndPaddingBases() {
+
+                          // Base Position:
+                          //
+                          //1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
+                          //0000000001111111111222222222233333333334444444444555555555566666666667777777777888888888899999999990
+                          //0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001
+        final String seq = "AAAAATTTTTGGGGGCCCCCAAAAATTTTTGGGGGCCCCCAAAAATTTTTGGGGGCCCCCAAAAATTTTTGGGGGCCCCCAAAAATTTTTGGGGGCCCCC";
+        final String contig = "test";
+
+        final List<Locatable> exonPositionList = new ArrayList<>();
+        exonPositionList.add( new SimpleInterval(contig, 5,15) );
+        exonPositionList.add( new SimpleInterval(contig, 17,25) );
+        exonPositionList.add( new SimpleInterval(contig, 35,55) );
+        exonPositionList.add( new SimpleInterval(contig, 56,90) );
+
+//        final VariantContext variant,
+//        final Allele altAllele,
+//        final List<? extends htsjdk.samtools.util.Locatable> exonPositionList,
+//        final ReferenceContext reference,
+//        final String expected
+
+        return new Object[][] {
+                // Not Indel:
+                helpProvideForTestGetTranscriptEndPaddingBases("A", "G", 5, exonPositionList, seq, ""),
+                helpProvideForTestGetTranscriptEndPaddingBases(seq.substring(seq.length()-1, seq.length()), "A", seq.length(), exonPositionList, seq, ""),
+                // Insertion 1 base, out of range:
+                helpProvideForTestGetTranscriptEndPaddingBases("A", "AG", 5, exonPositionList, seq, ""),
+                // Insertion 1 base, border of range:
+                helpProvideForTestGetTranscriptEndPaddingBases("C", "CG", 80, exonPositionList, seq, ""),
+                // Insertion 1 base, in range:
+                helpProvideForTestGetTranscriptEndPaddingBases("C", "CG", 82, exonPositionList, seq, "GGGGGC"),
+                // Insertion 2 bases, out of range:
+                helpProvideForTestGetTranscriptEndPaddingBases("A", "AGC", 5, exonPositionList, seq, ""),
+                // Insertion 2 bases, border of range:
+                helpProvideForTestGetTranscriptEndPaddingBases("C", "CGC", 80, exonPositionList, seq, ""),
+                // Insertion 2 bases, in range:
+                helpProvideForTestGetTranscriptEndPaddingBases("C", "CGA", 82, exonPositionList, seq, "GGGGGC"),
+                // Insertion 3 bases, out of range:
+                helpProvideForTestGetTranscriptEndPaddingBases("A", "AGCG", 5, exonPositionList, seq, ""),
+                // Insertion 3 bases, border of range:
+                helpProvideForTestGetTranscriptEndPaddingBases("C", "CGCT", 80, exonPositionList, seq, ""),
+                // Insertion 3 bases, in range:
+                helpProvideForTestGetTranscriptEndPaddingBases("C", "CGAT", 82, exonPositionList, seq, "GGGGGC"),
+                // Insertion 4 bases, out of range:
+                helpProvideForTestGetTranscriptEndPaddingBases("A", "AGCGT", 5, exonPositionList, seq, ""),
+                // Insertion 4 bases, border of range:
+                helpProvideForTestGetTranscriptEndPaddingBases("C", "CGCTG", 80, exonPositionList, seq, ""),
+                // Insertion 4 bases, in range:
+                helpProvideForTestGetTranscriptEndPaddingBases("C", "CGATT", 82, exonPositionList, seq, "GGGGGCCCC"),
+                // Deletion 1 base, out of range:
+                helpProvideForTestGetTranscriptEndPaddingBases("AT", "A", 5, exonPositionList, seq, ""),
+                // Deletion 1 base, border of range:
+                helpProvideForTestGetTranscriptEndPaddingBases("CA", "C", 80, exonPositionList, seq, ""),
+                // Deletion 1 base, in range:
+                helpProvideForTestGetTranscriptEndPaddingBases("AA", "A", 82, exonPositionList, seq, "GGGGGC"),
+                // Deletion 2 bases, out of range:
+                helpProvideForTestGetTranscriptEndPaddingBases("ATT", "A", 5, exonPositionList, seq, ""),
+                // Deletion 2 bases, border of range:
+                helpProvideForTestGetTranscriptEndPaddingBases("CAA", "C", 80, exonPositionList, seq, ""),
+                // Deletion 2 bases, in range:
+                helpProvideForTestGetTranscriptEndPaddingBases("AAA", "A", 82, exonPositionList, seq, "GGGGGC"),
+                // Deletion 3 bases, out of range:
+                helpProvideForTestGetTranscriptEndPaddingBases("ATTT", "A", 5, exonPositionList, seq, ""),
+                // Deletion 3 bases, border of range:
+                helpProvideForTestGetTranscriptEndPaddingBases("CAAA", "C", 80, exonPositionList, seq, ""),
+                // Deletion 3 bases, in range:
+                helpProvideForTestGetTranscriptEndPaddingBases("AAAA", "A", 82, exonPositionList, seq, "GGGGGC"),
+                // Deletion 3 bases, out of range:
+                helpProvideForTestGetTranscriptEndPaddingBases("ATTTT", "A", 5, exonPositionList, seq, ""),
+                // Deletion 3 bases, border of range:
+                helpProvideForTestGetTranscriptEndPaddingBases("CAAAA", "C", 80, exonPositionList, seq, ""),
+                // Deletion 3 bases, in range:
+                helpProvideForTestGetTranscriptEndPaddingBases("AAAAT", "A", 82, exonPositionList, seq, "GGGGGCCCC"),
+        };
     }
 
     @DataProvider
@@ -1380,6 +1492,15 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         }
     }
 
+    @Test(dataProvider = "provideForTestGetTranscriptEndPaddingBases")
+    void testGetTranscriptEndPaddingBases(final VariantContext variant,
+                                          final Allele altAllele,
+                                          final List<? extends htsjdk.samtools.util.Locatable> exonPositionList,
+                                          final ReferenceContext reference,
+                                          final String expected) {
+        Assert.assertEquals(GencodeFuncotationFactory.getTranscriptEndPaddingBases(variant, altAllele, exonPositionList, reference), expected);
+    }
+
     @Test(dataProvider = "provideForTestCreateGencodeFuncotationBuilderWithTrivialFieldsPopulated")
     void testCreateGencodeFuncotationBuilderWithTrivialFieldsPopulated(final VariantContext variant,
                                                                        final Allele altAllele,
@@ -1403,10 +1524,11 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         Assert.assertEquals( gf.getTumorSeqAllele2(), altAllele.getBaseString() );
         Assert.assertEquals( gf.getAnnotationTranscript(), transcript.getTranscriptId() );
         Assert.assertEquals( gf.getLocusLevel(), Integer.valueOf(transcript.getLocusLevel().toString()) );
+        Assert.assertEquals( gf.getEnd(), variant.getEnd() );
 
         // Still simple, but computational, checks:
         Assert.assertEquals( gf.getVariantType(), GencodeFuncotationFactory.getVariantType(variant.getReference(), altAllele));
-        Assert.assertEquals( gf.getGenomeChange(), GencodeFuncotationFactory.getGenomeChangeString(variant, altAllele, gtfFeature) );
+        Assert.assertEquals( gf.getGenomeChange(), GencodeFuncotationFactory.getGenomeChangeString(variant, altAllele) );
         Assert.assertTrue( gf.getTranscriptPos() == FuncotatorUtils.getTranscriptAlleleStartPosition(variant, transcript.getExons(), transcript.getGenomicStrand()) );
         Assert.assertEquals( gf.getApprisRank(), GencodeFuncotationFactory.getApprisRank( transcript ) );
         Assert.assertTrue( gf.getTranscriptLength() == transcript.getExons().stream().mapToInt(Locatable::getLengthOnReference).sum() );
