@@ -8,11 +8,15 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CoverageAnalysisProgramGroup;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.PrintStream;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Calculate the overall number of reads in a SAM/BAM file
@@ -63,6 +67,11 @@ public final class CountReadsSpark extends GATKSparkTool {
             optional = true
     )
     public String out;
+
+    @Override
+    public List<ReadFilter> getDefaultReadFilters() {
+        return Collections.singletonList(ReadFilterLibrary.ALLOW_ALL_READS);
+    }
 
     @Override
     protected void runTool(final JavaSparkContext ctx) {
