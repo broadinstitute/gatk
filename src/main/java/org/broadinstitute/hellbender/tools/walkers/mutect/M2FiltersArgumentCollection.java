@@ -30,6 +30,8 @@ public class M2FiltersArgumentCollection extends AssemblyBasedCallerArgumentColl
     public static final String TUMOR_SEGMENTATION_LONG_NAME = "tumor-segmentation";
     public static final String ORIENTATION_BIAS_FDR_LONG_NAME = "orientation-bias-fdr"; // FDR = false discovery rate
     public static final String MAX_DISTANCE_TO_FILTERED_CALL_ON_SAME_HAPLOTYPE_LONG_NAME = "distance-on-haplotype";
+    public static final String N_RATIO_LONG_NAME = "n-ratio";
+    public static final String STRICT_STRAND_BIAS_LONG_NAME = "strict-strand-bias";
     public static final String LOD_BY_DEPTH = "lod-divided-by-depth";
     public static final String NON_MT_ALT_READS_BY_ALT_READS = "non-mt-alts-divided-by-alts";
 
@@ -118,6 +120,12 @@ public class M2FiltersArgumentCollection extends AssemblyBasedCallerArgumentColl
 
     @Argument(fullName = UNIQUE_ALT_READ_COUNT_LONG_NAME, shortName = "unique", optional = true, doc = "Filter a variant if a site contains fewer than this many unique (i.e. deduplicated) reads supporting the alternate allele")
     public int uniqueAltReadCount = 0;
+
+    @Argument(fullName = N_RATIO_LONG_NAME, optional = true, doc = "Filter a variant if the ratio of Ns to alts in the pileup is greater or equal to this value.")
+    public double nRatio = Double.POSITIVE_INFINITY;
+
+    @Argument(fullName = STRICT_STRAND_BIAS_LONG_NAME, optional = true, doc = "Always filter if reads are not found in both directions for supporting allele.")
+    public boolean strictStrandBias = false;
 
     /**
      * We set the filtering threshold for the read orientation filter such that the false discovery rate (FDR), which equals

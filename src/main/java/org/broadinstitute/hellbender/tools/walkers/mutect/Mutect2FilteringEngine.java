@@ -323,13 +323,56 @@ public class Mutect2FilteringEngine {
         }
     }
 
-    private void applyChimericOriginalAlignmentFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final FilterResult filterResult) {
+    private void applyStrictStrandFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final FilterResult filterResult) {
+
+        if (! MTFAC.strictStrandBias) {
+            return;
+        }
+
+        final Genotype tumorGenotype = vc.getGenotype(tumorSample);
+        if (! tumorGenotype.hasExtendedAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY)) {
+            return;
+        }
+        final int[] strandBiasCounts = GATKProtectedVariantContextUtils.getAttributeAsIntArray(tumorGenotype, GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY, ()->null, -1);
+
+        final int altForwardCount = StrandBiasBySample.getAltForwardCountFromFlattenedContingencyTable(strandBiasCounts);
+        final int altReverseCount = StrandBiasBySample.getAltReverseCountFromFlattenedContingencyTable(strandBiasCounts);
+
+        // filter if there is no alt evidence in the forward or reverse strand
+        if ( altForwardCount == 0 || altReverseCount == 0) {
+            filterResult.addFilter(GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME);
+        }
+    }
+
+    private void applyNRatioFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final FilterResult filterResult) {
         final Genotype tumorGenotype = vc.getGenotype(tumorSample);
         final double[] alleleFractions = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(tumorGenotype, VCFConstants.ALLELE_FREQUENCY_KEY,
                 () -> new double[] {1.0}, 1.0);
         final int maxFractionIndex = MathUtils.maxElementIndex(alleleFractions);
         final int[] ADs = tumorGenotype.getAD();
         final int altCount = ADs[maxFractionIndex + 1];
+      
+        // if there is no NCount annotation or the altCount is 0, don't apply the filter
+        if (!tumorGenotype.hasExtendedAttribute(GATKVCFConstants.N_COUNT_KEY) || altCount == 0 ) {
+            return;
+        }
+
+        final int NCount = GATKProtectedVariantContextUtils.getAttributeAsInt(tumorGenotype, GATKVCFConstants.N_COUNT_KEY,-1);
+
+        if ((double) NCount / altCount >= MTFAC.nRatio ) {
+            filterResult.addFilter(GATKVCFConstants.N_RATIO_FILTER_NAME);
+        }
+    }
+  
+    private void applyChimericOriginalAlignmentFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final FilterResult filterResult) {
+
+        final Genotype tumorGenotype = vc.getGenotype(tumorSample);
+        final double[] alleleFractions = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(tumorGenotype, VCFConstants.ALLELE_FREQUENCY_KEY,
+                () -> new double[] {1.0}, 1.0);
+        final int maxFractionIndex = MathUtils.maxElementIndex(alleleFractions);
+        final int[] ADs = tumorGenotype.getAD();
+        final int altCount = ADs[maxFractionIndex + 1];
+
         if (tumorGenotype.hasAnyAttribute(GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY) && vc.isBiallelic()) {
             final int nonMtOa = GATKProtectedVariantContextUtils.getAttributeAsInt(tumorGenotype, GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY, -1);
             if ((double) nonMtOa / altCount > MTFAC.nonMtAltByAlt) {
@@ -347,7 +390,6 @@ public class Mutect2FilteringEngine {
             }
         }
     }
-
 
     public FilterResult calculateFilters(final M2FiltersArgumentCollection MTFAC, final VariantContext vc,
                                          final Optional<FilteringFirstPass> firstPass) {
@@ -372,6 +414,8 @@ public class Mutect2FilteringEngine {
             applyReadPositionFilter(MTFAC, vc, filterResult);
             // The ReadOrientation filter uses the information gathered during the first pass
             applyReadOrientationFilter(vc, filterResult, firstPass);
+            applyStrictStrandFilter(MTFAC, vc, filterResult);
+            applyNRatioFilter(MTFAC, vc, filterResult);
         } else {
             applyChimericOriginalAlignmentFilter(MTFAC, vc, filterResult);
             applyLODFilter(MTFAC, vc, filterResult);

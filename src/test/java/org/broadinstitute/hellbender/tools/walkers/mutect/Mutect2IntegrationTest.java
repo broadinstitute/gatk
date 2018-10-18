@@ -689,7 +689,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     }
 
 
-    // Test that the strand bias annotaitons can count the number of reads, not fragments, when requested
+    // Test that the strand bias annotations can count the number of reads, not fragments, when requested
     @Test
     public void testReadBasedAnnotations() throws IOException {
         // Case 1: with the read correction we lose the variant - blood biopsy-like case
@@ -728,6 +728,80 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(contingencyTable[ALT_REV_INDEX], numAltPairs);
 
         Assert.assertFalse(vc.get().getFilters().contains(GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME));
+    }
+
+
+    private File createSamWithNsandStrandBias(final int numAlts, final int numNs, final int numRefs) throws IOException {
+        final byte altQuality = 50;
+        final byte refQuality = 30;
+        final File samFile = File.createTempFile("duplex", ".bam");
+        final SAMFileHeader samHeader = M2TestingUtils.createSamHeader();
+        final SAMFileGATKReadWriter writer = M2TestingUtils.getBareBonesSamWriter(samFile, samHeader);
+
+        // create some alt reads with a strand bias
+        final List<GATKRead> altReads = M2TestingUtils.createReads(numAlts, M2TestingUtils.DEFAULT_ALT_BASES, samHeader, altQuality, "alt");
+        altReads.forEach(read -> {
+            read.setReadGroup(M2TestingUtils.DEFAULT_READ_GROUP_NAME);
+            read.setMappingQuality(60);
+            read.setIsReverseStrand(false);
+            read.setBases(M2TestingUtils.DEFAULT_ALT_BASES);
+            read.setBaseQualities(M2TestingUtils.getUniformBQArray(altQuality, M2TestingUtils.DEFAULT_READ_LENGTH));
+            writer.addRead(read);
+        });
+
+        // create some reads with Ns
+        final byte[] DEFAULT_N_BASES = "CATCACACTNACTAAGCACACAGAGAATAAT".getBytes();
+
+        final List<GATKRead> NReads = M2TestingUtils.createReads(numNs, DEFAULT_N_BASES, samHeader, altQuality, "N");
+        NReads.forEach(writer::addRead);
+
+        // create some ref reads
+        final List<GATKRead> refReads = M2TestingUtils.createReads(numRefs, M2TestingUtils.DEFAULT_REF_BASES, samHeader, refQuality, "ref");
+        refReads.forEach(writer::addRead);
+
+        writer.close();
+        return samFile;
+    }
+
+    @Test
+    public void testStrictStrandBiasAndNRatio () throws Exception {
+        Utils.resetRandomGenerator();
+
+        final int numAlts = 2;
+        final int numNs = 10;
+        final int numRefs = 5;
+        final File samWithNsandStrandBias = createSamWithNsandStrandBias(numAlts, numNs, numRefs);
+
+        final File StrandBiasNVcf = createTempFile("strandBiasN", ".vcf");
+        final File filteredVcf = createTempFile("filtered", ".vcf");
+
+        final List<String> args = Arrays.asList(
+                "-I", samWithNsandStrandBias.getAbsolutePath(),
+                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, M2TestingUtils.DEFAULT_SAMPLE_NAME,
+                "-R", hg19_chr1_1M_Reference,
+                "-A", "StrandBiasBySample",
+                "-A", "CountNs",
+                "--count-reads", "true",
+                "-O", StrandBiasNVcf.getAbsolutePath());
+        runCommandLine(args);
+
+        // going to try filtering at this ratio
+        final double nRatio = numNs / numAlts;
+
+        // run FilterMutectCalls
+        new Main().instanceMain(makeCommandLineArgs(Arrays.asList(
+                "-O", filteredVcf.getAbsolutePath(),
+                "-V", StrandBiasNVcf.getAbsolutePath(),
+                "-" + M2FiltersArgumentCollection.STRICT_STRAND_BIAS_LONG_NAME, "true",
+                "-" + M2FiltersArgumentCollection.N_RATIO_LONG_NAME, Double.toString(nRatio)),
+                FilterMutectCalls.class.getSimpleName()));
+
+        final Optional<VariantContext> vc = VariantContextTestUtils.streamVcf(filteredVcf).findAny();
+
+        // This site should be filtered by the strict strand bias and n-ratio filter
+        Assert.assertTrue(vc.get().getFilters().contains(GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME));
+        Assert.assertTrue(vc.get().getFilters().contains(GATKVCFConstants.N_RATIO_FILTER_NAME));
+
     }
 
     private void doMutect2Test(
