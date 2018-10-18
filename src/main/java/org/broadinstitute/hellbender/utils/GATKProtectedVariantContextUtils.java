@@ -16,6 +16,7 @@ import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.lang.reflect.Array;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.OptionalInt;
@@ -435,12 +436,19 @@ public class GATKProtectedVariantContextUtils {
         Utils.nonNull(altAlleles);
         ParamUtils.isPositiveOrZero(minBaseQualityCutoff, "Minimum base quality must be positive or zero.");
 
-        final boolean isRef = referenceAllele.basesMatch(getBasesForAlleleInRead(pileupElement, referenceAllele))
-                && !pileupElement.isBeforeDeletionStart() && !pileupElement.isBeforeInsertion();
+        final byte[] basesForAlleleInRead = getBasesForAlleleInRead(pileupElement, referenceAllele);
+        final byte[] refBasesTruncatedToRead = ArrayUtils.subarray(referenceAllele.getBases(), 0, basesForAlleleInRead.length);
+
+        // It's possible the pileup is before a deletion but there aren't enough bases to distinguish
+        // This is not the case for an insertion, because an alignment can't have an insertion if the read runs out of bases.
+        final boolean consistentWithRef = Arrays.equals(basesForAlleleInRead, refBasesTruncatedToRead) && !pileupElement.isBeforeInsertion();
+        final boolean definitelyRef = consistentWithRef && basesForAlleleInRead.length == referenceAllele.length()
+                && !pileupElement.isBeforeDeletionStart() ;
 
         Allele pileupAllele = null;
-        if (!isRef) {
-
+        if (definitelyRef) {
+            pileupAllele = referenceAllele;
+        } else if (!consistentWithRef) {
             for (Allele altAllele : altAlleles) {
                 final VariantContext.Type variantType = typeOfVariant(referenceAllele, altAllele);
 
@@ -455,8 +463,6 @@ public class GATKProtectedVariantContextUtils {
                     }
                 }
             }
-        } else {
-            pileupAllele = referenceAllele;
         }
 
         if ((pileupAllele != null) && (getMinBaseQualityForAlleleInRead(pileupElement, pileupAllele) < minBaseQualityCutoff)) {

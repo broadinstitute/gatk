@@ -168,7 +168,7 @@ public class GATKProtectedVariantContextUtilsUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "testDeletions")
     public void testChooseBestAlleleDeletion(final int offsetIntoRead, final String refBases, final String altBases,
-                                              final boolean isSpliceInAlt) {
+                                              final boolean isSpliceInAlt, final boolean cantDecide) {
 
         // We assume that we are on the base right before the insertion.  We are pretending each read is 50 bases long.
         final Allele referenceAllele = Allele.create(refBases, true);
@@ -179,13 +179,13 @@ public class GATKProtectedVariantContextUtilsUnitTest extends GATKBaseTest {
             Assert.assertEquals(
                     GATKProtectedVariantContextUtils.chooseAlleleForRead(pileupElement, referenceAllele,
                             Collections.singletonList(deletionAllele), 0),
-                    deletionAllele);
+                    cantDecide ? null : deletionAllele);
         } else {
             final PileupElement pileupElement = ArtificialReadUtils.createNonIndelPileupElement(offsetIntoRead, referenceAllele, LENGTH_OF_ARTIFICIAL_READ);
             Assert.assertEquals(
                     GATKProtectedVariantContextUtils.chooseAlleleForRead(pileupElement, referenceAllele,
                             Collections.singletonList(deletionAllele), 0),
-                    referenceAllele);
+                    cantDecide ? null :referenceAllele);
         }
     }
 
@@ -221,10 +221,12 @@ public class GATKProtectedVariantContextUtilsUnitTest extends GATKBaseTest {
     @DataProvider(name="testDeletions")
     public Object[][] createTestDeletions() {
         return new Object[][] {
-                {0, "ATT", "A", true},
-                {0, "ATT", "A", false},
-                {10, "ATT", "A", true},
-                {10, "ATT", "A", false}
+                {0, "ATT", "A", true, false},
+                {0, "ATT", "A", false, false},
+                {10, "ATT", "A", true, false},
+                {10, "ATT", "A", false, false},
+                {LENGTH_OF_ARTIFICIAL_READ - 1, "AT", "A", true, true},
+                {LENGTH_OF_ARTIFICIAL_READ - 1, "AT", "A", false, true}
         };
     }
 

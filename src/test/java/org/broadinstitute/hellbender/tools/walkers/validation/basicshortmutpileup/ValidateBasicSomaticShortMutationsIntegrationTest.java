@@ -144,12 +144,12 @@ public class ValidateBasicSomaticShortMutationsIntegrationTest extends CommandLi
         // INS2: 20	3076299	.	A	AAGAAGCATGC
 
         assertValidationResult(variantValidationResults, new SimpleInterval("20", 1330646, 1330646),
-                "CCTTGGCTTATTCCA", "C", 7, 21, 10,
+                "CCTTGGCTTATTCCA", "C", 7, 22, 10,
                 26, 0);
 
         // TODO: This next one actually has an incorrect gtNumAltReadsInValidationNormal, since the validator thinks of this as AT<insT>.  There are supporting reads in the validation normal for A<insT>T.  See https://github.com/broadinstitute/gatk/issues/5061
         assertValidationResult(variantValidationResults, new SimpleInterval("20", 3076247, 3076247),
-                "AT", "ATT", 4, 33, 4,
+                "AT", "ATT", 4, 35, 4,
                 25,0);
         assertValidationResult(variantValidationResults, new SimpleInterval("20", 3076299, 3076299),
                 "A", "AAGAAGCATGC", 9, 41, 12,
