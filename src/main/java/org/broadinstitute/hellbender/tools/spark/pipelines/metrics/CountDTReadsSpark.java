@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.spark.pipelines;
+package org.broadinstitute.hellbender.tools.spark.pipelines.metrics;
 
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -75,13 +75,17 @@ public final class CountDTReadsSpark extends GATKSparkTool {
         final long dtReadscount = reads.filter(r -> r.hasAttribute("DT")).count();
         System.out.println("Reads marked as OpticalDuplicates: "+dtReadscount);
 
-        final long mappeddtReadscount = reads.filter(r -> r.hasAttribute("DT")).filter(ReadUtils::readHasMappedMate).count();
+        final long mappeddtReadscount = reads.filter(r -> r.hasAttribute("DT")).filter(r -> !ReadUtils.isNonPrimary(r)).count();
         System.out.println("Mapped Reads marked as OpticalDuplicates: "+mappeddtReadscount);
 
+        final long mappedReadsFirstInpair = reads.filter(r -> r.hasAttribute("DT")).filter(r -> !ReadUtils.isNonPrimary(r)).filter(r -> r.isFirstOfPair()).count();
+        System.out.println("Mapped Reads first in pair marked as OpticalDuplicates: "+mappedReadsFirstInpair);
+
+        final long readnamesRepresented = reads.filter(r -> r.hasAttribute("DT")).map(r -> r.getName()).distinct().count();
+        System.out.println("Unique readnames represented: "+readnamesRepresented);
+
         if(out != null) {
-            try (final PrintStream ps = new PrintStream(BucketUtils.createFile(out))) {
-                ps.print(count);
-            }
+            writeReads(ctx, out, reads.filter(r -> r.hasAttribute("DT")), getHeaderForReads());
         }
     }
 }
