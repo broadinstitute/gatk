@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.funcotator;
 
 import htsjdk.tribble.annotation.Strand;
 import htsjdk.variant.variantcontext.Allele;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
@@ -41,21 +42,16 @@ public final class ProteinChangeInfo {
                                final int codingSequenceAlleleStart,
                                final int alignedCodingSequenceAlleleStart,
                                final String codingSequence,
-                               final Strand strand ) {
+                               final Strand strand,
+                               final boolean isMitochondria) {
 
         // Cache whether it's a frameshift variant:
         final boolean isFrameshift =  GATKVariantContextUtils.isFrameshift( refAllele, altAllele );
 
         // Get our protein sequences:
-        final String referenceProteinSequence = FuncotatorUtils.createAminoAcidSequence(codingSequence, false, "(size=" + codingSequence.length() + ", ref allele: " + refAllele.getBaseString() + ")");
-        final String alternateProteinSequence = FuncotatorUtils.createAminoAcidSequence(
-                // Subtract 1 to account for 1-based genomic positions:
-                codingSequence.substring(0, codingSequenceAlleleStart - 1) +
-                        altAllele.getBaseString() +
-                        codingSequence.substring(codingSequenceAlleleStart + refAllele.length() -1),
-                isFrameshift,
-                "(size=" + codingSequence.length() + ", alt allele: " + altAllele.getBaseString() + ")"
-        );
+        final Pair<String, String> proteinSequences = createProteinSequences(refAllele, altAllele, codingSequenceAlleleStart, codingSequence, isFrameshift, isMitochondria);
+        final String referenceProteinSequence = proteinSequences.getLeft();
+        final String alternateProteinSequence = proteinSequences.getRight();
 
         // Get the _index_ of the first different amino acid (not the protein position!):
         // Default to the amino acid corresponding to the aligned coding sequence allele start:
@@ -102,6 +98,42 @@ public final class ProteinChangeInfo {
         else {
             initializeForOnp(referenceProteinSequence, alternateProteinSequence, proteinChangeStartIndex);
         }
+    }
+
+    private Pair<String, String> createProteinSequences(final Allele refAllele,
+                                                        final Allele altAllele,
+                                                        final int codingSequenceAlleleStart,
+                                                        final String codingSequence,
+                                                        final boolean isFrameshift,
+                                                        final boolean isMitochondria) {
+        final String referenceProteinSequence;
+        final String alternateProteinSequence;
+        if ( isMitochondria ) {
+            // Mitochondrial protein sequences differ from the Standard Code, so we must treat them separately:
+            referenceProteinSequence = FuncotatorUtils.createMitochondrialAminoAcidSequence(codingSequence, false, "(size=" + codingSequence.length() + ", ref allele: " + refAllele.getBaseString() + ")");
+            alternateProteinSequence = FuncotatorUtils.createMitochondrialAminoAcidSequence(
+                    // Subtract 1 to account for 1-based genomic positions:
+                    codingSequence.substring(0, codingSequenceAlleleStart - 1) +
+                            altAllele.getBaseString() +
+                            codingSequence.substring(codingSequenceAlleleStart + refAllele.length() -1),
+                    isFrameshift,
+                    "(size=" + codingSequence.length() + ", alt allele: " + altAllele.getBaseString() + ")"
+            );
+        }
+        else {
+            // Create a protein sequence using the Standard Code:
+            referenceProteinSequence = FuncotatorUtils.createAminoAcidSequence(codingSequence, false, "(size=" + codingSequence.length() + ", ref allele: " + refAllele.getBaseString() + ")");
+            alternateProteinSequence = FuncotatorUtils.createAminoAcidSequence(
+                    // Subtract 1 to account for 1-based genomic positions:
+                    codingSequence.substring(0, codingSequenceAlleleStart - 1) +
+                            altAllele.getBaseString() +
+                            codingSequence.substring(codingSequenceAlleleStart + refAllele.length() -1),
+                    isFrameshift,
+                    "(size=" + codingSequence.length() + ", alt allele: " + altAllele.getBaseString() + ")"
+            );
+        }
+
+        return Pair.of(referenceProteinSequence, alternateProteinSequence);
     }
 
     private void initializeForOnp(final String referenceProteinSequence, final String alternateProteinSequence, final int proteinChangeStartIndex) {
@@ -321,6 +353,7 @@ public final class ProteinChangeInfo {
      * @param alignedCodingSequenceAlleleStart The codon-aligned position (1-based, inclusive) in the _coding sequence_ at which the variant begins.  (NOTE: This is _not_ the same the genomic position, nor is it necessarily the same as the transcript position of the variant).
      * @param codingSequence The strand-corrected (i.e. if on the - strand, it has been reverse-complemented) sequence of bases containing the _coding sequence_ for a particular transcript of a gene, from which we should render a protein change.  (NOTE: This is _not_ the same the gene sequence, nor is it necessarily the same as the whole transcript sequence).  Must not be {@code null}.
      * @param strand The {@link Strand} on which the transcript for this protein change occurs.  Must not be {@link Strand#NONE}.  Must not be {@code null}.
+     * @param isMitochondria If {@code true}, will use Mitochondrial protein decoding, rather than the standard eukaryotic amino acid decoding.) {
      * @return A new {@link ProteinChangeInfo} object representing the change in the protein sequence for the given input data.
      */
     public static ProteinChangeInfo create( final Allele refAllele,
@@ -328,13 +361,14 @@ public final class ProteinChangeInfo {
                                             final int codingSequenceAlleleStart,
                                             final int alignedCodingSequenceAlleleStart,
                                             final String codingSequence,
-                                            final Strand strand ) {
+                                            final Strand strand,
+                                            final boolean isMitochondria) {
         Utils.nonNull(refAllele);
         Utils.nonNull(altAllele);
         Utils.nonNull(codingSequence);
         Utils.nonNull(strand);
 
-        return new ProteinChangeInfo(refAllele, altAllele, codingSequenceAlleleStart, alignedCodingSequenceAlleleStart, codingSequence, strand);
+        return new ProteinChangeInfo(refAllele, altAllele, codingSequenceAlleleStart, alignedCodingSequenceAlleleStart, codingSequence, strand, isMitochondria);
     }
 
     /**

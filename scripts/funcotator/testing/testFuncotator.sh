@@ -26,7 +26,7 @@
 ###############################################################################
 
 #Setup variables for the script:
-UNALIASED_SCRIPT_NAME=$( readlink "${BASH_SOURCE[0]}" )
+UNALIASED_SCRIPT_NAME=$( readlink "${BASH_SOURCE[0]}" || echo "${BASH_SOURCE[0]}" )
 SCRIPTDIR="$( cd "$( dirname "${UNALIASED_SCRIPT_NAME}" )" && pwd )"
 SCRIPTNAME=$( echo $0 | sed 's#.*/##g' )
 MINARGS=0

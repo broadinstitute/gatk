@@ -1679,7 +1679,10 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                         sequenceComparison.getCodingSequenceAlleleStart(),
                         sequenceComparison.getAlignedCodingSequenceAlleleStart(),
                         correctedCodingSequence,
-                        sequenceComparison.getStrand()
+                        sequenceComparison.getStrand(),
+                        // Figure out if we are in a mitochondrial contig:
+                        // TODO: Make this more robust by detecting the mito contig based on the reference used.
+                        FuncotatorConstants.MITOCHONDRIAL_CONTIG_NAMES.contains(variant.getContig())
                 );
 
                 // Set our protein change:
