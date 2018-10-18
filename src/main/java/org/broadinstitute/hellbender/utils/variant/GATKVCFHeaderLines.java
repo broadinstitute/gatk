@@ -202,6 +202,7 @@ public class GATKVCFHeaderLines {
         // M2-related info lines
         addInfoLine(new VCFInfoHeaderLine(EVENT_COUNT_IN_HAPLOTYPE_KEY, 1, VCFHeaderLineType.Integer, "Number of events in this haplotype"));
         addInfoLine(new VCFInfoHeaderLine(NORMAL_LOD_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Normal LOD score"));
+        addInfoLine(new VCFInfoHeaderLine(REALIGNMENT_COUNTS_VCF_ATTRIBUTE, 2, VCFHeaderLineType.Integer, "Number of reads passing and failing realignment."));
         addInfoLine(new VCFInfoHeaderLine(TUMOR_LOD_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Log odds ratio score for variant"));
         addInfoLine(new VCFInfoHeaderLine(IN_PON_VCF_ATTRIBUTE, 0, VCFHeaderLineType.Flag, "site found in panel of normals"));
         addInfoLine(new VCFInfoHeaderLine(POPULATION_AF_VCF_ATTRIBUTE, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "population allele frequencies of alt alleles"));
