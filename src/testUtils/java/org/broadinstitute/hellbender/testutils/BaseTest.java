@@ -7,7 +7,7 @@ import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.gcs.GoogleStorageUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.runtime.ProcessController;
 import org.broadinstitute.hellbender.utils.runtime.ProcessOutput;
@@ -484,7 +484,7 @@ public abstract class BaseTest {
      */
     protected FileSystem getAuthenticatedGcs(final String bucket) throws IOException {
         final byte[] creds = Files.readAllBytes(Paths.get(getGoogleServiceAccountKeyPath()));
-        return BucketUtils.getAuthenticatedGcs(getGCPTestProject(), bucket, creds);
+        return GoogleStorageUtils.getAuthenticatedGcs(getGCPTestProject(), bucket, creds);
     }
 
     /**

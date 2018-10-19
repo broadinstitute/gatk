@@ -13,7 +13,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.gcs.GoogleStorageUtils;
 import org.broadinstitute.hellbender.utils.iterators.SAMRecordToReadIterator;
 import org.broadinstitute.hellbender.utils.iterators.SamReaderQueryingIterator;
 import org.broadinstitute.hellbender.utils.nio.SeekableByteChannelPrefetcher;
@@ -210,15 +210,15 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
             }
 
             Function<SeekableByteChannel, SeekableByteChannel> wrapper =
-                (BucketUtils.isCloudStorageUrl(samPath)
+                (GoogleStorageUtils.isCloudStorageUrl(samPath)
                     ? cloudWrapper
                     : Function.identity());
             // if samIndices==null then we'll guess the index name from the file name.
             // If the file's on the cloud, then the search will only consider locations that are also
             // in the cloud.
             Function<SeekableByteChannel, SeekableByteChannel> indexWrapper =
-                ((samIndices != null && BucketUtils.isCloudStorageUrl(samIndices.get(samCount))
-                 || (samIndices == null && BucketUtils.isCloudStorageUrl(samPath)))
+                ((samIndices != null && GoogleStorageUtils.isCloudStorageUrl(samIndices.get(samCount))
+                 || (samIndices == null && GoogleStorageUtils.isCloudStorageUrl(samPath)))
                     ? cloudIndexWrapper
                     : Function.identity());
 

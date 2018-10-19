@@ -9,7 +9,6 @@ import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
@@ -122,7 +121,7 @@ public class ReadsSparkSinkUnitTest extends GATKBaseTest {
     @Test(dataProvider = "loadReadsBAM", groups = "spark")
     public void readsSinkHDFSTest(String inputBam, String outputFileName, String referenceFileName, String outputFileExtension, boolean writeBai, boolean writeSbi) throws IOException {
         final String outputHDFSPath = MiniClusterUtils.getTempPath(cluster, outputFileName, outputFileExtension).toString();
-        Assert.assertTrue(BucketUtils.isHadoopUrl(outputHDFSPath));
+        Assert.assertTrue(IOUtils.isHadoopUrl(outputHDFSPath));
         assertSingleShardedWritingWorks(inputBam, referenceFileName, outputHDFSPath, null, writeBai, writeSbi);
     }
 

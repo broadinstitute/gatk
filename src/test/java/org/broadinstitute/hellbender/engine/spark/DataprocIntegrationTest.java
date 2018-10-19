@@ -7,7 +7,7 @@ import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.tools.spark.pipelines.PrintReadsSpark;
 import org.broadinstitute.hellbender.tools.spark.pipelines.PrintVariantsSpark;
 import org.broadinstitute.hellbender.tools.spark.transforms.markduplicates.MarkDuplicatesSpark;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.gcs.GoogleStorageUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
@@ -48,7 +48,7 @@ public class DataprocIntegrationTest extends CommandLineProgramTest{
     @Test(dataProvider = "getCloudPaths", groups = {"cloud", "bucket"})
     public void printReadSparkOnDataproc(final String input) throws IOException {
         final String gcsInputPath = getGCPTestInputPath() + input;
-        final String outputPath = BucketUtils.getTempFilePath(getGCPTestStaging(), ".bam");
+        final String outputPath = GoogleStorageUtils.getTempFilePath(getGCPTestStaging(), ".bam");
 
         final ArgumentsBuilder argBuilder = new ArgumentsBuilder();
         argBuilder.addArgument("input", gcsInputPath)
@@ -82,7 +82,7 @@ public class DataprocIntegrationTest extends CommandLineProgramTest{
     @Test(groups = {"cloud","bucket"}, enabled=false)
     public void printVariantsOnDataproc() throws IOException {
         final String gcsInputPath = getGCPTestInputPath() + "large/gvcfs/gatk3.7_30_ga4f720357.24_sample.21.expected.vcf";
-        final String outputPath = BucketUtils.getTempFilePath(getGCPTestStaging(), ".vcf");
+        final String outputPath = GoogleStorageUtils.getTempFilePath(getGCPTestStaging(), ".vcf");
 
         final ArgumentsBuilder argBuilder = new ArgumentsBuilder();
         argBuilder.addArgument("V", gcsInputPath)
@@ -105,8 +105,8 @@ public class DataprocIntegrationTest extends CommandLineProgramTest{
     @Test(groups = {"cloud", "bucket"})
     public void markDuplicatesSparkOnDataproc() throws IOException {
         final String gcsInputPath = getGCPTestInputPath() + "large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.tiny.queryname.noMD.bam";
-        final String bamOut = BucketUtils.getTempFilePath(getGCPTestStaging(), ".bam");
-        final String metricsOut = BucketUtils.getTempFilePath(getGCPTestStaging(), ".metrics");
+        final String bamOut = GoogleStorageUtils.getTempFilePath(getGCPTestStaging(), ".bam");
+        final String metricsOut = GoogleStorageUtils.getTempFilePath(getGCPTestStaging(), ".metrics");
 
         final ArgumentsBuilder argBuilder = new ArgumentsBuilder();
         argBuilder.addArgument("I", gcsInputPath)

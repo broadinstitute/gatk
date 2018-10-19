@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.metrics;
 import htsjdk.samtools.metrics.MetricBase;
 import htsjdk.samtools.metrics.MetricsFile;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.gcs.GoogleStorageUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.testutils.MiniClusterUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -48,7 +48,7 @@ public class MetricsUtilsTest extends GATKBaseTest {
 
     @Test(dataProvider = "metricsPaths", groups = "bucket")
     public void testSaveMetrics(String destinationPrefix) throws IOException {
-        final String outputPath = BucketUtils.getTempFilePath(destinationPrefix, ".txt");
+        final String outputPath = GoogleStorageUtils.getTempFilePath(destinationPrefix, ".txt");
         TestMetric testMetric = new TestMetric();
         testMetric.value1 = 10;
         testMetric.value2 = 5;

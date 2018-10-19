@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.pipelines;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.gcs.GoogleStorageUtils;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -32,7 +32,7 @@ public final class PrintVariantsSparkIntegrationTest extends CommandLineProgramT
         final boolean outputToGCS) {
         final String gcsInputPath = getGCPTestInputPath() + gcsInput;
         final String outputPrefix = outputToGCS ? getGCPTestStaging() : "testGCSInputsAndOutputs";
-        final String outputPath = BucketUtils.getTempFilePath(outputPrefix, outputExtension);
+        final String outputPath = GoogleStorageUtils.getTempFilePath(outputPrefix, outputExtension);
 
         final ArgumentsBuilder argBuilder = new ArgumentsBuilder();
         argBuilder.addArgument("variant", gcsInputPath)

@@ -25,7 +25,7 @@ import org.broadinstitute.hellbender.tools.walkers.genotyper.AlleleSubsettingUti
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.gcs.GoogleStorageUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -425,7 +425,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
 
     @Test(groups={"bucket"})
     public void testBamoutOnGcs() {
-        final Path bamOutput = BucketUtils.getPathOnGcs(BucketUtils.getTempFilePath(
+        final Path bamOutput = GoogleStorageUtils.getPathOnGcs(GoogleStorageUtils.getTempFilePath(
             getGCPTestStaging() + "testBamoutProducesReasonablySizedOutput", ".bam"));
         innerTestBamoutProducesReasonablySizedOutput(bamOutput);
     }

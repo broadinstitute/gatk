@@ -8,7 +8,7 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.FlatMapFunction;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.variant.writers.GVCFBlockCombiner;
 import org.broadinstitute.hellbender.utils.variant.writers.GVCFBlockCombiningIterator;
 import org.disq_bio.disq.HtsjdkVariantsRdd;
@@ -75,7 +75,7 @@ public final class VariantsSparkSink {
             final JavaSparkContext ctx, final String outputFile, final JavaRDD<VariantContext> variants,
             final VCFHeader header, final boolean writeGvcf, final List<Number> gqPartitions, final int defaultPloidy,
             final int numReducers, final boolean writeTabixIndex) throws IOException {
-        String absoluteOutputFile = BucketUtils.makeFilePathAbsolute(outputFile);
+        String absoluteOutputFile = IOUtils.makeFilePathAbsolute(outputFile);
         writeVariantsSingle(ctx, absoluteOutputFile, variants, header, writeGvcf, gqPartitions, defaultPloidy, numReducers, writeTabixIndex);
     }
 

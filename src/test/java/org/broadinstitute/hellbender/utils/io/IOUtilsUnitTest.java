@@ -12,7 +12,7 @@ import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.broadinstitute.hellbender.testutils.MiniClusterUtils;
 import org.broadinstitute.hellbender.tools.funcotator.FuncotatorTestConstants;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.gcs.GoogleStorageUtils;
 import org.testng.Assert;
 import org.testng.SkipException;
 import org.testng.annotations.AfterClass;
@@ -679,7 +679,7 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
 
     @Test(groups={"bucket"})
     public void testDeleteRecursivelyGCS() throws IOException {
-        final String gcsFolder = BucketUtils.randomRemotePath(getGCPTestStaging(), "test-dir", "");
+        final String gcsFolder = GoogleStorageUtils.randomRemotePath(getGCPTestStaging(), "test-dir", "");
         final Path gcsFolderPath = IOUtils.getPath(gcsFolder+"/");
         Files.createDirectory(gcsFolderPath);
         Assert.assertTrue(Files.exists(gcsFolderPath));
@@ -715,8 +715,8 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
     @Test(groups={"bucket"})
     public void testDirSizeGCS() throws IOException {
         final String src = publicTestDir + "empty.vcf";
-        final String gcsSubDir = BucketUtils.randomRemotePath(getGCPTestStaging(), "dir-", "/");
-        final String intermediate = BucketUtils.randomRemotePath(gcsSubDir, "test-copy-empty", ".vcf");
+        final String gcsSubDir = GoogleStorageUtils.randomRemotePath(getGCPTestStaging(), "dir-", "/");
+        final String intermediate = GoogleStorageUtils.randomRemotePath(gcsSubDir, "test-copy-empty", ".vcf");
         Files.copy(IOUtils.getPath(src), IOUtils.getPath(intermediate));
         Assert.assertTrue(Files.exists(IOUtils.getPath(intermediate)));
 
@@ -731,5 +731,12 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
 
         Files.delete(IOUtils.getPath(intermediate));
         Assert.assertFalse(Files.exists(IOUtils.getPath(intermediate)));
+    }
+
+    @Test
+    public void testIsHadoopURL(){
+        Assert.assertFalse(IOUtils.isHadoopUrl("gs://abucket/bucket"));
+        Assert.assertTrue(IOUtils.isHadoopUrl("hdfs://namenode/path/to/file"));
+        Assert.assertFalse(IOUtils.isHadoopUrl("localFile"));
     }
 }

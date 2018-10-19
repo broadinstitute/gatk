@@ -13,7 +13,7 @@ import picard.cmdline.programgroups.OtherProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.gcs.GoogleStorageUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import scala.Tuple2;
 
@@ -102,11 +102,11 @@ public class ParallelCopyGCSDirectoryIntoHDFSSpark extends GATKSparkTool {
     @Override
     protected void runTool(final JavaSparkContext ctx) {
 
-        if (! BucketUtils.isCloudStorageUrl(inputGCSPath)) {
+        if (! GoogleStorageUtils.isCloudStorageUrl(inputGCSPath)) {
             throw new UserException("Input path "+ inputGCSPath + " is not a GCS URI");
         }
 
-        if (! BucketUtils.isHadoopUrl(outputHDFSDirectory)) {
+        if (! IOUtils.isHadoopUrl(outputHDFSDirectory)) {
             throw new UserException("Output directory " + outputHDFSDirectory + " is not an HDFS URI");
         }
 

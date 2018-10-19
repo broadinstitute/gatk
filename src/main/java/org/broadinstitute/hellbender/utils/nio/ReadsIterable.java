@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.utils.nio;
 
-import com.google.cloud.storage.contrib.nio.CloudStorageOptions;
 import htsjdk.samtools.QueryInterval;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordIterator;
@@ -11,7 +10,6 @@ import htsjdk.samtools.ValidationStringency;
 import htsjdk.samtools.seekablestream.ByteArraySeekableStream;
 import htsjdk.samtools.seekablestream.SeekableStream;
 import htsjdk.samtools.util.CloseableIterator;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.IOException;

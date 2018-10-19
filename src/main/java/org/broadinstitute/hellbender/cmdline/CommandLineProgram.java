@@ -19,7 +19,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.config.ConfigFactory;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.gcs.GoogleStorageUtils;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.runtime.RuntimeUtils;
@@ -179,7 +179,7 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
             BlockGunzipper.setDefaultInflaterFactory(new IntelInflaterFactory());
         }
 
-        BucketUtils.setGlobalNIODefaultOptions(NIO_MAX_REOPENS, NIO_PROJECT_FOR_REQUESTER_PAYS);
+        GoogleStorageUtils.setGlobalNIODefaultOptions(NIO_MAX_REOPENS, NIO_PROJECT_FOR_REQUESTER_PAYS);
 
         if (!QUIET) {
             printStartupMessage(startDateTime);
@@ -430,7 +430,7 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
         final boolean usingIntelInflater = (BlockGunzipper.getDefaultInflaterFactory() instanceof IntelInflaterFactory && ((IntelInflaterFactory)BlockGunzipper.getDefaultInflaterFactory()).usingIntelInflater());
         logger.info("Inflater: " + (usingIntelInflater ? "IntelInflater": "JdkInflater"));
 
-        logger.info("GCS max retries/reopens: " + BucketUtils.getCloudStorageConfiguration(NIO_MAX_REOPENS, "").maxChannelReopens());
+        logger.info("GCS max retries/reopens: " + GoogleStorageUtils.getCloudStorageConfiguration(NIO_MAX_REOPENS, "").maxChannelReopens());
         if (Strings.isNullOrEmpty(NIO_PROJECT_FOR_REQUESTER_PAYS)) {
             logger.info("Requester pays: disabled");
         } else {

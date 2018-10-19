@@ -31,7 +31,6 @@ import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.broadinstitute.hellbender.testutils.MiniClusterUtils;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.IndexFeatureFile;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
@@ -43,7 +42,6 @@ import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URI;
 import java.nio.file.Files;
 import java.util.*;
 import java.util.zip.GZIPInputStream;
@@ -85,7 +83,7 @@ public final class VariantsSparkSinkUnitTest extends GATKBaseTest {
     @Test(dataProvider = "loadVariants", groups = "spark")
     public void variantsSinkHDFSTest(String vcf, String outputFileExtension, boolean writeTabixIndex) throws IOException {
         final String outputHDFSPath = MiniClusterUtils.getTempPath(cluster, outputFileName, outputFileExtension).toString();
-        Assert.assertTrue(BucketUtils.isHadoopUrl(outputHDFSPath));
+        Assert.assertTrue(IOUtils.isHadoopUrl(outputHDFSPath));
         assertSingleShardedWritingWorks(vcf, outputHDFSPath, writeTabixIndex);
     }
 
@@ -219,12 +217,7 @@ public final class VariantsSparkSinkUnitTest extends GATKBaseTest {
     }
 
     private void checkFileExtensionConsistentWithContents(String outputPath, boolean writeTabixIndex) throws IOException {
-        String outputFile;
-        if (BucketUtils.isFileUrl(outputPath)) {
-            outputFile = new File(URI.create(outputPath)).getAbsolutePath();
-        } else {
-            outputFile = outputPath;
-        }
+        final String outputFile = IOUtils.makeFilePathAbsolute(outputPath);
         boolean blockCompressed = isBlockCompressed(outputFile);
         String vcfFormat = getVcfFormat(outputFile);
         if (outputFile.endsWith(".vcf")) {
