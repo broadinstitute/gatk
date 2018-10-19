@@ -66,7 +66,7 @@ public class ParallelCopyGCSDirectoryIntoHDFSSparkIntegrationTest extends Comman
 
             final File tempDir = createTempDir("ParallelCopy");
 
-            BucketUtils.copyFile(hdfsPath, tempDir + "fileFromHDFS.bam.bai");
+            Files.copy(IOUtils.getPath(hdfsPath), IOUtils.getPath(tempDir + "fileFromHDFS.bam.bai"));
             Assert.assertEquals(Utils.calculateFileMD5(new File(tempDir + "fileFromHDFS.bam.bai")), "1a6baa5332e98ef1358ac0fb36f46aaf");
         } finally {
             MiniClusterUtils.stopCluster(cluster);
@@ -120,7 +120,7 @@ public class ParallelCopyGCSDirectoryIntoHDFSSparkIntegrationTest extends Comman
                 while (hdfsCopies.hasNext()) {
                     final FileStatus next =  hdfsCopies.next();
                     final Path path = next.getPath();
-                    BucketUtils.copyFile(path.toString(), tempDir + "/" + path.getName());
+                    Files.copy(IOUtils.getPath(path.toString()), IOUtils.getPath(tempDir + "/" + path.getName()));
                     filesFound ++;
                 }
             }

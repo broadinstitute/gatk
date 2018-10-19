@@ -6,6 +6,7 @@ import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.testutils.MiniClusterUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -14,6 +15,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 
 public class MetricsUtilsTest extends GATKBaseTest {
     private MiniDFSCluster cluster;
@@ -65,7 +67,7 @@ public class MetricsUtilsTest extends GATKBaseTest {
 
     private File copyFileToLocalTmpFile(String outputPath) throws IOException {
         File localCopy = createTempFile("local_metrics_copy",".txt");
-        BucketUtils.copyFile(outputPath, localCopy.getAbsolutePath());
+        Files.copy(IOUtils.getPath(outputPath), IOUtils.getPath(localCopy.getAbsolutePath()));
         return localCopy;
     }
 }

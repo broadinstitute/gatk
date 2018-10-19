@@ -1,10 +1,9 @@
 package org.broadinstitute.hellbender.utils.gcs;
 
 import com.google.cloud.storage.contrib.nio.CloudStorageConfiguration;
-import htsjdk.samtools.util.IOUtil;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.testutils.MiniClusterUtils;
 import org.broadinstitute.hellbender.utils.config.ConfigFactory;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -12,6 +11,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URI;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.GeneralSecurityException;
@@ -71,62 +71,11 @@ public final class BucketUtilsTest extends GATKBaseTest {
         Assert.assertFalse(BucketUtils.isFileUrl("gs://abucket"));
     }
 
-    @Test
-    public void testCopyLocal() throws IOException {
-        final String src = publicTestDir+"empty.vcf";
-        File dest = createTempFile("copy-empty",".vcf");
-
-        BucketUtils.copyFile(src, dest.getPath());
-        IOUtil.assertFilesEqual(new File(src), dest);
-    }
-
-    @Test
-    public void testDeleteLocal() throws IOException, GeneralSecurityException {
-        File dest = createTempFile("temp-fortest",".txt");
-        try (FileWriter fw = new FileWriter(dest)){
-            fw.write("Goodbye, cruel world!");
-        }
-        BucketUtils.deleteFile(dest.getPath());
-        Assert.assertFalse(dest.exists(), "File '"+dest.getPath()+"' was not properly deleted as it should.");
-    }
-
-    @Test(groups={"bucket"})
-    public void testCopyAndDeleteGCS() throws IOException, GeneralSecurityException {
-        final String src = publicTestDir + "empty.vcf";
-        File dest = createTempFile("copy-empty", ".vcf");
-        final String intermediate = BucketUtils.randomRemotePath(getGCPTestStaging(), "test-copy-empty", ".vcf");
-        Assert.assertTrue(BucketUtils.isCloudStorageUrl(intermediate), "!BucketUtils.isCloudStorageUrl(intermediate)");
-        BucketUtils.copyFile(src, intermediate);
-        BucketUtils.copyFile(intermediate, dest.getPath());
-        IOUtil.assertFilesEqual(new File(src), dest);
-        Assert.assertTrue(BucketUtils.fileExists(intermediate));
-        BucketUtils.deleteFile(intermediate);
-        Assert.assertFalse(BucketUtils.fileExists(intermediate));
-    }
-
     @Test(groups={"bucket"})
     public void testGetPathOnGcsDirectory() throws Exception {
         final String dirPath = "gs://bucket/my/dir/";
         final Path pathOnGcs = BucketUtils.getPathOnGcs(dirPath);
         Assert.assertEquals(pathOnGcs.toUri().toString(), dirPath);
-    }
-
-    @Test
-    public void testCopyAndDeleteHDFS() throws Exception {
-        final String src = publicTestDir + "empty.vcf";
-        File dest = createTempFile("copy-empty", ".vcf");
-
-        MiniClusterUtils.runOnIsolatedMiniCluster( cluster -> {
-            final String intermediate = BucketUtils.randomRemotePath(MiniClusterUtils.getWorkingDir(cluster).toString(), "test-copy-empty", ".vcf");
-            Assert.assertTrue(BucketUtils.isHadoopUrl(intermediate), "!BucketUtils.isHadoopUrl(intermediate)");
-
-            BucketUtils.copyFile(src, intermediate);
-            BucketUtils.copyFile(intermediate, dest.getPath());
-            IOUtil.assertFilesEqual(new File(src), dest);
-            Assert.assertTrue(BucketUtils.fileExists(intermediate));
-            BucketUtils.deleteFile(intermediate);
-            Assert.assertFalse(BucketUtils.fileExists(intermediate));
-        });
     }
 
     @Test
@@ -155,7 +104,7 @@ public final class BucketUtilsTest extends GATKBaseTest {
         final String src = publicTestDir + "empty.vcf";
         final String gcsSubDir = BucketUtils.randomRemotePath(getGCPTestStaging(), "dir-", "/");
         final String intermediate = BucketUtils.randomRemotePath(gcsSubDir, "test-copy-empty", ".vcf");
-        BucketUtils.copyFile(src, intermediate);
+        Files.copy(IOUtils.getPath(src), IOUtils.getPath(intermediate));
         Assert.assertTrue(BucketUtils.fileExists(intermediate));
 
         long srcFileSize = BucketUtils.fileSize(src);
@@ -167,7 +116,7 @@ public final class BucketUtilsTest extends GATKBaseTest {
         long intermediateParentDirSize = BucketUtils.dirSize(gcsSubDir);
         Assert.assertEquals(intermediateParentDirSize, srcFileSize);
 
-        BucketUtils.deleteFile(intermediate);
+        Files.delete(IOUtils.getPath(intermediate));
         Assert.assertFalse(BucketUtils.fileExists(intermediate));
     }
 }

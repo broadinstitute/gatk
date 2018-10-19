@@ -7,7 +7,6 @@ import com.google.cloud.storage.contrib.nio.CloudStorageConfiguration.Builder;
 import com.google.cloud.storage.contrib.nio.CloudStorageFileSystem;
 import com.google.cloud.storage.contrib.nio.CloudStorageFileSystemProvider;
 import com.google.common.base.Strings;
-import com.google.common.io.ByteStreams;
 import htsjdk.samtools.util.RuntimeIOException;
 import htsjdk.tribble.Tribble;
 import htsjdk.tribble.util.TabixUtils;
@@ -89,40 +88,6 @@ public final class BucketUtils {
             return path;
         } else {
             return new File(path).getAbsolutePath();
-        }
-    }
-
-    /**
-     * Copies a file. Can be used to copy e.g. from GCS to local.
-     *
-     * @param sourcePath the path to read from. If GCS, it must start with "gs://", or "hdfs://" for HDFS.
-     * @param destPath the path to copy to. If GCS, it must start with "gs://", or "hdfs://" for HDFS.
-     * @throws IOException
-     */
-    public static void copyFile(String sourcePath, String destPath) throws IOException {
-        try (
-                InputStream in = IOUtils.openInputStream(IOUtils.getPath(sourcePath));
-                OutputStream fout = IOUtils.openOutputStream(IOUtils.getPath(destPath))) {
-            ByteStreams.copy(in, fout);
-        }
-    }
-
-    /**
-     * Deletes a file: local, GCS or HDFS.
-     *  @param pathToDelete the path to delete. If GCS, it must start with "gs://", or "hdfs://" for HDFS.
-     *
-     */
-    public static void deleteFile(String pathToDelete) throws IOException {
-        if (isCloudStorageUrl(pathToDelete)) {
-            java.nio.file.Path p = getPathOnGcs(pathToDelete);
-            Files.delete(p);
-        } else if (isHadoopUrl(pathToDelete)) {
-            Path file = new Path(pathToDelete);
-            FileSystem fs = file.getFileSystem(new Configuration());
-            fs.delete(file, false);
-        } else {
-            boolean ok = new File(pathToDelete).delete();
-            if (!ok) throw new IOException("Unable to delete '"+pathToDelete+"'");
         }
     }
 
