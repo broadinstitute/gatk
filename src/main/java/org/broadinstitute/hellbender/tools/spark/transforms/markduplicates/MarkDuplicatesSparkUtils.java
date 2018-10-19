@@ -353,7 +353,7 @@ public class MarkDuplicatesSparkUtils {
             }
 
             if (Utils.isNonEmpty(pairs)) {
-                nonDuplicates.add(handlePairs(pairs, finder));
+                nonDuplicates.addAll(handlePairs(pairs, finder));
             }
 
             if (Utils.isNonEmpty(passthroughs)) {
@@ -391,11 +391,13 @@ public class MarkDuplicatesSparkUtils {
                 .collect(Collectors.toList());
     }
 
-    private static Tuple2<IndexPair<String>, Integer> handlePairs(List<Pair> pairs, OpticalDuplicateFinder finder) {
+    private static List<Tuple2<IndexPair<String>, Integer>> handlePairs(List<Pair> pairs, OpticalDuplicateFinder finder) {
         // save ourselves the trouble when there are no optical duplicates to worry about
         if (pairs.size() == 1) {
-            return (new Tuple2<>(new IndexPair<>(pairs.get(0).getName(), pairs.get(0).getPartitionIndex()), 0));
+            return Collections.singletonList(new Tuple2<>(new IndexPair<>(pairs.get(0).getName(), pairs.get(0).getPartitionIndex()), 0));
         }
+
+        List<Tuple2<IndexPair<String>, Integer>> output = new ArrayList<>();
 
         pairs = pairs.stream()
                 .peek(pair -> finder.addLocationInformation(pair.getName(), pair))
@@ -410,19 +412,21 @@ public class MarkDuplicatesSparkUtils {
         if (groupByOrientation.containsKey(ReadEnds.FR) && groupByOrientation.containsKey(ReadEnds.RF)) {
             final List<Pair> peFR = new ArrayList<>(groupByOrientation.get(ReadEnds.FR));
             final List<Pair> peRF = new ArrayList<>(groupByOrientation.get(ReadEnds.RF));
-            numOpticalDuplicates = countOpticalDuplicates(finder, peFR, bestPair) + countOpticalDuplicates(finder, peRF, bestPair);
+            numOpticalDuplicates = countOpticalDuplicates(finder, peFR, bestPair, output) + countOpticalDuplicates(finder, peRF, bestPair, output);
         } else {
-            numOpticalDuplicates = countOpticalDuplicates(finder, pairs, bestPair);
+            numOpticalDuplicates = countOpticalDuplicates(finder, pairs, bestPair, output);
         }
-        return (new Tuple2<>(new IndexPair<>(bestPair.getName(), bestPair.getPartitionIndex()), numOpticalDuplicates));
+        output.add(new Tuple2<>(new IndexPair<>(bestPair.getName(), bestPair.getPartitionIndex()), numOpticalDuplicates));
+        return output;
     }
 
-    private static int countOpticalDuplicates(OpticalDuplicateFinder finder, List<Pair> scored, Pair best) {
+    private static int countOpticalDuplicates(OpticalDuplicateFinder finder, List<Pair> scored, Pair best, List<Tuple2<IndexPair<String>,Integer>> opticalDuplicateList) {
         final boolean[] opticalDuplicateFlags = finder.findOpticalDuplicates(scored, best);
         int numOpticalDuplicates = 0;
-        for (final boolean b : opticalDuplicateFlags) {
-            if (b) {
+        for (int i = 0; i < opticalDuplicateFlags.length; i++) {
+            if (opticalDuplicateFlags[i]) {
                 numOpticalDuplicates++;
+                opticalDuplicateList.add(new Tuple2<>(new IndexPair<>(scored.get(i).getName(), scored.get(i).getPartitionIndex()), -2));
             }
         }
         return numOpticalDuplicates;

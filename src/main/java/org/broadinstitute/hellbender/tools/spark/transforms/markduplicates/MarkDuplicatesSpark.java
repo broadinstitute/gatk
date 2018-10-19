@@ -28,6 +28,7 @@ import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesSco
 import org.broadinstitute.hellbender.utils.read.markduplicates.SerializableOpticalDuplicatesFinder;
 import org.broadinstitute.hellbender.utils.spark.SparkUtils;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
+import picard.sam.markduplicates.MarkDuplicates;
 import picard.sam.markduplicates.util.OpticalDuplicateFinder;
 import scala.Tuple2;
 
@@ -115,14 +116,22 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
 
             return Utils.stream(readsIter)
                     .peek(read -> read.setIsDuplicate(false))
+                    .peek(read -> read.setAttribute(MarkDuplicates.DUPLICATE_TYPE_TAG, (String)null))
                     .peek(read -> {
                 // Handle reads that have been marked as non-duplicates (which also get tagged with optical duplicate summary statistics)
                 if (namesOfNonDuplicateReadsAndOpticalCounts.containsKey(read.getName())) {
-                    read.setIsDuplicate(false);
-                    if (markUnmappedMates || !read.isUnmapped()) {
-                        int dupCount = namesOfNonDuplicateReadsAndOpticalCounts.replace(read.getName(), -1);
-                        if (dupCount > -1) {
-                            ((SAMRecordToGATKReadAdapter) read).setAttribute(MarkDuplicatesSparkUtils.OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME, dupCount);
+                    // If its an optical duplicate, mark it.
+                    if (namesOfNonDuplicateReadsAndOpticalCounts.get(read.getName())==-2) {
+                        read.setIsDuplicate(true);
+                        read.setAttribute(MarkDuplicates.DUPLICATE_TYPE_TAG, MarkDuplicates.DUPLICATE_TYPE_SEQUENCING);
+                    // Otherwise treat it normally.
+                    } else {
+                        read.setIsDuplicate(false);
+                        if (markUnmappedMates || !read.isUnmapped()) {
+                            int dupCount = namesOfNonDuplicateReadsAndOpticalCounts.replace(read.getName(), -1);
+                            if (dupCount > -1) {
+                                ((SAMRecordToGATKReadAdapter) read).setAttribute(MarkDuplicatesSparkUtils.OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME, dupCount);
+                            }
                         }
                     }
                     // Mark unmapped read pairs as non-duplicates
