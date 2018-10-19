@@ -9,7 +9,6 @@ import com.google.cloud.storage.contrib.nio.CloudStorageFileSystemProvider;
 import com.google.common.base.Strings;
 import htsjdk.tribble.Tribble;
 import htsjdk.tribble.util.TabixUtils;
-import org.apache.hadoop.fs.Path;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
@@ -22,6 +21,8 @@ import shaded.cloud_nio.org.threeten.bp.Duration;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileSystem;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.UUID;
 
@@ -55,7 +56,7 @@ public final class BucketUtils {
         return pathSpec.getScheme().equals(GCS_SCHEME);
     }
 
-    public static boolean isCloudStorageUrl(final java.nio.file.Path path) {
+    public static boolean isCloudStorageUrl(final Path path) {
         // the initial "" protects us against a null scheme
         return ("" + path.toUri().getScheme() + "://").equals(GCS_PREFIX);
     }
@@ -125,7 +126,7 @@ public final class BucketUtils {
             // Go through URI because Path.toString isn't guaranteed to include the "gs://" prefix.
             return getPathOnGcs(stagingLocation).resolve(prefix + UUID.randomUUID().toString() + suffix).toUri().toString();
         } else if (isHadoopUrl(stagingLocation)) {
-            return new Path(stagingLocation, prefix + UUID.randomUUID().toString() + suffix).toString();
+            return new org.apache.hadoop.fs.Path(stagingLocation, prefix + UUID.randomUUID().toString() + suffix).toString();
         } else {
             throw new IllegalArgumentException("Staging location is not remote: " + stagingLocation);
         }
@@ -169,7 +170,7 @@ public final class BucketUtils {
      * on Spark because using the fat, shaded jar breaks the registration of the GCS FilesystemProvider.
      * To transform other types of string URLs into Paths, use IOUtils.getPath instead.
      */
-    public static java.nio.file.Path getPathOnGcs(String gcsUrl) {
+    public static Path getPathOnGcs(String gcsUrl) {
         // use a split limit of -1 to preserve empty split tokens, especially trailing slashes on directory names
         final String[] split = gcsUrl.split("/", -1);
         final String BUCKET = split[2];
@@ -229,7 +230,7 @@ public final class BucketUtils {
      * Note that most of the time it's enough to just open a file via
      * Files.newInputStream(Paths.get(URI.create( path ))).
      **/
-    public static java.nio.file.FileSystem getAuthenticatedGcs(String projectId, String bucket, byte[] credentials) throws IOException {
+    public static FileSystem getAuthenticatedGcs(String projectId, String bucket, byte[] credentials) throws IOException {
         StorageOptions.Builder builder = StorageOptions.newBuilder()
                 .setProjectId(projectId);
         if (null != credentials) {
