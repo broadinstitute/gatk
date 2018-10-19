@@ -243,6 +243,7 @@ public class CNNScoreVariants extends VariantWalker {
         // Users can disable the AVX check to allow an older version of TF that doesn't require AVX to be used.
         if(this.disableAVXCheck == false) {
             IntelGKLUtils utils = new IntelGKLUtils();
+            utils.load(null);
             if (utils.isAvxSupported() == false) {
                 // Give user the bad news, suggest remedies.
                 throw new UserException.HardwareFeatureException(CNNScoreVariants.AVXREQUIRED_ERROR);
