@@ -15,7 +15,6 @@ import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscovery
 import org.broadinstitute.hellbender.tools.spark.sv.utils.*;
 import org.broadinstitute.hellbender.tools.spark.utils.IntHistogram;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.BreakpointEvidence.*;
@@ -107,7 +106,8 @@ public final class XGBoostEvidenceFilter implements Iterator<BreakpointEvidence>
     public static Predictor loadPredictor(final String modelFileLocation) {
         ObjFunction.useFastMathExp(USE_FAST_MATH_EXP);
         try(final InputStream inputStream = modelFileLocation == null ?
-                resourcePathToInputStream(DEFAULT_PREDICTOR_RESOURCE_PATH) : BucketUtils.openFile(modelFileLocation)) {
+                resourcePathToInputStream(DEFAULT_PREDICTOR_RESOURCE_PATH) : IOUtils.openInputStream(
+                IOUtils.getPath(modelFileLocation))) {
             return new Predictor(inputStream);
         } catch(Exception e) {
             throw new GATKException(

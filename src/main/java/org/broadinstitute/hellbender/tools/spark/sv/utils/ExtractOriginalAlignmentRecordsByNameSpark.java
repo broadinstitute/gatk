@@ -11,7 +11,7 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 
@@ -106,7 +106,7 @@ public final class ExtractOriginalAlignmentRecordsByNameSpark extends GATKSparkT
     private Set<String> parseReadNames() {
 
         try ( final BufferedReader rdr =
-                      new BufferedReader(new InputStreamReader(BucketUtils.openFile(readNameFile))) ) {
+                      new BufferedReader(new InputStreamReader(IOUtils.openInputStream(IOUtils.getPath(readNameFile)))) ) {
             return rdr.lines().map(s -> s.replaceAll("^@", "")
                                          .replaceAll("/1$", "")
                                          .replaceAll("/2$", ""))

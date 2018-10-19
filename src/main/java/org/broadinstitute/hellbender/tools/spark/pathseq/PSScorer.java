@@ -12,7 +12,6 @@ import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
@@ -423,7 +422,7 @@ public final class PSScorer {
     public static PSTaxonomyDatabase readTaxonomyDatabase(final String filePath) {
         final Kryo kryo = new Kryo();
         kryo.setReferences(false);
-        final Input input = new Input(BucketUtils.openFile(filePath));
+        final Input input = new Input(IOUtils.openInputStream(IOUtils.getPath(filePath)));
         final PSTaxonomyDatabase taxonomyDatabase = kryo.readObject(input, PSTaxonomyDatabase.class);
         input.close();
         return taxonomyDatabase;

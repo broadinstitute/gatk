@@ -17,7 +17,6 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.tools.spark.utils.IntHistogram;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -466,7 +465,7 @@ public class ReadMetadata {
          * @return never {@code null}.
          */
         public static ReadMetadata readStandalone(final String whereFrom) {
-            try (final InputStream inputStream = BucketUtils.openFile(whereFrom);
+            try (final InputStream inputStream = IOUtils.openInputStream(IOUtils.getPath(whereFrom));
                  final Input input = new Input(inputStream)) {
                 final Kryo kryo = new Kryo();
                 final Serializer serializer = new Serializer();

@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
 import org.apache.commons.math3.distribution.AbstractIntegerDistribution;
-import org.apache.commons.math3.distribution.IntegerDistribution;
 import org.apache.commons.math3.distribution.LogNormalDistribution;
 import org.apache.commons.math3.distribution.NormalDistribution;
 import org.apache.commons.math3.distribution.RealDistribution;
@@ -12,7 +11,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.evidence.LibraryStatistics;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
 import org.broadinstitute.hellbender.tools.spark.utils.IntHistogram;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -187,7 +186,8 @@ public enum InsertSizeDistributionShape {
         public AbstractIntegerDistribution fromTextFile(String whereFrom) {
             final IntHistogram hist = new IntHistogram(2000); // 2000 is the number of tracked values i.e. 0..2000
             long modeCount = 0;
-            try (final BufferedReader reader = new BufferedReader(new InputStreamReader(BucketUtils.openFile(whereFrom)))) {
+            try (final BufferedReader reader = new BufferedReader(new InputStreamReader(IOUtils.openInputStream(
+                    IOUtils.getPath(whereFrom))))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     if (line.startsWith(ReadMetadata.CDF_PREFIX)) {
@@ -253,7 +253,8 @@ public enum InsertSizeDistributionShape {
     }
 
     protected AbstractIntegerDistribution fromTextFile(String whereFrom) {
-        try (final BufferedReader reader = new BufferedReader(new InputStreamReader(BucketUtils.openFile(whereFrom)))) {
+        try (final BufferedReader reader = new BufferedReader(new InputStreamReader(IOUtils.openInputStream(
+                IOUtils.getPath(whereFrom))))) {
             String line;
             int value;
             double totalSum = 0;

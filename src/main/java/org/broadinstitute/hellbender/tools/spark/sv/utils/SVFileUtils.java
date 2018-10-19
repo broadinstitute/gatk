@@ -46,7 +46,7 @@ public final class SVFileUtils {
         final Set<SVKmer> kmers;
 
         try ( final BufferedReader rdr =
-                      new BufferedReader(new InputStreamReader(BucketUtils.openFile(kmersFilePath))) ) {
+                      new BufferedReader(new InputStreamReader(IOUtils.openInputStream(IOUtils.getPath(kmersFilePath)))) ) {
             final long fileLength = BucketUtils.fileSize(kmersFilePath);
             kmers = new HopscotchSet<>((int)(fileLength/(kSize+1)));
             String line;
@@ -94,7 +94,7 @@ public final class SVFileUtils {
 
         final List<SVInterval> intervals;
         try ( final BufferedReader rdr =
-                      new BufferedReader(new InputStreamReader(BucketUtils.openFile(intervalsFilePath))) ) {
+                      new BufferedReader(new InputStreamReader(IOUtils.openInputStream(IOUtils.getPath(intervalsFilePath)))) ) {
             final long sizeGuess = BucketUtils.fileSize(intervalsFilePath)/25; // 25 is a guess on file line length
             intervals = new ArrayList<>((int)sizeGuess);
             String line;

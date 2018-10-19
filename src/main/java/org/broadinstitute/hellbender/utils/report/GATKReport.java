@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.utils.report;
 
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.recalibration.RecalUtils;
 
 import java.io.BufferedReader;
@@ -44,7 +44,7 @@ public final class GATKReport {
      * @param filename the path to the file to load
      */
     public GATKReport(String filename) {
-        this(BucketUtils.openFile(filename));
+        this(IOUtils.openInputStream(IOUtils.getPath(filename)));
     }
 
     /**

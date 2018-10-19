@@ -5,6 +5,7 @@ import htsjdk.samtools.BAMIndex;
 import htsjdk.samtools.BamFileIoUtils;
 import htsjdk.samtools.cram.build.CramIO;
 import htsjdk.samtools.util.BlockCompressedInputStream;
+import htsjdk.samtools.util.IOUtil;
 import htsjdk.tribble.Tribble;
 import htsjdk.tribble.util.TabixUtils;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
@@ -1042,6 +1043,27 @@ public final class IOUtils {
            return Files.newOutputStream(path);
         } catch (final IOException x) {
             throw new UserException.CouldNotCreateOutputFile("Could not create file at path: " + path.toUri().toString() + " due to " + x.getMessage(), x);
+        }
+    }
+
+    /**
+     * Open an InputStream reading from a file.
+     *
+     * If the file ends with .gz will attempt to wrap it in an appropriate unzipping stream
+     *
+     * @param path to open a stream from.
+     * @return an InputStream that reads from the specified file.
+     */
+    public static InputStream openInputStream(Path path) {
+        try {
+            final InputStream inputStream = Files.newInputStream(path);
+            if(IOUtil.hasBlockCompressedExtension(path)){
+                return IOUtils.makeZippedInputStream(new BufferedInputStream(inputStream));
+            } else {
+                return inputStream;
+            }
+        } catch (IOException x) {
+            throw new UserException.CouldNotReadInputFile(path, x);
         }
     }
 }

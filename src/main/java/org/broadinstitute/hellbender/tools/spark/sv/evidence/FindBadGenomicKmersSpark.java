@@ -11,6 +11,7 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import picard.cmdline.programgroups.ReferenceProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
@@ -181,7 +182,8 @@ public final class FindBadGenomicKmersSpark extends GATKSparkTool {
     @VisibleForTesting static List<SVKmer> processFasta( final int kSize,
                                                          final int maxDUSTScore,
                                                          final String fastaFilename) {
-        try ( BufferedReader rdr = new BufferedReader(new InputStreamReader(BucketUtils.openFile(fastaFilename))) ) {
+        try ( BufferedReader rdr = new BufferedReader(new InputStreamReader(IOUtils.openInputStream(
+                IOUtils.getPath(fastaFilename)))) ) {
             final List<SVKmer> kmers = new ArrayList<>((int) BucketUtils.fileSize(fastaFilename));
             String line;
             final StringBuilder sb = new StringBuilder();

@@ -30,7 +30,6 @@ import org.broadinstitute.hellbender.tools.spark.utils.FlatMapGluer;
 import org.broadinstitute.hellbender.tools.spark.utils.HopscotchUniqueMultiMap;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemIndexCache;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
@@ -392,7 +391,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         final Set<Integer> ignoreSet = new HashSet<>();
         try ( final BufferedReader rdr =
                       new BufferedReader(
-                              new InputStreamReader(BucketUtils.openFile(crossContigsToIgnoreFile))) ) {
+                              new InputStreamReader(IOUtils.openInputStream(IOUtils.getPath(crossContigsToIgnoreFile)))) ) {
             String line;
             while ( (line = rdr.readLine()) != null ) {
                 final int tigId = dictionary.getSequenceIndex(line);

@@ -8,7 +8,6 @@ import com.google.cloud.storage.contrib.nio.CloudStorageFileSystem;
 import com.google.cloud.storage.contrib.nio.CloudStorageFileSystemProvider;
 import com.google.common.base.Strings;
 import com.google.common.io.ByteStreams;
-import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.RuntimeIOException;
 import htsjdk.tribble.Tribble;
 import htsjdk.tribble.util.TabixUtils;
@@ -94,39 +93,6 @@ public final class BucketUtils {
     }
 
     /**
-     * Open a file for reading regardless of whether it's on GCS, HDFS or local disk.
-     *
-     * If the file ends with .gz will attempt to wrap it in an appropriate unzipping stream
-     *
-     * @param path the GCS, HDFS or local path to read from. If GCS, it must start with "gs://", or "hdfs://" for HDFS.
-     * @return an InputStream that reads from the specified file.
-     */
-    public static InputStream openFile(String path) {
-        try {
-            Utils.nonNull(path);
-            InputStream inputStream;
-            if (isCloudStorageUrl(path)) {
-                java.nio.file.Path p = getPathOnGcs(path);
-                inputStream = Files.newInputStream(p);
-            } else if (isHadoopUrl(path)) {
-                Path file = new org.apache.hadoop.fs.Path(path);
-                FileSystem fs = file.getFileSystem(new Configuration());
-                inputStream = fs.open(file);
-            } else {
-                 inputStream = new FileInputStream(path);
-            }
-
-            if(IOUtil.hasBlockCompressedExtension(path)){
-                return IOUtils.makeZippedInputStream(new BufferedInputStream(inputStream));
-            } else {
-                return inputStream;
-            }
-        } catch (IOException x) {
-            throw new UserException.CouldNotReadInputFile(path, x);
-        }
-    }
-
-    /**
      * Copies a file. Can be used to copy e.g. from GCS to local.
      *
      * @param sourcePath the path to read from. If GCS, it must start with "gs://", or "hdfs://" for HDFS.
@@ -135,8 +101,8 @@ public final class BucketUtils {
      */
     public static void copyFile(String sourcePath, String destPath) throws IOException {
         try (
-            InputStream in = openFile(sourcePath);
-            OutputStream fout = IOUtils.openOutputStream(IOUtils.getPath(destPath))) {
+                InputStream in = IOUtils.openInputStream(IOUtils.getPath(sourcePath));
+                OutputStream fout = IOUtils.openOutputStream(IOUtils.getPath(destPath))) {
             ByteStreams.copy(in, fout);
         }
     }
@@ -211,7 +177,7 @@ public final class BucketUtils {
      */
     public static boolean fileExists(String path) {
         final boolean MAYBE = false;
-        try (InputStream inputStream = openFile(path)) {
+        try (InputStream inputStream = IOUtils.openInputStream(IOUtils.getPath(path))){
             int ignored = inputStream.read();
         } catch (UserException.CouldNotReadInputFile notthere) {
             // file isn't there

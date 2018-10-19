@@ -2,8 +2,8 @@ package org.broadinstitute.hellbender.utils.reference;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 import org.testng.annotations.DataProvider;
@@ -84,7 +84,7 @@ public class ReferenceUtilsUnitTest extends GATKBaseTest {
     public void testLoadFastaDictionaryFromGCSBucket() throws IOException {
         final String bucketDictionary = getGCPTestInputPath() + "org/broadinstitute/hellbender/utils/ReferenceUtilsTest.dict";
 
-        try ( final InputStream referenceDictionaryStream = BucketUtils.openFile(bucketDictionary) ) {
+        try ( final InputStream referenceDictionaryStream = IOUtils.openInputStream(IOUtils.getPath(bucketDictionary)) ) {
             final SAMSequenceDictionary dictionary = ReferenceUtils.loadFastaDictionary(referenceDictionaryStream);
 
             Assert.assertNotNull(dictionary, "Sequence dictionary null after loading");

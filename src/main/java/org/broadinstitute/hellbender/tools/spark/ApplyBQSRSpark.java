@@ -12,7 +12,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.tools.ApplyBQSRArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.transforms.ApplyBQSRSparkFn;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationReport;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
@@ -85,7 +85,7 @@ public final class ApplyBQSRSpark extends GATKSparkTool {
     @Override
     protected void runTool(JavaSparkContext ctx) {
         JavaRDD<GATKRead> initialReads = getReads();
-        Broadcast<RecalibrationReport> recalibrationReportBroadCast = ctx.broadcast(new RecalibrationReport(BucketUtils.openFile(bqsrRecalFile)));
+        Broadcast<RecalibrationReport> recalibrationReportBroadCast = ctx.broadcast(new RecalibrationReport(IOUtils.openInputStream(IOUtils.getPath(bqsrRecalFile))));
         final JavaRDD<GATKRead> recalibratedReads = ApplyBQSRSparkFn.apply(initialReads, recalibrationReportBroadCast, getHeaderForReads(), applyBQSRArgs);
         writeReads(ctx, output, recalibratedReads);
     }

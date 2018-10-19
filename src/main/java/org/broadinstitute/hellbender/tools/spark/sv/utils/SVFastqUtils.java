@@ -14,7 +14,6 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.Alignmen
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.TemplateFragmentOrdinal;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.fermi.FermiLiteAssembler;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
@@ -314,7 +313,8 @@ public class SVFastqUtils {
 
     public static List<FastqRead> readFastqFile( final String fileName ) {
         final List<FastqRead> reads;
-        try ( final BufferedReader reader = new BufferedReader(new InputStreamReader(BucketUtils.openFile(fileName))) ) {
+        try ( final BufferedReader reader = new BufferedReader(new InputStreamReader(IOUtils.openInputStream(
+                IOUtils.getPath(fileName)))) ) {
             reads = readFastqStream(reader, fileName);
         }
         catch ( final IOException ioe ) {
