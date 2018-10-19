@@ -63,6 +63,7 @@ workflow CombineTracksWorkflow {
     String gatk_docker
     Int? max_merge_distance
     Array[String]? annotations_on_which_to_merge
+    Int? min_hets_acs_results
 
     Array[String]? annotations_on_which_to_merge_final = select_first([annotations_on_which_to_merge,
     ["MEAN_LOG2_COPY_RATIO", "LOG2_COPY_RATIO_POSTERIOR_10", "LOG2_COPY_RATIO_POSTERIOR_50", "LOG2_COPY_RATIO_POSTERIOR_90",
@@ -149,7 +150,8 @@ workflow CombineTracksWorkflow {
         input:
             model_seg = MergeSegmentByAnnotation.cnv_merged_seg,
             af_param = af_param,
-            docker = gatk_docker
+            docker = gatk_docker,
+            min_hets_acs_results = min_hets_acs_results
     }
 
     call IGVConvert as IGVConvertMergedTumorOutput {
@@ -432,6 +434,7 @@ task MergeSegmentByAnnotation {
 
 # TODO: No non-trivial heredocs in WDL.  Add this to the script directory and call via anaconda (future release)
 # TODO: This is a hard threholding algorithm.  Better approaches exist if this does not meet needs.
+# TODO: The min hets hard thresholding should eventually be removed.  This is to mitigate some hypersegmentation when rerunning GATK CNV is too expensive.
 task PrototypeACSConversion {
     File model_seg
     File af_param
@@ -439,6 +442,8 @@ task PrototypeACSConversion {
     Float? maf90_threshold
     String output_filename = basename(model_seg) + ".acs.seg"
     String output_skew_filename = output_filename + ".skew"
+    Int? min_hets_acs_results
+    Int min_hets_acs_results_final = select_first([min_hets_acs_results,10])
 
     command <<<
         set -e
@@ -550,6 +555,17 @@ def convert_model_segments_to_alleliccapseg(model_segments_seg_pd,
     model_segments_reference_bias = model_segments_af_param_pd[
         model_segments_af_param_pd['PARAMETER_NAME'] == 'MEAN_BIAS']['POSTERIOR_50']
     alleliccapseg_skew = 2. / (1. + model_segments_reference_bias)
+
+    # If a row has less than X (set by user) hets, then assume zero
+    filter_rows = alleliccapseg_seg_pd['n_hets'] < ${min_hets_acs_results_final}
+    # mu.minor  sigma.minor  mu.major  sigma.major
+    alleliccapseg_seg_pd.ix[filter_rows, 'n_hets'] = 0
+    alleliccapseg_seg_pd.ix[filter_rows, 'f'] = np.NaN
+    alleliccapseg_seg_pd.ix[filter_rows, 'mu.minor'] = np.NaN
+    alleliccapseg_seg_pd.ix[filter_rows, 'sigma.minor'] = np.NaN
+    alleliccapseg_seg_pd.ix[filter_rows, 'mu.major'] = np.NaN
+    alleliccapseg_seg_pd.ix[filter_rows, 'sigma.major'] = np.NaN
+
 
     return alleliccapseg_seg_pd, alleliccapseg_skew
 
