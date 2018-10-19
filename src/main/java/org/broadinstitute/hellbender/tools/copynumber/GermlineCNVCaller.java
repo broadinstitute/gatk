@@ -73,8 +73,9 @@ import java.util.stream.Collectors;
  *     <dd><p>The tool will be run in the COHORT mode using the argument {@code run-mode COHORT}.
  *      In this mode, coverage model parameters are inferred simultaneously with the CNV states. Depending on
  *      available memory, it may be necessary to run the tool over a subset of all intervals, which can be specified
- *      by -L. The specified intervals must be present in all of the input count files. The output will contain two
- *      subdirectories, one ending with "-model" and the other with "-calls".</p>
+ *      by -L; this can be used to pass a filtered interval list produced by {@link FilterIntervals} to mask
+ *      intervals from modeling. The specified intervals must be present in all of the input count files. The output
+ *      will contain two subdirectories, one ending with "-model" and the other with "-calls".</p>
  *
  *      <p>The model subdirectory contains a snapshot of the inferred parameters of the coverage model, which may be
  *      used later for CNV calling in one or more similarly-sequenced samples as mentioned earlier. Optionally, the path
@@ -92,11 +93,11 @@ import java.util.stream.Collectors;
  *      coverage bias factors.</p></dd>
  *
  *     <dt>CASE mode:</dt>
- *     <dd><p>The tool will be run in the CASE mode using the argument {@code run-mode CASE}. The path to a
- *      previously obtained coverage model parameter bundle must be provided via the {@code model} argument
- *      in this mode. The modeled intervals are specified by the parameter bundle, all interval-related arguments are
- *      ignored in this mode, and all model intervals must be present in all of the input count files. The tool output
- *      in the CASE mode is only the "-calls" subdirectory and is organized similarly to the COHORT mode.</p>
+ *     <dd><p>The tool will be run in the CASE mode using the argument {@code run-mode CASE}. The path to a previously
+ *     obtained model directory must be provided via the {@code model} argument in this mode. The modeled intervals are
+ *     then specified by a file contained in the model directory, all interval-related arguments are ignored in this
+ *     mode, and all model intervals must be present in all of the input count files. The tool output in the CASE mode
+ *     is only the "-calls" subdirectory and is organized similarly to the COHORT mode.</p>
  *
  *      <p>Note that at the moment, this tool does not automatically verify the compatibility of the provided parametrization
  *      with the provided count files. Model compatibility may be assessed a posteriori by inspecting the magnitude of

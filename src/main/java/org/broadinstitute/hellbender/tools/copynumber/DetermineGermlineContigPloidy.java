@@ -63,9 +63,14 @@ import java.util.stream.Collectors;
  *
  *     <dd>If a ploidy model parameter path is not provided via the {@code model} argument, the tool will run in
  *     the COHORT mode. In this mode, ploidy model parameters (e.g. coverage bias and variance for each contig) are
- *     inferred, along with baseline contig ploidy states of each sample. A TSV file specifying prior probabilities
- *     for each integer ploidy state and for each contig is required in this mode and must be specified via the
- *     {@code contig-ploidy-priors} argument. The following shows an example of such a table:
+ *     inferred, along with baseline contig ploidy states of each sample. It is possible to run the tool over a subset
+ *     of all intervals present in the input count files, which can be specified by -L; this can be used to pass a
+ *     filtered interval list produced by {@link FilterIntervals} to mask intervals from modeling. The specified
+ *     intervals must be present in all of the input count files.
+ *
+ *     <p>A TSV file specifying prior probabilities for each integer ploidy state and for each contig is required in this
+ *     mode and must be specified via the {@code contig-ploidy-priors} argument. The following shows an example of
+ *     such a table:</p>
  *     <br>
  *     <table border="1" width="80%">
  *         <tr>
@@ -85,11 +90,11 @@ import java.util.stream.Collectors;
  *            <td>Y</td> <td>0.50</td> <td>0.50</td> <td>0.00</td> <td>0.00</td>
  *         </tr>
  *     </table>
- *     Note that the contig names appearing under {@code CONTIG_NAME} column must match contig names in the input
+ *     <p>Note that the contig names appearing under {@code CONTIG_NAME} column must match contig names in the input
  *     counts files, and all contigs appearing in the input counts files must have a corresponding entry in the priors
  *     table. The order of contigs is immaterial in the priors table. The highest ploidy state is determined by the
  *     prior table (3 in the above example). A ploidy state can be strictly forbidden by setting its prior probability
- *     to 0. For example, the X contig in the above example can only assume 0 and 1 ploidy states.
+ *     to 0. For example, the X contig in the above example can only assume 0 and 1 ploidy states.</p>
  *
  *     <p>The tool output in the COHORT mode will contain two subdirectories, one ending with "-model" and the other
  *     ending with "-calls". The model subdirectory contains the inferred parameters of the ploidy model, which may
@@ -102,8 +107,10 @@ import java.util.stream.Collectors;
  *     <dt>CASE mode:</dt>
  *     <dd>If a path containing previously inferred ploidy model parameters is provided via the
  *     {@code model} argument, then the tool will run in the CASE mode. In this mode, the parameters of the ploidy
- *     model are loaded from the provided directory and only sample-specific quantities are inferred. Subsequently,
- *     the output directory will only contain the "-calls" subdirectory.
+ *     model are loaded from the provided directory and only sample-specific quantities are inferred. The modeled
+ *     intervals are then specified by a file contained in the model directory, all interval-related arguments are
+ *     ignored in this mode, and all model intervals must be present in all of the input count files. The tool output
+ *     in the CASE mode is only the "-calls" subdirectory and is organized similarly to the COHORT mode.
  *
  *      <p>In the CASE mode, the contig ploidy prior table is taken directly from the provided model parameters
  *      path and must be not provided again.</p></dd>
