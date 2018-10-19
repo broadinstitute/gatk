@@ -5,7 +5,6 @@ import htsjdk.samtools.BAMIndex;
 import htsjdk.samtools.BamFileIoUtils;
 import htsjdk.samtools.cram.build.CramIO;
 import htsjdk.samtools.util.BlockCompressedInputStream;
-import htsjdk.samtools.util.IOUtil;
 import htsjdk.tribble.Tribble;
 import htsjdk.tribble.util.TabixUtils;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
@@ -32,9 +31,12 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 import java.util.zip.ZipException;
@@ -44,7 +46,7 @@ public final class IOUtils {
     private static final File DEV_DIR = new File("/dev");
 
     // see https://support.hdfgroup.org/HDF5/doc/H5.format.html
-    private static final byte hdf5HeaderSignature[] = { (byte) 0x89, 'H', 'D', 'F', '\r', '\n', (byte) 0x1A, '\n' };
+    private static final byte[] hdf5HeaderSignature = {(byte) 0x89, 'H', 'D', 'F', '\r', '\n', (byte) 0x1A, '\n'};
 
     /**
      * Schemes starting with gendb could be GenomicsDB paths
@@ -93,7 +95,7 @@ public final class IOUtils {
      */
     public static boolean isHDF5File(final Path hdf5Candidate) {
         try (final DataInputStream candidateStream = new DataInputStream(Files.newInputStream(hdf5Candidate))) {
-            final byte candidateHeader[] = new byte[hdf5HeaderSignature.length];
+            final byte[] candidateHeader = new byte[hdf5HeaderSignature.length];
             candidateStream.read(candidateHeader, 0, candidateHeader.length);
             return Arrays.equals(candidateHeader, hdf5HeaderSignature);
         } catch (IOException e) {
@@ -113,12 +115,9 @@ public final class IOUtils {
      */
     public static File createTempDir(String prefix) {
         try {
-            final File tmpDir = Files.createTempDirectory(prefix)
-                    .normalize()
-                    .toFile();
-            deleteRecursivelyOnExit(tmpDir);
-
-            return tmpDir;
+            final Path tmpDir = Files.createTempDirectory(prefix);
+            deleteOnExit(tmpDir);
+            return tmpDir.toFile();
         } catch (final IOException | SecurityException e) {
             throw new UserException.BadTempDir(e.getMessage(), e);
         }
@@ -695,15 +694,15 @@ public final class IOUtils {
             }
 
             final Path path = Files.createTempFile(getPath(System.getProperty("java.io.tmpdir")), name, extension);
-            IOUtil.deleteOnExit(path);
+            IOUtils.deleteOnExit(path);
 
             // Mark corresponding indices for deletion on exit as well just in case an index is created for the temp file:
             final String filename = path.getFileName().toString();
-            IOUtil.deleteOnExit(path.resolveSibling(filename + Tribble.STANDARD_INDEX_EXTENSION));
-            IOUtil.deleteOnExit(path.resolveSibling(filename + TabixUtils.STANDARD_INDEX_EXTENSION));
-            IOUtil.deleteOnExit(path.resolveSibling(filename + BAMIndex.BAMIndexSuffix));
-            IOUtil.deleteOnExit(path.resolveSibling(filename.replaceAll(extension + "$", ".bai")));
-            IOUtil.deleteOnExit(path.resolveSibling(filename + ".md5"));
+            IOUtils.deleteOnExit(path.resolveSibling(filename + Tribble.STANDARD_INDEX_EXTENSION));
+            IOUtils.deleteOnExit(path.resolveSibling(filename + TabixUtils.STANDARD_INDEX_EXTENSION));
+            IOUtils.deleteOnExit(path.resolveSibling(filename + BAMIndex.BAMIndexSuffix));
+            IOUtils.deleteOnExit(path.resolveSibling(filename.replaceAll(extension + "$", ".bai")));
+            IOUtils.deleteOnExit(path.resolveSibling(filename + ".md5"));
 
             return path;
         } catch (final IOException ex) {
@@ -724,23 +723,6 @@ public final class IOUtils {
 
     public static File replaceExtension(File file, String extension){
         return new File(replaceExtension(file.getPath(), extension));
-    }
-
-    /**
-     * Schedule a file or directory to be deleted on jvm exit.
-     *
-     * This will silently delete the directory as well as it's contents.
-     * It improves upon {@link FileUtils#forceDeleteOnExit} by deleting directories and files that did not exist at call time.
-     * @param dir to be deleted
-     */
-    public static void deleteRecursivelyOnExit(File dir){
-        Runtime.getRuntime().addShutdownHook(new Thread() {
-
-            @Override
-            public void run() {
-                FileUtils.deleteQuietly(dir);
-            }
-        });
     }
 
     /**
@@ -891,7 +873,7 @@ public final class IOUtils {
         Files.createDirectory(getPath(pathString));
     }
 
-    public static final String urlEncode(final String string) {
+    public static String urlEncode(final String string) {
         try {
             return URLEncoder.encode(string, GetSampleName.STANDARD_ENCODING);
         } catch (final UnsupportedEncodingException ex) {
@@ -899,7 +881,7 @@ public final class IOUtils {
         }
     }
 
-    public static final String urlDecode(final String string) {
+    public static String urlDecode(final String string) {
         try {
             return URLDecoder.decode(string, GetSampleName.STANDARD_ENCODING);
         } catch (final UnsupportedEncodingException ex) {
@@ -986,5 +968,43 @@ public final class IOUtils {
             }
         }
         return genomicsdbPath;
+    }
+
+    /**
+     * Schedule a file to be deleted on JVM shutdown.
+     *
+     * @param fileToDelete file or directory to be deleted at JVM shutdown.
+     */
+    public static void deleteOnExit(final Path fileToDelete){
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+            @Override
+            public void run() {
+                try {
+                    if (Files.isDirectory(fileToDelete)) {
+                        deleteRecursively(fileToDelete);
+                    } else {
+                        Files.deleteIfExists(fileToDelete);
+                    }
+                } catch (ClosedFileSystemException e){
+                    // This happens if we've correctly closed a jimfs file system but have marked files in it for deletion.
+                } catch (IOException e) {
+                    logger.warn("Failed to delete file: " + fileToDelete.toUri().toString() + ".", e);
+                }
+            }
+        });
+    }
+
+    /**
+     * Delete rootPath recursively
+     * @param rootPath is the file/directory to be deleted
+     */
+    public static void deleteRecursively(final Path rootPath) throws IOException {
+        final List<Path> pathsToDelete = Files.walk(rootPath)
+                        .sorted(Comparator.reverseOrder())
+                        .collect(Collectors.toList());
+
+        for (Path path : pathsToDelete) {
+            Files.deleteIfExists(path);
+        }
     }
 }

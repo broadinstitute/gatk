@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.broadinstitute.hellbender.testutils.MiniClusterUtils;
 import org.broadinstitute.hellbender.tools.funcotator.FuncotatorTestConstants;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.testng.Assert;
 import org.testng.SkipException;
 import org.testng.annotations.AfterClass;
@@ -35,6 +36,7 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
     public void setUp() {
         jimfs = Jimfs.newFileSystem(Configuration.unix());
     }
+
     @AfterClass
     public void tearDown() {
         try {
@@ -45,11 +47,10 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
     }
 
     private List<String> getSortedRecursiveDirectoryContentsFileNames(final Path directoryPath) throws IOException {
-        final List<String> fileList = Files.walk(directoryPath)
+        return Files.walk(directoryPath)
                 .map(f -> f.toFile().getName())
+                .sorted(Comparator.naturalOrder())
                 .collect(Collectors.toList());
-        fileList.sort(Comparator.naturalOrder());
-        return fileList;
     }
 
     private void assertContentsTheSame(final Path baseActualPath, final Path baseExpectedPath) {
@@ -60,8 +61,8 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
 
             // Make sure the list of output files is what we expect:
             if (!actualFiles.equals(expectedFiles)) {
-                final String actualFilesString = actualFiles.stream().collect(Collectors.joining(","));
-                final String expectedFilesString = expectedFiles.stream().collect(Collectors.joining(","));
+                final String actualFilesString = String.join(",", actualFiles);
+                final String expectedFilesString = String.join(",", expectedFiles);
 
                 // Duplicating a little work here for a good error message:
                 Assert.assertEquals(actualFiles, expectedFiles, "Actual file list differs from expected file list: ACTUAL=[" + actualFilesString + "] , EXPECTED=[" + expectedFilesString + "]");
@@ -309,7 +310,7 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
     }
 
     @Test( dataProvider = "ByteArrayIOTestData" )
-    public void testWriteThenReadFileIntoByteArray ( int fileSize, int readBufferSize ) throws Exception {
+    public void testWriteThenReadFileIntoByteArray ( int fileSize, int readBufferSize ) {
         File tempFile = createTempFile(String.format("testWriteThenReadFileIntoByteArray_%d_%d", fileSize, readBufferSize), "tmp");
 
         byte[] dataWritten = getDeterministicRandomData(fileSize);
@@ -317,7 +318,7 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
         byte[] dataRead = IOUtils.readFileIntoByteArray(tempFile, readBufferSize);
 
         Assert.assertEquals(dataRead.length, dataWritten.length);
-        Assert.assertTrue(Arrays.equals(dataRead, dataWritten));
+        Assert.assertEquals(dataWritten, dataRead);
     }
 
     @Test( dataProvider = "ByteArrayIOTestData" )
@@ -329,7 +330,7 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
         byte[] dataRead = IOUtils.readStreamIntoByteArray(new FileInputStream(tempFile), readBufferSize);
 
         Assert.assertEquals(dataRead.length, dataWritten.length);
-        Assert.assertTrue(Arrays.equals(dataRead, dataWritten));
+        Assert.assertEquals(dataWritten, dataRead);
     }
 
     @Test( expectedExceptions = UserException.CouldNotReadInputFile.class )
@@ -363,15 +364,15 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
         //If you see a directory in the hellbender main folder called
 
         final File dir = new File(GATKBaseTest.publicTestDir + "I_SHOULD_HAVE_BEEN_DELETED");
-        IOUtils.deleteRecursivelyOnExit(dir);
+        IOUtils.deleteOnExit(dir.toPath());
 
         FileUtils.mkdir(dir, true);
         final File subdir = new File(dir, "subdir");
         FileUtils.mkdir(subdir, true);
         File someFile = new File(dir, "someFile");
-        someFile.createNewFile();
+        Assert.assertTrue(someFile.createNewFile());
         File anotherFile = new File(subdir, "anotherFile");
-        anotherFile.createNewFile();
+        Assert.assertTrue(anotherFile.createNewFile());
     }
 
     @DataProvider(name = "extensionsToReplace")
@@ -399,7 +400,7 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
     }
 
     @Test
-    public void testGetPathHandlesIntervals() throws IOException {
+    public void testGetPathHandlesIntervals() {
         // Make sure we don't crash if passing intervals to getPath.
         // Also, it shouldn't crash when we check whether the file exists.
         Assert.assertFalse(Files.exists(IOUtils.getPath("chr1:10-11")));
@@ -476,7 +477,7 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
     public Object[][] unsuccessfulCanReadFileCheckData() {
         final File directory = createTempDir("Utils-can-read-file-Dir");
         final File nonExistingFile = createTempFile("Utils-cant-read-NoFile", ".file");
-        nonExistingFile.delete();
+        Assert.assertTrue(nonExistingFile.delete());
         final File nonReadable = createTempFile("Utils-cant-read-NotReadable", ".file");
 
         //Note: if this test suite is run as root (eg in a Docker image), setting readable to false may fail.
@@ -595,15 +596,13 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
     }
 
     private String getFirstLineAndDeleteTempFile(final File tempResourceFile) throws IOException {
-        String resourceContentsFirstLine = "";
         try (final FileReader fr = new FileReader(tempResourceFile);
              final BufferedReader br = new BufferedReader(fr)) {
-            resourceContentsFirstLine = br.readLine();
+            return resourceContentsFirstLine = br.readLine();
         }
         finally {
             tempResourceFile.delete();
         }
-        return resourceContentsFirstLine;
     }
 
     @DataProvider
@@ -662,4 +661,28 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(IOUtils.isGenomicsDBPath(path), expectedComparison, "isGenomicsDBPath() returned the wrong value");
     }
 
+    @Test
+    public void testDeleteRecursively() throws IOException {
+        final Path dir = Files.createTempDirectory("test-dir").normalize();
+        final Path file = dir.resolve("new-file");
+        Files.createFile(file);
+        Assert.assertTrue(Files.exists(file));
+        IOUtils.deleteRecursively(dir);
+        Assert.assertFalse(Files.exists(dir));
+        Assert.assertFalse(Files.exists(file));
+    }
+
+    @Test(groups={"bucket"})
+    public void testDeleteRecursivelyGCS() throws IOException {
+        final String gcsFolder = BucketUtils.randomRemotePath(getGCPTestStaging(), "test-dir", "");
+        final Path gcsFolderPath = IOUtils.getPath(gcsFolder+"/");
+        Files.createDirectory(gcsFolderPath);
+        Assert.assertTrue(Files.exists(gcsFolderPath));
+        Assert.assertTrue(Files.isDirectory(gcsFolderPath));
+        final Path gcsFilePath = Files.createFile(IOUtils.getPath(gcsFolder+"/"+"new-file"));
+        Assert.assertTrue(Files.exists(gcsFilePath));
+        IOUtils.deleteRecursively(gcsFolderPath);
+        Assert.assertFalse(Files.exists(gcsFilePath));
+        Assert.assertFalse(Files.exists(IOUtils.getPath(gcsFolder)));
+    }
 }

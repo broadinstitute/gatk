@@ -19,7 +19,6 @@ import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -39,9 +38,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.*;
-import java.util.concurrent.CompletionException;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Test(groups = {"variantcalling"})
 public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTest {
@@ -855,7 +852,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     @Test(groups = {"bucket"})
     public void testWriteToAndQueryFromGCS() throws IOException {
         final String workspace = BucketUtils.randomRemotePath(getGCPTestStaging(), "", "") + "/";
-        BucketUtils.deleteOnExit(workspace);
+        IOUtils.deleteOnExit(IOUtils.getPath(workspace));
         writeToGenomicsDB(LOCAL_GVCFS, INTERVAL, workspace, 0, false, 0, 1);
         checkJSONFilesAreWritten(workspace);
         checkGenomicsDBAgainstExpected(workspace, INTERVAL, COMBINED, b38_reference_20_21, true, ATTRIBUTES_TO_IGNORE);
@@ -864,7 +861,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     @Test(groups = {"bucket"}, expectedExceptions = GenomicsDBImport.UnableToCreateGenomicsDBWorkspace.class)
     public void testWriteToExistingGCSDirectory() throws IOException {
         final String workspace = BucketUtils.randomRemotePath(getGCPTestStaging(), "", "") + "/";
-        BucketUtils.deleteOnExit(workspace);
+        IOUtils.deleteOnExit(IOUtils.getPath(workspace));
         int rc = GenomicsDBUtils.createTileDBWorkspace(workspace, false);
         Assert.assertEquals(rc, 0);
         writeToGenomicsDB(LOCAL_GVCFS, INTERVAL, workspace, 0, false, 0, 1);
