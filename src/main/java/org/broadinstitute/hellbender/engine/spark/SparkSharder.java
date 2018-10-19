@@ -171,11 +171,13 @@ public class SparkSharder {
         }
         OverlapDetector<PartitionLocatable<SimpleInterval>> overlapDetector = OverlapDetector.create(partitionReadExtents);
         List<PartitionLocatable<I>> indexedIntervals = new ArrayList<>();
+        int lastPartitionStartIndex = 0;
         for (I interval : intervals) {
             int[] partitionIndexes = overlapDetector.getOverlaps(interval).stream()
                     .mapToInt(PartitionLocatable::getPartitionIndex).toArray();
             if (partitionIndexes.length == 0) {
-                // interval does not overlap any partition - skip it
+                // interval does not overlap any partition - add it to the last one
+                indexedIntervals.add(new PartitionLocatable<>(lastPartitionStartIndex, interval));
                 continue;
             }
             Arrays.sort(partitionIndexes);
@@ -185,6 +187,7 @@ public class SparkSharder {
             if (endIndex > maxEndPartitionIndexes.get(startIndex)) {
                 maxEndPartitionIndexes.set(startIndex, endIndex);
             }
+            lastPartitionStartIndex = startIndex;
         }
 
         JavaRDD<L> coalescedRdd = coalesce(locatables, locatableClass, new RangePartitionCoalescer(maxEndPartitionIndexes));
@@ -202,7 +205,7 @@ public class SparkSharder {
 
     /**
      * Turn a pair of iterators over intervals and locatables, into a single iterator over pairs made up of an interval and
-     * the locatables that overlap it. Intervals with no overlapping locatables are dropped.
+     * the locatables that overlap it. Intervals with no overlapping locatables are included.
      */
     static <L extends Locatable, I extends Locatable> Iterator<Tuple2<I, Iterable<L>>> locatablesPerShard(Iterator<L> locatables, Iterator<I> shards, SAMSequenceDictionary sequenceDictionary, int maxLocatableLength) {
         if (!shards.hasNext()) {
@@ -249,7 +252,7 @@ public class SparkSharder {
                 return tuple;
             }
         };
-        return Iterators.filter(iterator, input -> input._2().iterator().hasNext());
+        return iterator;
     }
 
     /**

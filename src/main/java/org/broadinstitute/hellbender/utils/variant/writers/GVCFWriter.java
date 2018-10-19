@@ -26,6 +26,8 @@ import static htsjdk.variant.vcf.VCFConstants.MAX_GENOTYPE_QUAL;
  */
 public final class GVCFWriter implements VariantContextWriter {
 
+    public final static String GVCF_BLOCK = "GVCFBlock";
+
     /** Where we'll ultimately write our VCF records */
     private final VariantContextWriter underlyingWriter;
 
@@ -123,7 +125,7 @@ public final class GVCFWriter implements VariantContextWriter {
     static VCFHeaderLine rangeToVCFHeaderLine(Range<Integer> genotypeQualityBand) {
         // Need to uniquify the key for the header line using the min/max GQ, since
         // VCFHeader does not allow lines with duplicate keys.
-        final String key = String.format("GVCFBlock%d-%d", genotypeQualityBand.lowerEndpoint(), genotypeQualityBand.upperEndpoint());
+        final String key = String.format(GVCF_BLOCK+"%d-%d", genotypeQualityBand.lowerEndpoint(), genotypeQualityBand.upperEndpoint());
         return new VCFHeaderLine(key, "minGQ=" + genotypeQualityBand.lowerEndpoint() + "(inclusive),maxGQ=" + genotypeQualityBand.upperEndpoint() + "(exclusive)");
     }
 
@@ -155,9 +157,10 @@ public final class GVCFWriter implements VariantContextWriter {
     protected VariantContext addHomRefSite(final VariantContext vc, final Genotype g) {
 
         if (nextAvailableStart != -1) {
-            // don't create blocks while the hom-ref site falls before nextAvailableStart (for deletions)
-            if (vc.getStart() <= nextAvailableStart && vc.getContig().equals(contigOfNextAvailableStart)) {
-                return null;
+            //there's a use case here related to ReblockGVCFs for overlapping deletions on different haplotypes
+            if ( vc.getStart() <= nextAvailableStart && vc.getContig().equals(contigOfNextAvailableStart) ) {
+                if (vc.getEnd() <= nextAvailableStart)
+                    return null;
             }
             // otherwise, reset to non-relevant
             nextAvailableStart = -1;
@@ -166,7 +169,7 @@ public final class GVCFWriter implements VariantContextWriter {
 
         final VariantContext result;
         if (genotypeCanBeMergedInCurrentBlock(g)) {
-            currentBlock.add(vc.getStart(), g);
+            currentBlock.add(vc.getStart(), vc.getAttributeAsInt(VCFConstants.END_KEY, vc.getStart()), g);
             result = null;
         } else {
             result = currentBlock != null ? currentBlock.toVariantContext(sampleName): null;
@@ -211,7 +214,7 @@ public final class GVCFWriter implements VariantContextWriter {
 
         // create the block, add g to it, and return it for use
         final HomRefBlock block = new HomRefBlock(vc, partition.lowerEndpoint(), partition.upperEndpoint(), defaultPloidy);
-        block.add(vc.getStart(), g);
+        block.add(vc.getStart(), vc.getAttributeAsInt(VCFConstants.END_KEY, vc.getStart()), g);
         return block;
     }
 

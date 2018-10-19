@@ -11,14 +11,18 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.AssemblyRegionWalker;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.OrientationBiasUtils;
+import org.broadinstitute.hellbender.tools.walkers.annotator.StrandBiasBySample;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceSummaryRecord;
+import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -49,6 +53,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     private static final File TEN_PCT_CONTAMINATION_TABLE = new File(toolsTestDir, "mutect/ten-pct-contamination.table");
 
     private static final File NA12878_MITO_BAM = new File(toolsTestDir, "mutect/mito/NA12878.bam");
+    private static final File NA12878_MITO_VCF = new File(toolsTestDir, "mutect/mito/unfiltered.vcf");
     private static final File MITO_REF = new File(toolsTestDir, "mutect/mito/Homo_sapiens_assembly38.mt_only.fasta");
     private static final File DEEP_MITO_BAM = new File(largeFileTestDir, "mutect/highDPMTsnippet.bam");
     private static final String DEEP_MITO_SAMPLE_NAME = "mixture";
@@ -313,7 +318,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final List<String> args = Arrays.asList("-I", NA12878_20_21_WGS_bam,
                 "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, "NA12878",
                 "-R", b37_reference_20_21,
-                "-L", "20:10000000-10010000",
+                "-L", "20:9998500-10010000",
                 "-O", unfilteredVcf.getAbsolutePath(),
                 "--genotyping-mode", "GENOTYPE_GIVEN_ALLELES",
                 "--alleles", givenAllelesVcf.getAbsolutePath());
@@ -325,6 +330,25 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
             final List<Allele> altAllelesAtThisLocus = altAllelesByPosition.get(vc.getStart());
             vc.getAlternateAlleles().forEach(a -> Assert.assertTrue(altAllelesAtThisLocus.contains(a)));
         }
+    }
+
+    // make sure that GGA mode with given alleles that normally wouldn't be called due to complete lack of coverage
+    // doesn't run into any edge case bug involving empty likelihoods matrices
+    @Test
+    public void testGivenAllelesZeroCoverage() throws Exception {
+        Utils.resetRandomGenerator();
+        final File bam = new File(DREAM_BAMS_DIR, "tumor_3.bam");
+        final String sample = "IS3.snv.indel.sv";
+        final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
+        final File givenAllelesVcf = new File(toolsTestDir, "mutect/gga_mode_2.vcf");
+        final List<String> args = Arrays.asList("-I", bam.getAbsolutePath(),
+                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, sample,
+                "-R", b37_reference_20_21,
+                "-L", "20:1119000-1120000",
+                "-O", unfilteredVcf.getAbsolutePath(),
+                "--genotyping-mode", "GENOTYPE_GIVEN_ALLELES",
+                "--alleles", givenAllelesVcf.getAbsolutePath());
+        runCommandLine(args);
     }
 
     @Test
@@ -499,10 +523,11 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
 
         final List<String> args = Arrays.asList("-I", NA12878_MITO_BAM.getAbsolutePath(),
-                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, "NA12878",
                 "-R", MITO_REF.getAbsolutePath(),
                 "-L", "chrM:1-1000",
+                "--" + M2ArgumentCollection.MEDIAN_AUTOSOMAL_COVERAGE_LONG_NAME, "1556", //arbitrary "autosomal" mean coverage used only for testing
                 "-min-pruning", "5",
+                "--" + M2ArgumentCollection.MITOCHONDIRA_MODE_LONG_NAME,
                 "-O", unfilteredVcf.getAbsolutePath());
         runCommandLine(args);
 
@@ -518,6 +543,30 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "chrM:310-310 [T*, TC]",
                 "chrM:750-750 [A*, G]");
         Assert.assertTrue(expectedKeys.stream().allMatch(variantKeys::contains));
+
+        Assert.assertEquals(variants.get(0).getGenotype("NA12878").getAnyAttribute(GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY), "1556");
+        Assert.assertEquals(variants.get(0).getGenotype("NA12878").getAnyAttribute(GATKVCFConstants.POTENTIAL_POLYMORPHIC_NUMT_KEY), "true");
+    }
+
+    @Test
+    public void testFilterMitochondria() throws Exception {
+        final File filteredVcf = createTempFile("filtered", ".vcf");
+
+        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-V", NA12878_MITO_VCF.getPath(),
+                "-O", filteredVcf.getPath(), "--" + M2ArgumentCollection.MITOCHONDIRA_MODE_LONG_NAME), FilterMutectCalls.class.getSimpleName()));
+
+        final List<VariantContext> variants = VariantContextTestUtils.streamVcf(filteredVcf).collect(Collectors.toList());
+        final Iterator<String> expectedFilters = Arrays.asList(
+                "[]",
+                "[chimeric_original_alignment]",
+                "[low_avg_alt_quality, t_lod]",
+                "[]",
+                "[]",
+                "[]").iterator();
+
+        for(VariantContext v : variants){
+            Assert.assertEquals(v.getFilters().toString(), expectedFilters.next(), "filters don't match expected");
+        }
     }
 
    @Test
@@ -583,11 +632,11 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final byte poorQuality = 10;
         final byte goodQuality = 30;
         final int numReads = 20;
-        final List<GATKRead> refReads = M2TestingUtils.createReads(numReads, M2TestingUtils.DEFAULT_REF_BASES, samHeader, poorQuality);
-        final List<GATKRead> alt1Reads = M2TestingUtils.createReads(numReads, M2TestingUtils.DEFAULT_ALT_BASES, samHeader, goodQuality);
+        final List<GATKRead> refReads = M2TestingUtils.createReads(numReads, M2TestingUtils.DEFAULT_REF_BASES, samHeader, poorQuality, "ref");
+        final List<GATKRead> altReads = M2TestingUtils.createReads(numReads, M2TestingUtils.DEFAULT_ALT_BASES, samHeader, goodQuality, "alt");
 
         refReads.forEach(writer::addRead);
-        alt1Reads.forEach(writer::addRead);
+        altReads.forEach(writer::addRead);
         writer.close(); // closing the writer writes to the file
         // End creating sam file
 
@@ -610,6 +659,149 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(vc.isPresent());
         Assert.assertEquals(vc.get().getStart(), M2TestingUtils.DEFAULT_SNP_POSITION);
         Assert.assertFalse(vc.get().getFilters().contains(GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME));
+    }
+
+    public File createSamWithOverlappingReads(final int numAltPairs, final int refDepth) throws IOException {
+        final byte altQuality = 50;
+        final byte refQuality = 30;
+        final File samFile = File.createTempFile("liquid-biopsy", ".bam");
+        final SAMFileHeader samHeader = M2TestingUtils.createSamHeader();
+        final SAMFileGATKReadWriter writer = M2TestingUtils.getBareBonesSamWriter(samFile, samHeader);
+
+        final List<GATKRead> refReads = M2TestingUtils.createReads(refDepth, M2TestingUtils.DEFAULT_REF_BASES, samHeader, refQuality, "ref");
+        refReads.forEach(writer::addRead);
+        for (int i = 0; i < numAltPairs; i++){
+            // Create a read pair that completely overlap each other, which is not realistic but is easy to implement
+            // and captures the essence of the issue
+            final List<GATKRead> overlappingPair = ArtificialReadUtils.createPair(samHeader, "alt" + i, M2TestingUtils.DEFAULT_READ_LENGTH,
+                    M2TestingUtils.DEFAULT_START_POSITION, M2TestingUtils.DEFAULT_START_POSITION, true, false);
+            overlappingPair.forEach(read -> {
+                read.setReadGroup(M2TestingUtils.DEFAULT_READ_GROUP_NAME);
+                read.setMappingQuality(60);
+                read.setBases(M2TestingUtils.DEFAULT_ALT_BASES);
+                read.setBaseQualities(M2TestingUtils.getUniformBQArray(altQuality, M2TestingUtils.DEFAULT_READ_LENGTH));
+                writer.addRead(read);
+            });
+        }
+
+        writer.close(); // closing the writer writes to the file
+        return samFile;
+    }
+
+
+    // Test that the strand bias annotations can count the number of reads, not fragments, when requested
+    @Test
+    public void testReadBasedAnnotations() throws IOException {
+        // Case 1: with the read correction we lose the variant - blood biopsy-like case
+        final int numAltPairs = 5;
+        final int depth = 100;
+        final int refDepth = depth - 2*numAltPairs;
+        final File samFileWithOverlappingReads = createSamWithOverlappingReads(numAltPairs, refDepth);
+
+        final File unfilteredVcf = File.createTempFile("unfiltered", ".vcf");
+        final File bamout = File.createTempFile("realigned", ".bam");
+        final String[] args = makeCommandLineArgs(Arrays.asList(
+                "-R", hg19_chr1_1M_Reference,
+                "-I", samFileWithOverlappingReads.getAbsolutePath(),
+                "-tumor", M2TestingUtils.DEFAULT_SAMPLE_NAME,
+                "-O", unfilteredVcf.getAbsolutePath(),
+                "--bamout", bamout.getAbsolutePath(),
+                "--" + M2ArgumentCollection.ANNOTATE_BASED_ON_READS_LONG_NAME, "true",
+                "--annotation", StrandBiasBySample.class.getSimpleName(),
+                "--" + AssemblyRegionWalker.MAX_STARTS_LONG_NAME, String.valueOf(depth)), Mutect2.class.getSimpleName());
+        new Main().instanceMain(args);
+
+        final Optional<VariantContext> vc = VariantContextTestUtils.streamVcf(unfilteredVcf).findAny();
+        Assert.assertTrue(vc.isPresent());
+
+        // Test case 2: we lose strand artifact. Make sure to reproduce the error and so on
+        final Genotype g = vc.get().getGenotype(M2TestingUtils.DEFAULT_SAMPLE_NAME);
+        final int[] contingencyTable = GATKProtectedVariantContextUtils.getAttributeAsIntArray(g, GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY, () -> null, -1);
+
+        final int REF_FWD_INDEX = 0;
+        final int REF_REV_INDEX = 1;
+        final int ALT_FWD_INDEX = 2;
+        final int ALT_REV_INDEX = 3;
+        Assert.assertEquals(contingencyTable[REF_FWD_INDEX], refDepth/2);
+        Assert.assertEquals(contingencyTable[REF_REV_INDEX], refDepth/2);
+        Assert.assertEquals(contingencyTable[ALT_FWD_INDEX], numAltPairs);
+        Assert.assertEquals(contingencyTable[ALT_REV_INDEX], numAltPairs);
+
+        Assert.assertFalse(vc.get().getFilters().contains(GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME));
+    }
+
+
+    private File createSamWithNsandStrandBias(final int numAlts, final int numNs, final int numRefs) throws IOException {
+        final byte altQuality = 50;
+        final byte refQuality = 30;
+        final File samFile = File.createTempFile("duplex", ".bam");
+        final SAMFileHeader samHeader = M2TestingUtils.createSamHeader();
+        final SAMFileGATKReadWriter writer = M2TestingUtils.getBareBonesSamWriter(samFile, samHeader);
+
+        // create some alt reads with a strand bias
+        final List<GATKRead> altReads = M2TestingUtils.createReads(numAlts, M2TestingUtils.DEFAULT_ALT_BASES, samHeader, altQuality, "alt");
+        altReads.forEach(read -> {
+            read.setReadGroup(M2TestingUtils.DEFAULT_READ_GROUP_NAME);
+            read.setMappingQuality(60);
+            read.setIsReverseStrand(false);
+            read.setBases(M2TestingUtils.DEFAULT_ALT_BASES);
+            read.setBaseQualities(M2TestingUtils.getUniformBQArray(altQuality, M2TestingUtils.DEFAULT_READ_LENGTH));
+            writer.addRead(read);
+        });
+
+        // create some reads with Ns
+        final byte[] DEFAULT_N_BASES = "CATCACACTNACTAAGCACACAGAGAATAAT".getBytes();
+
+        final List<GATKRead> NReads = M2TestingUtils.createReads(numNs, DEFAULT_N_BASES, samHeader, altQuality, "N");
+        NReads.forEach(writer::addRead);
+
+        // create some ref reads
+        final List<GATKRead> refReads = M2TestingUtils.createReads(numRefs, M2TestingUtils.DEFAULT_REF_BASES, samHeader, refQuality, "ref");
+        refReads.forEach(writer::addRead);
+
+        writer.close();
+        return samFile;
+    }
+
+    @Test
+    public void testStrictStrandBiasAndNRatio () throws Exception {
+        Utils.resetRandomGenerator();
+
+        final int numAlts = 2;
+        final int numNs = 10;
+        final int numRefs = 5;
+        final File samWithNsandStrandBias = createSamWithNsandStrandBias(numAlts, numNs, numRefs);
+
+        final File StrandBiasNVcf = createTempFile("strandBiasN", ".vcf");
+        final File filteredVcf = createTempFile("filtered", ".vcf");
+
+        final List<String> args = Arrays.asList(
+                "-I", samWithNsandStrandBias.getAbsolutePath(),
+                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, M2TestingUtils.DEFAULT_SAMPLE_NAME,
+                "-R", hg19_chr1_1M_Reference,
+                "-A", "StrandBiasBySample",
+                "-A", "CountNs",
+                "--count-reads", "true",
+                "-O", StrandBiasNVcf.getAbsolutePath());
+        runCommandLine(args);
+
+        // going to try filtering at this ratio
+        final double nRatio = numNs / numAlts;
+
+        // run FilterMutectCalls
+        new Main().instanceMain(makeCommandLineArgs(Arrays.asList(
+                "-O", filteredVcf.getAbsolutePath(),
+                "-V", StrandBiasNVcf.getAbsolutePath(),
+                "-" + M2FiltersArgumentCollection.STRICT_STRAND_BIAS_LONG_NAME, "true",
+                "-" + M2FiltersArgumentCollection.N_RATIO_LONG_NAME, Double.toString(nRatio)),
+                FilterMutectCalls.class.getSimpleName()));
+
+        final Optional<VariantContext> vc = VariantContextTestUtils.streamVcf(filteredVcf).findAny();
+
+        // This site should be filtered by the strict strand bias and n-ratio filter
+        Assert.assertTrue(vc.get().getFilters().contains(GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME));
+        Assert.assertTrue(vc.get().getFilters().contains(GATKVCFConstants.N_RATIO_FILTER_NAME));
+
     }
 
     private void doMutect2Test(

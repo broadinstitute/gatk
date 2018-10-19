@@ -2,18 +2,13 @@ package org.broadinstitute.hellbender.tools.walkers.readorientation;
 
 import com.google.common.collect.ImmutableMap;
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.Histogram;
 import htsjdk.samtools.util.IOUtil;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.tools.walkers.mutect.M2TestingUtils;
-import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
-import org.broadinstitute.hellbender.utils.genotyper.SampleList;
-import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -21,7 +16,6 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -195,8 +189,8 @@ public class CollectF1R2CountsIntegrationTest extends CommandLineProgramTest {
         //            Ref Sequence: "CATCACACTCACTAAGCACACAGAGAATAAT".getBytes();
         //          SNPs positions:            *  * *  *
         final byte[] altReadBases = "CATCACACTCTCTGACCAAACAGAGAATAAT".getBytes();
-        final List<GATKRead> refReads = M2TestingUtils.createReads(refDepth, M2TestingUtils.DEFAULT_REF_BASES, samHeader, (byte)30);
-        final List<GATKRead> alt1Reads = M2TestingUtils.createReads(altDepth, altReadBases, samHeader, (byte)30);
+        final List<GATKRead> refReads = M2TestingUtils.createReads(refDepth, M2TestingUtils.DEFAULT_REF_BASES, samHeader, (byte)30, "ref");
+        final List<GATKRead> alt1Reads = M2TestingUtils.createReads(altDepth, altReadBases, samHeader, (byte)30, "alt");
         refReads.forEach(writer::addRead);
         alt1Reads.forEach(writer::addRead);
         writer.close(); // closing the writer writes to the file

@@ -27,7 +27,6 @@ releases of the toolkit.
     * [Running GATK4 with inputs on Google Cloud Storage](#gcs)
     * [Running GATK4 Spark tools on a Spark cluster](#sparkcluster)
     * [Running GATK4 Spark tools on Google Cloud Dataproc](#dataproc)
-    * [Note on 2bit Reference](#2bit)
     * [Using R to generate plots](#R)
     * [GATK Tab Completion for Bash](#tab_completion)
 * [For GATK Developers](#developers)
@@ -297,9 +296,6 @@ You can download and run pre-built versions of GATK4 from the following places:
   * If you want to avoid uploading the GATK jar to GCS on every run, set the `GATK_GCS_STAGING`
     environment variable to a bucket you have write access to (eg., `export GATK_GCS_STAGING=gs://<my_bucket>/`)
   * Dataproc Spark clusters are configured with [dynamic allocation](https://spark.apache.org/docs/latest/job-scheduling.html#dynamic-resource-allocation) so you can omit the "--num-executors" argument and let YARN handle it automatically.
-
-#### <a name="2bit">Note on 2bit Reference</a>
-* Note: Some GATK Spark tools by default require the reference file to be in 2bit format (notably `BaseRecalibratorSpark`,`BQSRPipelineSpark` and `ReadsPipelineSpark`). You can convert your fasta to 2bit by using the `faToTwoBit` utility from [UCSC](http://hgdownload.soe.ucsc.edu/admin/exe/) - see also the [documentation for `faToTwoBit`](https://genome.ucsc.edu/goldenpath/help/blatSpec.html#faToTwoBitUsage).
 
 #### <a name="R">Using R to generate plots</a>
 Certain GATK tools may optionally generate plots if R is installed.  We recommend **R v3.2.5** if you want to produce plots.  If you are uninterested in plotting, R is still required by several of the unit tests.  Plotting is currently untested and should be viewed as a convenience rather than a primary output.

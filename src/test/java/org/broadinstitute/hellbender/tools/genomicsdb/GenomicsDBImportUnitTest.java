@@ -16,6 +16,8 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.net.URI;
+import java.net.URISyntaxException;
 
 public class GenomicsDBImportUnitTest extends GATKBaseTest {
 
@@ -68,7 +70,7 @@ public class GenomicsDBImportUnitTest extends GATKBaseTest {
     @Test(dataProvider = "getGoodSampleNameMapFileSyntax")
     public void testValidSampleFiles(final String text, final String[][] expectedEntries){
         final File sampleFile = IOUtils.writeTempFile(text, "goodSampleMapping", ".txt");
-        final LinkedHashMap<String, Path> outputMap = GenomicsDBImport.loadSampleNameMapFile(sampleFile.toPath());
+        final LinkedHashMap<String, URI> outputMap = GenomicsDBImport.loadSampleNameMapFile(sampleFile.toPath());
         Assert.assertEquals(outputMap.size(),expectedEntries.length);
 
         Arrays.stream(expectedEntries).forEach(s -> { Assert.assertTrue(outputMap.containsKey(s[0]));
@@ -78,7 +80,7 @@ public class GenomicsDBImportUnitTest extends GATKBaseTest {
     @Test
     public void testLoadSampleNameMapFilePreservesOrder(){
         final File sampleFile = IOUtils.writeTempFile(UNORDERED_SAMPLE_MAP, "badSampleMapping", ".txt");
-        final LinkedHashMap<String, Path> unsortedMap = GenomicsDBImport.loadSampleNameMapFile(sampleFile.toPath());
+        final LinkedHashMap<String, URI> unsortedMap = GenomicsDBImport.loadSampleNameMapFile(sampleFile.toPath());
         Assert.assertEquals(new ArrayList<>(unsortedMap.keySet()), Arrays.asList("Sample3", "Sample2", "Sample1"));
     }
 
@@ -93,11 +95,16 @@ public class GenomicsDBImportUnitTest extends GATKBaseTest {
     @Test(dataProvider = "getSampleMaps")
     public void testLoadSampleNameMapFileInSortedOrder(final String sampleMapText){
         final File sampleFile = IOUtils.writeTempFile(sampleMapText, "sampleMapping", ".txt");
-        final Map<String, Path> expected = new LinkedHashMap<>();
-        expected.put("Sample1", Paths.get("file1"));
-        expected.put("Sample2", Paths.get("file2"));
-        expected.put("Sample3", Paths.get("file3"));
-        final Map<String, Path> actual = GenomicsDBImport.loadSampleNameMapFileInSortedOrder(sampleFile.toPath());
+        final Map<String, URI> expected = new LinkedHashMap<>();
+        try {
+            expected.put("Sample1", new URI("file1"));
+            expected.put("Sample2", new URI("file2"));
+            expected.put("Sample3", new URI("file3"));
+        }
+        catch(URISyntaxException e) {
+            throw new RuntimeException("Malformed URI "+e.toString());
+        }
+        final Map<String, URI> actual = GenomicsDBImport.loadSampleNameMapFileInSortedOrder(sampleFile.toPath());
         Assert.assertEquals(actual, expected);
         Assert.assertEquals(actual.keySet().iterator().next(), "Sample1");
     }

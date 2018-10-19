@@ -12,6 +12,9 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.VariantFilter;
+import org.broadinstitute.hellbender.engine.filters.CountingVariantFilter;
+import org.broadinstitute.hellbender.engine.filters.VariantFilterLibrary;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.DataSourceUtils;
 import org.broadinstitute.hellbender.tools.funcotator.metadata.VcfFuncotationMetadata;
@@ -317,8 +320,8 @@ public class Funcotator extends VariantWalker {
     }
 
     @Override
-    protected VariantFilter makeVariantFilter() {
-        return funcotatorEngine.makeVariantFilter();
+    protected CountingVariantFilter makeVariantFilter() {
+        return new CountingVariantFilter(funcotatorEngine.makeVariantFilter());
     }
 
     @Override

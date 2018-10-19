@@ -27,7 +27,6 @@ import java.util.List;
  */
 public class SimpleAnnotatedIntervalWriter implements AnnotatedIntervalWriter {
 
-
     private SimpleTableWriter writer;
     private FileWriter fileWriter;
     private String contigColumnHeader;
@@ -63,7 +62,6 @@ public class SimpleAnnotatedIntervalWriter implements AnnotatedIntervalWriter {
     public SimpleAnnotatedIntervalWriter(final File outputFile) {
         IOUtil.assertFileIsWritable(outputFile);
         this.outputFile = outputFile;
-
     }
 
     private void initializeForWriting(final String contigColumnName, final String startColumnName, final String endColumnName, final List<String> annotations) {

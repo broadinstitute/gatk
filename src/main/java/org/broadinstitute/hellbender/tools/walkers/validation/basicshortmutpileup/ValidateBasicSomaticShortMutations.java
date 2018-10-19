@@ -54,8 +54,10 @@ public class ValidateBasicSomaticShortMutations extends VariantWalker {
     public final static int DEFAULT_MIN_BQ_CUTOFF = 20;
     public final static String CUTOFF_LONG_NAME = "min-base-quality-cutoff";
     public final static String MIN_POWER_LONG_NAME = "min-power";
+    public final static String MAX_VALIDATION_NORMAL_COUNT_LONG_NAME = "max-validation-normal-count";
 
     private static final double DEFAULT_MIN_POWER = 0.9;
+    private static final int DEFAULT_MAX_VALIDATION_NORMAL_COUNT = 1;
 
     @Argument(fullName = SAMPLE_NAME_DISCOVERY_VCF_LONG_NAME,
             doc = "sample name for discovery in VCF.")
@@ -80,6 +82,11 @@ public class ValidateBasicSomaticShortMutations extends VariantWalker {
             fullName = MIN_POWER_LONG_NAME,
             optional = true)
     protected double minPower = DEFAULT_MIN_POWER;
+
+    @Argument(doc = "Maximum read count in the validation normal for a variant to validate.  More counts is considered an artifact.",
+            fullName = MAX_VALIDATION_NORMAL_COUNT_LONG_NAME,
+            optional = true)
+    protected int maxValidationNormalCount = DEFAULT_MAX_VALIDATION_NORMAL_COUNT;
 
     @Argument(fullName = SAMPLE_NAME_VALIDATION_CASE,
             doc = "validation case sample name (in the bam)")
@@ -234,8 +241,9 @@ public class ValidateBasicSomaticShortMutations extends VariantWalker {
             results.add(basicValidationResult);
         }
 
-        final boolean validated = basicValidationResult != null && basicValidationResult.isOutOfNoiseFloor();
-        final boolean powered = basicValidationResult != null && basicValidationResult.getPower() > minPower;
+        final boolean normalArtifact = basicValidationResult.getNumAltSupportingReadsInNormal() > maxValidationNormalCount;
+        final boolean validated = !normalArtifact && basicValidationResult != null && basicValidationResult.isOutOfNoiseFloor();
+        final boolean powered = normalArtifact || (basicValidationResult != null && basicValidationResult.getPower() > minPower);
 
         if (discoveryVariantContext.isSNP()) {
             if (validated) {

@@ -63,8 +63,8 @@ final barclayVersion = System.getProperty('barclay.version','2.1.0')
 final sparkVersion = System.getProperty('spark.version', '2.2.0')
 final hadoopVersion = System.getProperty('hadoop.version', '2.8.2')
 final hadoopBamVersion = System.getProperty('hadoopBam.version','7.10.0')
-final tensorflowVersion = System.getProperty('tensorflow.version','1.4.0')
-final genomicsdbVersion = System.getProperty('genomicsdb.version','0.9.2-proto-3.0.0-beta-1+ab5fbe92900259')
+final tensorflowVersion = System.getProperty('tensorflow.version','1.9.0')
+final genomicsdbVersion = System.getProperty('genomicsdb.version','0.10.0-proto-3.0.0-beta-1+bdce8be25b873')
 final testNGVersion = '6.11'
 // Using the shaded version to avoid conflicts between its protobuf dependency
 // and that of Hadoop/Spark (either the one we reference explicitly, or the one
@@ -166,14 +166,9 @@ configurations.all {
     all*.exclude group: 'junit', module: 'junit'
 }
 
-//NOTE: we ignore contracts for now
-compileJava {
+tasks.withType(JavaCompile) {
   options.compilerArgs = ['-proc:none', '-Xlint:all', '-Werror', '-Xdiags:verbose']
 }
-compileTestJava {
-  options.compilerArgs = ['-proc:none', '-Xlint:all', '-Werror', '-Xdiags:verbose']
-}
-
 
 sourceSets {
     testUtils

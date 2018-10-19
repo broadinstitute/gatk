@@ -67,6 +67,39 @@ public final class QualByDepth extends InfoFieldAnnotation implements StandardAn
             return Collections.emptyMap();
         }
 
+        final int depth = getDepth(genotypes, likelihoods);
+
+        if ( depth == 0 ) {
+            return Collections.emptyMap();
+        }
+
+        final double qual = -10.0 * vc.getLog10PError();
+        double QD = qual / depth;
+
+        // Hack: see note in the fixTooHighQD method below
+        QD = fixTooHighQD(QD);
+
+        return Collections.singletonMap(getKeyNames().get(0), String.format("%.2f", QD));
+    }
+
+    /**
+     * The haplotype caller generates very high quality scores when multiple events are on the
+     * same haplotype.  This causes some very good variants to have unusually high QD values,
+     * and VQSR will filter these out.  This code looks at the QD value, and if it is above
+     * threshold we map it down to the mean high QD value, with some jittering
+     *
+     * @param QD the raw QD score
+     * @return a QD value
+     */
+    public static double fixTooHighQD(final double QD) {
+        if ( QD < MAX_QD_BEFORE_FIXING ) {
+            return QD;
+        } else {
+            return IDEAL_HIGH_QD + Utils.getRandomGenerator().nextGaussian() * JITTER_SIGMA;
+        }
+    }
+
+    public static int getDepth(final GenotypesContext genotypes, final ReadLikelihoods<Allele> likelihoods) {
         int depth = 0;
         int ADrestrictedDepth = 0;
 
@@ -100,35 +133,7 @@ public final class QualByDepth extends InfoFieldAnnotation implements StandardAn
         if ( ADrestrictedDepth > 0 ) {
             depth = ADrestrictedDepth;
         }
-
-        if ( depth == 0 ) {
-            return Collections.emptyMap();
-        }
-
-        final double qual = -10.0 * vc.getLog10PError();
-        double QD = qual / depth;
-
-        // Hack: see note in the fixTooHighQD method below
-        QD = fixTooHighQD(QD);
-
-        return Collections.singletonMap(getKeyNames().get(0), String.format("%.2f", QD));
-    }
-
-    /**
-     * The haplotype caller generates very high quality scores when multiple events are on the
-     * same haplotype.  This causes some very good variants to have unusually high QD values,
-     * and VQSR will filter these out.  This code looks at the QD value, and if it is above
-     * threshold we map it down to the mean high QD value, with some jittering
-     *
-     * @param QD the raw QD score
-     * @return a QD value
-     */
-    public static double fixTooHighQD(final double QD) {
-        if ( QD < MAX_QD_BEFORE_FIXING ) {
-            return QD;
-        } else {
-            return IDEAL_HIGH_QD + Utils.getRandomGenerator().nextGaussian() * JITTER_SIGMA;
-        }
+        return depth;
     }
 
     @Override

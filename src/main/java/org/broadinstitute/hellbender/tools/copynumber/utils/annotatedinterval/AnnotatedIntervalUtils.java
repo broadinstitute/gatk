@@ -8,6 +8,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.util.*;
 import java.util.function.BiFunction;
@@ -80,6 +81,95 @@ public class AnnotatedIntervalUtils {
 
         return new AnnotatedInterval(interval, annotations);
     }
+
+    /**
+     * Merge AnnotatedIntervals by whether the given annotation values match (all annotations must match).
+     *
+     * Sorting is performed as well, so input ordering is lost.  Note that the input itself is not changed.
+     *
+     * When two overlapping regions are merged, annotations are merged as follows:
+     *  - The annotation appears in one region:  Resulting region will have the annotation with the value of that one region
+     *  - The annotation appears in both regions:  Resulting region will have both values separated by the {@code annotationSeparator}
+     *  parameter.
+     *
+     * @param initialRegions Regions to merge.  Never {@code null}
+     * @param dictionary Sequence dictionary to use for sorting.  Never {@code null}
+     * @param annotationNames Names of the annotations to use for matching the initialRegions.  Never {@code null}
+     * @param progressUpdater Consuming function that can callback with the latest region that has been processed.
+     *                        Never {@code null}  Use a no-op function if you do not wish to provide a progress update.
+     * @param annotationSeparator In the case of conflicting annotation values (of annotations other than those specified
+     *                            in annotationNames), use this string to separate the resulting (merged) value.
+     *                            Never {@code null}
+     * @param maxDistanceInBp if two segments are farther than this distance, do not merge, even if all annotation values
+     *                        match.  Must be >= 0.
+     * @return merged annotated intervals.  Empty list if initialRegions was empty.  Never {@code null}
+     */
+    public static List<AnnotatedInterval> mergeRegionsByAnnotation(final List<AnnotatedInterval> initialRegions,
+                                                       final SAMSequenceDictionary dictionary, final List<String> annotationNames,
+                                                       final Consumer<Locatable> progressUpdater, final String annotationSeparator,
+                                                                   final int maxDistanceInBp) {
+
+        Utils.nonNull(initialRegions);
+        Utils.nonNull(dictionary);
+        Utils.nonNull(annotationNames);
+        Utils.nonNull(annotationSeparator);
+        Utils.nonNull(progressUpdater);
+        ParamUtils.isPositiveOrZero(maxDistanceInBp, "Cannot have a negative value for distance.");
+
+        final List<AnnotatedInterval> segments = IntervalUtils.sortLocatablesBySequenceDictionary(initialRegions,
+                dictionary);
+
+        final List<AnnotatedInterval> finalSegments = new ArrayList<>();
+        final PeekableIterator<AnnotatedInterval> segmentsIterator = new PeekableIterator<>(segments.iterator());
+        while (segmentsIterator.hasNext()) {
+            AnnotatedInterval currentRegion = segmentsIterator.next();
+
+            while (segmentsIterator.peek() != null && isMergeByAnnotation(currentRegion, segmentsIterator.peek(), maxDistanceInBp, annotationNames)
+                    ) {
+                final AnnotatedInterval toBeMerged = segmentsIterator.next();
+
+                currentRegion = merge(currentRegion, toBeMerged, annotationSeparator);
+            }
+            progressUpdater.accept(currentRegion);
+            finalSegments.add(currentRegion);
+        }
+        return finalSegments;
+    }
+
+    private static boolean isMergeByAnnotation(final AnnotatedInterval interval1, final AnnotatedInterval interval2, int maxDistance, final List<String> annotationNames) {
+        // If the contigs do not match OR the segments are too far apart OR there are annotation values that do not match,
+        //  then return false.
+        return (interval1.getContig().equals(interval2.getContig())) &&
+                (getDistance(interval1, interval2) <= maxDistance) &&
+                (annotationNames.stream().allMatch(a -> interval1.getAnnotationValue(a).equals(interval2.getAnnotationValue(a))));
+    }
+
+    /**
+     * Gets the distance, in base pairs between two locatables.  Looks for the closest endpoints, so the order of loc1
+     *  and loc2 do not matter.
+     *
+     * Overlapping (or abutting) locatables will always return 0.
+     *
+     * Locatables on different contigs will have a distance of {@link Long#MAX_VALUE}
+     * @param loc1 Never {@code null}
+     * @param loc2 Never {@code null}
+     * @return 0 or a positive number.
+     */
+    private static long getDistance(final Locatable loc1, final Locatable loc2) {
+        Utils.nonNull(loc1);
+        Utils.nonNull(loc2);
+
+        if (!loc1.getContig().equals(loc2.getContig())) {
+            return Long.MAX_VALUE;
+        }
+
+        if (IntervalUtils.overlaps(loc1, loc2)) {
+            return 0;
+        }
+
+        return (loc1.getEnd() < loc2.getStart()) ? (loc2.getStart() - loc1.getEnd()) : (loc1.getStart() - loc2.getEnd());
+    }
+
 
     /**
      *  Return a merged annotation value for the two regions and given annotation name.  Automatically solves conflicts.

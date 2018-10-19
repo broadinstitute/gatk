@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools.spark.pipelines;
 import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.MarkDuplicatesSparkArgumentCollection;
-import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceTwoBitSparkSource;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerIntegrationTest;
 import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.broadinstitute.hellbender.GATKBaseTest;
@@ -51,7 +50,6 @@ public class ReadsPipelineSparkIntegrationTest extends CommandLineProgramTest {
     @DataProvider(name = "ReadsPipeline")
     public Object[][] createReadsPipelineSparkTestData() {
         final String GRCh37Ref_2021 = GATKBaseTest.b37_reference_20_21;
-        final String GRCh37Ref2bit_chr2021 = GATKBaseTest.b37_2bit_reference_20_21;
         final String GRCh37Ref_2021_img = GATKBaseTest.b37_reference_20_21_img;
         final String hiSeqBam_chr20 = getResourceDir() + "CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.noMD.noBQSR.bam";
         final String hiSeqBam_chr20_queryNameSorted = getResourceDir() + "CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.noMD.noBQSR.queryNameSorted.bam";
@@ -77,19 +75,16 @@ public class ReadsPipelineSparkIntegrationTest extends CommandLineProgramTest {
                 //        -O src/test/resources/org/broadinstitute/hellbender/tools/BQSR/expected.MultiSite.reads.pipeline.vcf \
                 //        -pairHMM AVX_LOGLESS_CACHING \
                 //        -stand_call_conf 30.0
-                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "--join-strategy BROADCAST", null, getResourceDir() + expectedSingleKnownSitesVcf)}, // don't write intermediate BAM
-                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "--join-strategy BROADCAST", getResourceDir() + expectedSingleKnownSites, getResourceDir() + expectedSingleKnownSitesVcf)},
-                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "--join-strategy OVERLAPS_PARTITIONER --read-shard-padding 1000", getResourceDir() + expectedSingleKnownSites, getResourceDir() + expectedSingleKnownSitesVcf)},
-                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20_queryNameSorted, ".bam", dbSNPb37_20, "--join-strategy BROADCAST", getResourceDir() + expectedMultipleKnownSites, getResourceDir() + expectedSingleKnownSitesVcf)},
+                {new PipelineTest(GRCh37Ref_2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, null, null, getResourceDir() + expectedSingleKnownSitesVcf)}, // don't write intermediate BAM
+                {new PipelineTest(GRCh37Ref_2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, null, getResourceDir() + expectedSingleKnownSites, getResourceDir() + expectedSingleKnownSitesVcf)},
+                {new PipelineTest(GRCh37Ref_2021, hiSeqBam_chr20_queryNameSorted, ".bam", dbSNPb37_20, null, getResourceDir() + expectedMultipleKnownSites, getResourceDir() + expectedSingleKnownSitesVcf)},
 
                 // Output generated with GATK4
-                // CRAM test fails since can't use 2bit with CRAM, can only use 2bit with HC.
-//                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqCram_chr20, ".cram", dbSNPb37_20, "--joinStrategy BROADCAST --knownSites " + more20Sites, getResourceDir() + expectedMultipleKnownSitesCram, getResourceDir() + expectedMultipleKnownSitesVcf)},
-                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "--join-strategy BROADCAST --known-sites " + more20Sites, getResourceDir() + expectedMultipleKnownSites, getResourceDir() + expectedMultipleKnownSitesVcf)},
-                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "--join-strategy OVERLAPS_PARTITIONER --read-shard-padding 1000 --known-sites " + more20Sites, getResourceDir() + expectedMultipleKnownSites, getResourceDir() + expectedMultipleKnownSitesVcf)},
+                {new PipelineTest(GRCh37Ref_2021, hiSeqCram_chr20, ".cram", dbSNPb37_20, "--known-sites " + more20Sites, getResourceDir() + expectedMultipleKnownSitesCram, getResourceDir() + expectedMultipleKnownSitesVcf)},
+                {new PipelineTest(GRCh37Ref_2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "--known-sites " + more20Sites, getResourceDir() + expectedMultipleKnownSites, getResourceDir() + expectedMultipleKnownSitesVcf)},
 
                 // BWA-MEM
-                {new PipelineTest(GRCh37Ref2bit_chr2021, unalignedBam, ".bam", dbSNPb37_20, "--align --bwa-mem-index-image " + GRCh37Ref_2021_img + " --join-strategy BROADCAST --known-sites " + more20Sites, null, largeFileTestDir + expectedMultipleKnownSitesFromUnalignedVcf)},
+                {new PipelineTest(GRCh37Ref_2021, unalignedBam, ".bam", dbSNPb37_20, "--align --bwa-mem-index-image " + GRCh37Ref_2021_img + " --known-sites " + more20Sites, null, largeFileTestDir + expectedMultipleKnownSitesFromUnalignedVcf)},
         };
     }
 
@@ -130,11 +125,7 @@ public class ReadsPipelineSparkIntegrationTest extends CommandLineProgramTest {
         runCommandLine(args);
 
         if (params.expectedBamFileName != null) {
-            if (referenceFile != null && !ReferenceTwoBitSparkSource.isTwoBit(referenceFile.getName())) { // htsjdk can't handle 2bit reference files
-                SamAssertionUtils.assertEqualBamFiles(outFileBam, new File(params.expectedBamFileName), referenceFile, true, ValidationStringency.SILENT);
-            } else {
-                SamAssertionUtils.assertEqualBamFiles(outFileBam, new File(params.expectedBamFileName), true, ValidationStringency.SILENT);
-            }
+            SamAssertionUtils.assertEqualBamFiles(outFileBam, new File(params.expectedBamFileName), referenceFile, true, ValidationStringency.SILENT);
         }
 
         final double concordance = HaplotypeCallerIntegrationTest.calculateConcordance(outFile, new File(params.expectedVcfFileName));

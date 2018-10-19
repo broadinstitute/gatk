@@ -13,7 +13,7 @@ import java.util.Arrays;
 import java.util.List;
 
 public class M2TestingUtils {
-    private static final String DEFAULT_READ_GROUP_NAME = "READ_GROUP_1";
+    public static final String DEFAULT_READ_GROUP_NAME = "READ_GROUP_1";
     /**
      *
      * Reference at this position looks like this:
@@ -32,25 +32,31 @@ public class M2TestingUtils {
     public static final byte[] DEFAULT_REF_BASES = "CATCACACTCACTAAGCACACAGAGAATAAT".getBytes();
     // Bases for C->T SNP at position 100,000                *
     public static final byte[] DEFAULT_ALT_BASES = "CATCACACTTACTAAGCACACAGAGAATAAT".getBytes();
+    public static final int DEFAULT_START_POSITION = 99_991;
+    public static final int DEFAULT_END_POSITION = 100_021;
     public static final int DEFAULT_SNP_POSITION = 100_000;
+    public static final int DEFAULT_READ_LENGTH = DEFAULT_REF_BASES.length;
     public static final String DEFAULT_SAMPLE_NAME = "sample1";
 
     public static SAMFileGATKReadWriter getBareBonesSamWriter(final File samFile, final SAMFileHeader samHeader) {
         return new SAMFileGATKReadWriter(ReadUtils.createCommonSAMWriter(samFile, null, samHeader, true, true, false));
     }
 
-    // TODO: might have to address read name collisions
-    public static List<GATKRead> createReads(final int numReads, final byte[] bases, final SAMFileHeader samHeader,
-                                             final byte baseQuality){
-        final int readLength = bases.length;
+    public static byte[] getUniformBQArray(final byte quality, final int readLength){
         final byte[] quals = new byte[readLength];
-        Arrays.fill(quals, baseQuality);
+        Arrays.fill(quals, quality);
+        return quals;
+    }
+
+    public static List<GATKRead> createReads(final int numReads, final byte[] bases, final SAMFileHeader samHeader,
+                                             final byte baseQuality, final String namePrefix){
+        final int readLength = bases.length;
 
         final List<GATKRead> reads = new ArrayList<>(numReads);
         for (int i = 0; i < numReads; i++) {
             final String cigar = bases.length + "M";
-            final GATKRead read = ArtificialReadUtils.createArtificialRead(samHeader, "Read" + i, DEFAULT_CHROM_INDEX,
-                    DEFAULT_ALIGNMENT_START, bases, quals, cigar);
+            final GATKRead read = ArtificialReadUtils.createArtificialRead(samHeader, namePrefix + i, DEFAULT_CHROM_INDEX,
+                    DEFAULT_ALIGNMENT_START, bases, getUniformBQArray(baseQuality, readLength), cigar);
             read.setReadGroup(DEFAULT_READ_GROUP_NAME);
             read.setMappingQuality(DEFAULT_MAPQ);
             read.setIsFirstOfPair();
@@ -62,7 +68,7 @@ public class M2TestingUtils {
     }
 
     public static List<GATKRead> createReads(final int numReads, final byte[] bases, final SAMFileHeader samHeader){
-        return createReads(numReads, bases, samHeader, DEFAULT_BASEQ);
+        return createReads(numReads, bases, samHeader, DEFAULT_BASEQ, "read");
     }
 
     public static SAMFileHeader createSamHeader(){

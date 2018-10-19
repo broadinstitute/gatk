@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.io;
 
 import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
+import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.logging.log4j.core.util.FileUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -431,6 +432,34 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
     }
 
     @Test
+    public void testAppendPathToDir() throws Exception {
+        Assert.assertEquals(IOUtils.appendPathToDir("dir", "file"), "dir/file");
+        Assert.assertEquals(IOUtils.appendPathToDir("dir/", "file"), "dir/file");
+        Assert.assertEquals(IOUtils.appendPathToDir("dir", "/file"), "/file");
+        Assert.assertEquals(IOUtils.appendPathToDir("dir/", "/file"), "/file");
+        Assert.assertEquals(IOUtils.appendPathToDir("/path/to/dir", "anotherdir/file"), "/path/to/dir/anotherdir/file");
+
+        // hdfs: URI
+        MiniDFSCluster cluster = null;
+        try {
+            cluster = MiniClusterUtils.getMiniCluster();
+            Path tempPath = IOUtils.getPath(MiniClusterUtils.getWorkingDir(cluster).toUri().toString());
+            Assert.assertEquals(IOUtils.appendPathToDir(tempPath.toString(), "temp"), tempPath.toString() + "/temp");
+        }
+        finally {
+            MiniClusterUtils.stopCluster(cluster);
+        }
+
+        // gs: URI
+        Assert.assertEquals(IOUtils.appendPathToDir("gs://abucket/dir", "file"), "gs://abucket/dir/file");
+        Assert.assertEquals(IOUtils.appendPathToDir("gs://abucket/dir/", "file"), "gs://abucket/dir/file");
+
+        // file: URI
+        Assert.assertEquals(IOUtils.appendPathToDir("file:///dir", "file"), "file:///dir/file");
+        Assert.assertEquals(IOUtils.appendPathToDir("file:///dir/", "file"), "file:///dir/file");
+    }
+
+    @Test
     public void testSuccessfulCanReadFileCheck() {
         final File expectedFile = createTempFile("Utils-can-read-test",".txt");
         IOUtils.canReadFile(expectedFile);
@@ -593,6 +622,44 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
     public void testIsHDF5File(final String filePath, final boolean expected) {
         final Path testPath = Paths.get(filePath);
         Assert.assertEquals(IOUtils.isHDF5File(testPath), expected);
+    }
+
+    @DataProvider(name = "GenomicsDBTestPathData")
+    public Object[][] genomicsDBTestPathData() {
+        return new Object[][]{
+                //path, getGenomicsDBPath, getAbsolutePathWithGenomicsDBURIScheme, isGenomicsDBPath
+                {null, null, null, false},
+                {"", null, null, false},
+                {"dfdfdf://fdfdf", null, null, false},
+                {"fdfdf", null, null, false},
+                {"gendbdfdfdf://fdfdf", null, null, false},
+                {"gendb-dfdfdf://fdfdf", null, null, false},
+                {"gendb-dfdfdf://", null, null, false},
+                {"gendb", null, null, false},
+                {"gendbdfdf", null, null, false},
+                {"agendb://dfdfd", null, null, false},
+                {"gendb.://fdfdf", null, null, false},
+                {"gendb.", null, null, false},
+
+                {"gendb.dfdfdf://fdfdf", "dfdfdf://fdfdf", "gendb.dfdfdf://fdfdf", true},
+                {"gendb://fdfdf", "fdfdf", "gendb://" + new File("fdfdf").getAbsolutePath(), true},
+                {"gendb://", "", "gendb://" + new File("").getAbsolutePath(), true},
+                {"gendb:///fdfd", "/fdfd", "gendb:///fdfd", true},
+                {"gendb:///", "/", "gendb:///", true},
+                {"gendb.hdfs://this-node:9000/dir", "hdfs://this-node:9000/dir", "gendb.hdfs://this-node:9000/dir", true},
+                {"gendb.gs://my-bucket/dir", "gs://my-bucket/dir", "gendb.gs://my-bucket/dir", true},
+                {"gendb.s3://my-bucket/dir", "s3://my-bucket/dir", "gendb.s3://my-bucket/dir", true},
+
+                {"gendb-hdfs://this-node:9000/dir", null, null, false},
+                {"gendb-gs://this-node:9000/dir", null, null, false}
+        };
+    }
+
+    @Test(dataProvider = "GenomicsDBTestPathData")
+    public void testGenomicsDBPathParsing(String path, String expectedPath, String gendbExpectedAbsolutePath, boolean expectedComparison) {
+        Assert.assertEquals(IOUtils.getGenomicsDBPath(path), expectedPath, "getGenomicsDBPath() returned the wrong value");
+        Assert.assertEquals(IOUtils.getAbsolutePathWithGenomicsDBURIScheme(path), gendbExpectedAbsolutePath, "getAbsolutePathWithGenDBScheme() returned the wrong value");
+        Assert.assertEquals(IOUtils.isGenomicsDBPath(path), expectedComparison, "isGenomicsDBPath() returned the wrong value");
     }
 
 }

@@ -19,11 +19,16 @@
 ## ** Workflow options **
 ## intervals: genomic intervals (will be used for scatter)
 ## scatter_count: number of parallel jobs to generate when scattering over intervals
-## artifact_modes: types of artifacts to consider in the orientation bias filter (optional)
+## artifact_modes: (optional) types of artifacts to consider in the orientation bias filter
 ## m2_extra_args, m2_extra_filtering_args: additional arguments for Mutect2 calling and filtering (optional)
 ## split_intervals_extra_args: additional arguments for splitting intervals before scattering (optional)
-## run_orientation_bias_filter: (deprecated) if true, run the orientation bias filter (optional)
-## run_orientation_bias_mixture_model_filter: if true, filter orientation bias sites based on the posterior probabilities computed by the read orientation artifact mixture model (optional)
+## run_orientation_bias_filter: (optional) if true, run the orientation bias filter, which is the GATK implementation of
+##         D-ToxoG with modifications to allow multiple artifact modes.
+##         For more information on D-ToxoG, see https://software.broadinstitute.org/cancer/cga/dtoxog
+## run_orientation_bias_mixture_model_filter: (optional) if true, filter orientation bias sites with the read orientation artifact mixture model.
+##         This is the recommended orientation bias filter, particularly for data sequenced on Illumina NovaSeq.
+##         If set to true, artifact_mode will be ignored, as the model learns the artifact modes on its own.
+##         While we offer both options, there's no need to run both the mixture model filter and the one based on D-ToxoG. 
 ## run_oncotator: if true, annotate the M2 VCFs using oncotator (to produce a TCGA MAF).  Important:  This requires a
 ##                   docker image and should  not be run in environments where docker is unavailable (e.g. SGE cluster on
 ##                   a Broad on-prem VM).  Access to docker hub is also required, since the task downloads a public docker image.
@@ -52,6 +57,7 @@
 ## funco_data_sources_tar_gz:  Funcotator datasources tar gz file.  Bucket location is recommended when running on the cloud.
 ## funco_annotation_defaults:  Default values for annotations, when values are unspecified.  Specified as  <ANNOTATION>:<VALUE>.  For example:  "Center:Broad"
 ## funco_annotation_overrides:  Values for annotations, even when values are unspecified.  Specified as  <ANNOTATION>:<VALUE>.  For example:  "Center:Broad"
+## funcotator_excluded_fields:  Annotations that should not appear in the output (VCF or MAF).  Specified as  <ANNOTATION>.  For example:  "ClinVar_ALLELEID"
 ##
 ## Outputs :
 ## - One VCF file and its index with primary filtering applied; secondary filtering and functional annotation if requested; a bamout.bam
@@ -111,6 +117,7 @@ workflow Mutect2 {
     String? sequencing_center
     String? sequence_source
     File? default_config_file
+    String? oncotator_extra_args
 
     # funcotator inputs
     Boolean? run_funcotator
@@ -121,6 +128,8 @@ workflow Mutect2 {
     File? funco_transcript_selection_list
     Array[String]? funco_annotation_defaults
     Array[String]? funco_annotation_overrides
+    Array[String]? funcotator_excluded_fields
+    String? funcotator_extra_args
 
     File? gatk_override
 
@@ -133,8 +142,6 @@ workflow Mutect2 {
     Boolean filter_oncotator_maf_or_default = select_first([filter_oncotator_maf, true])
     Boolean? filter_funcotations
     Boolean filter_funcotations_or_default = select_first([filter_funcotations, true])
-    String? oncotator_extra_args
-    String? funcotator_extra_args
 
     Int? preemptible_attempts
     Int? max_retries
@@ -424,6 +431,7 @@ workflow Mutect2 {
                 gatk_docker = gatk_docker,
                 gatk_override = gatk_override,
                 filter_funcotations = filter_funcotations_or_default,
+                funcotator_excluded_fields = funcotator_excluded_fields,
                 sequencing_center = sequencing_center,
                 sequence_source = sequence_source,
                 disk_space_gb = ceil(size(funcotate_vcf_input, "GB") * large_input_to_output_multiplier) + onco_tar_size + disk_pad,
@@ -692,7 +700,6 @@ task MergeBamOuts {
     }
 }
 
-# This task is deprecated and is no longer supported
 task CollectSequencingArtifactMetrics {
     # inputs
     File ref_fasta
@@ -737,6 +744,7 @@ task CollectSequencingArtifactMetrics {
     }
 }
 
+# Data collection step of the orientation bias mixture model, which is the recommended orientation bias filter as of September 2018
 task CollectF1R2Counts {
     # input
     File ref_fasta
@@ -796,6 +804,7 @@ task CollectF1R2Counts {
     }
 }
 
+# Learning step of the orientation bias mixture model, which is the recommended orientation bias filter as of September 2018
 task LearnReadOrientationModel {
     File alt_table
     File ref_histogram
@@ -1191,6 +1200,7 @@ task FuncotateMaf {
      File? transcript_selection_list
      Array[String]? annotation_defaults
      Array[String]? annotation_overrides
+     Array[String]? funcotator_excluded_fields
      Boolean filter_funcotations
      File? interval_list
 
@@ -1201,6 +1211,7 @@ task FuncotateMaf {
      String annotation_def_arg = if defined(annotation_defaults) then " --annotation-default " else ""
      String annotation_over_arg = if defined(annotation_overrides) then " --annotation-override " else ""
      String filter_funcotations_args = if (filter_funcotations) then " --remove-filtered-variants " else ""
+     String excluded_fields_args = if defined(funcotator_excluded_fields) then " --exclude-field " else ""
      String final_output_filename = basename(input_vcf, ".vcf") + ".maf.annotated"
      # ==============
 
@@ -1263,6 +1274,7 @@ task FuncotateMaf {
             --annotation-default source:${default="Unknown" sequence_source} \
              ${annotation_def_arg}${default="" sep=" --annotation-default " annotation_defaults} \
              ${annotation_over_arg}${default="" sep=" --annotation-override " annotation_overrides} \
+             ${excluded_fields_args}${default="" sep=" --exclude-field " funcotator_excluded_fields} \
              ${filter_funcotations_args} \
              ${extra_args}
      >>>

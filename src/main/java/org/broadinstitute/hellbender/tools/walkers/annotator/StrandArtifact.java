@@ -9,6 +9,7 @@ import htsjdk.variant.vcf.VCFHeaderLineType;
 import org.apache.commons.math3.distribution.BetaDistribution;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.tools.walkers.mutect.SomaticGenotypingEngine;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
@@ -16,6 +17,7 @@ import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.broadinstitute.hellbender.tools.walkers.annotator.StrandArtifact.ArtifactState.*;
 
@@ -80,7 +82,7 @@ public class StrandArtifact extends GenotypeAnnotation implements StandardMutect
         pi.put(ART_FWD, PRIOR_PROBABILITY_OF_ARTIFACT);
         pi.put(ART_REV, PRIOR_PROBABILITY_OF_ARTIFACT);
 
-        // We use the allele with highest LOD score
+        // We use the allele with highest log odds score
         final double[] tumorLods = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.TUMOR_LOD_KEY, () -> null, -1);
 
         if (tumorLods==null) {
@@ -88,13 +90,22 @@ public class StrandArtifact extends GenotypeAnnotation implements StandardMutect
             return;
         }
         final int indexOfMaxTumorLod = MathUtils.maxElementIndex(tumorLods);
-        final Allele altAlelle = vc.getAlternateAllele(indexOfMaxTumorLod);
+        final Allele altAllele = vc.getAlternateAllele(indexOfMaxTumorLod);
 
-        final Collection<ReadLikelihoods<Allele>.BestAllele> bestAlleles = likelihoods.bestAllelesBreakingTies(g.getSampleName());
-        final int numFwdAltReads = (int) bestAlleles.stream().filter(ba -> !ba.read.isReverseStrand() && ba.isInformative() && ba.allele.equals(altAlelle)).count();
-        final int numRevAltReads = (int) bestAlleles.stream().filter(ba -> ba.read.isReverseStrand() && ba.isInformative() && ba.allele.equals(altAlelle)).count();
-        final int numFwdReads = (int) bestAlleles.stream().filter(ba -> !ba.read.isReverseStrand() && ba.isInformative()).count();
-        final int numRevReads = (int) bestAlleles.stream().filter(ba -> ba.read.isReverseStrand() && ba.isInformative()).count();
+        final Collection<ReadLikelihoods<Allele>.BestAllele> informativeBestAlleles = likelihoods.bestAllelesBreakingTies(g.getSampleName()).stream().
+                filter(ba -> ba.isInformative()).collect(Collectors.toList());
+        final Map<Strand, List<ReadLikelihoods<Allele>.BestAllele>> altReads = informativeBestAlleles.stream().filter(ba -> ba.allele.equals(altAllele))
+                .collect(Collectors.groupingBy(ba -> ba.read.isReverseStrand() ? Strand.REV : Strand.FWD));
+        final Map<Strand, List<ReadLikelihoods<Allele>.BestAllele>> refReads = informativeBestAlleles.stream().filter(ba -> ba.allele.equals(vc.getReference()))
+                .collect(Collectors.groupingBy(ba -> ba.read.isReverseStrand() ? Strand.REV : Strand.FWD));
+
+        final int numFwdAltReads = countReads(altReads, Strand.FWD);
+        final int numRevAltReads = countReads(altReads, Strand.REV);
+        final int numFwdRefReads = countReads(refReads, Strand.FWD);
+        final int numRevRefReads = countReads(refReads, Strand.REV);
+
+        final int numFwdReads = numFwdRefReads + numFwdAltReads;
+        final int numRevReads = numRevRefReads + numRevAltReads;
         final int numAltReads = numFwdAltReads + numRevAltReads;
         final int numReads = numFwdReads + numRevReads;
 
@@ -162,6 +173,10 @@ public class StrandArtifact extends GenotypeAnnotation implements StandardMutect
         gb.attribute(MAP_ALLELE_FRACTIONS_KEY, estimatedAlleleFractions.values().stream().mapToDouble(Double::doubleValue).toArray());
     }
 
+    private enum Strand {
+        FWD, REV
+    }
+
     @Override
     public List<VCFFormatHeaderLine> getDescriptions() {
         return Arrays.asList(new VCFFormatHeaderLine(POSTERIOR_PROBABILITIES_KEY, 3, VCFHeaderLineType.Float, "posterior probabilities of the presence of strand artifact"),
@@ -177,5 +192,19 @@ public class StrandArtifact extends GenotypeAnnotation implements StandardMutect
                 MathUtils.binomialProbability(nNoArtifact, xNoArtifact, f);
     }
 
+    /**
+     *
+     * Count the number of reads in {@param reads}, including the overlapping mates discarded by {@link SomaticGenotypingEngine}.
+     * @param strand is the strand of the reads we're counting. For example, if strand = Strand.FWD, the we look among {@param reads}
+     *               for reverse reads with {@link SomaticGenotypingEngine.DISCARDED_MATE_READ_TAG} set to 1
+     */
+    private int countReads(final Map<Strand, List<ReadLikelihoods<Allele>.BestAllele>> reads, final Strand strand){
+        final Strand strandOfKeptRead = strand == Strand.FWD ? Strand.REV : Strand.FWD;
 
+        // check of the key in case there are no forward or reverse in {@link reads}
+        final int numDiscardedReads = ! reads.containsKey(strandOfKeptRead) ? 0 : (int) reads.get(strandOfKeptRead).stream().filter(ba -> ba.read.hasAttribute(SomaticGenotypingEngine.DISCARDED_MATE_READ_TAG)).count();
+        final int numReads = ! reads.containsKey(strand) ? 0 : reads.get(strand).size();
+        return numReads + numDiscardedReads;
+
+    }
 }

@@ -46,8 +46,18 @@ public abstract class GATKBaseTest extends BaseTest {
      */
     public static final String largeFileTestDir = new File(publicTestDir, "large").getAbsolutePath() + "/";
 
+    // The complete B37 human reference, including the Epstein-Barr contig, in fasta.gz format.
+    // Source: /seq/references/Homo_sapiens_assembly19/v1/ in the Broad Institute filesystem.
+    public static final String b37Reference = largeFileTestDir + "Homo_sapiens_assembly19.fasta.gz";
+
+    // The complete HG38 human reference, in fasta.gz format.
+    // Source: /seq/references/Homo_sapiens_assembly38/v0/ in the Broad Institute filesystem.
+    public static final String hg38Reference = largeFileTestDir + "Homo_sapiens_assembly38.fasta.gz";
+
     // All of chromosomes 20 and 21 from the b37 reference
     public static final String b37_reference_20_21 = largeFileTestDir + "human_g1k_v37.20.21.fasta";
+
+    public static final String b37_reference_20_21_gz = largeFileTestDir + "human_g1k_v37.20.21.fasta.gz";
 
     public static final String b37_2bit_reference_20_21 = largeFileTestDir + "human_g1k_v37.20.21.2bit";
 

@@ -6,6 +6,7 @@ import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.walkers.mutect.SomaticGenotypingEngine;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
@@ -170,8 +171,14 @@ public abstract class StrandBiasTest extends InfoFieldAnnotation {
             final int offset = matchesRef ? 0 : ARRAY_DIM;
 
             // a normal read with an actual strand
-            final boolean isFW = !read.isReverseStrand();
-            table[offset + (isFW ? 0 : 1)]++;
+            final boolean isForward = !read.isReverseStrand();
+            table[offset + (isForward ? 0 : 1)]++;
+
+            // This read's mate got discarded by SomaticGenotypingEngine::clipOverlappingReads()
+            if (read.hasAttribute(SomaticGenotypingEngine.DISCARDED_MATE_READ_TAG)){
+                // Note that if this read is forward, then we increment its mate which we assume is reverse
+                table[offset + (isForward ? 1 : 0)]++;
+            }
         }
     }
 

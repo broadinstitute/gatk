@@ -169,11 +169,12 @@ public class TagGermlineEventsIntegrationTest extends CommandLineProgramTest {
 
         final List<AnnotatedInterval> regions = AnnotatedIntervalCollection.create(outputFile.toPath(), null).getRecords();
 
-        // Test that the germline calls are 0, 0, 0, 0, 0
+        // Test that the germline calls are 0, 0, 0, -, 0....  The deletion should occur, since the tumor segment is completely subsumed by a germline event.
+        //   Therefore there is a reciprocal overlap
         Assert.assertEquals(regions.get(0).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledCopyRatioSegment.Call.NEUTRAL.getOutputString());
         Assert.assertEquals(regions.get(1).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledCopyRatioSegment.Call.NEUTRAL.getOutputString());
         Assert.assertEquals(regions.get(2).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledCopyRatioSegment.Call.NEUTRAL.getOutputString());
-        Assert.assertEquals(regions.get(3).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledCopyRatioSegment.Call.NEUTRAL.getOutputString());
+        Assert.assertEquals(regions.get(3).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledCopyRatioSegment.Call.DELETION.getOutputString());
         Assert.assertEquals(regions.get(4).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledCopyRatioSegment.Call.NEUTRAL.getOutputString());
         final List<AnnotatedInterval> regionsInput = AnnotatedIntervalCollection.create(new File(TAG_GERMLINE_TUMOR_SPLIT_NO_MATCHED_NORMAL_SEG_FILE).toPath(), null).getRecords();
         assertNoRegionChanges(regions, regionsInput);

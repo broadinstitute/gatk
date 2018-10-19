@@ -7,6 +7,7 @@ import htsjdk.samtools.reference.ReferenceSequence;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.variant.variantcontext.VariantContext;
+import org.apache.spark.SparkFiles;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.FlatMapFunction;
@@ -38,13 +39,15 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.downsampling.PositionalDownsampler;
 import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsampler;
+import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
-import org.broadinstitute.hellbender.utils.spark.SparkUtils;
 import scala.Tuple2;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -151,14 +154,17 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
         if (output.endsWith(IOUtil.BCF_FILE_EXTENSION) || output.endsWith(IOUtil.BCF_FILE_EXTENSION + ".gz")) {
             throw new UserException.UnimplementedFeature("It is currently not possible to write a BCF file on spark.  See https://github.com/broadinstitute/gatk/issues/4303 for more details .");
         }
+        SAMFileHeader header = getHeaderForReads();
+        Utils.validate(header.getSortOrder() == SAMFileHeader.SortOrder.coordinate, "The reads must be coordinate sorted.");
         logger.info("********************************************************************************");
         logger.info("The output of this tool DOES NOT match the output of HaplotypeCaller. ");
         logger.info("It is under development and should not be used for production work. ");
         logger.info("For evaluation only.");
         logger.info("Use the non-spark HaplotypeCaller if you care about the results. ");
         logger.info("********************************************************************************");
-        final List<SimpleInterval> intervals = hasUserSuppliedIntervals() ? getIntervals() : IntervalUtils.getAllIntervalsForReference(getHeaderForReads().getSequenceDictionary());
-        callVariantsWithHaplotypeCallerAndWriteOutput(ctx, getReads(), getHeaderForReads(), getReference(), intervals, hcArgs, shardingArgs, numReducers, output, makeVariantAnnotations());
+        addReferenceFilesForSpark(ctx, referenceArguments.getReferenceFileName());
+        final List<SimpleInterval> intervals = hasUserSuppliedIntervals() ? getIntervals() : IntervalUtils.getAllIntervalsForReference(header.getSequenceDictionary());
+        callVariantsWithHaplotypeCallerAndWriteOutput(ctx, getReads(), header, referenceArguments.getReferenceFileName(), intervals, hcArgs, shardingArgs, numReducers, output, makeVariantAnnotations());
     }
 
     @Override
@@ -174,7 +180,7 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
      * @param ctx the spark context
      * @param reads the reads variants should be called from
      * @param header the header that goes with the reads
-     * @param reference the reference to use when calling
+     * @param reference the full path to the reference file (must have been added via {@code SparkContext#addFile()})
      * @param intervals the intervals to restrict calling to
      * @param hcArgs haplotype caller arguments
      * @param shardingArgs arguments to control how the assembly regions are sharded
@@ -185,24 +191,23 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
             final JavaSparkContext ctx,
             final JavaRDD<GATKRead> reads,
             final SAMFileHeader header,
-            final ReferenceMultiSparkSource reference,
+            final String reference,
             final List<SimpleInterval> intervals,
             final HaplotypeCallerArgumentCollection hcArgs,
             final ShardingArgumentCollection shardingArgs,
             final int numReducers,
             final String output,
             final Collection<Annotation> annotations) {
-        // Reads must be coordinate sorted to use the overlaps partitioner
-        final SAMFileHeader readsHeader = header.clone();
-        readsHeader.setSortOrder(SAMFileHeader.SortOrder.coordinate);
-        final JavaRDD<GATKRead> coordinateSortedReads = SparkUtils.sortReadsAccordingToHeader(reads, readsHeader, numReducers);
         final VariantAnnotatorEngine variantannotatorEngine = new VariantAnnotatorEngine(annotations,  hcArgs.dbsnp.dbsnp, hcArgs.comps, hcArgs.emitReferenceConfidence != ReferenceConfidenceMode.NONE);
 
-        final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgs, false, false, readsHeader, new ReferenceMultiSourceAdapter(reference), variantannotatorEngine);
-        final JavaRDD<VariantContext> variants = callVariantsWithHaplotypeCaller(ctx, coordinateSortedReads, readsHeader, reference, intervals, hcArgs, shardingArgs, variantannotatorEngine);
+        final Path referencePath = IOUtils.getPath(reference);
+        final ReferenceSequenceFile driverReferenceSequenceFile = new CachingIndexedFastaSequenceFile(referencePath);
+        final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgs, false, false, header, driverReferenceSequenceFile, variantannotatorEngine);
+        final String referenceFileName = referencePath.getFileName().toString();
+        final JavaRDD<VariantContext> variants = callVariantsWithHaplotypeCaller(ctx, reads, header, referenceFileName, intervals, hcArgs, shardingArgs, variantannotatorEngine);
         variants.cache(); // without caching, computations are run twice as a side effect of finding partition boundaries for sorting
         try {
-            VariantsSparkSink.writeVariants(ctx, output, variants, hcEngine.makeVCFHeader(readsHeader.getSequenceDictionary(), new HashSet<>()),
+            VariantsSparkSink.writeVariants(ctx, output, variants, hcEngine.makeVCFHeader(header.getSequenceDictionary(), new HashSet<>()),
                     hcArgs.emitReferenceConfidence == ReferenceConfidenceMode.GVCF, hcArgs.GVCFGQBands, hcArgs.genotypeArgs.samplePloidy);
         } catch (IOException e) {
             throw new UserException.CouldNotCreateOutputFile(output, "writing failed", e);
@@ -217,7 +222,7 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
      * @param ctx the spark context
      * @param reads the reads variants should be called from
      * @param header the header that goes with the reads
-     * @param reference the reference to use when calling
+     * @param referenceFileName the name of the reference file added via {@code SparkContext#addFile()}
      * @param intervals the intervals to restrict calling to
      * @param hcArgs haplotype caller arguments
      * @param shardingArgs arguments to control how the assembly regions are sharded
@@ -228,7 +233,7 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
             final JavaSparkContext ctx,
             final JavaRDD<GATKRead> reads,
             final SAMFileHeader header,
-            final ReferenceMultiSparkSource reference,
+            final String referenceFileName,
             final List<SimpleInterval> intervals,
             final HaplotypeCallerArgumentCollection hcArgs,
             final ShardingArgumentCollection shardingArgs,
@@ -236,11 +241,7 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
         Utils.validateArg(hcArgs.dbsnp.dbsnp == null, "HaplotypeCallerSpark does not yet support -D or --dbsnp arguments" );
         Utils.validateArg(hcArgs.comps.isEmpty(), "HaplotypeCallerSpark does not yet support -comp or --comp arguments" );
         Utils.validateArg(hcArgs.bamOutputPath == null, "HaplotypeCallerSpark does not yet support -bamout or --bamOutput");
-        if ( !reference.isCompatibleWithSparkBroadcast()){
-            throw new UserException.Require2BitReferenceForBroadcast();
-        }
 
-        final Broadcast<ReferenceMultiSparkSource> referenceBroadcast = ctx.broadcast(reference);
         final Broadcast<HaplotypeCallerArgumentCollection> hcArgsBroadcast = ctx.broadcast(hcArgs);
 
         final Broadcast<VariantAnnotatorEngine> annotatorEngineBroadcast = ctx.broadcast(variantannotatorEngine);
@@ -252,10 +253,10 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
         final JavaRDD<Shard<GATKRead>> readShards = SparkSharder.shard(ctx, reads, GATKRead.class, header.getSequenceDictionary(), shardBoundaries, maxReadLength);
 
         final JavaRDD<Tuple2<AssemblyRegion, SimpleInterval>> assemblyRegions = readShards
-                .mapPartitions(shardsToAssemblyRegions(referenceBroadcast,
+                .mapPartitions(shardsToAssemblyRegions(referenceFileName,
                                                        hcArgsBroadcast, shardingArgs, header, annotatorEngineBroadcast));
 
-        return assemblyRegions.mapPartitions(callVariantsFromAssemblyRegions(header, referenceBroadcast, hcArgsBroadcast, annotatorEngineBroadcast));
+        return assemblyRegions.mapPartitions(callVariantsFromAssemblyRegions(header, referenceFileName, hcArgsBroadcast, annotatorEngineBroadcast));
     }
 
     /**
@@ -265,14 +266,14 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
      */
     private static FlatMapFunction<Iterator<Tuple2<AssemblyRegion, SimpleInterval>>, VariantContext> callVariantsFromAssemblyRegions(
             final SAMFileHeader header,
-            final Broadcast<ReferenceMultiSparkSource> referenceBroadcast,
+            final String referenceFileName,
             final Broadcast<HaplotypeCallerArgumentCollection> hcArgsBroadcast,
             final Broadcast<VariantAnnotatorEngine> annotatorEngineBroadcast) {
         return regionAndIntervals -> {
             //HaplotypeCallerEngine isn't serializable but is expensive to instantiate, so construct and reuse one for every partition
-            final ReferenceMultiSparkSource referenceMultiSource = referenceBroadcast.value();
-            final ReferenceMultiSourceAdapter referenceSource = new ReferenceMultiSourceAdapter(referenceMultiSource);
-            final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgsBroadcast.value(), false, false, header, referenceSource, annotatorEngineBroadcast.getValue());
+            final String pathOnExecutor = SparkFiles.get(referenceFileName);
+            final ReferenceSequenceFile taskReferenceSequenceFile = new CachingIndexedFastaSequenceFile(IOUtils.getPath(pathOnExecutor));
+            final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgsBroadcast.value(), false, false, header, taskReferenceSequenceFile, annotatorEngineBroadcast.getValue());
             return Utils.stream(regionAndIntervals).flatMap(regionToVariants(hcEngine)).iterator();
         };
     }
@@ -302,36 +303,37 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
      * interval it was generated in
      */
     private static FlatMapFunction<Iterator<Shard<GATKRead>>, Tuple2<AssemblyRegion, SimpleInterval>> shardsToAssemblyRegions(
-            final Broadcast<ReferenceMultiSparkSource> reference,
+            final String referenceFileName,
             final Broadcast<HaplotypeCallerArgumentCollection> hcArgsBroadcast,
             final ShardingArgumentCollection assemblyArgs,
             final SAMFileHeader header,
             final Broadcast<VariantAnnotatorEngine> annotatorEngineBroadcast) {
         return shards -> {
-            final ReferenceMultiSparkSource referenceMultiSource = reference.value();
-            final ReferenceMultiSourceAdapter referenceSource = new ReferenceMultiSourceAdapter(referenceMultiSource);
-            final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgsBroadcast.value(), false, false, header, referenceSource, annotatorEngineBroadcast.getValue());
+            final String pathOnExecutor = SparkFiles.get(referenceFileName);
+            final ReferenceSequenceFile taskReferenceSequenceFile = new CachingIndexedFastaSequenceFile(IOUtils.getPath(pathOnExecutor));
+            final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgsBroadcast.value(), false, false, header, taskReferenceSequenceFile, annotatorEngineBroadcast.getValue());
 
+            final ReferenceDataSource taskReferenceDataSource = new ReferenceFileSource(IOUtils.getPath(pathOnExecutor)); // TODO: share with taskReferenceSequenceFile
             final ReadsDownsampler readsDownsampler = assemblyArgs.maxReadsPerAlignmentStart > 0 ?
                 new PositionalDownsampler(assemblyArgs.maxReadsPerAlignmentStart, header) : null;
             return Utils.stream(shards)
                     //TODO we've hacked multi interval shards here with a shim, but we should investigate as smarter approach https://github.com/broadinstitute/gatk/issues/4299
                 .map(shard -> new ShardToMultiIntervalShardAdapter<>(
                         new DownsampleableSparkReadShard(new ShardBoundary(shard.getInterval(), shard.getPaddedInterval()), shard, readsDownsampler)))
-                .flatMap(shardToRegion(assemblyArgs, header, referenceSource, hcEngine)).iterator();
+                .flatMap(shardToRegion(assemblyArgs, header, taskReferenceDataSource, hcEngine)).iterator();
         };
     }
 
     private static Function<MultiIntervalShard<GATKRead>, Stream<? extends Tuple2<AssemblyRegion, SimpleInterval>>> shardToRegion(
             ShardingArgumentCollection assemblyArgs,
             SAMFileHeader header,
-            ReferenceMultiSourceAdapter referenceSource,
+            ReferenceDataSource referenceDataSource,
             HaplotypeCallerEngine evaluator) {
         return shard -> {
             //TODO load features as a side input
             final FeatureManager featureManager = null;
 
-            final Iterator<AssemblyRegion> assemblyRegionIter = new AssemblyRegionIterator(shard, header, referenceSource, featureManager, evaluator, assemblyArgs.minAssemblyRegionSize, assemblyArgs.maxAssemblyRegionSize, assemblyArgs.assemblyRegionPadding, assemblyArgs.activeProbThreshold, assemblyArgs.maxProbPropagationDistance,
+            final Iterator<AssemblyRegion> assemblyRegionIter = new AssemblyRegionIterator(shard, header, referenceDataSource, featureManager, evaluator, assemblyArgs.minAssemblyRegionSize, assemblyArgs.maxAssemblyRegionSize, assemblyArgs.assemblyRegionPadding, assemblyArgs.activeProbThreshold, assemblyArgs.maxProbPropagationDistance,
                                                                                            INCLUDE_READS_WITH_DELETIONS_IN_IS_ACTIVE_PILEUPS);
 
             return Utils.stream(assemblyRegionIter)

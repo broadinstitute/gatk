@@ -244,8 +244,8 @@ public final class FeatureInput<T extends Feature> implements Serializable {
      * creates a name from the given filePath by finding the absolute path of the given input
      */
     private static String makeIntoAbsolutePath(final String filePath){
-        if(FeatureDataSource.isGenomicsDBPath(filePath)){
-            return FeatureDataSource.GENOMIC_DB_URI_SCHEME + new File(filePath.replace(FeatureDataSource.GENOMIC_DB_URI_SCHEME,"")).getAbsolutePath();
+        if(IOUtils.isGenomicsDBPath(filePath)){
+            return IOUtils.getAbsolutePathWithGenomicsDBURIScheme(filePath);
         } else if (URI.create(filePath).getScheme() != null) {
             return IOUtils.getPath(filePath).toAbsolutePath().toUri().toString();
         } else {
