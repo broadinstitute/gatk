@@ -13,7 +13,7 @@ import org.broadinstitute.hellbender.utils.fermi.FermiLiteAssembler;
 import org.broadinstitute.hellbender.utils.fermi.FermiLiteAssembly;
 import org.broadinstitute.hellbender.utils.fermi.FermiLiteAssembly.Contig;
 import org.broadinstitute.hellbender.utils.fermi.FermiLiteAssembly.Connection;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import scala.Tuple2;
 
 import java.io.*;
@@ -90,7 +90,8 @@ public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpa
         // record the assembly as a GFA, if requested
         if ( fastqDir != null && writeGFAs ) {
             final String gfaName =  String.format("%s/%s.gfa", fastqDir, assemblyName);
-            try ( final Writer writer = new BufferedWriter(new OutputStreamWriter(BucketUtils.createFile(gfaName))) ) {
+            try ( final Writer writer = new BufferedWriter(new OutputStreamWriter(IOUtils.openOutputStream(
+                    IOUtils.getPath(gfaName)))) ) {
                 assembly.writeGFA(writer);
             }
             catch ( final IOException ioe ) {

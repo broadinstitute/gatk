@@ -16,7 +16,7 @@ import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignmentUtils;
 import org.broadinstitute.hellbender.utils.fermi.FermiLiteAssembly;
 import org.broadinstitute.hellbender.utils.fermi.FermiLiteAssembly.Connection;
 import org.broadinstitute.hellbender.utils.fermi.FermiLiteAssembly.Contig;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.BufferedOutputStream;
 import java.io.IOException;
@@ -285,7 +285,8 @@ public final class AlignedAssemblyOrExcuse {
                 resultsMap.put(alignedAssemblyOrExcuse.getAssemblyId(), alignedAssemblyOrExcuse));
 
         try ( final OutputStreamWriter writer =
-                      new OutputStreamWriter(new BufferedOutputStream(BucketUtils.createFile(intervalFile))) ) {
+                      new OutputStreamWriter(new BufferedOutputStream(IOUtils.openOutputStream(
+                              IOUtils.getPath(intervalFile)))) ) {
             final List<SAMSequenceRecord> contigs = header.getSequenceDictionary().getSequences();
             final int nIntervals = intervals.size();
             for ( int intervalIdx = 0; intervalIdx != nIntervals; ++intervalIdx ) {

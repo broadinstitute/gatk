@@ -1029,4 +1029,19 @@ public final class IOUtils {
             Files.deleteIfExists(path);
         }
     }
+
+    /**
+     * Open a path for writing, will overwrite an existing file.
+     *
+     * @param path location to write to
+     * @return an OutputStream that writes to the specified path.
+     */
+    public static OutputStream openOutputStream(Path path) {
+        Utils.nonNull(path);
+        try {
+           return Files.newOutputStream(path);
+        } catch (final IOException x) {
+            throw new UserException.CouldNotCreateOutputFile("Could not create file at path: " + path.toUri().toString() + " due to " + x.getMessage(), x);
+        }
+    }
 }

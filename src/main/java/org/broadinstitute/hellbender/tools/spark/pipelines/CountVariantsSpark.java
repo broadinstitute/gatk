@@ -9,10 +9,10 @@ import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSource;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -57,7 +57,7 @@ public final class CountVariantsSpark extends GATKSparkTool {
         System.out.println(count);
 
         if( out != null) {
-            try (final PrintStream ps = new PrintStream(BucketUtils.createFile(out))) {
+            try (final PrintStream ps = new PrintStream(IOUtils.openOutputStream(IOUtils.getPath(out)))) {
                 ps.print(count);
             }
         }

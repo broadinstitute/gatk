@@ -75,7 +75,7 @@ public final class SVFileUtils {
     public static <KType extends SVKmer> void writeKmersFile(final String kmersFilePath, final int kSize,
                                                              final Collection<KType> kmers) {
         try ( final Writer writer =
-                      new BufferedWriter(new OutputStreamWriter(BucketUtils.createFile(kmersFilePath))) ) {
+                      new BufferedWriter(new OutputStreamWriter(IOUtils.openOutputStream(IOUtils.getPath(kmersFilePath)))) ) {
             for ( final KType kmer : kmers ) {
                 writer.write(kmer.toString(kSize));
                 writer.write('\n');
@@ -131,7 +131,7 @@ public final class SVFileUtils {
     public static void writeIntervalsFile( final String intervalsFilePath,
                                            final Collection<SVInterval> intervals, final List<String> contigNames ) {
         try (final OutputStreamWriter writer = new OutputStreamWriter(new BufferedOutputStream(
-                BucketUtils.createFile(intervalsFilePath)))) {
+                IOUtils.openOutputStream(IOUtils.getPath(intervalsFilePath))))) {
             for (final SVInterval interval : intervals) {
                 final String seqName = contigNames.get(interval.getContig());
                 writer.write(seqName + "\t" + interval.getStart() + "\t" + interval.getEnd() + "\n");

@@ -7,10 +7,10 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.tools.FlagStat.FlagStatus;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.PrintStream;
@@ -74,7 +74,7 @@ public final class FlagStatSpark extends GATKSparkTool {
         System.out.println(result);
 
         if(out != null ) {
-            try ( final PrintStream ps = new PrintStream(BucketUtils.createFile(out)) ) {
+            try ( final PrintStream ps = new PrintStream(IOUtils.openOutputStream(IOUtils.getPath(out))) ) {
                 ps.print(result);
             }
         }

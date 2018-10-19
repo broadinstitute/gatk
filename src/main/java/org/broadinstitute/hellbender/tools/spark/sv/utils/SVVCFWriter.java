@@ -15,7 +15,7 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.SvType;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.BufferedOutputStream;
 import java.io.IOException;
@@ -83,7 +83,7 @@ public class SVVCFWriter {
                                       final SAMSequenceDictionary referenceSequenceDictionary,
                                       final Set<VCFHeaderLine> defaultToolVCFHeaderLines) {
         try (final OutputStream outputStream
-                     = new BufferedOutputStream(BucketUtils.createFile(fileName))) {
+                     = new BufferedOutputStream(IOUtils.openOutputStream(IOUtils.getPath(fileName)))) {
 
             final VariantContextWriter vcfWriter = getVariantContextWriter(outputStream, referenceSequenceDictionary);
 

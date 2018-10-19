@@ -127,31 +127,6 @@ public final class BucketUtils {
     }
 
     /**
-     * Open a binary file for writing regardless of whether it's on GCS, HDFS or local disk.
-     * For writing to GCS it'll use the application/octet-stream MIME type.
-     *
-     * @param path the GCS or local path to write to. If GCS, it must start with "gs://", or "hdfs://" for HDFS.
-     * @return an OutputStream that writes to the specified file.
-     */
-    public static OutputStream createFile(String path) {
-        Utils.nonNull(path);
-        try {
-            if (isCloudStorageUrl(path)) {
-                java.nio.file.Path p = getPathOnGcs(path);
-                return Files.newOutputStream(p);
-            } else if (isHadoopUrl(path)) {
-                Path file = new Path(path);
-                FileSystem fs = file.getFileSystem(new Configuration());
-                return fs.create(file);
-            } else {
-                return new FileOutputStream(path);
-            }
-        } catch (IOException x) {
-            throw new UserException.CouldNotCreateOutputFile("Could not create file at path:" + path + " due to " + x.getMessage(), x);
-        }
-    }
-
-    /**
      * Copies a file. Can be used to copy e.g. from GCS to local.
      *
      * @param sourcePath the path to read from. If GCS, it must start with "gs://", or "hdfs://" for HDFS.
@@ -161,7 +136,7 @@ public final class BucketUtils {
     public static void copyFile(String sourcePath, String destPath) throws IOException {
         try (
             InputStream in = openFile(sourcePath);
-            OutputStream fout = createFile(destPath)) {
+            OutputStream fout = IOUtils.openOutputStream(IOUtils.getPath(destPath))) {
             ByteStreams.copy(in, fout);
         }
     }

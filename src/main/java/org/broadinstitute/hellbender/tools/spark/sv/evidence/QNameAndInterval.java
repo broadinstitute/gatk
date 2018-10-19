@@ -5,7 +5,7 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.BufferedOutputStream;
 import java.io.IOException;
@@ -89,7 +89,8 @@ public final class QNameAndInterval implements Map.Entry<String, Integer> {
     public static void writeQNames( final String qNameFile,
                                     final Iterable<QNameAndInterval> qNames ) {
         try ( final OutputStreamWriter writer =
-                      new OutputStreamWriter(new BufferedOutputStream(BucketUtils.createFile(qNameFile))) ) {
+                      new OutputStreamWriter(new BufferedOutputStream(IOUtils.openOutputStream(
+                              IOUtils.getPath(qNameFile)))) ) {
             for ( final QNameAndInterval qnameAndInterval : qNames ) {
                 writer.write(qnameAndInterval.toString() + "\n");
             }
