@@ -175,7 +175,6 @@ workflow CNVGermlineCaseWorkflow {
                 read_count_files = CollectCounts.counts,
                 contig_ploidy_calls_tar = DetermineGermlineContigPloidyCaseMode.contig_ploidy_calls_tar,
                 gcnv_model_tar = gcnv_model_tars[scatter_index],
-                intervals = ScatterIntervals.scattered_interval_lists[scatter_index],
                 gatk4_jar_override = gatk4_jar_override,
                 gatk_docker = gatk_docker,
                 mem_gb = mem_gb_for_germline_cnv_caller,
@@ -306,8 +305,6 @@ task GermlineCNVCallerCaseMode {
     Array[File] read_count_files
     File contig_ploidy_calls_tar
     File gcnv_model_tar
-    File intervals
-    File? annotated_intervals
     String? output_dir
     File? gatk4_jar_override
 

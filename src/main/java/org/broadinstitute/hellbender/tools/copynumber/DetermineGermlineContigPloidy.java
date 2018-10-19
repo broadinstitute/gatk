@@ -148,6 +148,7 @@ import java.util.stream.Collectors;
  *   --output-prefix normal_cohort
  * </pre>
  *
+ * <p>COHORT mode (with optional interval filtering):</p>
  * <pre>
  * gatk DetermineGermlineContigPloidy \
  *   -L intervals.interval_list \
