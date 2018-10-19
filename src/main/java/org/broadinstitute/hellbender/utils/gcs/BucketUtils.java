@@ -7,25 +7,21 @@ import com.google.cloud.storage.contrib.nio.CloudStorageConfiguration.Builder;
 import com.google.cloud.storage.contrib.nio.CloudStorageFileSystem;
 import com.google.cloud.storage.contrib.nio.CloudStorageFileSystemProvider;
 import com.google.common.base.Strings;
-import htsjdk.samtools.util.RuntimeIOException;
 import htsjdk.tribble.Tribble;
 import htsjdk.tribble.util.TabixUtils;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import shaded.cloud_nio.com.google.api.gax.retrying.RetrySettings;
 import shaded.cloud_nio.com.google.auth.oauth2.GoogleCredentials;
 import shaded.cloud_nio.org.threeten.bp.Duration;
 
-import java.io.*;
-import java.nio.file.Files;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.UUID;
 
@@ -132,97 +128,6 @@ public final class BucketUtils {
             return new Path(stagingLocation, prefix + UUID.randomUUID().toString() + suffix).toString();
         } else {
             throw new IllegalArgumentException("Staging location is not remote: " + stagingLocation);
-        }
-    }
-
-    /**
-     * Returns true if we can read the first byte of the file.
-     *  @param path The folder where you want the file to be (local, GCS or HDFS).
-     *
-     */
-    public static boolean fileExists(String path) {
-        final boolean MAYBE = false;
-        try (InputStream inputStream = IOUtils.openInputStream(IOUtils.getPath(path))){
-            int ignored = inputStream.read();
-        } catch (UserException.CouldNotReadInputFile notthere) {
-            // file isn't there
-            return false;
-        } catch (FileNotFoundException x) {
-            // file isn't there
-            return false;
-        } catch (IOException x) {
-            // unexpected problem while reading the file. The file may exist, but it's not accessible.
-            return MAYBE;
-        }
-        return true;
-    }
-
-    /**
-     * Returns the file size of a file pointed to by a GCS/HDFS/local path
-     *
-     * @param path The URL to the file whose size to return
-     * @return the file size in bytes
-     * @throws IOException
-     */
-    public static long fileSize(String path) throws IOException {
-        if (isCloudStorageUrl(path)) {
-            java.nio.file.Path p = getPathOnGcs(path);
-            return Files.size(p);
-        } else if (isHadoopUrl(path)) {
-            Path hadoopPath = new Path(path);
-            FileSystem fs = hadoopPath.getFileSystem(new Configuration());
-            return fs.getFileStatus(hadoopPath).getLen();
-        } else {
-            return new File(path).length();
-        }
-    }
-
-    /**
-     * Returns the total file size of all files in a directory, or the file size if the path specifies a file.
-     * Note that sub-directories are ignored - they are not recursed into.
-     * Only supports HDFS and local paths.
-     *
-     * @param path The URL to the file or directory whose size to return
-     * @return the total size of all files in bytes
-     */
-    public static long dirSize(String path) {
-        try {
-            // GCS case (would work with local too)
-            if (isCloudStorageUrl(path)) {
-                java.nio.file.Path p = getPathOnGcs(path);
-                if (Files.isRegularFile(p)) {
-                    return Files.size(p);
-                }
-                return Files.list(p).mapToLong(
-                    q -> {
-                        try {
-                            return (Files.isRegularFile(q) ? Files.size(q) : 0);
-                        } catch (IOException e) {
-                            throw new RuntimeIOException(e);
-                        }
-                    }
-                ).sum();
-            }
-            // local file or HDFS case
-            Path hadoopPath = new Path(path);
-            FileSystem fs = new Path(path).getFileSystem(new Configuration());
-            FileStatus status = fs.getFileStatus(hadoopPath);
-            if (status == null) {
-                throw new UserException.CouldNotReadInputFile(path, "File not found.");
-            }
-            long size = 0;
-            if (status.isDirectory()) {
-                for (FileStatus st : fs.listStatus(status.getPath())) {
-                    if (st.isFile()) {
-                        size += st.getLen();
-                    }
-                }
-            } else {
-                size += status.getLen();
-            }
-            return size;
-        } catch (RuntimeIOException | IOException e) {
-            throw new UserException("Failed to determine total input size of " + path + "\n Caused by:" + e.getMessage(), e);
         }
     }
 

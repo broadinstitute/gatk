@@ -78,45 +78,5 @@ public final class BucketUtilsTest extends GATKBaseTest {
         Assert.assertEquals(pathOnGcs.toUri().toString(), dirPath);
     }
 
-    @Test
-    public void testDirSize() throws IOException {
-        File dir = createTempDir("dir");
-        File file1 = new File(dir, "file1.txt");
-        File file2 = new File(dir, "file2.txt");
-        File subdir = new File(dir, "sub");
-        subdir.mkdir();
-        File file3 = new File(subdir, "file3.txt");
 
-        for (File file : new File[] { file1, file2, file3 }) {
-            try (FileWriter fw = new FileWriter(file)){
-                fw.write("Hello!");
-            }
-        }
-
-        long fileSize = BucketUtils.fileSize(file1.getAbsolutePath());
-        Assert.assertTrue(fileSize > 0);
-        long dirSize = BucketUtils.dirSize(dir.getAbsolutePath());
-        Assert.assertEquals(dirSize, fileSize * 2);
-    }
-
-    @Test(groups={"bucket"})
-    public void testDirSizeGCS() throws IOException, GeneralSecurityException {
-        final String src = publicTestDir + "empty.vcf";
-        final String gcsSubDir = BucketUtils.randomRemotePath(getGCPTestStaging(), "dir-", "/");
-        final String intermediate = BucketUtils.randomRemotePath(gcsSubDir, "test-copy-empty", ".vcf");
-        Files.copy(IOUtils.getPath(src), IOUtils.getPath(intermediate));
-        Assert.assertTrue(BucketUtils.fileExists(intermediate));
-
-        long srcFileSize = BucketUtils.fileSize(src);
-        Assert.assertTrue(srcFileSize > 0);
-        long intermediateFileSize = BucketUtils.fileSize(intermediate);
-        Assert.assertEquals(intermediateFileSize, srcFileSize);
-        long intermediateDirSize = BucketUtils.dirSize(intermediate);
-        Assert.assertEquals(intermediateDirSize, srcFileSize);
-        long intermediateParentDirSize = BucketUtils.dirSize(gcsSubDir);
-        Assert.assertEquals(intermediateParentDirSize, srcFileSize);
-
-        Files.delete(IOUtils.getPath(intermediate));
-        Assert.assertFalse(BucketUtils.fileExists(intermediate));
-    }
 }

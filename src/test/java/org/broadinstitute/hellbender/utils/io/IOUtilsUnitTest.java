@@ -26,7 +26,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.*;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Random;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 public final class IOUtilsUnitTest extends GATKBaseTest {
@@ -686,5 +689,47 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
         IOUtils.deleteRecursively(gcsFolderPath);
         Assert.assertFalse(Files.exists(gcsFilePath));
         Assert.assertFalse(Files.exists(IOUtils.getPath(gcsFolder)));
+    }
+
+    @Test
+    public void testDirSize() throws IOException {
+        File dir = createTempDir("dir");
+        File file1 = new File(dir, "file1.txt");
+        File file2 = new File(dir, "file2.txt");
+        File subdir = new File(dir, "sub");
+        subdir.mkdir();
+        File file3 = new File(subdir, "file3.txt");
+
+        for (File file : new File[] { file1, file2, file3 }) {
+            try (FileWriter fw = new FileWriter(file)){
+                fw.write("Hello!");
+            }
+        }
+
+        long fileSize = Files.size(IOUtils.getPath(file1.getAbsolutePath()));
+        Assert.assertTrue(fileSize > 0);
+        long dirSize = IOUtils.getDirSize(dir.getAbsolutePath());
+        Assert.assertEquals(dirSize, fileSize * 2);
+    }
+
+    @Test(groups={"bucket"})
+    public void testDirSizeGCS() throws IOException {
+        final String src = publicTestDir + "empty.vcf";
+        final String gcsSubDir = BucketUtils.randomRemotePath(getGCPTestStaging(), "dir-", "/");
+        final String intermediate = BucketUtils.randomRemotePath(gcsSubDir, "test-copy-empty", ".vcf");
+        Files.copy(IOUtils.getPath(src), IOUtils.getPath(intermediate));
+        Assert.assertTrue(Files.exists(IOUtils.getPath(intermediate)));
+
+        long srcFileSize = Files.size(IOUtils.getPath(src));
+        Assert.assertTrue(srcFileSize > 0);
+        long intermediateFileSize = Files.size(IOUtils.getPath(intermediate));
+        Assert.assertEquals(intermediateFileSize, srcFileSize);
+        long intermediateDirSize = IOUtils.getDirSize(intermediate);
+        Assert.assertEquals(intermediateDirSize, srcFileSize);
+        long intermediateParentDirSize = IOUtils.getDirSize(gcsSubDir);
+        Assert.assertEquals(intermediateParentDirSize, srcFileSize);
+
+        Files.delete(IOUtils.getPath(intermediate));
+        Assert.assertFalse(Files.exists(IOUtils.getPath(intermediate)));
     }
 }

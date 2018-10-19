@@ -17,12 +17,13 @@ import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.pathseq.loggers.PSScoreFileLogger;
 import org.broadinstitute.hellbender.tools.spark.pathseq.loggers.PSScoreLogger;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 import scala.Tuple2;
 
 import java.io.IOException;
+import java.nio.file.Files;
 
 /**
  * Classify reads and estimate abundances of each taxon in the reference. This is the third and final step of the PathSeq pipeline.
@@ -139,7 +140,7 @@ public class PathSeqScoreSpark extends GATKSparkTool {
     private Tuple2<JavaRDD<GATKRead>, SAMFileHeader> readInputWithHeader(final String path,
                                                                          final ReadsSparkSource readsSource) {
         if (path != null) {
-            if (BucketUtils.fileExists(path)) {
+            if (Files.exists(IOUtils.getPath(path))) {
                 recommendedNumReducers += PSUtils.pathseqGetRecommendedNumReducers(path, numReducers, getTargetPartitionSize());
                 final SAMFileHeader header = readsSource.getHeader(path, null);
                 JavaRDD<GATKRead> reads = readsSource.getParallelReads(path, null, null, bamPartitionSplitSize);

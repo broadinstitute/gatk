@@ -5,7 +5,6 @@ import org.apache.hadoop.fs.*;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
@@ -61,8 +60,8 @@ public class ParallelCopyGCSDirectoryIntoHDFSSparkIntegrationTest extends Comman
                 Assert.assertTrue(fileSizeOnGCS > chunkSize);
             }
 
-            Assert.assertEquals(BucketUtils.fileSize(hdfsPath),
-                    fileSizeOnGCS);
+            Assert.assertEquals(Files.size(IOUtils.getPath(hdfsPath)),
+                                fileSizeOnGCS);
 
             final File tempDir = createTempDir("ParallelCopy");
 

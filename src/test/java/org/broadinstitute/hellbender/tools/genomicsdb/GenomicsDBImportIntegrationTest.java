@@ -465,9 +465,12 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     }
 
     private static void checkJSONFilesAreWritten(final String workspace) {
-        Assert.assertTrue(BucketUtils.fileExists(IOUtils.appendPathToDir(workspace, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME)));
-        Assert.assertTrue(BucketUtils.fileExists(IOUtils.appendPathToDir(workspace, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME)));
-        Assert.assertTrue(BucketUtils.fileExists(IOUtils.appendPathToDir(workspace, GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME)));
+        Assert.assertTrue(Files.exists(
+                IOUtils.getPath(IOUtils.appendPathToDir(workspace, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME))));
+        Assert.assertTrue(Files.exists(
+                IOUtils.getPath(IOUtils.appendPathToDir(workspace, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME))));
+        Assert.assertTrue(Files.exists(
+                IOUtils.getPath(IOUtils.appendPathToDir(workspace, GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME))));
     }
 
     private static void checkGenomicsDBAgainstExpected(final String workspace, final List<SimpleInterval> intervals,

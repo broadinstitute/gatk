@@ -56,7 +56,7 @@ public class MetricsUtilsTest extends GATKBaseTest {
         final MetricsFile<TestMetric, ?> metrics = new MetricsFile<>();
         metrics.addMetric(testMetric);
         MetricsUtils.saveMetrics(metrics, outputPath);
-        Assert.assertTrue(BucketUtils.fileExists(outputPath));
+        Assert.assertTrue(Files.exists(IOUtils.getPath(outputPath)));
         File localCopy = copyFileToLocalTmpFile(outputPath);
 
         final File expectedMetrics = createTempFile("expectedMetrics", ".txt");

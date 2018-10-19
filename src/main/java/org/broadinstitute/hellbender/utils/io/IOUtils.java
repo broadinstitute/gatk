@@ -6,6 +6,7 @@ import htsjdk.samtools.BamFileIoUtils;
 import htsjdk.samtools.cram.build.CramIO;
 import htsjdk.samtools.util.BlockCompressedInputStream;
 import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.RuntimeIOException;
 import htsjdk.tribble.Tribble;
 import htsjdk.tribble.util.TabixUtils;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
@@ -1064,6 +1065,34 @@ public final class IOUtils {
             }
         } catch (IOException x) {
             throw new UserException.CouldNotReadInputFile(path, x);
+        }
+    }
+
+    /**
+     * Returns the total file size of all files in a directory, or the file size if the path specifies a file.
+     * Note that sub-directories are ignored - they are not recursed into.
+     *
+     * @param path The URL to the file or directory whose size to return
+     * @return the total size of all files in bytes
+     */
+    public static long getDirSize(String path) {
+        try {
+            Path p = getPath(path);
+            if (Files.isRegularFile(p)) {
+                return Files.size(p);
+            } else {
+                return Files.list(p).mapToLong(
+                        q -> {
+                            try {
+                                return (Files.isRegularFile(q) ? Files.size(q) : 0);
+                            } catch (IOException e) {
+                                throw new RuntimeIOException(e);
+                            }
+                        }
+                ).sum();
+            }
+        } catch (RuntimeException | IOException e) {
+            throw new UserException("Failed to determine total input size of " + path + "\n Caused by:" + e.getMessage(), e);
         }
     }
 }

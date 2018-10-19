@@ -4,10 +4,10 @@ import htsjdk.samtools.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.utils.HopscotchSet;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.*;
+import java.nio.file.Files;
 import java.util.*;
 
 public final class SVFileUtils {
@@ -47,7 +47,7 @@ public final class SVFileUtils {
 
         try ( final BufferedReader rdr =
                       new BufferedReader(new InputStreamReader(IOUtils.openInputStream(IOUtils.getPath(kmersFilePath)))) ) {
-            final long fileLength = BucketUtils.fileSize(kmersFilePath);
+            final long fileLength = Files.size(IOUtils.getPath(kmersFilePath));
             kmers = new HopscotchSet<>((int)(fileLength/(kSize+1)));
             String line;
             while ( (line = rdr.readLine()) != null ) {
@@ -95,7 +95,7 @@ public final class SVFileUtils {
         final List<SVInterval> intervals;
         try ( final BufferedReader rdr =
                       new BufferedReader(new InputStreamReader(IOUtils.openInputStream(IOUtils.getPath(intervalsFilePath)))) ) {
-            final long sizeGuess = BucketUtils.fileSize(intervalsFilePath)/25; // 25 is a guess on file line length
+            final long sizeGuess = Files.size(IOUtils.getPath(intervalsFilePath)) /25; // 25 is a guess on file line length
             intervals = new ArrayList<>((int)sizeGuess);
             String line;
             int lineNo = 0;
