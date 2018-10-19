@@ -598,9 +598,8 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
     private String getFirstLineAndDeleteTempFile(final File tempResourceFile) throws IOException {
         try (final FileReader fr = new FileReader(tempResourceFile);
              final BufferedReader br = new BufferedReader(fr)) {
-            return resourceContentsFirstLine = br.readLine();
-        }
-        finally {
+            return br.readLine();
+        } finally {
             tempResourceFile.delete();
         }
     }
