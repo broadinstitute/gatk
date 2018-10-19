@@ -9,16 +9,16 @@ jdk:
 - openjdk8
 env:
   matrix:
-  - TEST_TYPE=cloud UPLOAD=true
+  - TEST_TYPE=cloud UPLOAD=true TESTS_REQUIRE_GCLOUD=true
   - TEST_TYPE=integration TEST_DOCKER=true TEST_VERBOSITY=minimal
   - TEST_TYPE=unit TEST_DOCKER=true TEST_VERBOSITY=minimal
   - TEST_TYPE=variantcalling TEST_DOCKER=true TEST_VERBOSITY=minimal
   - TEST_TYPE=python TEST_DOCKER=true TEST_VERBOSITY=minimal
-  - RUN_CNV_GERMLINE_COHORT_WDL=true
-  - RUN_CNV_GERMLINE_CASE_WDL=true
-  - RUN_CNV_SOMATIC_WDL=true
-  - RUN_M2_WDL=true
-  - RUN_CNN_WDL=true
+  - RUN_CNV_GERMLINE_COHORT_WDL=true TESTS_REQUIRE_GCLOUD=true
+  - RUN_CNV_GERMLINE_CASE_WDL=true TESTS_REQUIRE_GCLOUD=true
+  - RUN_CNV_SOMATIC_WDL=true TESTS_REQUIRE_GCLOUD=true
+  - RUN_M2_WDL=true TESTS_REQUIRE_GCLOUD=true
+  - RUN_CNN_WDL=true TESTS_REQUIRE_GCLOUD=true
   global:
   #gradle needs this
   - TERM=dumb
@@ -70,18 +70,11 @@ before_install:
 - if [[ $TRAVIS_SECURE_ENV_VARS == true && $TRAVIS_EVENT_TYPE != cron ]]; then
     echo "Test report will be written to  https://storage.googleapis.com$HELLBENDER_TEST_LOGS$REPORT_PATH/tests/test/index.html";
   fi
-#setup google cloud and github authentication
-- if [ $TRAVIS_SECURE_ENV_VARS == true ]; then
-    export BOTO_CONFIG=/dev/null;
-    openssl aes-256-cbc -K $encrypted_703d76169d63_key -iv $encrypted_703d76169d63_iv -in resources_for_CI/servicekey.json.enc -out servicekey.json -d;
-    scripts/install_gcloud.sh;
-    printf 'y\n' | $GCLOUD_HOME/gcloud components update;
-    if [[ $TEST_TYPE == cloud ]]; then
-      printf 'y\n' | $GCLOUD_HOME/gcloud components install beta;
-    fi;
-    $GCLOUD_HOME/gcloud config set project broad-dsde-dev;
-    $GCLOUD_HOME/gcloud auth activate-service-account --key-file servicekey.json;
-    $GCLOUD_HOME/gcloud --version
+- if [ ${TRAVIS_SECURE_ENV_VARS} == true ]; then
+    #authenticate to google cloud if we're running cloud tests
+    if [ ${TESTS_REQUIRE_GCLOUD} == true ]; then
+      scripts/install_and_authenticate_to_gcloud.sh;
+    fi
     openssl aes-256-cbc -K $encrypted_4823d58debd3_key -iv $encrypted_4823d58debd3_iv -in resources_for_CI/github_deploy_key.enc -out ~/.ssh/id_rsa -d;
     chmod 600 ~/.ssh/id_rsa;
     echo "Testing github authentication:";
@@ -198,6 +191,9 @@ after_failure:
 - dmesg | tail -100
 after_script:
 - if [[ $TRAVIS_SECURE_ENV_VARS == true && $TRAVIS_EVENT_TYPE != cron ]]; then
+    if [[ ${TESTS_REQUIRE_GCLOUD} != "true" ]]; then
+      scripts/install_and_authenticate_to_gcloud.sh;
+    fi
     $GCLOUD_HOME/gcloud components -q update gsutil;
     $GCLOUD_HOME/gsutil -m cp -z html -z js -z xml -z css -r build/reports/tests gs:/$HELLBENDER_TEST_LOGS$REPORT_PATH/;
     echo "See the test report at https://storage.googleapis.com$HELLBENDER_TEST_LOGS$REPORT_PATH/tests/test/index.html";
