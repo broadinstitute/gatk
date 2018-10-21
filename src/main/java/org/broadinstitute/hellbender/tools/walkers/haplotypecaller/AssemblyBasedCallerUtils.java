@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
+import htsjdk.samtools.Cigar;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
@@ -30,6 +31,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.File;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -41,6 +43,12 @@ public final class AssemblyBasedCallerUtils {
     public static final String SUPPORTED_ALLELES_TAG="SA";
     public static final String CALLABLE_REGION_TAG = "CR";
     public static final String ALIGNMENT_REGION_TAG = "AR";
+    public static final Function<Haplotype, Double> HAPLOTYPE_ALIGNMENT_TIEBREAKING_PRIORITY = h -> {
+        final Cigar cigar = h.getCigar();
+        final int referenceTerm = (h.isReference() ? 1 : 0);
+        final int cigarTerm = cigar == null ? 0 : (1 - cigar.numCigarElements());
+        return (double) referenceTerm + cigarTerm;
+    };
 
     /**
      * Returns a map with the original read as a key and the realigned read as the value.
@@ -50,7 +58,7 @@ public final class AssemblyBasedCallerUtils {
      * @return never {@code null}
      */
     public static Map<GATKRead, GATKRead> realignReadsToTheirBestHaplotype(final ReadLikelihoods<Haplotype> originalReadLikelihoods, final Haplotype refHaplotype, final Locatable paddedReferenceLoc, final SmithWatermanAligner aligner) {
-        final Collection<ReadLikelihoods<Haplotype>.BestAllele> bestAlleles = originalReadLikelihoods.bestAllelesBreakingTies();
+        final Collection<ReadLikelihoods<Haplotype>.BestAllele> bestAlleles = originalReadLikelihoods.bestAllelesBreakingTies(HAPLOTYPE_ALIGNMENT_TIEBREAKING_PRIORITY);
         final Map<GATKRead, GATKRead> result = new HashMap<>(bestAlleles.size());
 
         for (final ReadLikelihoods<Haplotype>.BestAllele bestAllele : bestAlleles) {
@@ -291,7 +299,7 @@ public final class AssemblyBasedCallerUtils {
     public static void annotateReadLikelihoodsWithRegions(final ReadLikelihoods<Haplotype> likelihoods,
                                                           final Locatable callableRegion) {
         //assign alignment regions to each read
-        final Collection<ReadLikelihoods<Haplotype>.BestAllele> bestHaplotypes = likelihoods.bestAllelesBreakingTies();
+        final Collection<ReadLikelihoods<Haplotype>.BestAllele> bestHaplotypes = likelihoods.bestAllelesBreakingTies(HAPLOTYPE_ALIGNMENT_TIEBREAKING_PRIORITY);
         for (final ReadLikelihoods<Haplotype>.BestAllele bestHaplotype : bestHaplotypes) {
             final GATKRead read = bestHaplotype.read;
             final Haplotype haplotype = bestHaplotype.allele;
