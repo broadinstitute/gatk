@@ -227,7 +227,8 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
             VariantContextBuilder builder = new VariantContextBuilder(variantContext)
                     .start(loc)
                     .stop(loc)
-                    .alleles(Arrays.asList(refAllele, Allele.SPAN_DEL));
+                    .alleles(Arrays.asList(refAllele, Allele.SPAN_DEL))
+                    .genotypes(GenotypesContext.NO_GENOTYPES);
             return builder.make();
         }
 

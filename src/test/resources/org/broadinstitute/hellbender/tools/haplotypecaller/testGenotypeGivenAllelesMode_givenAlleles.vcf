@@ -25,11 +25,12 @@
 ##INFO=<ID=SOR,Number=1,Type=Float,Description="Symmetric Odds Ratio of 2x2 contingency table to detect strand bias">
 ##contig=<ID=20,length=63025520>
 ##contig=<ID=21,length=48129895>
-#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
-20	10000694	.	G	A	.	.	.
-20	10001436	.	A	AAGGCT	.	.	.
-20	10001661	.	T	C	.	.	.
-20	10004094	.	A	T	.	.	.
-20	10004769	.	TAAAACTATGC	T	.	.	.
-20	10004771	.	A	T	.	.	.
-20	10006819	.	AAAAC	T	.	.	.
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE1
+20	10000694	.	G	A	.	.	.	GT	0|1
+20	10001436	.	A	AAGGCT	.	.	.	GT	0|1
+20	10001661	.	T	C	.	.	.	GT	0|1
+20	10004094	.	A	T	.	.	.	GT	0|1
+20	10004769	.	TAAAACTATGC	T	.	.	.	GT	0|1
+20	10004771	.	A	T	.	.	.	GT	0|1
+20	10006819	.	AAAAC	T	.	.	.	GT	0|1
+20	10006823	.	C	G	.	.	.	GT	0|1
