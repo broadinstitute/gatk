@@ -16,6 +16,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 
 public class MetricsUtilsTest extends GATKBaseTest {
     private MiniDFSCluster cluster;
@@ -67,7 +68,7 @@ public class MetricsUtilsTest extends GATKBaseTest {
 
     private File copyFileToLocalTmpFile(String outputPath) throws IOException {
         File localCopy = createTempFile("local_metrics_copy",".txt");
-        Files.copy(IOUtils.getPath(outputPath), IOUtils.getPath(localCopy.getAbsolutePath()));
+        Files.copy(IOUtils.getPath(outputPath), IOUtils.getPath(localCopy.getAbsolutePath()), StandardCopyOption.REPLACE_EXISTING);
         return localCopy;
     }
 }

@@ -20,6 +20,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -226,7 +227,7 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
         if (onHDFS) {
             appropriateVCF = GATKBaseTest.createTempFile("variants", "vcf");
             appropriateVCF.deleteOnExit();
-            Files.copy(IOUtils.getPath(generatedVCFPath), IOUtils.getPath(appropriateVCF.getAbsolutePath()));
+            Files.copy(IOUtils.getPath(generatedVCFPath), IOUtils.getPath(appropriateVCF.getAbsolutePath()), StandardCopyOption.REPLACE_EXISTING);
         } else {
             appropriateVCF = new File(generatedVCFPath);
         }

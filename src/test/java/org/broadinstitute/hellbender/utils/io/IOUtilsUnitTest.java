@@ -21,10 +21,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.*;
-import java.nio.file.FileSystem;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Comparator;
 import java.util.List;
@@ -717,7 +714,7 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
         final String src = publicTestDir + "empty.vcf";
         final String gcsSubDir = GoogleStorageUtils.randomRemotePath(getGCPTestStaging(), "dir-", "/");
         final String intermediate = GoogleStorageUtils.randomRemotePath(gcsSubDir, "test-copy-empty", ".vcf");
-        Files.copy(IOUtils.getPath(src), IOUtils.getPath(intermediate));
+        Files.copy(IOUtils.getPath(src), IOUtils.getPath(intermediate), StandardCopyOption.REPLACE_EXISTING);
         Assert.assertTrue(Files.exists(IOUtils.getPath(intermediate)));
 
         long srcFileSize = Files.size(IOUtils.getPath(src));

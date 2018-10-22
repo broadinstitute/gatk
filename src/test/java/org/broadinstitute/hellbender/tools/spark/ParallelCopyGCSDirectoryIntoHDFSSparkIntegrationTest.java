@@ -15,6 +15,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -65,7 +66,7 @@ public class ParallelCopyGCSDirectoryIntoHDFSSparkIntegrationTest extends Comman
 
             final File tempDir = createTempDir("ParallelCopy");
 
-            Files.copy(IOUtils.getPath(hdfsPath), IOUtils.getPath(tempDir + "fileFromHDFS.bam.bai"));
+            Files.copy(IOUtils.getPath(hdfsPath), IOUtils.getPath(tempDir + "fileFromHDFS.bam.bai"), StandardCopyOption.REPLACE_EXISTING);
             Assert.assertEquals(Utils.calculateFileMD5(new File(tempDir + "fileFromHDFS.bam.bai")), "1a6baa5332e98ef1358ac0fb36f46aaf");
         } finally {
             MiniClusterUtils.stopCluster(cluster);
