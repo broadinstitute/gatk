@@ -168,6 +168,9 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
 
     private void countSplitRead(final GATKRead read) {
         final SplitPos splitPosition = getSplitPosition(read);
+        if (splitPosition.direction == POSITION.MIDDLE) {
+            return;
+        }
         final int dist;
         if (prevSplitPos == -1) {
             dist = 0;
