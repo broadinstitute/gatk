@@ -30,6 +30,7 @@ workflow CNVGermlineCaseWorkflow {
     ##################################
     File intervals
     File? blacklist_intervals
+    File filtered_intervals
     Array[String]+ normal_bams
     Array[String]+ normal_bais
     File contig_ploidy_model_tar
@@ -161,7 +162,7 @@ workflow CNVGermlineCaseWorkflow {
 
     call CNVTasks.ScatterIntervals {
         input:
-            interval_list = PreprocessIntervals.preprocessed_intervals,
+            interval_list = filtered_intervals,
             num_intervals_per_scatter = num_intervals_per_scatter,
             gatk_docker = gatk_docker,
             preemptible_attempts = preemptible_attempts
@@ -174,7 +175,6 @@ workflow CNVGermlineCaseWorkflow {
                 read_count_files = CollectCounts.counts,
                 contig_ploidy_calls_tar = DetermineGermlineContigPloidyCaseMode.contig_ploidy_calls_tar,
                 gcnv_model_tar = gcnv_model_tars[scatter_index],
-                intervals = ScatterIntervals.scattered_interval_lists[scatter_index],
                 gatk4_jar_override = gatk4_jar_override,
                 gatk_docker = gatk_docker,
                 mem_gb = mem_gb_for_germline_cnv_caller,
@@ -305,8 +305,6 @@ task GermlineCNVCallerCaseMode {
     Array[File] read_count_files
     File contig_ploidy_calls_tar
     File gcnv_model_tar
-    File intervals
-    File? annotated_intervals
     String? output_dir
     File? gatk4_jar_override
 

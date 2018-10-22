@@ -18,6 +18,8 @@ workflow CNVGermlineCaseScatteredWorkflow {
     #### required basic arguments ####
     ##################################
     File intervals
+    File? blacklist_intervals
+    File filtered_intervals
     Array[String]+ normal_bams
     Array[String]+ normal_bais
     File contig_ploidy_model_tar
@@ -122,6 +124,8 @@ workflow CNVGermlineCaseScatteredWorkflow {
         call GermlineCNVCaseWorkflow.CNVGermlineCaseWorkflow {
             input:
                 intervals = intervals,
+                blacklist_intervals = blacklist_intervals,
+                filtered_intervals = filtered_intervals,
                 normal_bams = split_bams[subarray_index],
                 normal_bais = split_bais[subarray_index],
                 contig_ploidy_model_tar = contig_ploidy_model_tar,
