@@ -399,14 +399,17 @@ public class MarkDuplicatesSparkUtils {
 
         List<Tuple2<IndexPair<String>, Integer>> output = new ArrayList<>();
 
-        pairs = pairs.stream()
+        List<Pair> sortedpairs = pairs.stream()
                 .peek(pair -> finder.addLocationInformation(pair.getName(), pair))
-                .sorted(PAIRED_ENDS_SCORE_COMPARATOR)
+                .sorted(new TransientFieldPhysicalLocationComparator())
                 .collect(Collectors.toList());
-        final Pair bestPair = pairs.get(0);
+
+        final Pair bestPair = pairs.stream()
+                .max(PAIRED_ENDS_SCORE_COMPARATOR)
+                .orElseThrow(() -> new GATKException.ShouldNeverReachHereException("There was no best pair because the stream was empty, but it shouldn't have been empty."));;
 
         // Split by orientation and count duplicates in each group separately.
-        final Map<Byte, List<Pair>> groupByOrientation = pairs.stream()
+        final Map<Byte, List<Pair>> groupByOrientation = sortedpairs.stream()
                 .collect(Collectors.groupingBy(Pair::getOrientationForOpticalDuplicates));
         final int numOpticalDuplicates;
         if (groupByOrientation.containsKey(ReadEnds.FR) && groupByOrientation.containsKey(ReadEnds.RF)) {
