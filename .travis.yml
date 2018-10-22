@@ -70,8 +70,8 @@ before_install:
 - if [[ $TRAVIS_SECURE_ENV_VARS == true && $TRAVIS_EVENT_TYPE != cron ]]; then
     echo "Test report will be written to  https://storage.googleapis.com$HELLBENDER_TEST_LOGS$REPORT_PATH/tests/test/index.html";
   fi
-- if [ ${TRAVIS_SECURE_ENV_VARS} == true ]; then
-    if [ ${TESTS_REQUIRE_GCLOUD} == true ]; then
+- if [[ ${TRAVIS_SECURE_ENV_VARS} == true ]]; then
+    if [[ ${TESTS_REQUIRE_GCLOUD} == true ]]; then
       scripts/install_and_authenticate_to_gcloud.sh;
     fi
     openssl aes-256-cbc -K $encrypted_4823d58debd3_key -iv $encrypted_4823d58debd3_iv -in resources_for_CI/github_deploy_key.enc -out ~/.ssh/id_rsa -d;
