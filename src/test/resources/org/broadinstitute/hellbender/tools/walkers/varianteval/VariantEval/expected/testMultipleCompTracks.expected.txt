@@ -1,0 +1,11 @@
+#:GATKReport.v1.1:1
+#:GATKTable:10:6:%s:%s:%s:%s:%d:%d:%d:%.2f:%d:%.2f:;
+#:GATKTable:CompOverlap:The overlap between eval and comp sites
+CompOverlap  CompFeatureInput  EvalFeatureInput  Novelty  nEvalVariants  novelSites  nVariantsAtComp  compRate  nConcordant  concordantRate
+CompOverlap  comp              eval              all                186           2              184     98.92          184          100.00
+CompOverlap  comp              eval              known              186           2              184     98.92          184          100.00
+CompOverlap  comp              eval              novel                0           0                0      0.00            0            0.00
+CompOverlap  dbsnp             eval              all                186           0              186    100.00          186          100.00
+CompOverlap  dbsnp             eval              known              186           0              186    100.00          186          100.00
+CompOverlap  dbsnp             eval              novel                0           0                0      0.00            0            0.00
+

@@ -1,0 +1,7 @@
+##fileformat=VCFv4.0
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+20	10000001	.	C	G	.	.	.
+20	10000002	.	C	G	.	.	.
+20	10000003	.	C	G	.	.	.
+20	10000004	.	C	G	.	.	.
+20	10000005	.	C	G	.	.	.

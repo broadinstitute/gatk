@@ -37,8 +37,8 @@ public final class FeatureContextUnitTest extends GATKBaseTest {
         // or intervals should behave as empty context objects.
         return new Object[][] {
                 { new FeatureContext() },
-                { new FeatureContext(null, null) },
-                { new FeatureContext(null, new SimpleInterval("1", 1, 1) ) },
+                { new FeatureContext((FeatureManager)null, null) },
+                { new FeatureContext((FeatureManager)null, new SimpleInterval("1", 1, 1) ) },
                 { new FeatureContext(new FeatureManager(new ArtificialFeatureContainingCommandLineProgram()), null) }
         };
     }

@@ -1,0 +1,6 @@
+#:GATKReport.v1.1:1
+#:GATKTable:22:1:%s:%s:%s:%d:%d:%d:%d:%d:%.2f:%.2f:%.2f:%.2f:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:;
+#:GATKTable:ValidationReport:Assess site accuracy and sensitivity of callset against follow-up validation assay
+ValidationReport  CompFeatureInput  EvalFeatureInput  nComp  TP  FP  FN  TN  sensitivity  specificity  PPV     FDR   CompMonoEvalNoCall  CompMonoEvalFiltered  CompMonoEvalMono  CompMonoEvalPoly  CompPolyEvalNoCall  CompPolyEvalFiltered  CompPolyEvalMono  CompPolyEvalPoly  CompFiltered  nDifferentAlleleSites
+ValidationReport  comp              eval                  5   3   0   2   0        60.00       100.00  100.00  0.00                   0                     0                 0                 0                   2                     0                 0                 3             0                      0
+
