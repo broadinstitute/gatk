@@ -71,7 +71,6 @@ before_install:
     echo "Test report will be written to  https://storage.googleapis.com$HELLBENDER_TEST_LOGS$REPORT_PATH/tests/test/index.html";
   fi
 - if [ ${TRAVIS_SECURE_ENV_VARS} == true ]; then
-    #authenticate to google cloud if we're running cloud tests
     if [ ${TESTS_REQUIRE_GCLOUD} == true ]; then
       scripts/install_and_authenticate_to_gcloud.sh;
     fi
