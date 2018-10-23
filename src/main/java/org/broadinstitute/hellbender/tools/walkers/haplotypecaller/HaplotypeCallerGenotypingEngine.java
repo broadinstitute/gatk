@@ -216,11 +216,13 @@ public class HaplotypeCallerGenotypingEngine extends AssemblyBasedCallerGenotypi
                 activeRegionWindow,tracker,activeAllelesToGenotype,emitReferenceConfidence,maxMnpDistance,header,false);
     }
 
-    private List<VariantContext> replaceSpanDels(final List<VariantContext> eventsAtThisLoc, final Allele refAllele, final int loc) {
+    @VisibleForTesting
+    static List<VariantContext> replaceSpanDels(final List<VariantContext> eventsAtThisLoc, final Allele refAllele, final int loc) {
         return eventsAtThisLoc.stream().map(vc -> replaceWithSpanDelVC(vc, refAllele, loc)).collect(Collectors.toList());
     }
 
-    private VariantContext replaceWithSpanDelVC(final VariantContext variantContext, final Allele refAllele, final int loc) {
+    @VisibleForTesting
+    static VariantContext replaceWithSpanDelVC(final VariantContext variantContext, final Allele refAllele, final int loc) {
         if (variantContext.getStart() == loc) {
             return variantContext;
         } else {
