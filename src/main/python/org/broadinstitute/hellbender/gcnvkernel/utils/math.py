@@ -1,6 +1,7 @@
 import sys
 
 import numpy as np
+from typing import Generator, Tuple
 
 # 10 / ln(10)
 INV_LN_10_TIMES_10 = 4.342944819032518
@@ -104,3 +105,29 @@ def logsumexp_double_complement(a: np.ndarray, rel_tol: float = 1e-3) -> float:
             else:
                 x = x_new
         return x
+
+
+def calculate_mean_and_variance_online(values_generator: Generator) -> Tuple[float, float]:
+    """
+    Implements Welford’s method for computing variance online using samples from a generator
+
+    Note: it's assumed that the generator eventually runs out of samples and throws StopIteration exception
+
+    Args:
+        values_generator: a generator of values
+
+    Returns:
+         (mean, variance) tuple
+    """
+    mean = 0.0
+    sum_sq = 0.0
+    num_samples = 0
+    while True:
+        try:
+            next_value = next(values_generator)
+            num_samples += 1
+            old_mean = mean
+            mean = mean + (next_value - mean)/num_samples
+            sum_sq = sum_sq + (next_value - mean) * (next_value - old_mean)
+        except StopIteration:
+            return mean, sum_sq / (num_samples - 1)

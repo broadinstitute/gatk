@@ -21,7 +21,7 @@ def get_normalized_prob_vector(prob_vector: np.ndarray, prob_sum_tol: float) -> 
 
     Returns:
         A new and normalized probability vector if it deviates from unity more than `prob_sum_tol`
-        Otherwise, `prov_vector` is return unchanged.
+        Otherwise, `prob_vector` is return unchanged.
     """
     assert all(prob_vector >= 0), "Probabilities must be non-negative"
     prob_sum = np.sum(prob_vector)

@@ -47,7 +47,8 @@ class DenoisingModelConfig:
                  active_class_padding_hybrid_mode: int = 50000,
                  enable_bias_factors: bool = True,
                  enable_explicit_gc_bias_modeling: bool = False,
-                 disable_bias_factors_in_active_class: bool = False):
+                 disable_bias_factors_in_active_class: bool = False,
+                 denoised_counts_sampling_rounds: int = 250):
         """See `expose_args` for the description of arguments"""
         self.max_bias_factors = max_bias_factors
         self.mapping_error_rate = mapping_error_rate
@@ -63,6 +64,7 @@ class DenoisingModelConfig:
         self.enable_bias_factors = enable_bias_factors
         self.enable_explicit_gc_bias_modeling = enable_explicit_gc_bias_modeling
         self.disable_bias_factors_in_active_class = disable_bias_factors_in_active_class
+        self.denoised_counts_sampling_rounds = denoised_counts_sampling_rounds
 
     @staticmethod
     def expose_args(args: argparse.ArgumentParser,
@@ -775,8 +777,13 @@ class DenoisingModel(GeneralizedContinuousModel):
         # useful expressions
         bias_st = tt.exp(log_bias_st)
 
-        # the expect number of erroneously mapped reads
+        # the expected number of erroneously mapped reads
         mean_mapping_error_correction_s = eps * read_depth_s * shared_workspace.average_ploidy_s
+
+        denoised_counts = ((shared_workspace.n_st - mean_mapping_error_correction_s.dimshuffle(0, 'x'))
+                           / ((1.0 - eps) * read_depth_s.dimshuffle(0, 'x') * bias_st))
+
+        Deterministic(name='denoised_counts', var=denoised_counts)
 
         mu_stc = ((1.0 - eps) * read_depth_s.dimshuffle(0, 'x', 'x')
                   * bias_st.dimshuffle(0, 1, 'x')
