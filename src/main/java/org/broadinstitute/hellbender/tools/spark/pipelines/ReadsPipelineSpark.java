@@ -14,6 +14,8 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.MarkDuplicatesSparkArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
+import org.broadinstitute.hellbender.engine.spark.AssemblyRegionReadShardArgumentCollection;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.utils.spark.JoinReadsWithVariants;
 import org.broadinstitute.hellbender.tools.ApplyBQSRUniqueArgumentCollection;
@@ -118,7 +120,10 @@ public class ReadsPipelineSpark extends GATKSparkTool {
     private final RecalibrationArgumentCollection bqsrArgs = new RecalibrationArgumentCollection();
 
     @ArgumentCollection
-    public final HaplotypeCallerSpark.ShardingArgumentCollection shardingArgs = new HaplotypeCallerSpark.ShardingArgumentCollection();
+    public final AssemblyRegionReadShardArgumentCollection shardingArgs = new AssemblyRegionReadShardArgumentCollection();
+
+    @ArgumentCollection
+    public final AssemblyRegionArgumentCollection assemblyRegionArgs = new HaplotypeCallerSpark.HaplotypeCallerAssemblyRegionArgumentCollection();
 
     /**
      * command-line arguments to fine tune the apply BQSR step.
@@ -203,7 +208,7 @@ public class ReadsPipelineSpark extends GATKSparkTool {
         final ReadFilter hcReadFilter = ReadFilter.fromList(HaplotypeCallerEngine.makeStandardHCReadFilters(), header);
         final JavaRDD<GATKRead> filteredReadsForHC = finalReads.filter(hcReadFilter::test);
         final List<SimpleInterval> intervals = hasUserSuppliedIntervals() ? getIntervals() : IntervalUtils.getAllIntervalsForReference(header.getSequenceDictionary());
-        HaplotypeCallerSpark.callVariantsWithHaplotypeCallerAndWriteOutput(ctx, filteredReadsForHC, header, referenceArguments.getReferenceFileName(), intervals, hcArgs, shardingArgs, numReducers, output, makeVariantAnnotations());
+        HaplotypeCallerSpark.callVariantsWithHaplotypeCallerAndWriteOutput(ctx, filteredReadsForHC, header, referenceArguments.getReferenceFileName(), intervals, hcArgs, shardingArgs, assemblyRegionArgs, numReducers, output, makeVariantAnnotations());
 
         if (bwaEngine != null) {
             bwaEngine.close();

@@ -21,6 +21,8 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
+import org.broadinstitute.hellbender.engine.spark.AssemblyRegionReadShardArgumentCollection;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
@@ -88,39 +90,33 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
     @Argument(fullName= StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Single file to which variants should be written")
     public String output;
 
-    @ArgumentCollection
-    public final ShardingArgumentCollection shardingArgs = new ShardingArgumentCollection();
-
-    public static class ShardingArgumentCollection implements Serializable {
+    public static class HaplotypeCallerAssemblyRegionArgumentCollection extends AssemblyRegionArgumentCollection {
         private static final long serialVersionUID = 1L;
 
-        @Argument(fullName="read-shard-size", doc = "Maximum size of each read shard, in bases. For good performance, this should be much larger than the maximum assembly region size.", optional = true)
-        public int readShardSize = DEFAULT_READSHARD_SIZE;
+        @Override
+        protected int defaultMinAssemblyRegionSize() { return HaplotypeCaller.DEFAULT_MIN_ASSEMBLY_REGION_SIZE; }
 
-        @Argument(fullName="read-shard-padding", doc = "Each read shard has this many bases of extra context on each side. Read shards must have as much or more padding than assembly regions.", optional = true)
-        public int readShardPadding = HaplotypeCaller.DEFAULT_ASSEMBLY_REGION_PADDING;
+        @Override
+        protected int defaultMaxAssemblyRegionSize() { return HaplotypeCaller.DEFAULT_MAX_ASSEMBLY_REGION_SIZE; }
 
-        @Argument(fullName = AssemblyRegionWalker.MIN_ASSEMBLY_LONG_NAME, doc = "Minimum size of an assembly region", optional = true)
-        public int minAssemblyRegionSize = HaplotypeCaller.DEFAULT_MIN_ASSEMBLY_REGION_SIZE;
+        @Override
+        protected int defaultAssemblyRegionPadding() { return HaplotypeCaller.DEFAULT_ASSEMBLY_REGION_PADDING; }
 
-        @Argument(fullName = AssemblyRegionWalker.MAX_ASSEMBLY_LONG_NAME, doc = "Maximum size of an assembly region", optional = true)
-        public int maxAssemblyRegionSize = HaplotypeCaller.DEFAULT_MAX_ASSEMBLY_REGION_SIZE;
+        @Override
+        protected int defaultMaxReadsPerAlignmentStart() { return HaplotypeCaller.DEFAULT_MAX_READS_PER_ALIGNMENT; }
 
-        @Argument(fullName = AssemblyRegionWalker.ASSEMBLY_PADDING_LONG_NAME, doc = "Number of additional bases of context to include around each assembly region", optional = true)
-        public int  assemblyRegionPadding = HaplotypeCaller.DEFAULT_ASSEMBLY_REGION_PADDING;
+        @Override
+        protected double defaultActiveProbThreshold() { return HaplotypeCaller.DEFAULT_ACTIVE_PROB_THRESHOLD; }
 
-        @Argument(fullName = AssemblyRegionWalker.MAX_STARTS_LONG_NAME, doc = "Maximum number of reads to retain per alignment start position. Reads above this threshold will be downsampled. Set to 0 to disable.", optional = true)
-        public int  maxReadsPerAlignmentStart = HaplotypeCaller.DEFAULT_MAX_READS_PER_ALIGNMENT;
-
-        @Advanced
-        @Argument(fullName = AssemblyRegionWalker.THRESHOLD_LONG_NAME, doc="Minimum probability for a locus to be considered active.", optional = true)
-        public double activeProbThreshold = HaplotypeCaller.DEFAULT_ACTIVE_PROB_THRESHOLD;
-
-        @Advanced
-        @Argument(fullName = AssemblyRegionWalker.PROPAGATION_LONG_NAME, doc="Upper limit on how many bases away probability mass can be moved around when calculating the boundaries between active and inactive assembly regions", optional = true)
-        public int maxProbPropagationDistance = HaplotypeCaller.DEFAULT_MAX_PROB_PROPAGATION_DISTANCE;
-
+        @Override
+        protected int defaultMaxProbPropagationDistance() { return HaplotypeCaller.DEFAULT_MAX_PROB_PROPAGATION_DISTANCE; }
     }
+
+    @ArgumentCollection
+    public final AssemblyRegionReadShardArgumentCollection shardingArgs = new AssemblyRegionReadShardArgumentCollection();
+
+    @ArgumentCollection
+    public final AssemblyRegionArgumentCollection assemblyRegionArgs = new HaplotypeCallerAssemblyRegionArgumentCollection();
 
     @ArgumentCollection
     public HaplotypeCallerArgumentCollection hcArgs = new HaplotypeCallerArgumentCollection();
@@ -164,7 +160,7 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
         logger.info("********************************************************************************");
         addReferenceFilesForSpark(ctx, referenceArguments.getReferenceFileName());
         final List<SimpleInterval> intervals = hasUserSuppliedIntervals() ? getIntervals() : IntervalUtils.getAllIntervalsForReference(header.getSequenceDictionary());
-        callVariantsWithHaplotypeCallerAndWriteOutput(ctx, getReads(), header, referenceArguments.getReferenceFileName(), intervals, hcArgs, shardingArgs, numReducers, output, makeVariantAnnotations());
+        callVariantsWithHaplotypeCallerAndWriteOutput(ctx, getReads(), header, referenceArguments.getReferenceFileName(), intervals, hcArgs, shardingArgs, assemblyRegionArgs, numReducers, output, makeVariantAnnotations());
     }
 
     @Override
@@ -194,7 +190,8 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
             final String reference,
             final List<SimpleInterval> intervals,
             final HaplotypeCallerArgumentCollection hcArgs,
-            final ShardingArgumentCollection shardingArgs,
+            final AssemblyRegionReadShardArgumentCollection shardingArgs,
+            final AssemblyRegionArgumentCollection assemblyRegionArgs,
             final int numReducers,
             final String output,
             final Collection<Annotation> annotations) {
@@ -204,7 +201,7 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
         final ReferenceSequenceFile driverReferenceSequenceFile = new CachingIndexedFastaSequenceFile(referencePath);
         final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgs, false, false, header, driverReferenceSequenceFile, variantannotatorEngine);
         final String referenceFileName = referencePath.getFileName().toString();
-        final JavaRDD<VariantContext> variants = callVariantsWithHaplotypeCaller(ctx, reads, header, referenceFileName, intervals, hcArgs, shardingArgs, variantannotatorEngine);
+        final JavaRDD<VariantContext> variants = callVariantsWithHaplotypeCaller(ctx, reads, header, referenceFileName, intervals, hcArgs, shardingArgs, assemblyRegionArgs, variantannotatorEngine);
         variants.cache(); // without caching, computations are run twice as a side effect of finding partition boundaries for sorting
         try {
             VariantsSparkSink.writeVariants(ctx, output, variants, hcEngine.makeVCFHeader(header.getSequenceDictionary(), new HashSet<>()),
@@ -236,7 +233,8 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
             final String referenceFileName,
             final List<SimpleInterval> intervals,
             final HaplotypeCallerArgumentCollection hcArgs,
-            final ShardingArgumentCollection shardingArgs,
+            final AssemblyRegionReadShardArgumentCollection shardingArgs,
+            final AssemblyRegionArgumentCollection assemblyRegionArgs,
             final VariantAnnotatorEngine variantannotatorEngine) {
         Utils.validateArg(hcArgs.dbsnp.dbsnp == null, "HaplotypeCallerSpark does not yet support -D or --dbsnp arguments" );
         Utils.validateArg(hcArgs.comps.isEmpty(), "HaplotypeCallerSpark does not yet support -comp or --comp arguments" );
@@ -254,7 +252,7 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
 
         final JavaRDD<Tuple2<AssemblyRegion, SimpleInterval>> assemblyRegions = readShards
                 .mapPartitions(shardsToAssemblyRegions(referenceFileName,
-                                                       hcArgsBroadcast, shardingArgs, header, annotatorEngineBroadcast));
+                                                       hcArgsBroadcast, assemblyRegionArgs, header, annotatorEngineBroadcast));
 
         return assemblyRegions.mapPartitions(callVariantsFromAssemblyRegions(header, referenceFileName, hcArgsBroadcast, annotatorEngineBroadcast));
     }
@@ -305,7 +303,7 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
     private static FlatMapFunction<Iterator<Shard<GATKRead>>, Tuple2<AssemblyRegion, SimpleInterval>> shardsToAssemblyRegions(
             final String referenceFileName,
             final Broadcast<HaplotypeCallerArgumentCollection> hcArgsBroadcast,
-            final ShardingArgumentCollection assemblyArgs,
+            final AssemblyRegionArgumentCollection assemblyRegionArgs,
             final SAMFileHeader header,
             final Broadcast<VariantAnnotatorEngine> annotatorEngineBroadcast) {
         return shards -> {
@@ -314,18 +312,18 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
             final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgsBroadcast.value(), false, false, header, taskReferenceSequenceFile, annotatorEngineBroadcast.getValue());
 
             final ReferenceDataSource taskReferenceDataSource = new ReferenceFileSource(IOUtils.getPath(pathOnExecutor)); // TODO: share with taskReferenceSequenceFile
-            final ReadsDownsampler readsDownsampler = assemblyArgs.maxReadsPerAlignmentStart > 0 ?
-                new PositionalDownsampler(assemblyArgs.maxReadsPerAlignmentStart, header) : null;
+            final ReadsDownsampler readsDownsampler = assemblyRegionArgs.maxReadsPerAlignmentStart > 0 ?
+                new PositionalDownsampler(assemblyRegionArgs.maxReadsPerAlignmentStart, header) : null;
             return Utils.stream(shards)
                     //TODO we've hacked multi interval shards here with a shim, but we should investigate as smarter approach https://github.com/broadinstitute/gatk/issues/4299
                 .map(shard -> new ShardToMultiIntervalShardAdapter<>(
                         new DownsampleableSparkReadShard(new ShardBoundary(shard.getInterval(), shard.getPaddedInterval()), shard, readsDownsampler)))
-                .flatMap(shardToRegion(assemblyArgs, header, taskReferenceDataSource, hcEngine)).iterator();
+                .flatMap(shardToRegion(assemblyRegionArgs, header, taskReferenceDataSource, hcEngine)).iterator();
         };
     }
 
     private static Function<MultiIntervalShard<GATKRead>, Stream<? extends Tuple2<AssemblyRegion, SimpleInterval>>> shardToRegion(
-            ShardingArgumentCollection assemblyArgs,
+            AssemblyRegionArgumentCollection assemblyRegionArgs,
             SAMFileHeader header,
             ReferenceDataSource referenceDataSource,
             HaplotypeCallerEngine evaluator) {
@@ -333,7 +331,7 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
             //TODO load features as a side input
             final FeatureManager featureManager = null;
 
-            final Iterator<AssemblyRegion> assemblyRegionIter = new AssemblyRegionIterator(shard, header, referenceDataSource, featureManager, evaluator, assemblyArgs.minAssemblyRegionSize, assemblyArgs.maxAssemblyRegionSize, assemblyArgs.assemblyRegionPadding, assemblyArgs.activeProbThreshold, assemblyArgs.maxProbPropagationDistance,
+            final Iterator<AssemblyRegion> assemblyRegionIter = new AssemblyRegionIterator(shard, header, referenceDataSource, featureManager, evaluator, assemblyRegionArgs.minAssemblyRegionSize, assemblyRegionArgs.maxAssemblyRegionSize, assemblyRegionArgs.assemblyRegionPadding, assemblyRegionArgs.activeProbThreshold, assemblyRegionArgs.maxProbPropagationDistance,
                                                                                            INCLUDE_READS_WITH_DELETIONS_IN_IS_ACTIVE_PILEUPS);
 
             return Utils.stream(assemblyRegionIter)

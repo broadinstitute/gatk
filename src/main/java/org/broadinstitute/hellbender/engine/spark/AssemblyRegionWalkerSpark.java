@@ -9,6 +9,7 @@ import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
@@ -32,71 +33,16 @@ import java.util.stream.Collectors;
 public abstract class AssemblyRegionWalkerSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 
-    @Argument(fullName="readShardSize", shortName="readShardSize", doc = "Maximum size of each read shard, in bases. For good performance, this should be much larger than the maximum assembly region size.", optional = true)
-    protected int readShardSize = defaultReadShardSize();
+    @ArgumentCollection
+    public final AssemblyRegionReadShardArgumentCollection shardingArgs = new AssemblyRegionReadShardArgumentCollection();
 
-    @Argument(fullName="readShardPadding", shortName="readShardPadding", doc = "Each read shard has this many bases of extra context on each side. Read shards must have as much or more padding than assembly regions.", optional = true)
-    protected int readShardPadding = defaultReadShardPadding();
-
-    @Argument(fullName = "minAssemblyRegionSize", shortName = "minAssemblyRegionSize", doc = "Minimum size of an assembly region", optional = true)
-    protected int minAssemblyRegionSize = defaultMinAssemblyRegionSize();
-
-    @Argument(fullName = "maxAssemblyRegionSize", shortName = "maxAssemblyRegionSize", doc = "Maximum size of an assembly region", optional = true)
-    protected int maxAssemblyRegionSize = defaultMaxAssemblyRegionSize();
-
-    @Argument(fullName = "assemblyRegionPadding", shortName = "assemblyRegionPadding", doc = "Number of additional bases of context to include around each assembly region", optional = true)
-    protected int assemblyRegionPadding = defaultAssemblyRegionPadding();
-
-    @Argument(fullName = "maxReadsPerAlignmentStart", shortName = "maxReadsPerAlignmentStart", doc = "Maximum number of reads to retain per alignment start position. Reads above this threshold will be downsampled. Set to 0 to disable.", optional = true)
-    protected int maxReadsPerAlignmentStart = defaultMaxReadsPerAlignmentStart();
-
-    @Advanced
-    @Argument(fullName = "activeProbabilityThreshold", shortName = "activeProbabilityThreshold", doc="Minimum probability for a locus to be considered active.", optional = true)
-    protected double activeProbThreshold = defaultActiveProbThreshold();
-
-    @Advanced
-    @Argument(fullName = "maxProbPropagationDistance", shortName = "maxProbPropagationDistance", doc="Upper limit on how many bases away probability mass can be moved around when calculating the boundaries between active and inactive assembly regions", optional = true)
-    protected int maxProbPropagationDistance = defaultMaxProbPropagationDistance();
+    @ArgumentCollection
+    public final AssemblyRegionArgumentCollection assemblyRegionArgs = getAssemblyRegionArgumentCollection();
 
     /**
-     * @return Default value for the {@link #readShardSize} parameter, if none is provided on the command line
+     * @return a subclass of {@link AssemblyRegionArgumentCollection} with the default values filled in.
      */
-    protected abstract int defaultReadShardSize();
-
-    /**
-     * @return Default value for the {@link #readShardPadding} parameter, if none is provided on the command line
-     */
-    protected abstract int defaultReadShardPadding();
-
-    /**
-     * @return Default value for the {@link #minAssemblyRegionSize} parameter, if none is provided on the command line
-     */
-    protected abstract int defaultMinAssemblyRegionSize();
-
-    /**
-     * @return Default value for the {@link #maxAssemblyRegionSize} parameter, if none is provided on the command line
-     */
-    protected abstract int defaultMaxAssemblyRegionSize();
-
-    /**
-     * @return Default value for the {@link #assemblyRegionPadding} parameter, if none is provided on the command line
-     */
-    protected abstract int defaultAssemblyRegionPadding();
-
-    /**
-     * @return Default value for the {@link #maxReadsPerAlignmentStart} parameter, if none is provided on the command line
-     */
-    protected abstract int defaultMaxReadsPerAlignmentStart();
-
-    /**
-     * @return Default value for the {@link #activeProbThreshold} parameter, if none is provided on the command line
-     */
-    protected abstract double defaultActiveProbThreshold();
-
-    /**
-     * @return Default value for the {@link #maxProbPropagationDistance} parameter, if none is provided on the command line
-     */
-    protected abstract int defaultMaxProbPropagationDistance();
+    protected abstract AssemblyRegionArgumentCollection getAssemblyRegionArgumentCollection();
 
     /**
      * subclasses can override this to control if reads with deletions should be included in isActive pileups
@@ -138,10 +84,10 @@ public abstract class AssemblyRegionWalkerSpark extends GATKSparkTool {
         SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
         List<SimpleInterval> intervals = rawIntervals == null ? IntervalUtils.getAllIntervalsForReference(sequenceDictionary) : rawIntervals;
         intervalShards = intervals.stream()
-                .flatMap(interval -> Shard.divideIntervalIntoShards(interval, readShardSize, readShardPadding, sequenceDictionary).stream())
+                .flatMap(interval -> Shard.divideIntervalIntoShards(interval, shardingArgs.readShardSize, shardingArgs.readShardPadding, sequenceDictionary).stream())
                 .collect(Collectors.toList());
         List<SimpleInterval> paddedIntervalsForReads =
-                intervals.stream().map(interval -> interval.expandWithinContig(readShardPadding, sequenceDictionary)).collect(Collectors.toList());
+                intervals.stream().map(interval -> interval.expandWithinContig(shardingArgs.readShardPadding, sequenceDictionary)).collect(Collectors.toList());
         return paddedIntervalsForReads;
     }
 
@@ -154,10 +100,10 @@ public abstract class AssemblyRegionWalkerSpark extends GATKSparkTool {
      */
     protected JavaRDD<AssemblyRegionWalkerContext> getAssemblyRegions(JavaSparkContext ctx) {
         SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
-        JavaRDD<Shard<GATKRead>> shardedReads = SparkSharder.shard(ctx, getReads(), GATKRead.class, sequenceDictionary, intervalShards, readShardSize, shuffle);
+        JavaRDD<Shard<GATKRead>> shardedReads = SparkSharder.shard(ctx, getReads(), GATKRead.class, sequenceDictionary, intervalShards, shardingArgs.readShardSize, shuffle);
         Broadcast<FeatureManager> bFeatureManager = features == null ? null : ctx.broadcast(features);
         return shardedReads.flatMap(getAssemblyRegionsFunction(referenceFileName, bFeatureManager, getHeaderForReads(),
-                assemblyRegionEvaluator(), minAssemblyRegionSize, maxAssemblyRegionSize, assemblyRegionPadding, activeProbThreshold, maxProbPropagationDistance, includeReadsWithDeletionsInIsActivePileups()));
+                assemblyRegionEvaluator(), assemblyRegionArgs, includeReadsWithDeletionsInIsActivePileups()));
     }
 
     private static FlatMapFunction<Shard<GATKRead>, AssemblyRegionWalkerContext> getAssemblyRegionsFunction(
@@ -165,11 +111,7 @@ public abstract class AssemblyRegionWalkerSpark extends GATKSparkTool {
             final Broadcast<FeatureManager> bFeatureManager,
             final SAMFileHeader header,
             final AssemblyRegionEvaluator evaluator,
-            final int minAssemblyRegionSize,
-            final int maxAssemblyRegionSize,
-            final int assemblyRegionPadding,
-            final double activeProbThreshold,
-            final int maxProbPropagationDistance,
+            final AssemblyRegionArgumentCollection assemblyRegionArgs,
             final boolean includeReadsWithDeletionsInIsActivePileups) {
         return (FlatMapFunction<Shard<GATKRead>, AssemblyRegionWalkerContext>) shardedRead -> {
             ReferenceDataSource reference = referenceFileName == null ? null : new ReferenceFileSource(IOUtils.getPath(SparkFiles.get(referenceFileName)));
@@ -178,8 +120,9 @@ public abstract class AssemblyRegionWalkerSpark extends GATKSparkTool {
             final Iterator<AssemblyRegion> assemblyRegionIter = new AssemblyRegionIterator(
                     new ShardToMultiIntervalShardAdapter<>(shardedRead),
                     header, reference, features, evaluator,
-                    minAssemblyRegionSize, maxAssemblyRegionSize, assemblyRegionPadding, activeProbThreshold,
-                    maxProbPropagationDistance, includeReadsWithDeletionsInIsActivePileups);
+                    assemblyRegionArgs.minAssemblyRegionSize, assemblyRegionArgs.maxAssemblyRegionSize,
+                    assemblyRegionArgs.assemblyRegionPadding, assemblyRegionArgs.activeProbThreshold,
+                    assemblyRegionArgs.maxProbPropagationDistance, includeReadsWithDeletionsInIsActivePileups);
             final Iterable<AssemblyRegion> assemblyRegions = () -> assemblyRegionIter;
             return Utils.stream(assemblyRegions).map(assemblyRegion ->
                     new AssemblyRegionWalkerContext(assemblyRegion,
