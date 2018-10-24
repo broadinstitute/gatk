@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
 import com.google.common.collect.ImmutableMap;
+import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.reference.ReferenceSequence;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.annotation.Strand;
 import htsjdk.variant.variantcontext.Allele;
@@ -25,6 +27,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.test.FuncotatorTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -126,27 +129,18 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
         }
     }
 
-//    @Test
-//    void createRefBaseFile() {
-////        printReferenceBases(new File(FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref()), "chr3", 100000000, 110000000);
-////        printReferenceBases(new File("/Users/jonn/Development/references/GRCh37.p13.genome.fasta"), "chr1", 860000,  880000);
-////        printReferenceBases();
-//    }
-
-    private static Object[] helpCreateDataForTestGetBasesInWindowAroundReferenceAllele(final String refAlelleBases,
-                                                                                       final String altAlleleBases,
+    private static Object[] helpCreateDataForTestGetBasesInWindowAroundReferenceAllele(final String refAlleleBases,
                                                                                        final String strand,
                                                                                        final int windowSizeInBases,
                                                                                        final int startPos,
                                                                                        final int endPos,
                                                                                        final String expected) {
         return new Object[] {
-            Allele.create(refAlelleBases, true),
-                Allele.create(altAlleleBases),
-                Strand.decode(strand),
-                windowSizeInBases,
-                new ReferenceContext( refDataSourceHg19Ch3, new SimpleInterval("chr3", startPos, endPos) ),
-                expected
+            Allele.create(refAlleleBases, true),
+            new ReferenceContext( refDataSourceHg19Ch3, new SimpleInterval("chr3", startPos, endPos) ),
+            Strand.decode(strand),
+            windowSizeInBases,
+            expected
         };
     }
 
@@ -436,6 +430,19 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
                 new SimpleInterval("chr1", 10,19)
         );
 
+        // And a spot-check test from real data:
+        final List<? extends Locatable> spot_check_exons = Arrays.asList(
+                new SimpleInterval("3", 178916614, 178916965),
+                new SimpleInterval("3", 178917478, 178917687),
+                new SimpleInterval("3", 178919078, 178919328),
+                new SimpleInterval("3", 178921332, 178921577),
+                new SimpleInterval("3", 178922291, 178922376),
+                new SimpleInterval("3", 178927383, 178927488),
+                new SimpleInterval("3", 178927974, 178928126),
+                new SimpleInterval("3", 178928219, 178928353),
+                new SimpleInterval("3", 178935998, 178936122)
+        );
+
         return new Object[][] {
                 { new SimpleInterval("chr1", 1, 1),     exons_forward, Strand.POSITIVE, -1 },
                 { new SimpleInterval("chr1", 25, 67),   exons_forward, Strand.POSITIVE, -1 },
@@ -444,6 +451,7 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
                 { new SimpleInterval("chr1", 99, 99),   exons_forward, Strand.POSITIVE, 50 },
                 { new SimpleInterval("chr1", 50, 67),   exons_forward, Strand.POSITIVE, 21 },
                 { new SimpleInterval("chr1", 67, 75),   exons_forward, Strand.POSITIVE, -1 },
+                { new SimpleInterval("chr1", 91, 97),   exons_forward, Strand.POSITIVE, 42 },
 
                 { new SimpleInterval("chr1", 1, 1),     exons_backward, Strand.NEGATIVE, -1 },
                 { new SimpleInterval("chr1", 25, 67),   exons_backward, Strand.NEGATIVE, -1 },
@@ -453,6 +461,8 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
                 { new SimpleInterval("chr1", 50, 67),   exons_backward, Strand.NEGATIVE, -1 },
                 { new SimpleInterval("chr1", 67, 75),   exons_backward, Strand.NEGATIVE, 15 },
 
+                // Spot check:
+                { new SimpleInterval("3", 178936090, 178936096), spot_check_exons, Strand.POSITIVE, 1632 }
         };
     }
 
@@ -501,6 +511,9 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
 
     @DataProvider
     Object[][] provideDataForGetAlternateSequence() {
+
+        // TODO: Add - strand tests!
+
         return new Object[][] {
                 {
                     "01234567890A1234567890123456789", 12, Allele.create((byte)'A'), Allele.create((byte)'A'), "01234567890A1234567890123456789"
@@ -563,6 +576,73 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
                 {"AGA", false, AminoAcid.STOP_CODON},
                 {"AGG", false, AminoAcid.STOP_CODON},
                 {"TGA", false, AminoAcid.TRYPTOPHAN},
+        };
+    }
+
+    @DataProvider
+    Object[][] provideDataForGetCodonChangeString()  {
+
+//        final String refAllele,
+//        final String altAllele,
+//        final int alleleStart,
+//        final int codingSequenceAlleleStart,
+//        final int alignedCodingSequenceAlleleStart,
+//        final String alignedCodingSeqRefAllele,
+//        final String alignedCodingSeqAltAllele,
+//        final alignedAlternateAllele,
+//        final int alignedRefAlleleStop,
+//        final String contig
+//        final Strand strand
+//        final Locatable startCodon,
+//        final ReferenceSequence codingSequence,
+//        final String expected
+
+        // PIK3CA is on chr3 and is transcribed in the FORWARD direction:
+        final ReferenceDataSource pik3caTranscriptDataSource = ReferenceDataSource.of(new File(FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19).toPath());
+        final String              pik3caFullTranscriptName   = pik3caTranscriptDataSource.getSequenceDictionary().getSequences().stream().filter(s -> s.getSequenceName().startsWith(FuncotatorTestConstants.PIK3CA_TRANSCRIPT)).map(SAMSequenceRecord::getSequenceName).collect(Collectors.joining());
+        final ReferenceSequence   pik3caCodingSequence       = pik3caTranscriptDataSource.queryAndPrefetch(pik3caFullTranscriptName, 158, 3364);
+
+        // MUC16 is on chr19 and is transcribed in the REVERSE direction:
+        // (The magic numbers here are the coding region for this transscript for MUC16)
+        final ReferenceDataSource muc16TranscriptDataSource = ReferenceDataSource.of(new File(FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19).toPath());
+        final String              muc16FullTranscriptName   = muc16TranscriptDataSource.getSequenceDictionary().getSequences().stream().filter(s -> s.getSequenceName().startsWith(FuncotatorTestConstants.MUC16_TRANSCRIPT)).map(SAMSequenceRecord::getSequenceName).collect(Collectors.joining());
+        final ReferenceSequence   muc16CodingSequence    = muc16TranscriptDataSource.queryAndPrefetch(muc16FullTranscriptName, 205, 43728);
+
+        final SimpleInterval pik3caStart = new SimpleInterval("chr3", 178916614, 178916616);
+        final SimpleInterval muc16Start = new SimpleInterval("chr19", 9091812, 9091814);
+
+        return new Object[][] {
+                // ONP
+                //     alignedCodingSequenceAlleleStart == alignedReferenceAlleleStop   *
+                //     alignedCodingSequenceAlleleStart != alignedReferenceAlleleStop
+                { "G", "T", 178921515, 997, 997, "GCA", "TCA", "TCA", 999, pik3caStart.getContig(), Strand.POSITIVE, pik3caCodingSequence, pik3caStart, "c.(997-999)Gca>Tca" },
+                { "C", "T", 178921516, 998, 997, "GCA", "GTA", "GTA", 999, pik3caStart.getContig(), Strand.POSITIVE, pik3caCodingSequence, pik3caStart, "c.(997-999)gCa>gTa" },
+                { "A", "T", 178921517, 999, 997, "GCA", "GCT", "GCT", 999, pik3caStart.getContig(), Strand.POSITIVE, pik3caCodingSequence, pik3caStart, "c.(997-999)gcA>gcT" },
+                // INDEL
+                //     StartCodonIndel + strand
+                { "A", "AT", 178916614, 1, 1, "ATG", "ATTG", "ATTG", 3, pik3caStart.getContig(), Strand.POSITIVE, pik3caCodingSequence, pik3caStart, "" },
+                //     FrameShift                                                       *
+                { "G", "GC", 178921515, 997, 997, "GCA", "GCCA", "GCCA", 999, pik3caStart.getContig(), Strand.POSITIVE, pik3caCodingSequence, pik3caStart, "c.(997-999)gcafs" },
+                //     In-Frame Insertion
+                //          StartCodon - strand
+                { "A", "TGTA", 9091814, 1, 1, "ATG", "TGTATG", "TGTATG", 3, muc16Start.getContig(), Strand.NEGATIVE, muc16CodingSequence, muc16Start, "c.(1-3)atg>TGTatg" },
+                //              + Strand
+                { "A", "AGCG", 178921515, 999, 997, "GCA", "GCAGCG", "GCAGCG", 999, pik3caStart.getContig(), Strand.POSITIVE, pik3caCodingSequence, pik3caStart, "c.(1000-1002)ctc>GCGctc" },
+                //              - Strand
+                { "T", "TTCG", 9091794, 21, 19, "CTT", "CTCGTT", "CTCGTT", 21, muc16Start.getContig(), Strand.NEGATIVE, muc16CodingSequence, muc16Start, "c.(19-21)ctt>ctCGTt" },
+                //          Within a codon:
+                //              + Strand
+                { "G", "GCAG", 178921515, 997, 997, "GCA", "GCAGCA", "GCAGCA", 999, pik3caStart.getContig(), Strand.POSITIVE, pik3caCodingSequence, pik3caStart, "c.(997-999)gca>gCAGca" },
+                //              - Strand
+                { "C", "CG", 9091793, 22, 22, "CCT", "CGCT", "CGCT", 24, muc16Start.getContig(), Strand.NEGATIVE, muc16CodingSequence, muc16Start, "c.(22-24)cctfs" },
+                //     In-Frame Deletion
+                //          Between Codons
+                //              + Strand
+                { "TGCA", "T", 178921514, 996, 994, "AGTGCA", "AGT", "AGT", 996, pik3caStart.getContig(), Strand.POSITIVE, pik3caCodingSequence, pik3caStart, "c.(997-999)gcadel" },
+                //              - Strand
+                { "TCCT", "T", 9091794, 21, 19, "CTTCCT", "CTT", "CTT", 21, muc16Start.getContig(), Strand.NEGATIVE, muc16CodingSequence, muc16Start, "c.(19-24)cttcct>ctt" },
+                //          Within a codon
+                { "GCAC", "G", 178921515, 997, 997, "GCACTC", "GTC", "GTC", 999, pik3caStart.getContig(), Strand.POSITIVE, pik3caCodingSequence, pik3caStart, "c.(997-1002)gcactc>gtc" },
         };
     }
 
@@ -705,20 +785,196 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
     }
 
     @DataProvider
-    Object[][] provideDataForGetProteinChangeString() {
+    Object[][] provideDataForRenderProteinChangeString() {
 
-        //TODO: Add tests for INDELS, not just ONPs.
+        final SimpleInterval startCodon = new SimpleInterval("TEST", 1,3);
+
+        // NOTE: The ref and alt alleles only matter for length - content is not checked.
+
+        // Arrays have the following fields:
+        // protChangeStartPos,protChangeEndPos,refAminoAcidSeq,altAminoAcidSeq,refAllele,altAllele,startCodon,refAlleleStartPosition,expected
 
         return new Object[][] {
-                {"N",   1,  1,  "G", "AAT",    "GGT",    "p.N1G"},
-                {"NY",  1,  2, "GN", "AATTAT", "GGTAAT", "p.1_2NY>GN"},
-                {"YY",  1,  2, "NY", "TATTAT", "AATTAT", "p.Y1N"},
-                {"NY",  1,  2, "NG", "AATTAT", "AATGGT", "p.Y2G"},
+                // SNPs:
+                //    No protein change:
+                { 1,     1, "N", "N", "C", "A", startCodon, 1, "p.N1N" },
+                //    With protein change:
+                { 1,     1, "N", "K", "C", "A", null,       1, "p.N1K" },
+                { 1,     1, "N", "K", "C", "A", startCodon, 1, "p.N1K" },
+                { 5,     5, "F", "L", "C", "A", startCodon, 1, "p.F5L" },
+                { 10,   10, "A", "V", "C", "G", startCodon, 1, "p.A10V" },
+                { 100, 100, "Y", "P", "A", "T", startCodon, 1, "p.Y100P" },
 
-                {"N",  71, 71,  "G", "AAT",    "GGT",    "p.N71G"},
-                {"NY", 71, 72, "GN", "AATTAT", "GGTAAT", "p.71_72NY>GN"},
-                {"YY", 71, 72, "NY", "TATTAT", "AATTAT", "p.Y71N"},
-                {"NY", 71, 72, "NG", "AATTAT", "AATGGT", "p.Y72G"},
+                // DNPs:
+                //    No protein change:
+                { 2,     2, "K",  "K",  "CG", "AT", null,     1, "p.K2K" },
+                { 1,     2, "NK", "NK", "CG", "AT", null,     1, "p.1_2NK>NK" },
+                //    1 protein change:
+                { 1,     1, "N", "G", "CG", "AT", null,       1, "p.N1G" },
+                { 1,     1, "K", "T", "CG", "AT", startCodon, 1, "p.K1T" },
+                { 5,     5, "V", "I", "TT", "CG", startCodon, 1, "p.V5I" },
+                { 10,   10, "R", "*", "AA", "GT", startCodon, 1, "p.R10*" },
+                { 100, 100, "*", "L", "AG", "TC", startCodon, 1, "p.*100L" },
+                //    2 protein changes:
+                { 1,     2, "NK", "TG", "CG", "AT", null,       1, "p.1_2NK>TG" },
+                { 1,     2, "NK", "TG", "CG", "AT", startCodon, 1, "p.1_2NK>TG" },
+                { 5,     6, "FV", "LI", "TT", "CG", startCodon, 1, "p.5_6FV>LI" },
+                { 10,   11, "RS", "W*", "AA", "GT", startCodon, 1, "p.10_11RS>W*" },
+                { 100, 101, "Q*", "FL", "AG", "TC", startCodon, 1, "p.100_101Q*>FL" },
+
+                // TNPs:
+                //    No protein change:
+                { 2,     2, "R",  "R",  "CGA", "AGG", null,       1, "p.R2R" },
+                //    1 protein change:
+                { 1,     1, "I", "G", "ATT", "GGA", null,         1, "p.I1G" },
+                { 5,     5, "V", "T", "GTT", "ACC", startCodon,   1, "p.V5T" },
+                //    2 protein changes:
+                { 101, 102, "LS", "FR", "ATC", "TCG", null,       1, "p.101_102LS>FR" },
+                { 201, 202, "VK", "GR", "TGA", "GGC", startCodon, 1, "p.201_202VK>GR" },
+
+                // MNPs:
+                //    No protein change:
+                { 2,     5, "RQV*",  "RQV*",  "CGCCAGGTGTAA", "CGTCAAGTTTGA", null, 1, "p.2_5RQV*>RQV*" },
+                { 10,   32, "RACDEFGHIKLMNPQRSTVWYR",
+                            "RACDEFGHIKLMNPQRSTVWYR",
+                            "CGCGCGTGCGATGAATTTGGCCATATTAAACTGATGAACCCGCAGCGCAGCACCGTGTGGTATCGC",
+                            "AGAGCTTGTGACGAGTTCGGACACATCAAGTTCATGAATCCCCAAAGAAGAACAGTATGGTACAGA",
+                            startCodon, 1, "p.10_32RACDEFGHIKLMNPQRSTVWYR>RACDEFGHIKLMNPQRSTVWYR" },
+                //    2 protein changes:
+                { 17,   18, "F*", "LT", "CTAG", "GACT", null, 1, "p.17_18F*>LT" },
+                //    10 protein changes:
+                { 51,   60, "ACDEFGHIKL", "MNPQRSTVWY",
+                        "GCGTGCGATGAATTTGGCCATATTAAACTG", "ATGAACCCGCAGCGCAGCACCGTGTGGTAT",
+                        null, 1, "p.51_60ACDEFGHIKL>MNPQRSTVWY" },
+
+                // FS INSs:
+                //    Start codon overlap:
+                { 1,     1, "M", "M", "A", "ATG",  startCodon, 1, "" },
+                { 1,     1, "M", "M", "A", "AT",   startCodon, 1, "" },
+                { 1,     1, "M", "M", "T", "TG",   startCodon, 2, "" },
+                { 1,     1, "M", "M", "T", "TGC",  startCodon, 2, "" },
+                //    No start codon overlap:
+                { 2,     2, "K", "K", "T", "TG",   startCodon, 3,  "p.K2fs" },
+                { 4,     4, "G", "G", "C", "CA",   startCodon, 10, "p.G4fs" },
+                { 4,     4, "G", "G", "C", "CAC",  startCodon, 10, "p.G4fs" },
+                { 4,     4, "Q", "Q", "A", "ATG",  startCodon, 10, "p.Q4fs" },
+                { 4,     4, "V", "V", "T", "TG",   startCodon, 10, "p.V4fs" },
+
+                // FS DELs:
+                //    Start codon overlap:
+                { 1,     1, "M", "M", "ATG", "AT", startCodon, 1, "" },
+                { 1,     1, "M", "M", "AT", "A",   startCodon, 1, "" },
+                { 1,     1, "M", "M", "TG", "T",   startCodon, 2, "" },
+                { 1,     1, "M", "M", "CA", "C",   new SimpleInterval("TEST", 100, 102), 99, "" },
+                //    No start codon overlap:
+                {  4,    4, "M", "M", "ATG", "AT",    startCodon, 10, "p.M4fs" },
+                {  5,    5, "V", "V", "AT", "A",      startCodon, 12, "p.V5fs" },
+                { 10,   10, "W", "W", "TG", "T",      startCodon, 30, "p.W10fs" },
+                {  9,    9, "GS", "GS", "CTGGG", "C", startCodon, 27, "p.GS9fs" },
+
+                // IF INSs:
+                //    Between codons:
+                //       3 bases:
+                { 544, 545, "", "G", "T", "TGGA", startCodon, 178936090, "p.544_545insG" },
+                { 545, 546, "", "W", "G", "GTGG", startCodon, 178936093, "p.545_546insW" },
+                //       6 bases:
+                { 544, 545, "", "GC", "T", "TGGACTT", startCodon, 178936090, "p.544_545insGC" },
+                { 545, 546, "", "W*", "G", "GTGGTGA", startCodon, 178936093, "p.545_546insW*" },
+                //       9 bases:
+                { 544, 545, "", "GCA", "T", "TGGACTTATT", startCodon, 178936090, "p.544_545insGCA" },
+                { 545, 546, "", "WV*", "G", "GTGGGTATGA", startCodon, 178936093, "p.545_546insWV*" },
+                //    Within a Codon:
+                //       3 bases:
+                { 544, 545, "", "A", "A", "ACTG", startCodon, 178936088, "p.544_545insA" },
+                { 544, 545, "", "S", "C", "CCAG", startCodon, 178936089, "p.544_545insS" },
+                { 544, 545, "T", "IA", "A", "ATCG", startCodon, 178936088, "p.544_545T>IA" },
+                //       6 bases:
+                { 545, 545, "E", "DV*", "G", "GATGTCT", startCodon, 178936091, "p.E545DV*" },
+                { 545, 545, "E", "DLQ", "A", "ACCTGCA", startCodon, 178936092, "p.E545DLQ" },
+                { 545, 546, "", "QE", "A", "AGCAGGA", startCodon, 178936092, "p.545_546insQE" },
+
+                // IF DELs:
+                //    Complete codon deletions:
+                //       3 bases:
+                { 544, 544, "T", "", "CACT", "C", startCodon, 1631, "p.T544del" },
+                { 545, 545, "E", "", "TGAG", "T", startCodon, 1634, "p.E545del" },
+                //       6 bases:
+                { 544, 544, "TE", "", "CACTGAG", "C", startCodon, 1631, "p.TE544del" },
+                { 545, 545, "EQ", "", "TGAGCAG", "T", startCodon, 1634, "p.EQ545del" },
+                //       9 bases:
+                { 544, 544, "TEQ", "", "CACTGAGCAG", "C", startCodon, 1631, "p.TEQ544del" },
+                { 545, 545, "EQE", "", "TGAGCAGGAG", "T", startCodon, 1634, "p.EQE545del" },
+                //    Within a Codon:
+                //       3 bases:
+                { 544, 545, "TE", "K", "ACTG", "A", startCodon, 1632, "p.544_545TE>K" },
+                { 545, 545, "E",  "E", "CTGA", "C", startCodon, 1633, "p.E545del" },
+                //       6 bases:
+                { 544, 546, "TEQ", "K", "ACTGAGC", "A", startCodon, 1632, "p.544_546TEQ>K" },
+                { 545, 545, "EQ", "", "CTGAGCA", "C", startCodon, 1633, "p.EQ545del" },
+                //       9 bases:
+                { 545, 545, "EQE", "", "ACTGAGCAGG", "A", startCodon, 1632, "p.EQE545del" },
+                { 545, 545, "EQE", "", "CTGAGCAGGA", "C", startCodon, 1633, "p.EQE545del" },
+        };
+    }
+
+    @DataProvider
+    Object[][] provideForTestGetCodingSequenceChangeString() {
+
+//        final int codingSequenceAlleleStart,
+//        final String referenceAllele,
+//        final String alternateAllele,
+//        final Strand strand,
+//        final String expected
+
+        // + Strand tests from PIK3CA
+        // - Strand tests from MUC16
+
+        // TODO: Add tests for the deletion case requiring exon start/end/allele position.
+
+        return new Object[][] {
+                // SNP
+                { 1632, "A", "T", Strand.POSITIVE, "c.1632A>T" },
+                // ONP (|ONP| > 1)
+                { 1633, "CT", "GG", Strand.POSITIVE, "c.1633_1634CT>GG" },
+                // Insertion (+ Strand)
+                { 1634, "T", "TGG", Strand.POSITIVE, "c.1634_1635insGG" },
+                // Insertion (- Strand)
+                { 43303, "A", "TCA", Strand.NEGATIVE, "c.43302_43303insTC" },
+                // Deletion (+ Strand)
+                { 1634, "TGAG", "T", Strand.POSITIVE, "c.1635_1637delGAG" },
+                // Deletion (- Strand)
+                { 43138, "TCT", "T", Strand.NEGATIVE, "c.43138_43139delTC" },
+        };
+    }
+
+    @DataProvider
+    Object[][] provideForTestIsIndelBetweenCodons() {
+
+        // Arrays have the following fields:
+        // codingSequenceAlleleStart, alignedCodingSequenceAlleleStart, refAllele, strand, expected
+
+        return new Object[][] {
+                // + Strand:
+                { 4,  4, "A",   Strand.POSITIVE, false },
+                { 5,  4, "A",   Strand.POSITIVE, false },
+                { 6,  4, "A",   Strand.POSITIVE, true },
+                { 4,  4, "AC",  Strand.POSITIVE, false },
+                { 5,  4, "AC",  Strand.POSITIVE, true },
+                { 6,  4, "AC",  Strand.POSITIVE, false },
+                { 4,  4, "ACT", Strand.POSITIVE, true },
+                { 5,  4, "ACT", Strand.POSITIVE, false },
+                { 6,  4, "ACT", Strand.POSITIVE, false },
+
+                // - Strand:
+                { 4,  4, "A",   Strand.NEGATIVE, true },
+                { 5,  4, "A",   Strand.NEGATIVE, false },
+                { 6,  4, "A",   Strand.NEGATIVE, false },
+                { 4,  4, "AC",  Strand.NEGATIVE, true },
+                { 5,  4, "AC",  Strand.NEGATIVE, false },
+                { 6,  4, "AC",  Strand.NEGATIVE, false },
+                { 4,  4, "ACT", Strand.NEGATIVE, true },
+                { 5,  4, "ACT", Strand.NEGATIVE, false },
+                { 6,  4, "ACT", Strand.NEGATIVE, false },
         };
     }
 
@@ -789,7 +1045,11 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
 //        final Allele refAllele,
 //        final int codingSequenceRefAlleleStart,
 //        final int alignedRefAlleleStart
+//        final Strand strand
 //        expected
+
+        // TODO: Make tests with Strand.NEGATIVE!!!!  (issue #5351 - https://github.com/broadinstitute/gatk/issues/5351)
+        // TODO: Make tests with alt allele longer/shorter than ref allele!  (issue #5351 - https://github.com/broadinstitute/gatk/issues/5351)
 
 //                                                 11111111112222222222333333333344444444445555555555666666
 //                                       012345678901234567890123456789012345678901234567890123456789012345
@@ -798,54 +1058,54 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
         return new Object[][] {
 
                 // alignedRefAlleleStart <= 0
-                {referenceSnippet, 10, Allele.create("CC", true), 1, -1, "GCCCAT"},
-                {referenceSnippet, 11, Allele.create("CA", true), 1, -1, "CCCATG"},
-                {referenceSnippet, 12, Allele.create("AT", true), 1, -1, "CCATGA"},
+                {referenceSnippet, 10, Allele.create("CC", true), 1, -1, Strand.POSITIVE, "GCCCAT"},
+                {referenceSnippet, 11, Allele.create("CA", true), 1, -1, Strand.POSITIVE, "CCCATG"},
+                {referenceSnippet, 12, Allele.create("AT", true), 1, -1, Strand.POSITIVE, "CCATGA"},
 
                 // (codingSequenceRefAlleleStart <= 0) && (alignedRefAlleleStart <= 0)
-                {referenceSnippet, 10, Allele.create("CC", true), 0, -2, "GCCCAT"},
-                {referenceSnippet, 11, Allele.create("CA", true), 0, -2, "CCCATG"},
-                {referenceSnippet, 12, Allele.create("AT", true), 0, -2, "CCATGA"},
+                {referenceSnippet, 10, Allele.create("CC", true), 0, -2, Strand.POSITIVE, "GCCCAT"},
+                {referenceSnippet, 11, Allele.create("CA", true), 0, -2, Strand.POSITIVE, "CCCATG"},
+                {referenceSnippet, 12, Allele.create("AT", true), 0, -2, Strand.POSITIVE, "CCATGA"},
 
-                {referenceSnippet, 10, Allele.create("CCA", true),  -1, -2, "CCCATG"},
-                {referenceSnippet, 11, Allele.create("CAT", true),  -1, -2, "CCATGA"},
-                {referenceSnippet, 12, Allele.create("ATG", true),  -1, -2, "CATGAT"},
+                {referenceSnippet, 10, Allele.create("CCA", true),  -1, -2, Strand.POSITIVE, "CCCATG"},
+                {referenceSnippet, 11, Allele.create("CAT", true),  -1, -2, Strand.POSITIVE, "CCATGA"},
+                {referenceSnippet, 12, Allele.create("ATG", true),  -1, -2, Strand.POSITIVE, "CATGAT"},
 
                 // Allele same as reference sequence:
-                {referenceSnippet, 0, Allele.create("AAA", true), 1, 1, "AAA"},
-                {referenceSnippet, 1, Allele.create("AA", true), 2, 1, "AAA"},
-                {referenceSnippet, 2, Allele.create("A", true), 3, 1, "AAA"},
+                {referenceSnippet, 0, Allele.create("AAA", true), 1, 1, Strand.POSITIVE, "AAA"},
+                {referenceSnippet, 1, Allele.create("AA", true), 2, 1, Strand.POSITIVE, "AAA"},
+                {referenceSnippet, 2, Allele.create("A", true), 3, 1, Strand.POSITIVE, "AAA"},
 
-                {referenceSnippet, 6, Allele.create("GGG", true), 1, 1, "GGG"},
-                {referenceSnippet, 7, Allele.create("GG", true), 2, 1, "GGG"},
-                {referenceSnippet, 8, Allele.create("G", true), 3, 1, "GGG"},
+                {referenceSnippet, 6, Allele.create("GGG", true), 1, 1, Strand.POSITIVE, "GGG"},
+                {referenceSnippet, 7, Allele.create("GG", true), 2, 1, Strand.POSITIVE, "GGG"},
+                {referenceSnippet, 8, Allele.create("G", true), 3, 1, Strand.POSITIVE, "GGG"},
 
-                {referenceSnippet, 6, Allele.create("GGG", true), 60, 60, "GGG"},
-                {referenceSnippet, 7, Allele.create("GG", true), 61, 60, "GGG"},
-                {referenceSnippet, 8, Allele.create("G", true), 62, 60, "GGG"},
+                {referenceSnippet, 6, Allele.create("GGG", true), 60, 60, Strand.POSITIVE, "GGG"},
+                {referenceSnippet, 7, Allele.create("GG", true), 61, 60, Strand.POSITIVE, "GGG"},
+                {referenceSnippet, 8, Allele.create("G", true), 62, 60, Strand.POSITIVE, "GGG"},
 
-                {referenceSnippet, 17, Allele.create("ATAG", true), 18, 17, "TATAGG"},
+                {referenceSnippet, 17, Allele.create("ATAG", true), 18, 17, Strand.POSITIVE, "TATAGG"},
 
-                {referenceSnippet, 4, Allele.create(referenceSnippet.substring(4), true), 18, 17, referenceSnippet.substring(3)},
+                {referenceSnippet, 4, Allele.create(referenceSnippet.substring(4), true), 18, 17, Strand.POSITIVE, referenceSnippet.substring(3)},
 
                 // Allele diffferent from reference sequence:
-                {referenceSnippet, 0, Allele.create("TAA", true), 1, 1, "TAA"},
-                {referenceSnippet, 1, Allele.create("AG", true), 2, 1, "AAG"},
-                {referenceSnippet, 2, Allele.create("T", true), 3, 1, "AAT"},
+                {referenceSnippet, 0, Allele.create("TAA", true), 1, 1, Strand.POSITIVE, "TAA"},
+                {referenceSnippet, 1, Allele.create("AG", true), 2, 1, Strand.POSITIVE, "AAG"},
+                {referenceSnippet, 2, Allele.create("T", true), 3, 1, Strand.POSITIVE, "AAT"},
 
-                {referenceSnippet, 6, Allele.create("GCC", true), 1, 1, "GCC"},
-                {referenceSnippet, 7, Allele.create("AG", true), 2, 1, "GAG"},
-                {referenceSnippet, 8, Allele.create("A", true), 3, 1, "GGA"},
+                {referenceSnippet, 6, Allele.create("GCC", true), 1, 1, Strand.POSITIVE, "GCC"},
+                {referenceSnippet, 7, Allele.create("AG", true), 2, 1, Strand.POSITIVE, "GAG"},
+                {referenceSnippet, 8, Allele.create("A", true), 3, 1, Strand.POSITIVE, "GGA"},
 
-                {referenceSnippet, 6, Allele.create("GCC", true), 60, 60, "GCC"},
-                {referenceSnippet, 7, Allele.create("AG", true), 61, 60, "GAG"},
-                {referenceSnippet, 8, Allele.create("A", true), 62, 60, "GGA"},
+                {referenceSnippet, 6, Allele.create("GCC", true), 60, 60, Strand.POSITIVE, "GCC"},
+                {referenceSnippet, 7, Allele.create("AG", true), 61, 60, Strand.POSITIVE, "GAG"},
+                {referenceSnippet, 8, Allele.create("A", true), 62, 60, Strand.POSITIVE, "GGA"},
 
-                {referenceSnippet, 17, Allele.create("ATAT", true), 18, 17, "TATATG"},
+                {referenceSnippet, 17, Allele.create("ATAT", true), 18, 17, Strand.POSITIVE, "TATATG"},
 
                 {referenceSnippet, 4, Allele.create(
                         new String(new char[referenceSnippet.length() - 4]).replace("\0", "A"), true),
-                        18, 17,
+                        18, 17, Strand.POSITIVE,
                         "T" + new String(new char[referenceSnippet.length() - 4]).replace("\0", "A")},
         };
     }
@@ -1147,71 +1407,256 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
         final int offset = 100000000;
 
         return new Object[][] {
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "T", "+",  1, 500000 + offset, 500000 + offset,          "TAC"),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "T", "+",  2, 500000 + offset, 500000 + offset,         "GTACA"),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "T", "+",  3, 500000 + offset, 500000 + offset,        "AGTACAT"),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "T", "+",  4, 500000 + offset, 500000 + offset,       "TAGTACATT"),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "T", "+",  5, 500000 + offset, 500000 + offset,      "TTAGTACATTA"),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "T", "+",  6, 500000 + offset, 500000 + offset,     "GTTAGTACATTAA"),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "T", "+",  7, 500000 + offset, 500000 + offset,    "AGTTAGTACATTAAC"),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "T", "+",  8, 500000 + offset, 500000 + offset,   "TAGTTAGTACATTAACA"),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "T", "+",  9, 500000 + offset, 500000 + offset,  "CTAGTTAGTACATTAACAA"),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "T", "+", 10, 500000 + offset, 500000 + offset, "ACTAGTTAGTACATTAACAAT"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "+",  1, 500000 + offset, 500000 + offset,          "TAC"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "+",  2, 500000 + offset, 500000 + offset,         "GTACA"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "+",  3, 500000 + offset, 500000 + offset,        "AGTACAT"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "+",  4, 500000 + offset, 500000 + offset,       "TAGTACATT"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "+",  5, 500000 + offset, 500000 + offset,      "TTAGTACATTA"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "+",  6, 500000 + offset, 500000 + offset,     "GTTAGTACATTAA"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "+",  7, 500000 + offset, 500000 + offset,    "AGTTAGTACATTAAC"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "+",  8, 500000 + offset, 500000 + offset,   "TAGTTAGTACATTAACA"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "+",  9, 500000 + offset, 500000 + offset,  "CTAGTTAGTACATTAACAA"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "+", 10, 500000 + offset, 500000 + offset, "ACTAGTTAGTACATTAACAAT"),
 
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "ATTT", "+",  1, 500000 + offset, 500000 + offset,          "TACATT"),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "ATTT", "+",  2, 500000 + offset, 500000 + offset,         "GTACATTA"),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "ATTT", "+",  3, 500000 + offset, 500000 + offset,        "AGTACATTAA"),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "ATTT", "+",  4, 500000 + offset, 500000 + offset,       "TAGTACATTAAC"),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "ATTT", "+",  5, 500000 + offset, 500000 + offset,      "TTAGTACATTAACA"),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "ATTT", "+",  6, 500000 + offset, 500000 + offset,     "GTTAGTACATTAACAA"),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "ATTT", "+",  7, 500000 + offset, 500000 + offset,    "AGTTAGTACATTAACAAT"),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "ATTT", "+",  8, 500000 + offset, 500000 + offset,   "TAGTTAGTACATTAACAATG"),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "ATTT", "+",  9, 500000 + offset, 500000 + offset,  "CTAGTTAGTACATTAACAATGA"),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("A", "ATTT", "+", 10, 500000 + offset, 500000 + offset, "ACTAGTTAGTACATTAACAATGAC"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("ACAT",  "+",  1, 500000 + offset, 500003 + offset,          "TACATT"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("ACAT",  "+",  2, 500000 + offset, 500003 + offset,         "GTACATTA"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("ACAT",  "+",  3, 500000 + offset, 500003 + offset,        "AGTACATTAA"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("ACAT",  "+",  4, 500000 + offset, 500003 + offset,       "TAGTACATTAAC"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("ACAT",  "+",  5, 500000 + offset, 500003 + offset,      "TTAGTACATTAACA"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("ACAT",  "+",  6, 500000 + offset, 500003 + offset,     "GTTAGTACATTAACAA"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("ACAT",  "+",  7, 500000 + offset, 500003 + offset,    "AGTTAGTACATTAACAAT"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("ACAT",  "+",  8, 500000 + offset, 500003 + offset,   "TAGTTAGTACATTAACAATG"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("ACAT",  "+",  9, 500000 + offset, 500003 + offset,  "CTAGTTAGTACATTAACAATGA"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("ACAT",  "+", 10, 500000 + offset, 500003 + offset, "ACTAGTTAGTACATTAACAATGAC"),
 
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("ACAT", "A", "+",  1, 500000 + offset, 500000 + offset,          "TACATT"),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("ACAT", "A", "+",  2, 500000 + offset, 500000 + offset,         "GTACATTA"),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("ACAT", "A", "+",  3, 500000 + offset, 500000 + offset,        "AGTACATTAA"),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("ACAT", "A", "+",  4, 500000 + offset, 500000 + offset,       "TAGTACATTAAC"),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("ACAT", "A", "+",  5, 500000 + offset, 500000 + offset,      "TTAGTACATTAACA"),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("ACAT", "A", "+",  6, 500000 + offset, 500000 + offset,     "GTTAGTACATTAACAA"),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("ACAT", "A", "+",  7, 500000 + offset, 500000 + offset,    "AGTTAGTACATTAACAAT"),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("ACAT", "A", "+",  8, 500000 + offset, 500000 + offset,   "TAGTTAGTACATTAACAATG"),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("ACAT", "A", "+",  9, 500000 + offset, 500000 + offset,  "CTAGTTAGTACATTAACAATGA"),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("ACAT", "A", "+", 10, 500000 + offset, 500000 + offset, "ACTAGTTAGTACATTAACAATGAC"),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "-",  1, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(         "TAC".getBytes() )) ) ,
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "-",  2, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(        "GTACA".getBytes() )) ) ,
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "-",  3, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(       "AGTACAT".getBytes() )) ) ,
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "-",  4, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(      "TAGTACATT".getBytes() )) ) ,
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "-",  5, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(     "TTAGTACATTA".getBytes() )) ) ,
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "-",  6, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(    "GTTAGTACATTAA".getBytes() )) ) ,
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "-",  7, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(   "AGTTAGTACATTAAC".getBytes() )) ) ,
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "-",  8, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(  "TAGTTAGTACATTAACA".getBytes() )) ) ,
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "-",  9, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement( "CTAGTTAGTACATTAACAA".getBytes() )) ) ,
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "-", 10, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement("ACTAGTTAGTACATTAACAAT".getBytes() )) ) ,
 
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "A", "-",  1, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(         "TAC".getBytes() )) ) ,
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "A", "-",  2, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(        "GTACA".getBytes() )) ) ,
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "A", "-",  3, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(       "AGTACAT".getBytes() )) ) ,
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "A", "-",  4, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(      "TAGTACATT".getBytes() )) ) ,
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "A", "-",  5, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(     "TTAGTACATTA".getBytes() )) ) ,
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "A", "-",  6, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(    "GTTAGTACATTAA".getBytes() )) ) ,
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "A", "-",  7, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(   "AGTTAGTACATTAAC".getBytes() )) ) ,
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "A", "-",  8, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(  "TAGTTAGTACATTAACA".getBytes() )) ) ,
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "A", "-",  9, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement( "CTAGTTAGTACATTAACAA".getBytes() )) ) ,
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "A", "-", 10, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement("ACTAGTTAGTACATTAACAAT".getBytes() )) ) ,
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("TGTA", "-",  1, 500000 + offset, 500003 + offset, new String( BaseUtils.simpleReverseComplement(          "TACATT".getBytes() )) ),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("TGTA", "-",  2, 500000 + offset, 500003 + offset, new String( BaseUtils.simpleReverseComplement(         "GTACATTA".getBytes() )) ),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("TGTA", "-",  3, 500000 + offset, 500003 + offset, new String( BaseUtils.simpleReverseComplement(        "AGTACATTAA".getBytes() )) ),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("TGTA", "-",  4, 500000 + offset, 500003 + offset, new String( BaseUtils.simpleReverseComplement(       "TAGTACATTAAC".getBytes() )) ),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("TGTA", "-",  5, 500000 + offset, 500003 + offset, new String( BaseUtils.simpleReverseComplement(      "TTAGTACATTAACA".getBytes() )) ),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("TGTA", "-",  6, 500000 + offset, 500003 + offset, new String( BaseUtils.simpleReverseComplement(     "GTTAGTACATTAACAA".getBytes() )) ),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("TGTA", "-",  7, 500000 + offset, 500003 + offset, new String( BaseUtils.simpleReverseComplement(    "AGTTAGTACATTAACAAT".getBytes() )) ),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("TGTA", "-",  8, 500000 + offset, 500003 + offset, new String( BaseUtils.simpleReverseComplement(   "TAGTTAGTACATTAACAATG".getBytes() )) ),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("TGTA", "-",  9, 500000 + offset, 500003 + offset, new String( BaseUtils.simpleReverseComplement(  "CTAGTTAGTACATTAACAATGA".getBytes() )) ),
+                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("TGTA", "-", 10, 500000 + offset, 500003 + offset, new String( BaseUtils.simpleReverseComplement( "ACTAGTTAGTACATTAACAATGAC".getBytes() )) ),
+        };
+    }
 
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "TAAA", "-",  1, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(          "TACATT".getBytes() )) ),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "TAAA", "-",  2, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(         "GTACATTA".getBytes() )) ),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "TAAA", "-",  3, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(        "AGTACATTAA".getBytes() )) ),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "TAAA", "-",  4, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(       "TAGTACATTAAC".getBytes() )) ),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "TAAA", "-",  5, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(      "TTAGTACATTAACA".getBytes() )) ),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "TAAA", "-",  6, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(     "GTTAGTACATTAACAA".getBytes() )) ),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "TAAA", "-",  7, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(    "AGTTAGTACATTAACAAT".getBytes() )) ),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "TAAA", "-",  8, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(   "TAGTTAGTACATTAACAATG".getBytes() )) ),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "TAAA", "-",  9, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(  "CTAGTTAGTACATTAACAATGA".getBytes() )) ),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("T", "TAAA", "-", 10, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement( "ACTAGTTAGTACATTAACAATGAC".getBytes() )) ),
+    @DataProvider
+    private Object[][] provideDataForTestCreateReferenceSnippet() {
 
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("TGTA", "T", "-",  1, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(          "TACATT".getBytes() )) ),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("TGTA", "T", "-",  2, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(         "GTACATTA".getBytes() )) ),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("TGTA", "T", "-",  3, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(        "AGTACATTAA".getBytes() )) ),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("TGTA", "T", "-",  4, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(       "TAGTACATTAAC".getBytes() )) ),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("TGTA", "T", "-",  5, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(      "TTAGTACATTAACA".getBytes() )) ),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("TGTA", "T", "-",  6, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(     "GTTAGTACATTAACAA".getBytes() )) ),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("TGTA", "T", "-",  7, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(    "AGTTAGTACATTAACAAT".getBytes() )) ),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("TGTA", "T", "-",  8, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(   "TAGTTAGTACATTAACAATG".getBytes() )) ),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("TGTA", "T", "-",  9, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement(  "CTAGTTAGTACATTAACAATGA".getBytes() )) ),
-                helpCreateDataForTestGetBasesInWindowAroundReferenceAllele("TGTA", "T", "-", 10, 500000 + offset, 500000 + offset, new String( BaseUtils.simpleReverseComplement( "ACTAGTTAGTACATTAACAATGAC".getBytes() )) ),
+        // NOTE: Genome positions start at 1, not 0.
+        //                                                                                                                          1
+        //                       0        1         2         3         4    *    5         6         7         8         9         0
+        //                       1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
+        final String sequence = "CGTCGACGGAACAAAAGTAGACCATCCCTCTTGGTAAGTACGTCTTCATACTCTACAAATACCCATAGCACAATTCGGAGCCCAACGCCCGACGGGTCAT";
+        //   REVERSE COMPLEMENT: ATGACCCGTCGGGCGTTGGGCTCCGAATTGTGCTATGGGTATTTGTAGAGTATGAAGACGTACTTACCAAGAGGGATGGTCTACTTTTGTTCCGTCGACG
+        //                       1                                                      *
+        //                       0         9         8         7         6         5         4         3         2         1
+        //                       0987654321098765432109876543210987654321098765432109876543210987654321098765432109876543210987654321
+
+        final String contig = "specialTestContig";
+
+        final int startPos = 45;
+        final int endPos = 45;
+
+        // NOTE: Variants are always described in the + direction.
+        //       The start/end positions are for the REFERENCE allele ONLY.
+
+        return new Object[][] {
+                // SNP in + direction
+                {
+                        Allele.create("T", true),
+                        Allele.create("C"),
+                        FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(sequence, contig,  startPos,  endPos),
+                        Strand.POSITIVE,
+                        "TAAGTACGTCTTCATACTCTA"
+                },
+                // DNP in + direction
+                {
+                        Allele.create("TT", true),
+                        Allele.create("CC"),
+                        FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(sequence, contig,  startPos,  endPos+1),
+                        Strand.POSITIVE,
+                        "TAAGTACGTCTTCATACTCTAC"
+                },
+                // TNP in + direction
+                {
+                        Allele.create("TTC", true),
+                        Allele.create("CGG"),
+                        FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(sequence, contig,  startPos,  endPos+2),
+                        Strand.POSITIVE,
+                        "TAAGTACGTCTTCATACTCTACA"
+                },
+                // Insertion - 1 base in + direction
+                {
+                        Allele.create("T", true),
+                        Allele.create("TC"),
+                        FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(sequence, contig,  startPos,  endPos),
+                        Strand.POSITIVE,
+                        "AAGTACGTCTTCATACTCTA"
+                },
+                // Insertion - 2 bases in + direction
+                {
+                        Allele.create("T", true),
+                        Allele.create("TCC"),
+                        FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(sequence, contig,  startPos,  endPos),
+                        Strand.POSITIVE,
+                        "AAGTACGTCTTCATACTCTA"
+                },
+                // Insertion - 3 bases in + direction
+                {
+                        Allele.create("T", true),
+                        Allele.create("TCCA"),
+                        FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(sequence, contig,  startPos,  endPos),
+                        Strand.POSITIVE,
+                        "AAGTACGTCTTCATACTCTA"
+                },
+                // Deletion - 1 base in + direction
+                {
+                        Allele.create("CT", true),
+                        Allele.create("C"),
+                        FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(sequence, contig,  startPos-1,  endPos),
+                        Strand.POSITIVE,
+                        "TAAGTACGTCTTCATACTCTA"
+                },
+                // Deletion - 2 bases in + direction
+                {
+                        Allele.create("CTT", true),
+                        Allele.create("C"),
+                        FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(sequence, contig,  startPos-1,  endPos+1),
+                        Strand.POSITIVE,
+                        "TAAGTACGTCTTCATACTCTAC"
+                },
+                // Deletion - 3 bases in + direction
+                {
+                        Allele.create("CTTC", true),
+                        Allele.create("C"),
+                        FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(sequence, contig, startPos - 1, endPos + 2),
+                        Strand.POSITIVE,
+                        "TAAGTACGTCTTCATACTCTACA"
+                },
+
+                // ================================================================================
+
+                // SNP in - direction
+                {
+                        Allele.create("T", true),
+                        Allele.create("C"),
+                        FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(sequence, contig,  startPos,  endPos),
+                        Strand.NEGATIVE,
+                        "TAGAGTATGAAGACGTACTTA"
+                },
+                // DNP in - direction
+                {
+                        Allele.create("CT", true),
+                        Allele.create("TA"),
+                        FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(sequence, contig,  startPos-1,  endPos),
+                        Strand.NEGATIVE,
+                        "TAGAGTATGAAGACGTACTTAC"
+                },
+                // TNP in - direction
+                {
+                        Allele.create("TCT", true),
+                        Allele.create("ATG"),
+                        FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(sequence, contig,  startPos-2,  endPos),
+                        Strand.NEGATIVE,
+                        "TAGAGTATGAAGACGTACTTACC"
+                },
+                // Insertion - 1 base in - direction
+                {
+                        Allele.create("T", true),
+                        Allele.create("TC"),
+                        FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(sequence, contig,  startPos,  endPos),
+                        Strand.NEGATIVE,
+                        "TAGAGTATGAAGACGTACTT"
+                },
+                // Insertion - 2 bases in - direction
+                {
+                        Allele.create("T", true),
+                        Allele.create("TCC"),
+                        FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(sequence, contig,  startPos,  endPos),
+                        Strand.NEGATIVE,
+                        "TAGAGTATGAAGACGTACTT"
+                },
+                // Insertion - 3 bases in - direction
+                {
+                        Allele.create("T", true),
+                        Allele.create("TCCA"),
+                        FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(sequence, contig,  startPos,  endPos),
+                        Strand.NEGATIVE,
+                        "TAGAGTATGAAGACGTACTT"
+                },
+
+
+        //                       0        1         2         3         4    *    5         6         7         8         9         0
+        //                       1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
+      //final String sequence = "CGTCGACGGAACAAAAGTAGACCATCCCTCTTGGTAAGTACGTCTTCATACTCTACAAATACCCATAGCACAATTCGGAGCCCAACGCCCGACGGGTCAT";
+        //   REVERSE COMPLEMENT: ATGACCCGTCGGGCGTTGGGCTCCGAATTGTGCTATGGGTATTTGTAGAGTATGAAGACGTACTTACCAAGAGGGATGGTCTACTTTTGTTCCGTCGACG
+        //                       1                                                      *
+        //                       0         9         8         7         6         5         4         3         2         1
+        //                       0987654321098765432109876543210987654321098765432109876543210987654321098765432109876543210987654321
+
+                // Deletion - 1 base in - direction
+                {
+                        Allele.create("CT", true),
+                        Allele.create("C"),
+                        FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(sequence, contig,  startPos-1,  endPos),
+                        Strand.NEGATIVE,
+                        "TAGAGTATGAAGACGTACTTA"
+                },
+                // Deletion - 2 bases in - direction
+                {
+                        Allele.create("TCT", true),
+                        Allele.create("T"),
+                        FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(sequence, contig,  startPos-2,  endPos),
+                        Strand.NEGATIVE,
+                        "TAGAGTATGAAGACGTACTTAC"
+                },
+                // Deletion - 3 bases in - direction
+                {
+                        Allele.create("GTCT", true),
+                        Allele.create("G"),
+                        FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(sequence, contig,  startPos-3,  endPos),
+                        Strand.NEGATIVE,
+                        "TAGAGTATGAAGACGTACTTACC"
+                },
+                // Deletion - 4 bases in - direction
+                {
+                        Allele.create("CGTCT", true),
+                        Allele.create("C"),
+                        FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(sequence, contig,  startPos-4,  endPos),
+                        Strand.NEGATIVE,
+                        "TAGAGTATGAAGACGTACTTACCA"
+                },
+
+                // ================================================================================
+
+                // Special test case 1:
+                {
+                        Allele.create("CT", true),
+                        Allele.create("C"),
+                        FuncotatorTestUtils.createReferenceContextFromBasesAndLocation(
+                                //         0        1     *   2         3
+                                //         123456789012345678901234567890
+                                "ACCCAGCCCACTCACCTTTCTCTCCTGGAA",
+                                contig,
+                                16,
+                                17 ),
+                        Strand.NEGATIVE,
+                        "CAGGAGAGAAAGGTGAGTGGG"
+                }
         };
     }
 
@@ -1283,7 +1728,7 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "provideDataForGetAlternateSequence")
     void testGetAlternateSequence(final String refCodingSeq, final int startPos, final Allele refAllele, final Allele altAllele, final String expected) {
-        Assert.assertEquals(FuncotatorUtils.getAlternateSequence(refCodingSeq, startPos, refAllele, altAllele), expected);
+        Assert.assertEquals(FuncotatorUtils.getAlternateSequence(new StrandCorrectedReferenceBases(refCodingSeq,Strand.POSITIVE), startPos, refAllele, altAllele, Strand.POSITIVE), expected);
     }
 
     @Test(dataProvider = "provideDataForGetEukaryoticAminoAcidByCodon")
@@ -1294,6 +1739,39 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
     @Test(dataProvider = "provideDataForGetMitochondrialAminoAcidByCodon")
     void testGetMitochondrialAminoAcidByCodon(final String codon, final boolean isFirst, final AminoAcid expected) {
         Assert.assertEquals(FuncotatorUtils.getMitochondrialAminoAcidByCodon(codon, isFirst), expected);
+    }
+
+    @Test(dataProvider = "provideDataForGetCodonChangeString")
+    void testGetCodonChangeString( final String refAllele,
+                                   final String altAllele,
+                                   final int alleleStart,
+                                   final int codingSequenceAlleleStart,
+                                   final int alignedCodingSequenceAlleleStart,
+                                   final String alignedCodingSeqRefAllele,
+                                   final String alignedCodingSeqAltAllele,
+                                   final String alignedAlternateAllele,
+                                   final int alignedRefAlleleStop,
+                                   final String contig,
+                                   final Strand strand,
+                                   final ReferenceSequence codingSequence,
+                                   final Locatable startCodon,
+                                   final String expected ) {
+
+        final SequenceComparison seqComp = new SequenceComparison();
+        seqComp.setReferenceAllele(refAllele);
+        seqComp.setAlternateAllele(altAllele);
+        seqComp.setAlleleStart(alleleStart);
+        seqComp.setCodingSequenceAlleleStart(codingSequenceAlleleStart);
+        seqComp.setAlignedCodingSequenceAlleleStart(alignedCodingSequenceAlleleStart);
+        seqComp.setAlignedCodingSequenceReferenceAllele(alignedCodingSeqRefAllele);
+        seqComp.setAlignedCodingSequenceAlternateAllele(alignedCodingSeqAltAllele);
+        seqComp.setAlignedAlternateAllele(alignedAlternateAllele);
+        seqComp.setAlignedReferenceAlleleStop(alignedRefAlleleStop);
+        seqComp.setContig(contig);
+        seqComp.setStrand(strand);
+        seqComp.setTranscriptCodingSequence(codingSequence);
+
+        Assert.assertEquals(FuncotatorUtils.getCodonChangeString(seqComp, startCodon), expected);
     }
 
     @Test
@@ -1374,24 +1852,63 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals( FuncotatorUtils.getProteinChangePosition(alignedCodingSequenceStartPos) , expected );
     }
 
-    @Test (dataProvider = "provideDataForGetProteinChangeString")
-    void testGetProteinChangeString(final String refAminoAcidSeq,
-                                    final int protChangeStartPos,
+    @Test (dataProvider = "provideDataForRenderProteinChangeString")
+    void testRenderProteinChangeString(final int protChangeStartPos,
                                     final int protChangeEndPos,
+                                    final String refAminoAcidSeq,
                                     final String altAminoAcidSeq,
                                     final String refAllele,
                                     final String altAllele,
+                                    final Locatable startCodon,
+                                    final int refAlleleStartPosition,
                                     final String expected) {
 
         final SequenceComparison seqComp = new SequenceComparison();
-        seqComp.setReferenceAminoAcidSequence(refAminoAcidSeq);
-        seqComp.setProteinChangeStartPosition(protChangeStartPos);
-        seqComp.setProteinChangeEndPosition(protChangeEndPos);
-        seqComp.setAlternateAminoAcidSequence(altAminoAcidSeq);
+
+        seqComp.setProteinChangeInfo(
+                ProteinChangeInfo.create(
+                        protChangeStartPos,
+                        protChangeEndPos,
+                        refAminoAcidSeq,
+                        altAminoAcidSeq
+                )
+        );
+
+        seqComp.setAlleleStart(refAlleleStartPosition);
+
         seqComp.setReferenceAllele(refAllele);
         seqComp.setAlternateAllele(altAllele);
+        if (startCodon != null) {
+            seqComp.setContig(startCodon.getContig());
+        }
+        else {
+            seqComp.setContig("TESTCONTIG");
+        }
 
-        Assert.assertEquals( FuncotatorUtils.getProteinChangeString(seqComp), expected );
+        Assert.assertEquals( FuncotatorUtils.renderProteinChangeString(seqComp, startCodon), expected );
+    }
+
+    @Test(dataProvider = "provideForTestGetCodingSequenceChangeString")
+    void testGetCodingSequenceChangeString(final int codingSequenceAlleleStart,
+                                           final String referenceAllele,
+                                           final String alternateAllele,
+                                           final Strand strand,
+                                           final String expected) {
+
+        Assert.assertEquals( FuncotatorUtils.getCodingSequenceChangeString(codingSequenceAlleleStart, referenceAllele, alternateAllele, strand, null, null, null), expected );
+    }
+
+    @Test(dataProvider = "provideForTestIsIndelBetweenCodons")
+    void testIsIndelBetweenCodons(final int codingSequenceAlleleStart,
+                                  final int alignedCodingSequenceAlleleStart,
+                                  final String refAllele,
+                                  final Strand strand,
+                                  final boolean expected) {
+
+        Assert.assertEquals(
+                FuncotatorUtils.isIndelBetweenCodons(codingSequenceAlleleStart, alignedCodingSequenceAlleleStart, refAllele, strand),
+                expected
+        );
     }
 
     @Test (dataProvider = "provideDataForGetProteinChangeEndPosition")
@@ -1417,9 +1934,24 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
                                   final Allele refAllele,
                                   final int codingSequenceRefAlleleStart,
                                   final int alignedRefAlleleStart,
+                                  final Strand strand,
                                   final String expected) {
+
+        // Make a Dummy Locatable for Logging:
+        final Locatable dummyLocatableForLogging = new SimpleInterval("ReferenceSnippet", 1, 100);
+
+        final Allele altAllele = Allele.create(Utils.dupChar('A', refAllele.length()));
+
         Assert.assertEquals(
-                FuncotatorUtils.getAlignedRefAllele(referenceSnippet,referencePadding,refAllele,codingSequenceRefAlleleStart,alignedRefAlleleStart),
+                FuncotatorUtils.getAlignedRefAllele(
+                        new StrandCorrectedReferenceBases(referenceSnippet, strand),
+                        referencePadding,
+                        refAllele,
+                        altAllele,
+                        codingSequenceRefAlleleStart,
+                        alignedRefAlleleStart,
+                        strand,
+                        dummyLocatableForLogging),
                 expected
         );
     }
@@ -1470,12 +2002,20 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
     }
 
     @Test (dataProvider = "provideDataForTestGetBasesInWindowAroundReferenceAllele")
-    void testGetBasesInWindowAroundReferenceAllele(final Allele refAllele, final Allele altAllele, final Strand strand,
-                                                   final int referenceWindow, final ReferenceContext referenceContext,
+    void testGetBasesInWindowAroundReferenceAllele(final Allele refAllele,
+                                                   final ReferenceContext referenceContext,
+                                                   final Strand strand,
+                                                   final int referenceWindow,
                                                    final String expected) {
 
-        final String basesInWindow = FuncotatorUtils.getBasesInWindowAroundReferenceAllele(refAllele, altAllele, strand, referenceWindow, referenceContext);
-        Assert.assertEquals( basesInWindow, expected );
+        final StrandCorrectedReferenceBases basesInWindow = FuncotatorUtils.getBasesInWindowAroundReferenceAllele(refAllele, referenceContext, strand, referenceWindow);
+        Assert.assertEquals( basesInWindow, new StrandCorrectedReferenceBases(expected, strand) );
+    }
+
+    @Test(dataProvider = "provideDataForTestCreateReferenceSnippet")
+    void testCreateReferenceSnippet(final Allele refAllele, final Allele altAllele, final ReferenceContext reference, final Strand strand, final String expected ) {
+        final int referenceWindow = 10;
+        Assert.assertEquals( FuncotatorUtils.createReferenceSnippet(refAllele, altAllele, reference, strand, referenceWindow), new StrandCorrectedReferenceBases(expected, strand));
     }
 
     @Test(enabled = false)

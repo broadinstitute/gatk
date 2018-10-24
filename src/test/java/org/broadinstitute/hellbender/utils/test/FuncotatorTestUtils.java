@@ -1,15 +1,15 @@
 package org.broadinstitute.hellbender.utils.test;
 
 import com.google.common.annotations.VisibleForTesting;
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.annotation.Strand;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.FeatureInput;
-import org.broadinstitute.hellbender.engine.FeatureManager;
+import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.testutils.FuncotatorReferenceTestUtils;
 import org.broadinstitute.hellbender.tools.funcotator.DataSourceFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
@@ -18,16 +18,17 @@ import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.Gencod
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
+import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 public class FuncotatorTestUtils {
     private FuncotatorTestUtils() {}
-
 
     /**
      * Since funcotation factories need an instance of {@link FeatureContext} to funcotate, this convenience method can
@@ -184,5 +185,33 @@ public class FuncotatorTestUtils {
         );
 
         return variantContextBuilder.make();
+    }
+
+    /**
+     * Create a {@link ReferenceContext} object from a sequence of bases and a location.
+     * @param sequence {@link String} of bases from which to create the {@link ReferenceContext} data.
+     * @param contigName {@link String} for the contig name for the {@link ReferenceContext} location.
+     * @param refStartPos Start postiion (1-based, inclusive) for the location of the {@link ReferenceContext}.
+     * @param refEndPos End postiion (1-based, inclusive) for the location of the {@link ReferenceContext}.
+     * @return A {@link ReferenceContext} containing the given {@code sequence} at the given location.
+     */
+    public static ReferenceContext createReferenceContextFromBasesAndLocation(final String sequence,
+                                                                              final String contigName,
+                                                                              final int refStartPos,
+                                                                              final int refEndPos) {
+        // Create an in-memory ReferenceContext:
+        final SimpleInterval wholeReferenceInterval = new SimpleInterval( contigName, 1, sequence.length() );
+
+        return new ReferenceContext(
+                new ReferenceMemorySource(
+                        new ReferenceBases(sequence.getBytes(), wholeReferenceInterval),
+                        new SAMSequenceDictionary(
+                                Collections.singletonList(
+                                        new SAMSequenceRecord(contigName, sequence.length())
+                                )
+                        )
+                ),
+                new SimpleInterval( contigName, refStartPos, refEndPos )
+        );
     }
 }

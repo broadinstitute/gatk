@@ -17,8 +17,8 @@ import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.broadinstitute.hellbender.testutils.FuncotatorReferenceTestUtils;
+import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationBuilder;
@@ -29,9 +29,6 @@ import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfCodec;
 import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfFeature;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.test.FuncotatorTestUtils;
-import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
-import org.broadinstitute.hellbender.testutils.BaseTest;
-import org.broadinstitute.hellbender.testutils.FuncotatorReferenceTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -44,16 +41,7 @@ import java.util.stream.Collectors;
 
 import static org.broadinstitute.hellbender.tools.funcotator.FuncotatorUtils.extractFuncotatorKeysFromHeaderDescription;
 
-public class FuncotationMapUnitTest extends BaseTest{
-
-    private static final String DS_PIK3CA_DIR = GATKBaseTest.largeFileTestDir + "funcotator/small_ds_pik3ca/";
-    private static final String DS_PIK3CA_HG19_GENCODE_FASTA = DS_PIK3CA_DIR + "gencode_pik3ca/hg19/gencode.v19.PIK3CA_transcript.fasta";
-    private static final String DS_PIK3CA_HG19_GENCODE_GTF = DS_PIK3CA_DIR + "gencode_pik3ca/hg19/gencode.v19.PIK3CA.gtf";
-    private static final String DS_MUC16_DIR = GATKBaseTest.largeFileTestDir + "funcotator/small_ds_muc16/";
-    private static final String DS_MUC16_HG19_GENCODE_FASTA = DS_MUC16_DIR + "gencode_muc16/hg19/gencode.v19.MUC16_transcript.fasta";
-    private static final String DS_MUC16_HG19_GENCODE_GTF = DS_MUC16_DIR + "gencode_muc16/hg19/gencode.v19.MUC16.gtf";
-    private static final FeatureReader<GencodeGtfFeature> pik3caFeatureReader = AbstractFeatureReader.getFeatureReader( FuncotatorTestConstants.PIK3CA_GENCODE_ANNOTATIONS_FILE_NAME, new GencodeGtfCodec() );
-    private static final FeatureReader<GencodeGtfFeature> muc16FeatureReader = AbstractFeatureReader.getFeatureReader(FuncotatorTestConstants.MUC16_GENCODE_ANNOTATIONS_FILE_NAME, new GencodeGtfCodec() );
+public class FuncotationMapUnitTest extends GATKBaseTest {
 
     private SortedMap<String, String> createSortedMap(final List<String> mapElements) {
         if ( mapElements.size() % 2 != 0) {
@@ -359,34 +347,34 @@ public class FuncotationMapUnitTest extends BaseTest{
         return new Object[][] {
                 {"chr3", 178916538, 178916538, "G", "C", FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(),
                         ReferenceDataSource.of( IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref())),
-                        pik3caFeatureReader, DS_PIK3CA_HG19_GENCODE_FASTA, DS_PIK3CA_HG19_GENCODE_GTF,
+                        FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19,
                         TranscriptSelectionMode.ALL, Collections.singletonList("ENST00000263967.3")
                 },{"chr3", 178916538, 178916538, "G", "C", FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(),
                         ReferenceDataSource.of( IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref())),
-                        pik3caFeatureReader, DS_PIK3CA_HG19_GENCODE_FASTA, DS_PIK3CA_HG19_GENCODE_GTF,
+                FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19,
                         TranscriptSelectionMode.CANONICAL, Collections.singletonList("ENST00000263967.3")
                 },{"chr19", 8994200, 8994200, "G", "C", FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(),
                         ReferenceDataSource.of( IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref())),
-                        muc16FeatureReader, DS_MUC16_HG19_GENCODE_FASTA, DS_MUC16_HG19_GENCODE_GTF,
+                FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19,
                         TranscriptSelectionMode.ALL, Arrays.asList("ENST00000397910.4", "ENST00000380951.5")
 
                 // Next one tests where we would be in a gene with more than one basic transcript, but variant only overlaps one.  And we still ask for all,
                 //   but since one is IGR, it will never get added the the FuncotationMap.
                 }, {"chr19", 9014550, 9014550, "T", "A", FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(),
                         ReferenceDataSource.of(IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref())),
-                        muc16FeatureReader, DS_MUC16_HG19_GENCODE_FASTA, DS_MUC16_HG19_GENCODE_GTF,
+                FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19,
                         TranscriptSelectionMode.ALL, Collections.singletonList("ENST00000397910.4")
 
                 // Next one tests where we would be in a gene with more than one basic transcript, variant overlaps both, but we are in canonical mode.
                 },{"chr19", 8994200, 8994200, "G", "C", FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(),
                         ReferenceDataSource.of( IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref())),
-                        muc16FeatureReader, DS_MUC16_HG19_GENCODE_FASTA, DS_MUC16_HG19_GENCODE_GTF,
+                FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19,
                         TranscriptSelectionMode.CANONICAL, Collections.singletonList("ENST00000397910.4")
 
                 // Next one tests where we would be in a gene with more than one basic transcript, variant overlaps both, but we are in effect mode.
                 },{"chr19", 8994200, 8994200, "G", "C", FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(),
                         ReferenceDataSource.of( IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref())),
-                        muc16FeatureReader, DS_MUC16_HG19_GENCODE_FASTA, DS_MUC16_HG19_GENCODE_GTF,
+                FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19,
                         TranscriptSelectionMode.BEST_EFFECT, Collections.singletonList("ENST00000397910.4")
                 }
         };
@@ -399,22 +387,26 @@ public class FuncotationMapUnitTest extends BaseTest{
                                                final String alt,
                                                final String referenceFileName,
                                                final ReferenceDataSource referenceDataSource,
-                                               final FeatureReader<GencodeGtfFeature> featureReader,
                                                final String transcriptFastaFile,
                                                final String transcriptGtfFile,
                                                final TranscriptSelectionMode transcriptSelectionMode,
                                                final List<String> gtTranscripts) {
 
-        final List<GencodeFuncotation> gencodeFuncotations = createGencodeFuncotations(contig, start, end, ref, alt, referenceFileName, referenceDataSource, featureReader, transcriptFastaFile, transcriptGtfFile, transcriptSelectionMode);
+        try (final FeatureReader<GencodeGtfFeature> gencodeFeatureReader = AbstractFeatureReader.getFeatureReader( FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19, new GencodeGtfCodec() ) ) {
+            final List<GencodeFuncotation> gencodeFuncotations = createGencodeFuncotations(contig, start, end, ref, alt, referenceFileName, referenceDataSource, gencodeFeatureReader, transcriptFastaFile, transcriptGtfFile, transcriptSelectionMode);
 
-        final FuncotationMap funcotationMap = FuncotationMap.createFromGencodeFuncotations(gencodeFuncotations);
+            final FuncotationMap funcotationMap = FuncotationMap.createFromGencodeFuncotations(gencodeFuncotations);
 
-        Assert.assertEquals(funcotationMap.getTranscriptList(), gtTranscripts);
-        Assert.assertTrue(funcotationMap.getTranscriptList().stream().allMatch(k -> funcotationMap.get(k).size() == 1));
-        Assert.assertTrue(funcotationMap.getTranscriptList().stream()
-                .noneMatch(k -> ((GencodeFuncotation) funcotationMap.get(k).get(0)).getVariantClassification().equals(GencodeFuncotation.VariantClassification.IGR) ));
-        Assert.assertTrue(funcotationMap.getTranscriptList().stream()
-                .noneMatch(k -> ((GencodeFuncotation) funcotationMap.get(k).get(0)).getVariantClassification().equals(GencodeFuncotation.VariantClassification.COULD_NOT_DETERMINE) ));
+            Assert.assertEquals(funcotationMap.getTranscriptList(), gtTranscripts);
+            Assert.assertTrue(funcotationMap.getTranscriptList().stream().allMatch(k -> funcotationMap.get(k).size() == 1));
+            Assert.assertTrue(funcotationMap.getTranscriptList().stream()
+                    .noneMatch(k -> ((GencodeFuncotation) funcotationMap.get(k).get(0)).getVariantClassification().equals(GencodeFuncotation.VariantClassification.IGR)));
+            Assert.assertTrue(funcotationMap.getTranscriptList().stream()
+                    .noneMatch(k -> ((GencodeFuncotation) funcotationMap.get(k).get(0)).getVariantClassification().equals(GencodeFuncotation.VariantClassification.COULD_NOT_DETERMINE)));
+        }
+        catch ( final IOException ex ) {
+            throw new GATKException("Could not close gencodeFeatureReader!", ex);
+        }
     }
 
     private static List<GencodeFuncotation> createGencodeFuncotations(final String contig, final int start, final int end, final String ref, final String alt, final String referenceFileName, final ReferenceDataSource referenceDataSource, final FeatureReader<GencodeGtfFeature> featureReader, final String transcriptFastaFile, final String transcriptGtfFile, final TranscriptSelectionMode transcriptSelectionMode) {
@@ -519,7 +511,7 @@ public class FuncotationMapUnitTest extends BaseTest{
         return new Object[][]{
                 {"chr3", 178916538, 178916538, "G", "C", FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(),
                         ReferenceDataSource.of( IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref())),
-                        pik3caFeatureReader, DS_PIK3CA_HG19_GENCODE_FASTA, DS_PIK3CA_HG19_GENCODE_GTF,
+                        FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19,
                         TranscriptSelectionMode.ALL, Collections.singletonList("ENST00000263967.3"),
                         Arrays.asList(
                                 TableFuncotation.create(
@@ -543,7 +535,7 @@ public class FuncotationMapUnitTest extends BaseTest{
                         )
                 },{"chr19", 8994200, 8994200, "G", "C", FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(),
                         ReferenceDataSource.of( IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref())),
-                        muc16FeatureReader, DS_MUC16_HG19_GENCODE_FASTA, DS_MUC16_HG19_GENCODE_GTF,
+                FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19,
                         TranscriptSelectionMode.BEST_EFFECT, Collections.singletonList("ENST00000397910.4"),
                         Arrays.asList(
                         TableFuncotation.create(
@@ -567,7 +559,7 @@ public class FuncotationMapUnitTest extends BaseTest{
                 )
                 }, {"chr19", 8994200, 8994200, "G", "C", FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(),
                         ReferenceDataSource.of( IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref())),
-                        muc16FeatureReader, DS_MUC16_HG19_GENCODE_FASTA, DS_MUC16_HG19_GENCODE_GTF,
+                        FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19,
                         TranscriptSelectionMode.ALL, Arrays.asList("ENST00000397910.4", "ENST00000380951.5"),
                         Arrays.asList(
                                 TableFuncotation.create(
@@ -604,33 +596,38 @@ public class FuncotationMapUnitTest extends BaseTest{
                               final String alt,
                               final String referenceFileName,
                               final ReferenceDataSource referenceDataSource,
-                              final FeatureReader<GencodeGtfFeature> featureReader,
                               final String transcriptFastaFile,
                               final String transcriptGtfFile,
                               final TranscriptSelectionMode transcriptSelectionMode,
                               final List<String> gtTranscripts, final List<Funcotation> funcotationsToAdd){
-        final List<GencodeFuncotation> gencodeFuncotations = createGencodeFuncotations(contig, start, end, ref, alt, referenceFileName, referenceDataSource, featureReader, transcriptFastaFile, transcriptGtfFile, transcriptSelectionMode);
-        final FuncotationMap funcotationMap = FuncotationMap.createFromGencodeFuncotations(gencodeFuncotations);
 
-        // Let's make sure that the gtTranscripts match what is in the map, even if this is tested elsewhere
-        Assert.assertEquals(funcotationMap.getTranscriptList(), gtTranscripts);
+        try (final FeatureReader<GencodeGtfFeature> gencodeFeatureReader = AbstractFeatureReader.getFeatureReader( FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19, new GencodeGtfCodec() )) {
 
-        for (final String transcriptId : funcotationMap.getTranscriptList()) {
-            funcotationMap.add(transcriptId, funcotationsToAdd);
-        }
+            final List<GencodeFuncotation> gencodeFuncotations = createGencodeFuncotations(contig, start, end, ref, alt, referenceFileName, referenceDataSource, gencodeFeatureReader, transcriptFastaFile, transcriptGtfFile, transcriptSelectionMode);
+            final FuncotationMap           funcotationMap      = FuncotationMap.createFromGencodeFuncotations(gencodeFuncotations);
 
-        for (final Funcotation funcotation : funcotationsToAdd) {
-            for (final String transcriptId : funcotationMap.getTranscriptList()) {
-                Assert.assertTrue(funcotationMap.get(transcriptId).contains(funcotation), "Missing funcotation for " + transcriptId + ":" + funcotation);
+            // Let's make sure that the gtTranscripts match what is in the map, even if this is tested elsewhere
+            Assert.assertEquals(funcotationMap.getTranscriptList(), gtTranscripts);
+
+            for ( final String transcriptId : funcotationMap.getTranscriptList() ) {
+                funcotationMap.add(transcriptId, funcotationsToAdd);
+            }
+
+            for ( final Funcotation funcotation : funcotationsToAdd ) {
+                for ( final String transcriptId : funcotationMap.getTranscriptList() ) {
+                    Assert.assertTrue(funcotationMap.get(transcriptId).contains(funcotation), "Missing funcotation for " + transcriptId + ":" + funcotation);
+                }
+            }
+
+            for ( final String transcriptId : funcotationMap.getTranscriptList() ) {
+                final List<GencodeFuncotation> gencodeFuncotationList = funcotationMap.getGencodeFuncotations(transcriptId);
+                Assert.assertEquals(gencodeFuncotationList.size(), 1);
+                Assert.assertEquals(gencodeFuncotationList.get(0).getAnnotationTranscript(), transcriptId);
             }
         }
-
-        for (final String transcriptId : funcotationMap.getTranscriptList()) {
-            final List<GencodeFuncotation> gencodeFuncotationList = funcotationMap.getGencodeFuncotations(transcriptId);
-            Assert.assertEquals(gencodeFuncotationList.size(), 1);
-            Assert.assertEquals(gencodeFuncotationList.get(0).getAnnotationTranscript(), transcriptId);
+        catch (final IOException ex) {
+            throw new GATKException("Could not close gencodeFeatureReader!", ex);
         }
-
     }
 
     private static VariantContext createVariantContext(final String contig, final int start, final int end, final String ref, final String alt, final String referenceFileName) {
@@ -682,34 +679,41 @@ public class FuncotationMapUnitTest extends BaseTest{
 
     @Test(expectedExceptions = GATKException.ShouldNeverReachHereException.class, expectedExceptionsMessageRegExp = ".*a Gencode Funcotation cannot be added.*")
     public void testAddingGencodeFuncotationToFuncotationMap() {
-        // Create some gencode funcotations.  The content does not really matter here.
-        final List<Funcotation> gencodeFuncotations = createGencodeFuncotations("chr19", 8994200, 8994200, "G", "C", FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(),
-                ReferenceDataSource.of( IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref())),
-                muc16FeatureReader, DS_MUC16_HG19_GENCODE_FASTA, DS_MUC16_HG19_GENCODE_GTF,
-                TranscriptSelectionMode.ALL).stream().map(gf -> (Funcotation) gf).collect(Collectors.toList());
 
-        // Create a funcotationMap with some pre-made funcotations.  Content does not really matter.
-        final FuncotationMap funcotationMap = FuncotationMap.createNoTranscriptInfo(Arrays.asList(TableFuncotation.create(
-                        Arrays.asList("TESTFIELD1", "TESTADD1"),
-                        createFieldValuesFromNameList("E", Arrays.asList("TESTFIELD1", "TESTADD1")),
-                        Allele.create("A"),
-                        "TestDataSource5", null
-                ),
-                TableFuncotation.create(
-                        Arrays.asList("TESTFIELD2", "TESTADD2"),
-                        createFieldValuesFromNameList("F", Arrays.asList("TESTFIELD2", "TESTADD2")),
-                        Allele.create("AG"),
-                        "TestDataSource5", null
-                ),
-                TableFuncotation.create(
-                        Arrays.asList("TESTFIELD3", "TESTADD3"),
-                        createFieldValuesFromNameList("G", Arrays.asList("TESTFIELD3", "TESTADD3")),
-                        Allele.create("AT"),
-                        "TestDataSource5", null
-                )));
+        try (final FeatureReader<GencodeGtfFeature> gencodeFeatureReader = AbstractFeatureReader.getFeatureReader( FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19, new GencodeGtfCodec() ) ) {
 
-        // Attempt to add the Gencode funcotations to the funcotation map.  This should cause an exception.
-        funcotationMap.add(FuncotationMap.NO_TRANSCRIPT_AVAILABLE_KEY, gencodeFuncotations);
+            // Create some gencode funcotations.  The content does not really matter here.
+            final List<Funcotation> gencodeFuncotations = createGencodeFuncotations("chr19", 8994200, 8994200, "G", "C", FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(),
+                    ReferenceDataSource.of(IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref())),
+                    gencodeFeatureReader, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19,
+                    TranscriptSelectionMode.ALL).stream().map(gf -> (Funcotation) gf).collect(Collectors.toList());
+
+            // Create a funcotationMap with some pre-made funcotations.  Content does not really matter.
+            final FuncotationMap funcotationMap = FuncotationMap.createNoTranscriptInfo(Arrays.asList(TableFuncotation.create(
+                    Arrays.asList("TESTFIELD1", "TESTADD1"),
+                    createFieldValuesFromNameList("E", Arrays.asList("TESTFIELD1", "TESTADD1")),
+                    Allele.create("A"),
+                    "TestDataSource5", null
+                    ),
+                    TableFuncotation.create(
+                            Arrays.asList("TESTFIELD2", "TESTADD2"),
+                            createFieldValuesFromNameList("F", Arrays.asList("TESTFIELD2", "TESTADD2")),
+                            Allele.create("AG"),
+                            "TestDataSource5", null
+                    ),
+                    TableFuncotation.create(
+                            Arrays.asList("TESTFIELD3", "TESTADD3"),
+                            createFieldValuesFromNameList("G", Arrays.asList("TESTFIELD3", "TESTADD3")),
+                            Allele.create("AT"),
+                            "TestDataSource5", null
+                    )));
+
+            // Attempt to add the Gencode funcotations to the funcotation map.  This should cause an exception.
+            funcotationMap.add(FuncotationMap.NO_TRANSCRIPT_AVAILABLE_KEY, gencodeFuncotations);
+        }
+        catch (final IOException ex) {
+            throw new GATKException("Could not close gencodeFeatureReader!", ex);
+        }
     }
 
     /**

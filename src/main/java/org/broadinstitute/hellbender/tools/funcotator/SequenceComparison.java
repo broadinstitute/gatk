@@ -55,7 +55,7 @@ public class SequenceComparison {
     private Strand strand                               = null;
 
     /**
-     * The position (1-based, inclusive in genome coordinates - relative to the start of
+     * The position (1-based, inclusive in genome coordinates relative to the start of
      * {@link SequenceComparison#contig}) of the start of the reference allele / variant.
      */
     private Integer alleleStart                          = null;
@@ -98,21 +98,6 @@ public class SequenceComparison {
     private Integer exonEndPosition                      = null;
 
     /**
-     * The start position (1-based, inclusive) of the Protein Change for the alleles in this {@link SequenceComparison}.
-     * This is computed using {@link SequenceComparison#alignedCodingSequenceAlleleStart}.
-     * See {@link FuncotatorUtils#getProteinChangePosition} for more details.
-     */
-    private Integer proteinChangeStartPosition           = null;
-
-    /**
-     * The end position (1-based, inclusive) of the Protein Change for the alleles in this {@link SequenceComparison}.
-     * This is computed by using {@link SequenceComparison#alignedCodingSequenceAlleleStart} and the length of
-     * {@link SequenceComparison#alignedCodingSequenceAlternateAllele}.
-     * See {@link FuncotatorUtils#getProteinChangeEndPosition} for more details.
-     */
-    private Integer proteinChangeEndPosition             = null;
-
-    /**
      * The {@link String} representation of the reference allele, correctly represented for the {@link Strand} on which it appears.
      */
     private String referenceAllele                      = null;
@@ -134,11 +119,6 @@ public class SequenceComparison {
      * {@link SequenceComparison#alignedCodingSequenceAlleleStart} and {@link SequenceComparison#alignedReferenceAlleleStop}.
      */
     private Integer alignedReferenceAlleleStop           = null;
-
-    /**
-     * The amino acid sequence as coded by the in-frame reference coding sequence ({@link SequenceComparison#alignedCodingSequenceReferenceAllele}.
-     */
-    private String  referenceAminoAcidSequence           = null;
 
     /**
      * The {@link String} representation of the alternate allele, correctly represented for the {@link Strand} on which it appears.
@@ -167,15 +147,15 @@ public class SequenceComparison {
     private Integer alignedAlternateAlleleStop           = null;
 
     /**
-     * The amino acid sequence as coded by the in-frame alternate coding sequence ({@link SequenceComparison#alignedCodingSequenceAlternateAllele}.
-     */
-    private String  alternateAminoAcidSequence           = null;
-
-    /**
      * The fraction of Guanine and Cytosine bases in a window of a given size around a variant.
      * The default windows size is {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationFactory#gcContentWindowSizeBases}.
      */
     private Double gcContent                             = null;
+
+    /**
+     * Container holding information on the protein change represented by this {@link SequenceComparison} object.
+     */
+    private ProteinChangeInfo proteinChangeInfo = null;
 
     // =============================================================================================================
 
@@ -187,16 +167,14 @@ public class SequenceComparison {
         return referenceBases;
     }
 
-    public void setReferenceBases(final String referenceBases) {
+    public SequenceComparison setReferenceBases(final String referenceBases) {
         this.referenceBases = referenceBases;
+        return this;
     }
 
-    public Integer getReferenceWindow() {
-        return referenceWindow;
-    }
-
-    public void setReferenceWindow(final Integer referenceWindow) {
+    public SequenceComparison setReferenceWindow(final Integer referenceWindow) {
         this.referenceWindow = referenceWindow;
+        return this;
     }
 
    /**
@@ -209,199 +187,166 @@ public class SequenceComparison {
         return transcriptCodingSequence;
     }
 
-     public void setTranscriptCodingSequence(final ReferenceSequence transcriptCodingSequence) {
+     public SequenceComparison setTranscriptCodingSequence(final ReferenceSequence transcriptCodingSequence) {
         this.transcriptCodingSequence = transcriptCodingSequence;
-    }
-
-    /**
-     * Return the {@link ReferenceSequence} containing the coding region for the transcript of this {@link SequenceComparison}.
-     * This does NOT include introns.
-     * The reference sequence is stored in the forward reading direction.
-     * For NEGATIVE strand reads, must reverse complement any bases retrieved.
-     */
-    public ReferenceSequence getReferenceCodingSequence() {
-        return referenceCodingSequence;
-    }
-
-    public void setReferenceCodingSequence(final ReferenceSequence referenceCodingSequence) {
-        this.referenceCodingSequence = referenceCodingSequence;
+         return this;
     }
 
     public String getContig() {
         return contig;
     }
 
-    public void setContig(final String contig) {
+    public SequenceComparison setContig(final String contig) {
         this.contig = contig;
+        return this;
     }
 
     public Strand getStrand() {
         return strand;
     }
 
-    public void setStrand(final Strand strand) {
+    public SequenceComparison setStrand(final Strand strand) {
 
         if (strand == Strand.NONE) {
             throw new GATKException("Cannot handle NONE strand.");
         }
 
         this.strand = strand;
+
+        return this;
     }
 
     public Integer getAlleleStart() {
         return alleleStart;
     }
 
-    public void setAlleleStart(final Integer alleleStart) {
+    public SequenceComparison setAlleleStart(final Integer alleleStart) {
         this.alleleStart = alleleStart;
+        return this;
     }
 
     public Integer getTranscriptAlleleStart() {
         return transcriptAlleleStart;
     }
 
-    public void setTranscriptAlleleStart(final Integer transcriptAlleleStart) {
+    public SequenceComparison setTranscriptAlleleStart(final Integer transcriptAlleleStart) {
         this.transcriptAlleleStart = transcriptAlleleStart;
+        return this;
     }
 
     public Integer getCodingSequenceAlleleStart() {
         return codingSequenceAlleleStart;
     }
 
-    public void setCodingSequenceAlleleStart(final Integer codingSequenceAlleleStart) {
+    public SequenceComparison setCodingSequenceAlleleStart(final Integer codingSequenceAlleleStart) {
         this.codingSequenceAlleleStart = codingSequenceAlleleStart;
+        return this;
     }
 
     public Integer getAlignedCodingSequenceAlleleStart() {
         return alignedCodingSequenceAlleleStart;
     }
 
-    public void setAlignedCodingSequenceAlleleStart(final Integer alignedCodingSequenceAlleleStart) {
+    public SequenceComparison setAlignedCodingSequenceAlleleStart(final Integer alignedCodingSequenceAlleleStart) {
         this.alignedCodingSequenceAlleleStart = alignedCodingSequenceAlleleStart;
+        return this;
     }
 
     public Integer getExonStartPosition() {
         return exonStartPosition;
     }
 
-    public void setExonStartPosition(final Integer exonStartPosition) {
-        this.exonStartPosition = exonStartPosition;
-    }
-
     public Integer getExonEndPosition() {
         return exonEndPosition;
     }
 
-    public void setExonEndPosition(final Integer exonEndPosition) {
-        this.exonEndPosition = exonEndPosition;
-    }
-
-    public void setExonPosition( final SimpleInterval exonPosition ) {
+    public SequenceComparison setExonPosition( final SimpleInterval exonPosition ) {
         this.exonStartPosition = exonPosition.getStart();
         this.exonEndPosition = exonPosition.getEnd();
-    }
 
-    public Integer getProteinChangeStartPosition() {
-        return proteinChangeStartPosition;
-    }
-
-    public void setProteinChangeStartPosition(final Integer proteinChangeStartPosition) {
-        this.proteinChangeStartPosition = proteinChangeStartPosition;
-    }
-
-    public Integer getProteinChangeEndPosition() {
-        return proteinChangeEndPosition;
-    }
-
-    public void setProteinChangeEndPosition(final Integer proteinChangeEndPosition) {
-        this.proteinChangeEndPosition = proteinChangeEndPosition;
+        return this;
     }
 
     public String getReferenceAllele() {
         return referenceAllele;
     }
 
-    public void setReferenceAllele(final String referenceAllele) {
+    public SequenceComparison setReferenceAllele(final String referenceAllele) {
         this.referenceAllele = referenceAllele;
+        return this;
     }
 
     public String getAlignedReferenceAllele() {
         return alignedReferenceAllele;
     }
 
-    public void setAlignedReferenceAllele(final String alignedReferenceAllele) {
+    public SequenceComparison setAlignedReferenceAllele(final String alignedReferenceAllele) {
         this.alignedReferenceAllele = alignedReferenceAllele;
+        return this;
     }
 
     public String getAlignedCodingSequenceReferenceAllele() {
         return alignedCodingSequenceReferenceAllele;
     }
 
-    public void setAlignedCodingSequenceReferenceAllele(final String alignedCodingSequenceReferenceAllele) {
+    public SequenceComparison setAlignedCodingSequenceReferenceAllele(final String alignedCodingSequenceReferenceAllele) {
         this.alignedCodingSequenceReferenceAllele = alignedCodingSequenceReferenceAllele;
+        return this;
     }
 
     public Integer getAlignedReferenceAlleleStop() {
         return alignedReferenceAlleleStop;
     }
 
-    public void setAlignedReferenceAlleleStop(final Integer alignedReferenceAlleleStop) {
+    public SequenceComparison setAlignedReferenceAlleleStop(final Integer alignedReferenceAlleleStop) {
         this.alignedReferenceAlleleStop = alignedReferenceAlleleStop;
-    }
-
-    public String getReferenceAminoAcidSequence() {
-        return referenceAminoAcidSequence;
-    }
-
-    public void setReferenceAminoAcidSequence(final String referenceAminoAcidSequence) {
-        this.referenceAminoAcidSequence = referenceAminoAcidSequence;
+        return this;
     }
 
     public String getAlternateAllele() {
         return alternateAllele;
     }
 
-    public void setAlternateAllele(final String alternateAllele) {
+    public SequenceComparison setAlternateAllele(final String alternateAllele) {
         this.alternateAllele = alternateAllele;
+        return this;
     }
 
     public String getAlignedAlternateAllele() {
         return alignedAlternateAllele;
     }
 
-    public void setAlignedAlternateAllele(final String alignedAlternateAllele) {
+    public SequenceComparison setAlignedAlternateAllele(final String alignedAlternateAllele) {
         this.alignedAlternateAllele = alignedAlternateAllele;
+        return this;
     }
 
     public String getAlignedCodingSequenceAlternateAllele() {
         return alignedCodingSequenceAlternateAllele;
     }
 
-    public void setAlignedCodingSequenceAlternateAllele(final String alignedCodingSequenceAlternateAllele) {
+    public SequenceComparison setAlignedCodingSequenceAlternateAllele(final String alignedCodingSequenceAlternateAllele) {
         this.alignedCodingSequenceAlternateAllele = alignedCodingSequenceAlternateAllele;
+        return this;
     }
 
-    public Integer getAlignedAlternateAlleleStop() {
-        return alignedAlternateAlleleStop;
-    }
-
-    public void setAlignedAlternateAlleleStop(final Integer alignedAlternateAlleleStop) {
+    public SequenceComparison setAlignedAlternateAlleleStop(final Integer alignedAlternateAlleleStop) {
         this.alignedAlternateAlleleStop = alignedAlternateAlleleStop;
-    }
-
-    public String getAlternateAminoAcidSequence() {
-        return alternateAminoAcidSequence;
-    }
-
-    public void setAlternateAminoAcidSequence(final String alternateAminoAcidSequence) {
-        this.alternateAminoAcidSequence = alternateAminoAcidSequence;
+        return this;
     }
 
     public Double getGcContent() {
         return gcContent;
     }
 
-    public void setGcContent(final Double gcContent) {
+    public SequenceComparison setGcContent(final Double gcContent) {
         this.gcContent = gcContent;
+        return this;
+    }
+
+    public SequenceComparison setProteinChangeInfo(final ProteinChangeInfo p) { proteinChangeInfo = p; return this;}
+
+    public ProteinChangeInfo getProteinChangeInfo() {
+        return proteinChangeInfo;
     }
 }

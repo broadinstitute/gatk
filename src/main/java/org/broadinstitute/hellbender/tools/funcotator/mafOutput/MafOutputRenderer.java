@@ -370,7 +370,7 @@ public class MafOutputRenderer extends OutputRenderer {
         // Merge our output maps together:
         outputMap.putAll(extraFieldOutputMap);
 
-        // Now translate fields to the field names that MAF likes:
+        // Now translate fields/values to the field names/values that MAF likes:
         final LinkedHashMap<String, String> mafCompliantMap = replaceFuncotationValuesWithMafCompliantValues(outputMap);
 
         // Remove any fields that are excluded and sanitize any field values.
