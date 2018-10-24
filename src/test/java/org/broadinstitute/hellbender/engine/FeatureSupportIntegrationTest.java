@@ -22,7 +22,7 @@ public final class FeatureSupportIntegrationTest extends CommandLineProgramTest 
         IntegrationTestSpec testSpec = new IntegrationTestSpec(
                 " -R " + hg19MiniReference +
                 " -I " + FEATURE_INTEGRATION_TEST_DIRECTORY + "reads_data_source_test1.bam" +
-                " -V " + "TestFeatures:" + FEATURE_INTEGRATION_TEST_DIRECTORY + "feature_data_source_test.vcf" +
+                " -V:TestFeatures " + FEATURE_INTEGRATION_TEST_DIRECTORY + "feature_data_source_test.vcf" +
                 " --groupVariantsBySource" +
                 " -O %s",
                 Arrays.asList(FEATURE_INTEGRATION_TEST_DIRECTORY + "expected_testFeatureSupportUsingVCF_output.txt")

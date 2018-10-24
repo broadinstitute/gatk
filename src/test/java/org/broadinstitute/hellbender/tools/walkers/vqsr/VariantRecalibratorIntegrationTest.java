@@ -53,12 +53,12 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
                     "--variant",
                     getLargeVQSRTestDataDir() + "phase1.projectConsensus.chr20.1M-10M.raw.snps.vcf",
                     "-L","20:1,000,000-10,000,000",
-                    "--resource",
-                    "known,known=true,prior=10.0:" + getLargeVQSRTestDataDir() + "dbsnp_132_b37.leftAligned.20.1M-10M.vcf",
-                    "--resource",
-                    "truth_training1,truth=true,training=true,prior=15.0:" + getLargeVQSRTestDataDir() + "sites_r27_nr.b37_fwd.20.1M-10M.vcf",
-                    "--resource",
-                    "truth_training2,training=true,truth=true,prior=12.0:" + getLargeVQSRTestDataDir() + "Omni25_sites_1525_samples.b37.20.1M-10M.vcf",
+                    "--resource:known,known=true,prior=10.0",
+                        getLargeVQSRTestDataDir() + "dbsnp_132_b37.leftAligned.20.1M-10M.vcf",
+                    "--resource:truth_training1,truth=true,training=true,prior=15.0",
+                        getLargeVQSRTestDataDir() + "sites_r27_nr.b37_fwd.20.1M-10M.vcf",
+                    "--resource:truth_training2,training=true,truth=true,prior=12.0",
+                        getLargeVQSRTestDataDir() + "Omni25_sites_1525_samples.b37.20.1M-10M.vcf",
                     "-an", "QD", "-an", "HaplotypeScore", "-an", "HRun",
                     "--trust-all-polymorphic", // for speed
                     "-mode", "SNP",
@@ -168,8 +168,8 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
         final String inputFile = getLargeVQSRTestDataDir() + "combined.phase1.chr20.raw.indels.filtered.sites.1M-10M.vcf";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                " --resource known,known=true,prior=10.0:" + getLargeVQSRTestDataDir() + "dbsnp_132_b37.leftAligned.20.1M-10M.vcf" +
-                " --resource truth_training,training=true,truth=true,prior=15.0:" + getLargeVQSRTestDataDir() + "ALL.wgs.indels_mills_devine_hg19_leftAligned_collapsed_double_hit.sites.20.1M-10M.vcf" +
+                " --resource:known,known=true,prior=10.0 " + getLargeVQSRTestDataDir() + "dbsnp_132_b37.leftAligned.20.1M-10M.vcf" +
+                " --resource:truth_training,training=true,truth=true,prior=15.0 " + getLargeVQSRTestDataDir() + "ALL.wgs.indels_mills_devine_hg19_leftAligned_collapsed_double_hit.sites.20.1M-10M.vcf" +
                 " --variant " + inputFile +
                 " -L 20:1,000,000-10,000,000" +
                 " -an QD -an ReadPosRankSum -an HaplotypeScore" +
@@ -198,9 +198,9 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
                 " --variant " + inputFile +
                 " -L 20:1,000,000-10,000,000" +
-                " --resource known,known=true,prior=10.0:" + getLargeVQSRTestDataDir() + "dbsnp_132_b37.leftAligned.20.1M-10M.vcf" +
-                " --resource truth_training1,truth=true,training=true,prior=15.0:" + getLargeVQSRTestDataDir() + "sites_r27_nr.b37_fwd.20.1M-10M.vcf" +
-                " --resource truth_training2,training=true,truth=true,prior=12.0:" + getLargeVQSRTestDataDir() + "Omni25_sites_1525_samples.b37.20.1M-10M.vcf" +
+                " --resource:known,known=true,prior=10.0 " + getLargeVQSRTestDataDir() + "dbsnp_132_b37.leftAligned.20.1M-10M.vcf" +
+                " --resource:truth_training1,truth=true,training=true,prior=15.0 " + getLargeVQSRTestDataDir() + "sites_r27_nr.b37_fwd.20.1M-10M.vcf" +
+                " --resource:truth_training2,training=true,truth=true,prior=12.0 " + getLargeVQSRTestDataDir() + "Omni25_sites_1525_samples.b37.20.1M-10M.vcf" +
                 " -an QD -an HaplotypeScore -an HRun" +
                 " --trust-all-polymorphic" + // for speed
                 " --output %s" +
@@ -222,9 +222,9 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
                 " --variant " + inputFile +
                         " -L 20:1,000,000-10,000,000" +
-                        " --resource known,known=true,prior=10.0:" + getLargeVQSRTestDataDir() + "dbsnp_132_b37.leftAligned.20.1M-10M.vcf" +
-                        " --resource truth_training1,truth=true,training=true,prior=15.0:" + getLargeVQSRTestDataDir() + "sites_r27_nr.b37_fwd.20.1M-10M.vcf" +
-                        " --resource truth_training2,training=true,truth=true,prior=12.0:" + getLargeVQSRTestDataDir() + "Omni25_sites_1525_samples.b37.20.1M-10M.vcf" +
+                        " --resource:known,known=true,prior=10.0 " + getLargeVQSRTestDataDir() + "dbsnp_132_b37.leftAligned.20.1M-10M.vcf" +
+                        " --resource:truth_training1,truth=true,training=true,prior=15.0 " + getLargeVQSRTestDataDir() + "sites_r27_nr.b37_fwd.20.1M-10M.vcf" +
+                        " --resource:truth_training2,training=true,truth=true,prior=12.0 " + getLargeVQSRTestDataDir() + "Omni25_sites_1525_samples.b37.20.1M-10M.vcf" +
                         " -an QD -an HaplotypeScore -an HRun" +
                         " --trust-all-polymorphic" + // for speed
                         " --output %s" +
@@ -252,7 +252,7 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
                 " --variant " + inputFile +
                         " -L 1:110201699" +
-                        " --resource hapmap,known=false,training=true,truth=true,prior=15:" + inputFile +
+                        " --resource:hapmap,known=false,training=true,truth=true,prior=15 " + inputFile +
                         " -an FS -an ReadPosRankSum -an MQ -an MQRankSum -an QD -an SOR" +
                         " --output %s" +
                         " -tranches-file %s" +
@@ -269,7 +269,7 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
         final IntegrationTestSpec spec2 = new IntegrationTestSpec(
                 " --variant " + inputFile +
                         " -L 1:110201699" +
-                        " --resource hapmap,known=false,training=true,truth=true,prior=15:" + inputFile +
+                        " --resource:hapmap,known=false,training=true,truth=true,prior=15 " + inputFile +
                         " -an ReadPosRankSum -an MQ -an MQRankSum -an QD -an SOR -an FS" +
                         " --output %s" +
                         " -tranches-file %s" +
@@ -292,12 +292,12 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
                                 "--variant",
                                 getLargeVQSRTestDataDir() + "phase1.projectConsensus.chr20.1M-10M.raw.snps.vcf",
                                 "-L","20:1,000,000-10,000,000",
-                                "--resource",
-                                "known,known=true,prior=10.0:" + getLargeVQSRTestDataDir() + "dbsnp_132_b37.leftAligned.20.1M-10M.vcf",
-                                "--resource",
-                                "truth_training1,truth=true,training=true,prior=15.0:" + getLargeVQSRTestDataDir() + "sites_r27_nr.b37_fwd.20.1M-10M.vcf",
-                                "--resource",
-                                "truth_training2,training=true,truth=true,prior=12.0:" + getLargeVQSRTestDataDir() + "Omni25_sites_1525_samples.b37.20.1M-10M.vcf",
+                                "--resource:known,known=true,prior=10.0",
+                                getLargeVQSRTestDataDir() + "dbsnp_132_b37.leftAligned.20.1M-10M.vcf",
+                                "--resource:truth_training1,truth=true,training=true,prior=15.0",
+                                getLargeVQSRTestDataDir() + "sites_r27_nr.b37_fwd.20.1M-10M.vcf",
+                                "--resource:truth_training2,training=true,truth=true,prior=12.0",
+                                getLargeVQSRTestDataDir() + "Omni25_sites_1525_samples.b37.20.1M-10M.vcf",
                                 "-an", "QD", "-an", "HaplotypeScore", "-an", "HRun",
                                 "-trust-all-polymorphic", // for speed
                                 "-mode", "SNP",
