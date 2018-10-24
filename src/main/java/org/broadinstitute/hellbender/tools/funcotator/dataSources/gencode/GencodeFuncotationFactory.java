@@ -989,6 +989,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
             boolean foundStop = false;
 
+            // The -1 here is to account for the exclusive second argument to `String::substring`.
+            // This will allow for all potential codons to be checked here.
             for (int i = 0; (i+AminoAcid.CODON_LENGTH-1) < sequenceComparison.getAlignedCodingSequenceAlternateAllele().length(); i+=AminoAcid.CODON_LENGTH ){
                 final String codon = sequenceComparison.getAlignedCodingSequenceAlternateAllele().substring(i, i+AminoAcid.CODON_LENGTH);
                 if (FuncotatorUtils.getEukaryoticAminoAcidByCodon(codon) == AminoAcid.STOP_CODON) {
