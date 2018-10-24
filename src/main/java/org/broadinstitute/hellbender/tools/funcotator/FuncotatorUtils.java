@@ -1224,7 +1224,7 @@ public final class FuncotatorUtils {
             // Oh noes!
             // Ref allele is different from reference sequence!
             // Oh well, we should use the reference we were given anyways...
-            final String substitutedAlignedSeq = getAlternateSequence(new StrandCorrectedReferenceBases(codingSequence), refAlleleStart, refAllele, refAllele, strand);
+            final String substitutedAlignedSeq = getAlternateSequence(new StrandCorrectedReferenceBases(codingSequence, strand), refAlleleStart, refAllele, refAllele, strand);
 
             // We use the positive strand here because we have already reverse complemented the sequence in the call
             // above.
@@ -1369,10 +1369,10 @@ public final class FuncotatorUtils {
 
         // Get the bases in the correct direction:
         if ( strand == Strand.POSITIVE ) {
-            return new StrandCorrectedReferenceBases(referenceBases);
+            return new StrandCorrectedReferenceBases(referenceBases, strand);
         }
         else {
-            return new StrandCorrectedReferenceBases(ReadUtils.getBasesReverseComplement(referenceBases));
+            return new StrandCorrectedReferenceBases(ReadUtils.getBasesReverseComplement(referenceBases), strand);
         }
     }
 
@@ -2046,54 +2046,6 @@ public final class FuncotatorUtils {
                 .filter(f -> includedFields.contains(f))
                 .map(field -> FuncotatorUtils.sanitizeFuncotationFieldForVcf(funcotation.getField(field)))
                 .collect(Collectors.joining(VcfOutputRenderer.FIELD_DELIMITER));
-    }
-
-    /**
-     * Simple container class to represent bases that have been corrected for strandedness already.
-     * That is, if they would occur on {@link Strand#NEGATIVE}, they have been reverse-complemented.
-     * If they would occur on {@link Strand#POSITIVE}, they have not been altered.
-     */
-    public static class StrandCorrectedReferenceBases {
-
-        private final String strandCorrectedReferenceBases;
-
-        public StrandCorrectedReferenceBases(final String bases) {
-            strandCorrectedReferenceBases = bases;
-        }
-
-        public StrandCorrectedReferenceBases(final byte[] bases) {
-            strandCorrectedReferenceBases = new String(bases);
-        }
-
-        public String getBaseString() {
-            return strandCorrectedReferenceBases;
-        }
-
-        public byte[] getBases() {
-            return strandCorrectedReferenceBases.getBytes();
-        }
-
-        @Override
-        public String toString() {
-            return "StrandCorrectedReferenceBases{" +
-                    strandCorrectedReferenceBases +
-                    '}';
-        }
-
-        @Override
-        public boolean equals(final Object o) {
-            if ( this == o ) return true;
-            if ( o == null || getClass() != o.getClass() ) return false;
-
-            final StrandCorrectedReferenceBases that = (StrandCorrectedReferenceBases) o;
-
-            return strandCorrectedReferenceBases != null ? strandCorrectedReferenceBases.equals(that.strandCorrectedReferenceBases) : that.strandCorrectedReferenceBases == null;
-        }
-
-        @Override
-        public int hashCode() {
-            return strandCorrectedReferenceBases != null ? strandCorrectedReferenceBases.hashCode() : 0;
-        }
     }
 }
 

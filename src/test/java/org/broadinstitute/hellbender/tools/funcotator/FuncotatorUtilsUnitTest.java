@@ -1728,7 +1728,7 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "provideDataForGetAlternateSequence")
     void testGetAlternateSequence(final String refCodingSeq, final int startPos, final Allele refAllele, final Allele altAllele, final String expected) {
-        Assert.assertEquals(FuncotatorUtils.getAlternateSequence(new FuncotatorUtils.StrandCorrectedReferenceBases(refCodingSeq), startPos, refAllele, altAllele, Strand.POSITIVE), expected);
+        Assert.assertEquals(FuncotatorUtils.getAlternateSequence(new StrandCorrectedReferenceBases(refCodingSeq,Strand.POSITIVE), startPos, refAllele, altAllele, Strand.POSITIVE), expected);
     }
 
     @Test(dataProvider = "provideDataForGetEukaryoticAminoAcidByCodon")
@@ -1944,7 +1944,7 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
 
         Assert.assertEquals(
                 FuncotatorUtils.getAlignedRefAllele(
-                        new FuncotatorUtils.StrandCorrectedReferenceBases(referenceSnippet),
+                        new StrandCorrectedReferenceBases(referenceSnippet, strand),
                         referencePadding,
                         refAllele,
                         altAllele,
@@ -2008,14 +2008,14 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
                                                    final int referenceWindow,
                                                    final String expected) {
 
-        final FuncotatorUtils.StrandCorrectedReferenceBases basesInWindow = FuncotatorUtils.getBasesInWindowAroundReferenceAllele(refAllele, referenceContext, strand, referenceWindow);
-        Assert.assertEquals( basesInWindow, new FuncotatorUtils.StrandCorrectedReferenceBases(expected) );
+        final StrandCorrectedReferenceBases basesInWindow = FuncotatorUtils.getBasesInWindowAroundReferenceAllele(refAllele, referenceContext, strand, referenceWindow);
+        Assert.assertEquals( basesInWindow, new StrandCorrectedReferenceBases(expected, strand) );
     }
 
     @Test(dataProvider = "provideDataForTestCreateReferenceSnippet")
     void testCreateReferenceSnippet(final Allele refAllele, final Allele altAllele, final ReferenceContext reference, final Strand strand, final String expected ) {
         final int referenceWindow = 10;
-        Assert.assertEquals( FuncotatorUtils.createReferenceSnippet(refAllele, altAllele, reference, strand, referenceWindow), new FuncotatorUtils.StrandCorrectedReferenceBases(expected));
+        Assert.assertEquals( FuncotatorUtils.createReferenceSnippet(refAllele, altAllele, reference, strand, referenceWindow), new StrandCorrectedReferenceBases(expected, strand));
     }
 
     @Test(enabled = false)

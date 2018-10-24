@@ -763,7 +763,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         );
 
         // Get the reference bases for our current variant:
-        final FuncotatorUtils.StrandCorrectedReferenceBases referenceBases = FuncotatorUtils.createReferenceSnippet(variant.getReference(), altAllele, reference, exon.getGenomicStrand(), referenceWindow);
+        final StrandCorrectedReferenceBases referenceBases = FuncotatorUtils.createReferenceSnippet(variant.getReference(), altAllele, reference, exon.getGenomicStrand(), referenceWindow);
 
         // Set the reference context with the bases from the sequence comparison
         // NOTE: The reference context is ALWAYS from the + strand, so we need to reverse our bases back in the - case:
@@ -1197,8 +1197,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         // Get the strand-corrected alleles from the inputs.
         // Also get the reference sequence for the variant region.
         // (spanning the entire length of both the reference and the variant, regardless of which is longer).
-        final Allele                                        strandCorrectedAltAllele = FuncotatorUtils.getStrandCorrectedAllele(altAllele, strand);
-        final FuncotatorUtils.StrandCorrectedReferenceBases referenceBases           = FuncotatorUtils.createReferenceSnippet(variant.getReference(), altAllele, reference, strand, referenceWindow);
+        final Allele                        strandCorrectedAltAllele = FuncotatorUtils.getStrandCorrectedAllele(altAllele, strand);
+        final StrandCorrectedReferenceBases referenceBases           = FuncotatorUtils.createReferenceSnippet(variant.getReference(), altAllele, reference, strand, referenceWindow);
 
         // Set our reference sequence in the Gencode Funcotation Builder:
         // NOTE: The reference context is ALWAYS from the + strand, so we need to reverse our bases back in the - case:
@@ -1311,7 +1311,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
         // Set our reference sequence in the Gencode Funcotation Builder:
 
-        final FuncotatorUtils.StrandCorrectedReferenceBases referenceBases = FuncotatorUtils.createReferenceSnippet(variant.getReference(), altAllele, reference, transcript.getGenomicStrand(), referenceWindow);
+        final StrandCorrectedReferenceBases referenceBases = FuncotatorUtils.createReferenceSnippet(variant.getReference(), altAllele, reference, transcript.getGenomicStrand(), referenceWindow);
 
         // NOTE: The reference context is ALWAYS from the + strand, so we need to reverse our bases back in the - case:
         if ( transcript.getGenomicStrand() == Strand.POSITIVE ) {
@@ -1528,9 +1528,9 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         // Get the strand-corrected alleles from the inputs.
         // Also get the reference sequence for the variant region.
         // (spanning the entire length of both the reference and the variant, regardless of which is longer).
-        final Allele                                        refAllele      = FuncotatorUtils.getStrandCorrectedAllele(variant.getReference(), transcript.getGenomicStrand());
-        final Allele                                        altAllele      = FuncotatorUtils.getStrandCorrectedAllele(alternateAllele, transcript.getGenomicStrand());
-        final FuncotatorUtils.StrandCorrectedReferenceBases referenceBases = FuncotatorUtils.createReferenceSnippet(variant.getReference(), alternateAllele, reference, transcript.getGenomicStrand(), referenceWindow);
+        final Allele                        refAllele      = FuncotatorUtils.getStrandCorrectedAllele(variant.getReference(), transcript.getGenomicStrand());
+        final Allele                        altAllele      = FuncotatorUtils.getStrandCorrectedAllele(alternateAllele, transcript.getGenomicStrand());
+        final StrandCorrectedReferenceBases referenceBases = FuncotatorUtils.createReferenceSnippet(variant.getReference(), alternateAllele, reference, transcript.getGenomicStrand(), referenceWindow);
 
         // Set our reference sequence in the SequenceComparison:
         sequenceComparison.setReferenceWindow(referenceWindow);
@@ -1599,7 +1599,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         final int alignedRefAlleleStartPos = sequenceComparison.getCodingSequenceAlleleStart() - sequenceComparison.getAlignedCodingSequenceAlleleStart() + 1;
         sequenceComparison.setAlignedAlternateAllele(
                 FuncotatorUtils.getAlternateSequence(
-                        new FuncotatorUtils.StrandCorrectedReferenceBases(sequenceComparison.getAlignedReferenceAllele()),
+                        new StrandCorrectedReferenceBases(sequenceComparison.getAlignedReferenceAllele(), transcript.getGenomicStrand()),
                         alignedRefAlleleStartPos,
                         refAllele,
                         altAllele,
@@ -1656,7 +1656,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                 // Get the aligned coding sequence alternate allele:
                 sequenceComparison.setAlignedCodingSequenceAlternateAllele(
                         FuncotatorUtils.getAlternateSequence(
-                                new FuncotatorUtils.StrandCorrectedReferenceBases(sequenceComparison.getAlignedCodingSequenceReferenceAllele()),
+                                new StrandCorrectedReferenceBases(sequenceComparison.getAlignedCodingSequenceReferenceAllele(), transcript.getGenomicStrand()),
                                 alignedRefAlleleStartPos,
                                 refAllele,
                                 altAllele,
@@ -2072,7 +2072,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             funcotationBuilder.setNcbiBuild( ncbiBuildVersion );
         }
 
-        final FuncotatorUtils.StrandCorrectedReferenceBases referenceBases = FuncotatorUtils.getBasesInWindowAroundReferenceAllele(variant.getReference(), reference, Strand.POSITIVE, referenceWindow);
+        final StrandCorrectedReferenceBases referenceBases = FuncotatorUtils.getBasesInWindowAroundReferenceAllele(variant.getReference(), reference, Strand.POSITIVE, referenceWindow);
 
         // Set our reference context in the the FuncotatonBuilder:
         funcotationBuilder.setReferenceContext( referenceBases.getBaseString() );
