@@ -25,10 +25,10 @@ env:
   #limit gradle jvm memory and disable daemon
   - GRADLE_OPTS="-Xmx2048m -Dorg.gradle.daemon=false"
   #google cloud stuff
-  - CLOUDSDK_CORE_DISABLE_PROMPTS=1
-  - GCLOUD_HOME=$HOME/gcloud/google-cloud-sdk/bin
-  - CLOUDSDK_PYTHON_SITEPACKAGES=1
-  - GOOGLE_APPLICATION_CREDENTIALS=$TRAVIS_BUILD_DIR/servicekey.json
+  - export CLOUDSDK_CORE_DISABLE_PROMPTS=1
+  - export GCLOUD_HOME=$HOME/gcloud/google-cloud-sdk/bin
+  - export CLOUDSDK_PYTHON_SITEPACKAGES=1
+  - export GOOGLE_APPLICATION_CREDENTIALS=$TRAVIS_BUILD_DIR/servicekey.json
   #hellbender specific variables
   - HELLBENDER_TEST_INPUTS=gs://hellbender/test/resources/
   - HELLBENDER_TEST_STAGING=gs://hellbender-test-logs/staging/
