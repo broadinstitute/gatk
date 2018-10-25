@@ -1352,6 +1352,16 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             );
         }
 
+        // Set our cDNA string:
+        gencodeFuncotationBuilder.setcDnaChange(
+                FuncotatorUtils.createIntronicCDnaString(
+                        variant.getStart(),
+                        transcript.getExons(),
+                        strandCorrectedRefAllele.getBaseString(),
+                        strandCorrectedAltAllele.getBaseString()
+                )
+        );
+
         // Set our version:
         gencodeFuncotationBuilder.setVersion(version);
 
