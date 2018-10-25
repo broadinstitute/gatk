@@ -2,6 +2,8 @@ package org.broadinstitute.hellbender.testutils;
 
 import htsjdk.samtools.ValidationStringency;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
@@ -20,6 +22,10 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public final class IntegrationTestSpec {
+
+    /** Standard Logger.  */
+    protected static final Logger logger = LogManager.getLogger(IntegrationTestSpec.class);
+
     public static final String DEFAULT_TEMP_EXTENSION = ".tmp";
     public static final String DEFAULT_TEMP_PREFIX = "walktest.tmp_param";
 
@@ -204,11 +210,34 @@ public final class IntegrationTestSpec {
         final List<String> expectedLines = new XReadLines(expectedFile).readLines().stream().filter(startsWithComment.negate()).collect(Collectors.toList());
 
         //For ease of debugging, we look at the lines first and only then check their counts
+        int numUnequalLines = 0;
         final int minLen = Math.min(actualLines.size(), expectedLines.size());
         for (int i = 0; i < minLen; i++) {
-            Assert.assertEquals(actualLines.get(i).toString(), expectedLines.get(i).toString(), "Line number " + i + " (not counting comments)");
+
+            final String expectedLine = expectedLines.get(i);
+            final String actualLine = actualLines.get(i);
+
+            if ( !actualLine.equals(expectedLine) ) {
+                logger.error( "Line number " + i + " (not counting comments) expected " +
+                        expectedLine + " actual " + actualLine + '\n' +
+                        "Expected :" + expectedLine  + '\n' +
+                        "Actual   :" + actualLine  + '\n'
+                );
+                ++numUnequalLines;
+            }
         }
-        Assert.assertEquals(actualLines.size(), expectedLines.size(), "line counts");
+        final boolean sizeMatches = actualLines.size() == expectedLines.size();
+
+        // Check our error cases:
+        if ( (numUnequalLines != 0) && (!sizeMatches) ) {
+            throw new AssertionError("File sizes are unequal - actual = " + actualLines.size() + ", expected = " + expectedLines.size() + " AND detected unequal lines: " + numUnequalLines);
+        }
+        else if ( numUnequalLines != 0 ) {
+            throw new AssertionError("Detected unequal lines: " + numUnequalLines);
+        }
+        else if (!sizeMatches) {
+            throw new AssertionError("File sizes are unequal - actual = " + actualLines.size() + ", expected = " + expectedLines.size());
+        }
     }
 
 }
