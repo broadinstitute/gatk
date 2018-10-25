@@ -487,6 +487,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 
     @DataProvider
     Object[][] provideDataForCreateFuncotations() {
+
         final List<Object[]> outList = new ArrayList<>();
 
         // MUC16 SNPs / DNPs:

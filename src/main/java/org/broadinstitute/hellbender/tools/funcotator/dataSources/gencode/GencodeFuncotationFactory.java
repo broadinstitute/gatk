@@ -1220,9 +1220,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
             // Now we can check for de novo starts:
 
-            // Get our coding sequence for this region:
-            final List<Locatable> activeRegions = Collections.singletonList(utr);
-
             // Only try to get the sequence if our transcript occurs in the FASTA file:
             if ( transcriptIdMap.containsKey(transcript.getTranscriptId()) ) {
 
@@ -1233,7 +1230,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                 final String fivePrimeUtrCodingSequence =
                         getFivePrimeUtrSequenceFromTranscriptFasta( transcript.getTranscriptId(), transcriptIdMap, transcriptFastaReferenceDataSource, numExtraTrailingBases);
 
-                final int codingStartPos = FuncotatorUtils.getStartPositionInTranscript(variant, activeRegions, strand);
+                // Get our start position in our coding sequence:
+                final int codingStartPos = FuncotatorUtils.getStartPositionInTranscript(variant, transcript.getExons(), strand);
 
                 // We can use the `referenceBases` to get the alt subsequence, but we need to adjust it for indels.
                 // We make this adjustment with knowledge of how the referenceBases sequence was created in the first

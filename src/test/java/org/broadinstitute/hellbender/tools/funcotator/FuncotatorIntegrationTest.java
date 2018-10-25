@@ -34,6 +34,7 @@ import org.testng.annotations.Test;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -46,8 +47,6 @@ import static org.broadinstitute.hellbender.tools.funcotator.FuncotatorUtils.ext
  * Created by jonn on 8/29/17.
  */
 public class FuncotatorIntegrationTest extends CommandLineProgramTest {
-
-    //TODO: SUPER IMPORTANT! Add checks on the output file to make sure it's equal to an expected output file!
 
     // Temp directory in which to place output files.
     private static final File tmpOutDir;
@@ -116,7 +115,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     //==================================================================================================================
     // Disabled tests to regenerate expected outputs for integration tests:
     @Test(dataProvider = "provideForNonTrivialLargeDataValidationTest",
-            enabled = false)
+               enabled = false)
     public void regenerateExpectedOutputsForNonTrivialLargeDataValidationTest(
                                                   final String inputVcfName,
                                                   final String referencePath,
@@ -146,7 +145,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 
             // Copy the output file to our expected output area:
             try {
-                Files.copy(outputFile.toPath(), IOUtils.getPath(typeCorrectedExpectedOutputPath));
+                Files.copy(outputFile.toPath(), IOUtils.getPath(typeCorrectedExpectedOutputPath), StandardCopyOption.REPLACE_EXISTING);
             }
             catch ( final IOException ex ) {
                 throw new GATKException("Unable to copy over generated data to expected output path!", ex);
@@ -393,6 +392,12 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     public Object[][] provideForLargeDataValidationTest() {
         return new Object[][]{
                 {
+                        "0816201804HC0_R01C01.vcf",
+                        b37Reference,
+                        FuncotatorTestConstants.REFERENCE_VERSION_HG19,
+                        GERMLINE_DATASOURCES_FOLDER
+                },
+                {
                         "hg38_test_variants.vcf",
                         hg38Reference,
                         FuncotatorTestConstants.REFERENCE_VERSION_HG38,
@@ -403,12 +408,6 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                         hg38Reference,
                         FuncotatorTestConstants.REFERENCE_VERSION_HG38,
                         LARGE_DATASOURCES_FOLDER
-                },
-                {
-                        "0816201804HC0_R01C01.vcf",
-                        b37Reference,
-                        FuncotatorTestConstants.REFERENCE_VERSION_HG19,
-                        GERMLINE_DATASOURCES_FOLDER
                 },
                 {
                         FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_DATA_SET_1,
