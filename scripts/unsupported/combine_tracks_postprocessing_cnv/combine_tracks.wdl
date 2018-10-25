@@ -177,6 +177,7 @@ workflow CombineTracksWorkflow {
         File cnv_postprocessing_normal_igv_compat = IGVConvertNormal.outFile
         File cnv_postprocessing_tumor_with_tracks_filtered_seg = FilterGermlineTagged.tumor_with_germline_filtered_seg
         File cnv_postprocessing_tumor_with_tracks_filtered_merged_seg = IGVConvertMergedTumorOutput.outFile
+        File cnv_postprocessing_tumor_with_tracks_filtered_merged_seg_ms_format = MergeSegmentByAnnotation.cnv_merged_seg
         File cnv_postprocessing_tumor_with_tracks_tagged_seg = CombineTracks.germline_tagged_with_tracks_seg
         File cnv_postprocessing_tumor_acs_seg = PrototypeACSConversion.cnv_acs_conversion_seg
         File cnv_postprocessing_tumor_acs_skew = PrototypeACSConversion.cnv_acs_conversion_skew
@@ -443,7 +444,7 @@ task PrototypeACSConversion {
     String output_filename = basename(model_seg) + ".acs.seg"
     String output_skew_filename = output_filename + ".skew"
     Int? min_hets_acs_results
-    Int min_hets_acs_results_final = select_first([min_hets_acs_results,10])
+    Int min_hets_acs_results_final = select_first([min_hets_acs_results, 0])
 
     command <<<
         set -e
