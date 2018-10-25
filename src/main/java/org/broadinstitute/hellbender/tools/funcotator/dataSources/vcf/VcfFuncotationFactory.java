@@ -80,6 +80,12 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
      */
     private final static String DUPLICATE_RECORD_DELIMITER = "|";
 
+    /**
+     * The name of the additional ID field to add to VCF annotations to preserve the ID of the original (data source)
+     * variant.
+     */
+    private static final String ID_FIELD_NAME = "ID";
+
     @VisibleForTesting
     int cacheHits = 0;
     @VisibleForTesting
@@ -152,7 +158,7 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
 
         // Add in the ID field to the meta data:
         final VCFInfoHeaderLine idHeaderLine = new VCFInfoHeaderLine(
-                createFinalFieldName(name, "ID"),
+                createFinalFieldName(name, ID_FIELD_NAME),
                 VCFHeaderLineCount.A,
                 VCFHeaderLineType.String,
                 "ID of the variant from the data source creating this annotation."
@@ -231,21 +237,21 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
 
             // Get rid of any null features.
             // By this point we know the feature type is correct, so we cast it:
-            final List<VariantContext> funcotationFactoryVariants = featureList.stream().filter(f -> f != null)
+            final List<VariantContext> featureVariantList = featureList.stream().filter(f -> f != null)
                     .map(f -> (VariantContext) f).collect(Collectors.toList());
 
             // Create a map that will keep the final outputs.  Default it to default funcotations for each alt allele in the
             //  query variant.
             final Map<Allele, Funcotation> outputOrderedMap = new LinkedHashMap<>();
 
-            for ( final VariantContext funcotationFactoryVariant : funcotationFactoryVariants ) {
+            for ( final VariantContext featureVariant : featureVariantList ) {
 
-                // The funcotationFactoryVariants already overlap the query variant in position, now get which
+                // The featureVariantList already overlaps the query variant in position, now get which
                 //  match in ref/alt as well.  And make sure to handle multiallelics in both the query variant and the
                 //  funcotation factory variant.
                 // matchIndices length will always be the same as the number of alt alleles in the variant (first parameter)
-                //  Note that this is not the same length as the funcotationFactoryVariant.
-                final int[] matchIndices = GATKVariantContextUtils.matchAllelesOnly(variant, funcotationFactoryVariant);
+                //  Note that this is not the same length as the featureVariant.
+                final int[] matchIndices = GATKVariantContextUtils.matchAllelesOnly(variant, featureVariant);
 
                 for (int i = 0; i < matchIndices.length; i++) {
                     final int matchIndex = matchIndices[i];
@@ -254,12 +260,12 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
 
                         final LinkedHashMap<String, Object> annotations = new LinkedHashMap<>(supportedFieldNamesAndDefaults);
 
-                        for (final Map.Entry<String, Object> entry : funcotationFactoryVariant.getAttributes().entrySet()) {
-                            populateAnnotationMap(funcotationFactoryVariant, variant, matchIndex, annotations, entry);
+                        for (final Map.Entry<String, Object> entry : featureVariant.getAttributes().entrySet()) {
+                            populateAnnotationMap(featureVariant, variant, matchIndex, annotations, entry);
                         }
 
                         // Add the ID of the variant:
-                        annotations.put(createFinalFieldName(name, "ID"), variant.getID());
+                        annotations.put(createFinalFieldName(name, ID_FIELD_NAME), featureVariant.getID());
 
                         final TableFuncotation newFuncotation = TableFuncotation.create(annotations, queryAltAllele, name, supportedFieldMetadata);
                         outputOrderedMap.merge(queryAltAllele, newFuncotation, VcfFuncotationFactory::mergeDuplicateFuncotationFactoryVariant);
@@ -452,8 +458,8 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
         }
 
         // Add our ID to the supported fields:
-        supportedFieldNamesAndDefaults.put(createFinalFieldName(name, "ID"), "" );
-        supportedFieldNames.add(createFinalFieldName(name, "ID"));
+        supportedFieldNamesAndDefaults.put(createFinalFieldName(name, ID_FIELD_NAME), "" );
+        supportedFieldNames.add(createFinalFieldName(name, ID_FIELD_NAME));
     }
 
     @VisibleForTesting

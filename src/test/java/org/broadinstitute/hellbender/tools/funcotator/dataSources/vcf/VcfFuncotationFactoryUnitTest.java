@@ -156,7 +156,7 @@ public class VcfFuncotationFactoryUnitTest extends GATKBaseTest {
                 helpProvideForTestCreateFuncotations("3", 61662, 61662, "T", "C",
                         Collections.singletonList(
                                 TableFuncotation.create(FIELD_DEFAULT_MAP.keySet().stream().map(s -> FACTORY_NAME + "_" + s).collect(Collectors.toList()),
-                                        Arrays.asList("true", "false", "0.9744,0.02556", "false", "false", "1", "false", "true", "false", "", "false", "true", "false", "true", "true", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "73009205", "61662", "false", "false", "0", "true", "0", "false", "0.954392,0.0456075", "false", "false", "false", "SNV", "true", "0x05010000000515043e000100", "1", "false", "130", "."),
+                                        Arrays.asList("true", "false", "0.9744,0.02556", "false", "false", "1", "false", "true", "false", "", "false", "true", "false", "true", "true", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "73009205", "61662", "false", "false", "0", "true", "0", "false", "0.954392,0.0456075", "false", "false", "false", "SNV", "true", "0x05010000000515043e000100", "1", "false", "130", "rs73009205"),
                                         Allele.create("C"), FACTORY_NAME, null)
                         )
                 ),
