@@ -361,7 +361,7 @@ paste ${OUTPUT}.tmp_header2 col_data >${OUTPUT}
 
     runtime {
         docker : "ubuntu:16.04"
-        memory: select_first([mem_gb, 2000]) + " GB"
+        memory: select_first([mem_gb, 2]) + " GB"
         # Note that the space before SSD and HDD should be included.
         disks: "local-disk " + select_first([disk_space_gb, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible_attempts, 3])
