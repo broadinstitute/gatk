@@ -570,38 +570,34 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
     Object[][] provideDataForGetMitochondrialAminoAcidByCodon() {
         return new Object[][]{
                 // Bad codon values:
-                {null, false, false, false, false, false, null},
-                {"", false, false, false, false, false, null},
-                {"XQZ", false, false, false, false, false, null},
-                {null, false, false, false, false, false, null},
-                {"", false, false, false, false, false, null},
-                {"XQZ", false, false, false, false, false, null},
+                {null,  false, FuncotatorUtils.Genus.UNSPECIFIED, null},
+                {"",    false, FuncotatorUtils.Genus.UNSPECIFIED, null},
+                {"XQZ", false, FuncotatorUtils.Genus.UNSPECIFIED, null},
+                {null,  false, FuncotatorUtils.Genus.UNSPECIFIED, null},
+                {"",    false, FuncotatorUtils.Genus.UNSPECIFIED, null},
+                {"XQZ", false, FuncotatorUtils.Genus.UNSPECIFIED, null},
 
                 // In sequence (non-starting) codon values:
-                {"ATG", false, false, false, false, false,  AminoAcid.METHIONINE},
-                {"CCA", false, false, false, false, false,  AminoAcid.PROLINE},
-                {"CCC", false, false, false, false, false,  AminoAcid.PROLINE},
-                {"CCG", false, false, false, false, false,  AminoAcid.PROLINE},
-                {"CCT", false, false, false, false, false,  AminoAcid.PROLINE},
-                {"ATT", false, false, false, false, false,  AminoAcid.ISOLEUCINE},
-                {"ATA", false, false, false, false, false,  AminoAcid.METHIONINE},
-                {"AGA", false, false, false, false, false,  AminoAcid.STOP_CODON},
-                {"AGG", false, false, false, false, false,  AminoAcid.STOP_CODON},
-                {"TGA", false, false, false, false, false,  AminoAcid.TRYPTOPHAN},
+                {"ATG", false, FuncotatorUtils.Genus.UNSPECIFIED, AminoAcid.METHIONINE},
+                {"CCA", false, FuncotatorUtils.Genus.UNSPECIFIED, AminoAcid.PROLINE},
+                {"CCC", false, FuncotatorUtils.Genus.UNSPECIFIED, AminoAcid.PROLINE},
+                {"CCG", false, FuncotatorUtils.Genus.UNSPECIFIED, AminoAcid.PROLINE},
+                {"CCT", false, FuncotatorUtils.Genus.UNSPECIFIED, AminoAcid.PROLINE},
+                {"ATT", false, FuncotatorUtils.Genus.UNSPECIFIED, AminoAcid.ISOLEUCINE},
+                {"ATA", false, FuncotatorUtils.Genus.UNSPECIFIED, AminoAcid.METHIONINE},
+                {"AGA", false, FuncotatorUtils.Genus.UNSPECIFIED, AminoAcid.STOP_CODON},
+                {"AGG", false, FuncotatorUtils.Genus.UNSPECIFIED, AminoAcid.STOP_CODON},
+                {"TGA", false, FuncotatorUtils.Genus.UNSPECIFIED, AminoAcid.TRYPTOPHAN},
 
                 // Start codon special cases:
                 // Bos:
-                {"ATA", true, false, false, false, false, AminoAcid.METHIONINE},
-                // Homo:
-                {"ATA", false, true, false, false, false, AminoAcid.METHIONINE},
-                {"ATT", false, true, false, false, false, AminoAcid.METHIONINE},
-                // Mus:
-                {"ATT", false, false, true, false, false, AminoAcid.METHIONINE},
-                {"ATC", false, false, true, false, false, AminoAcid.METHIONINE},
-                // Coturnix:
-                {"GTG", false, false, false, true, false, AminoAcid.METHIONINE},
-                // Gallus:
-                {"GTG", false, false, false, false, true, AminoAcid.METHIONINE},
+                {"ATA", true, FuncotatorUtils.Genus.BOS,       AminoAcid.METHIONINE},
+                {"ATA", true, FuncotatorUtils.Genus.HOMO,      AminoAcid.METHIONINE},
+                {"ATT", true, FuncotatorUtils.Genus.HOMO,      AminoAcid.METHIONINE},
+                {"ATT", true, FuncotatorUtils.Genus.MUS,       AminoAcid.METHIONINE},
+                {"ATC", true, FuncotatorUtils.Genus.MUS,       AminoAcid.METHIONINE},
+                {"GTG", true, FuncotatorUtils.Genus.CORTURNIX, AminoAcid.METHIONINE},
+                {"GTG", true, FuncotatorUtils.Genus.GALLUS,    AminoAcid.METHIONINE},
         };
     }
 
@@ -1827,16 +1823,13 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "provideDataForGetMitochondrialAminoAcidByCodon")
     void testGetMitochondrialAminoAcidByCodon(final String codon,
-                                              final boolean isBos,
-                                              final boolean isHomo,
-                                              final boolean isMus,
-                                              final boolean isCorturnix,
-                                              final boolean isGallus,
+                                              final boolean isFirst,
+                                              final FuncotatorUtils.Genus genus,
                                               final AminoAcid expected) {
-        Assert.assertEquals(FuncotatorUtils.getMitochondrialAminoAcidByCodon(codon, isBos, isHomo, isMus, isCorturnix, isGallus), expected);
+        Assert.assertEquals(FuncotatorUtils.getMitochondrialAminoAcidByCodon(codon, isFirst, genus), expected);
 
         // Make sure to test the other case as well:
-        if ( !(isBos || isHomo || isMus || isCorturnix || isGallus ) ) {
+        if ( !isFirst || (genus == FuncotatorUtils.Genus.UNSPECIFIED) ) {
             Assert.assertEquals(FuncotatorUtils.getMitochondrialAminoAcidByCodon(codon), expected);
         }
     }

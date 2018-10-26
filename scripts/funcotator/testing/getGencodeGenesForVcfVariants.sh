@@ -28,7 +28,7 @@ MAXARGS=99
 
 ################################################################################
 
-
+# Change this path to your data sources directory:
 DATA_SOURCES_PATH=/Users/jonn/Development/funcotator_dataSources_latest
 
 GENCODE_HG19=${DATA_SOURCES_PATH}/gencode/hg19/gencode.v19.annotation.REORDERED.gtf

@@ -9,6 +9,7 @@ import htsjdk.tribble.annotation.Strand;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -47,6 +48,9 @@ public final class FuncotatorUtils {
     private static final Map<String, AminoAcid> tableByCode;
     private static final Map<String, AminoAcid> tableByLetter;
 
+    private static final Map<String, AminoAcid>              mtDifferentAaTableByCodon;
+    private static final Map<Pair<Genus, String>, AminoAcid> mtSpecialStartCodonsBySpecies;
+
     private static SAMSequenceDictionary B37_SEQUENCE_DICTIONARY = null;
 
     private static final Map<String, String> B37_To_HG19_CONTIG_NAME_MAP;
@@ -73,9 +77,27 @@ public final class FuncotatorUtils {
             }
         }
 
+        final HashMap<String, AminoAcid>              mtCodons        = new HashMap<>();
+        final HashMap<Pair<Genus, String>, AminoAcid> mtSpecialStarts = new HashMap<>();
+
+        mtCodons.put("ATA", AminoAcid.METHIONINE);
+        mtCodons.put("AGA", AminoAcid.STOP_CODON);
+        mtCodons.put("AGG", AminoAcid.STOP_CODON);
+        mtCodons.put("TGA", AminoAcid.TRYPTOPHAN);
+
+        mtSpecialStarts.put(Pair.of(Genus.BOS, "ATA"), AminoAcid.METHIONINE);
+        mtSpecialStarts.put(Pair.of(Genus.HOMO, "ATT"), AminoAcid.METHIONINE);
+        mtSpecialStarts.put(Pair.of(Genus.MUS, "ATT"), AminoAcid.METHIONINE);
+        mtSpecialStarts.put(Pair.of(Genus.MUS, "ATC"), AminoAcid.METHIONINE);
+        mtSpecialStarts.put(Pair.of(Genus.CORTURNIX, "GTG"), AminoAcid.METHIONINE);
+        mtSpecialStarts.put(Pair.of(Genus.GALLUS, "GTG"), AminoAcid.METHIONINE);
+
+
         tableByCodon = Collections.unmodifiableMap(mapByCodon);
         tableByCode = Collections.unmodifiableMap(mapByCode);
         tableByLetter = Collections.unmodifiableMap(mapByLetter);
+        mtDifferentAaTableByCodon = Collections.unmodifiableMap(mtCodons);
+        mtSpecialStartCodonsBySpecies = Collections.unmodifiableMap(mtSpecialStarts);
 
         B37_To_HG19_CONTIG_NAME_MAP = initializeB37ToHg19ContigNameMap();
         HG19_TO_B37_CONTIG_NAME_MAP = B37_To_HG19_CONTIG_NAME_MAP.entrySet()
@@ -104,26 +126,19 @@ public final class FuncotatorUtils {
      * @return The {@link AminoAcid} corresponding to the given {@code rawCodon}.  Returns {@code null} if the given {@code rawCodon} does not code for a Mitochondrial {@link AminoAcid}.
      */
     public static AminoAcid getMitochondrialAminoAcidByCodon(final String rawCodon) {
-        return getMitochondrialAminoAcidByCodon(rawCodon, false, false, false, false, false);
+        return getMitochondrialAminoAcidByCodon(rawCodon, false, Genus.UNSPECIFIED);
     }
 
     /**
      * Returns the {@link AminoAcid} corresponding to the given three-letter Mitochondrial {@code rawCodon}.
      * The codons given are expected to be valid for Mitochondrial DNA.
      * @param rawCodon The three-letter codon (each letter one of A,[T or U],G,C) representing a Mitochondrial {@link AminoAcid}
-     * @param isGenusBosAndFirst {@code True} iff the codon to be decoded is from a sample in the genus Bos (cow) and came first in the coding sequence.
-     * @param isGenusHomoAndFirst {@code True} iff  the codon to be decoded is from a sample in the genus Homo (human) and came first in the coding sequence.
-     * @param isGenusMusAndFirst {@code True} iff  the codon to be decoded is from a sample in the genus Mus (mouse) and came first in the coding sequence.
-     * @param isGenusCorturnixAndFirst {@code True} iff  the codon to be decoded is from a sample in the genus Corturnix (quail) and came first in the coding sequence.
-     * @param isGenusGallusAndFirst {@code True} iff  the codon to be decoded is from a sample in the genus Gallus (chicken) and came first in the coding sequence.
+     * @param isFirst {@code true} iff the given codon appears first in the coding sequence.  {@code false} otherwise.
      * @return The {@link AminoAcid} corresponding to the given {@code rawCodon}.  Returns {@code null} if the given {@code rawCodon} does not code for a Mitochondrial {@link AminoAcid}.
      */
     public static AminoAcid getMitochondrialAminoAcidByCodon(final String rawCodon,
-                                                             final boolean isGenusBosAndFirst,
-                                                             final boolean isGenusHomoAndFirst,
-                                                             final boolean isGenusMusAndFirst,
-                                                             final boolean isGenusCorturnixAndFirst,
-                                                             final boolean isGenusGallusAndFirst) {
+                                                             final boolean isFirst,
+                                                             final Genus genus) {
         if (rawCodon == null) {
             return null;
         }
@@ -135,31 +150,15 @@ public final class FuncotatorUtils {
         //       lookup table on wikipedia https://en.wikipedia.org/wiki/Vertebrate_mitochondrial_code).
         final String upperCodon = rawCodon.replaceAll("[Uu]", "T").toUpperCase();
 
-        // All special cases taken from the above wikipedia page.
-        // Check our starting codon special cases first:
-        if ( isGenusBosAndFirst && upperCodon.equals("ATA") ) {
-            return AminoAcid.METHIONINE;
+        // Check special species-specific start codons here:
+        if ( isFirst && mtSpecialStartCodonsBySpecies.containsKey(Pair.of(genus, upperCodon)) ) {
+            return mtSpecialStartCodonsBySpecies.get(Pair.of(genus, upperCodon));
         }
-        else if ( isGenusHomoAndFirst && upperCodon.equals("ATT") ) {
-            return AminoAcid.METHIONINE;
+        // Check for MT contig-specific codons here:
+        else if ( mtDifferentAaTableByCodon.containsKey(upperCodon) ) {
+            return mtDifferentAaTableByCodon.get(upperCodon);
         }
-        else if ( isGenusMusAndFirst && (upperCodon.equals("ATT") || upperCodon.equals("ATC")) ) {
-            return AminoAcid.METHIONINE;
-        }
-        else if ( (isGenusCorturnixAndFirst || isGenusGallusAndFirst) && upperCodon.equals("GTG") ) {
-            return AminoAcid.METHIONINE;
-        }
-
-        // Now check the codons for the rest of the special cases:
-        else if ( upperCodon.equals("ATA") ) {
-            return AminoAcid.METHIONINE;
-        }
-        else if ( upperCodon.equals("AGA") || upperCodon.equals("AGG") ) {
-            return AminoAcid.STOP_CODON;
-        }
-        else if ( upperCodon.equals("TGA") ) {
-            return AminoAcid.TRYPTOPHAN;
-        }
+        // Everything else is the same as the Standard Code:
         else {
             return tableByCodon.get(upperCodon);
         }
@@ -2197,5 +2196,22 @@ public final class FuncotatorUtils {
                 .map(field -> FuncotatorUtils.sanitizeFuncotationFieldForVcf(funcotation.getField(field)))
                 .collect(Collectors.joining(VcfOutputRenderer.FIELD_DELIMITER));
     }
-}
 
+    /**
+     * A type to keep track of different specific genuses.
+     */
+    public enum Genus {
+        /** Cows */
+        BOS,
+        /** Humans */
+        HOMO,
+        /** Mice */
+        MUS,
+        /** Pheasant */
+        CORTURNIX,
+        /** Chicken */
+        GALLUS,
+        /** Unspecified genus / genus not in this list. */
+        UNSPECIFIED;
+    }
+}

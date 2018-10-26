@@ -31,6 +31,7 @@ MAXARGS=0
 
 ################################################################################
 
+# Change these to point to reference dictionaries:
 D="/Users/jonn/Development/references"
 #refAFile="${D}/GRCh37.p13.genome.dict"
 refAFile="${D}/human_g1k_v37.dict"

@@ -29,10 +29,14 @@ MAXARGS=1
 
 ################################################################################
 
+# Change these files to point to TSV output from oncotator (onk), funcotator
+# (funk), and your Gencode GTF file (GENCODE)
 onk='/Users/jonn/Development/oncotator_testing/test.maf.FUNCOTATOR_VCLASS.tsv'
 funk='FUNCOTATOR_OUT.maf.tsv'
  
 GENCODE="/Users/jonn/Development/funcotator_dataSources_latest/gencode/hg19/gencode.v19.annotation.REORDERED.gtf"
+
+################################################################################
 
 CACHEDTRANSCRIPTS=cachedTranscriptInfo.txt
 

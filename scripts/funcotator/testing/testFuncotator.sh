@@ -50,6 +50,9 @@ useAOUDataSources=false
 
 MANUAL_MODE=false
 
+################################################################################
+
+# Change this to point to your funcotator data sources folder:
 DATA_SOURCES_PATH=/Users/jonn/Development/funcotator_dataSources_latest
 HG19=/Users/jonn/Development/references/Homo_sapiens_assembly19.fasta
 HG38=/Users/jonn/Development/references/Homo_sapiens_assembly38.fasta

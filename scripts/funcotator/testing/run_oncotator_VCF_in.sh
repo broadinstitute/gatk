@@ -24,6 +24,9 @@
 #
 ################################################################################
 
+# Change all thhese paths to point to your oncotator area and the data source
+# locations as indicated by the variable names:
+
 TEST_DIR="/Users/jonn/Development/oncotator_testing"
 
 ALL_DB="/Users/jonn/Development/oncotator_v1_ds_April052016/"
