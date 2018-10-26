@@ -17,8 +17,8 @@ workflow CNNScoreVariantsWorkflow {
     File reference_fasta
     File reference_dict
     File reference_fasta_index
-    File resources                  # List of VCF file names of resources of known SNPs and INDELs, (e.g. mills, gnomAD)
-    File resources_index            # List of VCF file indices of resources
+    Array[File] resources           # List of VCF file names of resources of known SNPs and INDELs, (e.g. mills, gnomAD)
+    Array[File] resources_index     # List of VCF file indices of resources
     File? bam_file                  # Bam (or HaplotypeCaller-generated "bamout") file from which input_vcf was called, required by read-level architectures
     File? bam_file_index
     File? architecture_json         # Neural Net configuration for CNNScoreVariants
