@@ -1,6 +1,4 @@
 {
-  "CNNScoreVariantsWorkflow.bam_file": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/VQSR/g94982_chr20_1m_10m_bamout.bam",
-  "CNNScoreVariantsWorkflow.bam_file_index": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/VQSR/g94982_chr20_1m_10m_bamout.bai",
   "CNNScoreVariantsWorkflow.calling_intervals": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/VQSR/contig20_1m_10m.interval_list",
   "CNNScoreVariantsWorkflow.gatk_docker": "__GATK_DOCKER__",
   "CNNScoreVariantsWorkflow.input_vcf": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/VQSR/g94982_b37_chr20_1m_895.vcf.gz",
@@ -9,8 +7,8 @@
   "CNNScoreVariantsWorkflow.reference_fasta": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/human_g1k_v37.20.21.fasta",
   "CNNScoreVariantsWorkflow.reference_dict": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/human_g1k_v37.20.21.dict",
   "CNNScoreVariantsWorkflow.reference_fasta_index": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/human_g1k_v37.20.21.fasta.fai",
-  "CNNScoreVariantsWorkflow.resource_fofn": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/VQSR/resource_fofn_travis.txt",
-  "CNNScoreVariantsWorkflow.resource_fofn_index": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/VQSR/resource_fofn_index_travis.txt",
+  "CNNScoreVariantsWorkflow.resources" : ["/home/travis/build/broadinstitute/gatk/src/test/resources/large/dbsnp_138.b37.20.21.vcf"],
+  "CNNScoreVariantsWorkflow.resources_index" : ["/home/travis/build/broadinstitute/gatk/src/test/resources/large/dbsnp_138.b37.20.21.vcf.idx"],
   "CNNScoreVariantsWorkflow.inference_batch_size": "1",
   "CNNScoreVariantsWorkflow.transfer_batch_size": "2",
   "CNNScoreVariantsWorkflow.intra_op_threads": 0,

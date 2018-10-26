@@ -3,8 +3,16 @@
   "Cram2FilteredVcf.reference_fasta": "gs://broad-references/hg38/v0/Homo_sapiens_assembly38.fasta",
   "Cram2FilteredVcf.reference_dict": "gs://broad-references/hg38/v0/Homo_sapiens_assembly38.dict",
   "Cram2FilteredVcf.reference_fasta_index": "gs://broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai",
-  "Cram2FilteredVcf.resource_fofn": "gs://broad-dsde-methods/cnn-variant-score/vcfs/resource_fofn.txt",
-  "Cram2FilteredVcf.resource_fofn_index": "gs://broad-dsde-methods/cnn-variant-score/vcfs/resource_fofn_index.txt",
+  "Cram2FilteredVcf.resources" : [
+    "gs://broad-references/hg38/v0/hapmap_3.3.hg38.vcf.gz",
+    "gs://broad-references/hg38/v0/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
+    "gs://broad-references/hg38/v0/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz"
+  ],
+  "Cram2FilteredVcf.resources_index" : [
+    "gs://broad-references/hg38/v0/hapmap_3.3.hg38.vcf.gz.tbi",
+    "gs://broad-references/hg38/v0/1000G_phase1.snps.high_confidence.hg38.vcf.gz.tbi",
+    "gs://broad-references/hg38/v0/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz.tbi"
+  ],
   "Cram2FilteredVcf.output_prefix": "hg38_20k_na12878",
   "Cram2FilteredVcf.info_key": "CNN_2D",
   "Cram2FilteredVcf.snp_tranches": " --snp-tranche 99.9 ",
