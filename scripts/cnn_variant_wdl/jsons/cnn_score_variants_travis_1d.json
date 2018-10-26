@@ -15,7 +15,7 @@
   "CNNScoreVariantsWorkflow.inter_op_threads": 0,
   "CNNScoreVariantsWorkflow.tensor_type": "reference",
   "CNNScoreVariantsWorkflow.info_key": "CNN_1D",
-  "CNNScoreVariantsWorkflow.snp_tranches": " --snp-tranche 99.9 ",
-  "CNNScoreVariantsWorkflow.indel_tranches": " --indel-tranche 99.5 ",
+  "CNNScoreVariantsWorkflow.snp_tranches": " --snp-tranche 99.0 ",
+  "CNNScoreVariantsWorkflow.indel_tranches": " --indel-tranche 99.0 ",
   "CNNScoreVariantsWorkflow.scatter_count": "2"
 }
