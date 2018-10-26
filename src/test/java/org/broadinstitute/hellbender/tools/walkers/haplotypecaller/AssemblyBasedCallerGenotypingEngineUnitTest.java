@@ -1,9 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import com.google.common.collect.Maps;
-import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.variantcontext.*;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.haplotype.EventMap;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
@@ -159,6 +157,10 @@ public class AssemblyBasedCallerGenotypingEngineUnitTest extends GATKBaseTest {
         final VariantContext sameLocInsVc1 = new VariantContextBuilder("a", "20", 10093568, 10093568, sameLocInsAlleles1).make();
         sameLocInsHap1.setEventMap(new EventMap(Arrays.asList(sameLocInsVc1)));
 
+        final VariantContextBuilder deletionVCBuilderWithGts = new VariantContextBuilder("a", "20", 995, 1005, deletionAlleles)
+                .genotypes(new GenotypeBuilder("TEST", Arrays.asList(deletionAlleles.get(0), deletionAlleles.get(1))).make());
+        final VariantContext deletionVcWithGts = deletionVCBuilderWithGts.make();
+
         tests.add(new Object[]{1000, Arrays.asList(snpVc), Arrays.asList(snpVCBuilder.source("Comp0Allele0").make())});
         tests.add(new Object[]{995, Arrays.asList(deletionVc), Arrays.asList(deletionVCBuilder.source("Comp0Allele0").make())});
         tests.add(new Object[]{1000, Arrays.asList(deletionVc), Arrays.asList(deletionVCBuilder.source("Comp0Allele0").make())});
@@ -167,6 +169,9 @@ public class AssemblyBasedCallerGenotypingEngineUnitTest extends GATKBaseTest {
         tests.add(new Object[]{1000, Arrays.asList(deletionVc, deletionVcNoSpan), Arrays.asList(deletionVCBuilder.source("Comp0Allele0").make())});
         tests.add(new Object[]{1000, Arrays.asList(deletionVc, deletionVcFalseDuplicate, deletionVcNoSpan),
                 Arrays.asList(deletionVCBuilder.source("Comp0Allele0").make(), deletionFalseDuplicateBuilder.source("Comp1Allele0").make())});
+
+        tests.add(new Object[]{1000, Arrays.asList(deletionVcWithGts, snpVc),
+                Arrays.asList(deletionVCBuilder.source("Comp0Allele0").make(), snpVCBuilder.source("Comp1Allele0").make())});
 
         return tests.toArray(new Object[][]{});
     }
