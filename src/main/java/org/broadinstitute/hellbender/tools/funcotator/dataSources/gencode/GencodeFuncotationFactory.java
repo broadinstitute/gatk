@@ -1681,7 +1681,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                         correctedCodingSequence,
                         sequenceComparison.getStrand(),
                         // Figure out if we are in a mitochondrial contig:
-                        // TODO: Make this more robust by detecting the mito contig based on the reference used.
+                        // TODO: Make this more robust by detecting the mito contig based on the reference used.  (issue https://github.com/broadinstitute/gatk/issues/5364).
                         FuncotatorConstants.MITOCHONDRIAL_CONTIG_NAMES.contains(variant.getContig())
                 );
 

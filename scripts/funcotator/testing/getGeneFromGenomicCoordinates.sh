@@ -2,6 +2,9 @@
 
 ################################################################################
 #
+# WARNING: THIS SCRIPT IS UNSUPPORTED!
+# USE AT YOUR OWN RISK
+#
 # DESCRIPTION:
 #
 # This script will give you the overlapping encode gene entries for a given 

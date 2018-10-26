@@ -2,6 +2,9 @@
 
 ################################################################################
 #
+# WARNING: THIS SCRIPT IS UNSUPPORTED!
+# USE AT YOUR OWN RISK
+#
 # DESCRIPTION:
 #
 # This script will create a table comparing two internally configured reference

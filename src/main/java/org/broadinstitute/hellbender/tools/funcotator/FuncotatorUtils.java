@@ -100,7 +100,7 @@ public final class FuncotatorUtils {
      * Returns the {@link AminoAcid} corresponding to the given three-letter Mitochondrial {@code rawCodon}.
      * The codons given are expected to be valid for Mitochondrial DNA.
      * Assumes no special cases for alternate initiation sites.
-     * @param rawCodon The three-letter codon (each letter one of A,[T or U],G,C) representing a Mitochondrial {@link AminoAcid}
+     * @param rawCodon The three-letter codon (each letter one of A,[T or U],G,C) representing a Mitochondrial {@link AminoAcid}.  Must not be {@code null}.
      * @return The {@link AminoAcid} corresponding to the given {@code rawCodon}.  Returns {@code null} if the given {@code rawCodon} does not code for a Mitochondrial {@link AminoAcid}.
      */
     public static AminoAcid getMitochondrialAminoAcidByCodon(final String rawCodon) {
@@ -128,7 +128,7 @@ public final class FuncotatorUtils {
             return null;
         }
 
-        // TODO: Need to solicit more info on partly coded stop codons as alluded to here: https://www.sciencedirect.com/science/article/pii/S0005272898001613
+        // TODO: Need to solicit more info on partly coded stop codons as alluded to here: https://www.sciencedirect.com/science/article/pii/S0005272898001613 (Issue https://github.com/broadinstitute/gatk/issues/5363)
 
         // Convert Uracils to Thymines and convert to upper case so we can use our normal lookup table:
         // Note: this may be unnecessary, but is here for safety and correctness (at least according to the

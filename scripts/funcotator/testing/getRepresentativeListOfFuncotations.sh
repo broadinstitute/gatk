@@ -2,6 +2,9 @@
 
 ################################################################################
 #
+# WARNING: THIS SCRIPT IS UNSUPPORTED!
+# USE AT YOUR OWN RISK
+#
 # DESCRIPTION:
 #
 # This script creates a new VCF file by extracting a set of N variants from a 

@@ -2,6 +2,9 @@
 
 ################################################################################
 #
+# WARNING: THIS SCRIPT IS UNSUPPORTED!
+# USE AT YOUR OWN RISK
+#
 # DESCRIPTION:
 #
 # This script displays Gencode Transript information given a reference version

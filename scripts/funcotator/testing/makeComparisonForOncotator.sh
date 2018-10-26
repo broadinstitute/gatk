@@ -2,6 +2,9 @@
 
 ################################################################################
 #
+# WARNING: THIS SCRIPT IS UNSUPPORTED!
+# USE AT YOUR OWN RISK
+#
 # DESCRIPTION:
 #
 # This script processes files created by Funcotator and Oncotator to create 
