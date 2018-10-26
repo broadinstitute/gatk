@@ -617,7 +617,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                          ex.getMessage()
                  );
 
-                 // TODO: Create a default annotation here:
+                 // TODO: Create a default annotation here (issue https://github.com/broadinstitute/gatk/issues/5366).
 
             }
         }
