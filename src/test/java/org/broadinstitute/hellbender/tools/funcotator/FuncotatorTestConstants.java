@@ -36,7 +36,10 @@ public class FuncotatorTestConstants {
 
     public static final String DUMMY_DATA_SOURCES_TAR_GZ             = FUNCOTATOR_LARGE_FILES_DIR + "dummyDataSources.tar.gz";
     public static final String DUMMY_DATA_SOURCES_TAR_GZ_SHA256_FILE = FUNCOTATOR_LARGE_FILES_DIR + "dummyDataSources.sha256";
-    public static final String DUMMY_DATA_SOURCES_FOLDER             = FUNCOTATOR_LARGE_FILES_DIR + "dummyDataSources";
+    public static final String DUMMY_DATA_SOURCES_FOLDER
+            = FUNCOTATOR_LARGE_FILES_DIR + "dummyDataSources";
+    // MT Info:
+    public static final String MT_TRANSCRIPT = "ENST00000361567.2";
 
     // Gencode main GTF file:
     public static final String GENCODE_DATA_SOURCE_GTF_PATH_HG19   = FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER + "gencode" + File.separator + REFERENCE_VERSION_HG19 + File.separator + "gencode.v19.regressionTestVariantSet.gtf";

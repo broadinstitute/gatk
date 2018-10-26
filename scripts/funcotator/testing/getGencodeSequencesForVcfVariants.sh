@@ -7,13 +7,13 @@
 #
 # DESCRIPTION:
 #
-# This script will give you the overlapping encode gene entries for all variants
-# in a given VCF file.
+# This script will create a fasta file containing the transcript sequences 
+# that overlap variants in a given VCF file.
 # It must be internally configured to point at a valid funcotatior data sources
 # directory, and will not work for you out-of-the-box unless you are Jonn Smith.
 #
 # EXAMPLE:
-#     ./getGencodeGenesForVcfVariants.sh hg19 TEST.VCF
+#     ./getGencodeSequencesForVcfVariants.sh hg19 TEST.VCF
 #
 # AUTHOR: Jonn Smith
 #
@@ -33,14 +33,16 @@ DATA_SOURCES_PATH=/Users/jonn/Development/funcotator_dataSources_latest
 
 GENCODE_HG19=${DATA_SOURCES_PATH}/gencode/hg19/gencode.v19.annotation.REORDERED.gtf
 GENCODE_HG38=${DATA_SOURCES_PATH}/gencode/hg38/gencode.v28.annotation.REORDERED.gtf
+GENCODE_HG19_TX=${DATA_SOURCES_PATH}/gencode/hg19/gencode.v19.pc_transcripts.fa
+GENCODE_HG38_TX=${DATA_SOURCES_PATH}/gencode/hg38/gencode.v28.pc_transcripts.fa
 
 ################################################################################
 
 function simpleUsage()
 {
   echo -e "Usage: $SCRIPTNAME REFVERSION VCFFILE [VCFFILE2 VCFFILE3 ...]"
-  echo -e "Get the complete gencode gene entries that overlap any variants in "
-  echo -e "each given VCFFILE."
+  echo -e "Get the complete gencode transcript fasta sequences that "
+	echo -e "overlap any variant in each given VCFFILE."
 }
 
 #Define a usage function:
@@ -128,13 +130,17 @@ done
 
 # Make sure we point at the right gencode:
 GENCODE="$GENCODE_HG19"
+GENCODE_TX="$GENCODE_HG19_TX"
 if [[ "${REF}" == "hg38" ]] ;then 
 	GENCODE="$GENCODE_HG38"
+	GENCODE_TX="$GENCODE_HG38_TX"
 fi
 
 tmpFile=$( makeTemp )	
 tmpGeneList=$( makeTemp )
 tmpGeneIdList=$( makeTemp )
+
+transcriptFile=$( makeTemp )
 
 # Get our list of genes:
 while read VCFFILE ; do 
@@ -166,12 +172,16 @@ awk '{print $10}' ${tmpGeneList} | tr -d ';"' > ${tmpGeneIdList}
 totalGenes=$( cat ${tmpGeneIdList} | sort | uniq | wc -l | awk '{print $1}' )
 uniqueGeneIdList=$( makeTemp )
 
-# Get our gencode header:
-head -n5 ${GENCODE}
+if [[ "${REF}" == "hg38" ]] ; then
+	error "Reformatting gencode transcript file..."
+	${SCRIPTDIR}/reformatFastaSequencesToOneLine.sh ${GENCODE_TX} > ${transcriptFile}	
+else 
+	transcriptFile=${GENCODE_TX}
+fi 
 
 # Grep for each gene ID in our gencode file:
 i=0
-error "Retrieving genes from GENCODE ..."
+error "Retrieving transcripts from GENCODE ..."
 while read geneId ; do 
 
 	# make sure we only add each gene once:
@@ -179,21 +189,13 @@ while read geneId ; do
 	r=$?
 	[[ $r -eq 0 ]] && continue
 
-	# Arcane awk statement adapted from https://backreference.org/2010/09/11/smart-ranges-in-awk/
-	# and https://backreference.org/2010/09/11/smart-ranges-in-awk/
-	# Essentially uses a flag to determine whether to print matches and when the flag is no longer
-	# true it will exit.
-	BANG=!
-	awk "${BANG}/${geneId}/{if (p == 1){exit} else{p=0}} /${geneId}/{p=1} p" ${GENCODE}
+	grep -A1 "${geneId}" ${transcriptFile}
 	
 	let i=$i+1
 	error "  Processed gene $i of $totalGenes ($geneId)"
 	echo "${geneId}" >> ${uniqueGeneIdList}
 
-done < ${tmpGeneIdList}
+done < ${tmpGeneIdList} | grep -v '^--'
 error "Done"
 
-# To get the transcripts from the gencode transcript file, run the following script:
-#
-# getGencodeSequencesForVcfVariants.sh
 

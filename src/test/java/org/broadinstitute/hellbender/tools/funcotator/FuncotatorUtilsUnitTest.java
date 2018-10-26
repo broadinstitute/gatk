@@ -569,23 +569,35 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
     @DataProvider
     Object[][] provideDataForGetMitochondrialAminoAcidByCodon() {
         return new Object[][]{
-                {null, false, null},
-                {"", false, null},
-                {"XQZ", false, null},
-                {null, true, null},
-                {"", true, null},
-                {"XQZ", true, null},
-                {"ATG", false, AminoAcid.METHIONINE},
-                {"CCA", false, AminoAcid.PROLINE},
-                {"CCC", false, AminoAcid.PROLINE},
-                {"CCG", false, AminoAcid.PROLINE},
-                {"CCT", false, AminoAcid.PROLINE},
-                {"ATT", false, AminoAcid.ISOLEUCINE},
-                {"ATT", true, AminoAcid.METHIONINE},
-                {"ATA", false, AminoAcid.METHIONINE},
-                {"AGA", false, AminoAcid.STOP_CODON},
-                {"AGG", false, AminoAcid.STOP_CODON},
-                {"TGA", false, AminoAcid.TRYPTOPHAN},
+                // Bad codon values:
+                {null,  false, FuncotatorUtils.Genus.UNSPECIFIED, null},
+                {"",    false, FuncotatorUtils.Genus.UNSPECIFIED, null},
+                {"XQZ", false, FuncotatorUtils.Genus.UNSPECIFIED, null},
+                {null,  false, FuncotatorUtils.Genus.UNSPECIFIED, null},
+                {"",    false, FuncotatorUtils.Genus.UNSPECIFIED, null},
+                {"XQZ", false, FuncotatorUtils.Genus.UNSPECIFIED, null},
+
+                // In sequence (non-starting) codon values:
+                {"ATG", false, FuncotatorUtils.Genus.UNSPECIFIED, AminoAcid.METHIONINE},
+                {"CCA", false, FuncotatorUtils.Genus.UNSPECIFIED, AminoAcid.PROLINE},
+                {"CCC", false, FuncotatorUtils.Genus.UNSPECIFIED, AminoAcid.PROLINE},
+                {"CCG", false, FuncotatorUtils.Genus.UNSPECIFIED, AminoAcid.PROLINE},
+                {"CCT", false, FuncotatorUtils.Genus.UNSPECIFIED, AminoAcid.PROLINE},
+                {"ATT", false, FuncotatorUtils.Genus.UNSPECIFIED, AminoAcid.ISOLEUCINE},
+                {"ATA", false, FuncotatorUtils.Genus.UNSPECIFIED, AminoAcid.METHIONINE},
+                {"AGA", false, FuncotatorUtils.Genus.UNSPECIFIED, AminoAcid.STOP_CODON},
+                {"AGG", false, FuncotatorUtils.Genus.UNSPECIFIED, AminoAcid.STOP_CODON},
+                {"TGA", false, FuncotatorUtils.Genus.UNSPECIFIED, AminoAcid.TRYPTOPHAN},
+
+                // Start codon special cases:
+                // Bos:
+                {"ATA", true, FuncotatorUtils.Genus.BOS,       AminoAcid.METHIONINE},
+                {"ATA", true, FuncotatorUtils.Genus.HOMO,      AminoAcid.METHIONINE},
+                {"ATT", true, FuncotatorUtils.Genus.HOMO,      AminoAcid.METHIONINE},
+                {"ATT", true, FuncotatorUtils.Genus.MUS,       AminoAcid.METHIONINE},
+                {"ATC", true, FuncotatorUtils.Genus.MUS,       AminoAcid.METHIONINE},
+                {"GTG", true, FuncotatorUtils.Genus.CORTURNIX, AminoAcid.METHIONINE},
+                {"GTG", true, FuncotatorUtils.Genus.GALLUS,    AminoAcid.METHIONINE},
         };
     }
 
@@ -1810,8 +1822,16 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
     }
 
     @Test(dataProvider = "provideDataForGetMitochondrialAminoAcidByCodon")
-    void testGetMitochondrialAminoAcidByCodon(final String codon, final boolean isFirst, final AminoAcid expected) {
-        Assert.assertEquals(FuncotatorUtils.getMitochondrialAminoAcidByCodon(codon, isFirst), expected);
+    void testGetMitochondrialAminoAcidByCodon(final String codon,
+                                              final boolean isFirst,
+                                              final FuncotatorUtils.Genus genus,
+                                              final AminoAcid expected) {
+        Assert.assertEquals(FuncotatorUtils.getMitochondrialAminoAcidByCodon(codon, isFirst, genus), expected);
+
+        // Make sure to test the other case as well:
+        if ( !isFirst || (genus == FuncotatorUtils.Genus.UNSPECIFIED) ) {
+            Assert.assertEquals(FuncotatorUtils.getMitochondrialAminoAcidByCodon(codon), expected);
+        }
     }
 
     @Test(dataProvider = "provideDataForGetCodonChangeString")

@@ -2,6 +2,9 @@
 
 ################################################################################
 #
+# WARNING: THIS SCRIPT IS UNSUPPORTED!
+# USE AT YOUR OWN RISK
+#
 # DESCRIPTION:
 #
 # This script will create a table comparing two internally configured reference
@@ -20,13 +23,15 @@
 ###############################################################################
 
 #Setup variables for the script:
-SCRIPTDIR="$( cd -P "$( dirname "$0" )" && pwd )"
+UNALIASED_SCRIPT_NAME=$( readlink "${BASH_SOURCE[0]}" || echo "${BASH_SOURCE[0]}" )
+SCRIPTDIR="$( cd "$( dirname "${UNALIASED_SCRIPT_NAME}" )" && pwd )"
 SCRIPTNAME=$( echo $0 | sed 's#.*/##g' )
 MINARGS=0
 MAXARGS=0
 
 ################################################################################
 
+# Change these to point to reference dictionaries:
 D="/Users/jonn/Development/references"
 #refAFile="${D}/GRCh37.p13.genome.dict"
 refAFile="${D}/human_g1k_v37.dict"

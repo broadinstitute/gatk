@@ -2,6 +2,9 @@
 
 ################################################################################
 #
+# WARNING: THIS SCRIPT IS UNSUPPORTED!
+# USE AT YOUR OWN RISK
+#
 # DESCRIPTION:
 #
 # This script runs Oncotator and will process the output files so that they can
@@ -20,6 +23,9 @@
 # AUTHOR: Jonn Smith
 #
 ################################################################################
+
+# Change all thhese paths to point to your oncotator area and the data source
+# locations as indicated by the variable names:
 
 TEST_DIR="/Users/jonn/Development/oncotator_testing"
 

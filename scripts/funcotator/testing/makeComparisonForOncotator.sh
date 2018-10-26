@@ -2,6 +2,9 @@
 
 ################################################################################
 #
+# WARNING: THIS SCRIPT IS UNSUPPORTED!
+# USE AT YOUR OWN RISK
+#
 # DESCRIPTION:
 #
 # This script processes files created by Funcotator and Oncotator to create 
@@ -17,19 +20,23 @@
 #
 ###############################################################################
 
-
 #Setup variables for the script:
-SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+UNALIASED_SCRIPT_NAME=$( readlink "${BASH_SOURCE[0]}" || echo "${BASH_SOURCE[0]}" )
+SCRIPTDIR="$( cd "$( dirname "${UNALIASED_SCRIPT_NAME}" )" && pwd )"
 SCRIPTNAME=$( echo $0 | sed 's#.*/##g' )
 MINARGS=0
 MAXARGS=1
 
 ################################################################################
 
+# Change these files to point to TSV output from oncotator (onk), funcotator
+# (funk), and your Gencode GTF file (GENCODE)
 onk='/Users/jonn/Development/oncotator_testing/test.maf.FUNCOTATOR_VCLASS.tsv'
 funk='FUNCOTATOR_OUT.maf.tsv'
  
 GENCODE="/Users/jonn/Development/funcotator_dataSources_latest/gencode/hg19/gencode.v19.annotation.REORDERED.gtf"
+
+################################################################################
 
 CACHEDTRANSCRIPTS=cachedTranscriptInfo.txt
 

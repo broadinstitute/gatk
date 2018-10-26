@@ -9,6 +9,7 @@ import htsjdk.tribble.annotation.Strand;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -29,6 +30,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -45,6 +47,9 @@ public final class FuncotatorUtils {
     private static final Map<String, AminoAcid> tableByCodon;
     private static final Map<String, AminoAcid> tableByCode;
     private static final Map<String, AminoAcid> tableByLetter;
+
+    private static final Map<String, AminoAcid>              mtDifferentAaTableByCodon;
+    private static final Map<Pair<Genus, String>, AminoAcid> mtSpecialStartCodonsBySpecies;
 
     private static SAMSequenceDictionary B37_SEQUENCE_DICTIONARY = null;
 
@@ -72,9 +77,27 @@ public final class FuncotatorUtils {
             }
         }
 
+        final HashMap<String, AminoAcid>              mtCodons        = new HashMap<>();
+        final HashMap<Pair<Genus, String>, AminoAcid> mtSpecialStarts = new HashMap<>();
+
+        mtCodons.put("ATA", AminoAcid.METHIONINE);
+        mtCodons.put("AGA", AminoAcid.STOP_CODON);
+        mtCodons.put("AGG", AminoAcid.STOP_CODON);
+        mtCodons.put("TGA", AminoAcid.TRYPTOPHAN);
+
+        mtSpecialStarts.put(Pair.of(Genus.BOS, "ATA"), AminoAcid.METHIONINE);
+        mtSpecialStarts.put(Pair.of(Genus.HOMO, "ATT"), AminoAcid.METHIONINE);
+        mtSpecialStarts.put(Pair.of(Genus.MUS, "ATT"), AminoAcid.METHIONINE);
+        mtSpecialStarts.put(Pair.of(Genus.MUS, "ATC"), AminoAcid.METHIONINE);
+        mtSpecialStarts.put(Pair.of(Genus.CORTURNIX, "GTG"), AminoAcid.METHIONINE);
+        mtSpecialStarts.put(Pair.of(Genus.GALLUS, "GTG"), AminoAcid.METHIONINE);
+
+
         tableByCodon = Collections.unmodifiableMap(mapByCodon);
         tableByCode = Collections.unmodifiableMap(mapByCode);
         tableByLetter = Collections.unmodifiableMap(mapByLetter);
+        mtDifferentAaTableByCodon = Collections.unmodifiableMap(mtCodons);
+        mtSpecialStartCodonsBySpecies = Collections.unmodifiableMap(mtSpecialStarts);
 
         B37_To_HG19_CONTIG_NAME_MAP = initializeB37ToHg19ContigNameMap();
         HG19_TO_B37_CONTIG_NAME_MAP = B37_To_HG19_CONTIG_NAME_MAP.entrySet()
@@ -96,25 +119,47 @@ public final class FuncotatorUtils {
     }
 
     /**
-     * Returns the {@link AminoAcid} corresponding to the given three-letter Mitochondrial {@code codon}.
+     * Returns the {@link AminoAcid} corresponding to the given three-letter Mitochondrial {@code rawCodon}.
      * The codons given are expected to be valid for Mitochondrial DNA.
-     * @param codon The three-letter codon (each letter one of A,T,G,C) representing a Mitochondrial {@link AminoAcid}
-     * @return The {@link AminoAcid} corresponding to the given {@code codon}.  Returns {@code null} if the given {@code codon} does not code for a Mitochondrial {@link AminoAcid}.
+     * Assumes no special cases for alternate initiation sites.
+     * @param rawCodon The three-letter codon (each letter one of A,[T or U],G,C) representing a Mitochondrial {@link AminoAcid}.  Must not be {@code null}.
+     * @return The {@link AminoAcid} corresponding to the given {@code rawCodon}.  Returns {@code null} if the given {@code rawCodon} does not code for a Mitochondrial {@link AminoAcid}.
      */
-    public static AminoAcid getMitochondrialAminoAcidByCodon(final String codon, final boolean isFirst) {
+    public static AminoAcid getMitochondrialAminoAcidByCodon(final String rawCodon) {
+        return getMitochondrialAminoAcidByCodon(rawCodon, false, Genus.UNSPECIFIED);
+    }
 
-        if (codon == null) {
+    /**
+     * Returns the {@link AminoAcid} corresponding to the given three-letter Mitochondrial {@code rawCodon}.
+     * The codons given are expected to be valid for Mitochondrial DNA.
+     * @param rawCodon The three-letter codon (each letter one of A,[T or U],G,C) representing a Mitochondrial {@link AminoAcid}
+     * @param isFirst {@code true} iff the given codon appears first in the coding sequence.  {@code false} otherwise.
+     * @return The {@link AminoAcid} corresponding to the given {@code rawCodon}.  Returns {@code null} if the given {@code rawCodon} does not code for a Mitochondrial {@link AminoAcid}.
+     */
+    public static AminoAcid getMitochondrialAminoAcidByCodon(final String rawCodon,
+                                                             final boolean isFirst,
+                                                             final Genus genus) {
+        if (rawCodon == null) {
             return null;
         }
 
-        final String upperCodon = codon.toUpperCase();
-        if ( isFirst && upperCodon.equals("ATT") || upperCodon.equals("ATA") ) {
-            return AminoAcid.METHIONINE;
-        } else if ( upperCodon.equals("AGA") || upperCodon.equals("AGG") ) {
-            return AminoAcid.STOP_CODON;
-        } else if ( upperCodon.equals("TGA") ) {
-            return AminoAcid.TRYPTOPHAN;
-        } else {
+        // TODO: Need to solicit more info on partly coded stop codons as alluded to here: https://www.sciencedirect.com/science/article/pii/S0005272898001613 (Issue https://github.com/broadinstitute/gatk/issues/5363)
+
+        // Convert Uracils to Thymines and convert to upper case so we can use our normal lookup table:
+        // Note: this may be unnecessary, but is here for safety and correctness (at least according to the
+        //       lookup table on wikipedia https://en.wikipedia.org/wiki/Vertebrate_mitochondrial_code).
+        final String upperCodon = rawCodon.replaceAll("[Uu]", "T").toUpperCase();
+
+        // Check special species-specific start codons here:
+        if ( isFirst && mtSpecialStartCodonsBySpecies.containsKey(Pair.of(genus, upperCodon)) ) {
+            return mtSpecialStartCodonsBySpecies.get(Pair.of(genus, upperCodon));
+        }
+        // Check for MT contig-specific codons here:
+        else if ( mtDifferentAaTableByCodon.containsKey(upperCodon) ) {
+            return mtDifferentAaTableByCodon.get(upperCodon);
+        }
+        // Everything else is the same as the Standard Code:
+        else {
             return tableByCodon.get(upperCodon);
         }
     }
@@ -1098,8 +1143,23 @@ public final class FuncotatorUtils {
      * @param extraLoggingInfo A {@link String} containing extra info for logging purposes.
      * @return A {@link String} containing a sequence of single-letter amino acids.
      */
-    public static String createAminoAcidSequence(final String codingSequence, final boolean isFrameshift, final String extraLoggingInfo) {
+    static String createAminoAcidSequence(final String codingSequence, final boolean isFrameshift, final String extraLoggingInfo) {
+        return createAminoAcidSequenceHelper(codingSequence, isFrameshift, false, extraLoggingInfo);
+    }
 
+    /**
+     * Creates a Mitochondrial amino acid sequence from a given coding sequence.
+     * If the coding sequence is not evenly divisible by 3, the remainder bases will not be included in the coding sequence.
+     * @param codingSequence The coding sequence from which to create an amino acid sequence.  Must not be {@code null}.
+     * @param isFrameshift Whether the given {@code codingSequence} was derived from a frameshift mutation.  In this case, no warning will be issued for incorrect sequence length.
+     * @param extraLoggingInfo A {@link String} containing extra info for logging purposes.
+     * @return A {@link String} containing a sequence of single-letter amino acids.
+     */
+    static String createMitochondrialAminoAcidSequence(final String codingSequence, final boolean isFrameshift, final String extraLoggingInfo) {
+        return createAminoAcidSequenceHelper(codingSequence, isFrameshift, true, extraLoggingInfo);
+    }
+
+    private static String createAminoAcidSequenceHelper(final String codingSequence, final boolean isFrameshift, final boolean isMitochondria, final String extraLoggingInfo) {
         Utils.nonNull(codingSequence);
 
         final StringBuilder sb = new StringBuilder();
@@ -1113,8 +1173,13 @@ public final class FuncotatorUtils {
             }
         }
 
+        // Call the correct method based on whether or not we're looking up mitochondria:
+        // NOTE: Based on conversations with a Mitochondria expert (Sarah Calvo), the alternate start codons should not
+        // be taken into account here, so we don't have to use the overload with the booleans.
+        final Function<String, AminoAcid> aminoAcidLookupFunction = ( isMitochondria ? FuncotatorUtils::getMitochondrialAminoAcidByCodon : FuncotatorUtils::getEukaryoticAminoAcidByCodon );
+
         for ( int i = 0; i < maxIndex; i += AminoAcid.CODON_LENGTH ) {
-            final AminoAcid aa = getEukaryoticAminoAcidByCodon(codingSequence.substring(i, i+AminoAcid.CODON_LENGTH));
+            final AminoAcid aa = aminoAcidLookupFunction.apply(codingSequence.substring(i, i+3));
             if ( aa == null ) {
                 throw new UserException.MalformedFile("File contains a bad codon sequence that has no amino acid equivalent: " + codingSequence.substring(i, i+AminoAcid.CODON_LENGTH));
             }
@@ -2131,5 +2196,22 @@ public final class FuncotatorUtils {
                 .map(field -> FuncotatorUtils.sanitizeFuncotationFieldForVcf(funcotation.getField(field)))
                 .collect(Collectors.joining(VcfOutputRenderer.FIELD_DELIMITER));
     }
-}
 
+    /**
+     * A type to keep track of different specific genuses.
+     */
+    public enum Genus {
+        /** Cows */
+        BOS,
+        /** Humans */
+        HOMO,
+        /** Mice */
+        MUS,
+        /** Pheasant */
+        CORTURNIX,
+        /** Chicken */
+        GALLUS,
+        /** Unspecified genus / genus not in this list. */
+        UNSPECIFIED;
+    }
+}
