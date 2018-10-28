@@ -45,4 +45,6 @@ public final class ReadFilterArgumentDefinitions {
     public static final String KEEP_REVERSE_STRAND_ONLY_NAME = "keep-reverse-strand-only";
 
     public static final String SAMPLE_NAME = "sample";
+
+    public static final String KEEP_INTERVAL_NAME = "keep-intervals";
 }
