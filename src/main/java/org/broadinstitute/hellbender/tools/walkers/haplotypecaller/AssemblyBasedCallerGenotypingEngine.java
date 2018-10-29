@@ -180,7 +180,8 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
                     //TODO: how about replace it by vcSourceName = String.parseInt(nameCounter++)?
                     final String vcSourceName = "Comp" + givenAlleleSourceCount + "Allele" + alleleCount;
                     // check if this event is already in the list of events due to a repeat in the input alleles track
-                    final VariantContext candidateEventToAdd = new VariantContextBuilder(givenAlleleVC).alleles(alleleSet).source(vcSourceName).make();
+                    final VariantContext candidateEventToAdd = new VariantContextBuilder(givenAlleleVC).alleles(alleleSet)
+                            .genotypes(GenotypesContext.NO_GENOTYPES).source(vcSourceName).make();
 
                     final LocationAndAlleles locationAndAlleles = new LocationAndAlleles(candidateEventToAdd.getStart(), candidateEventToAdd.getAlleles());
                     if (! uniqueLocationsAndAlleles.contains(locationAndAlleles)) {
