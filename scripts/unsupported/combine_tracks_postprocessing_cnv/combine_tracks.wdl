@@ -64,6 +64,7 @@ workflow CombineTracksWorkflow {
     Int? max_merge_distance
     Array[String]? annotations_on_which_to_merge
     Int? min_hets_acs_results
+    Float? maf90_threshold
 
     Array[String]? annotations_on_which_to_merge_final = select_first([annotations_on_which_to_merge,
     ["MEAN_LOG2_COPY_RATIO", "LOG2_COPY_RATIO_POSTERIOR_10", "LOG2_COPY_RATIO_POSTERIOR_50", "LOG2_COPY_RATIO_POSTERIOR_90",
@@ -151,7 +152,8 @@ workflow CombineTracksWorkflow {
             model_seg = MergeSegmentByAnnotation.cnv_merged_seg,
             af_param = af_param,
             docker = gatk_docker,
-            min_hets_acs_results = min_hets_acs_results
+            min_hets_acs_results = min_hets_acs_results,
+            maf90_threshold = maf90_threshold
     }
 
     call IGVConvert as IGVConvertMergedTumorOutput {
