@@ -39,7 +39,8 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
 
     /**
      * Construct a ReservoirDownsampler
-     *  @param targetSampleSize Size of the reservoir used by this downsampler.
+     *  @param targetSampleSize Size of the reservoir used by this downsampler.  Number of items retained after
+     *                          downsampling will be min(totalReads, targetSampleSize).
      *
      *
      */
@@ -80,11 +81,8 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
     @Override
     public List<GATKRead> consumeFinalizedItems() {
         if (hasFinalizedItems()) {
-            // one could either:
-            // 1) return copy the reservoir and then clear (but not reallocate) in clearItems, or
-            // 2) return the reservoir by reference and reallocate a new ArrayList in clearItems
-            // 2) is worse because it always reallocates the target sample size, instead of just the reads that are present
-            final List<GATKRead> downsampledItems = new ArrayList<>(reservoir);
+            // pass reservoir by reference rather than make a copy, for speed
+            final List<GATKRead> downsampledItems = reservoir;
             clearItems();
             return downsampledItems;
         } else {
@@ -123,7 +121,7 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
      */
     @Override
     public void clearItems() {
-        reservoir.clear();
+        reservoir = new ArrayList<>(targetSampleSize);
 
         // an internal stat used by the downsampling process, so not cleared by resetStats() below
         totalReadsSeen = 0;
