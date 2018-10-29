@@ -435,7 +435,7 @@ workflow CNVSomaticPairWorkflow {
     if (select_first([is_run_oncotator, false])) {
         call CNVOncotator.CNVOncotatorWorkflow as CNVOncotatorWorkflow {
             input:
-                 called_file = CallModeledSegmentsTumor.called_modeled_segments_data,
+                 called_file = CallModeledSegmentsTumor.called_copy_ratio_segments,
                  additional_args = additional_args_for_oncotator,
                  oncotator_docker = oncotator_docker,
                  mem_gb_for_oncotator = mem_gb_for_oncotator,
@@ -459,7 +459,6 @@ workflow CNVSomaticPairWorkflow {
         File modeled_segments_begin_tumor = ModelSegmentsTumor.modeled_segments_begin
         File copy_ratio_parameters_begin_tumor = ModelSegmentsTumor.copy_ratio_parameters_begin
         File allele_fraction_parameters_begin_tumor = ModelSegmentsTumor.allele_fraction_parameters_begin
-        File called_modeled_segments_data_tumor = CallModeledSegmentsTumor.called_modeled_segments_data
         File copy_ratio_parameters_tumor = ModelSegmentsTumor.copy_ratio_parameters
         File allele_fraction_parameters_tumor = ModelSegmentsTumor.allele_fraction_parameters
         File denoised_copy_ratios_plot_tumor = PlotDenoisedCopyRatiosTumor.denoised_copy_ratios_plot
