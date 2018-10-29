@@ -1,9 +1,10 @@
 package org.broadinstitute.hellbender.tools.walkers.rnaseq;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.Cigar;
+import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.TextCigarCodec;
-import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.Tuple;
 import org.apache.logging.log4j.LogManager;
@@ -139,16 +140,18 @@ public class OverhangFixingManager {
      * @param contig  the contig
      * @param start   the start of the split, inclusive
      * @param end     the end of the split, inclusive
+     * @return the splice created, for testing purposes
      */
-    public void addSplicePosition(final String contig, final int start, final int end) {
+    @VisibleForTesting
+    public Splice addSplicePosition(final String contig, final int start, final int end) {
         if ( doNotFixOverhangs ) {
-            return;
+            return null;
         }
 
         // is this a new splice?  if not, we are done
         final Splice splice = new Splice(contig, start, end);
         if ( splices.contains(splice) ) {
-            return;
+            return null;
         }
 
         // initialize it with the reference context
@@ -174,6 +177,7 @@ public class OverhangFixingManager {
         if ( splices.size() > MAX_SPLICES_TO_KEEP ) {
             cleanSplices();
         }
+        return splice;
     }
 
     /**
@@ -202,7 +206,7 @@ public class OverhangFixingManager {
             writeReads(targetQueueSize);
         }
 
-        List<SplitRead> newReadGroup = readGroup.stream().map(SplitRead::new).collect(Collectors.toList());
+        List<SplitRead> newReadGroup = readGroup.stream().map(this::getSplitRead).collect(Collectors.toList());
 
         // Check every stored read for an overhang with the new splice
         for ( final Splice splice : splices) {
@@ -234,6 +238,7 @@ public class OverhangFixingManager {
      * @param splitRead        the splitRead to fix
      * @param splice      the split (bad region to clip out)
      */
+    @VisibleForTesting
     void fixSplit(final SplitRead splitRead, final Splice splice) {
         // if the splitRead doesn't even overlap the split position then we can just exit
         if ( splitRead.unclippedLoc == null || !splice.loc.overlapsP(splitRead.unclippedLoc) ) {
@@ -246,18 +251,21 @@ public class OverhangFixingManager {
 
         GenomeLoc readLoc = splitRead.unclippedLoc;
         GATKRead read = splitRead.read;
-        final int readReferenceLength = read.getEnd() - read.getStart() + 1;
-
+        // Compute the number of non-clipped bases consumed according to the cigar
+        final int readBasesLength = Utils.stream(read.getCigar().getCigarElements())
+                                         .filter(c -> c.getOperator().consumesReadBases() && !c.getOperator().isClipping())
+                                         .mapToInt(CigarElement::getLength)
+                                         .sum();
         if ( isLeftOverhang(readLoc, splice.loc) ) {
             final int overhang = splice.loc.getStop() - read.getStart() + 1;
-            if ( overhangingBasesMismatch(read.getBases(), read.getStart() - readLoc.getStart(), readReferenceLength, splice.reference, splice.reference.length - overhang, overhang) ) {
+            if ( overhangingBasesMismatch(read.getBases(), read.getStart() - readLoc.getStart(), readBasesLength, splice.reference, splice.reference.length - overhang, overhang) ) {
                 final GATKRead clippedRead = ReadClipper.softClipByReadCoordinates(read, 0, splice.loc.getStop() - readLoc.getStart());
                 splitRead.setRead(clippedRead);
             }
         }
         else if ( isRightOverhang(readLoc, splice.loc) ) {
             final int overhang = readLoc.getStop() - splice.loc.getStart() + 1;
-            if ( overhangingBasesMismatch(read.getBases(), read.getLength() - overhang, readReferenceLength, splice.reference, 0, read.getEnd() - splice.loc.getStart() + 1) ) {
+            if ( overhangingBasesMismatch(read.getBases(), read.getLength() - overhang, readBasesLength, splice.reference, 0, read.getEnd() - splice.loc.getStart() + 1) ) {
                 final GATKRead clippedRead = ReadClipper.softClipByReadCoordinates(read, read.getLength() - overhang, read.getLength() - 1);
                 splitRead.setRead(clippedRead);
             }
@@ -392,8 +400,11 @@ public class OverhangFixingManager {
 
         public void setRead(final GATKRead read) {
             this.read = read;
-            if ( ! read.isUnmapped() ) {
-                unclippedLoc = genomeLocParser.createGenomeLoc(read.getContig(), read.getSoftStart(), read.getSoftEnd());
+            int softStart = read.getSoftStart();
+            int softEnd = read.getSoftEnd();
+            // Don't assign an unclipped loc if the read if it doesn't consume reference bases
+            if ( ! read.isUnmapped() && softStart < softEnd) {
+                unclippedLoc = genomeLocParser.createGenomeLoc(read.getContig(), softStart, softEnd);
             }
         }
 
@@ -457,6 +468,10 @@ public class OverhangFixingManager {
         }
     }
 
+    @VisibleForTesting
+    SplitRead getSplitRead(final GATKRead read){
+        return new SplitRead(read);
+    }
 
     // class to represent the split positions
     protected final class Splice {

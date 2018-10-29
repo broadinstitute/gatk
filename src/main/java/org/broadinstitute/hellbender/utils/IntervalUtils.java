@@ -4,7 +4,10 @@ import htsjdk.samtools.QueryInterval;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
-import htsjdk.samtools.util.*;
+import htsjdk.samtools.util.Interval;
+import htsjdk.samtools.util.IntervalList;
+import htsjdk.samtools.util.Locatable;
+import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.tribble.Feature;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -19,6 +22,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.nio.PathLineIterator;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -1507,5 +1511,30 @@ public final class IntervalUtils {
      */
     public enum IntervalBreakpointType {
         START_BREAKPOINT, END_BREAKPOINT
+    }
+
+    /**
+     * Determine whether the two intervals specified overlap each other by at least the threshold proportion specified.
+     * This is a commutative operation.
+     *
+     * @param interval1 Never {@code null}
+     * @param interval2 Never {@code null}
+     * @param reciprocalOverlapThreshold proportion of the segments that must overlap.  Must be between 0.0 and 1.0 (inclusive).
+     * @return whether there is a reciprocal overlap exceeding the given threshold.  If reciprocalOverlapThreshold is 0,
+     * always returns true, even if intervals do not overlap.
+     */
+    public static boolean isReciprocalOverlap(final SimpleInterval interval1, final SimpleInterval interval2, final double reciprocalOverlapThreshold) {
+        Utils.nonNull(interval1);
+        Utils.nonNull(interval2);
+        ParamUtils.inRange(reciprocalOverlapThreshold, 0.0, 1.0, "Reciprocal threshold must be between 0.0 and 1.0.");
+
+        if (reciprocalOverlapThreshold == 0.) {
+            return true;
+        }
+
+        // This overlap check is required, since intersect call below requires that the intervals overlap.
+        return interval1.overlaps(interval2) &&
+                (interval1.intersect(interval2).size() >= (interval2.size() * reciprocalOverlapThreshold)) &&
+                (interval2.intersect(interval1).size() >= (interval1.size() * reciprocalOverlapThreshold));
     }
 }

@@ -60,7 +60,7 @@ public class FragmentUtilsUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "AdjustFragmentsTest")
     public void testAdjustingTwoReads(final GATKRead read1, final GATKRead read2, final int overlapSize) {
-        FragmentUtils.adjustQualsOfOverlappingPairedFragments(read1, read2);
+        FragmentUtils.adjustQualsOfOverlappingPairedFragments(read1, read2, true);
 
         for ( int i = 0; i < read1.getLength() - overlapSize; i++ ) {
             Assert.assertEquals(read1.getBaseQualities()[i], HIGH_QUALITY);

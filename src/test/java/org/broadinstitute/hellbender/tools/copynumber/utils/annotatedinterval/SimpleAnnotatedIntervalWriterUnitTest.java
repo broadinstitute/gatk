@@ -92,6 +92,4 @@ public class SimpleAnnotatedIntervalWriterUnitTest extends GATKBaseTest {
         Assert.assertEquals(testCollection.getSamFileHeader(), collection.getSamFileHeader());
         Assert.assertEquals(testCollection.getAnnotations(), collection.getAnnotations());
     }
-
-    // TODO: Test that we chose the first entry in the config file as an output.
 }

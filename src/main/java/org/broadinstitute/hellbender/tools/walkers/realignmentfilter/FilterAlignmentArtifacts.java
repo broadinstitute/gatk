@@ -137,6 +137,7 @@ public class FilterAlignmentArtifacts extends VariantWalker {
         final Set<VCFHeaderLine> headerLines = new HashSet<>(inputHeader.getMetaDataInSortedOrder());
         headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.ALIGNMENT_ARTIFACT_FILTER_NAME));
         headerLines.addAll(getDefaultToolVCFHeaderLines());
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.REALIGNMENT_COUNTS_VCF_ATTRIBUTE));
         final VCFHeader vcfHeader = new VCFHeader(headerLines, inputHeader.getGenotypeSamples());
         vcfWriter.writeHeader(vcfHeader);
     }
@@ -200,8 +201,10 @@ public class FilterAlignmentArtifacts extends VariantWalker {
         // if we haven't decided yet due to too few supporting reads, fail if there are more failures than successes
         passesFilter = passesFilter != Trilean.UNKNOWN ? passesFilter :
                 Trilean.of(failedRealignmentCount.intValue() <= succeededRealignmentCount.intValue());
+        final VariantContextBuilder vcb = new VariantContextBuilder(vc)
+                .attribute(GATKVCFConstants.REALIGNMENT_COUNTS_VCF_ATTRIBUTE, new int[] {succeededRealignmentCount.intValue(), failedRealignmentCount.intValue()});
 
-        vcfWriter.add(passesFilter == Trilean.TRUE ? vc : new VariantContextBuilder(vc).filter(GATKVCFConstants.ALIGNMENT_ARTIFACT_FILTER_NAME).make());
+        vcfWriter.add( (passesFilter == Trilean.TRUE ? vcb : vcb.filter(GATKVCFConstants.ALIGNMENT_ARTIFACT_FILTER_NAME)).make());
     }
 
     private static int pairScore(final Pair<BwaMemAlignment, BwaMemAlignment> pair) {

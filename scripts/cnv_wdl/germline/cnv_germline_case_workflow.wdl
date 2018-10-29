@@ -5,8 +5,8 @@
 #
 # - The intervals argument is required for both WGS and WES workflows and accepts formats compatible with the
 #   GATK -L argument (see https://gatkforums.broadinstitute.org/gatk/discussion/11009/intervals-and-interval-lists).
-#   These intervals will be padded on both sides by the amount specified by PreprocessIntervals.padding (default 250)
-#   and split into bins of length specified by PreprocessIntervals.bin_length (default 1000; specify 0 to skip binning,
+#   These intervals will be padded on both sides by the amount specified by padding (default 250)
+#   and split into bins of length specified by bin_length (default 1000; specify 0 to skip binning,
 #   e.g., for WES).  For WGS, the intervals should simply cover the chromosomes of interest.
 #
 # - Intervals can be blacklisted from coverage collection and all downstream steps by using the blacklist_intervals
@@ -30,6 +30,7 @@ workflow CNVGermlineCaseWorkflow {
     ##################################
     File intervals
     File? blacklist_intervals
+    File filtered_intervals
     Array[String]+ normal_bams
     Array[String]+ normal_bais
     File contig_ploidy_model_tar
@@ -161,7 +162,7 @@ workflow CNVGermlineCaseWorkflow {
 
     call CNVTasks.ScatterIntervals {
         input:
-            interval_list = PreprocessIntervals.preprocessed_intervals,
+            interval_list = filtered_intervals,
             num_intervals_per_scatter = num_intervals_per_scatter,
             gatk_docker = gatk_docker,
             preemptible_attempts = preemptible_attempts
@@ -174,7 +175,6 @@ workflow CNVGermlineCaseWorkflow {
                 read_count_files = CollectCounts.counts,
                 contig_ploidy_calls_tar = DetermineGermlineContigPloidyCaseMode.contig_ploidy_calls_tar,
                 gcnv_model_tar = gcnv_model_tars[scatter_index],
-                intervals = ScatterIntervals.scattered_interval_lists[scatter_index],
                 gatk4_jar_override = gatk4_jar_override,
                 gatk_docker = gatk_docker,
                 mem_gb = mem_gb_for_germline_cnv_caller,
@@ -305,8 +305,6 @@ task GermlineCNVCallerCaseMode {
     Array[File] read_count_files
     File contig_ploidy_calls_tar
     File gcnv_model_tar
-    File intervals
-    File? annotated_intervals
     String? output_dir
     File? gatk4_jar_override
 

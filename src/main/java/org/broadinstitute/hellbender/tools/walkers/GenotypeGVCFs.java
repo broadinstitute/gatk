@@ -88,6 +88,7 @@ public final class GenotypeGVCFs extends VariantWalker {
     public static final String PHASED_HOM_VAR_STRING = "1|1";
     public static final String ONLY_OUTPUT_CALLS_STARTING_IN_INTERVALS_FULL_NAME = "only-output-calls-starting-in-intervals";
     public static final String ALL_SITES_LONG_NAME = "include-non-variant-sites";
+    public static final String ALL_SITES_SHORT_NAME = "all-sites";
     private static final String GVCF_BLOCK = "GVCFBlock";
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -271,27 +272,18 @@ public final class GenotypeGVCFs extends VariantWalker {
     /**
      * Determines whether the provided VariantContext has real alternate alleles.
      *
-     * There is a bit of a hack to handle the <NON-REF> case because it is not defined in htsjdk.Allele
-     * We check for this as a biallelic symbolic allele.
-     *
      * @param vc  the VariantContext to evaluate
      * @return true if it has proper alternate alleles, false otherwise
      */
-    @VisibleForTesting
-    static boolean isProperlyPolymorphic(final VariantContext vc) {
+    public static boolean isProperlyPolymorphic(final VariantContext vc) {
         //obvious cases
         if (vc == null || vc.getAlternateAlleles().isEmpty()) {
             return false;
         } else if (vc.isBiallelic()) {
-            return !(isSpanningDeletion(vc.getAlternateAllele(0)) || vc.isSymbolic());
+            return !(GATKVCFConstants.isSpanningDeletion(vc.getAlternateAllele(0)) || vc.isSymbolic());
         } else {
             return true;
         }
-    }
-
-    @VisibleForTesting
-    static boolean isSpanningDeletion(final Allele allele){
-        return allele.equals(Allele.SPAN_DEL) || allele.equals(GATKVCFConstants.SPANNING_DELETION_SYMBOLIC_ALLELE_DEPRECATED);
     }
 
     /**

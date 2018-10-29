@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.tribble.annotation.Strand;
 import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -22,7 +23,8 @@ public class GencodeFuncotationBuilder {
     /**
      * The {@link GencodeFuncotation} that is being populated by this {@link GencodeFuncotationBuilder}.
      */
-    private GencodeFuncotation gencodeFuncotation;
+    @VisibleForTesting
+    GencodeFuncotation gencodeFuncotation;
 
     //==================================================================================================================
 
@@ -35,7 +37,7 @@ public class GencodeFuncotationBuilder {
     }
 
     public GencodeFuncotation build() {
-        // TODO: In the future, we will need a mechanism for populating the metadata  (https://github.com/broadinstitute/gatk/issues/4857)
+        // TODO: In the future, we will need a mechanism for populating the metadata, especially if we want to support separate INFO fields in a VCF for each funcotation field (https://github.com/broadinstitute/gatk/issues/4857)
         gencodeFuncotation.setMetadata(FuncotationMetadataUtils.createWithUnknownAttributes(new ArrayList<>(gencodeFuncotation.getFieldNames())));
         return gencodeFuncotation;
     }
@@ -279,6 +281,7 @@ public class GencodeFuncotationBuilder {
 
     /**
      * Set the Reference Context {@link String} in the {@link GencodeFuncotation}.
+     * The Reference Context string should always be for the bases on the + strand.
      * @param referenceContext The {@link String} containing the ReferenceContext for the {@link GencodeFuncotation}.
      * @return {@code this} {@link GencodeFuncotationBuilder}
      */

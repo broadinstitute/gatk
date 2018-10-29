@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.filters.VariantFilter;
+import org.broadinstitute.hellbender.engine.filters.VariantFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.DataSourceUtils;
@@ -67,6 +68,12 @@ public final class FuncotatorEngine implements AutoCloseable {
      * the reference version is hg19 (i.e. {@link FuncotatorArgumentCollection#referenceVersion} == {@link FuncotatorArgumentDefinitions#HG19_REFERENCE_VERSION_STRING}).
      */
     private final boolean mustConvertInputContigsToHg19;
+
+    /**
+     * Whether this {@link FuncotatorEngine} has only produced annotations on variants that have been labeled by the
+     * {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationFactory} as {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification#IGR}.
+     */
+    private boolean onlyProducedIGRs = true;
 
     /**
      * Create a {@link FuncotatorEngine} using the given {@code metadata} and {@code funcotationFactories} representing
@@ -128,7 +135,15 @@ public final class FuncotatorEngine implements AutoCloseable {
         final List<GencodeFuncotation> transcriptFuncotations = retrieveGencodeFuncotationFactoryStream()
                 .map(gf -> gf.createFuncotations(variantContext, referenceContext, featureContext))
                 .flatMap(List::stream)
-                .map(gf -> (GencodeFuncotation) gf).collect(Collectors.toList());
+                .map(f -> {
+                        final GencodeFuncotation gf = (GencodeFuncotation) f;
+                        if (onlyProducedIGRs && (gf.getVariantClassification() != GencodeFuncotation.VariantClassification.IGR)) {
+                            onlyProducedIGRs = false;
+                        }
+                        return gf;
+                    }
+                )
+                .collect(Collectors.toList());
 
         //==============================================================================================================
         // Create the funcotations for non-Gencode data sources:
@@ -192,7 +207,7 @@ public final class FuncotatorEngine implements AutoCloseable {
                         unaccountedForDefaultAnnotations,
                         unaccountedForOverrideAnnotations,
                         defaultToolVcfHeaderLines.stream().map(Object::toString).collect(Collectors.toCollection(LinkedHashSet::new)),
-                        funcotatorArgs.referenceVersion);
+                        funcotatorArgs.referenceVersion, funcotatorArgs.excludedFields);
                 break;
 
             case VCF:
@@ -202,7 +217,7 @@ public final class FuncotatorEngine implements AutoCloseable {
                         headerForVariants,
                         unaccountedForDefaultAnnotations,
                         unaccountedForOverrideAnnotations,
-                        defaultToolVcfHeaderLines
+                        defaultToolVcfHeaderLines, funcotatorArgs.excludedFields
                 );
                 break;
             default:
@@ -216,13 +231,10 @@ public final class FuncotatorEngine implements AutoCloseable {
      * @return A {@link VariantFilter} that will ignore any variants that have been filtered (if the user requested that the filter is turned on).  Otherwise returns a no-op filter.
      */
     public VariantFilter makeVariantFilter() {
-        return  variant -> {
-            // Ignore variants that have been filtered if the user requests it:
-            if ( funcotatorArgs.removeFilteredVariants && variant.isFiltered() ) {
-                return false;
-            }
-            return true;
-        };
+        // Ignore variants that have been filtered if the user requests it:
+        return funcotatorArgs.removeFilteredVariants ?
+                VariantFilterLibrary.PASSES_FILTERS :
+                VariantFilterLibrary.ALLOW_ALL_VARIANTS;
     }
 
     /**
@@ -322,6 +334,15 @@ public final class FuncotatorEngine implements AutoCloseable {
         }
 
         return correctReferenceContext;
+    }
+
+    /**
+     * Returns whether this {@link FuncotatorEngine} has only produced annotations on variants that have been labeled by the
+     * {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationFactory} as {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification#IGR}.
+     * @return {@code true} IFF this {@link FuncotatorEngine} has only produced IGR annotations.
+     */
+    public boolean onlyProducedIGRs() {
+        return onlyProducedIGRs;
     }
 
     // =================================================================================================================

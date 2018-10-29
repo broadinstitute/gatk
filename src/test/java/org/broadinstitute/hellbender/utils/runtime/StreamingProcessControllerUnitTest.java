@@ -1,6 +1,9 @@
 package org.broadinstitute.hellbender.utils.runtime;
 
 import org.broadinstitute.hellbender.testutils.BaseTest;
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.python.PythonScriptExecutorException;
+import org.broadinstitute.hellbender.utils.python.StreamingPythonScriptExecutor;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -10,9 +13,11 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
 
-// Tests for the StreamingProcessController. Although these tests use Python, they do not test
-// or depend on the gatktool python package.
+// Tests for the StreamingProcessController. The StreamingProcessController depends on the remote
+// process cooperating via use of the ack fifo. Since the gatktool Python package implements the required
+// cooperative methods, some of these tests depend on that package.
 //
 // NOTE: TestNG has a bug where it throws ArrayIndexOutOfBoundsException instead of TimeoutException
 // exception when the test time exceeds the timeOut threshold. This is fixed but not yet released:
@@ -135,10 +140,10 @@ public class StreamingProcessControllerUnitTest extends BaseTest {
         Assert.assertFalse(catController.getProcess().isAlive());
     }
 
-    @Test(expectedExceptions = IllegalStateException.class)
+    @Test(groups = "python", expectedExceptions = IllegalStateException.class)
     public void testRedundantStart() {
-        final ProcessSettings catProcessSettings = new ProcessSettings(new String[] {"python", "-i", "-u"});
-        final StreamingProcessController catController = new StreamingProcessController(catProcessSettings);
+        final ProcessSettings processSettings = new ProcessSettings(new String[] {"python", "-i", "-u"});
+        final StreamingProcessController catController = new StreamingProcessController(processSettings);
         Assert.assertNotNull(catController.start());
 
         try {
@@ -146,6 +151,49 @@ public class StreamingProcessControllerUnitTest extends BaseTest {
         } finally {
             catController.terminate();
             Assert.assertFalse(catController.getProcess().isAlive());
+        }
+    }
+
+    @DataProvider(name="nckMessages")
+    private Object[][] getNckMessages() {
+        return new Object[][] {
+                // message, expected message length
+                { "", "" },     // message of length 0
+                { "1", "1" },   // message of length 1
+                { "Test roundtrip negative ack with message protocol", "Test roundtrip negative ack with message protocol" },
+                // one byte less than max
+                { Utils.dupChar('s', StreamingToolConstants.STREAMING_NCK_WITH_MESSAGE_MAX_MESSAGE_LENGTH - 1),
+                        Utils.dupChar('s', StreamingToolConstants.STREAMING_NCK_WITH_MESSAGE_MAX_MESSAGE_LENGTH - 1) },
+                // exactly max bytes
+                { Utils.dupChar('s', StreamingToolConstants.STREAMING_NCK_WITH_MESSAGE_MAX_MESSAGE_LENGTH),
+                        Utils.dupChar('s', StreamingToolConstants.STREAMING_NCK_WITH_MESSAGE_MAX_MESSAGE_LENGTH) },  // 9999
+                // max bytes + 1000, trimmed to max
+                { Utils.dupChar('s', StreamingToolConstants.STREAMING_NCK_WITH_MESSAGE_MAX_MESSAGE_LENGTH + 1000),
+                        Utils.dupChar('s', StreamingToolConstants.STREAMING_NCK_WITH_MESSAGE_MAX_MESSAGE_LENGTH) }, // > 9999 is trimmed to 9999
+        };
+    }
+
+    @Test(groups = "python", dataProvider = "nckMessages", timeOut = 50000, expectedExceptions={PythonScriptExecutorException.class})
+    public void testNckWithMessage(final String nkmMessage, final String expectedMessage) throws PythonScriptExecutorException {
+
+        // Since testing the nack w/message StreamingProcessController functionality requires a cooperative remote
+        // process that implements code to service the ack fifo, we test it indirectly via use of the
+        // StreamingPythonExecutor, since that already depends on Python code that knows how to participate
+        // in the protocol.
+        final StreamingPythonScriptExecutor<String> streamingPythonExecutor =
+                new StreamingPythonScriptExecutor<>(StreamingPythonScriptExecutor.PythonExecutableName.PYTHON3,true);
+        Assert.assertNotNull(streamingPythonExecutor);
+        Assert.assertTrue(streamingPythonExecutor.start(Collections.emptyList(), true, null));
+
+        try {
+            streamingPythonExecutor.sendSynchronousCommand(String.format("tool.sendNackWithMessage(\"%s\")" + NL, nkmMessage));
+        }
+        catch (PythonScriptExecutorException e) {
+            Assert.assertTrue(e.getMessage().contains(expectedMessage));
+            throw e;
+        }
+        finally {
+            streamingPythonExecutor.terminate();
         }
     }
 
@@ -188,7 +236,7 @@ public class StreamingProcessControllerUnitTest extends BaseTest {
     private boolean requestAndWaitForAck(final StreamingProcessController controller) {
         controller.writeProcessInput("akcFIFOWriter.write('ack')" + NL);
         controller.writeProcessInput("akcFIFOWriter.flush()" + NL);
-        return controller.waitForAck();
+        return controller.waitForAck().isPositiveAck();
     }
 
     private String getLineFromTempFile(final File tempFile) throws IOException {

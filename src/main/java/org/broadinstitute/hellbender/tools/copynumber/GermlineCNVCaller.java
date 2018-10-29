@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.copynumber;
 
-import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
@@ -13,8 +12,7 @@ import org.broadinstitute.hellbender.tools.copynumber.arguments.*;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AnnotatedIntervalCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleCountCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleIntervalCollection;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.LocatableMetadata;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleLocatableMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.records.SimpleCount;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -75,8 +73,9 @@ import java.util.stream.Collectors;
  *     <dd><p>The tool will be run in the COHORT mode using the argument {@code run-mode COHORT}.
  *      In this mode, coverage model parameters are inferred simultaneously with the CNV states. Depending on
  *      available memory, it may be necessary to run the tool over a subset of all intervals, which can be specified
- *      by -L. The specified intervals must be present in all of the input count files. The output will contain two
- *      subdirectories, one ending with "-model" and the other with "-calls".</p>
+ *      by -L; this can be used to pass a filtered interval list produced by {@link FilterIntervals} to mask
+ *      intervals from modeling. The specified intervals must be present in all of the input count files. The output
+ *      will contain two subdirectories, one ending with "-model" and the other with "-calls".</p>
  *
  *      <p>The model subdirectory contains a snapshot of the inferred parameters of the coverage model, which may be
  *      used later for CNV calling in one or more similarly-sequenced samples as mentioned earlier. Optionally, the path
@@ -94,11 +93,11 @@ import java.util.stream.Collectors;
  *      coverage bias factors.</p></dd>
  *
  *     <dt>CASE mode:</dt>
- *     <dd><p>The tool will be run in the CASE mode using the argument {@code run-mode CASE}. The path to a
- *      previously obtained coverage model parameter bundle must be provided via the {@code model} argument
- *      in this mode. The modeled intervals are specified by the parameter bundle, all interval-related arguments are
- *      ignored in this mode, and all model intervals must be present in all of the input count files. The tool output
- *      in the CASE mode is only the "-calls" subdirectory and is organized similarly to the COHORT mode.</p>
+ *     <dd><p>The tool will be run in the CASE mode using the argument {@code run-mode CASE}. The path to a previously
+ *     obtained model directory must be provided via the {@code model} argument in this mode. The modeled intervals are
+ *     then specified by a file contained in the model directory, all interval-related arguments are ignored in this
+ *     mode, and all model intervals must be present in all of the input count files. The tool output in the CASE mode
+ *     is only the "-calls" subdirectory and is organized similarly to the COHORT mode.</p>
  *
  *      <p>Note that at the moment, this tool does not automatically verify the compatibility of the provided parametrization
  *      with the provided count files. Model compatibility may be assessed a posteriori by inspecting the magnitude of
@@ -157,8 +156,6 @@ import java.util.stream.Collectors;
  * <pre>
  * gatk GermlineCNVCaller \
  *   --run-mode CASE \
- *   -L intervals.interval_list \
- *   --interval-merging-rule OVERLAPPING_ONLY \
  *   --contig-ploidy-calls path_to_contig_ploidy_calls \
  *   --model previous_model_path \
  *   --input normal_1.counts.hdf5 \
@@ -318,20 +315,8 @@ public final class GermlineCNVCaller extends CommandLineProgram {
             //get sequence dictionary and intervals from the first read-count file to use to validate remaining files
             //(this first file is read again below, which is slightly inefficient but is probably not worth the extra code)
             final File firstReadCountFile = inputReadCountFiles.get(0);
-            final SimpleCountCollection firstReadCounts = SimpleCountCollection.read(firstReadCountFile);
-            final SAMSequenceDictionary sequenceDictionary = firstReadCounts.getMetadata().getSequenceDictionary();
-            final LocatableMetadata metadata = new SimpleLocatableMetadata(sequenceDictionary);
-
-            if (intervalArgumentCollection.intervalsSpecified()) {
-                logger.info("Intervals specified...");
-                CopyNumberArgumentValidationUtils.validateIntervalArgumentCollection(intervalArgumentCollection);
-                specifiedIntervals = new SimpleIntervalCollection(metadata,
-                        intervalArgumentCollection.getIntervals(sequenceDictionary));
-            } else {
-                logger.info(String.format("Retrieving intervals from first read-count file (%s)...",
-                        firstReadCountFile));
-                specifiedIntervals = new SimpleIntervalCollection(metadata, firstReadCounts.getIntervals());
-            }
+            specifiedIntervals = CopyNumberArgumentValidationUtils.resolveIntervals(
+                    firstReadCountFile, intervalArgumentCollection, logger);
 
             //in cohort mode, intervals are specified via -L; we write them to a temporary file
             specifiedIntervalsFile = IOUtils.createTempFile("intervals", ".tsv");
@@ -340,8 +325,10 @@ public final class GermlineCNVCaller extends CommandLineProgram {
                     CopyNumberArgumentValidationUtils.validateAnnotatedIntervalsSubset(
                             inputAnnotatedIntervalsFile, specifiedIntervals, logger);
             if (subsetAnnotatedIntervals != null) {
+                logger.info("GC-content annotations for intervals found; explicit GC-bias correction will be performed...");
                 subsetAnnotatedIntervals.write(specifiedIntervalsFile);
             } else {
+                logger.info("No GC-content annotations for intervals found; explicit GC-bias correction will not be performed...");
                 specifiedIntervals.write(specifiedIntervalsFile);
             }
         }
@@ -397,15 +384,15 @@ public final class GermlineCNVCaller extends CommandLineProgram {
                 logger.warn("Sequence dictionary for read-count file %s does not match that " +
                         "in other read-count files.", inputReadCountFile);
             }
-            Utils.validateArg(new HashSet<>(readCounts.getIntervals()).containsAll(intervalSubset),
+            final List<SimpleCount> subsetReadCounts = readCounts.getRecords().stream()
+                    .filter(c -> intervalSubset.contains(c.getInterval()))
+                    .collect(Collectors.toList());
+            Utils.validateArg(subsetReadCounts.size() == intervalSubset.size(),
                     String.format("Intervals for read-count file %s do not contain all specified intervals.",
                             inputReadCountFile));
             final File intervalSubsetReadCountFile = IOUtils.createTempFile("sample-" + sampleIndex, ".tsv");
-            new SimpleCountCollection(
-                    readCounts.getMetadata(),
-                    readCounts.getRecords().stream()
-                            .filter(c -> intervalSubset.contains(c.getInterval()))
-                            .collect(Collectors.toList())).write(intervalSubsetReadCountFile);
+            new SimpleCountCollection(readCounts.getMetadata(), subsetReadCounts)
+                    .write(intervalSubsetReadCountFile);
             intervalSubsetReadCountFiles.add(intervalSubsetReadCountFile);
         }
         return intervalSubsetReadCountFiles;

@@ -2416,4 +2416,28 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
             }
         }
     }
+
+    /** Makes a list of alleles, with the first one being marked as reference. */
+    private static List<Allele> makeAlleles(String... ss) {
+        final List<Allele> alleles = new ArrayList<>();
+        for (int i=0; i<ss.length; ++i) {
+            alleles.add(Allele.create(ss[i], i== 0));
+        }
+        return alleles;
+    }
+
+    @Test()
+    public void testIsMnpWithoutNonRef() {
+        final String NON_REF = Allele.NON_REF_STRING;
+        Assert.assertTrue(GATKVariantContextUtils.isUnmixedMnpIgnoringNonRef(makeVC(makeAlleles("ACT", "GCG"), 1)));
+        Assert.assertTrue(GATKVariantContextUtils.isUnmixedMnpIgnoringNonRef(makeVC(makeAlleles("AA", "GG", "CT"), 1)));
+        Assert.assertTrue(GATKVariantContextUtils.isUnmixedMnpIgnoringNonRef(makeVC(makeAlleles("ACT", "GCG", NON_REF), 1)));
+        Assert.assertTrue(GATKVariantContextUtils.isUnmixedMnpIgnoringNonRef(makeVC(makeAlleles("AA", "GG", "CT", NON_REF), 1)));
+
+        Assert.assertFalse(GATKVariantContextUtils.isUnmixedMnpIgnoringNonRef(makeVC(makeAlleles("A", "C"), 1)));
+        Assert.assertFalse(GATKVariantContextUtils.isUnmixedMnpIgnoringNonRef(makeVC(makeAlleles("A", "C", NON_REF), 1)));
+        Assert.assertFalse(GATKVariantContextUtils.isUnmixedMnpIgnoringNonRef(makeVC(makeAlleles("A", "AC", NON_REF), 1)));
+        Assert.assertFalse(GATKVariantContextUtils.isUnmixedMnpIgnoringNonRef(makeVC(makeAlleles("ACT", "A", NON_REF), 1)));
+        Assert.assertFalse(GATKVariantContextUtils.isUnmixedMnpIgnoringNonRef(makeVC(makeAlleles("ACT", "A", "AGG", NON_REF), 1)));
+    }
 }

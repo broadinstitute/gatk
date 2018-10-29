@@ -33,6 +33,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 import java.util.zip.ZipException;
@@ -43,6 +45,16 @@ public final class IOUtils {
 
     // see https://support.hdfgroup.org/HDF5/doc/H5.format.html
     private static final byte hdf5HeaderSignature[] = { (byte) 0x89, 'H', 'D', 'F', '\r', '\n', (byte) 0x1A, '\n' };
+
+    /**
+     * Schemes starting with gendb could be GenomicsDB paths
+     */
+    public static final String GENOMIC_DB_URI_SCHEME = "gendb";
+
+    /**
+     * Patterns identifying GenomicsDB paths
+     */
+    private static final Pattern GENOMICSDB_URI_PATTERN = Pattern.compile("^" + GENOMIC_DB_URI_SCHEME + "(\\.?)(.*)(://)(.*)");
 
     /**
      * Returns true if the file's extension is CRAM.
@@ -776,6 +788,24 @@ public final class IOUtils {
     }
 
     /**
+     * Appends path to the given parent dir. Parent dir could be a URI or a File.
+     * @param dir the folder to append the path to
+     * @param path the path relative to dir.
+     * @return the appended path as a String if path is relative, else path is returned.
+     */
+    public static String appendPathToDir(String dir, String path) {
+        if (path.startsWith("/")) { // Already an absolute path
+            return path;
+        }
+        if (BucketUtils.isRemoteStorageUrl(dir) || BucketUtils.isFileUrl(dir)) {
+            Path dirPath = getPath(dir);
+            return dirPath.resolve(path).toUri().toString();
+        } else {
+            return new File(dir, path).getPath();
+        }
+    }
+
+    /**
      * Gets the absolute Path name with the URI marker, handling the special case of the default file system by removing
      * the file:// prefix.
      *
@@ -816,6 +846,18 @@ public final class IOUtils {
             // The user can see the underlying exception by passing
             // -DGATK_STACKTRACE_ON_USER_EXCEPTION=true
             throw new UserException.CouldNotReadInputFile(path, cloudBoom.getCode() + ": " + cloudBoom.getMessage(), cloudBoom);
+        }
+    }
+
+    /**
+     *
+     * @param paths paths to test, as Strings
+     * @throws org.broadinstitute.hellbender.exceptions.UserException.CouldNotReadInputFile if any of the paths aren't
+     *         readable and a regular file
+     */
+    public static void assertPathsAreReadable(final String ... paths) {
+        for (String path : paths) {
+            IOUtils.assertFileIsReadable(IOUtils.getPath(path));
         }
     }
 
@@ -863,5 +905,86 @@ public final class IOUtils {
         } catch (final UnsupportedEncodingException ex) {
             throw new UserException("Could not decode sample name", ex);
         }
+    }
+
+    /**
+     * Check if a given path represents GenomicsDB URI.
+     *
+     * @param path String containing the path to test
+     * @return true if path represents a GenomicsDB URI, otherwise false
+     */
+    public static boolean isGenomicsDBPath(final String path) {
+        return getGenomicsDBPath(path) != null;
+    }
+
+    /**
+     * Get the GenomicsDB equivalent absolute URL for a given path
+     *
+     * @param genomicsDBPath String representing legal gendb URI
+     * @return absolute gendb URI to the path
+     */
+    public static String getAbsolutePathWithGenomicsDBURIScheme(final String genomicsDBPath) {
+        String path = getGenomicsDBAbsolutePath(genomicsDBPath);
+        if (path == null) {
+            return null;
+        } else if (path.contains("://")) {
+            return GENOMIC_DB_URI_SCHEME + "." + path;
+        } else {
+            return GENOMIC_DB_URI_SCHEME + "://" + path;
+        }
+    }
+
+    /**
+     * Gets the absolute Path for a GenomicsDB path
+     *
+     * @param gendbPath gendb URI
+     * @return absolute name to the given GenomicsDB path
+     * @see #getGenomicsDBPath(String)
+     */
+    public static String getGenomicsDBAbsolutePath(final String gendbPath) {
+        String path = getGenomicsDBPath(gendbPath);
+        if (path == null) {
+            return null;
+        } else if (path.contains("://")) {
+            return path;
+        } else {
+            return new File(path).getAbsolutePath();
+        }
+    }
+
+    /**
+     * If path is prefaced with <em>gendb://</em> or <em>gendb.CloudURIScheme://</em>, this method returns an absolute path acceptable
+     * by GenomicsDB by stripping off <em>gendb://</em> for files or <em>gendb.</em> for Cloud URIs respectively .
+     * Otherwise, returns null.
+     *
+     * @param path GenomicsDB paths that start with <em>gendb://</em> or <em>gendb.CloudURIScheme://</em><br>
+     *             Following are valid gendb URI examples
+     *             <ul>
+     *             <li>gendb://my_folder
+     *             <li>gendb:///my_abs_folder
+     *             <li>gendb.hdfs://name_node/my_folder
+     *             <li>gendb.gs://my_bucket/my_folder
+     *             <li>gendb.s3://my_bucket/my_folder
+     *             </ul>
+     * @return Valid GenomicsDB path or null
+     */
+    public static String getGenomicsDBPath(final String path) {
+        // GENOMICSDB_URI_PATTERN = Pattern.compile("^" + GENOMIC_DB_URI_SCHEME + "(\\.?)(.*)(://)(.*)");
+        //   gendb.supportedCloudURI://<rest_of_path>
+        //           ^^group2^^         ^^group4^^
+        String genomicsdbPath = null;
+        if (path != null && path.startsWith(GENOMIC_DB_URI_SCHEME)) { // Check if path starts with "gendb"
+            Matcher matcher = GENOMICSDB_URI_PATTERN.matcher(path);
+            if (matcher.find() && !matcher.group(3).isEmpty()) { // path contains "://"
+                if (!matcher.group(1).isEmpty()) { // path has a period after gendb, so it is a URI
+                    if (!matcher.group(2).isEmpty()) { //path has a scheme, so it is valid URI for GenomicsDB
+                        genomicsdbPath = matcher.group(2) + matcher.group(3) + matcher.group(4);
+                    }
+                } else if (matcher.group(2).isEmpty()) {
+                    genomicsdbPath = matcher.group(4);
+                }
+            }
+        }
+        return genomicsdbPath;
     }
 }

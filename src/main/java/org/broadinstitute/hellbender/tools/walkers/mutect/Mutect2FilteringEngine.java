@@ -30,7 +30,7 @@ public class Mutect2FilteringEngine {
 
     public Mutect2FilteringEngine(final M2FiltersArgumentCollection MTFAC, final String tumorSample, final Optional<String> normalSample) {
         this.MTFAC = MTFAC;
-        contamination = MTFAC.contaminationTable == null ? 0.0 : ContaminationRecord.readFromFile(MTFAC.contaminationTable).get(0).getContamination();
+        contamination = MTFAC.contaminationTable == null ? MTFAC.contaminationEstimate : ContaminationRecord.readFromFile(MTFAC.contaminationTable).get(0).getContamination();
         this.tumorSample = tumorSample;
         this.normalSample = normalSample;
         somaticPriorProb = Math.pow(10, MTFAC.log10PriorProbOfSomaticEvent);
@@ -66,7 +66,7 @@ public class Mutect2FilteringEngine {
 
     private void applyTriallelicFilter(final VariantContext vc, final FilterResult filterResult) {
         if (vc.hasAttribute(GATKVCFConstants.TUMOR_LOD_KEY)) {
-            final double[] tumorLods = getDoubleArrayAttribute(vc, GATKVCFConstants.TUMOR_LOD_KEY);
+            final double[] tumorLods = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.TUMOR_LOD_KEY);
             final long numPassingAltAlleles = Arrays.stream(tumorLods).filter(x -> x > MTFAC.TUMOR_LOD_THRESHOLD).count();
 
             if (numPassingAltAlleles > MTFAC.numAltAllelesThreshold) {
@@ -109,7 +109,7 @@ public class Mutect2FilteringEngine {
 
     private void applyBaseQualityFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final FilterResult filterResult) {
         final int[] baseQualityByAllele = getIntArrayTumorField(vc, BaseQuality.KEY);
-        final double[] tumorLods = getDoubleArrayAttribute(vc, GATKVCFConstants.TUMOR_LOD_KEY);
+        final double[] tumorLods = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.TUMOR_LOD_KEY);
         final int indexOfMaxTumorLod = MathUtils.maxElementIndex(tumorLods);
 
         if (baseQualityByAllele != null && baseQualityByAllele[indexOfMaxTumorLod + 1] < MTFAC.minMedianBaseQuality) {
@@ -142,10 +142,10 @@ public class Mutect2FilteringEngine {
 
     private void applyGermlineVariantFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final FilterResult filterResult) {
         if (vc.hasAttribute(GATKVCFConstants.TUMOR_LOD_KEY) && vc.hasAttribute(GATKVCFConstants.POPULATION_AF_VCF_ATTRIBUTE)) {
-            final double[] tumorLog10OddsIfSomatic = getDoubleArrayAttribute(vc, GATKVCFConstants.TUMOR_LOD_KEY);
+            final double[] tumorLog10OddsIfSomatic = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.TUMOR_LOD_KEY);
             final Optional<double[]> normalLods = vc.hasAttribute(GATKVCFConstants.NORMAL_LOD_KEY) ?
-                    Optional.of(getDoubleArrayAttribute(vc, GATKVCFConstants.NORMAL_LOD_KEY)) : Optional.empty();
-            final double[] populationAlleleFrequencies = getDoubleArrayAttribute(vc, GATKVCFConstants.POPULATION_AF_VCF_ATTRIBUTE);
+                    Optional.of(GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.NORMAL_LOD_KEY)) : Optional.empty();
+            final double[] populationAlleleFrequencies = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.POPULATION_AF_VCF_ATTRIBUTE);
 
             final List<MinorAlleleFractionRecord> segments = tumorSegments.getOverlaps(vc).stream().collect(Collectors.toList());
 
@@ -187,9 +187,9 @@ public class Mutect2FilteringEngine {
         }
     }
 
-    private static void applyInsufficientEvidenceFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final FilterResult filterResult) {
+    private void applyInsufficientEvidenceFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final FilterResult filterResult) {
         if (vc.hasAttribute(GATKVCFConstants.TUMOR_LOD_KEY)) {
-            final double[] tumorLods = getDoubleArrayAttribute(vc, GATKVCFConstants.TUMOR_LOD_KEY);
+            final double[] tumorLods = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.TUMOR_LOD_KEY);
 
             if (MathUtils.arrayMax(tumorLods) < MTFAC.TUMOR_LOD_THRESHOLD) {
                 filterResult.addFilter(GATKVCFConstants.TUMOR_LOD_FILTER_NAME);
@@ -205,7 +205,7 @@ public class Mutect2FilteringEngine {
             return;
         }
 
-        final double[] tumorLods = getDoubleArrayAttribute(vc, GATKVCFConstants.TUMOR_LOD_KEY);
+        final double[] tumorLods = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.TUMOR_LOD_KEY);
         final int indexOfMaxTumorLod = MathUtils.maxElementIndex(tumorLods);
 
         Genotype tumorGenotype = vc.getGenotype(tumorSample);
@@ -226,7 +226,7 @@ public class Mutect2FilteringEngine {
             return;
         }
 
-        final double[] normalArtifactLods = getDoubleArrayAttribute(vc, GATKVCFConstants.NORMAL_ARTIFACT_LOD_ATTRIBUTE);
+        final double[] normalArtifactLods = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.NORMAL_ARTIFACT_LOD_ATTRIBUTE);
         if (normalArtifactLods[indexOfMaxTumorLod] > MTFAC.NORMAL_ARTIFACT_LOD_THRESHOLD) {
             filterResult.addFilter(GATKVCFConstants.ARTIFACT_IN_NORMAL_FILTER_NAME);
             return;
@@ -243,10 +243,6 @@ public class Mutect2FilteringEngine {
         if (normalPValue < M2FiltersArgumentCollection.normalPileupPValueThreshold) {
             filterResult.addFilter(GATKVCFConstants.ARTIFACT_IN_NORMAL_FILTER_NAME);
         }
-    }
-
-    private static double[] getDoubleArrayAttribute(final VariantContext vc, final String attribute) {
-        return GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, attribute, () -> null, -1);
     }
 
     private void applyStrandArtifactFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final FilterResult filterResult) {
@@ -327,28 +323,104 @@ public class Mutect2FilteringEngine {
         }
     }
 
+    private void applyStrictStrandFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final FilterResult filterResult) {
+
+        if (! MTFAC.strictStrandBias) {
+            return;
+        }
+
+        final Genotype tumorGenotype = vc.getGenotype(tumorSample);
+        if (! tumorGenotype.hasExtendedAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY)) {
+            return;
+        }
+        final int[] strandBiasCounts = GATKProtectedVariantContextUtils.getAttributeAsIntArray(tumorGenotype, GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY, ()->null, -1);
+
+        final int altForwardCount = StrandBiasBySample.getAltForwardCountFromFlattenedContingencyTable(strandBiasCounts);
+        final int altReverseCount = StrandBiasBySample.getAltReverseCountFromFlattenedContingencyTable(strandBiasCounts);
+
+        // filter if there is no alt evidence in the forward or reverse strand
+        if ( altForwardCount == 0 || altReverseCount == 0) {
+            filterResult.addFilter(GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME);
+        }
+    }
+
+    private void applyNRatioFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final FilterResult filterResult) {
+        final Genotype tumorGenotype = vc.getGenotype(tumorSample);
+        final double[] alleleFractions = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(tumorGenotype, VCFConstants.ALLELE_FREQUENCY_KEY,
+                () -> new double[] {1.0}, 1.0);
+        final int maxFractionIndex = MathUtils.maxElementIndex(alleleFractions);
+        final int[] ADs = tumorGenotype.getAD();
+        final int altCount = ADs[maxFractionIndex + 1];
+      
+        // if there is no NCount annotation or the altCount is 0, don't apply the filter
+        if (!tumorGenotype.hasExtendedAttribute(GATKVCFConstants.N_COUNT_KEY) || altCount == 0 ) {
+            return;
+        }
+
+        final int NCount = GATKProtectedVariantContextUtils.getAttributeAsInt(tumorGenotype, GATKVCFConstants.N_COUNT_KEY,-1);
+
+        if ((double) NCount / altCount >= MTFAC.nRatio ) {
+            filterResult.addFilter(GATKVCFConstants.N_RATIO_FILTER_NAME);
+        }
+    }
+  
+    private void applyChimericOriginalAlignmentFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final FilterResult filterResult) {
+
+        final Genotype tumorGenotype = vc.getGenotype(tumorSample);
+        final double[] alleleFractions = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(tumorGenotype, VCFConstants.ALLELE_FREQUENCY_KEY,
+                () -> new double[] {1.0}, 1.0);
+        final int maxFractionIndex = MathUtils.maxElementIndex(alleleFractions);
+        final int[] ADs = tumorGenotype.getAD();
+        final int altCount = ADs[maxFractionIndex + 1];
+
+        if (tumorGenotype.hasAnyAttribute(GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY) && vc.isBiallelic()) {
+            final int nonMtOa = GATKProtectedVariantContextUtils.getAttributeAsInt(tumorGenotype, GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY, -1);
+            if ((double) nonMtOa / altCount > MTFAC.nonMtAltByAlt) {
+                filterResult.addFilter(GATKVCFConstants.CHIMERIC_ORIGINAL_ALIGNMENT_FILTER_NAME);
+            }
+        }
+    }
+    private void applyLODFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final FilterResult filterResult) {
+        if(vc.isBiallelic()) {
+            final Double lod = vc.getAttributeAsDouble(GATKVCFConstants.TUMOR_LOD_KEY, 1);
+            final Double depth = vc.getAttributeAsDouble(VCFConstants.DEPTH_KEY, 1);
+            final Double lodByDepth = lod / depth;
+            if (lodByDepth < MTFAC.lodByDepth) {
+                filterResult.addFilter(GATKVCFConstants.LOW_AVG_ALT_QUALITY_FILTER_NAME);
+            }
+        }
+    }
+
     public FilterResult calculateFilters(final M2FiltersArgumentCollection MTFAC, final VariantContext vc,
                                          final Optional<FilteringFirstPass> firstPass) {
         firstPass.ifPresent(ffp -> Utils.validate(ffp.isReadyForSecondPass(), "First pass information has not been processed into a model for the second pass."));
         final FilterResult filterResult = new FilterResult();
-        applyFilteredHaplotypeFilter(MTFAC, vc, filterResult, firstPass);
         applyInsufficientEvidenceFilter(MTFAC, vc, filterResult);
-        applyClusteredEventFilter(vc, filterResult);
         applyDuplicatedAltReadFilter(MTFAC, vc, filterResult);
-        applyTriallelicFilter(vc, filterResult);
-        applyPanelOfNormalsFilter(MTFAC, vc, filterResult);
-        applyGermlineVariantFilter(MTFAC, vc, filterResult);
-        applyArtifactInNormalFilter(MTFAC, vc, filterResult);
         applyStrandArtifactFilter(MTFAC, vc, filterResult);
-        applySTRFilter(vc, filterResult);
-        applyContaminationFilter(MTFAC, vc, filterResult);
         applyBaseQualityFilter(MTFAC, vc, filterResult);
         applyMappingQualityFilter(MTFAC, vc, filterResult);
-        applyMedianFragmentLengthDifferenceFilter(MTFAC, vc, filterResult);
-        applyReadPositionFilter(MTFAC, vc, filterResult);
+        applyContaminationFilter(MTFAC, vc, filterResult);
 
-        // The following filters use the information gathered during the first pass
-        applyReadOrientationFilter(vc, filterResult, firstPass);
+        if (!MTFAC.mitochondria) {
+            applyFilteredHaplotypeFilter(MTFAC, vc, filterResult, firstPass);
+            applyClusteredEventFilter(vc, filterResult);
+            applyTriallelicFilter(vc, filterResult);
+            applyPanelOfNormalsFilter(MTFAC, vc, filterResult);
+            applyGermlineVariantFilter(MTFAC, vc, filterResult);
+            applyArtifactInNormalFilter(MTFAC, vc, filterResult);
+            applySTRFilter(vc, filterResult);
+            applyMedianFragmentLengthDifferenceFilter(MTFAC, vc, filterResult);
+            applyReadPositionFilter(MTFAC, vc, filterResult);
+            // The ReadOrientation filter uses the information gathered during the first pass
+            applyReadOrientationFilter(vc, filterResult, firstPass);
+            applyStrictStrandFilter(MTFAC, vc, filterResult);
+            applyNRatioFilter(MTFAC, vc, filterResult);
+        } else {
+            applyChimericOriginalAlignmentFilter(MTFAC, vc, filterResult);
+            applyLODFilter(MTFAC, vc, filterResult);
+        }
+
         return filterResult;
     }
 

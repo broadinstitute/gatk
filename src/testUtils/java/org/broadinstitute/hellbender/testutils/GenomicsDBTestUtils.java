@@ -1,9 +1,9 @@
 package org.broadinstitute.hellbender.testutils;
 
 import htsjdk.samtools.util.Locatable;
-import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBImport;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
 import java.util.Collections;
@@ -11,6 +11,7 @@ import java.util.List;
 
 
 public final class GenomicsDBTestUtils {
+
     /**
      * don't instantiate a utility class
      */
@@ -21,7 +22,7 @@ public final class GenomicsDBTestUtils {
      * @return a string formatted as a genomicsDB uri pointing to the given workspace i.e "gendb:///pathTo/workspace
      */
     public static String makeGenomicsDBUri(final File workspace){
-        return FeatureDataSource.GENOMIC_DB_URI_SCHEME + workspace.getAbsolutePath();
+        return IOUtils.GENOMIC_DB_URI_SCHEME + "://" + workspace.getAbsolutePath();
     }
 
     /**

@@ -1,10 +1,11 @@
 package org.broadinstitute.hellbender.tools.copynumber;
 
-import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalIntervalArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils;
@@ -15,7 +16,6 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.collections.Covera
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleCountCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleIntervalCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.LocatableMetadata;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CoveragePerContig;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.SimpleCount;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -63,9 +63,14 @@ import java.util.stream.Collectors;
  *
  *     <dd>If a ploidy model parameter path is not provided via the {@code model} argument, the tool will run in
  *     the COHORT mode. In this mode, ploidy model parameters (e.g. coverage bias and variance for each contig) are
- *     inferred, along with baseline contig ploidy states of each sample. A TSV file specifying prior probabilities
- *     for each integer ploidy state and for each contig is required in this mode and must be specified via the
- *     {@code contig-ploidy-priors} argument. The following shows an example of such a table:
+ *     inferred, along with baseline contig ploidy states of each sample. It is possible to run the tool over a subset
+ *     of all intervals present in the input count files, which can be specified by -L; this can be used to pass a
+ *     filtered interval list produced by {@link FilterIntervals} to mask intervals from modeling. The specified
+ *     intervals must be present in all of the input count files.
+ *
+ *     <p>A TSV file specifying prior probabilities for each integer ploidy state and for each contig is required in this
+ *     mode and must be specified via the {@code contig-ploidy-priors} argument. The following shows an example of
+ *     such a table:</p>
  *     <br>
  *     <table border="1" width="80%">
  *         <tr>
@@ -85,11 +90,11 @@ import java.util.stream.Collectors;
  *            <td>Y</td> <td>0.50</td> <td>0.50</td> <td>0.00</td> <td>0.00</td>
  *         </tr>
  *     </table>
- *     Note that the contig names appearing under {@code CONTIG_NAME} column must match contig names in the input
+ *     <p>Note that the contig names appearing under {@code CONTIG_NAME} column must match contig names in the input
  *     counts files, and all contigs appearing in the input counts files must have a corresponding entry in the priors
  *     table. The order of contigs is immaterial in the priors table. The highest ploidy state is determined by the
  *     prior table (3 in the above example). A ploidy state can be strictly forbidden by setting its prior probability
- *     to 0. For example, the X contig in the above example can only assume 0 and 1 ploidy states.
+ *     to 0. For example, the X contig in the above example can only assume 0 and 1 ploidy states.</p>
  *
  *     <p>The tool output in the COHORT mode will contain two subdirectories, one ending with "-model" and the other
  *     ending with "-calls". The model subdirectory contains the inferred parameters of the ploidy model, which may
@@ -102,8 +107,10 @@ import java.util.stream.Collectors;
  *     <dt>CASE mode:</dt>
  *     <dd>If a path containing previously inferred ploidy model parameters is provided via the
  *     {@code model} argument, then the tool will run in the CASE mode. In this mode, the parameters of the ploidy
- *     model are loaded from the provided directory and only sample-specific quantities are inferred. Subsequently,
- *     the output directory will only contain the "-calls" subdirectory.
+ *     model are loaded from the provided directory and only sample-specific quantities are inferred. The modeled
+ *     intervals are then specified by a file contained in the model directory, all interval-related arguments are
+ *     ignored in this mode, and all model intervals must be present in all of the input count files. The tool output
+ *     in the CASE mode is only the "-calls" subdirectory and is organized similarly to the COHORT mode.
  *
  *      <p>In the CASE mode, the contig ploidy prior table is taken directly from the provided model parameters
  *      path and must be not provided again.</p></dd>
@@ -148,6 +155,19 @@ import java.util.stream.Collectors;
  *   --output-prefix normal_cohort
  * </pre>
  *
+ * <p>COHORT mode (with optional interval filtering):</p>
+ * <pre>
+ * gatk DetermineGermlineContigPloidy \
+ *   -L intervals.interval_list \
+ *   -XL blacklist_intervals.interval_list \
+ *   --input normal_1.counts.hdf5 \
+ *   --input normal_2.counts.hdf5 \
+ *   ... \
+ *   --contig-ploidy-priors a_valid_ploidy_priors_table.tsv
+ *   --output output_dir \
+ *   --output-prefix normal_cohort
+ * </pre>
+ *
  * <p>CASE mode:</p>
  * <pre>
  * gatk DetermineGermlineContigPloidy \
@@ -176,6 +196,9 @@ public final class DetermineGermlineContigPloidy extends CommandLineProgram {
 
     private static final String COHORT_DETERMINE_PLOIDY_AND_DEPTH_PYTHON_SCRIPT = "cohort_determine_ploidy_and_depth.py";
     private static final String CASE_DETERMINE_PLOIDY_AND_DEPTH_PYTHON_SCRIPT = "case_determine_ploidy_and_depth.py";
+
+    //name of the interval file output by the python code in the model directory
+    public static final String INPUT_MODEL_INTERVAL_FILE = "interval_list.tsv";
 
     public static final String MODEL_PATH_SUFFIX = "-model";
     public static final String CALLS_PATH_SUFFIX = "-calls";
@@ -222,6 +245,10 @@ public final class DetermineGermlineContigPloidy extends CommandLineProgram {
     )
     private String outputDir;
 
+    @ArgumentCollection
+    protected IntervalArgumentCollection intervalArgumentCollection
+            = new OptionalIntervalArgumentCollection();
+
     @Advanced
     @ArgumentCollection
     private GermlineContigPloidyModelArgumentCollection germlineContigPloidyModelArgumentCollection =
@@ -233,6 +260,8 @@ public final class DetermineGermlineContigPloidy extends CommandLineProgram {
             new GermlineContigPloidyHybridADVIArgumentCollection();
 
     private RunMode runMode;
+    private SimpleIntervalCollection specifiedIntervals;
+    private File specifiedIntervalsFile;
 
     @Override
     protected void onStartup() {
@@ -244,24 +273,15 @@ public final class DetermineGermlineContigPloidy extends CommandLineProgram {
     protected Object doWork() {
         setModeAndValidateArguments();
 
-        //get sequence dictionary and intervals from the first read-count file to use to validate remaining files
-        //(this first file is read again below, which is slightly inefficient but is probably not worth the extra code)
-        final File firstReadCountFile = inputReadCountFiles.get(0);
-        logger.info(String.format("Retrieving intervals from first read-count file (%s)...", firstReadCountFile));
-        final SimpleCountCollection firstReadCounts = SimpleCountCollection.read(firstReadCountFile);
-        final SAMSequenceDictionary sequenceDictionary = firstReadCounts.getMetadata().getSequenceDictionary();
-        final List<SimpleInterval> intervals = firstReadCounts.getIntervals();
-
         //read in count files and output intervals and samples x coverage-per-contig table to temporary files
-        final File intervalsFile = IOUtils.createTempFile("intervals", ".tsv");
-        final LocatableMetadata metadata = new SimpleLocatableMetadata(sequenceDictionary);
-        new SimpleIntervalCollection(metadata, intervals).write(intervalsFile);
+        specifiedIntervalsFile = IOUtils.createTempFile("intervals", ".tsv");
+        specifiedIntervals.write(specifiedIntervalsFile);
         final File samplesByCoveragePerContigFile = IOUtils.createTempFile("samples-by-coverage-per-contig", ".tsv");
-        writeSamplesByCoveragePerContig(samplesByCoveragePerContigFile, metadata, intervals);
+        writeSamplesByCoveragePerContig(samplesByCoveragePerContigFile);
 
         //call python inference code
         final boolean pythonReturnCode = executeDeterminePloidyAndDepthPythonScript(
-                samplesByCoveragePerContigFile, intervalsFile);
+                samplesByCoveragePerContigFile, specifiedIntervalsFile);
 
         if (!pythonReturnCode) {
             throw new UserException("Python return code was non-zero.");
@@ -289,6 +309,14 @@ public final class DetermineGermlineContigPloidy extends CommandLineProgram {
                 throw new UserException.BadInput("Invalid combination of inputs: Running in case mode, " +
                         "but contig-ploidy priors were provided.");
             }
+            if (intervalArgumentCollection.intervalsSpecified()) {
+                throw new UserException.BadInput("Invalid combination of inputs: Running in CASE mode, " +
+                        "but intervals were provided.");
+            }
+            //intervals are retrieved from the input model directory
+            specifiedIntervalsFile = new File(inputModelDir, INPUT_MODEL_INTERVAL_FILE);
+            IOUtils.canReadFile(specifiedIntervalsFile);
+            specifiedIntervals = new SimpleIntervalCollection(specifiedIntervalsFile);
         } else {
             runMode = RunMode.COHORT;
             logger.info("No contig-ploidy model was provided, running in cohort mode...");
@@ -300,18 +328,25 @@ public final class DetermineGermlineContigPloidy extends CommandLineProgram {
                 throw new UserException.BadInput("Contig-ploidy priors must be provided in cohort mode.");
             }
             IOUtils.canReadFile(inputContigPloidyPriorsFile);
+
+            //get sequence dictionary and intervals from the first read-count file to use to validate remaining files
+            //(this first file is read again below, which is slightly inefficient but is probably not worth the extra code)
+            final File firstReadCountFile = inputReadCountFiles.get(0);
+            specifiedIntervals = CopyNumberArgumentValidationUtils.resolveIntervals(
+                    firstReadCountFile, intervalArgumentCollection, logger);
         }
     }
 
-    private void writeSamplesByCoveragePerContig(final File samplesByCoveragePerContigFile,
-                                                 final LocatableMetadata metadata,
-                                                 final List<SimpleInterval> intervals) {
+    private void writeSamplesByCoveragePerContig(final File samplesByCoveragePerContigFile) {
         logger.info("Validating and aggregating coverage per contig from input read-count files...");
         final int numSamples = inputReadCountFiles.size();
         final List<CoveragePerContig> coveragePerContigs = new ArrayList<>(numSamples);
-        final List<String> contigs = intervals.stream().map(SimpleInterval::getContig).distinct()
+        final List<String> contigs = specifiedIntervals.getRecords().stream().map(SimpleInterval::getContig).distinct()
                 .collect(Collectors.toList());
         final ListIterator<File> inputReadCountFilesIterator = inputReadCountFiles.listIterator();
+        final Set<SimpleInterval> intervalSubset = new HashSet<>(specifiedIntervals.getRecords());
+        final LocatableMetadata metadata = specifiedIntervals.getMetadata();
+
         while (inputReadCountFilesIterator.hasNext()) {
             final int sampleIndex = inputReadCountFilesIterator.nextIndex();
             final File inputReadCountFile = inputReadCountFilesIterator.next();
@@ -323,13 +358,16 @@ public final class DetermineGermlineContigPloidy extends CommandLineProgram {
                 logger.warn("Sequence dictionary for read-count file %s does not match that " +
                         "in other read-count files.", inputReadCountFile);
             }
-            Utils.validateArg(readCounts.getIntervals().equals(intervals),
-                    String.format("Intervals for read-count file %s do not match those in other " +
-                            "read-count files.", inputReadCountFile));
+            final List<SimpleCount> subsetReadCounts = readCounts.getRecords().stream()
+                    .filter(c -> intervalSubset.contains(c.getInterval()))
+                    .collect(Collectors.toList());
+            Utils.validateArg(subsetReadCounts.size() == intervalSubset.size(),
+                    String.format("Intervals for read-count file %s do not contain all specified intervals.",
+                            inputReadCountFile));
             //calculate coverage per contig and construct record for each sample
             coveragePerContigs.add(new CoveragePerContig(
                     readCounts.getMetadata().getSampleName(),
-                    readCounts.getRecords().stream()
+                    subsetReadCounts.stream()
                             .collect(Collectors.groupingBy(
                                     SimpleCount::getContig,
                                     LinkedHashMap::new,

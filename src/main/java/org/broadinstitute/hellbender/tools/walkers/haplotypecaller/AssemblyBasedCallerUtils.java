@@ -4,6 +4,7 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.Locatable;
+import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
@@ -37,6 +38,9 @@ import java.util.stream.Collectors;
 public final class AssemblyBasedCallerUtils {
 
     static final int REFERENCE_PADDING_FOR_ASSEMBLY = 500;
+    public static final String SUPPORTED_ALLELES_TAG="SA";
+    public static final String CALLABLE_REGION_TAG = "CR";
+    public static final String ALIGNMENT_REGION_TAG = "AR";
 
     /**
      * Returns a map with the original read as a key and the realigned read as the value.
@@ -64,7 +68,8 @@ public final class AssemblyBasedCallerUtils {
                                       final boolean dontUseSoftClippedBases,
                                       final byte minTailQuality,
                                       final SAMFileHeader readsHeader,
-                                      final SampleList samplesList) {
+                                      final SampleList samplesList,
+                                      final boolean correctOverlappingBaseQualities) {
         if ( region.isFinalized() ) {
             return;
         }
@@ -98,7 +103,7 @@ public final class AssemblyBasedCallerUtils {
         Collections.sort(readsToUse, new ReadCoordinateComparator(readsHeader)); // TODO: sort may be unnecessary here
 
         // handle overlapping read pairs from the same fragment
-        cleanOverlappingReadPairs(readsToUse, samplesList, readsHeader);
+        cleanOverlappingReadPairs(readsToUse, samplesList, readsHeader, correctOverlappingBaseQualities);
 
         region.clearReads();
         region.addAll(readsToUse);
@@ -109,12 +114,14 @@ public final class AssemblyBasedCallerUtils {
      * Clean up reads/bases that overlap within read pairs
      *
      * @param reads the list of reads to consider
+     * @param correctOverlappingBaseQualities
      */
-    private static void cleanOverlappingReadPairs(final List<GATKRead> reads, final SampleList samplesList, final SAMFileHeader readsHeader) {
+    private static void cleanOverlappingReadPairs(final List<GATKRead> reads, final SampleList samplesList, final SAMFileHeader readsHeader,
+                                                  final boolean correctOverlappingBaseQualities) {
         for ( final List<GATKRead> perSampleReadList : splitReadsBySample(samplesList, readsHeader, reads).values() ) {
             final FragmentCollection<GATKRead> fragmentCollection = FragmentCollection.create(perSampleReadList);
             for ( final List<GATKRead> overlappingPair : fragmentCollection.getOverlappingPairs() ) {
-                FragmentUtils.adjustQualsOfOverlappingPairedFragments(overlappingPair);
+                FragmentUtils.adjustQualsOfOverlappingPairedFragments(overlappingPair, correctOverlappingBaseQualities);
             }
         }
     }
@@ -238,7 +245,7 @@ public final class AssemblyBasedCallerUtils {
                                                   final ReferenceSequenceFile referenceReader,
                                                   final ReadThreadingAssembler assemblyEngine,
                                                   final SmithWatermanAligner aligner){
-        finalizeRegion(region, argumentCollection.errorCorrectReads, argumentCollection.dontUseSoftClippedBases, (byte)(argumentCollection.minBaseQualityScore - 1), header, sampleList);
+        finalizeRegion(region, argumentCollection.errorCorrectReads, argumentCollection.dontUseSoftClippedBases, (byte)(argumentCollection.minBaseQualityScore - 1), header, sampleList, ! argumentCollection.doNotCorrectOverlappingBaseQualities);
         if( argumentCollection.debug) {
             logger.info("Assembling " + region.getSpan() + " with " + region.size() + " reads:    (with overlap region = " + region.getExtendedSpan() + ")");
         }
@@ -271,6 +278,54 @@ public final class AssemblyBasedCallerUtils {
                 }
             }
             throw e;
+        }
+    }
+
+    /**
+     * Annotates reads in ReadLikelihoods with alignment region (the ref region spanned by the haplotype the read is aligned to) and
+     * callable region (the ref region over which a caller is using these ReadLikelihoods to call variants)
+     *
+     * @param likelihoods ReadLikelihoods containing reads to be annotated along with haplotypes to which these reads have been aligned
+     * @param callableRegion ref region over which caller is using these ReadLikelihoods to call variants
+     */
+    public static void annotateReadLikelihoodsWithRegions(final ReadLikelihoods<Haplotype> likelihoods,
+                                                          final Locatable callableRegion) {
+        //assign alignment regions to each read
+        final Collection<ReadLikelihoods<Haplotype>.BestAllele> bestHaplotypes = likelihoods.bestAllelesBreakingTies();
+        for (final ReadLikelihoods<Haplotype>.BestAllele bestHaplotype : bestHaplotypes) {
+            final GATKRead read = bestHaplotype.read;
+            final Haplotype haplotype = bestHaplotype.allele;
+            read.setAttribute(ALIGNMENT_REGION_TAG, haplotype.getGenomeLocation().toString());
+        }
+
+        //assign callable region to each read
+        final int sampleCount = likelihoods.numberOfSamples();
+        for (int i = 0; i < sampleCount; i++) {
+            for (final GATKRead read : likelihoods.sampleReads(i)) {
+                read.setAttribute(CALLABLE_REGION_TAG, callableRegion.toString());
+            }
+        }
+    }
+
+    /**
+     * For the given variant, reads are annotated with which alleles they support, if any.  If a read already has a
+     * supported alleles annotation this additional annotation is appended to the previous annotation, it does not replace it.
+     * @param vc The variant for which to annotate the reads
+     * @param likelihoodsAllele ReadLiklihoods containing reads to be annotated along with alleles of the variant vc
+     */
+    public static void annotateReadLikelihoodsWithSupportedAlleles(final VariantContext vc,
+                                                                     final ReadLikelihoods<Allele> likelihoodsAllele) {
+        //assign supported alleles to each read
+        final Map<Allele, List<Allele>> alleleSubset = vc.getAlleles().stream().collect(Collectors.toMap(a -> a, Arrays::asList));
+        final ReadLikelihoods<Allele> subsettedLikelihoods = likelihoodsAllele.marginalize(alleleSubset);
+        final Collection<ReadLikelihoods<Allele>.BestAllele> bestAlleles = subsettedLikelihoods.bestAllelesBreakingTies().stream()
+                .filter(ba -> ba.isInformative()).collect(Collectors.toList());
+        for (ReadLikelihoods<Allele>.BestAllele bestAllele : bestAlleles) {
+            GATKRead read = bestAllele.read;
+            Allele allele = bestAllele.allele;
+            final String prevAllelesString = read.hasAttribute(SUPPORTED_ALLELES_TAG) ? read.getAttributeAsString(SUPPORTED_ALLELES_TAG) + ", " : "";
+            final String newAllelesString = vc.getContig() + ":" + vc.getStart() + "=" + vc.getAlleleIndex(allele);
+            read.setAttribute(SUPPORTED_ALLELES_TAG, prevAllelesString + newAllelesString);
         }
     }
 }

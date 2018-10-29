@@ -22,6 +22,8 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
 
     public static final String MAX_MNP_DISTANCE_LONG_NAME = "max-mnp-distance";
     public static final String MAX_MNP_DISTANCE_SHORT_NAME = "mnp-dist";
+    public static final String GQ_BAND_LONG_NAME = "gvcf-gq-bands";
+    public static final String GQ_BAND_SHORT_NAME = "GQB";
 
     /**
      * You can use this argument to specify that HC should process a single sample out of a multisample BAM file. This
@@ -73,7 +75,7 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
      * and end at 100 (exclusive).
      */
     @Advanced
-    @Argument(fullName = "gvcf-gq-bands", shortName = "GQB", doc= "Exclusive upper bounds for reference confidence GQ bands " +
+    @Argument(fullName = GQ_BAND_LONG_NAME, shortName = GQ_BAND_SHORT_NAME, doc= "Exclusive upper bounds for reference confidence GQ bands " +
             "(must be in [1, 100] and specified in increasing order)", optional = true)
     public List<Integer> GVCFGQBands = new ArrayList<>(70);
     {
@@ -133,6 +135,7 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
      */
     @Advanced
     @Argument(fullName = MAX_MNP_DISTANCE_LONG_NAME, shortName = MAX_MNP_DISTANCE_SHORT_NAME,
-            doc = "Two or more phased substitutions separated by this distance or less are merged into MNPs.", optional = true)
+            doc = "Two or more phased substitutions separated by this distance or less are merged into MNPs. " +
+            "WARNING: When used in GVCF mode, resulting GVCFs cannot be joint-genotyped.", optional = true)
     public int maxMnpDistance = 0;
 }

@@ -6,7 +6,7 @@ from . import defines
 
 def get_tensor_channel_map_from_args(args):
     '''Return tensor mapping dict given args.tensor_name'''
-    if not args.tensor_name:
+    if args.tensor_name is None:
         return None
 
     if 'read_tensor' == args.tensor_name:

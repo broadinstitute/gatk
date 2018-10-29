@@ -23,6 +23,7 @@ import org.broadinstitute.hellbender.tools.funcotator.FuncotatorTestConstants;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.test.FuncotatorTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -103,30 +104,13 @@ public class VcfFuncotationFactoryUnitTest extends GATKBaseTest {
         FIELD_DEFAULT_MAP.put("WGT", "");
         FIELD_DEFAULT_MAP.put("WTD", "false");
         FIELD_DEFAULT_MAP.put("dbSNPBuildID", "");
+        FIELD_DEFAULT_MAP.put("ID", "");
     }
 
     //==================================================================================================================
     // Helper Methods:
 
-    private VariantContext createVariantContext(final String contig,
-                                                final int start,
-                                                final int end,
-                                                final String refString,
-                                                final String altString) {
 
-        final Allele refAllele = Allele.create(refString, true);
-        final Allele altAllele = Allele.create(altString);
-
-        final VariantContextBuilder variantContextBuilder = new VariantContextBuilder(
-                FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(),
-                contig,
-                start,
-                end,
-                Arrays.asList(refAllele, altAllele)
-        );
-
-        return variantContextBuilder.make();
-    }
 
     private Object[] helpProvideForTestCreateFuncotations(final String contig,
                                                           final int start,
@@ -135,7 +119,7 @@ public class VcfFuncotationFactoryUnitTest extends GATKBaseTest {
                                                           final String altAlleleString,
                                                           final List<Funcotation> expected) {
         return new Object[]{
-                createVariantContext(contig, start, end, refAlleleString, altAlleleString),
+                FuncotatorTestUtils.createSimpleVariantContext(FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(), contig, start, end, refAlleleString, altAlleleString),
                 new ReferenceContext(CHR3_REF_DATA_SOURCE, new SimpleInterval(contig, start, end)),
                 expected
         };
@@ -172,14 +156,14 @@ public class VcfFuncotationFactoryUnitTest extends GATKBaseTest {
                 helpProvideForTestCreateFuncotations("3", 61662, 61662, "T", "C",
                         Collections.singletonList(
                                 TableFuncotation.create(FIELD_DEFAULT_MAP.keySet().stream().map(s -> FACTORY_NAME + "_" + s).collect(Collectors.toList()),
-                                        Arrays.asList("true", "false", "0.9744,0.02556", "false", "false", "1", "false", "true", "false", "", "false", "true", "false", "true", "true", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "73009205", "61662", "false", "false", "0", "true", "0", "false", "0.954392,0.0456075", "false", "false", "false", "SNV", "true", "0x05010000000515043e000100", "1", "false", "130"),
+                                        Arrays.asList("true", "false", "0.9744,0.02556", "false", "false", "1", "false", "true", "false", "", "false", "true", "false", "true", "true", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "73009205", "61662", "false", "false", "0", "true", "0", "false", "0.954392,0.0456075", "false", "false", "false", "SNV", "true", "0x05010000000515043e000100", "1", "false", "130", "rs73009205"),
                                         Allele.create("C"), FACTORY_NAME, null)
                         )
                 ),
                 // No matching VCF features (three overlap by position only), since there are no indels in dbSNP (the test datasource), so the ground truth should be a default entry, which was constructed here manually:
                 helpProvideForTestCreateFuncotations("3", 64157, 64166, "AGAAAGGTCA", "TCTTTCCAGT",
                         Collections.singletonList(TableFuncotation.create(FIELD_DEFAULT_MAP.keySet().stream().map(s -> FACTORY_NAME + "_" + s).collect(Collectors.toList()),
-                                Arrays.asList("false", "false", "", "false", "false", "", "false", "false", "false", "", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "", "", "false", "false", "", "false", "", "false", "", "false", "false", "false", "", "false", "", "", "false", ""),
+                                Arrays.asList("false", "false", "", "false", "false", "", "false", "false", "false", "", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "", "", "false", "false", "", "false", "", "false", "", "false", "false", "false", "", "false", "", "", "false", "", ""),
                                 Allele.create("TCTTTCCAGT"), FACTORY_NAME, null))
                 ),
         };

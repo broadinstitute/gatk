@@ -176,9 +176,11 @@ public class FilterVariantTranches extends TwoPassVariantWalker {
     @Override
     protected void secondPassApply(VariantContext variant, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext) {
         final VariantContextBuilder builder = new VariantContextBuilder(variant);
+
         if (removeOldFilters) {
             builder.unfiltered();
         }
+
         if (variant.hasAttribute(infoKey)) {
             final double score = Double.parseDouble((String) variant.getAttribute(infoKey));
             if (variant.isSNP() && isTrancheFiltered(score, snpCutoffs)) {

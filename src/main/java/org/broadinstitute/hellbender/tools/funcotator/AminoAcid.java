@@ -49,6 +49,11 @@ public enum AminoAcid {
     TYROSINE("Tyrosine","Tyr","Y",new String[]{"TAC","TAT"}),
     VALINE("Valine","Val","V",new String[]{"GTA","GTC","GTG","GTT"});
 
+    /**
+     * The length of a codon in bases.
+     */
+    public static final int CODON_LENGTH = 3;
+
     private String[] codons;
     private String fullName;
     private String code;
