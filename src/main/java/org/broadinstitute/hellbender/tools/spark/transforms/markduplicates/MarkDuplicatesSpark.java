@@ -32,10 +32,7 @@ import picard.sam.markduplicates.MarkDuplicates;
 import picard.sam.markduplicates.util.OpticalDuplicateFinder;
 import scala.Tuple2;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @DocumentedFeature
@@ -114,38 +111,43 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
             }
                 });
 
-            return Utils.stream(readsIter)
+            Iterator<GATKRead> output = Utils.stream(readsIter)
                     .peek(read -> read.setIsDuplicate(false))
-                    .peek(read -> read.setAttribute(MarkDuplicates.DUPLICATE_TYPE_TAG, (String)null))
+                    .peek(read -> read.setAttribute(MarkDuplicates.DUPLICATE_TYPE_TAG, (String) null))
                     .peek(read -> {
-                // Handle reads that have been marked as non-duplicates (which also get tagged with optical duplicate summary statistics)
-                if (namesOfNonDuplicateReadsAndOpticalCounts.containsKey(read.getName())) {
-                    // If its an optical duplicate, mark it.
-                    if (namesOfNonDuplicateReadsAndOpticalCounts.get(read.getName())==-2) {
-                        read.setIsDuplicate(true);
-                        read.setAttribute(MarkDuplicates.DUPLICATE_TYPE_TAG, MarkDuplicates.DUPLICATE_TYPE_SEQUENCING);
-                    // Otherwise treat it normally.
-                    } else {
-                        read.setIsDuplicate(false);
-                        if (markUnmappedMates || !read.isUnmapped()) {
-                            int dupCount = namesOfNonDuplicateReadsAndOpticalCounts.replace(read.getName(), -1);
-                            if (dupCount > -1) {
-                                ((SAMRecordToGATKReadAdapter) read).setAttribute(MarkDuplicatesSparkUtils.OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME, dupCount);
+                        // Handle reads that have been marked as non-duplicates (which also get tagged with optical duplicate summary statistics)
+                        if (namesOfNonDuplicateReadsAndOpticalCounts.containsKey(read.getName())) {
+                            // If its an optical duplicate, mark it.
+                            if (namesOfNonDuplicateReadsAndOpticalCounts.get(read.getName()) == -2 || namesOfNonDuplicateReadsAndOpticalCounts.get(read.getName()) == -3) {
+                                read.setIsDuplicate(true);
+                                read.setAttribute(MarkDuplicates.DUPLICATE_TYPE_TAG, MarkDuplicates.DUPLICATE_TYPE_SEQUENCING);
+                                namesOfNonDuplicateReadsAndOpticalCounts.put(read.getName(), 3);
+                                // Otherwise treat it normally.
+                            } else {
+                                read.setIsDuplicate(false);
+                                if (markUnmappedMates || !read.isUnmapped()) {
+                                    int dupCount = namesOfNonDuplicateReadsAndOpticalCounts.replace(read.getName(), -1);
+                                    if (dupCount > -1) {
+                                        ((SAMRecordToGATKReadAdapter) read).setAttribute(MarkDuplicatesSparkUtils.OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME, dupCount);
+                                    }
+                                }
+                            }
+                            // Mark unmapped read pairs as non-duplicates
+                        } else if (ReadUtils.readAndMateAreUnmapped(read)) {
+                            read.setIsDuplicate(false);
+                            // Everything else is a duplicate
+                        } else {
+                            if (markUnmappedMates || !read.isUnmapped()) {
+                                read.setIsDuplicate(true);
+                            } else {
+                                read.setIsDuplicate(false);
                             }
                         }
-                    }
-                    // Mark unmapped read pairs as non-duplicates
-                } else if (ReadUtils.readAndMateAreUnmapped(read)) {
-                    read.setIsDuplicate(false);
-                    // Everything else is a duplicate
-                } else {
-                    if (markUnmappedMates || !read.isUnmapped()) {
-                        read.setIsDuplicate(true);
-                    } else {
-                        read.setIsDuplicate(false);
-                    }
-                }
-            }).iterator();
+                    }).collect(Collectors.toList()).iterator();
+            namesOfNonDuplicateReadsAndOpticalCounts.entrySet().stream()
+                    .forEach(e -> {if (e.getValue()==-2) throw new GATKException("something went wrong with labeleing: "+e.getKey());});
+            return output;
+
         });
     }
 

@@ -398,11 +398,6 @@ public class MarkDuplicatesSparkUtils {
         }
 
         List<Tuple2<IndexPair<String>, Integer>> output = new ArrayList<>();
-//
-//        List<Pair> sortedpairs = pairs.stream()
-//                .peek(pair -> finder.addLocationInformation(pair.getName(), pair))
-//                .sorted(new TransientFieldPhysicalLocationComparator())
-//                .collect(Collectors.toList());
 
         final Pair bestPair = pairs.stream()
                 .peek(pair -> finder.addLocationInformation(pair.getName(), pair))
