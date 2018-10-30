@@ -538,7 +538,7 @@ public class MannWhitneyU {
          * and dividing by the total count of everything in the histogram. Just using getCumulativeDistribution() gives
          * a p-value of 1 in the most extreme case which doesn't result in a usable z-score.
          */
-        double sumOfAllSmallerBins = histo.get(FastMath.round(2*testStatU)).getValue() / 2.0;
+        double sumOfAllSmallerBins = histo.get(FastMath.round(2 * testStatU)).getValue() / 2.0;
 
         for (final Histogram.Bin<Long> bin : histo.values()) {
             if (bin.getId() < FastMath.round(2 * testStatU)) sumOfAllSmallerBins += bin.getValue();
