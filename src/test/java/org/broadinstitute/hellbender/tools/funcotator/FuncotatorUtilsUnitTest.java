@@ -1302,6 +1302,112 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
     }
 
     @DataProvider
+    Object[][] provideDataForGetTranscriptAlleleStartPosition2() {
+
+        final String contig = "TEST";
+
+        final VariantContext variant =
+                new VariantContextBuilder(
+                        "",
+                        contig,
+                        100,
+                        105,
+                        Arrays.asList( Allele.create("ATGTCC", true), Allele.create("T") )
+                ).make();
+
+        return new Object[][] {
+                // ----------------------------------------
+                // + strand:
+                // Starting at beginning of transcript:
+                {
+                        variant,
+                        new SimpleInterval(contig, 100, 1000),
+                        Strand.POSITIVE,
+                        1
+                },
+                // Starting before beginning of transcript:
+                {
+                        variant,
+                        new SimpleInterval(contig, 101, 1000),
+                        Strand.POSITIVE,
+                        -1
+                },
+                // Starting before beginning of transcript:
+                {
+                        variant,
+                        new SimpleInterval(contig, 500, 1000),
+                        Strand.POSITIVE,
+                        -400
+                },
+                // Starting within transcript:
+                {
+                        variant,
+                        new SimpleInterval(contig, 50, 200),
+                        Strand.POSITIVE,
+                        51
+                },
+                // Starting at end of transcript:
+                {
+                        variant,
+                        new SimpleInterval(contig, 1, 100),
+                        Strand.POSITIVE,
+                        100
+                },
+                // Starting after end of transcript:
+                {
+                        variant,
+                        new SimpleInterval(contig, 1, 50),
+                        Strand.POSITIVE,
+                        100
+                },
+                // ----------------------------------------
+                // - strand:
+                // Starting at beginning of transcript:
+                {
+                        variant,
+                        new SimpleInterval(contig, 1, 105),
+                        Strand.NEGATIVE,
+                        1
+                },
+                // Starting before beginning of transcript:
+                {
+                        variant,
+                        new SimpleInterval(contig, 1, 104),
+                        Strand.NEGATIVE,
+                        -1
+                },
+                // Starting before beginning of transcript:
+                {
+                        variant,
+                        new SimpleInterval(contig, 1, 50),
+                        Strand.NEGATIVE,
+                        -55
+                },
+                // Starting within transcript:
+                {
+                        variant,
+                        new SimpleInterval(contig, 50, 150),
+                        Strand.NEGATIVE,
+                        46
+                },
+                // Starting at end of transcript:
+                {
+                        variant,
+                        new SimpleInterval(contig, 100, 200),
+                        Strand.NEGATIVE,
+                        96
+                },
+                // Starting after end of transcript:
+                {
+                        variant,
+                        new SimpleInterval(contig, 200, 1000),
+                        Strand.NEGATIVE,
+                        896
+                },
+        };
+    }
+
+    @DataProvider
     Object[][] provideDataForTestCreateSpliceSiteCodonChange() {
 
         return new Object[][] {
@@ -2068,6 +2174,11 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
     @Test (dataProvider = "provideDataForGetTranscriptAlleleStartPosition")
     void testGetTranscriptAlleleStartPosition(final VariantContext variant, final List<Locatable> exons, final Strand strand, final int expected) {
         Assert.assertEquals( FuncotatorUtils.getTranscriptAlleleStartPosition(variant, exons, strand), expected );
+    }
+
+    @Test( dataProvider = "provideDataForGetTranscriptAlleleStartPosition2")
+    void testGetTranscriptAlleleStartPosition2(final VariantContext variant, final Locatable transcript, final Strand strand, final int expected) {
+        Assert.assertEquals( FuncotatorUtils.getTranscriptAlleleStartPosition(variant, transcript, strand), expected );
     }
 
     @Test (dataProvider = "provideDataForTestCreateSpliceSiteCodonChange")

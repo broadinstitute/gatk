@@ -391,11 +391,17 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     @DataProvider
     public Object[][] provideForLargeDataValidationTest() {
         return new Object[][]{
+//                {
+//                        "tmp.vcf",
+//                        b37Reference,
+//                        FuncotatorTestConstants.REFERENCE_VERSION_HG19,
+//                        GERMLINE_DATASOURCES_FOLDER
+//                },
                 {
-                        "tmp.vcf",
-                        b37Reference,
-                        FuncotatorTestConstants.REFERENCE_VERSION_HG19,
-                        GERMLINE_DATASOURCES_FOLDER
+                        "tmp.hg38.vcf",
+                        hg38Reference,
+                        FuncotatorTestConstants.REFERENCE_VERSION_HG38,
+                        LARGE_DATASOURCES_FOLDER
                 },
 //                {
 //                        "0816201804HC0_R01C01.vcf",

@@ -1577,6 +1577,40 @@ public final class FuncotatorUtils {
     }
 
     /**
+     * Get the position (1-based, inclusive) of the given {@link VariantContext} start relative to the transcript it appears in.
+     * @param variant The {@link VariantContext} of which to find the start position in the given transcript (must not be {@code null}).
+     * @param transcript {@link Locatable} representing the transcript in which the given {@code variant} occurs.
+     * @param strand The {@link Strand} on which the {@code variant} occurs.
+     * @return The start position (1-based, inclusive) of the given {@code variant} in the transcript in which it appears.
+     */
+    public static int getTranscriptAlleleStartPosition(final VariantContext variant,
+                                                       final Locatable transcript,
+                                                       final Strand strand) {
+        Utils.nonNull(variant);
+        Utils.nonNull(transcript);
+        assertValidStrand(strand);
+
+        // We don't need to worry about the UTRs.
+        // Since they are part of transcripts, they are included in the bounds of the transcript as given.
+        // This is expected and correct.
+
+        // Get the start / end positions to subtract:
+        int start = variant.getStart();
+        int end = transcript.getStart();
+        if ( strand == Strand.NEGATIVE ) {
+            start = transcript.getEnd();
+            end = variant.getEnd();
+        }
+
+        if ( start < end ) {
+            return start - end;
+        }
+        else {
+            return start - end + 1;
+        }
+    }
+
+    /**
      * Creates and returns the coding sequence given a {@link ReferenceContext} and a {@link List} of {@link Locatable} representing a set of Exons.
      * Locatables start and end values are inclusive.
      * Assumes {@code exonList} ranges are indexed by 1.

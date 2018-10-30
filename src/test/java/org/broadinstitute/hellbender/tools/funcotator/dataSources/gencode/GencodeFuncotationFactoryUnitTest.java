@@ -1530,7 +1530,6 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         // Still simple, but computational, checks:
         Assert.assertEquals( gf.getVariantType(), GencodeFuncotationFactory.getVariantType(variant.getReference(), altAllele));
         Assert.assertEquals( gf.getGenomeChange(), GencodeFuncotationFactory.getGenomeChangeString(variant, altAllele) );
-        Assert.assertTrue( gf.getTranscriptPos() == FuncotatorUtils.getTranscriptAlleleStartPosition(variant, transcript.getExons(), transcript.getGenomicStrand()) );
         Assert.assertEquals( gf.getApprisRank(), GencodeFuncotationFactory.getApprisRank( transcript ) );
         Assert.assertTrue( gf.getTranscriptLength() == transcript.getExons().stream().mapToInt(Locatable::getLengthOnReference).sum() );
     }
