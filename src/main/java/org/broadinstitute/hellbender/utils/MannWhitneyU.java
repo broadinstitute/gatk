@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils;
 
 import htsjdk.samtools.util.Histogram;
 import org.apache.commons.math3.distribution.NormalDistribution;
+import org.apache.commons.math3.util.FastMath;
 import org.apache.log4j.Logger;
 
 
@@ -484,7 +485,10 @@ public class MannWhitneyU {
      * @return P-value based on histogram with u calculated for every possible permutation of group tag.
      */
     public double permutationTest(final double[] series1, final double[] series2, final double testStatU) {
-        final Histogram<Double> histo = new Histogram<>();
+
+        // note that Mann-Whitney U stats are always integer or half-integer (this is true even in the case of ties)
+        // thus for safety we store a histogram of twice the Mann-Whitney values
+        final Histogram<Long> histo = new Histogram<>();
         final int n1 = series1.length;
         final int n2 = series2.length;
 
@@ -525,7 +529,7 @@ public class MannWhitneyU {
             assert (series2End == n2);
 
             double newU = MathUtils.sum(newSeries1) - ((n1 * (n1 + 1)) / 2.0);
-            histo.increment(newU);
+            histo.increment(FastMath.round(2 * newU));
         }
 
         /**
@@ -534,10 +538,10 @@ public class MannWhitneyU {
          * and dividing by the total count of everything in the histogram. Just using getCumulativeDistribution() gives
          * a p-value of 1 in the most extreme case which doesn't result in a usable z-score.
          */
-        double sumOfAllSmallerBins = histo.get(testStatU).getValue() / 2.0;
+        double sumOfAllSmallerBins = histo.get(FastMath.round(2 * testStatU)).getValue() / 2.0;
 
-        for (final Histogram.Bin<Double> bin : histo.values()) {
-            if (bin.getId() < testStatU) sumOfAllSmallerBins += bin.getValue();
+        for (final Histogram.Bin<Long> bin : histo.values()) {
+            if (bin.getId() < FastMath.round(2 * testStatU)) sumOfAllSmallerBins += bin.getValue();
         }
 
         return sumOfAllSmallerBins / histo.getCount();
