@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.funcotator.metadata;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.broadinstitute.barclay.utils.Utils;
 
@@ -14,7 +15,8 @@ import java.util.stream.Collectors;
  */
 public class VcfFuncotationMetadata implements FuncotationMetadata {
 
-    private LinkedHashMap<String, VCFInfoHeaderLine> fieldNameToHeaderLineMap;
+    @VisibleForTesting
+    public LinkedHashMap<String, VCFInfoHeaderLine> fieldNameToHeaderLineMap;
 
     private VcfFuncotationMetadata(final LinkedHashMap<String, VCFInfoHeaderLine> fieldNameToHeaderLineMap) {
         this.fieldNameToHeaderLineMap = fieldNameToHeaderLineMap;
@@ -50,5 +52,27 @@ public class VcfFuncotationMetadata implements FuncotationMetadata {
     @Override
     public List<VCFInfoHeaderLine> retrieveAllHeaderInfo() {
         return new ArrayList<>(fieldNameToHeaderLineMap.values());
+    }
+
+    @Override
+    public String toString() {
+        return "VcfFuncotationMetadata{" +
+                "fieldNameToHeaderLineMap=" + fieldNameToHeaderLineMap +
+                '}';
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+        if ( this == o ) return true;
+        if ( o == null || getClass() != o.getClass() ) return false;
+
+        final VcfFuncotationMetadata that = (VcfFuncotationMetadata) o;
+
+        return fieldNameToHeaderLineMap != null ? fieldNameToHeaderLineMap.equals(that.fieldNameToHeaderLineMap) : that.fieldNameToHeaderLineMap == null;
+    }
+
+    @Override
+    public int hashCode() {
+        return fieldNameToHeaderLineMap != null ? fieldNameToHeaderLineMap.hashCode() : 0;
     }
 }

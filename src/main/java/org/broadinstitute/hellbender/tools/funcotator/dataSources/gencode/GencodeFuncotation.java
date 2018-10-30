@@ -810,7 +810,7 @@ public class GencodeFuncotation implements Funcotation {
     public enum VariantClassification {
 
         /** Variant classification could not be determined. */
-        COULD_NOT_DETERMINE("",99),
+        COULD_NOT_DETERMINE("COULD_NOT_DETERMINE",99),
 
         // Only for Introns:
         /** Variant lies between exons within the bounds of the chosen transcript. */

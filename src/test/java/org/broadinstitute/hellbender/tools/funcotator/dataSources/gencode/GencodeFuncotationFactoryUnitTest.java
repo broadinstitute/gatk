@@ -624,6 +624,78 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
     }
 
     @DataProvider
+    Object[][] provideForCreateDefaultFuncotationsOnProblemVariant() {
+
+//        variant, altAllele, gtfFeature, reference, transcript, version
+
+        final SimpleInterval variantInterval =  new SimpleInterval("chr3", 178921515, 178921517);
+        final Allele refAllele = Allele.create("GCA", true);
+        final Allele altAllele = Allele.create("TTG");
+        final VariantContext variant = new VariantContextBuilder(
+                FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(),
+                variantInterval.getContig(),
+                variantInterval.getStart(),
+                variantInterval.getEnd(),
+                Arrays.asList(refAllele, altAllele)
+        ).make();
+
+        final String versionString = "VERSION";
+
+        // ======================
+        // Create the GencodeGtfFeature:
+        GencodeGtfFeatureBaseData data;
+
+        data = new GencodeGtfFeatureBaseData(1, variantInterval.getContig(), GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.GENE,
+                variantInterval.getStart()-2000, variantInterval.getEnd()+2000, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", null, GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                null, "TEST_GENE", null, null, null, -1, null, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED, null, null);
+        final GencodeGtfGeneFeature gene = (GencodeGtfGeneFeature)GencodeGtfFeature.create(data);
+
+        // ======================
+
+        data = new GencodeGtfFeatureBaseData(2, variantInterval.getContig(), GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.TRANSCRIPT,
+                variantInterval.getStart()-1000, variantInterval.getEnd()+1000, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                null, "TEST_GENE", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "TEST_TRANSCRIPT1", -1, null, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                Collections.emptyList(),
+                null
+        );
+        final GencodeGtfTranscriptFeature transcript1 = (GencodeGtfTranscriptFeature) GencodeGtfFeature.create(data);
+        gene.addTranscript(transcript1);
+
+        // ======================
+
+        return new Object[][] {
+                {
+                    variant,
+                    variant.getAlleles().get(1),
+                    gene,
+                    new ReferenceContext( refDataSourceHg19Ch3, variantInterval ),
+                    gene.getTranscripts().get(0),
+                    versionString,
+                    new GencodeFuncotationBuilder()
+                            .setHugoSymbol(gene.getGeneName())
+                            .setChromosome(variant.getContig())
+                            .setStart(variant.getStart())
+                            .setEnd(variant.getEnd())
+                            .setVariantClassification(GencodeFuncotation.VariantClassification.COULD_NOT_DETERMINE)
+                            .setVariantType(GencodeFuncotation.VariantType.TNP)
+                            .setRefAllele(variant.getReference())
+                            .setTumorSeqAllele2(variant.getAlternateAllele(0).getBaseString())
+                            .setGenomeChange("g.chr3:178921515_178921517GCA>TTG")
+                            .setAnnotationTranscript(transcript1.getTranscriptName())
+                            .setStrand(gene.getGenomicStrand())
+                            .setReferenceContext("TATAAATAGTGCACTCAGAATAA")
+                            .setGcContent(0.3399503722084367)
+                            .setLocusLevel(Integer.valueOf(gene.getLocusLevel().toString()))
+                            // This is OK because there are no exons:
+                            .setTranscriptLength(0)
+                            .setVersion(versionString)
+                            .setGeneTranscriptType(transcript1.getTranscriptType())
+                            .build()
+                },
+        };
+    }
+
+    @DataProvider
     Object[][] provideForTestIs5PrimeUtr() {
 
         // Need:
@@ -1530,7 +1602,6 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         // Still simple, but computational, checks:
         Assert.assertEquals( gf.getVariantType(), GencodeFuncotationFactory.getVariantType(variant.getReference(), altAllele));
         Assert.assertEquals( gf.getGenomeChange(), GencodeFuncotationFactory.getGenomeChangeString(variant, altAllele) );
-        Assert.assertTrue( gf.getTranscriptPos() == FuncotatorUtils.getTranscriptAlleleStartPosition(variant, transcript.getExons(), transcript.getGenomicStrand()) );
         Assert.assertEquals( gf.getApprisRank(), GencodeFuncotationFactory.getApprisRank( transcript ) );
         Assert.assertTrue( gf.getTranscriptLength() == transcript.getExons().stream().mapToInt(Locatable::getLengthOnReference).sum() );
     }
@@ -1543,6 +1614,19 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
     @Test (dataProvider = "provideDataForTestIsVariantInCodingRegion")
     void testIsVariantInCodingRegion(final GencodeFuncotation.VariantClassification varClass, final GencodeFuncotation.VariantClassification secondaryVarClass, final boolean expected) {
         Assert.assertEquals( GencodeFuncotationFactory.isVariantInCodingRegion(varClass, secondaryVarClass), expected );
+    }
+
+    @Test ( dataProvider = "provideForCreateDefaultFuncotationsOnProblemVariant")
+    void testCreateDefaultFuncotationsOnProblemVariant(final VariantContext variant,
+                                                       final Allele altAllele,
+                                                       final GencodeGtfGeneFeature gtfFeature,
+                                                       final ReferenceContext reference,
+                                                       final GencodeGtfTranscriptFeature transcript,
+                                                       final String version,
+                                                       final GencodeFuncotation expected) {
+
+        final GencodeFuncotation funcotation = GencodeFuncotationFactory.createDefaultFuncotationsOnProblemVariant(variant, altAllele, gtfFeature, reference, transcript, version);
+        Assert.assertEquals( funcotation, expected );
     }
 
     @Test ( dataProvider = "provideDataForTestGencodeFuncotationComparatorUnitTest")
