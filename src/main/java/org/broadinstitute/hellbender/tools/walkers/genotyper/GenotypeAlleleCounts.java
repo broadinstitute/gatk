@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.utils.functional.IntToDoubleBiFunction;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.IntConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -653,6 +654,21 @@ public final class GenotypeAlleleCounts implements Comparable<GenotypeAlleleCoun
 
     public void forEachAlleleIndexAndCount(final IntBiConsumer action) {
         new IndexRange(0, distinctAlleleCount).forEach(n -> action.accept(sortedAlleleCounts[2*n], sortedAlleleCounts[2*n+1]));
+    }
+
+    public void forEachAbsentAlleleIndex(final IntConsumer action, final int alleleCount) {
+        int presentAlleleIndex = 0;
+        int presentAllele = sortedAlleleCounts[0];
+
+        for (int n = 0; n < alleleCount; n++) {
+            if (n == presentAllele) {
+                if (++presentAlleleIndex < distinctAlleleCount) {
+                    presentAllele = sortedAlleleCounts[2 * presentAlleleIndex];
+                }
+                continue;
+            }
+            action.accept(n);
+        }
     }
 
     public double sumOverAlleleIndicesAndCounts(final IntToDoubleBiFunction func) {
