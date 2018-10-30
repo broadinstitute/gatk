@@ -61,7 +61,7 @@ HG38=/Users/jonn/Development/references/Homo_sapiens_assembly38.fasta
 
 function simpleUsage()
 {
-  echo -e "Usage: $SCRIPTNAME [-c] [-u] [-t] [-19|-38] [-MAF|-VCF] [-AOU]"
+  echo -e "Usage: $SCRIPTNAME [-c] [-cloud] [-u] [-t] [-19|-38] [-MAF|-VCF] [-AOU]"
   echo -e "Build and run Funcotator."
 }
 
@@ -87,6 +87,7 @@ function usage()
   echo -e "  -38                                         run with hg38 data sources/reference/input file"
 	echo -e "  -MAF                                        create MAF output"
 	echo -e "  -VCF                                        create VCF output (default)"
+  echo -e "  -cloud                                      use cloud data sources"
 	echo -e "  -AOU                                        use the All of Us/Clinical Pipeline data sources"
 	echo -e "  -M REF_VER REFERENCE INPUT DATA_SOURCES     run in MANUAL mode, providing all necessary input"
 	echo -e "                                              REF_VER      - a string for the reference version"
@@ -146,7 +147,8 @@ trap at_exit EXIT
 function assertInputFilesExist() {
   assertFileExists ${INPUT}
   assertFileExists ${REF}
-  assertDirectoryExists ${DATA_SOURCES_PATH}
+ 
+	 [[ ! -d $DATA_SOURCES_PATH ]] && error "Warning: Data sources may not exist ${DATA_SOURCES_PATH}" && error "Ignore this if data sources directory is in the cloud."
 }
 
 ################################################################################
@@ -176,6 +178,9 @@ while [ $# -gt 0 ] ; do
 		-AOU)
 		useAOUDataSources=true
 		;;
+    -cloud)
+    useCloudDataSources=true
+    ;;
 		-t)
 		doRunLargeTests=true
 		;;
@@ -267,7 +272,7 @@ if [[ $r -eq 0 ]] && ${doRunLargeTests} ; then
 		INPUT=/Users/jonn/Development/NON_PUBLIC/0816201804HC0_R01C01.vcf
 		#INPUT=/Users/jonn/Development/gatk/src/test/resources/large/funcotator/regressionTestVariantSet1.vcf
 		#INPUT=/Users/jonn/Development/gatk/src/test/resources/large/funcotator/regressionTestVariantSet2.vcf
-		INPUT=/Users/jonn/Development/gatk/src/test/resources/large/funcotator/regressionTestHg19Large.vcf
+		#INPUT=/Users/jonn/Development/gatk/src/test/resources/large/funcotator/regressionTestHg19Large.vcf
 		#INPUT=/Users/jonn/Development/gatk/hg38_trio_liftoverb37.vcf
 		#INPUT=/Users/jonn/Development/gatk/tmp.vcf
 		#INPUT=/Users/jonn/Development/data_to_run/problem_samples/splice_site_should_not_be_splice_site/error_case.vcf
@@ -279,18 +284,23 @@ if [[ $r -eq 0 ]] && ${doRunLargeTests} ; then
 	else
 		INPUT=/Users/jonn/Development/FUNCOTATOR_LARGE_TEST_INPUTS/hg38_trio.vcf
 		#INPUT=/Users/jonn/Development/gatk/src/test/resources/large/funcotator/regressionTestVariantSetHG38.vcf
+		#INPUT=/Users/jonn/Development/tmp/cohort24_23_seg.subset.vcf
 		REF=$HG38
 	fi
 
 	# Use the AOU data sources if we need them:
-	$useAOUDataSources && DATA_SOURCES_PATH=/Users/jonn/Development/funcotator_dataSources.vAoU3
+	$useAOUDataSources && echo "Using AOU data sources." && DATA_SOURCES_PATH=/Users/jonn/Development/funcotator_dataSources.vAoU3
+
+  # Use cloud data sources if we need them:
+	$useCloudDataSources && echo "Using cloud data sources." && DATA_SOURCES_PATH=/Users/jonn/Development/gatk/src/test/resources/large/funcotator/funcotator_dataSources_cloud_gnomad/
+	#$useCloudDataSources && echo "Using cloud data sources." && DATA_SOURCES_PATH=gs://hellbender/test/resources/large/funcotatorDataSourceCollection/funcotator_dataSources_cloud/
 
 	OUT_FORMAT_LOWER=$( echo "${OUT_FORMAT}" | tr 'A-Z' 'a-z' )
 	OUT_FILE_NAME=FUNCOTATOR_OUT.${OUT_FORMAT_LOWER}
 	
 	assertInputFilesExist
 
-	${GATKDIR}/gatk Funcotator \
+	time ${GATKDIR}/gatk Funcotator \
 		-V ${INPUT} \
 		-O ${OUT_FILE_NAME} \
 		-R ${REF} \

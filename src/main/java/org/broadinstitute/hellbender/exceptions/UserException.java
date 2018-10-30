@@ -384,7 +384,7 @@ public class UserException extends RuntimeException {
         private static final long serialVersionUID = 0L;
 
         public NoSuitableCodecs(final Path file) {
-            super("Cannot read " + file + " because no suitable codecs found");
+            super("Cannot read " + file.toUri().toString() + " because no suitable codecs found");
         }
     }
 

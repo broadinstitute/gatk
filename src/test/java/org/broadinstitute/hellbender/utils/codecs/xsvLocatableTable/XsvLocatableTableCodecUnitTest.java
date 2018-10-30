@@ -3,6 +3,8 @@ package org.broadinstitute.hellbender.utils.codecs.xsvLocatableTable;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.tribble.readers.AsciiLineReader;
 import htsjdk.tribble.readers.AsciiLineReaderIterator;
+import org.apache.commons.lang.NotImplementedException;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -280,8 +282,17 @@ public class XsvLocatableTableCodecUnitTest extends GATKBaseTest {
     // getAndValidateConfigFileContents
     @Test(dataProvider = "provideForTestGetAndValidateConfigFileContents")
     public void testGetAndValidateConfigFileContents(final Path configFilePath, final Properties expected) {
-        final Properties properties = XsvLocatableTableCodec.getAndValidateConfigFileContents(configFilePath);
+        final Pair<Boolean, Properties> validityAndPropertiesPair = XsvLocatableTableCodec.getAndValidateConfigFileContentsOnPath(configFilePath, false);
+        final boolean isValid = validityAndPropertiesPair.getLeft();
+        final Properties properties = validityAndPropertiesPair.getRight();
+
+        Assert.assertEquals( isValid, true );
         Assert.assertEquals(properties, expected);
+    }
+
+    @Test
+    public void testvalidateAndReadPreambleFromDataFile() {
+        throw new NotImplementedException("FIXME");
     }
 
     @Test

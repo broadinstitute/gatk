@@ -20,7 +20,6 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.nio.SeekableByteChannelPrefetcher;
-import static org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBUtils.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -31,6 +30,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
+
+import static org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBUtils.createExportConfiguration;
 
 /**
  * Enables traversals and queries over sources of Features, which are metadata associated with a location
@@ -276,6 +277,9 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         this.queryLookaheadBases = queryLookaheadBases;
     }
 
+    final void printCacheStats() {
+        queryCache.printCacheStatistics( getName() );
+    }
 
     @SuppressWarnings("unchecked")
     private static <T extends Feature> FeatureReader<T> getFeatureReader(final FeatureInput<T> featureInput, final Class<? extends Feature> targetFeatureType,
@@ -332,17 +336,19 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
     private static <T extends Feature> AbstractFeatureReader<T, ?> getTribbleFeatureReader(final FeatureInput<T> featureInput, final FeatureCodec<T, ?> codec, final Function<SeekableByteChannel, SeekableByteChannel> cloudWrapper, final Function<SeekableByteChannel, SeekableByteChannel> cloudIndexWrapper) {
         Utils.nonNull(codec);
         try {
-            final String absolutePath = IOUtils.getPath(featureInput.getFeaturePath()).toAbsolutePath().toUri().toString();
+            // Must get the path to the data file from the codec here:
+            final String absoluteRawPath = IOUtils.getPath(featureInput.getFeaturePath()).toAbsolutePath().toUri().toString();
+            final String absoluteProcessedPath = IOUtils.getPath(codec.getPathToDataFile(featureInput.getFeaturePath())).toAbsolutePath().toUri().toString();
 
             // Instruct the reader factory to not require an index. We will require one ourselves as soon as
             // a query by interval is attempted.
             final boolean requireIndex = false;
 
             // Only apply the wrappers if the feature input is on Google Cloud Storage
-            if (BucketUtils.isCloudStorageUrl(absolutePath)) {
-                return AbstractFeatureReader.getFeatureReader(absolutePath, null, codec, requireIndex, cloudWrapper, cloudIndexWrapper);
+            if (BucketUtils.isCloudStorageUrl(absoluteProcessedPath)) {
+                return AbstractFeatureReader.getFeatureReader(absoluteRawPath, null, codec, requireIndex, cloudWrapper, cloudIndexWrapper);
             } else {
-                return AbstractFeatureReader.getFeatureReader(absolutePath, null, codec, requireIndex, Function.identity(), Function.identity());
+                return AbstractFeatureReader.getFeatureReader(absoluteRawPath, null, codec, requireIndex, Function.identity(), Function.identity());
             }
         } catch (final TribbleException e) {
             throw new GATKException("Error initializing feature reader for path " + featureInput.getFeaturePath(), e);

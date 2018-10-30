@@ -32,7 +32,13 @@ public class FuncotatorTestConstants {
      * there will be a bit of manual work as well (I did not have the will or the time to automate everything - Jonn Smith):
      *     GATK_DEVELOPMENT_TOP_DIRECTORY/scripts/funcotator/testing/getGencodeGenesForVcfVariants.sh
      */
-    public static final String FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER = FUNCOTATOR_LARGE_FILES_DIR + "funcotator_dataSources" + File.separator;
+    public static final String FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER        = FUNCOTATOR_LARGE_FILES_DIR + "funcotator_dataSources" + File.separator;
+    /** Local folder containing data sources that point to the cloud. */
+    public static final String FUNCOTATOR_DATA_SOURCES_LOCAL_CLOUD_FOLDER = FUNCOTATOR_LARGE_FILES_DIR + "funcotator_dataSources_cloud" + File.separator;
+    /** Local folder containing local data sources and one that points to gnomAD on the cloud. */
+    public static final String FUNCOTATOR_DATA_SOURCES_LOCAL_CLOUD_GNOMAD_FOLDER = FUNCOTATOR_LARGE_FILES_DIR + "funcotator_dataSources_cloud_gnomad" + File.separator;
+    /** Cloud-based folder containing data sources that point to the cloud. */
+    public static final String FUNCOTATOR_DATA_SOURCES_REMOTE_CLOUD_FOLDER = "gs://hellbender/test/resources/large/funcotatorDataSourceCollection/funcotator_dataSources_cloud" + File.separator;
 
     public static final String DUMMY_DATA_SOURCES_TAR_GZ             = FUNCOTATOR_LARGE_FILES_DIR + "dummyDataSources.tar.gz";
     public static final String DUMMY_DATA_SOURCES_TAR_GZ_SHA256_FILE = FUNCOTATOR_LARGE_FILES_DIR + "dummyDataSources.sha256";
@@ -55,9 +61,12 @@ public class FuncotatorTestConstants {
     public static final String XSV_CSV_PIK3CA_PATH      = FUNCOTATOR_TEST_DIR + "xsv_CSV_PIK3CA.csv";
     public static final String XSV_CSV_MUC16_PATH       = FUNCOTATOR_TEST_DIR + "xsv_CSV_MUC16.csv";
 
-    public static final String XSV_LOCATABLE_TEST_FILE1_PATH = FUNCOTATOR_TEST_DIR + "xsv_locatable_test.csv";
-    public static final String XSV_LOCATABLE_TEST_FILE2_PATH = FUNCOTATOR_TEST_DIR + "xsv_locatable_test2.csv";
-    public static final String XSV_LOCATABLE_TEST_FILE3_PATH = FUNCOTATOR_TEST_DIR + "xsv_locatable_test3.tsv";
+    public static final String XSV_LOCATABLE_TEST_FILE1_DATA_PATH   = FUNCOTATOR_TEST_DIR + "xsv_locatable_test.csv";
+    public static final String XSV_LOCATABLE_TEST_FILE1_CONFIG_PATH = FUNCOTATOR_TEST_DIR + "xsv_locatable_test.config";
+    public static final String XSV_LOCATABLE_TEST_FILE2_DATA_PATH   = FUNCOTATOR_TEST_DIR + "xsv_locatable_test2.csv";
+    public static final String XSV_LOCATABLE_TEST_FILE2_CONFIG_PATH = FUNCOTATOR_TEST_DIR + "xsv_locatable_test2.config";
+    public static final String XSV_LOCATABLE_TEST_FILE3_DATA_PATH   = FUNCOTATOR_TEST_DIR + "xsv_locatable_test3.tsv";
+    public static final String XSV_LOCATABLE_TEST_FILE3_CONFIG_PATH = FUNCOTATOR_TEST_DIR + "xsv_locatable_test3.config";
 
     public static final String COSMIC_TEST_DB = FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER + "cosmic" + File.separator + "hg19" + File.separator + "CosmicTest.db";
 

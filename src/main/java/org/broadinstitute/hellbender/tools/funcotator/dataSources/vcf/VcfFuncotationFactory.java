@@ -138,7 +138,7 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
 
     private FuncotationMetadata createFuncotationMetadata(final Path sourceFilePath) {
         // Read the VCF to just get the header
-        try ( final FeatureDataSource<VariantContext> vcfReader = new FeatureDataSource<>(sourceFilePath.toString()) ) {
+        try ( final FeatureDataSource<VariantContext> vcfReader = new FeatureDataSource<>(sourceFilePath.toUri().toString()) ) {
             final Object header = vcfReader.getHeader();
             if ( ! (header instanceof VCFHeader) ) {
                 throw new IllegalArgumentException(sourceFilePath + " does not have a valid VCF header");
@@ -433,7 +433,7 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
      * Populates {@link VcfFuncotationFactory#supportedFieldNames} and {@link VcfFuncotationFactory#supportedFieldNamesAndDefaults}.
      */
     private void populateSupportedFieldNamesFromVcfFile() {
-        final VCFFileReader reader = new VCFFileReader(sourceFilePath.toFile());
+        final VCFFileReader reader = new VCFFileReader(sourceFilePath);
         final VCFHeader header = reader.getFileHeader();
 
         final List<String> infoLineKeys = new ArrayList<>();
