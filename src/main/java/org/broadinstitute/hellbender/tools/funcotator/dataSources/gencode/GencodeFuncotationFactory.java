@@ -623,6 +623,24 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         return outputFuncotations;
     }
 
+    /**
+     * Create a placeholder funcotation on a given {@code variant} and {@code allele} pair for a case that funcotator
+     * cannot yet handle, or would currently get wrong.
+     * Primarily this occurs when a variant is long and spans multiple types of {@link GencodeGtfFeature}s
+     * (i.e. it starts in an intron and ends in an exon or visa-versa). or is
+     * long and begins in a transcript and extends beyond a given transcript's end point.
+     * There are two such cases right now as manifested in the following issues:
+     *     https://github.com/broadinstitute/gatk/issues/3749
+     *     https://github.com/broadinstitute/gatk/issues/4307
+     * As noted in the above issues, other functional annotation tools also get these kinds of cases wrong.
+     * @param variant The {@link VariantContext} to annotate.
+     * @param altAllele The alternate {@link Allele} to annotate.
+     * @param gtfFeature The {@link GencodeGtfGeneFeature} overlapping the given {@code variant}.
+     * @param reference The {@link ReferenceContext} for the given {@code variant}.
+     * @param transcript The {@link GencodeGtfTranscriptFeature} which is being used to annotate the given {@code variant}.
+     * @param version A {@link String} representing the version of the {@link GencodeFuncotationFactory} being used to annotate the given {@code variant}.
+     * @return A placeholder {@link GencodeFuncotation} for the given {@code variant}.
+     */
     @VisibleForTesting
     static final GencodeFuncotation createDefaultFuncotationsOnProblemVariant( final VariantContext variant,
                                                                                final Allele altAllele,

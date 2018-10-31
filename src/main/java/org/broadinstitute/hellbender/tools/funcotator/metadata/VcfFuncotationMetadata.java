@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.funcotator.metadata;
 
-import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.broadinstitute.barclay.utils.Utils;
 
@@ -15,8 +14,7 @@ import java.util.stream.Collectors;
  */
 public class VcfFuncotationMetadata implements FuncotationMetadata {
 
-    @VisibleForTesting
-    public LinkedHashMap<String, VCFInfoHeaderLine> fieldNameToHeaderLineMap;
+    private LinkedHashMap<String, VCFInfoHeaderLine> fieldNameToHeaderLineMap;
 
     private VcfFuncotationMetadata(final LinkedHashMap<String, VCFInfoHeaderLine> fieldNameToHeaderLineMap) {
         this.fieldNameToHeaderLineMap = fieldNameToHeaderLineMap;
