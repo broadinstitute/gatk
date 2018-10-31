@@ -279,8 +279,10 @@ import pandas
 import os.path
 tumor_tagged = "${germline_tagged_seg}"
 
-tumor_tagged_df = pandas.read_csv(tumor_tagged, delimiter="\t", comment="@")
-tumor_tagged_pruned_df = tumor_tagged_df[(tumor_tagged_df["POSSIBLE_GERMLINE"] == "0") & (tumor_tagged_df["type"] != "centromere") & (tumor_tagged_df["ID"].isna())]
+tumor_tagged_df = pandas.read_csv(tumor_tagged, delimiter='\t', comment="@")
+tumor_tagged_df["POSSIBLE_GERMLINE"] = tumor_tagged_df["POSSIBLE_GERMLINE"].astype('str')
+tumor_tagged_pruned_df = tumor_tagged_df[((tumor_tagged_df["POSSIBLE_GERMLINE"] == "0.0") | (tumor_tagged_df["POSSIBLE_GERMLINE"] == "0") ) & (tumor_tagged_df["type"] != "centromere") & (tumor_tagged_df["ID"].isna())]
+
 output_filename = "${output_filename}"
 print(output_filename)
 tumor_tagged_pruned_df.to_csv(output_filename, sep="\t", index=False)

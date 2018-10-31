@@ -213,7 +213,7 @@ public class AnnotatedIntervalUtilsUnitTest extends GATKBaseTest {
                                     ImmutableSortedMap.of("Foo", "1234", "Bar", "abcd", "Baz", "wxyz")),
                             new AnnotatedInterval( new SimpleInterval("1", 250001, 300000),
                                     ImmutableSortedMap.of("Foo", "1234", "Bar", "abcd", "Baz", "wxyzabc")),
-                            new AnnotatedInterval( new SimpleInterval("1", 350001, 300000),
+                            new AnnotatedInterval( new SimpleInterval("1", 350001, 400000),
                                     ImmutableSortedMap.of("Foo", "5678", "Bar", "abcd", "Baz", "wxyzabc"))
                     ), Collections.singletonList("Foo"), 100000,
                     Arrays.asList(
@@ -222,6 +222,15 @@ public class AnnotatedIntervalUtilsUnitTest extends GATKBaseTest {
                             new AnnotatedInterval( new SimpleInterval("1", 350001, 400000),
                                     ImmutableSortedMap.of("Foo", "5678", "Bar", "abcd", "Baz", "wxyzabc"))
                     )
+                }, {
+                    Collections.singletonList(
+                            new AnnotatedInterval( new SimpleInterval("1", 100000, 200000),
+                                    ImmutableSortedMap.of("Foo", "1234", "Bar", "abcd", "Baz", "wxyz"))
+                            ), Collections.singletonList("Foo"), 100000,
+                    Collections.singletonList(
+                            new AnnotatedInterval( new SimpleInterval("1", 100000, 200000),
+                                ImmutableSortedMap.of("Foo", "1234", "Bar", "abcd", "Baz", "wxyz"))
+                            )
                 }
         };
     }
