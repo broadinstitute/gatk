@@ -160,12 +160,22 @@ public class GencodeFuncotationBuilder {
     }
 
     /**
-     * Set the position (1-based, inclusive) relative to the start of the transcript of a the variant in the {@link GencodeFuncotation}.
-     * @param transcriptPos The position (1-based, inclusive) relative to the start of the transcript of a the variant in the {@link GencodeFuncotation}.
+     * Set the start position (1-based, inclusive) relative to the start of the transcript of a the variant in the {@link GencodeFuncotation}.
+     * @param transcriptStartPos The start position (1-based, inclusive) of the variant in the {@link GencodeFuncotation} relative to the start of the transcript.
      * @return {@code this} {@link GencodeFuncotationBuilder}
      */
-    public GencodeFuncotationBuilder setTranscriptPos(final Integer transcriptPos) {
-        gencodeFuncotation.setTranscriptPos(transcriptPos);
+    public GencodeFuncotationBuilder setTranscriptStartPos(final Integer transcriptStartPos) {
+        gencodeFuncotation.setTranscriptStartPos(transcriptStartPos);
+        return this;
+    }
+
+    /**
+     * Set the end position (1-based, inclusive) relative to the start of the transcript of a the variant in the {@link GencodeFuncotation}.
+     * @param transcriptEndPos The end position (1-based, inclusive) of the variant in the {@link GencodeFuncotation} relative to the start of the transcript.
+     * @return {@code this} {@link GencodeFuncotationBuilder}
+     */
+    public GencodeFuncotationBuilder setTranscriptEndPos(final Integer transcriptEndPos) {
+        gencodeFuncotation.setTranscriptEndPos(transcriptEndPos);
         return this;
     }
 
