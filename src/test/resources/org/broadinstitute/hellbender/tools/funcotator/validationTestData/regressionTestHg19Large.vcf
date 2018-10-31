@@ -1,0 +1,1706 @@
+##fileformat=VCFv4.2
+##Biotin(Bgnd)=Biotin(Bgnd)|Staining|508|179
+##Biotin(High)=Biotin(High)|Staining|778|5902
+##DNP(Bgnd)=DNP(Bgnd)|Staining|1058|245
+##DNP(High)=DNP(High)|Staining|32198|156
+##Extension(A)=Extension(A)|Extension|41089|480
+##Extension(C)=Extension(C)|Extension|2446|11515
+##Extension(G)=Extension(G)|Extension|2936|11197
+##Extension(T)=Extension(T)|Extension|43350|395
+##FILTER=<ID=DUPE,Description="Duplicate assays position.">
+##FILTER=<ID=FAIL_REF,Description="Assay failed to map to reference.">
+##FILTER=<ID=TRIALLELIC,Description="Tri-allelic assay.">
+##FILTER=<ID=ZCALL_DIFF,Description="ZCALL_DIFF">
+##FORMAT=<ID=BAF,Number=1,Type=Float,Description="B Allele Frequency">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=GTA,Number=1,Type=String,Description="Illumina Autocall Genotype">
+##FORMAT=<ID=GTZ,Number=1,Type=String,Description="zCall Genotype">
+##FORMAT=<ID=IGC,Number=1,Type=Float,Description="Illumina GenCall Confidence Score">
+##FORMAT=<ID=LRR,Number=1,Type=Float,Description="Log R Ratio">
+##FORMAT=<ID=NORMX,Number=1,Type=Float,Description="Normalized X intensity">
+##FORMAT=<ID=NORMY,Number=1,Type=Float,Description="Normalized Y intensity">
+##FORMAT=<ID=R,Number=1,Type=Float,Description="Normalized R value">
+##FORMAT=<ID=THETA,Number=1,Type=Float,Description="Normalized Theta value">
+##FORMAT=<ID=X,Number=1,Type=Integer,Description="Raw X intensity">
+##FORMAT=<ID=Y,Number=1,Type=Integer,Description="Raw Y intensity">
+##Funcotator Version=0.0.4 | Gencode 19 CANONICAL | Achilles 110303 | CGC full_2012_03-15 | ClinVar 12.03.20 | Cosmic v84 | CosmicFusion v84 | CosmicTissue v83 | DNARepairGenes 20180524T145835  | Familial_Cancer_Genes 20110905 | Gencode_XHGNC 75_37 | Gencode_XRefSeq 75_37 | HGNC Nov302017 | Oreganno 20160119 | Simple_Uniprot 2014_12 | dbSNP 9606_b150
+##GATKCommandLine=<ID=Funcotator,CommandLine="Funcotator  --output FUNCOTATOR_OUT.vcf --ref-version hg19 --data-sources-path /Users/jonn/Development/funcotator_dataSources_latest --output-file-format VCF --variant /Users/jonn/Development/NON_PUBLIC/0816201804HC0_R01C01.vcf --reference /Users/jonn/Development/references/Homo_sapiens_assembly19.fasta --verbosity DEBUG  --remove-filtered-variants false --transcript-selection-mode CANONICAL --lookahead-cache-bp 100000 --force-b37-to-hg19-reference-contig-conversion false --interval-set-rule UNION --interval-padding 0 --interval-exclusion-padding 0 --interval-merging-rule ALL --read-validation-stringency SILENT --seconds-between-progress-updates 10.0 --disable-sequence-dictionary-validation false --create-output-bam-index true --create-output-bam-md5 false --create-output-variant-index true --create-output-variant-md5 false --lenient false --add-output-sam-program-record true --add-output-vcf-command-line true --cloud-prefetch-buffer 40 --cloud-index-prefetch-buffer -1 --disable-bam-index-caching false --sites-only-vcf-output false --help false --version false --showHidden false --QUIET false --use-jdk-deflater false --use-jdk-inflater false --gcs-max-retries 20 --gcs-project-for-requester-pays  --disable-tool-default-read-filters false",Version=4.0.10.1-17-g2de000f-SNAPSHOT-0.0.4,Date="October 19, 2018 2:12:35 PM EDT">
+##Hyb(High)=Hyb(High)|Hybridization|3310|11184
+##Hyb(Low)=Hyb(Low)|Hybridization|3436|1823
+##Hyb(Medium)=Hyb(Medium)|Hybridization|1307|6426
+##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
+##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">
+##INFO=<ID=ALLELE_A,Number=1,Type=String,Description="A allele">
+##INFO=<ID=ALLELE_B,Number=1,Type=String,Description="B allele">
+##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">
+##INFO=<ID=BEADSET_ID,Number=1,Type=Integer,Description="Bead set ID for normalization">
+##INFO=<ID=FUNCOTATION,Number=A,Type=String,Description="Functional annotation from the Funcotator tool.  Funcotation fields are: Gencode_19_hugoSymbol|Gencode_19_ncbiBuild|Gencode_19_chromosome|Gencode_19_start|Gencode_19_end|Gencode_19_variantClassification|Gencode_19_secondaryVariantClassification|Gencode_19_variantType|Gencode_19_refAllele|Gencode_19_tumorSeqAllele1|Gencode_19_tumorSeqAllele2|Gencode_19_genomeChange|Gencode_19_annotationTranscript|Gencode_19_transcriptStrand|Gencode_19_transcriptExon|Gencode_19_transcriptPos|Gencode_19_cDnaChange|Gencode_19_codonChange|Gencode_19_proteinChange|Gencode_19_gcContent|Gencode_19_referenceContext|Gencode_19_otherTranscripts|Achilles_Top_Genes|CGC_Name|CGC_GeneID|CGC_Chr|CGC_Chr_Band|CGC_Cancer_Somatic_Mut|CGC_Cancer_Germline_Mut|CGC_Tumour_Types__(Somatic_Mutations)|CGC_Tumour_Types_(Germline_Mutations)|CGC_Cancer_Syndrome|CGC_Tissue_Type|CGC_Cancer_Molecular_Genetics|CGC_Mutation_Type|CGC_Translocation_Partner|CGC_Other_Germline_Mut|CGC_Other_Syndrome/Disease|ClinVar_HGMD_ID|ClinVar_SYM|ClinVar_TYPE|ClinVar_ASSEMBLY|ClinVar_rs|Cosmic_overlapping_mutations|CosmicFusion_fusion_genes|CosmicFusion_fusion_id|CosmicTissue_total_alterations_in_gene|CosmicTissue_tissue_types_affected|DNARepairGenes_Activity_linked_to_OMIM|DNARepairGenes_Chromosome_location_linked_to_NCBI_MapView|DNARepairGenes_Accession_number_linked_to_NCBI_Entrez|Familial_Cancer_Genes_Syndrome|Familial_Cancer_Genes_Synonym|Familial_Cancer_Genes_Reference|Gencode_XHGNC_hgnc_id|Gencode_XRefSeq_mRNA_id|Gencode_XRefSeq_prot_acc|HGNC_HGNC_ID|HGNC_Approved_Name|HGNC_Status|HGNC_Locus_Type|HGNC_Locus_Group|HGNC_Previous_Symbols|HGNC_Previous_Name|HGNC_Synonyms|HGNC_Name_Synonyms|HGNC_Chromosome|HGNC_Date_Modified|HGNC_Date_Symbol_Changed|HGNC_Date_Name_Changed|HGNC_Accession_Numbers|HGNC_Enzyme_IDs|HGNC_Entrez_Gene_ID|HGNC_Ensembl_Gene_ID|HGNC_Pubmed_IDs|HGNC_RefSeq_IDs|HGNC_Gene_Family_ID|HGNC_Gene_Family_Name|HGNC_CCDS_IDs|HGNC_Vega_ID|HGNC_Entrez_Gene_ID(supplied_by_NCBI)|HGNC_OMIM_ID(supplied_by_OMIM)|HGNC_RefSeq(supplied_by_NCBI)|HGNC_UniProt_ID(supplied_by_UniProt)|HGNC_Ensembl_ID(supplied_by_Ensembl)|HGNC_UCSC_ID(supplied_by_UCSC)|Oreganno_Build|Oreganno_ID|Oreganno_Values|Simple_Uniprot_uniprot_entry_name|Simple_Uniprot_DrugBank|Simple_Uniprot_alt_uniprot_accessions|Simple_Uniprot_uniprot_accession|Simple_Uniprot_GO_Biological_Process|Simple_Uniprot_GO_Cellular_Component|Simple_Uniprot_GO_Molecular_Function|dbSNP_ASP|dbSNP_ASS|dbSNP_CAF|dbSNP_CDA|dbSNP_CFL|dbSNP_COMMON|dbSNP_DSS|dbSNP_G5|dbSNP_G5A|dbSNP_GENEINFO|dbSNP_GNO|dbSNP_HD|dbSNP_INT|dbSNP_KGPhase1|dbSNP_KGPhase3|dbSNP_LSD|dbSNP_MTP|dbSNP_MUT|dbSNP_NOC|dbSNP_NOV|dbSNP_NSF|dbSNP_NSM|dbSNP_NSN|dbSNP_OM|dbSNP_OTH|dbSNP_PM|dbSNP_PMC|dbSNP_R3|dbSNP_R5|dbSNP_REF|dbSNP_RS|dbSNP_RSPOS|dbSNP_RV|dbSNP_S3D|dbSNP_SAO|dbSNP_SLO|dbSNP_SSR|dbSNP_SYN|dbSNP_TOPMED|dbSNP_TPA|dbSNP_U3|dbSNP_U5|dbSNP_VC|dbSNP_VLD|dbSNP_VP|dbSNP_WGT|dbSNP_WTD|dbSNP_dbSNPBuildID">
+##INFO=<ID=GC_SCORE,Number=1,Type=Float,Description="Gentrain Score">
+##INFO=<ID=ILLUMINA_BUILD,Number=1,Type=String,Description="Genome Build in Illumina manifest">
+##INFO=<ID=ILLUMINA_CHR,Number=1,Type=String,Description="Chromosome in Illumina manifest">
+##INFO=<ID=ILLUMINA_POS,Number=1,Type=Integer,Description="Position in Illumina manifest">
+##INFO=<ID=ILLUMINA_STRAND,Number=1,Type=String,Description="Probe strand">
+##INFO=<ID=N_AA,Number=1,Type=Integer,Description="Number of AA calls in training set">
+##INFO=<ID=N_AB,Number=1,Type=Integer,Description="Number of AB calls in training set">
+##INFO=<ID=N_BB,Number=1,Type=Integer,Description="Number of BB calls in training set">
+##INFO=<ID=PROBE_A,Number=1,Type=String,Description="Probe base pair sequence">
+##INFO=<ID=PROBE_B,Number=1,Type=String,Description="Probe base pair sequence; not missing for strand-ambiguous SNPs">
+##INFO=<ID=SOURCE,Number=1,Type=String,Description="Probe source">
+##INFO=<ID=devR_AA,Number=1,Type=Float,Description="Standard deviation of normalized R for AA cluster">
+##INFO=<ID=devR_AB,Number=1,Type=Float,Description="Standard deviation of normalized R for AB cluster">
+##INFO=<ID=devR_BB,Number=1,Type=Float,Description="Standard deviation of normalized R for BB cluster">
+##INFO=<ID=devTHETA_AA,Number=1,Type=Float,Description="Standard deviation of normalized THETA for AA cluster">
+##INFO=<ID=devTHETA_AB,Number=1,Type=Float,Description="Standard deviation of normalized THETA for AB cluster">
+##INFO=<ID=devTHETA_BB,Number=1,Type=Float,Description="Standard deviation of normalized THETA for BB cluster">
+##INFO=<ID=devX_AA,Number=1,Type=Float,Description="Standard deviation of normalized X for AA cluster">
+##INFO=<ID=devX_AB,Number=1,Type=Float,Description="Standard deviation of normalized X for AB cluster">
+##INFO=<ID=devX_BB,Number=1,Type=Float,Description="Standard deviation of normalized X for BB cluster">
+##INFO=<ID=devY_AA,Number=1,Type=Float,Description="Standard deviation of normalized Y for AA cluster">
+##INFO=<ID=devY_AB,Number=1,Type=Float,Description="Standard deviation of normalized Y for AB cluster">
+##INFO=<ID=devY_BB,Number=1,Type=Float,Description="Standard deviation of normalized Y for BB cluster">
+##INFO=<ID=meanR_AA,Number=1,Type=Float,Description="Mean of normalized R for AA cluster">
+##INFO=<ID=meanR_AB,Number=1,Type=Float,Description="Mean of normalized R for AB cluster">
+##INFO=<ID=meanR_BB,Number=1,Type=Float,Description="Mean of normalized R for BB cluster">
+##INFO=<ID=meanTHETA_AA,Number=1,Type=Float,Description="Mean of normalized THETA for AA cluster">
+##INFO=<ID=meanTHETA_AB,Number=1,Type=Float,Description="Mean of normalized THETA for AB cluster">
+##INFO=<ID=meanTHETA_BB,Number=1,Type=Float,Description="Mean of normalized THETA for BB cluster">
+##INFO=<ID=meanX_AA,Number=1,Type=Float,Description="Mean of normalized X for AA cluster">
+##INFO=<ID=meanX_AB,Number=1,Type=Float,Description="Mean of normalized X for AB cluster">
+##INFO=<ID=meanX_BB,Number=1,Type=Float,Description="Mean of normalized X for BB cluster">
+##INFO=<ID=meanY_AA,Number=1,Type=Float,Description="Mean of normalized Y for AA cluster">
+##INFO=<ID=meanY_AB,Number=1,Type=Float,Description="Mean of normalized Y for AB cluster">
+##INFO=<ID=meanY_BB,Number=1,Type=Float,Description="Mean of normalized Y for BB cluster">
+##INFO=<ID=refSNP,Number=1,Type=String,Description="dbSNP rs ID">
+##INFO=<ID=zthresh_X,Number=1,Type=Float,Description="zCall X threshold">
+##INFO=<ID=zthresh_Y,Number=1,Type=Float,Description="zCall Y threshold">
+##NP(A)=NP(A)|Non-Polymorphic|17148|391
+##NP(C)=NP(C)|Non-Polymorphic|1093|6000
+##NP(G)=NP(G)|Non-Polymorphic|1286|5170
+##NP(T)=NP(T)|Non-Polymorphic|15772|304
+##NSB(Bgnd)Blue=NSB(Bgnd)Blue|Non-SpecificBinding|922|301
+##NSB(Bgnd)Green=NSB(Bgnd)Green|Non-SpecificBinding|842|238
+##NSB(Bgnd)Purple=NSB(Bgnd)Purple|Non-SpecificBinding|912|204
+##NSB(Bgnd)Red=NSB(Bgnd)Red|Non-SpecificBinding|1016|295
+##Restore=Restore|Restoration|961|374
+##String(MM)=String(MM)|Stringency|4768|259
+##String(PM)=String(PM)|Stringency|29830|468
+##TargetRemoval=TargetRemoval|TargetRemoval|2492|281
+##analysisVersionNumber=1
+##arrayType=PsychChip_v1-1_15073391_A1
+##autocallDate=08/17/2017 00:40
+##autocallGender=F
+##autocallVersion=2.0.0.137
+##chipWellBarcode=0816201804HC0_R01C01
+##clusterFile=PsychChip_v1-1_15073391_A1_ClusterFile.egt
+##content=PsychChip_v1-1_15073391_A1.1.2.extended.csv
+##expectedGender=Female
+##extendedIlluminaManifestVersion=1.2
+##extendedManifestFile=PsychChip_v1-1_15073391_A1.1.2.extended.csv
+##fileDate=Thu Aug 17 00:44:56 UTC 2017
+##fingerprintGender=Unknown
+##genomeBuild=HG19
+##imagingDate=8/14/2015 7:27:49 PM
+##manifestFile=PsychChip_v1-1_15073391_A1.csv
+##p95Green=7373
+##p95Red=22526
+##picardVersion=1.1222-SNAPSHOT
+##reference=/cromwell_root/broad-references/hg19/v0/Homo_sapiens_assembly19.fasta
+##sampleAlias=NA12878
+##scannerName=N0700
+##source=BPM file
+##source=Funcotator
+##zcallThresholds=thresholds.7.txt
+##zcallVersion=1.0.0.0
+##contig=<ID=1,length=249250621,assembly=GRCh37>
+##contig=<ID=2,length=243199373,assembly=GRCh37>
+##contig=<ID=3,length=198022430,assembly=GRCh37>
+##contig=<ID=4,length=191154276,assembly=GRCh37>
+##contig=<ID=5,length=180915260,assembly=GRCh37>
+##contig=<ID=6,length=171115067,assembly=GRCh37>
+##contig=<ID=7,length=159138663,assembly=GRCh37>
+##contig=<ID=8,length=146364022,assembly=GRCh37>
+##contig=<ID=9,length=141213431,assembly=GRCh37>
+##contig=<ID=10,length=135534747,assembly=GRCh37>
+##contig=<ID=11,length=135006516,assembly=GRCh37>
+##contig=<ID=12,length=133851895,assembly=GRCh37>
+##contig=<ID=13,length=115169878,assembly=GRCh37>
+##contig=<ID=14,length=107349540,assembly=GRCh37>
+##contig=<ID=15,length=102531392,assembly=GRCh37>
+##contig=<ID=16,length=90354753,assembly=GRCh37>
+##contig=<ID=17,length=81195210,assembly=GRCh37>
+##contig=<ID=18,length=78077248,assembly=GRCh37>
+##contig=<ID=19,length=59128983,assembly=GRCh37>
+##contig=<ID=20,length=63025520,assembly=GRCh37>
+##contig=<ID=21,length=48129895,assembly=GRCh37>
+##contig=<ID=22,length=51304566,assembly=GRCh37>
+##contig=<ID=X,length=155270560,assembly=GRCh37>
+##contig=<ID=Y,length=59373566,assembly=GRCh37>
+##contig=<ID=MT,length=16569,assembly=GRCh37>
+##contig=<ID=GL000207.1,length=4262,assembly=GRCh37>
+##contig=<ID=GL000226.1,length=15008,assembly=GRCh37>
+##contig=<ID=GL000229.1,length=19913,assembly=GRCh37>
+##contig=<ID=GL000231.1,length=27386,assembly=GRCh37>
+##contig=<ID=GL000210.1,length=27682,assembly=GRCh37>
+##contig=<ID=GL000239.1,length=33824,assembly=GRCh37>
+##contig=<ID=GL000235.1,length=34474,assembly=GRCh37>
+##contig=<ID=GL000201.1,length=36148,assembly=GRCh37>
+##contig=<ID=GL000247.1,length=36422,assembly=GRCh37>
+##contig=<ID=GL000245.1,length=36651,assembly=GRCh37>
+##contig=<ID=GL000197.1,length=37175,assembly=GRCh37>
+##contig=<ID=GL000203.1,length=37498,assembly=GRCh37>
+##contig=<ID=GL000246.1,length=38154,assembly=GRCh37>
+##contig=<ID=GL000249.1,length=38502,assembly=GRCh37>
+##contig=<ID=GL000196.1,length=38914,assembly=GRCh37>
+##contig=<ID=GL000248.1,length=39786,assembly=GRCh37>
+##contig=<ID=GL000244.1,length=39929,assembly=GRCh37>
+##contig=<ID=GL000238.1,length=39939,assembly=GRCh37>
+##contig=<ID=GL000202.1,length=40103,assembly=GRCh37>
+##contig=<ID=GL000234.1,length=40531,assembly=GRCh37>
+##contig=<ID=GL000232.1,length=40652,assembly=GRCh37>
+##contig=<ID=GL000206.1,length=41001,assembly=GRCh37>
+##contig=<ID=GL000240.1,length=41933,assembly=GRCh37>
+##contig=<ID=GL000236.1,length=41934,assembly=GRCh37>
+##contig=<ID=GL000241.1,length=42152,assembly=GRCh37>
+##contig=<ID=GL000243.1,length=43341,assembly=GRCh37>
+##contig=<ID=GL000242.1,length=43523,assembly=GRCh37>
+##contig=<ID=GL000230.1,length=43691,assembly=GRCh37>
+##contig=<ID=GL000237.1,length=45867,assembly=GRCh37>
+##contig=<ID=GL000233.1,length=45941,assembly=GRCh37>
+##contig=<ID=GL000204.1,length=81310,assembly=GRCh37>
+##contig=<ID=GL000198.1,length=90085,assembly=GRCh37>
+##contig=<ID=GL000208.1,length=92689,assembly=GRCh37>
+##contig=<ID=GL000191.1,length=106433,assembly=GRCh37>
+##contig=<ID=GL000227.1,length=128374,assembly=GRCh37>
+##contig=<ID=GL000228.1,length=129120,assembly=GRCh37>
+##contig=<ID=GL000214.1,length=137718,assembly=GRCh37>
+##contig=<ID=GL000221.1,length=155397,assembly=GRCh37>
+##contig=<ID=GL000209.1,length=159169,assembly=GRCh37>
+##contig=<ID=GL000218.1,length=161147,assembly=GRCh37>
+##contig=<ID=GL000220.1,length=161802,assembly=GRCh37>
+##contig=<ID=GL000213.1,length=164239,assembly=GRCh37>
+##contig=<ID=GL000211.1,length=166566,assembly=GRCh37>
+##contig=<ID=GL000199.1,length=169874,assembly=GRCh37>
+##contig=<ID=GL000217.1,length=172149,assembly=GRCh37>
+##contig=<ID=GL000216.1,length=172294,assembly=GRCh37>
+##contig=<ID=GL000215.1,length=172545,assembly=GRCh37>
+##contig=<ID=GL000205.1,length=174588,assembly=GRCh37>
+##contig=<ID=GL000219.1,length=179198,assembly=GRCh37>
+##contig=<ID=GL000224.1,length=179693,assembly=GRCh37>
+##contig=<ID=GL000223.1,length=180455,assembly=GRCh37>
+##contig=<ID=GL000195.1,length=182896,assembly=GRCh37>
+##contig=<ID=GL000212.1,length=186858,assembly=GRCh37>
+##contig=<ID=GL000222.1,length=186861,assembly=GRCh37>
+##contig=<ID=GL000200.1,length=187035,assembly=GRCh37>
+##contig=<ID=GL000193.1,length=189789,assembly=GRCh37>
+##contig=<ID=GL000194.1,length=191469,assembly=GRCh37>
+##contig=<ID=GL000225.1,length=211173,assembly=GRCh37>
+##contig=<ID=GL000192.1,length=547496,assembly=GRCh37>
+##contig=<ID=NC_007605,length=171823,assembly=NC_007605.1>
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+chr1	752566	rs3094315	G	A	.	PASS	.
+chr1	752721	rs3131972	A	G	.	PASS	.
+chr1	762320	exm2268640	C	T	.	PASS	.
+chr1	798959	rs11240777	G	A	.	PASS	.
+chr1	838555	rs4970383	C	A	.	PASS	.
+chr1	846808	rs4475691	C	T	.	PASS	.
+chr1	861349	exm41	C	T	.	PASS	.
+chr1	861808	rs13302982	A	G	.	PASS	.
+chr1	865545	exm1916089	G	A	.	PASS	.
+chr1	865584	exm44	G	A	.	PASS	.
+chr1	865625	exm46	G	A	.	PASS	.
+chr1	865628	exm47	G	A	.	PASS	.
+chr1	865662	exm51	G	A	.	PASS	.
+chr1	865665	exm53	G	A	.	PASS	.
+chr1	865694	exm55	C	T	.	PASS	.
+chr1	865700	exm56	C	T	.	PASS	.
+chr1	866429	exm60	C	T	.	PASS	.
+chr1	866438	exm63	G	A	.	PASS	.
+chr1	871159	exm67	G	A	.	PASS	.
+chr1	871213	exm74	C	G	.	PASS	.
+chr1	871228	exm76	C	T	.	PASS	.
+chr1	871276	exm85	G	A	.	PASS	.
+chr1	871276	exm85	G	A	.	PASS	.
+chr1	874456	exm88	G	A	.	PASS	.
+chr1	874501	exm94	C	T	.	PASS	.
+chr1	874673	exm101	G	A	.	PASS	.
+chr1	874714	exm104	C	T	.	PASS	.
+chr1	874762	exm106	C	T	.	PASS	.
+chr1	877556	exm116	G	A	.	PASS	.
+chr1	878250	exm2233917	A	G	.	PASS	.
+chr1	878423	exm145	C	T	.	PASS	.
+chr1	878697	exm151	G	A	.	PASS	.
+chr1	878744	exm158	G	C	.	PASS	.
+chr1	879297	exm174	C	T	.	PASS	.
+chr1	879364	exm1917884	G	A	.	PASS	.
+chr1	879381	exm192	C	T	.	PASS	.
+chr1	879439	exm2275405	G	A	.	PASS	.
+chr1	879481	exm210	G	C	.	PASS	.
+chr1	880160	exm222	C	T	.	PASS	.
+chr1	880167	exm2253572	G	A	.	PASS	.
+chr1	880466	exm233	T	C	.	PASS	.
+chr1	880502	exm241	C	T	.	PASS	.
+chr1	880922	exm246	C	T	.	PASS	.
+chr1	880942	exm248	A	G	.	PASS	.
+chr1	880943	exm249	G	A	.	PASS	.
+chr1	881554	exm255	C	T	.	PASS	.
+chr1	881554	exm255	C	T	.	PASS	.
+chr1	881627	exm2253575	G	A	.	PASS	.
+chr1	881784	exm2233921	C	T	.	PASS	.
+chr1	881825	exm1917942	C	T	.	PASS	.
+chr1	881894	exm268	G	A	.	PASS	.
+chr1	881918	exm269	G	A	.	PASS	.
+chr1	883899	exm284	T	G	.	PASS	.
+chr1	883947	exm289	G	A	.	PASS	.
+chr1	887521	variant.16	T	C	.	PASS	.
+chr1	887521	variant.16	T	C	.	PASS	.
+chr1	887799	exm314	C	T	.	PASS	.
+chr1	887812	exm1918034	C	A	.	PASS	.
+chr1	887874	exm323	G	A	.	PASS	.
+chr1	887967	exm328	G	A	.	PASS	.
+chr1	888563	exm332	C	T	.	PASS	.
+chr1	888659	exm340	T	C	.	PASS	.
+chr1	889238	exm348	G	A	.	PASS	.
+chr1	889387	exm352	T	C	.	PASS	.
+chr1	889403	exm355	T	A	.	PASS	.
+chr1	891309	exm360	C	T	.	PASS	.
+chr1	891358	exm369	G	T	.	PASS	.
+chr1	891384	exm371	G	A	.	PASS	.
+chr1	891393	exm372	G	A	.	PASS	.
+chr1	891393	exm372	G	A	.	PASS	.
+chr1	891591	exm382	C	T	.	PASS	.
+chr1	891592	exm383	G	A	.	PASS	.
+chr1	892380	exm395	G	A	.	PASS	.
+chr1	892388	exm396	C	G	.	PASS	.
+chr1	892648	exm1918242	C	T	.	PASS	.
+chr1	894315	exm410	G	A	.	PASS	.
+chr1	894330	exm411	G	A	.	PASS	.
+chr1	894573	exm2264981	G	A	.	PASS	.
+chr1	894610	exm425	G	A	.	PASS	.
+chr1	897009	exm447	A	G	.	PASS	.
+chr1	897009	exm447	A	G	.	PASS	.
+chr1	897285	exm464	A	G	.	PASS	.
+chr1	897849	exm493	C	T	.	PASS	.
+chr1	898153	exm503	C	A	.	PASS	.
+chr1	898247	exm513	G	A	.	PASS	.
+chr1	898542	exm534	A	G	.	PASS	.
+chr1	898782	exm545	C	T	.	PASS	.
+chr1	898787	exm546	G	T	.	PASS	.
+chr1	898869	exm554	C	T	.	PASS	.
+chr1	899489	exm564	G	A	.	PASS	.
+chr1	899537	exm570	A	G	.	PASS	.
+chr1	899789	exm580	G	A	.	PASS	.
+chr1	900383	chr1_900383	G	A	.	PASS	.
+chr1	900427	exm2253593	G	A	.	PASS	.
+chr1	900427	exm596	G	A	.	PASS	.
+chr1	900519	exm603	A	G	.	PASS	.
+chr1	900560	exm611	A	C	.	PASS	.
+chr1	901922	exm1918827	G	A	.	PASS	.
+chr1	901923	exm615	C	A	.	PASS	.
+chr1	902088	exm624	G	A	.	PASS	.
+chr1	902128	exm628	C	T	.	PASS	.
+chr1	902133	exm629	C	G	.	PASS	.
+chr1	902176	exm635	C	T	.	PASS	.
+chr1	904165	rs28391282	G	A	.	PASS	.
+chr1	905669	exm636	C	G	.	PASS	.
+chr1	905723	exm638	G	A	.	PASS	.
+chr1	905729	exm639	C	T	.	PASS	.
+chr1	905901	exm648	G	A	.	PASS	.
+chr1	905901	exm648	G	A	.	PASS	.
+chr1	906067	exm656	G	A	.	PASS	.
+chr1	906067	exm656	G	A	.	PASS	.
+chr1	906100	exm662	C	T	.	PASS	.
+chr1	906132	exm668	A	G	.	PASS	.
+chr1	906298	exm674	G	A	.	PASS	.
+chr1	906472	exm1918903	G	A	.	PASS	.
+chr1	906494	exm684	G	A	.	PASS	.
+chr1	906494	exm684	G	A	.	PASS	.
+chr1	906512	exm687	G	A	.	PASS	.
+chr1	906583	exm694	G	A	.	PASS	.
+chr1	906717	exm697	G	A	.	PASS	.
+chr1	907676	exm714	A	T	.	PASS	.
+chr1	907709	exm717	G	A	.	PASS	.
+chr1	907799	exm725	T	C	.	PASS	.
+chr1	908275	exm727	G	A	.	PASS	.
+chr1	908323	exm1918959	G	A	.	PASS	.
+chr1	908389	exm738	C	T	.	PASS	.
+chr1	908390	exm739	G	A	.	PASS	.
+chr1	908390	exm739	G	A	.	PASS	.
+chr1	909320	exm2253598	C	T	.	PASS	.
+chr1	918573	rs2341354	A	G	.	PASS	.
+chr1	928836	rs9777703	C	T	.	PASS	.
+chr1	932457	rs1891910	G	A	.	PASS	.
+chr1	944564	rs3128117	T	C	.	PASS	.
+chr1	962210	rs3128126	A	G	.	PASS	.
+chr1	980903	exm1107	C	T	.	PASS	.
+chr1	981345	exm1123	C	T	.	PASS	.
+chr1	981345	exm1123	C	T	.	PASS	.
+chr1	984947	exm1957592	G	A	.	PASS	.
+chr1	985614	exm1300	C	T	.	PASS	.
+chr1	985614	exm1300	C	T	.	PASS	.
+chr1	990417	rs2465136	T	C	.	PASS	.
+chr1	998395	rs7526076	A	G	.	PASS	.
+chr1	1018704	rs9442372	A	G	.	PASS	.
+chr1	1021583	rs10907178	A	C	.	PASS	.
+chr1	1030565	rs6687776	C	T	.	PASS	.
+chr1	1040026	rs6671356	T	C	.	PASS	.
+chr1	1062638	exm2263810	C	A	.	PASS	.
+chr1	1062638	rs9442373	C	A	.	PASS	.
+chr1	1066403	rs10907182	T	C	.	PASS	.
+chr1	1097335	rs9442385	T	G	.	PASS	.
+chr1	1106784	rs4442317	T	C	.	PASS	.
+chr1	1110019	rs11260542	A	G	.	PASS	.
+chr1	1113121	rs12092254	G	A	.	PASS	.
+chr1	1115954	exm1571	C	T	.	PASS	.
+chr1	1120488	exm1649	A	C	.	PASS	.
+chr1	1120489	exm2249617	G	A	.	PASS	.
+chr1	1120489	exm2249617	G	A	.	PASS	.
+chr1	1120494	exm1651	G	A	.	PASS	.
+chr1	1120503	exm1654	G	A	.	PASS	.
+chr1	1120536	psy_rs77950429	G	A	.	PASS	.
+chr1	1121794	rs11260549	G	A	.	PASS	.
+chr1	1130727	rs10907175	A	C	.	PASS	.
+chr1	1138913	rs3819001	T	C	.	PASS	.
+chr1	1139062	exm1677	G	A	.	PASS	.
+chr1	1139268	exm1688	G	A	.	PASS	.
+chr1	1139287	exm1692	G	A	.	PASS	.
+chr1	1139308	exm1693	G	A	.	PASS	.
+chr1	1139320	exm1695	C	T	.	PASS	.
+chr1	1141765	exm1730	C	T	.	PASS	.
+chr1	1153073	exm1702568	G	A	.	PASS	.
+chr1	1153099	exm1829	G	A	.	PASS	.
+chr1	1153129	exm1832	C	T	.	PASS	.
+chr1	1158277	rs3813199	G	A	.	PASS	.
+chr1	1159213	exm1864	G	A	.	PASS	.
+chr1	1159213	exm1864	G	A	.	PASS	.
+chr1	1163804	rs7515488	C	T	.	PASS	.
+chr1	1178442	exm1949	G	A	.	PASS	.
+chr1	1178848	exm1965	G	A	.	PASS	.
+chr1	1179619	exm1987	C	A	.	PASS	.
+chr1	1179762	exm1992	G	A	.	PASS	.
+chr1	1203938	rs4018608	T	C	.	PASS	.
+chr1	1211292	exm-rs6685064	C	T	.	PASS	.
+chr1	1216848	exm2059	G	A	.	PASS	.
+chr1	1219456	exm2067	G	C	.	PASS	.
+chr1	1220954	exm2070	G	A	.	PASS	.
+chr1	1221530	exm2090	C	T	.	PASS	.
+chr1	1221657	exm2100	C	T	.	PASS	.
+chr1	1222220	exm2106	C	T	.	PASS	.
+chr1	1222519	exm2129	C	T	.	PASS	.
+chr1	1222596	exm2135	C	T	.	PASS	.
+chr1	1226777	exm2258	G	A	.	PASS	.
+chr1	1226867	exm2267	G	A	.	PASS	.
+chr1	1227897	rs3737721	A	G	.	PASS	.
+chr1	1246013	exm2497	G	A	.	PASS	.
+chr1	1246013	exm2497	G	A	.	PASS	.
+chr1	1246013	newrs143765035	G	A	.	PASS	.
+chr1	1246013	newrs143765035	G	A	.	PASS	.
+chr1	1246068	variant.153	G	T	.	PASS	.
+chr1	1246069	variant.154	G	A	.	PASS	.
+chr1	1246069	variant.154	G	A	.	PASS	.
+chr1	1246450	exm2520	C	T	.	PASS	.
+chr1	1246450	exm2520	C	T	.	PASS	.
+chr1	1246451	newrs140444081	G	A	.	PASS	.
+chr1	1247626	exm2249776	G	A	.	PASS	.
+chr1	1247820	exm2562	G	A	.	PASS	.
+chr1	1247820	exm2562	G	A	.	PASS	.
+chr1	1247826	exm2249777	C	T	.	PASS	.
+chr1	1248046	exm2249779	C	T	.	PASS	.
+chr1	1248329	exm2590	G	A	.	PASS	.
+chr1	1248329	exm2590	G	A	.	PASS	.
+chr1	1249193	indel.166	C	CGCAA	.	PASS	.
+chr1	1250794	variant.168	G	A	.	PASS	.
+chr1	1254255	psy_rs62623580	G	A	.	PASS	.
+chr1	1254678	exm2656	G	A	.	PASS	.
+chr1	1254694	exm2249782	G	A	.	PASS	.
+chr1	1256453	exm2676	G	A	.	PASS	.
+chr1	1258246	rs3845293	A	C	.	PASS	.
+chr1	1264539	rs307354	G	C	.	PASS	.
+chr1	1275882	exm3075	G	A	.	PASS	.
+chr1	1275883	exm3076	C	T	.	PASS	.
+chr1	1275883	exm3076	C	T	.	PASS	.
+chr1	1277184	exm1707125	G	A	.	PASS	.
+chr1	1277184	exm1707125	G	A	.	PASS	.
+chr1	1287127	rs307380	G	A	.	PASS	.
+chr1	1305561	rs17160669	C	T	.	PASS	.
+chr1	1309583	exm3225	G	A	.	PASS	.
+chr1	1335302	rs1240707	C	T	.	PASS	.
+chr1	1335790	rs1240708	A	G	.	PASS	.
+chr1	1341171	variant.210	C	T	.	PASS	.
+chr1	1354515	exm3350	C	G	.	PASS	.
+chr1	1354538	exm3352	G	A	.	PASS	.
+chr1	1354844	exm3367	C	T	.	PASS	.
+chr1	1354920	exm3369	C	A	.	PASS	.
+chr1	1366830	rs873927	A	G	.	PASS	.
+chr1	1372743	exm3425	C	T	.	PASS	.
+chr1	1372773	exm3429	C	T	.	PASS	.
+chr1	1388268	rs36044796	C	A	.	PASS	.
+chr1	1396296	exm3518	C	T	.	PASS	.
+chr1	1396297	variant.222	G	A	.	PASS	.
+chr1	1425658	exm2249844	C	T	.	PASS	.
+chr1	1425700	rs819980	T	C	.	PASS	.
+chr1	1430993	exm2249851	C	T	.	PASS	.
+chr1	1447325	rs6690515	G	A	.	PASS	.
+chr1	1450947	rs6669795	A	C	.	PASS	.
+chr1	1460671	exm3851	C	T	.	PASS	.
+chr1	1460671	exm3851	C	T	.	PASS	.
+chr1	1465382	rs12032637	A	G	.	PASS	.
+chr1	1474167	rs1571149	A	G	.	PASS	.
+chr1	1485984	rs2031709	C	A	.	PASS	.
+chr1	1489670	rs7531530	C	T	.	PASS	.
+chr1	1521595	rs6604983	A	G	.	PASS	.
+chr1	1550992	exm3957	C	A	.	PASS	.
+chr1	1560103	rs28635343	C	T	.	PASS	.
+chr1	1562786	exm2250001	C	T	.	PASS	.
+chr1	1565032	exm4160	G	A	.	PASS	.
+chr1	1566160	rs28464684	T	C	.	PASS	.
+chr1	1572310	exm2250017	C	T	.	PASS	.
+chr1	1601104	exm4292	G	A	.	PASS	.
+chr1	1601537	variant.241	G	A	.	PASS	.
+chr1	1611995	exm2264793	A	G	.	PASS	.
+chr1	1647686	rs909823	A	C	.	PASS	.
+chr1	1647780	var_1_1647780	C	T	.	PASS	.
+chr1	1647785	indel.249	CT	C	.	PASS	.
+chr1	1647785	indel.249	CT	C	.	PASS	.
+chr1	1647858	var_1_1647858	G	A	.	PASS	.
+chr1	1650787	exm4399	T	C	.	PASS	.
+chr1	1663831	rs3817856	C	T	.	PASS	.
+chr1	1663944	exm4428	G	A	.	PASS	.
+chr1	1664019	rs2294488	T	C	.	PASS	.
+chr1	1664124	exm2268858	T	C	.	PASS	.
+chr1	1680219	rs1014988	G	A	.	PASS	.
+chr1	1684472	rs7407	C	T	.	PASS	.
+chr1	1688096	exm4521	C	T	.	PASS	.
+chr1	1688096	exm4521	C	T	.	PASS	.
+chr1	1706136	rs6603811	T	C	.	PASS	.
+chr1	1707740	rs12041925	T	G	.	PASS	.
+chr1	1715011	rs742359	C	A	.	PASS	.
+chr1	1720670	exm2250243	G	A	.	PASS	.
+chr1	1766856	psy_rs114622732	A	G	.	PASS	.
+chr1	1776269	rs4648727	C	A	.	PASS	.
+chr1	1804302	rs3855951	C	T	.	PASS	.
+chr1	1810090	rs7525092	C	T	.	PASS	.
+chr1	1812521	rs6603802	C	T	.	PASS	.
+chr1	1818129	rs16824526	A	C	.	PASS	.
+chr1	1846765	rs2247560	G	A	.	PASS	.
+chr1	1847531	rs28710181	C	T	.	PASS	.
+chr1	1852484	rs28508199	A	G	.	PASS	.
+chr1	1854321	rs2250833	A	G	.	PASS	.
+chr1	1855655	psy_rs183037218	G	T	.	PASS	.
+chr1	1865298	rs2803316	A	G	.	PASS	.
+chr1	1886519	psy_rs2748975	C	A	.	PASS	.
+chr1	1887019	exm4806	A	G	.	PASS	.
+chr1	1887049	exm4808	T	C	.	PASS	.
+chr1	1887055	exm4809	C	T	.	PASS	.
+chr1	1887195	exm4847	G	T	.	PASS	.
+chr1	1888057	exm4861	A	G	.	PASS	.
+chr1	1888115	exm4863	A	G	.	PASS	.
+chr1	1888168	exm4869	G	A	.	PASS	.
+chr1	1888193	exm4871	C	A	.	PASS	.
+chr1	1888193	rs3820011	C	A	.	PASS	.
+chr1	1890559	exm4882	C	T	.	PASS	.
+chr1	1890609	variant.277	G	A	.	PASS	.
+chr1	1891441	exm4889	C	T	.	PASS	.
+chr1	1892325	psy_rs2803291	T	C	.	PASS	.
+chr1	1895269	exm4907	G	A	.	PASS	.
+chr1	1896346	exm4914	G	A	.	PASS	.
+chr1	1896379	exm4915	C	T	.	PASS	.
+chr1	1896433	exm4922	C	T	.	PASS	.
+chr1	1896466	exm4926	C	T	.	PASS	.
+chr1	1896494	exm4928	T	C	.	PASS	.
+chr1	1897822	exm4931	G	T	.	PASS	.
+chr1	1897832	exm4932	T	C	.	PASS	.
+chr1	1897889	exm4936	G	C	.	PASS	.
+chr1	1900102	exm4945	G	A	.	PASS	.
+chr1	1900156	exm4948	C	T	.	PASS	.
+chr1	1900186	exm4951	T	C	.	PASS	.
+chr1	1900211	exm4955	C	T	.	PASS	.
+chr1	1900232	exm4957	T	C	.	PASS	.
+chr1	1900232	rs16824588	T	C	.	PASS	.
+chr1	1902129	exm4965	G	A	.	PASS	.
+chr1	1902133	exm4966	G	C	.	PASS	.
+chr1	1902206	exm4973	G	A	.	PASS	.
+chr1	1902225	exm4974	G	A	.	PASS	.
+chr1	1902246	exm4977	G	A	.	PASS	.
+chr1	1903426	exm4981	G	A	.	PASS	.
+chr1	1903469	exm4984	G	A	.	PASS	.
+chr1	1904401	exm4988	G	A	.	PASS	.
+chr1	1904413	exm4989	T	C	.	PASS	.
+chr1	1904424	exm4990	C	T	.	PASS	.
+chr1	1905467	exm4998	A	G	.	PASS	.
+chr1	1905526	exm5005	C	A	.	PASS	.
+chr1	1905557	exm5009	G	C	.	PASS	.
+chr1	1916587	rs3795283	G	T	.	PASS	.
+chr1	1916904	exm5043	C	T	.	PASS	.
+chr1	1918445	exm5049	C	T	.	PASS	.
+chr1	1918475	exm5052	C	G	.	PASS	.
+chr1	1930754	rs6605081	C	T	.	PASS	.
+chr1	1941929	rs6656398	G	A	.	PASS	.
+chr1	1946591	rs13303016	G	A	.	PASS	.
+chr1	1956414	exm2250439	C	T	.	PASS	.
+chr1	1959595	exm1744492	C	T	.	PASS	.
+chr1	1959595	exm1744492	C	T	.	PASS	.
+chr1	1959730	exm1744497	C	T	.	PASS	.
+chr1	1959730	exm1744497	C	T	.	PASS	.
+chr1	1963108	psy_rs75228171	T	C	.	PASS	.
+chr1	1967954	rs2376803	C	T	.	PASS	.
+chr1	1979253	psy_rs76775611	G	A	.	PASS	.
+chr1	1986954	exm5157	G	A	.	PASS	.
+chr1	1992748	rs6605074	C	T	.	PASS	.
+chr1	2004098	rs6663158	G	A	.	PASS	.
+chr1	2017297	rs2803310	T	C	.	PASS	.
+chr1	2024064	rs2459994	C	T	.	PASS	.
+chr1	2026749	rs884080	A	G	.	PASS	.
+chr1	2027901	rs7513222	G	A	.	PASS	.
+chr1	2035684	rs10910030	C	T	.	PASS	.
+chr1	2038139	psy_rs12749493	C	T	.	PASS	.
+chr1	2038732	rs12410859	C	T	.	PASS	.
+chr1	2040898	rs4648807	T	C	.	PASS	.
+chr1	2040936	rs4648808	T	C	.	PASS	.
+chr1	2069172	exm-rs425277	C	T	.	PASS	.
+chr1	2069681	exm-rs3753242	C	T	.	PASS	.
+chr1	2071340	rs424079	C	A	.	PASS	.
+chr1	2075653	exm5179	C	T	.	PASS	.
+chr1	2075672	exm5180	C	G	.	PASS	.
+chr1	2075740	exm5184	G	A	.	PASS	.
+chr1	2075748	exm1748820	G	A	.	PASS	.
+chr1	2076055	psy_rs384726	G	A	.	PASS	.
+chr1	2082566	rs2257182	T	C	.	PASS	.
+chr1	2100840	rs262643	C	T	.	PASS	.
+chr1	2106745	variant.297	G	A	.	PASS	.
+chr1	2125275	exm5287	C	T	.	PASS	.
+chr1	2135002	chr1_2135002	C	T	.	PASS	.
+chr1	2135002	chr1_2135002	C	T	.	PASS	.
+chr1	2143168	psy_rs171904	A	G	.	PASS	.
+chr1	2143491	psy_rs143314458	G	A	.	PASS	.
+chr1	2146966	rs7512482	T	C	.	PASS	.
+chr1	2156362	rs2460000	A	G	.	PASS	.
+chr1	2173504	rs263526	T	C	.	PASS	.
+chr1	2173811	psy_rs55781948	C	T	.	PASS	.
+chr1	2180524	rs260513	G	A	.	PASS	.
+chr1	2184755	psy_rs114462818	C	T	.	PASS	.
+chr1	2188679	psy_rs55683510	C	T	.	PASS	.
+chr1	2189580	rs12084736	C	T	.	PASS	.
+chr1	2202967	rs903908	T	C	.	PASS	.
+chr1	2211849	rs10910047	A	G	.	PASS	.
+chr1	2216368	psy_rs4648821	T	G	.	PASS	.
+chr1	2220649	rs2017143	C	T	.	PASS	.
+chr1	2223866	rs884940	C	T	.	PASS	.
+chr1	2242298	psy_rs146894003	G	A	.	PASS	.
+chr1	2254910	psy_rs2645075	T	C	.	PASS	.
+chr1	2261222	rs2645065	C	A	.	PASS	.
+chr1	2263888	rs903904	C	T	.	PASS	.
+chr1	2268156	exm5460	C	G	.	PASS	.
+chr1	2280661	rs2055204	G	A	.	PASS	.
+chr1	2281726	rs7527871	A	C	.	PASS	.
+chr1	2282135	rs10910053	G	A	.	PASS	.
+chr1	2283117	rs4648831	C	T	.	PASS	.
+chr1	2283313	rs2843130	C	G	.	PASS	.
+chr1	2283896	rs2840528	A	G	.	PASS	.
+chr1	2284003	rs2645082	T	C	.	PASS	.
+chr1	2284195	rs3795272	T	C	.	PASS	.
+chr1	2306695	rs2279703	C	T	.	PASS	.
+chr1	2309082	rs2843160	T	G	.	PASS	.
+chr1	2327075	rs3736330	C	T	.	PASS	.
+chr1	2327815	exm2268641	C	T	.	PASS	.
+chr1	2330190	rs6693447	T	G	.	PASS	.
+chr1	2330953	variant.313	G	A	.	PASS	.
+chr1	2351699	rs3935659	T	C	.	PASS	.
+chr1	2352146	rs12731309	C	T	.	PASS	.
+chr1	2358944	rs10797423	A	C	.	PASS	.
+chr1	2359917	rs2494436	T	C	.	PASS	.
+chr1	2359940	rs7515934	C	T	.	PASS	.
+chr1	2362827	rs2494641	C	T	.	PASS	.
+chr1	2366611	psy_rs75631842	G	A	.	PASS	.
+chr1	2368232	psy_rs4233033	T	C	.	PASS	.
+chr1	2368706	psy_rs2494439	T	C	.	PASS	.
+chr1	2368775	psy_rs2494639	T	C	.	PASS	.
+chr1	2369375	psy_rs80047719	G	A	.	PASS	.
+chr1	2369498	psy_rs4592207	T	C	.	PASS	.
+chr1	2372320	psy_rs12033966	A	G	.	PASS	.
+chr1	2372321	psy_rs58946679	C	T	.	PASS	.
+chr1	2372397	psy_rs6688934	A	G	.	PASS	.
+chr1	2372858	psy_rs2494425	T	C	.	PASS	.
+chr1	2373089	rs6659405	G	T	.	PASS	.
+chr1	2381622	psy_rs867809	A	G	.	PASS	.
+chr1	2383756	psy_rs10797425	A	G	.	PASS	.
+chr1	2387101	rs4648845	C	T	.	PASS	.
+chr1	2387269	psy_rs61763911	G	A	.	PASS	.
+chr1	2387715	psy_rs12037821	C	T	.	PASS	.
+chr1	2389152	psy_rs4648846	G	A	.	PASS	.
+chr1	2420787	exm2250942	A	T	.	PASS	.
+chr1	2440415	exm2250954	G	A	.	PASS	.
+chr1	2440415	exm5910	G	A	.	PASS	.
+chr1	2450733	indel.338	AG	A	.	PASS	.
+chr1	2461316	exm2250972	C	T	.	PASS	.
+chr1	2493130	exm2251018	G	A	.	PASS	.
+chr1	2513216	exm-rs734999	C	T	.	PASS	.
+chr1	2519989	exm6175	G	T	.	PASS	.
+chr1	2526245	exm6253	T	A	.	PASS	.
+chr1	2530219	variant.359	C	T	.	PASS	.
+chr1	2541269	exm6351	A	G	.	PASS	.
+chr1	2541269	exm6351	A	G	.	PASS	.
+chr1	2542778	exm6352	C	T	.	PASS	.
+chr1	2542778	exm6352	C	T	.	PASS	.
+chr1	2564465	kgp10938344	T	C	.	PASS	.
+chr1	2938265	rs4576609	C	T	.	PASS	.
+chr1	2939409	rs12564513	G	T	.	PASS	.
+chr1	2983674	psy_rs75412307	T	G	.	PASS	.
+chr1	3301715	chr1_3301715	G	C	.	PASS	.
+chr1	3327949	exm6524	T	C	.	PASS	.
+chr1	3327949	exm6524	T	C	.	PASS	.
+chr1	3331193	exm2251405	G	A	.	PASS	.
+chr1	3342788	exm6674	C	T	.	PASS	.
+chr1	3352227	rs1537406	T	C	.	PASS	.
+chr1	3395176	exm6806	C	T	.	PASS	.
+chr1	3396465	exm6818	C	T	.	PASS	.
+chr1	3410935	exm6858	G	A	.	PASS	.
+chr1	3410942	exm2251433	G	A	.	PASS	.
+chr1	3413684	exm1796486	C	A	.	PASS	.
+chr1	3415712	exm2251438	G	A	.	PASS	.
+chr1	3417742	exm6965	G	A	.	PASS	.
+chr1	3417742	exm6965	G	A	.	PASS	.
+chr1	3417747	exm6966	G	A	.	PASS	.
+chr1	3431235	exm7112	A	C	.	PASS	.
+chr1	3431235	exm7112	A	C	.	PASS	.
+chr1	3440796	exm7131	G	A	.	PASS	.
+chr1	3540024	rs12757620	T	G	.	PASS	.
+chr1	3542385	indel.400	GA	G	.	PASS	.
+chr1	3542422	newrs148462952	G	T	.	PASS	.
+chr1	3544065	variant.403	C	T	.	PASS	.
+chr1	3544065	variant.403	C	T	.	PASS	.
+chr1	3544995	variant.405	T	G	.	PASS	.
+chr1	3545612	rs1128474	A	G	.	PASS	.
+chr1	3648066	exm7419	T	C	.	PASS	.
+chr1	3649562	rs9662633	G	A	.	PASS	.
+chr1	3651031	rs12562437	C	T	.	PASS	.
+chr1	3651409	rs10910018	G	A	.	PASS	.
+chr1	3657759	rs12117836	G	A	.	PASS	.
+chr1	3659657	rs2298222	G	A	.	PASS	.
+chr1	3669362	exm7506	C	T	.	PASS	.
+chr1	3672032	exm7520	G	T	.	PASS	.
+chr1	3673329	newrs150537276	G	T	.	PASS	.
+chr1	3677854	exm2251521	C	T	.	PASS	.
+chr1	3679252	exm2251522	G	A	.	PASS	.
+chr1	3680362	exm7600	C	T	.	PASS	.
+chr1	3686357	variant.429	T	G	.	PASS	.
+chr1	3696925	psy_rs11547616	C	T	.	PASS	.
+chr1	3698166	var_1_3698166	C	T	.	PASS	.
+chr1	3739988	variant.436	G	A	.	PASS	.
+chr1	3743271	variant.437	C	A	.	PASS	.
+chr1	3751489	variant.438	G	A	.	PASS	.
+chr1	3751489	variant.438	G	A	.	PASS	.
+chr1	3753856	exm7850	A	G	.	PASS	.
+chr1	3753856	exm7850	A	G	.	PASS	.
+chr1	3753972	exm7856	G	A	.	PASS	.
+chr1	3755660	variant.443	A	C	.	PASS	.
+chr1	3756342	variant.444	T	C	.	PASS	.
+chr1	3761541	variant.445	G	A	.	PASS	.
+chr1	3761547	exm7894	C	A	.	PASS	.
+chr1	3765282	exm2251546	C	T	.	PASS	.
+chr1	3765302	chr1_3765302	T	A	.	PASS	.
+chr1	3784549	variant.448	C	T	.	PASS	.
+chr1	3789041	indel.451	CT	C	.	PASS	.
+chr1	3800158	indel.452	TG	T	.	PASS	.
+chr1	3806595	exm8005	G	A	.	PASS	.
+chr1	3806595	variant.453	G	A	.	PASS	.
+chr1	3807537	variant.455	G	A	.	PASS	.
+chr1	3821782	rs11589102	G	A	.	PASS	.
+chr1	3822703	rs10909830	C	T	.	PASS	.
+chr1	3823395	kgp9113347	C	T	.	PASS	.
+chr1	3825525	rs35383955	C	T	.	PASS	.
+chr1	4002498	psy_rs7538691	T	C	.	PASS	.
+chr1	4005693	rs7524279	G	A	.	PASS	.
+chr1	4006060	rs7548668	T	C	.	PASS	.
+chr1	4009071	rs10799181	T	C	.	PASS	.
+chr1	4009694	psy_rs4654479	G	A	.	PASS	.
+chr1	4009793	psy_rs4654480	C	T	.	PASS	.
+chr1	4481215	rs4654432	C	T	.	PASS	.
+chr1	4634978	rs1541318	A	G	.	PASS	.
+chr1	4636767	rs1157688	T	C	.	PASS	.
+chr1	4640902	rs1024139	T	C	.	PASS	.
+chr1	4832482	exm2251963	C	T	.	PASS	.
+chr1	4843233	psy_rs115280749	G	A	.	PASS	.
+chr1	4844376	rs9426506	C	T	.	PASS	.
+chr1	4847594	rs11805709	C	T	.	PASS	.
+chr1	5671786	rs707582	A	G	.	PASS	.
+chr1	5674434	rs770718	T	C	.	PASS	.
+chr1	5679441	rs9439603	A	G	.	PASS	.
+chr1	5679808	rs9439587	G	A	.	PASS	.
+chr1	5680572	rs10157819	A	G	.	PASS	.
+chr1	5684301	rs945322	A	C	.	PASS	.
+chr1	5686915	rs4845793	A	G	.	PASS	.
+chr1	5701323	rs6690868	T	C	.	PASS	.
+chr1	5703552	rs17028491	G	A	.	PASS	.
+chr1	5705925	psy_rs140106773	C	T	.	PASS	.
+chr1	5707091	rs971816	A	C	.	PASS	.
+chr1	5711647	rs707589	T	C	.	PASS	.
+chr1	5712831	rs707590	A	G	.	PASS	.
+chr1	5717388	exm2252278	T	C	.	PASS	.
+chr1	5721189	exm2260467	A	G	.	PASS	.
+chr1	5722405	rs770721	G	A	.	PASS	.
+chr1	5724940	rs707580	T	C	.	PASS	.
+chr1	5933360	exm2275415	G	A	.	PASS	.
+chr1	5933384	exm2252388	C	G	.	PASS	.
+chr1	5933384	exm8213	C	G	.	PASS	.
+chr1	5934716	exm8230	C	T	.	PASS	.
+chr1	5935159	exm8261	G	A	.	PASS	.
+chr1	5935162	exm8262	A	T	.	PASS	.
+chr1	5947525	exm8307	T	A	.	PASS	.
+chr1	5950982	exm1844957	G	A	.	PASS	.
+chr1	5964678	exm8320	A	T	.	PASS	.
+chr1	5964678	exm8320	A	T	.	PASS	.
+chr1	5965372	exm2252398	T	C	.	PASS	.
+chr1	6007194	exm2252413	C	A	.	PASS	.
+chr1	6012895	exm8414	G	A	.	PASS	.
+chr1	6012895	exm8414	G	A	.	PASS	.
+chr1	6029157	variant.488	G	A	.	PASS	.
+chr1	6046217	variant.490	G	A	.	PASS	.
+chr1	6158562	rs3205229	A	G	.	PASS	.
+chr1	6162583	rs3810993	G	A	.	PASS	.
+chr1	6171835	exm8579	G	A	.	PASS	.
+chr1	6196869	rs2250358	A	G	.	PASS	.
+chr1	6203883	exm8731	G	A	.	PASS	.
+chr1	6203883	exm8731	G	A	.	PASS	.
+chr1	6271096	exm8940	C	T	.	PASS	.
+chr1	6271178	exm8946	C	T	.	PASS	.
+chr1	6272342	exm8962	C	T	.	PASS	.
+chr1	6272793	exm1853088	G	A	.	PASS	.
+chr1	6296998	psy_rs12135309	C	T	.	PASS	.
+chr1	6308929	psy_rs12568183	C	A	.	PASS	.
+chr1	6378607	exm2252586	G	A	.	PASS	.
+chr1	6378607	exm9186	G	A	.	PASS	.
+chr1	6409810	exm2233698	C	A	.	PASS	.
+chr1	6529605	exm9556	A	G	.	PASS	.
+chr1	6529605	exm9556	A	G	.	PASS	.
+chr1	6534226	exm9636	T	C	.	PASS	.
+chr1	6550505	exm2233725	C	T	.	PASS	.
+chr1	6579843	rs1010584	C	T	.	PASS	.
+chr1	6592659	newrs146978611	G	A	.	PASS	.
+chr1	6615467	exm9789	C	T	.	PASS	.
+chr1	6635345	indel.549	TC	T	.	PASS	.
+chr1	6635448	exm9863	G	A	.	PASS	.
+chr1	6639436	exm9930	G	A	.	PASS	.
+chr1	6647283	variant.558	C	T	.	PASS	.
+chr1	6690413	variant.571	G	A	.	PASS	.
+chr1	6690413	variant.571	G	A	.	PASS	.
+chr1	6694207	rs12727844	A	G	.	PASS	.
+chr1	6695123	rs1043681	C	T	.	PASS	.
+chr1	6785946	psy_rs4390192	G	T	.	PASS	.
+chr1	7826559	var_1_7826559	C	T	.	PASS	.
+chr1	7838228	exm10611	C	T	.	PASS	.
+chr1	7838228	exm10611	C	T	.	PASS	.
+chr1	7838230	variant.587	G	T	.	PASS	.
+chr1	7846779	newrs143519087	A	G	.	PASS	.
+chr1	7854011	indel.591	TTCTA	T	.	PASS	.
+chr1	7854068	var_1_7854068	G	A	.	PASS	.
+chr1	7869953	exm10695	C	G	.	PASS	.
+chr1	7879481	var_1_7879481	G	A	.	PASS	.
+chr1	7897138	indel.606	CA	C	.	PASS	.
+chr1	7897180	variant.607	C	T	.	PASS	.
+chr1	7907859	variant.609	C	T	.	PASS	.
+chr1	7913430	rs228648	G	A	.	PASS	.
+chr1	7980338	exm2264984	A	G	.	PASS	.
+chr1	7998254	exm10928	T	G	.	PASS	.
+chr1	7998390	exm10934	C	T	.	PASS	.
+chr1	7999982	variant.617	G	A	.	PASS	.
+chr1	8021973	exm-rs35675666	G	T	.	PASS	.
+chr1	8029464	variant.620	G	A	.	PASS	.
+chr1	8029464	variant.620	G	A	.	PASS	.
+chr1	8045014	indel.625	GGCC	G	.	PASS	.
+chr1	8073830	exm11005	C	T	.	PASS	.
+chr1	8073919	exm11011	C	T	.	PASS	.
+chr1	8073925	exm11013	C	T	.	PASS	.
+chr1	8073943	exm11015	G	A	.	PASS	.
+chr1	8074094	exm11021	A	G	.	PASS	.
+chr1	8074187	exm11027	T	G	.	PASS	.
+chr1	8074334	exm11035	C	T	.	PASS	.
+chr1	8094200	rs11799555	T	G	.	PASS	.
+chr1	8095500	rs225132	T	G	.	PASS	.
+chr1	8098462	rs225133	G	A	.	PASS	.
+chr1	8106987	rs17032042	T	G	.	PASS	.
+chr1	8118634	rs7525428	T	C	.	PASS	.
+chr1	8119251	rs4908724	G	T	.	PASS	.
+chr1	8160832	rs12081139	C	T	.	PASS	.
+chr1	8168564	rs10864330	C	T	.	PASS	.
+chr1	8177482	psy_rs77896802	A	G	.	PASS	.
+chr1	8180210	rs7523335	G	A	.	PASS	.
+chr1	8182535	rs6577466	G	T	.	PASS	.
+chr1	8274018	rs390468	G	A	.	PASS	.
+chr1	8278899	rs428180	A	C	.	PASS	.
+chr1	8280517	rs10864340	C	T	.	PASS	.
+chr1	8352240	psy_rs72862684	C	T	.	PASS	.
+chr1	8384785	exm2275212	C	T	.	PASS	.
+chr1	8384785	exm2275212	C	T	.	PASS	.
+chr1	8390888	rs2289731	G	A	.	PASS	.
+chr1	8399759	chr1_8399759	G	A	.	PASS	.
+chr1	8404093	psy_rs1055236	C	T	.	PASS	.
+chr1	8412935	rs8627	C	T	.	PASS	.
+chr1	8412989	psy_rs1064826	A	G	.	PASS	.
+chr1	8416160	exm11230	C	T	.	PASS	.
+chr1	8420270	exm1912798	G	A	.	PASS	.
+chr1	8425900	rs3753275	T	C	.	PASS	.
+chr1	8555123	exm2233884	T	G	.	PASS	.
+chr1	8555123	exm2233884	T	G	.	PASS	.
+chr1	8922983	variant.631	G	A	.	PASS	.
+chr1	8924042	exm2253582	T	G	.	PASS	.
+chr1	9030964	exm11606	C	T	.	PASS	.
+chr1	9030964	exm2253595	C	T	.	PASS	.
+chr1	9063578	exm11630	C	T	.	PASS	.
+chr1	9079267	chr1_9079267	C	T	.	PASS	.
+chr1	9079319	exm1918946	T	A	.	PASS	.
+chr1	9083101	newrs148511942	G	A	.	PASS	.
+chr1	9095610	exm2268650	T	C	.	PASS	.
+chr1	9097241	rs5840	C	T	.	PASS	.
+chr1	9097251	kgp9153910	A	G	.	PASS	.
+chr1	9097696	exm11736	G	C	.	PASS	.
+chr1	9117596	kgp15820906	C	T	.	PASS	.
+chr1	9118247	exm1921670	A	C	.	PASS	.
+chr1	9129620	kgp4856177	C	T	.	PASS	.
+chr1	9164133	rs3737669	G	A	.	PASS	.
+chr1	9171336	exm11874	G	A	.	PASS	.
+chr1	9250991	rs10864392	C	T	.	PASS	.
+chr1	9256200	rs4908823	G	A	.	PASS	.
+chr1	9307033	rs7524046	G	A	.	PASS	.
+chr1	9324385	exm12065	G	A	.	PASS	.
+chr1	9326132	rs17033642	A	C	.	PASS	.
+chr1	9327413	rs11121354	T	G	.	PASS	.
+chr1	9427508	exm1939653	C	T	.	PASS	.
+chr1	9427508	exm1939653	C	T	.	PASS	.
+chr1	9427869	rs2275457	G	A	.	PASS	.
+chr1	9428520	psy_rs41301983	G	A	.	PASS	.
+chr1	9562830	rs7550613	G	A	.	PASS	.
+chr1	9640291	exm12193	C	T	.	PASS	.
+chr1	9640291	exm12193	C	T	.	PASS	.
+chr1	9713386	rs4240895	C	T	.	PASS	.
+chr1	9713899	variant.673	G	A	.	PASS	.
+chr1	9784435	exm2254097	T	C	.	PASS	.
+chr1	9811597	var_1_9811597	G	A	.	PASS	.
+chr1	9833451	exm12665	A	G	.	PASS	.
+chr1	9909721	rs7539650	G	A	.	PASS	.
+chr1	9931246	exm12673	C	A	.	PASS	.
+chr1	9932027	exm12680	G	A	.	PASS	.
+chr1	9994822	indel.687	CT	C	.	PASS	.
+chr1	9996684	exm1958934	C	T	.	PASS	.
+chr1	10042426	variant.688	G	A	.	PASS	.
+chr1	10438687	rs1536262	C	T	.	PASS	.
+chr1	10478954	indel.710	TC	T	.	PASS	.
+chr1	10489949	psy_rs147415571	G	A	.	PASS	.
+chr1	10494013	newrs138619348	C	T	.	PASS	.
+chr1	10502373	exm13281	C	T	.	PASS	.
+chr1	10502710	rs2847337	A	G	.	PASS	.
+chr1	10596294	variant.728	C	T	.	PASS	.
+chr1	11015136	var_1_11015136	G	A	.	PASS	.
+chr1	11087334	newrs137990115	C	A	.	PASS	.
+chr1	11097774	variant.758	G	T	.	PASS	.
+chr1	11106783	exm14040	G	T	.	PASS	.
+chr1	11128123	exm1694875	T	A	.	PASS	.
+chr1	11147637	var_1_11147637	G	T	.	PASS	.
+chr1	11253688	exm14418	C	T	.	PASS	.
+chr1	11253722	exm14420	G	A	.	PASS	.
+chr1	11346336	psy_rs11580061	A	G	.	PASS	.
+chr1	11347092	rs3765906	T	C	.	PASS	.
+chr1	11721854	rs2294641	C	T	.	PASS	.
+chr1	11783484	rs4846029	T	G	.	PASS	.
+chr1	11810151	variant.827	C	T	.	PASS	.
+chr1	11810505	rs8617	C	T	.	PASS	.
+chr1	11810674	rs1128059	G	A	.	PASS	.
+chr1	11846252	rs4846048	G	A	.	PASS	.
+chr1	11855351	newrs147750177	C	A	.	PASS	.
+chr1	11894624	variant.859	G	A	.	PASS	.
+chr1	11901592	rs198415	T	C	.	PASS	.
+chr1	11906068	exm15531	A	G	.	PASS	.
+chr1	11906068	rs5065	A	G	.	PASS	.
+chr1	12025599	exm15795	C	G	.	PASS	.
+chr1	12069756	indel.888	CACTT	C	.	PASS	.
+chr1	12082195	exm15947	C	A	.	PASS	.
+chr1	12090140	exm16010	C	T	.	PASS	.
+chr1	12318010	variant.909	T	G	.	PASS	.
+chr1	12336193	variant.914	G	T	.	PASS	.
+chr1	12446382	variant.919	C	T	.	PASS	.
+chr1	12627990	kgp15181256	T	C	.	PASS	.
+chr1	12628067	kgp15637314	A	C	.	PASS	.
+chr1	12628188	rs4580	T	C	.	PASS	.
+chr1	12677525	kgp7821980	G	A	.	PASS	.
+chr1	12726174	newrs138451476	C	T	.	PASS	.
+chr1	12776218	rs3000860	A	C	.	PASS	.
+chr1	12776344	exm16961	A	T	.	PASS	.
+chr1	12785415	variant.931	C	T	.	PASS	.
+chr1	12785541	indel.932	AT	A	.	PASS	.
+chr1	12806478	exm1707180	G	T	.	PASS	.
+chr1	12815677	exm17037	C	T	.	PASS	.
+chr1	12815677	newrs147495703	C	T	.	PASS	.
+chr1	12835245	variant.939	C	T	.	PASS	.
+chr1	12835692	indel.940	GA	G	.	PASS	.
+chr1	12907683	exm17419	G	A	.	PASS	.
+chr1	12919041	exm17485	G	A	.	PASS	.
+chr1	12919891	exm17546	G	T	.	PASS	.
+chr1	13497777	indel.955	CT	C	.	PASS	.
+chr1	13801621	rs12043808	A	C	.	PASS	.
+chr1	13840410	psy_rs192577419	T	G	.	PASS	.
+chr1	13842586	exm2264988	A	G	.	PASS	.
+chr1	13842679	psy_rs442493	G	A	.	PASS	.
+chr1	13940884	variant.964	C	T	.	PASS	.
+chr1	14032007	rs2495060	G	A	.	PASS	.
+chr1	14059374	exm18628	G	A	.	PASS	.
+chr1	14149668	exm18873	T	G	.	PASS	.
+chr1	14149672	exm18874	A	G	.	PASS	.
+chr1	14150709	rs2697964	C	T	.	PASS	.
+chr1	14151506	rs2903	C	T	.	PASS	.
+chr1	14676909	rs7355173	C	T	.	PASS	.
+chr1	15442058	rs2235789	T	C	.	PASS	.
+chr1	15444288	rs2235784	C	T	.	PASS	.
+chr1	15446168	rs13375820	G	A	.	PASS	.
+chr1	15466832	rs2206761	C	T	.	PASS	.
+chr1	15467263	rs6429711	C	T	.	PASS	.
+chr1	15471992	rs761301	T	G	.	PASS	.
+chr1	15477865	rs1883761	G	A	.	PASS	.
+chr1	15546761	exm2249987	G	A	.	PASS	.
+chr1	15701094	variant.986	C	T	.	PASS	.
+chr1	15732793	rs733887	A	G	.	PASS	.
+chr1	15733394	rs2092324	G	A	.	PASS	.
+chr1	15767020	exm19262	G	A	.	PASS	.
+chr1	15813922	exm19463	G	A	.	PASS	.
+chr1	15844653	exm19536	C	A	.	PASS	.
+chr1	15844755	exm19545	G	A	.	PASS	.
+chr1	15863057	variant.1017	C	T	.	PASS	.
+chr1	15886024	variant.1019	C	T	.	PASS	.
+chr1	15886141	newrs148404423	C	T	.	PASS	.
+chr1	15909881	indel.1029	AG	A	.	PASS	.
+chr1	15986922	newrs138928687	C	T	.	PASS	.
+chr1	15987390	variant.1034	G	T	.	PASS	.
+chr1	15987735	exm19842	G	T	.	PASS	.
+chr1	15987735	newrs137912259	G	T	.	PASS	.
+chr1	15987834	indel.1039	GA	G	.	PASS	.
+chr1	15993338	rs10492987	A	G	.	PASS	.
+chr1	16054617	variant.1044	C	T	.	PASS	.
+chr1	16067904	rs7516080	T	C	.	PASS	.
+chr1	16068364	rs35365738	G	A	.	PASS	.
+chr1	16070922	exm20137	C	T	.	PASS	.
+chr1	16096939	exm20219	C	T	.	PASS	.
+chr1	16161836	rs4661661	T	C	.	PASS	.
+chr1	16255007	exm20355	C	T	.	PASS	.
+chr1	16341354	rs1048245	T	G	.	PASS	.
+chr1	16348412	rs945425	T	C	.	PASS	.
+chr1	16486793	rs904106	A	G	.	PASS	.
+chr1	16524869	rs221031	T	C	.	PASS	.
+chr1	16574316	rs3738632	T	C	.	PASS	.
+chr1	16785394	exm21936	C	T	.	PASS	.
+chr1	16809796	psy_rs41269205	T	G	.	PASS	.
+chr1	16847832	rs277462	T	C	.	PASS	.
+chr1	17311190	rs9435734	A	G	.	PASS	.
+chr1	17312485	exm22841	C	T	.	PASS	.
+chr1	17312586	exm22845	G	A	.	PASS	.
+chr1	17312596	exm22847	T	A	.	PASS	.
+chr1	17395480	exm2273318	G	A	.	PASS	.
+chr1	17395521	rs2076598	G	A	.	PASS	.
+chr1	17521274	rs3003469	G	A	.	PASS	.
+chr1	17634718	exm23564	A	G	.	PASS	.
+chr1	17698750	exm23709	G	A	.	PASS	.
+chr1	17699676	exm23721	C	T	.	PASS	.
+chr1	17699720	exm23724	G	A	.	PASS	.
+chr1	17701961	exm23726	G	A	.	PASS	.
+chr1	17706442	exm23728	G	A	.	PASS	.
+chr1	17714864	rs6696295	T	C	.	PASS	.
+chr1	17714971	exm23745	G	A	.	PASS	.
+chr1	17715015	exm23747	C	G	.	PASS	.
+chr1	17715081	rs2526842	C	T	.	PASS	.
+chr1	17719843	rs6695214	T	C	.	PASS	.
+chr1	17720515	exm23765	G	A	.	PASS	.
+chr1	17720542	exm23766	C	T	.	PASS	.
+chr1	17720545	exm23767	C	T	.	PASS	.
+chr1	17721453	exm23776	G	C	.	PASS	.
+chr1	17722110	exm23785	C	T	.	PASS	.
+chr1	17722113	exm23787	C	T	.	PASS	.
+chr1	17722363	exm-rs7538876	G	A	.	PASS	.
+chr1	17722363	rs7538876	G	A	.	PASS	.
+chr1	17723586	exm23790	C	T	.	PASS	.
+chr1	17723587	exm23791	G	A	.	PASS	.
+chr1	17727811	exm23804	G	C	.	PASS	.
+chr1	17727838	exm23807	C	T	.	PASS	.
+chr1	17727860	exm23809	G	A	.	PASS	.
+chr1	17728119	rs2526830	A	G	.	PASS	.
+chr1	18046287	rs4920626	G	T	.	PASS	.
+chr1	18054323	psy_rs6703085	A	C	.	PASS	.
+chr1	18060436	rs11584168	C	T	.	PASS	.
+chr1	18065643	rs2077398	T	C	.	PASS	.
+chr1	18069118	psy_rs260524	T	G	.	PASS	.
+chr1	18392608	rs4920421	C	T	.	PASS	.
+chr1	18399535	psy_rs72653385	G	A	.	PASS	.
+chr1	19198064	rs1138333	T	G	.	PASS	.
+chr1	19198100	kgp468659	C	G	.	PASS	.
+chr1	19198166	kgp8524245	G	A	.	PASS	.
+chr1	19198299	kgp15236875	G	A	.	PASS	.
+chr1	19198414	kgp6288782	G	A	.	PASS	.
+chr1	19198576	kgp4426348	A	G	.	PASS	.
+chr1	19198627	GA018624	G	A	.	PASS	.
+chr1	19198637	GA018625	G	A	.	PASS	.
+chr1	19198837	kgp15504222	T	C	.	PASS	.
+chr1	19198895	rs9117	A	G	.	PASS	.
+chr1	19198972	kgp24983758	G	A	.	PASS	.
+chr1	19199067	kgp1588165	G	A	.	PASS	.
+chr1	19199217	kgp25228545	A	G	.	PASS	.
+chr1	19229092	kgp15363246	G	A	.	PASS	.
+chr1	19578192	rs2294942	G	A	.	PASS	.
+chr1	19593199	rs7527253	T	C	.	PASS	.
+chr1	19922387	rs1737416	C	T	.	PASS	.
+chr1	19954014	rs880554	G	T	.	PASS	.
+chr1	20008880	rs9064	G	T	.	PASS	.
+chr1	20142681	rs3806310	A	G	.	PASS	.
+chr1	20142866	exm-rs3806308	C	T	.	PASS	.
+chr1	20144332	rs17396847	G	A	.	PASS	.
+chr1	20238343	rs1046548	A	G	.	PASS	.
+chr1	20301964	rs11677	G	A	.	PASS	.
+chr1	20442070	indel.1397	CA	C	.	PASS	.
+chr1	20520732	rs7542020	T	C	.	PASS	.
+chr1	20570287	rs10916732	G	T	.	PASS	.
+chr1	20617419	rs12738826	T	C	.	PASS	.
+chr1	20695831	rs1886740	T	C	.	PASS	.
+chr1	20701277	rs10159448	C	T	.	PASS	.
+chr1	20705117	rs10916779	C	T	.	PASS	.
+chr1	20717763	exm2250514	C	A	.	PASS	.
+chr1	20729212	rs879484	T	C	.	PASS	.
+chr1	20733376	rs10753498	T	C	.	PASS	.
+chr1	20735361	rs7533344	G	A	.	PASS	.
+chr1	20735452	rs6426635	G	A	.	PASS	.
+chr1	20736532	rs10916790	C	T	.	PASS	.
+chr1	20740016	rs10799633	C	A	.	PASS	.
+chr1	20750561	rs7537381	A	G	.	PASS	.
+chr1	20826910	rs529974	G	A	.	PASS	.
+chr1	20915507	kgp25087902	G	A	.	PASS	.
+chr1	20915577	kgp25241726	G	A	.	PASS	.
+chr1	20915590	kgp5980907	C	T	.	PASS	.
+chr1	20945251	GA000375	C	G	.	PASS	.
+chr1	20945252	GA018656	G	C	.	PASS	.
+chr1	20976994	indel.1467	TG	T	.	PASS	.
+chr1	20978058	exm2264808	G	A	.	PASS	.
+chr1	20978058	rs650616	G	A	.	PASS	.
+chr1	20987879	exm27256	A	C	.	PASS	.
+chr1	20998552	indel.1474	CAG	C	.	PASS	.
+chr1	21047725	rs659046	A	G	.	PASS	.
+chr1	21544601	rs3026913	C	T	.	PASS	.
+chr1	21742614	rs10916982	T	C	.	PASS	.
+chr1	21771685	variant.1499	C	T	.	PASS	.
+chr1	21795274	indel.1502	TC	T	.	PASS	.
+chr1	21800057	indel.1508	G	GC	.	PASS	.
+chr1	21894604	indel.1522	TG	T	.	PASS	.
+chr1	21914362	rs1256279	C	T	.	PASS	.
+chr1	21976289	exm28371	C	T	.	PASS	.
+chr1	22354866	rs2473295	T	C	.	PASS	.
+chr1	22855441	rs12137696	C	T	.	PASS	.
+chr1	23435538	rs16827981	G	A	.	PASS	.
+chr1	23720491	indel.1632	AC	A	.	PASS	.
+chr1	23751126	exm30864	T	A	.	PASS	.
+chr1	23756350	exm30867	T	C	.	PASS	.
+chr1	24100223	rs7514394	C	T	.	PASS	.
+chr1	24201027	var_1_24201027	AG	A	.	PASS	.
+chr1	24372971	rs12401982	C	T	.	PASS	.
+chr1	24377326	rs11586125	T	C	.	PASS	.
+chr1	24379601	rs4649163	T	C	.	PASS	.
+chr1	24389631	indel.1682	GT	G	.	PASS	.
+chr1	24390612	var_1_24390612	AC	A	.	PASS	.
+chr1	24527095	exm-rs11249024	T	C	.	PASS	.
+chr1	24531634	rs946662	C	A	.	PASS	.
+chr1	24537652	psy_rs112274538	C	A	.	PASS	.
+chr1	24636835	rs672511	C	T	.	PASS	.
+chr1	24640314	rs621535	G	A	.	PASS	.
+chr1	24645356	rs2248219	A	G	.	PASS	.
+chr1	24687425	indel.1723	T	TA	.	PASS	.
+chr1	24876383	rs2776747	T	C	.	PASS	.
+chr1	24877458	rs12065278	A	G	.	PASS	.
+chr1	24881126	rs6424099	C	T	.	PASS	.
+chr1	24881453	rs6424101	G	T	.	PASS	.
+chr1	25297184	exm-rs11249215	G	A	.	PASS	.
+chr1	25297184	rs11249215	G	A	.	PASS	.
+chr1	25297217	rs11249216	G	T	.	PASS	.
+chr1	25908241	rs10902661	C	T	.	PASS	.
+chr1	25908805	psy_rs6598889	T	C	.	PASS	.
+chr1	25914219	rs7546822	T	C	.	PASS	.
+chr1	26161571	indel.1796	CT	C	.	PASS	.
+chr1	26161629	var_1_26161629	GT	G	.	PASS	.
+chr1	26161798	indel.1800	AGG	A	.	PASS	.
+chr1	26161915	indel.1804	TG	T	.	PASS	.
+chr1	26164008	indel.1810	AG	A	.	PASS	.
+chr1	26301006	indel.1816	AC	A	.	PASS	.
+chr1	26496455	rs2232648	C	T	.	PASS	.
+chr1	26560745	rs3795687	G	A	.	PASS	.
+chr1	26570762	indel.1881	AC	A	.	PASS	.
+chr1	27020012	rs4466675	C	T	.	PASS	.
+chr1	27558522	rs10902652	C	T	.	PASS	.
+chr1	28120132	indel.2029	AC	A	.	PASS	.
+chr1	28906454	var_1_28906454	C	T	.	PASS	.
+chr1	29194818	rs204069	A	G	.	PASS	.
+chr1	29194901	exm2268873	C	T	.	PASS	.
+chr1	29200219	rs7511894	T	C	.	PASS	.
+chr1	29658494	rs7530986	T	C	.	PASS	.
+chr1	29670073	psy_rs16838142	T	C	.	PASS	.
+chr1	30487342	rs453149	T	C	.	PASS	.
+chr1	30494591	rs1603724	G	A	.	PASS	.
+chr1	31198733	rs1149048	A	G	.	PASS	.
+chr1	32110813	rs7542583	A	G	.	PASS	.
+chr1	32374452	indel.2196	TC	T	.	PASS	.
+chr1	32752074	rs11807976	G	A	.	PASS	.
+chr1	33187046	rs359952	C	T	.	PASS	.
+chr1	33402441	indel.2276	AC	A	.	PASS	.
+chr1	33472942	rs1534893	A	G	.	PASS	.
+chr1	35239992	rs639126	T	C	.	PASS	.
+chr1	35246297	rs1764405	A	G	.	PASS	.
+chr1	35253376	rs483721	C	T	.	PASS	.
+chr1	35444037	rs4072108	T	C	.	PASS	.
+chr1	35497529	kgp11705169	G	A	.	PASS	.
+chr1	35854642	indel.2376	TG	T	.	PASS	.
+chr1	36291074	indel.2402	CA	C	.	PASS	.
+chr1	36558985	exm44727	T	G	.	PASS	.
+chr1	36789546	rs12116935	A	G	.	PASS	.
+chr1	36929988	rs3806289	T	C	.	PASS	.
+chr1	37922859	rs2660569	C	T	.	PASS	.
+chr1	37939094	rs6681785	C	T	.	PASS	.
+chr1	37939173	rs2492301	T	C	.	PASS	.
+chr1	38456106	rs4072980	G	A	.	PASS	.
+chr1	39305315	indel.2566	AC	A	.	PASS	.
+chr1	39350742	rs4970633	C	T	.	PASS	.
+chr1	39797335	indel.2587	AT	A	.	PASS	.
+chr1	39800498	indel.2592	TG	T	.	PASS	.
+chr1	39806577	indel.2597	CA	C	.	PASS	.
+chr1	39992808	rs1180341	T	C	.	PASS	.
+chr1	40546155	exm48877	C	T	.	PASS	.
+chr1	40546155	newrs148412181	C	T	.	PASS	.
+chr1	40547950	rs3131660	C	T	.	PASS	.
+chr1	40717196	var_1_40717196	CT	C	.	PASS	.
+chr1	40722795	rs926830	G	A	.	PASS	.
+chr1	40930624	rs2982502	A	G	.	PASS	.
+chr1	40961344	indel.2695	TA	T	.	PASS	.
+chr1	40966167	rs7511983	C	T	.	PASS	.
+chr1	40974156	rs3795347	T	C	.	PASS	.
+chr1	40974799	rs12068587	T	C	.	PASS	.
+chr1	40980601	indel.2701	CA	C	.	PASS	.
+chr1	41338665	rs1359893	A	G	.	PASS	.
+chr1	41461696	indel.2730	GC	G	.	PASS	.
+chr1	42094498	rs2038976	A	G	.	PASS	.
+chr1	43004894	indel.2772	CA	C	.	PASS	.
+chr1	43021827	indel.2775	TC	T	.	PASS	.
+chr1	43232984	exm51112	T	C	.	PASS	.
+chr1	43610910	rs626842	T	G	.	PASS	.
+chr1	43783609	indel.2866	CGGAA	C	.	PASS	.
+chr1	43854091	exm52079	C	G	.	PASS	.
+chr1	44445667	rs3762423	T	C	.	PASS	.
+chr1	45205606	exm53931	T	A	.	PASS	.
+chr1	45241113	rs11211031	T	C	.	PASS	.
+chr1	45477940	variant.3034	G	A	.	PASS	.
+chr1	45965246	indel.3113	ATCCAGCTG	A	.	PASS	.
+chr1	45974886	exm55303	G	C	.	PASS	.
+chr1	46032295	var_1_46032295	GC	G	.	PASS	.
+chr1	46086465	indel.3153	CTT	C	.	PASS	.
+chr1	46087133	indel.3158	TC	T	.	PASS	.
+chr1	46120883	indel.3165	CA	C	.	PASS	.
+chr1	46125880	rs3811436	T	C	.	PASS	.
+chr1	46153203	rs3013595	G	A	.	PASS	.
+chr1	46158964	indel.3168	CAT	C	.	PASS	.
+chr1	46159031	indel.3170	AT	A	.	PASS	.
+chr1	46543210	indel.3212	CT	C	.	PASS	.
+chr1	46598273	rs1707303	A	C	.	PASS	.
+chr1	46646780	exm56088	A	G	.	PASS	.
+chr1	46826473	indel.3258	TG	T	.	PASS	.
+chr1	46905802	rs11211276	G	T	.	PASS	.
+chr1	47005597	psy_rs75939162	C	T	.	PASS	.
+chr1	47006657	rs2486164	C	T	.	PASS	.
+chr1	47011762	rs885125	A	G	.	PASS	.
+chr1	47013404	exm56794	A	G	.	PASS	.
+chr1	47075329	exm56885	A	G	.	PASS	.
+chr1	47264724	rs2297813	G	T	.	PASS	.
+chr1	47309265	exm2264832	A	G	.	PASS	.
+chr1	47309265	rs10749865	A	G	.	PASS	.
+chr1	47326226	rs6679068	T	C	.	PASS	.
+chr1	47400133	indel.3307	AG	A	.	PASS	.
+chr1	47400148	indel.3308	GA	G	.	PASS	.
+chr1	47514283	indel.3316	TG	T	.	PASS	.
+chr1	47610057	indel.3329	AC	A	.	PASS	.
+chr1	47854514	rs17103186	C	T	.	PASS	.
+chr1	47867150	rs6679121	G	A	.	PASS	.
+chr1	47868005	rs11579058	C	T	.	PASS	.
+chr1	47870271	rs7528075	G	A	.	PASS	.
+chr1	48630438	rs10788882	G	C	.	PASS	.
+chr1	50673575	psy_rs1467725	G	A	.	PASS	.
+chr1	50679059	rs2480687	G	A	.	PASS	.
+chr1	51770773	indel.3397	CA	C	.	PASS	.
+chr1	52521798	rs2809954	G	T	.	PASS	.
+chr1	52859335	indel.3466	GA	G	.	PASS	.
+chr1	53158510	indel.3481	CTTCCAAATAGTCCA	C	.	PASS	.
+chr1	53163901	indel.3482	TC	T	.	PASS	.
+chr1	53741391	exm60486	A	G	.	PASS	.
+chr1	54354613	variant.3577	G	A	.	PASS	.
+chr1	54354658	exm60875	T	G	.	PASS	.
+chr1	54354658	rs2294508	T	G	.	PASS	.
+chr1	54433403	indel.3593	TC	T	.	PASS	.
+chr1	54637167	rs625643	T	C	.	PASS	.
+chr1	55134545	indel.3666	CT	C	.	PASS	.
+chr1	55207184	var_1_55207184	T	TAG	.	PASS	.
+chr1	55273582	indel.3699	CT	C	.	PASS	.
+chr1	55307523	indel.3707	TA	T	.	PASS	.
+chr1	57258130	indel.3786	TG	T	.	PASS	.
+chr1	57351822	indel.3791	GC	G	.	PASS	.
+chr1	60228226	indel.3843	GGAGT	G	.	PASS	.
+chr1	60228254	exm1845312	T	C	.	PASS	.
+chr1	60359359	indel.3849	TG	T	.	PASS	.
+chr1	60491129	indel.3860	CA	C	.	PASS	.
+chr1	60503684	indel.3864	AC	A	.	PASS	.
+chr1	62235087	indel.3867	GC	G	.	PASS	.
+chr1	62586957	indel.3890	GA	G	.	PASS	.
+chr1	62672471	indel.3900	CT	C	.	PASS	.
+chr1	63282434	indel.3957	CA	C	.	PASS	.
+chr1	63300482	indel.3964	CA	C	.	PASS	.
+chr1	63902553	indel.3980	TCC	T	.	PASS	.
+chr1	63999793	indel.3992	CAA	C	.	PASS	.
+chr1	64669794	indel.4009	TATAAG	T	.	PASS	.
+chr1	64676467	var_1_64676467	AC	A	.	PASS	.
+chr1	67288063	indel.4057	G	GCT	.	PASS	.
+chr1	67474834	indel.4082	TAA	T	.	PASS	.
+chr1	67773351	rs12142823	C	T	.	PASS	.
+chr1	68564373	indel.4122	TC	T	.	PASS	.
+chr1	68564392	indel.4123	CA	C	.	PASS	.
+chr1	70820699	indel.4171	GC	G	.	PASS	.
+chr1	70904381	indel.4182	AC	A	.	PASS	.
+chr1	71418631	indel.4185	TG	T	.	PASS	.
+chr1	74663709	rs11806946	G	A	.	PASS	.
+chr1	74737317	indel.4219	TGGAGC	T	.	PASS	.
+chr1	74835230	indel.4234	CAG	C	.	PASS	.
+chr1	75036872	indel.4252	CT	C	.	PASS	.
+chr1	75038572	var_1_75038572	TC	T	.	PASS	.
+chr1	75198740	kgp9120456	A	C	.	PASS	.
+chr1	75198788	kgp15455600	C	A	.	PASS	.
+chr1	76200513	indel.4306	AG	A	.	PASS	.
+chr1	76226844	indel.4318	TG	T	.	PASS	.
+chr1	76255706	indel.4325	CA	C	.	PASS	.
+chr1	76260335	exm69323	G	C	.	PASS	.
+chr1	76349331	indel.4337	AG	A	.	PASS	.
+chr1	76397779	indel.4348	TA	T	.	PASS	.
+chr1	78207409	exm69937	C	T	.	PASS	.
+chr1	78245342	exm69939	T	G	.	PASS	.
+chr1	78392430	indel.4380	AG	A	.	PASS	.
+chr1	78546379	indel.4391	CA	C	.	PASS	.
+chr1	82302600	rs12064537	T	C	.	PASS	.
+chr1	84768912	exm70876	C	T	.	PASS	.
+chr1	85020683	exm71046	C	G	.	PASS	.
+chr1	86841963	indel.4587	G	GT	.	PASS	.
+chr1	89530860	rs17130722	A	G	.	PASS	.
+chr1	92729242	indel.4840	A	AG	.	PASS	.
+chr1	93645613	var_1_93645613	G	A	.	PASS	.
+chr1	94344716	rs2235971	C	T	.	PASS	.
+chr1	94697167	exm76553	T	C	.	PASS	.
+chr1	100174455	exm1689665	T	C	.	PASS	.
+chr1	101354386	newrs77649301	T	C	.	PASS	.
+chr1	101361178	rs17123491	C	T	.	PASS	.
+chr1	109289353	rs1124427	C	G	.	PASS	.
+chr1	109633256	rs521734	C	G	.	PASS	.
+chr1	110198727	kgp3155172	C	G	.	PASS	.
+chr1	110198788	kgp25277353	T	C	.	PASS	.
+chr1	110210671	rs625456	G	T	.	PASS	.
+chr1	110210740	exm1692076	G	A	.	PASS	.
+chr1	110255320	var_1_110255320	T	C	.	PASS	.
+chr1	110282909	exm1692490	T	C	.	PASS	.
+chr1	110300600	indel.5498	C	CCTGCTGGTTTT	.	PASS	.
+chr1	110950259	exm82881	T	C	.	PASS	.
+chr1	110950277	exm82883	G	A	.	PASS	.
+chr1	110950295	exm82888	C	A	.	PASS	.
+chr1	110950313	exm82890	A	G	.	PASS	.
+chr1	111148080	rs3887820	C	A	.	PASS	.
+chr1	111415841	rs1494324	G	A	.	PASS	.
+chr1	112042574	exm83930	A	G	.	PASS	.
+chr1	113010195	exm84380	T	G	.	PASS	.
+chr1	113248791	rs12144044	C	A	.	PASS	.
+chr1	113498070	kgp6470243	G	C	.	PASS	.
+chr1	113498283	kgp2705500	A	C	.	PASS	.
+chr1	114447565	exm2230834	G	A	.	PASS	.
+chr1	116384580	rs2797208	C	T	.	PASS	.
+chr1	116916056	seq_chr1_116916056	C	T	.	PASS	.
+chr1	120307172	indel.6031	A	ATTGGCCTCCAGGGCCA	.	PASS	.
+chr1	144816621	exm89960	A	G	.	PASS	.
+chr1	146696658	indel.6227	CCTA	C	.	PASS	.
+chr1	147013362	rs10900376	A	G	.	PASS	.
+chr1	148011761	indel.6269	T	TGA	.	PASS	.
+chr1	150039678	rs2027349	G	A	.	PASS	.
+chr1	150955582	exm95494	A	G	.	PASS	.
+chr1	150975108	exm95619	T	C	.	PASS	.
+chr1	150975123	var_1_150975123	G	A	.	PASS	.
+chr1	151138250	exm96069	G	T	.	PASS	.
+chr1	151372047	rs2296840	C	T	.	PASS	.
+chr1	151372065	exm1714112	T	C	.	PASS	.
+chr1	151739221	indel.6571	CT	C	.	PASS	.
+chr1	151739333	exm97447	C	T	.	PASS	.
+chr1	151739679	exm97451	C	A	.	PASS	.
+chr1	152275177	exm2249939	T	C	.	PASS	.
+chr1	152323087	exm100586	C	G	.	PASS	.
+chr1	152324500	indel.6754	G	GC	.	PASS	.
+chr1	152681553	exm101273	T	A	.	PASS	.
+chr1	152944369	exm101772	G	A	.	PASS	.
+chr1	153122367	exm101949	A	G	.	PASS	.
+chr1	153177184	exm101965	A	G	.	PASS	.
+chr1	153390542	exm102219	G	C	.	PASS	.
+chr1	153431505	exm1715554	G	T	.	PASS	.
+chr1	153514241	exm2231338	A	C	.	PASS	.
+chr1	153517519	rs11488669	G	A	.	PASS	.
+chr1	153580653	exm1715597	C	A	.	PASS	.
+chr1	153604519	rs3818632	G	A	.	PASS	.
+chr1	153752478	exm103036	A	G	.	PASS	.
+chr1	153935543	rs2072704	G	A	.	PASS	.
+chr1	153963239	exm103541	C	T	.	PASS	.
+chr1	154245142	rs11265425	T	G	.	PASS	.
+chr1	154956373	exm105089	A	G	.	PASS	.
+chr1	155214473	rs12034326	A	G	.	PASS	.
+chr1	157670278	exm111816	A	T	.	PASS	.
+chr1	157716528	exm111824	A	G	.	PASS	.
+chr1	158323779	exm112427	A	G	.	PASS	.
+chr1	158576993	indel.7654	T	TC	.	PASS	.
+chr1	158815534	indel.7712	A	AAC	.	PASS	.
+chr1	159032484	exm113976	A	C	.	PASS	.
+chr1	159796689	exm114535	A	T	.	PASS	.
+chr1	160797604	exm116520	T	G	.	PASS	.
+chr1	161677004	exm118314	A	T	.	PASS	.
+chr1	161697451	exm118460	G	C	.	PASS	.
+chr1	165619079	exm119609	C	T	.	PASS	.
+chr1	165667795	exm119723	T	G	.	PASS	.
+chr1	171154418	rs28369797	C	T	.	PASS	.
+chr1	171178090	exm123207	T	C	.	PASS	.
+chr1	171178090	rs6661174	T	C	.	PASS	.
+chr1	175046557	exm125033	G	T	.	PASS	.
+chr1	175116207	exm125284	A	G	.	PASS	.
+chr1	182027144	exm129006	A	T	.	PASS	.
+chr1	182555939	newrs74315365	C	T	.	PASS	.
+chr1	196670459	exm133400	T	C	.	PASS	.
+chr1	197057491	indel.9105	T	TCC	.	PASS	.
+chr1	207700162	indel.9720	A	AAGAT	.	PASS	.
+chr1	209849340	exm145908	A	G	.	PASS	.
+chr1	209932121	rs10489341	C	T	.	PASS	.
+chr1	217804722	exm149634	T	C	.	PASS	.
+chr1	225586971	exm152734	A	T	.	PASS	.
+chr1	228295961	exm154986	T	G	.	PASS	.
+chr1	228296020	variant.10429	C	A	.	PASS	.
+chr1	230979415	exm158328	C	A	.	PASS	.
+chr1	232651063	indel.10724	T	TAGAA	.	PASS	.
+chr1	232940993	indel.10725	C	CCAAAGCAG	.	PASS	.
+chr1	235295173	indel.10810	G	GTA	.	PASS	.
+chr1	241755453	exm163712	T	C	.	PASS	.
+chr1	241964517	exm163990	A	C	.	PASS	.
+chr1	248039789	exm167009	T	C	.	PASS	.
+chr1	248366370	exm167630	A	G	.	PASS	.
+chr1	248367306	exm167691	T	A	.	PASS	.
+chr1	248801588	exm168726	C	T	.	PASS	.
+chr10	5144336	indel.11443	T	TA	.	PASS	.
+chr10	5204954	indel.11449	G	GA	.	PASS	.
+chr10	14867578	exm810770	G	C	.	PASS	.
+chr10	35426755	rs17499247	A	G	.	PASS	.
+chr10	38344447	indel.12316	T	TA	.	PASS	.
+chr10	55955567	exm825941	T	C	.	PASS	.
+chr10	70182529	indel.12828	A	AAG	.	PASS	.
+chr10	90988034	indel.13572	C	CGG	.	PASS	.
+chr10	95121241	indel.13733	G	GGT	.	PASS	.
+chr10	102048159	indel.14208	C	CA	.	PASS	.
+chr10	102684419	indel.14264	A	AT	.	PASS	.
+chr10	120795681	indel.14858	TCTCGGTCTCTTG	T	.	PASS	.
+chr10	121541194	indel.14880	A	AG	.	PASS	.
+chr10	124794031	exm862402	G	T	.	PASS	.
+chr11	4664657	rs7925271	C	T	.	PASS	.
+chr11	4945317	indel.16143	C	CT	.	PASS	.
+chr11	5842447	indel.16325	T	TC	.	PASS	.
+chr11	58891938	var_11_58891938	A	ACT	.	PASS	.
+chr11	59132518	indel.18341	T	TG	.	PASS	.
+chr11	62931299	indel.18818	T	TC	.	PASS	.
+chr11	63953121	rs3751122	G	T	.	PASS	.
+chr11	75694488	exm942121	C	T	.	PASS	.
+chr11	75694530	exm942122	A	G	.	PASS	.
+chr11	78282425	exm944472	G	C	.	PASS	.
+chr11	111753117	indel.21284	C	CGT	.	PASS	.
+chr11	113565234	exm956500	G	A	.	PASS	.
+chr11	113565260	exm1695050	G	A	.	PASS	.
+chr12	11243923	indel.23289	TTTCACC	T	.	PASS	.
+chr12	29597130	indel.23912	T	TA	.	PASS	.
+chr12	52201139	indel.24708	A	AC	.	PASS	.
+chr12	53699726	indel.24975	T	TA	.	PASS	.
+chr12	54405153	indel.25064	A	AC	.	PASS	.
+chr12	55248357	rs1048371	G	T	.	PASS	.
+chr12	68719304	exm1020408	T	C	.	PASS	.
+chr12	100452662	indel.26607	G	GA	.	PASS	.
+chr12	111993688	exm1037604	G	A	.	PASS	.
+chr12	120111850	exm2250630	C	T	.	PASS	.
+chr12	122977328	exm1046212	A	C	.	PASS	.
+chr12	133727648	indel.28471	T	TA	.	PASS	.
+chr12	133780295	indel.28489	A	AC	.	PASS	.
+chr13	21714654	exm1792536	A	G	.	PASS	.
+chr13	37427618	indel.29113	G	GT	.	PASS	.
+chr13	76335079	exm2251544	C	T	.	PASS	.
+chr14	31917379	indel.31575	T	TGG	.	PASS	.
+chr14	37717112	variant.31677	G	T	.	PASS	.
+chr14	55226890	exm1102672	G	T	.	PASS	.
+chr14	90759194	indel.33340	T	TC	.	PASS	.
+chr15	43525779	indel.35182	C	CAG	.	PASS	.
+chr15	43695952	indel.35239	C	CA	.	PASS	.
+chr15	54914591	exm1163533	C	T	.	PASS	.
+chr15	74528985	rs351175	T	G	.	PASS	.
+chr15	77348407	exm1179460	G	A	.	PASS	.
+chr16	66432463	exm1246534	C	T	.	PASS	.
+chr17	4955266	psy_rs117556792	G	A	.	PASS	.
+chr17	8021612	exm1290936	C	A	.	PASS	.
+chr17	33772713	exm1882307	C	A	.	PASS	.
+chr17	43212963	exm2226509	G	T	.	PASS	.
+chr17	43212963	rs2291447	G	T	.	PASS	.
+chr17	45730168	exm1332330	C	G	.	PASS	.
+chr17	73242591	exm1353848	G	A	.	PASS	.
+chr18	72914161	exm1393249	T	C	.	PASS	.
+chr18	72914280	rs7230037	G	A	.	PASS	.
+chr19	6670529	rs3760746	G	A	.	PASS	.
+chr19	18994994	exm2253710	G	A	.	PASS	.
+chr19	40542375	variant.55743	G	A	.	PASS	.
+chr19	41903671	rs892044	A	G	.	PASS	.
+chr2	3718692	rs13409104	C	T	.	PASS	.
+chr2	25194771	exm2018058	C	T	.	PASS	.
+chr2	26679385	exm178577	A	C	.	PASS	.
+chr2	27870801	indel.59967	G	GGC	.	PASS	.
+chr2	29093143	exm183039	T	C	.	PASS	.
+chr2	54483287	exm194087	A	G	.	PASS	.
+chr2	54483288	exm194088	T	C	.	PASS	.
+chr2	54558114	exm194103	T	C	.	PASS	.
+chr2	71163086	exm200378	T	C	.	PASS	.
+chr2	74709963	exm204648	A	G	.	PASS	.
+chr2	84777170	indel.61662	C	CT	.	PASS	.
+chr2	85629266	exm207178	C	T	.	PASS	.
+chr2	86849962	indel.61839	G	GC	.	PASS	.
+chr2	96859067	indel.61977	T	TC	.	PASS	.
+chr2	101086951	exm216544	A	G	.	PASS	.
+chr2	101086952	exm216545	T	C	.	PASS	.
+chr2	102804330	exm1974089	G	C	.	PASS	.
+chr2	108863652	exm218990	T	C	.	PASS	.
+chr2	109087292	indel.62391	C	CG	.	PASS	.
+chr2	113765465	indel.62587	C	CGA	.	PASS	.
+chr2	135926351	exm229562	A	G	.	PASS	.
+chr2	150294223	exm231995	A	G	.	PASS	.
+chr2	152511831	indel.63250	T	TC	.	PASS	.
+chr2	167759994	exm238877	T	C	.	PASS	.
+chr2	169727989	indel.63772	A	AT	.	PASS	.
+chr2	169923213	kgp14846241	C	T	.	PASS	.
+chr2	169926086	rs11889286	C	T	.	PASS	.
+chr2	175614897	indel.64033	C	CT	.	PASS	.
+chr2	175629122	exm243337	T	C	.	PASS	.
+chr2	178415667	indel.64070	T	TC	.	PASS	.
+chr2	187487140	indel.64390	A	ACCT	.	PASS	.
+chr2	187692863	indel.64404	T	TA	.	PASS	.
+chr2	191184475	exm253061	A	G	.	PASS	.
+chr2	197208381	exm254675	G	A	.	PASS	.
+chr2	202122956	exm256838	T	C	.	PASS	.
+chr2	209358383	exm261124	G	T	.	PASS	.
+chr2	216946463	exm263596	A	G	.	PASS	.
+chr2	219029932	exm264611	C	T	.	PASS	.
+chr2	220462640	exm269819	G	T	.	PASS	.
+chr2	225265759	indel.65842	G	GT	.	PASS	.
+chr2	238667455	indel.66367	G	GTAA	.	PASS	.
+chr21	37948710	exm2275316	G	A	.	PASS	.
+chr21	45987803	exm1577680	G	A	.	PASS	.
+chr22	24034867	exm1592938	C	T	.	PASS	.
+chr22	30983274	exm1600038	G	A	.	PASS	.
+chr3	9932407	exm288739	A	G	.	PASS	.
+chr3	11643465	exm290624	T	C	.	PASS	.
+chr3	15643175	rs2279841	G	A	.	PASS	.
+chr3	17131402	exm294647	T	G	.	PASS	.
+chr3	25835983	exm295920	T	C	.	PASS	.
+chr3	27418257	exm296156	A	G	.	PASS	.
+chr3	36756821	exm298344	A	C	.	PASS	.
+chr3	37458758	exm299371	A	C	.	PASS	.
+chr3	46450604	exm307756	A	C	.	PASS	.
+chr3	48369830	exm310825	A	G	.	PASS	.
+chr3	48506471	exm311380	C	T	.	PASS	.
+chr3	49053682	indel.74958	A	AT	.	PASS	.
+chr3	51928908	exm319305	A	G	.	PASS	.
+chr3	57310755	indel.75748	T	TA	.	PASS	.
+chr3	67053976	indel.75928	A	AT	.	PASS	.
+chr3	97806944	exm332468	T	C	.	PASS	.
+chr3	97869139	indel.76151	A	AC	.	PASS	.
+chr3	100354621	exm333947	C	T	.	PASS	.
+chr3	100712249	exm334232	T	C	.	PASS	.
+chr3	107941167	exm335539	C	A	.	PASS	.
+chr3	111261097	exm336575	T	C	.	PASS	.
+chr3	118955888	rs3806698	G	A	.	PASS	.
+chr3	119912256	indel.76783	G	GT	.	PASS	.
+chr3	120408670	exm341061	T	C	.	PASS	.
+chr3	122133383	exm2255644	T	C	.	PASS	.
+chr3	122180151	indel.77008	T	TGGGA	.	PASS	.
+chr3	130394240	exm350511	A	T	.	PASS	.
+chr3	131102185	exm2255693	G	A	.	PASS	.
+chr3	132075720	exm2038069	T	C	.	PASS	.
+chr3	133928551	exm352529	T	C	.	PASS	.
+chr3	136046015	indel.77697	G	GTA	.	PASS	.
+chr3	137717711	exm353585	A	G	.	PASS	.
+chr3	138256018	variant.77781	A	G	.	PASS	.
+chr3	145939856	exm357008	C	G	.	PASS	.
+chr3	146322998	exm357123	A	G	.	PASS	.
+chr3	151531952	exm359634	T	C	.	PASS	.
+chr3	151545958	exm359691	T	C	.	PASS	.
+chr3	153202348	exm359862	G	A	.	PASS	.
+chr3	154147404	exm360201	T	G	.	PASS	.
+chr3	158262029	indel.78315	C	CT	.	PASS	.
+chr3	158428700	indel.78351	C	CT	.	PASS	.
+chr3	172607362	exm365204	A	G	.	PASS	.
+chr3	183014766	indel.78803	T	TC	.	PASS	.
+chr3	183273440	exm367182	A	T	.	PASS	.
+chr3	195960068	exm376334	T	C	.	PASS	.
+chr3	197260392	indel.79539	CA	C	.	PASS	.
+chr4	2632732	exm2240883	A	G	.	PASS	.
+chr4	2835561	exm383150	A	G	.	PASS	.
+chr4	7765492	exm2275332	C	G	.	PASS	.
+chr4	39450305	exm2256602	A	G	.	PASS	.
+chr4	40810351	exm2074268	A	T	.	PASS	.
+chr4	41663502	indel.80694	A	AT	.	PASS	.
+chr4	47593397	exm397774	A	G	.	PASS	.
+chr4	57350953	indel.81056	C	CG	.	PASS	.
+chr4	68829109	exm402434	C	T	.	PASS	.
+chr4	69093631	variant.81168	A	C	.	PASS	.
+chr4	70513361	exm403696	A	G	.	PASS	.
+chr4	71201943	rs13039	A	G	.	PASS	.
+chr4	71275790	exm2276910	T	C	.	PASS	.
+chr4	74270123	exm405598	C	T	.	PASS	.
+chr4	76943085	exm407033	A	G	.	PASS	.
+chr4	76955947	exm407044	T	A	.	PASS	.
+chr4	87812672	exm411464	A	G	.	PASS	.
+chr4	88416233	exm411973	G	A	.	PASS	.
+chr4	90830509	variant.82032	G	T	.	PASS	.
+chr4	111434635	indel.82436	A	ACG	.	PASS	.
+chr4	122747017	exm422046	A	G	.	PASS	.
+chr4	126370567	indel.82760	A	AC	.	PASS	.
+chr4	128651703	exm423993	G	T	.	PASS	.
+chr4	129805634	exm424582	A	G	.	PASS	.
+chr4	130032945	exm424717	A	G	.	PASS	.
+chr4	144618679	indel.82923	A	AC	.	PASS	.
+chr4	152212603	exm428580	T	G	.	PASS	.
+chr4	155407595	exm430189	C	A	.	PASS	.
+chr4	156274490	indel.83213	T	TC	.	PASS	.
+chr4	169279300	exm433315	A	G	.	PASS	.
+chr4	184633795	exm436211	T	C	.	PASS	.
+chr4	185655214	exm436696	C	T	.	PASS	.
+chr5	10235354	indel.84117	G	GC	.	PASS	.
+chr5	33441193	exm448264	A	G	.	PASS	.
+chr5	36227619	exm450129	T	C	.	PASS	.
+chr5	43388500	exm453467	A	T	.	PASS	.
+chr5	43656769	indel.84762	G	GT	.	PASS	.
+chr5	44809066	exm453799	T	C	.	PASS	.
+chr5	54329752	indel.84832	TAA	T	.	PASS	.
+chr5	76342200	indel.85335	T	TA	.	PASS	.
+chr5	94785984	exm467542	T	C	.	PASS	.
+chr5	101572564	exm469248	A	G	.	PASS	.
+chr5	101631965	exm469338	A	G	.	PASS	.
+chr5	115167503	exm472287	A	T	.	PASS	.
+chr5	118860923	indel.86141	C	CAA	.	PASS	.
+chr5	121297728	exm473453	A	G	.	PASS	.
+chr5	132208861	rs765760	C	T	.	PASS	.
+chr5	135513085	newrs55765823	T	TC	.	PASS	.
+chr5	137451371	exm480022	T	A	.	PASS	.
+chr5	138210895	rs288036	C	A	.	PASS	.
+chr5	139508064	exm481924	G	A	.	PASS	.
+chr5	140213970	exm484005	T	G	.	PASS	.
+chr5	140255770	indel.86893	A	AC	.	PASS	.
+chr5	140503900	indel.86950	T	TG	.	PASS	.
+chr5	140529841	exm2089280	G	A	.	PASS	.
+chr5	140596092	exm487247	A	G	.	PASS	.
+chr5	142814699	kgp22176342	A	C	.	PASS	.
+chr5	142815041	kgp22485205	C	A	.	PASS	.
+chr5	147665609	exm492891	T	C	.	PASS	.
+chr5	153409127	indel.87683	G	GA	.	PASS	.
+chr5	169675703	exm2094972	A	G	.	PASS	.
+chr5	176943944	exm507743	C	T	.	PASS	.
+chr5	180167058	exm511288	T	A	.	PASS	.
+chr5	180622167	exm511746	C	G	.	PASS	.
+chr6	4068932	exm513626	A	G	.	PASS	.
+chr6	6251131	indel.88686	T	TC	.	PASS	.
+chr6	18149358	rs9333569	T	C	.	PASS	.
+chr6	24403275	exm519703	A	G	.	PASS	.
+chr6	24533938	exm520091	T	C	.	PASS	.
+chr6	24701770	indel.89060	C	CG	.	PASS	.
+chr6	26027478	exm2118520	C	T	.	PASS	.
+chr6	26216869	exm2118836	C	A	.	PASS	.
+chr6	27114910	exm523525	G	A	.	PASS	.
+chr6	28056967	indel.89354	A	AC	.	PASS	.
+chr6	29795623	exm526510	T	C	.	PASS	.
+chr6	30080582	exm527119	T	C	.	PASS	.
+chr6	31828246	indel.89874	C	CCT	.	PASS	.
+chr6	32731258	exm-rs1573649	G	A	.	PASS	.
+chr6	32731258	rs1573649	G	A	.	PASS	.
+chr6	33172446	exm537955	A	G	.	PASS	.
+chr6	39554075	indel.90611	T	TGC	.	PASS	.
+chr6	42713809	exm547280	C	T	.	PASS	.
+chr6	42713810	exm547281	A	C	.	PASS	.
+chr6	42858524	exm547465	C	T	.	PASS	.
+chr6	49604523	newrs121918588	C	A	.	PASS	.
+chr6	52285209	exm555450	A	G	.	PASS	.
+chr6	76782204	exm562176	A	T	.	PASS	.
+chr6	84567107	exm563671	A	C	.	PASS	.
+chr6	88255394	var_6_88255394	CTTT	C	.	PASS	.
+chr6	109954114	exm571178	T	A	.	PASS	.
+chr6	117249986	indel.92725	C	CA	.	PASS	.
+chr6	132874859	exm579084	A	G	.	PASS	.
+chr6	133004281	exm579323	A	G	.	PASS	.
+chr6	136603803	kgp16927569	A	C	.	PASS	.
+chr6	149721528	exm585306	A	G	.	PASS	.
+chr6	149721529	exm585307	T	C	.	PASS	.
+chr6	149721815	exm585324	A	G	.	PASS	.
+chr6	160241547	exm2243431	T	C	.	PASS	.
+chr6	166308924	rs10806835	G	A	.	PASS	.
+chr7	20685486	indel.94825	G	GA	.	PASS	.
+chr7	23338972	exm609536	A	G	.	PASS	.
+chr7	23749905	exm609783	A	T	.	PASS	.
+chr7	27181455	indel.95055	CAG	C	.	PASS	.
+chr7	33134847	var_7_33134847	CA	C	.	PASS	.
+chr7	48278997	indel.95654	C	CGGTA	.	PASS	.
+chr7	54610426	exm621856	G	A	.	PASS	.
+chr7	64453403	exm623577	A	T	.	PASS	.
+chr7	73442483	seq_chr7_73442483	G	T	.	PASS	.
+chr7	75932030	exm628281	A	C	.	PASS	.
+chr7	93551452	exm634970	G	C	.	PASS	.
+chr7	99264234	indel.96884	T	TA	.	PASS	.
+chr7	99514391	indel.96936	A	AC	.	PASS	.
+chr7	99527243	exm2158709	T	C	.	PASS	.
+chr7	99757553	exm639976	A	G	.	PASS	.
+chr7	100486464	exm643029	T	G	.	PASS	.
+chr7	102524676	indel.97387	C	CA	.	PASS	.
+chr7	112424910	variant.97734	G	A	.	PASS	.
+chr7	122338970	exm653867	C	T	.	PASS	.
+chr7	123197849	exm654183	T	G	.	PASS	.
+chr7	138711291	exm661303	T	A	.	PASS	.
+chr7	143748430	exm666951	A	G	.	PASS	.
+chr7	143771791	indel.98888	T	TTAAC	.	PASS	.
+chr7	150434689	exm671051	C	T	.	PASS	.
+chr7	154863078	exm2144851	G	A	.	PASS	.
+chr7	155755336	rs7807731	C	T	.	PASS	.
+chr8	6614907	exm679475	T	C	.	PASS	.
+chr8	10464405	exm2160034	C	G	.	PASS	.
+chr8	18076998	variant.99838	G	T	.	PASS	.
+chr8	18258384	exm685706	T	G	.	PASS	.
+chr8	22995385	exm689245	A	G	.	PASS	.
+chr8	23049208	exm689342	C	A	.	PASS	.
+chr8	24211915	exm690079	T	G	.	PASS	.
+chr8	37635620	indel.100492	TG	T	.	PASS	.
+chr8	39840213	indel.100718	A	AT	.	PASS	.
+chr8	63978501	indel.101068	T	TAA	.	PASS	.
+chr8	67900620	exm704244	A	G	.	PASS	.
+chr8	82713734	exm2176858	A	G	.	PASS	.
+chr8	86057746	exm707986	A	G	.	PASS	.
+chr8	104061183	indel.101975	G	GTT	.	PASS	.
+chr8	104433259	indel.102006	A	AT	.	PASS	.
+chr8	124359584	exm718993	G	A	.	PASS	.
+chr8	140943503	rs2233230	C	T	.	PASS	.
+chr8	143761931	exm-rs2294008	C	T	.	PASS	.
+chr8	144413416	rs2450772	G	A	.	PASS	.
+chr9	80855026	indel.104663	G	GT	.	PASS	.
+chr9	114355240	indel.105666	C	CT	.	PASS	.
+chr9	125282025	indel.106072	G	GTGTC	.	PASS	.
+chr9	131221884	exm785426	C	T	.	PASS	.
+chr9	133327612	exm788586	C	T	.	PASS	.
+chr9	139371562	exm798457	G	A	.	PASS	.
+chrX	148582542	exm1661263	A	C	.	PASS	.
+chrM	72	2010-08-MT-841	T	C	.	PASS	.
+chrM	125	200610-102	T	C	.	PASS	.
+chrM	212	200610-104	T	C	.	PASS	.
+chrM	217	exm-rs41531144	T	C	.	PASS	.
+chrM	228	exm-rs41323649	G	A	.	PASS	.
+chrM	236	200610-105	T	C	.	PASS	.
+chrM	246	200610-106	T	C	.	PASS	.
+chrM	295	exm-rs41528348	C	T	.	PASS	.
+chrM	489	exm-rs28625645	T	C	.	PASS	.
+chrM	499	exm-rs3901846	G	A	.	PASS	.
+chrM	1719	exm-rs3928305	G	A	.	PASS	.
+chrM	3316	exm-rs2853516	G	A	.	PASS	.
