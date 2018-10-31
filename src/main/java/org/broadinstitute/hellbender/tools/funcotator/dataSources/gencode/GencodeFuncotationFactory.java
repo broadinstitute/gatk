@@ -795,21 +795,14 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         // Setup the "trivial" fields of the gencodeFuncotation:
         final GencodeFuncotationBuilder gencodeFuncotationBuilder = createGencodeFuncotationBuilderWithTrivialFieldsPopulated(variant, altAllele, gtfFeature, transcript);
 
-        // Set the transcript start position:
-        gencodeFuncotationBuilder.setTranscriptPos(
-                FuncotatorUtils.getTranscriptAlleleStartPosition(variant, transcript.getExons(), transcript.getGenomicStrand())
-        );
-
         // Set the exon number:
         gencodeFuncotationBuilder.setTranscriptExonNumber(exon.getExonNumber());
 
         // Set our version:
         gencodeFuncotationBuilder.setVersion(version);
 
-        // Set our transcript position to be the start point in the transcript of the variant:
-        gencodeFuncotationBuilder.setTranscriptPos(
-                FuncotatorUtils.getTranscriptAlleleStartPosition(variant, transcript.getExons(), exon.getGenomicStrand())
-        );
+        // Set our transcript positions:
+        setTranscriptPosition(variant, altAllele, transcript, gencodeFuncotationBuilder);
 
         // Get the reference bases for our current variant:
         final StrandCorrectedReferenceBases referenceBases = FuncotatorUtils.createReferenceSnippet(variant.getReference(), altAllele, reference, exon.getGenomicStrand(), referenceWindow);
@@ -854,6 +847,48 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     }
 
     /**
+     * Set the transcript start and end position in the given {@link GencodeFuncotationBuilder}.
+     * @param variant The {@link VariantContext} for which to set the position.
+     * @param altAllele The alternate {@link Allele} for which to set the position.
+     * @param transcript The {@link GencodeGtfTranscriptFeature} in which the {@code variant} occurs.
+     * @param gencodeFuncotationBuilder The {@link GencodeFuncotationBuilder}  in which to set the transcript start and end positions.
+     */
+    private void setTranscriptPosition(final VariantContext variant, final Allele altAllele, final GencodeGtfTranscriptFeature transcript, final GencodeFuncotationBuilder gencodeFuncotationBuilder) {
+        final int txStart = FuncotatorUtils.getTranscriptAlleleStartPosition(variant, transcript.getExons(), transcript.getGenomicStrand());
+        setTranscriptPosition(variant, altAllele, txStart, gencodeFuncotationBuilder);
+    }
+
+    /**
+     * Set the transcript start and end position in the given {@link GencodeFuncotationBuilder}.
+     * @param variant The {@link VariantContext} for which to set the position.
+     * @param altAllele The alternate {@link Allele} for which to set the position.
+     * @param txStart The start position of the {@code variant} in the transcript.
+     * @param gencodeFuncotationBuilder The {@link GencodeFuncotationBuilder}  in which to set the transcript start and end positions.
+     */
+    private void setTranscriptPosition(final VariantContext variant, final Allele altAllele, final int txStart, final GencodeFuncotationBuilder gencodeFuncotationBuilder) {
+
+        // Set the transcript start position:
+        gencodeFuncotationBuilder.setTranscriptStartPos(txStart);
+
+        // For SNPs, start == end:
+        if ( variant.getReference().length() == 1 ) {
+            gencodeFuncotationBuilder.setTranscriptEndPos( txStart );
+        }
+        else {
+            // For indels, we have to adjust by the leading placeholder base.
+            // For MNPs we can use the raw length.
+            int indelOffset = 0;
+            if ( GATKVariantContextUtils.isIndel(variant.getReference(), altAllele) ) {
+                // Account for the leading base in the variant:
+                indelOffset = 1;
+            }
+            // Subtract 1 here for the inclusive nature of the positions.
+            // NOTE: this is in addition to the indel offset.
+            gencodeFuncotationBuilder.setTranscriptEndPos(txStart + variant.getReference().length() - indelOffset -1);
+        }
+    }
+
+    /**
      * Create a {@link GencodeFuncotation} for a {@code variant} that occurs in a coding region in a given {@code exon}.
      * @param variant The {@link VariantContext} for which to create a {@link GencodeFuncotation}.
      * @param altAllele The {@link Allele} in the given {@code variant} for which to create a {@link GencodeFuncotation}.
@@ -882,11 +917,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         // Setup the "trivial" fields of the gencodeFuncotation:
         final GencodeFuncotationBuilder gencodeFuncotationBuilder = createGencodeFuncotationBuilderWithTrivialFieldsPopulated(variant, altAllele, gtfFeature, transcript);
 
-        // Set the transcript start position:
-        gencodeFuncotationBuilder.setTranscriptPos(
-                FuncotatorUtils.getTranscriptAlleleStartPosition(variant, transcript.getExons(), transcript.getGenomicStrand())
-        );
-
         // Set the exon number:
         gencodeFuncotationBuilder.setTranscriptExonNumber(exon.getExonNumber());
 
@@ -897,10 +927,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         // These fields can all be set without knowing the alternate allele:
         final SequenceComparison sequenceComparison = createSequenceComparison(variant, altAllele, reference, transcript, exonPositionList, transcriptIdMap, transcriptFastaReferenceDataSource, true);
 
-        // Set our transcript position to be the start point in the transcript of the variant:
-        gencodeFuncotationBuilder.setTranscriptPos(
-                sequenceComparison.getTranscriptAlleleStart()
-        );
+        // Set our transcript positions:
+        setTranscriptPosition(variant, altAllele, sequenceComparison.getTranscriptAlleleStart(), gencodeFuncotationBuilder);
 
         // Set the reference context with the bases from the sequence comparison
         // NOTE: The reference context is ALWAYS from the + strand, so we need to reverse our bases back in the - case:

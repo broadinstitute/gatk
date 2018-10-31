@@ -1173,7 +1173,7 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
                 dummyVariantContext.getReference().getDisplayString(),
                 dummyVariantContext.getAlternateAllele(0).getDisplayString(), "g.1000000"+ dummyVariantContext.getReference().getDisplayString() + ">" + dummyVariantContext.getAlternateAllele(0).getDisplayString(),
                 dummyTranscriptName, Strand.FORWARD,
-        1, 1500,
+        1, 1500, 1500,
         " ", " ",
         "p.L300P", 0.5,
         "ACTGATCGATCGA",Collections.singletonList("FAKE00002.5"), "27");
