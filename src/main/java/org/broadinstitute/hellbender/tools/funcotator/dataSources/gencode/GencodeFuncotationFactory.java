@@ -587,8 +587,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      * @param gtfFeature The GTF feature on which to base annotations.
      * @return A {@link List} of {@link GencodeFuncotation}s for the given variant, allele and gtf feature.
      */
-    @VisibleForTesting
-    List<GencodeFuncotation> createFuncotationsHelper(final VariantContext variant, final Allele altAllele, final GencodeGtfGeneFeature gtfFeature, final ReferenceContext reference) {
+    private List<GencodeFuncotation> createFuncotationsHelper(final VariantContext variant, final Allele altAllele, final GencodeGtfGeneFeature gtfFeature, final ReferenceContext reference) {
         // For each applicable transcript, create an annotation.
 
         final List<GencodeFuncotation> outputFuncotations = new ArrayList<>();
@@ -612,17 +611,62 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                 outputFuncotations.add(gencodeFuncotation);
             }
             catch ( final FuncotatorUtils.TranscriptCodingSequenceException ex ) {
-                 logger.error("Unable to create a GencodeFuncotation on transcript " + transcript.getTranscriptId() + " for variant: " +
+                 logger.error("Problem creating a GencodeFuncotation on transcript " + transcript.getTranscriptId() + " for variant: " +
                         variant.getContig() + ":" + variant.getStart() + "-" + variant.getEnd() + "(" + variant.getReference() + " -> " + altAllele + "): " +
                          ex.getMessage()
                  );
-
-                 // TODO: Create a default annotation here:
-
+                logger.warn("Creating default GencodeFuncotation on transcript " + transcript.getTranscriptId() + " for problem variant: " +
+                                variant.getContig() + ":" + variant.getStart() + "-" + variant.getEnd() + "(" + variant.getReference() + " -> " + altAllele + ")");
+                outputFuncotations.add( createDefaultFuncotationsOnProblemVariant( variant, altAllele, gtfFeature, reference, transcript, version ) );
             }
         }
-
         return outputFuncotations;
+    }
+
+    /**
+     * Create a placeholder funcotation on a given {@code variant} and {@code allele} pair for a case that funcotator
+     * cannot yet handle, or would currently get wrong.
+     * Primarily this occurs when a variant is long and spans multiple types of {@link GencodeGtfFeature}s
+     * (i.e. it starts in an intron and ends in an exon or visa-versa). or is
+     * long and begins in a transcript and extends beyond a given transcript's end point.
+     * There are two such cases right now as manifested in the following issues:
+     *     https://github.com/broadinstitute/gatk/issues/3749
+     *     https://github.com/broadinstitute/gatk/issues/4307
+     * As noted in the above issues, other functional annotation tools also get these kinds of cases wrong.
+     * @param variant The {@link VariantContext} to annotate.
+     * @param altAllele The alternate {@link Allele} to annotate.
+     * @param gtfFeature The {@link GencodeGtfGeneFeature} overlapping the given {@code variant}.
+     * @param reference The {@link ReferenceContext} for the given {@code variant}.
+     * @param transcript The {@link GencodeGtfTranscriptFeature} which is being used to annotate the given {@code variant}.
+     * @param version A {@link String} representing the version of the {@link GencodeFuncotationFactory} being used to annotate the given {@code variant}.
+     * @return A placeholder {@link GencodeFuncotation} for the given {@code variant}.
+     */
+    @VisibleForTesting
+    static final GencodeFuncotation createDefaultFuncotationsOnProblemVariant( final VariantContext variant,
+                                                                               final Allele altAllele,
+                                                                               final GencodeGtfGeneFeature gtfFeature,
+                                                                               final ReferenceContext reference,
+                                                                               final GencodeGtfTranscriptFeature transcript,
+                                                                               final String version) {
+        // Create basic annotation information:
+        final GencodeFuncotationBuilder gencodeFuncotationBuilder = createGencodeFuncotationBuilderWithTrivialFieldsPopulated(variant, altAllele, gtfFeature, transcript);
+
+        // Set our version:
+        gencodeFuncotationBuilder.setVersion(version);
+
+        // Get the reference bases for our current variant:
+        final StrandCorrectedReferenceBases referenceBases = FuncotatorUtils.createReferenceSnippet(variant.getReference(), altAllele, reference, transcript.getGenomicStrand(), referenceWindow);
+
+        // Set the reference context with the bases from the sequence comparison
+        // NOTE: The reference context is ALWAYS from the + strand, so we need to reverse our bases back in the - case:
+        gencodeFuncotationBuilder.setReferenceContext(referenceBases.getBaseString(Strand.POSITIVE));
+
+        // Get GC Content:
+        gencodeFuncotationBuilder.setGcContent( calculateGcContent( variant.getReference(), altAllele, reference, gcContentWindowSizeBases ) );
+
+        gencodeFuncotationBuilder.setVariantClassification(GencodeFuncotation.VariantClassification.COULD_NOT_DETERMINE);
+
+        return gencodeFuncotationBuilder.build();
     }
 
     private static boolean isBasic(final GencodeGtfTranscriptFeature transcript) {
@@ -751,6 +795,11 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         // Setup the "trivial" fields of the gencodeFuncotation:
         final GencodeFuncotationBuilder gencodeFuncotationBuilder = createGencodeFuncotationBuilderWithTrivialFieldsPopulated(variant, altAllele, gtfFeature, transcript);
 
+        // Set the transcript start position:
+        gencodeFuncotationBuilder.setTranscriptPos(
+                FuncotatorUtils.getTranscriptAlleleStartPosition(variant, transcript.getExons(), transcript.getGenomicStrand())
+        );
+
         // Set the exon number:
         gencodeFuncotationBuilder.setTranscriptExonNumber(exon.getExonNumber());
 
@@ -832,6 +881,11 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
         // Setup the "trivial" fields of the gencodeFuncotation:
         final GencodeFuncotationBuilder gencodeFuncotationBuilder = createGencodeFuncotationBuilderWithTrivialFieldsPopulated(variant, altAllele, gtfFeature, transcript);
+
+        // Set the transcript start position:
+        gencodeFuncotationBuilder.setTranscriptPos(
+                FuncotatorUtils.getTranscriptAlleleStartPosition(variant, transcript.getExons(), transcript.getGenomicStrand())
+        );
 
         // Set the exon number:
         gencodeFuncotationBuilder.setTranscriptExonNumber(exon.getExonNumber());
@@ -1179,9 +1233,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         // Setup the "trivial" fields of the gencodeFuncotation:
         final GencodeFuncotationBuilder gencodeFuncotationBuilder = createGencodeFuncotationBuilderWithTrivialFieldsPopulated(variant, altAllele, gtfFeature, transcript);
 
-        // Set the transcript position to null because UTRs are untranslated:
-        gencodeFuncotationBuilder.setTranscriptPos(null);
-
         // Find which exon this UTR is in:
         for ( final GencodeGtfExonFeature exon : transcript.getExons() ) {
             if ( exon.contains( utr ) ) {
@@ -1305,9 +1356,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
         // Setup the "trivial" fields of the gencodeFuncotation:
         final GencodeFuncotationBuilder gencodeFuncotationBuilder = createGencodeFuncotationBuilderWithTrivialFieldsPopulated(variant, altAllele, gtfFeature, transcript);
-
-        // Because we're not in an exon, we have no transcript position:
-        gencodeFuncotationBuilder.setTranscriptPos(null);
 
         // Set our reference sequence in the Gencode Funcotation Builder:
 
@@ -1829,11 +1877,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                  .setTumorSeqAllele2(altAllele.getBaseString())
                  .setGenomeChange(getGenomeChangeString(variant, altAllele))
                  .setAnnotationTranscript(transcript.getTranscriptId());
-
-         // Set the transcript start position:
-         gencodeFuncotationBuilder.setTranscriptPos(
-            FuncotatorUtils.getTranscriptAlleleStartPosition(variant, transcript.getExons(), transcript.getGenomicStrand())
-         );
 
          // Check for the optional non-serialized values for sorting:
          // NOTE: This is kind of a kludge:
