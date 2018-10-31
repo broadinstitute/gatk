@@ -108,7 +108,7 @@ public class FuncotatorTestConstants {
     //
     // A script was used to do so, and is checked in in the following path:
     //     GATK_DEVELOPMENT_TOP_DIR/scripts/funcotator/testing/getRepresentativeListOfFuncotations.sh
-    public static final String VALIDATION_TEST_DATA_DIR                                             = FUNCOTATOR_TEST_DIR + "testData" + File.separator;
+    public static final String VALIDATION_TEST_DATA_DIR                                             = FUNCOTATOR_TEST_DIR + "validationTestData" + File.separator;
     public static final String NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_DATA_SET_1                     = VALIDATION_TEST_DATA_DIR + "regressionTestVariantSet1.vcf";
     public static final String NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_DATA_SET_1_EXPECTED_OUTPUT     = VALIDATION_TEST_DATA_DIR + "regressionTestVariantSet1_expected.vcf";
     public static final String NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_DATA_SET_2                     = VALIDATION_TEST_DATA_DIR + "regressionTestVariantSet2.vcf";
