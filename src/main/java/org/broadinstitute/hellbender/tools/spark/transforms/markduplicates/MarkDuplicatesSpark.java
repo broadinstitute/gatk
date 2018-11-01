@@ -111,7 +111,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
         final JavaRDD<GATKRead> sortedReadsForMarking = querynameSortReadsIfNecessary(reads, numReducers, headerForTool);
 
         // If we need to remove optical duplicates or tag them, then make sure we are keeping track
-        final boolean markOpticalDups = taggingPolicy != MarkDuplicates.DuplicateTaggingPolicy.DontTag;
+        final boolean markOpticalDups = (taggingPolicy != MarkDuplicates.DuplicateTaggingPolicy.DontTag);
 
         final JavaPairRDD<MarkDuplicatesSparkUtils.IndexPair<String>, Integer> namesOfNonDuplicates = MarkDuplicatesSparkUtils.transformToDuplicateNames(headerForTool, scoringStrategy, opticalDuplicateFinder, sortedReadsForMarking, numReducers, markOpticalDups);
 
@@ -122,7 +122,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
                 .values();
 
         // Here we combine the original bam with the repartitioned unmarked readnames to produce our marked reads
-        JavaRDD<GATKRead> readsMarked = sortedReadsForMarking.zipPartitions(repartitionedReadNames, (readsIter, readNamesIter)  -> {
+        return sortedReadsForMarking.zipPartitions(repartitionedReadNames, (readsIter, readNamesIter)  -> {
             final Map<String,Integer> namesOfNonDuplicateReadsAndOpticalCounts = new HashMap<>();
             readNamesIter.forEachRemaining(tup -> { if (namesOfNonDuplicateReadsAndOpticalCounts.putIfAbsent(tup._1,tup._2)!=null) {
                 throw new GATKException(String.format("Detected multiple mark duplicate records objects corresponding to read with name '%s', this could be the result of the file sort order being incorrect or that a previous tool has let readnames span multiple partitions",tup._1()));
@@ -166,8 +166,6 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
                         }
                     }).iterator();
         });
-
-        return readsMarked;
     }
 
     public static JavaRDD<GATKRead> mark(final JavaRDD<GATKRead> reads, final SAMFileHeader header,
