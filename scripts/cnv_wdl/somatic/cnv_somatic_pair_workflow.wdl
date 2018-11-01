@@ -697,7 +697,7 @@ task CallModeledSegments {
     }
 
     output {
-        File called_copy_ratio_segments = "${entity_id}.called.seg"
+        File called_copy_ratio_segments = "${output_dir_}/${entity_id}.called.seg"
     }
 }
 
