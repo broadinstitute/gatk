@@ -58,30 +58,35 @@ public final class ReadThreadingAssembler {
     private int minDanglingBranchLength = 0;
     
     protected byte minBaseQualityToUseInAssembly = DEFAULT_MIN_BASE_QUALITY_TO_USE;
-    private int pruneFactor = 2;
+    private int pruneFactor;
+    private final LowWeightChainPruner<MultiDeBruijnVertex, MultiSampleEdge> lowWeightChainPruner;
 
     protected boolean errorCorrectKmers = false;
 
     private File debugGraphOutputPath = null;  //Where to write debug graphs, if unset it defaults to the current working dir
     private File graphOutputPath = null;
 
-    public ReadThreadingAssembler(final int maxAllowedPathsForReadThreadingAssembler, final List<Integer> kmerSizes, final boolean dontIncreaseKmerSizesForCycles, final boolean allowNonUniqueKmersInRef, final int numPruningSamples) {
+    public ReadThreadingAssembler(final int maxAllowedPathsForReadThreadingAssembler, final List<Integer> kmerSizes,
+                                  final boolean dontIncreaseKmerSizesForCycles, final boolean allowNonUniqueKmersInRef,
+                                  final int numPruningSamples, final int pruneFactor) {
         Utils.validateArg( maxAllowedPathsForReadThreadingAssembler >= 1, "numBestHaplotypesPerGraph should be >= 1 but got " + maxAllowedPathsForReadThreadingAssembler);
         this.kmerSizes = kmerSizes;
         this.dontIncreaseKmerSizesForCycles = dontIncreaseKmerSizesForCycles;
         this.allowNonUniqueKmersInRef = allowNonUniqueKmersInRef;
         this.numPruningSamples = numPruningSamples;
+        this.pruneFactor = pruneFactor;
+        lowWeightChainPruner = new LowWeightChainPruner<>(pruneFactor);
         numBestHaplotypesPerGraph = maxAllowedPathsForReadThreadingAssembler;
     }
 
     @VisibleForTesting
-    ReadThreadingAssembler(final int maxAllowedPathsForReadThreadingAssembler, final List<Integer> kmerSizes) {
-        this(maxAllowedPathsForReadThreadingAssembler, kmerSizes, true, true, 1);
+    ReadThreadingAssembler(final int maxAllowedPathsForReadThreadingAssembler, final List<Integer> kmerSizes, final int pruneFactor) {
+        this(maxAllowedPathsForReadThreadingAssembler, kmerSizes, true, true, 1, pruneFactor);
     }
 
     @VisibleForTesting
     ReadThreadingAssembler() {
-        this(DEFAULT_NUM_PATHS_PER_GRAPH, Arrays.asList(25));
+        this(DEFAULT_NUM_PATHS_PER_GRAPH, Arrays.asList(25), 2);
     }
 
     /**
@@ -487,7 +492,7 @@ public final class ReadThreadingAssembler {
         // prune all of the chains where all edges have multiplicity < pruneFactor.  This must occur
         // before recoverDanglingTails in the graph, so that we don't spend a ton of time recovering
         // tails that we'll ultimately just trim away anyway, as the dangling tail edges have weight of 1
-        rtgraph.pruneLowWeightChains(pruneFactor);
+        lowWeightChainPruner.pruneLowWeightChains(rtgraph);
 
         // look at all chains in the graph that terminate in a non-ref node (dangling sources and sinks) and see if
         // we can recover them by merging some N bases from the chain back into the reference

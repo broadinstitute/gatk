@@ -240,9 +240,8 @@ public final class ReadThreadingAssemblerUnitTest extends GATKBaseTest {
         final List<GATKRead> reads = new LinkedList<>();
 
         private TestAssembler(final int kmerSize) {
-            assembler = new ReadThreadingAssembler(100000, Arrays.asList(kmerSize));
+            assembler = new ReadThreadingAssembler(100000, Arrays.asList(kmerSize), 0);
             assembler.setJustReturnRawGraph(true);
-            assembler.setPruneFactor(0);
             header = ArtificialReadUtils.createArtificialSamHeader();
         }
 

@@ -189,9 +189,9 @@ public final class AssemblyBasedCallerUtils {
 
     public static ReadThreadingAssembler createReadThreadingAssembler(final AssemblyBasedCallerArgumentCollection args) {
         final ReadThreadingAssemblerArgumentCollection rtaac = args.assemblerArgs;
-        final ReadThreadingAssembler assemblyEngine = new ReadThreadingAssembler(rtaac.maxNumHaplotypesInPopulation, rtaac.kmerSizes, rtaac.dontIncreaseKmerSizesForCycles, rtaac.allowNonUniqueKmersInRef, rtaac.numPruningSamples);
+        final ReadThreadingAssembler assemblyEngine = new ReadThreadingAssembler(rtaac.maxNumHaplotypesInPopulation, rtaac.kmerSizes,
+                rtaac.dontIncreaseKmerSizesForCycles, rtaac.allowNonUniqueKmersInRef, rtaac.numPruningSamples, rtaac.minPruneFactor);
         assemblyEngine.setErrorCorrectKmers(rtaac.errorCorrectKmers);
-        assemblyEngine.setPruneFactor(rtaac.minPruneFactor);
         assemblyEngine.setDebug(args.debug);
         assemblyEngine.setDebugGraphTransformations(rtaac.debugGraphTransformations);
         assemblyEngine.setRecoverDanglingBranches(!rtaac.doNotRecoverDanglingBranches);
