@@ -1,4 +1,4 @@
-# A postprocessing workflow for GATK CNV.
+# A postprocessing workflow for GATK CNV ModelSegments.
 #
 # THIS CANNOT BE RUN IN TUMOR-ONLY MODE.  A MATCHED NORMAL IS REQUIRED.
 #
@@ -35,12 +35,19 @@
 #  - This workflow has not been tested with hg38
 #  - Evaluation of germline tagging and blacklists on hg38 is still pending.
 #  - Evaluation of the conversion to ACS format for ABSOLUTE is still pending.
+#  - Performance increases (both sensitivity and precision) over this workflow when using a blacklist during PoN creation and running of case samples.
 #
-# Auxiliary files (hg19):
+#  A blacklist for that can be found at:
+#   - hg19: gs://gatk-best-practices/somatic-b37/CNV_and_centromere_blacklist.hg19.list
+#   - hg38: gs://gatk-best-practices/somatic-hg38/CNV_and_centromere_blacklist.hg38liftover.seg
+#
+# Do not attempt to use the above blacklists for this workflow.  See below:
+#
+# Auxiliary files for this workflow (hg19):
 #  - centromere_tracks_seg: gs://gatk-best-practices/somatic-b37/final_centromere_hg19.seg
 #  - gistic_blacklist_tracks_seg:  gs://gatk-best-practices/somatic-b37/CNV.hg19.bypos.v1.CR1_event_added.mod.seg
 #
-# Auxiliary files (hg38) -- these are untested and the gistic list is a liftover:
+# Auxiliary files for this workflow (hg38) -- these are untested and the gistic list is a liftover:
 #  - centromere_tracks_seg:  gs://gatk-best-practices/somatic-hg38/final_centromere_hg38.seg
 #  - gistic_blacklist_tracks_seg:  gs://gatk-best-practices/somatic-hg38/CNV.hg38liftover.bypos.v1.CR1_event_added.mod.seg
 #
