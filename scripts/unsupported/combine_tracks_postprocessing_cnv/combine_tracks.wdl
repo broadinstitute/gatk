@@ -474,7 +474,7 @@ model_segments_af_param_input_file = "${af_param}"
 alleliccapseg_seg_output_file = "${output_filename}"
 alleliccapseg_skew_output_file = "${output_skew_filename}"
 
-HAM_FIST_THRESHOLD=${default="0.485" maf90_threshold}
+HAM_FIST_THRESHOLD=${default="0.47" maf90_threshold}
 
 # regular expression for matching sample name from header comment line
 sample_name_header_regexp = "^@RG.*SM:(.*)[\t]*.*$"
