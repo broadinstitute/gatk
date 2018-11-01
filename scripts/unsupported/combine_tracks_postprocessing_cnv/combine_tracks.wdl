@@ -1,4 +1,4 @@
-# A postprocessing workflow for GATK CNV.
+# A postprocessing workflow for GATK CNV ModelSegments.
 #
 # THIS CANNOT BE RUN IN TUMOR-ONLY MODE.  A MATCHED NORMAL IS REQUIRED.
 #
@@ -35,12 +35,19 @@
 #  - This workflow has not been tested with hg38
 #  - Evaluation of germline tagging and blacklists on hg38 is still pending.
 #  - Evaluation of the conversion to ACS format for ABSOLUTE is still pending.
+#  - Performance increases (both sensitivity and precision) over this workflow when using a blacklist during PoN creation and running of case samples.
 #
-# Auxiliary files (hg19):
+#  A blacklist for that can be found at:
+#   - hg19: gs://gatk-best-practices/somatic-b37/CNV_and_centromere_blacklist.hg19.list
+#   - hg38: gs://gatk-best-practices/somatic-hg38/CNV_and_centromere_blacklist.hg38liftover.seg
+#
+# Do not attempt to use the above blacklists for this workflow.  See below:
+#
+# Auxiliary files for this workflow (hg19):
 #  - centromere_tracks_seg: gs://gatk-best-practices/somatic-b37/final_centromere_hg19.seg
 #  - gistic_blacklist_tracks_seg:  gs://gatk-best-practices/somatic-b37/CNV.hg19.bypos.v1.CR1_event_added.mod.seg
 #
-# Auxiliary files (hg38) -- these are untested and the gistic list is a liftover:
+# Auxiliary files for this workflow (hg38) -- these are untested and the gistic list is a liftover:
 #  - centromere_tracks_seg:  gs://gatk-best-practices/somatic-hg38/final_centromere_hg38.seg
 #  - gistic_blacklist_tracks_seg:  gs://gatk-best-practices/somatic-hg38/CNV.hg38liftover.bypos.v1.CR1_event_added.mod.seg
 #
@@ -63,6 +70,8 @@ workflow CombineTracksWorkflow {
     String gatk_docker
     Int? max_merge_distance
     Array[String]? annotations_on_which_to_merge
+    Int? min_hets_acs_results
+    Float? maf90_threshold
 
     Array[String]? annotations_on_which_to_merge_final = select_first([annotations_on_which_to_merge,
     ["MEAN_LOG2_COPY_RATIO", "LOG2_COPY_RATIO_POSTERIOR_10", "LOG2_COPY_RATIO_POSTERIOR_50", "LOG2_COPY_RATIO_POSTERIOR_90",
@@ -149,7 +158,9 @@ workflow CombineTracksWorkflow {
         input:
             model_seg = MergeSegmentByAnnotation.cnv_merged_seg,
             af_param = af_param,
-            docker = gatk_docker
+            docker = gatk_docker,
+            min_hets_acs_results = min_hets_acs_results,
+            maf90_threshold = maf90_threshold
     }
 
     call IGVConvert as IGVConvertMergedTumorOutput {
@@ -175,6 +186,7 @@ workflow CombineTracksWorkflow {
         File cnv_postprocessing_normal_igv_compat = IGVConvertNormal.outFile
         File cnv_postprocessing_tumor_with_tracks_filtered_seg = FilterGermlineTagged.tumor_with_germline_filtered_seg
         File cnv_postprocessing_tumor_with_tracks_filtered_merged_seg = IGVConvertMergedTumorOutput.outFile
+        File cnv_postprocessing_tumor_with_tracks_filtered_merged_seg_ms_format = MergeSegmentByAnnotation.cnv_merged_seg
         File cnv_postprocessing_tumor_with_tracks_tagged_seg = CombineTracks.germline_tagged_with_tracks_seg
         File cnv_postprocessing_tumor_acs_seg = PrototypeACSConversion.cnv_acs_conversion_seg
         File cnv_postprocessing_tumor_acs_skew = PrototypeACSConversion.cnv_acs_conversion_skew
@@ -274,8 +286,10 @@ import pandas
 import os.path
 tumor_tagged = "${germline_tagged_seg}"
 
-tumor_tagged_df = pandas.read_csv(tumor_tagged, delimiter="\t", comment="@")
-tumor_tagged_pruned_df = tumor_tagged_df[(tumor_tagged_df["POSSIBLE_GERMLINE"] == "0") & (tumor_tagged_df["type"] != "centromere") & (tumor_tagged_df["ID"].isna())]
+tumor_tagged_df = pandas.read_csv(tumor_tagged, delimiter='\t', comment="@")
+tumor_tagged_df["POSSIBLE_GERMLINE"] = tumor_tagged_df["POSSIBLE_GERMLINE"].astype('str')
+tumor_tagged_pruned_df = tumor_tagged_df[((tumor_tagged_df["POSSIBLE_GERMLINE"] == "0.0") | (tumor_tagged_df["POSSIBLE_GERMLINE"] == "0") ) & (tumor_tagged_df["type"] != "centromere") & (tumor_tagged_df["ID"].isna())]
+
 output_filename = "${output_filename}"
 print(output_filename)
 tumor_tagged_pruned_df.to_csv(output_filename, sep="\t", index=False)
@@ -432,6 +446,7 @@ task MergeSegmentByAnnotation {
 
 # TODO: No non-trivial heredocs in WDL.  Add this to the script directory and call via anaconda (future release)
 # TODO: This is a hard threholding algorithm.  Better approaches exist if this does not meet needs.
+# TODO: The min hets hard thresholding should eventually be removed.  This is to mitigate some hypersegmentation when rerunning GATK CNV is too expensive.
 task PrototypeACSConversion {
     File model_seg
     File af_param
@@ -439,6 +454,8 @@ task PrototypeACSConversion {
     Float? maf90_threshold
     String output_filename = basename(model_seg) + ".acs.seg"
     String output_skew_filename = output_filename + ".skew"
+    Int? min_hets_acs_results
+    Int min_hets_acs_results_final = select_first([min_hets_acs_results, 0])
 
     command <<<
         set -e
@@ -457,7 +474,7 @@ model_segments_af_param_input_file = "${af_param}"
 alleliccapseg_seg_output_file = "${output_filename}"
 alleliccapseg_skew_output_file = "${output_skew_filename}"
 
-HAM_FIST_THRESHOLD=${default="0.485" maf90_threshold}
+HAM_FIST_THRESHOLD=${default="0.47" maf90_threshold}
 
 # regular expression for matching sample name from header comment line
 sample_name_header_regexp = "^@RG.*SM:(.*)[\t]*.*$"
@@ -550,6 +567,17 @@ def convert_model_segments_to_alleliccapseg(model_segments_seg_pd,
     model_segments_reference_bias = model_segments_af_param_pd[
         model_segments_af_param_pd['PARAMETER_NAME'] == 'MEAN_BIAS']['POSTERIOR_50']
     alleliccapseg_skew = 2. / (1. + model_segments_reference_bias)
+
+    # If a row has less than X (set by user) hets, then assume zero
+    filter_rows = alleliccapseg_seg_pd['n_hets'] < ${min_hets_acs_results_final}
+    # mu.minor  sigma.minor  mu.major  sigma.major
+    alleliccapseg_seg_pd.ix[filter_rows, 'n_hets'] = 0
+    alleliccapseg_seg_pd.ix[filter_rows, 'f'] = np.NaN
+    alleliccapseg_seg_pd.ix[filter_rows, 'mu.minor'] = np.NaN
+    alleliccapseg_seg_pd.ix[filter_rows, 'sigma.minor'] = np.NaN
+    alleliccapseg_seg_pd.ix[filter_rows, 'mu.major'] = np.NaN
+    alleliccapseg_seg_pd.ix[filter_rows, 'sigma.major'] = np.NaN
+
 
     return alleliccapseg_seg_pd, alleliccapseg_skew
 

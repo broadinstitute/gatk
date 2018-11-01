@@ -18,6 +18,7 @@ workflow MultiCombineTracks {
         Int? germline_tagging_padding
         String group_id
         String gatk_docker
+        Int? min_hets_acs_results
 
         scatter (i in range(length(tumor_called_segs))) {
 
@@ -36,7 +37,8 @@ workflow MultiCombineTracks {
                     columns_of_interest = columns_of_interest,
                     germline_tagging_padding = germline_tagging_padding,
                     group_id = group_id,
-                    gatk_docker = gatk_docker
+                    gatk_docker = gatk_docker,
+                    min_hets_acs_results = min_hets_acs_results
             }
         }
 

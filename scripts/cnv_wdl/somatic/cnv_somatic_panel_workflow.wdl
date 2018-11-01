@@ -16,6 +16,10 @@
 #   This may be useful for excluding centromeric regions, etc. from analysis.  Alternatively, these regions may
 #   be manually filtered from the final callset.
 #
+#  A reasonable blacklist for excluded intervals (-XL) can be found at:
+#   hg19: gs://gatk-best-practices/somatic-b37/CNV_and_centromere_blacklist.hg19.list
+#   hg38: gs://gatk-best-practices/somatic-hg38/CNV_and_centromere_blacklist.hg38liftover.list (untested)
+#
 # - Example invocation:
 #
 #       java -jar cromwell.jar run cnv_somatic_panel_workflow.wdl -i my_parameters.json
