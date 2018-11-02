@@ -41,9 +41,9 @@ import java.util.stream.IntStream;
  * </pre>
  *
  * <p>
- *    The -O argument specifies a directory name for the scatter intervals files. Each file will be named, e.g 0000-scattered.intervals,
- *    0001-scattered.intervals, 0002-scattered.intervals and so on.
- *    The default --scatter_count is 1 and so this value should be changed to utilize the tool's functionality.
+ *    The -O argument specifies a directory name for the scatter intervals files. Each file will be named, e.g 0000-scattered.interval_list,
+ *    0001-scattered.interval_list, 0002-scattered.interval_list and so on.
+ *    The default --scatter-count is 1 and so this value should be changed to utilize the tool's functionality.
  *    Specify --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION to avoid splitting input intervals -- that is, the set
  *    of input intervals is split, but individual intervals are left intact.  This may affect results when using assembly-based callers downstream.
  * </p>
@@ -63,6 +63,10 @@ public class SplitIntervals extends GATKTool {
     public static final String SUBDIVISION_MODE_SHORT_NAME = "mode";
     public static final String SUBDIVISION_MODE_lONG_NAME = "subdivision-mode";
 
+    public static final String INTERVAL_FILE_EXTENSION_FULL_NAME = "extension";
+
+    public static final String PICARD_INTERVAL_FILE_EXTENSION = "interval_list";
+    public static final String DEFAULT_EXTENSION = "-scattered." + PICARD_INTERVAL_FILE_EXTENSION;
 
     @Argument(fullName = SCATTER_COUNT_LONG_NAME, shortName = SCATTER_COUNT_SHORT_NAME,
             doc = "scatter count: number of output interval files to split into", optional = true)
@@ -75,6 +79,9 @@ public class SplitIntervals extends GATKTool {
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME)
     public File outputDir;
+
+    @Argument(doc = "Extension to use when writing interval files", fullName = INTERVAL_FILE_EXTENSION_FULL_NAME, optional = true)
+    public String extension = DEFAULT_EXTENSION;
 
     @Override
     public void onTraversalStart() {
@@ -97,7 +104,7 @@ public class SplitIntervals extends GATKTool {
         final List<IntervalList> scattered = scatterer.scatter(intervalList, scatterCount, false);
 
         final DecimalFormat formatter = new DecimalFormat("0000");
-        IntStream.range(0, scattered.size()).forEach(n -> scattered.get(n).write(new File(outputDir, formatter.format(n) + "-scattered.intervals")));
+        IntStream.range(0, scattered.size()).forEach(n -> scattered.get(n).write(new File(outputDir, formatter.format(n) + extension)));
     }
 
     @Override
