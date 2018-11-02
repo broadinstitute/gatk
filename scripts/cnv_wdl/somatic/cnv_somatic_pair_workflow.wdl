@@ -108,13 +108,18 @@ workflow CNVSomaticPairWorkflow {
     ####################################################
     #### optional arguments for CallModeledSegments ####
     ####################################################
+    Boolean? load_copy_ratio
+    Boolean? load_allele_fraction
     Float? normal_minor_allele_fraction_threshold
     Float? copy_ratio_peak_min_relative_height
     Float? copy_ratio_kernel_density_bandwidth
     Float? min_fraction_of_points_in_normal_allele_fraction_region
     Float? min_weight_first_cr_peak_cr_data_only
-    Boolean? load_copy_ratio
-    Boolean? load_allele_fraction
+    Float? max_phred_score_normal
+    Int? n_inference_iterations
+    Float? inference_total_grad_norm_constraint
+    Int? n_extra_gaussians_mixture_model
+    Int? max_n_peaks_in_copy_ratio
     Int? mem_gb_for_call_modeled_segments
 
 
@@ -257,6 +262,12 @@ workflow CNVSomaticPairWorkflow {
             min_fraction_of_points_in_normal_allele_fraction_region = min_fraction_of_points_in_normal_allele_fraction_region,
             min_weight_first_cr_peak_cr_data_only = min_weight_first_cr_peak_cr_data_only,
             min_fraction_of_points_in_normal_allele_fraction_region = min_fraction_of_points_in_normal_allele_fraction_region,
+            n_inference_iterations  = n_inference_iterations,
+            max_phred_score_normal = max_phred_score_normal,
+            inference_total_grad_norm_constraint = inference_total_grad_norm_constraint,
+            n_extra_gaussians_mixture_model = n_extra_gaussians_mixture_model,
+            max_n_peaks_in_copy_ratio = max_n_peaks_in_copy_ratio,
+            mem_gb_for_call_modeled_segments = mem_gb_for_call_modeled_segments,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
             mem_gb = mem_gb_for_call_modeled_segments,
@@ -389,6 +400,12 @@ workflow CNVSomaticPairWorkflow {
             min_fraction_of_points_in_normal_allele_fraction_region = min_fraction_of_points_in_normal_allele_fraction_region,
             min_weight_first_cr_peak_cr_data_only = min_weight_first_cr_peak_cr_data_only,
             min_fraction_of_points_in_normal_allele_fraction_region = min_fraction_of_points_in_normal_allele_fraction_region,
+            n_inference_iterations  = n_inference_iterations,
+            inference_total_grad_norm_constraint = inference_total_grad_norm_constraint,
+            n_extra_gaussians_mixture_model = n_extra_gaussians_mixture_model,
+            max_phred_score_normal = max_phred_score_normal,
+            max_n_peaks_in_copy_ratio = max_n_peaks_in_copy_ratio,
+            mem_gb_for_call_modeled_segments = mem_gb_for_call_modeled_segments,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
             mem_gb = mem_gb_for_call_modeled_segments,
@@ -654,6 +671,11 @@ task CallModeledSegments {
     Float? copy_ratio_kernel_density_bandwidth
     Float? min_fraction_of_points_in_normal_allele_fraction_region
     Float? min_weight_first_cr_peak_cr_data_only
+    Float? max_phred_score_normal
+    Int? n_inference_iterations
+    Float? inference_total_grad_norm_constraint
+    Int? n_extra_gaussians_mixture_model
+    Int? max_n_peaks_in_copy_ratio
     File? gatk4_jar_override
 
     # Runtime parameters
@@ -685,7 +707,12 @@ task CallModeledSegments {
             --copy-ratio-peak-min-relative-height ${default="0.05" copy_ratio_peak_min_relative_height} \
             --copy-ratio-kernel-density-bandwidth ${default="0.05" copy_ratio_kernel_density_bandwidth} \
             --min-weight-first-cr-peak-cr-data-only ${default="0.35" min_weight_first_cr_peak_cr_data_only} \
-            --min-fraction-of-points-in-normal-allele-fraction-region ${default="0.15" min_fraction_of_points_in_normal_allele_fraction_region}
+            --min-fraction-of-points-in-normal-allele-fraction-region ${default="0.15" min_fraction_of_points_in_normal_allele_fraction_region} \
+            --max-phred-score-normal ${default="100." max_phred_score_normal} \
+            --n-inference-iterations ${default="20000" n_inference_iterations} \
+            --inference-total-grad-norm-constraint ${default="0.15" inference_total_grad_norm_constraint} \
+            --n-extra-gaussians-mixture-model ${default="6" n_extra_gaussians_mixture_model} \
+            --max-n-peaks-in-copy-ratio ${default="10" max_n_peaks_in_copy_ratio}
     >>>
 
     runtime {

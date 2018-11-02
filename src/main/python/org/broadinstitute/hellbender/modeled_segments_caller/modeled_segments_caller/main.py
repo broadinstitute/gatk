@@ -559,7 +559,12 @@ class ModeledSegmentsCaller:
                  copy_ratio_kernel_density_bandwidth: float=0.,
                  min_weight_first_cr_peak_cr_data_only: float=0.35,
                  min_fraction_of_points_in_normal_allele_fraction_region: float=0.15,
-                 responsibility_threshold_normal: float=0.5
+                 responsibility_threshold_normal: float=0.5,
+                 max_phred_score_normal: float=100.,
+                 n_inference_iterations: int=30000,
+                 inference_total_grad_norm_constraint: float=50.,
+                 n_extra_Gaussians_mixture_model: int=6,
+                 max_n_peaks_in_copy_ratio: int=10
                  ):
         """ On initialization, the caller loads the copy ratio and allele fraction data from
             the LoadAndSampleCrAndAf class. It then identifies normal segments and saves the
@@ -602,9 +607,13 @@ class ModeledSegmentsCaller:
         self.__min_fraction_of_points_in_normal_allele_fraction_region = min_fraction_of_points_in_normal_allele_fraction_region
         self.__responsibility_threshold_normal = responsibility_threshold_normal
         self.__min_weight_first_cr_peak_cr_data_only = min_weight_first_cr_peak_cr_data_only
+        self.__n_inference_iterations = n_inference_iterations
+        self.__inference_total_grad_norm_constraint = inference_total_grad_norm_constraint
+        self.__n_extra_Gaussians_mixture_model = n_extra_Gaussians_mixture_model
+        self.__max_n_peaks_in_copy_ratio = max_n_peaks_in_copy_ratio
 
         # Set the maximal value of the PHRED score we allow (since we don't want it to be off the scale on the plots)
-        self.__max_PHRED_score = 100.
+        self.__max_PHRED_score = max_phred_score_normal
 
         # Load data from file
         [self.__copy_ratio_median,
@@ -813,7 +822,7 @@ class ModeledSegmentsCaller:
                                                                       n_clusters=n_Gaussians_proposed)
         n_Gaussians = len(mu_estimates)
         pi_init = np.random.uniform(0, 1, n_Gaussians)
-        n_extra_Gaussians = 6
+        n_extra_Gaussians = self.__n_extra_Gaussians_mixture_model
         n_Gaussians += n_extra_Gaussians
         pi_init = np.append(pi_init, [0.02] * n_extra_Gaussians)
         mu_init = np.append(mu_estimates, [[np.random.uniform(0,2), np.random.uniform(0,0.5)]
@@ -859,7 +868,9 @@ class ModeledSegmentsCaller:
         with model:
             inference = pm.ADVI()
 
-        approx = inference.fit(n=60000, total_grad_norm_constraint=50, progressbar=False,
+        approx = inference.fit(n=self.__n_inference_iterations,
+                               total_grad_norm_constraint=self.__inference_total_grad_norm_constraint,
+                               progressbar=False,
                                callbacks=[CheckParametersConvergence(every=50, diff='relative',
                                                                      tolerance=0.005)]
                                )
@@ -1033,8 +1044,10 @@ class ModeledSegmentsCaller:
 
         # Estimate the bandwidth of the Gaussians used for density estimation: we fit a set of Gaussians
         # to the data and take the standard deviation of the smallest peak as the bandwidth
-        n_peaks, _, _, _ = self.__estimate_number_of_cr_clusters(data, max_n_Gaussians = 10,
-                                                                 alpha = 0.1, min_std_dev = 0.05)
+        n_peaks, _, _, _ = self.__estimate_number_of_cr_clusters(data,
+                                                                 max_n_Gaussians = self.__max_n_peaks_in_copy_ratio,
+                                                                 alpha = 0.1,
+                                                                 min_std_dev = 0.05)
         n_peaks, w_peaks, mu_peaks, sd_peaks = self.__estimate_number_of_cr_clusters(data,
                                                                                      max_n_Gaussians = n_peaks + 2,
                                                                                      alpha = 0.1, min_std_dev = 0.05)

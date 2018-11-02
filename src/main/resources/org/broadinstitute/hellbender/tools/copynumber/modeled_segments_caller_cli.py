@@ -146,7 +146,43 @@ group.add_argument("--responsibility_threshold_normal",
                    required=False,
                    default=0.5,
                    help="Segments are considered normal if the responsibility in the Gaussian mixture model "
-                        "of them being normal exceeds this threshold (set to 0.5 by default).",)
+                        "of them being normal exceeds this threshold (set to 0.5 by default).")
+
+group.add_argument("--max_phred_score_normal",
+                   type=float,
+                   required=False,
+                   default=100,
+                   help="Upper cut-off for the PHRED scores on normal samples, to make sure that they are not off the "
+                        "scale on the plots.")
+
+group.add_argument("--n_inference_iterations",
+                   type=int,
+                   required=False,
+                   default=30000,
+                   help="Maximum number of iterations of the automatic differentiation variational inference "
+                        "fitting a Gaussian mixture model to the segments in order to cluster them.")
+
+group.add_argument("--inference_total_grad_norm_constraint",
+                   type=float,
+                   required=False,
+                   default=50.,
+                   help="In order to ensure convergence, this constant limits the value of the gradient in automatic"
+                        "differentiation variational inference, fitting a Gaussian mixture model to the segments.")
+
+group.add_argument("--n_extra_Gaussians_mixture_model",
+                   type=int,
+                   required=False,
+                   default=6,
+                   help="The number of Gaussians needed to classify segments is estimated using k-means clustering. "
+                        "This parameters lets us add a few extra Gaussians that might cover some of the noise or "
+                        "additional subcluster structure present in the data.")
+
+group.add_argument("--max_n_peaks_in_copy_ratio",
+                   type=int,
+                   required=False,
+                   default=10,
+                   help="In order to discover the different copy number states, the clusters in the copy ratio data "
+                        "is determined. This constant limits the maximum number of peaks that can be found in the data.")
 
 
 def str2bool(boolString):
@@ -189,5 +225,10 @@ if __name__ == "__main__":
                                    copy_ratio_kernel_density_bandwidth=args.copy_ratio_kernel_density_bandwidth,
                                    min_weight_first_cr_peak_cr_data_only=args.min_weight_first_cr_peak_cr_data_only,
                                    min_fraction_of_points_in_normal_allele_fraction_region=args.min_fraction_of_points_in_normal_allele_fraction_region,
-                                   responsibility_threshold_normal=args.responsibility_threshold_normal
+                                   responsibility_threshold_normal=args.responsibility_threshold_normal,
+                                   max_phred_score_normal=args.max_phred_score_normal,
+                                   n_inference_iterations=args.n_inference_iterations,
+                                   inference_total_grad_norm_constraint=args.inference_total_grad_norm_constraint,
+                                   n_extra_Gaussians_mixture_model=args.n_extra_Gaussians_mixture_model,
+                                   max_n_peaks_in_copy_ratio=args.max_n_peaks_in_copy_ratio
                                    )
