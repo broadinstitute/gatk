@@ -22,10 +22,6 @@ public class CallModeledSegmentsIntegrationTest extends CommandLineProgramTest {
     private static final File INPUT_SIMULATED_NORMAL_TRUTH = new File(SIMULATED_DATA_DIR, "normal_sample_truth.seg");
     private static final File INPUT_SIMULATED_NORMAL_NOISY_DATA = new File(SIMULATED_DATA_DIR, "normal_noisy_sample_data.seg");
     private static final File INPUT_SIMULATED_NORMAL_NOISY_TRUTH = new File(SIMULATED_DATA_DIR, "normal_noisy_sample_truth.seg");
-    // private static final File INPUT_SIMULATED_SOMATIC_40P_PURITY_DATA = new File(SIMULATED_DATA_DIR, "cancer_0p40_purity_data.seg");
-    // private static final File INPUT_SIMULATED_SOMATIC_40P_PURITY_TRUTH = new File(SIMULATED_DATA_DIR, "cancer_0p40_purity_truth.seg");
-    // private static final File INPUT_SIMULATED_SOMATIC_60P_PURITY_DATA = new File(SIMULATED_DATA_DIR, "cancer_0p60_purity_data.seg");
-    // private static final File INPUT_SIMULATED_SOMATIC_60P_PURITY_TRUTH = new File(SIMULATED_DATA_DIR, "cancer_0p60_purity_truth.seg");
     private static final File INPUT_SIMULATED_SOMATIC_100P_PURITY_DATA = new File(SIMULATED_DATA_DIR, "cancer_1p00_purity_data.seg");
     private static final File INPUT_SIMULATED_SOMATIC_100P_PURITY_TRUTH = new File(SIMULATED_DATA_DIR, "cancer_1p00_purity_truth.seg");
 
@@ -38,10 +34,6 @@ public class CallModeledSegmentsIntegrationTest extends CommandLineProgramTest {
                 true, true, true, "normal_simulated"});
         result.add(new Object[] {INPUT_SIMULATED_NORMAL_NOISY_DATA, INPUT_SIMULATED_NORMAL_NOISY_TRUTH,
                 true, true, true, "normal_noisy_simulated"});
-        // result.add(new Object[] {INPUT_SIMULATED_SOMATIC_40P_PURITY_DATA, INPUT_SIMULATED_SOMATIC_40P_PURITY_TRUTH,
-        //         true, true, true, "somatic_40per_cent"});
-        // result.add(new Object[] {INPUT_SIMULATED_SOMATIC_60P_PURITY_DATA, INPUT_SIMULATED_SOMATIC_60P_PURITY_TRUTH,
-        //         true, true, true, "somatic_60per_cent"});
         result.add(new Object[] {INPUT_SIMULATED_SOMATIC_100P_PURITY_DATA, INPUT_SIMULATED_SOMATIC_100P_PURITY_TRUTH,
                 true, true, true, "somatic_100per_cent"});
         return result.iterator();
@@ -81,7 +73,8 @@ public class CallModeledSegmentsIntegrationTest extends CommandLineProgramTest {
                 .addArgument(CallModeledSegments.LOAD_COPY_RATIO_LONG_NAME, String.valueOf(loadCopyRatio))
                 .addArgument(CallModeledSegments.LOAD_ALLELE_FRACTION_LONG_NAME, String.valueOf(loadAlleleFraction))
                 .addArgument(CallModeledSegments.INTERACTIVE_RUN_LONG_NAME, String.valueOf(interactiveRun))
-                .addArgument(CallModeledSegments.LOG_LONG_NAME, String.valueOf(true));
+                .addArgument(CallModeledSegments.LOG_LONG_NAME, String.valueOf(true))
+                .addArgument(CallModeledSegments.N_INFERENCE_ITERATIONS, String.valueOf(40000));
 
         String outputCallsFilePath = (OUTPUT_DIR.getAbsolutePath() + "/" + outputPrefix
                 + CallModeledSegments.OUTPUT_CALLS_SUFFIX_DEFAULT_VALUE);
@@ -149,10 +142,7 @@ public class CallModeledSegmentsIntegrationTest extends CommandLineProgramTest {
     private static boolean compareCalledFiles(final File outputFile, final File truthFile) {
         // Make sure that the truth file's and the output file's calls disagree at most in errorTolerance fraction of
         // the base pairs, where errorTolerances is specified as:
-
-        // Let me change this constant for testing. To be restored after
-        // double errorTolerance = 0.02;
-        double errorTolerance = 0.25;
+        double errorTolerance = 0.05;
 
         CalledModeledSegmentCollection outputData = new CalledModeledSegmentCollection(outputFile);
         CalledModeledSegmentCollection truthData = new CalledModeledSegmentCollection(truthFile);
