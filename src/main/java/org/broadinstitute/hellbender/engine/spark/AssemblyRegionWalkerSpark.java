@@ -55,6 +55,9 @@ public abstract class AssemblyRegionWalkerSpark extends GATKSparkTool {
     @Argument(doc = "whether to use the shuffle implementation or not", shortName = "shuffle", fullName = "shuffle", optional = true)
     public boolean shuffle = false;
 
+    @Argument(doc = "whether to use the strict implementation or not (defaults to the faster implementation that doesn't strictly match the walker version)", shortName = "strict", fullName = "strict", optional = true)
+    public boolean strict = false;
+
     private String referenceFileName;
 
     @Override
@@ -117,62 +120,15 @@ public abstract class AssemblyRegionWalkerSpark extends GATKSparkTool {
      */
     protected JavaRDD<AssemblyRegionWalkerContext> getAssemblyRegions(JavaSparkContext ctx) {
         SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
-        return getAssemblyRegions(ctx, getReads(), getHeaderForReads(), sequenceDictionary, referenceFileName, features,
-                intervalShards, assemblyRegionEvaluatorSupplierBroadcast(ctx), shardingArgs, assemblyRegionArgs,
-                includeReadsWithDeletionsInIsActivePileups(), shuffle);
-    }
-
-    protected static JavaRDD<AssemblyRegionWalkerContext> getAssemblyRegions(
-            final JavaSparkContext ctx,
-            final JavaRDD<GATKRead> reads,
-            final SAMFileHeader header,
-            final SAMSequenceDictionary sequenceDictionary,
-            final String referenceFileName,
-            final FeatureManager features,
-            final List<ShardBoundary> intervalShards,
-            final Broadcast<Supplier<AssemblyRegionEvaluator>> assemblyRegionEvaluatorSupplierBroadcast,
-            final AssemblyRegionReadShardArgumentCollection shardingArgs,
-            final AssemblyRegionArgumentCollection assemblyRegionArgs,
-            final boolean includeReadsWithDeletionsInIsActivePileups,
-            final boolean shuffle) {
-        JavaRDD<Shard<GATKRead>> shardedReads = SparkSharder.shard(ctx, reads, GATKRead.class, sequenceDictionary, intervalShards, shardingArgs.readShardSize, shuffle);
-        Broadcast<FeatureManager> bFeatureManager = features == null ? null : ctx.broadcast(features);
-        return shardedReads.mapPartitions(getAssemblyRegionsFunction(referenceFileName, bFeatureManager, header,
-                assemblyRegionEvaluatorSupplierBroadcast, assemblyRegionArgs, includeReadsWithDeletionsInIsActivePileups));
-    }
-
-    private static FlatMapFunction<Iterator<Shard<GATKRead>>, AssemblyRegionWalkerContext> getAssemblyRegionsFunction(
-            final String referenceFileName,
-            final Broadcast<FeatureManager> bFeatureManager,
-            final SAMFileHeader header,
-            final Broadcast<Supplier<AssemblyRegionEvaluator>> supplierBroadcast,
-            final AssemblyRegionArgumentCollection assemblyRegionArgs,
-            final boolean includeReadsWithDeletionsInIsActivePileups) {
-        return (FlatMapFunction<Iterator<Shard<GATKRead>>, AssemblyRegionWalkerContext>) shardedReadIterator -> {
-            ReferenceDataSource reference = referenceFileName == null ? null : new ReferenceFileSource(IOUtils.getPath(SparkFiles.get(referenceFileName)));
-            final FeatureManager features = bFeatureManager == null ? null : bFeatureManager.getValue();
-            AssemblyRegionEvaluator assemblyRegionEvaluator = supplierBroadcast.getValue().get(); // one AssemblyRegionEvaluator instance per Spark partition
-            final ReadsDownsampler readsDownsampler = assemblyRegionArgs.maxReadsPerAlignmentStart > 0 ?
-                    new PositionalDownsampler(assemblyRegionArgs.maxReadsPerAlignmentStart, header) : null;
-
-            Iterator<Iterator<AssemblyRegionWalkerContext>> iterators = Utils.stream(shardedReadIterator)
-                    .map(shardedRead -> new ShardToMultiIntervalShardAdapter<>(
-                            new DownsampleableSparkReadShard(
-                                    new ShardBoundary(shardedRead.getInterval(), shardedRead.getPaddedInterval()), shardedRead, readsDownsampler)))
-                    .map(shardedRead -> {
-                final Iterator<AssemblyRegion> assemblyRegionIter = new AssemblyRegionIterator(
-                        new ShardToMultiIntervalShardAdapter<>(shardedRead),
-                        header, reference, features, assemblyRegionEvaluator,
-                        assemblyRegionArgs.minAssemblyRegionSize, assemblyRegionArgs.maxAssemblyRegionSize,
-                        assemblyRegionArgs.assemblyRegionPadding, assemblyRegionArgs.activeProbThreshold,
-                        assemblyRegionArgs.maxProbPropagationDistance, includeReadsWithDeletionsInIsActivePileups);
-                return Utils.stream(assemblyRegionIter).map(assemblyRegion ->
-                        new AssemblyRegionWalkerContext(assemblyRegion,
-                                new ReferenceContext(reference, assemblyRegion.getExtendedSpan()),
-                                new FeatureContext(features, assemblyRegion.getExtendedSpan()))).iterator();
-            }).iterator();
-            return Iterators.concat(iterators);
-        };
+        if (strict) {
+            return FindAssemblyRegionsSpark.getAssemblyRegionsStrict(ctx, getReads(), getHeaderForReads(), sequenceDictionary, referenceFileName, features,
+                    intervalShards, assemblyRegionEvaluatorSupplierBroadcast(ctx), shardingArgs, assemblyRegionArgs,
+                    includeReadsWithDeletionsInIsActivePileups(), shuffle);
+        } else {
+            return FindAssemblyRegionsSpark.getAssemblyRegionsFast(ctx, getReads(), getHeaderForReads(), sequenceDictionary, referenceFileName, features,
+                    intervalShards, assemblyRegionEvaluatorSupplierBroadcast(ctx), shardingArgs, assemblyRegionArgs,
+                    includeReadsWithDeletionsInIsActivePileups(), shuffle);
+        }
     }
 
     @Override

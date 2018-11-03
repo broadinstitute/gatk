@@ -73,21 +73,7 @@ public class SparkSharder {
                                                                 SAMSequenceDictionary sequenceDictionary, List<ShardBoundary> intervals,
                                                                 int maxLocatableLength, boolean useShuffle) {
 
-        List<ShardBoundary> paddedIntervals = intervals.stream().map(sb -> new ShardBoundary(sb.getInterval(), sb.getPaddedInterval()) {
-            private static final long serialVersionUID = 1L;
-            @Override
-            public String getContig() {
-                return getPaddedInterval().getContig();
-            }
-            @Override
-            public int getStart() {
-                return getPaddedInterval().getStart();
-            }
-            @Override
-            public int getEnd() {
-                return getPaddedInterval().getEnd();
-            }
-        }).collect(Collectors.toList());
+        List<ShardBoundary> paddedIntervals = intervals.stream().map(ShardBoundary::paddedShardBoundary).collect(Collectors.toList());
         if (useShuffle) {
             OverlapDetector<ShardBoundary> overlapDetector = OverlapDetector.create(paddedIntervals);
             Broadcast<OverlapDetector<ShardBoundary>> overlapDetectorBroadcast = ctx.broadcast(overlapDetector);
@@ -96,14 +82,14 @@ public class SparkSharder {
                 return overlaps.stream().map(key -> new Tuple2<>(key, locatable)).collect(Collectors.toList()).iterator();
             });
             JavaPairRDD<ShardBoundary, Iterable<L>> grouped = intervalsToLocatables.groupByKey();
-            return grouped.map((org.apache.spark.api.java.function.Function<Tuple2<ShardBoundary, Iterable<L>>, Shard<L>>) value -> new ShardBoundaryShard<>(value._1(), value._2()));
+            return grouped.map((org.apache.spark.api.java.function.Function<Tuple2<ShardBoundary, Iterable<L>>, Shard<L>>) value -> value._1().createShard(value._2()));
         }
         return joinOverlapping(ctx, locatables, locatableClass, sequenceDictionary, paddedIntervals, maxLocatableLength,
                 new MapFunction<Tuple2<ShardBoundary, Iterable<L>>, Shard<L>>() {
             private static final long serialVersionUID = 1L;
             @Override
             public Shard<L> call(Tuple2<ShardBoundary, Iterable<L>> value) {
-                return new ShardBoundaryShard<>(value._1(), value._2());
+                return value._1().createShard(value._2());
             }
         });
     }

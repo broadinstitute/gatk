@@ -24,10 +24,7 @@ import org.broadinstitute.hellbender.engine.AssemblyRegionEvaluator;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ShardBoundary;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
-import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
-import org.broadinstitute.hellbender.engine.spark.AssemblyRegionReadShardArgumentCollection;
-import org.broadinstitute.hellbender.engine.spark.AssemblyRegionWalkerContext;
-import org.broadinstitute.hellbender.engine.spark.AssemblyRegionWalkerSpark;
+import org.broadinstitute.hellbender.engine.spark.*;
 import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSink;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
@@ -285,7 +282,7 @@ public final class HaplotypeCallerSpark extends AssemblyRegionWalkerSpark {
         final Path referencePath = IOUtils.getPath(reference);
         final String referenceFileName = referencePath.getFileName().toString();
         Broadcast<Supplier<AssemblyRegionEvaluator>> assemblyRegionEvaluatorSupplierBroadcast = assemblyRegionEvaluatorSupplierBroadcast(ctx, hcArgs, header, reference, annotations);
-        JavaRDD<AssemblyRegionWalkerContext> assemblyRegions = getAssemblyRegions(ctx, reads, header, sequenceDictionary, referenceFileName, null, intervalShards, assemblyRegionEvaluatorSupplierBroadcast, shardingArgs, assemblyRegionArgs, includeReadsWithDeletionsInIsActivePileups, false);
+        JavaRDD<AssemblyRegionWalkerContext> assemblyRegions = FindAssemblyRegionsSpark.getAssemblyRegionsFast(ctx, reads, header, sequenceDictionary, referenceFileName, null, intervalShards, assemblyRegionEvaluatorSupplierBroadcast, shardingArgs, assemblyRegionArgs, includeReadsWithDeletionsInIsActivePileups, false);
         processAssemblyRegions(assemblyRegions, ctx, header, reference, hcArgs, output, annotations, logger);
     }
 }

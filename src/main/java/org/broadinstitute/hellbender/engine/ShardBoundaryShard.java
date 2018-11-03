@@ -38,4 +38,8 @@ public final class ShardBoundaryShard<T> implements Shard<T>, Serializable {
     public Iterator<T> iterator() {
         return locatables.iterator();
     }
+
+    public ShardBoundary getShardBoundary() {
+        return shardBoundary;
+    }
 }
