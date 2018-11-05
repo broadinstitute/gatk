@@ -5,6 +5,8 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.MultiVariantInputArgumentCollection;
+import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -94,6 +96,46 @@ public abstract class MultiVariantWalker extends VariantWalkerBase {
     public final VCFHeader getHeaderForVariants() {
         return drivingVariants.getHeader();
     }
+
+    /**
+     * Implementation of variant-based traversal.
+     * Subclasses can override to provide their own behavior but default implementation should be suitable for most uses.
+     */
+    @Override
+    public void traverse() {
+        final CountingReadFilter readFilter = makeReadFilter();
+        // Process each variant in the input stream.
+        getTransformedVariantStream( makeVariantFilter() )
+                .forEach(variant -> {
+                    final SimpleInterval variantInterval = new SimpleInterval(variant);
+                    apply(variant,
+                            new ReadsContext(reads, variantInterval, readFilter),
+                            new ReferenceContext(reference, variantInterval),
+                            new FeatureContext(features, variantInterval));
+
+                    progressMeter.update(variantInterval);
+                });
+    }
+
+    /**
+     * Process an individual variant. Must be implemented by tool authors.
+     * In general, tool authors should simply stream their output from apply(), and maintain as little internal state
+     * as possible.
+     *
+     * @param variant Current variant being processed.
+     * @param readsContext Reads overlapping the current variant. Will be an empty, but non-null, context object
+     *                     if there is no backing source of reads data (in which case all queries on it will return
+     *                     an empty array/iterator)
+     * @param referenceContext Reference bases spanning the current variant. Will be an empty, but non-null, context object
+     *                         if there is no backing source of reference data (in which case all queries on it will return
+     *                         an empty array/iterator). Can request extra bases of context around the current variant's interval
+     *                         by invoking {@link ReferenceContext#setWindow}
+     *                         on this object before calling {@link ReferenceContext#getBases}
+     * @param featureContext Features spanning the current variant. Will be an empty, but non-null, context object
+     *                       if there is no backing source of Feature data (in which case all queries on it will return an
+     *                       empty List).
+     */
+    public abstract void apply( VariantContext variant, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext );
 
     /**
      * Close all data sources.

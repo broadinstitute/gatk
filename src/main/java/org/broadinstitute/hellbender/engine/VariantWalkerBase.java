@@ -16,12 +16,13 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 /**
- * Base class for variant walkers, which process one variant at a time from one or more sources of variants,
+ * Base class for variant walkers, which process variants from one or more sources of variants,
  * with optional contextual information from a reference, sets of reads, and/or supplementary sources of
  * Features.
  *
- * Subclasses must implement the {@link #apply} method to process each variant, {@link #initializeDrivingVariants},
- * {@link #getHeaderForVariants}, {@link #getSequenceDictionaryForDrivingVariants},
+ * Subclasses must implement the {@link #traverse} method to process variants, {@link #initializeDrivingVariants},
+ * {@link #getHeaderForVariants},
+ * {@link #getSequenceDictionaryForDrivingVariants},
  * {@link #getSpliteratorForDrivingVariants}, and may optionally implement {@link #onTraversalStart},
  * {@link #onTraversalSuccess} and/or {@link #closeTool}.
  */
@@ -129,36 +130,31 @@ public abstract class VariantWalkerBase extends GATKTool {
      * 2. Filtered with {@code filter}.
      * 3. Transformed with {@link #makePostVariantFilterTransformer()}.
      */
-    protected Stream<VariantContext> getTransformedVariantStream(final VariantFilter filter) {
+    protected Stream<VariantContext> getTransformedVariantStream(final CountingVariantFilter filter) {
         final VariantTransformer preTransformer  = makePreVariantFilterTransformer();
         final VariantTransformer postTransformer = makePostVariantFilterTransformer();
-        return StreamSupport.stream(getSpliteratorForDrivingVariants(), false)
-                .map(preTransformer)
-                .filter(filter)
-                .map(postTransformer);
+        return getTransformedVariantStream(getSpliteratorForDrivingVariants(),
+                preTransformer,
+                filter,
+                postTransformer);
     }
 
     /**
-     * Implementation of variant-based traversal.
-     * Subclasses can override to provide their own behavior but default implementation should be suitable for most uses.
+     * Returns a stream over the variants returned by source, which are:
+     *
+     * 1. Transformed with preTransformer.
+     * 2. Filtered with filter.
+     * 3. Transformed with postTransformer.
      */
-    @Override
-    public void traverse() {
-        final CountingVariantFilter countingVariantfilter = makeVariantFilter();
-        final CountingReadFilter readFilter = makeReadFilter();
-        // Process each variant in the input stream.
-        getTransformedVariantStream(countingVariantfilter)
-                .forEach(variant -> {
-                    final SimpleInterval variantInterval = new SimpleInterval(variant);
-                    apply(variant,
-                            new ReadsContext(reads, variantInterval, readFilter),
-                            new ReferenceContext(reference, variantInterval),
-                            new FeatureContext(features, variantInterval));
-
-                    progressMeter.update(variantInterval);
-                });
-
-        logger.info(countingVariantfilter.getSummaryLine());
+    protected Stream<VariantContext> getTransformedVariantStream(
+            final Spliterator<VariantContext> source,
+            final VariantTransformer preTransformer,
+            final CountingVariantFilter filter,
+            final VariantTransformer postTransformer) {
+        return StreamSupport.stream(source, false)
+                .map(preTransformer)
+                .filter(filter)
+                .map(postTransformer);
     }
 
     /**
@@ -173,25 +169,5 @@ public abstract class VariantWalkerBase extends GATKTool {
     protected CountingVariantFilter makeVariantFilter() {
         return new CountingVariantFilter(VariantFilterLibrary.ALLOW_ALL_VARIANTS);
     }
-
-    /**
-     * Process an individual variant. Must be implemented by tool authors.
-     * In general, tool authors should simply stream their output from apply(), and maintain as little internal state
-     * as possible.
-     *
-     * @param variant Current variant being processed.
-     * @param readsContext Reads overlapping the current variant. Will be an empty, but non-null, context object
-     *                     if there is no backing source of reads data (in which case all queries on it will return
-     *                     an empty array/iterator)
-     * @param referenceContext Reference bases spanning the current variant. Will be an empty, but non-null, context object
-     *                         if there is no backing source of reference data (in which case all queries on it will return
-     *                         an empty array/iterator). Can request extra bases of context around the current variant's interval
-     *                         by invoking {@link ReferenceContext#setWindow}
-     *                         on this object before calling {@link ReferenceContext#getBases}
-     * @param featureContext Features spanning the current variant. Will be an empty, but non-null, context object
-     *                       if there is no backing source of Feature data (in which case all queries on it will return an
-     *                       empty List).
-     */
-    public abstract void apply( VariantContext variant, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext );
 
 }
