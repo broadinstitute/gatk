@@ -4,6 +4,8 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.IOUtil;
+
+import java.io.File;
 import java.nio.channels.SeekableByteChannel;
 import java.util.function.Function;
 import org.apache.logging.log4j.LogManager;
@@ -35,6 +37,11 @@ import java.util.stream.Collectors;
  */
 public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoCloseable {
     protected static final Logger logger = LogManager.getLogger(ReadsDataSource.class);
+
+    /**
+     * Platform independent path for stdin
+     */
+    private static final String stdinPath = File.separator + "dev" + File.separator + "stdin";
 
     /**
      * Mapping from SamReaders to iterators over the reads from each reader. Only one
@@ -201,36 +208,41 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
 
         int samCount = 0;
         for ( final Path samPath : samPaths ) {
-            // Ensure each file can be read
-            try {
-                IOUtil.assertFileIsReadable(samPath);
-            }
-            catch ( SAMException|IllegalArgumentException e ) {
-                throw new UserException.CouldNotReadInputFile(samPath.toString(), e);
-            }
-
-            Function<SeekableByteChannel, SeekableByteChannel> wrapper =
-                (BucketUtils.isCloudStorageUrl(samPath)
-                    ? cloudWrapper
-                    : Function.identity());
-            // if samIndices==null then we'll guess the index name from the file name.
-            // If the file's on the cloud, then the search will only consider locations that are also
-            // in the cloud.
-            Function<SeekableByteChannel, SeekableByteChannel> indexWrapper =
-                ((samIndices != null && BucketUtils.isCloudStorageUrl(samIndices.get(samCount))
-                 || (samIndices == null && BucketUtils.isCloudStorageUrl(samPath)))
-                    ? cloudIndexWrapper
-                    : Function.identity());
-
             SamReader reader;
-            if ( samIndices == null ) {
-                reader = samReaderFactory.open(samPath, wrapper, indexWrapper);
+
+            if(samPath.endsWith(stdinPath)) {
+                final SamInputResource samResource = SamInputResource.of(System.in);
+                reader = samReaderFactory.open(samResource);
             }
             else {
-                final SamInputResource samResource = SamInputResource.of(samPath, wrapper);
-                Path indexPath = samIndices.get(samCount);
-                samResource.index(indexPath, indexWrapper);
-                reader = samReaderFactory.open(samResource);
+                // Ensure each file can be read
+                try {
+                    IOUtil.assertFileIsReadable(samPath);
+                } catch (SAMException | IllegalArgumentException e) {
+                    throw new UserException.CouldNotReadInputFile(samPath.toString(), e);
+                }
+
+                Function<SeekableByteChannel, SeekableByteChannel> wrapper =
+                        (BucketUtils.isCloudStorageUrl(samPath)
+                                ? cloudWrapper
+                                : Function.identity());
+                // if samIndices==null then we'll guess the index name from the file name.
+                // If the file's on the cloud, then the search will only consider locations that are also
+                // in the cloud.
+                Function<SeekableByteChannel, SeekableByteChannel> indexWrapper =
+                        ((samIndices != null && BucketUtils.isCloudStorageUrl(samIndices.get(samCount))
+                                || (samIndices == null && BucketUtils.isCloudStorageUrl(samPath)))
+                                ? cloudIndexWrapper
+                                : Function.identity());
+
+                if (samIndices == null) {
+                    reader = samReaderFactory.open(samPath, wrapper, indexWrapper);
+                } else {
+                    final SamInputResource samResource = SamInputResource.of(samPath, wrapper);
+                    Path indexPath = samIndices.get(samCount);
+                    samResource.index(indexPath, indexWrapper);
+                    reader = samReaderFactory.open(samResource);
+                }
             }
 
             // Ensure that each file has an index
