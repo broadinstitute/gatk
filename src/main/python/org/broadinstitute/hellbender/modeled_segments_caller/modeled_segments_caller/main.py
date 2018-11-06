@@ -1684,7 +1684,7 @@ class ModeledSegmentsCaller:
         """ Determines if the copy ratio value cr corresponds to a deletion (-),
             an amplification (+), a normal segment (0), a normal copy ratio
             with imbalanced allele fraction (CNLOH) or cannot be decided but not
-            normal (/).
+            normal.
         """
         if responsibility_normal > self.__responsibility_threshold_normal:
             return "0"
