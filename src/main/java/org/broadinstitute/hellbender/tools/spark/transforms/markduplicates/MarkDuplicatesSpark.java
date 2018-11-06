@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.spark.transforms.markduplicates;
 
-import htsjdk.samtools.Defaults;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.metrics.MetricsFile;
 import org.apache.spark.Partitioner;
@@ -25,7 +24,6 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.read.markduplicates.GATKDuplicationMetrics;
 import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesScoringStrategy;
-import org.broadinstitute.hellbender.utils.read.markduplicates.SerializableOpticalDuplicatesFinder;
 import org.broadinstitute.hellbender.utils.spark.SparkUtils;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import picard.sam.markduplicates.MarkDuplicates;
@@ -33,7 +31,6 @@ import picard.sam.markduplicates.util.OpticalDuplicateFinder;
 import scala.Tuple2;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 @DocumentedFeature
 @CommandLineProgramProperties(
@@ -66,7 +63,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
             mutex = {MarkDuplicatesSparkArgumentCollection.DUPLICATE_TAGGING_POLICY_LONG_NAME, MarkDuplicatesSparkArgumentCollection.REMOVE_SEQUENCING_DUPLICATE_READS}, optional = true)
     public boolean removeAllDuplicates = false;
 
-    @Argument(fullName = MarkDuplicatesSparkArgumentCollection.REMOVE_SEQUENCING_DUPLICATE_READS, doc = "If true do not write duplicates to the output file instead of writing them with appropriate flags set.",
+    @Argument(fullName = MarkDuplicatesSparkArgumentCollection.REMOVE_SEQUENCING_DUPLICATE_READS, doc = "If true do not write optical/sequencing duplicates to the output file instead of writing them with appropriate flags set.",
             mutex = {MarkDuplicatesSparkArgumentCollection.DUPLICATE_TAGGING_POLICY_LONG_NAME, MarkDuplicatesSparkArgumentCollection.REMOVE_ALL_DUPLICATE_READS}, optional = true)
     public boolean removeSequencingDuplicates = false;
 
@@ -76,9 +73,9 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
     }
 
     // Reads with this marker will be treated as non-duplicates always
-    public static int MARKDUPLICATES_NO_OPTICAL_MARKER = -1;
+    public static int NO_OPTICAL_MARKER = -1;
     // Reads with this marker will be treated and marked as optical duplicates
-    public static int MARKDUPLICATES_OPPTICAL_DUPLICATE_MARKER = -2;
+    public static int OPTICAL_DUPLICATE_MARKER = -2;
 
     /**
      * Main method for marking duplicates, takes an JavaRDD of GATKRead and an associated SAMFileHeader with corresponding
@@ -135,8 +132,8 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
                     .peek(read -> {
                         // Handle reads that have been marked as non-duplicates (which also get tagged with optical duplicate summary statistics)
                         if (namesOfNonDuplicateReadsAndOpticalCounts.containsKey(read.getName())) {
-                            // If its an optical duplicate, mark it.
-                            if (namesOfNonDuplicateReadsAndOpticalCounts.get(read.getName()) == MARKDUPLICATES_OPPTICAL_DUPLICATE_MARKER) {
+                            // If its an optical duplicate, mark it. (Note: we only expect these to exist if optical duplicate marking is on)
+                            if (namesOfNonDuplicateReadsAndOpticalCounts.get(read.getName()) == OPTICAL_DUPLICATE_MARKER) {
                                 read.setIsDuplicate(true);
                                 read.setAttribute(MarkDuplicates.DUPLICATE_TYPE_TAG, MarkDuplicates.DUPLICATE_TYPE_SEQUENCING);
 
@@ -144,7 +141,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
                             } else {
                                 read.setIsDuplicate(false);
                                 if (markUnmappedMates || !read.isUnmapped()) {
-                                    int dupCount = namesOfNonDuplicateReadsAndOpticalCounts.replace(read.getName(), MARKDUPLICATES_NO_OPTICAL_MARKER);
+                                    int dupCount = namesOfNonDuplicateReadsAndOpticalCounts.replace(read.getName(), NO_OPTICAL_MARKER);
                                     if (dupCount > -1) {
                                         ((SAMRecordToGATKReadAdapter) read).setTransientAttribute(MarkDuplicatesSparkUtils.OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME, dupCount);
                                     }
@@ -228,7 +225,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
     protected void runTool(final JavaSparkContext ctx) {
         JavaRDD<GATKRead> reads = getReads();
         final OpticalDuplicateFinder finder = opticalDuplicatesArgumentCollection.READ_NAME_REGEX != null ?
-                new SerializableOpticalDuplicatesFinder(opticalDuplicatesArgumentCollection.READ_NAME_REGEX, opticalDuplicatesArgumentCollection.OPTICAL_DUPLICATE_PIXEL_DISTANCE) : null;
+                new OpticalDuplicateFinder(opticalDuplicatesArgumentCollection.READ_NAME_REGEX, opticalDuplicatesArgumentCollection.OPTICAL_DUPLICATE_PIXEL_DISTANCE, null) : null;
         // If we need to remove optical duplicates, set the engine to mark optical duplicates using the DT tag.
         if (removeSequencingDuplicates && markDuplicatesSparkArgumentCollection.taggingPolicy == MarkDuplicates.DuplicateTaggingPolicy.DontTag) {
             markDuplicatesSparkArgumentCollection.taggingPolicy = MarkDuplicates.DuplicateTaggingPolicy.OpticalOnly;

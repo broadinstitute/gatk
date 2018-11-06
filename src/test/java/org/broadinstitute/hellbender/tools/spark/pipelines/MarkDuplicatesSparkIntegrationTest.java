@@ -103,9 +103,8 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
         Map<String, List<String>> metricsExpected) throws IOException {
 
         ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--"+ StandardArgumentDefinitions.INPUT_LONG_NAME);
-        args.add(input.getPath());
-        args.add("--"+StandardArgumentDefinitions.OUTPUT_LONG_NAME);
+        args.addArgument(StandardArgumentDefinitions.INPUT_LONG_NAME, input.getPath());
+        args.addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME);
 
         File outputFile = createTempFile("markdups", ".bam");
         outputFile.delete();
@@ -140,21 +139,15 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
         } catch (final FileNotFoundException ex) {
             System.err.println("Metrics file not found: " + ex);
         }
-        final List<GATKDuplicationMetrics> nonEmptyMetrics = metricsOutput.getMetrics().stream().filter(
-                metric ->
-                    metric.UNPAIRED_READS_EXAMINED != 0L ||
-                    metric.READ_PAIRS_EXAMINED != 0L ||
-                    metric.UNMAPPED_READS != 0L ||
-                    metric.UNPAIRED_READ_DUPLICATES != 0L ||
-                    metric.READ_PAIR_DUPLICATES != 0L ||
-                    metric.READ_PAIR_OPTICAL_DUPLICATES != 0L ||
-                    (metric.PERCENT_DUPLICATION != null && metric.PERCENT_DUPLICATION != 0.0 && !Double.isNaN(metric.PERCENT_DUPLICATION)) ||
-                    (metric.ESTIMATED_LIBRARY_SIZE != null && metric.ESTIMATED_LIBRARY_SIZE != 0L)
-        ).collect(Collectors.toList());
+        final List<GATKDuplicationMetrics> nonEmptyMetrics = getGatkDuplicationMetrics(metricsOutput);
 
         Assert.assertEquals(nonEmptyMetrics.size(), metricsExpected.size(),
                             "Wrong number of metrics with non-zero fields.");
-        for (int i = 0; i < nonEmptyMetrics.size(); i++ ){
+        compareMetricsToExpected(metricsExpected, nonEmptyMetrics);
+    }
+
+    protected void compareMetricsToExpected(Map<String, List<String>> metricsExpected, List<GATKDuplicationMetrics> nonEmptyMetrics) {
+        for (int i = 0; i < nonEmptyMetrics.size(); i++) {
             final GATKDuplicationMetrics observedMetrics = nonEmptyMetrics.get(i);
             List<?> expectedList = metricsExpected.get(observedMetrics.LIBRARY);
             Assert.assertNotNull(expectedList, "Unexpected library found: " + observedMetrics.LIBRARY);
@@ -168,10 +161,25 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
 
             //Note: IntelliJ does not like it when a parameter for a test is null (can't print it and skips the test)
             //so we work around it by passing in an 'expected 0L' and only comparing to it if the actual value is non-null
-            if (observedMetrics.ESTIMATED_LIBRARY_SIZE != null && (Long)expectedList.get(7) != 0L)  {
+            if (observedMetrics.ESTIMATED_LIBRARY_SIZE != null && (Long) expectedList.get(7) != 0L) {
                 Assert.assertEquals(observedMetrics.ESTIMATED_LIBRARY_SIZE, expectedList.get(7));
             }
         }
+    }
+
+
+    protected List<GATKDuplicationMetrics> getGatkDuplicationMetrics(MetricsFile<GATKDuplicationMetrics, Comparable<?>> metricsOutput) {
+        return metricsOutput.getMetrics().stream().filter(
+                metric ->
+                        metric.UNPAIRED_READS_EXAMINED != 0L ||
+                                metric.READ_PAIRS_EXAMINED != 0L ||
+                                metric.UNMAPPED_READS != 0L ||
+                                metric.UNPAIRED_READ_DUPLICATES != 0L ||
+                                metric.READ_PAIR_DUPLICATES != 0L ||
+                                metric.READ_PAIR_OPTICAL_DUPLICATES != 0L ||
+                                (metric.PERCENT_DUPLICATION != null && metric.PERCENT_DUPLICATION != 0.0 && !Double.isNaN(metric.PERCENT_DUPLICATION)) ||
+                                (metric.ESTIMATED_LIBRARY_SIZE != null && metric.ESTIMATED_LIBRARY_SIZE != 0L)
+        ).collect(Collectors.toList());
     }
 
     @Test( dataProvider = "md")
@@ -207,17 +215,7 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
         } catch (final FileNotFoundException ex) {
             System.err.println("Metrics file not found: " + ex);
         }
-        final List<GATKDuplicationMetrics> nonEmptyMetrics = metricsOutput.getMetrics().stream().filter(
-                metric ->
-                        metric.UNPAIRED_READS_EXAMINED != 0L ||
-                                metric.READ_PAIRS_EXAMINED != 0L ||
-                                metric.UNMAPPED_READS != 0L ||
-                                metric.UNPAIRED_READ_DUPLICATES != 0L ||
-                                metric.READ_PAIR_DUPLICATES != 0L ||
-                                metric.READ_PAIR_OPTICAL_DUPLICATES != 0L ||
-                                (metric.PERCENT_DUPLICATION != null && metric.PERCENT_DUPLICATION != 0.0 && !Double.isNaN(metric.PERCENT_DUPLICATION)) ||
-                                (metric.ESTIMATED_LIBRARY_SIZE != null && metric.ESTIMATED_LIBRARY_SIZE != 0L)
-        ).collect(Collectors.toList());
+        final List<GATKDuplicationMetrics> nonEmptyMetrics = getGatkDuplicationMetrics(metricsOutput);
 
 
         int totalReads = 0;
@@ -282,17 +280,7 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
         } catch (final FileNotFoundException ex) {
             System.err.println("Metrics file not found: " + ex);
         }
-        final List<GATKDuplicationMetrics> nonEmptyMetrics = metricsOutput.getMetrics().stream().filter(
-                metric ->
-                        metric.UNPAIRED_READS_EXAMINED != 0L ||
-                                metric.READ_PAIRS_EXAMINED != 0L ||
-                                metric.UNMAPPED_READS != 0L ||
-                                metric.UNPAIRED_READ_DUPLICATES != 0L ||
-                                metric.READ_PAIR_DUPLICATES != 0L ||
-                                metric.READ_PAIR_OPTICAL_DUPLICATES != 0L ||
-                                (metric.PERCENT_DUPLICATION != null && metric.PERCENT_DUPLICATION != 0.0 && !Double.isNaN(metric.PERCENT_DUPLICATION)) ||
-                                (metric.ESTIMATED_LIBRARY_SIZE != null && metric.ESTIMATED_LIBRARY_SIZE != 0L)
-        ).collect(Collectors.toList());
+        final List<GATKDuplicationMetrics> nonEmptyMetrics = getGatkDuplicationMetrics(metricsOutput);
 
 
         int totalReads = 0;
@@ -374,40 +362,14 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
         } catch (final FileNotFoundException ex) {
             System.err.println("Metrics file not found: " + ex);
         }
-        final List<GATKDuplicationMetrics> nonEmptyMetrics = metricsOutput.getMetrics().stream().filter(
-                metric ->
-                        metric.UNPAIRED_READS_EXAMINED != 0L ||
-                                metric.READ_PAIRS_EXAMINED != 0L ||
-                                metric.UNMAPPED_READS != 0L ||
-                                metric.UNPAIRED_READ_DUPLICATES != 0L ||
-                                metric.READ_PAIR_DUPLICATES != 0L ||
-                                metric.READ_PAIR_OPTICAL_DUPLICATES != 0L ||
-                                (metric.PERCENT_DUPLICATION != null && metric.PERCENT_DUPLICATION != 0.0 && !Double.isNaN(metric.PERCENT_DUPLICATION)) ||
-                                (metric.ESTIMATED_LIBRARY_SIZE != null && metric.ESTIMATED_LIBRARY_SIZE != 0L)
-        ).collect(Collectors.toList());
+        final List<GATKDuplicationMetrics> nonEmptyMetrics = getGatkDuplicationMetrics(metricsOutput);
 
         // Assert that the metrics haven't changed at all
         Assert.assertEquals(nonEmptyMetrics.size(), metricsExpected.size(),
                 "Wrong number of metrics with non-zero fields.");
-        for (int i = 0; i < nonEmptyMetrics.size(); i++ ){
-            final GATKDuplicationMetrics observedMetrics = nonEmptyMetrics.get(i);
-            List<?> expectedList = metricsExpected.get(observedMetrics.LIBRARY);
-            Assert.assertNotNull(expectedList, "Unexpected library found: " + observedMetrics.LIBRARY);
-            Assert.assertEquals(observedMetrics.UNPAIRED_READS_EXAMINED, expectedList.get(0));
-            Assert.assertEquals(observedMetrics.READ_PAIRS_EXAMINED, expectedList.get(1));
-            Assert.assertEquals(observedMetrics.UNMAPPED_READS, expectedList.get(2));
-            Assert.assertEquals(observedMetrics.UNPAIRED_READ_DUPLICATES, expectedList.get(3));
-            Assert.assertEquals(observedMetrics.READ_PAIR_DUPLICATES, expectedList.get(4));
-            Assert.assertEquals(observedMetrics.READ_PAIR_OPTICAL_DUPLICATES, expectedList.get(5));
-            Assert.assertEquals(observedMetrics.PERCENT_DUPLICATION, expectedList.get(6));
-
-            //Note: IntelliJ does not like it when a parameter for a test is null (can't print it and skips the test)
-            //so we work around it by passing in an 'expected 0L' and only comparing to it if the actual value is non-null
-            if (observedMetrics.ESTIMATED_LIBRARY_SIZE != null && (Long)expectedList.get(7) != 0L)  {
-                Assert.assertEquals(observedMetrics.ESTIMATED_LIBRARY_SIZE, expectedList.get(7));
-            }
-        }
+        compareMetricsToExpected(metricsExpected, nonEmptyMetrics);
     }
+
 
     @Test( dataProvider = "md")
     public void testMarkDuplicatesSparkDeletingOpticalDuplicateReads(
@@ -451,17 +413,7 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
         } catch (final FileNotFoundException ex) {
             System.err.println("Metrics file not found: " + ex);
         }
-        final List<GATKDuplicationMetrics> nonEmptyMetrics = metricsOutput.getMetrics().stream().filter(
-                metric ->
-                        metric.UNPAIRED_READS_EXAMINED != 0L ||
-                                metric.READ_PAIRS_EXAMINED != 0L ||
-                                metric.UNMAPPED_READS != 0L ||
-                                metric.UNPAIRED_READ_DUPLICATES != 0L ||
-                                metric.READ_PAIR_DUPLICATES != 0L ||
-                                metric.READ_PAIR_OPTICAL_DUPLICATES != 0L ||
-                                (metric.PERCENT_DUPLICATION != null && metric.PERCENT_DUPLICATION != 0.0 && !Double.isNaN(metric.PERCENT_DUPLICATION)) ||
-                                (metric.ESTIMATED_LIBRARY_SIZE != null && metric.ESTIMATED_LIBRARY_SIZE != 0L)
-        ).collect(Collectors.toList());
+        final List<GATKDuplicationMetrics> nonEmptyMetrics = getGatkDuplicationMetrics(metricsOutput);
 
         // Asserting
         int expectedOpticalDuplicatesGroups = 0;
@@ -470,7 +422,7 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
             List<?> expectedList = metricsExpected.get(observedMetrics.LIBRARY);
             expectedOpticalDuplicatesGroups += (Long) expectedList.get(5);
         }
-        // NOTE: this test will fail if we add a more comprehensive example set with optical duplicates containing secondary/supplementary reads
+        // NOTE: this test will fail if we add a more comprehensive example set with optical duplicates containing secondary/supplementary reads because of how the test is counting optical duplicate reads.
         Assert.assertEquals(totalReads, totalExpected - expectedOpticalDuplicatesGroups*2, "Wrong number of reads in output BAM");
         Assert.assertEquals(duplicateReads, dupsExpected - expectedOpticalDuplicatesGroups*2, "Wrong number of duplicate reads in output BAM");
     }

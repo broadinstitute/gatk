@@ -18,7 +18,6 @@ import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesScoringStrategy;
-import org.broadinstitute.hellbender.utils.read.markduplicates.SerializableOpticalDuplicatesFinder;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 import picard.sam.markduplicates.MarkDuplicates;
@@ -125,8 +124,8 @@ public class MarkDuplicatesSparkUtilsUnitTest extends GATKBaseTest {
         sortedHeader.setSortOrder(SAMFileHeader.SortOrder.queryname);
 
         // Using the header flagged as unsorted will result in the reads being sorted again
-        JavaRDD<GATKRead> unsortedReadsMarked = MarkDuplicatesSpark.mark(unsortedReads,unsortedHeader, MarkDuplicatesScoringStrategy.SUM_OF_BASE_QUALITIES,new SerializableOpticalDuplicatesFinder(),100,true,MarkDuplicates.DuplicateTaggingPolicy.DontTag);
-        JavaRDD<GATKRead> sortedReadsMarked = MarkDuplicatesSpark.mark(pariedEndsQueryGrouped,sortedHeader, MarkDuplicatesScoringStrategy.SUM_OF_BASE_QUALITIES,new SerializableOpticalDuplicatesFinder(),1, true, MarkDuplicates.DuplicateTaggingPolicy.DontTag);
+        JavaRDD<GATKRead> unsortedReadsMarked = MarkDuplicatesSpark.mark(unsortedReads,unsortedHeader, MarkDuplicatesScoringStrategy.SUM_OF_BASE_QUALITIES,new OpticalDuplicateFinder(),100,true,MarkDuplicates.DuplicateTaggingPolicy.DontTag);
+        JavaRDD<GATKRead> sortedReadsMarked = MarkDuplicatesSpark.mark(pariedEndsQueryGrouped,sortedHeader, MarkDuplicatesScoringStrategy.SUM_OF_BASE_QUALITIES,new OpticalDuplicateFinder(),1, true, MarkDuplicates.DuplicateTaggingPolicy.DontTag);
 
         Iterator<GATKRead> sortedReadsFinal = sortedReadsMarked.sortBy(GATKRead::commonToString, false, 1).collect().iterator();
         Iterator<GATKRead> unsortedReadsFinal = unsortedReadsMarked.sortBy(GATKRead::commonToString, false, 1).collect().iterator();
@@ -172,9 +171,9 @@ public class MarkDuplicatesSparkUtilsUnitTest extends GATKBaseTest {
         final SparkConf conf = new SparkConf().set("spark.kryo.registrator",
                 "org.broadinstitute.hellbender.tools.spark.transforms.markduplicates.MarkDuplicatesSparkUtilsUnitTest$TestGATKRegistrator");
         final SAMRecord read = ((SAMRecordToGATKReadAdapter) ArtificialReadUtils.createHeaderlessSamBackedRead("read1", "1", 100, 50)).getEncapsulatedSamRecord();
-        final SerializableOpticalDuplicatesFinder finder = new SerializableOpticalDuplicatesFinder(OpticalDuplicateFinder.DEFAULT_READ_NAME_REGEX,2500);
+        final OpticalDuplicateFinder finder = new OpticalDuplicateFinder(OpticalDuplicateFinder.DEFAULT_READ_NAME_REGEX,2500, null);
 
-        final SerializableOpticalDuplicatesFinder roundTrippedRead = SparkTestUtils.roundTripInKryo(finder, SerializableOpticalDuplicatesFinder.class, conf);
+        final OpticalDuplicateFinder roundTrippedRead = SparkTestUtils.roundTripInKryo(finder, OpticalDuplicateFinder.class, conf);
         Assert.assertEquals(roundTrippedRead.opticalDuplicatePixelDistance, finder.opticalDuplicatePixelDistance);
     }
 

@@ -17,18 +17,18 @@ import java.util.*;
 
 @DocumentedFeature
 @CommandLineProgramProperties(
-        summary = "Compares the base qualities of two SAM/BAM/CRAM files. The reads in the two files must have " +
-                "exactly the same names and appear in the same order.",
+        summary = "Compares the base qualities, cigars, alignment information, and samflags of reads between two SAM/BAM/CRAM files." +
+                " The reads in the two files must have exactly the same names and appear in the same order.",
         oneLineSummary = "Compares the base qualities of two SAM/BAM/CRAM files",
         programGroup = DiagnosticsAndQCProgramGroup.class
 )
 public class CompareReads extends GATKTool {
-    @Argument(doc = "If output is given, the tool will return a bam with all the mismatching duplicate groups in the first specified file",
-            shortName = "I1", fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, optional = true)
+    @Argument(doc = "The first sam file against which to compare equality",
+            shortName = "I1", fullName = "input1", optional = false)
     protected String input1;
 
-    @Argument(doc = "If output is given, the tool will return a bam with all the mismatching duplicate groups in the second specified input file",
-            shortName = "I2", fullName = "output2", optional = true)
+    @Argument(doc = "The second sam file against which to compare equality",
+            shortName = "I2", fullName = "input2", optional = false)
     protected String input2;
 
 
@@ -36,8 +36,8 @@ public class CompareReads extends GATKTool {
     public void traverse() {
         List<String> errorMessages = new ArrayList<>();
 
-        try(        ReadsDataSource reads1 = new ReadsDataSource(IOUtils.getPath(input1));
-                    ReadsDataSource reads2 = new ReadsDataSource(IOUtils.getPath(input2));) {
+        try(ReadsDataSource reads1 = new ReadsDataSource(IOUtils.getPath(input1));
+            ReadsDataSource reads2 = new ReadsDataSource(IOUtils.getPath(input2));) {
             final Iterator<GATKRead> it1 = reads1.iterator();
             final Iterator<GATKRead> it2 = reads2.iterator();
             while (it1.hasNext() && it2.hasNext()) {

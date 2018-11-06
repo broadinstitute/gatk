@@ -387,7 +387,7 @@ public class MarkDuplicatesSparkUtils {
     private static List<Tuple2<IndexPair<String>,Integer>> handlePassthroughs(List<MarkDuplicatesSparkRecord> passthroughs) {
         // Emit the passthrough reads as non-duplicates.
         return passthroughs.stream()
-                .map(pair -> new Tuple2<>(new IndexPair<>(pair.getName(), pair.getPartitionIndex()), MarkDuplicatesSpark.MARKDUPLICATES_NO_OPTICAL_MARKER))
+                .map(pair -> new Tuple2<>(new IndexPair<>(pair.getName(), pair.getPartitionIndex()), MarkDuplicatesSpark.NO_OPTICAL_MARKER))
                 .collect(Collectors.toList());
     }
 
@@ -426,7 +426,7 @@ public class MarkDuplicatesSparkUtils {
             if (opticalDuplicateFlags[i]) {
                 numOpticalDuplicates++;
                 if (opticalDuplicateList != null) {
-                    opticalDuplicateList.add(new Tuple2<>(new IndexPair<>(scored.get(i).getName(), scored.get(i).getPartitionIndex()), MarkDuplicatesSpark.MARKDUPLICATES_OPPTICAL_DUPLICATE_MARKER));
+                    opticalDuplicateList.add(new Tuple2<>(new IndexPair<>(scored.get(i).getName(), scored.get(i).getPartitionIndex()), MarkDuplicatesSpark.OPTICAL_DUPLICATE_MARKER));
                 }
             }
         }
