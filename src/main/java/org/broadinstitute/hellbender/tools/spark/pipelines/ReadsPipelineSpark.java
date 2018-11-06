@@ -138,6 +138,9 @@ public class ReadsPipelineSpark extends GATKSparkTool {
     @ArgumentCollection
     public HaplotypeCallerArgumentCollection hcArgs = new HaplotypeCallerArgumentCollection();
 
+    @Argument(doc = "whether to use the strict implementation or not (defaults to the faster implementation that doesn't strictly match the walker version)", shortName = "strict", fullName = "strict", optional = true)
+    public boolean strict = false;
+
     @Override
     public boolean useVariantAnnotations() { return true;}
 
@@ -218,7 +221,7 @@ public class ReadsPipelineSpark extends GATKSparkTool {
                 .flatMap(interval -> Shard.divideIntervalIntoShards(interval, shardingArgs.readShardSize, shardingArgs.readShardPadding, sequenceDictionary).stream())
                 .collect(Collectors.toList());
 
-        HaplotypeCallerSpark.callVariantsWithHaplotypeCallerAndWriteOutput(ctx, filteredReadsForHC, readsHeader, sequenceDictionary, referenceArguments.getReferenceFileName(), intervalShards, hcArgs, shardingArgs, assemblyRegionArgs, true, output, makeVariantAnnotations(), logger);
+        HaplotypeCallerSpark.callVariantsWithHaplotypeCallerAndWriteOutput(ctx, filteredReadsForHC, readsHeader, sequenceDictionary, referenceArguments.getReferenceFileName(), intervalShards, hcArgs, shardingArgs, assemblyRegionArgs, true, output, makeVariantAnnotations(), logger, strict);
 
         if (bwaEngine != null) {
             bwaEngine.close();

@@ -129,6 +129,34 @@ public final class HaplotypeCallerSpark extends AssemblyRegionWalkerSpark {
     }
 
     @Override
+    protected void runTool(JavaSparkContext ctx) {
+        //TODO remove me when https://github.com/broadinstitute/gatk/issues/4303 are fixed
+        if (output.endsWith(IOUtil.BCF_FILE_EXTENSION) || output.endsWith(IOUtil.BCF_FILE_EXTENSION + ".gz")) {
+            throw new UserException.UnimplementedFeature("It is currently not possible to write a BCF file on spark.  See https://github.com/broadinstitute/gatk/issues/4303 for more details .");
+        }
+        Utils.validateArg(hcArgs.dbsnp.dbsnp == null, "HaplotypeCallerSpark does not yet support -D or --dbsnp arguments" );
+        Utils.validateArg(hcArgs.comps.isEmpty(), "HaplotypeCallerSpark does not yet support -comp or --comp arguments" );
+        Utils.validateArg(hcArgs.bamOutputPath == null, "HaplotypeCallerSpark does not yet support -bamout or --bamOutput");
+
+        Utils.validate(getHeaderForReads().getSortOrder() == SAMFileHeader.SortOrder.coordinate, "The reads must be coordinate sorted.");
+        logger.info("********************************************************************************");
+        logger.info("The output of this tool DOES NOT match the output of HaplotypeCaller. ");
+        logger.info("It is under development and should not be used for production work. ");
+        logger.info("For evaluation only.");
+        logger.info("Use the non-spark HaplotypeCaller if you care about the results. ");
+        logger.info("********************************************************************************");
+        try {
+            super.runTool(ctx);
+        } catch (Exception e) {
+            if (e.getCause() instanceof UserException) {
+                throw (UserException) e.getCause();
+            } else {
+                throw e;
+            }
+        }
+    }
+
+    @Override
     protected void processAssemblyRegions(JavaRDD<AssemblyRegionWalkerContext> rdd, JavaSparkContext ctx) {
         processAssemblyRegions(rdd, ctx, getHeaderForReads(), referenceArguments.getReferenceFileName(), hcArgs, output, makeVariantAnnotations(), logger);
     }
@@ -142,21 +170,6 @@ public final class HaplotypeCallerSpark extends AssemblyRegionWalkerSpark {
             final String output,
             final Collection<Annotation> annotations,
             final Logger logger) {
-        //TODO remove me when https://github.com/broadinstitute/gatk/issues/4303 are fixed
-        if (output.endsWith(IOUtil.BCF_FILE_EXTENSION) || output.endsWith(IOUtil.BCF_FILE_EXTENSION + ".gz")) {
-            throw new UserException.UnimplementedFeature("It is currently not possible to write a BCF file on spark.  See https://github.com/broadinstitute/gatk/issues/4303 for more details .");
-        }
-        Utils.validateArg(hcArgs.dbsnp.dbsnp == null, "HaplotypeCallerSpark does not yet support -D or --dbsnp arguments" );
-        Utils.validateArg(hcArgs.comps.isEmpty(), "HaplotypeCallerSpark does not yet support -comp or --comp arguments" );
-        Utils.validateArg(hcArgs.bamOutputPath == null, "HaplotypeCallerSpark does not yet support -bamout or --bamOutput");
-
-        Utils.validate(header.getSortOrder() == SAMFileHeader.SortOrder.coordinate, "The reads must be coordinate sorted.");
-        logger.info("********************************************************************************");
-        logger.info("The output of this tool DOES NOT match the output of HaplotypeCaller. ");
-        logger.info("It is under development and should not be used for production work. ");
-        logger.info("For evaluation only.");
-        logger.info("Use the non-spark HaplotypeCaller if you care about the results. ");
-        logger.info("********************************************************************************");
 
         final VariantAnnotatorEngine variantannotatorEngine = new VariantAnnotatorEngine(annotations,  hcArgs.dbsnp.dbsnp, hcArgs.comps, hcArgs.emitReferenceConfidence != ReferenceConfidenceMode.NONE);
 
@@ -263,6 +276,7 @@ public final class HaplotypeCallerSpark extends AssemblyRegionWalkerSpark {
      * @param shardingArgs arguments to control how the assembly regions are sharded
      * @param output the output path for the VCF
      * @param logger
+     * @param strict whether to use the strict implementation (slower) for finding assembly regions to match walker version
      */
     public static void callVariantsWithHaplotypeCallerAndWriteOutput(
             final JavaSparkContext ctx,
@@ -277,12 +291,15 @@ public final class HaplotypeCallerSpark extends AssemblyRegionWalkerSpark {
             final boolean includeReadsWithDeletionsInIsActivePileups,
             final String output,
             final Collection<Annotation> annotations,
-            final Logger logger) {
+            final Logger logger,
+            final boolean strict) {
 
         final Path referencePath = IOUtils.getPath(reference);
         final String referenceFileName = referencePath.getFileName().toString();
         Broadcast<Supplier<AssemblyRegionEvaluator>> assemblyRegionEvaluatorSupplierBroadcast = assemblyRegionEvaluatorSupplierBroadcast(ctx, hcArgs, header, reference, annotations);
-        JavaRDD<AssemblyRegionWalkerContext> assemblyRegions = FindAssemblyRegionsSpark.getAssemblyRegionsFast(ctx, reads, header, sequenceDictionary, referenceFileName, null, intervalShards, assemblyRegionEvaluatorSupplierBroadcast, shardingArgs, assemblyRegionArgs, includeReadsWithDeletionsInIsActivePileups, false);
+        JavaRDD<AssemblyRegionWalkerContext> assemblyRegions = strict ?
+                FindAssemblyRegionsSpark.getAssemblyRegionsStrict(ctx, reads, header, sequenceDictionary, referenceFileName, null, intervalShards, assemblyRegionEvaluatorSupplierBroadcast, shardingArgs, assemblyRegionArgs, includeReadsWithDeletionsInIsActivePileups, false) :
+                FindAssemblyRegionsSpark.getAssemblyRegionsFast(ctx, reads, header, sequenceDictionary, referenceFileName, null, intervalShards, assemblyRegionEvaluatorSupplierBroadcast, shardingArgs, assemblyRegionArgs, includeReadsWithDeletionsInIsActivePileups, false);
         processAssemblyRegions(assemblyRegions, ctx, header, reference, hcArgs, output, annotations, logger);
     }
 }
