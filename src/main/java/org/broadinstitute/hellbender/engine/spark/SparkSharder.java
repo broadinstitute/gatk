@@ -20,6 +20,7 @@ import org.broadinstitute.hellbender.engine.Shard;
 import org.broadinstitute.hellbender.engine.ShardBoundary;
 import org.broadinstitute.hellbender.engine.ShardBoundaryShard;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import scala.Option;
@@ -211,48 +212,94 @@ public class SparkSharder {
         if (!shards.hasNext()) {
             return Collections.emptyIterator();
         }
-        PeekingIterator<L> peekingLocatables = Iterators.peekingIterator(locatables);
         PeekingIterator<I> peekingShards = Iterators.peekingIterator(shards);
         Iterator<Tuple2<I, Iterable<L>>> iterator = new AbstractIterator<Tuple2<I, Iterable<L>>>() {
-            // keep track of current and next, since locatables can overlap two shards
-            I currentShard = peekingShards.next();
-            I nextShard = peekingShards.hasNext() ? peekingShards.next() : null;
-            List<L> currentLocatables = Lists.newArrayList();
-            List<L> nextLocatables = Lists.newArrayList();
+            Queue<PendingShard<L, I>> pendingShards = new ArrayDeque<>();
 
             @Override
             protected Tuple2<I, Iterable<L>> computeNext() {
-                if (currentShard == null) {
-                    return endOfData();
-                }
-                while (peekingLocatables.hasNext()) {
-                    if (toRightOf(currentShard, peekingLocatables.peek(), sequenceDictionary)) {
-                        break;
-                    }
-                    L locatable = peekingLocatables.next();
+                Tuple2<I, Iterable<L>> nextShard = null;
+
+                while (locatables.hasNext() && nextShard == null) {
+                    L locatable = locatables.next();
                     if (locatable.getContig() != null) {
                         int size = locatable.getEnd() - locatable.getStart() + 1;
                         if (size > maxLocatableLength) {
                             throw new UserException(String.format("Max size of locatable exceeded. Max size is %s, but locatable size is %s. Try increasing shard size and/or padding. Locatable: %s", maxLocatableLength, size, locatable));
                         }
                     }
-                    if (overlaps(currentShard, locatable)) {
-                        currentLocatables.add(locatable);
+
+                    // Add any new shards that start before the end of the read to the queue
+                    while (peekingShards.hasNext() && !IntervalUtils.isAfter(peekingShards.peek(), locatable, sequenceDictionary)) {
+                        pendingShards.add(new PendingShard<>(peekingShards.next()));
                     }
-                    if (nextShard != null && overlaps(nextShard, locatable)) {
-                        nextLocatables.add(locatable);
+
+                    // Add the read to any shards that it overlaps
+                    for (PendingShard<L, I> pendingShard : pendingShards) {
+                        if (overlaps(pendingShard, locatable)) {
+                            pendingShard.addLocatable(locatable);
+                        }
+                    }
+
+                    // A pending shard only becomes ready once our reads iterator has advanced beyond the end of its extended span
+                    // (this ensures that we've loaded all reads that belong in the new shard)
+                    if (!pendingShards.isEmpty() && IntervalUtils.isAfter(locatable, pendingShards.peek(), sequenceDictionary)) {
+                        nextShard = pendingShards.poll().get();
                     }
                 }
-                // current shard is finished, either because the current locatable is to the right of it, or there are no more locatables
-                Tuple2<I, Iterable<L>> tuple = new Tuple2<>(currentShard, currentLocatables);
-                currentShard = nextShard;
-                nextShard = peekingShards.hasNext() ? peekingShards.next() : null;
-                currentLocatables = nextLocatables;
-                nextLocatables = Lists.newArrayList();
-                return tuple;
+
+                if (!locatables.hasNext()) {
+                    // Pull on intervals until it is exhausted
+                    while (peekingShards.hasNext()) {
+                        pendingShards.add(new PendingShard<>(peekingShards.next()));
+                    }
+
+                    // Grab the next pending shard if there is one, unless we already have a shard ready to go
+                    if (!pendingShards.isEmpty() && nextShard == null) {
+                        nextShard = pendingShards.poll().get();
+                    }
+                }
+
+                if (nextShard == null) {
+                    return endOfData();
+                }
+
+                return nextShard;
             }
         };
         return iterator;
+    }
+
+    private static class PendingShard<L extends Locatable, I extends Locatable> implements Locatable {
+        private I interval;
+        private List<L> locatables = new ArrayList<>();
+
+        public PendingShard(I interval) {
+            this.interval = interval;
+        }
+
+        public void addLocatable(L locatable) {
+            locatables.add(locatable);
+        }
+
+        @Override
+        public String getContig() {
+            return interval.getContig();
+        }
+
+        @Override
+        public int getStart() {
+            return interval.getStart();
+        }
+
+        @Override
+        public int getEnd() {
+            return interval.getEnd();
+        }
+
+        public Tuple2<I, Iterable<L>> get() {
+            return new Tuple2<>(interval, locatables);
+        }
     }
 
     /**
