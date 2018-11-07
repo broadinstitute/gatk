@@ -197,9 +197,10 @@ public abstract class NewAssemblyRegionWalkerSpark extends GATKSparkTool {
                     new PositionalDownsampler(assemblyRegionArgs.maxReadsPerAlignmentStart, header) : null;
 
             Iterator<Iterator<ActivityProfileState>> iterators = Utils.stream(shardedReadIterator)
-                    .map(shardedRead -> new ShardToMultiIntervalShardAdapter<>(
-                            new DownsampleableSparkReadShard(
-                                    new ShardBoundary(shardedRead.getInterval(), shardedRead.getPaddedInterval()), shardedRead, readsDownsampler)))
+                    .map(shardedRead -> new ShardToMultiIntervalShardAdapter<>(shardedRead))
+                    // TODO: reinstate downsampling (not yet working)
+//                            new DownsampleableSparkReadShard(
+//                                    new ShardBoundary(shardedRead.getInterval(), shardedRead.getPaddedInterval()), shardedRead, readsDownsampler)))
                     .map(shardedRead -> {
                 final Iterator<ActivityProfileState> activityProfileStateIter = new ActivityProfileStateIterator(
                         new ShardToMultiIntervalShardAdapter<>(shardedRead),
