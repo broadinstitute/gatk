@@ -47,27 +47,27 @@ public final class FilterIntervalsIntegrationTest extends CommandLineProgramTest
     private static final AnnotatedIntervalCollection ANNOTATED_INTERVALS = new AnnotatedIntervalCollection(
             LOCATABLE_METADATA,
             Arrays.asList(
-                    new AnnotatedInterval(new SimpleInterval("20", 1,	1),
+                    new AnnotatedInterval(new SimpleInterval("20", 1,	10),
                             new AnnotationMap(Arrays.asList(
                                     Pair.of(CopyNumberAnnotations.GC_CONTENT, 0.5),
                                     Pair.of(CopyNumberAnnotations.MAPPABILITY, 0.05),
                                     Pair.of(CopyNumberAnnotations.SEGMENTAL_DUPLICATION_CONTENT, 0.05)))),
-                    new AnnotatedInterval(new SimpleInterval("20", 2,	2),
+                    new AnnotatedInterval(new SimpleInterval("20", 11,	20),
                             new AnnotationMap(Arrays.asList(
                                     Pair.of(CopyNumberAnnotations.GC_CONTENT, 0.5),
                                     Pair.of(CopyNumberAnnotations.MAPPABILITY, 0.5),
                                     Pair.of(CopyNumberAnnotations.SEGMENTAL_DUPLICATION_CONTENT, 0.95)))),
-                    new AnnotatedInterval(new SimpleInterval("20", 3,	3),
+                    new AnnotatedInterval(new SimpleInterval("20", 21,	30),
                             new AnnotationMap(Arrays.asList(
                                     Pair.of(CopyNumberAnnotations.GC_CONTENT, 0.5),
                                     Pair.of(CopyNumberAnnotations.MAPPABILITY, 0.5),
                                     Pair.of(CopyNumberAnnotations.SEGMENTAL_DUPLICATION_CONTENT, 0.5)))),
-                    new AnnotatedInterval(new SimpleInterval("20", 4,	4),
+                    new AnnotatedInterval(new SimpleInterval("20", 31,	40),
                             new AnnotationMap(Arrays.asList(
                                     Pair.of(CopyNumberAnnotations.GC_CONTENT, 0.05),
                                     Pair.of(CopyNumberAnnotations.MAPPABILITY, 0.5),
                                     Pair.of(CopyNumberAnnotations.SEGMENTAL_DUPLICATION_CONTENT, 0.5)))),
-                    new AnnotatedInterval(new SimpleInterval("20", 5,	5),
+                    new AnnotatedInterval(new SimpleInterval("20", 41,	50),
                             new AnnotationMap(Arrays.asList(
                                     Pair.of(CopyNumberAnnotations.GC_CONTENT, 0.95),
                                     Pair.of(CopyNumberAnnotations.MAPPABILITY, 0.95),
@@ -83,20 +83,24 @@ public final class FilterIntervalsIntegrationTest extends CommandLineProgramTest
         intervals.write(intervalsFile);
 
         return new Object[][]{
-                //intervals file, annotated-intervals file,
+                //intervals file, array of strings for excluded intervals, annotated-intervals file,
                 //min/max GC content, mix/max mappability, min/max seg-dupe content, expected array of indices of retained intervals
-                {intervalsFile, annotatedIntervalsFile, 0., 1., 0., 1., 0., 1., Arrays.asList(0, 1, 2, 3, 4)},
-                {intervalsFile, annotatedIntervalsFile, 0.1, 0.9, 0., 1., 0., 1., Arrays.asList(0, 1, 2)},
-                {intervalsFile, annotatedIntervalsFile, 0., 1., 0.1, 0.9, 0., 1., Arrays.asList(1, 2, 3)},
-                {intervalsFile, annotatedIntervalsFile, 0., 1., 0., 1., 0.1, 0.9, Arrays.asList(2, 3, 4)},
-                {intervalsFile, annotatedIntervalsFile, 0.1, 0.9, 0.1, 0.9, 0., 1., Arrays.asList(1, 2)},
-                {intervalsFile, annotatedIntervalsFile, 0.1, 0.9, 0., 1., 0.1, 0.9, Collections.singletonList(2)},
-                {intervalsFile, annotatedIntervalsFile, 0., 1., 0.1, 0.9, 0.1, 0.9, Arrays.asList(2, 3)},
-                {intervalsFile, annotatedIntervalsFile, 0.1, 0.9, 0.1, 0.9, 0.1, 0.9, Collections.singletonList(2)}};
+                {intervalsFile, Collections.emptyList(), annotatedIntervalsFile, 0., 1., 0., 1., 0., 1., Arrays.asList(0, 1, 2, 3, 4)},
+                {intervalsFile, Collections.emptyList(), annotatedIntervalsFile, 0.1, 0.9, 0., 1., 0., 1., Arrays.asList(0, 1, 2)},
+                {intervalsFile, Collections.emptyList(), annotatedIntervalsFile, 0., 1., 0.1, 0.9, 0., 1., Arrays.asList(1, 2, 3)},
+                {intervalsFile, Collections.emptyList(), annotatedIntervalsFile, 0., 1., 0., 1., 0.1, 0.9, Arrays.asList(2, 3, 4)},
+                {intervalsFile, Collections.emptyList(), annotatedIntervalsFile, 0.1, 0.9, 0.1, 0.9, 0., 1., Arrays.asList(1, 2)},
+                {intervalsFile, Collections.emptyList(), annotatedIntervalsFile, 0.1, 0.9, 0., 1., 0.1, 0.9, Collections.singletonList(2)},
+                {intervalsFile, Collections.emptyList(), annotatedIntervalsFile, 0., 1., 0.1, 0.9, 0.1, 0.9, Arrays.asList(2, 3)},
+                {intervalsFile, Collections.emptyList(), annotatedIntervalsFile, 0.1, 0.9, 0.1, 0.9, 0.1, 0.9, Collections.singletonList(2)},
+                {intervalsFile, Collections.singletonList("20:1-10"), annotatedIntervalsFile, 0., 1., 0., 1., 0., 1., Arrays.asList(1, 2, 3, 4)},
+                {intervalsFile, Arrays.asList("20:1-15", "20:35-45"), annotatedIntervalsFile, 0., 1., 0., 1., 0., 1., Collections.singletonList(2)},
+                {intervalsFile, Collections.singletonList("20:25-50"), annotatedIntervalsFile, 0.1, 0.9, 0., 1., 0., 1., Arrays.asList(0, 1)}};
     }
 
     @Test(dataProvider = "dataAnnotationBasedFilters")
     public void testAnnotationBasedFilters(final File intervalsFile,
+                                           final List<String> excludedIntervals,
                                            final File annotatedIntervalsFile,
                                            final double minimumGCContent,
                                            final double maximumGCContent,
@@ -117,6 +121,7 @@ public final class FilterIntervalsIntegrationTest extends CommandLineProgramTest
                 .addArgument(FilterIntervals.MAXIMUM_SEGMENTAL_DUPLICATION_CONTENT_LONG_NAME, Double.toString(maximumSegmentalDuplicationContent))
                 .addArgument(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString())
                 .addOutput(outputFile);
+        excludedIntervals.forEach(i -> argsBuilder.addArgument(IntervalArgumentCollection.EXCLUDE_INTERVALS_LONG_NAME, i));
         runCommandLine(argsBuilder);
         final IntervalList result = IntervalList.fromFile(outputFile);
         final IntervalList all = IntervalList.fromFile(intervalsFile);
@@ -144,7 +149,7 @@ public final class FilterIntervalsIntegrationTest extends CommandLineProgramTest
             final SampleLocatableMetadata sampleMetadata = new SimpleSampleLocatableMetadata(sampleName, SEQUENCE_DICTIONARY);
             final List<SimpleCount> counts = new ArrayList<>(numIntervals);
             for (int intervalIndex = 0; intervalIndex < numIntervals; intervalIndex++) {
-                final SimpleInterval interval = new SimpleInterval("20", intervalIndex + 1, intervalIndex + 1);
+                final SimpleInterval interval = new SimpleInterval("20", 10 * intervalIndex + 1, 10 * (intervalIndex + 1));
                 if (intervalIndex < numIntervalsBelowCountThreshold && sampleIndex >= numUncorruptedSamples) {
                     //corrupt first numIntervalsBelowCountThreshold intervals in last (numSamples - numUncorruptedSamples) samples with low counts
                     counts.add(new SimpleCount(interval, lowCountFilterCountThreshold - 1));
@@ -223,7 +228,7 @@ public final class FilterIntervalsIntegrationTest extends CommandLineProgramTest
             final SampleLocatableMetadata sampleMetadata = new SimpleSampleLocatableMetadata(sampleName, SEQUENCE_DICTIONARY);
             final List<SimpleCount> counts = new ArrayList<>(numIntervals);
             for (int intervalIndex = 0; intervalIndex < numIntervals; intervalIndex++) {
-                final SimpleInterval interval = new SimpleInterval("20", intervalIndex + 1, intervalIndex + 1);
+                final SimpleInterval interval = new SimpleInterval("20", 10 * intervalIndex + 1, 10 * (intervalIndex + 1));
                 if (intervalIndex < numIntervalsBelowCountThreshold && sampleIndex >= numUncorruptedSamples) {
                     //corrupt first numIntervalsBelowCountThreshold intervals in last (numSamples - numUncorruptedSamples) samples with low counts
                     counts.add(new SimpleCount(interval, lowCountFilterCountThreshold - 1));
@@ -262,20 +267,25 @@ public final class FilterIntervalsIntegrationTest extends CommandLineProgramTest
         }
 
         return new Object[][]{
-                //intervals file, annotated-intervals file, min/max GC content, mix/max mappability, min/max seg-dupe content,
+                //intervals file, array of strings for excluded intervals, annotated-intervals file, min/max GC content, mix/max mappability, min/max seg-dupe content,
                 //count files, lowCountFilterCountThreshold, lowCountFilterPercentageOfSamples,
                 //extremeCountFilterMinimumPercentile, extremeCountFilterMaximumPercentile, extremeCountFilterPercentageOfSamples,
                 //expected array of indices of retained intervals
-                {intervalsFile, annotatedIntervalsFile, 0.1, 0.9, 0.1, 0.9, 0.1, 0.9,
+                {intervalsFile, Collections.emptyList(), annotatedIntervalsFile, 0.1, 0.9, 0.1, 0.9, 0.1, 0.9,
                         countFiles, lowCountFilterCountThreshold, percentageOfSamples, 1., 99., percentageOfSamples,
                         IntStream.range(numIntervalsBelowCountThreshold + 1, numIntervalsBelowCountThreshold + 99).boxed().collect(Collectors.toList())},
-                {intervalsFile, annotatedIntervalsFile, 0.1, 0.9, 0.1, 0.9, 0.1, 0.9,
+                {intervalsFile, Collections.emptyList(), annotatedIntervalsFile, 0.1, 0.9, 0.1, 0.9, 0.1, 0.9,
+                        countFiles, lowCountFilterCountThreshold, percentageOfSamples, 1., 90., percentageOfSamples,
+                        IntStream.range(numIntervalsBelowCountThreshold + 1, numIntervalsBelowCountThreshold + 90).boxed().collect(Collectors.toList())},
+                //allow last numIntervalsFailingAnnotationFilters to pass annotation-based filters but exclude using -XL
+                {intervalsFile, Collections.singletonList(String.format("20:%d-%d", (numIntervals - numIntervalsFailingAnnotationFilters) * 10 + 5, numIntervals * 10)), annotatedIntervalsFile, 0, 1, 0, 1, 0, 1,
                         countFiles, lowCountFilterCountThreshold, percentageOfSamples, 1., 90., percentageOfSamples,
                         IntStream.range(numIntervalsBelowCountThreshold + 1, numIntervalsBelowCountThreshold + 90).boxed().collect(Collectors.toList())}};
     }
 
     @Test(dataProvider = "dataAllFilters")
     public void testAllFilters(final File intervalsFile,
+                               final List<String> excludedIntervals,
                                final File annotatedIntervalsFile,
                                final double minimumGCContent,
                                final double maximumGCContent,
@@ -307,6 +317,7 @@ public final class FilterIntervalsIntegrationTest extends CommandLineProgramTest
                 .addArgument(FilterIntervals.EXTREME_COUNT_FILTER_PERCENTAGE_OF_SAMPLES_LONG_NAME, Double.toString(extremeCountFilterPercentageOfSamples))
                 .addArgument(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString())
                 .addOutput(outputFile);
+        excludedIntervals.forEach(i -> argsBuilder.addArgument(IntervalArgumentCollection.EXCLUDE_INTERVALS_LONG_NAME, i));
         countFiles.forEach(argsBuilder::addInput);
         runCommandLine(argsBuilder);
         final IntervalList result = IntervalList.fromFile(outputFile);
