@@ -5,10 +5,12 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ExampleProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
 import org.broadinstitute.hellbender.engine.spark.AssemblyRegionWalkerContext;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileState;
@@ -37,29 +39,32 @@ public final class ExampleAssemblyRegionWalkerSpark extends AssemblyRegionWalker
     @Argument(fullName="knownVariants", shortName="knownVariants", doc="Known set of variants", optional=true)
     private FeatureInput<VariantContext> knownVariants;
 
-    @Override
-    protected int defaultReadShardSize() { return 5000; }
+    public static class ExampleAssemblyRegionArgumentCollection extends AssemblyRegionArgumentCollection {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        protected int defaultMinAssemblyRegionSize() { return 50; }
+
+        @Override
+        protected int defaultMaxAssemblyRegionSize() { return 300; }
+
+        @Override
+        protected int defaultAssemblyRegionPadding() { return 100; }
+
+        @Override
+        protected int defaultMaxReadsPerAlignmentStart() { return 50; }
+
+        @Override
+        protected double defaultActiveProbThreshold() { return 0.002; }
+
+        @Override
+        protected int defaultMaxProbPropagationDistance() { return 50; }
+    }
 
     @Override
-    protected int defaultReadShardPadding() { return 100; }
-
-    @Override
-    protected int defaultMinAssemblyRegionSize() { return 50; }
-
-    @Override
-    protected int defaultMaxAssemblyRegionSize() { return 300; }
-
-    @Override
-    protected int defaultAssemblyRegionPadding() { return 100; }
-
-    @Override
-    protected int defaultMaxReadsPerAlignmentStart() { return 50; }
-
-    @Override
-    protected double defaultActiveProbThreshold() { return 0.002; }
-
-    @Override
-    protected int defaultMaxProbPropagationDistance() { return 50; }
+    protected AssemblyRegionArgumentCollection getAssemblyRegionArgumentCollection() {
+        return new ExampleAssemblyRegionArgumentCollection();
+    }
 
     @Override
     protected boolean includeReadsWithDeletionsInIsActivePileups() {

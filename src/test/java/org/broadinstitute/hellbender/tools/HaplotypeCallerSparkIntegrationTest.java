@@ -189,15 +189,6 @@ public class HaplotypeCallerSparkIntegrationTest extends CommandLineProgramTest 
     }
 
     @Test
-    public void testReferenceAdapterIsSerializable() throws IOException {
-        final ReferenceMultiSparkSource referenceMultiSource = new ReferenceMultiSparkSource(b37_reference_20_21, ReferenceWindowFunctions.IDENTITY_FUNCTION);
-        SparkTestUtils.roundTripInKryo(referenceMultiSource, ReferenceMultiSparkSource.class, SparkContextFactory.getTestSparkContext().getConf());
-        final HaplotypeCallerSpark.ReferenceMultiSourceAdapter adapter = new HaplotypeCallerSpark.ReferenceMultiSourceAdapter(referenceMultiSource);
-        SparkTestUtils.roundTripInKryo(adapter, HaplotypeCallerSpark.ReferenceMultiSourceAdapter.class, SparkContextFactory.getTestSparkContext().getConf());
-
-    }
-
-    @Test
     public void testGenotypeCalculationArgumentCollectionIsSerializable() {
         final GenotypeCalculationArgumentCollection args = new GenotypeCalculationArgumentCollection();
         SparkTestUtils.roundTripInKryo(args, GenotypeCalculationArgumentCollection.class, SparkContextFactory.getTestSparkContext().getConf());
