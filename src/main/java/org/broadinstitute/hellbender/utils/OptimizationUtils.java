@@ -5,7 +5,9 @@ import org.apache.commons.math3.optim.nonlinear.scalar.GoalType;
 import org.apache.commons.math3.optim.univariate.BrentOptimizer;
 import org.apache.commons.math3.optim.univariate.SearchInterval;
 import org.apache.commons.math3.optim.univariate.UnivariateObjectiveFunction;
+import org.apache.commons.math3.optim.univariate.UnivariatePointValuePair;
 
+import java.util.function.DoubleUnaryOperator;
 import java.util.function.Function;
 
 /**
@@ -23,15 +25,19 @@ public final class OptimizationUtils {
     private OptimizationUtils() { }
 
     public static double argmax(final Function<Double, Double> function, final double min, final double max, final double guess) {
-        final SearchInterval interval = new SearchInterval(min, max, guess);
-        return DEFAULT_OPTIMIZER.optimize(new UnivariateObjectiveFunction(function::apply), GoalType.MAXIMIZE, interval, DEFAULT_MAX_EVAL).getPoint();
+        return max(function, min, max, guess).getPoint();
     }
 
-    public static double argmax(final Function<Double, Double> function, final double min, final double max, final double guess,
-                                final double relativeTolerance, final double absoluteTolerance, final int maxEvaluations) {
+    public static UnivariatePointValuePair max(final Function<Double, Double> function, final double min, final double max, final double guess) {
+        final SearchInterval interval = new SearchInterval(min, max, guess);
+        return DEFAULT_OPTIMIZER.optimize(new UnivariateObjectiveFunction(function::apply), GoalType.MAXIMIZE, interval, DEFAULT_MAX_EVAL);
+    }
+
+    public static UnivariatePointValuePair max(final DoubleUnaryOperator function, final double min, final double max, final double guess,
+                                               final double relativeTolerance, final double absoluteTolerance, final int maxEvaluations) {
         final BrentOptimizer optimizer = new BrentOptimizer(relativeTolerance, absoluteTolerance);
         final SearchInterval interval = new SearchInterval(min, max, guess);
-        return optimizer.optimize(new UnivariateObjectiveFunction(function::apply), GoalType.MAXIMIZE, interval, new MaxEval(maxEvaluations)).getPoint();
+        return optimizer.optimize(new UnivariateObjectiveFunction(function::applyAsDouble), GoalType.MAXIMIZE, interval, new MaxEval(maxEvaluations));
     }
 
 

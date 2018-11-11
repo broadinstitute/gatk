@@ -15,17 +15,13 @@ import java.util.List;
  * Created by David Benjamin on 2/13/17.
  */
 public class ContaminationRecord {
-    private String level;
     private double contamination;
     private double error;
 
-    public ContaminationRecord(final String level, final double contamination, final double error) {
-        this.level = level;
+    public ContaminationRecord(final double contamination, final double error) {
         this.contamination = contamination;
         this.error = error;
     }
-
-    public String getLevel() { return level; }
 
     public double getContamination() {
         return contamination;
@@ -60,8 +56,7 @@ public class ContaminationRecord {
 
         @Override
         protected void composeLine(final ContaminationRecord record, final DataLine dataLine) {
-            dataLine.set(ContaminationTableColumn.LEVEL.toString(), record.getLevel())
-                    .set(ContaminationTableColumn.CONTAMINATION.toString(), record.getContamination())
+            dataLine.set(ContaminationTableColumn.CONTAMINATION.toString(), record.getContamination())
                     .set(ContaminationTableColumn.ERROR.toString(), record.getError());
         }
     }
@@ -73,15 +68,13 @@ public class ContaminationRecord {
 
         @Override
         protected ContaminationRecord createRecord(final DataLine dataLine) {
-            final String sample = dataLine.get(ContaminationTableColumn.LEVEL);
             final double contamination = dataLine.getDouble(ContaminationTableColumn.CONTAMINATION);
             final double error = dataLine.getDouble(ContaminationTableColumn.ERROR);
-            return new ContaminationRecord(sample, contamination, error);
+            return new ContaminationRecord(contamination, error);
         }
     }
 
     private enum ContaminationTableColumn {
-        LEVEL("level"),
         CONTAMINATION("contamination"),
         ERROR("error");
 
@@ -96,19 +89,6 @@ public class ContaminationRecord {
             return columnName;
         }
 
-        public static final TableColumnCollection COLUMNS = new TableColumnCollection(LEVEL, CONTAMINATION, ERROR);
-    }
-
-    public enum Level {
-        WHOLE_BAM("whole_bam"),
-        READ_GROUP("read_group"),
-        LANE("lane");
-
-        private String value;
-
-        Level(final String value) { this.value = value; }
-
-        @Override
-        public String toString() { return value; }
+        public static final TableColumnCollection COLUMNS = new TableColumnCollection(CONTAMINATION, ERROR);
     }
 }
