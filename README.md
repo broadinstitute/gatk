@@ -377,7 +377,7 @@ echo "source <PATH_TO>/gatk-completion.sh" >> ~/.bashrc
 
 * For logging, use [org.apache.logging.log4j.Logger](https://logging.apache.org/log4j/2.0/log4j-api/apidocs/org/apache/logging/log4j/Logger.html)
 
-* We mostly follow the [Google Java Style guide](http://google-styleguide.googlecode.com/svn/trunk/javaguide.html)
+* We mostly follow the [Google Java Style guide](https://google.github.io/styleguide/javaguide.html)
 
 * Git: Don't push directly to master - make a pull request instead. 
 
@@ -604,7 +604,7 @@ We tend to do fairly close readings of pull requests, and you may get a lot of c
 * Use braces for control constructs, `if`, `for` etc.
 * Make classes, variables, parameters etc `final` unless there is a strong reason not to.
 * Give your operators some room. Not `a+b` but `a + b` and not `foo(int a,int b)` but `foo(int a, int b)`.
-* Generally speaking, stick to the [Google Java Style guide](http://google-styleguide.googlecode.com/svn/trunk/javaguide.html)
+* Generally speaking, stick to the [Google Java Style guide](https://google.github.io/styleguide/javaguide.html)
 
 Thank you for getting involved!
 
