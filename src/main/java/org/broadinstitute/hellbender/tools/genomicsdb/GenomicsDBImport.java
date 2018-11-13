@@ -32,6 +32,7 @@ import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscovery
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
@@ -152,6 +153,7 @@ public final class GenomicsDBImport extends GATKTool {
     public static final String CONSOLIDATE_ARG_NAME = "consolidate";
     public static final String SAMPLE_NAME_MAP_LONG_NAME = "sample-name-map";
     public static final String VALIDATE_SAMPLE_MAP_LONG_NAME = "validate-sample-name-map";
+    public static final String MERGE_INPUT_INTERVALS_LONG_NAME = "merge-input-intervals";
     public static final String VCF_INITIALIZER_THREADS_LONG_NAME = "reader-threads";
     public static final String MAX_NUM_INTERVALS_TO_IMPORT_IN_PARALLEL = "max-num-intervals-to-import-in-parallel";
     public static final int INTERVAL_LIST_SIZE_WARNING_THRESHOLD = 100;
@@ -235,6 +237,12 @@ public final class GenomicsDBImport extends GATKTool {
             optional = true)
     private Boolean validateSampleToReaderMap = false;
 
+    @Argument(fullName = MERGE_INPUT_INTERVALS_LONG_NAME,
+            shortName = MERGE_INPUT_INTERVALS_LONG_NAME,
+            doc = "Boolean flag to import all data in between intervals.  Improves performance using large lists of " +
+                "intervals, as in exome sequencing, especially if GVCF data only exists for specified intervals.")
+    private boolean mergeInputIntervals = false;
+
     @Advanced
     @Argument(fullName = VCF_INITIALIZER_THREADS_LONG_NAME,
             shortName = VCF_INITIALIZER_THREADS_LONG_NAME,
@@ -280,8 +288,8 @@ public final class GenomicsDBImport extends GATKTool {
     @Override
     public String getProgressMeterRecordLabel() { return "batches"; }
 
-    // Intervals from command line (singleton for now)
-    private List<ChromosomeInterval> intervals;
+    // Intervals from command line (merged if specified)
+    private List<SimpleInterval> intervals;
 
     // Sorted mapping between sample names and corresponding GVCF file name
     //
@@ -516,7 +524,7 @@ public final class GenomicsDBImport extends GATKTool {
         return null;
     }
 
-    private List<GenomicsDBImportConfiguration.Partition> generatePartitionListFromIntervals(List<ChromosomeInterval> chromosomeIntervals) {
+    private List<GenomicsDBImportConfiguration.Partition> generatePartitionListFromIntervals(List<SimpleInterval> chromosomeIntervals) {
         return chromosomeIntervals.stream().map(interval -> {
             GenomicsDBImportConfiguration.Partition.Builder partitionBuilder = GenomicsDBImportConfiguration.Partition.newBuilder();
             Coordinates.ContigPosition.Builder contigPositionBuilder = Coordinates.ContigPosition.newBuilder();
@@ -754,16 +762,16 @@ public final class GenomicsDBImport extends GATKTool {
 
             intervals = new ArrayList<>();
             final List<SimpleInterval> simpleIntervalList = intervalArgumentCollection.getIntervals(intervalDictionary);
-            if (simpleIntervalList.size() > INTERVAL_LIST_SIZE_WARNING_THRESHOLD) {
+            if (!mergeInputIntervals && simpleIntervalList.size() > INTERVAL_LIST_SIZE_WARNING_THRESHOLD) {
                 logger.warn(String.format(
                         "A large number of intervals were specified. " +
                         "Using more than %d intervals in a single import is not recommended and can cause performance to suffer. " +
-                        "It is recommended that intervals be aggregated together.",
+                        "If GVCF data only exists within those intervals, performance can be improved by aggregating intervals with the " +
+                        MERGE_INPUT_INTERVALS_LONG_NAME + " argument.",
                         INTERVAL_LIST_SIZE_WARNING_THRESHOLD)
                 );
             }
-            simpleIntervalList.forEach(interval -> intervals.add(new ChromosomeInterval(interval.getContig(),
-                    interval.getStart(), interval.getEnd())));
+            intervals = mergeInputIntervals ? IntervalUtils.getSpanningIntervals(simpleIntervalList, getBestAvailableSequenceDictionary()) : simpleIntervalList;
         } else {
             throw new UserException("No intervals specified");
         }
