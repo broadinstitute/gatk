@@ -19,7 +19,7 @@
     "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/SM-74NEG_20xy-downsampled.bam",
     "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/SM-74P2T_20xy-downsampled.bam",
     "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/SM-74P35_20xy-downsampled.bam"],
-  "CNVGermlineCohortWorkflow.num_intervals_per_scatter": 30,
+  "CNVGermlineCohortWorkflow.num_intervals_per_scatter": 20,
   "CNVGermlineCohortWorkflow.gcnv_max_copy_number": 3,
   "CNVGermlineCohortWorkflow.ref_fasta_dict": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/Homo_sapiens_assembly19.truncated.dict",
   "CNVGermlineCohortWorkflow.ref_fasta_fai": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/Homo_sapiens_assembly19.truncated.fasta.fai",
