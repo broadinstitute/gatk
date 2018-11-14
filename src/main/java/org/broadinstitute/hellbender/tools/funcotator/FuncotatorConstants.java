@@ -5,6 +5,20 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class FuncotatorConstants {
+
+    /**
+     * A character representing any base as used in VCF files and IUPAC base standards.
+     * NOTE: When HTSJDK with the fix for issue #1226 (https://github.com/samtools/htsjdk/issues/1226) is released
+     *       we will want to remove this constant.
+     */
+    public static final char MASKED_ANY_BASE = 'N';
+    /**
+     * A {@link String} representing any base as used in VCF files and IUPAC base standards.
+     * NOTE: When HTSJDK with the fix for issue #1226 (https://github.com/samtools/htsjdk/issues/1226) is released
+     *       we will want to remove this constant.
+     */
+    public static final String MASKED_ANY_BASE_STRING = String.valueOf(MASKED_ANY_BASE);
+
     /**
      * Datasource name to use for Funcotations created from input variants from a VCF.
      */

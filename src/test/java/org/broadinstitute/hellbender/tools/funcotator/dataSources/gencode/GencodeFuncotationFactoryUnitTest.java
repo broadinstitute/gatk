@@ -28,10 +28,7 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.BufferedInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
+import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -49,20 +46,26 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 
     private static final double doubleEqualsEpsilon = 0.000001;
 
-    private static final FeatureReader<GencodeGtfFeature> gencodeFeatureReader;
+    private static final FeatureReader<GencodeGtfFeature> gencodeHg19FeatureReader;
+    private static final FeatureReader<GencodeGtfFeature> gencodeHg38FeatureReader;
     private static final FeatureReader<GencodeGtfFeature> muc16NonBasicFeatureReader;
 
     private static final ReferenceDataSource refDataSourceHg19Ch19;
     private static final ReferenceDataSource refDataSourceHg19Ch3;
+    private static final ReferenceDataSource refDataSourceHg38;
 
     private static GencodeFuncotationFactory testMuc16SnpCreateFuncotationsFuncotationFactory;
+
+    private static final List<AutoCloseable> autoCloseableList = new ArrayList<>();
 
     // Initialization of static variables:
     static {
         muc16NonBasicFeatureReader = AbstractFeatureReader.getFeatureReader(FuncotatorTestConstants.MUC16_GENCODE_NON_BASIC_ANNOTATIONS_FILE_NAME, new GencodeGtfCodec());
-        gencodeFeatureReader = AbstractFeatureReader.getFeatureReader(FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19, new GencodeGtfCodec());
+        gencodeHg19FeatureReader = AbstractFeatureReader.getFeatureReader(FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19, new GencodeGtfCodec());
+        gencodeHg38FeatureReader = AbstractFeatureReader.getFeatureReader(FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG38, new GencodeGtfCodec());
         refDataSourceHg19Ch19 = ReferenceDataSource.of(IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref()));
         refDataSourceHg19Ch3 = ReferenceDataSource.of( IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref()) );
+        refDataSourceHg38 = ReferenceDataSource.of( IOUtils.getPath(hg38Reference) );
 
         // Gets cleaned up in `cleanupAfterTests()`
         // NOTE: This is initialized here to save time in testing.
@@ -74,6 +77,15 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                 new HashSet<>(),
                 new LinkedHashMap<>(),
                 createFeatureInputForMuc16Ds(GencodeFuncotationFactory.DEFAULT_NAME));
+
+        // Add all to the closeable list:
+        autoCloseableList.add( muc16NonBasicFeatureReader );
+        autoCloseableList.add( gencodeHg19FeatureReader );
+        autoCloseableList.add( gencodeHg38FeatureReader );
+        autoCloseableList.add( refDataSourceHg19Ch19 );
+        autoCloseableList.add( refDataSourceHg19Ch3 );
+        autoCloseableList.add( refDataSourceHg38 );
+        autoCloseableList.add( testMuc16SnpCreateFuncotationsFuncotationFactory );
     }
 
     //==================================================================================================================
@@ -88,15 +100,14 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
     public static void cleanupAfterTests() {
         System.out.println("Cleaning up after tests...");
 
-        try {
-            testMuc16SnpCreateFuncotationsFuncotationFactory.close();
-            muc16NonBasicFeatureReader.close();
-            gencodeFeatureReader.close();
-            refDataSourceHg19Ch19.close();
-            refDataSourceHg19Ch3.close();
-        }
-        catch (final IOException ex) {
-            throw new GATKException("Could not close all readers!", ex);
+        for ( final AutoCloseable cl : autoCloseableList ) {
+
+            try {
+                cl.close();
+            }
+            catch ( final Exception ex ) {
+                throw new GATKException("Could not close " + cl.toString(), ex);
+            }
         }
     }
 
@@ -188,11 +199,13 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
     private Set<String> getValidTranscriptsForGene(final String expectedGeneName) {
 
         final Set<String> requestedTranscriptIds = new HashSet<>();
-        if ( expectedGeneName.equals("PIK3CA") ) {
-            requestedTranscriptIds.add( FuncotatorTestConstants.PIK3CA_TRANSCRIPT );
-        }
-        else if ( expectedGeneName.equals("MUC16") ) {
-            requestedTranscriptIds.add( FuncotatorTestConstants.MUC16_TRANSCRIPT );
+        if ( expectedGeneName != null ){
+            if ( expectedGeneName.equals("PIK3CA") ) {
+                requestedTranscriptIds.add( FuncotatorTestConstants.PIK3CA_TRANSCRIPT );
+            }
+            else if ( expectedGeneName.equals("MUC16") ) {
+                requestedTranscriptIds.add( FuncotatorTestConstants.MUC16_TRANSCRIPT );
+            }
         }
         return requestedTranscriptIds;
     }
@@ -491,24 +504,27 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         final List<Object[]> outList = new ArrayList<>();
 
         // MUC16 SNPs / DNPs:
-        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideMnpDataForMuc16_1(),       FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), gencodeFeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19 ) );
-        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideMnpDataForMuc16_2(),       FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), gencodeFeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19  ) );
-        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideMnpDataForMuc16_3(),       FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), gencodeFeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19  ) );
-        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideMnpDataForMuc16_4(),       FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), gencodeFeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19  ) );
-        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideMnpDataForMuc16_5(),       FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), gencodeFeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19  ) );
-        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideEdgeCasesForMUC16Data_1(), FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), gencodeFeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19  ) );
+        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideMnpDataForMuc16_1(),       FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), gencodeHg19FeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19 ) );
+        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideMnpDataForMuc16_2(),       FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), gencodeHg19FeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19  ) );
+        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideMnpDataForMuc16_3(),       FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), gencodeHg19FeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19  ) );
+        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideMnpDataForMuc16_4(),       FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), gencodeHg19FeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19  ) );
+        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideMnpDataForMuc16_5(),       FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), gencodeHg19FeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19  ) );
+        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideEdgeCasesForMUC16Data_1(), FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), gencodeHg19FeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19  ) );
 
         // MUC16 INDELs:
-        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16IndelData.provideIndelDataForMuc16(), FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), gencodeFeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19 ) );
+        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16IndelData.provideIndelDataForMuc16(), FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), gencodeHg19FeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19 ) );
 
         // PIK3CA SNPs / DNPs:
-        outList.addAll( addReferenceDataToUnitTestData(DataProviderForPik3caTestData.providePik3caMnpData(), FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(), gencodeFeatureReader, refDataSourceHg19Ch3, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19 ) );
+        outList.addAll( addReferenceDataToUnitTestData(DataProviderForPik3caTestData.providePik3caMnpData(), FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(), gencodeHg19FeatureReader, refDataSourceHg19Ch3, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19 ) );
 
         // PIK3CA INDELs:
-        outList.addAll( addReferenceDataToUnitTestData(DataProviderForPik3caTestData.providePik3caInDelData(), FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(), gencodeFeatureReader, refDataSourceHg19Ch3, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19 ) );
+        outList.addAll( addReferenceDataToUnitTestData(DataProviderForPik3caTestData.providePik3caInDelData(), FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(), gencodeHg19FeatureReader, refDataSourceHg19Ch3, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19 ) );
 
         // PIK3CA Other Indels:
-        outList.addAll( addReferenceDataToUnitTestData(DataProviderForPik3caTestData.providePik3caInDelData2(), FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(), gencodeFeatureReader, refDataSourceHg19Ch3, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19 ) );
+        outList.addAll( addReferenceDataToUnitTestData(DataProviderForPik3caTestData.providePik3caInDelData2(), FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(), gencodeHg19FeatureReader, refDataSourceHg19Ch3, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19 ) );
+
+        // Trouble variants:
+        outList.addAll( addReferenceDataToUnitTestData(DataProviderForTroubleVariants.provideSymbolicAllelesAndMaskedBasesForHg38(), hg38Reference, gencodeHg38FeatureReader, refDataSourceHg38, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG38, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG38 ) );
 
         return outList.toArray(new Object[][]{{}});
     }
@@ -1247,7 +1263,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         // Get our gene feature iterator:
         final CloseableTribbleIterator<GencodeGtfFeature> gtfFeatureIterator;
         try {
-            gtfFeatureIterator = gencodeFeatureReader.query(contig, start, end);
+            gtfFeatureIterator = gencodeHg19FeatureReader.query(contig, start, end);
         }
         catch (final IOException ex) {
             throw new GATKException("Could not finish the test!", ex);
@@ -1316,7 +1332,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         // Get our gene feature iterator:
         final CloseableTribbleIterator<GencodeGtfFeature> gtfFeatureIterator;
         try {
-            gtfFeatureIterator = gencodeFeatureReader.query(contig, start, end);
+            gtfFeatureIterator = gencodeHg19FeatureReader.query(contig, start, end);
         }
         catch (final IOException ex) {
             throw new GATKException("Could not finish the test!", ex);

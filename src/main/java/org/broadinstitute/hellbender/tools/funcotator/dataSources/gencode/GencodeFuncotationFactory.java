@@ -346,12 +346,14 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     protected List<Funcotation> createFuncotationsOnVariant(final VariantContext variant, final ReferenceContext referenceContext, final List<Feature> geneFeatureList) {
         final List<Funcotation> outputFuncotations = new ArrayList<>();
 
+        final List<Feature> nonNullFeatures = geneFeatureList.stream().filter(g -> g != null).collect(Collectors.toList());
+
         // If we have features we need to annotate, go through them and create annotations:
-        if ( geneFeatureList.size() > 0 ) {
+        if ( nonNullFeatures.size() > 0 ) {
             for ( final Allele altAllele : variant.getAlternateAlleles() ) {
 
                 // At this point we know the feature list is composed of GTF Gene Features
-                final List<GencodeGtfGeneFeature> gencodeGtfGeneFeatures = geneFeatureList.stream()
+                final List<GencodeGtfGeneFeature> gencodeGtfGeneFeatures = nonNullFeatures.stream()
                     .filter(g -> g != null)
                     .map(g -> (GencodeGtfGeneFeature) g)
                     .collect(Collectors.toList());
@@ -694,12 +696,17 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                                                                     final GencodeGtfTranscriptFeature transcript) {
         final GencodeFuncotation gencodeFuncotation;
 
-        // If the alt allele is a spanning deletion, create an unknown funcotation
-        if (altAllele.equals(Allele.SPAN_DEL)) {
-            return createFuncotationForSpanningDeletion(variant, transcript.getTranscriptId(), reference);
+        // If the alt allele is a spanning deletion or a symbolic allele, create an unknown funcotation:
+        if (altAllele.isSymbolic() || altAllele.equals(Allele.SPAN_DEL) ) {
+            return createFuncotationForSymbolicAltAllele(variant, altAllele, transcript, reference);
         }
 
-        // TODO: check for complex INDEL and warn and skip.
+        // If the reference allele or alternate allele contains any masked bases:
+        if ( variant.getReference().getBaseString().contains(FuncotatorConstants.MASKED_ANY_BASE_STRING) || altAllele.getBaseString().contains(FuncotatorConstants.MASKED_ANY_BASE_STRING) ) {
+            return createFuncotationForMaskedBases(variant, altAllele, transcript, reference);
+        }
+
+        // TODO: check for complex INDEL and warn and skip (https://github.com/broadinstitute/gatk/issues/5411).
 
         final VariantContext variantToUse = variant;
 
@@ -2091,15 +2098,20 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         // Get GC Content:
         funcotationBuilder.setGcContent( calculateGcContent( variant.getReference(), altAllele, reference, gcContentWindowSizeBases ) );
 
+        final String alleleString = altAllele.getBaseString().isEmpty() ? altAllele.toString() : altAllele.getBaseString();
+
         funcotationBuilder.setVariantClassification( GencodeFuncotation.VariantClassification.IGR )
                           .setRefAllele( variant.getReference() )
-                          .setTumorSeqAllele2( altAllele.getBaseString() )
+                          .setTumorSeqAllele2( alleleString )
                           .setStart(variant.getStart())
                           .setEnd(variant.getEnd())
                           .setVariantType(getVariantType(variant.getReference(), altAllele))
                           .setChromosome(variant.getContig())
-                          .setGenomeChange(getGenomeChangeString(variant, altAllele))
                           .setAnnotationTranscript(FuncotationMap.NO_TRANSCRIPT_AVAILABLE_KEY);
+
+        if ( (!altAllele.isSymbolic()) && (!altAllele.equals(Allele.SPAN_DEL)) ) {
+            funcotationBuilder.setGenomeChange(getGenomeChangeString(variant, altAllele));
+        }
 
         // If we have a cached value for the ncbiBuildVersion, we should add it:
         // NOTE: This will only be true if we have previously annotated a non-IGR variant.
@@ -2121,33 +2133,108 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     }
 
     /**
-     * Creates a {@link GencodeFuncotation}s based on a given spanning deletion {@link Allele}.
+     * Creates a {@link GencodeFuncotation} with a variant classification of {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification#COULD_NOT_DETERMINE}
+     * based on a given symbolic alternate {@link Allele}.
      *
      * Reports reference bases as if they are on the {@link Strand#POSITIVE} strand.
      * @param variant The {@link VariantContext} associated with this annotation.
-     * @param annotationTranscript The transcript ID to use for populating this funcotation.
+     * @param altSymbolicAllele The alternate symbolic {@link Allele} associated with this annotation.
+     * @param annotationTranscript The transcript in which this variant occurs.
      * @param reference The {@link ReferenceContext} in which the given {@link Allele}s appear.
      * @return An IGR funcotation for the given allele.
      */
-    private GencodeFuncotation createFuncotationForSpanningDeletion(final VariantContext variant,
-                                                                    final String annotationTranscript,
-                                                                    final ReferenceContext reference){
+    private GencodeFuncotation createFuncotationForSymbolicAltAllele(final VariantContext variant,
+                                                                     final Allele altSymbolicAllele,
+                                                                     final GencodeGtfTranscriptFeature annotationTranscript,
+                                                                     final ReferenceContext reference) {
+
+        logger.warn("Cannot create complete funcotation for variant at " + variant.getContig() + ":" + variant.getStart() + "-" + variant.getEnd() + " due to alternate allele: " + altSymbolicAllele.toString());
 
         final GencodeFuncotationBuilder funcotationBuilder = new GencodeFuncotationBuilder();
 
         // Get GC Content:
-        funcotationBuilder.setGcContent( calculateGcContent( variant.getReference(), Allele.SPAN_DEL, reference, gcContentWindowSizeBases ) );
+        funcotationBuilder.setGcContent( calculateGcContent( variant.getReference(), altSymbolicAllele, reference, gcContentWindowSizeBases ) );
+
+        final String alleleString = altSymbolicAllele.getBaseString().isEmpty() ? altSymbolicAllele.toString() : altSymbolicAllele.getBaseString();
 
         funcotationBuilder.setVariantClassification( GencodeFuncotation.VariantClassification.COULD_NOT_DETERMINE )
                 .setRefAllele( variant.getReference() )
                 .setStrand(Strand.POSITIVE)
-                .setTumorSeqAllele2( Allele.SPAN_DEL_STRING )
+                .setTumorSeqAllele2( alleleString )
                 .setStart(variant.getStart())
                 .setEnd(variant.getEnd())
-                .setVariantType(getVariantType(variant.getReference(), Allele.SPAN_DEL))
+                .setVariantType(getVariantType(variant.getReference(), altSymbolicAllele))
                 .setChromosome(variant.getContig())
                 .setOtherTranscripts(Collections.emptyList())
-                .setAnnotationTranscript(annotationTranscript);
+                .setAnnotationTranscript(annotationTranscript.getTranscriptId());
+
+        funcotationBuilder.setHugoSymbol( annotationTranscript.getGeneName() );
+
+        // If we have a cached value for the ncbiBuildVersion, we should add it:
+        // NOTE: This will only be true if we have previously annotated a non-IGR variant.
+        // TODO: This is issue #4404
+        if ( ncbiBuildVersion != null ) {
+            funcotationBuilder.setNcbiBuild( ncbiBuildVersion );
+        }
+
+        final StrandCorrectedReferenceBases referenceBases = FuncotatorUtils.getBasesInWindowAroundReferenceAllele(variant.getReference(), reference, Strand.POSITIVE, referenceWindow);
+
+        // Set our reference context in the the FuncotatonBuilder:
+        funcotationBuilder.setReferenceContext( referenceBases.getBaseString() );
+
+        // Set our version:
+        funcotationBuilder.setVersion(version);
+
+        // Set our data source name:
+        funcotationBuilder.setDataSourceName(getName());
+
+        return funcotationBuilder.build();
+    }
+
+    /**
+     * Creates a {@link GencodeFuncotation} based on a given variant and alt allele.
+     * Either the reference or alternate allele contains at least one masked base.
+     *
+     * Reports reference bases as if they are on the {@link Strand#POSITIVE} strand.
+     * @param variant The {@link VariantContext} associated with this annotation.
+     * @param altAllele The alternate {@link Allele} associated with this annotation.
+     * @param annotationTranscript The transcript in which this variant occurs.
+     * @param reference The {@link ReferenceContext} in which the given {@link Allele}s appear.
+     * @return An IGR funcotation for the given allele.
+     */
+    private GencodeFuncotation createFuncotationForMaskedBases(final VariantContext variant,
+                                                             final Allele altAllele,
+                                                             final GencodeGtfTranscriptFeature annotationTranscript,
+                                                             final ReferenceContext reference) {
+
+        final StringBuilder alleleLogStringBuilder = new StringBuilder();
+        if ( variant.getReference().getBaseString().contains(FuncotatorConstants.MASKED_ANY_BASE_STRING) ) {
+            alleleLogStringBuilder.append( " ref allele: " + variant.getReference().toString() );
+        }
+        if ( altAllele.getBaseString().contains(FuncotatorConstants.MASKED_ANY_BASE_STRING) ) {
+            alleleLogStringBuilder.append( " alt allele: " + altAllele.toString() );
+        }
+        logger.warn("Cannot create complete funcotation for variant at " + variant.getContig() + ":" + variant.getStart() + "-" + variant.getEnd() + " due to" + alleleLogStringBuilder.toString() );
+
+        final GencodeFuncotationBuilder funcotationBuilder = new GencodeFuncotationBuilder();
+
+        // Get GC Content:
+        funcotationBuilder.setGcContent( calculateGcContent( variant.getReference(), altAllele, reference, gcContentWindowSizeBases ) );
+
+        final String alleleString = altAllele.getBaseString().isEmpty() ? altAllele.toString() : altAllele.getBaseString();
+
+        funcotationBuilder.setVariantClassification( GencodeFuncotation.VariantClassification.COULD_NOT_DETERMINE )
+                .setRefAllele( variant.getReference() )
+                .setStrand(Strand.POSITIVE)
+                .setTumorSeqAllele2( alleleString )
+                .setStart(variant.getStart())
+                .setEnd(variant.getEnd())
+                .setVariantType(getVariantType(variant.getReference(), altAllele))
+                .setChromosome(variant.getContig())
+                .setOtherTranscripts(Collections.emptyList())
+                .setAnnotationTranscript(annotationTranscript.getTranscriptId());
+
+        funcotationBuilder.setHugoSymbol( annotationTranscript.getGeneName() );
 
         // If we have a cached value for the ncbiBuildVersion, we should add it:
         // NOTE: This will only be true if we have previously annotated a non-IGR variant.
@@ -2183,7 +2270,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         if ( altAllele.length() > refAllele.length() ) {
             return GencodeFuncotation.VariantType.INS;
         }
-        else if (altAllele.equals(Allele.SPAN_DEL) || altAllele.equals(Allele.NO_CALL)) {
+        else if (altAllele.equals(Allele.SPAN_DEL) || altAllele.equals(Allele.NO_CALL) || altAllele.isSymbolic() ) {
             return GencodeFuncotation.VariantType.NA;
         }
         else if (altAllele.length() < refAllele.length()) {

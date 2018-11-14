@@ -213,7 +213,7 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
                                 new SimpleInterval("1", 1, 1)
                         ),
                         Strand.POSITIVE,
-                        "N"
+                        FuncotatorConstants.MASKED_ANY_BASE_STRING
                 },
                 {
                         new ReferenceContext(new ReferenceFileSource(TEST_REFERENCE), new SimpleInterval(TEST_REFERENCE_CONTIG, TEST_REFERENCE_START, TEST_REFERENCE_END)),
@@ -300,7 +300,7 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
                                 new SimpleInterval("1", 1, 1)
                         ),
                         Strand.NEGATIVE,
-                        "N"
+                        FuncotatorConstants.MASKED_ANY_BASE_STRING
                 },
         };
     }
