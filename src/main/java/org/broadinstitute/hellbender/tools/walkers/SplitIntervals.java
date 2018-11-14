@@ -14,7 +14,8 @@ import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
-import picard.util.IntervalListScatterer;
+import picard.util.IntervalList.IntervalListScatterMode;
+import picard.util.IntervalList.IntervalListScatterer;
 
 import java.io.File;
 import java.text.DecimalFormat;
@@ -73,7 +74,7 @@ public class SplitIntervals extends GATKTool {
     private int scatterCount = 1;
 
     @Argument(fullName = SUBDIVISION_MODE_lONG_NAME, shortName = SUBDIVISION_MODE_SHORT_NAME, doc = "How to divide intervals.")
-    private IntervalListScatterer.Mode subdivisionMode = IntervalListScatterer.Mode.INTERVAL_SUBDIVISION;
+    private IntervalListScatterMode subdivisionMode = IntervalListScatterMode.INTERVAL_SUBDIVISION;
 
     @Argument(doc = "The directory into which to write the scattered interval sub-directories.",
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
@@ -100,8 +101,8 @@ public class SplitIntervals extends GATKTool {
 
         final IntervalList intervalList = new IntervalList(sequenceDictionary);
         intervals.stream().map(si -> new Interval(si.getContig(), si.getStart(), si.getEnd())).forEach(intervalList::add);
-        final IntervalListScatterer scatterer = new IntervalListScatterer(subdivisionMode);
-        final List<IntervalList> scattered = scatterer.scatter(intervalList, scatterCount, false);
+        final IntervalListScatterer scatterer = subdivisionMode.make();
+        final List<IntervalList> scattered = scatterer.scatter(intervalList, scatterCount);
 
         final DecimalFormat formatter = new DecimalFormat("0000");
         IntStream.range(0, scattered.size()).forEach(n -> scattered.get(n).write(new File(outputDir, formatter.format(n) + extension)));
