@@ -155,22 +155,18 @@ public class FindAssemblyRegionsSpark {
         // 3. Run the band pass filter to find AssemblyRegions. The filtering is fairly cheap, so should be fast
         // even though it has to scan a whole contig. Note that we *don't* fill in reads here, since after we have found
         // the assembly regions we want to do assembly using the full resources of the cluster. So if we have
-        // very small assembly region objects, then we can collect them on the driver (or repartition them)
-        // for redistribution across the cluster, at which points the reads can be filled in. (See next two steps.)
+        // very small assembly region objects, then we can repartition them for redistribution across the cluster,
+        // at which points the reads can be filled in. (See next step.)
         JavaRDD<ReadlessAssemblyRegion> readlessAssemblyRegions = contigToGroupedStates
                 .flatMap(getReadlessAssemblyRegionsFunction(header, assemblyRegionArgs));
 
-        // 4. Pull the assembly region boundaries down to the driver, so we can fill in reads.
-        List<ReadlessAssemblyRegion> assemblyRegionBoundaries = readlessAssemblyRegions
-                .collect();
+        // 4. Fill in the reads. Each shard is an assembly region, with its overlapping reads.
+        JavaRDD<Shard<GATKRead>> assemblyRegionShardedReads = SparkSharder.shard(ctx, reads, GATKRead.class, header.getSequenceDictionary(), readlessAssemblyRegions, shardingArgs.readShardSize);
 
-        // 5. Fill in the reads. Each shard is an assembly region, with its overlapping reads.
-        JavaRDD<Shard<GATKRead>> assemblyRegionShardedReads = SparkSharder.shard(ctx, reads, GATKRead.class, header.getSequenceDictionary(), assemblyRegionBoundaries, shardingArgs.readShardSize);
-
-        // 6. Convert shards to assembly regions.
+        // 5. Convert shards to assembly regions.
         JavaRDD<AssemblyRegion> assemblyRegions = assemblyRegionShardedReads.map((Function<Shard<GATKRead>, AssemblyRegion>) shard -> toAssemblyRegion(shard, header));
 
-        // 7. Add reference and feature context.
+        // 6. Add reference and feature context.
         return assemblyRegions.mapPartitions(getAssemblyRegionWalkerContextFunction(referenceFileName, bFeatureManager));
     }
 
