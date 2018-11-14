@@ -702,11 +702,11 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         }
 
         // If the reference allele or alternate allele contains any masked bases:
-        if ( variant.getReference().getBaseString().contains("N") || altAllele.getBaseString().contains("N") ) {
+        if ( variant.getReference().getBaseString().contains(FuncotatorConstants.MASKED_ANY_BASE_STRING) || altAllele.getBaseString().contains(FuncotatorConstants.MASKED_ANY_BASE_STRING) ) {
             return createFuncotationForMaskedBases(variant, altAllele, transcript, reference);
         }
 
-        // TODO: check for complex INDEL and warn and skip.
+        // TODO: check for complex INDEL and warn and skip (https://github.com/broadinstitute/gatk/issues/5411).
 
         final VariantContext variantToUse = variant;
 
@@ -2133,7 +2133,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     }
 
     /**
-     * Creates a {@link GencodeFuncotation} based on a given symbolic alternate {@link Allele}.
+     * Creates a {@link GencodeFuncotation} with a variant classification of {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification#COULD_NOT_DETERMINE}
+     * based on a given symbolic alternate {@link Allele}.
      *
      * Reports reference bases as if they are on the {@link Strand#POSITIVE} strand.
      * @param variant The {@link VariantContext} associated with this annotation.
@@ -2207,10 +2208,10 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                                                              final ReferenceContext reference) {
 
         final StringBuilder alleleLogStringBuilder = new StringBuilder();
-        if ( variant.getReference().getBaseString().contains("N") ) {
+        if ( variant.getReference().getBaseString().contains(FuncotatorConstants.MASKED_ANY_BASE_STRING) ) {
             alleleLogStringBuilder.append( " ref allele: " + variant.getReference().toString() );
         }
-        if ( altAllele.getBaseString().contains("N") ) {
+        if ( altAllele.getBaseString().contains(FuncotatorConstants.MASKED_ANY_BASE_STRING) ) {
             alleleLogStringBuilder.append( " alt allele: " + altAllele.toString() );
         }
         logger.warn("Cannot create complete funcotation for variant at " + variant.getContig() + ":" + variant.getStart() + "-" + variant.getEnd() + " due to" + alleleLogStringBuilder.toString() );

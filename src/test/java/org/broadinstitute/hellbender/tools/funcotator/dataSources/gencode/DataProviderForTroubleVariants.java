@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode;
 
+import org.broadinstitute.hellbender.tools.funcotator.FuncotatorConstants;
+
 import java.util.Arrays;
 import java.util.List;
 
@@ -41,7 +43,7 @@ public class DataProviderForTroubleVariants {
                         17, 81902450, 81902450,
                         GencodeFuncotation.VariantClassification.COULD_NOT_DETERMINE,
                         GencodeFuncotation.VariantType.NA,
-                        "N",
+                        FuncotatorConstants.MASKED_ANY_BASE_STRING,
                         "<DEL>",
                         null,
                         "+",
@@ -53,7 +55,7 @@ public class DataProviderForTroubleVariants {
                         17, 81902450, 81902450,
                         GencodeFuncotation.VariantClassification.COULD_NOT_DETERMINE,
                         GencodeFuncotation.VariantType.NA,
-                        "N",
+                        FuncotatorConstants.MASKED_ANY_BASE_STRING,
                         "<DUP>",
                         null,
                         "+",
@@ -65,7 +67,7 @@ public class DataProviderForTroubleVariants {
                         17, 81902450, 81902450,
                         GencodeFuncotation.VariantClassification.COULD_NOT_DETERMINE,
                         GencodeFuncotation.VariantType.SNP,
-                        "N",
+                        FuncotatorConstants.MASKED_ANY_BASE_STRING,
                         "A",
                         null,
                         "+",
@@ -78,7 +80,7 @@ public class DataProviderForTroubleVariants {
                         GencodeFuncotation.VariantClassification.COULD_NOT_DETERMINE,
                         GencodeFuncotation.VariantType.SNP,
                         "C",
-                        "N",
+                        FuncotatorConstants.MASKED_ANY_BASE_STRING,
                         null,
                         "+",
                         null,
@@ -89,7 +91,7 @@ public class DataProviderForTroubleVariants {
                         17, 81971500, 81971500,
                         GencodeFuncotation.VariantClassification.IGR,
                         GencodeFuncotation.VariantType.NA,
-                        "N",
+                        FuncotatorConstants.MASKED_ANY_BASE_STRING,
                         "<DUP>",
                         null,
                         null,
@@ -101,7 +103,7 @@ public class DataProviderForTroubleVariants {
                         17, 81971500, 81971500,
                         GencodeFuncotation.VariantClassification.IGR,
                         GencodeFuncotation.VariantType.SNP,
-                        "N",
+                        FuncotatorConstants.MASKED_ANY_BASE_STRING,
                         "A",
                         "g.chr17:81971500N>A",
                         null,
@@ -114,7 +116,7 @@ public class DataProviderForTroubleVariants {
                         GencodeFuncotation.VariantClassification.IGR,
                         GencodeFuncotation.VariantType.SNP,
                         "C",
-                        "N",
+                        FuncotatorConstants.MASKED_ANY_BASE_STRING,
                         "g.chr17:81971500C>N",
                         null,
                         null,
