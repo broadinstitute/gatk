@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
 public final class AssemblyBasedCallerUtils {
 
     static final int REFERENCE_PADDING_FOR_ASSEMBLY = 500;
-    public static final String SUPPORTED_ALLELES_TAG="SA";
+    public static final String SUPPORTED_ALLELES_TAG="XA";
     public static final String CALLABLE_REGION_TAG = "CR";
     public static final String ALIGNMENT_REGION_TAG = "AR";
 
