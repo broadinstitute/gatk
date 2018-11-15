@@ -1,0 +1,7 @@
+{
+  "read_from_cache": true,
+  "default_runtime_attributes": {
+    "zones": "us-central1-a us-central1-b us-east1-d us-central1-c us-central1-f us-east1-c",
+    "docker": "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:4.beta.6-129-g30d24b637-skwalker_eval"
+  }
+}
