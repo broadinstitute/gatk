@@ -18,6 +18,7 @@ public class SimpleGermlineTaggerUnitTest extends GATKBaseTest {
     private static final String REF = hg19MiniReference;
     public static final String TEST_GERMLINE_TAGGING_ANNOTATION = "germline_tagging";
     public static final String CALL_ANNOTATION = "CALL";
+    public static final String MAF_ANNOTATION = "MAF";
 
     @Test(dataProvider = "simpleTests")
     public void testSimpleTagging(List<AnnotatedInterval> tumorSegments, List<AnnotatedInterval> normalSegments,

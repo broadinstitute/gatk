@@ -26,6 +26,9 @@ public class TagGermlineEvents extends GATKTool{
     final static public String PADDING_IN_BP_LONG_NAME = "endpoint-padding";
     final static public String GERMLINE_TAG_HEADER = "POSSIBLE_GERMLINE";
     final static public String INPUT_CALL_HEADER = "input-call-header";
+    final static public String HI_MAF_HEADER = "input-high-maf-header";
+    final static public String LO_MAF_HEADER = "input-low-maf-header";
+    final static public String DO_NOT_CHECK_CNLOH = "skip-normal-cnloh";
 
     @Argument(
             doc = "Input tumor (called) segment file -- the output will be a copy of this file with the additional information.",
@@ -63,15 +66,49 @@ public class TagGermlineEvents extends GATKTool{
             optional = true)
     private double reciprocalThreshold = 0.75;
 
+    @Argument(
+            doc = "Maximum maf to match a segment by the minor allelic fraction (MAF) when the call in the normal is copy neutral.  Under this threshold will allow a tumor segment to be tagged.",
+            fullName = "maf-max-threshold",
+            minValue = 0.0, maxValue = 0.5,
+            optional = true)
+    private double mafMaxThreshold = 0.47;
+
+    @Argument(
+            doc = "Column header to use for the high MAF estimate.",
+            fullName = HI_MAF_HEADER,
+            optional = true)
+    private String mafHiColumnHeader = "MINOR_ALLELE_FRACTION_POSTERIOR_90";
+
+    @Argument(
+            doc = "Column header to use for the low MAF estimate.",
+            fullName = LO_MAF_HEADER,
+            optional = true)
+    private String mafLoColumnHeader = "MINOR_ALLELE_FRACTION_POSTERIOR_10";
+
+    @Argument(
+            doc = "Disable attempt to find CNLoH events in the matched normal.",
+            fullName = DO_NOT_CHECK_CNLOH,
+            optional = true)
+    private Boolean isNoCnLoHCheck = false;  // Default to enable the check.
+
+
     @Override
     public void traverse() {
         final AnnotatedIntervalCollection tumorAnnotatedIntervalCollection = AnnotatedIntervalCollection.create(tumorSegmentFile.toPath(), null);
         final List<AnnotatedInterval> initialTumorSegments = tumorAnnotatedIntervalCollection.getRecords();
         final List<AnnotatedInterval> initialNormalSegments = AnnotatedIntervalCollection.create(calledNormalSegmentFile.toPath(), null).getRecords();
 
-        final List<AnnotatedInterval> tumorSegments = SimpleGermlineTagger.tagTumorSegmentsWithGermlineActivity(
-                initialTumorSegments, initialNormalSegments, callColumnHeader, getBestAvailableSequenceDictionary(),
-                GERMLINE_TAG_HEADER, paddingInBp, reciprocalThreshold);
+        List<AnnotatedInterval> tumorSegments = null;
+        if (isNoCnLoHCheck) {
+            tumorSegments = SimpleGermlineTagger.tagTumorSegmentsWithGermlineActivity(
+                    initialTumorSegments, initialNormalSegments, callColumnHeader, getBestAvailableSequenceDictionary(),
+                    GERMLINE_TAG_HEADER, paddingInBp, reciprocalThreshold);
+        } else {
+            tumorSegments = SimpleGermlineTagger.tagTumorSegmentsWithGermlineActivity(
+                    initialTumorSegments, initialNormalSegments, callColumnHeader, getBestAvailableSequenceDictionary(),
+                    GERMLINE_TAG_HEADER, paddingInBp, reciprocalThreshold, mafMaxThreshold, mafHiColumnHeader,
+                    mafLoColumnHeader);
+        }
 
         final List<String> finalAnnotations = tumorAnnotatedIntervalCollection.getAnnotations();
         finalAnnotations.add(GERMLINE_TAG_HEADER);

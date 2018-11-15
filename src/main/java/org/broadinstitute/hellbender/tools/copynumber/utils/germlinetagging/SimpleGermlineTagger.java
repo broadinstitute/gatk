@@ -5,6 +5,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.PeekableIterator;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.math3.geometry.euclidean.oned.Interval;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CalledCopyRatioSegment;
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedInterval;
@@ -22,8 +23,11 @@ import java.util.stream.Collectors;
  */
 public class SimpleGermlineTagger {
 
+    public static final String CNLOH_IN_GERMLINE = "C";
+
     private SimpleGermlineTagger(){}
 
+    //TODO: Make a version that only does germline and another that does with the CNLoH
     /** Look for concordant endpoints for determining whether an event in the tumor regions are in the germline regions.
      *
      * This method will not modify the input segments.
@@ -51,6 +55,62 @@ public class SimpleGermlineTagger {
                                                                                final SAMSequenceDictionary dictionary,
                                                                                final String outputAnnotationName, final int paddingInBp,
                                                                                final double reciprocalThreshold) {
+        validateBasicInputParameters(initialTumorSegments, initialNormalSegments, callAnnotation, dictionary, outputAnnotationName, paddingInBp, reciprocalThreshold);
+
+        final List<AnnotatedInterval> tumorSegments = IntervalUtils.sortLocatablesBySequenceDictionary(initialTumorSegments, dictionary);
+        final List<AnnotatedInterval> normalSegments = IntervalUtils.sortLocatablesBySequenceDictionary(initialNormalSegments, dictionary);
+
+        final Map<AnnotatedInterval, String> tumorSegsToGermlineCallMap = createAnnotatedIntervalToGermlineCallMap(tumorSegments, normalSegments, callAnnotation, paddingInBp, reciprocalThreshold, dictionary);
+
+        return createdUpdatedAnnotatedIntervals(tumorSegments, Collections.singletonList(tumorSegsToGermlineCallMap), outputAnnotationName);
+    }
+
+    // TODO: Docs
+    // TODO: Tests
+    public static List<AnnotatedInterval> tagTumorSegmentsWithGermlineActivity(final List<AnnotatedInterval> initialTumorSegments,
+                                                                               final List<AnnotatedInterval> initialNormalSegments,
+                                                                               final String callAnnotation,
+                                                                               final SAMSequenceDictionary dictionary,
+                                                                               final String outputAnnotationName, final int paddingInBp,
+                                                                               final double reciprocalThreshold, final double mafMaxThreshold,
+                                                                               final String mafHiAnnotation, final String mafLoAnnotation) {
+        validateBasicInputParameters(initialTumorSegments, initialNormalSegments, callAnnotation, dictionary, outputAnnotationName, paddingInBp, reciprocalThreshold);
+
+        Utils.validateArg(initialNormalSegments.stream().noneMatch(s -> StringUtils.isEmpty(s.getAnnotationValue(mafHiAnnotation))),
+                "All normal segments must have a maf high annotation.  Annotation (column header) name must be: " + mafHiAnnotation);
+        Utils.validateArg(initialTumorSegments.stream().noneMatch(s -> StringUtils.isEmpty(s.getAnnotationValue(mafHiAnnotation))),
+                "All tumor segments must have a maf high annotation.  Annotation (column header) name must be: " + mafHiAnnotation);
+        Utils.validateArg(initialNormalSegments.stream().noneMatch(s -> StringUtils.isEmpty(s.getAnnotationValue(mafLoAnnotation))),
+                "All normal segments must have a maf low annotation.  Annotation (column header) name must be: " + mafLoAnnotation);
+        Utils.validateArg(initialTumorSegments.stream().noneMatch(s -> StringUtils.isEmpty(s.getAnnotationValue(mafLoAnnotation))),
+                "All tumor segments must have a maf low annotation.  Annotation (column header) name must be: " + mafLoAnnotation);
+        ParamUtils.inRange(mafMaxThreshold, 0.0, 0.5, "Max MAF threshold must be between 0.0 and 0.5");
+
+        final List<AnnotatedInterval> tumorSegments = IntervalUtils.sortLocatablesBySequenceDictionary(initialTumorSegments, dictionary);
+        final List<AnnotatedInterval> normalSegments = IntervalUtils.sortLocatablesBySequenceDictionary(initialNormalSegments, dictionary);
+
+        final Map<AnnotatedInterval, String> tumorSegsToGermlineCallMap = createAnnotatedIntervalToGermlineCallMap(tumorSegments, normalSegments, callAnnotation, paddingInBp, reciprocalThreshold, dictionary);
+
+        final Map<AnnotatedInterval, String> tumorSegsToGermlineCNLoHTag = createTumorNormalCNLoHCallMap(tumorSegments,
+                normalSegments, reciprocalThreshold, callAnnotation, dictionary, mafMaxThreshold,
+                mafHiAnnotation, mafLoAnnotation);
+        final List<Map<AnnotatedInterval, String>> tagMaps = Arrays.asList(tumorSegsToGermlineCallMap, tumorSegsToGermlineCNLoHTag);
+
+        return createdUpdatedAnnotatedIntervals(tumorSegments, tagMaps, outputAnnotationName);
+    }
+
+    private static List<AnnotatedInterval> createdUpdatedAnnotatedIntervals(final List<AnnotatedInterval> tumorSegments, final List<Map<AnnotatedInterval, String>> tagMaps, final String outputAnnotationName) {
+        final Map<AnnotatedInterval, String> mergedMap = tagMaps.stream()
+                .map(Map::entrySet)
+                .flatMap(Set::stream)
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (valOriginal, valNew) -> valOriginal));
+
+        return tumorSegments.stream()
+                .map(s -> createTumorTaggedSegment(s, outputAnnotationName, mergedMap.getOrDefault(s, CalledCopyRatioSegment.Call.NEUTRAL.getOutputString())))
+                .collect(Collectors.toList());
+    }
+
+    private static void validateBasicInputParameters(final List<AnnotatedInterval> initialTumorSegments, final List<AnnotatedInterval> initialNormalSegments, final String callAnnotation, final SAMSequenceDictionary dictionary, final String outputAnnotationName, final int paddingInBp, final double reciprocalThreshold) {
         Utils.nonNull(dictionary);
         Utils.nonNull(initialTumorSegments);
         Utils.nonNull(initialNormalSegments);
@@ -59,18 +119,21 @@ public class SimpleGermlineTagger {
         IntervalUtils.validateNoOverlappingIntervals(initialNormalSegments);
         ParamUtils.isPositiveOrZero(paddingInBp, "padding must be greater than or equal to zero.");
         ParamUtils.inRange(reciprocalThreshold, 0.0, 1.0, "Reciprocal threshold must be between 0.0 and 1.0");
-
-        final List<AnnotatedInterval> tumorSegments = IntervalUtils.sortLocatablesBySequenceDictionary(initialTumorSegments, dictionary);
-        final List<AnnotatedInterval> normalSegments = IntervalUtils.sortLocatablesBySequenceDictionary(initialNormalSegments, dictionary);
-
         Utils.validateArg(!StringUtils.isEmpty(outputAnnotationName), "Output annotation name cannot be empty.");
-        Utils.validateArg(normalSegments.stream().noneMatch(s -> StringUtils.isEmpty(s.getAnnotationValue(callAnnotation))),
+
+        Utils.validateArg(initialNormalSegments.stream().noneMatch(s -> StringUtils.isEmpty(s.getAnnotationValue(callAnnotation))),
                 "All normal segments must have a call.  Call annotation (column header) name must be: " + callAnnotation);
-        Utils.validateArg(tumorSegments.stream().noneMatch(s -> StringUtils.isEmpty(s.getAnnotationValue(callAnnotation))),
+        Utils.validateArg(initialTumorSegments.stream().noneMatch(s -> StringUtils.isEmpty(s.getAnnotationValue(callAnnotation))),
                 "All tumor segments must have a call.  Call annotation (column header) must be: " + callAnnotation);
+    }
+
+    private static Map<AnnotatedInterval, String> createAnnotatedIntervalToGermlineCallMap(final List<AnnotatedInterval> tumorSegments, final List<AnnotatedInterval> normalSegments, final String callAnnotation, final int paddingInBp, final double reciprocalThreshold, final SAMSequenceDictionary dictionary) {
 
         final List<AnnotatedInterval> mergedNormalSegments = mergedRegionsByAnnotation(callAnnotation, normalSegments);
+        return createTumorNormalCopyRatioCallMap(tumorSegments, mergedNormalSegments, paddingInBp, reciprocalThreshold, callAnnotation, dictionary);
+    }
 
+    private static Map<AnnotatedInterval, String> createTumorNormalCopyRatioCallMap(final List<AnnotatedInterval> tumorSegments, final List<AnnotatedInterval> mergedNormalSegments, final int paddingInBp, final double reciprocalThreshold, final String callAnnotation, final SAMSequenceDictionary dictionary) {
         // Grab the merged normal segments that do not have a neutral call.
         final List<AnnotatedInterval> nonZeroMergedNormalSegments = mergedNormalSegments.stream()
                 .filter(s -> !StringUtils.isEmpty(s.getAnnotationValue(callAnnotation)))
@@ -78,28 +141,31 @@ public class SimpleGermlineTagger {
                 .collect(Collectors.toList());
 
         final Map<AnnotatedInterval, List<AnnotatedInterval>> nonZeroMergedNormalSegmentsToTumorSegments = IntervalUtils.createOverlapMap(nonZeroMergedNormalSegments, tumorSegments, dictionary);
-        final Map<AnnotatedInterval, CalledCopyRatioSegment.Call> tumorSegsToGermlineTag = createTumorSegmentsToGermlineTagMap(nonZeroMergedNormalSegmentsToTumorSegments, paddingInBp, callAnnotation, reciprocalThreshold);
-
-        return tumorSegments.stream()
-                .map(s -> createTumorTaggedSegment(s, outputAnnotationName, tumorSegsToGermlineTag.getOrDefault(s, CalledCopyRatioSegment.Call.NEUTRAL).getOutputString()))
-                .collect(Collectors.toList());
+        return createTumorSegmentsToGermlineTagMap(nonZeroMergedNormalSegmentsToTumorSegments, paddingInBp, callAnnotation, reciprocalThreshold);
     }
 
-    private static Map<AnnotatedInterval, CalledCopyRatioSegment.Call> createTumorSegmentsToGermlineTagMap(final Map<AnnotatedInterval, List<AnnotatedInterval>> nonZeroMergedNormalSegmentsToTumorSegments, int paddingInBp, final String callAnnotation, final double reciprocalThreshold) {
-        final Map<AnnotatedInterval,CalledCopyRatioSegment.Call> result = new HashMap<>();
+    //TODO: Can't be string
+    private static Map<AnnotatedInterval, String> createTumorNormalCNLoHCallMap(final List<AnnotatedInterval> tumorSegments, final List<AnnotatedInterval> normalSegments, final double reciprocalThreshold, final String callAnnotation, final SAMSequenceDictionary dictionary,
+                                                                                final double mafMaxThreshold, final String mafHiAnnotation, final String mafLowAnnotation) {
+        // Grab the normal segments that have a neutral call.
+        final List<AnnotatedInterval> copyNeutralNormalSegments = normalSegments.stream()
+                .filter(s -> !StringUtils.isEmpty(s.getAnnotationValue(callAnnotation)))
+                .filter(s -> s.getAnnotationValue(callAnnotation).equals(CalledCopyRatioSegment.Call.NEUTRAL.getOutputString()))
+                .collect(Collectors.toList());
+
+        final Map<AnnotatedInterval, List<AnnotatedInterval>> copyNeutralNormalSegmentsToTumorSegments = IntervalUtils.createOverlapMap(copyNeutralNormalSegments, tumorSegments, dictionary);
+        return createTumorSegmentsToGermlineCnLohMap(copyNeutralNormalSegmentsToTumorSegments, reciprocalThreshold, mafMaxThreshold, mafHiAnnotation, mafLowAnnotation);
+    }
+
+
+    private static Map<AnnotatedInterval, String> createTumorSegmentsToGermlineTagMap(final Map<AnnotatedInterval, List<AnnotatedInterval>> nonZeroMergedNormalSegmentsToTumorSegments, int paddingInBp, final String callAnnotation, final double reciprocalThreshold) {
+        final Map<AnnotatedInterval, String> result = new HashMap<>();
         for (final AnnotatedInterval normalSeg : nonZeroMergedNormalSegmentsToTumorSegments.keySet()) {
             final List<AnnotatedInterval> overlappingTumorSegments = nonZeroMergedNormalSegmentsToTumorSegments.get(normalSeg);
 
-            final List<AnnotatedInterval> mergedTumorSegments = mergedRegionsByAnnotation(callAnnotation, overlappingTumorSegments);
-            final boolean isReciprocalOverlapSeen = mergedTumorSegments.stream()
-                .anyMatch(s -> IntervalUtils.isReciprocalOverlap(s.getInterval(), normalSeg.getInterval(), reciprocalThreshold));
+            final boolean isSegmentPositionMatch = isSegmentPositionMatch(normalSeg, overlappingTumorSegments, paddingInBp, reciprocalThreshold, callAnnotation);
 
-            final boolean isStartPositionSeen = overlappingTumorSegments.stream()
-                    .anyMatch(s -> Math.abs(s.getStart() - normalSeg.getStart()) <= paddingInBp);
-
-            final boolean isEndPositionSeen = overlappingTumorSegments.stream()
-                    .anyMatch(s -> Math.abs(s.getEnd() - normalSeg.getEnd()) <= paddingInBp);
-            if ((isStartPositionSeen && isEndPositionSeen) || isReciprocalOverlapSeen) {
+            if (isSegmentPositionMatch) {
                 final CalledCopyRatioSegment.Call normalCall = Arrays.stream(CalledCopyRatioSegment.Call.values())
                         .filter(c -> c.getOutputString().equals(normalSeg.getAnnotationValue(callAnnotation))).findFirst().orElse(null);
                 if (normalCall == null) {
@@ -110,10 +176,41 @@ public class SimpleGermlineTagger {
                                 || ((normalSeg.getStart() < s.getStart()) && (normalSeg.getEnd() > s.getEnd())))
                                 && (normalSeg.getInterval().intersect(s).size() > (s.getInterval().size() * reciprocalThreshold))
                         )
-                        .collect(Collectors.toMap(Function.identity(), s -> normalCall)));
+                        .collect(Collectors.toMap(Function.identity(), s -> normalCall.getOutputString())));
             }
         }
 
+        return result;
+    }
+
+    private static boolean isSegmentPositionMatch(final AnnotatedInterval normalSeg, final List<AnnotatedInterval> overlappingTumorSegments, final int paddingInBp, final double reciprocalThreshold, final String annotationToMergeTumorSegments) {
+        final List<AnnotatedInterval> mergedTumorSegments = mergedRegionsByAnnotation(annotationToMergeTumorSegments, overlappingTumorSegments);
+        final boolean isReciprocalOverlapSeen = mergedTumorSegments.stream()
+            .anyMatch(s -> IntervalUtils.isReciprocalOverlap(s.getInterval(), normalSeg.getInterval(), reciprocalThreshold));
+
+        final boolean isStartPositionSeen = overlappingTumorSegments.stream()
+                .anyMatch(s -> Math.abs(s.getStart() - normalSeg.getStart()) <= paddingInBp);
+
+        final boolean isEndPositionSeen = overlappingTumorSegments.stream()
+                .anyMatch(s -> Math.abs(s.getEnd() - normalSeg.getEnd()) <= paddingInBp);
+
+        return (isStartPositionSeen && isEndPositionSeen) || isReciprocalOverlapSeen;
+    }
+
+    //TODO: This cannot return a map to a string.  Must be an enum
+    private static Map<AnnotatedInterval, String> createTumorSegmentsToGermlineCnLohMap(final Map<AnnotatedInterval, List<AnnotatedInterval>> copyNeutralNormalSegmentsToTumorSegments, final double reciprocalThreshold, final double mafMaxThreshold, final String mafHiAnnotation, final String mafLowAnnotation) {
+        final Map<AnnotatedInterval, String> result = new HashMap<>();
+        for (final AnnotatedInterval normalSeg : copyNeutralNormalSegmentsToTumorSegments.keySet()) {
+            final List<AnnotatedInterval> overlappingTumorSegments = copyNeutralNormalSegmentsToTumorSegments.get(normalSeg);
+            for (final AnnotatedInterval overlappingTumorSegment : overlappingTumorSegments) {
+                final boolean isReciprocalOverlapRegion = IntervalUtils.isReciprocalOverlap(normalSeg.getInterval(), overlappingTumorSegment.getInterval(), reciprocalThreshold);
+                final boolean isMafUnlikelyBalanced = Double.parseDouble(normalSeg.getAnnotationValue(mafHiAnnotation)) < mafMaxThreshold;
+
+                if (isReciprocalOverlapRegion && isMafUnlikelyBalanced) {
+                    result.put(overlappingTumorSegment, CNLOH_IN_GERMLINE);
+                }
+            }
+        }
         return result;
     }
 
@@ -159,5 +256,31 @@ public class SimpleGermlineTagger {
         return segment.getAnnotationValue(annotationToMerge).equals(nextSegment.getAnnotationValue(annotationToMerge)) &&
                 segment.getContig().equals(nextSegment.getContig()) &&
                 segment.getAnnotationValue(annotationToMerge) != null;
+    }
+
+    private static Interval intersect(final Interval interval1, final Interval interval2) {
+        // Inf is lower bound, sup is upper bound
+        return new Interval(Math.max(interval1.getInf(), interval2.getInf()), Math.min(interval1.getSup(), interval2.getSup()));
+    }
+
+    private static boolean overlap(final Interval interval1, final Interval interval2) {
+        // Inf is lower bound, sup is upper bound
+        return (interval1.getInf() <= interval2.getSup()) && (interval2.getInf() <= interval1.getSup());
+    }
+
+    private static boolean isReciprocalOverlap(final Interval interval1, final Interval interval2, final double reciprocalOverlapThreshold) {
+        return overlap(interval1, interval2) &&
+                (intersect(interval1, interval2).getSize() >= (interval2.getSize() * reciprocalOverlapThreshold)) &&
+                (intersect(interval1, interval2).getSize() >= (interval1.getSize() * reciprocalOverlapThreshold));
+    }
+
+    private static boolean isReciprocalOverlap(final AnnotatedInterval annotatedInterval1, final AnnotatedInterval annotatedInterval2, final double reciprocalOverlapThreshold,
+                                               final String mafAnnotationLo, final String mafAnnotationHi) {
+        final Interval interval1 = new Interval(Double.parseDouble(annotatedInterval1.getAnnotationValue(mafAnnotationLo)),
+            Double.parseDouble(annotatedInterval1.getAnnotationValue(mafAnnotationHi)));
+        final Interval interval2 = new Interval(Double.parseDouble(annotatedInterval2.getAnnotationValue(mafAnnotationLo)),
+            Double.parseDouble(annotatedInterval2.getAnnotationValue(mafAnnotationHi)));
+
+        return isReciprocalOverlap(interval1, interval2, reciprocalOverlapThreshold);
     }
 }

@@ -51,20 +51,27 @@
 #  - centromere_tracks_seg:  gs://gatk-best-practices/somatic-hg38/final_centromere_hg38.seg
 #  - gistic_blacklist_tracks_seg:  gs://gatk-best-practices/somatic-hg38/CNV.hg38liftover.bypos.v1.CR1_event_added.mod.seg
 #
-#  Dev note:  FYI...This workflow is easily tested on a laptop.
+#  Dev notes:
+#  - This workflow is easily tested on a laptop.
+#  - There is a hack that propagates makes this WDL more fragile.
+#      Tagging of germline events requires that there is a combined model segments and called segments file.
+#       As of this writing, no such file exists.  `CombineSegmentBreakpoints` is used to create such a file.  However, to
+#       minimize conflicts, `CombineSegmentBreakpoints` renames column headers by appending "_1".  Downstream tasks have
+#       to account for this.
+#
 #
 workflow CombineTracksWorkflow {
     File tumor_called_seg
     File tumor_modeled_seg
     File af_param
     File matched_normal_called_seg
+    File matched_normal_modeled_seg
     File ref_fasta
     File ref_fasta_dict
     File ref_fasta_fai
     File centromere_tracks_seg
     File gistic_blacklist_tracks_seg
     File? gatk4_jar_override
-    Array[String] columns_of_interest
     Int? germline_tagging_padding
     String group_id
     String gatk_docker
@@ -72,24 +79,69 @@ workflow CombineTracksWorkflow {
     Array[String]? annotations_on_which_to_merge
     Int? min_hets_acs_results
     Float? maf90_threshold
+    Float maf90_threshold_final = select_first([maf90_threshold, 0.47])
+    Boolean? is_ignore_cnloh_in_matched_normal
+    Boolean is_ignore_cnloh_in_matched_normal_final = select_first([is_ignore_cnloh_in_matched_normal, false])
 
     Array[String]? annotations_on_which_to_merge_final = select_first([annotations_on_which_to_merge,
-    ["MEAN_LOG2_COPY_RATIO", "LOG2_COPY_RATIO_POSTERIOR_10", "LOG2_COPY_RATIO_POSTERIOR_50", "LOG2_COPY_RATIO_POSTERIOR_90",
-        "MINOR_ALLELE_FRACTION_POSTERIOR_10", "MINOR_ALLELE_FRACTION_POSTERIOR_50", "MINOR_ALLELE_FRACTION_POSTERIOR_90"]])
+    ["MEAN_LOG2_COPY_RATIO", "LOG2_COPY_RATIO_POSTERIOR_10_1", "LOG2_COPY_RATIO_POSTERIOR_50_1", "LOG2_COPY_RATIO_POSTERIOR_90_1",
+        "MINOR_ALLELE_FRACTION_POSTERIOR_10_1", "MINOR_ALLELE_FRACTION_POSTERIOR_50_1", "MINOR_ALLELE_FRACTION_POSTERIOR_90_1"]])
+
+    call PrepareForACSConversion as MergeCallsWithModelSegmentsTumor {
+        input:
+            called_seg = tumor_called_seg,
+            modeled_seg = tumor_modeled_seg,
+            ref_fasta = ref_fasta,
+            ref_fasta_dict = ref_fasta_dict,
+            ref_fasta_fai = ref_fasta_fai,
+            gatk4_jar_override = gatk4_jar_override,
+            gatk_docker = gatk_docker,
+            columns_of_interest = [
+                 "NUM_POINTS_COPY_RATIO", "NUM_POINTS_ALLELE_FRACTION",
+                 "LOG2_COPY_RATIO_POSTERIOR_10", "LOG2_COPY_RATIO_POSTERIOR_50", "LOG2_COPY_RATIO_POSTERIOR_90",
+                 "MINOR_ALLELE_FRACTION_POSTERIOR_10", "MINOR_ALLELE_FRACTION_POSTERIOR_50", "MINOR_ALLELE_FRACTION_POSTERIOR_90",
+                 "CALL", "MEAN_LOG2_COPY_RATIO"
+            ]
+    }
+
+    call PrepareForACSConversion as MergeCallsWithModelSegmentsNormal {
+        input:
+            called_seg = matched_normal_called_seg,
+            modeled_seg = matched_normal_modeled_seg,
+            ref_fasta = ref_fasta,
+            ref_fasta_dict = ref_fasta_dict,
+            ref_fasta_fai = ref_fasta_fai,
+            gatk4_jar_override = gatk4_jar_override,
+            gatk_docker = gatk_docker,
+            columns_of_interest = [
+                 "NUM_POINTS_COPY_RATIO", "NUM_POINTS_ALLELE_FRACTION",
+                 "LOG2_COPY_RATIO_POSTERIOR_10", "LOG2_COPY_RATIO_POSTERIOR_50", "LOG2_COPY_RATIO_POSTERIOR_90",
+                 "MINOR_ALLELE_FRACTION_POSTERIOR_10", "MINOR_ALLELE_FRACTION_POSTERIOR_50", "MINOR_ALLELE_FRACTION_POSTERIOR_90",
+                 "CALL", "MEAN_LOG2_COPY_RATIO"
+            ]
+    }
 
 	call CombineTracks {
         input:
-            tumor_called_seg = tumor_called_seg,
-            matched_normal_called_seg = matched_normal_called_seg,
+            tumor_called_seg = MergeCallsWithModelSegmentsTumor.model_and_calls_merged_gatk_seg,
+            matched_normal_called_seg = MergeCallsWithModelSegmentsNormal.model_and_calls_merged_gatk_seg,
             centromere_tracks_seg = centromere_tracks_seg,
-            columns_of_interest = columns_of_interest,
+            columns_of_interest = [
+                   "NUM_POINTS_ALLELE_FRACTION",
+                   "LOG2_COPY_RATIO_POSTERIOR_10", "LOG2_COPY_RATIO_POSTERIOR_50", "LOG2_COPY_RATIO_POSTERIOR_90",
+                   "MINOR_ALLELE_FRACTION_POSTERIOR_10", "MINOR_ALLELE_FRACTION_POSTERIOR_50", "MINOR_ALLELE_FRACTION_POSTERIOR_90",
+                   "CALL", "NUM_POINTS_COPY_RATIO_1", "MEAN_LOG2_COPY_RATIO",
+                   "type", "POSSIBLE_GERMLINE"
+            ],
             ref_fasta = ref_fasta,
             ref_fasta_dict = ref_fasta_dict,
             ref_fasta_fai = ref_fasta_fai,
             germline_tagging_padding = germline_tagging_padding,
             gistic_blacklist_tracks_seg = gistic_blacklist_tracks_seg,
             gatk4_jar_override = gatk4_jar_override,
-            gatk_docker = gatk_docker
+            gatk_docker = gatk_docker,
+            is_ignore_cnloh_in_matched_normal = is_ignore_cnloh_in_matched_normal_final,
+            maf_max_threshold = maf90_threshold_final
     }
 
     call IGVConvert as IGVConvertNormal {
@@ -122,7 +174,13 @@ workflow CombineTracksWorkflow {
             ref_fasta_dict = ref_fasta_dict,
             ref_fasta_fai = ref_fasta_fai,
             gatk4_jar_override = gatk4_jar_override,
-            gatk_docker = gatk_docker
+            gatk_docker = gatk_docker,
+            columns_of_interest = [
+               "NUM_POINTS_COPY_RATIO", "NUM_POINTS_ALLELE_FRACTION",
+               "LOG2_COPY_RATIO_POSTERIOR_10", "LOG2_COPY_RATIO_POSTERIOR_50", "LOG2_COPY_RATIO_POSTERIOR_90",
+               "MINOR_ALLELE_FRACTION_POSTERIOR_10", "MINOR_ALLELE_FRACTION_POSTERIOR_50", "MINOR_ALLELE_FRACTION_POSTERIOR_90",
+               "CALL", "MEAN_LOG2_COPY_RATIO", "POSSIBLE_GERMLINE", "type", "ID"
+            ]
     }
 
     call IGVConvert as IGVConvertTumorOutput {
@@ -160,7 +218,7 @@ workflow CombineTracksWorkflow {
             af_param = af_param,
             docker = gatk_docker,
             min_hets_acs_results = min_hets_acs_results,
-            maf90_threshold = maf90_threshold
+            maf90_threshold = maf90_threshold_final
     }
 
     call IGVConvert as IGVConvertMergedTumorOutput {
@@ -180,7 +238,6 @@ workflow CombineTracksWorkflow {
             docker = gatk_docker
     }
 
-
     output {
         File cnv_postprocessing_tumor_igv_compat = IGVConvertTumor.outFile
         File cnv_postprocessing_normal_igv_compat = IGVConvertNormal.outFile
@@ -196,6 +253,7 @@ workflow CombineTracksWorkflow {
     }
 }
 
+# TODO: Since the -XL parameter should be standard for the blacklist, remove the applications of the blacklist and simply tag germline events here.
 task CombineTracks {
 	File tumor_called_seg
 	File matched_normal_called_seg
@@ -205,9 +263,9 @@ task CombineTracks {
     File centromere_tracks_seg
     File gistic_blacklist_tracks_seg
     Array[String] columns_of_interest
-
+    Boolean is_ignore_cnloh_in_matched_normal
 	File? gatk4_jar_override
-	
+	Float? maf_max_threshold
 	String output_name = basename(tumor_called_seg)
 
     Int? germline_tagging_padding
@@ -239,7 +297,8 @@ task CombineTracks {
 			TagGermlineEvents \
             --segments ${tumor_called_seg} --called-matched-normal-seg-file ${matched_normal_called_seg} \
             -O ${output_name}.germline_tagged.seg -R ${ref_fasta} \
-            ${"--endpoint-padding " + germline_tagging_padding}
+            ${"--endpoint-padding " + germline_tagging_padding} \
+            ${"--maf-max-threshold " + maf_max_threshold}
 
         echo "======= Centromeres "
     	gatk --java-options "-Xmx${command_mem}m" \
@@ -447,6 +506,7 @@ task MergeSegmentByAnnotation {
 # TODO: No non-trivial heredocs in WDL.  Add this to the script directory and call via anaconda (future release)
 # TODO: This is a hard threholding algorithm.  Better approaches exist if this does not meet needs.
 # TODO: The min hets hard thresholding should eventually be removed.  This is to mitigate some hypersegmentation when rerunning GATK CNV is too expensive.
+# TODO: The column names with "_1" should be addressed (side effect from CombineSegmentBreakpoints).  This makes the WDL very fragile.
 task PrototypeACSConversion {
     File model_seg
     File af_param
@@ -513,8 +573,8 @@ model_segments_seg_pd = pd.read_csv(model_segments_seg_input_file,
 model_segments_af_param_pd = pd.read_csv(model_segments_af_param_input_file, sep='\t', comment='@')
 
 def simple_determine_allelic_fraction(model_segments_seg_pd):
-    result = model_segments_seg_pd['MINOR_ALLELE_FRACTION_POSTERIOR_50']
-    result[model_segments_seg_pd['MINOR_ALLELE_FRACTION_POSTERIOR_90'] > HAM_FIST_THRESHOLD] = 0.5
+    result = model_segments_seg_pd['MINOR_ALLELE_FRACTION_POSTERIOR_50_1']
+    result[model_segments_seg_pd['MINOR_ALLELE_FRACTION_POSTERIOR_90_1'] > HAM_FIST_THRESHOLD] = 0.5
     return result
 
 def convert_model_segments_to_alleliccapseg(model_segments_seg_pd,
@@ -525,9 +585,9 @@ def convert_model_segments_to_alleliccapseg(model_segments_seg_pd,
     alleliccapseg_seg_pd['Chromosome'] = model_segments_seg_pd['CONTIG']
     alleliccapseg_seg_pd['Start.bp'] = model_segments_seg_pd['START']
     alleliccapseg_seg_pd['End.bp'] = model_segments_seg_pd['END']
-    alleliccapseg_seg_pd['n_probes'] = model_segments_seg_pd['NUM_POINTS_COPY_RATIO_1']
+    alleliccapseg_seg_pd['n_probes'] = model_segments_seg_pd['NUM_POINTS_COPY_RATIO']
     alleliccapseg_seg_pd['length'] = alleliccapseg_seg_pd['End.bp'] - alleliccapseg_seg_pd['Start.bp']
-    alleliccapseg_seg_pd['n_hets'] = model_segments_seg_pd['NUM_POINTS_ALLELE_FRACTION']
+    alleliccapseg_seg_pd['n_hets'] = model_segments_seg_pd['NUM_POINTS_ALLELE_FRACTION_1']
 
     #ModelSegments estimates posterior credible intervals, while AllelicCapSeg performs maximum a posteriori (MAP) estimation.
     #The copy-ratio and allele-fraction models fit by both also differ.
@@ -535,9 +595,9 @@ def convert_model_segments_to_alleliccapseg(model_segments_seg_pd,
 
     alleliccapseg_seg_pd['f'] = simple_determine_allelic_fraction(model_segments_seg_pd)
 
-    alleliccapseg_seg_pd['tau'] = 2. * 2**model_segments_seg_pd['LOG2_COPY_RATIO_POSTERIOR_50']
-    alleliccapseg_seg_pd['sigma.tau'] = 2**model_segments_seg_pd['LOG2_COPY_RATIO_POSTERIOR_90'] - 2**model_segments_seg_pd['LOG2_COPY_RATIO_POSTERIOR_10']
-    sigma_f = (model_segments_seg_pd['MINOR_ALLELE_FRACTION_POSTERIOR_90'].values - model_segments_seg_pd['MINOR_ALLELE_FRACTION_POSTERIOR_10'].values) / 2.
+    alleliccapseg_seg_pd['tau'] = 2. * 2**model_segments_seg_pd['LOG2_COPY_RATIO_POSTERIOR_50_1']
+    alleliccapseg_seg_pd['sigma.tau'] = 2**model_segments_seg_pd['LOG2_COPY_RATIO_POSTERIOR_90_1'] - 2**model_segments_seg_pd['LOG2_COPY_RATIO_POSTERIOR_10_1']
+    sigma_f = (model_segments_seg_pd['MINOR_ALLELE_FRACTION_POSTERIOR_90_1'].values - model_segments_seg_pd['MINOR_ALLELE_FRACTION_POSTERIOR_10_1'].values) / 2.
     sigma_mu = np.sqrt(sigma_f**2 + alleliccapseg_seg_pd['sigma.tau']**2) #we propagate errors in the products f * tau and (1 - f) * tau in the usual way
     alleliccapseg_seg_pd['mu.minor'] = alleliccapseg_seg_pd['f'] * alleliccapseg_seg_pd['tau']
     alleliccapseg_seg_pd['sigma.minor'] = sigma_mu
@@ -617,12 +677,7 @@ task PrepareForACSConversion {
     File ref_fasta_dict
     File ref_fasta_fai
 
-    Array[String] columns_of_interest = [
-     "NUM_POINTS_COPY_RATIO", "NUM_POINTS_ALLELE_FRACTION",
-     "LOG2_COPY_RATIO_POSTERIOR_10", "LOG2_COPY_RATIO_POSTERIOR_50", "LOG2_COPY_RATIO_POSTERIOR_90",
-     "MINOR_ALLELE_FRACTION_POSTERIOR_10", "MINOR_ALLELE_FRACTION_POSTERIOR_50", "MINOR_ALLELE_FRACTION_POSTERIOR_90",
-     "CALL", "NUM_POINTS_COPY_RATIO", "MEAN_LOG2_COPY_RATIO", "POSSIBLE_GERMLINE", "type", "ID"
-    ]
+    Array[String] columns_of_interest
 
 	File? gatk4_jar_override
 
@@ -703,7 +758,7 @@ if __name__ == "__main__":
         tsvin = csv.DictReader(tsvinfp, delimiter='\t')
         tsvout = csv.writer(tsvoutfp, delimiter="\t")
         for r in tsvin:
-            int_ify_num_points = r["NUM_POINTS_COPY_RATIO_1"].replace(".0", "")
+            int_ify_num_points = r["NUM_POINTS_COPY_RATIO"].replace(".0", "")
             outrow = [r["SAMPLE"], r["CONTIG"], r["START"], r["END"], int_ify_num_points, r["MEAN_LOG2_COPY_RATIO"]]
             print(outrow)
             tsvout.writerow(outrow)

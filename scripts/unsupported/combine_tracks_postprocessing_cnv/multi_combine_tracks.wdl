@@ -7,6 +7,7 @@ workflow MultiCombineTracks {
     	Array[File] tumor_called_segs
     	Array[File] matched_normal_called_segs
     	Array[File] tumor_modeled_segs
+    	Array[File] matched_normal_modeled_segs
         Array[File] af_params
         File ref_fasta
         File ref_fasta_dict
@@ -14,7 +15,6 @@ workflow MultiCombineTracks {
         File centromere_tracks_seg
         File gistic_blacklist_tracks_seg
         File? gatk4_jar_override
-        Array[String] columns_of_interest
         Int? germline_tagging_padding
         String group_id
         String gatk_docker
@@ -28,13 +28,13 @@ workflow MultiCombineTracks {
                 	tumor_modeled_seg = tumor_modeled_segs[i],
                 	af_param = af_params[i],
                 	matched_normal_called_seg = matched_normal_called_segs[i],
+                	matched_normal_modeled_seg = matched_normal_modeled_segs[i],
                     ref_fasta = ref_fasta,
                     ref_fasta_dict = ref_fasta_dict,
                     ref_fasta_fai = ref_fasta_fai,
                     centromere_tracks_seg = centromere_tracks_seg,
                     gistic_blacklist_tracks_seg = gistic_blacklist_tracks_seg,
                     gatk4_jar_override = gatk4_jar_override,
-                    columns_of_interest = columns_of_interest,
                     germline_tagging_padding = germline_tagging_padding,
                     group_id = group_id,
                     gatk_docker = gatk_docker,
