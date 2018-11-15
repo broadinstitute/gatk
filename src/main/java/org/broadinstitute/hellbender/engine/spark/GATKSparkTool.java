@@ -264,11 +264,15 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      * @return all reads from our reads input(s) as a {@link JavaRDD}, bounded by intervals if specified, and unfiltered.
      */
     public JavaRDD<GATKRead> getUnfilteredReads() {
-        TraversalParameters traversalParameters;
-        if ( intervalArgumentCollection.intervalsSpecified() ) {
-            traversalParameters = intervalArgumentCollection.getTraversalParameters(getHeaderForReads().getSequenceDictionary());
-        } else if ( hasUserSuppliedIntervals() ) { // intervals may have been supplied by editIntervals
-            traversalParameters = new TraversalParameters(getIntervals(), false);
+        final TraversalParameters traversalParameters;
+        if ( hasUserSuppliedIntervals() ) { // intervals may have been supplied by editIntervals
+            final boolean traverseUnmapped;
+            if (intervalArgumentCollection.intervalsSpecified()) {
+                traverseUnmapped = intervalArgumentCollection.getTraversalParameters(getHeaderForReads().getSequenceDictionary()).traverseUnmappedReads();
+            } else {
+                traverseUnmapped = false;
+            }
+            traversalParameters = new TraversalParameters(getIntervals(), traverseUnmapped);
         } else {
             traversalParameters = null; // no intervals were specified so return all reads (mapped and unmapped)
         }
