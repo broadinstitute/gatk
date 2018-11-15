@@ -32,7 +32,7 @@
 # independent of what is in the docker file.  See the README.md for more info.
 #
 # Adapted from: https://portal.firecloud.org/#methods/davidben/m2-concordance/10/wdl
-workflow VCFConcordance {
+workflow VCFVariantCallerConcordance {
     ####################################################################################
     # Inputs:
     File actual_vcf
