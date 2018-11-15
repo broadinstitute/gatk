@@ -256,7 +256,8 @@ public class Funcotator extends VariantWalker {
                 funcotatorArgs.transcriptSelectionMode,
                 finalUserTranscriptIdSet,
                 this,
-                funcotatorArgs.lookaheadFeatureCachingInBp
+                funcotatorArgs.lookaheadFeatureCachingInBp,
+                new FlankSettings(funcotatorArgs.fivePrimeFlankSize, funcotatorArgs.threePrimeFlankSize)
         );
 
         // Create our engine to do our work and drive this Funcotation train!

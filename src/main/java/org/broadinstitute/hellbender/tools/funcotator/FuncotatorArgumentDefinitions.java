@@ -56,6 +56,11 @@ public class FuncotatorArgumentDefinitions {
     public static final String HG19_REFERENCE_VERSION_STRING = "hg19";
     public static final String HG38_REFERENCE_VERSION_STRING = "hg38";
 
+    public static final String FIVE_PRIME_FLANK_SIZE_NAME = "five-prime-flank-size";
+    public static final String THREE_PRIME_FLANK_SIZE_NAME = "three-prime-flank-size";
+    public static final int FIVE_PRIME_FLANK_SIZE_DEFAULT_VALUE = 5000;
+    public static final int THREE_PRIME_FLANK_SIZE_DEFAULT_VALUE = 0;
+
     public static final String LOOKAHEAD_CACHE_IN_BP_NAME = "lookahead-cache-bp";
     public static final int LOOKAHEAD_CACHE_IN_BP_DEFAULT_VALUE = VariantWalkerBase.FEATURE_CACHE_LOOKAHEAD;
 

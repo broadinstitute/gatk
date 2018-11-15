@@ -46,6 +46,8 @@ public class FuncotatorEngineUnitTest extends GATKBaseTest {
         // Set up our arguments:
         final FuncotatorArgumentCollection funcotatorArguments = new FuncotatorArgumentCollection();
         funcotatorArguments.referenceVersion = FuncotatorArgumentDefinitions.HG19_REFERENCE_VERSION_STRING;
+        funcotatorArguments.transcriptSelectionMode = TranscriptSelectionMode.CANONICAL;
+        funcotatorArguments.lookaheadFeatureCachingInBp = FuncotatorArgumentDefinitions.LOOKAHEAD_CACHE_IN_BP_DEFAULT_VALUE;
 
         // Create the metadata directly from the input.
         final FuncotatorEngine funcotatorEngine =
@@ -59,7 +61,8 @@ public class FuncotatorEngineUnitTest extends GATKBaseTest {
                                 TranscriptSelectionMode.CANONICAL,
                                 new HashSet<>(),
                                 new DummyPlaceholderGatkTool(),
-                                FuncotatorArgumentDefinitions.LOOKAHEAD_CACHE_IN_BP_DEFAULT_VALUE)
+                                FuncotatorArgumentDefinitions.LOOKAHEAD_CACHE_IN_BP_DEFAULT_VALUE,
+                                new FlankSettings(0, 0))
                 );
 
         for (int i = 0; i < entireVcf.getRight().size(); i++) {
