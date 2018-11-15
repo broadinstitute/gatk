@@ -1,0 +1,7 @@
+{
+  "IndexFeatureFile.gatk_docker": "broadinstitute/gatk:4.0.5.0",
+  "IndexFeatureFile.variant_vcf": "gs://gnomad-public/release/2.0.2/vcf/genomes/liftover_grch38/gnomad.genomes.r2.0.2.sites.liftover.b38.autosomes_and_X.vcf.gz",
+  "IndexFeatureFile.output_vcf_index": "gnomad.genomes.r2.0.2.sites.liftover.b38.autosomes_and_X.vcf.gz.tbi",
+  "IndexFeatureFile.disk_space_gb": "1024",
+  "IndexFeatureFile.boot_disk_size_gb": "64"
+}
