@@ -2261,7 +2261,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                 .setTumorSeqAllele2(altAllele.getBaseString())
                 .setGenomeChange(getGenomeChangeString(variant, altAllele))
                 .setAnnotationTranscript(transcript.getTranscriptId())
-                .setOtherTranscripts(gtfFeature.getTranscripts().stream().map(GencodeGtfTranscriptFeature::getTranscriptId).collect(Collectors.toList()))
                 .setReferenceContext(referenceBasesString)
                 .setGcContent(gcContent)
                 .setNcbiBuild(gtfFeature.getUcscGenomeVersion())

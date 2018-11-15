@@ -1487,6 +1487,11 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         // TODO: Make this an input argument:
         final Set<String> requestedTranscriptIds = getValidTranscriptsForGene(expectedGeneName);
 
+        // Run this test with flanking turned on for both ends, to make sure that we don't get
+        // any false positive flank calls. The flanks feature is tested independently below in
+        // testCreateFuncotationsWithFlanks().
+        final FlankSettings flankSettingsForTesting = new FlankSettings(5000, 5000);
+
         // Create a factory for our funcotations:
         try (final GencodeFuncotationFactory funcotationFactory = new GencodeFuncotationFactory(
                 IOUtils.getPath(transcriptFastaFile),
@@ -1495,7 +1500,8 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                 FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE,
                 requestedTranscriptIds,
                 new LinkedHashMap<>(),
-                new FeatureInput<>(transcriptGtfFile, GencodeFuncotationFactory.DEFAULT_NAME, Collections.emptyMap()))) {
+                new FeatureInput<>(transcriptGtfFile, GencodeFuncotationFactory.DEFAULT_NAME, Collections.emptyMap()),
+                flankSettingsForTesting)) {
 
             final List<Feature> featureList = new ArrayList<>();
             featureList.add( gene );
