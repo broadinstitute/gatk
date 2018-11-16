@@ -111,8 +111,9 @@ public class CNNScoreVariants extends TwoPassVariantWalker {
             "1D models will look at the reference sequence and variant annotations." +
             "2D models look at aligned reads, reference sequence, and variant annotations." +
             "2D models require a BAM file as input as well as the tensor-type argument to be set.";
+    static final String DISABLE_AVX_CHECK_NAME = "disable-avx-check";
     static final String AVXREQUIRED_ERROR = "This tool requires AVX instruction set support by default due to its dependency on recent versions of the TensorFlow library.\n" +
-            " If you have an older (pre-1.6) version of TensorFlow installed that does not require AVX you may attempt to re-run the tool with the --disable-avx-check argument to bypass this check.\n" +
+            " If you have an older (pre-1.6) version of TensorFlow installed that does not require AVX you may attempt to re-run the tool with the %s argument to bypass this check.\n" +
             " Note that such configurations are not officially supported.";
 
     private static final int CONTIG_INDEX = 0;
@@ -167,7 +168,7 @@ public class CNNScoreVariants extends TwoPassVariantWalker {
     private String outputTensorsDir = "";
 
     @Advanced
-    @Argument(fullName = "disable-avx-check", shortName = "disable-avx-check", doc = "If set, no check will be made for AVX support.  " +
+    @Argument(fullName = DISABLE_AVX_CHECK_NAME, shortName = DISABLE_AVX_CHECK_NAME, doc = "If set, no check will be made for AVX support.  " +
             "Use only if you have installed a pre-1.6 TensorFlow build. ", optional = true)
     private boolean disableAVXCheck = false;
 
@@ -249,7 +250,7 @@ public class CNNScoreVariants extends TwoPassVariantWalker {
             utils.load(null);
             if (utils.isAvxSupported() == false) {
                 // Give user the bad news, suggest remedies.
-                throw new UserException.HardwareFeatureException(CNNScoreVariants.AVXREQUIRED_ERROR);
+                throw new UserException.HardwareFeatureException(String.format(CNNScoreVariants.AVXREQUIRED_ERROR, DISABLE_AVX_CHECK_NAME));
             }
         }
 
