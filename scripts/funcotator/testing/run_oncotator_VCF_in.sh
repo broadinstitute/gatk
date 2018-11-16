@@ -33,10 +33,10 @@ ALL_DB="/Users/jonn/Development/oncotator_v1_ds_April052016/"
 QUICK_DB="~/Development/oncotator_testing/dbdir/"
 FUNCOTATOR_EQUIVALENT_DB="~/Development/oncotator_testing/funcotator_dbdir/"
 
-VCF_IN="/Users/jonn/Development/gatk/src/test/resources/large/funcotator/regressionTestVariantSet1.vcf"
-#VCF_IN="/Users/jonn/Development/gatk/src/test/resources/large/funcotator/regressionTestVariantSet2.vcf"
+VCF_IN="/Users/jonn/Development/gatk/src/test/resources/org/broadinstitute/hellbender/tools/funcotator/validationTestData/regressionTestVariantSet1.vcf"
+#VCF_IN="/Users/jonn/Development/gatk/src/test/resources/org/broadinstitute/hellbender/tools/funcotator/validationTestData/regressionTestVariantSet2.vcf"
 #VCF_IN="tmp.vcf"
-VCF_IN="/Users/jonn/Development/gatk/src/test/resources/large/funcotator/regressionTestHg19Large.vcf"
+#VCF_IN="/Users/jonn/Development/gatk/src/test/resources/org/broadinstitute/hellbender/tools/funcotator/validationTestData/regressionTestHg19Large.vcf"
 
 source ~/Development/oncotator_venv/bin/activate
 
