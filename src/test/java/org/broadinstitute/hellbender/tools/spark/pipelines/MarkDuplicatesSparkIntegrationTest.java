@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.MarkDuplicatesSparkArgumentCollection;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.tools.spark.transforms.markduplicates.MarkDuplicatesSpark;
 import org.broadinstitute.hellbender.tools.walkers.markduplicates.AbstractMarkDuplicatesCommandLineProgramTest;
@@ -61,28 +62,35 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
              //Note: in each of those cases, we'd really want to pass null as the last parameter (not 0L) but IntelliJ
              // does not like it and skips the test (rendering issue) - so we pass 0L and account for it at test time
              // (see comment in testMarkDuplicatesSparkIntegrationTestLocal)
-            {new File(TEST_DATA_DIR,"example.chr1.1-1K.unmarkedDups.noDups.bam"), 20, 0,
+            {new File[]{new File(TEST_DATA_DIR,"example.chr1.1-1K.unmarkedDups.noDups.bam")}, 20, 0,
              ImmutableMap.of("Solexa-16419", ImmutableList.of(0L, 3L, 0L, 0L, 0L, 0L, 0.0, 0L),
                              "Solexa-16416", ImmutableList.of(0L, 1L, 0L, 0L, 0L, 0L, 0.0, 0L),
                              "Solexa-16404", ImmutableList.of(0L, 3L, 0L, 0L, 0L, 0L, 0.0, 0L),
                              "Solexa-16406", ImmutableList.of(0L, 1L, 0L, 0L, 0L, 0L, 0.0, 0L),
                              "Solexa-16412", ImmutableList.of(0L, 1L, 0L, 0L, 0L, 0L, 0.0, 0L))},
-            {new File(TEST_DATA_DIR,"example.chr1.1-1K.unmarkedDups.bam"), 90, 6,
+            {new File[]{new File(TEST_DATA_DIR,"example.chr1.1-1K.unmarkedDups.bam")}, 90, 6,
              ImmutableMap.of("Solexa-16419", ImmutableList.of(4L, 4L, 4L, 0L, 0L, 0L, 0.0, 0L),
                              "Solexa-16416", ImmutableList.of(2L, 2L, 2L, 0L, 0L, 0L, 0.0, 0L),
                              "Solexa-16404", ImmutableList.of(3L, 9L, 3L, 0L, 2L, 0L, 0.190476, 17L),
                              "Solexa-16406", ImmutableList.of(1L, 10L, 1L, 0L, 0L, 0L, 0.0, 0L),
                              "Solexa-16412", ImmutableList.of(3L, 6L, 3L, 0L, 1L, 0L, 0.133333, 15L))},
-            {new File(TEST_DATA_DIR,"example.chr1.1-1K.markedDups.bam"), 90, 6,
+            {new File[]{new File(TEST_DATA_DIR,"example.chr1.1-1K.markedDups.bam")}, 90, 6,
              ImmutableMap.of("Solexa-16419", ImmutableList.of(4L, 4L, 4L, 0L, 0L, 0L, 0.0, 0L),
                              "Solexa-16416", ImmutableList.of(2L, 2L, 2L, 0L, 0L, 0L, 0.0, 0L),
                              "Solexa-16404", ImmutableList.of(3L, 9L, 3L, 0L, 2L, 0L, 0.190476, 17L),
                              "Solexa-16406", ImmutableList.of(1L, 10L, 1L, 0L, 0L, 0L, 0.0, 0L),
                              "Solexa-16412", ImmutableList.of(3L, 6L, 3L, 0L, 1L, 0L, 0.133333, 15L))},
-            {new File(TEST_DATA_DIR, "optical_dupes.bam"), 4, 2,
+            {new File[]{new File(TEST_DATA_DIR, "optical_dupes.bam")}, 4, 2,
              ImmutableMap.of("mylib", ImmutableList.of(0L, 2L, 0L, 0L, 1L, 1L, 0.5, 0L))},
-            {new File(TEST_DATA_DIR, "optical_dupes_casava.bam"), 4, 2,
+            {new File[]{new File(TEST_DATA_DIR, "optical_dupes_casava.bam")}, 4, 2,
              ImmutableMap.of("mylib", ImmutableList.of(0L, 2L, 0L, 0L, 1L, 1L, 0.5, 0L))},
+            {new File[]{new File(TEST_DATA_DIR, "optical_dupes.queryname.bam"), new File(TEST_DATA_DIR, "example.chr1.1-1K.markedDups.queryname.bam")}, 94, 8,
+             ImmutableMap.builder().put("mylib", ImmutableList.of(0L, 2L, 0L, 0L, 1L, 1L, 0.5, 0L))
+                                    .put("Solexa-16419", ImmutableList.of(4L, 4L, 4L, 0L, 0L, 0L, 0.0, 0L))
+                                    .put("Solexa-16416", ImmutableList.of(2L, 2L, 2L, 0L, 0L, 0L, 0.0, 0L))
+                                    .put("Solexa-16404", ImmutableList.of(3L, 9L, 3L, 0L, 2L, 0L, 0.190476, 17L))
+                                    .put("Solexa-16406", ImmutableList.of(1L, 10L, 1L, 0L, 0L, 0L, 0.0, 0L))
+                                    .put("Solexa-16412", ImmutableList.of(3L, 6L, 3L, 0L, 1L, 0L, 0.133333, 15L)).build()},
         };
     }
 
@@ -99,11 +107,13 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
 
     @Test( dataProvider = "md")
     public void testMarkDuplicatesSparkIntegrationTestLocal(
-        final File input, final long totalExpected, final long dupsExpected,
+        final File[] inputFiles, final long totalExpected, final long dupsExpected,
         Map<String, List<String>> metricsExpected) throws IOException {
 
         ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addArgument(StandardArgumentDefinitions.INPUT_LONG_NAME, input.getPath());
+        for (File input : inputFiles) {
+            args.addArgument(StandardArgumentDefinitions.INPUT_LONG_NAME,input.getPath());
+        }
         args.addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME);
 
         File outputFile = createTempFile("markdups", ".bam");
@@ -447,5 +457,17 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
 
             Assert.assertEquals(actualReads.size(), 4, "Wrong number of reads output");
         }
+    }
+
+    @Test (expectedExceptions = UserException.class)
+    public void testAssertCorrectSortOrderMultipleBams() {
+        // This test asserts that the handling of two read pairs with the same start positions but on different in such a way
+        // that they might cause hash collisions are handled properly.
+        final File output = createTempFile("supplementaryReadUnmappedMate", "bam");
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addOutput(output);
+        args.addInput(new File(TEST_DATA_DIR,"optical_dupes.bam"));
+        args.addInput(new File(TEST_DATA_DIR,"example.chr1.1-1K.unmarkedDups.noDups.bam"));
+        runCommandLine(args);
     }
 }

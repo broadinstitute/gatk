@@ -123,7 +123,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
 
     private ReadsSparkSource readsSource;
     private SAMFileHeader readsHeader;
-    private String readInput;
+    private LinkedHashMap<String, SAMFileHeader> readInputs;
     private ReferenceMultiSparkSource referenceSource;
     private SAMSequenceDictionary referenceDictionary;
     private List<SimpleInterval> userIntervals;
@@ -302,13 +302,16 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
             traversalParameters = null; // no intervals were specified so return all reads (mapped and unmapped)
         }
 
-        // TODO: This if statement is a temporary hack until #959 gets resolved.
-        for (String input : readInput)
-        JavaRDD<GATKRead> output;
+        // TODO: This if statement is a temporary hack until #959 gets resolve
+        JavaRDD<GATKRead> output = null;
         ReadsSparkSource source = readsSource;
-        String input = readInput;
-
-        output = getGatkReadJavaRDD(traversalParameters, source, input);
+        for (String input : readInputs.keySet()) {
+            if (output == null) {
+                output = getGatkReadJavaRDD(traversalParameters, source, input);
+            } else {
+                output = output.union(getGatkReadJavaRDD(traversalParameters, source, input));
+            }
+        }
         return output;
     }
 
@@ -371,7 +374,8 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
         if (numReducers != 0) {
             return numReducers;
         }
-        return 1 + (int) (BucketUtils.dirSize(getReadSourceName()) / getTargetPartitionSize());
+        int size = 1 + readInputs.keySet().stream().mapToInt(k -> (int) BucketUtils.dirSize(k)).sum();
+        return size / getTargetPartitionSize();
     }
 
     /**
@@ -483,7 +487,17 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      * Returns the name of the source of reads data. It can be a file name or URL.
      */
     protected String getReadSourceName(){
-        return readInput.get(0);
+        if (readInputs.size() > 1) {
+            throw new GATKException("Multiple ReadsDataSources specificed but a single source requested by the tool");
+        }
+        return readInputs.keySet().iterator().next();
+    }
+
+    /**
+     * Returns a map of read input to header.
+     */
+    protected LinkedHashMap<String, SAMFileHeader> getReadSouceHeaderMap(){
+        return readInputs;
     }
 
     /**
@@ -527,19 +541,16 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
         }
 
         if (getReadInputMergingPolicy() == ReadInputMergingPolicy.doNotMerge && readArguments.getReadFilesNames().size() != 1 ) {
-            throw new UserException("Sorry, we only support a single reads input for spark tools for now.");
+            throw new UserException("Sorry, we only support a single reads input for for this spark tool.");
         }
 
-        readInput = readArguments.getReadFilesNames();
+        readInputs = new LinkedHashMap();
         readsSource = new ReadsSparkSource(sparkContext, readArguments.getReadValidationStringency());
-        readsHeader = new ArrayList<>(rea);
-        for (String input : readInput) {
-
+        for (String input : readArguments.getReadFilesNames()) {
+            readInputs.put(input, readsSource.getHeader(
+                    input, hasReference() ?  referenceArguments.getReferenceFileName() : null));
         }
-        readsSource = new ReadsSparkSource(sparkContext, readArguments.getReadValidationStringency());
-        readsHeader = readsSource.getHeader(
-                readInput,
-                hasReference() ?  referenceArguments.getReferenceFileName() : null);
+        readsHeader = createHeaderMerger().getMergedHeader();
     }
 
 
@@ -550,10 +561,8 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      * @return a header merger containing all individual headers in this data source
      */
     private SamFileHeaderMerger createHeaderMerger() {
-        List<SAMFileHeader> headers = new ArrayList<>(readInput.size());
-        for ( Map.Entry<SamReader, CloseableIterator<SAMRecord>> readerEntry : readInput.entrySet() ) {
-            headers.add(readerEntry.getKey().getFileHeader());
-        }
+        List<SAMFileHeader> headers = new ArrayList<>(readInputs.size());
+        headers.addAll(readInputs.values());
 
         SamFileHeaderMerger headerMerger = new SamFileHeaderMerger(identifySortOrder(headers), headers, true);
         return headerMerger;

@@ -17,7 +17,9 @@ import org.broadinstitute.hellbender.cmdline.argumentcollections.OpticalDuplicat
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
@@ -68,6 +70,11 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
     public static int NO_OPTICAL_MARKER = -1;
     // Reads with this marker will be treated and marked as optical duplicates
     public static int OPTICAL_DUPLICATE_MARKER = -2;
+
+    @Override
+    public ReadInputMergingPolicy getReadInputMergingPolicy() {
+        return ReadInputMergingPolicy.concatMerge;
+    }
 
     /**
      * Main method for marking duplicates, takes an JavaRDD of GATKRead and an associated SAMFileHeader with corresponding
@@ -215,6 +222,14 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
 
     @Override
     protected void runTool(final JavaSparkContext ctx) {
+        // Check if we are using multiple inputs that the headers are all in the correct querygrouped ordering
+        Map<String, SAMFileHeader> headerMap = getReadSouceHeaderMap();
+        if (headerMap.size() > 1) {
+            headerMap.entrySet().stream().forEach(h -> {if(!ReadUtils.isReadNameGroupedBam(h.getValue())) {
+                throw new UserException("Multiple inputs to MarkDuplicatesSpark detected but input "+h.getKey()+" was sorted in "+h.getValue().getSortOrder()+" order");
+                    }});
+        }
+
         JavaRDD<GATKRead> reads = getReads();
         final OpticalDuplicateFinder finder = opticalDuplicatesArgumentCollection.READ_NAME_REGEX != null ?
                 new OpticalDuplicateFinder(opticalDuplicatesArgumentCollection.READ_NAME_REGEX, opticalDuplicatesArgumentCollection.OPTICAL_DUPLICATE_PIXEL_DISTANCE, null) : null;
