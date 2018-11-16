@@ -499,11 +499,18 @@ public final class GenomicsDBImport extends GATKTool {
 
     private void initializeInputPreloadExecutorService() {
         if( vcfInitializerThreads > 1) {
-            final ThreadFactory threadFactory = new ThreadFactoryBuilder()
+            if( intervals.size() == 1) {
+                final ThreadFactory threadFactory = new ThreadFactoryBuilder()
                     .setNameFormat("readerInitializer-thread-%d")
                     .setDaemon(true)
                     .build();
-            this.inputPreloadExecutorService = Executors.newFixedThreadPool(vcfInitializerThreads, threadFactory);
+                this.inputPreloadExecutorService = Executors.newFixedThreadPool(vcfInitializerThreads, threadFactory);
+            }
+            else {
+                logger.info("GenomicsDBImport cannot use multiple VCF reader threads for initialization when the "
+                    + "number of intervals is greater than 1");
+                inputPreloadExecutorService = null;
+            }
         } else {
             inputPreloadExecutorService = null;
         }
