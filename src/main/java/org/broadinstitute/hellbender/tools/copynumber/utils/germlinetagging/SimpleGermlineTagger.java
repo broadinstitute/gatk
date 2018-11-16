@@ -27,7 +27,6 @@ public class SimpleGermlineTagger {
 
     private SimpleGermlineTagger(){}
 
-    //TODO: Make a version that only does germline and another that does with the CNLoH
     /** Look for concordant endpoints for determining whether an event in the tumor regions are in the germline regions.
      *
      * This method will not modify the input segments.
@@ -47,7 +46,7 @@ public class SimpleGermlineTagger {
      * @param reciprocalThreshold  The reciprocal threshold between the normal and tumor segment that must match in order
      *                             to match (whether or not matching breakpoints are found).  Must be 0.0 to 1.0.
      *
-     * @return copy of the tumor segments (sorted) with the additional germline tag annotation (the name of which is outputAnnotationName).
+     * @return copy of the tumor segments (sorted) with the additional germline tag annotation (the name of which is outputAnnotationName).  Never {@code null}
      */
     public static List<AnnotatedInterval> tagTumorSegmentsWithGermlineActivity(final List<AnnotatedInterval> initialTumorSegments,
                                                                                final List<AnnotatedInterval> initialNormalSegments,
@@ -65,8 +64,23 @@ public class SimpleGermlineTagger {
         return createdUpdatedAnnotatedIntervals(tumorSegments, Collections.singletonList(tumorSegsToGermlineCallMap), outputAnnotationName);
     }
 
-    // TODO: Docs
-    // TODO: Tests
+    /**
+     *  See {@link SimpleGermlineTagger#tagTumorSegmentsWithGermlineActivity(List, List, String, SAMSequenceDictionary, String, int, double)}
+     *
+     *  This will also attempt to look for areas that appear to be Copy-Neutral Loss-of-Heterozygosity regions in the normal segments.
+     *
+     * @param initialTumorSegments See {@link SimpleGermlineTagger#tagTumorSegmentsWithGermlineActivity(List, List, String, SAMSequenceDictionary, String, int, double)}
+     * @param initialNormalSegments See {@link SimpleGermlineTagger#tagTumorSegmentsWithGermlineActivity(List, List, String, SAMSequenceDictionary, String, int, double)}
+     * @param callAnnotation See {@link SimpleGermlineTagger#tagTumorSegmentsWithGermlineActivity(List, List, String, SAMSequenceDictionary, String, int, double)}
+     * @param dictionary See {@link SimpleGermlineTagger#tagTumorSegmentsWithGermlineActivity(List, List, String, SAMSequenceDictionary, String, int, double)}
+     * @param outputAnnotationName See {@link SimpleGermlineTagger#tagTumorSegmentsWithGermlineActivity(List, List, String, SAMSequenceDictionary, String, int, double)}
+     * @param paddingInBp See {@link SimpleGermlineTagger#tagTumorSegmentsWithGermlineActivity(List, List, String, SAMSequenceDictionary, String, int, double)}
+     * @param reciprocalThreshold See {@link SimpleGermlineTagger#tagTumorSegmentsWithGermlineActivity(List, List, String, SAMSequenceDictionary, String, int, double)}
+     * @param mafMaxThreshold Maximum minor allelic fraction to accept as un-balanced segment.  Must be within 0.0 to 0.5.  Recommended value of 0.47
+     * @param mafHiAnnotation Name of the annotation in the given annotated interval that has the upper bound of the Minor allelic fraction estimate.  Cannot be {@code null} nor "".
+     * @param mafLoAnnotation Name of the annotation in the given annotated interval that has the lower bound of the Minor allelic fraction estimate.  Cannot be {@code null} nor "".
+     * @return See {@link SimpleGermlineTagger#tagTumorSegmentsWithGermlineActivity(List, List, String, SAMSequenceDictionary, String, int, double)}
+     */
     public static List<AnnotatedInterval> tagTumorSegmentsWithGermlineActivity(final List<AnnotatedInterval> initialTumorSegments,
                                                                                final List<AnnotatedInterval> initialNormalSegments,
                                                                                final String callAnnotation,
@@ -201,13 +215,18 @@ public class SimpleGermlineTagger {
     private static Map<AnnotatedInterval, String> createTumorSegmentsToGermlineCnLohMap(final Map<AnnotatedInterval, List<AnnotatedInterval>> copyNeutralNormalSegmentsToTumorSegments, final double reciprocalThreshold, final double mafMaxThreshold, final String mafHiAnnotation, final String mafLowAnnotation) {
         final Map<AnnotatedInterval, String> result = new HashMap<>();
         for (final AnnotatedInterval normalSeg : copyNeutralNormalSegmentsToTumorSegments.keySet()) {
-            final List<AnnotatedInterval> overlappingTumorSegments = copyNeutralNormalSegmentsToTumorSegments.get(normalSeg);
-            for (final AnnotatedInterval overlappingTumorSegment : overlappingTumorSegments) {
-                final boolean isReciprocalOverlapRegion = IntervalUtils.isReciprocalOverlap(normalSeg.getInterval(), overlappingTumorSegment.getInterval(), reciprocalThreshold);
-                final boolean isMafUnlikelyBalanced = Double.parseDouble(normalSeg.getAnnotationValue(mafHiAnnotation)) < mafMaxThreshold;
+            //TODO: Magic constant
+            final boolean isNormalSegmentShort = normalSeg.getInterval().size() < 2000000;
+            if (isNormalSegmentShort) {
+                final List<AnnotatedInterval> overlappingTumorSegments = copyNeutralNormalSegmentsToTumorSegments.get(normalSeg);
+                for (final AnnotatedInterval overlappingTumorSegment : overlappingTumorSegments) {
 
-                if (isReciprocalOverlapRegion && isMafUnlikelyBalanced) {
-                    result.put(overlappingTumorSegment, CNLOH_IN_GERMLINE);
+                    final boolean isReciprocalOverlapRegion = IntervalUtils.isReciprocalOverlap(normalSeg.getInterval(), overlappingTumorSegment.getInterval(), reciprocalThreshold);
+                    final boolean isMafUnlikelyBalanced = Double.parseDouble(normalSeg.getAnnotationValue(mafHiAnnotation)) < mafMaxThreshold;
+
+                    if (isReciprocalOverlapRegion && isMafUnlikelyBalanced) {
+                        result.put(overlappingTumorSegment, CNLOH_IN_GERMLINE);
+                    }
                 }
             }
         }
