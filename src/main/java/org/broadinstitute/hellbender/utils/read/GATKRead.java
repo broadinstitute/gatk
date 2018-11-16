@@ -470,12 +470,13 @@ public interface GATKRead extends Locatable {
     void setIsUnmapped();
 
     /**
-     * @return True if this read is unmapped, not including reads where the position is set but the read is marked as unmapped. Otherwise false.
+     * Does the read have a position assigned to it for sorting purposes.
+     * @return `true iff this read has no assigned position or contig.
      */
     boolean isUnplaced();
 
     /**
-     * Mark the read as unmapped, and also removes mapping information from the read (i.e. sets contig to "*" and position to 0).
+     * Mark the read as unmapped, and also removes mapping information from the read (i.e. sets contig to {@link ReadConstants#UNSET_CONTIG} and position to {@link ReadConstants#UNSET_POSITION}).
      *
      * NOTE: this does not remove the cigar string from the read, use {@link #setCigar(Cigar)}
      *
@@ -491,7 +492,7 @@ public interface GATKRead extends Locatable {
     boolean mateIsUnmapped();
 
     /**
-     * Mark the read's mate as unmapped (lacking a defined position on the genome).
+     * Mark the read's mate as unmapped (lacking a defined position on the genome). (i.e. sets mate contig to {@link ReadConstants#UNSET_CONTIG} and position to {@link ReadConstants#UNSET_POSITION}).
      *
      * To mark the read's mate as mapped, use {@link #setMatePosition}
      *
@@ -501,7 +502,8 @@ public interface GATKRead extends Locatable {
     void setMateIsUnmapped();
 
     /**
-     * @return True if this read's mate is unmapped, not including reads where the position is set but the read is marked as unmapped. Otherwise false.
+     * Does the reads mate have a position assigned to it for sorting purposes..
+     * @return `true iff this reads mate has no assigned position or contig.
      */
     boolean mateIsUnplaced();
 
@@ -746,11 +748,8 @@ public interface GATKRead extends Locatable {
     String getSAMString();
 
     /**
-     * Reverse-complement bases and reverse quality scores along with known optional attributes that
-     * need the same treatment. Changes made after making a copy of the bases, qualities,
-     * and any attributes that will be altered. If in-place update is needed use
-     * {@link SAMRecord#reverseComplement(boolean)}.
-     * for the default set of tags that are handled.
+     * Modify this read by reverse complementing its bases and reversing its quality scores. Implementations may
+     * also update tags that are known to need updating after the reverse complement operation.
      */
     public void reverseComplement();
 
