@@ -43,6 +43,8 @@ GENCODE_HG38_TX=${GENCODE_HG38}/gencode.v28.pc_transcripts.fa
 GENCODE_HG19_VERSION=19
 GENCODE_HG38_VERSION=28
 
+PADDING=5000
+
 OUT_FOLDER=tmp_gencode
 
 ################################################################################
@@ -76,9 +78,22 @@ function usage()
 
 
 #Display a message to std error:
+_startTime=$( python -c 'from time import time; print time()' )
+_lastTime=${_startTime}
+_hasDisplayedBefore=false
+SHOW_TIME_WITH_ERROR=false
 function error() 
 {
-  echo "$1" 1>&2 
+  if $SHOW_TIME_WITH_ERROR ; then
+    local t=$( python -c 'from time import time; print time()' )
+    local dl=$( python -c "print ($t - $_lastTime)" ) 
+    local ds=$( python -c "print ($t - $_startTime)" ) 
+    echo -e "${@}\t[+${dl}s\t+${ds}s]" 1>&2
+    _hasDisplayedBefore=true
+    _lastTime=$t
+  else
+    echo "${@}" 1>&2 
+  fi
 }
 
 TMPFILELIST=''
@@ -89,10 +104,18 @@ function makeTemp()
   TMPFILELIST="${TMPFILELIST} $f"
   echo $f
 }
+function makeTempDir() 
+{
+  local f
+  f=$( mktemp -d )
+  TMPFILELIST="${TMPFILELIST} $f"
+  echo $f
+}
+
 
 function cleanTempVars()
 {
-  rm -f ${TMPFILELIST}
+  rm -rf ${TMPFILELIST}
 }
 
 function at_exit()
@@ -107,7 +130,7 @@ trap at_exit EXIT
 ################################################################################
 
 function getGeneList() {
-	grep '\tgene\t' $GENCODE 
+  grep '\tgene\t' $GENCODE 
 }
 
 ################################################################################
@@ -131,10 +154,10 @@ shift
 
 VCFFILENAMESLIST=$(makeTemp)
 while [ $# -gt 0 ] ; do
-	VCFFILE=$1
-	[[ ! -f ${VCFFILE} ]] && error "VCF File does not exist: ${VCFFILE}" && exit 3
-	echo "${VCFFILE}" >> ${VCFFILENAMESLIST}
-	shift
+  VCFFILE=$1
+  [[ ! -f ${VCFFILE} ]] && error "VCF File does not exist: ${VCFFILE}" && exit 3
+  echo "${VCFFILE}" >> ${VCFFILENAMESLIST}
+  shift
 done
 
 ################################################################################
@@ -143,50 +166,58 @@ GENCODE="$GENCODE_HG19_GTF"
 GENCODE_TX="$GENCODE_HG19_TX"
 GENCODE_VERSION="$GENCODE_HG19_VERSION"
 if [[ "${REF}" == "hg38" ]] ;then 
-	GENCODE="$GENCODE_HG38_GTF"
-	GENCODE_TX="$GENCODE_HG38_TX"
-	GENCODE_VERSION="$GENCODE_HG38_VERSION"
+  GENCODE="$GENCODE_HG38_GTF"
+  GENCODE_TX="$GENCODE_HG38_TX"
+  GENCODE_VERSION="$GENCODE_HG38_VERSION"
 fi
 
 ################################################################################
 # Set up our output:
-mkdir -p ${OUT_FOLDER}/${REF}
-OUT_GTF_FILE=${OUT_FOLDER}/${REF}/gencode.v${GENCODE_VERSION}.testVariantSubset.gtf
-OUT_TX_FILE=${OUT_FOLDER}/${REF}/gencode.v${GENCODE_VERSION}.testVariantSubset.pc_transcripts.fa
+TMP_OUT_DIR=$( makeTempDir )
+mkdir -p ${TMP_OUT_DIR}/${REF}
+OUT_GTF_FILE=${TMP_OUT_DIR}/${REF}/gencode.v${GENCODE_VERSION}.testVariantSubset.gtf
+OUT_TX_FILE=${TMP_OUT_DIR}/${REF}/gencode.v${GENCODE_VERSION}.testVariantSubset.pc_transcripts.fa
 sed -e "s#src_file =.*#src_file = gencode.v${GENCODE_VERSION}.testVariantSubset.gtf#g" \
-	  -e "s#gencode_fasta_path =.*#gencode_fasta_path = gencode.v${GENCODE_VERSION}.testVariantSubset.pc_transcripts.fa#g" \
-		-e "s#preprocessing_script =\\(.*\\)#preprocessing_script =\\$1 , ${SCRIPTNAME}#g" \
-		${GENCODE_HG19}/gencode.config > ${OUT_FOLDER}/${REF}/gencode.config
+    -e "s#gencode_fasta_path =.*#gencode_fasta_path = gencode.v${GENCODE_VERSION}.testVariantSubset.pc_transcripts.fa#g" \
+    -e "s#preprocessing_script =\\(.*\\)#preprocessing_script =\\$1 , ${SCRIPTNAME}#g" \
+    ${GENCODE_HG19}/gencode.config > ${TMP_OUT_DIR}/${REF}/gencode.config
 
-tmpFile=$( makeTemp )	
-tmpGeneList=$( makeTemp )
-tmpGeneIdList=$( makeTemp )
+tmpGeneList=tmpGeneList.txt
+#tmpGeneList=$( makeTemp )
+tmpGeneIdList=tmpGeneIdList.txt
+#tmpGeneIdList=$( makeTemp )
 
-# Get our list of genes:
-while read VCFFILE ; do 
+#masterGeneList=$( makeTemp )
+masterGeneList=masterGeneList.txt
+#masterVcfFile=$( makeTemp )
+masterVcfFile=masterVcfFile.txt
 
-	error "Processing ${VCFFILE} ..."
+# Set time display on calls to error:
+SHOW_TIME_WITH_ERROR=true
 
-	# Filter out the commented out lines:
-	rm -f ${tmpFile}
-	grep -v '^#' ${VCFFILE} > $tmpFile
+# Create a master list of genes:
+error "Creating master gene list..."
+grep '\tgene\t' ${GENCODE} > ${masterGeneList}
 
-	# Go through our VCF file:
-	error "  Getting gene info for variants ..."
-	while read line ; do 
-		CONTIG=$( echo "${line}" | awk '{print $1}' )
-		if [[ $CONTIG != chr*  ]] && [[ "${REF}" == "hg19" ]] ; then 
-			CONTIG="chr${CONTIG}"
-		fi
-		START=$( echo "${line}" | awk '{print $2}' )
-		${SCRIPTDIR}/getGeneFromGenomicCoordinates.sh ${REF} ${CONTIG} ${START} ${START} 
-	done < ${tmpFile} | uniq 
+# Create a master list of variants:
+error "Creating master variant list..."
+while read vcfFile ; do
+  error "  Reading variants from ${vcfFile}"
+  grep -v '^#' ${vcfFile}
+done < ${VCFFILENAMESLIST} > ${masterVcfFile}
 
-done < ${VCFFILENAMESLIST} | sort -k1.4n -k1,1 -k4,4n -k5,5n | uniq > ${tmpGeneList}
-error "Done"
+# Go through each variant and get the gene it's in:
+error "Creating the list of overlapping genes..."
+while read variant ; do
+  CONTIG=$( echo ${variant} | awk '{print $1}' )
+  POS=$( echo ${variant} | awk '{print $2}' )
+  awk "{ if (((\$1 == \"${CONTIG}\") || (\"chr\"\$1 == \"${CONTIG}\" ) || (\$1 == \"chr${CONTIG}\" ) || (\"chr\"\$1 == \"chr${CONTIG}\" )) && ((\$4 - ${PADDING}) <= ${POS}) && ((\$5 + ${PADDING}) >= ${POS})) {print} }" ${masterGeneList} 
+done < ${masterVcfFile} | sort -k1.4n -k1,1 -k4,4n -k5,5n | uniq > ${tmpGeneList}
 
 # Create a clean place to put our gene list:
+error "Creating list of gene IDs..."
 rm -f ${tmpGeneIdList}
+# NOTE: We do not sort the genes here so they stay in contig order:
 awk '{print $10}' ${tmpGeneList} | tr -d ';"' > ${tmpGeneIdList}
 
 totalGenes=$( cat ${tmpGeneIdList} | sort | uniq | wc -l | awk '{print $1}' )
@@ -204,27 +235,29 @@ i=0
 error "Retrieving genes and sequences from GENCODE ..."
 while read geneId ; do 
 
-	# make sure we only add each gene once:
-	grep -m1 "${geneId}" ${uniqueGeneIdList} &> /dev/null
-	r=$?
-	[[ $r -eq 0 ]] && continue
+  # make sure we only add each gene once:
+  grep -m1 "${geneId}" ${uniqueGeneIdList} &> /dev/null
+  r=$?
+  [[ $r -eq 0 ]] && continue
 
-	# Arcane awk statement adapted from https://backreference.org/2010/09/11/smart-ranges-in-awk/
-	# and https://backreference.org/2010/09/11/smart-ranges-in-awk/
-	# Essentially uses a flag to determine whether to print matches and when the flag is no longer
-	# true it will exit.
-	BANG=!
-	awk "${BANG}/${geneId}/{if (p == 1){exit} else{p=0}} /${geneId}/{p=1} p" ${GENCODE} >> ${OUT_GTF_FILE}
+  # Arcane awk statement adapted from https://backreference.org/2010/09/11/smart-ranges-in-awk/
+  # and https://backreference.org/2010/09/11/smart-ranges-in-awk/
+  # Essentially uses a flag to determine whether to print matches and when the flag is no longer
+  # true it will exit.
+  BANG=!
+  awk "${BANG}/${geneId}/{if (p == 1){exit} else{p=0}} /${geneId}/{p=1} p" ${GENCODE} >> ${OUT_GTF_FILE}
 
-	# Get the sequence here:
-	grep -A1 "${geneId}" ${transcriptFile} | grep -v '^--' >> ${OUT_TX_FILE}
-	
-	let i=$i+1
-	error "  Processed gene $i of $totalGenes ($geneId)"
-	echo "${geneId}" >> ${uniqueGeneIdList}
+  # Get the sequence here:
+  grep -A1 "${geneId}" ${transcriptFile} | grep -v '^--' >> ${OUT_TX_FILE}
+  
+  let i=$i+1
+  error "  Processed gene $i of $totalGenes ($geneId)"
+  echo "${geneId}" >> ${uniqueGeneIdList}
 
 done < ${tmpGeneIdList}
 error "Done"
+
+mv ${TMP_OUT_DIR} ${OUT_FOLDER}
 
 error "You must index the created feature and fasta files, as well as create a sequence dictionary for the output fasta."
 
