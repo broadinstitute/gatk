@@ -60,7 +60,7 @@
 #       to account for this.
 #
 #
-workflow CombineTracksWorkflow {
+workflow ModelSegmentsPostProcessingWorkflow {
     File tumor_called_seg
     File tumor_modeled_seg
     File af_param
@@ -121,7 +121,7 @@ workflow CombineTracksWorkflow {
             ]
     }
 
-	call CombineTracks {
+	call TagGermline {
         input:
             tumor_called_seg = MergeCallsWithModelSegmentsTumor.model_and_calls_merged_gatk_seg,
             matched_normal_called_seg = MergeCallsWithModelSegmentsNormal.model_and_calls_merged_gatk_seg,
@@ -168,7 +168,7 @@ workflow CombineTracksWorkflow {
 
     call PrepareForACSConversion {
         input:
-            called_seg = CombineTracks.germline_tagged_with_tracks_seg,
+            called_seg = TagGermline.germline_tagged_with_tracks_seg,
             modeled_seg = tumor_modeled_seg,
             ref_fasta = ref_fasta,
             ref_fasta_dict = ref_fasta_dict,
@@ -244,7 +244,7 @@ workflow CombineTracksWorkflow {
         File cnv_postprocessing_tumor_with_tracks_filtered_seg = FilterGermlineTagged.tumor_with_germline_filtered_seg
         File cnv_postprocessing_tumor_with_tracks_filtered_merged_seg = IGVConvertMergedTumorOutput.outFile
         File cnv_postprocessing_tumor_with_tracks_filtered_merged_seg_ms_format = MergeSegmentByAnnotation.cnv_merged_seg
-        File cnv_postprocessing_tumor_with_tracks_tagged_seg = CombineTracks.germline_tagged_with_tracks_seg
+        File cnv_postprocessing_tumor_with_tracks_tagged_seg = TagGermline.germline_tagged_with_tracks_seg
         File cnv_postprocessing_tumor_acs_seg = PrototypeACSConversion.cnv_acs_conversion_seg
         File cnv_postprocessing_tumor_acs_skew = PrototypeACSConversion.cnv_acs_conversion_skew
         Float cnv_postprocessing_tumor_acs_skew_float = PrototypeACSConversion.cnv_acs_conversion_skew_float
@@ -254,7 +254,7 @@ workflow CombineTracksWorkflow {
 }
 
 # TODO: Since the -XL parameter should be standard for the blacklist, remove the applications of the blacklist and simply tag germline events here.
-task CombineTracks {
+task TagGermline {
 	File tumor_called_seg
 	File matched_normal_called_seg
     File ref_fasta

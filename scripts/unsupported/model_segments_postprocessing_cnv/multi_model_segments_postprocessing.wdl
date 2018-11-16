@@ -1,9 +1,9 @@
 # An unsupported workflow for post-processing CNV calls and making the files IGV- and absolute-compatible.
 #  Additionally, this will also create one seg file (compatible with IGV) for all samples specified.
-import "combine_tracks.wdl" as CombineTracks
-import "aggregate_combined_tracks.wdl" as AggregateCombineTracks
+import "model_segments_postprocessing.wdl" as ModelSegmentsPostProcessing
+import "aggregate_model_segments_postprocessing.wdl" as AggregateModelSegmentsPostProcessing
 
-workflow MultiCombineTracks {
+workflow MultiModelSegmentsPostProcessing {
     	Array[File] tumor_called_segs
     	Array[File] matched_normal_called_segs
     	Array[File] tumor_modeled_segs
@@ -22,7 +22,7 @@ workflow MultiCombineTracks {
 
         scatter (i in range(length(tumor_called_segs))) {
 
-            call CombineTracks.CombineTracksWorkflow as CombineTracksWorkflow {
+            call ModelSegmentsPostProcessing.ModelSegmentsPostProcessingWorkflow as ModelSegmentsPostProcessingWorkflow {
                 input:
                 	tumor_called_seg = tumor_called_segs[i],
                 	tumor_modeled_seg = tumor_modeled_segs[i],
@@ -42,20 +42,20 @@ workflow MultiCombineTracks {
             }
         }
 
-        call AggregateCombineTracks.AggregateCombinedTracksWorkflow as Aggregate {
+        call AggregateModelSegmentsPostProcessing.AggregateModelSegmentsPostProcessingWorkflow as Aggregate {
             input:
                     group_id = group_id,
-                    tumor_with_germline_filtered_segs = CombineTracksWorkflow.cnv_postprocessing_tumor_with_tracks_filtered_merged_seg,
-                    normals_igv_compat = CombineTracksWorkflow.cnv_postprocessing_normal_igv_compat,
-                    tumors_igv_compat = CombineTracksWorkflow.cnv_postprocessing_tumor_igv_compat,
-                    tumors_gistic2_compat = CombineTracksWorkflow.cnv_postprocessing_tumor_with_tracks_filtered_merged_seg_gistic2
+                    tumor_with_germline_filtered_segs = ModelSegmentsPostProcessingWorkflow.cnv_postprocessing_tumor_with_tracks_filtered_merged_seg,
+                    normals_igv_compat = ModelSegmentsPostProcessingWorkflow.cnv_postprocessing_normal_igv_compat,
+                    tumors_igv_compat = ModelSegmentsPostProcessingWorkflow.cnv_postprocessing_tumor_igv_compat,
+                    tumors_gistic2_compat = ModelSegmentsPostProcessingWorkflow.cnv_postprocessing_tumor_with_tracks_filtered_merged_seg_gistic2
         }
         output {
             File tumor_with_germline_filtered_segs = Aggregate.cnv_postprocessing_aggregated_tumors_post
             File normals_igv_compat = Aggregate.cnv_postprocessing_aggregated_normals
             File tumors_igv_compat = Aggregate.cnv_postprocessing_aggregated_tumors_pre
             File tumor_with_germline_filtered_segs_gistic2 = Aggregate.cnv_postprocessing_aggregated_tumors_post_gistic2
-            Array[File] tumor_acs_compat = CombineTracksWorkflow.cnv_postprocessing_tumor_acs_seg
-            Array[File] tumor_acs_skew = CombineTracksWorkflow.cnv_postprocessing_tumor_acs_skew
+            Array[File] tumor_acs_compat = ModelSegmentsPostProcessingWorkflow.cnv_postprocessing_tumor_acs_seg
+            Array[File] tumor_acs_skew = ModelSegmentsPostProcessingWorkflow.cnv_postprocessing_tumor_acs_skew
         }
 }
