@@ -76,7 +76,7 @@ releases of the toolkit.
       Python environment and dependencies required by GATK tools that have a Python dependency. The ```gatk``` environment, 
       requires hardware with AVX support for tools that depend on TensorFlow (e.g. CNNScoreVariant). The GATK Docker image 
       comes with the ```gatk``` environment pre-configured.
-    * To establish the conda environment when not using the Docker image, a conda environment must first be "created", and
+    * To establish the  environment when not using the Docker image, a conda environment must first be "created", and
       then "activated":
         * First, make sure [Miniconda or Conda](https://conda.io/docs/index.html) is installed (Miniconda is sufficient).
         * To "create" the conda environment:
@@ -270,7 +270,10 @@ You can download and run pre-built versions of GATK4 from the following places:
 
   * Examples:
 
-      ```n
+      ```      
+      ./gatk PrintReadsSpark \
+          -I gs://my-gcs-bucket/path/to/input.bam \
+          -O gs://my-gcs-bucket/path/to/output.bam \
           -- \
           --spark-runner GCS --cluster myGCSCluster
       ```
