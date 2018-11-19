@@ -461,8 +461,8 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
 
     @Test (expectedExceptions = UserException.class)
     public void testAssertCorrectSortOrderMultipleBams() {
-        // This test asserts that the handling of two read pairs with the same start positions but on different in such a way
-        // that they might cause hash collisions are handled properly.
+        // This test asserts that two bams with different sort orders will throw an exception for MarkDuplicatesSpark if both
+        // are supplied as inputs to the tool (currently we require all bams in multi-inputs to be querygroup/queryname sorted).
         final File output = createTempFile("supplementaryReadUnmappedMate", "bam");
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addOutput(output);

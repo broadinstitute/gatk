@@ -161,7 +161,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     }
 
     /**
-     * Does this tool support multiple inputs? Tools that do should
+     * Does this tool support multiple inputs? Tools that do should override this method with the desired {@link ReadInputMergingPolicy}.
      *
      * @return doNotMerge by default
      */
@@ -171,8 +171,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
 
     public static enum ReadInputMergingPolicy {
         doNotMerge,
-        concatMerge,
-        mergeAndSort
+        concatMerge
     }
 
     /**
@@ -290,10 +289,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
                 traverseUnmapped = false;
             }
             traversalParameters = new TraversalParameters(getIntervals(), traverseUnmapped);
-        if (getReadInputMergingPolicy() == ReadInputMergingPolicy.mergeAndSort) {
-            throw new GATKException("GATKSpark Tool doesn't currently support mergeAndSort multiple read inputs arguments");
         }
-        TraversalParameters traversalParameters;
         if ( intervalArgumentCollection.intervalsSpecified() ) {
             traversalParameters = intervalArgumentCollection.getTraversalParameters(getHeaderForReads().getSequenceDictionary());
         } else if ( hasUserSuppliedIntervals() ) { // intervals may have been supplied by editIntervals
@@ -302,7 +298,6 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
             traversalParameters = null; // no intervals were specified so return all reads (mapped and unmapped)
         }
 
-        // TODO: This if statement is a temporary hack until #959 gets resolve
         JavaRDD<GATKRead> output = null;
         ReadsSparkSource source = readsSource;
         for (String input : readInputs.keySet()) {
@@ -317,6 +312,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
 
     protected JavaRDD<GATKRead> getGatkReadJavaRDD(TraversalParameters traversalParameters, ReadsSparkSource source, String input) {
         JavaRDD<GATKRead> output;
+        // TODO: This if statement is a temporary hack until #959 gets resolve
         if (input.endsWith(".adam")) {
             try {
                 output = source.getADAMReads(input, traversalParameters, getHeaderForReads());
@@ -561,14 +557,10 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      * @return a header merger containing all individual headers in this data source
      */
     private SamFileHeaderMerger createHeaderMerger() {
-        List<SAMFileHeader> headers = new ArrayList<>(readInputs.size());
-        headers.addAll(readInputs.values());
-
-        SamFileHeaderMerger headerMerger = new SamFileHeaderMerger(identifySortOrder(headers), headers, true);
-        return headerMerger;
+        return new SamFileHeaderMerger(identifySortOrder(readInputs.values()), readInputs.values(), true);
     }
     @VisibleForTesting
-    static SAMFileHeader.SortOrder identifySortOrder(final List<SAMFileHeader> headers){
+    static SAMFileHeader.SortOrder identifySortOrder(final Collection<SAMFileHeader> headers){
         final Set<SAMFileHeader.SortOrder> sortOrders = headers.stream().map(SAMFileHeader::getSortOrder).collect(Collectors.toSet());
         final SAMFileHeader.SortOrder order;
         if (sortOrders.size() == 1) {
