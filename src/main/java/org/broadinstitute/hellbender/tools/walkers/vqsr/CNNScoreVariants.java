@@ -20,7 +20,10 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.runtime.AsynchronousStreamWriter;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import picard.cmdline.programgroups.VariantFilteringProgramGroup;
+
+import com.intel.gkl.IntelGKLUtils;
 
 import java.io.*;
 import java.util.*;
@@ -108,6 +111,10 @@ public class CNNScoreVariants extends TwoPassVariantWalker {
             "1D models will look at the reference sequence and variant annotations." +
             "2D models look at aligned reads, reference sequence, and variant annotations." +
             "2D models require a BAM file as input as well as the tensor-type argument to be set.";
+    static final String DISABLE_AVX_CHECK_NAME = "disable-avx-check";
+    static final String AVXREQUIRED_ERROR = "This tool requires AVX instruction set support by default due to its dependency on recent versions of the TensorFlow library.\n" +
+            " If you have an older (pre-1.6) version of TensorFlow installed that does not require AVX you may attempt to re-run the tool with the %s argument to bypass this check.\n" +
+            " Note that such configurations are not officially supported.";
 
     private static final int CONTIG_INDEX = 0;
     private static final int POS_INDEX = 1;
@@ -159,6 +166,11 @@ public class CNNScoreVariants extends TwoPassVariantWalker {
     @Advanced
     @Argument(fullName = "output-tensor-dir", shortName = "output-tensor-dir", doc = "Optional directory where tensors can be saved for debugging or visualization.", optional = true)
     private String outputTensorsDir = "";
+
+    @Advanced
+    @Argument(fullName = DISABLE_AVX_CHECK_NAME, shortName = DISABLE_AVX_CHECK_NAME, doc = "If set, no check will be made for AVX support.  " +
+            "Use only if you have installed a pre-1.6 TensorFlow build. ", optional = true)
+    private boolean disableAVXCheck = false;
 
     @Hidden
     @Argument(fullName = "enable-journal", shortName = "enable-journal", doc = "Enable streaming process journal.", optional = true)
@@ -232,8 +244,14 @@ public class CNNScoreVariants extends TwoPassVariantWalker {
 
     @Override
     public void onTraversalStart() {
-        if (getHeaderForVariants().getGenotypeSamples().size() > 1) {
-            logger.warn("CNNScoreVariants is a single sample tool, but the input VCF has more than 1 sample.");
+        // Users can disable the AVX check to allow an older version of TF that doesn't require AVX to be used.
+        if(this.disableAVXCheck == false) {
+            IntelGKLUtils utils = new IntelGKLUtils();
+            utils.load(null);
+            if (utils.isAvxSupported() == false) {
+                // Give user the bad news, suggest remedies.
+                throw new UserException.HardwareFeatureException(String.format(CNNScoreVariants.AVXREQUIRED_ERROR, DISABLE_AVX_CHECK_NAME));
+            }
         }
 
         // Start the Python process and initialize a stream writer for streaming data to the Python code
