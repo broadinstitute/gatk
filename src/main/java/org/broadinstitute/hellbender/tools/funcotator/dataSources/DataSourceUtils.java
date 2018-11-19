@@ -51,11 +51,12 @@ final public class DataSourceUtils {
     private static final String  MANIFEST_SOURCE_LINE_START     = "Source:";
     private static final String  MANIFEST_ALT_SOURCE_LINE_START = "Alternate Source:";
     @VisibleForTesting
-    static final Pattern VERSION_PATTERN                = Pattern.compile(MANIFEST_VERSION_LINE_START + "\\s+(\\d+)\\.(\\d+)\\.(\\d\\d\\d\\d)(\\d\\d)(\\d\\d)(.*)");
+    static final Pattern VERSION_PATTERN                        = Pattern.compile(MANIFEST_VERSION_LINE_START + "\\s+(\\d+)\\.(\\d+)\\.(\\d\\d\\d\\d)(\\d\\d)(\\d\\d)(.*)");
     private static final Pattern SOURCE_PATTERN                 = Pattern.compile(MANIFEST_SOURCE_LINE_START + "\\s+(ftp.*)");
     private static final Pattern ALT_SOURCE_PATTERN             = Pattern.compile(MANIFEST_ALT_SOURCE_LINE_START + "\\s+(gs.*)");
 
     // Track our minimum version number here:
+    // NOTE: This is not necessarily the latest version, just the minimum version that is compatible Funcotator.
     @VisibleForTesting
     static final int MIN_MAJOR_VERSION_NUMBER = 1;
     @VisibleForTesting
@@ -568,7 +569,7 @@ final public class DataSourceUtils {
                             versionDay       = Integer.valueOf(matcher.group(5));
                             versionDecorator = matcher.group(6);
 
-                            version = versionMajor + "." + versionMinor + "." + versionYear + "" + versionMonth + "" + versionDay;
+                            version = versionMajor + "." + versionMinor + "." + versionYear + "" + versionMonth + "" + versionDay + versionDecorator;
                         }
                         else {
                             logger.warn("README file has improperly formatted version string: " + line);

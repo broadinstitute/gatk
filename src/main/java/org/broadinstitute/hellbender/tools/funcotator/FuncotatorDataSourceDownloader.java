@@ -51,7 +51,7 @@ public class FuncotatorDataSourceDownloader extends CommandLineProgram {
     //==================================================================================================================
     // Private Static Members:
 
-    private static String BASE_URL = "gs://broad-public-datasets/funcotator/funcotator_dataSources.v1.4.20180829";
+    private static String BASE_URL = "gs://broad-public-datasets/funcotator/funcotator_dataSources.v1.5.20181119";
 
     private static String GERMLINE_GCLOUD_DATASOURCES_BASEURL     = BASE_URL + "g";
     @VisibleForTesting
