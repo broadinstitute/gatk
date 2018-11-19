@@ -138,7 +138,7 @@ public class ReadsPipelineSpark extends GATKSparkTool {
     @ArgumentCollection
     public HaplotypeCallerArgumentCollection hcArgs = new HaplotypeCallerArgumentCollection();
 
-    @Argument(doc = "whether to use the strict implementation or not (defaults to the faster implementation that doesn't strictly match the walker version)", shortName = "strict", fullName = "strict", optional = true)
+    @Argument(doc = "whether to use the strict implementation or not (defaults to the faster implementation that doesn't strictly match the walker version)", fullName = "strict", optional = true)
     public boolean strict = false;
 
     @Override

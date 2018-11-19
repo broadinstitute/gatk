@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.engine;
 import htsjdk.samtools.SAMFileHeader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.engine.spark.AssemblyRegionWalkerSpark;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfile;
@@ -14,7 +15,7 @@ import java.util.*;
 /**
  * Given an iterator of {@link ActivityProfileState}, finds {@link AssemblyRegion}s.
  *
- * This iterator and {@link ActivityProfileStateIterator} represent the core of the {@link AssemblyRegionWalker} traversal.
+ * This iterator and {@link ActivityProfileStateIterator} represent the core of the {@link AssemblyRegionWalkerSpark} traversal.
  */
 public class AssemblyRegionFromActivityProfileStateIterator implements Iterator<AssemblyRegion> {
     private static final Logger logger = LogManager.getLogger(AssemblyRegionFromActivityProfileStateIterator.class);
@@ -23,8 +24,6 @@ public class AssemblyRegionFromActivityProfileStateIterator implements Iterator<
     private final int minRegionSize;
     private final int maxRegionSize;
     private final int assemblyRegionPadding;
-    private final double activeProbThreshold;
-    private final int maxProbPropagationDistance;
 
     private AssemblyRegion readyRegion;
     private Queue<AssemblyRegion> pendingRegions;
@@ -48,8 +47,7 @@ public class AssemblyRegionFromActivityProfileStateIterator implements Iterator<
                                                           final int maxRegionSize,
                                                           final int assemblyRegionPadding,
                                                           final double activeProbThreshold,
-                                                          final int maxProbPropagationDistance,
-                                                          final boolean includeReadsWithDeletionsInIsActivePileups) {
+                                                          final int maxProbPropagationDistance) {
 
         Utils.nonNull(readHeader);
         Utils.validateArg(minRegionSize >= 1, "minRegionSize must be >= 1");
@@ -64,8 +62,6 @@ public class AssemblyRegionFromActivityProfileStateIterator implements Iterator<
         this.minRegionSize = minRegionSize;
         this.maxRegionSize = maxRegionSize;
         this.assemblyRegionPadding = assemblyRegionPadding;
-        this.activeProbThreshold = activeProbThreshold;
-        this.maxProbPropagationDistance = maxProbPropagationDistance;
 
         this.readyRegion = null;
         this.pendingRegions = new ArrayDeque<>();

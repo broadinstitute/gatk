@@ -55,7 +55,7 @@ public abstract class AssemblyRegionWalkerSpark extends GATKSparkTool {
     @Argument(doc = "whether to use the shuffle implementation or not", shortName = "shuffle", fullName = "shuffle", optional = true)
     public boolean shuffle = false;
 
-    @Argument(doc = "whether to use the strict implementation or not (defaults to the faster implementation that doesn't strictly match the walker version)", shortName = "strict", fullName = "strict", optional = true)
+    @Argument(doc = "whether to use the strict implementation or not (defaults to the faster implementation that doesn't strictly match the walker version)", fullName = "strict", optional = true)
     public boolean strict = false;
 
     private String referenceFileName;

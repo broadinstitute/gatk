@@ -28,6 +28,13 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.function.Supplier;
 
+/**
+ * Find assembly regions from reads in a distributed Spark setting. There are two algorithms available, <i>fast</i>,
+ * which looks for assembly regions in each read shard in parallel, and <i>strict</i>, which looks for assembly regions
+ * in each contig in parallel. Fast mode may produce read shard boundary artifacts for assembly regions compared to the
+ * walker version. Strict mode should be identical to the walker version, at the cost of increased runtime compared to
+ * the fast version.
+ */
 public class FindAssemblyRegionsSpark {
 
     public static JavaRDD<AssemblyRegionWalkerContext> getAssemblyRegionsFast(
@@ -67,9 +74,9 @@ public class FindAssemblyRegionsSpark {
                     .map(shardedRead -> new ShardToMultiIntervalShardAdapter<>(
                             new DownsampleableSparkReadShard(
                                     new ShardBoundary(shardedRead.getInterval(), shardedRead.getPaddedInterval()), shardedRead, readsDownsampler)))
-                    .map(shardedRead -> {
+                    .map(downsampledShardedRead -> {
                         final Iterator<AssemblyRegion> assemblyRegionIter = new AssemblyRegionIterator(
-                                new ShardToMultiIntervalShardAdapter<>(shardedRead),
+                                new ShardToMultiIntervalShardAdapter<>(downsampledShardedRead),
                                 header, reference, features, assemblyRegionEvaluator,
                                 assemblyRegionArgs.minAssemblyRegionSize, assemblyRegionArgs.maxAssemblyRegionSize,
                                 assemblyRegionArgs.assemblyRegionPadding, assemblyRegionArgs.activeProbThreshold,
@@ -117,7 +124,7 @@ public class FindAssemblyRegionsSpark {
         // very small assembly region objects, then we can collect them on the driver (or repartition them)
         // for redistribution across the cluster, at which points the reads can be filled in. (See next two steps.)
         JavaRDD<ReadlessAssemblyRegion> readlessAssemblyRegions = contigToGroupedStates
-                .flatMap(getReadlessAssemblyRegionsFunction(header, assemblyRegionArgs, includeReadsWithDeletionsInIsActivePileups));
+                .flatMap(getReadlessAssemblyRegionsFunction(header, assemblyRegionArgs));
 
         // 4. Pull the assembly region boundaries down to the driver, so we can fill in reads.
         List<ShardBoundary> assemblyRegionBoundaries = readlessAssemblyRegions
@@ -165,8 +172,7 @@ public class FindAssemblyRegionsSpark {
 
     private static FlatMapFunction<Tuple2<String, Iterable<ActivityProfileStateRange>>, ReadlessAssemblyRegion> getReadlessAssemblyRegionsFunction(
             final SAMFileHeader header,
-            final AssemblyRegionArgumentCollection assemblyRegionArgs,
-            final boolean includeReadsWithDeletionsInIsActivePileups) {
+            final AssemblyRegionArgumentCollection assemblyRegionArgs) {
         return (FlatMapFunction<Tuple2<String, Iterable<ActivityProfileStateRange>>, ReadlessAssemblyRegion>) iter ->
                 Iterators.transform(
                         new AssemblyRegionFromActivityProfileStateIterator(
@@ -176,8 +182,7 @@ public class FindAssemblyRegionsSpark {
                                 assemblyRegionArgs.maxAssemblyRegionSize,
                                 assemblyRegionArgs.assemblyRegionPadding,
                                 assemblyRegionArgs.activeProbThreshold,
-                                assemblyRegionArgs.maxProbPropagationDistance,
-                                includeReadsWithDeletionsInIsActivePileups), new com.google.common.base.Function<AssemblyRegion, ReadlessAssemblyRegion>() {
+                                assemblyRegionArgs.maxProbPropagationDistance), new com.google.common.base.Function<AssemblyRegion, ReadlessAssemblyRegion>() {
                             @Nullable
                             @Override
                             public ReadlessAssemblyRegion apply(@Nullable AssemblyRegion input) {
