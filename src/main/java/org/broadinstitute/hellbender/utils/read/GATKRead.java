@@ -470,6 +470,21 @@ public interface GATKRead extends Locatable {
     void setIsUnmapped();
 
     /**
+     * Does the read have a position assigned to it for sorting purposes.
+     * @return `true iff this read has no assigned position or contig.
+     */
+    boolean isUnplaced();
+
+    /**
+     * Mark the read as unmapped, and also removes mapping information from the read (i.e. sets contig to {@link ReadConstants#UNSET_CONTIG} and position to {@link ReadConstants#UNSET_POSITION}).
+     *
+     * NOTE: this does not remove the cigar string from the read, use {@link #setCigar(Cigar)}
+     *
+     * To mark a read as mapped, use {@link #setPosition}
+     */
+    void setIsUnplaced();
+
+    /**
      * @return True if this read's mate is unmapped (this includes mates that have a position but are explicitly marked as unmapped,
      *         as well as mates that lack a fully-defined position but are not explicitly marked as unmapped). Otherwise false.
      * @throws IllegalStateException if the read is not paired (has no mate)
@@ -477,7 +492,7 @@ public interface GATKRead extends Locatable {
     boolean mateIsUnmapped();
 
     /**
-     * Mark the read's mate as unmapped (lacking a defined position on the genome).
+     * Mark the read's mate as unmapped (lacking a defined position on the genome). (i.e. sets mate contig to {@link ReadConstants#UNSET_CONTIG} and position to {@link ReadConstants#UNSET_POSITION}).
      *
      * To mark the read's mate as mapped, use {@link #setMatePosition}
      *
@@ -485,6 +500,23 @@ public interface GATKRead extends Locatable {
      * were invoked with true.
      */
     void setMateIsUnmapped();
+
+    /**
+     * Does the reads mate have a position assigned to it for sorting purposes..
+     * @return `true iff this reads mate has no assigned position or contig.
+     */
+    boolean mateIsUnplaced();
+
+    /**
+     * Mark the read's mate as unmapped (lacking a defined position on the genome). In contrast with {@link #setMateIsUnmapped},
+     * this method will revert the mapping information for the mate (i.e. sets the mate's contig to "*" and position to 0).
+     *
+     * To mark the read's mate as mapped, use {@link #setMatePosition}
+     *
+     * Calling this method has the additional effect of marking the read as paired, as if {@link #setIsPaired}
+     * were invoked with true.
+     */
+    void setMateIsUnplaced();
 
     /**
      * @return True if this read is on the reverse strand as opposed to the forward strand, otherwise false.
@@ -714,6 +746,12 @@ public interface GATKRead extends Locatable {
      * @return SAM string representation of this read.
      */
     String getSAMString();
+
+    /**
+     * Modify this read by reverse complementing its bases and reversing its quality scores. Implementations may
+     * also update tags that are known to need updating after the reverse complement operation.
+     */
+    public void reverseComplement();
 
     /**
      * A human-digestable representation of the read.
