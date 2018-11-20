@@ -50,8 +50,8 @@ public class SparkSharder {
      * @param <L> the {@link Locatable} type
      * @return an RDD of {@link Shard} of overlapping {@link Locatable} objects (including overlapping only padding)
      */
-    public static <L extends Locatable> JavaRDD<Shard<L>> shard(JavaSparkContext ctx, JavaRDD<L> locatables, Class<L> locatableClass,
-                                                                SAMSequenceDictionary sequenceDictionary, List<ShardBoundary> intervals,
+    public static <L extends Locatable, SB extends ShardBoundary> JavaRDD<Shard<L>> shard(JavaSparkContext ctx, JavaRDD<L> locatables, Class<L> locatableClass,
+                                                                SAMSequenceDictionary sequenceDictionary, List<SB> intervals,
                                                                 int maxLocatableLength) {
         return shard(ctx, locatables, locatableClass, sequenceDictionary, intervals, maxLocatableLength, false);
     }
@@ -69,8 +69,8 @@ public class SparkSharder {
      * @param <L> the {@link Locatable} type
      * @return an RDD of {@link Shard} of overlapping {@link Locatable} objects (including overlapping only padding)
      */
-    public static <L extends Locatable> JavaRDD<Shard<L>> shard(JavaSparkContext ctx, JavaRDD<L> locatables, Class<L> locatableClass,
-                                                                SAMSequenceDictionary sequenceDictionary, List<ShardBoundary> intervals,
+    public static <L extends Locatable, SB extends ShardBoundary> JavaRDD<Shard<L>> shard(JavaSparkContext ctx, JavaRDD<L> locatables, Class<L> locatableClass,
+                                                                SAMSequenceDictionary sequenceDictionary, List<SB> intervals,
                                                                 int maxLocatableLength, boolean useShuffle) {
 
         List<ShardBoundary> paddedIntervals = intervals.stream().map(ShardBoundary::paddedShardBoundary).collect(Collectors.toList());

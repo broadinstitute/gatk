@@ -127,8 +127,7 @@ public class FindAssemblyRegionsSpark {
                 .flatMap(getReadlessAssemblyRegionsFunction(header, assemblyRegionArgs));
 
         // 4. Pull the assembly region boundaries down to the driver, so we can fill in reads.
-        List<ShardBoundary> assemblyRegionBoundaries = readlessAssemblyRegions
-                .map((Function<ReadlessAssemblyRegion, ShardBoundary>) FindAssemblyRegionsSpark::toShardBoundary)
+        List<ReadlessAssemblyRegion> assemblyRegionBoundaries = readlessAssemblyRegions
                 .collect();
 
         // 5. Fill in the reads. Each shard is an assembly region, with its overlapping reads.
@@ -189,10 +188,6 @@ public class FindAssemblyRegionsSpark {
                                 return new ReadlessAssemblyRegion(input);
                             }
                         });
-    }
-
-    private static ShardBoundary toShardBoundary(ReadlessAssemblyRegion assemblyRegion) {
-        return assemblyRegion;
     }
 
     private static AssemblyRegion toAssemblyRegion(Shard<GATKRead> shard, SAMFileHeader header) {
