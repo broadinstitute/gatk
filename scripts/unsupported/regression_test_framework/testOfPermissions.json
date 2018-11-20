@@ -1,0 +1,3 @@
+{
+  "test_of_permissions.script": "gs://emeryj-testing/createClusterAndRunTest.upload.sh"
+}
