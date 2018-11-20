@@ -345,7 +345,7 @@ Let us now roughly estimate the error bars on this result.  The main source of r
 =& (1 - f_s) \left( {\rm var}(X) + E[X]^2 \right) - (1 - f_s)^2E[X]^2 \\
 =& (1 - f_s) d_s \chi(1 - \chi) + f_s(1 - f_s) d_s^2 \chi^2
 \end{align}
-And therefore the standard error on $\hat{\chi}$ comes out to the square root of the sum of these per-site variances, divided by the denominator of Eq. Eq. \ref{contamination_estimate}, that is,
+And therefore the standard error on $\hat{\chi}$ comes out to the square root of the sum of these per-site variances, divided by the denominator of Eq. \ref{contamination_estimate}, that is,
 \begin{equation}
 {\rm std}(\hat \chi) = \frac{\sqrt{  \sum_s \left[ (1 - f_s) d_s \hat{\chi}(1 - \hat{\chi}) + f_s(1 - f_s) d_s^2 \hat{\chi}^2  \right] }}{\sum_s d_s (1 - f_s) }
 \end{equation}
@@ -360,7 +360,7 @@ where $a_s$ and $d_s$ are the alt and total read counts at site $s$, allelic CNV
 
 Once we have learned the parameters of this model, we can easily infer the posterior probabilities of hom alt genotypes.  We take every site with a posterior probability greater than 0.5.  In order to make the result more reliable against CNVs, we again impose a threshold on segment minor allele fraction and apply the above formula only to hom alt sites in these segments.  This time, however, we choose the highest possible threshold such that the estimated relative error is less than 0.2.
 
-Finally, we note that the same calculation can be reverse by using alt reads in hom ref sites as the signal and replacing $f$ by $1-f$ everywhere above.  We use the estimate from hom refs as a backup when the hom alt estimate has too great an error, as can occur in the case of targeted panels with few sites.  We do not use this as our primary estimate because it is much more affected by uncertainty in the population allele frequencies and is thus susceptible to systematic bias.
+Finally, we note that the same calculation can be reversed by using alt reads in hom ref sites as the signal and replacing $f$ by $1-f$ everywhere above.  We use the estimate from hom refs as a backup when the hom alt estimate has too great an error, as can occur in the case of targeted panels with few sites.  We do not use this as our primary estimate because it is much more affected by uncertainty in the population allele frequencies and is thus susceptible to systematic bias.
 
 \section{Proposed tumor in normal estimation tool}
 
@@ -454,7 +454,7 @@ where $\alpha_k$ and $\beta_k$ are fixed hyperparameters for genotype $z_k$. Whe
 \begin{equation}
 P(c_i | m_i, z_{ik} = 1) = \mathrm{BetaBinomial}( c_i | m_i, \alpha'_k, \beta'_k)
 \end{equation}
-We learn the prior artifact probabilities $\vpi$ based on the observed values of $n_i$, $m_i$, $c_i$ for each of $N$ loci using the EM algorithm. In the E-step, we compute the posterior probabilities of $\vz_i$ for $i = 1 ... N$. The joint probabilities of $\vz$ factorizes over $i$, thus the the posteriors over $\vz$ are independent across loci. 
+We learn the prior artifact probabilities $\vpi$ based on the observed values of $n_i$, $m_i$, $c_i$ for each of $N$ loci using the EM algorithm. In the E-step, we compute the posterior probabilities of $\vz_i$ for $i = 1 ... N$. The joint probabilities of $\vz$ factorizes over $i$, thus the posteriors over $\vz$ are independent across loci. 
 \begin{equation}
 P(z_{ik} = 1 | m_i, c_i) \propto P(z_{ik} = 1, m_i, c_i) = \pi_{k} \mathrm{BetaBinomial}(m_i | n_i, \alpha_k, \beta_k)  \mathrm{BetaBinomial}( c_i | m_i, \alpha'_k, \beta'_k)
 \end{equation}
