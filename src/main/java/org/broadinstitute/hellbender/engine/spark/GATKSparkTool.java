@@ -540,7 +540,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
             throw new UserException("Sorry, we only support a single reads input for for this spark tool.");
         }
 
-        readInputs = new LinkedHashMap();
+        readInputs = new LinkedHashMap<>();
         readsSource = new ReadsSparkSource(sparkContext, readArguments.getReadValidationStringency());
         for (String input : readArguments.getReadFilesNames()) {
             readInputs.put(input, readsSource.getHeader(
