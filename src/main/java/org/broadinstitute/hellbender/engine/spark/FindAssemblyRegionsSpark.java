@@ -151,14 +151,15 @@ public class FindAssemblyRegionsSpark {
             ReferenceDataSource reference = referenceFileName == null ? null : new ReferenceFileSource(IOUtils.getPath(SparkFiles.get(referenceFileName)));
             final FeatureManager features = bFeatureManager == null ? null : bFeatureManager.getValue();
             AssemblyRegionEvaluator assemblyRegionEvaluator = supplierBroadcast.getValue().get(); // one AssemblyRegionEvaluator instance per Spark partition
-            final ReadsDownsampler readsDownsampler = assemblyRegionArgs.maxReadsPerAlignmentStart > 0 ?
-                    new PositionalDownsampler(assemblyRegionArgs.maxReadsPerAlignmentStart, header) : null;
-
+            
             return Utils.stream(shardedReadIterator)
-                    .map(shardedRead -> new ShardToMultiIntervalShardAdapter<>(shardedRead))
-                    // TODO: reinstate downsampling (not yet working)
-//                            new DownsampleableSparkReadShard(
-//                                    new ShardBoundary(shardedRead.getInterval(), shardedRead.getPaddedInterval()), shardedRead, readsDownsampler)))
+                    .map(shardedRead -> {
+                        final ReadsDownsampler readsDownsampler = assemblyRegionArgs.maxReadsPerAlignmentStart > 0 ?
+                                new PositionalDownsampler(assemblyRegionArgs.maxReadsPerAlignmentStart, header) : null;
+                        return new ShardToMultiIntervalShardAdapter<>(
+                                new DownsampleableSparkReadShard(
+                                        new ShardBoundary(shardedRead.getInterval(), shardedRead.getPaddedInterval()), shardedRead, readsDownsampler));
+                    })
                     .map(shardedRead -> {
                         final Iterator<ActivityProfileState> activityProfileStateIter = new ActivityProfileStateIterator(
                                 new ShardToMultiIntervalShardAdapter<>(shardedRead),
