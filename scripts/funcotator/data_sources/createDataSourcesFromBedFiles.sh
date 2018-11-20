@@ -6,7 +6,7 @@
 #
 # This script will take a list of BED files and create data sources for
 # Funcotator from them.
-# This process involves:
+# This process involves but is not limited to:
 #    
 #  - Remove tracks
 #  - Making coordinates 1-based
@@ -14,7 +14,7 @@
 #  - Creating a config file and directory structure for data sources.
 #
 # EXAMPLE:
-#     ./createDataSourcesFromBedFiles.sh DATA_SOURCES_DIRECTORY BED_FILE [BED_FILE BED_FILE ...]
+#     ./createDataSourcesFromBedFiles.sh GATK_LAUNCH_SCRIPT DATA_SOURCES_DIRECTORY BED_FILE [BED_FILE BED_FILE ...]
 #
 # AUTHOR: Jonn Smith
 #
@@ -50,14 +50,14 @@ function usage()
   echo
   echo -e 'This script will take a list of BED files and create data sources for'
   echo -e 'Funcotator from them.'
-  echo -e 'This process involves:'
+  echo -e 'This process involves but is not limited to:'
   echo -e '   '
   echo -e ' - Making coordinates 1-based'
   echo -e ' - Adding column headers to top of file'
   echo -e ' - Creating a config file and directory structure for data sources.'
   echo -e ''
   echo -e 'EXAMPLE:'
-  echo -e '    ./createDataSourcesFromBedFiles.sh funcotator_dataSources.v1.5.20181119g autogen.bed autogen2.bed' 
+  echo -e '    ./createDataSourcesFromBedFiles.sh ~/gatk-4.0.0/gatk funcotator_dataSources.v1.5.20181119g autogen.bed autogen2.bed' 
   echo -e ""
   if [[ ${#PREREQUISITES} -ne 0 ]] ; then
     echo -e "Requires the following programs to be installed:"
@@ -72,9 +72,11 @@ function usage()
   echo -e "  1  TOO MANY ARGUMENTS"
   echo -e "  2  TOO FEW ARGUMENTS"
   echo -e "  3  MISSING PREREQUESITE(S)"
-  echo -e "  4  DATA SOURCES DIRECTORY DOES NOT EXIST"
-  echo -e "  5  BED FILE DOES NOT EXIST"
-  echo -e "  6  BED FILE DOES NOT HAVE .bed EXTENSION" 
+  echo -e "  4  GATK LAUNCH SCRIPT DOESN'T EXIST" 
+  echo -e "  5  DATA SOURCES DIRECTORY DOES NOT EXIST"
+  echo -e "  6  BED FILE DOES NOT EXIST"
+  echo -e "  7  BED FILE DOES NOT HAVE .bed EXTENSION" 
+  echo -e "  8  ERROR INDEXING FEATURE FILE" 
   echo -e ""
 }
 
@@ -163,7 +165,7 @@ function printConfigFile() {
   local origin=$3
 
   echo -e "name = $dsName"
-  echo -e "version = $(date +%Y-%m-%dT%H:%M:%)"
+  echo -e "version = $(date +%Y-%m-%dT%H:%M:%S)"
   echo -e "src_file = $srcFileName"
   echo -e "origin_location = $origin"
   echo -e "preprocessing_script = $SCRIPTNAME" 
@@ -192,7 +194,7 @@ function printConfigFile() {
   echo -e ""
   echo -e "# Required field for simpleXSV AND locatableXSV files."
   echo -e "# The delimiter by which to split the XSV file into columns."
-  echo -e "xsv_delimiter =\\t"
+  echo -e "xsv_delimiter = \\\\t"
   echo -e ""
   echo -e "# Required field for simpleXSV files."
   echo -e "# Whether to permissively match the number of columns in the header and data rows"
@@ -253,18 +255,24 @@ if ${ISCALLEDBYUSER} ; then
 
   ################################################################################
   # Do the work here:
+
+	GATK_LAUNCH_SCRIPT=$1
+	shift
+  # Make sure folder exists:
+  [[ ! -f ${GATK_LAUNCH_SCRIPT} ]] && error "GATK launch script not exist: ${GATK_LAUNCH_SCRIPT}" && exit 4 
+
   DATA_SOURCES_DIR=$1
   shift 
   # Make sure folder exists:
-  [[ ! -d ${DATA_SOURCES_DIR} ]] && error "Data sources directory does not exist: ${DATA_SOURCES_DIR}" && exit 4 
+  [[ ! -d ${DATA_SOURCES_DIR} ]] && error "Data sources directory does not exist: ${DATA_SOURCES_DIR}" && exit 5 
 
   # Get the BED files and process them:
   for BED_FILE in "${@}" ; do 
 
-		error "Creating data source for ${BED_FILE}"
+    error "Creating data source for ${BED_FILE}"
 
     # Make sure BED_FILE exists:
-    [[ ! -f ${BED_FILE} ]] && error "Bed file does not exist: ${BED_FILE}" && exit 5 
+    [[ ! -f ${BED_FILE} ]] && error "Bed file does not exist: ${BED_FILE}" && exit 6 
 
     # Make sure BED_FILE has .bed as an extension:
     echo ${BED_FILE} | sed 's#\(.*\)\.[bBeEdD]*#\1#g' &> /dev/null
@@ -274,7 +282,7 @@ if ${ISCALLEDBYUSER} ; then
     # Create a temporary directory for this BED file data source:
     tmpDataSourceDir=$( mktemp -d )
     bedDataSourceName=$( basename ${BED_FILE} | sed 's#\(.*\)\.[bBeEdD]*#\1_bed#g' | tr -d ' ' )
-    bedFileLocalName=$( basename ${BED_FILE} | tr -d ' ' )
+    bedFileLocalName="${bedDataSourceName}.tsv"
 
     # Make folders for HG19 and HG38:     
     mkdir -p ${tmpDataSourceDir}/hg19 ${tmpDataSourceDir}/hg38 
@@ -289,17 +297,25 @@ if ${ISCALLEDBYUSER} ; then
 
     # Transform the input BED file:
     # Get rid of tracks, add 1 to positions, 
-		grep -v '^track' ${BED_FILE} | perl -pe 's#[\t ]+#\t#g' | awk '{ $1=$1+1; $2=$2+1; printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12 }' >>  ${tmpDataSourceDir}/hg19/${bedFileLocalName}
+    grep -v '^track' ${BED_FILE} | perl -pe 's#[\t ]+#\t#g' | awk '{ $2=$2+1; $3=$3+1; printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12 }' >>  ${tmpDataSourceDir}/hg19/${bedFileLocalName}
 
-    # Copy the file into the hg38 directory:
-    cp ${tmpDataSourceDir}/hg19/${bedFileLocalName} ${tmpDataSourceDir}/hg38/${bedFileLocalName}
+		# Index the tsv file:
+		error "Indexing file: ${tmpDataSourceDir}/hg19/${bedFileLocalName}"
+		echo "################################################################################"
+		${GATK_LAUNCH_SCRIPT} IndexFeatureFile -F ${tmpDataSourceDir}/hg19/${bedFileLocalName} 
+		r=$?
+		[[ $r -ne 0 ]] && error "Error indexing file: ${tmpDataSourceDir}/hg19/${bedFileLocalName}" && exit 8
 
-    # Put the new data source in the data sources folder:
+    # Copy the files into the hg38 directory:
+    cp ${tmpDataSourceDir}/hg19/${bedFileLocalName}* ${tmpDataSourceDir}/hg38/.
+		
+		# Put the new data source in the data sources folder:
     mv ${tmpDataSourceDir} ${DATA_SOURCES_DIR}/${bedDataSourceName}
+		echo "################################################################################"
   done
 
-	error "All data sources created in folder: ${DATA_SOURCES_DIR}"
-	error "DONE"
+  error "All data sources created in folder: ${DATA_SOURCES_DIR}"
+  error "DONE"
 
 fi
 
