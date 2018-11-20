@@ -81,7 +81,7 @@ public class ContaminationModel {
      * could be derived from the tumor itself or a matched normal.
      * @return
      */
-    public Pair<Double, Double> calculateContaminationFromHoms(List<PileupSummary> tumorSites) {
+    public Pair<Double, Double> calculateContaminationFromHoms(final List<PileupSummary> tumorSites) {
         for (double minMaf = INITIAL_MAF_THRESHOLD; minMaf > 0; minMaf -= MAF_STEP_SIZE) {
             final Pair<Double, Double> result = calculateContaminationFromHoms(tumorSites, minMaf);
             if (result.getRight() < result.getLeft() * MIN_RELATIVE_ERROR) {
@@ -91,17 +91,17 @@ public class ContaminationModel {
         return calculateContaminationFromHoms(tumorSites, 0);
     }
 
-    private Pair<Double, Double> calculateContaminationFromHoms(List<PileupSummary> tumorSites, final double minMaf) {
+    private Pair<Double, Double> calculateContaminationFromHoms(final List<PileupSummary> tumorSites, final double minMaf) {
         final Pair<Double, Double> homAltResult = calculateContamination(true, tumorSites, minMaf);
         final Pair<Double, Double> homRefResult = calculateContamination(false, tumorSites, minMaf);
 
         // if hom alt estimate has too much uncertainty, use hom ref estimate
-        final boolean useHomRef = homAltResult.getRight() > homAltResult.getLeft() / 2 && homAltResult.getRight() > homRefResult.getRight();
+        final boolean useHomRef = homAltResult.getLeft().isNaN() || (homAltResult.getRight() > homAltResult.getLeft() / 2 && homAltResult.getRight() > homRefResult.getRight());
         return useHomRef ? homRefResult : homAltResult;
     }
 
 
-    private Pair<Double, Double> calculateContamination(final boolean useHomAlt, List<PileupSummary> tumorSites, final double minMaf) {
+    private Pair<Double, Double> calculateContamination(final boolean useHomAlt, final List<PileupSummary> tumorSites, final double minMaf) {
         final List<PileupSummary> homs = subsetSites(tumorSites, useHomAlt ? homAlts(minMaf) : homRefs(minMaf));
         final double tumorErrorRate = calculateErrorRate(tumorSites);
 

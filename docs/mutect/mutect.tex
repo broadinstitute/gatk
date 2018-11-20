@@ -336,7 +336,7 @@ and obtain the estimate
 \begin{align}
 \hat{\chi} \approx \frac{N_{\rm ref} - N_{\rm ref}^{\rm error}}{\sum_{s \in \mathbb{H}} d_s (1 - f_s)} \label{contamination_estimate}
 \end{align}
-Let us now roughly estimate the error bars on this result.  Under normal conditions sequencing error is rare, so we will estimate the variance due to the sampling error of the number of contaminating ref reads.  As discussed above, the probability of a read at site $s$ being a contaminating ref is $\chi (1 - f_s)$, so the quantity in the numerator of Eq. \ref{contamination_estimate} is distributed as $\sum_s {\rm Binom}(d_s, \chi (1 - f_s)$ and therefore has variance
+Let us now roughly estimate the error bars on this result.  The main source of randomness is the stochasticity in the number of contaminating ref reads.  As discussed above, the probability of a read at site $s$ being a contaminating ref is $\chi (1 - f_s)$, so the quantity in the numerator of Eq. \ref{contamination_estimate} is distributed as $\sum_s {\rm Binom}(d_s, \chi (1 - f_s)$ and therefore has variance
 \begin{equation}
 \rm(var)(N_{\rm ref} - N_{\rm ref}^{\rm error}) = \sum_s d_s \chi (1 - f_s) \left( 1 - \chi (1 - f_s) \right) < \chi \sum_s d_s  (1 - f_s)
 \end{equation}
@@ -354,7 +354,7 @@ It remains to describe how we determine which sites are hom alt.  The fundamenta
 
 We then perform maximum likelihood estimation MLE on a model with learned parameters $\mu$, the local minor allele fraction for each segment, $\chi$, the contamination, and a constant base error rate parameter $\epsilon$ determined by counting reads that are neither the ref nor primary alt base at biallelic SNPs as described above.  The model likelihood is
 \begin{equation}
-P(\{ a\}| \{f\}, \chi, \{d\}    \prod_{{\rm segments~}n}\prod_{{\rm sites~}s} \sum_{{\rm genotype~}g} P(g|f_s) {\rm Binom}(a_s | d_s, (1 - \chi) \phi(g, \mu_n, \epsilon) + \chi f_s)
+P(\{ a\}| \{f\}, \chi, \{d\}) =    \prod_{{\rm segments~}n}\prod_{{\rm sites~}s} \sum_{{\rm genotype~}g} P(g|f_s) {\rm Binom}(a_s | d_s, (1 - \chi) \phi(g, \mu_n, \epsilon) + \chi f_s)
 \end{equation}
 where $a_s$ and $d_s$ are the alt and total read counts at site $s$, allelic CNV genotypes $g$ run over hom ref, alt minor, alt major, and hom alt with priors $P({\rm hom~ref}) = (1-f_s)^2$, $P({\rm alt~minor}) = P({\rm alt~major}) = f_s(1-f_s)$, and $P({\rm hom alt} = f^2$.  $\phi(g, \mu, \epsilon)$ is the alt allele fraction of the uncontaminated sample: $\phi({\rm hom~ref}) = \epsilon$, $\phi({\rm alt~minor}) = \mu$, $\phi({\rm alt~major}) = 1 - \mu$, $\phi({\rm hom~alt}) = 1 - \epsilon$.  The binomial is the weighted average of the uncontaminated sample and sample reads drawn independently from allele frequency $f$.  This is inconsistent with a single diploid contaminant sample, or indeed with any finite number of contaminants, which is why we do not the the MLE estimate in the final output of the tool.  The model also assumes that the uncontaminated and contaminating samples have the same overall depth distribution at each site, which is inconsistent with any differences in copy-number.  We perform the MLE by brute force, alternately maximizing with respect to $\chi$ with $\mu$ fixed and vice versa.  In order to make the solution more robust, we exclude segments with low $\mu$ from the maximization over $\chi$ by taking the highest possible threshold (up to 0.5, of course) for $\mu$ that retains at least $1/4$ of all sites.
 
