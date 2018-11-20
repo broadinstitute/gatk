@@ -336,19 +336,19 @@ and obtain the estimate
 \begin{align}
 \hat{\chi} \approx \frac{N_{\rm ref} - N_{\rm ref}^{\rm error}}{\sum_{s \in \mathbb{H}} d_s (1 - f_s)} \label{contamination_estimate}
 \end{align}
-Let us now roughly estimate the error bars on this result.  The main source of randomness is the stochasticity in the number of contaminating ref reads.  As discussed above, the probability of a read at site $s$ being a contaminating ref is $\chi (1 - f_s)$, so the quantity in the numerator of Eq. \ref{contamination_estimate} is distributed as $\sum_s {\rm Binom}(d_s, \chi (1 - f_s)$ and therefore has variance
+
+
+Let us now roughly estimate the error bars on this result.  The main source of randomness is the stochasticity in the number of contaminating ref reads.  Although the nature of this randomness depends on the number of contaminants, the most variable case, hence an upper bound, is that of a single haploid contaminant, since at each site the only possibilities are the extremes of all contaminant reads being ref or all being alt.  In this case, the contribution to the numerator of Eq. \ref{contamination_estimate} from site $s$ is the random variable $X_sZ_s$, where $X_s \sim {\rm Binom(d_s, \chi)}$ is the number of contaminant reads at $s$ and $Z_s$ is a binary indicator for whether the contaminant reads are ref, with $P(Z_s=1) = 1 - f_s$.  $X$ and $Z$ are independent, so we can work out the variance of $XZ$ as:
+\begin{align}
+{\rm var}(XZ) =& E[X^2Z^2] - E[XZ]^2 \\
+=& (1 - f_s) E[X^2] - (1-f_s)^2 E[X]^2 \\
+=& (1 - f_s) \left( {\rm var}(X) + E[X]^2 \right) - (1 - f_s)^2E[X]^2 \\
+=& (1 - f_s) d_s \chi(1 - \chi) + f_s(1 - f_s) d_s^2 \chi^2
+\end{align}
+And therefore the standard error on $\hat{\chi}$ comes out to the square root of the sum of these per-site variances, divided by the denominator of Eq. Eq. \ref{contamination_estimate}, that is,
 \begin{equation}
-\rm(var)(N_{\rm ref} - N_{\rm ref}^{\rm error}) = \sum_s d_s \chi (1 - f_s) \left( 1 - \chi (1 - f_s) \right) < \chi \sum_s d_s  (1 - f_s)
+{\rm std}(\hat \chi) = \frac{\sqrt{  \sum_s \left[ (1 - f_s) d_s \hat{\chi}(1 - \hat{\chi}) + f_s(1 - f_s) d_s^2 \hat{\chi}^2  \right] }}{\sum_s d_s (1 - f_s) }
 \end{equation}
-And thus the variance of Eq. \ref{contamination_estimate} is bounded as
-\begin{equation}
-{\rm var}(\hat{\chi}) < \frac{ \chi \sum_s d_s  (1 - f_s) }{ \left( \sum_{s \in \mathbb{H}} d_s (1 - f_s) \right)^2} = \frac{ \chi }{  \sum_{s \in \mathbb{H}} d_s (1 - f_s) },
-\end{equation}
-which gives the following bound for the standard deviation:
-\begin{equation}
-{\rm std}(\hat{\chi}) < \left[ \frac{ \chi }{  \sum_{s \in \mathbb{H}} d_s (1 - f_s) } \right]^{1/2} < \left[ \frac{ \chi }{  \sum_{s \in \mathbb{H}} d_s} \right]^{1/2}
-\end{equation}
-This standard deviation is quite small.  For example, in an exome with 1000 hom alt sites (as is typical) and an average depth of 30 reads, a true contamination of 0.05 is estimated with an error of 0.0013.
 
 It remains to describe how we determine which sites are hom alt.  The fundamental challenge here is that in cancer samples loss of heterozygosity may cause het sites to look like hom alt sites.  Our strategy is to partition the genome into allelic copy-number segments, then infer the minor allele fraction of those segments.  We segment the genome just as in GATK CNV, using a kernel segmenter with a Gaussian kernel computed on the alt fraction.  A nonlinear kernel is important because each segment is multimodal, with peaks for hom ref, alt minor het, alt major het, and hom alt.  
 
