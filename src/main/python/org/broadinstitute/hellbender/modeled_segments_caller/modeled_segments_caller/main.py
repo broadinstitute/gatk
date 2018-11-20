@@ -125,7 +125,6 @@ class LoadAndSampleCrAndAf:
         if not output_log_prefix == "":
             self.__logger.info("\n\nProperties of data:")
             self.__logger.info("\t\t\tLENGTH\tMEAN\tSTD_DEV")
-            self.__logger.info("Weights:\t{0}\t{1}\t{2}".format(len(self.__weights), np.mean(self.__weights), np.std(self.__weights)))
             self.__logger.info("Copy ratio 10th perc:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_10th_perc), np.mean(self.__copy_ratio_10th_perc), np.std(self.__copy_ratio_10th_perc)))
             self.__logger.info("Copy ratio median:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_median), np.mean(self.__copy_ratio_median), np.std(self.__copy_ratio_median)))
             self.__logger.info("Copy ratio 90th perc:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_90th_perc), np.mean(self.__copy_ratio_90th_perc), np.std(self.__copy_ratio_90th_perc)))
