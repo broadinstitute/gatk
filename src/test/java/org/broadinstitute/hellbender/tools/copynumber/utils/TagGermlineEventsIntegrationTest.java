@@ -3,8 +3,7 @@ package org.broadinstitute.hellbender.tools.copynumber.utils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.tools.copynumber.formats.collections.ModeledSegmentCollection;
-import org.broadinstitute.hellbender.tools.copynumber.formats.records.CalledCopyRatioSegment;
+import org.broadinstitute.hellbender.tools.copynumber.formats.records.CalledModeledSegment;
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedInterval;
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedIntervalCollection;
 import org.testng.Assert;
@@ -18,18 +17,15 @@ import java.util.stream.Collectors;
 
 public class TagGermlineEventsIntegrationTest extends CommandLineProgramTest {
     private static final String TEST_RESOURCE_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/copynumber/utils/";
-    public static final String TAG_GERMLINE_NORMAL_SEG_FILE = TEST_RESOURCE_DIR + "tag-germline-header-normal.seg";
-    public static final String TAG_GERMLINE_NORMAL_SEG_CNLOH_FILE = TEST_RESOURCE_DIR + "tag-germline-header-normal-with-maf.seg";
-    public static final String TAG_GERMLINE_TUMOR_MATCHED_NORMAL_SEG_FILE = TEST_RESOURCE_DIR + "tag-germline-tumor-all-match-normal.seg";
-    public static final String TAG_GERMLINE_TUMOR_MATCHED_NORMAL_CNLOH_SEG_FILE = TEST_RESOURCE_DIR + "tag-germline-tumor-all-match-normal-with-maf.seg";
-    public static final String TAG_GERMLINE_TUMOR_ALMOST_MATCHED_NORMAL_SEG_FILE = TEST_RESOURCE_DIR + "tag-germline-tumor-some-match-normal.seg";
-    public static final String TAG_GERMLINE_TUMOR_ALMOST_MATCHED_NORMAL_CNLOH_SEG_FILE = TEST_RESOURCE_DIR + "tag-germline-tumor-some-match-normal-with-maf.seg";
-    public static final String TAG_GERMLINE_TUMOR_NOT_MATCHED_NORMAL_SEG_FILE = TEST_RESOURCE_DIR + "tag-germline-no-match-normal.seg";
-    public static final String TAG_GERMLINE_TUMOR_SPLIT_ALMOST_MATCHED_NORMAL_SEG_FILE = TEST_RESOURCE_DIR + "tag-germline-tumor-split-some-match-normal.seg";
-    public static final String TAG_GERMLINE_TUMOR_SPLIT_NO_MATCHED_NORMAL_SEG_FILE = TEST_RESOURCE_DIR + "tag-germline-tumor-split-no-match-normal.seg";
-
-    public static final String MAF_HI_ANNOTATION = ModeledSegmentCollection.ModeledSegmentTableColumn.MINOR_ALLELE_FRACTION_POSTERIOR_90.toString();
-    public static final String MAF_LO_ANNOTATION = ModeledSegmentCollection.ModeledSegmentTableColumn.MINOR_ALLELE_FRACTION_POSTERIOR_10.toString();
+    private static final String TAG_GERMLINE_NORMAL_SEG_FILE = TEST_RESOURCE_DIR + "tag-germline-header-normal.seg";
+    private static final String TAG_GERMLINE_NORMAL_SEG_CNLOH_FILE = TEST_RESOURCE_DIR + "tag-germline-header-normal-with-maf.seg";
+    private static final String TAG_GERMLINE_TUMOR_MATCHED_NORMAL_SEG_FILE = TEST_RESOURCE_DIR + "tag-germline-tumor-all-match-normal.seg";
+    private static final String TAG_GERMLINE_TUMOR_MATCHED_NORMAL_CNLOH_SEG_FILE = TEST_RESOURCE_DIR + "tag-germline-tumor-all-match-normal-with-maf.seg";
+    private static final String TAG_GERMLINE_TUMOR_ALMOST_MATCHED_NORMAL_SEG_FILE = TEST_RESOURCE_DIR + "tag-germline-tumor-some-match-normal.seg";
+    private static final String TAG_GERMLINE_TUMOR_ALMOST_MATCHED_NORMAL_CNLOH_SEG_FILE = TEST_RESOURCE_DIR + "tag-germline-tumor-some-match-normal-with-maf.seg";
+    private static final String TAG_GERMLINE_TUMOR_NOT_MATCHED_NORMAL_SEG_FILE = TEST_RESOURCE_DIR + "tag-germline-no-match-normal.seg";
+    private static final String TAG_GERMLINE_TUMOR_SPLIT_ALMOST_MATCHED_NORMAL_SEG_FILE = TEST_RESOURCE_DIR + "tag-germline-tumor-split-some-match-normal.seg";
+    private static final String TAG_GERMLINE_TUMOR_SPLIT_NO_MATCHED_NORMAL_SEG_FILE = TEST_RESOURCE_DIR + "tag-germline-tumor-split-no-match-normal.seg";
 
     public static final String REF = hg19_chr1_1M_Reference;
 
@@ -52,10 +48,10 @@ public class TagGermlineEventsIntegrationTest extends CommandLineProgramTest {
         final List<AnnotatedInterval> regions = AnnotatedIntervalCollection.create(outputFile.toPath(), null).getRecords();
 
         // Test that the germline calls are 0, -, 0, -
-        Assert.assertEquals(regions.get(0).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledCopyRatioSegment.Call.NEUTRAL.getOutputString());
-        Assert.assertEquals(regions.get(1).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledCopyRatioSegment.Call.DELETION.getOutputString());
-        Assert.assertEquals(regions.get(2).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledCopyRatioSegment.Call.NEUTRAL.getOutputString());
-        Assert.assertEquals(regions.get(3).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledCopyRatioSegment.Call.DELETION.getOutputString());
+        Assert.assertEquals(regions.get(0).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledModeledSegment.Call.NEUTRAL.getOutputString());
+        Assert.assertEquals(regions.get(1).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledModeledSegment.Call.DELETION.getOutputString());
+        Assert.assertEquals(regions.get(2).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledModeledSegment.Call.NEUTRAL.getOutputString());
+        Assert.assertEquals(regions.get(3).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledModeledSegment.Call.DELETION.getOutputString());
 
         final List<AnnotatedInterval> regionsInput = AnnotatedIntervalCollection.create(new File(TAG_GERMLINE_TUMOR_MATCHED_NORMAL_SEG_FILE).toPath(), null).getRecords();
         assertNoRegionChanges(regions, regionsInput);
@@ -80,10 +76,10 @@ public class TagGermlineEventsIntegrationTest extends CommandLineProgramTest {
         final List<AnnotatedInterval> regions = AnnotatedIntervalCollection.create(outputFile.toPath(), null).getRecords();
 
         // Test that the germline calls are 0, 0, 0, -
-        Assert.assertEquals(regions.get(0).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledCopyRatioSegment.Call.NEUTRAL.getOutputString());
-        Assert.assertEquals(regions.get(1).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledCopyRatioSegment.Call.NEUTRAL.getOutputString());
-        Assert.assertEquals(regions.get(2).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledCopyRatioSegment.Call.NEUTRAL.getOutputString());
-        Assert.assertEquals(regions.get(3).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledCopyRatioSegment.Call.DELETION.getOutputString());
+        Assert.assertEquals(regions.get(0).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledModeledSegment.Call.NEUTRAL.getOutputString());
+        Assert.assertEquals(regions.get(1).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledModeledSegment.Call.NEUTRAL.getOutputString());
+        Assert.assertEquals(regions.get(2).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledModeledSegment.Call.NEUTRAL.getOutputString());
+        Assert.assertEquals(regions.get(3).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledModeledSegment.Call.DELETION.getOutputString());
 
         final List<AnnotatedInterval> regionsInput = AnnotatedIntervalCollection.create(new File(TAG_GERMLINE_TUMOR_ALMOST_MATCHED_NORMAL_SEG_FILE).toPath(), null).getRecords();
         assertNoRegionChanges(regions, regionsInput);
@@ -108,11 +104,11 @@ public class TagGermlineEventsIntegrationTest extends CommandLineProgramTest {
         final List<AnnotatedInterval> regions = AnnotatedIntervalCollection.create(outputFile.toPath(), null).getRecords();
 
         // Test that the germline calls are 0, 0, 0, -, -
-        Assert.assertEquals(regions.get(0).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledCopyRatioSegment.Call.NEUTRAL.getOutputString());
-        Assert.assertEquals(regions.get(1).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledCopyRatioSegment.Call.NEUTRAL.getOutputString());
-        Assert.assertEquals(regions.get(2).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledCopyRatioSegment.Call.NEUTRAL.getOutputString());
-        Assert.assertEquals(regions.get(3).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledCopyRatioSegment.Call.DELETION.getOutputString());
-        Assert.assertEquals(regions.get(4).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledCopyRatioSegment.Call.DELETION.getOutputString());
+        Assert.assertEquals(regions.get(0).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledModeledSegment.Call.NEUTRAL.getOutputString());
+        Assert.assertEquals(regions.get(1).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledModeledSegment.Call.NEUTRAL.getOutputString());
+        Assert.assertEquals(regions.get(2).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledModeledSegment.Call.NEUTRAL.getOutputString());
+        Assert.assertEquals(regions.get(3).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledModeledSegment.Call.DELETION.getOutputString());
+        Assert.assertEquals(regions.get(4).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledModeledSegment.Call.DELETION.getOutputString());
 
         final List<AnnotatedInterval> regionsInput = AnnotatedIntervalCollection.create(new File(TAG_GERMLINE_TUMOR_SPLIT_ALMOST_MATCHED_NORMAL_SEG_FILE).toPath(), null).getRecords();
         assertNoRegionChanges(regions, regionsInput);
@@ -137,10 +133,10 @@ public class TagGermlineEventsIntegrationTest extends CommandLineProgramTest {
         final List<AnnotatedInterval> regions = AnnotatedIntervalCollection.create(outputFile.toPath(), null).getRecords();
 
         // Test that the germline calls are 0, 0, 0, 0
-        Assert.assertEquals(regions.get(0).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledCopyRatioSegment.Call.NEUTRAL.getOutputString());
-        Assert.assertEquals(regions.get(1).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledCopyRatioSegment.Call.NEUTRAL.getOutputString());
-        Assert.assertEquals(regions.get(2).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledCopyRatioSegment.Call.NEUTRAL.getOutputString());
-        Assert.assertEquals(regions.get(3).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledCopyRatioSegment.Call.NEUTRAL.getOutputString());
+        Assert.assertEquals(regions.get(0).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledModeledSegment.Call.NEUTRAL.getOutputString());
+        Assert.assertEquals(regions.get(1).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledModeledSegment.Call.NEUTRAL.getOutputString());
+        Assert.assertEquals(regions.get(2).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledModeledSegment.Call.NEUTRAL.getOutputString());
+        Assert.assertEquals(regions.get(3).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledModeledSegment.Call.NEUTRAL.getOutputString());
 
         final List<AnnotatedInterval> regionsInput = AnnotatedIntervalCollection.create(new File(TAG_GERMLINE_TUMOR_NOT_MATCHED_NORMAL_SEG_FILE).toPath(), null).getRecords();
         assertNoRegionChanges(regions, regionsInput);
@@ -178,11 +174,11 @@ public class TagGermlineEventsIntegrationTest extends CommandLineProgramTest {
 
         // Test that the germline calls are 0, 0, 0, -, 0....  The deletion should occur, since the tumor segment is completely subsumed by a germline event.
         //   Therefore there is a reciprocal overlap
-        Assert.assertEquals(regions.get(0).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledCopyRatioSegment.Call.NEUTRAL.getOutputString());
-        Assert.assertEquals(regions.get(1).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledCopyRatioSegment.Call.NEUTRAL.getOutputString());
-        Assert.assertEquals(regions.get(2).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledCopyRatioSegment.Call.NEUTRAL.getOutputString());
-        Assert.assertEquals(regions.get(3).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledCopyRatioSegment.Call.DELETION.getOutputString());
-        Assert.assertEquals(regions.get(4).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledCopyRatioSegment.Call.NEUTRAL.getOutputString());
+        Assert.assertEquals(regions.get(0).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledModeledSegment.Call.NEUTRAL.getOutputString());
+        Assert.assertEquals(regions.get(1).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledModeledSegment.Call.NEUTRAL.getOutputString());
+        Assert.assertEquals(regions.get(2).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledModeledSegment.Call.NEUTRAL.getOutputString());
+        Assert.assertEquals(regions.get(3).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledModeledSegment.Call.DELETION.getOutputString());
+        Assert.assertEquals(regions.get(4).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledModeledSegment.Call.NEUTRAL.getOutputString());
         final List<AnnotatedInterval> regionsInput = AnnotatedIntervalCollection.create(new File(TAG_GERMLINE_TUMOR_SPLIT_NO_MATCHED_NORMAL_SEG_FILE).toPath(), null).getRecords();
         assertNoRegionChanges(regions, regionsInput);
     }
@@ -207,11 +203,11 @@ public class TagGermlineEventsIntegrationTest extends CommandLineProgramTest {
         final List<AnnotatedInterval> regions = AnnotatedIntervalCollection.create(outputFile.toPath(), null).getRecords();
 
         // Test that the germline calls are 0, -, 0, -, CNLoH
-        Assert.assertEquals(regions.get(0).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledCopyRatioSegment.Call.NEUTRAL.getOutputString());
-        Assert.assertEquals(regions.get(1).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledCopyRatioSegment.Call.DELETION.getOutputString());
-        Assert.assertEquals(regions.get(2).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledCopyRatioSegment.Call.NEUTRAL.getOutputString());
-        Assert.assertEquals(regions.get(3).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledCopyRatioSegment.Call.DELETION.getOutputString());
-        Assert.assertEquals(regions.get(4).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), "C");
+        Assert.assertEquals(regions.get(0).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledModeledSegment.Call.NEUTRAL.getOutputString());
+        Assert.assertEquals(regions.get(1).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledModeledSegment.Call.DELETION.getOutputString());
+        Assert.assertEquals(regions.get(2).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledModeledSegment.Call.NEUTRAL.getOutputString());
+        Assert.assertEquals(regions.get(3).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledModeledSegment.Call.DELETION.getOutputString());
+        Assert.assertEquals(regions.get(4).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledModeledSegment.Call.CNLOH.getOutputString());
 
         final List<AnnotatedInterval> regionsInput = AnnotatedIntervalCollection.create(new File(TAG_GERMLINE_TUMOR_MATCHED_NORMAL_CNLOH_SEG_FILE).toPath(), null).getRecords();
         assertNoRegionChanges(regions, regionsInput);
@@ -237,11 +233,11 @@ public class TagGermlineEventsIntegrationTest extends CommandLineProgramTest {
         final List<AnnotatedInterval> regions = AnnotatedIntervalCollection.create(outputFile.toPath(), null).getRecords();
 
         // Test that the germline calls are 0, 0, 0, -, C
-        Assert.assertEquals(regions.get(0).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledCopyRatioSegment.Call.NEUTRAL.getOutputString());
-        Assert.assertEquals(regions.get(1).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledCopyRatioSegment.Call.NEUTRAL.getOutputString());
-        Assert.assertEquals(regions.get(2).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledCopyRatioSegment.Call.NEUTRAL.getOutputString());
-        Assert.assertEquals(regions.get(3).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledCopyRatioSegment.Call.DELETION.getOutputString());
-        Assert.assertEquals(regions.get(4).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), "C");
+        Assert.assertEquals(regions.get(0).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledModeledSegment.Call.NEUTRAL.getOutputString());
+        Assert.assertEquals(regions.get(1).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledModeledSegment.Call.NEUTRAL.getOutputString());
+        Assert.assertEquals(regions.get(2).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledModeledSegment.Call.NEUTRAL.getOutputString());
+        Assert.assertEquals(regions.get(3).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledModeledSegment.Call.DELETION.getOutputString());
+        Assert.assertEquals(regions.get(4).getAnnotationValue(TagGermlineEvents.GERMLINE_TAG_HEADER), CalledModeledSegment.Call.CNLOH.getOutputString());
 
         final List<AnnotatedInterval> regionsInput = AnnotatedIntervalCollection.create(new File(TAG_GERMLINE_TUMOR_ALMOST_MATCHED_NORMAL_CNLOH_SEG_FILE).toPath(), null).getRecords();
         assertNoRegionChanges(regions, regionsInput);
@@ -263,6 +259,7 @@ public class TagGermlineEventsIntegrationTest extends CommandLineProgramTest {
         arguments.add("--" + TagGermlineEvents.DO_CHECK_CNLOH);
         runCommandLine(arguments);
     }
+
     /** MAF columns missing in Tumor, yet CNLoH check was requested */
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testSlightlyDifferentWithCNLoHWithoutAllInfoTumor() throws IOException {

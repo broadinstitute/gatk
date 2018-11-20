@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableSortedMap;
 import com.google.common.collect.Maps;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.ModeledSegmentCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.records.CalledModeledSegment;
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedInterval;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
@@ -17,11 +18,15 @@ import java.util.List;
 
 public class SimpleGermlineTaggerUnitTest extends GATKBaseTest {
     private static final String REF = hg19MiniReference;
-    public static final String TEST_GERMLINE_TAGGING_ANNOTATION = "germline_tagging";
-    public static final String CALL_ANNOTATION = "CALL";
-    public static final String MAF_HI_ANNOTATION = ModeledSegmentCollection.ModeledSegmentTableColumn.MINOR_ALLELE_FRACTION_POSTERIOR_90.toString();
-    public static final String MAF_LO_ANNOTATION = ModeledSegmentCollection.ModeledSegmentTableColumn.MINOR_ALLELE_FRACTION_POSTERIOR_10.toString();
-
+    private static final String TEST_GERMLINE_TAGGING_ANNOTATION = "germline_tagging";
+    private static final String CALL_ANNOTATION = "CALL";
+    private static final String MAF_HI_ANNOTATION = ModeledSegmentCollection.ModeledSegmentTableColumn.MINOR_ALLELE_FRACTION_POSTERIOR_90.toString();
+    private static final String MAF_LO_ANNOTATION = ModeledSegmentCollection.ModeledSegmentTableColumn.MINOR_ALLELE_FRACTION_POSTERIOR_10.toString();
+    private static final String AMP = CalledModeledSegment.Call.AMPLIFICATION.getOutputString();
+    private static final String DEL = CalledModeledSegment.Call.DELETION.getOutputString();
+    private static final String NEUTRAL = CalledModeledSegment.Call.NEUTRAL.getOutputString();
+    private static final String CNLOH = CalledModeledSegment.Call.CNLOH.getOutputString();
+    
     @Test(dataProvider = "simpleTests")
     public void testSimpleTagging(List<AnnotatedInterval> tumorSegments, List<AnnotatedInterval> normalSegments,
                                   List<AnnotatedInterval> gt, int padding, double reciprocalThreshold, boolean isCNLoHCheck,
@@ -52,672 +57,672 @@ public class SimpleGermlineTaggerUnitTest extends GATKBaseTest {
                 {
                         // Trivial case
                         Arrays.asList(
-                                new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "+"))),
-                                new AnnotatedInterval(new SimpleInterval("1", 201, 300), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "0")))
+                                new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, AMP))),
+                                new AnnotatedInterval(new SimpleInterval("1", 201, 300), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL)))
                         ),
                         Arrays.asList(
-                                new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(CALL_ANNOTATION, "+")),
-                                new AnnotatedInterval(new SimpleInterval("1", 201, 500), ImmutableSortedMap.of(CALL_ANNOTATION, "0"))
+                                new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(CALL_ANNOTATION, AMP)),
+                                new AnnotatedInterval(new SimpleInterval("1", 201, 500), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))
                         ),
                         Arrays.asList(
-                                new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                                new AnnotatedInterval(new SimpleInterval("1", 201, 300), ImmutableSortedMap.of(CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0"))
+                                new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                                new AnnotatedInterval(new SimpleInterval("1", 201, 300), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL))
                         ), 10, 0.75, false, 0.47, 2000000
                 }, {
                 // Almost-trivial case
                 Arrays.asList(
                         // Tumor segments are assumed to be mutable.
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "+"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 400), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "+")))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, AMP))),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 400), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, AMP)))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(CALL_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 500), ImmutableSortedMap.of(CALL_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(CALL_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 500), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), ImmutableSortedMap.of(CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 400), ImmutableSortedMap.of(CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 400), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL))
                 ), 10, 0.75, false, 0.47, 2000000
         }, {
                 // More than one tumor segment maps to one germline seg.  This example would indicate that a tumor sample had deleted a germline amp.
                 Arrays.asList(
                         // Tumor segments are assumed to be mutable.
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "+"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 400), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "+")))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, AMP))),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 400), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, AMP)))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(CALL_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(CALL_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(CALL_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), ImmutableSortedMap.of(CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 400), ImmutableSortedMap.of(CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 400), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL))
                 ), 10, 0.75, false, 0.47, 2000000
         }, {
                 // Same as above, but using the padding.
                 Arrays.asList(
                         // Tumor segments are assumed to be mutable.
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "+"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 400), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "+")))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, AMP))),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 400), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, AMP)))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 99, 295), ImmutableSortedMap.of(CALL_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 296, 500), ImmutableSortedMap.of(CALL_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 99, 295), ImmutableSortedMap.of(CALL_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 296, 500), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), ImmutableSortedMap.of(CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 400), ImmutableSortedMap.of(CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 400), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL))
                 ), 10, 0.75, false, 0.47, 2000000
         }, {
                 // Same as above, but with deletions.
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "+"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 400), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "+")))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, AMP))),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 400), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, AMP)))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 99, 295), ImmutableSortedMap.of(CALL_ANNOTATION, "-")),
-                        new AnnotatedInterval(new SimpleInterval("1", 296, 500), ImmutableSortedMap.of(CALL_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 99, 295), ImmutableSortedMap.of(CALL_ANNOTATION, DEL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 296, 500), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "-")),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), ImmutableSortedMap.of(CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "-")),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 400), ImmutableSortedMap.of(CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, DEL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, DEL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 400), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL))
                 ), 10, 0.75, false, 0.47, 2000000
         }, {
                 // No tumor segment matches at the endpoint
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "+"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 251, 400), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "+")))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, AMP))),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 251, 400), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, AMP)))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(CALL_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(CALL_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(CALL_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), ImmutableSortedMap.of(CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 251, 400), ImmutableSortedMap.of(CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 251, 400), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL))
                 ), 10, 0.75, false, 0.47, 2000000
         }, {
                 // Three tumor segment matches at the endpoint
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "+"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 251, 300), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "+")))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, AMP))),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 251, 300), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, AMP)))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(CALL_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(CALL_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(CALL_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), ImmutableSortedMap.of(CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 251, 300), ImmutableSortedMap.of(CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 251, 300), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL))
                 ), 10, 0.75, false, 0.47, 2000000
         }, {
                 // Three tumor segment matches at the start, but just barely not at the end
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "+"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 251, 315), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "+")))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, AMP))),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 251, 315), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, AMP)))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(CALL_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(CALL_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(CALL_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), ImmutableSortedMap.of(CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 251, 315), ImmutableSortedMap.of(CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 251, 315), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL))
                 ), 10, 0.75, false, 0.47, 2000000
         }, {
                 // Three tumor segment matches at the endpoint
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "+"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 251, 310), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "+")))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, AMP))),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 251, 310), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, AMP)))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(CALL_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(CALL_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(CALL_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), ImmutableSortedMap.of(CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 251, 310), ImmutableSortedMap.of(CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 251, 310), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL))
                 ), 10, 0.75, false, 0.47, 2000000
         }, {
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 90, 200), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "+"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 251, 305), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "+")))
+                        new AnnotatedInterval(new SimpleInterval("1", 90, 200), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, AMP))),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 251, 305), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, AMP)))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(CALL_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(CALL_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(CALL_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 90, 200), ImmutableSortedMap.of(CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), ImmutableSortedMap.of(CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 251, 305), ImmutableSortedMap.of(CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 90, 200), ImmutableSortedMap.of(CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 251, 305), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL))
                 ), 10, 0.75, false, 0.47, 2000000
         }, {
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 89, 200), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "+"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 251, 305), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "+")))
+                        new AnnotatedInterval(new SimpleInterval("1", 89, 200), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, AMP))),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 251, 305), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, AMP)))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(CALL_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(CALL_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(CALL_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 89, 200), ImmutableSortedMap.of(CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), ImmutableSortedMap.of(CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 251, 305), ImmutableSortedMap.of(CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 89, 200), ImmutableSortedMap.of(CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 251, 305), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL))
                 ), 10, 0.75, false, 0.47, 2000000
         }, {
                 Arrays.asList(
                         // Small segment is within padding, so it gets included.
-                        new AnnotatedInterval(new SimpleInterval("1", 95, 100), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "+"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 101, 250), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 251, 305), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "+")))
+                        new AnnotatedInterval(new SimpleInterval("1", 95, 100), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, AMP))),
+                        new AnnotatedInterval(new SimpleInterval("1", 101, 250), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 251, 305), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, AMP)))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(CALL_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(CALL_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(CALL_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))
                 ),
                 Arrays.asList(
                         // The first segment should not be tagged as a germline event, since it mostly does not overlap a germline segment.
-                        new AnnotatedInterval(new SimpleInterval("1", 95, 100), ImmutableSortedMap.of(CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 101, 250), ImmutableSortedMap.of(CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 251, 305), ImmutableSortedMap.of(CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 95, 100), ImmutableSortedMap.of(CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 101, 250), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 251, 305), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL))
                 ), 10, 0.75, false, 0.47, 2000000
         }, {
                 Arrays.asList(
                         // The first segment should not get tagged.
-                        new AnnotatedInterval(new SimpleInterval("1", 89, 100), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "+"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 101, 250), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 251, 305), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "+")))
+                        new AnnotatedInterval(new SimpleInterval("1", 89, 100), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, AMP))),
+                        new AnnotatedInterval(new SimpleInterval("1", 101, 250), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 251, 305), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, AMP)))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(CALL_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(CALL_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(CALL_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 89, 100), ImmutableSortedMap.of(CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 101, 250), ImmutableSortedMap.of(CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 251, 305), ImmutableSortedMap.of(CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 89, 100), ImmutableSortedMap.of(CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 101, 250), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 251, 305), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL))
                 ), 10, 0.75, false, 0.47, 2000000
         }, {
                 Arrays.asList(
                         // The third segment should not get tagged.
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "+"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 311), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "+")))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, AMP))),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 311), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, AMP)))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(CALL_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(CALL_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(CALL_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), ImmutableSortedMap.of(CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 311), ImmutableSortedMap.of(CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 311), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL))
                 ), 10, 0.75, false, 0.47, 2000000
         }, {
                 Arrays.asList(
                         // The big segment should not get tagged
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 23000), ImmutableSortedMap.of(CALL_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 23001, 25000), ImmutableSortedMap.of(CALL_ANNOTATION, "-")),
-                        new AnnotatedInterval(new SimpleInterval("1", 26001, 300500), ImmutableSortedMap.of(CALL_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 23000), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 23001, 25000), ImmutableSortedMap.of(CALL_ANNOTATION, DEL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 26001, 300500), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 17001, 31000), ImmutableSortedMap.of(CALL_ANNOTATION, "-"))
+                        new AnnotatedInterval(new SimpleInterval("1", 17001, 31000), ImmutableSortedMap.of(CALL_ANNOTATION, DEL))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 23000), ImmutableSortedMap.of(CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 23001, 25000), ImmutableSortedMap.of(CALL_ANNOTATION, "-", TEST_GERMLINE_TAGGING_ANNOTATION, "-")),
-                        new AnnotatedInterval(new SimpleInterval("1", 26001, 300500), ImmutableSortedMap.of(CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 23000), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 23001, 25000), ImmutableSortedMap.of(CALL_ANNOTATION, DEL, TEST_GERMLINE_TAGGING_ANNOTATION, DEL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 26001, 300500), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL))
                 ), 10000, 0.75, false, 0.47, 2000000
         }, {
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 10459001, 10472000), ImmutableSortedMap.of(CALL_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 10472001, 11427000), ImmutableSortedMap.of(CALL_ANNOTATION, "-")),
-                        new AnnotatedInterval(new SimpleInterval("1", 11427001, 30709000), ImmutableSortedMap.of(CALL_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 10459001, 10472000), ImmutableSortedMap.of(CALL_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 10472001, 11427000), ImmutableSortedMap.of(CALL_ANNOTATION, DEL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 11427001, 30709000), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 10459001, 10469000), ImmutableSortedMap.of(CALL_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 10469001, 11489000), ImmutableSortedMap.of(CALL_ANNOTATION, "-")),
-                        new AnnotatedInterval(new SimpleInterval("1", 11489001, 77286000), ImmutableSortedMap.of(CALL_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 10459001, 10469000), ImmutableSortedMap.of(CALL_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 10469001, 11489000), ImmutableSortedMap.of(CALL_ANNOTATION, DEL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 11489001, 77286000), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 10459001, 10472000), ImmutableSortedMap.of(CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 10472001, 11427000), ImmutableSortedMap.of(CALL_ANNOTATION, "-", TEST_GERMLINE_TAGGING_ANNOTATION, "-")),
-                        new AnnotatedInterval(new SimpleInterval("1", 11427001, 30709000), ImmutableSortedMap.of(CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 10459001, 10472000), ImmutableSortedMap.of(CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 10472001, 11427000), ImmutableSortedMap.of(CALL_ANNOTATION, DEL, TEST_GERMLINE_TAGGING_ANNOTATION, DEL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 11427001, 30709000), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL))
                 ), 10000, 0.75, false, 0.47, 2000000
         }, {
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 2602001, 2792000), ImmutableSortedMap.of(CALL_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 2792001, 3101000), ImmutableSortedMap.of(CALL_ANNOTATION, "+"))
+                        new AnnotatedInterval(new SimpleInterval("1", 2602001, 2792000), ImmutableSortedMap.of(CALL_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 2792001, 3101000), ImmutableSortedMap.of(CALL_ANNOTATION, AMP))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 2539001, 2792000), ImmutableSortedMap.of(CALL_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 2792001, 3101000), ImmutableSortedMap.of(CALL_ANNOTATION, "+"))
+                        new AnnotatedInterval(new SimpleInterval("1", 2539001, 2792000), ImmutableSortedMap.of(CALL_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 2792001, 3101000), ImmutableSortedMap.of(CALL_ANNOTATION, AMP))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 2602001, 2792000), ImmutableSortedMap.of(CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 2792001, 3101000), ImmutableSortedMap.of(CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "+"))
+                        new AnnotatedInterval(new SimpleInterval("1", 2602001, 2792000), ImmutableSortedMap.of(CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 2792001, 3101000), ImmutableSortedMap.of(CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, AMP))
                 ), 10000, 0.75, false, 0.47, 2000000
         }, {
                 Arrays.asList(
                         // The third segment should not get tagged.  The first should not get tagged, because it cannot match endpoints, nor does reciprocal overlap hold.
                         //  Regarding the first segment, this is not necessarily great behavior, because we do not know what is happening in the 201-300 region.
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "+"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 311), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "+")))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, AMP))),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 311), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, AMP)))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(CALL_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(CALL_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(CALL_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 311), ImmutableSortedMap.of(CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 311), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL))
                 ), 10, 0.75, false, 0.47, 2000000
         }, {
                 Arrays.asList(
                         // The third segment should not get tagged.  The first should get tagged, because the reciprocal overlap holds, due to low reciprocal threshold.
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "+"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 311), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, "+")))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, AMP))),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 311), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(CALL_ANNOTATION, AMP)))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(CALL_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(CALL_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(CALL_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 311), ImmutableSortedMap.of(CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 311), ImmutableSortedMap.of(CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL))
                 ), 10, 0.4, false, 0.47, 2000000
         }, {
                 // Trivial case, but show that if MAF annotations are present, but not being used, there is no issue.
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0")))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP))),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL)))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL))
                 ), 10, 0.75, false, 0.47, 2000000
         },
                 /* BEGIN MAF NULL CASES (No CNLoH in the normal) */
                 {
                         // Trivial case
                         Arrays.asList(
-                                new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+"))),
-                                new AnnotatedInterval(new SimpleInterval("1", 201, 300), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0")))
+                                new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP))),
+                                new AnnotatedInterval(new SimpleInterval("1", 201, 300), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL)))
                         ),
                         Arrays.asList(
-                                new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+")),
-                                new AnnotatedInterval(new SimpleInterval("1", 201, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))
+                                new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP)),
+                                new AnnotatedInterval(new SimpleInterval("1", 201, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))
                         ),
                         Arrays.asList(
-                                new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                                new AnnotatedInterval(new SimpleInterval("1", 201, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0"))
+                                new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                                new AnnotatedInterval(new SimpleInterval("1", 201, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL))
                         ), 10, 0.75, true, 0.47, 2000000
                 }, {
                 // Almost-trivial case
                 Arrays.asList(
                         // Tumor segments are assumed to be mutable.
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 400), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+")))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP))),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 400), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP)))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 400), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 400), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL))
                 ), 10, 0.75, true, 0.47, 2000000
         }, {
                 // More than one tumor segment maps to one germline seg.  This example would indicate that a tumor sample had deleted a germline amp.
                 Arrays.asList(
                         // Tumor segments are assumed to be mutable.
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 400), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+")))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP))),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 400), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP)))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 400), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 400), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL))
                 ), 10, 0.75, true, 0.47, 2000000
         }, {
                 // Same as above, but using the padding.
                 Arrays.asList(
                         // Tumor segments are assumed to be mutable.
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 400), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+")))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP))),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 400), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP)))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 99, 295), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 296, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 99, 295), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 296, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 400), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 400), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL))
                 ), 10, 0.75, true, 0.47, 2000000
         }, {
                 // Same as above, but with deletions.
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 400), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+")))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP))),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 400), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP)))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 99, 295), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "-")),
-                        new AnnotatedInterval(new SimpleInterval("1", 296, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 99, 295), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, DEL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 296, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "-")),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "-")),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 400), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, DEL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, DEL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 400), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL))
                 ), 10, 0.75, true, 0.47, 2000000
         }, {
                 // No tumor segment matches at the endpoint
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 251, 400), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+")))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP))),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 251, 400), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP)))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 251, 400), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 251, 400), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL))
                 ), 10, 0.75, true, 0.47, 2000000
         }, {
                 // Three tumor segment matches at the endpoint
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 251, 300), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+")))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP))),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 251, 300), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP)))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 251, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 251, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL))
                 ), 10, 0.75, true, 0.47, 2000000
         }, {
                 // Three tumor segment matches at the start, but just barely not at the end
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 251, 315), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+")))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP))),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 251, 315), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP)))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 251, 315), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 251, 315), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL))
                 ), 10, 0.75, true, 0.47, 2000000
         }, {
                 // Three tumor segment matches at the endpoint
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 251, 310), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+")))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP))),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 251, 310), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP)))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 251, 310), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 251, 310), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL))
                 ), 10, 0.75, true, 0.47, 2000000
         }, {
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 90, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 251, 305), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+")))
+                        new AnnotatedInterval(new SimpleInterval("1", 90, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP))),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 251, 305), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP)))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 90, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 251, 305), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 90, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 251, 305), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL))
                 ), 10, 0.75, true, 0.47, 2000000
         }, {
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 89, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 251, 305), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+")))
+                        new AnnotatedInterval(new SimpleInterval("1", 89, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP))),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 251, 305), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP)))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 89, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 251, 305), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 89, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 250), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 251, 305), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL))
                 ), 10, 0.75, true, 0.47, 2000000
         }, {
                 Arrays.asList(
                         // Small segment is within padding, so it gets included.
-                        new AnnotatedInterval(new SimpleInterval("1", 95, 100), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 101, 250), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 251, 305), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+")))
+                        new AnnotatedInterval(new SimpleInterval("1", 95, 100), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP))),
+                        new AnnotatedInterval(new SimpleInterval("1", 101, 250), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 251, 305), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP)))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))
                 ),
                 Arrays.asList(
                         // The first segment should not be tagged as a germline event, since it mostly does not overlap a germline segment.
-                        new AnnotatedInterval(new SimpleInterval("1", 95, 100), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 101, 250), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 251, 305), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 95, 100), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 101, 250), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 251, 305), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL))
                 ), 10, 0.75, true, 0.47, 2000000
         }, {
                 Arrays.asList(
                         // The first segment should not get tagged.
-                        new AnnotatedInterval(new SimpleInterval("1", 89, 100), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 101, 250), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 251, 305), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+")))
+                        new AnnotatedInterval(new SimpleInterval("1", 89, 100), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP))),
+                        new AnnotatedInterval(new SimpleInterval("1", 101, 250), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 251, 305), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP)))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 89, 100), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 101, 250), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 251, 305), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 89, 100), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 101, 250), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 251, 305), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL))
                 ), 10, 0.75, true, 0.47, 2000000
         }, {
                 Arrays.asList(
                         // The third segment should not get tagged.
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 311), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+")))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP))),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 311), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP)))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 311), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 311), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL))
                 ), 10, 0.75, true, 0.47, 2000000
         }, {
                 Arrays.asList(
                         // The big segment should not get tagged
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 23000), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 23001, 25000), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "-")),
-                        new AnnotatedInterval(new SimpleInterval("1", 26001, 300500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 23000), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 23001, 25000), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, DEL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 26001, 300500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 17001, 31000), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "-"))
+                        new AnnotatedInterval(new SimpleInterval("1", 17001, 31000), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, DEL))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 23000), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 23001, 25000), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "-", TEST_GERMLINE_TAGGING_ANNOTATION, "-")),
-                        new AnnotatedInterval(new SimpleInterval("1", 26001, 300500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 23000), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 23001, 25000), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, DEL, TEST_GERMLINE_TAGGING_ANNOTATION, DEL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 26001, 300500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL))
                 ), 10000, 0.75, true, 0.47, 2000000
         }, {
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 10459001, 10472000), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 10472001, 11427000), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "-")),
-                        new AnnotatedInterval(new SimpleInterval("1", 11427001, 30709000), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 10459001, 10472000), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 10472001, 11427000), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, DEL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 11427001, 30709000), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 10459001, 10469000), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 10469001, 11489000), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "-")),
-                        new AnnotatedInterval(new SimpleInterval("1", 11489001, 77286000), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 10459001, 10469000), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 10469001, 11489000), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, DEL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 11489001, 77286000), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 10459001, 10472000), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 10472001, 11427000), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "-", TEST_GERMLINE_TAGGING_ANNOTATION, "-")),
-                        new AnnotatedInterval(new SimpleInterval("1", 11427001, 30709000), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 10459001, 10472000), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 10472001, 11427000), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, DEL, TEST_GERMLINE_TAGGING_ANNOTATION, DEL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 11427001, 30709000), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL))
                 ), 10000, 0.75, true, 0.47, 2000000
         }, {
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 2602001, 2792000), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 2792001, 3101000), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+"))
+                        new AnnotatedInterval(new SimpleInterval("1", 2602001, 2792000), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 2792001, 3101000), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 2539001, 2792000), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 2792001, 3101000), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+"))
+                        new AnnotatedInterval(new SimpleInterval("1", 2539001, 2792000), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 2792001, 3101000), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 2602001, 2792000), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 2792001, 3101000), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "+"))
+                        new AnnotatedInterval(new SimpleInterval("1", 2602001, 2792000), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 2792001, 3101000), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, AMP))
                 ), 10000, 0.75, true, 0.47, 2000000
         }, {
                 Arrays.asList(
                         // The third segment should not get tagged.  The first should not get tagged, because it cannot match endpoints, nor does reciprocal overlap hold.
                         //  Regarding the first segment, this is not necessarily great behavior, because we do not know what is happening in the 201-300 region.
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 311), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+")))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP))),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 311), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP)))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 311), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 311), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL))
                 ), 10, 0.75, true, 0.47, 2000000
         }, {
                 Arrays.asList(
                         // The third segment should not get tagged.  The first should get tagged, because the reciprocal overlap holds, due to low reciprocal threshold.
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 311), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+")))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP))),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 311), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP)))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                        new AnnotatedInterval(new SimpleInterval("1", 301, 311), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                        new AnnotatedInterval(new SimpleInterval("1", 301, 311), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL))
                 ), 10, 0.4, true, 0.47, 2000000
         },
         /* END MAF NULL CASES */
@@ -725,116 +730,116 @@ public class SimpleGermlineTaggerUnitTest extends GATKBaseTest {
                 {
                         Arrays.asList(
                                 // The third segment should not get tagged.  The first should get tagged, because the reciprocal overlap holds, due to low reciprocal threshold.
-                                new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+"))),
-                                new AnnotatedInterval(new SimpleInterval("1", 301, 311), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))),
-                                new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+")))
+                                new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP))),
+                                new AnnotatedInterval(new SimpleInterval("1", 301, 311), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))),
+                                new AnnotatedInterval(new SimpleInterval("1", 401, 500), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP)))
                         ),
                         Arrays.asList(
-                                new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.35", MAF_LO_ANNOTATION, "0.3", CALL_ANNOTATION, "+")),
-                                new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))
+                                new AnnotatedInterval(new SimpleInterval("1", 100, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.35", MAF_LO_ANNOTATION, "0.3", CALL_ANNOTATION, AMP)),
+                                new AnnotatedInterval(new SimpleInterval("1", 301, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))
                         ),
                         Arrays.asList(
-                                new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "+")),
-                                new AnnotatedInterval(new SimpleInterval("1", 301, 311), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                                new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "+", TEST_GERMLINE_TAGGING_ANNOTATION, "0"))
+                                new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, AMP)),
+                                new AnnotatedInterval(new SimpleInterval("1", 301, 311), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                                new AnnotatedInterval(new SimpleInterval("1", 401, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, AMP, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL))
                         ), 10, 0.4, true, 0.47, 2000000
                 }, {
                 // Trivial case (CNLoH in normal)
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0")))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL)))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.35", MAF_LO_ANNOTATION, "0.3", CALL_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.35", MAF_LO_ANNOTATION, "0.3", CALL_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "C")),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, CNLOH)),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL))
                 ), 10, 0.75, true, 0.47, 2000000
         }, {
                 // Trivial case (CNLoH in normal), but it is too big to be reported
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0")))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL)))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.35", MAF_LO_ANNOTATION, "0.3", CALL_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.35", MAF_LO_ANNOTATION, "0.3", CALL_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL))
                 ), 10, 0.75, true, 0.47, 20
         }, {
                 // Trivial case (CNLoH in normal), but it is too close to balanced to be reported
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0")))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL)))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.48", MAF_LO_ANNOTATION, "0.45", CALL_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.48", MAF_LO_ANNOTATION, "0.45", CALL_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL))
                 ), 10, 0.75, true, 0.47, 2000000
         }, {
                 // Trivial case (CNLoH in normal) and the threshold is unrealistically high, so even slight deviations of MAF in the normal would trigger a CNLoH..
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0")))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL)))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.48", MAF_LO_ANNOTATION, "0.45", CALL_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.48", MAF_LO_ANNOTATION, "0.45", CALL_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "C")),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, CNLOH)),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL))
                 ), 10, 0.75, true, 0.49999, 2000000
         }, {
                 // Trivial case (CNLoH in normal) and the threshold is realistic.  Note how the MAf in the tumor sample are disregarded.
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0")))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL)))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.3333", MAF_LO_ANNOTATION, "0.3", CALL_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.3333", MAF_LO_ANNOTATION, "0.3", CALL_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "C")),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, CNLOH)),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 300), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL))
                 ), 10, 0.75, true, 0.47, 2000000
         }, {
                 // Trivial case (CNLoH in normal) and the threshold is realistic.  Note how the MAf in the tumor sample are disregarded.
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 500), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0")))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 500), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL)))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.3333", MAF_LO_ANNOTATION, "0.3", CALL_ANNOTATION, "0"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.3333", MAF_LO_ANNOTATION, "0.3", CALL_ANNOTATION, NEUTRAL))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "C"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, CNLOH))
                 ), 10, 0.75, true, 0.47, 2000000
         }, {
-                // Make sure that we do not mark something as CNLoH, when it had a coppy ratio call.
+                // Make sure that we do not mark something as CNLoH, when it had a copy ratio call.
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0"))),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 500), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0")))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL))),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 500), Maps.newTreeMap(ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL)))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.3333", MAF_LO_ANNOTATION, "0.3", CALL_ANNOTATION, "+"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.3333", MAF_LO_ANNOTATION, "0.3", CALL_ANNOTATION, AMP))
                 ),
                 Arrays.asList(
-                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "0")),
-                        new AnnotatedInterval(new SimpleInterval("1", 201, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, "0", TEST_GERMLINE_TAGGING_ANNOTATION, "+"))
+                        new AnnotatedInterval(new SimpleInterval("1", 100, 200), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, NEUTRAL)),
+                        new AnnotatedInterval(new SimpleInterval("1", 201, 500), ImmutableSortedMap.of(MAF_HI_ANNOTATION, "0.495", MAF_LO_ANNOTATION, "0.49", CALL_ANNOTATION, NEUTRAL, TEST_GERMLINE_TAGGING_ANNOTATION, AMP))
                 ), 10, 0.75, true, 0.47, 2000000
         }
         };
