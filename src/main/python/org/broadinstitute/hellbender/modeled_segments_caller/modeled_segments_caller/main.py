@@ -1698,6 +1698,10 @@ class ModeledSegmentsCaller:
         plt.plot([self.__normal_range_cr[0]]*2, [0, 0.5], color="w", lineStyle="--")
         plt.plot([self.__normal_range_cr[1]]*2, [0, 0.5], color="w", lineStyle="--")
 
+        [avg_normal_cr, std_dev_normal_cr] = self.__average_and_std_dev_copy_ratio_normal_segments()
+        plt.plot([max(0, avg_normal_cr - 2*std_dev_normal_cr)]*2, [0, 0.5], color="y", lineStyle=":")
+        plt.plot([avg_normal_cr + 2*std_dev_normal_cr]*2, [0, 0.5], color="y", lineStyle=":")
+
         plt.xlim((0, 5))
         plt.ylim((0, 0.5))
 
@@ -1856,10 +1860,5 @@ class ModeledSegmentsCaller:
             var_normal_cr = total_var_cr / total_weight
 
         std_dev_normal_cr = var_normal_cr**0.5
-
-        if not self.__log_filename=="":
-            self.__logger("\nAverage copy ratio of normal segments = {0}".format(avg_normal_cr))
-            self.__logger("\nStandard deviation of the copy ratio of normal segments = {0}".format(avg_normal_cr))
-
 
         return [avg_normal_cr, std_dev_normal_cr]
