@@ -73,13 +73,10 @@ releases of the toolkit.
    docker client, which can be found on the [docker website](https://www.docker.com/get-docker).
 * Python Dependencies:<a name="python"></a>
     * GATK4 uses the [Conda](https://conda.io/docs/index.html) package manager to establish and manage the
-      Python environment and dependencies required by GATK tools that have a Python dependency. There are two different
-      conda environments that can be used:
-        * The ```gatk``` environment, which has no special hardware requirements. The GATK Docker image comes with the
-          "gatk" environment pre-configured.
-        * The ```gatk-intel``` environment, which requires and uses Intel (AVX2 or AVX-512) hardware acceleration to
-          increase performance.
-    * To establish the conda environment when not using the Docker image, a conda environment must first be "created", and
+      Python environment and dependencies required by GATK tools that have a Python dependency. The ```gatk``` environment, 
+      requires hardware with AVX support for tools that depend on TensorFlow (e.g. CNNScoreVariant). The GATK Docker image 
+      comes with the ```gatk``` environment pre-configured.
+    * To establish the  environment when not using the Docker image, a conda environment must first be "created", and
       then "activated":
         * First, make sure [Miniconda or Conda](https://conda.io/docs/index.html) is installed (Miniconda is sufficient).
         * To "create" the conda environment:
@@ -273,7 +270,7 @@ You can download and run pre-built versions of GATK4 from the following places:
 
   * Examples:
 
-      ```
+      ```      
       ./gatk PrintReadsSpark \
           -I gs://my-gcs-bucket/path/to/input.bam \
           -O gs://my-gcs-bucket/path/to/output.bam \
@@ -377,7 +374,7 @@ echo "source <PATH_TO>/gatk-completion.sh" >> ~/.bashrc
 
 * For logging, use [org.apache.logging.log4j.Logger](https://logging.apache.org/log4j/2.0/log4j-api/apidocs/org/apache/logging/log4j/Logger.html)
 
-* We mostly follow the [Google Java Style guide](http://google-styleguide.googlecode.com/svn/trunk/javaguide.html)
+* We mostly follow the [Google Java Style guide](https://google.github.io/styleguide/javaguide.html)
 
 * Git: Don't push directly to master - make a pull request instead. 
 
@@ -604,7 +601,7 @@ We tend to do fairly close readings of pull requests, and you may get a lot of c
 * Use braces for control constructs, `if`, `for` etc.
 * Make classes, variables, parameters etc `final` unless there is a strong reason not to.
 * Give your operators some room. Not `a+b` but `a + b` and not `foo(int a,int b)` but `foo(int a, int b)`.
-* Generally speaking, stick to the [Google Java Style guide](http://google-styleguide.googlecode.com/svn/trunk/javaguide.html)
+* Generally speaking, stick to the [Google Java Style guide](https://google.github.io/styleguide/javaguide.html)
 
 Thank you for getting involved!
 

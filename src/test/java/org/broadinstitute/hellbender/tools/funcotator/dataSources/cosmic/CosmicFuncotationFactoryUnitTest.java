@@ -27,7 +27,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.broadinstitute.hellbender.tools.funcotator.FuncotatorTestConstants.COSMIC_TEST_DB;
-import static org.broadinstitute.hellbender.tools.funcotator.FuncotatorTestConstants.PIK3CA_POSITION;
+import static org.broadinstitute.hellbender.tools.funcotator.FuncotatorTestConstants.PIK3CA_TRANSCRIPT_POSITION;
 
 /**
  * Class for running unit tests on {@link CosmicFuncotationFactory}.
@@ -51,16 +51,16 @@ public class CosmicFuncotationFactoryUnitTest extends GATKBaseTest {
     static {
         final VariantContextBuilder variantContextBuilder = new VariantContextBuilder(
                 FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(),
-                PIK3CA_POSITION.getContig(),
-                PIK3CA_POSITION.getStart(),
-                PIK3CA_POSITION.getStart(),
+                PIK3CA_TRANSCRIPT_POSITION.getContig(),
+                PIK3CA_TRANSCRIPT_POSITION.getStart(),
+                PIK3CA_TRANSCRIPT_POSITION.getStart(),
                 Arrays.asList(Allele.create("T", true), Allele.create("G"))
         );
         defaultVariantContext = variantContextBuilder.make();
 
         defaultReferenceContext = new ReferenceContext(
                 PIK3CA_REF_DATA_SOURCE,
-                PIK3CA_POSITION
+                PIK3CA_TRANSCRIPT_POSITION
         );
     }
 

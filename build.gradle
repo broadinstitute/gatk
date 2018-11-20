@@ -57,8 +57,8 @@ repositories {
 }
 
 final requiredJavaVersion = "8"
-final htsjdkVersion = System.getProperty('htsjdk.version','2.16.1')
-final picardVersion = System.getProperty('picard.version','2.18.15')
+final htsjdkVersion = System.getProperty('htsjdk.version','2.18.0')
+final picardVersion = System.getProperty('picard.version','2.18.16')
 final barclayVersion = System.getProperty('barclay.version','2.1.0')
 final sparkVersion = System.getProperty('spark.version', '2.2.0')
 final hadoopVersion = System.getProperty('hadoop.version', '2.8.2')
@@ -522,24 +522,10 @@ task condaStandardEnvironmentDefinition(type: Copy) {
     }
 }
 
-task condaIntelEnvironmentDefinition(type: Copy) {
-    from "scripts"
-    into buildDir
-    include gatkCondaTemplate
-    rename { file -> gatkCondaIntelYML }
-    expand(["condaEnvName":"gatk-intel",
-            "condaEnvDescription" : "Conda environment for GATK Python Tools running with Intel hardware acceleration",
-            "tensorFlowDependency" :
-                    "https://anaconda.org/intel/tensorflow/$tensorflowVersion/download/tensorflow-$tensorflowVersion-cp36-cp36m-linux_x86_64.whl"])
-    doLast {
-        logger.lifecycle("Created Intel Conda environment yml file: $gatkCondaIntelYML")
-    }
-}
 
-// Create two GATK conda environment yml files from the conda enc template
-// (one for standard GATK and one for running GATK with Intel hardware).
+// Create GATK conda environment yml file from the conda enc template
 task condaEnvironmentDefinition() {
-    dependsOn 'pythonPackageArchive', 'condaStandardEnvironmentDefinition', 'condaIntelEnvironmentDefinition'
+    dependsOn 'pythonPackageArchive', 'condaStandardEnvironmentDefinition'
 }
 
 // Create the Python package archive file

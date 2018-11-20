@@ -112,14 +112,15 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
                         FuncotatorTestConstants.REFERENCE_VERSION_HG19,
                         Collections.singletonList(FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER)
                 );
-
+        
         final List<DataSourceFuncotationFactory> dataSourceFuncotationFactories = DataSourceUtils.createDataSourceFuncotationFactoriesForDataSources(
                 configData,
                 new LinkedHashMap<>(),
                 TranscriptSelectionMode.BEST_EFFECT,
                 new HashSet<>(),
                 new DummyPlaceholderGatkTool(),
-                FuncotatorArgumentDefinitions.LOOKAHEAD_CACHE_IN_BP_DEFAULT_VALUE
+                FuncotatorArgumentDefinitions.LOOKAHEAD_CACHE_IN_BP_DEFAULT_VALUE,
+                new FlankSettings(0, 0)
         );
 
         // Sort the datasources to ensure the same order every time:
@@ -1173,7 +1174,7 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
                 dummyVariantContext.getReference().getDisplayString(),
                 dummyVariantContext.getAlternateAllele(0).getDisplayString(), "g.1000000"+ dummyVariantContext.getReference().getDisplayString() + ">" + dummyVariantContext.getAlternateAllele(0).getDisplayString(),
                 dummyTranscriptName, Strand.FORWARD,
-        1, 1500,
+        1, 1500, 1500,
         " ", " ",
         "p.L300P", 0.5,
         "ACTGATCGATCGA",Collections.singletonList("FAKE00002.5"), "27");

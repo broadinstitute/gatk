@@ -42,8 +42,10 @@ public class FuncotatorTestConstants {
     public static final String MT_TRANSCRIPT = "ENST00000361567.2";
 
     // Gencode main GTF file:
-    public static final String GENCODE_DATA_SOURCE_GTF_PATH_HG19   = FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER + "gencode" + File.separator + REFERENCE_VERSION_HG19 + File.separator + "gencode.v19.regressionTestVariantSet.gtf";
-    public static final String GENCODE_DATA_SOURCE_FASTA_PATH_HG19 = FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER + "gencode" + File.separator + REFERENCE_VERSION_HG19 + File.separator + "gencode.v19.regressionTestVariantSet.pc_transcripts.fa";
+    public static final String GENCODE_DATA_SOURCE_GTF_PATH_HG19   = FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER + "gencode" + File.separator + REFERENCE_VERSION_HG19 + File.separator + "gencode.v19.testVariantSubset.gtf";
+    public static final String GENCODE_DATA_SOURCE_FASTA_PATH_HG19 = FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER + "gencode" + File.separator + REFERENCE_VERSION_HG19 + File.separator + "gencode.v19.testVariantSubset.pc_transcripts.fa";
+    public static final String GENCODE_DATA_SOURCE_GTF_PATH_HG38   = FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER + "gencode" + File.separator + REFERENCE_VERSION_HG38 + File.separator + "gencode.v28.regressionTestVariantSet.gtf";
+    public static final String GENCODE_DATA_SOURCE_FASTA_PATH_HG38 = FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER + "gencode" + File.separator + REFERENCE_VERSION_HG38 + File.separator + "gencode.v28.regressionTestVariantSet.pc_transcripts.fa";
 
     public static final String XSV_CSV_FILE_PATH = FUNCOTATOR_TEST_DIR + "xsv_CSV_testFile.csv";
 
@@ -71,15 +73,44 @@ public class FuncotatorTestConstants {
     public static final String HG38_3_REFERENCE_FILE_NAME     = FUNCOTATOR_LARGE_FILES_DIR + "hg38.3.tar.gz";
     public static final String HG19_2_REFERENCE_FILE_NAME     = FUNCOTATOR_LARGE_FILES_DIR + "b37.2.tar.gz";
 
-    // MUC16 info:
-    public static final SimpleInterval MUC16_POSITION                                = new SimpleInterval("chr19", 8959520, 9092018);
+    // A MUC16-only datasource that contains all transcripts:
+    public static final String MUC16_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME = FUNCOTATOR_LARGE_FILES_DIR + "pik3ca_muc16_all_transcripts_ds" + File.separator + "gencode_muc16" + File.separator + "hg19" + File.separator + "gencode.v19.MUC16.gtf";
+    public static final String MUC16_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE = FUNCOTATOR_LARGE_FILES_DIR + "pik3ca_muc16_all_transcripts_ds" + File.separator + "gencode_muc16" + File.separator + "hg19" + File.separator + "gencode.v19.MUC16_transcript.fasta";
+
+    // A PIK3CA-only datasource that contains all transcripts:
+    public static final String PIK3CA_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME = FUNCOTATOR_LARGE_FILES_DIR + "pik3ca_muc16_all_transcripts_ds" + File.separator + "gencode_pik3ca" + File.separator + "hg19" + File.separator + "gencode.v19.PIK3CA.gtf";
+    public static final String PIK3CA_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE = FUNCOTATOR_LARGE_FILES_DIR + "pik3ca_muc16_all_transcripts_ds" + File.separator + "gencode_pik3ca" + File.separator + "hg19" + File.separator + "gencode.v19.PIK3CA_transcript.fasta";
+
+    /*
+     * MUC16 info:
+     */
+
+    // The full span of the MUC16 gene on HG19 (including non-basic transcripts):
+    public static final SimpleInterval MUC16_HG19_GENE_POSITION = new SimpleInterval("chr19", 8959520, 9092018);
+
+    // The union of the spans of just the *basic* transcripts for the MUC16 gene on HG19:
+    // (MUC16 basic transcripts: chr19:8959520-9092018, chr19:8959522-9003586, chr19:8973992-8977690)
+    public static final SimpleInterval MUC16_HG19_BASIC_TRANSCRIPTS_SPAN = new SimpleInterval("chr19", 8959520, 9092018);
+
     public static final String         MUC16_TRANSCRIPT                              = "ENST00000397910.4";
     public static final String         MUC16_PATHOLOGICAL_TRANSCRIPT                 = "ENST00000599436.1";
     public static final String         MUC16_GENCODE_NON_BASIC_ANNOTATIONS_FILE_NAME = FUNCOTATOR_TEST_DIR + "gencode.v19.MUC16.non-basic.gtf";
 
-    // PIK3CA info:
-    public static final SimpleInterval PIK3CA_POSITION   = new SimpleInterval("chr3", 178866311, 178957881);
+    /*
+     * PIK3CA info:
+     */
+
+    // The full span of the PIK3CA gene on HG19 (including non-basic transcripts):
+    public static final SimpleInterval PIK3CA_HG19_GENE_POSITION = new SimpleInterval("chr3", 178865902, 178957881);
+
+    // The union of the spans of just the *basic* transcripts for the PIK3CA gene on HG19:
+    // (PIK3CA basic transcripts: chr3: 178866311-178957881)
+    public static final SimpleInterval PIK3CA_HG19_BASIC_TRANSCRIPTS_SPAN = new SimpleInterval("chr3", 178866311, 178957881);
+
     public static final String         PIK3CA_TRANSCRIPT = "ENST00000263967.3";
+    // Position on HG19 of the PIK3CA_TRANSCRIPT
+    public static final SimpleInterval PIK3CA_TRANSCRIPT_POSITION = new SimpleInterval("chr3", 178866311, 178957881);
+
 
     public static final String GTF_CHR3_FILE_NAME = FUNCOTATOR_LARGE_FILES_DIR + "gencode.v19.chr_patch_hapl_scaff.chr3.gtf";
 
@@ -108,12 +139,13 @@ public class FuncotatorTestConstants {
     //
     // A script was used to do so, and is checked in in the following path:
     //     GATK_DEVELOPMENT_TOP_DIR/scripts/funcotator/testing/getRepresentativeListOfFuncotations.sh
-    public static final String NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_DATA_SET_1                     = FUNCOTATOR_LARGE_FILES_DIR + "regressionTestVariantSet1.vcf";
-    public static final String NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_DATA_SET_1_EXPECTED_OUTPUT     = FUNCOTATOR_LARGE_FILES_DIR + "regressionTestVariantSet1_expected.vcf";
-    public static final String NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_DATA_SET_2                     = FUNCOTATOR_LARGE_FILES_DIR + "regressionTestVariantSet2.vcf";
-    public static final String NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_DATA_SET_2_EXPECTED_OUTPUT     = FUNCOTATOR_LARGE_FILES_DIR + "regressionTestVariantSet2_expected.vcf";
-    public static final String NON_TRIVIAL_DATA_VALIDATION_TEST_HG38                                = FUNCOTATOR_LARGE_FILES_DIR + "regressionTestVariantSetHG38.vcf";
-    public static final String NON_TRIVIAL_DATA_VALIDATION_TEST_EXPECTED_OUTPUT                     = FUNCOTATOR_LARGE_FILES_DIR + "regressionTestVariantSetHG38_expected.vcf";
-    public static final String NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_LARGE_DATA_SET                 = FUNCOTATOR_LARGE_FILES_DIR + "regressionTestHg19Large.vcf";
-    public static final String NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_LARGE_DATA_SET_EXPECTED_OUTPUT = FUNCOTATOR_LARGE_FILES_DIR + "regressionTestHg19Large_expected.vcf";
+    public static final String VALIDATION_TEST_DATA_DIR                                             = FUNCOTATOR_TEST_DIR + "validationTestData" + File.separator;
+    public static final String NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_DATA_SET_1                     = VALIDATION_TEST_DATA_DIR + "regressionTestVariantSet1.vcf";
+    public static final String NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_DATA_SET_1_EXPECTED_OUTPUT     = VALIDATION_TEST_DATA_DIR + "regressionTestVariantSet1_expected.vcf";
+    public static final String NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_DATA_SET_2                     = VALIDATION_TEST_DATA_DIR + "regressionTestVariantSet2.vcf";
+    public static final String NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_DATA_SET_2_EXPECTED_OUTPUT     = VALIDATION_TEST_DATA_DIR + "regressionTestVariantSet2_expected.vcf";
+    public static final String NON_TRIVIAL_DATA_VALIDATION_TEST_HG38                                = VALIDATION_TEST_DATA_DIR + "regressionTestVariantSetHG38.vcf";
+    public static final String NON_TRIVIAL_DATA_VALIDATION_TEST_EXPECTED_OUTPUT                     = VALIDATION_TEST_DATA_DIR + "regressionTestVariantSetHG38_expected.vcf";
+    public static final String NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_LARGE_DATA_SET                 = VALIDATION_TEST_DATA_DIR + "regressionTestHg19Large.vcf";
+    public static final String NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_LARGE_DATA_SET_EXPECTED_OUTPUT = VALIDATION_TEST_DATA_DIR + "regressionTestHg19Large_expected.vcf";
 }

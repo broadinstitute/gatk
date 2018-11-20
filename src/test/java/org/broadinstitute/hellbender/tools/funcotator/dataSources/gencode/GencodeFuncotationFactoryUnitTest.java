@@ -12,9 +12,7 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.engine.FeatureInput;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.engine.ReferenceDataSource;
+import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.testutils.FuncotatorReferenceTestUtils;
 import org.broadinstitute.hellbender.tools.funcotator.*;
@@ -22,16 +20,14 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.codecs.gencode.*;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.test.FuncotatorTestUtils;
+import org.broadinstitute.hellbender.utils.test.FuncotatorTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.BufferedInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
+import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -49,20 +45,26 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 
     private static final double doubleEqualsEpsilon = 0.000001;
 
-    private static final FeatureReader<GencodeGtfFeature> gencodeFeatureReader;
+    private static final FeatureReader<GencodeGtfFeature> gencodeHg19FeatureReader;
+    private static final FeatureReader<GencodeGtfFeature> gencodeHg38FeatureReader;
     private static final FeatureReader<GencodeGtfFeature> muc16NonBasicFeatureReader;
 
     private static final ReferenceDataSource refDataSourceHg19Ch19;
     private static final ReferenceDataSource refDataSourceHg19Ch3;
+    private static final ReferenceDataSource refDataSourceHg38;
 
     private static GencodeFuncotationFactory testMuc16SnpCreateFuncotationsFuncotationFactory;
+
+    private static final List<AutoCloseable> autoCloseableList = new ArrayList<>();
 
     // Initialization of static variables:
     static {
         muc16NonBasicFeatureReader = AbstractFeatureReader.getFeatureReader(FuncotatorTestConstants.MUC16_GENCODE_NON_BASIC_ANNOTATIONS_FILE_NAME, new GencodeGtfCodec());
-        gencodeFeatureReader = AbstractFeatureReader.getFeatureReader(FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19, new GencodeGtfCodec());
+        gencodeHg19FeatureReader = AbstractFeatureReader.getFeatureReader(FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19, new GencodeGtfCodec());
+        gencodeHg38FeatureReader = AbstractFeatureReader.getFeatureReader(FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG38, new GencodeGtfCodec());
         refDataSourceHg19Ch19 = ReferenceDataSource.of(IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref()));
         refDataSourceHg19Ch3 = ReferenceDataSource.of( IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref()) );
+        refDataSourceHg38 = ReferenceDataSource.of( IOUtils.getPath(hg38Reference) );
 
         // Gets cleaned up in `cleanupAfterTests()`
         // NOTE: This is initialized here to save time in testing.
@@ -74,6 +76,15 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                 new HashSet<>(),
                 new LinkedHashMap<>(),
                 createFeatureInputForMuc16Ds(GencodeFuncotationFactory.DEFAULT_NAME));
+
+        // Add all to the closeable list:
+        autoCloseableList.add( muc16NonBasicFeatureReader );
+        autoCloseableList.add( gencodeHg19FeatureReader );
+        autoCloseableList.add( gencodeHg38FeatureReader );
+        autoCloseableList.add( refDataSourceHg19Ch19 );
+        autoCloseableList.add( refDataSourceHg19Ch3 );
+        autoCloseableList.add( refDataSourceHg38 );
+        autoCloseableList.add( testMuc16SnpCreateFuncotationsFuncotationFactory );
     }
 
     //==================================================================================================================
@@ -88,15 +99,14 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
     public static void cleanupAfterTests() {
         System.out.println("Cleaning up after tests...");
 
-        try {
-            testMuc16SnpCreateFuncotationsFuncotationFactory.close();
-            muc16NonBasicFeatureReader.close();
-            gencodeFeatureReader.close();
-            refDataSourceHg19Ch19.close();
-            refDataSourceHg19Ch3.close();
-        }
-        catch (final IOException ex) {
-            throw new GATKException("Could not close all readers!", ex);
+        for ( final AutoCloseable cl : autoCloseableList ) {
+
+            try {
+                cl.close();
+            }
+            catch ( final Exception ex ) {
+                throw new GATKException("Could not close " + cl.toString(), ex);
+            }
         }
     }
 
@@ -188,11 +198,13 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
     private Set<String> getValidTranscriptsForGene(final String expectedGeneName) {
 
         final Set<String> requestedTranscriptIds = new HashSet<>();
-        if ( expectedGeneName.equals("PIK3CA") ) {
-            requestedTranscriptIds.add( FuncotatorTestConstants.PIK3CA_TRANSCRIPT );
-        }
-        else if ( expectedGeneName.equals("MUC16") ) {
-            requestedTranscriptIds.add( FuncotatorTestConstants.MUC16_TRANSCRIPT );
+        if ( expectedGeneName != null ){
+            if ( expectedGeneName.equals("PIK3CA") ) {
+                requestedTranscriptIds.add( FuncotatorTestConstants.PIK3CA_TRANSCRIPT );
+            }
+            else if ( expectedGeneName.equals("MUC16") ) {
+                requestedTranscriptIds.add( FuncotatorTestConstants.MUC16_TRANSCRIPT );
+            }
         }
         return requestedTranscriptIds;
     }
@@ -482,6 +494,12 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                 { 8962355, 8962355 },
                 { 8961953, 8961953 },
                 { 8959612, 8959612 },
+
+                // Include some test cases outside the bounds of the MUC16 gene:
+                { 9092019, 9092019 },
+                { 9092050, 9092050 },
+                { 8959519, 8959519 },
+                { 8959510, 8959510 },
         };
     }
 
@@ -491,24 +509,27 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         final List<Object[]> outList = new ArrayList<>();
 
         // MUC16 SNPs / DNPs:
-        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideMnpDataForMuc16_1(),       FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), gencodeFeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19 ) );
-        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideMnpDataForMuc16_2(),       FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), gencodeFeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19  ) );
-        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideMnpDataForMuc16_3(),       FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), gencodeFeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19  ) );
-        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideMnpDataForMuc16_4(),       FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), gencodeFeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19  ) );
-        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideMnpDataForMuc16_5(),       FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), gencodeFeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19  ) );
-        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideEdgeCasesForMUC16Data_1(), FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), gencodeFeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19  ) );
+        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideMnpDataForMuc16_1(),       FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), gencodeHg19FeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19 ) );
+        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideMnpDataForMuc16_2(),       FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), gencodeHg19FeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19  ) );
+        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideMnpDataForMuc16_3(),       FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), gencodeHg19FeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19  ) );
+        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideMnpDataForMuc16_4(),       FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), gencodeHg19FeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19  ) );
+        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideMnpDataForMuc16_5(),       FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), gencodeHg19FeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19  ) );
+        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16MnpFullData.provideEdgeCasesForMUC16Data_1(), FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), gencodeHg19FeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19  ) );
 
         // MUC16 INDELs:
-        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16IndelData.provideIndelDataForMuc16(), FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), gencodeFeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19 ) );
+        outList.addAll( addReferenceDataToUnitTestData(DataProviderForMuc16IndelData.provideIndelDataForMuc16(), FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(), gencodeHg19FeatureReader, refDataSourceHg19Ch19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19 ) );
 
         // PIK3CA SNPs / DNPs:
-        outList.addAll( addReferenceDataToUnitTestData(DataProviderForPik3caTestData.providePik3caMnpData(), FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(), gencodeFeatureReader, refDataSourceHg19Ch3, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19 ) );
+        outList.addAll( addReferenceDataToUnitTestData(DataProviderForPik3caTestData.providePik3caMnpData(), FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(), gencodeHg19FeatureReader, refDataSourceHg19Ch3, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19 ) );
 
         // PIK3CA INDELs:
-        outList.addAll( addReferenceDataToUnitTestData(DataProviderForPik3caTestData.providePik3caInDelData(), FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(), gencodeFeatureReader, refDataSourceHg19Ch3, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19 ) );
+        outList.addAll( addReferenceDataToUnitTestData(DataProviderForPik3caTestData.providePik3caInDelData(), FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(), gencodeHg19FeatureReader, refDataSourceHg19Ch3, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19 ) );
 
         // PIK3CA Other Indels:
-        outList.addAll( addReferenceDataToUnitTestData(DataProviderForPik3caTestData.providePik3caInDelData2(), FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(), gencodeFeatureReader, refDataSourceHg19Ch3, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19 ) );
+        outList.addAll( addReferenceDataToUnitTestData(DataProviderForPik3caTestData.providePik3caInDelData2(), FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(), gencodeHg19FeatureReader, refDataSourceHg19Ch3, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19 ) );
+
+        // Trouble variants:
+        outList.addAll( addReferenceDataToUnitTestData(DataProviderForTroubleVariants.provideSymbolicAllelesAndMaskedBasesForHg38(), hg38Reference, gencodeHg38FeatureReader, refDataSourceHg38, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG38, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG38 ) );
 
         return outList.toArray(new Object[][]{{}});
     }
@@ -620,6 +641,78 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 
         return new Object[][] {
                 { variant, altAllele, gene, gene.getTranscripts().get(0) }
+        };
+    }
+
+    @DataProvider
+    Object[][] provideForCreateDefaultFuncotationsOnProblemVariant() {
+
+//        variant, altAllele, gtfFeature, reference, transcript, version
+
+        final SimpleInterval variantInterval =  new SimpleInterval("chr3", 178921515, 178921517);
+        final Allele refAllele = Allele.create("GCA", true);
+        final Allele altAllele = Allele.create("TTG");
+        final VariantContext variant = new VariantContextBuilder(
+                FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(),
+                variantInterval.getContig(),
+                variantInterval.getStart(),
+                variantInterval.getEnd(),
+                Arrays.asList(refAllele, altAllele)
+        ).make();
+
+        final String versionString = "VERSION";
+
+        // ======================
+        // Create the GencodeGtfFeature:
+        GencodeGtfFeatureBaseData data;
+
+        data = new GencodeGtfFeatureBaseData(1, variantInterval.getContig(), GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.GENE,
+                variantInterval.getStart()-2000, variantInterval.getEnd()+2000, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", null, GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                null, "TEST_GENE", null, null, null, -1, null, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED, null, null);
+        final GencodeGtfGeneFeature gene = (GencodeGtfGeneFeature)GencodeGtfFeature.create(data);
+
+        // ======================
+
+        data = new GencodeGtfFeatureBaseData(2, variantInterval.getContig(), GencodeGtfFeature.AnnotationSource.ENSEMBL, GencodeGtfFeature.FeatureType.TRANSCRIPT,
+                variantInterval.getStart()-1000, variantInterval.getEnd()+1000, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                null, "TEST_GENE", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "TEST_TRANSCRIPT1", -1, null, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                Collections.emptyList(),
+                null
+        );
+        final GencodeGtfTranscriptFeature transcript1 = (GencodeGtfTranscriptFeature) GencodeGtfFeature.create(data);
+        gene.addTranscript(transcript1);
+
+        // ======================
+
+        return new Object[][] {
+                {
+                    variant,
+                    variant.getAlleles().get(1),
+                    gene,
+                    new ReferenceContext( refDataSourceHg19Ch3, variantInterval ),
+                    gene.getTranscripts().get(0),
+                    versionString,
+                    new GencodeFuncotationBuilder()
+                            .setHugoSymbol(gene.getGeneName())
+                            .setChromosome(variant.getContig())
+                            .setStart(variant.getStart())
+                            .setEnd(variant.getEnd())
+                            .setVariantClassification(GencodeFuncotation.VariantClassification.COULD_NOT_DETERMINE)
+                            .setVariantType(GencodeFuncotation.VariantType.TNP)
+                            .setRefAllele(variant.getReference())
+                            .setTumorSeqAllele2(variant.getAlternateAllele(0).getBaseString())
+                            .setGenomeChange("g.chr3:178921515_178921517GCA>TTG")
+                            .setAnnotationTranscript(transcript1.getTranscriptName())
+                            .setStrand(gene.getGenomicStrand())
+                            .setReferenceContext("TATAAATAGTGCACTCAGAATAA")
+                            .setGcContent(0.3399503722084367)
+                            .setLocusLevel(Integer.valueOf(gene.getLocusLevel().toString()))
+                            // This is OK because there are no exons:
+                            .setTranscriptLength(0)
+                            .setVersion(versionString)
+                            .setGeneTranscriptType(transcript1.getTranscriptType())
+                            .build()
+                },
         };
     }
 
@@ -1175,7 +1268,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         // Get our gene feature iterator:
         final CloseableTribbleIterator<GencodeGtfFeature> gtfFeatureIterator;
         try {
-            gtfFeatureIterator = gencodeFeatureReader.query(contig, start, end);
+            gtfFeatureIterator = gencodeHg19FeatureReader.query(contig, start, end);
         }
         catch (final IOException ex) {
             throw new GATKException("Could not finish the test!", ex);
@@ -1244,7 +1337,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         // Get our gene feature iterator:
         final CloseableTribbleIterator<GencodeGtfFeature> gtfFeatureIterator;
         try {
-            gtfFeatureIterator = gencodeFeatureReader.query(contig, start, end);
+            gtfFeatureIterator = gencodeHg19FeatureReader.query(contig, start, end);
         }
         catch (final IOException ex) {
             throw new GATKException("Could not finish the test!", ex);
@@ -1282,6 +1375,9 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         }
     }
 
+    /*
+     * Test the case where we have no basic transcripts at all. In these cases, we should get a single IGR annotation
+     */
     @Test(dataProvider = "provideForCreateNonBasicFuncotations")
     void createNonBasicFuncotations(final int start, final int end) {
 
@@ -1330,8 +1426,13 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
             featureList.add( gene );
             final List<Funcotation> funcotations = funcotationFactory.createFuncotationsOnVariant(variantContext, referenceContext, featureList);
 
-            // Make sure we get what we expected:
-            Assert.assertEquals(funcotations.size(), 0);
+            // Make sure we get what we expected (a single IGR funcotation):
+            Assert.assertEquals(funcotations.size(), 1);
+            Assert.assertTrue(funcotations.get(0) instanceof GencodeFuncotation);
+
+            final GencodeFuncotation gencodeFuncotation = (GencodeFuncotation)funcotations.get(0);
+            Assert.assertEquals(gencodeFuncotation.getVariantClassification(), GencodeFuncotation.VariantClassification.IGR);
+            Assert.assertNull(gencodeFuncotation.getHugoSymbol());
         }
     }
 
@@ -1386,6 +1487,11 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         // TODO: Make this an input argument:
         final Set<String> requestedTranscriptIds = getValidTranscriptsForGene(expectedGeneName);
 
+        // Run this test with flanking turned on for both ends, to make sure that we don't get
+        // any false positive flank calls. The flanks feature is tested independently below in
+        // testCreateFuncotationsWithFlanks().
+        final FlankSettings flankSettingsForTesting = new FlankSettings(5000, 5000);
+
         // Create a factory for our funcotations:
         try (final GencodeFuncotationFactory funcotationFactory = new GencodeFuncotationFactory(
                 IOUtils.getPath(transcriptFastaFile),
@@ -1394,7 +1500,8 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                 FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE,
                 requestedTranscriptIds,
                 new LinkedHashMap<>(),
-                new FeatureInput<>(transcriptGtfFile, GencodeFuncotationFactory.DEFAULT_NAME, Collections.emptyMap()))) {
+                new FeatureInput<>(transcriptGtfFile, GencodeFuncotationFactory.DEFAULT_NAME, Collections.emptyMap()),
+                flankSettingsForTesting)) {
 
             final List<Feature> featureList = new ArrayList<>();
             featureList.add( gene );
@@ -1530,7 +1637,6 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         // Still simple, but computational, checks:
         Assert.assertEquals( gf.getVariantType(), GencodeFuncotationFactory.getVariantType(variant.getReference(), altAllele));
         Assert.assertEquals( gf.getGenomeChange(), GencodeFuncotationFactory.getGenomeChangeString(variant, altAllele) );
-        Assert.assertTrue( gf.getTranscriptPos() == FuncotatorUtils.getTranscriptAlleleStartPosition(variant, transcript.getExons(), transcript.getGenomicStrand()) );
         Assert.assertEquals( gf.getApprisRank(), GencodeFuncotationFactory.getApprisRank( transcript ) );
         Assert.assertTrue( gf.getTranscriptLength() == transcript.getExons().stream().mapToInt(Locatable::getLengthOnReference).sum() );
     }
@@ -1543,6 +1649,19 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
     @Test (dataProvider = "provideDataForTestIsVariantInCodingRegion")
     void testIsVariantInCodingRegion(final GencodeFuncotation.VariantClassification varClass, final GencodeFuncotation.VariantClassification secondaryVarClass, final boolean expected) {
         Assert.assertEquals( GencodeFuncotationFactory.isVariantInCodingRegion(varClass, secondaryVarClass), expected );
+    }
+
+    @Test ( dataProvider = "provideForCreateDefaultFuncotationsOnProblemVariant")
+    void testCreateDefaultFuncotationsOnProblemVariant(final VariantContext variant,
+                                                       final Allele altAllele,
+                                                       final GencodeGtfGeneFeature gtfFeature,
+                                                       final ReferenceContext reference,
+                                                       final GencodeGtfTranscriptFeature transcript,
+                                                       final String version,
+                                                       final GencodeFuncotation expected) {
+
+        final GencodeFuncotation funcotation = GencodeFuncotationFactory.createDefaultFuncotationsOnProblemVariant(variant, altAllele, gtfFeature, reference, transcript, version);
+        Assert.assertEquals( funcotation, expected );
     }
 
     @Test ( dataProvider = "provideDataForTestGencodeFuncotationComparatorUnitTest")
@@ -1744,5 +1863,629 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 
     private static FeatureInput<? extends Feature> createFeatureInputForCntn4Ds(final String dsName) {
         return new FeatureInput<>(CNTN4_GENCODE_ANNOTATIONS_FILE_NAME, dsName, Collections.emptyMap());
+    }
+
+    @DataProvider
+    public Object[][] provideForTestIsFivePrimeFlankAndIsThreePrimeFlank() {
+        final GencodeGtfTranscriptFeature positiveStrandTranscript =
+                FuncotatorTestUtils.createArtificialGencodeGtfTranscriptFeatureForTesting("chr1", 1000, 2000, Strand.POSITIVE);
+
+        final GencodeGtfTranscriptFeature negativeStrandTranscript =
+                FuncotatorTestUtils.createArtificialGencodeGtfTranscriptFeatureForTesting("chr1", 1000, 2000, Strand.NEGATIVE);
+
+        return new Object[][] {
+                // Variant, transcript, 5' flank size, 3' flank size, expected isFivePrimeFlank, expected isThreePrimeFlank
+
+                // SNP, + strand, in/around the 5' flank:
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 988, 988, "A", "G"),
+                        positiveStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 989, 989, "A", "G"),
+                        positiveStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 990, 990, "A", "G"),
+                        positiveStrandTranscript, 10, 10, true, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 995, 995, "A", "G"),
+                        positiveStrandTranscript, 10, 10, true, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 999, 999, "A", "G"),
+                        positiveStrandTranscript, 10, 10, true, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 1000, 1000, "A", "G"),
+                        positiveStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 1001, 1001, "A", "G"),
+                        positiveStrandTranscript, 10, 10, false, false },
+
+                // SNP, + strand, in/around the 3' flank:
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 1999, 1999, "A", "G"),
+                        positiveStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2000, 2000, "A", "G"),
+                        positiveStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2001, 2001, "A", "G"),
+                        positiveStrandTranscript, 10, 10, false, true },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2005, 2005, "A", "G"),
+                        positiveStrandTranscript, 10, 10, false, true },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2010, 2010, "A", "G"),
+                        positiveStrandTranscript, 10, 10, false, true },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2011, 2011, "A", "G"),
+                        positiveStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2012, 2012, "A", "G"),
+                        positiveStrandTranscript, 10, 10, false, false },
+
+                // SNP, - strand, in/around the 3' flank:
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 988, 988, "A", "G"),
+                        negativeStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 989, 989, "A", "G"),
+                        negativeStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 990, 990, "A", "G"),
+                        negativeStrandTranscript, 10, 10, false, true },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 995, 995, "A", "G"),
+                        negativeStrandTranscript, 10, 10, false, true },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 999, 999, "A", "G"),
+                        negativeStrandTranscript, 10, 10, false, true },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 1000, 1000, "A", "G"),
+                        negativeStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 1001, 1001, "A", "G"),
+                        negativeStrandTranscript, 10, 10, false, false },
+
+                // SNP, - strand, in/around the 5' flank:
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 1999, 1999, "A", "G"),
+                        negativeStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2000, 2000, "A", "G"),
+                        negativeStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2001, 2001, "A", "G"),
+                        negativeStrandTranscript, 10, 10, true, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2005, 2005, "A", "G"),
+                        negativeStrandTranscript, 10, 10, true, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2010, 2010, "A", "G"),
+                        negativeStrandTranscript, 10, 10, true, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2011, 2011, "A", "G"),
+                        negativeStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2012, 2012, "A", "G"),
+                        negativeStrandTranscript, 10, 10, false, false },
+
+                // Insertion, + strand, in/around the 5' flank:
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 988, 988, "A", "GT"),
+                        positiveStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 989, 989, "A", "GT"),
+                        positiveStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 990, 990, "A", "GT"),
+                        positiveStrandTranscript, 10, 10, true, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 995, 995, "A", "GT"),
+                        positiveStrandTranscript, 10, 10, true, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 999, 999, "A", "GT"),
+                        positiveStrandTranscript, 10, 10, true, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 1000, 1000, "A", "GT"),
+                        positiveStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 1001, 1001, "A", "GT"),
+                        positiveStrandTranscript, 10, 10, false, false },
+
+                // Insertion, + strand, in/around the 3' flank:
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 1999, 1999, "A", "GT"),
+                        positiveStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2000, 2000, "A", "GT"),
+                        positiveStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2001, 2001, "A", "GT"),
+                        positiveStrandTranscript, 10, 10, false, true },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2005, 2005, "A", "GT"),
+                        positiveStrandTranscript, 10, 10, false, true },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2010, 2010, "A", "GT"),
+                        positiveStrandTranscript, 10, 10, false, true },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2011, 2011, "A", "GT"),
+                        positiveStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2012, 2012, "A", "GT"),
+                        positiveStrandTranscript, 10, 10, false, false },
+
+                // Insertion, - strand, in/around the 3' flank:
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 988, 988, "A", "GT"),
+                        negativeStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 989, 989, "A", "GT"),
+                        negativeStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 990, 990, "A", "GT"),
+                        negativeStrandTranscript, 10, 10, false, true },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 995, 995, "A", "GT"),
+                        negativeStrandTranscript, 10, 10, false, true },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 999, 999, "A", "GT"),
+                        negativeStrandTranscript, 10, 10, false, true },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 1000, 1000, "A", "GT"),
+                        negativeStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 1001, 1001, "A", "GT"),
+                        negativeStrandTranscript, 10, 10, false, false },
+
+                // Insertion, - strand, in/around the 5' flank:
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 1999, 1999, "A", "GT"),
+                        negativeStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2000, 2000, "A", "GT"),
+                        negativeStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2001, 2001, "A", "GT"),
+                        negativeStrandTranscript, 10, 10, true, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2005, 2005, "A", "GT"),
+                        negativeStrandTranscript, 10, 10, true, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2010, 2010, "A", "GT"),
+                        negativeStrandTranscript, 10, 10, true, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2011, 2011, "A", "GT"),
+                        negativeStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2012, 2012, "A", "GT"),
+                        negativeStrandTranscript, 10, 10, false, false },
+
+                // Deletion, + strand, in/around the 5' flank:
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 986, 988, "ACT", "G"),
+                        positiveStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 987, 989, "ACT", "G"),
+                        positiveStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 988, 990, "ACT", "G"),
+                        positiveStrandTranscript, 10, 10, true, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 989, 991, "ACT", "G"),
+                        positiveStrandTranscript, 10, 10, true, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 990, 992, "ACT", "G"),
+                        positiveStrandTranscript, 10, 10, true, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 994, 996, "ACT", "G"),
+                        positiveStrandTranscript, 10, 10, true, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 997, 999, "ACT", "G"),
+                        positiveStrandTranscript, 10, 10, true, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 998, 1000, "ACT", "G"),
+                        positiveStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 999, 1001, "ACT", "G"),
+                        positiveStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 1000, 1002, "ACT", "G"),
+                        positiveStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 1001, 1003, "ACT", "G"),
+                        positiveStrandTranscript, 10, 10, false, false },
+
+                // Deletion, + strand, in/around the 3' flank:
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 1997, 1999, "ACT", "G"),
+                        positiveStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 1998, 2000, "ACT", "G"),
+                        positiveStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 1999, 2001, "ACT", "G"),
+                        positiveStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2000, 2002, "ACT", "G"),
+                        positiveStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2001, 2003, "ACT", "G"),
+                        positiveStrandTranscript, 10, 10, false, true },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2004, 2006, "ACT", "G"),
+                        positiveStrandTranscript, 10, 10, false, true },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2008, 2010, "ACT", "G"),
+                        positiveStrandTranscript, 10, 10, false, true },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2009, 2011, "ACT", "G"),
+                        positiveStrandTranscript, 10, 10, false, true },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2010, 2012, "ACT", "G"),
+                        positiveStrandTranscript, 10, 10, false, true },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2011, 2013, "ACT", "G"),
+                        positiveStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2012, 2014, "ACT", "G"),
+                        positiveStrandTranscript, 10, 10, false, false },
+
+                // Deletion, - strand, in/around the 3' flank:
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 986, 988, "ACT", "G"),
+                        negativeStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 987, 989, "ACT", "G"),
+                        negativeStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 988, 990, "ACT", "G"),
+                        negativeStrandTranscript, 10, 10, false, true },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 989, 991, "ACT", "G"),
+                        negativeStrandTranscript, 10, 10, false, true },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 990, 992, "ACT", "G"),
+                        negativeStrandTranscript, 10, 10, false, true },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 994, 996, "ACT", "G"),
+                        negativeStrandTranscript, 10, 10, false, true },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 997, 999, "ACT", "G"),
+                        negativeStrandTranscript, 10, 10, false, true },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 998, 1000, "ACT", "G"),
+                        negativeStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 999, 1001, "ACT", "G"),
+                        negativeStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 1000, 1002, "ACT", "G"),
+                        negativeStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 1001, 1003, "ACT", "G"),
+                        negativeStrandTranscript, 10, 10, false, false },
+
+                // Deletion, - strand, in/around the 5' flank:
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 1997, 1999, "ACT", "G"),
+                        negativeStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 1998, 2000, "ACT", "G"),
+                        negativeStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 1999, 2001, "ACT", "G"),
+                        negativeStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2000, 2002, "ACT", "G"),
+                        negativeStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2001, 2003, "ACT", "G"),
+                        negativeStrandTranscript, 10, 10, true, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2004, 2006, "ACT", "G"),
+                        negativeStrandTranscript, 10, 10, true, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2008, 2010, "ACT", "G"),
+                        negativeStrandTranscript, 10, 10, true, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2009, 2011, "ACT", "G"),
+                        negativeStrandTranscript, 10, 10, true, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2010, 2012, "ACT", "G"),
+                        negativeStrandTranscript, 10, 10, true, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2011, 2013, "ACT", "G"),
+                        negativeStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2012, 2014, "ACT", "G"),
+                        negativeStrandTranscript, 10, 10, false, false },
+
+                // With flank size == 0, we should never see a true return value:
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 999, 999, "A", "G"),
+                        positiveStrandTranscript, 0, 0, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 999, 999, "A", "G"),
+                        negativeStrandTranscript, 0, 0, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 1000, 1000, "A", "G"),
+                        positiveStrandTranscript, 0, 0, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 1000, 1000, "A", "G"),
+                        negativeStrandTranscript, 0, 0, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2001, 2001, "A", "G"),
+                        positiveStrandTranscript, 0, 0, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2001, 2001, "A", "G"),
+                        negativeStrandTranscript, 0, 0, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2000, 2000, "A", "G"),
+                        positiveStrandTranscript, 0, 0, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2000, 2000, "A", "G"),
+                        negativeStrandTranscript, 0, 0, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 997, 999, "ACT", "G"),
+                        positiveStrandTranscript, 0, 0, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 997, 999, "ACT", "G"),
+                        negativeStrandTranscript, 0, 0, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2001, 2003, "ACT", "G"),
+                        positiveStrandTranscript, 0, 0, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2001, 2003, "ACT", "G"),
+                        negativeStrandTranscript, 0, 0, false, false },
+
+                // Test cases to ensure that the 5' flank size affects only 5' flank detection, and
+                // the 3' flank size affects only 3' flank detection:
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 999, 999, "A", "G"),
+                        positiveStrandTranscript, 1, 0, true, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 999, 999, "A", "G"),
+                        negativeStrandTranscript, 1, 0, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 999, 999, "A", "G"),
+                        positiveStrandTranscript, 0, 1, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 999, 999, "A", "G"),
+                        negativeStrandTranscript, 0, 1, false, true },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2001, 2001, "A", "G"),
+                        positiveStrandTranscript, 1, 0, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2001, 2001, "A", "G"),
+                        negativeStrandTranscript, 1, 0, true, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2001, 2001, "A", "G"),
+                        positiveStrandTranscript, 0, 1, false, true },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr1", 2001, 2001, "A", "G"),
+                        negativeStrandTranscript, 0, 1, false, false },
+
+                // Variants on a different contig from the transcript should never produce a true return value:
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr2", 999, 999, "A", "G"),
+                        positiveStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr2", 2001, 2001, "A", "G"),
+                        positiveStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr2", 999, 999, "A", "G"),
+                        negativeStrandTranscript, 10, 10, false, false },
+                { FuncotatorTestUtils.createSimpleVariantContext(null, "chr2", 2001, 2001, "A", "G"),
+                        negativeStrandTranscript, 10, 10, false, false },
+        };
+    }
+
+    @Test(dataProvider = "provideForTestIsFivePrimeFlankAndIsThreePrimeFlank")
+    public void testIsFivePrimeFlankAndIsThreePrimeFlank(final VariantContext variant,
+                                                         final GencodeGtfTranscriptFeature transcript,
+                                                         final int fivePrimeFlankSize,
+                                                         final int threePrimeFlankSize,
+                                                         final boolean expectedIsFivePrimeFlank,
+                                                         final boolean expectedIsThreePrimeFlank) {
+
+        Assert.assertEquals(GencodeFuncotationFactory.isFivePrimeFlank(variant, transcript, fivePrimeFlankSize), expectedIsFivePrimeFlank, "isFivePrimeFlank() returned the wrong value");
+        Assert.assertEquals(GencodeFuncotationFactory.isThreePrimeFlank(variant, transcript, threePrimeFlankSize), expectedIsThreePrimeFlank, "isThreePrimeFlank() returned the wrong value");
+    }
+
+    @DataProvider
+    public Object[][] provideDataForCreateFuncotationsWithFlanks() {
+        // MUC16 basic transcripts span: chr19:8959520-9092018
+        // MUC16 basic transcripts: chr19:8959520-9092018, chr19:8959522-9003586, chr19:8973992-8977690
+
+        // PIK3CA basic transcripts span: chr3:178866311-178957881
+        // PIK3CA basic transcripts: chr3: 178866311-178957881
+
+        final String MUC16_CONTIG = FuncotatorTestConstants.MUC16_HG19_BASIC_TRANSCRIPTS_SPAN.getContig();
+        final int MUC16_START = FuncotatorTestConstants.MUC16_HG19_BASIC_TRANSCRIPTS_SPAN.getStart();
+        final int MUC16_END = FuncotatorTestConstants.MUC16_HG19_BASIC_TRANSCRIPTS_SPAN.getEnd();
+
+        final String PIK3CA_CONTIG = FuncotatorTestConstants.PIK3CA_HG19_BASIC_TRANSCRIPTS_SPAN.getContig();
+        final int PIK3CA_START = FuncotatorTestConstants.PIK3CA_HG19_BASIC_TRANSCRIPTS_SPAN.getStart();
+        final int PIK3CA_END = FuncotatorTestConstants.PIK3CA_HG19_BASIC_TRANSCRIPTS_SPAN.getEnd();
+
+        return new Object[][] {
+                /* ***********************************
+                 * MUC16 Test Cases (reverse strand):
+                 *************************************/
+
+                /*
+                 * SNP 5' reverse strand POSITIVE test cases:
+                 */
+
+                // SNP 1 base past the 5' end, 5' flank size = 3000
+                { "MUC16", GencodeFuncotation.VariantClassification.FIVE_PRIME_FLANK, MUC16_CONTIG, MUC16_END + 1, MUC16_END + 1, "C", "A", 3000, 0, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch19 },
+                // SNP 10 bases past the 5' end, 5' flank size = 10
+                { "MUC16", GencodeFuncotation.VariantClassification.FIVE_PRIME_FLANK, MUC16_CONTIG, MUC16_END + 10, MUC16_END + 10, "A", "T", 10, 0, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch19 },
+                // SNP 10 bases past the 5' end, 5' flank size = 10 and 3' flank size = 9
+                { "MUC16", GencodeFuncotation.VariantClassification.FIVE_PRIME_FLANK, MUC16_CONTIG, MUC16_END + 10, MUC16_END + 10, "A", "T", 10, 9, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch19 },
+                // SNP 5 bases past the 5' end, 5' flank size = 10
+                { "MUC16", GencodeFuncotation.VariantClassification.FIVE_PRIME_FLANK, MUC16_CONTIG, MUC16_END + 5, MUC16_END + 5, "T", "A", 10, 0, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch19 },
+
+                /*
+                 * SNP 5' reverse strand NEGATIVE test cases:
+                 */
+
+                // SNP 1 base past the 5' end, 5' flank size = 0
+                { null, GencodeFuncotation.VariantClassification.IGR, MUC16_CONTIG, MUC16_END + 1, MUC16_END + 1, "C", "A", 0, 0, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch19 },
+                // SNP 1 base past the 5' end, 5' flank size = 0 and 3' flank size = 10
+                { null, GencodeFuncotation.VariantClassification.IGR, MUC16_CONTIG, MUC16_END + 1, MUC16_END + 1, "C", "A", 0, 10, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch19 },
+                // SNP 10 bases past the 5' end, 5' flank size = 9
+                { null, GencodeFuncotation.VariantClassification.IGR, MUC16_CONTIG, MUC16_END + 10, MUC16_END + 10, "A", "T", 9, 0, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch19 },
+                // SNP on first base of the 5' end, 5' flank size = 10
+                { "MUC16", GencodeFuncotation.VariantClassification.FIVE_PRIME_UTR, MUC16_CONTIG, MUC16_END, MUC16_END, "T", "A", 10, 10, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch19 },
+
+                /*
+                 * SNP 3' reverse strand POSITIVE test cases:
+                 */
+
+                // SNP 1 base past the 3' end, 3' flank size = 100
+                { "MUC16", GencodeFuncotation.VariantClassification.THREE_PRIME_FLANK, MUC16_CONTIG, MUC16_START - 1, MUC16_START - 1, "G", "A", 0, 100, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch19 },
+                // SNP 10 bases past the 3' end, 3' flank size = 10
+                { "MUC16", GencodeFuncotation.VariantClassification.THREE_PRIME_FLANK, MUC16_CONTIG, MUC16_START - 10, MUC16_START - 10, "A", "T", 0, 10, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch19 },
+                // SNP 10 bases past the 3' end, 3' flank size = 10 and 5' flank size = 9
+                { "MUC16", GencodeFuncotation.VariantClassification.THREE_PRIME_FLANK, MUC16_CONTIG, MUC16_START - 10, MUC16_START - 10, "A", "T", 9, 10, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch19 },
+                // SNP 5 bases past the 3' end, 3' flank size = 10
+                { "MUC16", GencodeFuncotation.VariantClassification.THREE_PRIME_FLANK, MUC16_CONTIG, MUC16_START - 5, MUC16_START - 5, "C", "T", 0, 10, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch19 },
+
+                /*
+                 * SNP 3' reverse strand NEGATIVE test cases:
+                 */
+
+                // SNP 1 base past the 3' end, 3' flank size = 0
+                { null, GencodeFuncotation.VariantClassification.IGR, MUC16_CONTIG, MUC16_START - 1, MUC16_START - 1, "G", "A", 0, 0, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch19 },
+                // SNP 1 base past the 3' end, 3' flank size = 0 and 5' flank size = 10
+                { null, GencodeFuncotation.VariantClassification.IGR, MUC16_CONTIG, MUC16_START - 1, MUC16_START - 1, "G", "A", 10, 0, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch19 },
+                // SNP 10 bases past the 3' end, 3' flank size = 9
+                { null, GencodeFuncotation.VariantClassification.IGR, MUC16_CONTIG, MUC16_START - 10, MUC16_START - 10, "A", "T", 0, 9, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch19 },
+                // SNP on last base of the 3' end, 3' flank size = 10
+                { "MUC16", GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, MUC16_CONTIG, MUC16_START, MUC16_START, "T", "A", 10, 10, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch19 },
+
+                /*
+                 * Multi-base Deletion 5' reverse strand POSITIVE test cases:
+                 */
+
+                // 3-base deletion in the first 3 bases of the 5' flank region, 5' flank size = 10
+                { "MUC16", GencodeFuncotation.VariantClassification.FIVE_PRIME_FLANK, MUC16_CONTIG, MUC16_END + 1, MUC16_END + 3, "CTA", "A", 10, 0, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch19 },
+                // 3-base deletion in the middle of the 5' flank region, 5' flank size = 10
+                { "MUC16", GencodeFuncotation.VariantClassification.FIVE_PRIME_FLANK, MUC16_CONTIG, MUC16_END + 4, MUC16_END + 6, "ATT", "A", 10, 0, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch19 },
+                // 3-base deletion in the last 3 bases of the 5' flank region, 5' flank size = 10
+                { "MUC16", GencodeFuncotation.VariantClassification.FIVE_PRIME_FLANK, MUC16_CONTIG, MUC16_END + 8, MUC16_END + 10, "AGA", "A", 10, 0, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch19 },
+                // 3-base deletion, 2 bases in the 5' flank and 1 base outside of it, 5' flank size = 10
+                { "MUC16", GencodeFuncotation.VariantClassification.FIVE_PRIME_FLANK, MUC16_CONTIG, MUC16_END + 9, MUC16_END + 11, "GAA", "G", 10, 0, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch19 },
+                // 3-base deletion, 1 base in the 5' flank and 2 bases outside of it, 5' flank size = 10
+                { "MUC16", GencodeFuncotation.VariantClassification.FIVE_PRIME_FLANK, MUC16_CONTIG, MUC16_END + 10, MUC16_END + 12, "AAG", "A", 10, 0, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch19 },
+
+                /*
+                 * Multi-base Deletion 5' reverse strand NEGATIVE test cases:
+                 */
+
+                // 3-base deletion entirely in the 5' UTR, 5' flank size = 10
+                { "MUC16", GencodeFuncotation.VariantClassification.FIVE_PRIME_UTR, MUC16_CONTIG, MUC16_END - 3, MUC16_END - 1, "GCT", "T", 10, 0, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch19 },
+                // 3-base deletion at the very end of the 5' UTR, flank size = 10
+                { "MUC16", GencodeFuncotation.VariantClassification.FIVE_PRIME_UTR, MUC16_CONTIG, MUC16_END - 2, MUC16_END, "CTT", "C", 10, 0, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch19 },
+                // 3-base deletion with 2 bases in the 5' UTR and 1 base in the 5' flank, flank size = 10
+                { "MUC16", GencodeFuncotation.VariantClassification.COULD_NOT_DETERMINE, MUC16_CONTIG, MUC16_END - 1, MUC16_END + 1, "TTC", "T", 10, 0, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch19 },
+                // 3-base deletion with 1 base in the 5' UTR and 2 bases in the 5' flank, flank size = 10
+                { "MUC16", GencodeFuncotation.VariantClassification.COULD_NOT_DETERMINE, MUC16_CONTIG, MUC16_END, MUC16_END + 2, "TCT", "T", 10, 0, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch19 },
+                // 3-base deletion 1 base past the end of the 5' flank, flank size = 10
+                { null, GencodeFuncotation.VariantClassification.IGR, MUC16_CONTIG, MUC16_END + 11, MUC16_END + 13, "AGA", "A", 10, 0, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch19 },
+                // 3-base deletion 2 bases past the end of the 5' flank, flank size = 10
+                { null, GencodeFuncotation.VariantClassification.IGR, MUC16_CONTIG, MUC16_END + 12, MUC16_END + 14, "GAC", "G", 10, 0, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch19 },
+
+                /*
+                 * Multi-base Deletion 3' reverse strand POSITIVE test cases:
+                 */
+
+                // 3-base deletion in the first 3 bases of the 3' flank region, 3' flank size = 10
+                { "MUC16", GencodeFuncotation.VariantClassification.THREE_PRIME_FLANK, MUC16_CONTIG, MUC16_START - 3, MUC16_START - 1, "GTG", "G", 0, 10, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch19 },
+                // 3-base deletion in the middle of the 3' flank region, 3' flank size = 10
+                { "MUC16", GencodeFuncotation.VariantClassification.THREE_PRIME_FLANK, MUC16_CONTIG, MUC16_START - 6, MUC16_START - 4, "ACT", "A", 0, 10, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch19 },
+                // 3-base deletion in the last 3 bases of the 3' flank region, 3' flank size = 10
+                { "MUC16", GencodeFuncotation.VariantClassification.THREE_PRIME_FLANK, MUC16_CONTIG, MUC16_START - 10, MUC16_START - 8, "AGA", "A", 0, 10, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch19 },
+                // 3-base deletion, 2 bases in the 3' flank and 1 base outside of it, 3' flank size = 10
+                { "MUC16", GencodeFuncotation.VariantClassification.THREE_PRIME_FLANK, MUC16_CONTIG, MUC16_START - 11, MUC16_START - 9, "CAG", "C", 0, 10, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch19 },
+                // 3-base deletion, 1 base in the 3' flank and 2 bases outside of it, 3' flank size = 10
+                { "MUC16", GencodeFuncotation.VariantClassification.THREE_PRIME_FLANK, MUC16_CONTIG, MUC16_START - 12, MUC16_START - 10, "TCA", "T", 0, 10, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch19 },
+                
+                /*
+                 * Multi-base Deletion 3' reverse strand NEGATIVE test cases:
+                 */
+
+                // 3-base deletion entirely in the 3' UTR, 3' flank size = 10
+                { "MUC16", GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, MUC16_CONTIG, MUC16_START + 1, MUC16_START + 3, "CCG", "C", 0, 10, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch19 },
+                // 3-base deletion at the very end of the 3' UTR, flank size = 10
+                { "MUC16", GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, MUC16_CONTIG, MUC16_START, MUC16_START + 2, "TCC", "T", 0, 10, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch19 },
+                // 3-base deletion with 2 bases in the 3' UTR and 1 base in the 3' flank, flank size = 10
+                { "MUC16", GencodeFuncotation.VariantClassification.COULD_NOT_DETERMINE, MUC16_CONTIG, MUC16_START - 1, MUC16_START + 1, "GTC", "G", 0, 10, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch19 },
+                // 3-base deletion with 1 base in the 3' UTR and 2 bases in the 5' flank, flank size = 10
+                { "MUC16", GencodeFuncotation.VariantClassification.COULD_NOT_DETERMINE, MUC16_CONTIG, MUC16_START - 2, MUC16_START, "TGT", "T", 0, 10, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch19 },
+                // 3-base deletion 1 base past the end of the 3' flank, flank size = 10
+                { null, GencodeFuncotation.VariantClassification.IGR, MUC16_CONTIG, MUC16_START - 13, MUC16_START - 11, "CTC", "C", 0, 10, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch19 },
+                // 3-base deletion 2 bases past the end of the 3' flank, flank size = 10
+                { null, GencodeFuncotation.VariantClassification.IGR, MUC16_CONTIG, MUC16_START - 14, MUC16_START - 12, "GCT", "G", 0, 10, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.MUC16_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch19 },
+
+                /* ***********************************
+                 * PIK3CA Test Cases (forward strand):
+                 *************************************/
+
+                /*
+                 * SNP 5' forward strand POSITIVE test cases:
+                 */
+
+                // SNP 1 base past the 5' end, 5' flank size = 3000
+                { "PIK3CA", GencodeFuncotation.VariantClassification.FIVE_PRIME_FLANK, PIK3CA_CONTIG, PIK3CA_START - 1, PIK3CA_START - 1, "C", "A", 3000, 0, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch3 },
+                // SNP 10 bases past the 5' end, 5' flank size = 10
+                { "PIK3CA", GencodeFuncotation.VariantClassification.FIVE_PRIME_FLANK, PIK3CA_CONTIG, PIK3CA_START - 10, PIK3CA_START - 10, "C", "A", 10, 0, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch3 },
+                // SNP 10 bases past the 5' end, 5' flank size = 10 and 3' flank size = 9
+                { "PIK3CA", GencodeFuncotation.VariantClassification.FIVE_PRIME_FLANK, PIK3CA_CONTIG, PIK3CA_START - 10, PIK3CA_START - 10, "C", "A", 10, 9, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch3 },
+                // SNP 5 bases past the 5' end, 5' flank size = 10
+                { "PIK3CA", GencodeFuncotation.VariantClassification.FIVE_PRIME_FLANK, PIK3CA_CONTIG, PIK3CA_START - 5, PIK3CA_START - 5, "T", "A", 10, 0, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch3 },
+
+                /*
+                 * SNP 5' forward strand NEGATIVE test cases:
+                 */
+
+                // SNP 1 base past the 5' end, 5' flank size = 0
+                { null, GencodeFuncotation.VariantClassification.IGR, PIK3CA_CONTIG, PIK3CA_START - 1, PIK3CA_START - 1, "C", "A", 0, 0, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch3 },
+                // SNP 1 base past the 5' end, 5' flank size = 0 and 3' flank size = 10
+                { null, GencodeFuncotation.VariantClassification.IGR, PIK3CA_CONTIG, PIK3CA_START - 1, PIK3CA_START - 1, "C", "A", 0, 10, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch3 },
+                // SNP 10 bases past the 5' end, 5' flank size = 9
+                { null, GencodeFuncotation.VariantClassification.IGR, PIK3CA_CONTIG, PIK3CA_START - 10, PIK3CA_START - 10, "C", "A", 9, 0, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch3 },
+                // SNP on first base of the 5' end, 5' flank size = 10
+                { "PIK3CA", GencodeFuncotation.VariantClassification.FIVE_PRIME_UTR, PIK3CA_CONTIG, PIK3CA_START, PIK3CA_START, "T", "A", 10, 10, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch3 },
+
+                /*
+                 * SNP 3' forward strand POSITIVE test cases:
+                 */
+
+                // SNP 1 base past the 3' end, 3' flank size = 100
+                { "PIK3CA", GencodeFuncotation.VariantClassification.THREE_PRIME_FLANK, PIK3CA_CONTIG, PIK3CA_END + 1, PIK3CA_END + 1, "C", "A", 0, 100, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch3 },
+                // SNP 10 bases past the 3' end, 3' flank size = 10
+                { "PIK3CA", GencodeFuncotation.VariantClassification.THREE_PRIME_FLANK, PIK3CA_CONTIG, PIK3CA_END + 10, PIK3CA_END + 10, "T", "A", 0, 10, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch3 },
+                // SNP 10 bases past the 3' end, 3' flank size = 10 and 5' flank size = 9
+                { "PIK3CA", GencodeFuncotation.VariantClassification.THREE_PRIME_FLANK, PIK3CA_CONTIG, PIK3CA_END + 10, PIK3CA_END + 10, "T", "A", 9, 10, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch3 },
+                // SNP 5 bases past the 3' end, 3' flank size = 10
+                { "PIK3CA", GencodeFuncotation.VariantClassification.THREE_PRIME_FLANK, PIK3CA_CONTIG, PIK3CA_END + 5, PIK3CA_END + 5, "T", "A", 0, 10, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch3 },
+
+                /*
+                 * SNP 3' forward strand NEGATIVE test cases:
+                 */
+
+                // SNP 1 base past the 3' end, 3' flank size = 0
+                { null, GencodeFuncotation.VariantClassification.IGR, PIK3CA_CONTIG, PIK3CA_END + 1, PIK3CA_END + 1, "C", "A", 0, 0, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch3 },
+                // SNP 1 base past the 3' end, 3' flank size = 0 and 5' flank size = 10
+                { null, GencodeFuncotation.VariantClassification.IGR, PIK3CA_CONTIG, PIK3CA_END + 1, PIK3CA_END + 1, "C", "A", 10, 0, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch3 },
+                // SNP 10 bases past the 3' end, 3' flank size = 9
+                { null, GencodeFuncotation.VariantClassification.IGR, PIK3CA_CONTIG, PIK3CA_END + 10, PIK3CA_END + 10, "T", "A", 0, 9, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch3 },
+                // SNP on last base of the 3' end, 3' flank size = 10
+                { "PIK3CA", GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, PIK3CA_CONTIG, PIK3CA_END, PIK3CA_END, "A", "C", 10, 10, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch3 },
+
+                /*
+                 * Multi-base Deletion 5' forward strand POSITIVE test cases:
+                 */
+
+                // 3-base deletion in the last 3 bases of the 5' flank region, 5' flank size = 10
+                { "PIK3CA", GencodeFuncotation.VariantClassification.FIVE_PRIME_FLANK, PIK3CA_CONTIG, PIK3CA_START - 3, PIK3CA_START - 1, "TCC", "T", 10, 0, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch3 },
+                // 3-base deletion in the middle of the 5' flank region, 5' flank size = 10
+                { "PIK3CA", GencodeFuncotation.VariantClassification.FIVE_PRIME_FLANK, PIK3CA_CONTIG, PIK3CA_START - 6, PIK3CA_START - 4, "CTC", "C", 10, 0, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch3 },
+                // 3-base deletion in the first 3 bases of the 5' flank region, 5' flank size = 10
+                { "PIK3CA", GencodeFuncotation.VariantClassification.FIVE_PRIME_FLANK, PIK3CA_CONTIG, PIK3CA_START - 10, PIK3CA_START - 8, "CCC", "C", 10, 0, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch3 },
+                // 3-base deletion, 2 bases in the 5' flank and 1 base outside of it, 5' flank size = 10
+                { "PIK3CA", GencodeFuncotation.VariantClassification.FIVE_PRIME_FLANK, PIK3CA_CONTIG, PIK3CA_START - 11, PIK3CA_START - 9, "GCC", "G", 10, 0, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch3 },
+                // 3-base deletion, 1 base in the 5' flank and 2 bases outside of it, 5' flank size = 10
+                { "PIK3CA", GencodeFuncotation.VariantClassification.FIVE_PRIME_FLANK, PIK3CA_CONTIG, PIK3CA_START - 12, PIK3CA_START - 10, "CGC", "C", 10, 0, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch3 },
+
+                /*
+                 * Multi-base Deletion 5' forward strand NEGATIVE test cases:
+                 */
+
+                // 3-base deletion entirely in the 5' UTR, 5' flank size = 10
+                { "PIK3CA", GencodeFuncotation.VariantClassification.FIVE_PRIME_UTR, PIK3CA_CONTIG, PIK3CA_START + 1, PIK3CA_START + 3, "CTC", "C", 10, 0, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch3 },
+                // 3-base deletion at the very start of the 5' UTR, flank size = 10
+                { "PIK3CA", GencodeFuncotation.VariantClassification.FIVE_PRIME_UTR, PIK3CA_CONTIG, PIK3CA_START, PIK3CA_START + 2, "TCT", "T", 10, 0, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch3 },
+                // 3-base deletion with 2 bases in the 5' UTR and 1 base in the 5' flank, flank size = 10
+                { "PIK3CA", GencodeFuncotation.VariantClassification.COULD_NOT_DETERMINE, PIK3CA_CONTIG, PIK3CA_START - 1, PIK3CA_START + 1, "CTC", "C", 10, 0, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch3 },
+                // 3-base deletion with 1 base in the 5' UTR and 2 bases in the 5' flank, flank size = 10
+                { "PIK3CA", GencodeFuncotation.VariantClassification.COULD_NOT_DETERMINE, PIK3CA_CONTIG, PIK3CA_START - 2, PIK3CA_START, "CCT", "C", 10, 0, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch3 },
+                // 3-base deletion 1 base past the end of the 5' flank, flank size = 10
+                { null, GencodeFuncotation.VariantClassification.IGR, PIK3CA_CONTIG, PIK3CA_START - 13, PIK3CA_START - 11, "CCG", "C", 10, 0, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch3 },
+                // 3-base deletion 2 bases past the end of the 5' flank, flank size = 10
+                { null, GencodeFuncotation.VariantClassification.IGR, PIK3CA_CONTIG, PIK3CA_START - 14, PIK3CA_START - 12, "GCC", "G", 10, 0, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch3 },
+
+                /*
+                 * Multi-base Deletion 3' forward strand POSITIVE test cases:
+                 */
+
+                // 3-base deletion in the first 3 bases of the 3' flank region, 3' flank size = 10
+                { "PIK3CA", GencodeFuncotation.VariantClassification.THREE_PRIME_FLANK, PIK3CA_CONTIG, PIK3CA_END + 1, PIK3CA_END + 3, "CTT", "C", 0, 10, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch3 },
+                // 3-base deletion in the middle of the 3' flank region, 3' flank size = 10
+                { "PIK3CA", GencodeFuncotation.VariantClassification.THREE_PRIME_FLANK, PIK3CA_CONTIG, PIK3CA_END + 4, PIK3CA_END + 6, "TTT", "T", 0, 10, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch3 },
+                // 3-base deletion in the last 3 bases of the 3' flank region, 3' flank size = 10
+                { "PIK3CA", GencodeFuncotation.VariantClassification.THREE_PRIME_FLANK, PIK3CA_CONTIG, PIK3CA_END + 8, PIK3CA_END + 10, "TGT", "T", 0, 10, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch3 },
+                // 3-base deletion, 2 bases in the 3' flank and 1 base outside of it, 3' flank size = 10
+                { "PIK3CA", GencodeFuncotation.VariantClassification.THREE_PRIME_FLANK, PIK3CA_CONTIG, PIK3CA_END + 9, PIK3CA_END + 11, "GTC", "G", 0, 10, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch3 },
+                // 3-base deletion, 1 base in the 3' flank and 2 bases outside of it, 3' flank size = 10
+                { "PIK3CA", GencodeFuncotation.VariantClassification.THREE_PRIME_FLANK, PIK3CA_CONTIG, PIK3CA_END + 10, PIK3CA_END + 12, "TCC", "T", 0, 10, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch3 },
+
+                /*
+                 * Multi-base Deletion 3' forward strand NEGATIVE test cases:
+                 */
+
+                // 3-base deletion entirely in the 3' UTR, 3' flank size = 10
+                { "PIK3CA", GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, PIK3CA_CONTIG, PIK3CA_END - 3, PIK3CA_END - 1, "ATT", "A", 0, 10, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch3 },
+                // 3-base deletion at the very end of the 3' UTR, flank size = 10
+                { "PIK3CA", GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, PIK3CA_CONTIG, PIK3CA_END - 2, PIK3CA_END, "TTA", "T", 0, 10, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch3 },
+                // 3-base deletion with 2 bases in the 3' UTR and 1 base in the 3' flank, flank size = 10
+                { "PIK3CA", GencodeFuncotation.VariantClassification.COULD_NOT_DETERMINE, PIK3CA_CONTIG, PIK3CA_END - 1, PIK3CA_END + 1, "TAC", "T", 0, 10, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch3 },
+                // 3-base deletion with 1 base in the 3' UTR and 2 bases in the 3' flank, flank size = 10
+                { "PIK3CA", GencodeFuncotation.VariantClassification.COULD_NOT_DETERMINE, PIK3CA_CONTIG, PIK3CA_END, PIK3CA_END + 2, "ACT", "A", 0, 10, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch3 },
+                // 3-base deletion 1 base past the end of the 3' flank, flank size = 10
+                { null, GencodeFuncotation.VariantClassification.IGR, PIK3CA_CONTIG, PIK3CA_END + 11, PIK3CA_END + 13, "CCA", "C", 0, 10, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch3 },
+                // 3-base deletion 2 bases past the end of the 3' flank, flank size = 10
+                { null, GencodeFuncotation.VariantClassification.IGR, PIK3CA_CONTIG, PIK3CA_END + 12, PIK3CA_END + 14, "CAA", "C", 0, 10, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_ANNOTATIONS_FILE_NAME, FuncotatorTestConstants.PIK3CA_ALL_TRANSCRIPTS_GENCODE_TRANSCRIPT_FASTA_FILE, refDataSourceHg19Ch3 },
+
+        };
+    }
+
+    @Test(dataProvider = "provideDataForCreateFuncotationsWithFlanks")
+    public void testCreateFuncotationsWithFlanks(final String expectedGeneName,
+                                          final GencodeFuncotation.VariantClassification expectedVariantClassification,
+                                          final String contig,
+                                          final int start,
+                                          final int end,
+                                          final String ref,
+                                          final String alt,
+                                          final int fivePrimeFlankSize,
+                                          final int threePrimeFlankSize,
+                                          final String transcriptGtfFile,
+                                          final String transcriptFastaFile,
+                                          final ReferenceDataSource referenceDataSource) {
+
+        final Allele refAllele = Allele.create(ref, true);
+        final Allele altAllele = Allele.create(alt);
+
+        final VariantContextBuilder variantContextBuilder = new VariantContextBuilder(
+                "",
+                contig,
+                start,
+                end,
+                Arrays.asList(refAllele, altAllele)
+        );
+        final VariantContext variantContext = variantContextBuilder.make();
+        final SimpleInterval variantInterval = new SimpleInterval(contig, start, end);
+
+        final ReferenceContext referenceContext = new ReferenceContext(referenceDataSource, variantInterval);
+
+        final FeatureInput<GencodeGtfFeature> gencodeFeatureInput = new FeatureInput<>(transcriptGtfFile, GencodeFuncotationFactory.DEFAULT_NAME, Collections.emptyMap());
+        final Map<FeatureInput<? extends Feature>, Class<? extends Feature>> featureInputMap = new HashMap<>();
+        featureInputMap.put(gencodeFeatureInput, GencodeGtfFeature.class);
+        final FeatureContext featureContext = FeatureContext.createFeatureContextForTesting(featureInputMap, "dummyName", variantInterval, VariantWalker.FEATURE_CACHE_LOOKAHEAD, 0, 0, null);
+
+        // Create a factory for our funcotations:
+        try (final GencodeFuncotationFactory funcotationFactory = new GencodeFuncotationFactory(
+                IOUtils.getPath(transcriptFastaFile),
+                "VERSION",
+                GencodeFuncotationFactory.DEFAULT_NAME,
+                FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE,
+                Collections.emptySet(),
+                new LinkedHashMap<>(),
+                gencodeFeatureInput,
+                new FlankSettings(fivePrimeFlankSize,threePrimeFlankSize))) {
+
+            // We test against createFuncotations() rather than createFuncotationsOnVariant() here because
+            // the flanking feature relies on the query done in createFuncotations(), and we need to test
+            // that the query is padded appropriately.
+            final List<Funcotation> funcotations = funcotationFactory.createFuncotations(variantContext, referenceContext, featureContext);
+
+            // Make sure we get what we expected:
+            Assert.assertEquals(funcotations.size(), 1);
+
+            final GencodeFuncotation funcotation = (GencodeFuncotation)funcotations.get(0);
+
+            Assert.assertEquals(funcotation.getVariantClassification(), expectedVariantClassification, "Variant classification not correct");
+            Assert.assertEquals(funcotation.getHugoSymbol(), expectedGeneName, "Gene name not correct");
+        }
     }
 }

@@ -17,6 +17,9 @@ import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.Gencod
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationFactory;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfFeature;
+import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfFeatureBaseData;
+import org.broadinstitute.hellbender.utils.codecs.gencode.GencodeGtfTranscriptFeature;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 
@@ -85,7 +88,10 @@ public class FuncotatorTestUtils {
      * @param transcriptStrand This method will not check validity against the annotation transcript.
      * @param transcriptExon 1-based exon number.  In the Funcotator main code, this field takes into account coding direction, so exon 1 will be at the highest genomic position on a negative strand.
      *                       This method will not check validity of the specified value.  Must be >= 1.
-     * @param transcriptPos 1-based position in the transcript genome sequence.  In the Funcotator main code, this field takes into account the coding direction, so it is possible to have
+     * @param transcriptStartPos 1-based position of the start of the variant in the transcript genome sequence.  In the Funcotator main code, this field takes into account the coding direction, so it is possible to have
+     *                      a higher transcript position that is a lower position in genomic coordinate space.
+     *                      This method will not check validity against the annotation transcript and transcript exon. Must be >= 1.
+     * @param transcriptEndPos 1-based position of the end of the variant in the transcript genome sequence.  In the Funcotator main code, this field takes into account the coding direction, so it is possible to have
      *                      a higher transcript position that is a lower position in genomic coordinate space.
      *                      This method will not check validity against the annotation transcript and transcript exon. Must be >= 1.
      * @param cDnaChange This method will not check validity of the specified value.
@@ -99,24 +105,27 @@ public class FuncotatorTestUtils {
      * @return a gencode funcotation representing the above parameters.  Never {@code null}
      */
     public static GencodeFuncotation createGencodeFuncotation(final String hugoSymbol, final String ncbiBuild,
-                                                                             final String chromosome, final int start, final int end,
-                                                                             final GencodeFuncotation.VariantClassification variantClassification,
-                                                                             final GencodeFuncotation.VariantClassification secondaryVariantClassification,
-                                                                             final GencodeFuncotation.VariantType variantType,
-                                                                             final String refAllele,
-                                                                             final String tumorSeqAllele2, final String genomeChange,
-                                                                             final String annotationTranscript, final Strand transcriptStrand,
-                                                                             final Integer transcriptExon, final Integer transcriptPos,
-                                                                             final String cDnaChange, final String codonChange,
-                                                                             final String proteinChange, final Double gcContent,
-                                                                             final String referenceContext,
-                                                                             final List<String> otherTranscripts, final String version) {
+                                                                 final String chromosome, final int start, final int end,
+                                                                 final GencodeFuncotation.VariantClassification variantClassification,
+                                                                 final GencodeFuncotation.VariantClassification secondaryVariantClassification,
+                                                                 final GencodeFuncotation.VariantType variantType,
+                                                                 final String refAllele,
+                                                                 final String tumorSeqAllele2, final String genomeChange,
+                                                                 final String annotationTranscript, final Strand transcriptStrand,
+                                                                 final Integer transcriptExon,
+                                                                  final Integer transcriptStartPos,
+                                                                  final Integer transcriptEndPos,
+                                                                 final String cDnaChange, final String codonChange,
+                                                                 final String proteinChange, final Double gcContent,
+                                                                 final String referenceContext,
+                                                                 final List<String> otherTranscripts, final String version) {
 
 
         ParamUtils.isPositive(start, "Start position is 1-based and must be greater that zero.");
         ParamUtils.isPositive(end, "End position is 1-based and must be greater that zero.");
         ParamUtils.isPositive(transcriptExon, "Transcript exon is a 1-based index.");
-        ParamUtils.isPositive(transcriptPos, "Transcript position is a 1-based index.");
+        ParamUtils.isPositive(transcriptStartPos, "Transcript start position is a 1-based index.");
+        ParamUtils.isPositive(transcriptEndPos, "Transcript end position is a 1-based index.");
         ParamUtils.inRange(gcContent, 0.0, 1.0, "GC Content must be between 0.0 and 1.0.");
 
         final GencodeFuncotationBuilder funcotationBuilder = new GencodeFuncotationBuilder();
@@ -139,7 +148,8 @@ public class FuncotatorTestUtils {
         funcotationBuilder.setAnnotationTranscript( annotationTranscript );
         funcotationBuilder.setStrand( transcriptStrand );
         funcotationBuilder.setTranscriptExonNumber( transcriptExon );
-        funcotationBuilder.setTranscriptPos( transcriptPos );
+        funcotationBuilder.setTranscriptStartPos( transcriptStartPos );
+        funcotationBuilder.setTranscriptEndPos( transcriptEndPos );
         funcotationBuilder.setcDnaChange( cDnaChange );
         funcotationBuilder.setCodonChange( codonChange );
         funcotationBuilder.setProteinChange( proteinChange );
@@ -212,6 +222,44 @@ public class FuncotatorTestUtils {
                         )
                 ),
                 new SimpleInterval( contigName, refStartPos, refEndPos )
+        );
+    }
+
+    /**
+     * Creates an artifical GencodeGtfTranscriptFeature for testing with dummy values for all fields except
+     * for the contig, start, stop, and strand.
+     *
+     * @param contig Contig that should be assigned to the new GencodeGtfTranscriptFeature
+     * @param start Start position that should be assigned to the new GencodeGtfTranscriptFeature
+     * @param stop Stop position that should be assigned to the new GencodeGtfTranscriptFeature
+     * @param strand Strand that should be assigned to the new GencodeGtfTranscriptFeature
+     * @return A new GencodeGtfTranscriptFeature with the specified contig, start, stop, and strand, and dummy
+     *         values for all other fields
+     */
+    public static GencodeGtfTranscriptFeature createArtificialGencodeGtfTranscriptFeatureForTesting( final String contig, final int start, final int stop, final Strand strand) {
+        return (GencodeGtfTranscriptFeature)GencodeGtfTranscriptFeature.create(
+                new GencodeGtfFeatureBaseData(
+                        2,
+                        contig,
+                        GencodeGtfFeature.AnnotationSource.ENSEMBL,
+                        GencodeGtfFeature.FeatureType.TRANSCRIPT,
+                        start,
+                        stop,
+                        strand,
+                        GencodeGtfFeature.GenomicPhase.DOT,
+                        "FakeGeneID",
+                        "FakeTranscriptID",
+                        GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                        null,
+                        "FakeGeneName",
+                        GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                        null,
+                        "FakeTranscriptName",
+                        -1,
+                        null,
+                        GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                        Collections.emptyList(),
+                        null)
         );
     }
 }
