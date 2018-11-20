@@ -14,7 +14,8 @@
 #  - Does conversion of output seg files to a format compatible with IGV.  This will be removed soon, since the GATK tools
 #     have been updated to produce files that can be easily read by IGV.
 #  - Tags possible germline events that appear in the tumor results.  This is done by comparing breakpoints and
-#     reciprocal overlaps.  This algorithm takes into account any hypersegmentation.
+#     reciprocal overlaps.  This algorithm takes into account any hypersegmentation.  This workflow can tag regions
+#     that appear as CNLoH in the normal.
 #  - Tags tumor events that appear in the given blacklists (centromere and GISTIC blacklist)
 #  - Removes any events that have been tagged in the previous two steps.  Any resulting gaps are imputed, so long as
 #     the segment mean would remain constant and the distance is less than max_merge_distance (default 1Mb as of
@@ -36,6 +37,7 @@
 #  - Evaluation of germline tagging and blacklists on hg38 is still pending.
 #  - Evaluation of the conversion to ACS format for ABSOLUTE is still pending.
 #  - Performance increases (both sensitivity and precision) over this workflow when using a blacklist during PoN creation and running of case samples.
+#  - is_ignore_cnloh_in_matched_normal of false will not work with GATK versions before 4.0.12.0.  Please set this to true if using an older version.
 #
 #  A blacklist for that can be found at:
 #   - hg19: gs://gatk-best-practices/somatic-b37/CNV_and_centromere_blacklist.hg19.list
@@ -81,7 +83,7 @@ workflow ModelSegmentsPostProcessingWorkflow {
     Float? maf90_threshold
     Float maf90_threshold_final = select_first([maf90_threshold, 0.47])
     Boolean? is_ignore_cnloh_in_matched_normal
-    Boolean is_ignore_cnloh_in_matched_normal_final = select_first([is_ignore_cnloh_in_matched_normal, false])
+    Boolean is_ignore_cnloh_in_matched_normal_final = select_first([is_ignore_cnloh_in_matched_normal, true])
 
     Array[String]? annotations_on_which_to_merge_final = select_first([annotations_on_which_to_merge,
     ["MEAN_LOG2_COPY_RATIO", "LOG2_COPY_RATIO_POSTERIOR_10_1", "LOG2_COPY_RATIO_POSTERIOR_50_1", "LOG2_COPY_RATIO_POSTERIOR_90_1",
