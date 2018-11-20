@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.copynumber.utils;
 
+import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.ExperimentalFeature;
@@ -29,6 +30,7 @@ public class TagGermlineEvents extends GATKTool{
     final static public String HI_MAF_HEADER = "input-high-maf-header";
     final static public String LO_MAF_HEADER = "input-low-maf-header";
     final static public String DO_CHECK_CNLOH = "check-normal-cnloh";
+    final static public String MAX_SIZE_CNLOH = "max-size-normal-cnloh";
 
     @Argument(
             doc = "Input tumor (called) segment file -- the output will be a copy of this file with the additional information.",
@@ -66,6 +68,7 @@ public class TagGermlineEvents extends GATKTool{
             optional = true)
     private double reciprocalThreshold = 0.75;
 
+    @Advanced
     @Argument(
             doc = "Maximum maf to match a segment by the minor allelic fraction (MAF) when the call in the normal is copy neutral.  Under this threshold will allow a tumor segment to be tagged.  Ignored if not checking CNLoH in normal.",
             fullName = "maf-max-threshold",
@@ -73,24 +76,33 @@ public class TagGermlineEvents extends GATKTool{
             optional = true)
     private double mafMaxThreshold = 0.47;
 
+    @Advanced
     @Argument(
             doc = "Column header to use for the high MAF estimate.  Ignored if not checking CNLoH in normal.",
             fullName = HI_MAF_HEADER,
             optional = true)
     private String mafHiColumnHeader = "MINOR_ALLELE_FRACTION_POSTERIOR_90";
 
+    @Advanced
     @Argument(
             doc = "Column header to use for the low MAF estimate.  Ignored if not checking CNLoH in normal.",
             fullName = LO_MAF_HEADER,
             optional = true)
     private String mafLoColumnHeader = "MINOR_ALLELE_FRACTION_POSTERIOR_10";
 
+    @Advanced
     @Argument(
             doc = "Enable attempt to find CNLoH events in the matched normal.",
             fullName = DO_CHECK_CNLOH,
             optional = true)
-    private Boolean isCnLoHCheck = false;  // Default to enable the check.
+    private Boolean isCnLoHCheck = false;  // Default is to disable the check.
 
+    @Advanced
+    @Argument(
+            doc = "Maximum size (in bp) of events to use in the matched normal.  Ignored unless normal CNLoH detection is enabled.",
+            fullName = MAX_SIZE_CNLOH,
+            optional = true)
+    private Integer cnLoHCheckMaxSize = 2000000;
 
     @Override
     public void traverse() {
@@ -106,7 +118,7 @@ public class TagGermlineEvents extends GATKTool{
         } else {
             tumorSegments = SimpleGermlineTagger.tagTumorSegmentsWithGermlineActivity(
                     initialTumorSegments, initialNormalSegments, callColumnHeader, getBestAvailableSequenceDictionary(),
-                    GERMLINE_TAG_HEADER, paddingInBp, reciprocalThreshold, mafMaxThreshold, mafHiColumnHeader,
+                    GERMLINE_TAG_HEADER, paddingInBp, reciprocalThreshold, mafMaxThreshold, cnLoHCheckMaxSize, mafHiColumnHeader,
                     mafLoColumnHeader);
         }
 

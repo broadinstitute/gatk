@@ -68,6 +68,7 @@ public class SimpleGermlineTagger {
      *  See {@link SimpleGermlineTagger#tagTumorSegmentsWithGermlineActivity(List, List, String, SAMSequenceDictionary, String, int, double)}
      *
      *  This will also attempt to look for areas that appear to be Copy-Neutral Loss-of-Heterozygosity regions in the normal segments.
+     *  In this determinination, only the MAF in the normal sample are relevant.
      *
      * @param initialTumorSegments See {@link SimpleGermlineTagger#tagTumorSegmentsWithGermlineActivity(List, List, String, SAMSequenceDictionary, String, int, double)}
      * @param initialNormalSegments See {@link SimpleGermlineTagger#tagTumorSegmentsWithGermlineActivity(List, List, String, SAMSequenceDictionary, String, int, double)}
@@ -87,7 +88,7 @@ public class SimpleGermlineTagger {
                                                                                final SAMSequenceDictionary dictionary,
                                                                                final String outputAnnotationName, final int paddingInBp,
                                                                                final double reciprocalThreshold, final double mafMaxThreshold,
-                                                                               final String mafHiAnnotation, final String mafLoAnnotation) {
+                                                                               final int cnLoHCheckMaxSize, final String mafHiAnnotation, final String mafLoAnnotation) {
         validateBasicInputParameters(initialTumorSegments, initialNormalSegments, callAnnotation, dictionary, outputAnnotationName, paddingInBp, reciprocalThreshold);
 
         Utils.validateArg(initialNormalSegments.stream().noneMatch(s -> StringUtils.isEmpty(s.getAnnotationValue(mafHiAnnotation))),
@@ -106,7 +107,7 @@ public class SimpleGermlineTagger {
         final Map<AnnotatedInterval, String> tumorSegsToGermlineCallMap = createAnnotatedIntervalToGermlineCallMap(tumorSegments, normalSegments, callAnnotation, paddingInBp, reciprocalThreshold, dictionary);
 
         final Map<AnnotatedInterval, String> tumorSegsToGermlineCNLoHTag = createTumorNormalCNLoHCallMap(tumorSegments,
-                normalSegments, reciprocalThreshold, callAnnotation, dictionary, mafMaxThreshold,
+                normalSegments, reciprocalThreshold, callAnnotation, dictionary, mafMaxThreshold, cnLoHCheckMaxSize,
                 mafHiAnnotation, mafLoAnnotation);
         final List<Map<AnnotatedInterval, String>> tagMaps = Arrays.asList(tumorSegsToGermlineCallMap, tumorSegsToGermlineCNLoHTag);
 
@@ -160,7 +161,7 @@ public class SimpleGermlineTagger {
 
     //TODO: Can't be string
     private static Map<AnnotatedInterval, String> createTumorNormalCNLoHCallMap(final List<AnnotatedInterval> tumorSegments, final List<AnnotatedInterval> normalSegments, final double reciprocalThreshold, final String callAnnotation, final SAMSequenceDictionary dictionary,
-                                                                                final double mafMaxThreshold, final String mafHiAnnotation, final String mafLowAnnotation) {
+                                                                                final double mafMaxThreshold, final int cnLoHCheckMaxSize, final String mafHiAnnotation, final String mafLowAnnotation) {
         // Grab the normal segments that have a neutral call.
         final List<AnnotatedInterval> copyNeutralNormalSegments = normalSegments.stream()
                 .filter(s -> !StringUtils.isEmpty(s.getAnnotationValue(callAnnotation)))
@@ -168,7 +169,7 @@ public class SimpleGermlineTagger {
                 .collect(Collectors.toList());
 
         final Map<AnnotatedInterval, List<AnnotatedInterval>> copyNeutralNormalSegmentsToTumorSegments = IntervalUtils.createOverlapMap(copyNeutralNormalSegments, tumorSegments, dictionary);
-        return createTumorSegmentsToGermlineCnLohMap(copyNeutralNormalSegmentsToTumorSegments, reciprocalThreshold, mafMaxThreshold, mafHiAnnotation, mafLowAnnotation);
+        return createTumorSegmentsToGermlineCnLohMap(copyNeutralNormalSegmentsToTumorSegments, reciprocalThreshold, mafMaxThreshold, cnLoHCheckMaxSize, mafHiAnnotation, mafLowAnnotation);
     }
 
 
@@ -212,11 +213,10 @@ public class SimpleGermlineTagger {
     }
 
     //TODO: This cannot return a map to a string.  Must be an enum
-    private static Map<AnnotatedInterval, String> createTumorSegmentsToGermlineCnLohMap(final Map<AnnotatedInterval, List<AnnotatedInterval>> copyNeutralNormalSegmentsToTumorSegments, final double reciprocalThreshold, final double mafMaxThreshold, final String mafHiAnnotation, final String mafLowAnnotation) {
+    private static Map<AnnotatedInterval, String> createTumorSegmentsToGermlineCnLohMap(final Map<AnnotatedInterval, List<AnnotatedInterval>> copyNeutralNormalSegmentsToTumorSegments, final double reciprocalThreshold, final double mafMaxThreshold, final int cnLoHCheckMaxSize, final String mafHiAnnotation, final String mafLowAnnotation) {
         final Map<AnnotatedInterval, String> result = new HashMap<>();
         for (final AnnotatedInterval normalSeg : copyNeutralNormalSegmentsToTumorSegments.keySet()) {
-            //TODO: Magic constant
-            final boolean isNormalSegmentShort = normalSeg.getInterval().size() < 2000000;
+            final boolean isNormalSegmentShort = normalSeg.getInterval().size() <= cnLoHCheckMaxSize;
             if (isNormalSegmentShort) {
                 final List<AnnotatedInterval> overlappingTumorSegments = copyNeutralNormalSegmentsToTumorSegments.get(normalSeg);
                 for (final AnnotatedInterval overlappingTumorSegment : overlappingTumorSegments) {

@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.copynumber.formats.collections;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.ModeledSegment;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -21,7 +22,8 @@ public final class ModeledSegmentCollection extends AbstractSampleLocatableColle
      * LOG2_COPY_RATIO_POSTERIOR_10, LOG2_COPY_RATIO_POSTERIOR_50, LOG2_COPY_RATIO_POSTERIOR_90,
      * MINOR_ALLELE_FRACTION_POSTERIOR_10, MINOR_ALLELE_FRACTION_POSTERIOR_50, MINOR_ALLELE_FRACTION_POSTERIOR_90
      */
-    enum ModeledSegmentTableColumn {
+    @VisibleForTesting
+    public enum ModeledSegmentTableColumn {
         CONTIG, 
         START, 
         END,
