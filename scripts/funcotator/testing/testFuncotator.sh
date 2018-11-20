@@ -225,7 +225,11 @@ fi
 if [[ $r -eq 0 ]] && ${doUnitTests} ; then
 	echo "################################################################################"
 	echo "## Running Unit Tests... "
-	${GATKDIR}/gradlew test --tests org.broadinstitute.hellbender.tools.funcotator* --stacktrace  
+	${GATKDIR}/gradlew test \
+		--tests org.broadinstitute.hellbender.tools.funcotator* \
+		--tests org.broadinstitute.hellbender.utils.codecs.xsvLocatableTable* \
+		--tests org.broadinstitute.hellbender.utils.codecs.gencode* \
+		--stacktrace  
 	r=$?
 fi
 
