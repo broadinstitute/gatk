@@ -124,6 +124,8 @@ workflow CNVSomaticPairWorkflow {
     Float? inference_total_grad_norm_constraint
     Int? n_extra_gaussians_mixture_model
     Float? gaussian_prior_standard_deviation
+    Float? responsibility_threshold_normal
+    Float? weight_ratio_max
     Int? max_n_peaks_in_copy_ratio
     Int? mem_gb_for_call_modeled_segments
 
@@ -273,6 +275,8 @@ workflow CNVSomaticPairWorkflow {
             n_extra_gaussians_mixture_model = n_extra_gaussians_mixture_model,
             max_n_peaks_in_copy_ratio = max_n_peaks_in_copy_ratio,
             gaussian_prior_standard_deviation = gaussian_prior_standard_deviation,
+            responsibility_threshold_normal = responsibility_threshold_normal,
+            weight_ratio_max = weight_ratio_max,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
             mem_gb = mem_gb_for_call_modeled_segments,
@@ -411,6 +415,8 @@ workflow CNVSomaticPairWorkflow {
             max_phred_score_normal = max_phred_score_normal,
             max_n_peaks_in_copy_ratio = max_n_peaks_in_copy_ratio,
             gaussian_prior_standard_deviation = gaussian_prior_standard_deviation,
+            responsibility_threshold_normal = responsibility_threshold_normal,
+            weight_ratio_max = weight_ratio_max,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
             mem_gb = mem_gb_for_call_modeled_segments,
