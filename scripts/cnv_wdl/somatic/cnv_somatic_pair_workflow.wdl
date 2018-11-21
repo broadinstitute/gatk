@@ -123,6 +123,7 @@ workflow CNVSomaticPairWorkflow {
     Int? n_inference_iterations
     Float? inference_total_grad_norm_constraint
     Int? n_extra_gaussians_mixture_model
+    Float? gaussian_prior_standard_deviation
     Int? max_n_peaks_in_copy_ratio
     Int? mem_gb_for_call_modeled_segments
 
@@ -271,6 +272,7 @@ workflow CNVSomaticPairWorkflow {
             inference_total_grad_norm_constraint = inference_total_grad_norm_constraint,
             n_extra_gaussians_mixture_model = n_extra_gaussians_mixture_model,
             max_n_peaks_in_copy_ratio = max_n_peaks_in_copy_ratio,
+            gaussian_prior_standard_deviation = gaussian_prior_standard_deviation,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
             mem_gb = mem_gb_for_call_modeled_segments,
@@ -408,6 +410,7 @@ workflow CNVSomaticPairWorkflow {
             n_extra_gaussians_mixture_model = n_extra_gaussians_mixture_model,
             max_phred_score_normal = max_phred_score_normal,
             max_n_peaks_in_copy_ratio = max_n_peaks_in_copy_ratio,
+            gaussian_prior_standard_deviation = gaussian_prior_standard_deviation,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
             mem_gb = mem_gb_for_call_modeled_segments,
@@ -679,6 +682,7 @@ task CallModeledSegments {
     Int? max_n_peaks_in_copy_ratio
     Float? responsibility_threshold_normal
     Float? weight_ratio_max
+    Float? gaussian_prior_standard_deviation
     File? gatk4_jar_override
 
     # Runtime parameters
@@ -717,7 +721,8 @@ task CallModeledSegments {
             --n-extra-gaussians-mixture-model ${default="12" n_extra_gaussians_mixture_model} \
             --max-n-peaks-in-copy-ratio ${default="10" max_n_peaks_in_copy_ratio} \
             --responsibility-threshold-normal ${default="0.5" responsibility_threshold_normal} \
-            --weight_ratio_max ${default="10" weight_ratio_max}
+            --weight-ratio-max ${default="10" weight_ratio_max}
+            --gaussian-prior-standard-deviation ${default="0.0005" gaussian_prior_standard_deviation}
     >>>
 
     runtime {

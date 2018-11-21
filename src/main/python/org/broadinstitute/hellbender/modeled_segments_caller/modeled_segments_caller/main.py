@@ -594,7 +594,8 @@ class ModeledSegmentsCaller:
                  n_inference_iterations: int=120000,
                  inference_total_grad_norm_constraint: float=50.,
                  n_extra_Gaussians_mixture_model: int=12,
-                 max_n_peaks_in_copy_ratio: int=10
+                 max_n_peaks_in_copy_ratio: int=10,
+                 gaussian_prior_standard_deviation: float=0.0005
                  ):
         """ On initialization, the caller loads the copy ratio and allele fraction data from
             the LoadAndSampleCrAndAf class. It then identifies normal segments and saves the
@@ -641,6 +642,7 @@ class ModeledSegmentsCaller:
         self.__inference_total_grad_norm_constraint = inference_total_grad_norm_constraint
         self.__n_extra_Gaussians_mixture_model = n_extra_Gaussians_mixture_model
         self.__max_n_peaks_in_copy_ratio = max_n_peaks_in_copy_ratio
+        self.__gaussian_prior_standard_deviation = max([abs(gaussian_prior_standard_deviation), 0.000001])
 
         # Set the maximal value of the PHRED score we allow (since we don't want it to be off the scale on the plots)
         self.__max_PHRED_score = max_phred_score_normal
@@ -990,7 +992,10 @@ class ModeledSegmentsCaller:
                             shape=(2,))
                    for i in range(n_Gaussians)]
             std_dev_data = max([0.1, np.std(data_points)])
-            taus =  [tt.nlinalg.alloc_diag([pm.Gamma('tau_%d_%d' % (i, j), mu=1/0.0005, sd=1/0.0005, testval=1/0.0005)
+            taus =  [tt.nlinalg.alloc_diag([pm.Gamma('tau_%d_%d' % (i, j),
+                                                     mu=1/self.__gaussian_prior_standard_deviation,
+                                                     sd=1/self.__gaussian_prior_standard_deviation,
+                                                     testval=1/self.__gaussian_prior_standard_deviation)
                                             for j in range(data_dim)])
                      for i in range(n_Gaussians)]
             pis = Dirichlet('pis', a=pm.floatX(1000*np.ones(n_Gaussians)),

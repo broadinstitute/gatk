@@ -114,21 +114,21 @@ group.add_argument("--normal_minor_allele_fraction_threshold",
 group.add_argument("--copy_ratio_peak_min_relative_height",
                    type=float,
                    required=False,
-                   default=0.03,
+                   default=0.02,
                    help="During the copy ratio clustering, peaks with weights smaller than this ratio are not "
                         "taken into account.")
 
 group.add_argument("--copy_ratio_kernel_density_bandwidth",
                    type=float,
                    required=False,
-                   default=None,
+                   default=-0.025,
                    help="During the copy ratio clustering, we smoothen the data using a Gaussian kernel of "
                         "this bandwidth.")
 
 group.add_argument("--min_weight_first_cr_peak_cr_data_only",
                    type=float,
                    required=False,
-                   default=0.35,
+                   default=0.40,
                    help="If only copy ratio data is taken into account, and we find more than one cluster in the "
                         "data, then the first peak is considered normal if its relative weight compared to the second"
                         "peak is above this threshold (or if the weight of the second peak is smaller than 5%.")
@@ -136,7 +136,7 @@ group.add_argument("--min_weight_first_cr_peak_cr_data_only",
 group.add_argument("--min_fraction_of_points_in_normal_allele_fraction_region",
                    type=float,
                    required=False,
-                   default=0.15,
+                   default=0.05,
                    help="The region of copy ratio values are is considered normal only if at least this "
                         "fraction of points are above the normalMinorAlleleFractionThreshold",)
 
@@ -157,7 +157,7 @@ group.add_argument("--max_phred_score_normal",
 group.add_argument("--n_inference_iterations",
                    type=int,
                    required=False,
-                   default=30000,
+                   default=120000,
                    help="Maximum number of iterations of the automatic differentiation variational inference "
                         "fitting a Gaussian mixture model to the segments in order to cluster them.")
 
@@ -171,7 +171,7 @@ group.add_argument("--inference_total_grad_norm_constraint",
 group.add_argument("--n_extra_Gaussians_mixture_model",
                    type=int,
                    required=False,
-                   default=6,
+                   default=12,
                    help="The number of Gaussians needed to classify segments is estimated using k-means clustering. "
                         "This parameters lets us add a few extra Gaussians that might cover some of the noise or "
                         "additional subcluster structure present in the data.")
@@ -183,6 +183,14 @@ group.add_argument("--max_n_peaks_in_copy_ratio",
                    help="In order to discover the different copy number states, the clusters in the copy ratio data "
                         "is determined. This constant limits the maximum number of peaks that can be found in the data.")
 
+group.add_argument("--gaussian_prior_standard_deviation",
+                   type=int,
+                   required=False,
+                   default=0.0005,
+                   help="The standard deviation of the prior of the mean and the standard deviation of the Gaussians "
+                        "that we fit to the segment data in (copy ratio, allele fraction) space. Since the positions "
+                        "of the peaks are estimated using k-means clustering, the prior around these points should be "
+                        "tight.")
 
 def str2bool(boolString):
     if boolString=="true" or boolString==True:
@@ -229,5 +237,6 @@ if __name__ == "__main__":
                                    n_inference_iterations=args.n_inference_iterations,
                                    inference_total_grad_norm_constraint=args.inference_total_grad_norm_constraint,
                                    n_extra_Gaussians_mixture_model=args.n_extra_Gaussians_mixture_model,
-                                   max_n_peaks_in_copy_ratio=args.max_n_peaks_in_copy_ratio
+                                   max_n_peaks_in_copy_ratio=args.max_n_peaks_in_copy_ratio,
+                                   gaussian_prior_standard_deviation=args.gaussian_prior_standard_deviation
                                    )
