@@ -586,7 +586,7 @@ class ModeledSegmentsCaller:
                  interactive_output_copy_ratio_clustering_suffix:str="_copy_ratio_clusters.png",
                  normal_minor_allele_fraction_threshold: float=0.475,
                  copy_ratio_peak_min_relative_height: float=0.04,
-                 copy_ratio_kernel_density_bandwidth: float=0.,
+                 copy_ratio_kernel_density_bandwidth: float=0.015,
                  min_weight_first_cr_peak_cr_data_only: float=0.35,
                  min_fraction_of_points_in_normal_allele_fraction_region: float=0.15,
                  responsibility_threshold_normal: float=0.5,
@@ -1192,7 +1192,7 @@ class ModeledSegmentsCaller:
                 bandwidth = 0.5 * sd_peaks[ind[0]]
             else:
                 bandwidth = 0.5 * min([sd_peaks[ind[0]], sd_peaks[ind[1]]])
-            bandwidth = max([bandwidth, 0.02])
+            bandwidth = max([bandwidth, 0.015])
         else:
             bandwidth = self.__copy_ratio_kernel_density_bandwidth
 
@@ -1699,7 +1699,7 @@ class ModeledSegmentsCaller:
     def __plot_Gaussian_mixture_fit(self):
         """ Plot the fit of Gaussian clusters to the 2D copy ratio and allele fraction data.
         """
-        samples = np.asarray([self.__copy_ratio_median_sampled, self.__allele_fraction_median_sampled]).T
+        # samples = np.asarray([self.__copy_ratio_median_sampled, self.__allele_fraction_median_sampled]).T
         [pis, mu, cov] = self.__gaussian_mixture_fit
 
         n_Gaussians = len(pis)

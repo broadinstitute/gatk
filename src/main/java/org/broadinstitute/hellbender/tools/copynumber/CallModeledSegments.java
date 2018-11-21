@@ -202,7 +202,7 @@ public final class CallModeledSegments extends CommandLineProgram {
             fullName = COPY_RATIO_KERNEL_DENSITY_BANDWIDTH,
             optional = true
     )
-    private double copyRatioKernelDensityBandwidth=0.;
+    private double copyRatioKernelDensityBandwidth=0.015;
 
     @Argument(
             doc = "If only copy ratio data is taken into account, and we find more than one cluster in the "
