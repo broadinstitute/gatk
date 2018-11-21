@@ -261,7 +261,7 @@ public final class CallModeledSegments extends CommandLineProgram {
             fullName = N_EXTRA_GAUSSIANS_MIXTURE_MODEL,
             optional = true
     )
-    private int nExtraGaussiansMixtureModel=6;
+    private int nExtraGaussiansMixtureModel=12;
 
     @Argument(
             doc = "In order to discover the different copy number states, the clusters in the copy ratio data "
