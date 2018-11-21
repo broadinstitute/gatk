@@ -185,7 +185,7 @@ group.add_argument("--max_n_peaks_in_copy_ratio",
                         "is determined. This constant limits the maximum number of peaks that can be found in the data.")
 
 group.add_argument("--gaussian_prior_standard_deviation",
-                   type=int,
+                   type=float,
                    required=False,
                    default=0.0005,
                    help="The standard deviation of the prior of the mean and the standard deviation of the Gaussians "
