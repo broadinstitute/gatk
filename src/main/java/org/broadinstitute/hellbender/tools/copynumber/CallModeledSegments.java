@@ -220,7 +220,7 @@ public final class CallModeledSegments extends CommandLineProgram {
             fullName = MIN_FRACTION_OF_POINTS_IN_NORMAL_ALLELE_FRACTION_REGION,
             optional = true
     )
-    private double minFractionOfPointsInNormalAlleleFractionRegion=0.15;
+    private double minFractionOfPointsInNormalAlleleFractionRegion=0.05;
 
     @Argument(
             doc = "Segments are considered normal if the responsibility in the Gaussian mixture model of them being "
