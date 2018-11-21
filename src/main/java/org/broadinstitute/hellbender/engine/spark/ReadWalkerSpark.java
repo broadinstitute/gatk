@@ -18,6 +18,8 @@ import java.util.Iterator;
 /**
  * A Spark version of {@link ReadWalker}. Subclasses should implement {@link #processReads(JavaRDD, JavaSparkContext)}
  * and operate on the passed in RDD.
+ * @see org.broadinstitute.hellbender.tools.examples.ExampleReadWalkerWithReferenceSpark
+ * @see org.broadinstitute.hellbender.tools.examples.ExampleReadWalkerWithVariantsSpark
  */
 public abstract class ReadWalkerSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
