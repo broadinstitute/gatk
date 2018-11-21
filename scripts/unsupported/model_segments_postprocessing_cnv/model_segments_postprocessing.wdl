@@ -37,7 +37,7 @@
 #  - Evaluation of germline tagging and blacklists on hg38 is still pending.
 #  - Evaluation of the conversion to ACS format for ABSOLUTE is still pending.
 #  - Performance increases (both sensitivity and precision) over this workflow when using a blacklist during PoN creation and running of case samples.
-#  - is_ignore_cnloh_in_matched_normal of false will not work with GATK versions before 4.0.12.0.  Please set this to true if using an older version.
+#  - This script will not work with GATK versions before 4.0.12.0.
 #
 #  A blacklist for that can be found at:
 #   - hg19: gs://gatk-best-practices/somatic-b37/CNV_and_centromere_blacklist.hg19.list
@@ -289,6 +289,8 @@ task TagGermline {
     Int machine_mem = if defined(mem_gb) then mem_gb *1000 else default_ram_mb
     Int command_mem = machine_mem - 1000
 
+    String cnloh_param = if (is_ignore_cnloh_in_matched_normal) then "" else "--check-normal-cnloh"
+
 	command <<<
 	    
         set -e
@@ -300,7 +302,8 @@ task TagGermline {
             --segments ${tumor_called_seg} --called-matched-normal-seg-file ${matched_normal_called_seg} \
             -O ${output_name}.germline_tagged.seg -R ${ref_fasta} \
             ${"--endpoint-padding " + germline_tagging_padding} \
-            ${"--maf-max-threshold " + maf_max_threshold}
+            ${"--maf-max-threshold " + maf_max_threshold} \
+            ${cnloh_param}
 
         echo "======= Centromeres "
     	gatk --java-options "-Xmx${command_mem}m" \
