@@ -1,0 +1,121 @@
+#:GATKReport.v1.1:9
+#:GATKTable:10:3:%s:%s:%s:%s:%d:%d:%d:%.2f:%d:%.2f:;
+#:GATKTable:CompOverlap:The overlap between eval and comp sites
+CompOverlap  CompFeatureInput  EvalFeatureInput  Novelty  nEvalVariants  novelSites  nVariantsAtComp  compRate  nConcordant  concordantRate
+CompOverlap  dbsnp             evalBI            all              25303       22125             3178     12.56         3177           99.97
+CompOverlap  dbsnp             evalBI            known             3178           0             3178    100.00         3177           99.97
+CompOverlap  dbsnp             evalBI            novel            22125       22125                0      0.00            0            0.00
+
+#:GATKTable:29:3:%s:%s:%s:%s:%d:%d:%d:%d:%.8f:%.8f:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%.2e:%.2f:%.2f:%.2e:%.2f:%.2f:;
+#:GATKTable:CountVariants:Counts different classes of variants in the sample
+CountVariants  CompFeatureInput  EvalFeatureInput  Novelty  nProcessedLoci  nCalledLoci  nRefLoci  nVariantLoci  variantRate  variantRatePerBp  nSNPs  nMNPs  nInsertions  nDeletions  nComplex  nSymbolic  nMixed  nNoCalls  nHets  nHomRef  nHomVar  nSingletons  nHomDerived  heterozygosity  heterozygosityPerBp  hetHomRatio  indelRate  indelRatePerBp  insertionDeletionRatio
+CountVariants  dbsnp             evalBI            all            63025520        25303         0         25303   0.00040147     2490.00000000  25303      0            0           0         0          0       0         0      0        0        0            0            0        0.00e+00                 0.00         0.00   0.00e+00            0.00                    0.00
+CountVariants  dbsnp             evalBI            known          63025520         3178         0          3178   0.00005042    19831.00000000   3178      0            0           0         0          0       0         0      0        0        0            0            0        0.00e+00                 0.00         0.00   0.00e+00            0.00                    0.00
+CountVariants  dbsnp             evalBI            novel          63025520        22125         0         22125   0.00035105     2848.00000000  22125      0            0           0         0          0       0         0      0        0        0            0            0        0.00e+00                 0.00         0.00   0.00e+00            0.00                    0.00
+
+#:GATKTable:6:60:%s:%s:%s:%s:%d:%.2f:;
+#:GATKTable:IndelLengthHistogram:Indel length histogram
+IndelLengthHistogram  CompFeatureInput  EvalFeatureInput  Novelty  Length  Freq
+IndelLengthHistogram  dbsnp             evalBI            all         -10  0.00
+IndelLengthHistogram  dbsnp             evalBI            all          -9  0.00
+IndelLengthHistogram  dbsnp             evalBI            all          -8  0.00
+IndelLengthHistogram  dbsnp             evalBI            all          -7  0.00
+IndelLengthHistogram  dbsnp             evalBI            all          -6  0.00
+IndelLengthHistogram  dbsnp             evalBI            all          -5  0.00
+IndelLengthHistogram  dbsnp             evalBI            all          -4  0.00
+IndelLengthHistogram  dbsnp             evalBI            all          -3  0.00
+IndelLengthHistogram  dbsnp             evalBI            all          -2  0.00
+IndelLengthHistogram  dbsnp             evalBI            all          -1  0.00
+IndelLengthHistogram  dbsnp             evalBI            all           1  0.00
+IndelLengthHistogram  dbsnp             evalBI            all           2  0.00
+IndelLengthHistogram  dbsnp             evalBI            all           3  0.00
+IndelLengthHistogram  dbsnp             evalBI            all           4  0.00
+IndelLengthHistogram  dbsnp             evalBI            all           5  0.00
+IndelLengthHistogram  dbsnp             evalBI            all           6  0.00
+IndelLengthHistogram  dbsnp             evalBI            all           7  0.00
+IndelLengthHistogram  dbsnp             evalBI            all           8  0.00
+IndelLengthHistogram  dbsnp             evalBI            all           9  0.00
+IndelLengthHistogram  dbsnp             evalBI            all          10  0.00
+IndelLengthHistogram  dbsnp             evalBI            known       -10  0.00
+IndelLengthHistogram  dbsnp             evalBI            known        -9  0.00
+IndelLengthHistogram  dbsnp             evalBI            known        -8  0.00
+IndelLengthHistogram  dbsnp             evalBI            known        -7  0.00
+IndelLengthHistogram  dbsnp             evalBI            known        -6  0.00
+IndelLengthHistogram  dbsnp             evalBI            known        -5  0.00
+IndelLengthHistogram  dbsnp             evalBI            known        -4  0.00
+IndelLengthHistogram  dbsnp             evalBI            known        -3  0.00
+IndelLengthHistogram  dbsnp             evalBI            known        -2  0.00
+IndelLengthHistogram  dbsnp             evalBI            known        -1  0.00
+IndelLengthHistogram  dbsnp             evalBI            known         1  0.00
+IndelLengthHistogram  dbsnp             evalBI            known         2  0.00
+IndelLengthHistogram  dbsnp             evalBI            known         3  0.00
+IndelLengthHistogram  dbsnp             evalBI            known         4  0.00
+IndelLengthHistogram  dbsnp             evalBI            known         5  0.00
+IndelLengthHistogram  dbsnp             evalBI            known         6  0.00
+IndelLengthHistogram  dbsnp             evalBI            known         7  0.00
+IndelLengthHistogram  dbsnp             evalBI            known         8  0.00
+IndelLengthHistogram  dbsnp             evalBI            known         9  0.00
+IndelLengthHistogram  dbsnp             evalBI            known        10  0.00
+IndelLengthHistogram  dbsnp             evalBI            novel       -10  0.00
+IndelLengthHistogram  dbsnp             evalBI            novel        -9  0.00
+IndelLengthHistogram  dbsnp             evalBI            novel        -8  0.00
+IndelLengthHistogram  dbsnp             evalBI            novel        -7  0.00
+IndelLengthHistogram  dbsnp             evalBI            novel        -6  0.00
+IndelLengthHistogram  dbsnp             evalBI            novel        -5  0.00
+IndelLengthHistogram  dbsnp             evalBI            novel        -4  0.00
+IndelLengthHistogram  dbsnp             evalBI            novel        -3  0.00
+IndelLengthHistogram  dbsnp             evalBI            novel        -2  0.00
+IndelLengthHistogram  dbsnp             evalBI            novel        -1  0.00
+IndelLengthHistogram  dbsnp             evalBI            novel         1  0.00
+IndelLengthHistogram  dbsnp             evalBI            novel         2  0.00
+IndelLengthHistogram  dbsnp             evalBI            novel         3  0.00
+IndelLengthHistogram  dbsnp             evalBI            novel         4  0.00
+IndelLengthHistogram  dbsnp             evalBI            novel         5  0.00
+IndelLengthHistogram  dbsnp             evalBI            novel         6  0.00
+IndelLengthHistogram  dbsnp             evalBI            novel         7  0.00
+IndelLengthHistogram  dbsnp             evalBI            novel         8  0.00
+IndelLengthHistogram  dbsnp             evalBI            novel         9  0.00
+IndelLengthHistogram  dbsnp             evalBI            novel        10  0.00
+
+#:GATKTable:29:3:%s:%s:%s:%s:%d:%d:%d:%d:%d:%s:%s:%s:%s:%s:%d:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:;
+#:GATKTable:IndelSummary:Evaluation summary for indels
+IndelSummary  CompFeatureInput  EvalFeatureInput  Novelty  n_SNPs  n_singleton_SNPs  n_indels  n_singleton_indels  n_indels_matching_gold_standard  gold_standard_matching_rate  n_multiallelic_indel_sites  percent_of_sites_with_more_than_2_alleles  SNP_to_indel_ratio  SNP_to_indel_ratio_for_singletons  n_novel_indels  indel_novelty_rate  n_insertions  n_deletions  insertion_to_deletion_ratio  n_large_deletions  n_large_insertions  insertion_to_deletion_ratio_for_large_indels  n_coding_indels_frameshifting  n_coding_indels_in_frame  frameshift_rate_for_coding_indels  SNP_het_to_hom_ratio  indel_het_to_hom_ratio  ratio_of_1_and_2_to_3_bp_insertions  ratio_of_1_and_2_to_3_bp_deletions
+IndelSummary  dbsnp             evalBI            all       25303                 0         0                   0                                0                           NA                           0                                         NA                  NA                                 NA               0                  NA             0            0                           NA                  0                   0                                            NA                              0                         0                                 NA                    NA                      NA                                   NA                                  NA
+IndelSummary  dbsnp             evalBI            known      3178                 0         0                   0                                0                           NA                           0                                         NA                  NA                                 NA               0                  NA             0            0                           NA                  0                   0                                            NA                              0                         0                                 NA                    NA                      NA                                   NA                                  NA
+IndelSummary  dbsnp             evalBI            novel     22125                 0         0                   0                                0                           NA                           0                                         NA                  NA                                 NA               0                  NA             0            0                           NA                  0                   0                                            NA                              0                         0                                 NA                    NA                      NA                                   NA                                  NA
+
+#:GATKTable:12:3:%s:%s:%s:%s:%.2f:%d:%d:%d:%d:%s:%.2f:%.2f:;
+#:GATKTable:MetricsCollection:Metrics Collection
+MetricsCollection  CompFeatureInput  EvalFeatureInput  Novelty  concordantRate  nSNPs  nSNPloci  nIndels  nIndelLoci  indelRatio  indelRatioLociBased  tiTvRatio
+MetricsCollection  dbsnp             evalBI            all               99.97  25303     25303        0           0          NA                 0.00       2.16
+MetricsCollection  dbsnp             evalBI            known             99.97   3178      3178        0           0          NA                 0.00       2.04
+MetricsCollection  dbsnp             evalBI            novel              0.00  22125     22125        0           0          NA                 0.00       2.18
+
+#:GATKTable:19:3:%s:%s:%s:%s:%d:%d:%d:%.5f:%.3f:%d:%d:%.5f:%.3f:%d:%d:%.2f:%d:%d:%s:;
+#:GATKTable:MultiallelicSummary:Evaluation summary for multi-allelic variants
+MultiallelicSummary  CompFeatureInput  EvalFeatureInput  Novelty  nProcessedLoci  nSNPs  nMultiSNPs  processedMultiSnpRatio  variantMultiSnpRatio  nIndels  nMultiIndels  processedMultiIndelRatio  variantMultiIndelRatio  nTi  nTv  TiTvRatio  knownSNPsPartial  knownSNPsComplete  SNPNoveltyRate
+MultiallelicSummary  dbsnp             evalBI            all            63025520  25303           0                 0.00000                 0.000        0             0                   0.00000                     NaN    0    0        NaN                 0                  0              NA
+MultiallelicSummary  dbsnp             evalBI            known          63025520   3178           0                 0.00000                 0.000        0             0                   0.00000                     NaN    0    0        NaN                 0                  0              NA
+MultiallelicSummary  dbsnp             evalBI            novel          63025520  22125           0                 0.00000                 0.000        0             0                   0.00000                     NaN    0    0        NaN                 0                  0              NA
+
+#:GATKTable:13:3:%s:%s:%s:%s:%d:%d:%.2f:%d:%d:%.2f:%d:%d:%.2f:;
+#:GATKTable:TiTvVariantEvaluator:Ti/Tv Variant Evaluator
+TiTvVariantEvaluator  CompFeatureInput  EvalFeatureInput  Novelty  nTi    nTv   tiTvRatio  nTiInComp  nTvInComp  TiTvRatioStandard  nTiDerived  nTvDerived  tiTvDerivedRatio
+TiTvVariantEvaluator  dbsnp             evalBI            all      17294  8009       2.16       3357       1638               2.05           0           0              0.00
+TiTvVariantEvaluator  dbsnp             evalBI            known     2131  1047       2.04       2122       1032               2.06           0           0              0.00
+TiTvVariantEvaluator  dbsnp             evalBI            novel    15163  6962       2.18       1235        606               2.04           0           0              0.00
+
+#:GATKTable:23:3:%s:%s:%s:%s:%d:%d:%d:%d:%d:%.2f:%.2f:%.2f:%.2f:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:;
+#:GATKTable:ValidationReport:Assess site accuracy and sensitivity of callset against follow-up validation assay
+ValidationReport  CompFeatureInput  EvalFeatureInput  Novelty  nComp  TP    FP  FN    TN  sensitivity  specificity  PPV     FDR   CompMonoEvalNoCall  CompMonoEvalFiltered  CompMonoEvalMono  CompMonoEvalPoly  CompPolyEvalNoCall  CompPolyEvalFiltered  CompPolyEvalMono  CompPolyEvalPoly  CompFiltered  nDifferentAlleleSites
+ValidationReport  dbsnp             evalBI            all       5657  3178   0  2479   0        56.18       100.00  100.00  0.00                   0                     0                 0                 0                2479                     0                 0              3178             0                      0
+ValidationReport  dbsnp             evalBI            known     3196  3178   0    18   0        99.44       100.00  100.00  0.00                   0                     0                 0                 0                  18                     0                 0              3178             0                      0
+ValidationReport  dbsnp             evalBI            novel     2461     0   0  2461   0         0.00       100.00     NaN   NaN                   0                     0                 0                 0                2461                     0                 0                 0             0                      0
+
+#:GATKTable:19:3:%s:%s:%s:%s:%d:%d:%d:%.2f:%s:%d:%.2f:%.1f:%d:%s:%d:%.1f:%d:%s:%d:;
+#:GATKTable:VariantSummary:1000 Genomes Phase I summary of variants table
+VariantSummary  CompFeatureInput  EvalFeatureInput  Novelty  nSamples  nProcessedLoci  nSNPs  TiTvRatio  SNPNoveltyRate  nSNPsPerSample  TiTvRatioPerSample  SNPDPPerSample  nIndels  IndelNoveltyRate  nIndelsPerSample  IndelDPPerSample  nSVs  SVNoveltyRate  nSVsPerSample
+VariantSummary  dbsnp             evalBI            all             0        63025520  25303       2.16           87.44               0                0.00             0.0        0                NA                 0               0.0     0             NA              0
+VariantSummary  dbsnp             evalBI            known           0        63025520   3178       2.04            0.00               0                0.00             0.0        0                NA                 0               0.0     0             NA              0
+VariantSummary  dbsnp             evalBI            novel           0        63025520  22125       2.18          100.00               0                0.00             0.0        0                NA                 0               0.0     0             NA              0
+

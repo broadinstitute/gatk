@@ -1,0 +1,6 @@
+#:GATKReport.v1.1:1
+#:GATKTable:18:1:%s:%s:%s:%d:%d:%d:%.2f:%s:%d:%.2f:%.1f:%d:%s:%d:%.1f:%d:%s:%d:;
+#:GATKTable:VariantSummary:1000 Genomes Phase I summary of variants table
+VariantSummary  CompFeatureInput  EvalFeatureInput  nSamples  nProcessedLoci  nSNPs  TiTvRatio  SNPNoveltyRate  nSNPsPerSample  TiTvRatioPerSample  SNPDPPerSample  nIndels  IndelNoveltyRate  nIndelsPerSample  IndelDPPerSample  nSVs  SVNoveltyRate  nSVsPerSample
+VariantSummary  none              eval                  1092               1      0       0.00              NA               0                0.00             0.0        0                NA                 0               0.0     0             NA              0
+

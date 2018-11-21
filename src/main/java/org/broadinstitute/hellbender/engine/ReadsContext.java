@@ -64,6 +64,15 @@ public final class ReadsContext implements Iterable<GATKRead> {
     }
 
     /**
+     * Create a ReadsContext using the data source from the provided ReadsContext, with the supplied
+     * interval.
+     *
+     */
+    public ReadsContext (ReadsContext readsContext, SimpleInterval interval){
+        this(readsContext.dataSource, interval, readsContext.readFilter);
+    }
+
+    /**
      * Does this context have a backing source of reads data?
      *
      * @return true if there is a backing ReadsDataSource, otherwise false
@@ -109,5 +118,4 @@ public final class ReadsContext implements Iterable<GATKRead> {
                 dataSource.query(interval) :
                 new ReadFilteringIterator(dataSource.query(interval), readFilter);
     }
-
 }
