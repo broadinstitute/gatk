@@ -591,7 +591,7 @@ class ModeledSegmentsCaller:
                  min_fraction_of_points_in_normal_allele_fraction_region: float=0.15,
                  responsibility_threshold_normal: float=0.5,
                  max_phred_score_normal: float=100.,
-                 n_inference_iterations: int=30000,
+                 n_inference_iterations: int=120000,
                  inference_total_grad_norm_constraint: float=50.,
                  n_extra_Gaussians_mixture_model: int=12,
                  max_n_peaks_in_copy_ratio: int=10
@@ -960,7 +960,7 @@ class ModeledSegmentsCaller:
         n_extra_Gaussians = self.__n_extra_Gaussians_mixture_model
         n_Gaussians += n_extra_Gaussians
         pi_init = np.append(pi_init, [0.02] * n_extra_Gaussians)
-        mu_init = np.append(mu_estimates, [[np.random.uniform(0,2), np.random.uniform(0,0.5)]
+        mu_init = np.append(mu_estimates, [[np.random.uniform(0,3), np.random.uniform(0,0.5)]
                                            for _ in range(n_extra_Gaussians)])
         pi_init = pi_init / np.sum(pi_init)
         epsilon = 1e-9
@@ -990,7 +990,7 @@ class ModeledSegmentsCaller:
                             shape=(2,))
                    for i in range(n_Gaussians)]
             std_dev_data = max([0.1, np.std(data_points)])
-            taus =  [tt.nlinalg.alloc_diag([pm.Gamma('tau_%d_%d' % (i, j), mu=1/0.002, sd=1/0.002, testval=1/0.002)
+            taus =  [tt.nlinalg.alloc_diag([pm.Gamma('tau_%d_%d' % (i, j), mu=1/0.0005, sd=1/0.0005, testval=1/0.0005)
                                             for j in range(data_dim)])
                      for i in range(n_Gaussians)]
             pis = Dirichlet('pis', a=pm.floatX(1000*np.ones(n_Gaussians)),
