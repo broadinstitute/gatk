@@ -1,0 +1,51 @@
+##fileformat=VCFv4.1
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth (only filtered reads used for calling)">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##INFO=<ID=AB,Number=1,Type=Float,Description="Allele Balance for hets (ref/(ref+alt))">
+##INFO=<ID=AC,Number=1,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
+##INFO=<ID=AF,Number=1,Type=Float,Description="Allele Frequency">
+##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">
+##INFO=<ID=DB,Number=1,Type=Integer,Description="dbSNP membership">
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Total Depth">
+##INFO=<ID=Dels,Number=1,Type=Float,Description="Fraction of Reads Containing Spanning Deletions">
+##INFO=<ID=HRun,Number=1,Type=Integer,Description="Largest Contiguous Homopolymer Run of Variant Allele In Either Direction">
+##INFO=<ID=MQ,Number=1,Type=Float,Description="RMS Mapping Quality">
+##INFO=<ID=MQ0,Number=1,Type=Integer,Description="Total Mapping Quality Zero Reads">
+##INFO=<ID=QD,Number=1,Type=Float,Description="Variant Confidence/Quality by Depth">
+##INFO=<ID=SB,Number=1,Type=Float,Description="Strand Bias">
+##UG_assume_single_sample_reads=null
+##UG_base_model=EMPIRICAL
+##UG_genotype=false
+##UG_genotype_model=JOINT_ESTIMATE
+##UG_heterozygosity=0.0010
+##UG_include_experimental_annotations=false
+##UG_max_deletion_fraction=0.05
+##UG_max_mismatches_in_40bp_window=3
+##UG_min_base_quality_score=10
+##UG_min_confidence_threshold=50.0
+##UG_min_mapping_quality_score=10
+##UG_noSLOD=false
+##UG_output_all_callable_bases=false
+##UG_platform=SOLID
+##UG_poolSize=0
+##UG_use_reads_with_bad_mates=false
+##VariantsToVCF="analysis_type=VariantsToVCF input_file=[] read_buffer_size=null phone_home=STANDARD gatk_key=null read_filter=[] intervals=null excludeIntervals=null interval_set_rule=UNION interval_merging=ALL reference_sequence=/Users/depristo/Desktop/broadLocal/localData/human_b36_both.fasta nonDeterministicRandomSeed=false downsampling_type=BY_SAMPLE downsample_to_fraction=null downsample_to_coverage=1000 baq=OFF baqGapOpenPenalty=40.0 performanceLog=null useOriginalQualities=false BQSR=null quantize_quals=-1 defaultBaseQualities=-1 validation_strictness=SILENT unsafe=null num_threads=1 num_cpu_threads=null num_io_threads=null num_bam_file_handles=null read_group_black_list=null pedigree=[] pedigreeString=[] pedigreeValidationType=STRICT allow_intervals_with_unindexed_bam=false generateShadowBCF=false useSlowGenotypes=false repairVCFHeader=null logging_level=INFO log_to_file=null help=false out=org.broadinstitute.sting.gatk.io.stubs.VariantContextWriterStub no_cmdline_in_header=org.broadinstitute.sting.gatk.io.stubs.VariantContextWriterStub sites_only=org.broadinstitute.sting.gatk.io.stubs.VariantContextWriterStub variant=(RodBinding name=variant source=3.3.vcf) dbsnp=(RodBinding name= source=UNBOUND) sample=null fixRef=false filter_mismatching_base_and_quals=false"
+##reference=file:///Users/depristo/Desktop/broadLocal/localData/human_b36_both.fasta
+##source=UnifiedGenotyper
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA19238	NA19239	NA19240
+1	241	.	T	A	93.16	.	AB=0.82;AC=1;AF=0.17;AN=6;DP=1092;Dels=0.00;HRun=2;MQ=42.08;MQ0=759;QD=0.39;SB=-90.62	GT:DP:GQ	1/0:.:99	0/0:.:99	0/0:.:30
+1	327	.	T	C	666.18	.	AB=0.74;AC=3;AF=0.50;AN=6;DP=936;Dels=0.00;HRun=3;MQ=34.66;MQ0=728;QD=0.71;SB=-268.74	GT:DP:GQ	1/0:.:63	1/0:.:99	1/0:.:99
+1	463	.	A	C	60.79	.	AB=0.97;AC=1;AF=0.17;AN=6;DP=571;Dels=0.00;HRun=0;MQ=56.66;MQ0=480;QD=0.23;SB=-66.13	GT:DP:GQ	0/0:.:37	0/0:.:1	0/1:.:93
+1	469	.	C	G	439	.	AB=0.66;AC=2;AF=0.33;AN=6;DP=120;Dels=0.00;HRun=1;MQ=136.52;MQ0=19;QD=4.18;SB=-201.52	GT:DP:GQ	0/1:.:99	0/0:.:15	0/1:.:99
+1	492	rs55998931	C	T	55.01	.	AB=0.79;AC=2;AF=0.33;AN=6;DB=1;DP=97;Dels=0.00;HRun=0;MQ=128.37;MQ0=4;QD=1.83;SB=-55.42	GT:DP:GQ	0/1:.:56	0/1:.:36	0/0:.:99
+1	603	.	G	A	182.34	.	AB=0.80;AC=2;AF=0.33;AN=6;DP=97;Dels=0.00;HRun=1;MQ=74.14;MQ0=42;QD=2.40;SB=-27.00	GT:DP:GQ	1/0:.:40	0/0:.:6	1/0:.:99
+1	4770	rs6682375	A	G	301.23	.	AB=0.64;AC=4;AF=0.67;AN=6;DB=1;DP=186;Dels=0.00;HRun=1;MQ=30.01;MQ0=130;QD=1.62;SB=-142.86	GT:DP:GQ	1/1:.:10	0/1:.:99	0/1:.:99
+1	4793	rs6682385	A	G	1687.16	.	AB=0.54;AC=3;AF=0.50;AN=6;DB=1;DP=242;Dels=0.00;HRun=0;MQ=77.94;MQ0=43;QD=6.97;SB=-891.19	GT:DP:GQ	0/1:.:5	0/1:.:99	0/1:.:99
+1	6120	rs11489794	G	C	67.12	.	AB=0.89;AC=1;AF=0.17;AN=6;DB=1;DP=381;Dels=0.00;HRun=0;MQ=87.38;MQ0=91;QD=0.35;SB=-46.61	GT:DP:GQ	0/0:.:7	0/0:.:21	1/0:.:99
+1	6358	rs3210724	G	C	161.57	.	AB=0.77;AC=3;AF=0.50;AN=6;DB=1;DP=172;Dels=0.00;HRun=0;MQ=28.74;MQ0=146;QD=0.94;SB=-114.42	GT:DP:GQ	1/0:.:49	1/0:.:25	1/0:.:93
+1	9117	rs11525710	G	C	118.91	.	AB=0.88;AC=2;AF=0.33;AN=6;DB=1;DP=238;Dels=0.00;HRun=0;MQ=34.51;MQ0=158;QD=1.05;SB=-30.35	GT:DP:GQ	1/0:.:24	1/0:.:99	0/0:.:87
+1	9992	rs12354148	C	T	204.73	.	AB=0.85;AC=2;AF=0.33;AN=6;DB=1;DP=416;Dels=0.00;HRun=0;MQ=86.33;MQ0=75;QD=1.07;SB=-64.25	GT:DP:GQ	0/1:.:74	0/1:.:99	0/0:.:99
+1	9993	rs7354882	G	A	494.64	.	AB=0.86;AC=2;AF=0.33;AN=6;DB=1;DP=414;Dels=0.00;HRun=0;MQ=86.54;MQ0=73;QD=1.69;SB=-92.13	GT:DP:GQ	1/0:.:99	0/0:.:99	1/0:.:99
+1	18239	rs11489791	G	A	123.67	.	AC=6;AF=1.00;AN=6;DB=1;DP=128;Dels=0.00;HRun=1;MQ=4.20;MQ0=123;QD=0.97;SB=-30.00	GT:DP:GQ	1/1:.:3	1/1:.:9	1/1:.:3
+1	20748	.	T	C	131.72	.	AB=0.84;AC=2;AF=0.33;AN=6;DP=168;Dels=0.00;HRun=1;MQ=30.37;MQ0=101;QD=1.02;SB=-82.00	GT:DP:GQ	0/0:.:27	1/0:.:37	1/0:.:99

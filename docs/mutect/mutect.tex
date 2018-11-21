@@ -336,29 +336,31 @@ and obtain the estimate
 \begin{align}
 \hat{\chi} \approx \frac{N_{\rm ref} - N_{\rm ref}^{\rm error}}{\sum_{s \in \mathbb{H}} d_s (1 - f_s)} \label{contamination_estimate}
 \end{align}
-Let us now roughly estimate the error bars on this result.  Under normal conditions sequencing error is rare, so we will estimate the variance due to the sampling error of the number of contaminating ref reads.  As discussed above, the probability of a read at site $s$ being a contaminating ref is $\chi (1 - f_s)$, so the quantity in the numerator of Eq. \ref{contamination_estimate} is distributed as $\sum_s {\rm Binom}(d_s, \chi (1 - f_s)$ and therefore has variance
-\begin{equation}
-\rm(var)(N_{\rm ref} - N_{\rm ref}^{\rm error}) = \sum_s d_s \chi (1 - f_s) \left( 1 - \chi (1 - f_s) \right) < \chi \sum_s d_s  (1 - f_s)
-\end{equation}
-And thus the variance of Eq. \ref{contamination_estimate} is bounded as
-\begin{equation}
-{\rm var}(\hat{\chi}) < \frac{ \chi \sum_s d_s  (1 - f_s) }{ \left( \sum_{s \in \mathbb{H}} d_s (1 - f_s) \right)^2} = \frac{ \chi }{  \sum_{s \in \mathbb{H}} d_s (1 - f_s) },
-\end{equation}
-which gives the following bound for the standard deviation:
-\begin{equation}
-{\rm std}(\hat{\chi}) < \left[ \frac{ \chi }{  \sum_{s \in \mathbb{H}} d_s (1 - f_s) } \right]^{1/2} < \left[ \frac{ \chi }{  \sum_{s \in \mathbb{H}} d_s} \right]^{1/2}
-\end{equation}
-This standard deviation is quite small.  For example, in an exome with 1000 hom alt sites (as is typical) and an average depth of 30 reads, a true contamination of 0.05 is estimated with an error of 0.0013.
-
-It remains to describe how we determine which sites are hom alt.  The fundamental challenge here is that in cancer samples loss of heterozygosity may cause het sites to look like hom alt sites.  Our strategy is to partition the genome into allelic copy-number segments, then infer the minor allele fraction of those segments.  We segment the genome just as in GATK CNV, using a kernel segmenter with a Gaussian kernel computed on the alt fraction.  A nonlinear kernel is important because each segment is multimodal, with peaks for hom ref, alt minor het, alt major het, and hom alt.  In practice we remove most hom refs heuristically by filtering sites with alt fraction below some small constant in order to enrich the meaningful signal, which are the alt minor and alt major hets.  We infer the minor allele fraction of each segment by heuristically assigning its hets to be those sites with allele fraction between 0.2 and 0.8 and then maximizing the following likelihood by brute force, that is, by plugging in different values of the minor allele fraction:
-\begin{equation}
-\prod_{{\rm hets~}s} \frac{1}{2} \left[ {\rm Binom}(a_s | d_s, f) + {\rm Binom}(a_s | d_s, 1 - f)    \right] \label{het-maf}
-\end{equation}
-where $a_s$ and $d_s$ are the alt and total counts at site $s$ and $f$ is the minor allele fraction.  This approach might seem to break down in the case of loss of heterozygosity when many hets are outside of the heuristic range, but if this happens the likelihood will be maximized at the end of the range and we will still detect loss of heterozygosity.  Also, due to contamination the true distributions are overdispersed relative to a pure binomial.  However, the important thing is inferring $f$ and not obtaining a perfect model fit.  Overdispersion worsens the fit but does not significantly affect the estimate of $f$.
-
-Once the minor allele fraction is determined we compare the posterior probabilities of hom alt and het.  For hets we use the above likelihood, Equation \ref{het-maf}, with a prior of $2 q (1 - q)$, where $q$ is the population allele frequency.  For hom alts we use a binomial likelihood ${\rm Binom}(a_s | d_s, 1 - \alpha)$, where $\alpha$ is the contamination, and a prior of $q^2$.  These priors are not normalized since at this point we have thrown away obvious hom ref sites, but only their ratio matters.  The fact that this likelihood requires the contamination means that after initializing with some guess for the contamination we iterate the entire procedure described above\footnote{This excludes segmentation, which is independent.} to obtain successive estimates of the contamination.  These likelihoods are crude, as they must be because we do not know how many contaminant samples there are, or what their copy numbers are at each site.  This generally doesn't matter because for most segments hom alts are easily distinguished from hets.  Since low minor allele fractions can lead to confusion, we only use hom alt sites from segments with minor allele fraction as close to 1/2 as possible.  Specifically, we use the largest cutoff of minor allele fraction that gives us at least 100 hom alt sites.
 
 
+Let us now roughly estimate the error bars on this result.  The main source of randomness is the stochasticity in the number of contaminating ref reads.  Although the nature of this randomness depends on the number of contaminants, the most variable case, hence an upper bound, is that of a single haploid contaminant, since at each site the only possibilities are the extremes of all contaminant reads being ref or all being alt.  In this case, the contribution to the numerator of Eq. \ref{contamination_estimate} from site $s$ is the random variable $X_sZ_s$, where $X_s \sim {\rm Binom(d_s, \chi)}$ is the number of contaminant reads at $s$ and $Z_s$ is a binary indicator for whether the contaminant reads are ref, with $P(Z_s=1) = 1 - f_s$.  $X$ and $Z$ are independent, so we can work out the variance of $XZ$ as:
+\begin{align}
+{\rm var}(XZ) =& E[X^2Z^2] - E[XZ]^2 \\
+=& (1 - f_s) E[X^2] - (1-f_s)^2 E[X]^2 \\
+=& (1 - f_s) \left( {\rm var}(X) + E[X]^2 \right) - (1 - f_s)^2E[X]^2 \\
+=& (1 - f_s) d_s \chi(1 - \chi) + f_s(1 - f_s) d_s^2 \chi^2
+\end{align}
+And therefore the standard error on $\hat{\chi}$ comes out to the square root of the sum of these per-site variances, divided by the denominator of Eq. \ref{contamination_estimate}, that is,
+\begin{equation}
+{\rm std}(\hat \chi) = \frac{\sqrt{  \sum_s \left[ (1 - f_s) d_s \hat{\chi}(1 - \hat{\chi}) + f_s(1 - f_s) d_s^2 \hat{\chi}^2  \right] }}{\sum_s d_s (1 - f_s) }
+\end{equation}
+
+It remains to describe how we determine which sites are hom alt.  The fundamental challenge here is that in cancer samples loss of heterozygosity may cause het sites to look like hom alt sites.  Our strategy is to partition the genome into allelic copy-number segments, then infer the minor allele fraction of those segments.  We segment the genome just as in GATK CNV, using a kernel segmenter with a Gaussian kernel computed on the alt fraction.  A nonlinear kernel is important because each segment is multimodal, with peaks for hom ref, alt minor het, alt major het, and hom alt.  
+
+We then perform maximum likelihood estimation MLE on a model with learned parameters $\mu$, the local minor allele fraction for each segment, $\chi$, the contamination, and a constant base error rate parameter $\epsilon$ determined by counting reads that are neither the ref nor primary alt base at biallelic SNPs as described above.  The model likelihood is
+\begin{equation}
+P(\{ a\}| \{f\}, \chi, \{d\}) =    \prod_{{\rm segments~}n}\prod_{{\rm sites~}s} \sum_{{\rm genotype~}g} P(g|f_s) {\rm Binom}(a_s | d_s, (1 - \chi) \phi(g, \mu_n, \epsilon) + \chi f_s)
+\end{equation}
+where $a_s$ and $d_s$ are the alt and total read counts at site $s$, allelic CNV genotypes $g$ run over hom ref, alt minor, alt major, and hom alt with priors $P({\rm hom~ref}) = (1-f_s)^2$, $P({\rm alt~minor}) = P({\rm alt~major}) = f_s(1-f_s)$, and $P({\rm hom alt} = f^2$.  $\phi(g, \mu, \epsilon)$ is the alt allele fraction of the uncontaminated sample: $\phi({\rm hom~ref}) = \epsilon$, $\phi({\rm alt~minor}) = \mu$, $\phi({\rm alt~major}) = 1 - \mu$, $\phi({\rm hom~alt}) = 1 - \epsilon$.  The binomial is the weighted average of the uncontaminated sample and sample reads drawn independently from allele frequency $f$.  This is inconsistent with a single diploid contaminant sample, or indeed with any finite number of contaminants, which is why we do not the the MLE estimate in the final output of the tool.  The model also assumes that the uncontaminated and contaminating samples have the same overall depth distribution at each site, which is inconsistent with any differences in copy-number.  We perform the MLE by brute force, alternately maximizing with respect to $\chi$ with $\mu$ fixed and vice versa.  In order to make the solution more robust, we exclude segments with low $\mu$ from the maximization over $\chi$ by taking the highest possible threshold (up to 0.5, of course) for $\mu$ that retains at least $1/4$ of all sites.
+
+Once we have learned the parameters of this model, we can easily infer the posterior probabilities of hom alt genotypes.  We take every site with a posterior probability greater than 0.5.  In order to make the result more reliable against CNVs, we again impose a threshold on segment minor allele fraction and apply the above formula only to hom alt sites in these segments.  This time, however, we choose the highest possible threshold such that the estimated relative error is less than 0.2.
+
+Finally, we note that the same calculation can be reversed by using alt reads in hom ref sites as the signal and replacing $f$ by $1-f$ everywhere above.  We use the estimate from hom refs as a backup when the hom alt estimate has too great an error, as can occur in the case of targeted panels with few sites.  We do not use this as our primary estimate because it is much more affected by uncertainty in the population allele frequencies and is thus susceptible to systematic bias.
 
 \section{Proposed tumor in normal estimation tool}
 
@@ -452,7 +454,7 @@ where $\alpha_k$ and $\beta_k$ are fixed hyperparameters for genotype $z_k$. Whe
 \begin{equation}
 P(c_i | m_i, z_{ik} = 1) = \mathrm{BetaBinomial}( c_i | m_i, \alpha'_k, \beta'_k)
 \end{equation}
-We learn the prior artifact probabilities $\vpi$ based on the observed values of $n_i$, $m_i$, $c_i$ for each of $N$ loci using the EM algorithm. In the E-step, we compute the posterior probabilities of $\vz_i$ for $i = 1 ... N$. The joint probabilities of $\vz$ factorizes over $i$, thus the the posteriors over $\vz$ are independent across loci. 
+We learn the prior artifact probabilities $\vpi$ based on the observed values of $n_i$, $m_i$, $c_i$ for each of $N$ loci using the EM algorithm. In the E-step, we compute the posterior probabilities of $\vz_i$ for $i = 1 ... N$. The joint probabilities of $\vz$ factorizes over $i$, thus the posteriors over $\vz$ are independent across loci. 
 \begin{equation}
 P(z_{ik} = 1 | m_i, c_i) \propto P(z_{ik} = 1, m_i, c_i) = \pi_{k} \mathrm{BetaBinomial}(m_i | n_i, \alpha_k, \beta_k)  \mathrm{BetaBinomial}( c_i | m_i, \alpha'_k, \beta'_k)
 \end{equation}

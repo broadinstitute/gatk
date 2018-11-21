@@ -25,8 +25,8 @@ public final class ReadsContextUnitTest extends GATKBaseTest {
         // should behave as empty context objects.
         return new Object[][] {
                 { new ReadsContext() },
-                { new ReadsContext(null, null) },
-                { new ReadsContext(null, new SimpleInterval("1", 1, 1) ) },
+                { new ReadsContext(null, null, null) },
+                { new ReadsContext(null, new SimpleInterval("1", 1, 1), null ) },
                 { new ReadsContext(new ReadsDataSource(IOUtils.getPath(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam")), null) }
         };
     }

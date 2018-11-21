@@ -67,7 +67,7 @@ public class HaplotypeCallerEngineUnitTest extends GATKBaseTest {
                 final SimpleInterval pileupInterval = new SimpleInterval(pileup.getLocation());
                 final ReferenceContext pileupRefContext = new ReferenceContext(ref, pileupInterval);
 
-                final ActivityProfileState isActiveResult = hcEngine.isActive(pileup, pileupRefContext, new FeatureContext(null, pileupInterval));
+                final ActivityProfileState isActiveResult = hcEngine.isActive(pileup, pileupRefContext, new FeatureContext((FeatureManager)null, pileupInterval));
 
                 final double expectedIsActiveValue = expectedActiveSites.contains(pileupInterval) ? 1.0 : 0.0;
                 Assert.assertEquals(isActiveResult.isActiveProb(), expectedIsActiveValue, "Wrong isActive probability for site " + pileupInterval);

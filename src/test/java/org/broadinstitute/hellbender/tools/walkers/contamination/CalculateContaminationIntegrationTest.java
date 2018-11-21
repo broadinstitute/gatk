@@ -27,8 +27,16 @@ public class CalculateContaminationIntegrationTest extends CommandLineProgramTes
     public static final File NA12891_8_PCT_NA12892_92_PCT = new File(SPIKEIN_DATA_DIRECTORY, "NA12891_0.08_NA12892_0.92.table");
     public static final double BASELINE_CONTAMINATION_OF_NA12892 = 0.001;
 
-    @Test
-    public void testArtificialData() {
+    @DataProvider(name = "includeHomAlts")
+    public Object[][] includeHomAlts() {
+        return new Object[][]{
+                {true},
+                {false}
+        };
+    }
+
+    @Test(dataProvider = "includeHomAlts")
+    public void testArtificialData(final boolean includeHomAlts) {
         final RandomGenerator randomGenerator = RandomGeneratorFactory.createRandomGenerator(new Random(111));
 
         final String contig = "chr1";
@@ -58,7 +66,7 @@ public class CalculateContaminationIntegrationTest extends CommandLineProgramTes
             int totalAltCount = contaminantAltCount;
 
             final double hetProbability = 2 * alleleFrequency * (1 - alleleFrequency);
-            final double homAltProbability = alleleFrequency * alleleFrequency;
+            final double homAltProbability = includeHomAlts ? alleleFrequency * alleleFrequency : 0;
             final double x = randomGenerator.nextDouble();
             if (x < hetProbability) {    // het
                 //draw alt allele fractions from mixture of binomials centered at maf and 1 - maf

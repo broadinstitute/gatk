@@ -1,0 +1,121 @@
+#:GATKReport.v1.1:9
+#:GATKTable:11:3:%s:%s:%s:%s:%s:%d:%d:%d:%.2f:%d:%.2f:;
+#:GATKTable:CompOverlap:The overlap between eval and comp sites
+CompOverlap  CompFeatureInput  EvalFeatureInput  JexlExpression  Novelty  nEvalVariants  novelSites  nVariantsAtComp  compRate  nConcordant  concordantRate
+CompOverlap  dbsnp             eval              none            all              18237       18147               90      0.49           82           91.11
+CompOverlap  dbsnp             eval              none            known               90           0               90    100.00           82           91.11
+CompOverlap  dbsnp             eval              none            novel            18147       18147                0      0.00            0            0.00
+
+#:GATKTable:30:3:%s:%s:%s:%s:%s:%d:%d:%d:%d:%.8f:%.8f:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%.2e:%.2f:%.2f:%.2e:%.2f:%.2f:;
+#:GATKTable:CountVariants:Counts different classes of variants in the sample
+CountVariants  CompFeatureInput  EvalFeatureInput  JexlExpression  Novelty  nProcessedLoci  nCalledLoci  nRefLoci  nVariantLoci  variantRate  variantRatePerBp  nSNPs  nMNPs  nInsertions  nDeletions  nComplex  nSymbolic  nMixed  nNoCalls  nHets  nHomRef  nHomVar  nSingletons  nHomDerived  heterozygosity  heterozygosityPerBp  hetHomRatio  indelRate  indelRatePerBp  insertionDeletionRatio
+CountVariants  dbsnp             eval              none            all            63025520        18237         0         18237   0.00028936     3455.00000000      0      0         8994        9243         0          0       0         0  12309        0     5928            0            0        1.95e-04              5120.00         2.08   2.89e-04         3455.00                    0.97
+CountVariants  dbsnp             eval              none            known          63025520           90         0            90   0.00000143   700283.00000000      0      0           41          49         0          0       0         0     63        0       27            0            0        1.00e-06           1000405.00         2.33   1.43e-06       700283.00                    0.84
+CountVariants  dbsnp             eval              none            novel          63025520        18147         0         18147   0.00028793     3473.00000000      0      0         8953        9194         0          0       0         0  12246        0     5901            0            0        1.94e-04              5146.00         2.08   2.88e-04         3473.00                    0.97
+
+#:GATKTable:7:60:%s:%s:%s:%s:%s:%d:%.2f:;
+#:GATKTable:IndelLengthHistogram:Indel length histogram
+IndelLengthHistogram  CompFeatureInput  EvalFeatureInput  JexlExpression  Novelty  Length  Freq
+IndelLengthHistogram  dbsnp             eval              none            all         -10  0.01
+IndelLengthHistogram  dbsnp             eval              none            all          -9  0.00
+IndelLengthHistogram  dbsnp             eval              none            all          -8  0.01
+IndelLengthHistogram  dbsnp             eval              none            all          -7  0.01
+IndelLengthHistogram  dbsnp             eval              none            all          -6  0.02
+IndelLengthHistogram  dbsnp             eval              none            all          -5  0.01
+IndelLengthHistogram  dbsnp             eval              none            all          -4  0.05
+IndelLengthHistogram  dbsnp             eval              none            all          -3  0.04
+IndelLengthHistogram  dbsnp             eval              none            all          -2  0.10
+IndelLengthHistogram  dbsnp             eval              none            all          -1  0.25
+IndelLengthHistogram  dbsnp             eval              none            all           1  0.28
+IndelLengthHistogram  dbsnp             eval              none            all           2  0.09
+IndelLengthHistogram  dbsnp             eval              none            all           3  0.04
+IndelLengthHistogram  dbsnp             eval              none            all           4  0.05
+IndelLengthHistogram  dbsnp             eval              none            all           5  0.01
+IndelLengthHistogram  dbsnp             eval              none            all           6  0.01
+IndelLengthHistogram  dbsnp             eval              none            all           7  0.00
+IndelLengthHistogram  dbsnp             eval              none            all           8  0.01
+IndelLengthHistogram  dbsnp             eval              none            all           9  0.00
+IndelLengthHistogram  dbsnp             eval              none            all          10  0.01
+IndelLengthHistogram  dbsnp             eval              none            known       -10  0.05
+IndelLengthHistogram  dbsnp             eval              none            known        -9  0.01
+IndelLengthHistogram  dbsnp             eval              none            known        -8  0.01
+IndelLengthHistogram  dbsnp             eval              none            known        -7  0.02
+IndelLengthHistogram  dbsnp             eval              none            known        -6  0.02
+IndelLengthHistogram  dbsnp             eval              none            known        -5  0.00
+IndelLengthHistogram  dbsnp             eval              none            known        -4  0.05
+IndelLengthHistogram  dbsnp             eval              none            known        -3  0.00
+IndelLengthHistogram  dbsnp             eval              none            known        -2  0.07
+IndelLengthHistogram  dbsnp             eval              none            known        -1  0.29
+IndelLengthHistogram  dbsnp             eval              none            known         1  0.24
+IndelLengthHistogram  dbsnp             eval              none            known         2  0.12
+IndelLengthHistogram  dbsnp             eval              none            known         3  0.01
+IndelLengthHistogram  dbsnp             eval              none            known         4  0.03
+IndelLengthHistogram  dbsnp             eval              none            known         5  0.01
+IndelLengthHistogram  dbsnp             eval              none            known         6  0.01
+IndelLengthHistogram  dbsnp             eval              none            known         7  0.00
+IndelLengthHistogram  dbsnp             eval              none            known         8  0.03
+IndelLengthHistogram  dbsnp             eval              none            known         9  0.01
+IndelLengthHistogram  dbsnp             eval              none            known        10  0.00
+IndelLengthHistogram  dbsnp             eval              none            novel       -10  0.01
+IndelLengthHistogram  dbsnp             eval              none            novel        -9  0.00
+IndelLengthHistogram  dbsnp             eval              none            novel        -8  0.01
+IndelLengthHistogram  dbsnp             eval              none            novel        -7  0.01
+IndelLengthHistogram  dbsnp             eval              none            novel        -6  0.02
+IndelLengthHistogram  dbsnp             eval              none            novel        -5  0.01
+IndelLengthHistogram  dbsnp             eval              none            novel        -4  0.05
+IndelLengthHistogram  dbsnp             eval              none            novel        -3  0.04
+IndelLengthHistogram  dbsnp             eval              none            novel        -2  0.10
+IndelLengthHistogram  dbsnp             eval              none            novel        -1  0.25
+IndelLengthHistogram  dbsnp             eval              none            novel         1  0.28
+IndelLengthHistogram  dbsnp             eval              none            novel         2  0.09
+IndelLengthHistogram  dbsnp             eval              none            novel         3  0.04
+IndelLengthHistogram  dbsnp             eval              none            novel         4  0.05
+IndelLengthHistogram  dbsnp             eval              none            novel         5  0.01
+IndelLengthHistogram  dbsnp             eval              none            novel         6  0.01
+IndelLengthHistogram  dbsnp             eval              none            novel         7  0.00
+IndelLengthHistogram  dbsnp             eval              none            novel         8  0.01
+IndelLengthHistogram  dbsnp             eval              none            novel         9  0.00
+IndelLengthHistogram  dbsnp             eval              none            novel        10  0.01
+
+#:GATKTable:30:3:%s:%s:%s:%s:%s:%d:%d:%d:%d:%d:%s:%s:%s:%s:%s:%d:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:;
+#:GATKTable:IndelSummary:Evaluation summary for indels
+IndelSummary  CompFeatureInput  EvalFeatureInput  JexlExpression  Novelty  n_SNPs  n_singleton_SNPs  n_indels  n_singleton_indels  n_indels_matching_gold_standard  gold_standard_matching_rate  n_multiallelic_indel_sites  percent_of_sites_with_more_than_2_alleles  SNP_to_indel_ratio  SNP_to_indel_ratio_for_singletons  n_novel_indels  indel_novelty_rate  n_insertions  n_deletions  insertion_to_deletion_ratio  n_large_deletions  n_large_insertions  insertion_to_deletion_ratio_for_large_indels  n_coding_indels_frameshifting  n_coding_indels_in_frame  frameshift_rate_for_coding_indels  SNP_het_to_hom_ratio  indel_het_to_hom_ratio  ratio_of_1_and_2_to_3_bp_insertions  ratio_of_1_and_2_to_3_bp_deletions
+IndelSummary  dbsnp             eval              none            all           0                 0     18237               12309                                0                         0.00                           0                                       0.00                0.00                               0.00           18147               99.51          8994         9243                         0.97                616                 347                                          0.56                              0                         0                                 NA                    NA                    2.08                                10.09                                9.21
+IndelSummary  dbsnp             eval              none            known         0                 0        90                  63                                0                         0.00                           0                                       0.00                0.00                               0.00               0                0.00            41           49                         0.84                  4                   0                                          0.00                              0                         0                                 NA                    NA                    2.33                                31.00                                  NA
+IndelSummary  dbsnp             eval              none            novel         0                 0     18147               12246                                0                         0.00                           0                                       0.00                0.00                               0.00           18147              100.00          8953         9194                         0.97                612                 347                                          0.57                              0                         0                                 NA                    NA                    2.08                                10.06                                9.16
+
+#:GATKTable:13:3:%s:%s:%s:%s:%s:%.2f:%d:%d:%d:%d:%s:%.2f:%.2f:;
+#:GATKTable:MetricsCollection:Metrics Collection
+MetricsCollection  CompFeatureInput  EvalFeatureInput  JexlExpression  Novelty  concordantRate  nSNPs  nSNPloci  nIndels  nIndelLoci  indelRatio  indelRatioLociBased  tiTvRatio
+MetricsCollection  dbsnp             eval              none            all               91.11      0         0    18237       18237        0.97                 0.97       0.00
+MetricsCollection  dbsnp             eval              none            known             91.11      0         0       90          90        0.84                 0.84       0.00
+MetricsCollection  dbsnp             eval              none            novel              0.00      0         0    18147       18147        0.97                 0.97       0.00
+
+#:GATKTable:20:3:%s:%s:%s:%s:%s:%d:%d:%d:%.5f:%.3f:%d:%d:%.5f:%.3f:%d:%d:%.2f:%d:%d:%s:;
+#:GATKTable:MultiallelicSummary:Evaluation summary for multi-allelic variants
+MultiallelicSummary  CompFeatureInput  EvalFeatureInput  JexlExpression  Novelty  nProcessedLoci  nSNPs  nMultiSNPs  processedMultiSnpRatio  variantMultiSnpRatio  nIndels  nMultiIndels  processedMultiIndelRatio  variantMultiIndelRatio  nTi  nTv  TiTvRatio  knownSNPsPartial  knownSNPsComplete  SNPNoveltyRate
+MultiallelicSummary  dbsnp             eval              none            all            63025520      0           0                 0.00000                   NaN    18237             0                   0.00000                   0.000    0    0        NaN                 0                  0              NA
+MultiallelicSummary  dbsnp             eval              none            known          63025520      0           0                 0.00000                   NaN       90             0                   0.00000                   0.000    0    0        NaN                 0                  0              NA
+MultiallelicSummary  dbsnp             eval              none            novel          63025520      0           0                 0.00000                   NaN    18147             0                   0.00000                   0.000    0    0        NaN                 0                  0              NA
+
+#:GATKTable:14:3:%s:%s:%s:%s:%s:%d:%d:%.2f:%d:%d:%.2f:%d:%d:%.2f:;
+#:GATKTable:TiTvVariantEvaluator:Ti/Tv Variant Evaluator
+TiTvVariantEvaluator  CompFeatureInput  EvalFeatureInput  JexlExpression  Novelty  nTi  nTv  tiTvRatio  nTiInComp  nTvInComp  TiTvRatioStandard  nTiDerived  nTvDerived  tiTvDerivedRatio
+TiTvVariantEvaluator  dbsnp             eval              none            all        0    0       0.00       3357       1638               2.05           0           0              0.00
+TiTvVariantEvaluator  dbsnp             eval              none            known      0    0       0.00          5          7               0.71           0           0              0.00
+TiTvVariantEvaluator  dbsnp             eval              none            novel      0    0       0.00       3352       1631               2.06           0           0              0.00
+
+#:GATKTable:24:3:%s:%s:%s:%s:%s:%d:%d:%d:%d:%d:%.2f:%.2f:%.2f:%.2f:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:;
+#:GATKTable:ValidationReport:Assess site accuracy and sensitivity of callset against follow-up validation assay
+ValidationReport  CompFeatureInput  EvalFeatureInput  JexlExpression  Novelty  nComp  TP  FP  FN    TN  sensitivity  specificity  PPV     FDR   CompMonoEvalNoCall  CompMonoEvalFiltered  CompMonoEvalMono  CompMonoEvalPoly  CompPolyEvalNoCall  CompPolyEvalFiltered  CompPolyEvalMono  CompPolyEvalPoly  CompFiltered  nDifferentAlleleSites
+ValidationReport  dbsnp             eval              none            all       5582  90   0  5492   0         1.61       100.00  100.00  0.00                   0                     0                 0                 0                5492                     0                 0                90             0                      0
+ValidationReport  dbsnp             eval              none            known      103  90   0    13   0        87.38       100.00  100.00  0.00                   0                     0                 0                 0                  13                     0                 0                90             0                      0
+ValidationReport  dbsnp             eval              none            novel     5479   0   0  5479   0         0.00       100.00     NaN   NaN                   0                     0                 0                 0                5479                     0                 0                 0             0                      0
+
+#:GATKTable:20:3:%s:%s:%s:%s:%s:%d:%d:%d:%.2f:%s:%d:%.2f:%.1f:%d:%s:%d:%.1f:%d:%s:%d:;
+#:GATKTable:VariantSummary:1000 Genomes Phase I summary of variants table
+VariantSummary  CompFeatureInput  EvalFeatureInput  JexlExpression  Novelty  nSamples  nProcessedLoci  nSNPs  TiTvRatio  SNPNoveltyRate  nSNPsPerSample  TiTvRatioPerSample  SNPDPPerSample  nIndels  IndelNoveltyRate  nIndelsPerSample  IndelDPPerSample  nSVs  SVNoveltyRate  nSVsPerSample
+VariantSummary  dbsnp             eval              none            all             1        63025520      0       0.00              NA               0                0.00             0.0    18220             99.51             18220           18220.0    17         100.00             17
+VariantSummary  dbsnp             eval              none            known           1        63025520      0       0.00              NA               0                0.00             0.0       90              0.00                90              90.0     0             NA              0
+VariantSummary  dbsnp             eval              none            novel           1        63025520      0       0.00              NA               0                0.00             0.0    18130            100.00             18130           18130.0    17         100.00             17
+

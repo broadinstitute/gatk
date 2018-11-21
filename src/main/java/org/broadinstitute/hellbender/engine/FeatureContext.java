@@ -52,7 +52,7 @@ public class FeatureContext {
      * return an empty List.
      */
     public FeatureContext() {
-        this(null, null);
+        this((FeatureManager)null, null);
     }
 
     /**
@@ -66,6 +66,15 @@ public class FeatureContext {
     public FeatureContext(final FeatureManager featureManager, final SimpleInterval interval) {
         this.featureManager = featureManager;
         this.interval = interval;
+    }
+
+    /**
+     * Creates a new FeatureContext given a FeatureContext and a query interval. This will reference the FeatureManager
+     * from the original and use the supplied interval.
+     *
+     */
+    public FeatureContext (FeatureContext featureContext, SimpleInterval interval){
+        this(featureContext.featureManager, interval);
     }
 
     /**

@@ -58,6 +58,8 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     private static final File DEEP_MITO_BAM = new File(largeFileTestDir, "mutect/highDPMTsnippet.bam");
     private static final String DEEP_MITO_SAMPLE_NAME = "mixture";
 
+    private static final File GNOMAD_WITHOUT_AF_SNIPPET = new File(toolsTestDir, "mutect/gnomad-without-af.vcf");
+
     /**
      * Several DREAM challenge bams with synthetic truth data.  In order to keep file sizes manageable, bams are restricted
      * to chromosome 20, leaving ~100-200 variants, and then further restricted to 400-bp intervals centered around
@@ -348,6 +350,22 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "-O", unfilteredVcf.getAbsolutePath(),
                 "--genotyping-mode", "GENOTYPE_GIVEN_ALLELES",
                 "--alleles", givenAllelesVcf.getAbsolutePath());
+        runCommandLine(args);
+    }
+
+    // make sure we have fixed a bug where germline resources with AF=. throw errors
+    @Test
+    public void testMissingAF() {
+        final File bam = new File(DREAM_BAMS_DIR, "tumor_4.bam");
+        final String sample = "synthetic.challenge.set4.tumour";
+        final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
+        final List<String> args = Arrays.asList("-I", bam.getAbsolutePath(),
+                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, sample,
+                "-R", b37_reference_20_21,
+                "--" + M2ArgumentCollection.GERMLINE_RESOURCE_LONG_NAME, GNOMAD_WITHOUT_AF_SNIPPET.getAbsolutePath(),
+                "-L", "20:10086110",
+                "-L", "20:10837425-10837426",
+                "-O", unfilteredVcf.getAbsolutePath());
         runCommandLine(args);
     }
 

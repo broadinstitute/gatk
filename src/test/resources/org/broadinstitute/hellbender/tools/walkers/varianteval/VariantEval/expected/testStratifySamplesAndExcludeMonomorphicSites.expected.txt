@@ -1,0 +1,17 @@
+#:GATKReport.v1.1:1
+#:GATKTable:15:12:%s:%s:%s:%s:%s:%s:%d:%d:%.2f:%d:%d:%.2f:%d:%d:%.2f:;
+#:GATKTable:TiTvVariantEvaluator:Ti/Tv Variant Evaluator
+TiTvVariantEvaluator  CompFeatureInput  EvalFeatureInput  JexlExpression  Novelty  Sample   nTi  nTv  tiTvRatio  nTiInComp  nTvInComp  TiTvRatioStandard  nTiDerived  nTvDerived  tiTvDerivedRatio
+TiTvVariantEvaluator  dbsnp             eval              none            all      NA12878  605  225       2.69        708        263               2.69           0           0              0.00
+TiTvVariantEvaluator  dbsnp             eval              none            all      NA12891  674  256       2.63        707        263               2.69           0           0              0.00
+TiTvVariantEvaluator  dbsnp             eval              none            all      NA12892  619  228       2.71        708        263               2.69           0           0              0.00
+TiTvVariantEvaluator  dbsnp             eval              none            all      all      724  276       2.62        708        263               2.69           0           0              0.00
+TiTvVariantEvaluator  dbsnp             eval              none            known    NA12878  602  224       2.69        708        263               2.69           0           0              0.00
+TiTvVariantEvaluator  dbsnp             eval              none            known    NA12891  671  254       2.64        707        263               2.69           0           0              0.00
+TiTvVariantEvaluator  dbsnp             eval              none            known    NA12892  618  227       2.72        708        263               2.69           0           0              0.00
+TiTvVariantEvaluator  dbsnp             eval              none            known    all      720  273       2.64        708        263               2.69           0           0              0.00
+TiTvVariantEvaluator  dbsnp             eval              none            novel    NA12878    3    1       3.00          0          0               0.00           0           0              0.00
+TiTvVariantEvaluator  dbsnp             eval              none            novel    NA12891    3    2       1.50          0          0               0.00           0           0              0.00
+TiTvVariantEvaluator  dbsnp             eval              none            novel    NA12892    1    1       1.00          0          0               0.00           0           0              0.00
+TiTvVariantEvaluator  dbsnp             eval              none            novel    all        4    3       1.33          0          0               0.00           0           0              0.00
+

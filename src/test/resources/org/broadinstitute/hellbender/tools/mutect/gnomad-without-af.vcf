@@ -1,0 +1,6 @@
+##fileformat=VCFv4.2
+##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
+##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+20	10086110	rs592026	G	A	166.95	PASS	AC=32788;AF=.
+20	10837425	.	TC	T	305.46	PASS	AC=1;AF=.

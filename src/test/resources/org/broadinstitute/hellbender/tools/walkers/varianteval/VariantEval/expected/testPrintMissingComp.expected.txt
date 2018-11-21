@@ -1,0 +1,128 @@
+#:GATKReport.v1.1:10
+#:GATKTable:11:3:%s:%s:%s:%s:%s:%d:%d:%d:%.2f:%d:%.2f:;
+#:GATKTable:CompOverlap:The overlap between eval and comp sites
+CompOverlap  CompFeatureInput  EvalFeatureInput  JexlExpression  Novelty  nEvalVariants  novelSites  nVariantsAtComp  compRate  nConcordant  concordantRate
+CompOverlap  comp              eval              none            all                  4           1                3     75.00            3          100.00
+CompOverlap  comp              eval              none            known                0           0                0      0.00            0            0.00
+CompOverlap  comp              eval              none            novel                4           1                3     75.00            3          100.00
+
+#:GATKTable:30:3:%s:%s:%s:%s:%s:%d:%d:%d:%d:%.8f:%.8f:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%.2e:%.2f:%.2f:%.2e:%.2f:%.2f:;
+#:GATKTable:CountVariants:Counts different classes of variants in the sample
+CountVariants  CompFeatureInput  EvalFeatureInput  JexlExpression  Novelty  nProcessedLoci  nCalledLoci  nRefLoci  nVariantLoci  variantRate  variantRatePerBp   nSNPs  nMNPs  nInsertions  nDeletions  nComplex  nSymbolic  nMixed  nNoCalls  nHets  nHomRef  nHomVar  nSingletons  nHomDerived  heterozygosity  heterozygosityPerBp  hetHomRatio  indelRate  indelRatePerBp  insertionDeletionRatio
+CountVariants  comp              eval              none            all            63025520            4         0             4   0.00000006  15756380.00000000      4      0            0           0         0          0       0         0      0        0        0            0            0        0.00e+00                 0.00         0.00   0.00e+00            0.00                    0.00
+CountVariants  comp              eval              none            known          63025520            0         0             0   0.00000000         0.00000000      0      0            0           0         0          0       0         0      0        0        0            0            0        0.00e+00                 0.00         0.00   0.00e+00            0.00                    0.00
+CountVariants  comp              eval              none            novel          63025520            4         0             4   0.00000006  15756380.00000000      4      0            0           0         0          0       0         0      0        0        0            0            0        0.00e+00                 0.00         0.00   0.00e+00            0.00                    0.00
+
+#:GATKTable:7:60:%s:%s:%s:%s:%s:%d:%.2f:;
+#:GATKTable:IndelLengthHistogram:Indel length histogram
+IndelLengthHistogram  CompFeatureInput  EvalFeatureInput  JexlExpression  Novelty  Length  Freq
+IndelLengthHistogram  comp              eval              none            all         -10  0.00
+IndelLengthHistogram  comp              eval              none            all          -9  0.00
+IndelLengthHistogram  comp              eval              none            all          -8  0.00
+IndelLengthHistogram  comp              eval              none            all          -7  0.00
+IndelLengthHistogram  comp              eval              none            all          -6  0.00
+IndelLengthHistogram  comp              eval              none            all          -5  0.00
+IndelLengthHistogram  comp              eval              none            all          -4  0.00
+IndelLengthHistogram  comp              eval              none            all          -3  0.00
+IndelLengthHistogram  comp              eval              none            all          -2  0.00
+IndelLengthHistogram  comp              eval              none            all          -1  0.00
+IndelLengthHistogram  comp              eval              none            all           1  0.00
+IndelLengthHistogram  comp              eval              none            all           2  0.00
+IndelLengthHistogram  comp              eval              none            all           3  0.00
+IndelLengthHistogram  comp              eval              none            all           4  0.00
+IndelLengthHistogram  comp              eval              none            all           5  0.00
+IndelLengthHistogram  comp              eval              none            all           6  0.00
+IndelLengthHistogram  comp              eval              none            all           7  0.00
+IndelLengthHistogram  comp              eval              none            all           8  0.00
+IndelLengthHistogram  comp              eval              none            all           9  0.00
+IndelLengthHistogram  comp              eval              none            all          10  0.00
+IndelLengthHistogram  comp              eval              none            known       -10  0.00
+IndelLengthHistogram  comp              eval              none            known        -9  0.00
+IndelLengthHistogram  comp              eval              none            known        -8  0.00
+IndelLengthHistogram  comp              eval              none            known        -7  0.00
+IndelLengthHistogram  comp              eval              none            known        -6  0.00
+IndelLengthHistogram  comp              eval              none            known        -5  0.00
+IndelLengthHistogram  comp              eval              none            known        -4  0.00
+IndelLengthHistogram  comp              eval              none            known        -3  0.00
+IndelLengthHistogram  comp              eval              none            known        -2  0.00
+IndelLengthHistogram  comp              eval              none            known        -1  0.00
+IndelLengthHistogram  comp              eval              none            known         1  0.00
+IndelLengthHistogram  comp              eval              none            known         2  0.00
+IndelLengthHistogram  comp              eval              none            known         3  0.00
+IndelLengthHistogram  comp              eval              none            known         4  0.00
+IndelLengthHistogram  comp              eval              none            known         5  0.00
+IndelLengthHistogram  comp              eval              none            known         6  0.00
+IndelLengthHistogram  comp              eval              none            known         7  0.00
+IndelLengthHistogram  comp              eval              none            known         8  0.00
+IndelLengthHistogram  comp              eval              none            known         9  0.00
+IndelLengthHistogram  comp              eval              none            known        10  0.00
+IndelLengthHistogram  comp              eval              none            novel       -10  0.00
+IndelLengthHistogram  comp              eval              none            novel        -9  0.00
+IndelLengthHistogram  comp              eval              none            novel        -8  0.00
+IndelLengthHistogram  comp              eval              none            novel        -7  0.00
+IndelLengthHistogram  comp              eval              none            novel        -6  0.00
+IndelLengthHistogram  comp              eval              none            novel        -5  0.00
+IndelLengthHistogram  comp              eval              none            novel        -4  0.00
+IndelLengthHistogram  comp              eval              none            novel        -3  0.00
+IndelLengthHistogram  comp              eval              none            novel        -2  0.00
+IndelLengthHistogram  comp              eval              none            novel        -1  0.00
+IndelLengthHistogram  comp              eval              none            novel         1  0.00
+IndelLengthHistogram  comp              eval              none            novel         2  0.00
+IndelLengthHistogram  comp              eval              none            novel         3  0.00
+IndelLengthHistogram  comp              eval              none            novel         4  0.00
+IndelLengthHistogram  comp              eval              none            novel         5  0.00
+IndelLengthHistogram  comp              eval              none            novel         6  0.00
+IndelLengthHistogram  comp              eval              none            novel         7  0.00
+IndelLengthHistogram  comp              eval              none            novel         8  0.00
+IndelLengthHistogram  comp              eval              none            novel         9  0.00
+IndelLengthHistogram  comp              eval              none            novel        10  0.00
+
+#:GATKTable:30:3:%s:%s:%s:%s:%s:%d:%d:%d:%d:%d:%s:%s:%s:%s:%s:%d:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:;
+#:GATKTable:IndelSummary:Evaluation summary for indels
+IndelSummary  CompFeatureInput  EvalFeatureInput  JexlExpression  Novelty  n_SNPs  n_singleton_SNPs  n_indels  n_singleton_indels  n_indels_matching_gold_standard  gold_standard_matching_rate  n_multiallelic_indel_sites  percent_of_sites_with_more_than_2_alleles  SNP_to_indel_ratio  SNP_to_indel_ratio_for_singletons  n_novel_indels  indel_novelty_rate  n_insertions  n_deletions  insertion_to_deletion_ratio  n_large_deletions  n_large_insertions  insertion_to_deletion_ratio_for_large_indels  n_coding_indels_frameshifting  n_coding_indels_in_frame  frameshift_rate_for_coding_indels  SNP_het_to_hom_ratio  indel_het_to_hom_ratio  ratio_of_1_and_2_to_3_bp_insertions  ratio_of_1_and_2_to_3_bp_deletions
+IndelSummary  comp              eval              none            all           4                 0         0                   0                                0                           NA                           0                                         NA                  NA                                 NA               0                  NA             0            0                           NA                  0                   0                                            NA                              0                         0                                 NA                    NA                      NA                                   NA                                  NA
+IndelSummary  comp              eval              none            known         0                 0         0                   0                                0                           NA                           0                                         NA                  NA                                 NA               0                  NA             0            0                           NA                  0                   0                                            NA                              0                         0                                 NA                    NA                      NA                                   NA                                  NA
+IndelSummary  comp              eval              none            novel         4                 0         0                   0                                0                           NA                           0                                         NA                  NA                                 NA               0                  NA             0            0                           NA                  0                   0                                            NA                              0                         0                                 NA                    NA                      NA                                   NA                                  NA
+
+#:GATKTable:13:3:%s:%s:%s:%s:%s:%.2f:%d:%d:%d:%d:%s:%.2f:%.2f:;
+#:GATKTable:MetricsCollection:Metrics Collection
+MetricsCollection  CompFeatureInput  EvalFeatureInput  JexlExpression  Novelty  concordantRate  nSNPs  nSNPloci  nIndels  nIndelLoci  indelRatio  indelRatioLociBased  tiTvRatio
+MetricsCollection  comp              eval              none            all              100.00      4         4        0           0          NA                 0.00       0.00
+MetricsCollection  comp              eval              none            known              0.00      0         0        0           0          NA                 0.00       0.00
+MetricsCollection  comp              eval              none            novel            100.00      4         4        0           0          NA                 0.00       0.00
+
+#:GATKTable:20:3:%s:%s:%s:%s:%s:%d:%d:%d:%.5f:%.3f:%d:%d:%.5f:%.3f:%d:%d:%.2f:%d:%d:%s:;
+#:GATKTable:MultiallelicSummary:Evaluation summary for multi-allelic variants
+MultiallelicSummary  CompFeatureInput  EvalFeatureInput  JexlExpression  Novelty  nProcessedLoci  nSNPs  nMultiSNPs  processedMultiSnpRatio  variantMultiSnpRatio  nIndels  nMultiIndels  processedMultiIndelRatio  variantMultiIndelRatio  nTi  nTv  TiTvRatio  knownSNPsPartial  knownSNPsComplete  SNPNoveltyRate
+MultiallelicSummary  comp              eval              none            all            63025520      4           0                 0.00000                 0.000        0             0                   0.00000                     NaN    0    0        NaN                 0                  0              NA
+MultiallelicSummary  comp              eval              none            known          63025520      0           0                 0.00000                   NaN        0             0                   0.00000                     NaN    0    0        NaN                 0                  0              NA
+MultiallelicSummary  comp              eval              none            novel          63025520      4           0                 0.00000                 0.000        0             0                   0.00000                     NaN    0    0        NaN                 0                  0              NA
+
+#:GATKTable:6:3:%s:%s:%s:%s:%s:%d:;
+#:GATKTable:PrintMissingComp:count the number of comp SNP sites that are not in eval
+PrintMissingComp  CompFeatureInput  EvalFeatureInput  JexlExpression  Novelty  nMissing
+PrintMissingComp  comp              eval              none            all             2
+PrintMissingComp  comp              eval              none            known           0
+PrintMissingComp  comp              eval              none            novel           2
+
+#:GATKTable:14:3:%s:%s:%s:%s:%s:%d:%d:%.2f:%d:%d:%.2f:%d:%d:%.2f:;
+#:GATKTable:TiTvVariantEvaluator:Ti/Tv Variant Evaluator
+TiTvVariantEvaluator  CompFeatureInput  EvalFeatureInput  JexlExpression  Novelty  nTi  nTv  tiTvRatio  nTiInComp  nTvInComp  TiTvRatioStandard  nTiDerived  nTvDerived  tiTvDerivedRatio
+TiTvVariantEvaluator  comp              eval              none            all        0    4       0.00          0          5               0.00           0           0              0.00
+TiTvVariantEvaluator  comp              eval              none            known      0    0       0.00          0          0               0.00           0           0              0.00
+TiTvVariantEvaluator  comp              eval              none            novel      0    4       0.00          0          5               0.00           0           0              0.00
+
+#:GATKTable:24:3:%s:%s:%s:%s:%s:%d:%d:%d:%d:%d:%.2f:%.2f:%.2f:%.2f:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:;
+#:GATKTable:ValidationReport:Assess site accuracy and sensitivity of callset against follow-up validation assay
+ValidationReport  CompFeatureInput  EvalFeatureInput  JexlExpression  Novelty  nComp  TP  FP  FN  TN  sensitivity  specificity  PPV     FDR   CompMonoEvalNoCall  CompMonoEvalFiltered  CompMonoEvalMono  CompMonoEvalPoly  CompPolyEvalNoCall  CompPolyEvalFiltered  CompPolyEvalMono  CompPolyEvalPoly  CompFiltered  nDifferentAlleleSites
+ValidationReport  comp              eval              none            all          5   3   0   2   0        60.00       100.00  100.00  0.00                   0                     0                 0                 0                   2                     0                 0                 3             0                      0
+ValidationReport  comp              eval              none            known        0   0   0   0   0          NaN       100.00     NaN   NaN                   0                     0                 0                 0                   0                     0                 0                 0             0                      0
+ValidationReport  comp              eval              none            novel        5   3   0   2   0        60.00       100.00  100.00  0.00                   0                     0                 0                 0                   2                     0                 0                 3             0                      0
+
+#:GATKTable:20:3:%s:%s:%s:%s:%s:%d:%d:%d:%.2f:%s:%d:%.2f:%.1f:%d:%s:%d:%.1f:%d:%s:%d:;
+#:GATKTable:VariantSummary:1000 Genomes Phase I summary of variants table
+VariantSummary  CompFeatureInput  EvalFeatureInput  JexlExpression  Novelty  nSamples  nProcessedLoci  nSNPs  TiTvRatio  SNPNoveltyRate  nSNPsPerSample  TiTvRatioPerSample  SNPDPPerSample  nIndels  IndelNoveltyRate  nIndelsPerSample  IndelDPPerSample  nSVs  SVNoveltyRate  nSVsPerSample
+VariantSummary  comp              eval              none            all             0        63025520      4       0.00           25.00               0                0.00             0.0        0                NA                 0               0.0     0             NA              0
+VariantSummary  comp              eval              none            known           0        63025520      0       0.00              NA               0                0.00             0.0        0                NA                 0               0.0     0             NA              0
+VariantSummary  comp              eval              none            novel           0        63025520      4       0.00           25.00               0                0.00             0.0        0                NA                 0               0.0     0             NA              0
+
