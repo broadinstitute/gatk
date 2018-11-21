@@ -677,6 +677,8 @@ task CallModeledSegments {
     Float? inference_total_grad_norm_constraint
     Int? n_extra_gaussians_mixture_model
     Int? max_n_peaks_in_copy_ratio
+    Float? responsibility_threshold_normal
+    Float? weight_ratio_max
     File? gatk4_jar_override
 
     # Runtime parameters
@@ -706,14 +708,16 @@ task CallModeledSegments {
             --output-prefix ${output_prefix_} \
             --normal-minor-allele-fraction-threshold ${default="0.475" normal_minor_allele_fraction_threshold} \
             --copy-ratio-peak-min-relative-height ${default="0.05" copy_ratio_peak_min_relative_height} \
-            --copy-ratio-kernel-density-bandwidth ${default="0.05" copy_ratio_kernel_density_bandwidth} \
+            --copy-ratio-kernel-density-bandwidth ${default="0.02" copy_ratio_kernel_density_bandwidth} \
             --min-weight-first-cr-peak-cr-data-only ${default="0.35" min_weight_first_cr_peak_cr_data_only} \
             --min-fraction-of-points-in-normal-allele-fraction-region ${default="0.15" min_fraction_of_points_in_normal_allele_fraction_region} \
             --max-phred-score-normal ${default="100." max_phred_score_normal} \
             --n-inference-iterations ${default="20000" n_inference_iterations} \
             --inference-total-grad-norm-constraint ${default="0.15" inference_total_grad_norm_constraint} \
             --n-extra-gaussians-mixture-model ${default="6" n_extra_gaussians_mixture_model} \
-            --max-n-peaks-in-copy-ratio ${default="10" max_n_peaks_in_copy_ratio}
+            --max-n-peaks-in-copy-ratio ${default="10" max_n_peaks_in_copy_ratio} \
+            --responsibility-threshold-normal ${default="0.5" responsibility_threshold_normal} \
+            --weight_ratio_max ${default="10" weight_ratio_max}
     >>>
 
     runtime {
