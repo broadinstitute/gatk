@@ -962,7 +962,7 @@ class ModeledSegmentsCaller:
         n_extra_Gaussians = self.__n_extra_Gaussians_mixture_model
         n_Gaussians += n_extra_Gaussians
         pi_init = np.append(pi_init, [0.02] * n_extra_Gaussians)
-        mu_init = np.append(mu_estimates, [[np.random.uniform(0,3), np.random.uniform(0,0.5)]
+        mu_init = np.append(mu_estimates, [[np.random.uniform(0,2), np.random.uniform(0,0.5)]
                                            for _ in range(n_extra_Gaussians)])
         pi_init = pi_init / np.sum(pi_init)
         epsilon = 1e-9
