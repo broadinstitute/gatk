@@ -163,7 +163,7 @@ class LoadAndSampleCrAndAf:
         # we sample the number of points in each segment to be proportional to their weights
         if not output_log_prefix == "":
             self.__logger.info("Sampling data points according to the segment weights.")
-        self.__copy_ratio_sampled, self.__allele_fraction_sampled = self.__sample_points()
+        self.__copy_ratio_median_sampled, self.__allele_fraction_median_sampled = self.__sample_points()
 
         if not output_log_prefix == "":
             self.__logger.info("Finished.\n\n\n")
@@ -195,7 +195,7 @@ class LoadAndSampleCrAndAf:
 
     def get_sampled_points(self):
         """Return sampled posterior distributions as flattened lists."""
-        return [self.__copy_ratio_sampled, self.__allele_fraction_sampled]
+        return [self.__copy_ratio_median_sampled, self.__allele_fraction_median_sampled]
 
     def get_load_cr(self):
         """ Return whether we loaded the copy ratio values. """
@@ -550,21 +550,21 @@ class LoadAndSampleCrAndAf:
         return weight
 
     def __sample_points(self):
-        total_number_of_points = 5000
+        total_number_of_points = 40 * len(self.__copy_ratio_median)
         if self.__n_segments > 0:
             avg_number_of_points = total_number_of_points / self.__n_segments
         else:
             avg_number_of_points = 0
         avg_weight = np.sum(self.__weights) / self.__n_segments
 
-        copy_ratio_sampled = []
-        allele_fraction_sampled = []
+        copy_ratio_median_sampled = []
+        allele_fraction_median_sampled = []
 
         for i in range(self.__n_segments):
             n_pts = int(round(avg_number_of_points * self.__weights[i] / avg_weight))
-            copy_ratio_sampled += [self.__copy_ratio_median[i]] * n_pts
-            allele_fraction_sampled += [self.__allele_fraction_median[i]] * n_pts
-        return copy_ratio_sampled, allele_fraction_sampled
+            copy_ratio_median_sampled += [self.__copy_ratio_median[i]] * n_pts
+            allele_fraction_median_sampled += [self.__allele_fraction_median[i]] * n_pts
+        return copy_ratio_median_sampled, allele_fraction_median_sampled
 
 class ModeledSegmentsCaller:
     """ This class takes an instance of the class LoadAndSampleCrAndAf as input, which contains the
@@ -687,7 +687,7 @@ class ModeledSegmentsCaller:
 
         # Auxiliary arrays: the number of times the values of the segment means appear in these arrays
         # is proportional to the weights associated with those segments
-        [self.__copy_ratio_sampled, self.__allele_fraction_sampled] = self.__cr_af_data.get_sampled_points()
+        [self.__copy_ratio_median_sampled, self.__allele_fraction_median_sampled] = self.__cr_af_data.get_sampled_points()
 
         # For testing purposes:
         if not self.__log_filename == "":
@@ -698,11 +698,11 @@ class ModeledSegmentsCaller:
             self.__logger.info("Copy ratio 10th perc:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_10th_perc), np.mean(self.__copy_ratio_10th_perc), np.std(self.__copy_ratio_10th_perc)))
             self.__logger.info("Copy ratio median:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_median), np.mean(self.__copy_ratio_median), np.std(self.__copy_ratio_median)))
             self.__logger.info("Copy ratio 90th perc:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_90th_perc), np.mean(self.__copy_ratio_90th_perc), np.std(self.__copy_ratio_90th_perc)))
-            self.__logger.info("Copy ratio sampled:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_sampled), np.mean(self.__copy_ratio_sampled), np.std(self.__copy_ratio_sampled)))
+            self.__logger.info("Copy ratio sampled:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_median_sampled), np.mean(self.__copy_ratio_median_sampled), np.std(self.__copy_ratio_median_sampled)))
             self.__logger.info("Allele fraction 10th perc:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_10th_perc), np.mean(self.__allele_fraction_10th_perc), np.std(self.__allele_fraction_10th_perc)))
             self.__logger.info("Allele fraction median:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_median), np.mean(self.__allele_fraction_median), np.std(self.__allele_fraction_median)))
             self.__logger.info("Allele fraction 90th perc:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_90th_perc), np.mean(self.__allele_fraction_90th_perc), np.std(self.__allele_fraction_90th_perc)))
-            self.__logger.info("Allele fraction sampled:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_sampled), np.mean(self.__allele_fraction_sampled), np.std(self.__allele_fraction_sampled)))
+            self.__logger.info("Allele fraction sampled:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_median_sampled), np.mean(self.__allele_fraction_median_sampled), np.std(self.__allele_fraction_median_sampled)))
             self.__logger.info("Segment lengths:\t{0}\t{1}\t{2}".format(len(self.__segment_lengths), np.mean(self.__segment_lengths), np.std(self.__segment_lengths)))
         # End testing
 
@@ -748,11 +748,11 @@ class ModeledSegmentsCaller:
             self.__logger.info("Copy ratio 10th perc:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_10th_perc), np.mean(self.__copy_ratio_10th_perc), np.std(self.__copy_ratio_10th_perc)))
             self.__logger.info("Copy ratio median:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_median), np.mean(self.__copy_ratio_median), np.std(self.__copy_ratio_median)))
             self.__logger.info("Copy ratio 90th perc:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_90th_perc), np.mean(self.__copy_ratio_90th_perc), np.std(self.__copy_ratio_90th_perc)))
-            self.__logger.info("Copy ratio sampled:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_sampled), np.mean(self.__copy_ratio_sampled), np.std(self.__copy_ratio_sampled)))
+            self.__logger.info("Copy ratio sampled:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_median_sampled), np.mean(self.__copy_ratio_median_sampled), np.std(self.__copy_ratio_median_sampled)))
             self.__logger.info("Allele fraction 10th perc:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_10th_perc), np.mean(self.__allele_fraction_10th_perc), np.std(self.__allele_fraction_10th_perc)))
             self.__logger.info("Allele fraction median:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_median), np.mean(self.__allele_fraction_median), np.std(self.__allele_fraction_median)))
             self.__logger.info("Allele fraction 90th perc:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_90th_perc), np.mean(self.__allele_fraction_90th_perc), np.std(self.__allele_fraction_90th_perc)))
-            self.__logger.info("Allele fraction sampled:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_sampled), np.mean(self.__allele_fraction_sampled), np.std(self.__allele_fraction_sampled)))
+            self.__logger.info("Allele fraction sampled:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_median_sampled), np.mean(self.__allele_fraction_median_sampled), np.std(self.__allele_fraction_median_sampled)))
             self.__logger.info("Segment lengths:\t{0}\t{1}\t{2}".format(len(self.__segment_lengths), np.mean(self.__segment_lengths), np.std(self.__segment_lengths)))
         # End testing
 
@@ -770,11 +770,11 @@ class ModeledSegmentsCaller:
             self.__logger.info("Copy ratio 10th perc:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_10th_perc), np.mean(self.__copy_ratio_10th_perc), np.std(self.__copy_ratio_10th_perc)))
             self.__logger.info("Copy ratio median:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_median), np.mean(self.__copy_ratio_median), np.std(self.__copy_ratio_median)))
             self.__logger.info("Copy ratio 90th perc:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_90th_perc), np.mean(self.__copy_ratio_90th_perc), np.std(self.__copy_ratio_90th_perc)))
-            self.__logger.info("Copy ratio sampled:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_sampled), np.mean(self.__copy_ratio_sampled), np.std(self.__copy_ratio_sampled)))
+            self.__logger.info("Copy ratio sampled:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_median_sampled), np.mean(self.__copy_ratio_median_sampled), np.std(self.__copy_ratio_median_sampled)))
             self.__logger.info("Allele fraction 10th perc:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_10th_perc), np.mean(self.__allele_fraction_10th_perc), np.std(self.__allele_fraction_10th_perc)))
             self.__logger.info("Allele fraction median:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_median), np.mean(self.__allele_fraction_median), np.std(self.__allele_fraction_median)))
             self.__logger.info("Allele fraction 90th perc:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_90th_perc), np.mean(self.__allele_fraction_90th_perc), np.std(self.__allele_fraction_90th_perc)))
-            self.__logger.info("Allele fraction sampled:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_sampled), np.mean(self.__allele_fraction_sampled), np.std(self.__allele_fraction_sampled)))
+            self.__logger.info("Allele fraction sampled:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_median_sampled), np.mean(self.__allele_fraction_median_sampled), np.std(self.__allele_fraction_median_sampled)))
             self.__logger.info("Segment lengths:\t{0}\t{1}\t{2}".format(len(self.__segment_lengths), np.mean(self.__segment_lengths), np.std(self.__segment_lengths)))
         # End testing
 
@@ -793,11 +793,11 @@ class ModeledSegmentsCaller:
             self.__logger.info("Copy ratio 10th perc:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_10th_perc), np.mean(self.__copy_ratio_10th_perc), np.std(self.__copy_ratio_10th_perc)))
             self.__logger.info("Copy ratio median:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_median), np.mean(self.__copy_ratio_median), np.std(self.__copy_ratio_median)))
             self.__logger.info("Copy ratio 90th perc:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_90th_perc), np.mean(self.__copy_ratio_90th_perc), np.std(self.__copy_ratio_90th_perc)))
-            self.__logger.info("Copy ratio sampled:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_sampled), np.mean(self.__copy_ratio_sampled), np.std(self.__copy_ratio_sampled)))
+            self.__logger.info("Copy ratio sampled:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_median_sampled), np.mean(self.__copy_ratio_median_sampled), np.std(self.__copy_ratio_median_sampled)))
             self.__logger.info("Allele fraction 10th perc:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_10th_perc), np.mean(self.__allele_fraction_10th_perc), np.std(self.__allele_fraction_10th_perc)))
             self.__logger.info("Allele fraction median:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_median), np.mean(self.__allele_fraction_median), np.std(self.__allele_fraction_median)))
             self.__logger.info("Allele fraction 90th perc:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_90th_perc), np.mean(self.__allele_fraction_90th_perc), np.std(self.__allele_fraction_90th_perc)))
-            self.__logger.info("Allele fraction sampled:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_sampled), np.mean(self.__allele_fraction_sampled), np.std(self.__allele_fraction_sampled)))
+            self.__logger.info("Allele fraction sampled:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_median_sampled), np.mean(self.__allele_fraction_median_sampled), np.std(self.__allele_fraction_median_sampled)))
             self.__logger.info("Segment lengths:\t{0}\t{1}\t{2}".format(len(self.__segment_lengths), np.mean(self.__segment_lengths), np.std(self.__segment_lengths)))
         # End testing
 
@@ -815,11 +815,11 @@ class ModeledSegmentsCaller:
             self.__logger.info("Copy ratio 10th perc:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_10th_perc), np.mean(self.__copy_ratio_10th_perc), np.std(self.__copy_ratio_10th_perc)))
             self.__logger.info("Copy ratio median:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_median), np.mean(self.__copy_ratio_median), np.std(self.__copy_ratio_median)))
             self.__logger.info("Copy ratio 90th perc:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_90th_perc), np.mean(self.__copy_ratio_90th_perc), np.std(self.__copy_ratio_90th_perc)))
-            self.__logger.info("Copy ratio sampled:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_sampled), np.mean(self.__copy_ratio_sampled), np.std(self.__copy_ratio_sampled)))
+            self.__logger.info("Copy ratio sampled:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_median_sampled), np.mean(self.__copy_ratio_median_sampled), np.std(self.__copy_ratio_median_sampled)))
             self.__logger.info("Allele fraction 10th perc:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_10th_perc), np.mean(self.__allele_fraction_10th_perc), np.std(self.__allele_fraction_10th_perc)))
             self.__logger.info("Allele fraction median:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_median), np.mean(self.__allele_fraction_median), np.std(self.__allele_fraction_median)))
             self.__logger.info("Allele fraction 90th perc:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_90th_perc), np.mean(self.__allele_fraction_90th_perc), np.std(self.__allele_fraction_90th_perc)))
-            self.__logger.info("Allele fraction sampled:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_sampled), np.mean(self.__allele_fraction_sampled), np.std(self.__allele_fraction_sampled)))
+            self.__logger.info("Allele fraction sampled:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_median_sampled), np.mean(self.__allele_fraction_median_sampled), np.std(self.__allele_fraction_median_sampled)))
             self.__logger.info("Segment lengths:\t{0}\t{1}\t{2}".format(len(self.__segment_lengths), np.mean(self.__segment_lengths), np.std(self.__segment_lengths)))
         # End testing
 
@@ -923,6 +923,7 @@ class ModeledSegmentsCaller:
         return self.__interactive
 
     def __weighted_k_means(self, data, weights, n_clusters, maxIters=10):
+        """k-means fit of n clusters to 2D data with weights. """
         data = np.array(data)
         centroids = np.array(data[np.random.choice(np.arange(len(data)), n_clusters), :])
 
@@ -944,6 +945,10 @@ class ModeledSegmentsCaller:
 
         if np.array(weights).any() == None:
             weights = [1] * len(data_points)
+            if self.__log_filename != "":
+                self.__logger.info("Since the weights array had no non-zero elements, we will "
+                                   "assume uniform weights for all segments in "
+                                   "ModeledSegmentsCaller.__fit_weighted_Gaussian_mixture_ADVI().")
         data_and_weights = np.array([[data_points[i][0], data_points[i][1], weights[i]] for i in range(len(data_points))])
         data_dim = 2
 
@@ -1088,7 +1093,7 @@ class ModeledSegmentsCaller:
     def __choose_normal_segments__cr_data_only(self):
         """ This function determines which peak in the 1D copy ratio data is the copy number 2 peak.
         """
-        cluster_separators = self.__find_1D_clusters(data=self.__copy_ratio_sampled,
+        cluster_separators = self.__find_1D_clusters(data=self.__copy_ratio_median_sampled,
                                                      interactive_image_filename=self.__fig_copy_ratio_fit)
 
         if len(cluster_separators) == 0:
@@ -1253,18 +1258,42 @@ class ModeledSegmentsCaller:
         """ This function determines which peak in the 1D copy ratio data is the copy number 2 peak.
             It also makes use of the allele fraction data to make this decision.
         """
-        normal_cr_segment_min = max([0, 0.9 * min(self.__copy_ratio_median)])
-        normal_cr_segment_max = min([1.1 * max(self.__copy_ratio_median), 100])
 
-        cluster_separators = self.__find_1D_clusters(self.__copy_ratio_sampled, self.__fig_copy_ratio_fit)
+        # Find the points that separate the clusters in copy ratio space
+        cluster_separators = self.__find_1D_clusters(self.__copy_ratio_median_sampled, self.__fig_copy_ratio_fit)
 
         if len(cluster_separators) == 0:
-            cn2_interval = [0, 1.1 * max(self.__copy_ratio_median)]
+            # In case there is only a single peak, that should most likely be the copy number 2 peak.
+            # However, there still can be some outliers, and we don't want to identify those as normal
+            # ones. Therefore, we will take the copy number 2 region in copy ratio space to be the
+            # 3 sigma region around the mean of the data.
+            cr_mean = np.sum([self.__weights[i] * self.__copy_ratio_median[i]
+                              for i in range(len(self.__copy_ratio_median))]) / len(self.__copy_ratio_median)
+            cr_variance = np.sum([self.__weights[i] * (self.__copy_ratio_median[i] - cr_mean)**2
+                                  for i in range(len(self.__copy_ratio_median))]) / len(self.__copy_ratio_median)
+            cr_std_dev = np.sqrt(cr_variance)
+            cr_std_dev = max(cr_std_dev, 0.05)  # We don't want the standard deviation be very tight
+            cn2_interval = [max([0, cr_mean - 3 * cr_std_dev]), cr_mean + 3 * cr_std_dev]
             return cn2_interval
 
-        cn1_interval_candidate = [0, cluster_separators[0]]
+        # The first interval shouldn't necessarily start from 0, but a value that takes the natural spread
+        # of the peak in the copy number 1 candidate region into account.
+        ind_pts_cn_1 = [i for i in range(len(self.__copy_ratio_median)) if self.__copy_ratio_median[i] < cluster_separators[0]]
+        cr_mean_cn_1 = np.sum([self.__weights[i] * self.__copy_ratio_median[i] for i in ind_pts_cn_1]) / len(ind_pts_cn_1)
+        cr_variance_cn_1 = np.sum([self.__weights[i] * (self.__copy_ratio_median[i] - cr_mean_cn_1)**2 for i in ind_pts_cn_1]) / len(ind_pts_cn_1)
+        cr_std_dev_cn_1 = np.sqrt(cr_variance_cn_1)
+        cr_std_dev_cn_1 = max([cr_std_dev_cn_1, 0.05]) # We don't want the standard deviation be very tight
+        cn1_interval_candidate = [max([0, cr_mean_cn_1 - 3 * cr_std_dev_cn_1]), cluster_separators[0]]
+
         if len(cluster_separators) == 1:
-            cn2_interval_candidate = [cluster_separators[0], normal_cr_segment_max]
+            # If there are only two peaks, we still don't want to make cn2_interval_candidate go until
+            # infinity, so we limit it at 3*sigma from the mean of the data there.
+            ind_pts_cn_2 = [i for i in range(len(self.__copy_ratio_median)) if self.__copy_ratio_median[i] >= cluster_separators[0]]
+            cr_mean_cn_2 = np.sum([self.__weights[i] * self.__copy_ratio_median[i] for i in ind_pts_cn_2]) / len(ind_pts_cn_2)
+            cr_variance_cn_2 = np.sum([self.__weights[i] * (self.__copy_ratio_median[i] - cr_mean_cn_2)**2 for i in ind_pts_cn_2]) / len(ind_pts_cn_2)
+            cr_std_dev_cn_2 = np.sqrt(cr_variance_cn_2)
+            cr_std_dev_cn_2 = max([cr_std_dev_cn_2, 0.05]) # We don't want the standard deviation be very tight
+            cn2_interval_candidate = [cluster_separators[0], cr_mean_cn_2 + 3 * cr_std_dev_cn_2]
         else:
             cn2_interval_candidate = [cluster_separators[0], cluster_separators[1]]
 
@@ -1302,13 +1331,16 @@ class ModeledSegmentsCaller:
             cn2_interval = cn1_interval_candidate
             color_1 = 'k'
             color_2 = 'r'
+            title_interval_1 = "copy number 2 interval"
+            title_interval_2 = "copy number 3 interval"
             if self.__interactive and self.__log_filename != "":
                 self.__logger.info("We chose the 1st interval to be of copy number 2.")
         else:
             cn2_interval = cn2_interval_candidate
             color_1 = 'r'
             color_2 = 'k'
-            which_interval = 2
+            title_interval_1 = "copy number 1 interval"
+            title_interval_2 = "copy number 2 interval"
             if self.__interactive and self.__log_filename!="":
                 self.__logger.info("We chose the 2nd interval to be of copy number 2.")
 
@@ -1321,19 +1353,17 @@ class ModeledSegmentsCaller:
                      weights=np.array(af__cn1_interval_candidate)[:,1],
                      bins=50, color=color_1)
             plt.xlim(0, 0.5)
-            plt.xlabel("Allele fraction of the first interval")
+            plt.xlabel("Allele fraction of the " + title_interval_1)
             plt.subplot(212)
             plt.hist(np.array(af__cn2_interval_candidate)[:,0],
                      weights=np.array(af__cn2_interval_candidate)[:,1],
                      bins=50, color=color_2)
             plt.xlim(0, 0.5)
-            plt.xlabel("Allele fraction of the second interval")
+            plt.xlabel("Allele fraction of the " + title_interval_2)
             plt.subplots_adjust(hspace=0.5)
             plt.savefig(self.__fig_allele_fraction_cn1_cn2_intervals)
             plt.close(fig)
 
-        cn2_interval[0] = max(cn2_interval[0], normal_cr_segment_min)
-        cn2_interval[1] = min(cn2_interval[1], normal_cr_segment_max)
         return cn2_interval
 
     def __indices_increasing_order(self, ls: List):
@@ -1361,7 +1391,7 @@ class ModeledSegmentsCaller:
     def __estimate_number_of_cr_clusters(self, data, max_n_Gaussians: int=10, alpha: float=1.,
                                          min_std_dev: float=0.03, max_std_dev: float=0.4):
         """ This function throws down max_n_Gaussians peaks on the one dimensional copy ratio data
-            self.copy_ratio_sampled. Then, it merges those that have substantial overlap.
+            self.copy_ratio_median_sampled. Then, it merges those that have substantial overlap.
             The overlap is measured based on whether the peaks overlap up to alpha times their standard deviation.
             In order to avoid the need of dealing with too narrow or too wide peaks, we limit their minimum
             and maximum width using 'min_std_dev' and 'max_std_dev'.
@@ -1649,7 +1679,7 @@ class ModeledSegmentsCaller:
         plt.yticks(np.arange(0, 0.6, 0.1))
 
         plt.subplot(224)
-        plt.hist(self.__copy_ratio_sampled, bins = "auto", color = "k")
+        plt.hist(self.__copy_ratio_median_sampled, bins = "auto", color = "k")
         plt.xlabel("Copy ratio")
         plt.xlim((0, 5))
         plt.xticks(np.arange(0, 6, 1))
@@ -1669,7 +1699,7 @@ class ModeledSegmentsCaller:
     def __plot_Gaussian_mixture_fit(self):
         """ Plot the fit of Gaussian clusters to the 2D copy ratio and allele fraction data.
         """
-        samples = np.asarray([self.__copy_ratio_sampled, self.__allele_fraction_sampled]).T
+        samples = np.asarray([self.__copy_ratio_median_sampled, self.__allele_fraction_median_sampled]).T
         [pis, mu, cov] = self.__gaussian_mixture_fit
 
         n_Gaussians = len(pis)
