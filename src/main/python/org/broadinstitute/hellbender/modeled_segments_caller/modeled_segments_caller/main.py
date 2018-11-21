@@ -1192,7 +1192,7 @@ class ModeledSegmentsCaller:
                 bandwidth = 0.5 * sd_peaks[ind[0]]
             else:
                 bandwidth = 0.5 * min([sd_peaks[ind[0]], sd_peaks[ind[1]]])
-            bandwidth = max([bandwidth, 0.015])
+            bandwidth = max([bandwidth, 0.010])
         else:
             bandwidth = self.__copy_ratio_kernel_density_bandwidth
 
