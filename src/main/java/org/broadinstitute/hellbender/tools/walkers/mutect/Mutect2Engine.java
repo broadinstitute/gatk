@@ -288,8 +288,9 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         } else if (!MTAC.genotypeGermlineSites) {
             final List<VariantContext> germline = featureContext.getValues(MTAC.germlineResource, refInterval);
             if (!germline.isEmpty()){
-                final List<Double> germlineAlleleFrequencies = germline.get(0).getAttributeAsDoubleList(VCFConstants.ALLELE_FREQUENCY_KEY, 0.0);
-                if (! germlineAlleleFrequencies.isEmpty() && germlineAlleleFrequencies.get(0) > MTAC.maxPopulationAlleleFrequency) {
+                final VariantContext germlineVariant = germline.get(0);
+                final List<Double> germlineAlleleFrequencies = getAttributeAsDoubleList(germlineVariant, VCFConstants.ALLELE_FREQUENCY_KEY, 0.0);
+                if (!germlineAlleleFrequencies.isEmpty() && germlineAlleleFrequencies.get(0) > MTAC.maxPopulationAlleleFrequency) {
                     return new ActivityProfileState(refInterval, 0.0);
                 }
             }
@@ -300,6 +301,22 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         }
 
         return new ActivityProfileState( refInterval, 1.0, ActivityProfileState.Type.NONE, null);
+    }
+
+    // NOTE: this is a hack to get around an htsjdk bug: https://github.com/samtools/htsjdk/issues/1228
+    // htsjdk doesn't correctly detect the missing value string '.', so we have copied and fixed the htsjdk code
+    public static List<Double> getAttributeAsDoubleList(final VariantContext vc, final String key, final double defaultValue) {
+        return vc.getCommonInfo().getAttributeAsList(key).stream()
+                .map(x -> {
+                if (x == null) {
+                    return defaultValue;
+                } else if (x instanceof Number) {
+                    return ((Number) x).doubleValue();
+                } else {
+                    String string = (String) x;
+                    return string.equals(VCFConstants.MISSING_VALUE_v4) ? defaultValue : Double.valueOf(string); // throws an exception if this isn't a string
+                }
+            }).collect(Collectors.toList());
     }
 
     private static int getCurrentOrFollowingIndelLength(final PileupElement pe) {

@@ -45,17 +45,17 @@ public class GermlineProbabilityCalculator {
 
     @VisibleForTesting
     static double[] getGermlineAltAlleleFrequencies(final List<Allele> altAlleles, final Optional<VariantContext> germlineVC, final double afOfAllelesNotInGermlineResource) {
-        if (germlineVC.isPresent() && germlineVC.get().hasAttribute(VCFConstants.ALLELE_FREQUENCY_KEY))  {
-            final List<Double> germlineAltAFs = germlineVC.get().getAttributeAsDoubleList(VCFConstants.ALLELE_FREQUENCY_KEY, afOfAllelesNotInGermlineResource);
+        if (germlineVC.isPresent())  {
+            final List<Double> germlineAltAFs = Mutect2Engine.getAttributeAsDoubleList(germlineVC.get(), VCFConstants.ALLELE_FREQUENCY_KEY, afOfAllelesNotInGermlineResource);
             return altAlleles.stream()
                     .mapToDouble(allele -> {
                         final OptionalInt germlineAltIndex = findAltAlleleIndex(germlineVC.get(), allele);
                         return germlineAltIndex.isPresent() ? germlineAltAFs.get(germlineAltIndex.getAsInt())
                                 : afOfAllelesNotInGermlineResource;
                     }).toArray();
-        } else {
-            return Doubles.toArray(Collections.nCopies(altAlleles.size(), afOfAllelesNotInGermlineResource));
         }
+
+        return Doubles.toArray(Collections.nCopies(altAlleles.size(), afOfAllelesNotInGermlineResource));
     }
 
     /**
