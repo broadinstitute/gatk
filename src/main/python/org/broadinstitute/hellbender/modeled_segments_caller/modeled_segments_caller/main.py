@@ -593,7 +593,7 @@ class ModeledSegmentsCaller:
                  max_phred_score_normal: float=100.,
                  n_inference_iterations: int=30000,
                  inference_total_grad_norm_constraint: float=50.,
-                 n_extra_Gaussians_mixture_model: int=6,
+                 n_extra_Gaussians_mixture_model: int=12,
                  max_n_peaks_in_copy_ratio: int=10
                  ):
         """ On initialization, the caller loads the copy ratio and allele fraction data from

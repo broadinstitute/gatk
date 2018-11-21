@@ -714,7 +714,7 @@ task CallModeledSegments {
             --max-phred-score-normal ${default="100." max_phred_score_normal} \
             --n-inference-iterations ${default="20000" n_inference_iterations} \
             --inference-total-grad-norm-constraint ${default="0.15" inference_total_grad_norm_constraint} \
-            --n-extra-gaussians-mixture-model ${default="6" n_extra_gaussians_mixture_model} \
+            --n-extra-gaussians-mixture-model ${default="12" n_extra_gaussians_mixture_model} \
             --max-n-peaks-in-copy-ratio ${default="10" max_n_peaks_in_copy_ratio} \
             --responsibility-threshold-normal ${default="0.5" responsibility_threshold_normal} \
             --weight_ratio_max ${default="10" weight_ratio_max}
