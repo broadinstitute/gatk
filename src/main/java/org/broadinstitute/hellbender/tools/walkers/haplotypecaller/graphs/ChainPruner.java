@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import java.util.*;
 
 
@@ -8,12 +10,13 @@ public abstract class ChainPruner<V extends BaseVertex, E extends BaseEdge> {
 
     public void pruneLowWeightChains(final BaseGraph<V,E> graph) {
         final List<Path<V, E>> chains = findAllChains(graph);
-        final List<Path<V, E>> chainsToRemove = chainsToRemove(chains);
+        final Collection<Path<V, E>> chainsToRemove = chainsToRemove(chains);
         chainsToRemove.forEach(c -> graph.removeAllEdges(c.getEdges()));
         graph.removeSingletonOrphanVertices();
     }
 
-    private List<Path<V, E>> findAllChains(BaseGraph<V, E> graph) {
+    @VisibleForTesting
+    List<Path<V, E>> findAllChains(BaseGraph<V, E> graph) {
         final Deque<V> chainStarts = new LinkedList<>(graph.getSources());
         final List<Path<V,E>> chains = new LinkedList<>();
         final Set<V> alreadySeen = new HashSet<>(chainStarts);
@@ -56,5 +59,5 @@ public abstract class ChainPruner<V extends BaseVertex, E extends BaseEdge> {
         return new Path<V, E>(edges, lastVertex, graph);
     }
 
-    protected abstract List<Path<V,E>> chainsToRemove(final List<Path<V, E>> chains);
+    protected abstract Collection<Path<V,E>> chainsToRemove(final List<Path<V, E>> chains);
 }

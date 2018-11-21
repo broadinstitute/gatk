@@ -22,7 +22,7 @@ public final class LowWeightChainPruner<V extends BaseVertex, E extends BaseEdge
     }
 
     @Override
-    protected List<Path<V,E>> chainsToRemove(final List<Path<V, E>> chains) {
+    protected Collection<Path<V,E>> chainsToRemove(final List<Path<V, E>> chains) {
         return chains.stream().filter(this::needsPruning).collect(Collectors.toList());
     }
 

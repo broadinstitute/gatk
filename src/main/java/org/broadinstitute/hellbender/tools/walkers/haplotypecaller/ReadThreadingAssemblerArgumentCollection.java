@@ -111,6 +111,37 @@ public final class ReadThreadingAssemblerArgumentCollection implements Serializa
     @Argument(fullName="min-pruning", doc = "Minimum support to not prune paths in the graph", optional = true)
     public int minPruneFactor = 2;
 
+    /**
+     * A single edge multiplicity cutoff for pruning doesn't work in samples with variable depths, for example exomes
+     * and RNA.  This parameter activates a probabilistic algorithm for pruning the assembly graph that considers the
+     * likelihood that each chain in the graph comes from real variation.
+     */
+    @Advanced
+    @Argument(fullName="adaptive-pruning", doc = "Use an adaptive algorithm for pruning paths in the graph", optional = true)
+    public boolean useAdaptivePruning = false;
+
+    /**
+     * Initial base error rate guess for the probabilistic adaptive pruning model.  Results are not very sensitive to this
+     * parameter because it is only a starting point from which the algorithm discovers the true error rate.
+     */
+    @Advanced
+    @Argument(fullName="adaptive-pruning-initial-error-rate", doc = "Initial base error rate estimate for adaptive pruning", optional = true)
+    public double initialErrorRateForPruning = 0.001;
+
+    /**
+     * Log-10 likelihood ratio threshold for adaptive pruning algorithm.
+     */
+    @Advanced
+    @Argument(fullName="pruning-lod-threshold", doc = "Log-10 likelihood ratio threshold for adaptive pruning algorithm", optional = true)
+    public double pruningLog10OddsThreshold = 1.0;
+
+    /**
+     * The maximum number of variants in graph the adaptive pruner will allow
+     */
+    @Advanced
+    @Argument(fullName="max-unpruned-variants", doc = "Maximum number of variants in graph the adaptive pruner will allow", optional = true)
+    public int maxUnprunedVariants = 100;
+
     @Hidden
     @Argument(fullName="debug-graph-transformations", doc="Write DOT formatted graph files out of the assembler for only this graph size", optional = true)
     public boolean debugGraphTransformations = false;

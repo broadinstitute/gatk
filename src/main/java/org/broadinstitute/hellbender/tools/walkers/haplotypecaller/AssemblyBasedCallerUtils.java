@@ -190,7 +190,8 @@ public final class AssemblyBasedCallerUtils {
     public static ReadThreadingAssembler createReadThreadingAssembler(final AssemblyBasedCallerArgumentCollection args) {
         final ReadThreadingAssemblerArgumentCollection rtaac = args.assemblerArgs;
         final ReadThreadingAssembler assemblyEngine = new ReadThreadingAssembler(rtaac.maxNumHaplotypesInPopulation, rtaac.kmerSizes,
-                rtaac.dontIncreaseKmerSizesForCycles, rtaac.allowNonUniqueKmersInRef, rtaac.numPruningSamples, rtaac.minPruneFactor);
+                rtaac.dontIncreaseKmerSizesForCycles, rtaac.allowNonUniqueKmersInRef, rtaac.numPruningSamples, rtaac.minPruneFactor,
+                rtaac.useAdaptivePruning, rtaac.initialErrorRateForPruning, rtaac.pruningLog10OddsThreshold, rtaac.maxUnprunedVariants);
         assemblyEngine.setErrorCorrectKmers(rtaac.errorCorrectKmers);
         assemblyEngine.setDebug(args.debug);
         assemblyEngine.setDebugGraphTransformations(rtaac.debugGraphTransformations);
