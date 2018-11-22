@@ -585,8 +585,8 @@ class ModeledSegmentsCaller:
                  interactive_output_copy_ratio_suffix:str="_copy_ratio_fit.png",
                  interactive_output_copy_ratio_clustering_suffix:str="_copy_ratio_clusters.png",
                  normal_minor_allele_fraction_threshold: float=0.475,
-                 copy_ratio_peak_min_relative_height: float=0.04,
-                 copy_ratio_kernel_density_bandwidth: float=0.015,
+                 copy_ratio_peak_min_relative_height: float=0.03,
+                 copy_ratio_kernel_density_bandwidth: float=0.025,
                  min_weight_first_cr_peak_cr_data_only: float=0.35,
                  min_fraction_of_points_in_normal_allele_fraction_region: float=0.15,
                  responsibility_threshold_normal: float=0.5,
@@ -595,7 +595,7 @@ class ModeledSegmentsCaller:
                  inference_total_grad_norm_constraint: float=50.,
                  n_extra_Gaussians_mixture_model: int=12,
                  max_n_peaks_in_copy_ratio: int=10,
-                 gaussian_prior_standard_deviation: float=0.0005
+                 gaussian_prior_standard_deviation: float=0.002
                  ):
         """ On initialization, the caller loads the copy ratio and allele fraction data from
             the LoadAndSampleCrAndAf class. It then identifies normal segments and saves the
@@ -953,6 +953,9 @@ class ModeledSegmentsCaller:
         # - n_extra_Gaussians: we also allow some initially randomly positioned Gaussians that can cover additional
         #   structure of the data if there is any
 
+        if len(data_points) == 0:
+            return [[], [], []]
+
         if np.array(weights).any() == None:
             weights = [1] * len(data_points)
             if self.__log_filename != "":
@@ -969,7 +972,8 @@ class ModeledSegmentsCaller:
         pi_init = np.random.uniform(0, 1, n_Gaussians)
         n_Gaussians += n_extra_Gaussians
         pi_init = np.append(pi_init, [0.02] * n_extra_Gaussians)
-        mu_init = np.append(mu_estimates, [[np.random.uniform(0,2), np.random.uniform(0,0.5)]
+        mu_init = np.append(mu_estimates, [[np.random.uniform(min(np.array(data_points)[:,0]),max(np.array(data_points)[:,0])),
+                                            np.random.uniform(min(np.array(data_points)[:,1]),max(np.array(data_points)[:,1]))]
                                            for _ in range(n_extra_Gaussians)])
         pi_init = pi_init / np.sum(pi_init)
         epsilon = 1e-9
@@ -1031,7 +1035,7 @@ class ModeledSegmentsCaller:
         #sds = approx.bij.rmap(np.diag(cov)**.5)
 
         mu_result = []
-        pi_result = pm.distributions.transforms.t_stick_breaking(epsilon).backward(means['pis_stickbreaking__']).eval()
+        pi_result = list(pm.distributions.transforms.t_stick_breaking(epsilon).backward(means['pis_stickbreaking__']).eval())
         cov_result = []
         for i in range(n_Gaussians):
             mu_result.append(means['mu_' + str(i)])
@@ -1059,20 +1063,43 @@ class ModeledSegmentsCaller:
         sigma_cr_normal = 0.005
         sigma_af_normal = 0.005
 
-        # Fit mixtures using Gaussian variational inference
-        data = [[self.__copy_ratio_median[i], self.__allele_fraction_median[i]] for i in range(self.__n_segments)]
-        [pis, mus, covs] = self.__fit_weighted_Gaussian_mixture_ADVI(data_points=data, weights=self.__weights,
-                                                                     n_Gaussians_proposed=n_Gaussians_proposed,
-                                                                     n_extra_Gaussians=self.__n_extra_Gaussians_mixture_model)
         # We choose those peaks to be normal whose mean's copy ratio value is within the range specified
         # by '__choose_cn2_cr_cluster' and whose allele fraction value is within the range specified by
         # 'normal_range_af'.
         self.__normal_range_af = [self.__normal_minor_allele_fraction_threshold, 0.5]
         self.__normal_range_cr = self.__choose_cn2_cr_cluster()
 
-        # Choose peaks that aer within or have a substantial overlap with the normal region
+        # Fit mixtures using Gaussian variational inference separately to the data within the copy number 2 region
+        # and data outside of it.
+        data_cn_2 = []
+        data_other = []
+        weights_cn_2 = []
+        weights_other = []
+        for i in range(self.__n_segments):
+            if self.__normal_range_cr[0] <= self.__copy_ratio_median[i] and self.__copy_ratio_median[i] <= self.__normal_range_cr[1]:
+                data_cn_2.append([self.__copy_ratio_median[i], self.__allele_fraction_median[i]])
+                weights_cn_2.append(self.__weights[i])
+            else:
+                data_other.append([self.__copy_ratio_median[i], self.__allele_fraction_median[i]])
+                weights_other.append(self.__weights[i])
+
+        [pis_cn_2, mus_cn_2, covs_cn_2] = self.__fit_weighted_Gaussian_mixture_ADVI(data_points=data_cn_2,
+                                                                                    weights=weights_cn_2,
+                                                                                    n_Gaussians_proposed=3,
+                                                                                    n_extra_Gaussians=3)
+
+        [pis_other, mus_other, covs_other] = self.__fit_weighted_Gaussian_mixture_ADVI(data_points=data_other,
+                                                                                       weights=weights_other,
+                                                                                       n_Gaussians_proposed=n_Gaussians_proposed,
+                                                                                       n_extra_Gaussians=self.__n_extra_Gaussians_mixture_model)
+        pis = pis_cn_2 + pis_other
+        mus = mus_cn_2 + mus_other
+        covs = covs_cn_2 + covs_other
+
+        # Choose peaks that are within the copy number 2 region or that have substantial overlap with it.
+        # Consider only those peaks that have been fit to the data within the copy number 2 region.
         normal_peak_indices = []
-        for i in range(len(pis)):
+        for i in range(len(pis_cn_2)):
             if (self.__normal_range_cr[0] - min(np.sqrt(covs[i][0]), 0.25) <= mus[i][0]
                 and mus[i][0] <= self.__normal_range_cr[1] + min(np.sqrt(covs[i][0]), 0.25)
                 and (self.__normal_range_af[0] <= mus[i][1] + np.sqrt(covs[i][1]))
@@ -1080,10 +1107,15 @@ class ModeledSegmentsCaller:
                 ):
                 normal_peak_indices.append(i)
 
+        # According to the classification of normal peaks, we calculate the responsibilities of segments being normal
         responsibilities_normal = self.__responsibility_segments_are_normal(pis, mus, covs, normal_peak_indices)
+
+        # We choose those segments to be normal whose responsibility is higher than the responsibility threshold
+        # and which are not super far out of the region defined by self.__normal_minor_allele_fraction_threshold.
         normal_segment_indices = []
-        for i in range(len(responsibilities_normal)):
-            if responsibilities_normal[i] >= self.__responsibility_threshold_normal:
+        minimum_af_for_normal = 0.5 - 2 * (0.5 - self.__normal_minor_allele_fraction_threshold)
+        for i in range(self.__n_segments):
+            if (responsibilities_normal[i] >= self.__responsibility_threshold_normal) and (self.__allele_fraction_median[i] >= minimum_af_for_normal):
                 normal_segment_indices.append(i)
         pis = [abs(p) for p in pis]
         gaussian_mixture_fit = [pis, mus, covs]
@@ -1206,7 +1238,7 @@ class ModeledSegmentsCaller:
                 bandwidth = 0.5 * sd_peaks[ind[0]]
             else:
                 bandwidth = 0.5 * min([sd_peaks[ind[0]], sd_peaks[ind[1]]])
-            bandwidth = max([bandwidth, 0.010])
+            bandwidth = max([bandwidth, 0.015])
         else:
             bandwidth = self.__copy_ratio_kernel_density_bandwidth
 
@@ -1518,7 +1550,7 @@ class ModeledSegmentsCaller:
                 max_phred_score=self.__max_PHRED_score
             )] * 2)
 
-            n_d_a = self.__normal_del_ampl(self.__copy_ratio_median[i], avg_normal_cr,
+            n_d_a = self.__normal_del_ampl(self.__copy_ratio_median[i], self.__allele_fraction_median[i], avg_normal_cr,
                                            std_dev_normal_cr, self.__responsibilities_normal[i])
             if n_d_a == "+":
                 y_color.append((1.0, 0.0, 1.0))
@@ -1811,6 +1843,7 @@ class ModeledSegmentsCaller:
                        and 0. <= float(values[10]) <= 0.5
                        ):
                         file_data += line.strip() + "\t" + str(self.__normal_del_ampl(self.__copy_ratio_median[i],
+                                                                                      self.__allele_fraction_median[i],
                                                                                       avg_normal_cr, std_dev_normal_cr,
                                                                                       self.__responsibilities_normal[i]))
                         file_data += "\t"
@@ -1828,6 +1861,7 @@ class ModeledSegmentsCaller:
                        and 2**float(values[7]) <= self.__max_copy_ratio_possible
                        ):
                         file_data += line.strip() + "\t" + str(self.__normal_del_ampl(self.__copy_ratio_median[i],
+                                                                                      self.__allele_fraction_median[i],
                                                                                       avg_normal_cr, std_dev_normal_cr,
                                                                                       self.__responsibilities_normal[i]))
                         file_data += "\t"
@@ -1845,6 +1879,7 @@ class ModeledSegmentsCaller:
                        and 0. <= float(values[10]) <= 0.5
                        ):
                         file_data += line.strip() + "\t" + str(self.__normal_del_ampl(self.__copy_ratio_median[i],
+                                                                                      self.__allele_fraction_median[i],
                                                                                       avg_normal_cr, std_dev_normal_cr,
                                                                                       self.__responsibilities_normal[i]))
                         file_data += "\t"
@@ -1857,14 +1892,16 @@ class ModeledSegmentsCaller:
         output_file.write(file_header + file_data)
         output_file.close()
 
-    def __normal_del_ampl(self, cr: float, avg_normal_cr_: float, std_dev_normal_cr_: float,
+    def __normal_del_ampl(self, cr: float, af: float, avg_normal_cr_: float, std_dev_normal_cr_: float,
                           responsibility_normal: float):
         """ Determines if the copy ratio value cr corresponds to a deletion (-),
             an amplification (+), a normal segment (0), a normal copy ratio
             with imbalanced allele fraction (CNLOH) or cannot be decided but not
             normal.
         """
-        if responsibility_normal > self.__responsibility_threshold_normal:
+        minimum_af_for_normal = 0.5 - 2 * (0.5 - self.__normal_minor_allele_fraction_threshold)
+
+        if responsibility_normal > self.__responsibility_threshold_normal and af >= minimum_af_for_normal:
             return "0"
         else:
             if self.__load_cr:
@@ -1890,7 +1927,7 @@ class ModeledSegmentsCaller:
                 total_cr += self.__weights[i] * self.__copy_ratio_median[i]
 
         if total_weight == 0:
-            avg_normal_cr = 0
+            avg_normal_cr = np.mean(self.__normal_range_cr)
         else:
             avg_normal_cr = total_cr / total_weight
 

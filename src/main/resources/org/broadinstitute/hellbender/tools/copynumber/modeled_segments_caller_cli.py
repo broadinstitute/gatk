@@ -114,14 +114,14 @@ group.add_argument("--normal_minor_allele_fraction_threshold",
 group.add_argument("--copy_ratio_peak_min_relative_height",
                    type=float,
                    required=False,
-                   default=0.02,
+                   default=0.03,
                    help="During the copy ratio clustering, peaks with weights smaller than this ratio are not "
                         "taken into account.")
 
 group.add_argument("--copy_ratio_kernel_density_bandwidth",
                    type=float,
                    required=False,
-                   default=0.015,
+                   default=0.025,
                    help="During the copy ratio clustering, we smoothen the data using a Gaussian kernel of "
                         "this bandwidth. If it is set to 0 or a negative value, its value is set automatically, "
                         "using the data.")
@@ -187,7 +187,7 @@ group.add_argument("--max_n_peaks_in_copy_ratio",
 group.add_argument("--gaussian_prior_standard_deviation",
                    type=float,
                    required=False,
-                   default=0.0005,
+                   default=0.002,
                    help="The standard deviation of the prior of the mean and the standard deviation of the Gaussians "
                         "that we fit to the segment data in (copy ratio, allele fraction) space. Since the positions "
                         "of the peaks are estimated using k-means clustering, the prior around these points should be "
