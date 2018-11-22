@@ -942,8 +942,16 @@ class ModeledSegmentsCaller:
                                               if cluster_assignments[i]==k]) / total_weight
         return np.array(centroids), cluster_assignments
 
-    def __fit_weighted_Gaussian_mixture_ADVI(self, data_points, weights, n_Gaussians_proposed):
+    def __fit_weighted_Gaussian_mixture_ADVI(self, data_points, weights, n_Gaussians_proposed, n_extra_Gaussians):
         # Function that fits Gaussians to data with weights. The dimension of the data can be arbitrary.
+        # Inputs:
+        # - data_points is two dimensional: pairs of copy ratio and allele fraction values.
+        # - weights: the weights of the segments
+        # - n_Gaussians_proposed: we start by k-means clustering of the data into n_Gaussians_proposed clusters
+        #   and merge them if they are too close. The resulting number of clusters is n_Gaussians. These clusters' means
+        #   are used as starting points of the 2D fit of Gaussians
+        # - n_extra_Gaussians: we also allow some initially randomly positioned Gaussians that can cover additional
+        #   structure of the data if there is any
 
         if np.array(weights).any() == None:
             weights = [1] * len(data_points)
@@ -959,7 +967,6 @@ class ModeledSegmentsCaller:
                                                                       n_clusters=n_Gaussians_proposed)
         n_Gaussians = len(mu_estimates)
         pi_init = np.random.uniform(0, 1, n_Gaussians)
-        n_extra_Gaussians = self.__n_extra_Gaussians_mixture_model
         n_Gaussians += n_extra_Gaussians
         pi_init = np.append(pi_init, [0.02] * n_extra_Gaussians)
         mu_init = np.append(mu_estimates, [[np.random.uniform(0,2), np.random.uniform(0,0.5)]
@@ -1054,8 +1061,9 @@ class ModeledSegmentsCaller:
 
         # Fit mixtures using Gaussian variational inference
         data = [[self.__copy_ratio_median[i], self.__allele_fraction_median[i]] for i in range(self.__n_segments)]
-        [pis, mus, covs] = self.__fit_weighted_Gaussian_mixture_ADVI(data, self.__weights, n_Gaussians_proposed)
-
+        [pis, mus, covs] = self.__fit_weighted_Gaussian_mixture_ADVI(data_points=data, weights=self.__weights,
+                                                                     n_Gaussians_proposed=n_Gaussians_proposed,
+                                                                     n_extra_Gaussians=self.__n_extra_Gaussians_mixture_model)
         # We choose those peaks to be normal whose mean's copy ratio value is within the range specified
         # by '__choose_cn2_cr_cluster' and whose allele fraction value is within the range specified by
         # 'normal_range_af'.
@@ -1278,27 +1286,27 @@ class ModeledSegmentsCaller:
             cr_variance = np.sum([self.__weights[i] * (self.__copy_ratio_median[i] - cr_mean)**2
                                   for i in range(len(self.__copy_ratio_median))]) / len(self.__copy_ratio_median)
             cr_std_dev = np.sqrt(cr_variance)
-            cr_std_dev = max(cr_std_dev, 0.05)  # We don't want the standard deviation be very tight
+            cr_std_dev = max(cr_std_dev, 0.02)  # We don't want the standard deviation be very tight
             cn2_interval = [max([0, cr_mean - 3 * cr_std_dev]), cr_mean + 3 * cr_std_dev]
             return cn2_interval
 
         # The first interval shouldn't necessarily start from 0, but a value that takes the natural spread
         # of the peak in the copy number 1 candidate region into account.
-        ind_pts_cn_1 = [i for i in range(len(self.__copy_ratio_median)) if self.__copy_ratio_median[i] < cluster_separators[0]]
-        cr_mean_cn_1 = np.sum([self.__weights[i] * self.__copy_ratio_median[i] for i in ind_pts_cn_1]) / len(ind_pts_cn_1)
-        cr_variance_cn_1 = np.sum([self.__weights[i] * (self.__copy_ratio_median[i] - cr_mean_cn_1)**2 for i in ind_pts_cn_1]) / len(ind_pts_cn_1)
+        ind_segs_cn_1 = [i for i in range(len(self.__copy_ratio_median)) if self.__copy_ratio_median[i] < cluster_separators[0]]
+        cr_mean_cn_1 = np.sum([self.__weights[i] * self.__copy_ratio_median[i] for i in ind_segs_cn_1]) / len(ind_segs_cn_1)
+        cr_variance_cn_1 = np.sum([self.__weights[i] * (self.__copy_ratio_median[i] - cr_mean_cn_1)**2 for i in ind_segs_cn_1]) / len(ind_segs_cn_1)
         cr_std_dev_cn_1 = np.sqrt(cr_variance_cn_1)
-        cr_std_dev_cn_1 = max([cr_std_dev_cn_1, 0.05]) # We don't want the standard deviation be very tight
+        cr_std_dev_cn_1 = max([cr_std_dev_cn_1, 0.02]) # We don't want the standard deviation be very tight
         cn1_interval_candidate = [max([0, cr_mean_cn_1 - 3 * cr_std_dev_cn_1]), cluster_separators[0]]
 
         if len(cluster_separators) == 1:
             # If there are only two peaks, we still don't want to make cn2_interval_candidate go until
             # infinity, so we limit it at 3*sigma from the mean of the data there.
-            ind_pts_cn_2 = [i for i in range(len(self.__copy_ratio_median)) if self.__copy_ratio_median[i] >= cluster_separators[0]]
-            cr_mean_cn_2 = np.sum([self.__weights[i] * self.__copy_ratio_median[i] for i in ind_pts_cn_2]) / len(ind_pts_cn_2)
-            cr_variance_cn_2 = np.sum([self.__weights[i] * (self.__copy_ratio_median[i] - cr_mean_cn_2)**2 for i in ind_pts_cn_2]) / len(ind_pts_cn_2)
+            ind_segs_cn_2 = [i for i in range(len(self.__copy_ratio_median)) if self.__copy_ratio_median[i] >= cluster_separators[0]]
+            cr_mean_cn_2 = np.sum([self.__weights[i] * self.__copy_ratio_median[i] for i in ind_segs_cn_2]) / len(ind_segs_cn_2)
+            cr_variance_cn_2 = np.sum([self.__weights[i] * (self.__copy_ratio_median[i] - cr_mean_cn_2)**2 for i in ind_segs_cn_2]) / len(ind_segs_cn_2)
             cr_std_dev_cn_2 = np.sqrt(cr_variance_cn_2)
-            cr_std_dev_cn_2 = max([cr_std_dev_cn_2, 0.05]) # We don't want the standard deviation be very tight
+            cr_std_dev_cn_2 = max([cr_std_dev_cn_2, 0.02]) # We don't want the standard deviation be very tight
             cn2_interval_candidate = [cluster_separators[0], cr_mean_cn_2 + 3 * cr_std_dev_cn_2]
         else:
             cn2_interval_candidate = [cluster_separators[0], cluster_separators[1]]
