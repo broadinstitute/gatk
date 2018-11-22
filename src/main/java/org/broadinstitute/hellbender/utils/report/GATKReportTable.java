@@ -664,4 +664,8 @@ public final class GATKReportTable {
                 return underlyingData;
         }
     }
+
+    public String getTableDescription() {
+        return tableDescription;
+    }
 }
