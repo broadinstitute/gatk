@@ -727,7 +727,7 @@ task CallModeledSegments {
             --n-extra-gaussians-mixture-model ${default="12" n_extra_gaussians_mixture_model} \
             --max-n-peaks-in-copy-ratio ${default="10" max_n_peaks_in_copy_ratio} \
             --responsibility-threshold-normal ${default="0.5" responsibility_threshold_normal} \
-            --weight-ratio-max ${default="10" weight_ratio_max}
+            --weight-ratio-max ${default="10" weight_ratio_max} \
             --gaussian-prior-standard-deviation ${default="0.0005" gaussian_prior_standard_deviation}
     >>>
 
