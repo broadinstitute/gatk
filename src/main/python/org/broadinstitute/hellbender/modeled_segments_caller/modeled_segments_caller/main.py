@@ -1931,17 +1931,9 @@ class ModeledSegmentsCaller:
         # If the ratio of normal segments is very small, then we just take
         # the mean of the data in the copy number 2 region as avg_normal_cr.
         if total_weight_normal/total_weight_all_segments <= 0.0001:
-            ind_cr_in_cn_2 = [i for i in range(len(self.__copy_ratio_median))
-                              if (self.__normal_range_cr[0] <= self.__copy_ratio_median[i]
-                                  and self.__copy_ratio_median[i] <= self.__normal_range_cr[1])]
-            total_weight_cn2 = np.sum([self.__weights[i] for i in ind_cr_in_cn_2])
-            total_cr_cn2 = np.sum([self.__weights[i] * self.__copy_ratio_median[i] for i in ind_cr_in_cn_2])
-            # In the special case when there are no segments in the copy number 2 region, we just take the center
-            # of the region as avg_normal_cr.
-            if total_weight_cn2 == 0:
-                avg_normal_cr = np.mean(self.__normal_range_cr)
-            else:
-                avg_normal_cr = total_cr_cn2 / total_weight_cn2
+            avg_normal_cr = np.mean(self.__normal_range_cr)
+            std_dev_normal_cr = (self.__normal_range_cr[1] - self.__normal_range_cr[0]) / 4
+            return [avg_normal_cr, std_dev_normal_cr]
         else:
             avg_normal_cr = total_cr_normal / total_weight_normal
 
@@ -1949,11 +1941,7 @@ class ModeledSegmentsCaller:
             if self.__responsibilities_normal[i] > responsibility_threshold:
                 total_var_cr_normal += self.__weights[i] * (self.__copy_ratio_median[i] - avg_normal_cr)**2
 
-        if total_weight_normal == 0:
-            var_normal_cr = 0
-        else:
-            var_normal_cr = total_var_cr_normal / total_weight_normal
-
+        var_normal_cr = total_var_cr_normal / total_weight_normal
         std_dev_normal_cr = var_normal_cr**0.5
 
         return [avg_normal_cr, std_dev_normal_cr]
