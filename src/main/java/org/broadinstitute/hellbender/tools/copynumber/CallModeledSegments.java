@@ -204,7 +204,7 @@ public final class CallModeledSegments extends CommandLineProgram {
             fullName = COPY_RATIO_KERNEL_DENSITY_BANDWIDTH,
             optional = true
     )
-    private double copyRatioKernelDensityBandwidth=0.015;
+    private double copyRatioKernelDensityBandwidth=0.025;
 
     @Argument(
             doc = "If only copy ratio data is taken into account, and we find more than one cluster in the "
@@ -246,7 +246,7 @@ public final class CallModeledSegments extends CommandLineProgram {
             fullName = N_INFERENCE_ITERATIONS,
             optional = true
     )
-    private int nInferenceIterations=30000;
+    private int nInferenceIterations=120000;
 
     @Argument(
             doc = "In order to ensure convergence, this constant limits the value of the gradient in automatic"
@@ -279,7 +279,7 @@ public final class CallModeledSegments extends CommandLineProgram {
             fullName = GAUSSIAN_PRIOR_STANDARD_DEVIATION,
             optional = true
     )
-    private double gaussianPriorStandardDeviation=0.0005;
+    private double gaussianPriorStandardDeviation=0.002;
 
     // @Override
     // protected void onStartup() {
@@ -303,7 +303,7 @@ public final class CallModeledSegments extends CommandLineProgram {
         Utils.validateArg(0.0 < maxPhredScoreNormal,
                 "The upper limit of the PHRED score of the probability that the segments are normal needs to be positive");
         Utils.validateArg(0 < nInferenceIterations,
-                "The number of iterations of the inference algorithm needs to be positive. (Optimally around 30,000.)");
+                "The number of iterations of the inference algorithm needs to be positive.");
         Utils.validateArg(0.0 < inferenceTotalGradNormConstraint,
                 "The upper limit on the norm of the gradient during the inference algorithm needs to be positive.");
         Utils.validateArg(0 <= nExtraGaussiansMixtureModel,

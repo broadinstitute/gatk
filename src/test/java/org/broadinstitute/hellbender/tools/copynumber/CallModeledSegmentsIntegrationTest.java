@@ -36,12 +36,12 @@ public class CallModeledSegmentsIntegrationTest extends CommandLineProgramTest {
         List<Object[]> result = new LinkedList<>();
         result.add(new Object[] {INPUT_SIMULATED_NORMAL_DATA, INPUT_SIMULATED_NORMAL_TRUTH,
                 true, true, true, "normal_simulated"});
-        // result.add(new Object[] {INPUT_SIMULATED_NORMAL_NOISY_DATA, INPUT_SIMULATED_NORMAL_NOISY_TRUTH,
-        //         true, true, true, "normal_noisy_simulated"});
-        // result.add(new Object[] {INPUT_SIMULATED_SOMATIC_40P_PURITY_DATA, INPUT_SIMULATED_SOMATIC_40P_PURITY_TRUTH,
-        //         true, true, true, "somatic_100per_cent"});
-        // result.add(new Object[] {INPUT_SIMULATED_SOMATIC_60P_PURITY_DATA, INPUT_SIMULATED_SOMATIC_60P_PURITY_TRUTH,
-        //         true, true, true, "somatic_100per_cent"});
+        result.add(new Object[] {INPUT_SIMULATED_NORMAL_NOISY_DATA, INPUT_SIMULATED_NORMAL_NOISY_TRUTH,
+                true, true, true, "normal_noisy_simulated"});
+        result.add(new Object[] {INPUT_SIMULATED_SOMATIC_40P_PURITY_DATA, INPUT_SIMULATED_SOMATIC_40P_PURITY_TRUTH,
+                true, true, true, "somatic_100per_cent"});
+        result.add(new Object[] {INPUT_SIMULATED_SOMATIC_60P_PURITY_DATA, INPUT_SIMULATED_SOMATIC_60P_PURITY_TRUTH,
+                true, true, true, "somatic_100per_cent"});
         result.add(new Object[] {INPUT_SIMULATED_SOMATIC_100P_PURITY_DATA, INPUT_SIMULATED_SOMATIC_100P_PURITY_TRUTH,
                 true, true, true, "somatic_100per_cent"});
         return result.iterator();
