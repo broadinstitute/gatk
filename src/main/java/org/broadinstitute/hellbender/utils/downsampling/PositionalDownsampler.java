@@ -71,10 +71,8 @@ public final class PositionalDownsampler extends ReadsDownsampler {
         // Use ReadCoordinateComparator to determine whether we've moved to a new start position.
         // ReadCoordinateComparator will correctly distinguish between purely unmapped reads and unmapped reads that
         // are assigned a nominal position.
-        if ( previousRead != null && ReadCoordinateComparator.compareCoordinates(previousRead, newRead, header) != 0 ) {
-            if ( reservoir.hasFinalizedItems() ) {
-                finalizeReservoir(newRead);
-            }
+        if ( previousRead == null || ReadCoordinateComparator.compareCoordinates(previousRead, newRead, header) != 0 ) {
+            finalizeReservoir(newRead);
         }
     }
 
