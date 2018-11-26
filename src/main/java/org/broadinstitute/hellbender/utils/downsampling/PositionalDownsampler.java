@@ -38,7 +38,7 @@ public final class PositionalDownsampler extends ReadsDownsampler {
         Utils.validateArg(targetCoverage > 0, "targetCoverage must be > 0");
         Utils.nonNull(header);
 
-        this.reservoir = new ReservoirDownsampler(targetCoverage);
+        this.reservoir = new ReservoirDownsampler(targetCoverage, false, true);
         this.finalizedReads = new ArrayList<>();
         this.header = header;
         clearItems();
@@ -73,9 +73,14 @@ public final class PositionalDownsampler extends ReadsDownsampler {
         // are assigned a nominal position.
         if ( previousRead != null && ReadCoordinateComparator.compareCoordinates(previousRead, newRead, header) != 0 ) {
             if ( reservoir.hasFinalizedItems() ) {
-                finalizeReservoir();
+                finalizeReservoir(newRead);
             }
         }
+    }
+
+    private void finalizeReservoir(final GATKRead newRead) {
+        finalizedReads.addAll(reservoir.consumeFinalizedItems(newRead));
+        reservoir.resetStats();
     }
 
     private void finalizeReservoir() {

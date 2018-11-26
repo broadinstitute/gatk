@@ -2,11 +2,9 @@ package org.broadinstitute.hellbender.utils.downsampling;
 
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 
 /**
  * Reservoir Downsampler: Selects n reads out of a stream whose size is not known in advance, with
@@ -51,6 +49,11 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
      */
     private int totalReadsSeen;
 
+    /**
+     * Random generator that should be reset for each location
+     */
+    private Random randomGenerator;
+
 
     /**
      * Construct a ReservoirDownsampler
@@ -63,14 +66,21 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
      *                           internal buffers to targetSampleSize initially, which minimizes
      *                           the cost of allocation if we often use targetSampleSize or more
      *                           elements.
+     *
+     * @param useOwnRandomGenerator if true, this downsampler will rely on its own internal random
+     *                              generator object that will have its seed reset. When in this mode
+     *                              in order to keep the downsampling deterministic, simply supply
+     *                              the read corresponding to the next start position in order to
+     *                              reset the seed.
      */
-    public ReservoirDownsampler(final int targetSampleSize, final boolean expectFewOverflows ) {
+    public ReservoirDownsampler(final int targetSampleSize, final boolean expectFewOverflows, final boolean useOwnRandomGenerator) {
         if ( targetSampleSize <= 0 ) {
             throw new IllegalArgumentException("Cannot do reservoir downsampling with a sample size <= 0");
         }
 
         this.targetSampleSize = targetSampleSize;
         this.expectFewOverflows = expectFewOverflows;
+        this.randomGenerator = useOwnRandomGenerator? new Random(): null;
         clearItems();
         resetStats();
     }
@@ -82,7 +92,7 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
      *                         after downsampling will be min(totalReads, targetSampleSize)
      */
     public ReservoirDownsampler(final int targetSampleSize ) {
-        this(targetSampleSize, false);
+        this(targetSampleSize, false, false);
     }
 
     @Override
@@ -100,7 +110,7 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
                 isLinkedList = false;
             }
 
-            final int randomSlot = Utils.getRandomGenerator().nextInt(totalReadsSeen);
+            final int randomSlot = (randomGenerator == null ? Utils.getRandomGenerator() : randomGenerator).nextInt(totalReadsSeen);
             if ( randomSlot < targetSampleSize ) {
                 reservoir.set(randomSlot, newRead);
             }
@@ -111,6 +121,18 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
     @Override
     public boolean hasFinalizedItems() {
         return ! reservoir.isEmpty();
+    }
+
+    /**
+     * @param readSeed If supplied, the start position is added to the {@Link Utils#getGatkDefaultRandomSeed} to
+     *                 reset the random seed for the random generator. This is used to ensure that the resivoir
+     *                 downsampler is deterministic in its downsampling.
+     */
+    public List<GATKRead> consumeFinalizedItems(final GATKRead readSeed) {
+        // Use the start position for the read as a seed for the random generator
+        randomGenerator.setSeed(Utils.getGatkDefaultRandomSeed() +
+                (ReadUtils.readHasNoAssignedPosition(readSeed) ? 0 : readSeed.getContig().hashCode() << 32 + readSeed.getStart()));
+        return consumeFinalizedItems();
     }
 
     @Override
