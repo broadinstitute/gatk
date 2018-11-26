@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Random;
 
 /**
  * Reservoir Downsampler: Selects n reads out of a stream whose size is not known in advance, with
@@ -51,6 +52,8 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
      */
     private int totalReadsSeen;
 
+    private Random random = new Random();
+    private long lastPos = Long.MIN_VALUE;
 
     /**
      * Construct a ReservoirDownsampler
@@ -100,7 +103,11 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
                 isLinkedList = false;
             }
 
-            final int randomSlot = Utils.getRandomGenerator().nextInt(totalReadsSeen);
+            if (lastPos != newRead.getStart()) { // re-seed random generator at every new position
+                lastPos = newRead.getStart();
+                random.setSeed(lastPos);
+            }
+            final int randomSlot = random.nextInt(totalReadsSeen);
             if ( randomSlot < targetSampleSize ) {
                 reservoir.set(randomSlot, newRead);
             }

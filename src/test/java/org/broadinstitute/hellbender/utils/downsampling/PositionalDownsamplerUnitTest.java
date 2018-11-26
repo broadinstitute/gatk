@@ -58,7 +58,6 @@ public class PositionalDownsamplerUnitTest extends GATKBaseTest {
         Assert.assertTrue(downsampler.requiresCoordinateSortOrder());
         Assert.assertEquals(downsampler.size(), 0);
 
-        Utils.resetRandomGenerator();
         downsampler.submit(allReads);
 
         Assert.assertEquals(downsampler.size(), expectedStackSizesSum);
@@ -121,9 +120,6 @@ public class PositionalDownsamplerUnitTest extends GATKBaseTest {
         Assert.assertEquals(downsampler.getNumberOfDiscardedItems(), 0);
 
         // Now test with a PositionalDownsampler wrapped in an iterator, and make sure we get the same results.
-        // It's crucial to reset the random number generator again in order to match the selections made by the
-        // first downsampling pass.
-        Utils.resetRandomGenerator();
         final ReadsDownsamplingIterator downsamplingIter = new ReadsDownsamplingIterator(allReads.iterator(), new PositionalDownsampler(targetCoverage, header));
         final List<GATKRead> downsampledReadsFromIter = new ArrayList<>();
         for ( final GATKRead downsampledRead : downsamplingIter ) {
