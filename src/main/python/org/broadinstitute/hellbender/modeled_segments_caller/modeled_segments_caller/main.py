@@ -1922,9 +1922,9 @@ class ModeledSegmentsCaller:
             return "0"
         else:
             if self.__load_cr:
-                if cr > avg_normal_cr_ + 2 * std_dev_normal_cr_:
+                if cr > min([avg_normal_cr_ + 2 * std_dev_normal_cr_, self.__normal_range_cr[1]]):
                     return "+"
-                elif cr < avg_normal_cr_ - 2 * std_dev_normal_cr_:
+                elif cr < max([avg_normal_cr_ - 2 * std_dev_normal_cr_, self.__normal_range_cr[0]]):
                     return "-"
                 else:
                     return "CNLOH"
