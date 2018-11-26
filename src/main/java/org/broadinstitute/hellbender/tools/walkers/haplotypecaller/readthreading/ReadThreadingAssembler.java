@@ -200,21 +200,19 @@ public final class ReadThreadingAssembler {
         final Set<Haplotype> returnHaplotypes = new LinkedHashSet<>();
 
         final int activeRegionStart = refHaplotype.getAlignmentStartHapwrtRef();
-        final Collection<KBestHaplotypeFinder> finders = new ArrayList<>(graphs.size());
         int failedCigars = 0;
 
         for( final SeqGraph graph : graphs ) {
             final SeqVertex source = graph.getReferenceSourceVertex();
             final SeqVertex sink = graph.getReferenceSinkVertex();
             Utils.validateArg( source != null && sink != null, () -> "Both source and sink cannot be null but got " + source + " and sink " + sink + " for graph " + graph);
-            final KBestHaplotypeFinder haplotypeFinder = new KBestHaplotypeFinder(graph,source,sink);
-            finders.add(haplotypeFinder);
-            final Iterator<KBestHaplotype> bestHaplotypes = haplotypeFinder.iterator(numBestHaplotypesPerGraph);
 
-            while (bestHaplotypes.hasNext()) {
-                final KBestHaplotype kBestHaplotype = bestHaplotypes.next();
+            for (final KBestHaplotype kBestHaplotype : new KBestHaplotypeFinder(graph,source,sink).findBestHaplotypes(numBestHaplotypesPerGraph)) {
                 final Haplotype h = kBestHaplotype.haplotype();
                 if( !returnHaplotypes.contains(h) ) {
+                    if (kBestHaplotype.isReference()) {
+                        refHaplotype.setScore(kBestHaplotype.score());
+                    }
                     final Cigar cigar = CigarUtils.calculateCigar(refHaplotype.getBases(), h.getBases(), aligner);
 
                     if ( cigar == null ) {
@@ -248,16 +246,6 @@ public final class ReadThreadingAssembler {
         // Make sure that the ref haplotype is amongst the return haplotypes and calculate its score as
         // the first returned by any finder.
         if (!returnHaplotypes.contains(refHaplotype)) {
-            double refScore = Double.NaN;
-            for (final KBestHaplotypeFinder finder : finders) {
-                final double candidate = finder.score(refHaplotype);
-                if (Double.isNaN(candidate)) {
-                    continue;
-                }
-                refScore = candidate;
-                break;
-            }
-            refHaplotype.setScore(refScore);
             returnHaplotypes.add(refHaplotype);
         }
 

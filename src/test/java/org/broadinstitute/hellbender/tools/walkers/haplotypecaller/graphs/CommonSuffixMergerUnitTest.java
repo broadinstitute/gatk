@@ -1,13 +1,14 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class CommonSuffixMergerUnitTest extends GATKBaseTest {
     private static final boolean PRINT_GRAPHS = false;
@@ -92,51 +93,21 @@ public class CommonSuffixMergerUnitTest extends GATKBaseTest {
     /**
      * Compares KBestHaplotype solutions, first by the haplotype base sequence and the by their score.
      */
-    private static final Comparator<KBestHaplotype> KBESTHAPLOTYPE_COMPARATOR = new Comparator<KBestHaplotype>() {
-
-        /**
-         * Compares KBestHaplotype solutions, first by the haplotype base sequence and the by their score.
-         *
-         * @return {@inheritDoc}
-         */
-        @Override
-        public int compare(final KBestHaplotype o1,final KBestHaplotype o2) {
-            final int baseCmp = o1.haplotype().getBaseString().compareTo(o2.haplotype().getBaseString());
-            if (baseCmp != 0)
-                return baseCmp;
-            return - Double.compare(o1.score(), o2.score());
-        }
+    private static final Comparator<KBestHaplotype> KBESTHAPLOTYPE_COMPARATOR = (o1,o2) -> {
+        final int baseCmp = new String(o1.getBases()).compareTo(new String(o2.getBases()));
+        return baseCmp != 0 ? baseCmp : - Double.compare(o1.score(), o2.score());
     };
 
-
     public static void assertSameHaplotypes(final String name, final SeqGraph actual, final SeqGraph original) {
-        final KBestHaplotypeFinder originalKBestHaplotypes = new KBestHaplotypeFinder(original,original.getSources(),original.getSinks());
-        final KBestHaplotypeFinder actualKBestHaplotypes = new KBestHaplotypeFinder(actual,actual.getSources(),actual.getSinks());
-        final List<KBestHaplotype> sortedOriginalKBestHaplotypes = new ArrayList<>(originalKBestHaplotypes);
-        Collections.sort(sortedOriginalKBestHaplotypes, KBESTHAPLOTYPE_COMPARATOR);
-        final List<KBestHaplotype> sortedActualKBestHaplotypes = new ArrayList<>(actualKBestHaplotypes);
-        Collections.sort(sortedActualKBestHaplotypes, KBESTHAPLOTYPE_COMPARATOR);
+        final List<Haplotype> sortedOriginalKBestHaplotypes = new KBestHaplotypeFinder(original).findBestHaplotypes().stream()
+                .sorted(KBESTHAPLOTYPE_COMPARATOR).map(KBestHaplotype::haplotype).collect(Collectors.toList());
+        final List<Haplotype> sortedActualKBestHaplotypes = new KBestHaplotypeFinder(actual).findBestHaplotypes().stream()
+                .sorted(KBESTHAPLOTYPE_COMPARATOR).map(KBestHaplotype::haplotype).collect(Collectors.toList());
         try {
-            final Set<String> haplotypes = new HashSet<>();
-
-            for (final KBestHaplotype kbh : originalKBestHaplotypes)
-                haplotypes.add(new String(kbh.bases()));
-
-            for ( final KBestHaplotype kbh : actualKBestHaplotypes ) {
-                final String h = new String(kbh.bases());
-                Assert.assertTrue(haplotypes.contains(h), "Failed to find haplotype " + h);
-            }
-
             Assert.assertEquals(sortedActualKBestHaplotypes, sortedOriginalKBestHaplotypes);
         } catch ( AssertionError e ) {
             if ( PRINT_GRAPHS ) original.printGraph(new File(String.format("%s.original.dot", name, actual.vertexSet().size())), 0);
             if ( PRINT_GRAPHS ) actual.printGraph(new File(String.format("%s.actual.dot", name, actual.vertexSet().size())), 0);
-            try {
-                if ( PRINT_GRAPHS ) originalKBestHaplotypes.printDOTFile(String.format("%s.original.finder.dot", name));
-                if ( PRINT_GRAPHS ) actualKBestHaplotypes.printDOTFile(String.format("%s.actual.finder.dot", name));
-            } catch (IOException e2) {
-                // do nothing.
-            }
             throw e;
         }
     }
