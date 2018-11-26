@@ -121,21 +121,6 @@ class LoadAndSampleCrAndAf:
          self.__n_segments                   # number of segments
          ] = self.__import_copy_ratio_and_allele_fraction()
 
-        # For testing purposes:
-        # if not output_log_prefix == "":
-        #     self.__logger.info("\n\nProperties of data:")
-        #     self.__logger.info("\t\t\tLENGTH\tMEAN\tSTD_DEV")
-        #     self.__logger.info("Copy ratio 10th perc:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_10th_perc), np.mean(self.__copy_ratio_10th_perc), np.std(self.__copy_ratio_10th_perc)))
-        #     self.__logger.info("Copy ratio median:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_median), np.mean(self.__copy_ratio_median), np.std(self.__copy_ratio_median)))
-        #     self.__logger.info("Copy ratio 90th perc:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_90th_perc), np.mean(self.__copy_ratio_90th_perc), np.std(self.__copy_ratio_90th_perc)))
-        #     self.__logger.info("Allele fraction 10th perc:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_10th_perc), np.mean(self.__allele_fraction_10th_perc), np.std(self.__allele_fraction_10th_perc)))
-        #     self.__logger.info("Allele fraction median:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_median), np.mean(self.__allele_fraction_median), np.std(self.__allele_fraction_median)))
-        #     self.__logger.info("Allele fraction 90th perc:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_90th_perc), np.mean(self.__allele_fraction_90th_perc), np.std(self.__allele_fraction_90th_perc)))
-        #     self.__logger.info("Segment lengths:\t{0}\t{1}\t{2}".format(len(self.__segment_lengths), np.mean(self.__segment_lengths), np.std(self.__segment_lengths)))
-        # End testing
-
-
-
         # Sample posterior distributions
         # Returns list of copy ratio and allele fraction samples for each segment
         if not output_log_prefix == "":
@@ -143,21 +128,6 @@ class LoadAndSampleCrAndAf:
 
         # Determine the weights of each segment based on the posterior
         self.__weights = self.__determine_weights()
-
-        # For testing purposes:
-        # if not output_log_prefix == "":
-        #     self.__logger.info("\n\nProperties of data:")
-        #     self.__logger.info("n_segments: {0}".format(self.__n_segments))
-        #     self.__logger.info("\t\t\tLENGTH\tMEAN\tSTD_DEV")
-        #     self.__logger.info("Weights:\t{0}\t{1}\t{2}".format(len(self.__weights), np.mean(self.__weights), np.std(self.__weights)))
-        #     self.__logger.info("Copy ratio 10th perc:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_10th_perc), np.mean(self.__copy_ratio_10th_perc), np.std(self.__copy_ratio_10th_perc)))
-        #     self.__logger.info("Copy ratio median:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_median), np.mean(self.__copy_ratio_median), np.std(self.__copy_ratio_median)))
-        #     self.__logger.info("Copy ratio 90th perc:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_90th_perc), np.mean(self.__copy_ratio_90th_perc), np.std(self.__copy_ratio_90th_perc)))
-        #     self.__logger.info("Allele fraction 10th perc:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_10th_perc), np.mean(self.__allele_fraction_10th_perc), np.std(self.__allele_fraction_10th_perc)))
-        #     self.__logger.info("Allele fraction median:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_median), np.mean(self.__allele_fraction_median), np.std(self.__allele_fraction_median)))
-        #     self.__logger.info("Allele fraction 90th perc:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_90th_perc), np.mean(self.__allele_fraction_90th_perc), np.std(self.__allele_fraction_90th_perc)))
-        #     self.__logger.info("Segment lengths:\t{0}\t{1}\t{2}".format(len(self.__segment_lengths), np.mean(self.__segment_lengths), np.std(self.__segment_lengths)))
-        # End testing
 
         # Auxiliary arrays, used by methods that do not know how to deal with points with weights:
         # we sample the number of points in each segment to be proportional to their weights
@@ -672,41 +642,9 @@ class ModeledSegmentsCaller:
         # Get the weights associated with each segment
         self.__weights = self.__cr_af_data.get_weights()
 
-        # For testing purposes:
-        # if not self.__log_filename == "":
-        #     self.__logger.info("\n\nProperties of data:")
-        #     self.__logger.info("n_segments: {0}".format(self.__n_segments))
-        #     self.__logger.info("\t\t\tLENGTH\tMEAN\tSTD_DEV")
-        #     self.__logger.info("Weights:\t{0}\t{1}\t{2}".format(len(self.__weights), np.mean(self.__weights), np.std(self.__weights)))
-        #     self.__logger.info("Copy ratio 10th perc:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_10th_perc), np.mean(self.__copy_ratio_10th_perc), np.std(self.__copy_ratio_10th_perc)))
-        #     self.__logger.info("Copy ratio median:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_median), np.mean(self.__copy_ratio_median), np.std(self.__copy_ratio_median)))
-        #     self.__logger.info("Copy ratio 90th perc:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_90th_perc), np.mean(self.__copy_ratio_90th_perc), np.std(self.__copy_ratio_90th_perc)))
-        #     self.__logger.info("Allele fraction 10th perc:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_10th_perc), np.mean(self.__allele_fraction_10th_perc), np.std(self.__allele_fraction_10th_perc)))
-        #     self.__logger.info("Allele fraction median:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_median), np.mean(self.__allele_fraction_median), np.std(self.__allele_fraction_median)))
-        #     self.__logger.info("Allele fraction 90th perc:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_90th_perc), np.mean(self.__allele_fraction_90th_perc), np.std(self.__allele_fraction_90th_perc)))
-        #     self.__logger.info("Segment lengths:\t{0}\t{1}\t{2}".format(len(self.__segment_lengths), np.mean(self.__segment_lengths), np.std(self.__segment_lengths)))
-        # End testing
-
         # Auxiliary arrays: the number of times the values of the segment means appear in these arrays
         # is proportional to the weights associated with those segments
         [self.__copy_ratio_median_sampled, self.__allele_fraction_median_sampled] = self.__cr_af_data.get_sampled_points()
-
-        # For testing purposes:
-        # if not self.__log_filename == "":
-        #     self.__logger.info("\n\nProperties of data:")
-        #     self.__logger.info("n_segments: {0}".format(self.__n_segments))
-        #     self.__logger.info("\t\t\tLENGTH\tMEAN\tSTD_DEV")
-        #     self.__logger.info("Weights:\t{0}\t{1}\t{2}".format(len(self.__weights), np.mean(self.__weights), np.std(self.__weights)))
-        #     self.__logger.info("Copy ratio 10th perc:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_10th_perc), np.mean(self.__copy_ratio_10th_perc), np.std(self.__copy_ratio_10th_perc)))
-        #     self.__logger.info("Copy ratio median:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_median), np.mean(self.__copy_ratio_median), np.std(self.__copy_ratio_median)))
-        #     self.__logger.info("Copy ratio 90th perc:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_90th_perc), np.mean(self.__copy_ratio_90th_perc), np.std(self.__copy_ratio_90th_perc)))
-        #     self.__logger.info("Copy ratio sampled:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_median_sampled), np.mean(self.__copy_ratio_median_sampled), np.std(self.__copy_ratio_median_sampled)))
-        #     self.__logger.info("Allele fraction 10th perc:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_10th_perc), np.mean(self.__allele_fraction_10th_perc), np.std(self.__allele_fraction_10th_perc)))
-        #     self.__logger.info("Allele fraction median:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_median), np.mean(self.__allele_fraction_median), np.std(self.__allele_fraction_median)))
-        #     self.__logger.info("Allele fraction 90th perc:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_90th_perc), np.mean(self.__allele_fraction_90th_perc), np.std(self.__allele_fraction_90th_perc)))
-        #     self.__logger.info("Allele fraction sampled:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_median_sampled), np.mean(self.__allele_fraction_median_sampled), np.std(self.__allele_fraction_median_sampled)))
-        #     self.__logger.info("Segment lengths:\t{0}\t{1}\t{2}".format(len(self.__segment_lengths), np.mean(self.__segment_lengths), np.std(self.__segment_lengths)))
-        # End testing
 
         # Set the filenames for the output data
         [self.__output_calls_filename, self.__fig_normal_segments_filename, self.__fig_del_ampl_filename,
@@ -741,44 +679,10 @@ class ModeledSegmentsCaller:
             self.__responsibilities_normal = None
             self.__normal_segment_indices = None
 
-        # For testing purposes:
-        # if not self.__log_filename == "":
-        #     self.__logger.info("\n\nProperties of data:")
-        #     self.__logger.info("n_segments: {0}".format(self.__n_segments))
-        #     self.__logger.info("\t\t\tLENGTH\tMEAN\tSTD_DEV")
-        #     self.__logger.info("Weights:\t{0}\t{1}\t{2}".format(len(self.__weights), np.mean(self.__weights), np.std(self.__weights)))
-        #     self.__logger.info("Copy ratio 10th perc:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_10th_perc), np.mean(self.__copy_ratio_10th_perc), np.std(self.__copy_ratio_10th_perc)))
-        #     self.__logger.info("Copy ratio median:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_median), np.mean(self.__copy_ratio_median), np.std(self.__copy_ratio_median)))
-        #     self.__logger.info("Copy ratio 90th perc:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_90th_perc), np.mean(self.__copy_ratio_90th_perc), np.std(self.__copy_ratio_90th_perc)))
-        #     self.__logger.info("Copy ratio sampled:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_median_sampled), np.mean(self.__copy_ratio_median_sampled), np.std(self.__copy_ratio_median_sampled)))
-        #     self.__logger.info("Allele fraction 10th perc:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_10th_perc), np.mean(self.__allele_fraction_10th_perc), np.std(self.__allele_fraction_10th_perc)))
-        #     self.__logger.info("Allele fraction median:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_median), np.mean(self.__allele_fraction_median), np.std(self.__allele_fraction_median)))
-        #     self.__logger.info("Allele fraction 90th perc:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_90th_perc), np.mean(self.__allele_fraction_90th_perc), np.std(self.__allele_fraction_90th_perc)))
-        #     self.__logger.info("Allele fraction sampled:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_median_sampled), np.mean(self.__allele_fraction_median_sampled), np.std(self.__allele_fraction_median_sampled)))
-        #     self.__logger.info("Segment lengths:\t{0}\t{1}\t{2}".format(len(self.__segment_lengths), np.mean(self.__segment_lengths), np.std(self.__segment_lengths)))
-        # End testing
-
         # Save plots of the segments
         if not self.__log_filename == "":
             self.__logger.info("Plotting and saving segments.")
         self.__plot_and_save_segments()
-
-        # For testing purposes:
-        # if not self.__log_filename == "":
-        #     self.__logger.info("\n\nProperties of data:")
-        #     self.__logger.info("n_segments: {0}".format(self.__n_segments))
-        #     self.__logger.info("\t\t\tLENGTH\tMEAN\tSTD_DEV")
-        #     self.__logger.info("Weights:\t{0}\t{1}\t{2}".format(len(self.__weights), np.mean(self.__weights), np.std(self.__weights)))
-        #     self.__logger.info("Copy ratio 10th perc:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_10th_perc), np.mean(self.__copy_ratio_10th_perc), np.std(self.__copy_ratio_10th_perc)))
-        #     self.__logger.info("Copy ratio median:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_median), np.mean(self.__copy_ratio_median), np.std(self.__copy_ratio_median)))
-        #     self.__logger.info("Copy ratio 90th perc:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_90th_perc), np.mean(self.__copy_ratio_90th_perc), np.std(self.__copy_ratio_90th_perc)))
-        #     self.__logger.info("Copy ratio sampled:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_median_sampled), np.mean(self.__copy_ratio_median_sampled), np.std(self.__copy_ratio_median_sampled)))
-        #     self.__logger.info("Allele fraction 10th perc:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_10th_perc), np.mean(self.__allele_fraction_10th_perc), np.std(self.__allele_fraction_10th_perc)))
-        #     self.__logger.info("Allele fraction median:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_median), np.mean(self.__allele_fraction_median), np.std(self.__allele_fraction_median)))
-        #     self.__logger.info("Allele fraction 90th perc:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_90th_perc), np.mean(self.__allele_fraction_90th_perc), np.std(self.__allele_fraction_90th_perc)))
-        #     self.__logger.info("Allele fraction sampled:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_median_sampled), np.mean(self.__allele_fraction_median_sampled), np.std(self.__allele_fraction_median_sampled)))
-        #     self.__logger.info("Segment lengths:\t{0}\t{1}\t{2}".format(len(self.__segment_lengths), np.mean(self.__segment_lengths), np.std(self.__segment_lengths)))
-        # End testing
 
         # Create auxiliary plots if in interactive mode
         if self.__load_cr and self.__load_af and self.__interactive:
@@ -786,44 +690,10 @@ class ModeledSegmentsCaller:
                 self.__logger.info("Creating auxiliary plots in interactive mode.")
             self.__plot_clustering()
 
-        # For testing purposes:
-        # if not self.__log_filename == "":
-        #     self.__logger.info("\n\nProperties of data:")
-        #     self.__logger.info("n_segments: {0}".format(self.__n_segments))
-        #     self.__logger.info("\t\t\tLENGTH\tMEAN\tSTD_DEV")
-        #     self.__logger.info("Weights:\t{0}\t{1}\t{2}".format(len(self.__weights), np.mean(self.__weights), np.std(self.__weights)))
-        #     self.__logger.info("Copy ratio 10th perc:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_10th_perc), np.mean(self.__copy_ratio_10th_perc), np.std(self.__copy_ratio_10th_perc)))
-        #     self.__logger.info("Copy ratio median:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_median), np.mean(self.__copy_ratio_median), np.std(self.__copy_ratio_median)))
-        #     self.__logger.info("Copy ratio 90th perc:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_90th_perc), np.mean(self.__copy_ratio_90th_perc), np.std(self.__copy_ratio_90th_perc)))
-        #     self.__logger.info("Copy ratio sampled:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_median_sampled), np.mean(self.__copy_ratio_median_sampled), np.std(self.__copy_ratio_median_sampled)))
-        #     self.__logger.info("Allele fraction 10th perc:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_10th_perc), np.mean(self.__allele_fraction_10th_perc), np.std(self.__allele_fraction_10th_perc)))
-        #     self.__logger.info("Allele fraction median:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_median), np.mean(self.__allele_fraction_median), np.std(self.__allele_fraction_median)))
-        #     self.__logger.info("Allele fraction 90th perc:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_90th_perc), np.mean(self.__allele_fraction_90th_perc), np.std(self.__allele_fraction_90th_perc)))
-        #     self.__logger.info("Allele fraction sampled:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_median_sampled), np.mean(self.__allele_fraction_median_sampled), np.std(self.__allele_fraction_median_sampled)))
-        #     self.__logger.info("Segment lengths:\t{0}\t{1}\t{2}".format(len(self.__segment_lengths), np.mean(self.__segment_lengths), np.std(self.__segment_lengths)))
-        # End testing
-
         # Save the results to a file
         if not self.__log_filename == "":
             self.__logger.info("Saving results.")
         self.__save_calls_to_file()
-
-        # For testing purposes:
-        # if not self.__log_filename == "":
-        #     self.__logger.info("\n\nProperties of data:")
-        #     self.__logger.info("n_segments: {0}".format(self.__n_segments))
-        #     self.__logger.info("\t\t\tLENGTH\tMEAN\tSTD_DEV")
-        #     self.__logger.info("Weights:\t{0}\t{1}\t{2}".format(len(self.__weights), np.mean(self.__weights), np.std(self.__weights)))
-        #     self.__logger.info("Copy ratio 10th perc:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_10th_perc), np.mean(self.__copy_ratio_10th_perc), np.std(self.__copy_ratio_10th_perc)))
-        #     self.__logger.info("Copy ratio median:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_median), np.mean(self.__copy_ratio_median), np.std(self.__copy_ratio_median)))
-        #     self.__logger.info("Copy ratio 90th perc:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_90th_perc), np.mean(self.__copy_ratio_90th_perc), np.std(self.__copy_ratio_90th_perc)))
-        #     self.__logger.info("Copy ratio sampled:\t{0}\t{1}\t{2}".format(len(self.__copy_ratio_median_sampled), np.mean(self.__copy_ratio_median_sampled), np.std(self.__copy_ratio_median_sampled)))
-        #     self.__logger.info("Allele fraction 10th perc:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_10th_perc), np.mean(self.__allele_fraction_10th_perc), np.std(self.__allele_fraction_10th_perc)))
-        #     self.__logger.info("Allele fraction median:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_median), np.mean(self.__allele_fraction_median), np.std(self.__allele_fraction_median)))
-        #     self.__logger.info("Allele fraction 90th perc:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_90th_perc), np.mean(self.__allele_fraction_90th_perc), np.std(self.__allele_fraction_90th_perc)))
-        #     self.__logger.info("Allele fraction sampled:\t{0}\t{1}\t{2}".format(len(self.__allele_fraction_median_sampled), np.mean(self.__allele_fraction_median_sampled), np.std(self.__allele_fraction_median_sampled)))
-        #     self.__logger.info("Segment lengths:\t{0}\t{1}\t{2}".format(len(self.__segment_lengths), np.mean(self.__segment_lengths), np.std(self.__segment_lengths)))
-        # End testing
 
         # Finish logging
         if not self.__log_filename == "":
@@ -1918,7 +1788,8 @@ class ModeledSegmentsCaller:
         """
         minimum_af_for_normal = 0.5 - 2 * (0.5 - self.__normal_minor_allele_fraction_threshold)
 
-        if responsibility_normal > self.__responsibility_threshold_normal and af >= minimum_af_for_normal:
+        if (responsibility_normal > self.__responsibility_threshold_normal and af >= minimum_af_for_normal
+            and cr <= self.__normal_range_cr[1] and cr >= self.__normal_range_cr[0]):
             return "0"
         else:
             if self.__load_cr:
