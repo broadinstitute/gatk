@@ -1558,8 +1558,10 @@ class ModeledSegmentsCaller:
                 y_color.append((0.0, 1.0, 0.0))
             elif n_d_a == "-":
                 y_color.append((0.0, 0.0, 1.0))
-            else:
+            elif n_d_a == "CNLOH":
                 y_color.append((0.4, 0.4, 0.4))
+            else:
+                y_color.append((1.0, 1.0, 1.0))
 
         contig_beginning_end = []
         current_contig = self.__contig[0]
@@ -1708,7 +1710,7 @@ class ModeledSegmentsCaller:
         self.__plot_classification()
         plt.xlabel("Copy ratio")
         plt.ylabel("Allele fraction")
-        plt.title("Gaussian fit to the data")
+        plt.title("Classification of segments")
         plt.xlim((0, 5))
         plt.ylim((0, 0.5))
         plt.xticks(np.arange(0, 6, 1))
@@ -1718,7 +1720,7 @@ class ModeledSegmentsCaller:
         self.__plot_Gaussian_mixture_fit()
         plt.xlabel("Copy ratio")
         plt.ylabel("Allele fraction")
-        plt.title("Classification of segments")
+        plt.title("Gaussian fit to the data")
         plt.xlim((0, 5))
         plt.ylim((0, 0.5))
         plt.xticks(np.arange(0, 6, 1))
@@ -1739,7 +1741,22 @@ class ModeledSegmentsCaller:
             and indicate the normal and not normal segments with different colors.
         """
         samples = np.asarray([self.__copy_ratio_median, self.__allele_fraction_median]).T
-        colors = ["k" if i in self.__normal_segment_indices else "r" for i in range(len(samples))]
+        [avg_normal_cr, std_dev_normal_cr] = self.__average_and_std_dev_copy_ratio_normal_segments()
+        classification = [self.__normal_del_ampl(self.__copy_ratio_median[i], self.__allele_fraction_median[i],
+                                                 avg_normal_cr, std_dev_normal_cr, self.__responsibilities_normal[i])
+                          for i in range(len(self.__copy_ratio_median))]
+        colors = []
+        for i in range(len(classification)):
+            if classification[i] == "+":
+                colors.append((1.0, 0.0, 1.0))
+            elif classification[i] == "0":
+                colors.append((0.0, 1.0, 0.0))
+            elif classification[i] == "-":
+                colors.append((0.0, 0.0, 1.0))
+            elif classification == "CNLOH":
+                colors.append((0.4, 0.4, 0.4))
+            else:
+                colors.append((1.0, 1.0, 1.0))
         plt.scatter(samples[:,0], samples[:,1], c=colors, alpha=0.8, s=10)
 
     def __plot_Gaussian_mixture_fit(self):
@@ -1929,7 +1946,7 @@ class ModeledSegmentsCaller:
             total_weight_all_segments += self.__weights[i]
 
         # If the ratio of normal segments is very small, then we just take
-        # the mean of the data in the copy number 2 region as avg_normal_cr. 
+        # the mean of the data in the copy number 2 region as avg_normal_cr.
         if total_weight_normal/total_weight_all_segments <= 0.0001:
             avg_normal_cr = np.mean(self.__normal_range_cr)
             std_dev_normal_cr = (self.__normal_range_cr[1] - self.__normal_range_cr[0]) / 4
