@@ -84,7 +84,7 @@ workflow ModelSegmentsPostProcessingWorkflow {
     Float maf90_threshold_final = select_first([maf90_threshold, 0.47])
     Boolean? is_ignore_cnloh_in_matched_normal
     Boolean is_ignore_cnloh_in_matched_normal_final = select_first([is_ignore_cnloh_in_matched_normal, true])
-
+    Int? cnloh_check_max_size
     Array[String]? annotations_on_which_to_merge_final = select_first([annotations_on_which_to_merge,
     ["MEAN_LOG2_COPY_RATIO", "LOG2_COPY_RATIO_POSTERIOR_10_1", "LOG2_COPY_RATIO_POSTERIOR_50_1", "LOG2_COPY_RATIO_POSTERIOR_90_1",
         "MINOR_ALLELE_FRACTION_POSTERIOR_10_1", "MINOR_ALLELE_FRACTION_POSTERIOR_50_1", "MINOR_ALLELE_FRACTION_POSTERIOR_90_1"]])
@@ -143,7 +143,8 @@ workflow ModelSegmentsPostProcessingWorkflow {
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
             is_ignore_cnloh_in_matched_normal = is_ignore_cnloh_in_matched_normal_final,
-            maf_max_threshold = maf90_threshold_final
+            maf_max_threshold = maf90_threshold_final,
+            cnloh_check_max_size = cnloh_check_max_size
     }
 
     call IGVConvert as IGVConvertNormal {
@@ -268,6 +269,7 @@ task TagGermline {
     Boolean is_ignore_cnloh_in_matched_normal
 	File? gatk4_jar_override
 	Float? maf_max_threshold
+	Int? cnloh_check_max_size
 	String output_name = basename(tumor_called_seg)
 
     Int? germline_tagging_padding
@@ -303,6 +305,7 @@ task TagGermline {
             -O ${output_name}.germline_tagged.seg -R ${ref_fasta} \
             ${"--endpoint-padding " + germline_tagging_padding} \
             ${"--maf-max-threshold " + maf_max_threshold} \
+            ${"--max-size-normal-cnloh " + cnloh_check_max_size} \
             ${cnloh_param}
 
         echo "======= Centromeres "

@@ -102,7 +102,7 @@ public class TagGermlineEvents extends GATKTool{
             doc = "Maximum size (in bp) of events to use in the matched normal.  Ignored unless normal CNLoH detection is enabled.",
             fullName = MAX_SIZE_CNLOH,
             optional = true)
-    private Integer cnLoHCheckMaxSize = 2000000;
+    private Integer cnLoHCheckMaxSize = 6000000;
 
     @Override
     public void traverse() {

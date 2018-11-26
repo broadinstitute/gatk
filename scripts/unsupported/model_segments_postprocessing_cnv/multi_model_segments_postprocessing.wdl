@@ -20,7 +20,7 @@ workflow MultiModelSegmentsPostProcessing {
         String gatk_docker
         Int? min_hets_acs_results
         Boolean? is_ignore_cnloh_in_matched_normal
-
+        Int? cnloh_check_max_size
         scatter (i in range(length(tumor_called_segs))) {
 
             call ModelSegmentsPostProcessing.ModelSegmentsPostProcessingWorkflow as ModelSegmentsPostProcessingWorkflow {
@@ -40,7 +40,8 @@ workflow MultiModelSegmentsPostProcessing {
                     group_id = group_id,
                     gatk_docker = gatk_docker,
                     min_hets_acs_results = min_hets_acs_results,
-                    is_ignore_cnloh_in_matched_normal = is_ignore_cnloh_in_matched_normal
+                    is_ignore_cnloh_in_matched_normal = is_ignore_cnloh_in_matched_normal,
+                    cnloh_check_max_size = cnloh_check_max_size
             }
         }
 
