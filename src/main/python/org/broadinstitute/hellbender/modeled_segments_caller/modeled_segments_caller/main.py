@@ -1929,7 +1929,7 @@ class ModeledSegmentsCaller:
             total_weight_all_segments += self.__weights[i]
 
         # If the ratio of normal segments is very small, then we just take
-        # the mean of the data in the copy number 2 region as avg_normal_cr.
+        # the mean of the data in the copy number 2 region as avg_normal_cr. 
         if total_weight_normal/total_weight_all_segments <= 0.0001:
             avg_normal_cr = np.mean(self.__normal_range_cr)
             std_dev_normal_cr = (self.__normal_range_cr[1] - self.__normal_range_cr[0]) / 4
