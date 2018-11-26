@@ -210,7 +210,7 @@ class LoadAndSampleCrAndAf:
         all_sites = 0
         for line in lines:
             values = line.strip().split()
-            if is_number(values[0]):
+            if is_number(values[1]):
                 if len(values) >= 5:
                     segment_length = float(values[2]) - float(values[1])
                     if (math.isnan(float(values[5]))
@@ -255,7 +255,7 @@ class LoadAndSampleCrAndAf:
         if self.__load_cr and self.__load_af:
             for line in lines:
                 values = line.strip().split()
-                if is_number(values[0]):
+                if is_number(values[1]):
                     if(len(values) >= 5):
                         if (not math.isnan(float(values[5]))
                             and not math.isnan(float(values[6]))
@@ -271,7 +271,7 @@ class LoadAndSampleCrAndAf:
                                 and 0. <= float(values[9]) <= 0.5
                                 and 0. <= float(values[10]) <= 0.5
                                 ):
-                                contig.append(int(values[0]))
+                                contig.append(str(values[0]))
                                 segment_start.append(int(values[1]))
                                 segment_end.append(int(values[2]))
                                 segment_lengths.append(int(values[2]) - int(values[1]))
@@ -286,7 +286,7 @@ class LoadAndSampleCrAndAf:
         elif self.__load_cr:
             for line in lines:
                 values = line.strip().split()
-                if is_number(values[0]):
+                if is_number(values[1]):
                     if len(values) >= 5:
                         if (not math.isnan(float(values[5]))
                             and not math.isnan(float(values[6]))
@@ -296,7 +296,7 @@ class LoadAndSampleCrAndAf:
                                 and 2**float(values[6]) <= self.__max_copy_ratio_possible
                                 and 2**float(values[7]) <= self.__max_copy_ratio_possible
                                 ):
-                                contig.append(int(values[0]))
+                                contig.append(str(values[0]))
                                 segment_start.append(int(values[1]))
                                 segment_end.append(int(values[2]))
                                 segment_lengths.append(int(values[2]) - int(values[1]))
@@ -311,7 +311,7 @@ class LoadAndSampleCrAndAf:
         elif self.__load_af:
             for line in lines:
                 values = line.strip().split()
-                if is_number(values[0]):
+                if is_number(values[1]):
                     if len(values) >= 5:
                         if (not math.isnan(float(values[8]))
                             and not math.isnan(float(values[9]))
@@ -321,7 +321,7 @@ class LoadAndSampleCrAndAf:
                                and 0. <= float(values[9]) <= 0.5
                                and 0. <= float(values[10]) <= 0.5
                                ):
-                                contig.append(int(values[0]))
+                                contig.append(str(values[0]))
                                 segment_start.append(int(values[1]))
                                 segment_end.append(int(values[2]))
                                 segment_lengths.append(int(values[2]) - int(values[1]))
