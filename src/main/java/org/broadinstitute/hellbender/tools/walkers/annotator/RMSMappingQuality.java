@@ -28,6 +28,9 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils.getAttributeAsLong;
+import static org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils.getAttributeAsLongList;
+
 
 /**
  * Root Mean Square of the mapping quality of reads across all samples.
@@ -258,25 +261,6 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
     }
 
     /**
-     * Private getter function to replace VariantContext::getAttributeAsIntList in instances where there is a chance
-     * that ints will overlow beyond Integer.MAX_VALUE
-     * @return VariantContext attribute indexed by key, as list of long.
-     */
-    static private List<Long> getAttributeAsLongList(final VariantContext vc, final String key, final Long defaultValue) {
-        return vc.getAttributeAsList(key).stream().map(
-            x -> {
-                if (x == null || x == VCFConstants.MISSING_VALUE_v4) {
-                    return defaultValue;
-                } else if (x instanceof Number) {
-                    return ((Number) x).longValue();
-                } else {
-                    return Long.valueOf((String)x); // throws an exception if this isn't a string
-                }
-            }
-        ).collect(Collectors.toList());
-    }
-
-    /**
      *
      * @return the number of reads at the given site, trying first {@Link GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY},
      * falling back to calculating the value as InfoField {@link VCFConstants#DEPTH_KEY} minus the
@@ -296,7 +280,7 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
 
         long numOfReads = 0;
         if (vc.hasAttribute(VCFConstants.DEPTH_KEY)) {
-            numOfReads = vc.getAttributeAsInt(VCFConstants.DEPTH_KEY, -1);
+            numOfReads = getAttributeAsLong(vc, VCFConstants.DEPTH_KEY, -1L);
             if(vc.hasGenotypes()) {
                 for(final Genotype gt : vc.getGenotypes()) {
                     if(gt.isHomRef()) {
