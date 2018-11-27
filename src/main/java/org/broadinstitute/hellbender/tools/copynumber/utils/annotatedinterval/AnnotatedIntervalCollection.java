@@ -104,6 +104,7 @@ public class AnnotatedIntervalCollection {
         final AnnotatedIntervalCodec codec = new AnnotatedIntervalCodec(inputConfigFile);
         final List<AnnotatedInterval> regions = new ArrayList<>();
 
+        // The
         if (codec.canDecode(input.toUri().toString())) {
             try (final FeatureReader<AnnotatedInterval> reader = AbstractFeatureReader.getFeatureReader(input.toUri().toString(), codec, false)){
 

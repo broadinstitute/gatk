@@ -229,6 +229,8 @@ if [[ $r -eq 0 ]] && ${doUnitTests} ; then
 		--tests org.broadinstitute.hellbender.tools.funcotator* \
 		--tests org.broadinstitute.hellbender.utils.codecs.xsvLocatableTable* \
 		--tests org.broadinstitute.hellbender.utils.codecs.gencode* \
+		--tests org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.SimpleAnnotatedIntervalWriterUnitTest* \
+		--tests org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedIntervalCollectionUnitTest* \
 		--stacktrace  
 	r=$?
 fi
