@@ -77,7 +77,8 @@ public final class PositionalDownsampler extends ReadsDownsampler {
     }
 
     private void finalizeReservoir(final GATKRead newRead) {
-        finalizedReads.addAll(reservoir.consumeFinalizedItems(newRead));
+        finalizedReads.addAll(reservoir.consumeFinalizedItems());
+        reservoir.resetRandomSeed(getRandomSeed(newRead));
         reservoir.resetStats();
     }
 
@@ -143,5 +144,15 @@ public final class PositionalDownsampler extends ReadsDownsampler {
     @Override
     public void signalNoMoreReadsBefore( final GATKRead read ) {
         handlePositionalChange(read);
+    }
+
+    /**
+     * Generates a random generator seed. The start position is added to the {@Link Utils#getGatkDefaultRandomSeed} to
+     * reset the random seed for the random generator. This is used to ensure that the ResivoirDownsampler is
+     * deterministic in its downsampling.
+     */
+    public static long getRandomSeed(final GATKRead read) {
+        return Utils.getGatkDefaultRandomSeed() +
+                (ReadUtils.readHasNoAssignedPosition(read) ? 0 : read.getContig().hashCode() << 32 + read.getStart());
     }
 }

@@ -116,7 +116,7 @@ public final class ReservoirDownsamplerUnitTest extends GATKBaseTest {
 
     @Test
     public void testSignalNoMoreReadsBefore() throws Exception {
-        ReservoirDownsampler rd = new ReservoirDownsampler(1, true, false);
+        ReservoirDownsampler rd = new ReservoirDownsampler(1, true);
         final GATKRead r1= ArtificialReadUtils.createArtificialRead("100M");
         final GATKRead r2= ArtificialReadUtils.createArtificialRead("101M");
         rd.submit(r1);
@@ -138,8 +138,10 @@ public final class ReservoirDownsamplerUnitTest extends GATKBaseTest {
 
         readsPos1.forEach(rd1::submit);
 
-        rd1.consumeFinalizedItems(readsPos2.get(0));
-        rd2.consumeFinalizedItems(readsPos2.get(0));
+        rd1.consumeFinalizedItems();
+        rd1.resetRandomSeed(PositionalDownsampler.getRandomSeed(readsPos2.get(0)));
+        rd2.consumeFinalizedItems();
+        rd2.resetRandomSeed(PositionalDownsampler.getRandomSeed(readsPos2.get(0)));
 
         readsPos2.forEach(rd1::submit);
         readsPos2.forEach(rd2::submit);
@@ -149,7 +151,7 @@ public final class ReservoirDownsamplerUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testNoNullSignalNoMoreReadsBefore() throws Exception {
-        ReadsDownsampler rd = new ReservoirDownsampler(1, true, false);
+        ReadsDownsampler rd = new ReservoirDownsampler(1, true);
         rd.signalNoMoreReadsBefore(null);
     }
 }

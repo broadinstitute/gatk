@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.downsampling;
 
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
@@ -88,6 +89,23 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
     /**
      * Construct a ReservoirDownsampler
      *
+     * @param targetSampleSize Size of the reservoir used by this downsampler.
+     *
+     * @param expectFewOverflows if true, this downsampler will be optimized for the case
+     *                           where most of the time we won't fill up anything like the
+     *                           targetSampleSize elements.  If this is false, we will allocate
+     *                           internal buffers to targetSampleSize initially, which minimizes
+     *                           the cost of allocation if we often use targetSampleSize or more
+     *                           elements.
+     *
+     */
+    public ReservoirDownsampler(final int targetSampleSize, final boolean expectFewOverflows) {
+        this(targetSampleSize, expectFewOverflows, false);
+    }
+
+    /**
+     * Construct a ReservoirDownsampler
+     *
      * @param targetSampleSize Size of the reservoir used by this downsampler. Number of items retained
      *                         after downsampling will be min(totalReads, targetSampleSize)
      */
@@ -123,16 +141,13 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
         return ! reservoir.isEmpty();
     }
 
-    /**
-     * @param readSeed If supplied, the start position is added to the {@Link Utils#getGatkDefaultRandomSeed} to
-     *                 reset the random seed for the random generator. This is used to ensure that the resivoir
-     *                 downsampler is deterministic in its downsampling.
-     */
-    public List<GATKRead> consumeFinalizedItems(final GATKRead readSeed) {
+    public void resetRandomSeed(final long readSeed) {
+        if (randomGenerator == null) {
+            throw new GATKException("Attempted to supply a seed to the ReservoirDownsampler random generator yet it does own one. Please initialize the downsampler with its own generator");
+        }
+
         // Use the start position for the read as a seed for the random generator
-        randomGenerator.setSeed(Utils.getGatkDefaultRandomSeed() +
-                (ReadUtils.readHasNoAssignedPosition(readSeed) ? 0 : readSeed.getContig().hashCode() << 32 + readSeed.getStart()));
-        return consumeFinalizedItems();
+        randomGenerator.setSeed(readSeed);
     }
 
     @Override
