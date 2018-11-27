@@ -930,10 +930,6 @@ class ModeledSegmentsCaller:
         """
         np.random.seed(RANDOM_SEED)
 
-        # Approximate the standard deviation of the prior for fitting the peaks
-        sigma_cr_normal = 0.005
-        sigma_af_normal = 0.005
-
         # We choose those peaks to be normal whose mean's copy ratio value is within the range specified
         # by '__choose_cn2_cr_cluster' and whose allele fraction value is within the range specified by
         # 'normal_range_af'.
