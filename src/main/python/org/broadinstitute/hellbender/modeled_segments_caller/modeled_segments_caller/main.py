@@ -680,9 +680,10 @@ class ModeledSegmentsCaller:
             self.__normal_segment_indices = None
 
         # Save plots of the segments
-        if not self.__log_filename == "":
-            self.__logger.info("Plotting and saving segments.")
-        self.__plot_and_save_segments()
+        if self.__load_cr and self.__load_af:
+            if not self.__log_filename == "":
+                self.__logger.info("Plotting and saving segments.")
+            self.__plot_and_save_segments()
 
         # Create auxiliary plots if in interactive mode
         if self.__load_cr and self.__load_af and self.__interactive:
@@ -1034,6 +1035,8 @@ class ModeledSegmentsCaller:
                     cn2_interval = [cluster_separators[0], 1.1 * max(self.__copy_ratio_median)]
                 else:
                     cn2_interval = [cluster_separators[0], cluster_separators[1]]
+
+        self.__normal_range_cr = cn2_interval
 
         responsibilities_normal = [0] * len(self.__copy_ratio_median)
         normal_segment_indices = []
@@ -1747,10 +1750,9 @@ class ModeledSegmentsCaller:
                        and 2**float(values[6]) <= self.__max_copy_ratio_possible
                        and 2**float(values[7]) <= self.__max_copy_ratio_possible
                        ):
-                        file_data += line.strip() + "\t" + str(self.__normal_del_ampl(self.__copy_ratio_median[i],
-                                                                                      self.__allele_fraction_median[i],
-                                                                                      avg_normal_cr, std_dev_normal_cr,
-                                                                                      self.__responsibilities_normal[i]))
+                        file_data += line.strip() + "\t" + str(self.__normal_del_ampl_cr_only(self.__copy_ratio_median[i],
+                                                                                              avg_normal_cr, std_dev_normal_cr,
+                                                                                              self.__responsibilities_normal[i]))
                         file_data += "\t"
                         file_data += str(self.__get_phred_score(probability=self.__responsibilities_normal[i],
                                                                 max_phred_score=self.__max_PHRED_score))
@@ -1765,10 +1767,10 @@ class ModeledSegmentsCaller:
                        and 0. <= float(values[9]) <= 0.5
                        and 0. <= float(values[10]) <= 0.5
                        ):
-                        file_data += line.strip() + "\t" + str(self.__normal_del_ampl(self.__copy_ratio_median[i],
-                                                                                      self.__allele_fraction_median[i],
-                                                                                      avg_normal_cr, std_dev_normal_cr,
-                                                                                      self.__responsibilities_normal[i]))
+                        if self.__responsibilities_normal[i] >= self.__responsibility_threshold_normal:
+                            file_data += line.strip() + "\t" + "0"
+                        else:
+                            file_data += line.strip() + "\t" + "/"
                         file_data += "\t"
                         file_data += str(self.__get_phred_score(probability=self.__responsibilities_normal[i],
                                                                 max_phred_score=self.__max_PHRED_score))
@@ -1792,13 +1794,30 @@ class ModeledSegmentsCaller:
             and cr <= self.__normal_range_cr[1] and cr >= self.__normal_range_cr[0]):
             return "0"
         else:
-            if self.__load_cr:
+            if self.__load_cr and self.__load_af:
                 if cr > min([avg_normal_cr_ + 2 * std_dev_normal_cr_, self.__normal_range_cr[1]]):
                     return "+"
                 elif cr < max([avg_normal_cr_ - 2 * std_dev_normal_cr_, self.__normal_range_cr[0]]):
                     return "-"
                 else:
                     return "CNLOH"
+            else:
+                return "/"
+
+    def __normal_del_ampl_cr_only(self, cr: float, avg_normal_cr_: float, std_dev_normal_cr_: float,
+                                responsibility_normal: float):
+        """ Determines if the copy ratio value cr corresponds to a deletion (-),
+            an amplification (+), a normal segment (0), a normal copy ratio
+            with imbalanced allele fraction (CNLOH) or cannot be decided but not
+            normal.
+        """
+        if (responsibility_normal > self.__responsibility_threshold_normal):
+            return "0"
+        else:
+            if cr > min([avg_normal_cr_ + 2 * std_dev_normal_cr_, self.__normal_range_cr[1]]):
+                return "+"
+            elif cr < max([avg_normal_cr_ - 2 * std_dev_normal_cr_, self.__normal_range_cr[0]]):
+                return "-"
             else:
                 return "/"
 
