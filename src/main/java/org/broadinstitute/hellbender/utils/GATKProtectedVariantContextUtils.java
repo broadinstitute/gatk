@@ -106,7 +106,7 @@ public class GATKProtectedVariantContextUtils {
         Utils.nonNull(variantContext);
         Utils.nonNull(attribute);
         Object x = variantContext.getAttribute(attribute);
-        if ( x == null || x == VCFConstants.MISSING_VALUE_v4 ) return defaultValue;
+        if ( x == null || x.equals(VCFConstants.MISSING_VALUE_v4) ) return defaultValue;
         if ( x instanceof Number ) return ((Number) x).longValue();
         return Long.valueOf((String)x); // throws an exception if this isn't a string
     }
@@ -124,7 +124,7 @@ public class GATKProtectedVariantContextUtils {
         Utils.nonNull(attribute);
         return variantContext.getAttributeAsList(attribute).stream().map(
                 x -> {
-                    if (x == null || x == VCFConstants.MISSING_VALUE_v4) {
+                    if (x == null || x.equals(VCFConstants.MISSING_VALUE_v4)) {
                         return defaultValue;
                     } else if (x instanceof Number) {
                         return ((Number) x).longValue();
