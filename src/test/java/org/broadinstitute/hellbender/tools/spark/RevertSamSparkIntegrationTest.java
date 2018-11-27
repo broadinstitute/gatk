@@ -4,15 +4,17 @@ import htsjdk.samtools.*;
 import htsjdk.samtools.util.CloserUtil;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 
 @Test(groups = "Spark")
@@ -78,13 +80,13 @@ public class RevertSamSparkIntegrationTest extends CommandLineProgramTest {
         args.addOutput(output);
 
         if (outputByReadGroup) {
-            args.addPositionalArgument("--"+RevertSamSpark.OUTPUT_BY_READGROUP_ARG);
+            args.addPositionalArgument("--"+RevertSamSpark.OUTPUT_BY_READGROUP_LONG_NAME);
         }
         if (so != null) {
             args.addArgument("sort-order",so.name()); //TODO decide on sort order outputing
         }
         if (!removeAlignmentInfo) {
-            args.addPositionalArgument("--"+RevertSamSpark.DONT_REMOVE_ALIGNMENT_INFORMATION_ARG);
+            args.addPositionalArgument("--"+RevertSamSpark.DONT_REMOVE_ALIGNMENT_INFORMATION_LONG_NAME);
         }
         if (sample != null) {
             args.addArgument("sample-alias",sample);
@@ -119,7 +121,7 @@ public class RevertSamSparkIntegrationTest extends CommandLineProgramTest {
         final String outputPath1 = outputDir + "/rg1.sam";
         final String outputPath2 = outputDir + "/my_rg2.bam";
         final String outputPath3 = outputDir + "/my_rg3.sam";//TODO not used?
-        mapWriter.println("READ_GROUP_ID\tOUTPUT");
+        mapWriter.println("OUTPUT_MAP_READ_GROUP_FIELD_NAME\tOUTPUT_MAP_OUTPUT_FILE_FIELD_NAME");
         mapWriter.println("0\t" + outputPath0);
         mapWriter.println("2\t" + outputPath2);
         mapWriter.println("1\t" + outputPath1);
@@ -141,7 +143,7 @@ public class RevertSamSparkIntegrationTest extends CommandLineProgramTest {
                 "--sort-order",SAMFileHeader.SortOrder.queryname.name(),
                 "--"+RevertSamSpark.SAMPLE_ALIAS_ARG,"test_sample_1",
                 "--"+RevertSamSpark.LIBRARY_NAME_ARG,"test_library_1",
-                "--"+RevertSamSpark.ATTRIBUTE_TO_CLEAR_ARG,SAMTag.NM.name()
+                "--"+RevertSamSpark.ATTRIBUTE_TO_CLEAR_LONG_NAME,SAMTag.NM.name()
         };
 
         runCommandLine(args);
@@ -154,11 +156,12 @@ public class RevertSamSparkIntegrationTest extends CommandLineProgramTest {
         verifyPositiveResults(output2, reverter, true, true, true, true, "2", 2, "test_sample_1", "test_library_1");
     }
 
-    @Test (expectedExceptions = UserException.class)
+    @Test
+    // TODO the purpose of this test is unclear to me
     public void testSingleEndSanitize() throws Exception {
         final File output = File.createTempFile("single_end_reverted", ".sam");
         output.deleteOnExit();
-        final String args[] = { "-I " + singleEndSamToRevert, "-O " + output.getAbsolutePath(), "--sanitize"};
+        final String args[] = { "-I", singleEndSamToRevert.getAbsolutePath(), "-O", output.getAbsolutePath(), "--sanitize"};
         runCommandLine(args);
     }
 
@@ -255,7 +258,7 @@ public class RevertSamSparkIntegrationTest extends CommandLineProgramTest {
                 "--input", input.getAbsolutePath(),
                 "--sanitize",
                 "--keep-first-duplicate",
-                "--"+RevertSamSpark.DONT_RESTORE_ORIGINAL_QUALITIES_ARG,
+                "--"+RevertSamSpark.DONT_RESTORE_ORIGINAL_QUALITIES_LONG_NAME,
                 "-O", output.getAbsolutePath()
         };
         runCommandLine(args);
@@ -287,71 +290,62 @@ public class RevertSamSparkIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
-    public void testValidateOutputParamsByReadGroupMapValid() {
-        final List<String> errors = new ArrayList<String>();
-        RevertSamSpark.ValidationUtil.validateOutputParamsByReadGroup(null, validOutputMap, errors);
+    public void testValidateOutputParamsByReadGroupMapValid() throws IOException {
+        final List<String> errors = RevertSamSpark.validateOutputParamsByReadGroup(null, validOutputMap.getAbsolutePath());
         Assert.assertEquals(errors.size(), 0);
     }
 
     @Test
-    public void testValidateOutputParamsByReadGroupMissingMap() {
-        final List<String> errors = new ArrayList<String>();
-        RevertSamSpark.ValidationUtil.validateOutputParamsByReadGroup(null, nonExistentOutputMap, errors);
+    public void testValidateOutputParamsByReadGroupMissingMap() throws IOException {
+        final List<String> errors = RevertSamSpark.validateOutputParamsByReadGroup(null, nonExistentOutputMap.getAbsolutePath());
         Assert.assertEquals(errors.size(), 1);
         Assert.assertEquals(errors.get(0).contains("Cannot read"), true);
     }
 
     @Test
-    public void testValidateOutputParamsByReadGroupBadHeaderMap() {
-        final List<String> errors = new ArrayList<String>();
-        RevertSamSpark.ValidationUtil.validateOutputParamsByReadGroup(null, badHeaderOutputMap, errors);
+    public void testValidateOutputParamsByReadGroupBadHeaderMap() throws IOException {
+        final List<String> errors = RevertSamSpark.validateOutputParamsByReadGroup(null, badHeaderOutputMap.getAbsolutePath());
         Assert.assertEquals(errors.size(), 1);
         Assert.assertEquals(errors.get(0).contains("Invalid header"), true);
     }
 
     @Test
-    public void testValidateOutputParamsByReadGroupNoMapOrDir() {
-        final List<String> errors = new ArrayList<String>();
-        RevertSamSpark.ValidationUtil.validateOutputParamsByReadGroup(null, null, errors);
+    public void testValidateOutputParamsByReadGroupNoMapOrDir() throws IOException {
+        final List<String> errors = RevertSamSpark.validateOutputParamsByReadGroup(null, null);
         Assert.assertEquals(errors.size(), 1);
         Assert.assertEquals(errors.get(0).contains("Must provide either"), true);
     }
 
     @Test
-    public void testValidateOutputParamsByReadGroupDirValid() {
-        final List<String> errors = new ArrayList<String>();
-        RevertSamSpark.ValidationUtil.validateOutputParamsByReadGroup(createTempDir("testValidateOutputParamsNotByReadGroupValid"), null, errors);
+    public void testValidateOutputParamsByReadGroupDirValid() throws IOException {
+        final List<String> errors = RevertSamSpark.validateOutputParamsByReadGroup(createTempDir("testValidateOutputParamsNotByReadGroupValid").getAbsolutePath(), null);
         Assert.assertEquals(errors.size(), 0);
     }
 
     @Test
-    public void testValidateOutputParamsNotByReadGroupValid() {
-        final List<String> errors = new ArrayList<String>();
-        RevertSamSpark.ValidationUtil.validateOutputParamsNotByReadGroup(createTempFile("testValidateOutputParamsNotByReadGroupValid",""), null, errors);
+    public void testValidateOutputParamsNotByReadGroupValid() throws IOException {
+        final List<String> errors = RevertSamSpark.validateOutputParamsNotByReadGroup(createTempFile("testValidateOutputParamsNotByReadGroupValid","").getAbsolutePath(), null);
         Assert.assertEquals(errors.size(), 0);
     }
 
     @Test
-    public void testValidateOutputParamsNotByReadGroupNoOutput() {
-        final List<String> errors = new ArrayList<String>();
-        RevertSamSpark.ValidationUtil.validateOutputParamsNotByReadGroup(null, null, errors);
+    public void testValidateOutputParamsNotByReadGroupNoOutput() throws IOException {
+        final List<String> errors = RevertSamSpark.validateOutputParamsNotByReadGroup(null, null);
         Assert.assertEquals(errors.size(), 1);
         Assert.assertEquals(errors.get(0).contains("output is required"), true);
     }
 
     @Test
-    public void testValidateOutputParamsNotByReadGroupMap() {
-        final List<String> errors = new ArrayList<String>();
-        RevertSamSpark.ValidationUtil.validateOutputParamsNotByReadGroup(null, validOutputMap, errors);
+    public void testValidateOutputParamsNotByReadGroupMap() throws IOException {
+        final List<String> errors = RevertSamSpark.validateOutputParamsNotByReadGroup(null, validOutputMap.getAbsolutePath());
         Assert.assertEquals(errors.size(), 2);
         Assert.assertEquals(errors.get(0).contains("Cannot provide outputMap"), true);
         Assert.assertEquals(errors.get(1).contains("output is required"), true);
     }
 
     @Test
-    public void testValidateOutputParamsNotByReadGroupDir() {
-        final List<String> errors = new ArrayList<String>();
-        RevertSamSpark.ValidationUtil.validateOutputParamsNotByReadGroup(createTempDir("testValidateOutputParamsNotByReadGroupDir"), null, errors);
+    public void testValidateOutputParamsNotByReadGroupDir() throws IOException {
+        final List<String> errors = RevertSamSpark.validateOutputParamsNotByReadGroup(createTempDir("testValidateOutputParamsNotByReadGroupDir").getAbsolutePath(), null);
         Assert.assertEquals(errors.size(), 1);
         Assert.assertEquals(errors.get(0).contains("should not be a directory"), true);
     }
@@ -361,12 +355,12 @@ public class RevertSamSparkIntegrationTest extends CommandLineProgramTest {
         final SAMReadGroupRecord rg1 = new SAMReadGroupRecord("rg1");
         final SAMReadGroupRecord rg2 = new SAMReadGroupRecord("rg2");
 
-        final Map<String, File> outputMap = new HashMap<String, File>();
-        outputMap.put("rg1", new File("/foo/bar/rg1.bam"));
-        outputMap.put("rg2", new File("/foo/bar/rg2.bam"));
-        RevertSamSpark.ValidationUtil.assertAllReadGroupsMapped(outputMap, Arrays.asList(rg1, rg2));
-        RevertSamSpark.ValidationUtil.assertAllReadGroupsMapped(outputMap, Arrays.asList(rg1));
-        RevertSamSpark.ValidationUtil.assertAllReadGroupsMapped(outputMap, Arrays.asList(rg2));
+        final Map<String, Path> outputMap = new HashMap<>();
+        outputMap.put("rg1", IOUtils.getPath(new File("/foo/bar/rg1.bam").getAbsolutePath()));
+        outputMap.put("rg2", IOUtils.getPath(new File("/foo/bar/rg2.bam").getAbsolutePath()));
+        RevertSamSpark.assertAllReadGroupsMapped(outputMap, Arrays.asList(rg1, rg2));
+        RevertSamSpark.assertAllReadGroupsMapped(outputMap, Arrays.asList(rg1));
+        RevertSamSpark.assertAllReadGroupsMapped(outputMap, Arrays.asList(rg2));
     }
 
     @Test(expectedExceptions = {GATKException.class})
@@ -375,21 +369,21 @@ public class RevertSamSparkIntegrationTest extends CommandLineProgramTest {
         final SAMReadGroupRecord rg2 = new SAMReadGroupRecord("rg2");
         final SAMReadGroupRecord rg3 = new SAMReadGroupRecord("rg3");
 
-        final Map<String, File> outputMap = new HashMap<String, File>();
-        outputMap.put("rg1", new File("/foo/bar/rg1.bam"));
-        outputMap.put("rg2", new File("/foo/bar/rg2.bam"));
-        RevertSamSpark.ValidationUtil.assertAllReadGroupsMapped(outputMap, Arrays.asList(rg1, rg2, rg3));
+        final Map<String, Path> outputMap = new HashMap<>();
+        outputMap.put("rg1", IOUtils.getPath(new File("/foo/bar/rg1.bam").getAbsolutePath()));
+        outputMap.put("rg2", IOUtils.getPath(new File("/foo/bar/rg2.bam").getAbsolutePath()));
+        RevertSamSpark.assertAllReadGroupsMapped(outputMap, Arrays.asList(rg1, rg2, rg3));
     }
 
     @Test
     public void testIsOutputMapHeaderValid() {
-        boolean isValid = RevertSamSpark.ValidationUtil.isOutputMapHeaderValid(Arrays.asList("READ_GROUP_ID", "OUTPUT"));
+        boolean isValid = RevertSamSpark.isOutputMapHeaderValid(Arrays.asList("OUTPUT_MAP_READ_GROUP_FIELD_NAME", "OUTPUT_MAP_OUTPUT_FILE_FIELD_NAME"));
         Assert.assertEquals(isValid, true);
 
-        isValid = RevertSamSpark.ValidationUtil.isOutputMapHeaderValid(Arrays.asList("OUTPUT"));
+        isValid = RevertSamSpark.isOutputMapHeaderValid(Arrays.asList("OUTPUT_MAP_OUTPUT_FILE_FIELD_NAME"));
         Assert.assertEquals(isValid, false);
 
-        isValid = RevertSamSpark.ValidationUtil.isOutputMapHeaderValid(Collections.EMPTY_LIST);
+        isValid = RevertSamSpark.isOutputMapHeaderValid(Collections.EMPTY_LIST);
         Assert.assertEquals(isValid, false);
     }
 
@@ -398,16 +392,16 @@ public class RevertSamSparkIntegrationTest extends CommandLineProgramTest {
         final SAMReadGroupRecord rg1 = new SAMReadGroupRecord("rg1");
         final SAMReadGroupRecord rg2 = new SAMReadGroupRecord("rg2");
 
-        final Map<String, File> outputMap = RevertSamSpark.getOutputMap(null, new File("/foo/bar"), ".bam", Arrays.asList(rg1, rg2), true);
-        Assert.assertEquals(outputMap.get("rg1"), new File("/foo/bar/rg1.bam"));
-        Assert.assertEquals(outputMap.get("rg2"), new File("/foo/bar/rg2.bam"));
+        final Map<String, Path> outputMap = RevertSamSpark.getOutputMap(null, new File("/foo/bar").getAbsolutePath(), ".bam", Arrays.asList(rg1, rg2), true);
+        Assert.assertEquals(outputMap.get("rg1"), IOUtils.getPath(new File("/foo/bar/rg1.bam").getAbsolutePath()));
+        Assert.assertEquals(outputMap.get("rg2"), IOUtils.getPath(new File("/foo/bar/rg2.bam").getAbsolutePath()));
     }
 
     @Test
     public void testFilePathsWithMapFile() {
-        final Map<String, File> outputMap = RevertSamSpark.getOutputMap(validOutputMap, null, ".bam", Collections.emptyList(), true);
-        Assert.assertEquals(outputMap.get("rg1"), new File("/path/to/my_rg_1.ubam"));
-        Assert.assertEquals(outputMap.get("rg2"), new File("/path/to/my_rg_2.ubam"));
+        final Map<String, Path> outputMap = RevertSamSpark.getOutputMap(validOutputMap.getAbsolutePath(), null, ".bam", Collections.emptyList(), true);
+        Assert.assertEquals(outputMap.get("rg1"), IOUtils.getPath(new File("/path/to/my_rg_1.ubam").getAbsolutePath()));
+        Assert.assertEquals(outputMap.get("rg2"), IOUtils.getPath(new File("/path/to/my_rg_2.ubam").getAbsolutePath()));
     }
 
     @Test

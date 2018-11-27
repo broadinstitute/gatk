@@ -282,4 +282,17 @@ public final class SparkUtils {
         };
     }
 
+    /**
+     * Sort reads into queryname order if they are not already sorted
+     */
+    public static JavaRDD<GATKRead> querynameSortReadsIfNecessary(JavaRDD<GATKRead> reads, int numReducers, SAMFileHeader headerForTool) {
+        JavaRDD<GATKRead> sortedReadsForMarking;
+        if (ReadUtils.isReadNameGroupedBam(headerForTool)) {
+            sortedReadsForMarking = reads;
+        } else {
+            headerForTool.setSortOrder(SAMFileHeader.SortOrder.queryname);
+            sortedReadsForMarking = sortReadsAccordingToHeader(reads, headerForTool, numReducers);
+        }
+        return sortedReadsForMarking;
+    }
 }

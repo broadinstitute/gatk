@@ -97,7 +97,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
         SAMFileHeader headerForTool = header.clone();
 
         // If the input isn't queryname sorted, sort it before duplicate marking
-        final JavaRDD<GATKRead> sortedReadsForMarking = querynameSortReadsIfNecessary(reads, numReducers, headerForTool);
+        final JavaRDD<GATKRead> sortedReadsForMarking = SparkUtils.querynameSortReadsIfNecessary(reads, numReducers, headerForTool);
 
         // If we need to remove optical duplicates or tag them, then make sure we are keeping track
         final boolean markOpticalDups = (taggingPolicy != MarkDuplicates.DuplicateTaggingPolicy.DontTag);
@@ -170,20 +170,6 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
                     mdArgs.taggingPolicy);
     }
 
-
-    /**
-     * Sort reads into queryname order if they are not already sorted
-     */
-    private static JavaRDD<GATKRead> querynameSortReadsIfNecessary(JavaRDD<GATKRead> reads, int numReducers, SAMFileHeader headerForTool) {
-        JavaRDD<GATKRead> sortedReadsForMarking;
-        if (ReadUtils.isReadNameGroupedBam(headerForTool)) {
-            sortedReadsForMarking = reads;
-        } else {
-            headerForTool.setSortOrder(SAMFileHeader.SortOrder.queryname);
-            sortedReadsForMarking = SparkUtils.sortReadsAccordingToHeader(reads, headerForTool, numReducers);
-        }
-        return sortedReadsForMarking;
-    }
 
     /**
      * A custom partitioner designed to cut down on spark shuffle costs.
