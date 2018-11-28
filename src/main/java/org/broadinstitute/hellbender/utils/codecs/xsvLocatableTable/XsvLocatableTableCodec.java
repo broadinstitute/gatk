@@ -399,15 +399,18 @@ public final class XsvLocatableTableCodec extends AsciiFeatureCodec<XsvTableFeat
         }
 
         // Validate that it has the correct keys:
-        isValid = configPropertiesContainsKey(configProperties, DataSourceUtils.CONFIG_FILE_FIELD_NAME_SRC_FILE, configFilePath, errorOnMissingConfigKey) && isValid;
-        isValid = configPropertiesContainsKey(configProperties, DataSourceUtils.CONFIG_FILE_FIELD_NAME_VERSION, configFilePath, errorOnMissingConfigKey) && isValid;
-        isValid = configPropertiesContainsKey(configProperties, DataSourceUtils.CONFIG_FILE_FIELD_NAME_ORIGIN_LOCATION, configFilePath, errorOnMissingConfigKey) && isValid;
-        isValid = configPropertiesContainsKey(configProperties, DataSourceUtils.CONFIG_FILE_FIELD_NAME_PREPROCESSING_SCRIPT, configFilePath, errorOnMissingConfigKey) && isValid;
-        isValid = configPropertiesContainsKey(configProperties, DataSourceUtils.CONFIG_FILE_FIELD_NAME_CONTIG_COLUMN, configFilePath, errorOnMissingConfigKey) && isValid;
-        isValid = configPropertiesContainsKey(configProperties, DataSourceUtils.CONFIG_FILE_FIELD_NAME_START_COLUMN, configFilePath, errorOnMissingConfigKey) && isValid;
-        isValid = configPropertiesContainsKey(configProperties, DataSourceUtils.CONFIG_FILE_FIELD_NAME_END_COLUMN, configFilePath, errorOnMissingConfigKey) && isValid;
-        isValid = configPropertiesContainsKey(configProperties, DataSourceUtils.CONFIG_FILE_FIELD_NAME_XSV_DELIMITER, configFilePath, errorOnMissingConfigKey) && isValid;
-        isValid = configPropertiesContainsKey(configProperties, DataSourceUtils.CONFIG_FILE_FIELD_NAME_NAME, configFilePath, errorOnMissingConfigKey) && isValid;
+        isValid = Stream.of(
+                    DataSourceUtils.CONFIG_FILE_FIELD_NAME_SRC_FILE,
+                    DataSourceUtils.CONFIG_FILE_FIELD_NAME_VERSION,
+                    DataSourceUtils.CONFIG_FILE_FIELD_NAME_ORIGIN_LOCATION,
+                    DataSourceUtils.CONFIG_FILE_FIELD_NAME_PREPROCESSING_SCRIPT,
+                    DataSourceUtils.CONFIG_FILE_FIELD_NAME_CONTIG_COLUMN,
+                    DataSourceUtils.CONFIG_FILE_FIELD_NAME_START_COLUMN,
+                    DataSourceUtils.CONFIG_FILE_FIELD_NAME_END_COLUMN,
+                    DataSourceUtils.CONFIG_FILE_FIELD_NAME_XSV_DELIMITER,
+                    DataSourceUtils.CONFIG_FILE_FIELD_NAME_NAME)
+                .map( key -> configPropertiesContainsKey(configProperties, key, configFilePath, errorOnMissingConfigKey))
+                .allMatch( result -> result );
 
         return Pair.of(isValid, configProperties);
     }

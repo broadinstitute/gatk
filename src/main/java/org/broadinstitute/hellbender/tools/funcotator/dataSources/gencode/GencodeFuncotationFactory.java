@@ -202,7 +202,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     /**
      * Creates a {@link GencodeFuncotationFactory} with the 5'/3' flank sizes both set to 0.
      *
-     * @param gencodeTranscriptFastaFilePath {@link Path} to the FASTA file contianing the sequences of all transcripts in the Gencode data source.
+     * @param gencodeTranscriptFastaFilePath {@link Path} to the FASTA file containing the sequences of all transcripts in the Gencode data source.
      * @param version The version {@link String} of Gencode from which {@link Funcotation}s will be made.
      * @param name A {@link String} containing the name of this {@link GencodeFuncotationFactory}.
      * @param transcriptSelectionMode The {@link TranscriptSelectionMode} by which representative/verbose transcripts will be chosen for overlapping variants.
@@ -306,7 +306,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
         // Copy Sequence Dictionary:
         NioFileCopierWithProgressMeter.create(remoteGencodeTranscriptFastaSequenceDictionaryFilePath, localGencodeTranscriptFastaSequenceDictionaryFilePath, true).initiateCopy();
-
 
         // Bye Bye!
         return localGencodeTranscriptFastaFilePath;
