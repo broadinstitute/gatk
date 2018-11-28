@@ -422,8 +422,8 @@ public class ReadLikelihoods<A extends Allele> implements SampleList, AlleleList
      * @param sampleIndex including sample index.
      * @param readIndex  target read index.
      *
-     * @param priorities An array of allele priorities (lower score is higher priority) to be used, if present, to break ties for
-     *                   uninformative likelihoods, in which case the read is assigned to the allele with the lower score.
+     * @param priorities An array of allele priorities (higher values have higher priority) to be used, if present, to break ties for
+     *                   uninformative likelihoods, in which case the read is assigned to the allele with the higher score.
      * @return never {@code null}, but with {@link BestAllele#allele allele} == {@code null}
      * if non-could be found.
      */
