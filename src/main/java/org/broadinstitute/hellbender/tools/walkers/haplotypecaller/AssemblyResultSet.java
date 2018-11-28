@@ -518,4 +518,9 @@ public final class AssemblyResultSet {
         }
         return variationEvents;
     }
+
+    // Set the debug variable
+    public void setDebug(boolean debug) {
+        this.debug = debug;
+    }
 }
