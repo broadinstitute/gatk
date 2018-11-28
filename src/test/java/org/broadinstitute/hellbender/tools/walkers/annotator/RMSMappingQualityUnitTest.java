@@ -216,7 +216,31 @@ public final class RMSMappingQualityUnitTest {
     }
 
     @Test
+    public void testCombineAndFinalizeHighMQSquared() {
+        final List<Allele> vcAlleles = Arrays.asList(Allele.create("A", true), Allele.create("T", false));
+        final List<ReducibleAnnotationData<?>> combinedVCdata = new ArrayList<>();
+        // Test that updating the annotation works when Integer.MAX_VALUE is exceeded, both for small and large updates:
+        combinedVCdata.add(new ReducibleAnnotationData<>("10125000000,5000000"));  //5,000,000 MQ45 reads
+        combinedVCdata.add(new ReducibleAnnotationData<>("2601,1"));  //1 MQ51 read
+        combinedVCdata.add(new ReducibleAnnotationData<>("1800000000,500000"));  //500,000 MQ60 reads
+
+        final RMSMappingQuality annotator = RMSMappingQuality.getInstance();
+
+        final Map<String, Object> combined = annotator.combineRawData(vcAlleles, combinedVCdata);
+        final String combinedListString = (String)combined.get(annotator.getRawKeyName());
+        Assert.assertEquals(combinedListString, "11925002601,5500001");
+
+        final VariantContext vc = new VariantContextBuilder(makeVC())
+                .attribute(GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY, combinedListString)
+                .make();
+        final VariantContext originalVC = null;
+        final Map<String, Object> output = new RMSMappingQuality().finalizeRawData(vc, originalVC);
+        Assert.assertEquals(Double.parseDouble((String)output.get("MQ")), 46.56);
+    }
+
+    @Test
     public void testFinalizeRawData(){
+        // NOTE: RMSMappingQuality should ignore homRef depth of 20 and use only the 13 variants to calculate score.
         final VariantContext vc = new VariantContextBuilder(makeVC())
                 .attribute(GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY, "43732,13")
                 .attribute(VCFConstants.DEPTH_KEY, 20)
@@ -224,6 +248,17 @@ public final class RMSMappingQualityUnitTest {
         final VariantContext originalVC = null;
         final Map<String, Object> output = new RMSMappingQuality().finalizeRawData(vc, originalVC);
         Assert.assertEquals(output.get("MQ"), "58.00");
+    }
+
+    @Test
+    public void testFinalizeHighMQSquaredRawData(){
+        // Test that RMS Mapping Quality is correctly computed when Integer.MAX_VALUE is exceeded.
+        final VariantContext vc = new VariantContextBuilder(makeVC())
+                .attribute(GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY, "3415207168,1749038")
+                .make();
+        final VariantContext originalVC = null;
+        final Map<String, Object> output = new RMSMappingQuality().finalizeRawData(vc, originalVC);
+        Assert.assertEquals(output.get("MQ"), "44.19");
     }
 
     @Test
