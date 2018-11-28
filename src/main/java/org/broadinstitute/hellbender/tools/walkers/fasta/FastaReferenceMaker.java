@@ -1,43 +1,24 @@
-/*
- * Copyright 2012-2016 Broad Institute, Inc.
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation
- * files (the "Software"), to deal in the Software without
- * restriction, including without limitation the rights to use,
- * copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, subject to the following
- * conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
- * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
- * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
- * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
- * THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
-
 package org.broadinstitute.hellbender.tools.walkers.fasta;
 
-import org.broadinstitute.gatk.utils.commandline.Argument;
-import org.broadinstitute.gatk.utils.commandline.Output;
-import org.broadinstitute.gatk.engine.CommandLineGATK;
-import org.broadinstitute.gatk.utils.contexts.AlignmentContext;
-import org.broadinstitute.gatk.utils.contexts.ReferenceContext;
-import org.broadinstitute.gatk.utils.refdata.RefMetaDataTracker;
-import org.broadinstitute.gatk.engine.walkers.RefWalker;
-import org.broadinstitute.gatk.utils.GenomeLoc;
-import org.broadinstitute.gatk.utils.collections.Pair;
-import org.broadinstitute.gatk.utils.help.DocumentedGATKFeature;
-import org.broadinstitute.gatk.utils.help.HelpConstants;
+import com.google.common.primitives.Bytes;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.ReadsContext;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.engine.ReferenceWalker;
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.reference.FastaReferenceWriter;
+import picard.cmdline.programgroups.ReferenceProgramGroup;
 
-import java.io.PrintStream;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Create a subset of a FASTA reference sequence
@@ -68,70 +49,100 @@ import java.io.PrintStream;
  *
  * <h3>Usage example</h3>
  * <pre>
- * java -jar GenomeAnalysisTK.jar \
- *   -T FastaReferenceMaker \
+ * gatk FastaReferenceMaker \
  *   -R reference.fasta \
- *   -o output.fasta \
+ *   -O output.fasta \
  *   -L input.intervals
  * </pre>
  *
  */
-@DocumentedGATKFeature( groupName = HelpConstants.DOCS_CAT_REFUTILS, extraDocs = {CommandLineGATK.class} )
-public class FastaReferenceMaker extends RefWalker<Pair<GenomeLoc, String>, GenomeLoc> {
+@DocumentedFeature
+@CommandLineProgramProperties(
+    summary = "Create snippets of a fasta file by subsetting to an interval list",
+    oneLineSummary = "Create snippets of a fasta file",
+    programGroup = ReferenceProgramGroup.class
+)
+public class FastaReferenceMaker extends ReferenceWalker {
 
-  @Output PrintStream out;
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+            doc = "Path to write the output fasta to")
+    public String output;
 
-  @Argument(fullName="lineWidth", shortName="lw", doc="Maximum length of sequence to write per line", required=false)
-  public int fastaLineWidth=60;
+    public static final String LINE_WIDTH_LONG_NAME = "line-width";
+    @Argument(fullName= LINE_WIDTH_LONG_NAME, doc="Maximum length of sequence to write per line", optional=true)
+    public int basesPerLine = FastaReferenceWriter.DEFAULT_BASES_PER_LINE;
 
-  /**
-   *  Please note that when using this argument adjacent intervals will automatically be merged.
-   */
-  @Argument(fullName="rawOnelineSeq", shortName="raw", doc="Print sequences with no FASTA header lines, one line per interval (i.e. lineWidth = infinity)", required=false)
-  public boolean fastaRawSeqs=false;
+    protected FastaReferenceWriter writer;
+    private int contigCount = 0;
+    private int currentSequenceStartPosition = 0;
+    private SimpleInterval lastPosition = null;
+    private List<Byte> sequence = new ArrayList<>(10000);
 
-  protected FastaSequence fasta;
-
-  public void initialize() {
-    if (fastaRawSeqs) fastaLineWidth = Integer.MAX_VALUE;
-    fasta = new FastaSequence(out, fastaLineWidth, fastaRawSeqs);
-  }
-
-  public Pair<GenomeLoc, String> map(RefMetaDataTracker rodData, ReferenceContext ref, AlignmentContext context) {
-    return new Pair<GenomeLoc, String>(context.getLocation(), String.valueOf((char)ref.getBase()));
-  }
-
-  public GenomeLoc reduceInit() {
-    return null;
-  }
-
-  public GenomeLoc reduce(Pair<GenomeLoc, String> value, GenomeLoc sum) {
-    if ( value == null )
-      return sum;
-
-    // if there is no interval to the left, then this is the first one
-    if ( sum == null ) {
-      sum = value.first;
-      fasta.setName(fasta.getName() + " " + sum.toString());
-      fasta.append(value.second);
+    @Override
+    public void onTraversalStart() {
+        final Path path = IOUtils.getPath(output);
+        try {
+            writer = new FastaReferenceWriter(path, basesPerLine, true, true);
+        } catch (IOException e) {
+            throw new UserException.CouldNotCreateOutputFile("Couldn't create " + output + ", encountered exception: " + e.getMessage(), e);
+        }
     }
-    // if the intervals are not contiguous, print out the leftmost one and start a new one
-    // (end of contig or new interval)
-    else if ( value.first.getStart() != sum.getStop() + 1 || ! value.first.getContig().equals(sum.getContig()) ) {
-      fasta.flush();
-      sum = value.first;
-      fasta.setName(fasta.getName() + " " + sum.toString());
-      fasta.append(value.second);
-    }
-    // otherwise, merge them
-    else {
-      sum = sum.setStop(sum, value.first.getStop());
-      fasta.append(value.second);
-    }
-    return sum;
-  }
 
-  public void onTraversalDone(GenomeLoc sum) {
-    fasta.flush();
-  }
+    @Override
+    public void closeTool() {
+        super.closeTool();
+        try{
+            writer.close();
+        } catch (IllegalStateException e){
+            //sink this
+        } catch (IOException e) {
+            throw new UserException("Failed to write fasta due to " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public void apply(ReferenceContext referenceContext, ReadsContext read, FeatureContext featureContext) {
+        addToReference(referenceContext.getInterval(), referenceContext.getBase());
+    }
+
+    protected void addToReference(SimpleInterval interval, Byte base) {
+        if(lastPosition == null ){
+            initializeNewSequence(interval);
+        } else if ( !lastPosition.withinDistanceOf(interval, 1)) {
+            finalizeSequence();
+            initializeNewSequence(interval);
+        }
+        addToSequence(interval, base);
+    }
+
+    private void addToSequence(SimpleInterval interval, Byte base) {
+        if (base != null) {
+            sequence.add(base);
+        }
+        lastPosition = interval;
+
+    }
+
+    private void finalizeSequence() {
+        final String description = lastPosition.getContig() + ":" + currentSequenceStartPosition + "-" + lastPosition.getEnd();
+        try {
+            writer.appendSequence(String.valueOf(contigCount), description, basesPerLine, Bytes.toArray(sequence));
+        } catch (IOException e) {
+            throw new UserException.CouldNotCreateOutputFile("Failed while writing " + output + ".", e);
+        }
+    }
+
+    private void initializeNewSequence(SimpleInterval interval) {
+        lastPosition = interval;
+        contigCount++;
+        currentSequenceStartPosition = lastPosition.getStart();
+        sequence.clear();
+    }
+
+    @Override
+    public Object onTraversalSuccess(){
+        finalizeSequence();
+        return null;
+    }
 }

@@ -165,4 +165,22 @@ public final class BaseUtilsUnitTest extends GATKBaseTest {
         }
         return result;
     }
+
+    @Test
+    public void testConvertBasesToIUPAC() {
+        for ( final BaseUtils.Base b : BaseUtils.Base.values() ) {
+            if ( BaseUtils.isRegularBase(b.base) ) {
+                Assert.assertEquals(BaseUtils.basesToIUPAC(b.base, b.base), b.base, "testing same base");
+            }
+        }
+
+        Assert.assertEquals(BaseUtils.basesToIUPAC((byte)'A', (byte)'X'), 'N', "testing non-standard base");
+        Assert.assertEquals(BaseUtils.basesToIUPAC((byte)'X', (byte)'A'), 'N', "testing non-standard base");
+        Assert.assertEquals(BaseUtils.basesToIUPAC((byte)'X', (byte)'X'), 'N', "testing non-standard base");
+
+        Assert.assertEquals(BaseUtils.basesToIUPAC((byte)'A', (byte)'T'), 'W', "testing A/T=W");
+        Assert.assertEquals(BaseUtils.basesToIUPAC((byte)'T', (byte)'A'), 'W', "testing T/A=W");
+        Assert.assertEquals(BaseUtils.basesToIUPAC((byte) 'G', (byte) 'T'), 'K', "testing G/T=K");
+        Assert.assertEquals(BaseUtils.basesToIUPAC((byte) 'T', (byte) 'G'), 'K', "testing T/G=K");
+    }
 }

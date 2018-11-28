@@ -1,55 +1,27 @@
-/*
- * Copyright 2012-2016 Broad Institute, Inc.
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation
- * files (the "Software"), to deal in the Software without
- * restriction, including without limitation the rights to use,
- * copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, subject to the following
- * conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
- * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
- * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
- * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
- * THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
-
 package org.broadinstitute.hellbender.tools.walkers.fasta;
 
-import org.broadinstitute.gatk.utils.commandline.Argument;
-import org.broadinstitute.gatk.utils.commandline.ArgumentCollection;
-import org.broadinstitute.gatk.utils.commandline.Input;
-import org.broadinstitute.gatk.utils.commandline.RodBinding;
-import org.broadinstitute.gatk.engine.CommandLineGATK;
-import org.broadinstitute.gatk.engine.arguments.StandardVariantContextInputArgumentCollection;
-import org.broadinstitute.gatk.utils.contexts.AlignmentContext;
-import org.broadinstitute.gatk.utils.contexts.ReferenceContext;
-import org.broadinstitute.gatk.utils.refdata.RefMetaDataTracker;
-import org.broadinstitute.gatk.engine.walkers.*;
-import org.broadinstitute.gatk.utils.BaseUtils;
-import org.broadinstitute.gatk.utils.GenomeLoc;
-import org.broadinstitute.gatk.engine.SampleUtils;
-import org.broadinstitute.gatk.utils.collections.Pair;
-import org.broadinstitute.gatk.utils.exceptions.UserException;
-import org.broadinstitute.gatk.utils.help.DocumentedGATKFeature;
-import org.broadinstitute.gatk.utils.help.HelpConstants;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
-import org.broadinstitute.gatk.utils.variant.GATKVCFConstants;
+import htsjdk.variant.vcf.VCFHeader;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineException;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.FeatureInput;
+import org.broadinstitute.hellbender.engine.ReadsContext;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.BaseUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import picard.cmdline.programgroups.ReferenceProgramGroup;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import java.util.Optional;
 
 
@@ -57,7 +29,7 @@ import java.util.Optional;
  * Generate an alternative reference sequence over the specified interval
  *
  * <p>Given a variant callset, this tool replaces the reference bases at variation sites with the bases supplied in the
- * corresponding callset records. Additionally, it allows for one or more "snpmask" VCFs to set overlapping bases to 'N'.</p>
+ * corresponding callset records. Additionally, it allows for one or more "snp-mask" VCFs to set overlapping bases to 'N'.</p>
  *
  * <p>The output format can be partially controlled using the provided command-line arguments.
  * Specify intervals with the usual -L argument to output only the reference bases within your intervals.
@@ -73,7 +45,7 @@ import java.util.Optional;
 
  * <h3>Input</h3>
  * <p>
- * The reference, requested intervals, and any number of variant ROD files.
+ * The reference, requested intervals, and any number of variant files.
  * </p>
  *
  * <h3>Output</h3>
@@ -83,168 +55,208 @@ import java.util.Optional;
  *
  * <h3>Usage example</h3>
  * <pre>
- * java -jar GenomeAnalysisTK.jar \
- *   -T FastaAlternateReferenceMaker \
+ * gatk FastaAlternateReferenceMaker \
  *   -R reference.fasta \
- *   -o output.fasta \
+ *   -O output.fasta \
  *   -L input.intervals \
  *   -V input.vcf \
- *   [--snpmask mask.vcf]
+ *
+ *   [--snp-mask mask.vcf]
  * </pre>
  *
  */
-@DocumentedGATKFeature( groupName = HelpConstants.DOCS_CAT_REFUTILS, extraDocs = {CommandLineGATK.class} )
-@Reference(window=@Window(start=-1,stop=50))
-@Requires(value={DataSource.REFERENCE})
+@DocumentedFeature
+@CommandLineProgramProperties(summary = "Create an alternative fasta reference by inserting variants from a vcf into an existing reference sequence.",
+        oneLineSummary = "Create an alternative reference by combining a fasta with a vcf.",
+        programGroup = ReferenceProgramGroup.class)
 public class FastaAlternateReferenceMaker extends FastaReferenceMaker {
 
-  /**
-   * Variants from this input file are used by this tool to construct an alternate reference.
-   */
-  @ArgumentCollection
-  protected StandardVariantContextInputArgumentCollection variantCollection = new StandardVariantContextInputArgumentCollection();
+    //Pre-allocated as a lame optimization
+    private static final byte[] NO_BASES = new byte[0];
+    private static final byte[] N_BYTES = {'N'};
+    private static final byte[] n_BYTES = {'n'};
+    private static final byte[] A_BYTES = new byte[]{'A'};
+    private static final byte[] a_BYTES = new byte[]{'a'};
+    private static final byte[] G_BYTES = new byte[]{'G'};
+    private static final byte[] g_BYTES = new byte[]{'g'};
+    private static final byte[] C_BYTES = new byte[]{'C'};
+    private static final byte[] c_BYTES = new byte[]{'c'};
+    private static final byte[] T_BYTES = new byte[]{'T'};
+    private static final byte[] t_BYTES = new byte[]{'t'};
 
-  /**
-   * SNPs from this file are used as a mask (inserting N's in the sequence) when constructing the alternate reference
-   */
-  @Input(fullName="snpmask", shortName = "snpmask", doc="SNP mask VCF file", required=false)
-  protected RodBinding<VariantContext> snpmask;
+    /**
+     * Variants from this input file are used by this tool to construct an alternate reference.
+     */
+    @Argument(fullName= StandardArgumentDefinitions.VARIANT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME,
+            doc="VCF to merge with the reference sequence.")
+    protected FeatureInput<VariantContext> variants;
 
-  /**
-   * Gives priority to a SNP mask over an input VCF for a site. Only has an effect if the --snpmask argument is used.
-   */
-  @Argument(fullName="snpmaskPriority", shortName = "snpmaskPriority", doc="SNP mask priority", required=false)
-  protected Boolean snpmaskPriority = false;
+    public static final String SNP_MASK_LONG_NAME = "snp-mask";
 
-  /**
-   * This option will generate an error if the specified sample does not exist in the VCF.
-   * Non-diploid (or non-called) genotypes are ignored.
-   */
-  @Argument(fullName="use_IUPAC_sample", shortName="IUPAC", doc = "If specified, heterozygous SNP sites will be output using IUPAC ambiguity codes given the genotypes for this sample", required=false)
-  private String iupacSample = null;
+    /**
+     * SNPs from this file are used as a mask (inserting N's in the sequence) when constructing the alternate reference
+     */
+    @Argument(fullName= SNP_MASK_LONG_NAME, doc="SNP mask VCF file", optional=true)
+    protected FeatureInput<VariantContext> snpmask;
 
-  private int deletionBasesRemaining = 0;
+    public static final String SNP_MASK_PRIORITY_LONG_NAME = "snp-mask-priority";
+    /**
+     * Gives priority to a SNP mask over an input VCF for a site. Only has an effect if the --snp-mask argument is used.
+     */
+    @Argument(fullName= SNP_MASK_PRIORITY_LONG_NAME, doc="Give the snp mask priority over the input VCF.", optional=true)
+    protected boolean snpmaskPriority = false;
 
-  private static final String EMPTY_BASE = " ";
+    public static final String USE_IUPAC_SAMPLE_LONG_NAME = "use-iupac-sample";
+    /**
+     * This option will generate an error if the specified sample does not exist in the VCF.
+     * Non-diploid (or non-called) genotypes are ignored.
+     */
+    @Argument(fullName= USE_IUPAC_SAMPLE_LONG_NAME, doc = "If specified, heterozygous SNP sites will be output using IUPAC ambiguity codes given the genotypes for this sample", optional=true)
+    private String iupacSample = null;
 
-  @Override
-  public void initialize() {
-    super.initialize();
-    if ( iupacSample != null ) {
-      final List<String> rodName = Arrays.asList(variantCollection.variants.getName());
-      final Set<String> samples = SampleUtils.getUniqueSamplesFromRods(getToolkit(), rodName);
-      if ( !samples.contains(iupacSample) )
-        throw new UserException.BadInput("the IUPAC sample specified is not present in the provided VCF file");
-    }
-  }
+    private int deletionBasesRemaining = 0;
 
-  @Override
-  public Pair<GenomeLoc, String> map(final RefMetaDataTracker tracker, final ReferenceContext ref, final AlignmentContext context) {
+    private static final String EMPTY_BASE = " ";
 
-    if (deletionBasesRemaining > 0) {
-      deletionBasesRemaining--;
-      return new Pair<>(context.getLocation(), "");
-    }
+    @Override
+    public void onTraversalStart() {
+        super.onTraversalStart();
 
-    final String refBase = String.valueOf((char)ref.getBase());
-
-    // If we have a mask at this site, use it
-    if ( snpmaskPriority ){
-      final Pair<GenomeLoc, String> mask = maskSnp(tracker, context);
-      if ( mask != null )
-        return mask;
-    }
-
-    // Check to see if we have a called snp
-    for ( final VariantContext vc : tracker.getValues(variantCollection.variants, ref.getLocus()) ) {
-      if ( vc.isFiltered() )
-        continue;
-
-      if ( vc.isSimpleDeletion()) {
-        deletionBasesRemaining = vc.getReference().length() - 1;
-        // delete the next n bases, not this one
-        return new Pair<>(context.getLocation(), refBase);
-      } else if ( vc.isSimpleInsertion() || vc.isSNP() ) {
-        // Get the first alt allele that is not a spanning deletion. If none present, use the empty allele
-        final Optional<Allele> optionalAllele = getFirstNonSpanDelAltAllele(vc.getAlternateAlleles());
-        final Allele allele = optionalAllele.isPresent() ? optionalAllele.get() : Allele.create(EMPTY_BASE, false);
-        if ( vc.isSimpleInsertion() ) {
-          return new Pair<>(context.getLocation(), allele.toString());
-        } else {
-          final String base = (iupacSample != null) ? getIUPACbase(vc.getGenotype(iupacSample), refBase) : allele.toString();
-          return new Pair<>(context.getLocation(), base);
+        if (snpmaskPriority && snpmask == null){
+            throw new CommandLineException("Cannot specify --" + SNP_MASK_PRIORITY_LONG_NAME + " without " + " --" + SNP_MASK_LONG_NAME);
         }
-      }
+
+        if ( iupacSample != null ) {
+            final VCFHeader variantHeader = (VCFHeader) getHeaderForFeatures(variants);
+            final ArrayList<String> samples = variantHeader.getSampleNamesInOrder();
+            if( samples == null || !samples.contains(iupacSample)) {
+                throw new UserException.BadInput("the IUPAC sample specified is not present in the provided VCF file");
+            }
+        }
     }
 
-    if ( !snpmaskPriority ){
-      final Pair<GenomeLoc, String> mask = maskSnp(tracker, context);
-      if ( mask != null )
-        return mask;
+    @Override
+    public void apply(final ReferenceContext ref, final ReadsContext reads, final FeatureContext features) {
+        final byte[] bases = handlePosition(ref.getInterval(), ref.getBase(), features);
+        final SimpleInterval interval = ref.getInterval();
+        if( bases.length == 0){
+            addToReference(interval, null);
+        } else {
+            for( byte base : bases) {
+                addToReference(interval, base);
+            }
+        }
     }
 
-    // if we got here then we're just ref
-    return new Pair<>(context.getLocation(), refBase);
-  }
+    private byte[] handlePosition(SimpleInterval interval, byte base, FeatureContext features) {
+        if (deletionBasesRemaining > 0) {
+            deletionBasesRemaining--;
+            return NO_BASES;
+        }
 
-  /**
-   * Get the first non spanning deletion (* or <*:DEL>) alt allele
-   * @param altAlleles the alternate alleles
-   * @return the first non spanning deletion allele or null
-   */
-  private Optional<Allele> getFirstNonSpanDelAltAllele( final List<Allele> altAlleles ) {
-    for (final Allele allele : altAlleles) {
-      if (!allele.equals(Allele.SPAN_DEL) && !allele.equals(GATKVCFConstants.SPANNING_DELETION_SYMBOLIC_ALLELE_DEPRECATED)) {
-        return Optional.of(allele);
-      }
+        final String refBase = String.valueOf((char) base);
+
+        // If we have a mask at this site, use it
+        if ( snpmaskPriority ){
+            if (isMasked(features) )
+                return N_BYTES;
+        }
+
+        // Check to see if we have a called snp
+        for ( final VariantContext vc : features.getValues(variants) ) {
+            if ( vc.isFiltered() || vc.getStart() != interval.getStart()  )
+                continue;
+
+            if ( vc.isSimpleDeletion()) {
+                deletionBasesRemaining = vc.getReference().length() - 1;
+                // delete the next n bases, not this one
+                return baseToByteArray(base);
+            } else if ( vc.isSimpleInsertion() || vc.isSNP() ) {
+                // Get the first alt allele that is not a spanning deletion. If none present, use the empty allele
+                final Optional<Allele> optionalAllele = getFirstNonSpanDelAltAllele(vc.getAlternateAlleles());
+                final Allele allele = optionalAllele.orElseGet(() -> Allele.create(EMPTY_BASE, false));
+                if ( vc.isSimpleInsertion() ) {
+                    return allele.getBases();
+                } else {
+                    final String iupacBase = (iupacSample != null) ? getIUPACBase(vc.getGenotype(iupacSample), refBase) : allele.toString();
+                    return iupacBase.getBytes();
+                }
+            }
+        }
+
+        if ( !snpmaskPriority ){
+            if ( isMasked(features)) {
+                return N_BYTES;
+            }
+        }
+
+        // if we got here then we're just ref
+        return baseToByteArray(base);
     }
 
-    return Optional.empty();
-  }
-
-  /**
-   * Mask a SNP (inserting N's in the sequence)
-   *
-   * @param tracker the Reference Metadata available at a particular site in the genome
-   * @param context the locus context data
-   * @return mask at the locus or null if no SNP at that locus
-   */
-  private Pair<GenomeLoc, String> maskSnp(final RefMetaDataTracker tracker, final AlignmentContext context){
-    for (final VariantContext vc : tracker.getValues(snpmask)) {
-      if (vc.isSNP()) {
-        return new Pair<>(context.getLocation(), "N");
-      }
+    private byte[] baseToByteArray(byte base) {
+        switch(base) {
+            case 'A': return A_BYTES;
+            case 'a': return a_BYTES;
+            case 'C': return C_BYTES;
+            case 'c': return c_BYTES;
+            case 'G': return G_BYTES;
+            case 'g': return g_BYTES;
+            case 'T': return T_BYTES;
+            case 't': return t_BYTES;
+            case 'N': return N_BYTES;
+            case 'n': return n_BYTES;
+            default: return new byte[]{base};
+        }
     }
 
-    return null;
-  }
-
-  /**
-   * Returns the IUPAC encoding for the given genotype or the reference base if not possible
-   *
-   * @param genotype  the genotype to encode
-   * @param ref       the reference base
-   * @return non-null, non-empty String of bases
-   */
-  private String getIUPACbase(final Genotype genotype, final String ref) {
-    if ( genotype == null )
-      throw new IllegalStateException("The genotype is null for sample " + iupacSample);
-
-    // If have a spanning deletion, if both alleles are spanning deletions, use the empty allele. Otherwise, use the allele is not a
-    // spanning deletion.
-    if ( genotype.getAlleles().contains(Allele.SPAN_DEL) ) {
-      if ( genotype.isHomVar() ) {
-        return EMPTY_BASE;
-      } else {
-        return genotype.getAllele(0).equals(Allele.SPAN_DEL) ? genotype.getAllele(1).getBaseString() : genotype.getAllele(0).getBaseString();
-      }
+    /**
+     * Get the first non spanning deletion (* or <*:DEL>) alt allele
+     * @param altAlleles the alternate alleles
+     * @return the first non spanning deletion allele or null
+     */
+    private Optional<Allele> getFirstNonSpanDelAltAllele( final List<Allele> altAlleles ) {
+        return altAlleles.stream()
+                .filter(allele -> !GATKVCFConstants.isSpanningDeletion(allele))
+                .findFirst();
     }
 
-    if ( !genotype.isHet() )
-      return genotype.isHom() ? genotype.getAllele(0).getBaseString() : ref;
+    /**
+     * Mask a SNP (inserting N's in the sequence)
+     *
+     * @param features the Reference Metadata available at a particular site in the genome
+     * @return mask at the locus or null if no SNP at that locus
+     */
+    private boolean isMasked(final FeatureContext features){
+        return features.getValues(snpmask).stream().anyMatch(VariantContext::isSNP);
+    }
 
-    final byte allele1 = genotype.getAllele(0).getBases()[0];
-    final byte allele2 = genotype.getAllele(1).getBases()[0];
-    return new String(new byte[] {BaseUtils.basesToIUPAC(allele1, allele2)});
-  }
+    /**
+     * Returns the IUPAC encoding for the given genotype or the reference base if not possible
+     *
+     * @param genotype  the genotype to encode
+     * @param ref       the reference base
+     * @return non-null, non-empty String of bases
+     */
+    private String getIUPACBase(final Genotype genotype, final String ref) {
+        Utils.nonNull(genotype, () -> "The genotype is null for sample " + iupacSample);
+
+        // If have a spanning deletion, if both alleles are spanning deletions, use the empty allele. Otherwise, use the allele is not a
+        // spanning deletion.
+        if ( genotype.getAlleles().contains(Allele.SPAN_DEL) ) {
+            if ( genotype.isHomVar() ) {
+                return EMPTY_BASE;
+            } else {
+                return genotype.getAllele(0).equals(Allele.SPAN_DEL) ? genotype.getAllele(1).getBaseString() : genotype.getAllele(0).getBaseString();
+            }
+        }
+
+        if ( !genotype.isHet() )
+            return genotype.isHom() ? genotype.getAllele(0).getBaseString() : ref;
+
+        final byte allele1 = genotype.getAllele(0).getBases()[0];
+        final byte allele2 = genotype.getAllele(1).getBases()[0];
+        return new String(new byte[] {BaseUtils.basesToIUPAC(allele1, allele2)});
+    }
 }

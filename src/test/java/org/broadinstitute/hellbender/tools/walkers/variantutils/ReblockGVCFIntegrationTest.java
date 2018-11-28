@@ -5,8 +5,6 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
-import org.broadinstitute.hellbender.utils.IntervalUtils;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.CommandLineProgramTester;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
@@ -49,7 +47,7 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder args2 = new ArgumentsBuilder();
         args2.addArgument("R", b37_reference_20_21);
         args2.addArgument("V", output.getAbsolutePath());
-        args2.addArgument("L", IntervalUtils.locatableToString(new SimpleInterval("20:60001-1000000")));
+        args2.addArgument("L", "20:60001-1000000");
         args2.add("-gvcf");
         validator.runCommandLine(args2);  //will throw a UserException if GVCF isn't contiguous
 

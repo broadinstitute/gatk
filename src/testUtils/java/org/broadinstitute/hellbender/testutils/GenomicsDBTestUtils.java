@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.testutils;
 
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBImport;
-import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
@@ -54,7 +53,7 @@ public final class GenomicsDBTestUtils {
 
         final String workspace = new File(workspaceDir, "workspace").getAbsolutePath();
         args.addArgument(GenomicsDBImport.WORKSPACE_ARG_LONG_NAME, workspace);
-        args.addArgument("L", IntervalUtils.locatableToString(interval));
+        args.addInterval(interval);
         importer.runCommandLine(args);
         return new File(workspace);
     }

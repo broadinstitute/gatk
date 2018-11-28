@@ -10,11 +10,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.codehaus.plexus.util.StringUtils;
 
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
+import java.io.*;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -254,7 +250,7 @@ public final class FastaReferenceWriter implements AutoCloseable {
         // for the sake of avoiding creating output if basesPerLine is invalid.
         this.defaultBasePerLine = checkBasesPerLine(basesPerLine);
 
-        this.fastaStream = new CountingOutputStream(Files.newOutputStream(Utils.nonNull(fastaFile)));
+        this.fastaStream = new CountingOutputStream(new BufferedOutputStream(Files.newOutputStream(Utils.nonNull(fastaFile))));
         this.indexWriter = indexFile == null ? new NullWriter() : new OutputStreamWriter(Files.newOutputStream(indexFile), CHARSET);
         final BufferedWriter dictWriter = new BufferedWriter(dictFile == null ? new NullWriter() : new OutputStreamWriter(Files.newOutputStream(dictFile), CHARSET));
         this.dictWriter = dictWriter;
@@ -509,7 +505,7 @@ public final class FastaReferenceWriter implements AutoCloseable {
     {
         if (currentSequenceName != null) {
             if (currentBasesCount == 0) {
-                throw new IllegalStateException("no base was added");
+                throw new IllegalStateException("startSequence was called but no base was added");
             }
             sequenceNamesAndSizes.put(currentSequenceName, currentBasesCount);
             writeIndexEntry();
@@ -681,18 +677,22 @@ public final class FastaReferenceWriter implements AutoCloseable {
      * </p>
      *
      * @throws IOException if such exception is thrown when closing output writers and output streams.
+     * @throws IllegalStateException if closing without writing any sequences or closing when writing a sequence is in progress
      */
     public void close() throws IOException
     {
         if (!closed) {
-            closeSequence();
-            if (sequenceNamesAndSizes.isEmpty()) {
-                throw new IllegalStateException("no sequences where added to the reference");
+            try {
+                closeSequence();
+                if (sequenceNamesAndSizes.isEmpty()) {
+                    throw new IllegalStateException("no sequences where added to the reference");
+                }
+            } finally {
+                closed = true;
+                fastaStream.close();
+                indexWriter.close();
+                dictWriter.close();
             }
-            fastaStream.close();
-            indexWriter.close();
-            dictWriter.close();
-            closed = true;
         }
     }
 

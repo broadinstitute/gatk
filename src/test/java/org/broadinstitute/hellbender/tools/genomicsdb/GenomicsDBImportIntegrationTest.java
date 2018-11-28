@@ -19,16 +19,14 @@ import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.IntervalUtils;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.BaseTest;
+import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
-import org.broadinstitute.hellbender.testutils.BaseTest;
-import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.testng.Assert;
@@ -37,11 +35,11 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
-import java.util.concurrent.CompletionException;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Test(groups = {"variantcalling"})
 public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTest {
@@ -281,7 +279,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         for (String input: inputs) {
             args.addArgument("V", input);
         }
-        intervals.forEach(interval -> args.addArgument("L", interval.toString()));
+        intervals.forEach(args::addInterval);
         Arrays.stream(extraArgs).forEach(args::add);
 
         Utils.resetRandomGenerator();
@@ -440,7 +438,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
                                    final int batchSize, final Boolean useBufferSize, final int bufferSizePerSample, int threads, final boolean mergeIntervals) {
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addArgument(GenomicsDBImport.WORKSPACE_ARG_LONG_NAME, workspace);
-        intervals.forEach(interval -> args.addArgument("L", IntervalUtils.locatableToString(interval)));
+        intervals.forEach(args::addInterval);
         vcfInputs.forEach(vcf -> args.addArgument("V", vcf));
         args.addArgument("batch-size", String.valueOf(batchSize));
         args.addArgument(GenomicsDBImport.VCF_INITIALIZER_THREADS_LONG_NAME, String.valueOf(threads));
@@ -570,7 +568,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         ArgumentsBuilder args = new ArgumentsBuilder()
                 .addArgument(GenomicsDBImport.BATCHSIZE_ARG_LONG_NAME, String.valueOf(2))
                 .addFileArgument(GenomicsDBImport.SAMPLE_NAME_MAP_LONG_NAME, outOfOrderSampleMap)
-                .addArgument("L", IntervalUtils.locatableToString(SMALLER_INTERVAL.get(0)))
+                .addInterval(SMALLER_INTERVAL.get(0))
                 .addArgument(GenomicsDBImport.WORKSPACE_ARG_LONG_NAME, workspace);
 
         runCommandLine(args);
@@ -582,7 +580,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     public void testSampleNameOrdering(final ArgumentsBuilder args) throws IOException {
         final String workspace = createTempDir("gendbtest").getAbsolutePath() + "/workspace";
 
-        args.addArgument("L", IntervalUtils.locatableToString(INTERVAL.get(0)))
+        args.addInterval(INTERVAL.get(0))
             .addArgument(GenomicsDBImport.WORKSPACE_ARG_LONG_NAME, workspace);
 
         runCommandLine(args);
@@ -674,7 +672,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
                 .addArgument(GenomicsDBImport.WORKSPACE_ARG_LONG_NAME, new File(workspace).getAbsolutePath())
                 .addArgument(GenomicsDBImport.VCF_INITIALIZER_THREADS_LONG_NAME, String.valueOf(threads))
                 .addArgument(GenomicsDBImport.BATCHSIZE_ARG_LONG_NAME, String.valueOf(batchSize))
-                .addArgument("L", IntervalUtils.locatableToString(INTERVAL.get(0)));
+                .addInterval(INTERVAL.get(0));
 
         runCommandLine(args);
         final Set<String> expectedSampleNames = sampleMap.keySet();
@@ -730,7 +728,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
                 .addArgument(GenomicsDBImport.SAMPLE_NAME_MAP_LONG_NAME, createInOrderSampleMap().getAbsolutePath())
                 .addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, HG_00096)
                 .addArgument(GenomicsDBImport.WORKSPACE_ARG_LONG_NAME, createTempDir("workspace").getAbsolutePath())
-                .addArgument("L",  IntervalUtils.locatableToString(INTERVAL.get(0)));
+                .addInterval(INTERVAL.get(0));
         runCommandLine(args);
     }
 
