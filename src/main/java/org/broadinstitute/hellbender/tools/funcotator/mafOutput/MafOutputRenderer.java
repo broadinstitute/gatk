@@ -18,9 +18,7 @@ import org.broadinstitute.hellbender.tools.funcotator.metadata.TumorNormalPair;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
 import org.broadinstitute.hellbender.utils.Utils;
 
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.Writer;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.SimpleDateFormat;
@@ -261,7 +259,7 @@ public class MafOutputRenderer extends OutputRenderer {
 
         // Open the output object:
         try {
-            writer = new PrintWriter(Files.newOutputStream(outputFilePath));
+            writer = new BufferedWriter(new OutputStreamWriter(Files.newOutputStream(outputFilePath)));
         }
         catch (final IOException ex) {
             throw new UserException("Error opening output file path: " + outputFilePath.toUri().toString(), ex);
