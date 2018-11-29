@@ -287,9 +287,9 @@ def cacheJarOnGCS(jar, dryRun):
     if staging is not None:
         staging = staging.strip('/')
         staging = staging + '/'
-        if not staging[0:5] == "gs://":
+        if not staging.startswith("gs://"):
             staging = "gs://" + staging
-
+    
     if dryRun is True:
         return jar
     elif staging is None:
