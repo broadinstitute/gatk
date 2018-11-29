@@ -393,7 +393,7 @@ public class GATKAnnotationPluginDescriptor  extends CommandLinePluginDescriptor
                             "Pedigree argument \"%s\" or \"%s\" was specified without a pedigree annotation being requested, (eg: %s))",
                             StandardArgumentDefinitions.PEDIGREE_FILE_LONG_NAME,
                             "founder-id",
-                            allDiscoveredAnnotations.entrySet().stream().filter(PedigreeAnnotation.class::isInstance).map(a -> a.getClass().getSimpleName()).collect(Collectors.joining(", "))));
+                            allDiscoveredAnnotations.values().stream().filter(PedigreeAnnotation.class::isInstance).map(a -> a.getClass().getSimpleName()).collect(Collectors.joining(", "))));
         }
     }
 
