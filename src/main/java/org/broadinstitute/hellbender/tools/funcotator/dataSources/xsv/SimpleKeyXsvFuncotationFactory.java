@@ -107,6 +107,19 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
                                           final LinkedHashMap<String, String> annotationOverrides,
                                           final int numHeaderLinesToIgnore,
                                           final boolean permissiveColumns ) {
+        this(name, filePath, version, delim, keyColumn, keyType, annotationOverrides, numHeaderLinesToIgnore, permissiveColumns, false);
+    }
+
+    public SimpleKeyXsvFuncotationFactory(final String name,
+                                          final Path filePath,
+                                          final String version,
+                                          final String delim,
+                                          final int keyColumn,
+                                          final XsvDataKeyType keyType,
+                                          final LinkedHashMap<String, String> annotationOverrides,
+                                          final int numHeaderLinesToIgnore,
+                                          final boolean permissiveColumns,
+                                          final boolean isDataSourceB37) {
 
         this.name = name;
 
@@ -120,6 +133,8 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
         annotationOverrideMap = annotationOverrides;
 
         this.numHeaderLinesToIgnore = numHeaderLinesToIgnore;
+
+        this.dataSourceIsB37 = isDataSourceB37;
 
         // Initialize our annotations map:
         annotationMap = new HashMap<>();

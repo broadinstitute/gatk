@@ -82,6 +82,20 @@ public class LocatableXsvFuncotationFactory extends DataSourceFuncotationFactory
      */
     public LocatableXsvFuncotationFactory(final String name, final String version, final LinkedHashMap<String, String> annotationOverridesMap,
                                           final FeatureInput<? extends Feature> mainSourceFileAsFeatureInput){
+        this(name, version, annotationOverridesMap, mainSourceFileAsFeatureInput, false);
+    }
+
+    /**
+     * Create a {@link LocatableXsvFuncotationFactory}.
+     * @param name A {@link String} containing the name of this {@link LocatableXsvFuncotationFactory}.
+     * @param version  The version {@link String} of the backing data source from which {@link Funcotation}s will be made.
+     * @param annotationOverridesMap A {@link LinkedHashMap<String,String>} containing user-specified overrides for specific {@link Funcotation}s.
+     * @param mainSourceFileAsFeatureInput The backing {@link FeatureInput} for this {@link LocatableXsvFuncotationFactory}, from which all {@link Funcotation}s will be created.
+     * @param isDataSourceB37 If {@code true}, indicates that the data source behind this {@link LocatableXsvFuncotationFactory} contains B37 data.
+     */
+    public LocatableXsvFuncotationFactory(final String name, final String version, final LinkedHashMap<String, String> annotationOverridesMap,
+                                          final FeatureInput<? extends Feature> mainSourceFileAsFeatureInput,
+                                          final boolean isDataSourceB37){
 
         super(mainSourceFileAsFeatureInput);
 
@@ -89,6 +103,7 @@ public class LocatableXsvFuncotationFactory extends DataSourceFuncotationFactory
         this.version = version;
 
         this.annotationOverrideMap = new LinkedHashMap<>(annotationOverridesMap);
+        this.dataSourceIsB37 = isDataSourceB37;
     }
 
     //==================================================================================================================

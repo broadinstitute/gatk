@@ -55,7 +55,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     // Whether to do debug output (i.e. leave output around).
     // This should always be false when checked in.
     // These tests would take ~30 minutes to complete each.
-    private static final boolean enableFullScaleValidationTest = false;
+    private static final boolean enableFullScaleValidationTest = true;
     private static final String  LARGE_DATASOURCES_FOLDER      = "funcotator_dataSources_latest";
     private static final String  GERMLINE_DATASOURCES_FOLDER   = "funcotator_dataSources_germline_latest";
 
@@ -393,68 +393,75 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     public Object[][] provideForLargeDataValidationTest() {
         return new Object[][]{
                 {
-                        "0816201804HC0_R01C01.vcf",
+                        "tmp2.vcf",
                         b37Reference,
                         FuncotatorTestConstants.REFERENCE_VERSION_HG19,
                         GERMLINE_DATASOURCES_FOLDER,
                         true
                 },
-                {
-                        "0816201804HC0_R01C01.vcf",
-                        b37Reference,
-                        FuncotatorTestConstants.REFERENCE_VERSION_HG19,
-                        FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_LOCAL_CLOUD_FOLDER,
-                        false
-                },
-                {
-                        "0816201804HC0_R01C01.vcf",
-                        b37Reference,
-                        FuncotatorTestConstants.REFERENCE_VERSION_HG19,
-                        FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_REMOTE_CLOUD_FOLDER,
-                        false
-                },
-                {
-                        "hg38_test_variants.vcf",
-                        hg38Reference,
-                        FuncotatorTestConstants.REFERENCE_VERSION_HG38,
-                        LARGE_DATASOURCES_FOLDER,
-                        true
-                },
-                {
-                        "hg38_trio.vcf",
-                        hg38Reference,
-                        FuncotatorTestConstants.REFERENCE_VERSION_HG38,
-                        LARGE_DATASOURCES_FOLDER,
-                        true
-                },
-                {
-                        FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_DATA_SET_1,
-                        b37Reference,
-                        FuncotatorTestConstants.REFERENCE_VERSION_HG19,
-                        FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER,
-                        false
-                },
-                {
-                        FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_DATA_SET_2,
-                        b37Reference,
-                        FuncotatorTestConstants.REFERENCE_VERSION_HG19,
-                        FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER,
-                        false
-                },
-                {
-                        FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_HG38,
-                        hg38Reference,
-                        FuncotatorTestConstants.REFERENCE_VERSION_HG38,
-                        FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER,
-                        false
-                },
-                {
-                        FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_LARGE_DATA_SET,
-                        b37Reference,
-                        FuncotatorTestConstants.REFERENCE_VERSION_HG19,
-                        FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER,
-                        false
-                },
+//                {
+//                        "0816201804HC0_R01C01.vcf",
+//                        b37Reference,
+//                        FuncotatorTestConstants.REFERENCE_VERSION_HG19,
+//                        GERMLINE_DATASOURCES_FOLDER,
+//                        true
+//                },
+//                {
+//                        "0816201804HC0_R01C01.vcf",
+//                        b37Reference,
+//                        FuncotatorTestConstants.REFERENCE_VERSION_HG19,
+//                        FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_LOCAL_CLOUD_FOLDER,
+//                        false
+//                },
+//                {
+//                        "0816201804HC0_R01C01.vcf",
+//                        b37Reference,
+//                        FuncotatorTestConstants.REFERENCE_VERSION_HG19,
+//                        FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_REMOTE_CLOUD_FOLDER,
+//                        false
+//                },
+//                {
+//                        "hg38_test_variants.vcf",
+//                        hg38Reference,
+//                        FuncotatorTestConstants.REFERENCE_VERSION_HG38,
+//                        LARGE_DATASOURCES_FOLDER,
+//                        true
+//                },
+//                {
+//                        "hg38_trio.vcf",
+//                        hg38Reference,
+//                        FuncotatorTestConstants.REFERENCE_VERSION_HG38,
+//                        LARGE_DATASOURCES_FOLDER,
+//                        true
+//                },
+//                {
+//                        FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_DATA_SET_1,
+//                        b37Reference,
+//                        FuncotatorTestConstants.REFERENCE_VERSION_HG19,
+//                        FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER,
+//                        false
+//                },
+//                {
+//                        FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_DATA_SET_2,
+//                        b37Reference,
+//                        FuncotatorTestConstants.REFERENCE_VERSION_HG19,
+//                        FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER,
+//                        false
+//                },
+//                {
+//                        FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_HG38,
+//                        hg38Reference,
+//                        FuncotatorTestConstants.REFERENCE_VERSION_HG38,
+//                        FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER,
+//                        false
+//                },
+//                {
+//                        FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_LARGE_DATA_SET,
+//                        b37Reference,
+//                        FuncotatorTestConstants.REFERENCE_VERSION_HG19,
+//                        FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER,
+//                        false
+//                },
         };
     }
 

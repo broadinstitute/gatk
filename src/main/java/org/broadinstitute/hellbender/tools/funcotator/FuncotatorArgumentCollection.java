@@ -103,7 +103,7 @@ public class FuncotatorArgumentCollection implements Serializable {
             fullName = FuncotatorArgumentDefinitions.LOOKAHEAD_CACHE_IN_BP_NAME,
             optional = true,
             minValue = 0,
-            doc = "Number of base-pairs to cache when querying variants."
+            doc = "Default number of base-pairs to cache when querying variants.  Can be overridden in individual data source configuration files."
     )
     public int lookaheadFeatureCachingInBp = FuncotatorArgumentDefinitions.LOOKAHEAD_CACHE_IN_BP_DEFAULT_VALUE;
 
