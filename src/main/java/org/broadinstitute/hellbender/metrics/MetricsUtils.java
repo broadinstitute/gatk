@@ -5,7 +5,7 @@ import htsjdk.samtools.metrics.MetricsFile;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 
-import java.io.PrintWriter;
+import java.io.*;
 
 /**
  * Utility methods for dealing with {@link MetricsFile} and related classes.
@@ -20,9 +20,9 @@ public final class MetricsUtils {
      * @param metricsOutputPath the path (or uri) to write the metrics to
      */
     public static void saveMetrics(final MetricsFile<?, ?> metricsFile, String metricsOutputPath) {
-        try(PrintWriter out = new PrintWriter(BucketUtils.createFile(metricsOutputPath))) {
+        try(Writer out = new BufferedWriter(new OutputStreamWriter(BucketUtils.createFile(metricsOutputPath)))) {
             metricsFile.write(out);
-        } catch (SAMException e ){
+        } catch (IOException | SAMException e ){
             throw new UserException.CouldNotCreateOutputFile("Could not write metrics to file: " + metricsOutputPath, e);
         }
     }
