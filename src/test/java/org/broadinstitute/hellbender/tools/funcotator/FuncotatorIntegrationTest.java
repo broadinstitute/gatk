@@ -20,6 +20,7 @@ import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedInterval;
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedIntervalCollection;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.DataSourceUtils;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.xsv.SimpleKeyXsvFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.mafOutput.CustomMafFuncotationCreator;
@@ -395,43 +396,64 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                         "0816201804HC0_R01C01.vcf",
                         b37Reference,
                         FuncotatorTestConstants.REFERENCE_VERSION_HG19,
-                        GERMLINE_DATASOURCES_FOLDER
+                        GERMLINE_DATASOURCES_FOLDER,
+                        true
+                },
+                {
+                        "0816201804HC0_R01C01.vcf",
+                        b37Reference,
+                        FuncotatorTestConstants.REFERENCE_VERSION_HG19,
+                        FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_LOCAL_CLOUD_FOLDER,
+                        false
+                },
+                {
+                        "0816201804HC0_R01C01.vcf",
+                        b37Reference,
+                        FuncotatorTestConstants.REFERENCE_VERSION_HG19,
+                        FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_REMOTE_CLOUD_FOLDER,
+                        false
                 },
                 {
                         "hg38_test_variants.vcf",
                         hg38Reference,
                         FuncotatorTestConstants.REFERENCE_VERSION_HG38,
-                        LARGE_DATASOURCES_FOLDER
+                        LARGE_DATASOURCES_FOLDER,
+                        true
                 },
                 {
                         "hg38_trio.vcf",
                         hg38Reference,
                         FuncotatorTestConstants.REFERENCE_VERSION_HG38,
-                        LARGE_DATASOURCES_FOLDER
+                        LARGE_DATASOURCES_FOLDER,
+                        true
                 },
                 {
                         FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_DATA_SET_1,
                         b37Reference,
                         FuncotatorTestConstants.REFERENCE_VERSION_HG19,
                         FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER,
+                        false
                 },
                 {
                         FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_DATA_SET_2,
                         b37Reference,
                         FuncotatorTestConstants.REFERENCE_VERSION_HG19,
-                        FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER
+                        FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER,
+                        false
                 },
                 {
                         FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_HG38,
                         hg38Reference,
                         FuncotatorTestConstants.REFERENCE_VERSION_HG38,
-                        FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER
+                        FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER,
+                        false
                 },
                 {
                         FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_LARGE_DATA_SET,
                         b37Reference,
                         FuncotatorTestConstants.REFERENCE_VERSION_HG19,
-                        FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER
+                        FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER,
+                        false
                 },
         };
     }
@@ -486,7 +508,8 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     public void largeDataValidationTest(final String inputVcfName,
                                         final String referencePath,
                                         final String referenceVersion,
-                                        final String dataSourcesPath) throws IOException {
+                                        final String dataSourcesPath,
+                                        final boolean isDsEnvironmentPath) throws IOException {
 
         // Get our main test folder path from our environment:
         final String testFolderInputPath = getFuncotatorLargeDataValidationTestInputPath();
@@ -495,6 +518,14 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         final long overallStartTime = System.nanoTime();
 
         final String outFileBaseName = inputVcfName + ".funcotator";
+
+        final String dataSourcesPathString;
+        if (isDsEnvironmentPath) {
+            dataSourcesPathString = getFuncotatorLargeDataValidationTestInputPath() + dataSourcesPath;
+        }
+        else {
+            dataSourcesPathString = dataSourcesPath;
+        }
 
         for (final FuncotatorArgumentDefinitions.OutputFormatType outFormat : FuncotatorArgumentDefinitions.OutputFormatType.values()) {
 
@@ -511,7 +542,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                     testFolderInputPath + inputVcfName,
                     outputFile,
                     referencePath,
-                    getFuncotatorLargeDataValidationTestInputPath() + dataSourcesPath,
+                    dataSourcesPathString,
                     referenceVersion,
                     outFormat,
                     true);
@@ -930,11 +961,16 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 
     private void createConfigFileForMAF(final File mafConfigFile) {
         try ( final PrintWriter printWriter = new PrintWriter(mafConfigFile) ) {
-            printWriter.println("contig_column = " + MafOutputRendererConstants.FieldName_Chromosome);
-            printWriter.println("start_column = " + MafOutputRendererConstants.FieldName_Start_Position);
-            printWriter.println("end_column = " + MafOutputRendererConstants.FieldName_End_Position);
-            printWriter.println("xsv_delimiter = \\t");
-            printWriter.println("name = ");
+            printWriter.println(DataSourceUtils.CONFIG_FILE_FIELD_NAME_CONTIG_COLUMN + " = " + MafOutputRendererConstants.FieldName_Chromosome);
+            printWriter.println(DataSourceUtils.CONFIG_FILE_FIELD_NAME_START_COLUMN + " = " + MafOutputRendererConstants.FieldName_Start_Position);
+            printWriter.println(DataSourceUtils.CONFIG_FILE_FIELD_NAME_END_COLUMN + " = " + MafOutputRendererConstants.FieldName_End_Position);
+            printWriter.println(DataSourceUtils.CONFIG_FILE_FIELD_NAME_XSV_DELIMITER + " = \\t");
+            printWriter.println(DataSourceUtils.CONFIG_FILE_FIELD_NAME_NAME + " = ");
+            printWriter.println(DataSourceUtils.CONFIG_FILE_FIELD_NAME_SRC_FILE + " = ");
+            printWriter.println(DataSourceUtils.CONFIG_FILE_FIELD_NAME_VERSION + " = ");
+            printWriter.println(DataSourceUtils.CONFIG_FILE_FIELD_NAME_ORIGIN_LOCATION + " = ");
+            printWriter.println(DataSourceUtils.CONFIG_FILE_FIELD_NAME_PREPROCESSING_SCRIPT + " = ");
+
         }
         catch (final FileNotFoundException ex) {
             throw new GATKException("Could not create the tmp config file to test maf/vcf concorance: " + mafConfigFile.toURI().toString(), ex);

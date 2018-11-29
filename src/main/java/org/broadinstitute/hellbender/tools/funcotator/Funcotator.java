@@ -227,11 +227,13 @@ public class Funcotator extends VariantWalker {
     @Override
     public void onTraversalStart() {
 
+        logger.info("Validating Sequence Dictionaries...");
         if (seqValidationArguments.performSequenceDictionaryValidation()) {
             // Ensure that the reference dictionary is a superset of the variant dictionary:
             checkReferenceDictionaryIsSupersetOfVariantDictionary();
         }
 
+        logger.info("Processing user transcripts/defaults/overrides...");
         // Next set up our transcript list:
         final Set<String> finalUserTranscriptIdSet = FuncotatorEngine.processTranscriptList(funcotatorArgs.userTranscriptIdSet);
 
@@ -242,11 +244,13 @@ public class Funcotator extends VariantWalker {
         // Get the header for our variants:
         final VCFHeader vcfHeader = getHeaderForVariants();
 
+        logger.info("Initializing data sources...");
         // Initialize all of our data sources:
         // Sort data sources to make them process in the same order each time:
         funcotatorArgs.dataSourceDirectories.sort(Comparator.naturalOrder());
         final Map<Path, Properties> configData = DataSourceUtils.getAndValidateDataSourcesFromPaths(funcotatorArgs.referenceVersion, funcotatorArgs.dataSourceDirectories);
 
+        logger.info("Finalizing data sources (this step can be long if data sources are cloud-based)...");
         // Create the data sources from the input:
         // This will also create and register the FeatureInputs (created by the Data Sources)
         // with the GATK Engine, so we do not have to plumb them in after the fact.
@@ -260,6 +264,7 @@ public class Funcotator extends VariantWalker {
                 new FlankSettings(funcotatorArgs.fivePrimeFlankSize, funcotatorArgs.threePrimeFlankSize)
         );
 
+        logger.info("Initializing Funcotator Engine...");
         // Create our engine to do our work and drive this Funcotation train!
         funcotatorEngine = new FuncotatorEngine(
                 funcotatorArgs,

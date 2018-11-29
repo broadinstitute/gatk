@@ -264,7 +264,7 @@ final public class DataSourceUtils {
             final FeatureInput<? extends Feature> featureInput;
             switch ( FuncotatorArgumentDefinitions.DataSourceType.getEnum(stringType) ) {
                 case LOCATABLE_XSV:
-                    featureInput = createAndRegisterFeatureInputs(path, properties, gatkToolInstance, lookaheadFeatureCachingInBp, XsvTableFeature.class);
+                    featureInput = createAndRegisterFeatureInputs(path, properties, gatkToolInstance, lookaheadFeatureCachingInBp, XsvTableFeature.class, true);
                     funcotationFactory = DataSourceUtils.createLocatableXsvDataSource(path, properties, annotationOverridesMap, featureInput);
                     break;
                 case SIMPLE_XSV:
@@ -274,16 +274,16 @@ final public class DataSourceUtils {
                     funcotationFactory = DataSourceUtils.createCosmicDataSource(path, properties, annotationOverridesMap);
                     break;
                 case GENCODE:
-                    featureInput = createAndRegisterFeatureInputs(path, properties, gatkToolInstance, lookaheadFeatureCachingInBp, GencodeGtfFeature.class);
+                    featureInput = createAndRegisterFeatureInputs(path, properties, gatkToolInstance, lookaheadFeatureCachingInBp, GencodeGtfFeature.class, false);
                     funcotationFactory = DataSourceUtils.createGencodeDataSource(path, properties, annotationOverridesMap, transcriptSelectionMode,
                             userTranscriptIdSet, featureInput, flankSettings);
                     break;
                 case VCF:
-                    featureInput = createAndRegisterFeatureInputs(path, properties, gatkToolInstance, lookaheadFeatureCachingInBp, VariantContext.class);
+                    featureInput = createAndRegisterFeatureInputs(path, properties, gatkToolInstance, lookaheadFeatureCachingInBp, VariantContext.class, false);
                     funcotationFactory = DataSourceUtils.createVcfDataSource(path, properties, annotationOverridesMap, featureInput);
                     break;
                 default:
-                    throw new GATKException("Unknown type of DataSourceFuncotationFactory encountered: " + stringType);
+                    throw new GATKException("Unknown type of DataSourceFuncotationFactory encountered: " + stringType );
             }
 
             // Add in our factory:
@@ -294,39 +294,23 @@ final public class DataSourceUtils {
         return dataSourceFactories;
     }
 
-    private static FeatureInput<? extends Feature> createAndRegisterFeatureInputs(final Path dataSourceFile,
+    private static FeatureInput<? extends Feature> createAndRegisterFeatureInputs(final Path configFilePath,
                                                                                   final Properties dataSourceProperties,
                                                                                   final GATKTool funcotatorToolInstance,
                                                                                   final int lookaheadFeatureCachingInBp,
-                                                                                  final Class<? extends Feature> featureType) {
-        Utils.nonNull(dataSourceFile);
+                                                                                  final Class<? extends Feature> featureType,
+                                                                                  final boolean useConfigFilePath) {
+        Utils.nonNull(configFilePath);
         Utils.nonNull(dataSourceProperties);
 
-        final String name      = dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_NAME);
-        final String sourceFile = dataSourceFile.resolveSibling(dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_SRC_FILE)).toString();
+        final String name       = dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_NAME);
+        final String sourceFile = useConfigFilePath
+                    ? configFilePath.toUri().toString()
+                    : resolveFilePathStringFromKnownPath( dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_SRC_FILE), configFilePath ).toUri().toString();
 
         // Get feature inputs by creating them with the tool instance itself.
         // This has the side effect of registering the FeatureInputs with the engine, so that they can be later queried.
         return funcotatorToolInstance.addFeatureInputsAfterInitialization(sourceFile, name, featureType, lookaheadFeatureCachingInBp);
-    }
-
-    /**
-     * Create {@link FeatureInput<? extends Feature>} FOR TESTING ONLY.
-     * @param dataSourceFile
-     * @param dataSourceProperties
-     * @return
-     */
-    private static FeatureInput<? extends Feature> createFeatureInputsForTesting(final Path dataSourceFile,
-                                                                                 final Properties dataSourceProperties) {
-
-        Utils.nonNull(dataSourceFile);
-        Utils.nonNull(dataSourceProperties);
-
-        final String name      = dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_NAME);
-        final String sourceFile = dataSourceFile.resolveSibling(dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_SRC_FILE)).toString();
-
-        // Get feature inputs by creating them with the funcotator tool instance itself:
-        return new FeatureInput<>(sourceFile, name, Collections.emptyMap());
     }
 
     /**
@@ -359,13 +343,7 @@ final public class DataSourceUtils {
 
         // Set the supported fields by the LocatableXsvFuncotationFactory:
         locatableXsvFuncotationFactory.setSupportedFuncotationFields(
-                new ArrayList<>(
-                        Collections.singletonList(
-                                dataSourceFile.resolveSibling(
-                                        IOUtils.getPath( dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_SRC_FILE) )
-                                )
-                        )
-                )
+            resolveFilePathStringFromKnownPath(dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_SRC_FILE), dataSourceFile)
         );
 
         return locatableXsvFuncotationFactory;
@@ -389,7 +367,7 @@ final public class DataSourceUtils {
         // Create our SimpleKeyXsvFuncotationFactory:
         return new SimpleKeyXsvFuncotationFactory(
                         dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_NAME),
-                        dataSourceFile.resolveSibling(IOUtils.getPath(dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_SRC_FILE))),
+                        resolveFilePathStringFromKnownPath(dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_SRC_FILE), dataSourceFile),
                         dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_VERSION),
                         dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_XSV_DELIMITER),
                         Integer.valueOf(dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_XSV_KEY_COLUMN)),
@@ -417,7 +395,7 @@ final public class DataSourceUtils {
         final String version   = dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_VERSION);
 
         return new CosmicFuncotationFactory(
-                        dataSourceFile.resolveSibling(IOUtils.getPath(dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_SRC_FILE))),
+                        resolveFilePathStringFromKnownPath(dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_SRC_FILE), dataSourceFile),
                         annotationOverridesMap,
                         version
                 );
@@ -456,7 +434,7 @@ final public class DataSourceUtils {
 
         // Create our gencode factory:
         return new GencodeFuncotationFactory(
-                dataSourceFile.resolveSibling(fastaPath),
+                resolveFilePathStringFromKnownPath( fastaPath, dataSourceFile ),
                 version,
                 name,
                 transcriptSelectionMode,
@@ -493,7 +471,7 @@ final public class DataSourceUtils {
         return new VcfFuncotationFactory(
                 name,
                 version,
-                dataSourceFile.resolveSibling(srcFile).toAbsolutePath(),
+                resolveFilePathStringFromKnownPath(srcFile, dataSourceFile),
                 annotationOverridesMap,
                 featureInput
         );
@@ -690,7 +668,7 @@ final public class DataSourceUtils {
         assertConfigPropertiesContainsKey(CONFIG_FILE_FIELD_NAME_TYPE, configFileProperties, configFilePath);
 
         // Validate our source file:
-        assertPathFilePropertiesField( configFileProperties, CONFIG_FILE_FIELD_NAME_SRC_FILE, configFilePath);
+        assertPathFilePropertiesField(configFileProperties, CONFIG_FILE_FIELD_NAME_SRC_FILE, configFilePath);
 
         // Validate our type:
         final String stringType = configFileProperties.getProperty(CONFIG_FILE_FIELD_NAME_TYPE);
@@ -752,24 +730,52 @@ final public class DataSourceUtils {
     }
 
     /**
-     * Asserts that the given {@code field} is contained in the given {@code props} and is a file path.
-     * @param props {@link Properties} corresponding to the given {@code filePath} in which to check for the validity of {@code field}.
-     * @param field {@link String} name of the field, the existence and correct type of which will be confirmed in {@code props}.
-     * @param filePath {@link Path} to config file.  For output purposes only.
+     * Resolves the path string to a full path object using the given knownPath as a sibling file.
+     * Sibling file will only be used if it is determined that the given path string is not a relative path.
+     * @param filePathString {@link String} containing a file path to resolve.
+     * @param knownPath {@link Path} of a potential sibling file system entry.
+     * @return A {@link Path} object resolved to point to the given {@code filePathString}.
      */
-    public static void assertPathFilePropertiesField(final Properties props, final String field, final Path filePath) {
-        final Path sourceFilePath = filePath.resolveSibling(props.getProperty(field));
-        if ( !Files.exists(sourceFilePath) ) {
-            throw new UserException.BadInput("ERROR in config file: " + filePath.toUri().toString() +
-                    " - " + field + " does not exist: " + sourceFilePath);
+    public static Path resolveFilePathStringFromKnownPath(final String filePathString, final Path knownPath ) {
+
+        final Path rawFilePath = IOUtils.getPath(filePathString);
+
+        final Path absoluteFilePath;
+        if ( rawFilePath.isAbsolute() || (!rawFilePath.getFileSystem().equals(FileSystems.getDefault()))) {
+            // Absolute path or different file system.
+            // No need to resolve anything.
+            absoluteFilePath = rawFilePath;
         }
-        else if ( !Files.isRegularFile(sourceFilePath) ) {
-            throw new UserException.BadInput("ERROR in config file: " + filePath.toUri().toString() +
-                    " -  " + field + " is not a regular file: " + sourceFilePath);
+        else {
+            // If the path is not absolute, assume we must resolve it with our config file path:
+            absoluteFilePath = knownPath.resolveSibling(filePathString);
+            logger.info("Resolved local data source file path: " + rawFilePath.toUri().toString() + " -> " + absoluteFilePath.toUri().toString());
         }
-        else if ( !Files.isReadable(sourceFilePath) ) {
-            throw new UserException.BadInput("ERROR in config file: " + filePath.toUri().toString() +
-                    " - " + field + " is not readable: " + sourceFilePath);
+        return absoluteFilePath;
+    }
+
+    /**
+     * Asserts that the given {@code field} is contained in the given {@code props} and is a file path.
+     * @param props {@link Properties} corresponding to the given {@code configFilePath} in which to check for the validity of {@code field}.
+     * @param field {@link String} name of the field, the existence and correct type of which will be confirmed in {@code props}.
+     * @param configFilePath {@link Path} to config file.  For output purposes only.
+     */
+    public static void assertPathFilePropertiesField(final Properties props, final String field, final Path configFilePath) {
+
+        final String filePathString = props.getProperty(field);
+        final Path absoluteFilePath = resolveFilePathStringFromKnownPath(filePathString, configFilePath);
+
+        if ( !Files.exists(absoluteFilePath) ) {
+            throw new UserException.BadInput("ERROR in config file: " + configFilePath.toUri().toString() +
+                    " - " + field + " does not exist: " + absoluteFilePath);
+        }
+        else if ( !Files.isRegularFile(absoluteFilePath) ) {
+            throw new UserException.BadInput("ERROR in config file: " + configFilePath.toUri().toString() +
+                    " -  " + field + " is not a regular file: " + absoluteFilePath);
+        }
+        else if ( !Files.isReadable(absoluteFilePath) ) {
+            throw new UserException.BadInput("ERROR in config file: " + configFilePath.toUri().toString() +
+                    " - " + field + " is not readable: " + absoluteFilePath);
         }
     }
 

@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
 import org.broadinstitute.hellbender.tools.funcotator.FuncotatorArgumentDefinitions;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.codecs.xsvLocatableTable.XsvLocatableTableCodec;
 import org.broadinstitute.hellbender.utils.codecs.xsvLocatableTable.XsvTableFeature;
 
@@ -25,7 +26,7 @@ import java.nio.file.Path;
 import java.util.*;
 
 /**
- *  Factory for creating {@link TableFuncotation}s by handling `Separated Value` files with arbitrary delimiters
+ * Factory for creating {@link TableFuncotation}s by handling `Separated Value` files with arbitrary delimiters
  * (e.g. CSV/TSV files) which contain data that are locatable (i.e. {@link org.broadinstitute.hellbender.utils.codecs.xsvLocatableTable.XsvTableFeature}).
  *
  * This is a high-level object that interfaces with the internals of {@link org.broadinstitute.hellbender.tools.funcotator.Funcotator}.
@@ -52,20 +53,20 @@ public class LocatableXsvFuncotationFactory extends DataSourceFuncotationFactory
 
     /**
      * {@link LinkedHashSet} of the names of all fields supported by this {@link LocatableXsvFuncotationFactory}.
-     * Set by {@link #setSupportedFuncotationFields(List)}.
+     * Set by {@link #setSupportedFuncotationFields(Path)}.
      */
     private LinkedHashSet<String> supportedFieldNames = null;
 
     /**
      * {@link List} of the names of all fields supported by this {@link LocatableXsvFuncotationFactory}.
-     * Set by {@link #setSupportedFuncotationFields(List)}.
+     * Set by {@link #setSupportedFuncotationFields(Path)}.
      */
     private List<String> supportedFieldNameList = null;
 
     /**
      * {@link List} of empty {@link String}s of the same length as {@link #supportedFieldNames}.
      * Cached for faster output.
-     * Set by {@link #setSupportedFuncotationFields(List)}.
+     * Set by {@link #setSupportedFuncotationFields(Path)}.
      */
     private List<String> emptyFieldList = null;
 
@@ -89,7 +90,6 @@ public class LocatableXsvFuncotationFactory extends DataSourceFuncotationFactory
 
         this.annotationOverrideMap = new LinkedHashMap<>(annotationOverridesMap);
     }
-
 
     //==================================================================================================================
     // Override Methods:
@@ -199,41 +199,54 @@ public class LocatableXsvFuncotationFactory extends DataSourceFuncotationFactory
     /**
      * Set the field names that this {@link LocatableXsvFuncotationFactory} can create.
      * Does so by reading the headers of backing data files for this {@link LocatableXsvFuncotationFactory}.
-     * @param inputDataFilePaths {@link List<Path>} to backing data files from which annotations can be made for this {@link LocatableXsvFuncotationFactory}.
+     * @param inputDataFilePath {@link Path} to a backing data file from which annotations can be made for this {@link LocatableXsvFuncotationFactory}.  Must not be {@code null}.
      */
-    public void setSupportedFuncotationFields(final List<Path> inputDataFilePaths) {
+    public void setSupportedFuncotationFields(final Path inputDataFilePath) {
+
+        Utils.nonNull(inputDataFilePath);
 
         if ( supportedFieldNames == null ) {
             synchronized ( this ) {
                 if ( supportedFieldNames == null ) {
 
-                    // Approximate starting size:
-                    supportedFieldNames = new LinkedHashSet<>(inputDataFilePaths.size() * 10);
+                    // Approximate / arbitrary starting size:
+                    supportedFieldNames = new LinkedHashSet<>(10);
 
-                    for ( final Path dataPath : inputDataFilePaths ) {
-
-                        final XsvLocatableTableCodec codec = new XsvLocatableTableCodec();
-                        List<String> header = null;
-
-                        if (codec.canDecode(dataPath.toString())) {
-                            try (final InputStream fileInputStream = Files.newInputStream(dataPath)) {
-
-                                final AsciiLineReaderIterator lineReaderIterator = new AsciiLineReaderIterator(AsciiLineReader.from(fileInputStream));
-                                codec.readActualHeader(lineReaderIterator);
-                                header = codec.getHeaderWithoutLocationColumns();
-
-                            } catch (final IOException ioe) {
-                                throw new UserException.BadInput("Could not read header from data file: " + dataPath.toUri().toString(), ioe);
-                            }
+                    // Set up a codec here to read the config file.
+                    // We have to call canDecode to set up the internal state of the XsvLocatableTableCodec:
+                    final XsvLocatableTableCodec codec = new XsvLocatableTableCodec();
+                    try {
+                        if ( !codec.canDecode(mainSourceFileAsFeatureInput.getFeaturePath()) ) {
+                            // This should never happen because we have already validated this config file by the time we
+                            // reach here:
+                            throw new GATKException.ShouldNeverReachHereException("Could not decode from data file: " + mainSourceFileAsFeatureInput.getFeaturePath());
                         }
-
-                        // Make sure we actually read the header:
-                        if ( header == null ) {
-                            throw new UserException.MalformedFile("Could not decode from data file: " + dataPath.toUri().toString());
-                        }
-
-                        supportedFieldNames.addAll(header);
                     }
+                    catch ( final NullPointerException ex ) {
+                        // This should never happen because we have already validated this config file by the time we
+                        // reach here:
+                        throw new GATKException.ShouldNeverReachHereException("Could not decode from data file!  Has not been set yet!");
+                    }
+
+                    // Get the info from our path:
+                    final List<String> columnNames;
+                    try (final InputStream fileInputStream = Files.newInputStream(inputDataFilePath)) {
+
+                        final AsciiLineReaderIterator lineReaderIterator = new AsciiLineReaderIterator(AsciiLineReader.from(fileInputStream));
+                        codec.readActualHeader(lineReaderIterator);
+                        columnNames = codec.getHeaderWithoutLocationColumns();
+
+                    } catch (final IOException ioe) {
+                        throw new UserException.BadInput("Could not read header from data file: " + inputDataFilePath.toUri().toString(), ioe);
+                    }
+
+                    // Make sure we actually read the header:
+                    if ( columnNames == null ) {
+                        throw new UserException.MalformedFile("Could not decode from data file: " + inputDataFilePath.toUri().toString());
+                    }
+
+                    supportedFieldNames.addAll(columnNames);
+
 
                     // Initialize our field name lists:
                     initializeFieldNameLists();

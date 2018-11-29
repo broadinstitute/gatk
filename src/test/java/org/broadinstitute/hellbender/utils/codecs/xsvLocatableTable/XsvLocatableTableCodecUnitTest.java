@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.utils.codecs.xsvLocatableTable;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.tribble.readers.AsciiLineReader;
 import htsjdk.tribble.readers.AsciiLineReaderIterator;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -29,14 +30,14 @@ public class XsvLocatableTableCodecUnitTest extends GATKBaseTest {
     // Private Static Members:
 
     private static final String TEST_RESOURCE_DIR = publicTestDir + "org/broadinstitute/hellbender/utils/codecs/xsvLocatableTable" + File.separator;
-    private static final String TEST_FILE1 = TEST_RESOURCE_DIR + "xsv_locatable_test.csv";
-    private static final String TEST_FILE2 = TEST_RESOURCE_DIR + "xsv_locatable_test2.tsv";
+    private static final String TEST_CONFIG_FILE1 = TEST_RESOURCE_DIR + "xsv_locatable_test.config";
+    private static final String TEST_CONFIG_FILE2 = TEST_RESOURCE_DIR + "xsv_locatable_test2.config";
 
-    private static final String TEST_FILE_MIXED_ENCODING = TEST_RESOURCE_DIR + "xsv_locatable_test_mixed_encodings.csv";
+    private static final String TEST_FILE_MIXED_ENCODING = TEST_RESOURCE_DIR + "xsv_locatable_test_mixed_encodings.config";
 
     /** Uses column names, instead of index */
-    private static final String TEST_FILE3 = TEST_RESOURCE_DIR + "xsv_locatable_test3.csv";
-    private static final String TEST_FILE4 = TEST_RESOURCE_DIR + "xsv_locatable_test4.csv";
+    private static final String TEST_CONFIG_FILE3   = TEST_RESOURCE_DIR + "xsv_locatable_test3.config";
+    private static final String TEST_CONFIG_FILE4   = TEST_RESOURCE_DIR + "xsv_locatable_test4.config";
     private static final String TEST_FILE_NO_CONFIG = TEST_RESOURCE_DIR + "xsv_locatable_test_no_config.csv";
 
     // Preambles of SAMFileHeaders or just plain ol' comments
@@ -73,10 +74,10 @@ public class XsvLocatableTableCodecUnitTest extends GATKBaseTest {
     @DataProvider
     private Object[][] provideForTestCanDecode() {
         return new Object[][] {
-                { TEST_FILE1, true },
-                { TEST_FILE2, true },
+                { TEST_CONFIG_FILE1, true },
+                { TEST_CONFIG_FILE2, true },
                 { TEST_FILE_NO_CONFIG, false },
-                { TEST_FILE3, true },
+                { TEST_CONFIG_FILE3, true },
         };
     }
 
@@ -92,25 +93,25 @@ public class XsvLocatableTableCodecUnitTest extends GATKBaseTest {
     private Object[][] provideForTestDecode() {
 
         return new Object[][] {
-                { TEST_FILE1,
+                { TEST_CONFIG_FILE1,
                     Arrays.asList(
                         new XsvTableFeature(1, 3, 4, file1Headers, file1Line1, "XSV_LOCATABLE_TEST_NAME"),
                         new XsvTableFeature(1, 3, 4, file1Headers, file1Line2, "XSV_LOCATABLE_TEST_NAME")
                     )
                 },
-                { TEST_FILE2,
+                { TEST_CONFIG_FILE2,
                     Arrays.asList(
                         new XsvTableFeature(1, 2, 4, file2Headers, file2Line1, "SECOND_XSV_NAME"),
                         new XsvTableFeature(1, 2, 4, file2Headers, file2Line2, "SECOND_XSV_NAME")
                     )
                 },
-                { TEST_FILE3,
+                { TEST_CONFIG_FILE3,
                     Arrays.asList(
                             new XsvTableFeature(1, 3, 4, file1Headers, file1Line1, "XSV_LOCATABLE_TEST_NAME"),
                             new XsvTableFeature(1, 3, 4, file1Headers, file1Line2, "XSV_LOCATABLE_TEST_NAME")
                     )
                 },
-                { TEST_FILE4,
+                { TEST_CONFIG_FILE4,
                     Arrays.asList(
                             new XsvTableFeature(1, 3, 4, file1Headers, file1Line1, "XSV_LOCATABLE_TEST_NAME"),
                             new XsvTableFeature(1, 3, 4, file1Headers, file1Line2, "XSV_LOCATABLE_TEST_NAME")
@@ -124,16 +125,16 @@ public class XsvLocatableTableCodecUnitTest extends GATKBaseTest {
     @DataProvider
     private Object[][] provideForTestReadActualHeader() {
         return new Object[][] {
-                { TEST_FILE1, file1Headers },
-                { TEST_FILE2, file2Headers },
+                { TEST_CONFIG_FILE1, file1Headers },
+                { TEST_CONFIG_FILE2, file2Headers },
         };
     }
 
     @DataProvider
     private Object[][] provideForTestGetConfigFilePath() {
         return new Object[][] {
-                { TEST_FILE1, IOUtils.getPath(TEST_RESOURCE_DIR + "xsv_locatable_test.config") },
-                { TEST_FILE2, IOUtils.getPath(TEST_RESOURCE_DIR + "xsv_locatable_test2.config") },
+                { TEST_CONFIG_FILE1, IOUtils.getPath(TEST_RESOURCE_DIR + "xsv_locatable_test.config") },
+                { TEST_CONFIG_FILE2, IOUtils.getPath(TEST_RESOURCE_DIR + "xsv_locatable_test2.config") },
         };
     }
 
@@ -146,13 +147,22 @@ public class XsvLocatableTableCodecUnitTest extends GATKBaseTest {
         configFile1Properties.put("end_column", "4");
         configFile1Properties.put("xsv_delimiter", ",");
         configFile1Properties.put("name", "XSV_LOCATABLE_TEST_NAME");
-
+        configFile1Properties.put("src_file", "xsv_locatable_test.csv");
+        configFile1Properties.put("version", "TESTING");
+        configFile1Properties.put("origin_location", "GATK Github Test Area");
+        configFile1Properties.put("preprocessing_script", "NA");
+        
+        
         final Properties configFile2Properties = new Properties();
         configFile2Properties.put("contig_column", "1");
         configFile2Properties.put("start_column", "2");
         configFile2Properties.put("end_column", "4");
         configFile2Properties.put("xsv_delimiter", "\t");
         configFile2Properties.put("name", "SECOND_XSV_NAME");
+        configFile2Properties.put("src_file", "xsv_locatable_test2.tsv");
+        configFile2Properties.put("version", "TESTING");
+        configFile2Properties.put("origin_location", "GATK Github Test Area");
+        configFile2Properties.put("preprocessing_script", "NA");
         
         return new Object[][] {
                 {
@@ -163,6 +173,17 @@ public class XsvLocatableTableCodecUnitTest extends GATKBaseTest {
                         IOUtils.getPath(TEST_RESOURCE_DIR + "xsv_locatable_test2.config"),
                         configFile2Properties
                 },
+        };
+    }
+
+    @DataProvider
+    private Object[][] provideForTestCanDecodeFileChecks() {
+        return new Object[][] {
+                { TEST_CONFIG_FILE2, true },
+                { TEST_FILE_SAMFILEHEADER_CONFIG_MULTIPLE_COLUMNS, true },
+                { TEST_RESOURCE_DIR + "NON_EXISTENT_FILE", false },
+                { TEST_RESOURCE_DIR + "xsv_locatable_test_fails_decode_checks.config", false },
+                { TEST_RESOURCE_DIR + "xsv_locatable_test_fails_decode_checks2.config", false },
         };
     }
 
@@ -179,7 +200,10 @@ public class XsvLocatableTableCodecUnitTest extends GATKBaseTest {
     private void testDecodeHelper(final String filePath, final List<XsvTableFeature> expected) {
         final XsvLocatableTableCodec xsvLocatableTableCodec = new XsvLocatableTableCodec();
         if (xsvLocatableTableCodec.canDecode(filePath)) {
-            try ( final FileInputStream fileInputStream = new FileInputStream(filePath)) {
+
+            final Path pathToDataFile = IOUtils.getPath(xsvLocatableTableCodec.getPathToDataFile(null));
+
+            try ( final FileInputStream fileInputStream = new FileInputStream(pathToDataFile.toFile())) {
 
                 // Lots of scaffolding to do reading here:
                 final AsciiLineReaderIterator    lineReaderIterator = new AsciiLineReaderIterator(AsciiLineReader.from(fileInputStream));
@@ -197,10 +221,10 @@ public class XsvLocatableTableCodecUnitTest extends GATKBaseTest {
                 Assert.assertEquals(output, expected);
             }
             catch ( final FileNotFoundException ex ) {
-                throw new GATKException("Error - could not find test file: " + filePath, ex);
+                throw new GATKException("Error - could not find test file: " + pathToDataFile.toUri().toString(), ex);
             }
             catch ( final IOException ex ) {
-                throw new GATKException("Error - IO problem with file " + filePath, ex);
+                throw new GATKException("Error - IO problem with file " + pathToDataFile.toUri().toString(), ex);
             }
         }
         else {
@@ -214,7 +238,10 @@ public class XsvLocatableTableCodecUnitTest extends GATKBaseTest {
     public void testDecodeCharsetFailure(final String filePath ) {
         final XsvLocatableTableCodec xsvLocatableTableCodec = new XsvLocatableTableCodec();
         if (xsvLocatableTableCodec.canDecode(filePath)) {
-            try ( final FileInputStream fileInputStream = new FileInputStream(filePath)) {
+
+            final Path pathToDataFile = IOUtils.getPath(xsvLocatableTableCodec.getPathToDataFile(null));
+
+            try ( final FileInputStream fileInputStream = new FileInputStream(pathToDataFile.toFile())) {
 
                 // Lots of scaffolding to do reading here:
                 final AsciiLineReaderIterator lineReaderIterator = new AsciiLineReaderIterator(AsciiLineReader.from(fileInputStream));
@@ -228,10 +255,10 @@ public class XsvLocatableTableCodecUnitTest extends GATKBaseTest {
                 }
             }
             catch ( final FileNotFoundException ex ) {
-                throw new GATKException("Error - could not find test file: " + filePath, ex);
+                throw new GATKException("Error - could not find test file: " + pathToDataFile.toUri().toString(), ex);
             }
             catch ( final IOException ex ) {
-                throw new GATKException("Error - IO problem with file " + filePath, ex);
+                throw new GATKException("Error - IO problem with file " + pathToDataFile.toUri().toString(), ex);
             }
         }
         else {
@@ -247,11 +274,14 @@ public class XsvLocatableTableCodecUnitTest extends GATKBaseTest {
 
     // readActualHeader
     @Test(dataProvider = "provideForTestReadActualHeader")
-    public void testReadActualHeader(final String filePath, final List<String> expected) {
+    public void testReadActualHeader(final String configFilePath, final List<String> expected) {
         final XsvLocatableTableCodec xsvLocatableTableCodec = new XsvLocatableTableCodec();
 
-        if (xsvLocatableTableCodec.canDecode(filePath)) {
-            try ( final FileInputStream fileInputStream = new FileInputStream(filePath)) {
+        if (xsvLocatableTableCodec.canDecode(configFilePath)) {
+
+            final Path pathToDataFile = IOUtils.getPath( xsvLocatableTableCodec.getPathToDataFile(null) );
+
+            try ( final FileInputStream fileInputStream = new FileInputStream(pathToDataFile.toFile())) {
 
                 // Lots of scaffolding to do reading here:
                 final AsciiLineReaderIterator lineReaderIterator = new AsciiLineReaderIterator(AsciiLineReader.from(fileInputStream));
@@ -260,10 +290,10 @@ public class XsvLocatableTableCodecUnitTest extends GATKBaseTest {
                 Assert.assertEquals(xsvLocatableTableCodec.readActualHeader(lineReaderIterator), expected);
             }
             catch ( final FileNotFoundException ex ) {
-                throw new GATKException("Error - could not find test file: " + filePath, ex);
+                throw new GATKException("Error - could not find test file: " + pathToDataFile.toUri().toString(), ex);
             }
             catch ( final IOException ex ) {
-                throw new GATKException("Error - IO problem with file " + filePath, ex);
+                throw new GATKException("Error - IO problem with file " + pathToDataFile.toUri().toString(), ex);
             }
         }
         else {
@@ -280,15 +310,25 @@ public class XsvLocatableTableCodecUnitTest extends GATKBaseTest {
     // getAndValidateConfigFileContents
     @Test(dataProvider = "provideForTestGetAndValidateConfigFileContents")
     public void testGetAndValidateConfigFileContents(final Path configFilePath, final Properties expected) {
-        final Properties properties = XsvLocatableTableCodec.getAndValidateConfigFileContents(configFilePath);
+        final Pair<Boolean, Properties> validityAndPropertiesPair = XsvLocatableTableCodec.getAndValidateConfigFileContentsOnPath(configFilePath, false);
+        final boolean isValid = validityAndPropertiesPair.getLeft();
+        final Properties properties = validityAndPropertiesPair.getRight();
+
+        Assert.assertEquals( isValid, true );
         Assert.assertEquals(properties, expected);
+    }
+
+    @Test(dataProvider = "provideForTestCanDecodeFileChecks")
+    public void testCanDecodeFileChecks( final String configFilePathString, final boolean expected ) {
+        final XsvLocatableTableCodec xsvLocatableTableCodec = new XsvLocatableTableCodec();
+        Assert.assertEquals( xsvLocatableTableCodec.canDecodeFileChecks(configFilePathString), expected );
     }
 
     @Test
     public void testRenderSamFileHeaderFromNoPreamble() {
         final XsvLocatableTableCodec xsvLocatableTableCodec = new XsvLocatableTableCodec();
-        final String filePath = TEST_FILE3;
-        readHeaderOnly(xsvLocatableTableCodec, filePath);
+        final String configFilePath = TEST_CONFIG_FILE3;
+        readHeaderOnly(xsvLocatableTableCodec, configFilePath);
 
         final SAMFileHeader emptyHeader = xsvLocatableTableCodec.renderSamFileHeader();
 
@@ -297,20 +337,22 @@ public class XsvLocatableTableCodecUnitTest extends GATKBaseTest {
         Assert.assertEquals(emptyHeader.getSequenceDictionary().size(), 0);
     }
 
-    private List<String> readHeaderOnly(final XsvLocatableTableCodec xsvLocatableTableCodec, final String filePath) {
+    private List<String> readHeaderOnly(final XsvLocatableTableCodec xsvLocatableTableCodec, final String configFilePath) {
         List<String> header = null;
 
-        if (xsvLocatableTableCodec.canDecode(filePath)) {
+        if (xsvLocatableTableCodec.canDecode(configFilePath)) {
 
-            try ( final FileInputStream fileInputStream = new FileInputStream(filePath)) {
+            final Path pathToConfigFile = IOUtils.getPath( xsvLocatableTableCodec.getPathToDataFile(null) );
+
+            try ( final FileInputStream fileInputStream = new FileInputStream(pathToConfigFile.toFile())) {
                 final AsciiLineReaderIterator lineReaderIterator = new AsciiLineReaderIterator(AsciiLineReader.from(fileInputStream));
                 header = xsvLocatableTableCodec.readActualHeader(lineReaderIterator);
             }
             catch ( final FileNotFoundException ex ) {
-                throw new GATKException("Error - could not find test file: " + filePath, ex);
+                throw new GATKException("Error - could not find test file: " + pathToConfigFile.toUri().toString(), ex);
             }
             catch ( final IOException ex ) {
-                throw new GATKException("Error - IO problem with file " + filePath, ex);
+                throw new GATKException("Error - IO problem with file " + pathToConfigFile.toUri().toString(), ex);
             }
         }
 
@@ -320,7 +362,7 @@ public class XsvLocatableTableCodecUnitTest extends GATKBaseTest {
     @Test
     public void testRenderSamFileHeaderFromSamFileHeaderPreamble() {
         final XsvLocatableTableCodec xsvLocatableTableCodec = new XsvLocatableTableCodec();
-        final String filePath = TEST_FILE_SAMFILEHEADER;
+        final String filePath = TEST_FILE_SAMFILEHEADER_CONFIG;
         Assert.assertNotNull(readHeaderOnly(xsvLocatableTableCodec, filePath), "Header could not be decoded, but it should have been okay.");
 
         final SAMFileHeader populatedHeader = xsvLocatableTableCodec.renderSamFileHeader();
@@ -345,7 +387,7 @@ public class XsvLocatableTableCodecUnitTest extends GATKBaseTest {
     public void testTrueCanDecodeFromMissingColumn() {
         // Can decode should be true, but the parsing of the header should fail.
         final XsvLocatableTableCodec xsvLocatableTableCodec = new XsvLocatableTableCodec(Paths.get(TEST_FILE_SAMFILEHEADER_CONFIG_ERROR_NOTHING_FOUND));
-        Assert.assertTrue(xsvLocatableTableCodec.canDecode(TEST_FILE_SAMFILEHEADER));
+        Assert.assertTrue(xsvLocatableTableCodec.canDecode(TEST_FILE_SAMFILEHEADER_CONFIG_ERROR_NOTHING_FOUND));
         final List<String> header = readHeader(xsvLocatableTableCodec, TEST_FILE_SAMFILEHEADER);
     }
 
@@ -366,7 +408,7 @@ public class XsvLocatableTableCodecUnitTest extends GATKBaseTest {
     @Test(dataProvider = "simpleTestsWithMultipleColumnsInConfig")
     public void testDecodeMultipleChoiceHeaders(final String configFile, final String xsvFile, final List<String> locatableCols) {
         final XsvLocatableTableCodec xsvLocatableTableCodec = new XsvLocatableTableCodec(Paths.get(configFile));
-        Assert.assertTrue(xsvLocatableTableCodec.canDecode(xsvFile));
+        Assert.assertTrue(xsvLocatableTableCodec.canDecode(configFile));
         final List<String> header = readHeader(xsvLocatableTableCodec, xsvFile);
         Assert.assertNotNull(header);
         Assert.assertEquals(xsvLocatableTableCodec.getContigColumn(), locatableCols.get(0));
@@ -397,11 +439,13 @@ public class XsvLocatableTableCodecUnitTest extends GATKBaseTest {
         };
     }
 
-    @Test(expectedExceptions = UserException.BadInput.class, expectedExceptionsMessageRegExp = ".*is the same as start or end column.*", dataProvider = "contigNameErrors")
+    @Test(expectedExceptions = UserException.BadInput.class,
+            expectedExceptionsMessageRegExp = ".*is the same as start or end column.*",
+            dataProvider = "contigNameErrors")
     public void testBadContigColumnNames(final String configFile, final String xsvFile) {
         // Failure should happen when trying to get the header.
         final XsvLocatableTableCodec xsvLocatableTableCodec = new XsvLocatableTableCodec(Paths.get(configFile));
-        Assert.assertTrue(xsvLocatableTableCodec.canDecode(xsvFile));
+        Assert.assertTrue(xsvLocatableTableCodec.canDecode(configFile));
         final List<String> header = readHeader(xsvLocatableTableCodec, xsvFile);
     }
 
@@ -409,7 +453,7 @@ public class XsvLocatableTableCodecUnitTest extends GATKBaseTest {
     public void testNotFoundInList() {
         // Failure should happen when trying to get the header.
         final XsvLocatableTableCodec xsvLocatableTableCodec = new XsvLocatableTableCodec(Paths.get(TEST_FILE_SAMFILEHEADER_CONFIG_ERROR_NOTHING_FOUND));
-        Assert.assertTrue(xsvLocatableTableCodec.canDecode(TEST_FILE_SAMFILEHEADER));
+        Assert.assertTrue(xsvLocatableTableCodec.canDecode(TEST_FILE_SAMFILEHEADER_CONFIG_ERROR_NOTHING_FOUND));
         final List<String> header = readHeader(xsvLocatableTableCodec, TEST_FILE_SAMFILEHEADER);
     }
 }
