@@ -20,6 +20,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.SimpleDateFormat;
@@ -125,7 +126,7 @@ public class MafOutputRenderer extends OutputRenderer {
     /**
      * {@link java.io.PrintWriter} to which to write the output MAF file.
      */
-    private PrintWriter printWriter;
+    private Writer writer;
 
     /**
      * Tool header information to go into the header.
@@ -260,7 +261,7 @@ public class MafOutputRenderer extends OutputRenderer {
 
         // Open the output object:
         try {
-            printWriter = new PrintWriter(Files.newOutputStream(outputFilePath));
+            writer = new PrintWriter(Files.newOutputStream(outputFilePath));
         }
         catch (final IOException ex) {
             throw new UserException("Error opening output file path: " + outputFilePath.toUri().toString(), ex);
@@ -280,9 +281,13 @@ public class MafOutputRenderer extends OutputRenderer {
             final LinkedHashMap<String, String> dummyMafCompliantOutputMap = createMafCompliantOutputMap(Allele.create(dummyAltAllele), Collections.emptyList());
             writeHeader(new ArrayList<>(dummyMafCompliantOutputMap.keySet()));
         }
-        if ( printWriter != null ) {
-            printWriter.flush();
-            printWriter.close();
+        if ( writer != null ) {
+            try {
+                writer.flush();
+                writer.close();
+            } catch (IOException e){
+                throw new UserException.CouldNotCreateOutputFile("Failed while closing the maf writer, the output may be corrupted.", e);
+            }
         }
     }
 
@@ -326,12 +331,16 @@ public class MafOutputRenderer extends OutputRenderer {
                     writeHeader(new ArrayList<>(mafCompliantOutputMap.keySet()));
                 }
 
-                // Write the output (with manual annotations at the end):
-                for (final Map.Entry<String, String> entry : mafCompliantOutputMap.entrySet()) {
-                    writeString(entry.getValue());
-                    writeString(MafOutputRendererConstants.FIELD_DELIMITER);
+                try {
+                    // Write the output (with manual annotations at the end):
+                    for (final Map.Entry<String, String> entry : mafCompliantOutputMap.entrySet()) {
+                        writeString(entry.getValue());
+                        writeString(MafOutputRendererConstants.FIELD_DELIMITER);
+                    }
+                    writeLine("");
+                } catch (IOException e){
+                    throw new UserException.CouldNotCreateOutputFile("Error while writing maf file, cause by: " + e.getMessage(), e);
                 }
-                writeLine("");
             }
         }
     }
@@ -585,20 +594,20 @@ public class MafOutputRenderer extends OutputRenderer {
     }
 
     /**
-     * Write the given line to the {@link #printWriter} and append a newline.
-     * @param line The {@link String} to write as a line to the {@link #printWriter}.
+     * Write the given line to the {@link #writer} and append a newline.
+     * @param line The {@link String} to write as a line to the {@link #writer}.
      */
-    private void writeLine(final String line) {
+    private void writeLine(final String line) throws IOException {
         writeString(line);
         writeString(System.lineSeparator());
     }
 
     /**
-     * Write the given {@link String} to the {@link #printWriter}.
-     * @param s The {@link String} to write to the {@link #printWriter}.
+     * Write the given {@link String} to the {@link #writer}.
+     * @param s The {@link String} to write to the {@link #writer}.
      */
-    private void writeString(final String s) {
-        printWriter.write(s);
+    private void writeString(final String s) throws IOException {
+        writer.write(s);
     }
 
     /**
@@ -606,44 +615,50 @@ public class MafOutputRenderer extends OutputRenderer {
      * @param outputFields Ordered list of the header columns.  These will be written as presented.
      */
     protected void writeHeader(final List<String> outputFields) {
-        // Write out version:
-        writeLine(MafOutputRendererConstants.COMMENT_STRING + "version " + VERSION);
-        writeLine(MafOutputRendererConstants.COMMENT_STRING + MafOutputRendererConstants.COMMENT_STRING);
+        try {
+            // Write out version:
+            writeLine(MafOutputRendererConstants.COMMENT_STRING + "version " + VERSION);
+            writeLine(MafOutputRendererConstants.COMMENT_STRING + MafOutputRendererConstants.COMMENT_STRING);
 
-        // Write previous header info:
-        for ( final VCFHeaderLine line : inputFileHeader.getMetaDataInInputOrder() ) {
-            printWriter.write(MafOutputRendererConstants.COMMENT_STRING);
-            printWriter.write(MafOutputRendererConstants.COMMENT_STRING);
-            printWriter.write(" ");
-            writeLine( line.toString() );
+            // Write previous header info:
+            for (final VCFHeaderLine line : inputFileHeader.getMetaDataInInputOrder()) {
+                writer.write(MafOutputRendererConstants.COMMENT_STRING);
+                writer.write(MafOutputRendererConstants.COMMENT_STRING);
+                writer.write(" ");
+                writeLine(line.toString());
+            }
+
+            // Write any default tool header lines:
+            for (final String line : toolHeaderLines) {
+                writer.write(MafOutputRendererConstants.COMMENT_STRING);
+                writer.write(MafOutputRendererConstants.COMMENT_STRING);
+                writer.write(" ");
+                writeLine(line);
+            }
+
+            // Write tool name and the data sources with versions:
+            writer.write(MafOutputRendererConstants.COMMENT_STRING);
+            writer.write(MafOutputRendererConstants.COMMENT_STRING);
+            writer.write(" ");
+            writer.write(" Funcotator ");
+            writer.write(Funcotator.VERSION);
+            writer.write(" | Date ");
+            writer.write(new SimpleDateFormat("yyyymmdd'T'hhmmss").format(new Date()));
+            writer.write(" | ");
+            writer.write(getDataSourceInfoString());
+            writeLine("");
+
+            // Write the column headers for our output set and our manual annotations:
+            writer.write(outputFields.stream().collect(Collectors.joining(MafOutputRendererConstants.FIELD_DELIMITER)));
+            writeLine(MafOutputRendererConstants.FIELD_DELIMITER + manualAnnotations.keySet()
+                    .stream()
+                    .collect(Collectors.joining(MafOutputRendererConstants.FIELD_DELIMITER)));
+
+            // Make sure we keep track of the fact that we've now written the header:
+            hasWrittenHeader = true;
+        } catch (IOException e){
+            throw new UserException.CouldNotCreateOutputFile("Exception while writing maf header, caused by " + e.getMessage(), e);
         }
-
-        // Write any default tool header lines:
-        for ( final String line : toolHeaderLines ) {
-            printWriter.write(MafOutputRendererConstants.COMMENT_STRING);
-            printWriter.write(MafOutputRendererConstants.COMMENT_STRING);
-            printWriter.write(" ");
-            writeLine(line);
-        }
-
-        // Write tool name and the data sources with versions:
-        printWriter.write(MafOutputRendererConstants.COMMENT_STRING);
-        printWriter.write(MafOutputRendererConstants.COMMENT_STRING);
-        printWriter.write(" ");
-        printWriter.write(" Funcotator ");
-        printWriter.write(Funcotator.VERSION);
-        printWriter.write(" | Date ");
-        printWriter.write(new SimpleDateFormat("yyyymmdd'T'hhmmss").format(new Date()));
-        printWriter.write(" | ");
-        printWriter.write(getDataSourceInfoString());
-        writeLine("");
-
-        // Write the column headers for our output set and our manual annotations:
-        printWriter.write( outputFields.stream().collect(Collectors.joining(MafOutputRendererConstants.FIELD_DELIMITER)) );
-        writeLine(MafOutputRendererConstants.FIELD_DELIMITER + manualAnnotations.keySet().stream().collect(Collectors.joining(MafOutputRendererConstants.FIELD_DELIMITER)));
-
-        // Make sure we keep track of the fact that we've now written the header:
-        hasWrittenHeader = true;
     }
 
     /** No field ordering is preserved in the output of this method.
