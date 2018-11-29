@@ -4,13 +4,11 @@ import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.engine.FeatureInput;
-import org.broadinstitute.hellbender.tools.walkers.variantutils.CalculateGenotypePosteriors;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 public final class GenotypeCalculationArgumentCollection implements Serializable {
@@ -33,7 +31,8 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
     public GenotypeCalculationArgumentCollection( final GenotypeCalculationArgumentCollection other ) {
         Utils.nonNull(other);
 
-        this.USE_NEW_AF_CALCULATOR = other.USE_NEW_AF_CALCULATOR;
+        this.useNewAFCalculator = other.useNewAFCalculator;
+        this.useOldAFCalculator = other.useOldAFCalculator;
         this.ANNOTATE_NUMBER_OF_ALLELES_DISCOVERED = other.ANNOTATE_NUMBER_OF_ALLELES_DISCOVERED;
         this.snpHeterozygosity = other.snpHeterozygosity;
         this.indelHeterozygosity = other.indelHeterozygosity;
@@ -45,11 +44,19 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
         this.numRefIfMissing = other.numRefIfMissing;
     }
 
+
     /**
-     * Use the new allele frequency / QUAL score model
+     * As of version 4.1.0.0, this argument is no longer needed because the new qual score is now on by default. See GATK 3.3 release notes for more details.
      */
-    @Argument(fullName = "use-new-qual-calculator", shortName = "new-qual", doc = "If provided, we will use the new AF model instead of the so-called exact model", optional = true)
-    public boolean USE_NEW_AF_CALCULATOR = false;
+    @Deprecated
+    @Argument(fullName = "use-new-qual-calculator", shortName = "new-qual", doc = "Use the new AF model instead of the so-called exact model", optional = true)
+    public boolean useNewAFCalculator = true;
+
+    /**
+     * Use the old GATK 3 qual score aka the "exact model"
+     */
+    @Argument(fullName = "use-old-qual-calculator", shortName = "old-qual", doc = "Use the old AF model", optional = true)
+    public boolean useOldAFCalculator = false;
 
     /**
      * Depending on the value of the --max_alternate_alleles argument, we may genotype only a fraction of the alleles being sent on for genotyping.
@@ -110,9 +117,11 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
      * calling to reduce the amount of false positives in your final callset. Note that when HaplotypeCaller is used in GVCF mode
      * (using either -ERC GVCF or -ERC BP_RESOLUTION) the call threshold is automatically set to zero. Call confidence thresholding
      * will then be performed in the subsequent GenotypeGVCFs command.
+     *
+     * Note that the default was changed from 10.0 to 30.0 in version 4.1.0.0 to accompany the switch to use the the new quality score by default.
      */
     @Argument(fullName = "standard-min-confidence-threshold-for-calling", shortName = "stand-call-conf", doc = "The minimum phred-scaled confidence threshold at which variants should be called", optional = true)
-    public double STANDARD_CONFIDENCE_FOR_CALLING = 10.0;
+    public double STANDARD_CONFIDENCE_FOR_CALLING = 30.0;
 
     /**
      * If there are more than this number of alternate alleles presented to the genotyper (either through discovery or GENOTYPE_GIVEN ALLELES),
