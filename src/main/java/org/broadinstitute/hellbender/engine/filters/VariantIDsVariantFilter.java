@@ -24,9 +24,6 @@ public final class VariantIDsVariantFilter implements VariantFilter {
 
     @Override
     public boolean test(final VariantContext vc) {
-        if (vc.getID().indexOf(';') > 0) {
-            return Arrays.stream(vc.getID().split(";")).anyMatch(includeIDs::contains);
-        }
-        return includeIDs.contains(vc.getID());
+        return Arrays.stream(vc.getID().split(";")).anyMatch(includeIDs::contains);
     }
 }
