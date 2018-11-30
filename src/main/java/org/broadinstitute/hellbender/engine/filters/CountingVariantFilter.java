@@ -17,7 +17,7 @@ import java.util.stream.IntStream;
  * (ie., not all variant filters in a compound predicate will necessarily be evaluated every time). Also note
  * that the count for a compound predicate does not always equal the sum of the counts of it's component
  * predicates, i.e. an "or" filter will report a filter count of 1 in the case where both component predicates
- * are evaluated and both fail, but the the individual component filters will report a count of 1 at the next
+ * are evaluated and both fail, but the individual component filters will report a count of 1 at the next
  * level.
  */
 public class CountingVariantFilter implements VariantFilter {

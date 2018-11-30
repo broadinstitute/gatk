@@ -274,6 +274,7 @@ public final class AssemblyBasedCallerUtils {
             final AssemblyResultSet assemblyResultSet = assemblyEngine.runLocalAssembly(region, referenceHaplotype, fullReferenceWithPadding,
                                                                                         paddedReferenceLoc, givenAlleles, readErrorCorrector, header,
                                                                                         aligner);
+            assemblyResultSet.setDebug(argumentCollection.debug);
             assemblyResultSet.debugDump(logger);
             return assemblyResultSet;
         } catch (final Exception e){
