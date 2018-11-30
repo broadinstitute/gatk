@@ -289,10 +289,19 @@ public final class CigarUtils {
 
         //Note: this is a performance optimization.
         // If two strings are equal (a O(n) check) then it's trivial to get CIGAR for them.
-        if (Arrays.equals(refSeq, altSeq)){
-            final Cigar matching = new Cigar();
-            matching.add(new CigarElement(refSeq.length, CigarOperator.MATCH_OR_MISMATCH));
-            return matching;
+        // Furthermore, if their lengths are equal and their element-by-element comparison yields two or fewer mismatches
+        // it's also a trivial M-only CIGAR, because in order to have equal length one would need at least one insertion and
+        // one deletion, in which case two substitutions is a better alignment.
+        if (altSeq.length == refSeq.length){
+            int mismatchCount = 0;
+            for (int n = 0; n < refSeq.length && mismatchCount <= 2; n++) {
+                mismatchCount += (altSeq[n] == refSeq[n] ? 0 : 1);
+            }
+            if (mismatchCount <= 2) {
+                final Cigar matching = new Cigar();
+                matching.add(new CigarElement(refSeq.length, CigarOperator.MATCH_OR_MISMATCH));
+                return matching;
+            }
         }
 
         final Cigar nonStandard;
