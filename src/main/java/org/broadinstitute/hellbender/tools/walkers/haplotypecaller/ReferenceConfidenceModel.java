@@ -591,7 +591,7 @@ public final class ReferenceConfidenceModel {
         // We are safe to use the faster no-copy versions of getBases and getBaseQualities here,
         // since we're not modifying the returned arrays in any way. This makes a small difference
         // in the HaplotypeCaller profile, since this method is a major hotspot.
-        final Tuple<byte[], byte[]> readBasesAndBaseQualities = AlignmentUtils.getBasesAndBaseQualitiesAlginedOneToOne(read);  //calls getBasesNoCopy if CIGAR is all match
+        final Tuple<byte[], byte[]> readBasesAndBaseQualities = AlignmentUtils.getBasesAndBaseQualitiesAlignedOneToOne(read);  //calls getBasesNoCopy if CIGAR is all match
 
 
         final int baselineMMSum = sumMismatchingQualities(readBasesAndBaseQualities.a, readBasesAndBaseQualities.b, readStart, refBases, refStart, Integer.MAX_VALUE);

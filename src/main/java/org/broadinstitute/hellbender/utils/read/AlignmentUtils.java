@@ -7,7 +7,6 @@ import htsjdk.samtools.util.Tuple;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
-import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
@@ -15,7 +14,6 @@ import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignment;
 
 import java.util.*;
-import java.util.function.Function;
 
 
 public final class AlignmentUtils {
@@ -201,11 +199,11 @@ public final class AlignmentUtils {
         return Arrays.copyOfRange(bases, basesStart, basesStop + 1);
     }
 
-    public static Tuple<byte[], byte[]> getBasesAndBaseQualitiesAlginedOneToOne(final GATKRead read) {
-        return getBasesAndBaseQualitiesAlginedOneToOne(read, GAP_CHARACTER, (byte)0);
+    public static Tuple<byte[], byte[]> getBasesAndBaseQualitiesAlignedOneToOne(final GATKRead read) {
+        return getBasesAndBaseQualitiesAlignedOneToOne(read, GAP_CHARACTER, (byte)0);
     }
 
-    public static Tuple<byte[], byte[]> getBasesAndBaseQualitiesAlginedOneToOne(final GATKRead read, final byte gapCharacter, final byte qualityPadCharacter) {
+    public static Tuple<byte[], byte[]> getBasesAndBaseQualitiesAlignedOneToOne(final GATKRead read, final byte gapCharacter, final byte qualityPadCharacter) {
         Utils.nonNull(read);
         final Cigar cigar = read.getCigar();
         final byte[] bases = read.getBasesNoCopy();
