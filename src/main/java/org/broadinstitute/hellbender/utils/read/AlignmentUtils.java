@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.utils.read;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
+import htsjdk.samtools.util.Tuple;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
@@ -200,25 +201,33 @@ public final class AlignmentUtils {
         return Arrays.copyOfRange(bases, basesStart, basesStop + 1);
     }
 
-    public static byte[] getBasesAlignedOneToOne(final GATKRead read) {
-        return getSequenceAlignedOneToOne(read, r -> r.getBasesNoCopy(), GAP_CHARACTER);
+    public static Tuple<byte[], byte[]> getBasesAndBaseQualitiesAlginedOneToOne(final GATKRead read) {
+        return getBasesAndBaseQualitiesAlginedOneToOne(read, GAP_CHARACTER, (byte)0);
     }
 
-    public static byte[] getBaseQualsAlignedOneToOne(final GATKRead read) {
-        return getSequenceAlignedOneToOne(read, r -> r.getBaseQualitiesNoCopy(), (byte)0);
-    }
-
-    public static byte[] getSequenceAlignedOneToOne(final GATKRead read, final Function<GATKRead, byte[]> bytesProvider, final byte padWith) {
+    public static Tuple<byte[], byte[]> getBasesAndBaseQualitiesAlginedOneToOne(final GATKRead read, final byte gapCharacter, final byte qualityPadCharacter) {
         Utils.nonNull(read);
-        Utils.nonNull(bytesProvider);
         final Cigar cigar = read.getCigar();
-        final byte[] sequence = bytesProvider.apply(read);
+        final byte[] bases = read.getBasesNoCopy();
+        final byte[] baseQualities = read.getBaseQualitiesNoCopy();
+        final int numCigarElements = cigar.numCigarElements();
+        boolean sawIndel = false;
 
-        if (!cigar.containsOperator(CigarOperator.DELETION) && !cigar.containsOperator(CigarOperator.INSERTION)) {
-            return sequence;
+        // Check if the cigar contains indels
+        for (int i = 0; i < numCigarElements; i++) {
+            final CigarOperator e = cigar.getCigarElement(i).getOperator();
+            if (e == CigarOperator.INSERTION || e == CigarOperator.DELETION) {
+                sawIndel = true;
+                break;
+            }
+        }
+        if (!sawIndel) {
+            return new Tuple<>(bases, baseQualities);
         }
         else {
-            final byte[] paddedBases = new byte[CigarUtils.countRefBasesIncludingSoftClips(read, 0, cigar.numCigarElements())];
+            int numberRefBasesIncludingSoftclips = CigarUtils.countRefBasesIncludingSoftClips(read, 0, numCigarElements);
+            final byte[] paddedBases = new byte[numberRefBasesIncludingSoftclips];
+            final byte[] paddedBaseQualities = new byte[numberRefBasesIncludingSoftclips];
             int literalPos = 0;
             int paddedPos = 0;
             for ( int i = 0; i < cigar.numCigarElements(); i++ ) {
@@ -229,19 +238,21 @@ public final class AlignmentUtils {
                         literalPos += ce.getLength();  //skip inserted bases
                     }
                     else {
-                        System.arraycopy(sequence, literalPos, paddedBases, paddedPos, ce.getLength());
+                        System.arraycopy(bases, literalPos, paddedBases, paddedPos, ce.getLength());
+                        System.arraycopy(baseQualities, literalPos, paddedBaseQualities, paddedPos, ce.getLength());
                         literalPos += ce.getLength();
                         paddedPos += ce.getLength();
                     }
                 }
                 else if (co.consumesReferenceBases()) {
                     for ( int j = 0; j < ce.getLength(); j++ ) {  //pad deleted bases
-                        paddedBases[paddedPos] = padWith;
+                        paddedBases[paddedPos] = gapCharacter;
+                        paddedBaseQualities[paddedPos] = qualityPadCharacter;
                         paddedPos++;
                     }
                 }
             }
-            return paddedBases;
+            return new Tuple<>(paddedBases, paddedBaseQualities);
         }
     }
 

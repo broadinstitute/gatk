@@ -6,6 +6,7 @@ import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.Locatable;
+import htsjdk.samtools.util.Tuple;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFSimpleHeaderLine;
@@ -590,21 +591,20 @@ public final class ReferenceConfidenceModel {
         // We are safe to use the faster no-copy versions of getBases and getBaseQualities here,
         // since we're not modifying the returned arrays in any way. This makes a small difference
         // in the HaplotypeCaller profile, since this method is a major hotspot.
-        final byte[] readBases = AlignmentUtils.getBasesAlignedOneToOne(read);  //calls getBasesNoCopy if CIGAR is all match
-        final byte[] readQuals = AlignmentUtils.getBaseQualsAlignedOneToOne(read);
+        final Tuple<byte[], byte[]> readBasesAndBaseQualities = AlignmentUtils.getBasesAndBaseQualitiesAlginedOneToOne(read);  //calls getBasesNoCopy if CIGAR is all match
 
 
-        final int baselineMMSum = sumMismatchingQualities(readBases, readQuals, readStart, refBases, refStart, Integer.MAX_VALUE);
+        final int baselineMMSum = sumMismatchingQualities(readBasesAndBaseQualities.a, readBasesAndBaseQualities.b, readStart, refBases, refStart, Integer.MAX_VALUE);
 
         // consider each indel size up to max in term, checking if an indel that deletes either the ref bases (deletion
         // or read bases (insertion) would fit as well as the origin baseline sum of mismatching quality scores
         for ( int indelSize = 1; indelSize <= maxIndelSize; indelSize++ ) {
             // check insertions:
-            if (sumMismatchingQualities(readBases, readQuals, readStart + indelSize, refBases, refStart, baselineMMSum) <= baselineMMSum) {
+            if (sumMismatchingQualities(readBasesAndBaseQualities.a, readBasesAndBaseQualities.b, readStart + indelSize, refBases, refStart, baselineMMSum) <= baselineMMSum) {
                 return false;
             }
             // check deletions:
-            if (sumMismatchingQualities(readBases, readQuals, readStart, refBases, refStart + indelSize, baselineMMSum) <= baselineMMSum) {
+            if (sumMismatchingQualities(readBasesAndBaseQualities.a, readBasesAndBaseQualities.b, readStart, refBases, refStart + indelSize, baselineMMSum) <= baselineMMSum) {
                 return false;
             }
         }
@@ -653,7 +653,8 @@ public final class ReferenceConfidenceModel {
     protected int getCigarModifiedOffset (final PileupElement p){
         final GATKRead read = p.getRead();
         int offset = (p.getCurrentCigarElement().getOperator().consumesReferenceBases() || p.getCurrentCigarElement().getOperator() == CigarOperator.S)? p.getOffsetInCurrentCigar() : 0;
-        for (final CigarElement elem : read.getCigar().getCigarElements().subList(0, p.getCurrentCigarOffset())) {
+        for (int i = 0; i < p.getCurrentCigarOffset(); i++) {
+            final CigarElement elem = read.getCigarElement(i);
             if (elem.getOperator().consumesReferenceBases() || elem.getOperator() == CigarOperator.S) {
                 offset += elem.getLength();
             }
