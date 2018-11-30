@@ -5,6 +5,8 @@ import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Set;
 import java.util.LinkedHashSet;
+import java.util.*;
+import java.util.stream.*;
 
 /**
  * Keep only variants with any of these IDs.
@@ -23,15 +25,8 @@ public final class VariantIDsVariantFilter implements VariantFilter {
     @Override
     public boolean test(final VariantContext vc) {
         if (vc.getID().indexOf(';') > 0) {
-            String[] vc_ids = vc.getID().split(";");
-            for (String vc_id : vc_ids) {
-                if (includeIDs.contains(vc_id)) {
-                    return true;
-                }
-            }
-            return false;
-        } else {
-            return includeIDs.contains(vc.getID());
+            return Arrays.stream(vc.getID().split(";")).anyMatch(includeIDs::contains);
         }
+        return includeIDs.contains(vc.getID());
     }
 }

@@ -138,6 +138,8 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
     private static final Allele FAKE_REF_ALLELE = Allele.create("N", true); // used in isActive function to call into UG Engine. Should never appear anywhere in a VCF file
     private static final Allele FAKE_ALT_ALLELE = Allele.create("<FAKE_ALT>", false); // used in isActive function to call into UG Engine. Should never appear anywhere in a VCF file
 
+    public static final int MINIMUM_READ_LENGTH = 10;
+
     /**
      * Create and initialize a new HaplotypeCallerEngine given a collection of HaplotypeCaller arguments, a reads header,
      * and a reference file
@@ -523,7 +525,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         final List<VariantContext> givenAlleles = new ArrayList<>();
         if ( hcArgs.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES ) {
-            features.getValues(hcArgs.alleles).stream().filter(vc -> hcArgs.genotypeFilteredAlleles || vc.isNotFiltered()).forEach(givenAlleles::add);
+            features.getValues(hcArgs.alleles).stream().filter(vc -> (hcArgs.genotypeFilteredAlleles || vc.isNotFiltered()) && (vc.getEnd() - vc.getStart() + 1 >= MINIMUM_READ_LENGTH)).forEach(givenAlleles::add);
 
             // No alleles found in this region so nothing to do!
             if ( givenAlleles.isEmpty() ) {
