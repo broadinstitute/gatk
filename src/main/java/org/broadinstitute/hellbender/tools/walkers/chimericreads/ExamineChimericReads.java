@@ -18,8 +18,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-import static org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy.SOFTCLIP;
-
 @CommandLineProgramProperties(
         summary = "Prints reads from the provided file(s) with corresponding reference bases (if a reference is provided) to the specified output file (or STDOUT if none specified)",
         oneLineSummary = "Print reads with reference context",
@@ -28,7 +26,7 @@ import static org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStr
 )
 public class ExamineChimericReads extends ReadPairWalker {
     private final SmithWatermanAligner smithWatermanAligner = SmithWatermanJavaAligner.getInstance();
-    private final SWOverhangStrategy swOverhangStrategy = SOFTCLIP;
+    private final SWOverhangStrategy swOverhangStrategy = SWOverhangStrategy.LEADING_INDEL;
 
     private SWParameters swParameters = null;
 
