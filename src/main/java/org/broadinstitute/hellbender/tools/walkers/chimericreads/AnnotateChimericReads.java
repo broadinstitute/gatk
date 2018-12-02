@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.chimericreads;
 
+import htsjdk.samtools.util.SequenceUtil;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -8,10 +9,11 @@ import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 
-import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -29,7 +31,7 @@ import java.util.Set;
 public final class AnnotateChimericReads extends ReadWalker {
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output file (if not provided, defaults to STDOUT)", common = false, optional = true)
-    private Path OUTPUT_FILE = null;
+    private String OUTPUT_FILE = null;
 
     @SuppressWarnings("FieldCanBeLocal")
     @Argument(fullName = "reference_length", doc = "The desired length of the reference sequence to annotate chimeric reads with. " +
@@ -45,27 +47,29 @@ public final class AnnotateChimericReads extends ReadWalker {
 
     private SAMFileGATKReadWriter outputWriter;
     private final ReadFilter chimericReadFilter = new ChimericReadFilter();
-    private final Set<String> readPairs = new HashSet<>(MAX_READ_PAIRS/10);
-    private int processedReads=0;
+    private final Set<String> readPairs = new HashSet<>(MAX_READ_PAIRS / 10);
+    private int processedReads = 0;
 
     @Override
     public List<ReadFilter> getDefaultReadFilters() {
         final List<ReadFilter> defaultReadFilters = super.getDefaultReadFilters();
         if (FILTER_NONCHIMERIC_READS) {
-            defaultReadFilters.add(chimericReadFilter);
+            final List<ReadFilter> filters = new ArrayList<>(defaultReadFilters);
+            filters.add(chimericReadFilter);
+            return filters;
         }
         return defaultReadFilters;
     }
 
     @Override
     public void onTraversalStart() {
-        outputWriter = createSAMWriter(OUTPUT_FILE, true);
+        outputWriter = createSAMWriter(IOUtils.getPath(OUTPUT_FILE), true);
     }
 
     @Override
     public void apply(GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext) {
-        final boolean earlyBreak = MAX_READ_PAIRS > 0 && processedReads > MAX_READ_PAIRS;
-        final boolean addRead = MAX_READ_PAIRS > 0 && !readPairs.contains(read.getName());
+        final boolean earlyBreak = MAX_READ_PAIRS > 0 && processedReads >= MAX_READ_PAIRS;
+        final boolean addRead = MAX_READ_PAIRS > 0 && chimericReadFilter.test(read) && !readPairs.contains(read.getName());
 
         if (earlyBreak) {
             readPairs.remove(read.getName());
@@ -79,11 +83,18 @@ public final class AnnotateChimericReads extends ReadWalker {
         }
 
         if (chimericReadFilter.test(read)) {
-            processedReads++;
-            referenceContext.setWindow(read.isReverseStrand() ? REFERENCE_LENGTH - referenceContext.getBases().length : 0,
-                    read.isReverseStrand() ? 0 : REFERENCE_LENGTH - referenceContext.getBases().length);
-            read.setAttribute("RB", referenceContext.getBases());
+            if (processedReads++ == MAX_READ_PAIRS) {
+                logger.info("Processed requested chimeric reads. Continuing to read through input file to find all the mates.");
+            }
 
+            final int windowLength = referenceContext.getWindow().getLengthOnReference();
+            referenceContext.setWindow(read.isReverseStrand() ? REFERENCE_LENGTH - windowLength : 0,
+                    read.isReverseStrand() ? 0 : REFERENCE_LENGTH - windowLength);
+
+            // useful to reverse-complement the reference to a standard form.
+            final boolean orientedCorrectly = read.isFirstOfPair() ^ read.isReverseStrand();
+
+            read.setAttribute("RB", maybeRevComp(new String(referenceContext.getBases()), !orientedCorrectly));
         }
         outputWriter.addRead(read);
     }
@@ -95,10 +106,22 @@ public final class AnnotateChimericReads extends ReadWalker {
         }
     }
 
+    private String maybeRevComp(final String input, boolean revComp) {
+        return revComp ? SequenceUtil.reverseComplement(input) : input;
+    }
+
     private static class ChimericReadFilter extends ReadFilter {
+        private static final long serialVersionUID = 1L;
+
         @Override
         public boolean test(final GATKRead read) {
-            return !read.isProperlyPaired() && !read.getContig().equals(read.getMateContig());
+            return read != null &&
+                    !read.isSecondaryAlignment() &&
+                    !read.isSupplementaryAlignment() &&
+                    read.isPaired() &&
+                    !read.isProperlyPaired() &&
+                    read.getContig() != null &&
+                    !read.getContig().equals(read.getMateContig());
         }
     }
 }
