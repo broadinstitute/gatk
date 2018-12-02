@@ -553,7 +553,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         final AssemblyRegion regionForGenotyping = assemblyResult.getRegionForGenotyping();
         final List<GATKRead> readStubs = regionForGenotyping.getReads().stream()
-                .filter(r -> r.getLength() < MINIMUM_READ_LENGTH_AFTER_TRIMMING).collect(Collectors.toList());
+                .filter(r -> r.getLength() < AssemblyBasedCallerUtils.MINIMUM_READ_LENGTH_AFTER_TRIMMING).collect(Collectors.toList());
         regionForGenotyping.removeAll(readStubs);
 
         // filter out reads from genotyping which fail mapping quality based criteria
