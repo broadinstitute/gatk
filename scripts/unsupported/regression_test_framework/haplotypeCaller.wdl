@@ -4,6 +4,7 @@
 #
 #   Required:
 #     String gatk_docker                                -  GATK Docker image in which to run
+#			
 #
 #
 #   Optional:
