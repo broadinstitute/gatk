@@ -241,11 +241,4 @@ final class HomRefBlock implements Locatable {
     public int getPloidy() {
         return ploidy;
     }
-
-    public boolean canMergeWith(final Genotype g) {
-        Utils.nonNull(g);
-        return withinBounds(g.getGQ())
-                && getPloidy() == g.getPloidy()
-                && (getMinPLs() == null || !g.hasPL() || getMinPLs().length == g.getPL().length);
-    }
 }

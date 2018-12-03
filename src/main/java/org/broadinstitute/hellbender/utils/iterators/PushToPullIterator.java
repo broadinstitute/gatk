@@ -8,7 +8,9 @@ import java.util.NoSuchElementException;
 
 /**
  * Iterator wrapper around our generic {@link PushPullTransformer)} interface. Wraps an iterator of input elements,
- * and transforms the reads from that iterator using the provided transformer.
+ * and transforms the items from that iterator using the provided transformer. The order of the elements from the
+ * transformer is preserved, although transformers do not necessarily maintain the order of the elements supplied to
+ * them.
  *
  * Converts the push-style {@link PushPullTransformer)} interface to a pull model.
  *
@@ -23,7 +25,7 @@ public class PushToPullIterator<T> implements Iterator<T>, Iterable<T> {
 
     /**
      * @param inputElements wrapped iterator from which this iterator will pull elements
-     * @param transformer transformer through which the reads from the wrapped iterator will be fed
+     * @param transformer transformer through which the items from the wrapped iterator will be fed
      */
     public PushToPullIterator(Iterator<T> inputElements, PushPullTransformer<T> transformer ) {
         Utils.nonNull(inputElements, "iterator must not be null");
@@ -53,7 +55,7 @@ public class PushToPullIterator<T> implements Iterator<T>, Iterable<T> {
     }
 
     private void advanceToNextElement() {
-        if ( readyToReleaseReads() || fillCache() ) {
+        if ( readyToReleaseItems() || fillCache() ) {
             nextElement = cachedElements.next();
         }
         else {
@@ -61,7 +63,7 @@ public class PushToPullIterator<T> implements Iterator<T>, Iterable<T> {
         }
     }
 
-    private boolean readyToReleaseReads() {
+    private boolean readyToReleaseItems() {
         return cachedElements != null && cachedElements.hasNext();
     }
 

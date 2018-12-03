@@ -9,7 +9,8 @@ import java.util.List;
  * A class that receives a stream of elements and transforms or filters them in some way, such as by downsampling with
  * a {@link org.broadinstitute.hellbender.utils.downsampling.Downsampler}. Elements are submitted in a push-style model,
  * in contrast to Java's pull-style {@link java.util.Iterator}. A transformer may be used to transform an iterator of
- * elements using {@link PushToPullIterator}.
+ * elements using {@link PushToPullIterator}. In general, implementations should preserve the ordering of elements,
+ * although this is not required.
  *
  * @param <T> type of items to be submitted
  * @see PushToPullIterator

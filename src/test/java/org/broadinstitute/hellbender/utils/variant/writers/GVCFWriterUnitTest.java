@@ -103,7 +103,6 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
         final GVCFWriter writer = new GVCFWriter(mockWriter, standardPartition, HomoSapiensConstants.DEFAULT_PLOIDY);
         writer.close();
         Assert.assertTrue(mockWriter.closed);
-        writer.close();
     }
 
     public static VariantContext makeHomRef(int start) {
