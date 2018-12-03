@@ -144,7 +144,7 @@ public final class GatherVcfsCloud extends CommandLineProgram {
 
         if(!ignoreSafetyChecks) {
             for (final Path f : inputPaths) {
-                IOUtil.assertFileIsReadable(f);
+                IOUtils.assertFileIsReadable(f);
             }
         }
 

@@ -35,8 +35,25 @@ public class UserException extends RuntimeException {
     }
 
     protected static String getMessage(final Throwable t) {
-        final String message = t.getMessage();
-        return message != null ? message : t.getClass().getName();
+        String message = t.getMessage();
+        message = message != null ? message : t.getClass().getName();
+
+        // Add gentle pointer to the documentation for Cloud errors.
+        if (t instanceof com.google.cloud.storage.StorageException) {
+            com.google.cloud.storage.StorageException ex = (com.google.cloud.storage.StorageException)t;
+            message = "Error " + ex.getCode() + ": " + message;
+            if (message.contains("Anonymous") && message.contains("does not have")) {
+                // perhaps "Anonymous caller does not have storage.objects.get access...
+                message += " Possible cause: missing Google cloud credentials; see instructions in the README.";
+            } else if (message.contains("account") && message.contains("has been disabled")) {
+                // perhaps using a bad user account
+                message += " Possible cause: signed in with the wrong user; see instructions in the README.";
+            } else {
+                // say something just based on the exception
+                message += " Potential cause: incorrect Google Cloud configuration; see instructions in the README.";
+            }
+        }
+        return message;
     }
 
     /**
@@ -76,6 +93,10 @@ public class UserException extends RuntimeException {
             super(String.format("Couldn't read file %s. Error was: %s", file.toAbsolutePath().toUri(), message), cause);
         }
 
+        public CouldNotReadInputFile(Path file, Throwable cause) {
+            super(String.format("Couldn't read file %s. Error was: %s", file.toAbsolutePath().toUri(), getMessage(cause)), cause);
+        }
+
         public CouldNotReadInputFile(String file, String message) {
             super(String.format("Couldn't read file %s. Error was: %s", file, message));
         }
@@ -95,6 +116,7 @@ public class UserException extends RuntimeException {
         public CouldNotReadInputFile(String message) {
             super(message);
         }
+
     }
 
     public static class MissingReference extends UserException {

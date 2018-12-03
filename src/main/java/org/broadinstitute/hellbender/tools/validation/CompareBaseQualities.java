@@ -13,6 +13,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.PositionalArguments;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.*;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 import org.broadinstitute.hellbender.engine.ProgressMeter;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -124,8 +125,8 @@ public final class CompareBaseQualities extends PicardCommandLineProgram {
         }
         staticQuantizedMapping = constructStaticQuantizedMapping(staticQuantizationQuals, roundDown);
 
-        IOUtil.assertFileIsReadable(samFiles.get(0));
-        IOUtil.assertFileIsReadable(samFiles.get(1));
+        IOUtils.canReadFile(samFiles.get(0));
+        IOUtils.canReadFile(samFiles.get(1));
 
         final SamReaderFactory factory = SamReaderFactory.makeDefault().validationStringency(VALIDATION_STRINGENCY);
         final SamReader reader1 = factory.referenceSequence(REFERENCE_SEQUENCE).open(samFiles.get(0));

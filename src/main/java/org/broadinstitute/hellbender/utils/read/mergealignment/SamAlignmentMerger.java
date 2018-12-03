@@ -8,6 +8,7 @@ import org.apache.logging.log4j.LogManager;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 /**
  * Class that takes in a set of alignment information in SAM format and merges it with the set
@@ -90,14 +91,14 @@ public final class SamAlignmentMerger extends AbstractAlignmentMerger {
 
         if (alignedSamFile != null) {
             for (final File f : alignedSamFile) {
-                IOUtil.assertFileIsReadable(f);
+                IOUtils.canReadFile(f);
             }
         } else {
             for (final File f : read1AlignedSamFile) {
-                IOUtil.assertFileIsReadable(f);
+                IOUtils.canReadFile(f);
             }
             for (final File f : read2AlignedSamFile) {
-                IOUtil.assertFileIsReadable(f);
+                IOUtils.canReadFile(f);
             }
         }
 

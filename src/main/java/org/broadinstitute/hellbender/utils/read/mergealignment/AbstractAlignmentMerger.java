@@ -10,6 +10,7 @@ import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 
@@ -126,9 +127,9 @@ public abstract class AbstractAlignmentMerger {
                                    final SAMFileHeader.SortOrder sortOrder,
                                    final PrimaryAlignmentSelectionStrategy primaryAlignmentSelectionStrategy,
                                    final boolean addMateCigar) {
-        IOUtil.assertFileIsReadable(unmappedBamFile);
-        IOUtil.assertFileIsWritable(targetBamFile);
-        IOUtil.assertFileIsReadable(referenceFasta);
+        IOUtils.canReadFile(unmappedBamFile);
+        IOUtils.canReadFile(targetBamFile);
+        IOUtils.canReadFile(referenceFasta);
 
         this.unmappedBamFile = unmappedBamFile;
         this.targetBamFile = targetBamFile;

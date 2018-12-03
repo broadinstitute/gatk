@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.engine;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.CloseableIterator;
-import htsjdk.samtools.util.IOUtil;
 import java.nio.channels.SeekableByteChannel;
 import java.util.function.Function;
 import org.apache.logging.log4j.LogManager;
@@ -14,6 +13,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.iterators.SAMRecordToReadIterator;
 import org.broadinstitute.hellbender.utils.iterators.SamReaderQueryingIterator;
 import org.broadinstitute.hellbender.utils.nio.SeekableByteChannelPrefetcher;
@@ -203,7 +203,7 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
         for ( final Path samPath : samPaths ) {
             // Ensure each file can be read
             try {
-                IOUtil.assertFileIsReadable(samPath);
+                IOUtils.assertFileIsReadable(samPath);
             }
             catch ( SAMException|IllegalArgumentException e ) {
                 throw new UserException.CouldNotReadInputFile(samPath.toString(), e);

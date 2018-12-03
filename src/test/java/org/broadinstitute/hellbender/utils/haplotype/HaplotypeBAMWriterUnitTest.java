@@ -6,7 +6,6 @@ import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.TextCigarCodec;
 import htsjdk.samtools.ValidationStringency;
-import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.SamFiles;
 
@@ -18,6 +17,7 @@ import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -333,7 +333,7 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
     }
 
     private int getReadCounts(final Path result) throws IOException {
-        IOUtil.assertFileIsReadable(result);
+        IOUtils.assertFileIsReadable(result);
 
         int count = 0;
         try (final SamReader in = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.SILENT).open(result)) {

@@ -4,9 +4,9 @@ import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.IOUtil;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -122,7 +122,7 @@ public final class SplitReadsIntegrationTest extends CommandLineProgramTest {
 
     private int getReadCounts(final Path tempDirectory, final String baseName, final String fileName) {
         final File path = tempDirectory.resolve(fileName).toFile();
-        IOUtil.assertFileIsReadable(path);
+        IOUtils.canReadFile(path);
         final SamReader in = SamReaderFactory.makeDefault().referenceSequence(new File(getTestDataDir(), getReferenceSequenceName(baseName))).open(path);
         int count = 0;
         for (@SuppressWarnings("unused") final SAMRecord rec : in) {

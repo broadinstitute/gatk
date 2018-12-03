@@ -835,17 +835,10 @@ public final class IOUtils {
                 throw new UserException.CouldNotReadInputFile(path, "It is not readable, check the file permissions");
             }
         } catch (com.google.cloud.storage.StorageException cloudBoom) {
-            // probably a permissions problem, or perhaps a disabled account.
-            // Looks like this for a disabled bucket error:
-            //   A USER ERROR has occurred: Couldn't read file gs://foo/bar. Error was:
-            //   403: The account for bucket "foo" has been disabled.
-            // For no access, it looks like this:
-            // (use `gcloud auth application-default revoke` to forget the default credentials)
-            //   A USER ERROR has occurred: Couldn't read file gs://(...). Error was:
-            //   401: Anonymous users does not have storage.objects.get access to object (...).
+            // Add some context.
             // The user can see the underlying exception by passing
             // -DGATK_STACKTRACE_ON_USER_EXCEPTION=true
-            throw new UserException.CouldNotReadInputFile(path, cloudBoom.getCode() + ": " + cloudBoom.getMessage(), cloudBoom);
+            throw new UserException.CouldNotReadInputFile(path, cloudBoom);
         }
     }
 
