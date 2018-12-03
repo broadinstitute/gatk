@@ -25,6 +25,8 @@ import java.util.List;
 public abstract class MultiVariantWalkerGroupedOnStart extends MultiVariantWalker {
     private List<VariantContext> currentVariants = new ArrayList<>();
     private ReferenceContext spanningReferenceContext;
+    private ReadsContext spanningReadsContext;
+    private FeatureContext spanningFeatureContext;
     private OverlapDetector<SimpleInterval> overlapDetector;
 
     public static final String IGNORE_VARIANTS_THAT_START_OUTSIDE_INTERVAL = "ignore-variants-starting-outside-interval";
@@ -65,16 +67,19 @@ public abstract class MultiVariantWalkerGroupedOnStart extends MultiVariantWalke
         } else if (!currentVariants.get(0).contigsMatch(variant)
                 || currentVariants.get(0).getStart() < variant.getStart()) {
             // Emptying any sites which should emit a new VC since the last one
-            apply(new ArrayList<>(currentVariants), spanningReferenceContext);
+            apply(new ArrayList<>(currentVariants), spanningReadsContext, spanningReferenceContext, spanningFeatureContext);
             currentVariants.clear();
             currentVariants.add(variant);
         } else {
             currentVariants.add(variant);
         }
         if (referenceContext.hasBackingDataSource()){
-            referenceContext.setWindow(1, 1);
+            //TODO: why do we do this ?
+            //referenceContext.setWindow(1, 1);
         }
         spanningReferenceContext = getExpandedReferenceContext(currentVariants, spanningReferenceContext, referenceContext);
+        spanningReadsContext = getExpandedReadsContext(currentVariants, spanningReadsContext, readsContext);
+        spanningFeatureContext = getExpandedFeatureContext(spanningFeatureContext, featureContext);
     }
 
     /**
@@ -84,12 +89,13 @@ public abstract class MultiVariantWalkerGroupedOnStart extends MultiVariantWalke
      * and call #apply() exactly once for each unique reference start position. All variants starting at each locus
      * across source files will be grouped and passed as a list of VariantContext objects.
      *
-     * @param variantContexts  VariantContexts from driving variants with matching start positon
+     * @param variantContexts  VariantContexts from driving variants with matching start position
      *                         NOTE: This will never be empty
+     * @param readsContext ReadsContext covering the reads of the longest spanning VariantContext
      * @param referenceContext  ReferenceContext object covering the reference of the longest spanning VariantContext
      *                          with one base on either end as window padding.
      */
-    public abstract void apply(List<VariantContext> variantContexts, ReferenceContext referenceContext);
+    public abstract void apply(List<VariantContext> variantContexts, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext fetureContext);
 
     /**
      * Helper method that ensures the reference context it returns is adequate to span the length of all the accumulated
@@ -105,6 +111,31 @@ public abstract class MultiVariantWalkerGroupedOnStart extends MultiVariantWalke
             return newReferenceContext;
         }
         return currentReferenceContext;
+    }
+
+
+    /**
+     * Helper method that ensures the reads context it returns is adequate to span the length of all the accumulated
+     * VariantContexts. It makes the assumption that all variant contexts in currentVariants start at the same location and
+     * that currentReadsContext corresponds to the correct span for the longest variantContexts the first N-1 VariantContexts
+     * and that currentReadsContext corresponds to the correct span for the Nth item.
+     */
+    @VisibleForTesting
+    final static ReadsContext getExpandedReadsContext(List<VariantContext> currentVariants,
+                                                      ReadsContext currentReadsContext,
+                                                      ReadsContext newReadsContext) {
+        if ((currentReadsContext==null)||(currentVariants.size() == 1 || newReadsContext.getInterval().getEnd() > currentReadsContext.getInterval().getEnd())) {
+            return newReadsContext;
+        }
+        return currentReadsContext;
+    }
+
+    final static FeatureContext getExpandedFeatureContext(
+            final FeatureContext previousFeatureContext,
+            final FeatureContext newFeatureContext) {
+        return previousFeatureContext == null ||newFeatureContext.getInterval().getEnd() > previousFeatureContext.getInterval().getEnd() ?
+                newFeatureContext :
+                previousFeatureContext;
     }
 
     @Override
@@ -138,7 +169,7 @@ public abstract class MultiVariantWalkerGroupedOnStart extends MultiVariantWalke
             logger.warn("Error: The requested interval contained no data in source VCF files");
 
         } else {
-            apply(currentVariants, spanningReferenceContext);
+            apply(currentVariants, spanningReadsContext, spanningReferenceContext, spanningFeatureContext);
         }
     }
 }

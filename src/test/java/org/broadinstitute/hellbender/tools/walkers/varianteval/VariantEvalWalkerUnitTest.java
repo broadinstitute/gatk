@@ -90,7 +90,7 @@ public class VariantEvalWalkerUnitTest extends BaseTest {
         }
 
         @Override
-        public List<Object> getRelevantStates(final ReferenceContext ref, final ReadsContext readsContext, final FeatureContext featureContext, final VariantContext comp, final String compName, final VariantContext eval, final String evalName, final String sampleName, final String familyName) {
+        public List<Object> getRelevantStates(final ReferenceContext ref, final ReadsContext readsContext , final VariantContext comp, final String compName, final VariantContext eval, final String evalName, final String sampleName, final String familyName) {
             int i = Integer.valueOf(evalName); // a terrible hack, but we can now provide accessible states
             List<Object> states = new ArrayList<Object>();
             for ( int state : integers )
@@ -109,7 +109,7 @@ public class VariantEvalWalkerUnitTest extends BaseTest {
         @Override public int getComparisonOrder() { return 1; }
 
         @Override
-        public void update1(final VariantContext eval, final ReferenceContext ref, final ReadsContext readsContext, final FeatureContext featureContext) {
+        public void update1(final VariantContext eval, final ReferenceContext ref, final ReadsContext readsContext) {
             count++;
         }
 
@@ -136,9 +136,9 @@ public class VariantEvalWalkerUnitTest extends BaseTest {
         // increment eval counts for each stratification of divisors of i from from 1...maxI
         for ( int i = 1; i <= cfg.maxI; i++ ) {
             final String evalName = String.valueOf(i); // terrible hack to stratify by divisor
-            for ( EvaluationContext nec : VEwalker.getEvaluationContexts(ref, readsContext, featureContext, eval, evalName, comp, compName, sampleName, familyName) ) {
+            for ( EvaluationContext nec : VEwalker.getEvaluationContexts(ref, readsContext, eval, evalName, comp, compName, sampleName, familyName) ) {
                 synchronized (nec) {
-                    nec.apply(ref, readsContext, featureContext, comp, eval);
+                    nec.apply(ref, readsContext, comp, eval);
                 }
             }
         }

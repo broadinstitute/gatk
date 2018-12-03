@@ -74,7 +74,7 @@ public class MultiVariantWalkerGroupedOnStartUnitTest extends GATKBaseTest {
     private final class DummyExampleGroupingMultiVariantWalker extends MultiVariantWalkerGroupedOnStart {
         List<List<VariantContext>> seenVariants = new ArrayList<>();
         @Override
-        public void apply(List<VariantContext> variantContexts, ReferenceContext referenceContext) {
+        public void apply(List<VariantContext> variantContexts, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext) {
             seenVariants.add(variantContexts);
         }
     }

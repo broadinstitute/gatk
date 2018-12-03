@@ -16,7 +16,9 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
+import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.MultiVariantWalkerGroupedOnStart;
+import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
@@ -121,7 +123,12 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
     private ReferenceContext storedReferenceContext;
 
     @Override
-    public void apply(List<VariantContext> variantContexts, ReferenceContext referenceContext) {
+    public void apply(List<VariantContext> variantContexts, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext) {
+
+        if (referenceContext.hasBackingDataSource()){
+            referenceContext.setWindow(1, 1);
+        }
+
         // Check that the input variant contexts do not contain MNPs as these may not be properly merged
         for (final VariantContext ctx : variantContexts) {
             if (GATKVariantContextUtils.isUnmixedMnpIgnoringNonRef(ctx)) {
