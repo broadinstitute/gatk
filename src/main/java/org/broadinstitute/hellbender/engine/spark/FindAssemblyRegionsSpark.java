@@ -37,6 +37,23 @@ import java.util.function.Supplier;
  */
 public class FindAssemblyRegionsSpark {
 
+    /**
+     * Get an RDD of assembly regions for the given reads and intervals using the <i>fast</i> algorithm (looks for
+     * assembly regions in each read shard in parallel).
+     * @param ctx the Spark context
+     * @param reads the coordinate-sorted reads
+     * @param header the header for the reads
+     * @param sequenceDictionary the sequence dictionary for the reads
+     * @param referenceFileName the file name for the reference
+     * @param features source of arbitrary features (may be null)
+     * @param intervalShards the sharded intervals to find assembly regions for
+     * @param assemblyRegionEvaluatorSupplierBroadcast evaluator used to determine whether a locus is active
+     * @param shardingArgs the arguments for sharding reads
+     * @param assemblyRegionArgs the arguments for finding assembly regions
+     * @param includeReadsWithDeletionsInIsActivePileups include reads with deletion at loci
+     * @param shuffle whether to use a shuffle or not when sharding reads
+     * @return an RDD of assembly regions
+     */
     public static JavaRDD<AssemblyRegionWalkerContext> getAssemblyRegionsFast(
             final JavaSparkContext ctx,
             final JavaRDD<GATKRead> reads,
@@ -64,9 +81,9 @@ public class FindAssemblyRegionsSpark {
             final AssemblyRegionArgumentCollection assemblyRegionArgs,
             final boolean includeReadsWithDeletionsInIsActivePileups) {
         return (FlatMapFunction<Iterator<Shard<GATKRead>>, AssemblyRegionWalkerContext>) shardedReadIterator -> {
-            ReferenceDataSource reference = referenceFileName == null ? null : new ReferenceFileSource(IOUtils.getPath(SparkFiles.get(referenceFileName)));
+            final ReferenceDataSource reference = referenceFileName == null ? null : new ReferenceFileSource(IOUtils.getPath(SparkFiles.get(referenceFileName)));
             final FeatureManager features = bFeatureManager == null ? null : bFeatureManager.getValue();
-            AssemblyRegionEvaluator assemblyRegionEvaluator = supplierBroadcast.getValue().get(); // one AssemblyRegionEvaluator instance per Spark partition
+            final AssemblyRegionEvaluator assemblyRegionEvaluator = supplierBroadcast.getValue().get(); // one AssemblyRegionEvaluator instance per Spark partition
             final ReadsDownsampler readsDownsampler = assemblyRegionArgs.maxReadsPerAlignmentStart > 0 ?
                     new PositionalDownsampler(assemblyRegionArgs.maxReadsPerAlignmentStart, header) : null;
 
@@ -90,6 +107,23 @@ public class FindAssemblyRegionsSpark {
         };
     }
 
+    /**
+     * Get an RDD of assembly regions for the given reads and intervals using the <i>strict</i> algorithm (looks for
+     * assembly regions in each contig in parallel).
+     * @param ctx the Spark context
+     * @param reads the coordinate-sorted reads
+     * @param header the header for the reads
+     * @param sequenceDictionary the sequence dictionary for the reads
+     * @param referenceFileName the file name for the reference
+     * @param features source of arbitrary features (may be null)
+     * @param intervalShards the sharded intervals to find assembly regions for
+     * @param assemblyRegionEvaluatorSupplierBroadcast evaluator used to determine whether a locus is active
+     * @param shardingArgs the arguments for sharding reads
+     * @param assemblyRegionArgs the arguments for finding assembly regions
+     * @param includeReadsWithDeletionsInIsActivePileups include reads with deletion at loci
+     * @param shuffle whether to use a shuffle or not when sharding reads
+     * @return an RDD of assembly regions
+     */
     public static JavaRDD<AssemblyRegionWalkerContext> getAssemblyRegionsStrict(
             final JavaSparkContext ctx,
             final JavaRDD<GATKRead> reads,
@@ -148,9 +182,9 @@ public class FindAssemblyRegionsSpark {
             final AssemblyRegionArgumentCollection assemblyRegionArgs,
             final boolean includeReadsWithDeletionsInIsActivePileups) {
         return (FlatMapFunction<Iterator<Shard<GATKRead>>, ActivityProfileStateRange>) shardedReadIterator -> {
-            ReferenceDataSource reference = referenceFileName == null ? null : new ReferenceFileSource(IOUtils.getPath(SparkFiles.get(referenceFileName)));
+            final ReferenceDataSource reference = referenceFileName == null ? null : new ReferenceFileSource(IOUtils.getPath(SparkFiles.get(referenceFileName)));
             final FeatureManager features = bFeatureManager == null ? null : bFeatureManager.getValue();
-            AssemblyRegionEvaluator assemblyRegionEvaluator = supplierBroadcast.getValue().get(); // one AssemblyRegionEvaluator instance per Spark partition
+            final AssemblyRegionEvaluator assemblyRegionEvaluator = supplierBroadcast.getValue().get(); // one AssemblyRegionEvaluator instance per Spark partition
             
             return Utils.stream(shardedReadIterator)
                     .map(shardedRead -> {
@@ -205,7 +239,7 @@ public class FindAssemblyRegionsSpark {
             final Broadcast<FeatureManager> bFeatureManager) {
 
         return (FlatMapFunction<Iterator<AssemblyRegion>, AssemblyRegionWalkerContext>) assemblyRegionIter -> {
-            ReferenceDataSource reference = referenceFileName == null ? null : new ReferenceFileSource(IOUtils.getPath(SparkFiles.get(referenceFileName)));
+            final ReferenceDataSource reference = referenceFileName == null ? null : new ReferenceFileSource(IOUtils.getPath(SparkFiles.get(referenceFileName)));
             final FeatureManager features = bFeatureManager == null ? null : bFeatureManager.getValue();
             return Utils.stream(assemblyRegionIter).map(assemblyRegion ->
                     new AssemblyRegionWalkerContext(assemblyRegion,
