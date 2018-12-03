@@ -1,4 +1,4 @@
-# Lifts over a VCF file from one reference version to another.
+# Calls variants on the given germline BAM file using HaplotypeCaller.
 #
 # Description of inputs:
 #
@@ -23,8 +23,14 @@
 # independent of what is in the docker file.  See the README.md for more info.
 workflow HaplotypeCaller {
     String gatk_docker
-    File variant_vcf
-    String output_vcf_index
+
+    File input_bam
+    File input_bam_index
+    File ref_fasta
+    File ref_fasta_dict
+    File ref_fasta_index
+
+    File? interval_list
 
     File? gatk4_jar_override
     Int?  mem
@@ -33,74 +39,88 @@ workflow HaplotypeCaller {
     Int? cpu
     Int? boot_disk_size_gb
 
-    call DoIndex {
+    call HaplotypeCallerTask {
         input:
             input_vcf                 = variant_vcf,
             output_vcf_index          = output_vcf_index,
+
             gatk_docker               = gatk_docker,
             gatk_override             = gatk4_jar_override,
             mem                       = mem,
             preemptible_attempts      = preemptible_attempts,
             disk_space_gb             = disk_space_gb,
             cpu                       = cpu,
-            boot_disk_size_gb          = boot_disk_size_gb
+            boot_disk_size_gb         = boot_disk_size_gb
     }
 
     output {
-        File vcf_out_idx = DoIndex.vcf_index
+        File vcf_out_idx = HaplotypeCallerTask.vcf_index
     }
 }
 
 
-task DoIndex {
-     # inputs
-     File input_vcf
+task HaplotypeCallerTask {
+    # inputs
+    File input_bam
+    File input_bam_index
+    File ref_dict
+    File ref_fasta
+    File ref_fasta_index
 
-     # outputs
-     String output_vcf_index 
+    File? interval_list
+    Boolean? make_gvcf
+    Float? contamination
 
-     # runtime
-     String gatk_docker
-     File? gatk_override
-     Int? mem
-     Int? preemptible_attempts
-     Int? disk_space_gb
-     Int? cpu
-     Int? boot_disk_size_gb
+    # Outputs:
+    String out_file_name
 
-     Boolean use_ssd = false
+    # runtime
+    String gatk_docker
+    File? gatk_override
+    Int? mem
+    Int? preemptible_attempts
+    Int? disk_space_gb
+    Int? cpu
+    Int? boot_disk_size_gb
 
-     # You may have to change the following two parameter values depending on the task requirements
-     Int default_ram_mb = 3000
-     # WARNING: In the workflow, you should calculate the disk space as an input to this task (disk_space_gb).  Please see [TODO: Link from Jose] for examples.
-     Int default_disk_space_gb = 100
+    Boolean use_ssd = false
 
-     Int default_boot_disk_size_gb = 15
+    # You may have to change the following two parameter values depending on the task requirements
+    Int default_ram_mb = 3000
+    # WARNING: In the workflow, you should calculate the disk space as an input to this task (disk_space_gb).  Please see [TODO: Link from Jose] for examples.
+    Int default_disk_space_gb = 100
 
-     # Mem is in units of GB but our command and memory runtime values are in MB
-     Int machine_mem = if defined(mem) then mem *1000 else default_ram_mb
-     Int command_mem = machine_mem - 1000
+    Int default_boot_disk_size_gb = 15
 
-     command <<<
-         set -e
-         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+    # Mem is in units of GB but our command and memory runtime values are in MB
+    Int machine_mem = if defined(mem) then mem *1000 else default_ram_mb
+    Int command_mem = machine_mem - 1000
 
-         gatk --java-options "-Xmx${command_mem}m" \
-                IndexFeatureFile \
-                 -F ${input_vcf} \
-                 -O ${output_vcf_index}
-     >>>
+    command <<<
+        set -e
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
 
-     runtime {
-         docker: gatk_docker
-         memory: machine_mem + " MB"
-         disks: "local-disk " + select_first([disk_space_gb, default_disk_space_gb]) + if use_ssd then " SSD" else " HDD"
-         bootDiskSizeGb: select_first([boot_disk_size_gb, default_boot_disk_size_gb])
-         preemptible: 0 
-         cpu: select_first([cpu, 1])
-     }
+        gatk --java-options "-Xmx${command_mem}m" \
+            HaplotypeCaller \
+                -I ${input_bam} \
+                -L ${interval_list} \
+                -O ${out_file_name} \
+                -R ${ref_fasta} \
+                -contamination ${default=0 contamination} \
+                ${true="-ERC GVCF" false="" make_gvcf}
+    >>>
 
-     output {
-         File vcf_index = "${output_vcf_index}"
-     }
- }
+    runtime {
+        docker: gatk_docker
+        memory: machine_mem + " MB"
+        disks: "local-disk " + select_first([disk_space_gb, default_disk_space_gb]) + if use_ssd then " SSD" else " HDD"
+        bootDiskSizeGb: select_first([boot_disk_size_gb, default_boot_disk_size_gb])
+        preemptible: 0
+        cpu: select_first([cpu, 1])
+    }
+
+    output {
+        File output_vcf       = "${out_file_name}"
+        File output_vcf_index = "${out_file_name}.tbi"
+    }
+}
