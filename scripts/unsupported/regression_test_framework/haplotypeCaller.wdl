@@ -60,7 +60,11 @@ workflow HaplotypeCaller {
 
 
 task HaplotypeCallerTask {
-    # inputs
+
+    # ------------------------------------------------
+    # Input args:
+
+    # Required:
     File input_bam
     File input_bam_index
     File ref_dict
@@ -71,10 +75,10 @@ task HaplotypeCallerTask {
     Boolean? make_gvcf
     Float? contamination
 
-    # Outputs:
+    # Output Names:
     String out_file_name
 
-    # runtime
+    # Runtime Options:
     String gatk_docker
     File? gatk_override
     Int? mem
@@ -83,6 +87,12 @@ task HaplotypeCallerTask {
     Int? cpu
     Int? boot_disk_size_gb
 
+    # ------------------------------------------------
+    # Process input args:
+    String interval_list_arg = if defined(interval_list) then " --WARN_ON_MISSING_CONTIG " else ""
+
+    # ------------------------------------------------
+    # Get machine settings:
     Boolean use_ssd = false
 
     # You may have to change the following two parameter values depending on the task requirements
@@ -96,6 +106,8 @@ task HaplotypeCallerTask {
     Int machine_mem = if defined(mem) then mem *1000 else default_ram_mb
     Int command_mem = machine_mem - 1000
 
+    # ------------------------------------------------
+    # Run our command:
     command <<<
         set -e
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
@@ -106,10 +118,13 @@ task HaplotypeCallerTask {
                 -L ${interval_list} \
                 -O ${out_file_name} \
                 -R ${ref_fasta} \
+                ${interval_list_arg} \
                 -contamination ${default=0 contamination} \
                 ${true="-ERC GVCF" false="" make_gvcf}
     >>>
 
+    # ------------------------------------------------
+    # Runtime settings:
     runtime {
         docker: gatk_docker
         memory: machine_mem + " MB"
@@ -119,6 +134,8 @@ task HaplotypeCallerTask {
         cpu: select_first([cpu, 1])
     }
 
+    # ------------------------------------------------
+    # Outputs:
     output {
         File output_vcf       = "${out_file_name}"
         File output_vcf_index = "${out_file_name}.tbi"
