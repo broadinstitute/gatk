@@ -4,28 +4,101 @@
 #
 #   Required:
 #     gatk_docker                    - GATK Docker image in which to run
+#
 #     call_vcf                       - The produced data set.  Variant Context File (VCF) containing the variants.
 #     call_index                     - The produced data set index.  Variant Context File (VCF) index for the given actual_vcf.
 #     call_sample                    - Sample in the VCF to compare.
+#
 #     truth_vcf                      - The truth data set.  Variant Context File (VCF) containing the variants.
 #     truth_index                    - The truth data set index.  Variant Context File (VCF) index for the given expected_vcf.
 #     truth_sample                   - Sample in the VCF to use as truth data.
-#     intervals                      - File containing intervals over which the comparison should be run.
+#
 #     output_base_name               - Base file name for generated output files.
 #
 #   Optional:
+#     File? interval_list            -  Interval list over which to call variants on the given BAM file.
+#
 #     gatk4_jar_override             - Override Jar file containing GATK 4.0.  Use this when overriding the docker JAR or when using a backend without docker.
-#     mem                            - Amount of memory to give the runtime environment.
+#     mem_gb                         - Amount of memory to give the runtime environment.
 #     disk_space_gb                  - Amount of disk space to give the runtime environment.
 #     cpu                            - Number of CPUs to give the runtime environment.
 #     boot_disk_size_gb              - Amount of boot disk space to give the runtime environment.
-#     use_ssd                        - Whether or not to mandate the use of Solid State Drives in the runtime environment.
 #     preemptible_attempts           - Number of times the comparison can be preempted.
 #
 # This WDL needs to decide whether to use the ``gatk_jar`` or ``gatk_jar_override`` for the jar location.  As of cromwell-0.24,
 # this logic *must* go into each task.  Therefore, there is a lot of duplicated code.  This allows users to specify a jar file
 # independent of what is in the docker file.  See the README.md for more info.
-task GenotypeConcordance {
+
+workflow GenotypeConcordance {
+
+    # ------------------------------------------------
+    # Input args:
+    String gatk_docker
+
+    File call_vcf
+    File call_index
+    String call_sample
+    File truth_vcf
+    File truth_index
+    String truth_sample
+
+    String output_base_name
+
+    File? interval_list
+
+    File? gatk4_jar_override
+    Int?  mem_gb
+    Int? preemptible_attempts
+    Int? disk_space_gb
+    Int? cpu
+    Int? boot_disk_size_gb
+
+    # ------------------------------------------------
+    # Call our tasks:
+    call GenotypeConcordanceTask {
+        input:
+            call_vcf                  = call_vcf,
+            call_index                = call_index,
+            call_sample               = call_sample,
+            truth_vcf                 = truth_vcf,
+            truth_index               = truth_index,
+            truth_sample              = truth_sample,
+
+            interval_list             = interval_list,
+
+            output_base_name          = output_base_name,
+
+            gatk_docker               = gatk_docker,
+            gatk_override             = gatk4_jar_override,
+            mem                       = mem_gb,
+            preemptible_attempts      = preemptible_attempts,
+            disk_space_gb             = disk_space_gb,
+            cpu                       = cpu,
+            boot_disk_size_gb         = boot_disk_size_gb
+    }
+
+    # ------------------------------------------------
+    # Outputs:
+    output {
+        File vcf_out     = GenotypeConcordanceTask.output_vcf
+        File vcf_out_idx = GenotypeConcordanceTask.output_vcf_index
+        File timingInfo  = GenotypeConcordanceTask.timing_info
+
+        File summary_metrics                = GenotypeConcordanceTask.summary_metrics
+        File detail_metrics                 = GenotypeConcordanceTask.detail_metrics
+        File contingency_metrics            = GenotypeConcordanceTask.contingency_metrics
+        File output_vcf                     = GenotypeConcordanceTask.output_vcf
+        File output_vcf_index               = GenotypeConcordanceTask.output_vcf_index
+        File timing_info                    = GenotypeConcordanceTask.timing_info
+    }
+
+}
+
+# ==========================================================================================
+# ==========================================================================================
+# ==========================================================================================
+
+task GenotypeConcordanceTask {
 
     ####################################################################################
     # Inputs:
@@ -37,7 +110,7 @@ task GenotypeConcordance {
     File truth_index
     String truth_sample
 
-    File intervals
+    File? interval_list
 
     String output_base_name
 
@@ -51,7 +124,12 @@ task GenotypeConcordance {
     Int? disk_space_gb
     Int? cpu
     Int? boot_disk_size_gb
+
     Boolean? use_ssd
+
+    # ------------------------------------------------
+    # Process input args:
+    String interval_list_arg = if defined(interval_list) then " -L " else ""
 
     ####################################################################################
     # Define default values and set up values for running:
@@ -73,16 +151,20 @@ task GenotypeConcordance {
     command {
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
 
+        echo `StartTime: date +%s.%N` > timingInformation.txt
+
         gatk --java-options "-Xmx${command_mem}m" \
             GenotypeConcordance \
                 CALL_VCF=${call_vcf} \
                 CALL_SAMPLE=${call_sample} \
                 TRUTH_VCF=${truth_vcf} \
                 TRUTH_SAMPLE=${truth_sample} \
-                ${" INTERVALS=" + intervals} \
+                ${interval_list_arg}${default="" sep=" -L " interval_list} \
                 INTERSECT_INTERVALS=true \
-                OUTPUT_VCF=true
-                O=${output_base_name}
+                OUTPUT_VCF=true \
+                O=${output_base_name} \
+
+        echo `EndTime: date +%s.%N` >> timingInformation.txt
     }
 
     ####################################################################################
@@ -99,10 +181,11 @@ task GenotypeConcordance {
     ####################################################################################
     # Outputs:
     output {
-        File summary_metrics = "${output_base_name}.genotype_concordance_summary_metrics"
-        File detail_metrics = "${output_base_name}.genotype_concordance_detail_metrics"
+        File summary_metrics     = "${output_base_name}.genotype_concordance_summary_metrics"
+        File detail_metrics      = "${output_base_name}.genotype_concordance_detail_metrics"
         File contingency_metrics = "${output_base_name}.genotype_concordance_contingency_metrics"
-        File output_vcf = "${output_base_name}.genotype_concordance.vcf.gz"
-        File output_vcf_index = "${output_base_name}.genotype_concordance.vcf.gz.tbi"
+        File output_vcf          = "${output_base_name}.genotype_concordance.vcf.gz"
+        File output_vcf_index    = "${output_base_name}.genotype_concordance.vcf.gz.tbi"
+        File timing_info         = "timingInformation.txt"
     }
 }

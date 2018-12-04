@@ -6,6 +6,6 @@
   "VCFVariantCallerConcordance.actual_vcf_idx": "gs://broad-dsde-methods/cromwell-execution-34/HaplotypeCaller/da5689ea-2b13-4bef-8570-ccd4fe7401a2/call-HaplotypeCallerTask/NexPond-359781.chr22.vcf.tbi",
 
   "VCFVariantCallerConcordance.disk_space_gb": "512",
-  "VCFVariantCallerConcordance.mem": "16",
+  "VCFVariantCallerConcordance.mem_gb": "16",
   "VCFVariantCallerConcordance.boot_disk_size_gb": "64",
 }
