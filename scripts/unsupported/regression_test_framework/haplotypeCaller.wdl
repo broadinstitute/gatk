@@ -128,6 +128,8 @@ task HaplotypeCallerTask {
     String contamination_arg = if defined(contamination) then " --contamination " else ""
     String interval_padding_arg = if defined(interval_padding) then " --interval-padding " else ""
 
+    String index_format = if sub(out_file_name, ".*\\.", "") == "vcf" then "idx" else "tbi"
+
     # ------------------------------------------------
     # Get machine settings:
     Boolean use_ssd = false
@@ -181,7 +183,7 @@ task HaplotypeCallerTask {
     # Outputs:
     output {
         File output_vcf       = "${out_file_name}"
-        File output_vcf_index = "${out_file_name}.tbi"
+        File output_vcf_index = "${out_file_name}.${index_format}"
         File timing_info      = "timingInformation.txt"
     }
 }

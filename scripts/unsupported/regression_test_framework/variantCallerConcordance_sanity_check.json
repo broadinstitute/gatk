@@ -1,9 +1,11 @@
 {
   "VCFVariantCallerConcordance.gatk_docker": "broadinstitute/gatk:4.0.11.0",
-  "VCFVariantCallerConcordance.expected_vcf": "gs://broad-dsde-methods/cromwell-execution-34/HaplotypeCaller/bb7fcfce-36a9-4e26-8201-efbe925c11ca/call-HaplotypeCallerTask/NexPond-359781.chr22.vcf",
-  "VCFVariantCallerConcordance.expected_vcf_idx": "gs://broad-dsde-methods/cromwell-execution-34/HaplotypeCaller/bb7fcfce-36a9-4e26-8201-efbe925c11ca/call-HaplotypeCallerTask/NexPond-359781.chr22.vcf.tbi",
-  "VCFVariantCallerConcordance.actual_vcf": "gs://broad-dsde-methods/cromwell-execution-34/HaplotypeCaller/da5689ea-2b13-4bef-8570-ccd4fe7401a2/call-HaplotypeCallerTask/NexPond-359781.chr22.vcf",
-  "VCFVariantCallerConcordance.actual_vcf_idx": "gs://broad-dsde-methods/cromwell-execution-34/HaplotypeCaller/da5689ea-2b13-4bef-8570-ccd4fe7401a2/call-HaplotypeCallerTask/NexPond-359781.chr22.vcf.tbi",
+
+  "VCFVariantCallerConcordance.expected_vcf": "gs://haplotypecallerspark-evaluation/inputData/quick_sanity_check_data/NexPond-359781.chr22.vcf",
+  "VCFVariantCallerConcordance.expected_vcf_idx": "gs://haplotypecallerspark-evaluation/inputData/quick_sanity_check_data/NexPond-359781.chr22.vcf.idx",
+
+  "VCFVariantCallerConcordance.actual_vcf": "gs://haplotypecallerspark-evaluation/inputData/quick_sanity_check_data/NexPond-359781.chr22.vcf.copy.idx",
+  "VCFVariantCallerConcordance.actual_vcf_idx": "gs://haplotypecallerspark-evaluation/inputData/quick_sanity_check_data/NexPond-359781.chr22.copy.vcf.idx",
 
   "VCFVariantCallerConcordance.disk_space_gb": "512",
   "VCFVariantCallerConcordance.mem_gb": "16",

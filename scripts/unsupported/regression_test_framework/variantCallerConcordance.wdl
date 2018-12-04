@@ -142,7 +142,8 @@ task Concordance {
             Concordance \
                 ${intervals_arg}${default="" sep=" -L " intervals} \
                 ${masks_arg}${default="" sep=" -XL " masks} \
-                -truth ${truth_vcf} -eval ${eval_vcf} \
+                -truth ${truth_vcf} \
+                -eval ${eval_vcf} \
                 -tpfn "tpfn.vcf" \
                 -tpfp "tpfp.vcf" \
                 -ftnfn "ftnfn.vcf" \
