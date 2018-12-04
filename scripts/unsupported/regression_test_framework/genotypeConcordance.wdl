@@ -82,9 +82,9 @@ workflow GenotypeConcordance {
     # ------------------------------------------------
     # Outputs:
     output {
-        File vcf_out     = GenotypeConcordanceTask.output_vcf
-        File vcf_out_idx = GenotypeConcordanceTask.output_vcf_index
-        File timingInfo  = GenotypeConcordanceTask.timing_info
+        File vcf_out                        = GenotypeConcordanceTask.output_vcf
+        File vcf_out_idx                    = GenotypeConcordanceTask.output_vcf_index
+        File timingInfo                     = GenotypeConcordanceTask.timing_info
 
         File summary_metrics                = GenotypeConcordanceTask.summary_metrics
         File detail_metrics                 = GenotypeConcordanceTask.detail_metrics
@@ -127,16 +127,14 @@ task GenotypeConcordanceTask {
     Int? cpu
     Int? boot_disk_size_gb
 
-    Boolean? use_ssd
-
     # ------------------------------------------------
     # Process input args:
     String interval_list_arg = if defined(interval_list) then " -L " else ""
 
     ####################################################################################
     # Define default values and set up values for running:
-    # You may have to change the following two parameter values depending on the task requirements
-
+    Boolean use_ssd = false
+    
     # You may have to change the following two parameter values depending on the task requirements
     Int default_ram_mb = 3 * 1024
     # WARNING: In the workflow, you should calculate the disk space as an input to this task (disk_space_gb).  Please see [TODO: Link from Jose] for examples.
