@@ -52,7 +52,6 @@ workflow VCFVariantCallerConcordance {
     Int? disk_space_gb
     Int? cpu
     Int? boot_disk_size_gb
-    Boolean? use_ssd
     Int? preemptible_attempts
 
     ####################################################################################
@@ -72,7 +71,6 @@ workflow VCFVariantCallerConcordance {
             disk_space_gb = disk_space_gb,
             cpu = cpu,
             boot_disk_size_gb = boot_disk_size_gb,
-            use_ssd = use_ssd,
             preemptible_attempts = preemptible_attempts
     }
 
@@ -97,12 +95,13 @@ workflow VCFVariantCallerConcordance {
 task Concordance {
     ####################################################################################
     # Inputs:
-    File? intervals
-    File? masks
     File truth_vcf
     File truth_vcf_idx
     File eval_vcf
     File eval_vcf_idx
+
+    File? intervals
+    File? masks
 
     ####################################################################################
     # Runtime Inputs:
@@ -113,22 +112,26 @@ task Concordance {
     Int? disk_space_gb
     Int? cpu
     Int? boot_disk_size_gb
-    Boolean? use_ssd
 
-    ####################################################################################
-    # Define default values and set up values for running:
+    # ------------------------------------------------
+    # Process input args:
+    String intervals_arg = if defined(intervals) then " -L " else ""
+    String masks_arg = if defined(masks) then " -XL " else ""
+
+    # ------------------------------------------------
+    # Get machine settings:
+    Boolean use_ssd = false
+
     # You may have to change the following two parameter values depending on the task requirements
-    Int default_ram_mb = 3000
+    Int default_ram_mb = 3 * 1024
     # WARNING: In the workflow, you should calculate the disk space as an input to this task (disk_space_gb).  Please see [TODO: Link from Jose] for examples.
     Int default_disk_space_gb = 100
 
     Int default_boot_disk_size_gb = 15
 
-    Int default_min_preemptable_attempts = 2
-
     # Mem is in units of GB but our command and memory runtime values are in MB
-    Int machine_mem = if defined(mem) then mem *1000 else default_ram_mb
-    Int command_mem = machine_mem - 1000
+    Int machine_mem = if defined(mem) then mem * 1024 else default_ram_mb
+    Int command_mem = machine_mem - 1024
 
     ####################################################################################
     # Do the work:
@@ -137,8 +140,8 @@ task Concordance {
 
         gatk --java-options "-Xmx${command_mem}m" \
             Concordance \
-                ${"-L " + intervals} \
-                ${"-XL " + masks} \
+                ${intervals_arg}${default="" sep=" -L " intervals} \
+                ${masks_arg}${default="" sep=" -XL " masks} \
                 -truth ${truth_vcf} -eval ${eval_vcf} \
                 -tpfn "tpfn.vcf" \
                 -tpfp "tpfp.vcf" \
@@ -178,7 +181,7 @@ task Concordance {
         bootDiskSizeGb: select_first([disk_space_gb, default_disk_space_gb])
         disks: "local-disk " + select_first([boot_disk_size_gb, default_boot_disk_size_gb]) + if use_ssd then " SSD" else " HDD"
         docker: "${gatk_docker}"
-        preemptible: select_first([preemptible_attempts, 2])
+        preemptible: select_first([preemptible_attempts, 0])
     }
 
     ####################################################################################
