@@ -4,10 +4,10 @@
   "VCFVariantCallerConcordance.expected_vcf": "gs://haplotypecallerspark-evaluation/inputData/quick_sanity_check_data/NexPond-359781.chr22.vcf",
   "VCFVariantCallerConcordance.expected_vcf_idx": "gs://haplotypecallerspark-evaluation/inputData/quick_sanity_check_data/NexPond-359781.chr22.vcf.idx",
 
-  "VCFVariantCallerConcordance.actual_vcf": "gs://haplotypecallerspark-evaluation/inputData/quick_sanity_check_data/NexPond-359781.chr22.vcf.copy.idx",
+  "VCFVariantCallerConcordance.actual_vcf": "gs://haplotypecallerspark-evaluation/inputData/quick_sanity_check_data/NexPond-359781.chr22.copy.vcf",
   "VCFVariantCallerConcordance.actual_vcf_idx": "gs://haplotypecallerspark-evaluation/inputData/quick_sanity_check_data/NexPond-359781.chr22.copy.vcf.idx",
 
   "VCFVariantCallerConcordance.disk_space_gb": "512",
   "VCFVariantCallerConcordance.mem_gb": "16",
-  "VCFVariantCallerConcordance.boot_disk_size_gb": "64",
+  "VCFVariantCallerConcordance.boot_disk_size_gb": "64"
 }

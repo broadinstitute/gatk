@@ -152,14 +152,14 @@ task GenotypeConcordanceTask {
 
         gatk --java-options "-Xmx${command_mem}m" \
             GenotypeConcordance \
-                CALL_VCF=${call_vcf} \
-                CALL_SAMPLE=${call_sample} \
-                TRUTH_VCF=${truth_vcf} \
-                TRUTH_SAMPLE=${truth_sample} \
+                --CALL_VCF ${call_vcf} \
+                --CALL_SAMPLE ${call_sample} \
+                --TRUTH_VCF ${truth_vcf} \
+                --TRUTH_SAMPLE ${truth_sample} \
+                -O ${output_base_name} \
                 ${interval_list_arg}${default="" sep=" -L " interval_list} \
-                INTERSECT_INTERVALS=true \
-                OUTPUT_VCF=true \
-                O=${output_base_name} \
+                --INTERSECT_INTERVALS true \
+                --INTERVALS true \
 
         echo `EndTime: date +%s.%N` >> timingInformation.txt
     }
