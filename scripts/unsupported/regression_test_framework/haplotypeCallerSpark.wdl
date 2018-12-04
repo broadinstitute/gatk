@@ -182,9 +182,9 @@ task HaplotypeCallerSparkTask {
     Int executor_cores_default = 4
     String conf_options_default = ""
 
-    Int num_executors_val = if defined(num_executors) then num_executors else num_executors_default
-    Int executor_cores_val = if defined(executor_cores) then executor_cores else executor_cores_default
-    Int executor_memory_gb_val = if defined(executor_memory_gb) then executor_memory_gb else machine_mem
+    Int num_executors_val = if defined(num_executors) then num_executors * 1 else num_executors_default
+    Int executor_cores_val = if defined(executor_cores) then executor_cores * 1 else executor_cores_default
+    Int executor_memory_gb_val = if defined(executor_memory_gb) then executor_memory_gb * 1 else machine_mem
 
     String conf_options_arg = if defined(conf_options) then " --conf " else ""
 
