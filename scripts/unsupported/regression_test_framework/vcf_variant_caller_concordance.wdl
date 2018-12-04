@@ -48,7 +48,7 @@ workflow VCFVariantCallerConcordance {
     String gatk_docker
 
     File? gatk4_jar_override
-    Int? mem
+    Int? mem_gb
     Int? disk_space_gb
     Int? cpu
     Int? boot_disk_size_gb
@@ -67,7 +67,7 @@ workflow VCFVariantCallerConcordance {
 
             gatk_docker = gatk_docker,
             gatk_override = gatk4_jar_override,
-            mem = mem,
+            mem_gb = mem_gb,
             disk_space_gb = disk_space_gb,
             cpu = cpu,
             boot_disk_size_gb = boot_disk_size_gb,
@@ -107,7 +107,7 @@ task Concordance {
     # Runtime Inputs:
     String gatk_docker
     File? gatk_override
-    Int? mem
+    Int? mem_gb
     Int? preemptible_attempts
     Int? disk_space_gb
     Int? cpu
@@ -130,7 +130,7 @@ task Concordance {
     Int default_boot_disk_size_gb = 15
 
     # Mem is in units of GB but our command and memory runtime values are in MB
-    Int machine_mem = if defined(mem) then mem * 1024 else default_ram_mb
+    Int machine_mem = if defined(mem_gb) then mem_gb * 1024 else default_ram_mb
     Int command_mem = machine_mem - 1024
 
     ####################################################################################

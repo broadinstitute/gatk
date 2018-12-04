@@ -1,0 +1,17 @@
+{
+  "GenotypeConcordance.gatk_docker": "broadinstitute/gatk:4.0.11.0",
+
+  "GenotypeConcordance.truth_vcf": "gs://broad-dsde-methods/cromwell-execution-34/HaplotypeCaller/bb7fcfce-36a9-4e26-8201-efbe925c11ca/call-HaplotypeCallerTask/NexPond-359781.chr22.vcf",
+  "GenotypeConcordance.truth_index": "gs://broad-dsde-methods/cromwell-execution-34/HaplotypeCaller/bb7fcfce-36a9-4e26-8201-efbe925c11ca/call-HaplotypeCallerTask/NexPond-359781.chr22.vcf.tbi",
+  "GenotypeConcordance.truth_sample": "NA12878",
+
+  "GenotypeConcordance.call_vcf": "gs://broad-dsde-methods/cromwell-execution-34/HaplotypeCaller/da5689ea-2b13-4bef-8570-ccd4fe7401a2/call-HaplotypeCallerTask/NexPond-359781.chr22.vcf",
+  "GenotypeConcordance.call_index": "gs://broad-dsde-methods/cromwell-execution-34/HaplotypeCaller/da5689ea-2b13-4bef-8570-ccd4fe7401a2/call-HaplotypeCallerTask/NexPond-359781.chr22.vcf.tbi",
+  "GenotypeConcordance.call_sample": "NA12878",
+
+  "GenotypeConcordance.output_base_name": "sanity_check",
+
+  "GenotypeConcordance.disk_space_gb": "512",
+  "GenotypeConcordance.mem_gb": "16",
+  "GenotypeConcordance.boot_disk_size_gb": "64",
+}
