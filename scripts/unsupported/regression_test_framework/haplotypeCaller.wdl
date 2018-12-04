@@ -16,6 +16,7 @@
 #     File? interval_list                               -  Interval list over which to call variants on the given BAM file.
 #     Boolean? gvcf_mode                                -  Whether to run in GVCF mode (default: false).
 #     Float? contamination                              -  Contamination threshold for HaplotypeCaller (default: 0.0).
+#     Int? interval_padding                             -  Amount of padding (in bp) to add to each interval you are including (default: 0).
 #
 #     File gatk4_jar_override                           -  Override Jar file containing GATK 4.  Use this when overriding the docker JAR or when using a backend without docker.
 #     Int  mem_gb                                       -  Amount of memory to give to the machine running each task in this workflow (in gb).
@@ -44,6 +45,7 @@ workflow HaplotypeCaller {
     File? interval_list
     Boolean? gvcf_mode
     Float? contamination
+    Int? interval_padding
 
     File? gatk4_jar_override
     Int?  mem_gb
@@ -65,6 +67,7 @@ workflow HaplotypeCaller {
             interval_list             = interval_list,
             gvcf_mode                 = gvcf_mode,
             contamination             = contamination,
+            interval_padding          = interval_padding,
 
             out_file_name             = out_vcf_name,
 
@@ -105,6 +108,7 @@ task HaplotypeCallerTask {
     File? interval_list
     Boolean? gvcf_mode
     Float? contamination
+    Int? interval_padding
 
     # Output Names:
     String out_file_name
@@ -121,7 +125,8 @@ task HaplotypeCallerTask {
     # ------------------------------------------------
     # Process input args:
     String interval_list_arg = if defined(interval_list) then " -L " else ""
-    String contamination_arg = if defined(contamination) then " -contamination " else ""
+    String contamination_arg = if defined(contamination) then " --contamination " else ""
+    String interval_padding_arg = if defined(interval_padding) then " --interval-padding " else ""
 
     # ------------------------------------------------
     # Get machine settings:
@@ -154,7 +159,8 @@ task HaplotypeCallerTask {
                 -O ${out_file_name} \
                 -R ${ref_fasta} \
                 ${interval_list_arg}${default="" sep=" -L " interval_list} \
-                ${contamination_arg}${default="" sep=" -contamination " contamination} \
+                ${contamination_arg}${default="" sep=" --contamination " contamination} \
+                ${interval_padding_arg}${default="" sep=" --interval-padding " interval_padding} \
                 ${true="-ERC GVCF" false="" gvcf_mode}
 
         echo `EndTime: date +%s.%N` >> timingInformation.txt
