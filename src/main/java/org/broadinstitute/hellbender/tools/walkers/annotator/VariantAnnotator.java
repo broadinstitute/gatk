@@ -6,6 +6,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
 import org.broadinstitute.barclay.argparser.*;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
 import org.broadinstitute.hellbender.engine.*;
@@ -94,6 +95,7 @@ import java.util.stream.Collectors;
         oneLineSummary = "Tool for adding annotations to VCF files",
         programGroup = VariantManipulationProgramGroup.class)
 @BetaFeature
+@DocumentedFeature
 public class VariantAnnotator extends VariantWalker {
     private VariantContextWriter vcfWriter;
 
