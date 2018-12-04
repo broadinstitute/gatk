@@ -50,7 +50,8 @@ public class HaplotypeCallerSparkIntegrationTest extends CommandLineProgramTest 
     public Object[][] getHaplotypCallerTestInputs() {
         return new Object[][]{
                 {NA12878_20_21_WGS_bam, b37_reference_20_21},
-                {NA12878_20_21_WGS_cram, b37_reference_20_21}
+                // Uncomment when bai indexed CRAM is supported in Disq
+                //{NA12878_20_21_WGS_cram, b37_reference_20_21}
         };
     }
 
