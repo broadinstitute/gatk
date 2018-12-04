@@ -77,7 +77,6 @@ final docBuildDir = "$buildDir/docs"
 final pythonPackageArchiveName = 'gatkPythonPackageArchive.zip'
 final gatkCondaTemplate = "gatkcondaenv.yml.template"
 final gatkCondaYML = "gatkcondaenv.yml"
-final gatkCondaIntelYML = "gatkcondaenv.intel.yml"
 final largeResourcesFolder = "src/main/resources/large"
 final buildPrerequisitesMessage = "See https://github.com/broadinstitute/gatk#building for information on how to build GATK."
 
@@ -471,7 +470,6 @@ task collectBundleIntoDir(type: Copy) {
 
     from("$buildDir/$pythonPackageArchiveName")
     from("$buildDir/$gatkCondaYML")
-    from("$buildDir/$gatkCondaIntelYML")
     from("scripts/sv", { into("scripts/sv") })
     from("scripts/cnv_wdl/", { into("scripts/cnv_wdl") })
     from("scripts/mutect2_wdl/", { into("scripts/mutect2_wdl") })
