@@ -4,6 +4,7 @@ import com.google.common.collect.Lists;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.Hidden;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
 
 import java.io.Serializable;
 import java.util.List;
@@ -11,7 +12,7 @@ import java.util.List;
 /**
  * Set of arguments related to the {@link org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler}
  */
-public final class ReadThreadingAssemblerArgumentCollection implements Serializable {
+public abstract class ReadThreadingAssemblerArgumentCollection implements Serializable {
     private static final long serialVersionUID = 1L;
 
     // -----------------------------------------------------------------------------------------------
@@ -49,20 +50,6 @@ public final class ReadThreadingAssemblerArgumentCollection implements Serializa
     public int numPruningSamples = 1;
 
     /**
-     * As of version 3.3, this argument is no longer needed because dangling end recovery is now the default behavior. See GATK 3.3 release notes for more details.
-     */
-    @Deprecated
-    @Argument(fullName="recover-dangling-heads", doc="This argument is deprecated since version 3.3", optional = true)
-    public boolean DEPRECATED_RecoverDanglingHeads = false;
-
-    /**
-     * By default, the read threading assembler will attempt to recover dangling heads and tails. See the `minDanglingBranchLength` argument documentation for more details.
-     */
-    @Hidden
-    @Argument(fullName="do-not-recover-dangling-branches", doc="Disable dangling head and tail recovery", optional = true)
-    public boolean doNotRecoverDanglingBranches = false;
-
-    /**
      * When constructing the assembly graph we are often left with "dangling" branches.  The assembly engine attempts to rescue these branches
      * by merging them back into the main graph.  This argument describes the minimum length of a dangling branch needed for the engine to
      * try to rescue it.  A smaller number here will lead to higher sensitivity to real variation but also to a higher number of false positives.
@@ -71,13 +58,7 @@ public final class ReadThreadingAssemblerArgumentCollection implements Serializa
     @Argument(fullName="min-dangling-branch-length", doc="Minimum length of a dangling branch to attempt recovery", optional = true)
     public int minDanglingBranchLength = 4;
 
-    /**
-     * This argument is specifically intended for 1000G consensus analysis mode. Setting this flag will inject all
-     * provided alleles to the assembly graph but will not forcibly genotype all of them.
-     */
-    @Advanced
-    @Argument(fullName="consensus", doc="1000G consensus mode", optional = true)
-    public boolean consensusMode = false;
+
 
     /**
      * The assembly graph can be quite complex, and could imply a very large number of possible haplotypes.  Each haplotype
@@ -92,13 +73,6 @@ public final class ReadThreadingAssemblerArgumentCollection implements Serializa
     public int maxNumHaplotypesInPopulation = 128;
 
     /**
-     * Enabling this argument may cause fundamental problems with the assembly graph itself.
-     */
-    @Hidden
-    @Argument(fullName="error-correct-kmers", doc = "Use an exploratory algorithm to error correct the kmers used during assembly", optional = true)
-    public boolean errorCorrectKmers = false;
-
-    /**
      * Paths with fewer supporting kmers than the specified threshold will be pruned from the graph.
      *
      * Be aware that this argument can dramatically affect the results of variant calling and should only be used with great caution.
@@ -110,15 +84,6 @@ public final class ReadThreadingAssemblerArgumentCollection implements Serializa
     @Advanced
     @Argument(fullName="min-pruning", doc = "Minimum support to not prune paths in the graph", optional = true)
     public int minPruneFactor = 2;
-
-    /**
-     * A single edge multiplicity cutoff for pruning doesn't work in samples with variable depths, for example exomes
-     * and RNA.  This parameter activates a probabilistic algorithm for pruning the assembly graph that considers the
-     * likelihood that each chain in the graph comes from real variation.
-     */
-    @Advanced
-    @Argument(fullName="adaptive-pruning", doc = "Use an adaptive algorithm for pruning paths in the graph", optional = true)
-    public boolean useAdaptivePruning = false;
 
     /**
      * Initial base error rate guess for the probabilistic adaptive pruning model.  Results are not very sensitive to this
@@ -168,4 +133,8 @@ public final class ReadThreadingAssemblerArgumentCollection implements Serializa
     @Hidden
     @Argument(fullName="min-observations-for-kmer-to-be-solid", doc = "A k-mer must be seen at least these times for it considered to be solid", optional = true)
     public int minObservationsForKmerToBeSolid = 20;
+
+    public abstract ReadThreadingAssembler makeReadThreadingAssembler();
+
+    public boolean consensusMode() { return false; }
 }

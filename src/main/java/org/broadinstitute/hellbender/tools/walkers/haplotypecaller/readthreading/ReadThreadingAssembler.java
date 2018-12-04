@@ -62,8 +62,6 @@ public final class ReadThreadingAssembler {
     private int pruneFactor;
     private final ChainPruner<MultiDeBruijnVertex, MultiSampleEdge> chainPruner;
 
-    protected boolean errorCorrectKmers = false;
-
     private File debugGraphOutputPath = null;  //Where to write debug graphs, if unset it defaults to the current working dir
     private File graphOutputPath = null;
 
@@ -572,18 +570,6 @@ public final class ReadThreadingAssembler {
     //
     // -----------------------------------------------------------------------------------------------
 
-    public int getPruneFactor() {
-        return pruneFactor;
-    }
-
-    public boolean shouldErrorCorrectKmers() {
-        return errorCorrectKmers;
-    }
-
-    public void setErrorCorrectKmers(boolean errorCorrectKmers) {
-        this.errorCorrectKmers = errorCorrectKmers;
-    }
-
     public void setGraphWriter(File graphOutputPath) {
         this.graphOutputPath = graphOutputPath;
     }
@@ -609,10 +595,6 @@ public final class ReadThreadingAssembler {
     }
 
     public boolean isRecoverDanglingBranches() { return recoverDanglingBranches; }
-
-    public void setPruneFactor(final int pruneFactor) {
-        this.pruneFactor = pruneFactor;
-    }
 
     public void setDebugGraphTransformations(final boolean debugGraphTransformations) {
         this.debugGraphTransformations = debugGraphTransformations;
