@@ -56,17 +56,17 @@ task GenotypeConcordance {
     ####################################################################################
     # Define default values and set up values for running:
     # You may have to change the following two parameter values depending on the task requirements
-    Int default_ram_mb = 3000
+
+    # You may have to change the following two parameter values depending on the task requirements
+    Int default_ram_mb = 3 * 1024
     # WARNING: In the workflow, you should calculate the disk space as an input to this task (disk_space_gb).  Please see [TODO: Link from Jose] for examples.
     Int default_disk_space_gb = 100
 
     Int default_boot_disk_size_gb = 15
 
-    Int default_min_preemptable_attempts = 2
-
     # Mem is in units of GB but our command and memory runtime values are in MB
-    Int machine_mem = if defined(mem) then mem *1000 else default_ram_mb
-    Int command_mem = machine_mem - 1000
+    Int machine_mem = if defined(mem) then mem * 1024 else default_ram_mb
+    Int command_mem = machine_mem - 1024
 
     ####################################################################################
     # Do the work:
@@ -93,7 +93,7 @@ task GenotypeConcordance {
         bootDiskSizeGb: select_first([disk_space_gb, default_disk_space_gb])
         disks: "local-disk " + select_first([boot_disk_size_gb, default_boot_disk_size_gb]) + if use_ssd then " SSD" else " HDD"
         docker: "${gatk_docker}"
-        preemptible: select_first([preemptible_attempts, default_min_preemptable_attempts])
+        preemptible: select_first([preemptible_attempts, 0])
     }
 
     ####################################################################################
