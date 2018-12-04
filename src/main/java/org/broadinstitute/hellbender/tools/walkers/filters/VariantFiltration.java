@@ -83,7 +83,7 @@ import static java.util.Collections.singleton;
  *   --filter-expression "MQ0 > 50"
  * </pre>
  *
- * <p>are preferable to a single compound expression such as this:
+ * are preferable to a single compound expression such as this:
  *
  *  <pre>
  *    gatk VariantFiltration \
@@ -93,11 +93,6 @@ import static java.util.Collections.singleton;
  *    --filter-name "my_filter" \
  *    --filter-expression "AB < 0.2 || MQ0 > 50"
  *  </pre>
- *
- * <p>
- * </p>Please see <a href='https://software.broadinstitute.org/gatk/documentation/article.php?id=1255'>this
- * document</a> for more details on how to compose and use filtering expressions effectively.</p>
- *
  */
 @CommandLineProgramProperties(
         summary = "Filter variant calls based on INFO and/or FORMAT annotations.",
