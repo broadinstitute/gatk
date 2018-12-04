@@ -13,5 +13,5 @@
 
   "GenotypeConcordance.disk_space_gb": "512",
   "GenotypeConcordance.mem_gb": "16",
-  "GenotypeConcordance.boot_disk_size_gb": "64",
+  "GenotypeConcordance.boot_disk_size_gb": "64"
 }
