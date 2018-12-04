@@ -1,0 +1,28 @@
+{
+  "HaplotypeCallerSpark.gatk_docker": "broadinstitute/gatk:4.0.11.0",
+
+  "HaplotypeCallerSpark.input_bam": "gs://haplotypecallerspark-evaluation/inputData/NexPond-359781.bam",
+  "HaplotypeCallerSpark.input_bam_index": "gs://haplotypecallerspark-evaluation/inputData/NexPond-359781.bai",
+  "HaplotypeCallerSpark.ref_fasta": "gs://broad-references/hg19/v0/Homo_sapiens_assembly19.fasta",
+  "HaplotypeCallerSpark.ref_fasta_index": "gs://broad-references/hg19/v0/Homo_sapiens_assembly19.fasta.fai",
+  "HaplotypeCallerSpark.ref_fasta_dict": "gs://broad-references/hg19/v0/Homo_sapiens_assembly19.dict",
+
+  "HaplotypeCallerSpark.interval_list": "gs://haplotypecallerspark-evaluation/inputData/NIST.chr22.interval_list",
+  "HaplotypeCallerSpark.gvcf_mode": "false",
+
+  "HaplotypeCallerSpark.out_vcf_name": "NexPond-359781.chr22.vcf",
+
+  "HaplotypeCallerSpark.spark_runner": "GCS",
+  "HaplotypeCallerSpark.cluster": "${DATAPROC_CLUSTER_NAME}-seven",
+  "HaplotypeCallerSpark.project": "broad-dsde-dev",
+  "HaplotypeCallerSpark.num_executors": "7",
+  "HaplotypeCallerSpark.executor_cores": "8",
+  "HaplotypeCallerSpark.executor_memory_gb": "4",
+  "HaplotypeCallerSpark.conf_options": "spark.yarn.executor.memoryOverhead=600",
+
+  "HaplotypeCallerSpark.disk_space_gb": "512",
+  "HaplotypeCallerSpark.boot_disk_size_gb": "64",
+  "HaplotypeCallerSpark.mem_gb": "32"
+}
+
+
