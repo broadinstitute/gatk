@@ -38,6 +38,7 @@ workflow GenotypeConcordance {
     File call_vcf
     File call_index
     String call_sample
+
     File truth_vcf
     File truth_index
     String truth_sample
@@ -60,6 +61,7 @@ workflow GenotypeConcordance {
             call_vcf                  = call_vcf,
             call_index                = call_index,
             call_sample               = call_sample,
+
             truth_vcf                 = truth_vcf,
             truth_index               = truth_index,
             truth_sample              = truth_sample,
