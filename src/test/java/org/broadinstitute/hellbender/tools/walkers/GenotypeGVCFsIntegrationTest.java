@@ -134,7 +134,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
     @DataProvider(name = "gvcfWithPPs")
     public Object[][] gvcfWithPPs() {
         return new Object[][] {
-                {getTestFile("../../haplotypecaller/expected.testGVCFMode.gatk4.posteriors.g.vcf"),
+                {getTestFile("../../GenomicsDBImport/expected.testGVCFMode.gatk4.posteriors.g.vcf"),
                         getTestFile( "expected.posteriors.genotyped.vcf"), NO_EXTRA_ARGS, b37_reference_20_21}
         };
     }
