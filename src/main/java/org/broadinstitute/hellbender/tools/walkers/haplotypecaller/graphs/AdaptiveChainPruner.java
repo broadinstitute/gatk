@@ -1,15 +1,12 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 
-import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.math3.util.FastMath;
-import org.apache.commons.math3.util.Pair;
 import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2Engine;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 public class AdaptiveChainPruner<V extends BaseVertex, E extends BaseEdge> extends ChainPruner<V,E> {
     private final double initialErrorProbability;
@@ -78,8 +75,7 @@ public class AdaptiveChainPruner<V extends BaseVertex, E extends BaseEdge> exten
 
         return FastMath.max(leftLogOdds, rightLogOdds);
     }
-
-    // is the chain
+    
     private boolean isChainPossibleVariant(final Path<V,E> chain, final BaseGraph<V,E> graph) {
         final int leftTotalMultiplicity = MathUtils.sumIntFunction(graph.outgoingEdgesOf(chain.getFirstVertex()), E::getMultiplicity);
         final int rightTotalMultiplicity = MathUtils.sumIntFunction(graph.incomingEdgesOf(chain.getLastVertex()), E::getMultiplicity);
