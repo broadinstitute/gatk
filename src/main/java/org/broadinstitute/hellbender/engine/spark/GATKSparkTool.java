@@ -78,6 +78,8 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     public static final String NUM_REDUCERS_LONG_NAME = "num-reducers";
     public static final String SHARDED_OUTPUT_LONG_NAME = "sharded-output";
     public static final String OUTPUT_SHARD_DIR_LONG_NAME = "output-shard-tmp-dir";
+    public static final String WRITE_BAI_LONG_NAME = "write-bai";
+    public static final String WRITE_SBI_LONG_NAME = "write-sbi";
 
     @ArgumentCollection
     public final ReferenceInputArgumentCollection referenceArguments = requiresReference() ? new RequiredReferenceInputArgumentCollection() :  new OptionalReferenceInputArgumentCollection();
@@ -118,6 +120,16 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
             fullName = NUM_REDUCERS_LONG_NAME,
             optional = true)
     protected int numReducers = 0;
+
+    @Argument(doc = "For tools that write output BAM, write an BAI file. Defaults to true.",
+            fullName = WRITE_SBI_LONG_NAME,
+            optional = true)
+    protected boolean writeBai = true;
+
+    @Argument(doc = "For tools that write output BAM, write an SBI file. Defaults to true.",
+            fullName = WRITE_SBI_LONG_NAME,
+            optional = true)
+    protected boolean writeSbi = true;
 
     private ReadsSparkSource readsSource;
     private SAMFileHeader readsHeader;
@@ -345,7 +357,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
             ReadsSparkSink.writeReads(ctx, outputFile,
                     hasReference() ? referenceArguments.getReferencePath().toAbsolutePath().toUri().toString() : null,
                     reads, header, shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE,
-                    getRecommendedNumReducers(), shardedPartsDir);
+                    getRecommendedNumReducers(), shardedPartsDir, writeBai, writeSbi);
         } catch (IOException e) {
             throw new UserException.CouldNotCreateOutputFile(outputFile,"writing failed", e);
         }
