@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyResul
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyResultSet;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReadErrorCorrector;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.*;
+import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
@@ -58,30 +59,36 @@ public final class ReadThreadingAssembler {
     private int minDanglingBranchLength = 0;
     
     protected byte minBaseQualityToUseInAssembly = DEFAULT_MIN_BASE_QUALITY_TO_USE;
-    private int pruneFactor = 2;
-
-    protected boolean errorCorrectKmers = false;
+    private int pruneFactor;
+    private final ChainPruner<MultiDeBruijnVertex, MultiSampleEdge> chainPruner;
 
     private File debugGraphOutputPath = null;  //Where to write debug graphs, if unset it defaults to the current working dir
     private File graphOutputPath = null;
 
-    public ReadThreadingAssembler(final int maxAllowedPathsForReadThreadingAssembler, final List<Integer> kmerSizes, final boolean dontIncreaseKmerSizesForCycles, final boolean allowNonUniqueKmersInRef, final int numPruningSamples) {
+    public ReadThreadingAssembler(final int maxAllowedPathsForReadThreadingAssembler, final List<Integer> kmerSizes,
+                                  final boolean dontIncreaseKmerSizesForCycles, final boolean allowNonUniqueKmersInRef,
+                                  final int numPruningSamples, final int pruneFactor, final boolean useAdaptivePruning,
+                                  final double initialErrorRateForPruning, final double pruningLog10OddsThreshold,
+                                  final int maxUnprunedVariants) {
         Utils.validateArg( maxAllowedPathsForReadThreadingAssembler >= 1, "numBestHaplotypesPerGraph should be >= 1 but got " + maxAllowedPathsForReadThreadingAssembler);
         this.kmerSizes = kmerSizes;
         this.dontIncreaseKmerSizesForCycles = dontIncreaseKmerSizesForCycles;
         this.allowNonUniqueKmersInRef = allowNonUniqueKmersInRef;
         this.numPruningSamples = numPruningSamples;
+        this.pruneFactor = pruneFactor;
+        chainPruner = useAdaptivePruning ? new AdaptiveChainPruner<>(initialErrorRateForPruning, MathUtils.log10ToLog(pruningLog10OddsThreshold), maxUnprunedVariants) :
+                new LowWeightChainPruner<>(pruneFactor);
         numBestHaplotypesPerGraph = maxAllowedPathsForReadThreadingAssembler;
     }
 
     @VisibleForTesting
-    ReadThreadingAssembler(final int maxAllowedPathsForReadThreadingAssembler, final List<Integer> kmerSizes) {
-        this(maxAllowedPathsForReadThreadingAssembler, kmerSizes, true, true, 1);
+    ReadThreadingAssembler(final int maxAllowedPathsForReadThreadingAssembler, final List<Integer> kmerSizes, final int pruneFactor) {
+        this(maxAllowedPathsForReadThreadingAssembler, kmerSizes, true, true, 1, pruneFactor, false, 0.001, 2, Integer.MAX_VALUE);
     }
 
     @VisibleForTesting
     ReadThreadingAssembler() {
-        this(DEFAULT_NUM_PATHS_PER_GRAPH, Arrays.asList(25));
+        this(DEFAULT_NUM_PATHS_PER_GRAPH, Arrays.asList(25), 2);
     }
 
     /**
@@ -487,7 +494,7 @@ public final class ReadThreadingAssembler {
         // prune all of the chains where all edges have multiplicity < pruneFactor.  This must occur
         // before recoverDanglingTails in the graph, so that we don't spend a ton of time recovering
         // tails that we'll ultimately just trim away anyway, as the dangling tail edges have weight of 1
-        rtgraph.pruneLowWeightChains(pruneFactor);
+        chainPruner.pruneLowWeightChains(rtgraph);
 
         // look at all chains in the graph that terminate in a non-ref node (dangling sources and sinks) and see if
         // we can recover them by merging some N bases from the chain back into the reference
@@ -563,18 +570,6 @@ public final class ReadThreadingAssembler {
     //
     // -----------------------------------------------------------------------------------------------
 
-    public int getPruneFactor() {
-        return pruneFactor;
-    }
-
-    public boolean shouldErrorCorrectKmers() {
-        return errorCorrectKmers;
-    }
-
-    public void setErrorCorrectKmers(boolean errorCorrectKmers) {
-        this.errorCorrectKmers = errorCorrectKmers;
-    }
-
     public void setGraphWriter(File graphOutputPath) {
         this.graphOutputPath = graphOutputPath;
     }
@@ -600,10 +595,6 @@ public final class ReadThreadingAssembler {
     }
 
     public boolean isRecoverDanglingBranches() { return recoverDanglingBranches; }
-
-    public void setPruneFactor(final int pruneFactor) {
-        this.pruneFactor = pruneFactor;
-    }
 
     public void setDebugGraphTransformations(final boolean debugGraphTransformations) {
         this.debugGraphTransformations = debugGraphTransformations;

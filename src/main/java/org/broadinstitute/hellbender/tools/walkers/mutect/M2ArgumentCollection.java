@@ -49,6 +49,9 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public static final double DEFAULT_INITIAL_LOD = 2.0;
     public static final double DEFAULT_MITO_INITIAL_LOD = 0;
 
+    @Override
+    protected boolean useMutectAssemblerArgumentCollection() { return true; }
+
     //TODO: HACK ALERT HACK ALERT HACK ALERT
     //TODO: GATK4 does not yet have a way to tag inputs, eg -I:tumor tumor.bam -I:normal normal.bam,
     //TODO: so for now we require the user to specify bams *both* as inputs, with -I tumor.bam -I normal.bam

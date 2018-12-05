@@ -189,18 +189,9 @@ public final class AssemblyBasedCallerUtils {
 
     public static ReadThreadingAssembler createReadThreadingAssembler(final AssemblyBasedCallerArgumentCollection args) {
         final ReadThreadingAssemblerArgumentCollection rtaac = args.assemblerArgs;
-        final ReadThreadingAssembler assemblyEngine = new ReadThreadingAssembler(rtaac.maxNumHaplotypesInPopulation, rtaac.kmerSizes, rtaac.dontIncreaseKmerSizesForCycles, rtaac.allowNonUniqueKmersInRef, rtaac.numPruningSamples);
-        assemblyEngine.setErrorCorrectKmers(rtaac.errorCorrectKmers);
-        assemblyEngine.setPruneFactor(rtaac.minPruneFactor);
+        final ReadThreadingAssembler assemblyEngine = rtaac.makeReadThreadingAssembler();
         assemblyEngine.setDebug(args.debug);
-        assemblyEngine.setDebugGraphTransformations(rtaac.debugGraphTransformations);
-        assemblyEngine.setRecoverDanglingBranches(!rtaac.doNotRecoverDanglingBranches);
-        assemblyEngine.setMinDanglingBranchLength(rtaac.minDanglingBranchLength);
         assemblyEngine.setMinBaseQualityToUseInAssembly(args.minBaseQualityScore);
-
-        if ( rtaac.graphOutput != null ) {
-            assemblyEngine.setGraphWriter(new File(rtaac.graphOutput));
-        }
 
         return assemblyEngine;
     }

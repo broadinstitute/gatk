@@ -263,7 +263,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             hcArgs.setSampleContamination(AlleleBiasedDownsamplingUtils.loadContaminationFile(hcArgs.CONTAMINATION_FRACTION_FILE, hcArgs.CONTAMINATION_FRACTION, sampleSet, logger));
         }
 
-        if ( hcArgs.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES && hcArgs.assemblerArgs.consensusMode ) {
+        if ( hcArgs.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES && hcArgs.assemblerArgs.consensusMode() ) {
             throw new UserException("HaplotypeCaller cannot be run in both GENOTYPE_GIVEN_ALLELES mode and in consensus mode at the same time. Please choose one or the other.");
         }
 
@@ -604,7 +604,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                 assemblyResult.getPaddedReferenceLoc(),
                 regionForGenotyping.getSpan(),
                 features,
-                (hcArgs.assemblerArgs.consensusMode ? Collections.<VariantContext>emptyList() : givenAlleles),
+                (hcArgs.assemblerArgs.consensusMode() ? Collections.<VariantContext>emptyList() : givenAlleles),
                 emitReferenceConfidence(),
                 hcArgs.maxMnpDistance,
                 readsHeader,

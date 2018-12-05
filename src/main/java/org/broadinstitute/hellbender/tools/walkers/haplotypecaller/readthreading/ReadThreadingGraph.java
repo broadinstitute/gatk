@@ -167,7 +167,8 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
      * @param sequence a non-null sequence
      * @param isRef is this the reference sequence?
      */
-    final void addSequence(final byte[] sequence, final boolean isRef) {
+    @VisibleForTesting
+    public final void addSequence(final byte[] sequence, final boolean isRef) {
         addSequence("anonymous", sequence, isRef);
     }
 
