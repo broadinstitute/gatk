@@ -197,7 +197,7 @@ task HaplotypeCallerSparkTask {
 
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
 
-        echo `StartTime: date +%s.%N` > timingInformation.txt
+        echo "StartTime: `date +%s.%N`" > timingInformation.txt
 
         gatk --java-options "-Xmx${command_mem}m" \
             HaplotypeCallerSpark \
@@ -218,7 +218,7 @@ task HaplotypeCallerSparkTask {
                 --executor-memory ${executor_memory_gb_val}g \
                 ${conf_options_arg}${default="" sep=" --conf " conf_options} \
 
-        echo `EndTime: date +%s.%N` >> timingInformation.txt
+        echo "EndTime: `date +%s.%N`" >> timingInformation.txt
     >>>
 
     # ------------------------------------------------
