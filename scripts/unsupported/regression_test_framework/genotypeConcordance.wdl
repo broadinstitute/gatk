@@ -148,7 +148,8 @@ task GenotypeConcordanceTask {
     command {
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
 
-        echo "StartTime: `date +%s.%N`" > timingInformation.txt
+        startTime=`date +%s.%N`
+        echo "StartTime: $startTime" > timingInformation.txt
 
         gatk --java-options "-Xmx${command_mem}m" \
             GenotypeConcordance \
@@ -160,7 +161,10 @@ task GenotypeConcordanceTask {
                 ${interval_list_arg}${default="" sep=" --INTERVALS " interval_list} \
                 --INTERSECT_INTERVALS true \
 
-        echo "EndTime: `date +%s.%N`" >> timingInformation.txt
+        endTime=`date +%s.%N`
+        echo "EndTime: $endTime" >> timingInformation.txt
+        elapsedTime=`echo "scale=5;$endTime - $startTime"`
+        echo "Elapsed Time: $elapsedTime" >> timingInformation.txt
     }
 
     ####################################################################################
