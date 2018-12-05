@@ -205,15 +205,14 @@ public final class AlignmentUtils {
 
     public static Tuple<byte[], byte[]> getBasesAndBaseQualitiesAlignedOneToOne(final GATKRead read, final byte gapCharacter, final byte qualityPadCharacter) {
         Utils.nonNull(read);
-        final Cigar cigar = read.getCigar();
         final byte[] bases = read.getBasesNoCopy();
         final byte[] baseQualities = read.getBaseQualitiesNoCopy();
-        final int numCigarElements = cigar.numCigarElements();
+        final int numCigarElements = read.numCigarElements();
         boolean sawIndel = false;
 
         // Check if the cigar contains indels
         for (int i = 0; i < numCigarElements; i++) {
-            final CigarOperator e = cigar.getCigarElement(i).getOperator();
+            final CigarOperator e = read.getCigarElement(i).getOperator();
             if (e == CigarOperator.INSERTION || e == CigarOperator.DELETION) {
                 sawIndel = true;
                 break;
@@ -228,8 +227,8 @@ public final class AlignmentUtils {
             final byte[] paddedBaseQualities = new byte[numberRefBasesIncludingSoftclips];
             int literalPos = 0;
             int paddedPos = 0;
-            for ( int i = 0; i < cigar.numCigarElements(); i++ ) {
-                final CigarElement ce = cigar.getCigarElement(i);
+            for ( int i = 0; i < read.numCigarElements(); i++ ) {
+                final CigarElement ce = read.getCigarElement(i);
                 final CigarOperator co = ce.getOperator();
                 if (co.consumesReadBases()) {
                     if (!co.consumesReferenceBases()) {
