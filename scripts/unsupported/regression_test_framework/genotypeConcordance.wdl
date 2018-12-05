@@ -82,9 +82,6 @@ workflow GenotypeConcordance {
     # ------------------------------------------------
     # Outputs:
     output {
-        File output_vcf                     = GenotypeConcordanceTask.output_vcf
-        File output_vcf_index               = GenotypeConcordanceTask.output_vcf_index
-
         File summary_metrics                = GenotypeConcordanceTask.summary_metrics
         File detail_metrics                 = GenotypeConcordanceTask.detail_metrics
         File contingency_metrics            = GenotypeConcordanceTask.contingency_metrics
@@ -151,7 +148,7 @@ task GenotypeConcordanceTask {
         startTime=`date +%s.%N`
         echo "StartTime: $startTime" > timingInformation.txt
 
-        gatk --java-options "-Xmx${command_mem}m" \
+        gatk --java-options "-Xmx${command_mem}m -DGATK_STACKTRACE_ON_USER_EXCEPTION=true" \
             GenotypeConcordance \
                 --CALL_VCF ${call_vcf} \
                 --CALL_SAMPLE ${call_sample} \
@@ -184,8 +181,6 @@ task GenotypeConcordanceTask {
         File summary_metrics     = "${output_base_name}.genotype_concordance_summary_metrics"
         File detail_metrics      = "${output_base_name}.genotype_concordance_detail_metrics"
         File contingency_metrics = "${output_base_name}.genotype_concordance_contingency_metrics"
-        File output_vcf          = "${output_base_name}.genotype_concordance.vcf.gz"
-        File output_vcf_index    = "${output_base_name}.genotype_concordance.vcf.gz.tbi"
         File timing_info         = "timingInformation.txt"
     }
 }

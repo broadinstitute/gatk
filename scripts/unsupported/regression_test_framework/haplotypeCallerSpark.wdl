@@ -200,7 +200,7 @@ task HaplotypeCallerSparkTask {
         startTime=`date +%s.%N`
         echo "StartTime: $startTime" > timingInformation.txt
 
-        gatk --java-options "-Xmx${command_mem}m" \
+        gatk --java-options "-Xmx${command_mem}m -DGATK_STACKTRACE_ON_USER_EXCEPTION=true" \
             HaplotypeCallerSpark \
                 -I ${input_bam} \
                 -L ${interval_list} \
