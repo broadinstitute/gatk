@@ -98,7 +98,7 @@ public class M2FiltersArgumentCollection extends AssemblyBasedCallerArgumentColl
     public int maxMedianFragmentLengthDifference = 10000;
 
     @Argument(fullName = MIN_MEDIAN_READ_POSITION_LONG_NAME, optional = true, doc = "filter variants for which the median position of alt alleles within reads is too near the end of reads.")
-    public int minMedianReadPosition = 5;
+    public int minMedianReadPosition = 1;
 
     @Argument(fullName = MAX_EVENTS_IN_REGION_LONG_NAME, optional = true, doc = "Variants coming from an assembly region with more than this many events are filtered")
     public int maxEventsInRegion = 2;
