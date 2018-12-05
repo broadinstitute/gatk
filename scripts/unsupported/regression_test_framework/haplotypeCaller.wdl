@@ -152,7 +152,7 @@ task HaplotypeCallerTask {
 
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
 
-        echo `StartTime: date +%s.%N` > timingInformation.txt
+        echo "StartTime: `date +%s.%N`" > timingInformation.txt
 
         gatk --java-options "-Xmx${command_mem}m" \
             HaplotypeCaller \
@@ -165,7 +165,7 @@ task HaplotypeCallerTask {
                 ${interval_padding_arg}${default="" sep=" --interval-padding " interval_padding} \
                 ${true="-ERC GVCF" false="" gvcf_mode}
 
-        echo `EndTime: date +%s.%N` >> timingInformation.txt
+        echo "EndTime: `date +%s.%N`" >> timingInformation.txt
     >>>
 
     # ------------------------------------------------
