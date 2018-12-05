@@ -56,7 +56,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     private static final String NA_24385 = largeFileTestDir + "NA24385.vcf.gz";
     private static final String NA_12878_PHASED = largeFileTestDir + "NA12878.phasedData.Chr20.vcf"; //NOTE: this is not phased according to the vcf spec but it reflects phasing currently produced by haplotype caller
     private static final String MULTIPLOID_DATA_HG37 = largeFileTestDir + "gvcfs/HapMap5plex.ploidy10.b37.g.vcf";
-    private static final String NA12878_HG37 = toolsTestDir + "haplotypecaller/expected.testGVCFMode.gatk4.g.vcf";
+    private static final String NA12878_HG37 = toolsTestDir + "GenomicsDBImport/expected.testGVCFMode.gatk4.g.vcf";
     private static final String MULTIPLOID_EXPECTED_RESULT = toolsTestDir + "GenomicsDBImport/expected.testGenomicsDBImportWithNonDiploidData.vcf";
     private static final String MNP_GVCF = toolsTestDir + "GenomicsDBImport/mnp.input.g.vcf";
     private static final String ARTIFICIAL_PHASED = getTestDataDir() + "/ArtificalPhasedData.1.g.vcf";
@@ -115,7 +115,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     private static final String SAMPLE_NAME_KEY = "SN";
     private static final String ANOTHER_ATTRIBUTE_KEY = "AA";
 
-    private static final List<String> GVCFS_WITH_NEW_MQ = Arrays.asList(toolsTestDir + "/haplotypecaller/expected.testGVCFMode.gatk4.g.vcf", getTestDataDir() + "/walkers/CombineGVCFs/YRIoffspring.chr20snippet.g.vcf");
+    private static final List<String> GVCFS_WITH_NEW_MQ = Arrays.asList(toolsTestDir + "/GenomicsDBImport/expected.testGVCFMode.gatk4.g.vcf", getTestDataDir() + "/walkers/CombineGVCFs/YRIoffspring.chr20snippet.g.vcf");
     private static final String COMBINED_WITH_NEW_MQ = toolsTestDir + "/walkers/GenomicsDBImport/newMQcalc.combined.g.vcf";
     private static final List<SimpleInterval> INTERVAL2 = Arrays.asList(new SimpleInterval("20", 1, 11_000_000));
     private static final List<String> ATTRIBUTES_TO_IGNORE = Arrays.asList("RAW_MQ","RAW_MQandDP");  //CombineGVCFs doesn't support the old RAW_MQ anymore
