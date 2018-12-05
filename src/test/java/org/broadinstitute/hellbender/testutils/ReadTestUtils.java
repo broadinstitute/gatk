@@ -120,4 +120,11 @@ public final class ReadTestUtils {
             return Pair.of(header, reads);
         }
     }
+
+    /**
+     * Method that takes a GATKRead and returns all of the necessary arguments needed to replicate that read
+     * in a test using ArtificialReadUtils.
+     *
+     * NOTE: This method is designed to make debugger assisted fixing
+     */
 }

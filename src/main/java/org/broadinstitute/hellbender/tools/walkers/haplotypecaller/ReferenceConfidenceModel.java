@@ -6,9 +6,12 @@ import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.Locatable;
+import htsjdk.samtools.util.Tuple;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFSimpleHeaderLine;
+import javafx.util.Pair;
+import org.broadinstitute.hellbender.engine.AlignmentContext;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.PloidyModel;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.PosteriorProbabilitiesUtils;
@@ -18,8 +21,7 @@ import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
-import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
-import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.*;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
@@ -462,49 +464,151 @@ public class ReferenceConfidenceModel {
     }
 
     /**
+     * Compute the sum of mismatching base qualities for readBases aligned to refBases at readStart / refStart
+     * assuming no insertions or deletions in the read w.r.t. the reference
+     *
+     * @param readBases non-null bases of the read
+     * @param readQuals non-null quals of the read
+     * @param readStart the starting position of the read (i.e., that aligns it to a position in the reference)
+     * @param refBases the reference bases
+     * @param refStart the offset into refBases that aligns to the readStart position in readBases
+     * @return an array containing the sum of quality scores for readBases that mismatch following this base and their corresponding ref base for each read base in readBases
+     */
+    @VisibleForTesting
+    int[] calculateBaselineMMQualities(final byte[] readBases,
+                                final byte[] readQuals,
+                                final int readStart,
+                                final byte[] refBases,
+                                final int refStart) {
+        final int n = Math.min(readBases.length - readStart, refBases.length - refStart);
+        int[] results = new int[n];
+        int sum = 0;
+
+        for ( int i = n - 1; i >= 0; i-- ) {
+            final byte readBase = readBases[readStart + i];
+            final byte refBase  = refBases[refStart + i];
+            if ( !Nucleotide.intersect(readBase, refBase) && !(readBase == AlignmentUtils.GAP_CHARACTER)) {
+                sum += readQuals[readStart + i];
+            }
+            results[i] = sum;
+        }
+
+        return results;
+    }
+
+    /**
      * Compute whether a read is informative to eliminate an indel of size <= maxIndelSize segregating at readStart/refStart
      *
+     * This function works by walking forwards from the back of the read examining mismatches according to each insertion/deletion
+     * at the site of examination and simultaneously determines wheather the read is informative at each postion. These
+     * results are cached and called upon to answer future queries about the read offset informativeness.
+     *
+     * NOTE: the caching code makes the assumption that this function will be called over reference bases in ascending order, the
+     *       results are undefined and will likely be wrong if used in any other way, if calling this method out of order set,
+     *       useCachedResults to false
+     *
      * @param read the read
-     * @param readStart the index with respect to @{param}refBases where the read starts
+     * @param readStart the index with respect to @{param}refBases where the read starts (this is the "IGV View" offset for the read)
      * @param refBases the reference bases
      * @param refStart the offset into refBases that aligns to the readStart position in readBases
      * @param maxIndelSize the max indel size to consider for the read to be informative
+     * @param useCachedResults if false, ignore cached results for informative indel sizes (useful for debugging)
      * @return true if read can eliminate the possibility that there's an indel of size <= maxIndelSize segregating at refStart
      */
     @VisibleForTesting
     boolean isReadInformativeAboutIndelsOfSize(final GATKRead read,
-                                             final int readStart,
-                                             final byte[] refBases,
-                                             final int refStart,
-                                             final int maxIndelSize) {
-        // fast exit when n bases left < maxIndelSize
-        if( read.getLength() - readStart < maxIndelSize || refBases.length - refStart < maxIndelSize ) {
-            return false;
-        }
+                                               final int readStart,
+                                               final byte[] refBases,
+                                               final int refStart,
+                                               final int maxIndelSize,
+                                               final boolean useCachedResults) {
+        BitSet cachedResult = (BitSet) ((SAMRecordToGATKReadAdapter)read).getTransientAttribute("IDL");
+        if (cachedResult == null || !useCachedResults) {
+            BitSet informativeBases = new BitSet(read.getLength());
 
-        // We are safe to use the faster no-copy versions of getBases and getBaseQualities here,
-        // since we're not modifying the returned arrays in any way. This makes a small difference
-        // in the HaplotypeCaller profile, since this method is a major hotspot.
-        final byte[] readBases = AlignmentUtils.getBasesAlignedOneToOne(read);  //calls getBasesNoCopy if CIGAR is all match
-        final byte[] readQuals = AlignmentUtils.getBaseQualsAlignedOneToOne(read);
+            // Check that we aren't so close to the end of the end of the read that we don't have to compute anything more
+            if ( !(read.getLength() - readStart < maxIndelSize) && !(refBases.length - refStart < maxIndelSize) ) {
 
+                // We are safe to use the faster no-copy versions of getBases and getBaseQualities here,
+                // since we're not modifying the returned arrays in any way. This makes a small difference
+                // in the HaplotypeCaller profile, since this method is a major hotspot.
+                final byte[] readBases = AlignmentUtils.getBasesAlignedOneToOne(read);  //calls getBasesNoCopy if CIGAR is all match
+                final byte[] readQuals = AlignmentUtils.getBaseQualsAlignedOneToOne(read);
 
-        final int baselineMMSum = sumMismatchingQualities(readBases, readQuals, readStart, refBases, refStart, Integer.MAX_VALUE);
+                // Don't do any work if we are too close to the back of a read
+                if (readBases.length - readStart > maxIndelSize) {
+                    // Compute the last base for which we will make a comparison based on the length of the readbases
+                    int lastReferenceBaseToCheckMismatchesTo;
+                    if ((readBases.length - readStart) <= (refBases.length - refStart)) {
+                        lastReferenceBaseToCheckMismatchesTo = refStart + (readBases.length - readStart) - 1;
+                    } else {
+                        lastReferenceBaseToCheckMismatchesTo = refBases.length - 1;
+                    }
 
-        // consider each indel size up to max in term, checking if an indel that deletes either the ref bases (deletion
-        // or read bases (insertion) would fit as well as the origin baseline sum of mismatching quality scores
-        for ( int indelSize = 1; indelSize <= maxIndelSize; indelSize++ ) {
-            // check insertions:
-            if (sumMismatchingQualities(readBases, readQuals, readStart + indelSize, refBases, refStart, baselineMMSum) <= baselineMMSum) {
-                return false;
+                    // Compute the absolute baseline sum against which to test
+                    final int[] baselineMMSums = calculateBaselineMMQualities(readBases, readQuals, readStart, refBases, refStart);
+
+                    for (int indelSize = 1; indelSize <= maxIndelSize; indelSize++) {
+                        // Computing mismatches corresponding to a deletion
+                        traverseEndOfReadForIndelMismatches(readStart, refBases, refStart, maxIndelSize, informativeBases, readBases, readQuals, lastReferenceBaseToCheckMismatchesTo, baselineMMSums, indelSize, false);
+
+                        // Computing mismatches corresponding to an insertion
+                        traverseEndOfReadForIndelMismatches(readStart, refBases, refStart, maxIndelSize, informativeBases, readBases, readQuals, lastReferenceBaseToCheckMismatchesTo, baselineMMSums, indelSize, true);
+                    }
+                    // Flip the bases at the front of the read (the ones not within maxIndelSize of the end as those are never informative)
+                    informativeBases.flip(0, readBases.length - maxIndelSize + 1); // Add 1 because flip is inclusive-exclusive
+                }
             }
-            // check deletions:
-            if (sumMismatchingQualities(readBases, readQuals, readStart, refBases, refStart + indelSize, baselineMMSum) <= baselineMMSum) {
-                return false;
+            cachedResult = informativeBases;
+            ((SAMRecordToGATKReadAdapter)read).setTransientAttribute("IDL", informativeBases);
+        }
+        return cachedResult.get(readStart);
+    }
+
+    /**
+     * Helper method responsible for read-end traversal. This method will handle both insertions and deletions as method,
+     * indicated by setting the indelSize to be a negative or positive number respectively.
+     *
+     * This method explicitly counts mismatches from the back of the read/reference in order to reduce duplicated operations
+     * based on the principal that indel mismatches of a particular size at the back of the read will preclude indels at the
+     * front of the read from looking appealing.
+     */
+    private void traverseEndOfReadForIndelMismatches(final int readStart, final byte[] refBases, final int refStart, final int maxIndelSize, final BitSet informativeBases, final byte[] readBases, final byte[] readQuals, final int backOfBaseContext, final int[] baselineMMSums, final int indelSize, final boolean insertion) {
+        int sum = 0;
+
+        //AlignmentUtils.CigarElementContextPosition thisContextSlider = contextForBackOfRead.copy();
+        //thisContextSlider.decrementReferenceBases(Math.abs(indelSize));
+
+        // Compute how many bases forward we should compare taking into account reference/read overhang
+        int n = Math.min(readBases.length - readStart - ((!insertion) ? 0 : indelSize ),
+                refBases.length - refStart - ((insertion) ? 0 : indelSize));
+
+        for (int i = n + ((!insertion) ? 0 : indelSize) - 1,
+            j = n + ((insertion) ? 0 : indelSize) - 1;
+            i >= 0 && j >= 0;
+            i--, j--) {
+
+            // Calculate the real base offset for the read:
+            final byte readBase = readBases[readStart + i];
+            final byte refBase = refBases[refStart + j];
+            if (!Nucleotide.intersect(readBase, refBase) && !(readBase == AlignmentUtils.GAP_CHARACTER)) {
+                sum += readQuals[readStart + i];
+                if (sum > baselineMMSums[0]) { // abort early if we are over our global mismatch cost
+                    break;
+                }
+            }
+            // Don't even examine bases below maxIndelSize from the end of the read
+            int siteOfRealComparisonPoint = Math.min(i, j);
+
+            // If its a real character and the cost isn't greater than the non-indel cost, label it is uninformative
+            if (readBases[readStart + siteOfRealComparisonPoint] != AlignmentUtils.GAP_CHARACTER) {
+                if (Math.max((backOfBaseContext - i - refStart), (backOfBaseContext - j - refStart)) >= maxIndelSize) {
+                    if (baselineMMSums[siteOfRealComparisonPoint] >= sum) {
+                        informativeBases.set(readStart + siteOfRealComparisonPoint, true); // Label with true here because we flip these results later
+                    }
+                }
             }
         }
-
-        return true;
     }
 
     /**
@@ -527,7 +631,7 @@ public class ReferenceConfidenceModel {
 
             final int offset = getCigarModifiedOffset(p);
 
-            if ( isReadInformativeAboutIndelsOfSize(p.getRead(), offset, ref, pileupOffsetIntoRef, maxIndelSize) ) {
+            if ( isReadInformativeAboutIndelsOfSize(p.getRead(), offset, ref, pileupOffsetIntoRef, maxIndelSize, true) ) {
                 nInformative++;
                 if( nInformative > MAX_N_INDEL_INFORMATIVE_READS ) {
                     return MAX_N_INDEL_INFORMATIVE_READS;
