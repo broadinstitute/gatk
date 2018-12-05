@@ -126,7 +126,7 @@ task GenotypeConcordanceTask {
 
     # ------------------------------------------------
     # Process input args:
-    String interval_list_arg = if defined(interval_list) then " -L " else ""
+    String interval_list_arg = if defined(interval_list) then " --INTERVALS " else ""
 
     ####################################################################################
     # Define default values and set up values for running:
@@ -157,9 +157,8 @@ task GenotypeConcordanceTask {
                 --TRUTH_VCF ${truth_vcf} \
                 --TRUTH_SAMPLE ${truth_sample} \
                 -O ${output_base_name} \
-                ${interval_list_arg}${default="" sep=" -L " interval_list} \
+                ${interval_list_arg}${default="" sep=" --INTERVALS " interval_list} \
                 --INTERSECT_INTERVALS true \
-                --INTERVALS true \
 
         echo `EndTime: date +%s.%N` >> timingInformation.txt
     }
