@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading
 import java.io.File;
 
 public class HaplotypeCallerReadThreadingAssemblerArgumentCollection extends ReadThreadingAssemblerArgumentCollection {
+    private static final long serialVersionUID = 6520834L;
     /**
      * A single edge multiplicity cutoff for pruning doesn't work in samples with variable depths, for example exomes
      * and RNA.  This parameter enables the probabilistic algorithm for pruning the assembly graph that considers the

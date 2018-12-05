@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading
 import java.io.File;
 
 public class MutectReadThreadingAssemblerArgumentCollection extends ReadThreadingAssemblerArgumentCollection {
+    private static final long serialVersionUID = 5304L;
 
     /**
      * A single edge multiplicity cutoff for pruning doesn't work in samples with variable depths, for example exomes
