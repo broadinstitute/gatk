@@ -52,7 +52,7 @@ public class MarkDuplicatesSparkUtilsUnitTest extends GATKBaseTest {
     }
 
     private static <K, V> void check(Iterator<Tuple2<K, V>> it, List<Tuple2<K, Iterable<V>>> expected) {
-        Iterator<Tuple2<K, Iterable<V>>> spanning = SparkUtils.spanningIterator(it);
+        Iterator<Tuple2<K, Iterable<V>>> spanning = SparkUtils.getSpanningIterator(it);
         ArrayList<Tuple2<K, Iterable<V>>> actual = Lists.newArrayList(spanning);
         Assert.assertEquals(actual, expected);
     }

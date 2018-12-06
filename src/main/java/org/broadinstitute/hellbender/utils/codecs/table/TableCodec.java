@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.codecs.table;
 
 import htsjdk.tribble.AsciiFeatureCodec;
 import htsjdk.tribble.readers.LineIterator;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
@@ -52,7 +53,6 @@ public final class TableCodec extends AsciiFeatureCodec<TableFeature> {
     protected static final String COMMENT_DELIMITER = "#";
 
     private final String headerDelimiter;
-    private final String commentDelimiter;
 
     protected String delimiter_regex = "\\s+";
 
@@ -60,16 +60,22 @@ public final class TableCodec extends AsciiFeatureCodec<TableFeature> {
 
     private boolean havePassedHeader = false;
 
-    public TableCodec(final String headerLineDelimiter, final String commentLineDelimiter) {
-        super(TableFeature.class);
-        headerDelimiter = headerLineDelimiter;
-        commentDelimiter = commentLineDelimiter;
-    }
-
+    /**
+     * Create a TableCodec with a configured header line delimiter
+     *
+     * @param headerLineDelimiter the delimeter for comment header lines, or null if the header is a single commented line-
+     */
     public TableCodec(final String headerLineDelimiter) {
-        this(headerLineDelimiter, COMMENT_DELIMITER);
+        super(TableFeature.class);
+        if ( "".equals(headerLineDelimiter) ) {
+            throw new GATKException("HeaderLineDelimiter must either be a valid delimiter or null");
+        }
+        headerDelimiter = headerLineDelimiter;
     }
 
+    /**
+     * Create a TableCodec for IGV track data.
+     */
     public TableCodec() {
         this(DEFAULT_HEADER_DELIMITER);
     }
@@ -78,7 +84,7 @@ public final class TableCodec extends AsciiFeatureCodec<TableFeature> {
     public TableFeature decode(final String line) {
         if ((headerDelimiter != null && ! line.startsWith(headerDelimiter)) ||
                 (headerDelimiter == null && !havePassedHeader) ||
-                line.startsWith(commentDelimiter) || line.startsWith(IGV_HEADER_DELIMITER)) {
+                line.startsWith(COMMENT_DELIMITER) || line.startsWith(IGV_HEADER_DELIMITER)) {
             havePassedHeader = true;
             return null;
         }
@@ -94,10 +100,10 @@ public final class TableCodec extends AsciiFeatureCodec<TableFeature> {
         boolean isFirst = true;
         while (reader.hasNext()) {
             final String line = reader.peek(); // Peek to avoid reading non-header data
-            if ( isFirst && ! line.startsWith(commentDelimiter) &&  headerDelimiter != null && ! line.startsWith(headerDelimiter) ) {
+            if ( isFirst && ! line.startsWith(COMMENT_DELIMITER) &&  headerDelimiter != null && ! line.startsWith(headerDelimiter) ) {
                 throw new UserException.MalformedFile("TableCodec file does not have a header");
             }
-            isFirst &= line.startsWith(commentDelimiter);
+            isFirst &= line.startsWith(COMMENT_DELIMITER);
             if (headerDelimiter == null || line.startsWith(headerDelimiter)) {
                 reader.next(); // "Commit" the peek
                 if (!header.isEmpty()) {
@@ -106,7 +112,7 @@ public final class TableCodec extends AsciiFeatureCodec<TableFeature> {
                 final String[] spl = line.split(delimiter_regex);
                 Collections.addAll(header, spl);
                 return header;
-            } else if (line.startsWith(commentDelimiter)) {
+            } else if (line.startsWith(COMMENT_DELIMITER)) {
                 reader.next(); // "Commit" the peek
             } else {
                 break;

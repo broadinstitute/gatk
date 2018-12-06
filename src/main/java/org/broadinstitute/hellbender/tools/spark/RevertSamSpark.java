@@ -77,16 +77,18 @@ import java.util.stream.Collectors;
  * <br/>
  * Note: If the program fails due to a SAM validation error, consider setting the VALIDATION_STRINGENCY option to
  * LENIENT or SILENT if the failures are expected to be obviated by the reversion process
- * (e.g. invalid alignment information will be obviated when the dontRemoveAlignmentInformation option is used).
+ * (e.g. invalid alignment information will be obviated when the keepAlignmentInformation option is used).
  */
 
 @DocumentedFeature
 @CommandLineProgramProperties(
-        summary =RevertSamSpark.USAGE_DETAILS,
-        oneLineSummary =RevertSamSpark.USAGE_SUMMARY,
+        summary = RevertSamSpark.USAGE_DETAILS,
+        oneLineSummary = RevertSamSpark.USAGE_SUMMARY,
         programGroup = ReadDataManipulationProgramGroup.class)
 @BetaFeature
 public class RevertSamSpark extends GATKSparkTool {
+    private static final long serialVersionUID = 1L;
+
     static final String USAGE_SUMMARY = "Reverts SAM or BAM files to a previous state.";
     static final String USAGE_DETAILS = "This tool removes or restores certain properties of the SAM records, including alignment " +
             "information, which can be used to produce an unmapped BAM (uBAM) from a previously aligned BAM. It is also capable of " +
@@ -115,7 +117,7 @@ public class RevertSamSpark extends GATKSparkTool {
             " Output format can be overridden with the outputByReadgroupFileFormat option.\n" +
             "Note: If the program fails due to a SAM validation error, consider setting the VALIDATION_STRINGENCY option to " +
             "LENIENT or SILENT if the failures are expected to be obviated by the reversion process " +
-            "(e.g. invalid alignment information will be obviated when the dontRemoveAlignmentInformation option is used).\n" +
+            "(e.g. invalid alignment information will be obviated when the keepAlignmentInformation option is used).\n" +
             "";
     public static final String OUTPUT_MAP_READ_GROUP_FIELD_NAME = "READ_GROUP_ID";
     public static final String OUTPUT_MAP_OUTPUT_FILE_FIELD_NAME = "OUTPUT";
@@ -167,9 +169,9 @@ public class RevertSamSpark extends GATKSparkTool {
             " the output may have the unusual but sometimes desirable trait of having unmapped reads that are marked as duplicates.")
     public boolean dontRemoveDuplicateInformation = false;
 
-    public static final String DONT_REMOVE_ALIGNMENT_INFORMATION_LONG_NAME = "remove-alignment-information";
-    @Argument(fullName = DONT_REMOVE_ALIGNMENT_INFORMATION_LONG_NAME, doc = "Remove all alignment information from the file.")
-    public boolean dontRemoveAlignmentInformation = false;
+    public static final String KEEP_ALIGNMENT_INFORMATION = "keep-alignment-information";
+    @Argument(fullName = KEEP_ALIGNMENT_INFORMATION, doc = "Remove all alignment information from the file.")
+    public boolean keepAlignmentInformation = false;
 
     public static final String ATTRIBUTE_TO_CLEAR_LONG_NAME = "attributes-to-clear";
     @Argument(fullName = ATTRIBUTE_TO_CLEAR_LONG_NAME, doc = "When removing alignment information, the set of optional tags to remove.", optional = true)
@@ -196,7 +198,7 @@ public class RevertSamSpark extends GATKSparkTool {
         return Collections.singletonList(ReadFilterLibrary.ALLOW_ALL_READS);
     }
 
-    public static List<String> DEFAULT_ATTRIBUTES_TO_CLEAR = new ArrayList<String>() {{
+    public static List<String> DEFAULT_ATTRIBUTES_TO_CLEAR = Collections.unmodifiableList(new ArrayList<String>(){{
         add(SAMTag.NM.name());
         add(SAMTag.UQ.name());
         add(SAMTag.PG.name());
@@ -205,7 +207,7 @@ public class RevertSamSpark extends GATKSparkTool {
         add(SAMTag.SA.name()); // Supplementary alignment metadata
         add(SAMTag.MC.name()); // Mate Cigar
         add(SAMTag.AS.name());
-    }};
+    }});
 
     public enum FileType implements CommandLineParser.ClpEnum {
         sam("Generate SAM files."),
@@ -234,7 +236,9 @@ public class RevertSamSpark extends GATKSparkTool {
         final List<String> errors = new ArrayList<>();
         validateOutputParams(outputByReadGroup, output, outputMap);
 
-        if (!sanitize && keepFirstDuplicate) errors.add("'keepFirstDuplicate' cannot be used without 'sanitize'");
+        if (!sanitize && keepFirstDuplicate) {
+            errors.add("'keepFirstDuplicate' cannot be used without 'sanitize'");
+        }
 
         if (!errors.isEmpty()) {
             return errors.toArray(new String[errors.size()]);
@@ -311,11 +315,13 @@ public class RevertSamSpark extends GATKSparkTool {
                                                                       final boolean restoreOriginalQualities) {
         final Map<String, FastqQualityFormat> output = new HashMap<>();
 
-        inHeader.getValue().getReadGroups().stream().parallel().forEach(rg -> {
+        inHeader.getValue().getReadGroups().stream().forEach(rg -> {
             // For each readgroup filter down to just the reads in that group
             final String key = rg.getId();
             JavaRDD<GATKRead> filtered = reads.filter(r -> r.getReadGroup().equals(key));
 
+            // NOTE: this method has the potential to be expensive as it may end up pulling on the first partition many times, and potentially
+            //       end up iterating over the entire genome in the case where there are readgroups missing from the bam
             if (!filtered.isEmpty()) {
 
                 // take the number of reads required by QualityEncodingDetector to determine quality score map
@@ -352,13 +358,15 @@ public class RevertSamSpark extends GATKSparkTool {
     }
 
     /**
-     * If this is run, we want to be careful to remove duplicated reads from the bam.
+     * If this is run, we want to be careful to remove copied reads from the bam.
      *
      * In order to do this we group each read by its readname and randomly select one read labeled as first in pair
-     * and one read labled as second in pair to treat as the representative reads, throwing away the rest.
+     * and one read labeled as second in pair to treat as the representative reads, throwing away the rest.
      */
     private JavaRDD<GATKRead> sanitize(final Map<String, FastqQualityFormat> readGroupToFormat, final JavaRDD<GATKRead> reads, final SAMFileHeader header, final boolean keepFirstDuplicate) {
-        JavaRDD<GATKRead> sortedReads = SparkUtils.querynameSortReadsIfNecessary(reads.filter(r -> r.getBases().length == r.getBaseQualities().length), getRecommendedNumReducers(), header);
+        JavaRDD<GATKRead> sortedReads = SparkUtils.querynameSortReadsIfNecessary(
+                reads.filter(r -> r.getLength() == r.getBaseQualityCount()),
+                getRecommendedNumReducers(), header);
         JavaPairRDD<String, Iterable<GATKRead>> readsByGroup = spanReadsByKey(sortedReads);
 
         return readsByGroup.flatMap(group -> {
@@ -463,12 +471,12 @@ public class RevertSamSpark extends GATKSparkTool {
             assertAllReadGroupsMapped(writerMap, inHeader.getReadGroups());
             headerMap = new HashMap<>();
             for (final SAMReadGroupRecord readGroup : inHeader.getReadGroups()) {
-                final SAMFileHeader header = createOutHeader(inHeader, sortOrder, !dontRemoveAlignmentInformation);
+                final SAMFileHeader header = createOutHeader(inHeader, sortOrder, !keepAlignmentInformation);
                 header.addReadGroup(readGroup);
                 headerMap.put(readGroup.getId(), header);
             }
         } else {
-            final SAMFileHeader singleOutHeader = createOutHeader(inHeader, sortOrder, !dontRemoveAlignmentInformation);
+            final SAMFileHeader singleOutHeader = createOutHeader(inHeader, sortOrder, !keepAlignmentInformation);
             inHeader.getReadGroups().forEach(singleOutHeader::addReadGroup);
             headerMap = Collections.singletonMap(null, singleOutHeader);
         }
@@ -525,7 +533,7 @@ public class RevertSamSpark extends GATKSparkTool {
             reads = reads.map(r -> {r.setIsDuplicate(false); return r;});
         }
 
-        if (!dontRemoveAlignmentInformation) {
+        if (!keepAlignmentInformation) {
             reads = reads.map(rec -> {
                 if (rec.isReverseStrand()) {
                     rec.reverseComplement();
@@ -640,7 +648,7 @@ public class RevertSamSpark extends GATKSparkTool {
         }
         final FeatureReader<TableFeature>  parser = AbstractFeatureReader.getFeatureReader(outputMap, new TableCodec(null),false);
         if (!isOutputMapHeaderValid((List<String>)parser.getHeader())) {
-            errors.add("Invalid header: " + outputMap + ". Must be a tab-separated file with OUTPUT_MAP_READ_GROUP_FIELD_NAME as first column and output as second column.");
+            errors.add("Invalid header: " + outputMap + ". Must be a tab-separated file with +"+OUTPUT_MAP_READ_GROUP_FIELD_NAME+"+ as first column and output as second column.");
         }
         return errors;
     }

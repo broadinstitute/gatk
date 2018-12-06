@@ -20,10 +20,8 @@ import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.spark.transforms.markduplicates.MarkDuplicatesSparkUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.*;
-import org.broadinstitute.hellbender.utils.read.markduplicates.ReadsKey;
 import scala.Tuple2;
 
 import java.io.*;
@@ -242,7 +240,7 @@ public final class SparkUtils {
      * @return an RDD where each the values for each key are grouped into an iterable collection
      */
     public static <K, V> JavaPairRDD<K, Iterable<V>> spanByKey(JavaPairRDD<K, V> rdd) {
-        return rdd.mapPartitionsToPair(SparkUtils::spanningIterator);
+        return rdd.mapPartitionsToPair(SparkUtils::getSpanningIterator);
     }
 
     /**
@@ -252,7 +250,7 @@ public final class SparkUtils {
      * @param <V> type of values
      * @return an iterator over pairs of keys and grouped values
      */
-    public static <K, V> Iterator<Tuple2<K, Iterable<V>>> spanningIterator(Iterator<Tuple2<K, V>> iterator) {
+    public static <K, V> Iterator<Tuple2<K, Iterable<V>>> getSpanningIterator(Iterator<Tuple2<K, V>> iterator) {
         final PeekingIterator<Tuple2<K, V>> iter = Iterators.peekingIterator(iterator);
         return new AbstractIterator<Tuple2<K, Iterable<V>>>() {
             @Override
@@ -285,13 +283,13 @@ public final class SparkUtils {
     /**
      * Sort reads into queryname order if they are not already sorted
      */
-    public static JavaRDD<GATKRead> querynameSortReadsIfNecessary(JavaRDD<GATKRead> reads, int numReducers, SAMFileHeader headerForTool) {
+    public static JavaRDD<GATKRead> querynameSortReadsIfNecessary(JavaRDD<GATKRead> reads, int numReducers, SAMFileHeader header) {
         JavaRDD<GATKRead> sortedReadsForMarking;
-        if (ReadUtils.isReadNameGroupedBam(headerForTool)) {
+        if (ReadUtils.isReadNameGroupedBam(header)) {
             sortedReadsForMarking = reads;
         } else {
-            headerForTool.setSortOrder(SAMFileHeader.SortOrder.queryname);
-            sortedReadsForMarking = sortReadsAccordingToHeader(reads, headerForTool, numReducers);
+            header.setSortOrder(SAMFileHeader.SortOrder.queryname);
+            sortedReadsForMarking = sortReadsAccordingToHeader(reads, header, numReducers);
         }
         return sortedReadsForMarking;
     }
