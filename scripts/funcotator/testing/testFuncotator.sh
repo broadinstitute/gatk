@@ -317,8 +317,7 @@ if [[ $r -eq 0 ]] && ${doRunLargeTests} ; then
     --data-sources-path ${DATA_SOURCES_PATH} \
     --ref-version ${REF_VER} \
     --output-file-format ${OUT_FORMAT} \
-		-- \
-		--java-options '-DGATK_STACKTRACE_ON_USER_EXCEPTION=true -Xmx32g' \
+		--java-options '-DGATK_STACKTRACE_ON_USER_EXCEPTION=true -Xmx16g' \
   
   r=$?
 fi
