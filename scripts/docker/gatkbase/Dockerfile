@@ -8,6 +8,7 @@ RUN apt-get update && \
     apt-get install -y python && \
     apt-get install -y wget \
     curl \
+    bc \
     unzip \
     less \
     bedtools \
