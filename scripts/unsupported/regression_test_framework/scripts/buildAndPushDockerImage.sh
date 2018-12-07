@@ -191,7 +191,7 @@ if ${ISCALLEDBYUSER} ; then
     hash=$(git show ${gitbranch} | head -n 1 | grep -Eo "[A-Za-z0-9]+$")
 
     oldTopImage=$(docker images -q | head -n 1)
-    $(bash ${BUILD_DOCKER_LOCATION} -e ${hash} -s -u -d ${BUILD_DOCKER_TMPDIR})
+    ${BUILD_DOCKER_LOCATION} -e ${hash} -s -u -d ${BUILD_DOCKER_TMPDIR}
     newTopImage=$(docker images -q | head -n 1)
     echo "${oldTopImage}"
     echo "${newTopImage}"
