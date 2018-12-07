@@ -9,19 +9,33 @@ INTERVAL_LIST_FILE="${2}"
 OUTPUT_BAM_LOC="${3}"
 
 # Env variables
-export DATAPROC_CLUSTER_NAME=cluster-$USER
-export CLOUDSDK_CORE_PROJECT=broad-gatk-collab
+export DATAPROC_CLUSTER_NAME=cluster-${USER}-test
+export CLOUDSDK_CORE_PROJECT=broad-dsde-dev
+
+# Add --max-idle here:
+
+# Take a look at tying a job to a cluster (with a yaml file)
+
+# Make sure you can shut this down
 
 # Create a dataproc cluster with 7 worker nodes, 200GB of disk, 8 vcores
-gcloud beta dataproc clusters create ${DATAPROC_CLUSTER_NAME}-seven --max-age=1h --zone us-central1-b --master-machine-type n1-standard-8 --master-boot-disk-size 500 --num-workers 7 --worker-machine-type n1-highmem-8 --worker-boot-disk-size 2000 --image-version 1.2 --project broad-dsde-dev
-
-#gcloud dataproc clusters create ${DATAPROC_CLUSTER_NAME}-fourteen --subnet default --zone us-central1-b --master-machine-type n1-standard-8 --master-boot-disk-size 500 --num-workers 14 --worker-machine-type n1-highmem-4 --worker-boot-disk-size 2000 --image-version 1.2 --project broad-dsde-dev --max-age 1d
+gcloud beta dataproc clusters create ${DATAPROC_CLUSTER_NAME} \
+    --zone us-central1-b \
+    --master-machine-type n1-standard-8 \
+    --worker-machine-type n1-highmem-8 \
+    --image-version 1.2 \
+    --worker-boot-disk-size 2000 \
+    --master-boot-disk-size 500 \
+    --num-workers 7 \
+    --max-age=1h \
+    --project broad-dsde-dev
 
 ###############################################################################
 # Benchmark performance
 ###############################################################################
 
-haplotype-call-small() {
+function haplotype-call-small()
+{
       ref_fasta="gs://broad-references/hg19/v0/Homo_sapiens_assembly19.fasta"
 
     LOG=logs/${CLASS}_$(date +%Y%m%d_%H%M%S).log
@@ -33,17 +47,17 @@ haplotype-call-small() {
       -R $ref_fasta \
       -O $3 \
       -- \
-      --spark-runner GCS --cluster ${DATAPROC_CLUSTER_NAME}-seven \
-      --project broad-dsde-dev \
+      --spark-runner GCS --cluster ${DATAPROC_CLUSTER_NAME} \
+      --project ${CLOUDSDK_CORE_PROJECT} \
       --num-executors 7 --executor-cores 8 --executor-memory 4g \
       --conf spark.yarn.executor.memoryOverhead=600
     RC=$?
     DURATION_SEC=$(grep 'Time taken' $LOG | grep -Eo "[0-9]+")
     echo "$1,$RC,$DURATION_SEC" >> $RESULTS_CSV
 }
-#
+
 #for bam in \
 #    gs://disq-tom-testdata/giab/ftp/data/AshkenazimTrio/HG002_NA24385_son/PacBio_MtSinai_NIST/MtSinai_blasr_bam_GRCh37/hg002_gr37_X.bam
 #do
-    haplotype-call-small $INPUT_BAM $INTERVAL_LIST_FILE $OUTPUT_BAM_LOC
+#    haplotype-call-small $INPUT_BAM $INTERVAL_LIST_FILE $OUTPUT_BAM_LOC
 #done
