@@ -6,11 +6,10 @@
 UNALIASED_SCRIPT_NAME=$( python -c "import os;print os.path.realpath(\"${BASH_SOURCE[0]}\")" )
 SCRIPTDIR="$( cd "$( dirname "${UNALIASED_SCRIPT_NAME}" )" && pwd )"
 SCRIPTNAME=$( echo $0 | sed 's#.*/##g' )
-MINARGS=0
-MAXARGS=10
+MINARGS=2
+MAXARGS=4
 PREREQUISITES=""
-BUILD_DOCKER_LOCATION="/Users/emeryj/hellbender/gatk/build_docker.sh"
-BUILD_DOCKER_TMPDIR="/Users/emeryj/hellbender/gatk/docker_staging"
+BUILD_DOCKER_SCRIPT="${SCRIPTDIR}/../../../../build_docker.sh"
 
 # Determine if this shell is interactive:
 ISCALLEDBYUSER=true
@@ -21,10 +20,14 @@ shopt -s expand_aliases
 
 ################################################################################
 
+DEFAULT_DOCKERHUB_REPO_NAME="broadinstitute/gatk-nightly"
+
+################################################################################
+
 function simpleUsage()
 {
-  echo -e "Usage: $SCRIPTNAME [OPTIONS] ..."
-  echo -e "Short description of script behavior / purpose."
+  echo -e "Usage: $SCRIPTNAME [-t DOCKERTAG] [-b BRANCH]"
+  echo -e "Build a docker image and push it to docker hub."
 }
 
 #Define a usage function:
@@ -32,7 +35,10 @@ function usage()
 {
   simpleUsage
   echo -e ""
-  echo -e "Long description of script behavior / purpose."
+  echo -e "Constructs a GATK docker image then immediately uploads it to the specified location on docker hub."
+  echo -e "If no BRANCH is given will use the current branch's last commit.  This will fail if the commit has not been"
+  echo -e "pushed to master."
+  echo -e "If no DOCKERTAG is given will commit to broadinstitute/gatk-nightly ."
   echo -e ""
   # List prerequisites, if any:
   if [[ ${#PREREQUISITES} -ne 0 ]] ; then
@@ -42,8 +48,8 @@ function usage()
     done
     echo
   fi
-  echo -e "  -b BRANCH the branch of gatk off of which to build an image"
   echo -e "  -t dockertag the full name for where to upload the docker image"
+  echo -e "  -b BRANCH the branch of gatk off of which to build an image"
   echo -e ""
   echo -e "Return values:"
   echo -e "  0  NORMAL"
@@ -88,7 +94,8 @@ function at_exit()
 # that occurred.
 # This function should be called as `checkPipeStatus` as per the 
 # alias below it.
-function _checkPipeStatus() {
+function _checkPipeStatus()
+{
 
   local hadFailure=false
 
@@ -111,7 +118,8 @@ function _checkPipeStatus() {
 }
 alias checkPipeStatus='RC=( "${PIPESTATUS[@]}" );_checkPipeStatus'
 
-function checkPrerequisites {
+function checkPrerequisites
+{
   local missing=""
   local foundMissing=false
   for c in ${@} ; do
@@ -188,13 +196,21 @@ if ${ISCALLEDBYUSER} ; then
 
 	#----------------------------------
 	# Do real work here.
-    hash=$(git show ${gitbranch} | head -n 1 | grep -Eo "[A-Za-z0-9]+$")
+    hash=$( git show ${gitbranch} | head -n 1 | grep -Eo "[A-Za-z0-9]+$" )
 
+    # Get a docker tag if it's not set:
+    if [[ ${#dockerTag} -eq 0 ]] ; then
+        d=$(date +%Y-%m-%d)
+        dockerTag="${DEFAULT_DOCKERHUB_REPO_NAME}:${d}-$(git describe)-SNAPSHOT"
+    fi
+
+    buildDockerTmpLocation=$( mktemp -d )
     oldTopImage=$(docker images -q | head -n 1)
-    ${BUILD_DOCKER_LOCATION} -e ${hash} -s -u -d ${BUILD_DOCKER_TMPDIR}
+    ${BUILD_DOCKER_SCRIPT} -e ${hash} -s -u -d ${buildDockerTmpLocation}
     newTopImage=$(docker images -q | head -n 1)
-    echo "${oldTopImage}"
-    echo "${newTopImage}"
+
+    echo "Old top docker image: ${oldTopImage}"
+    echo "New top docker image: ${newTopImage}"
 
     if [[ "${oldTopImage}" != "${newTopImage}" ]] ; then
         docker tag ${newTopImage} ${dockerTag}
@@ -202,6 +218,5 @@ if ${ISCALLEDBYUSER} ; then
         docker image rm -f ${newTopImage}
     fi
 	exit 0
-
 fi
 
