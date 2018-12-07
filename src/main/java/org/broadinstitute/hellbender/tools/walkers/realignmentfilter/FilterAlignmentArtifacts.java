@@ -183,7 +183,8 @@ public class FilterAlignmentArtifacts extends VariantWalker {
                 } else {
                     plausiblePairs.sort(Comparator.comparingInt(pair -> -pairScore(pair)) );
                     final int scoreDiff = pairScore(plausiblePairs.get(0)) - pairScore(plausiblePairs.get(1));
-                    if (scoreDiff >= realignmentArgumentCollection.minAlignerScoreDifference) {
+                    final double mismatchRatio = (double) pairMismatches(plausiblePairs.get(1)) / pairMismatches(plausiblePairs.get(0));
+                    if (scoreDiff >= realignmentArgumentCollection.minAlignerScoreDifference && mismatchRatio > realignmentArgumentCollection.minMismatchRatio) {
                         succeededRealignmentCount.increment();
                     } else {
                         failedRealignmentCount.increment();
@@ -209,6 +210,10 @@ public class FilterAlignmentArtifacts extends VariantWalker {
 
     private static int pairScore(final Pair<BwaMemAlignment, BwaMemAlignment> pair) {
         return pair.getFirst().getAlignerScore() + pair.getSecond().getAlignerScore();
+    }
+
+    private static int pairMismatches(final Pair<BwaMemAlignment, BwaMemAlignment> pair) {
+        return pair.getFirst().getNMismatches() + pair.getSecond().getNMismatches();
     }
 
     @Override
