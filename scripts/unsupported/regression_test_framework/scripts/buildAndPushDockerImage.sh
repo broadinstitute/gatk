@@ -6,7 +6,7 @@
 UNALIASED_SCRIPT_NAME=$( python -c "import os;print os.path.realpath(\"${BASH_SOURCE[0]}\")" )
 SCRIPTDIR="$( cd "$( dirname "${UNALIASED_SCRIPT_NAME}" )" && pwd )"
 SCRIPTNAME=$( echo $0 | sed 's#.*/##g' )
-MINARGS=2
+MINARGS=0
 MAXARGS=4
 PREREQUISITES=""
 BUILD_DOCKER_SCRIPT="${SCRIPTDIR}/../../../../build_docker.sh"
@@ -57,6 +57,7 @@ function usage()
   echo -e "  2  TOO FEW ARGUMENTS"
   echo -e "  3  UNKNOWN ARGUMENT"
   echo -e "  4  MISSING PREREQUISITE"
+  echo -e "  5  DOCKER DAEMON NOT RUNNING"
   echo -e ""
 }
 
@@ -204,15 +205,25 @@ if ${ISCALLEDBYUSER} ; then
         dockerTag="${DEFAULT_DOCKERHUB_REPO_NAME}:${d}-$(git describe)-SNAPSHOT"
     fi
 
-    buildDockerTmpLocation=$( mktemp -d )
+    docker images -q > /dev/null
+    r=$?
+    [[ $r -ne 0 ]] && exit 5
+
     oldTopImage=$(docker images -q | head -n 1)
+
+    error "============================================================================="
+    error "Building docker image..."
+    buildDockerTmpLocation=$( mktemp -d )
     ${BUILD_DOCKER_SCRIPT} -e ${hash} -s -u -d ${buildDockerTmpLocation}
     newTopImage=$(docker images -q | head -n 1)
+    error "============================================================================="
 
-    echo "Old top docker image: ${oldTopImage}"
-    echo "New top docker image: ${newTopImage}"
+    error "Old top docker image: ${oldTopImage}"
+    error "New top docker image: ${newTopImage}"
 
     if [[ "${oldTopImage}" != "${newTopImage}" ]] ; then
+        error "============================================================================="
+        error "Pushing image to docker tag: ${dockerTag}"
         docker tag ${newTopImage} ${dockerTag}
         docker push ${dockerTag}
         docker image rm -f ${newTopImage}
