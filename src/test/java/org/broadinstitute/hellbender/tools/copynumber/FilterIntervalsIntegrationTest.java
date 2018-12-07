@@ -82,6 +82,13 @@ public final class FilterIntervalsIntegrationTest extends CommandLineProgramTest
         ANNOTATED_INTERVALS.getIntervals().forEach(i -> intervals.add(new Interval(i)));
         intervals.write(intervalsFile);
 
+        //test that intersection gets rid of extra intervals in the interval list
+        final File intervalsWithExtraIntervalFile = createTempFile("intervals-with-extra-interval", ".interval_list");
+        final IntervalList intervalsWithExtraInterval = new IntervalList(ANNOTATED_INTERVALS.getMetadata().getSequenceDictionary());
+        ANNOTATED_INTERVALS.getIntervals().forEach(i -> intervalsWithExtraInterval.add(new Interval(i)));
+        intervalsWithExtraInterval.add(new Interval("20", 100000, 200000));
+        intervalsWithExtraInterval.write(intervalsWithExtraIntervalFile);
+
         return new Object[][]{
                 //intervals file, array of strings for excluded intervals, annotated-intervals file,
                 //min/max GC content, mix/max mappability, min/max seg-dupe content, expected array of indices of retained intervals
@@ -95,7 +102,18 @@ public final class FilterIntervalsIntegrationTest extends CommandLineProgramTest
                 {intervalsFile, Collections.emptyList(), annotatedIntervalsFile, 0.1, 0.9, 0.1, 0.9, 0.1, 0.9, Collections.singletonList(2)},
                 {intervalsFile, Collections.singletonList("20:1-10"), annotatedIntervalsFile, 0., 1., 0., 1., 0., 1., Arrays.asList(1, 2, 3, 4)},
                 {intervalsFile, Arrays.asList("20:1-15", "20:35-45"), annotatedIntervalsFile, 0., 1., 0., 1., 0., 1., Collections.singletonList(2)},
-                {intervalsFile, Collections.singletonList("20:25-50"), annotatedIntervalsFile, 0.1, 0.9, 0., 1., 0., 1., Arrays.asList(0, 1)}};
+                {intervalsFile, Collections.singletonList("20:25-50"), annotatedIntervalsFile, 0.1, 0.9, 0., 1., 0., 1., Arrays.asList(0, 1)},
+                {intervalsWithExtraIntervalFile, Collections.emptyList(), annotatedIntervalsFile, 0., 1., 0., 1., 0., 1., Arrays.asList(0, 1, 2, 3, 4)},
+                {intervalsWithExtraIntervalFile, Collections.emptyList(), annotatedIntervalsFile, 0.1, 0.9, 0., 1., 0., 1., Arrays.asList(0, 1, 2)},
+                {intervalsWithExtraIntervalFile, Collections.emptyList(), annotatedIntervalsFile, 0., 1., 0.1, 0.9, 0., 1., Arrays.asList(1, 2, 3)},
+                {intervalsWithExtraIntervalFile, Collections.emptyList(), annotatedIntervalsFile, 0., 1., 0., 1., 0.1, 0.9, Arrays.asList(2, 3, 4)},
+                {intervalsWithExtraIntervalFile, Collections.emptyList(), annotatedIntervalsFile, 0.1, 0.9, 0.1, 0.9, 0., 1., Arrays.asList(1, 2)},
+                {intervalsWithExtraIntervalFile, Collections.emptyList(), annotatedIntervalsFile, 0.1, 0.9, 0., 1., 0.1, 0.9, Collections.singletonList(2)},
+                {intervalsWithExtraIntervalFile, Collections.emptyList(), annotatedIntervalsFile, 0., 1., 0.1, 0.9, 0.1, 0.9, Arrays.asList(2, 3)},
+                {intervalsWithExtraIntervalFile, Collections.emptyList(), annotatedIntervalsFile, 0.1, 0.9, 0.1, 0.9, 0.1, 0.9, Collections.singletonList(2)},
+                {intervalsWithExtraIntervalFile, Collections.singletonList("20:1-10"), annotatedIntervalsFile, 0., 1., 0., 1., 0., 1., Arrays.asList(1, 2, 3, 4)},
+                {intervalsWithExtraIntervalFile, Arrays.asList("20:1-15", "20:35-45"), annotatedIntervalsFile, 0., 1., 0., 1., 0., 1., Collections.singletonList(2)},
+                {intervalsWithExtraIntervalFile, Collections.singletonList("20:25-50"), annotatedIntervalsFile, 0.1, 0.9, 0., 1., 0., 1., Arrays.asList(0, 1)}};
     }
 
     @Test(dataProvider = "dataAnnotationBasedFilters")
@@ -143,6 +161,7 @@ public final class FilterIntervalsIntegrationTest extends CommandLineProgramTest
         final double percentageOfSamples = 100. * (numSamples - numUncorruptedSamples) / numSamples - epsilon;
 
         final File intervalsFile = createTempFile("intervals", ".interval_list");
+        final File intervalsWithExtraIntervalFile = createTempFile("intervals-with-extra-interval", ".interval_list");
         final List<File> countFiles = new ArrayList<>(numSamples);
         for (int sampleIndex = 0; sampleIndex < numSamples; sampleIndex++) {
             final String sampleName = String.format("sample-%d", sampleIndex);
@@ -166,6 +185,12 @@ public final class FilterIntervalsIntegrationTest extends CommandLineProgramTest
                 final IntervalList intervals = new IntervalList(sampleCounts.getMetadata().getSequenceDictionary());
                 sampleCounts.getIntervals().forEach(i -> intervals.add(new Interval(i)));
                 intervals.write(intervalsFile);
+
+                //test that intersection gets rid of extra intervals in the interval list
+                final IntervalList intervalsWithExtraInterval = new IntervalList(sampleCounts.getMetadata().getSequenceDictionary());
+                sampleCounts.getIntervals().forEach(i -> intervalsWithExtraInterval.add(new Interval(i)));
+                intervalsWithExtraInterval.add(new Interval("20", 100000, 200000));
+                intervalsWithExtraInterval.write(intervalsWithExtraIntervalFile);
             }
         }
 
@@ -176,6 +201,10 @@ public final class FilterIntervalsIntegrationTest extends CommandLineProgramTest
                 {intervalsFile, countFiles, lowCountFilterCountThreshold, percentageOfSamples, 1., 99., percentageOfSamples,
                         IntStream.range(numIntervalsBelowCountThreshold + 1, numIntervalsBelowCountThreshold + 99).boxed().collect(Collectors.toList())},
                 {intervalsFile, countFiles, lowCountFilterCountThreshold, percentageOfSamples, 1., 90., percentageOfSamples,
+                        IntStream.range(numIntervalsBelowCountThreshold + 1, numIntervalsBelowCountThreshold + 90).boxed().collect(Collectors.toList())},
+                {intervalsWithExtraIntervalFile, countFiles, lowCountFilterCountThreshold, percentageOfSamples, 1., 99., percentageOfSamples,
+                        IntStream.range(numIntervalsBelowCountThreshold + 1, numIntervalsBelowCountThreshold + 99).boxed().collect(Collectors.toList())},
+                {intervalsWithExtraIntervalFile, countFiles, lowCountFilterCountThreshold, percentageOfSamples, 1., 90., percentageOfSamples,
                         IntStream.range(numIntervalsBelowCountThreshold + 1, numIntervalsBelowCountThreshold + 90).boxed().collect(Collectors.toList())}};
     }
 
