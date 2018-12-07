@@ -20,14 +20,16 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.codecs.gencode.*;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.test.FuncotatorTestUtils;
-import org.broadinstitute.hellbender.utils.test.FuncotatorTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.*;
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -661,6 +663,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         ).make();
 
         final String versionString = "VERSION";
+        final String dataSourceName = "TEST_GENCODE_NAME";
 
         // ======================
         // Create the GencodeGtfFeature:
@@ -692,7 +695,9 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                     new ReferenceContext( refDataSourceHg19Ch3, variantInterval ),
                     gene.getTranscripts().get(0),
                     versionString,
+                    dataSourceName,
                     new GencodeFuncotationBuilder()
+                            .setDataSourceName(dataSourceName)
                             .setHugoSymbol(gene.getGeneName())
                             .setChromosome(variant.getContig())
                             .setStart(variant.getStart())
@@ -1658,9 +1663,10 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                                                        final ReferenceContext reference,
                                                        final GencodeGtfTranscriptFeature transcript,
                                                        final String version,
+                                                       final String dataSourceName,
                                                        final GencodeFuncotation expected) {
 
-        final GencodeFuncotation funcotation = GencodeFuncotationFactory.createDefaultFuncotationsOnProblemVariant(variant, altAllele, gtfFeature, reference, transcript, version);
+        final GencodeFuncotation funcotation = GencodeFuncotationFactory.createDefaultFuncotationsOnProblemVariant(variant, altAllele, gtfFeature, reference, transcript, version, dataSourceName);
         Assert.assertEquals( funcotation, expected );
     }
 

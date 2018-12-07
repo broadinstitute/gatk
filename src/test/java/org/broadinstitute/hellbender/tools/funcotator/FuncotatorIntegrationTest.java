@@ -55,7 +55,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     // Whether to do debug output (i.e. leave output around).
     // This should always be false when checked in.
     // These tests would take ~30 minutes to complete each.
-    private static final boolean enableFullScaleValidationTest = false;
+    private static final boolean enableFullScaleValidationTest = true;
     private static final String  LARGE_DATASOURCES_FOLDER      = "funcotator_dataSources_latest";
     private static final String  GERMLINE_DATASOURCES_FOLDER   = "funcotator_dataSources_germline_latest";
 

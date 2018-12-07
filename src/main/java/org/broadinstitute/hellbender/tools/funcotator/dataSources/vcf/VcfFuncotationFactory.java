@@ -16,6 +16,7 @@ import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
 import org.broadinstitute.hellbender.tools.funcotator.FuncotatorArgumentDefinitions;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetadata;
 import org.broadinstitute.hellbender.tools.funcotator.metadata.VcfFuncotationMetadata;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -107,12 +108,32 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
                                  final Path sourceFilePath,
                                  final LinkedHashMap<String, String> annotationOverridesMap,
                                  final FeatureInput<? extends Feature> mainSourceFileAsFeatureInput) {
+        this(name, version, sourceFilePath, annotationOverridesMap, mainSourceFileAsFeatureInput, false);
+    }
+
+    /**
+     * Create a {@link VcfFuncotationFactory}.
+     * @param name A {@link String} containing the name of this {@link VcfFuncotationFactory}.
+     * @param version  The version {@link String} of the backing data source from which {@link Funcotation}s will be made.
+     * @param sourceFilePath {@link Path} to the VCF file from which {@link VariantContext}s will be read in and used as Features from which to create {@link Funcotation}s.
+     * @param annotationOverridesMap A {@link LinkedHashMap<String,String>} containing user-specified overrides for specific {@link Funcotation}s.
+     * @param mainSourceFileAsFeatureInput The backing {@link FeatureInput} for this {@link VcfFuncotationFactory}, from which all {@link Funcotation}s will be created.
+     * @param isDataSourceB37 If {@code true}, indicates that the data source behind this {@link GencodeFuncotationFactory} contains B37 data.
+     */
+    public VcfFuncotationFactory(final String name,
+                                 final String version,
+                                 final Path sourceFilePath,
+                                 final LinkedHashMap<String, String> annotationOverridesMap,
+                                 final FeatureInput<? extends Feature> mainSourceFileAsFeatureInput,
+                                 final boolean isDataSourceB37) {
 
         super(mainSourceFileAsFeatureInput);
 
         this.name = name;
         this.version = version;
         this.sourceFilePath = sourceFilePath;
+
+        this.dataSourceIsB37 = isDataSourceB37;
 
         // Handle the supported field names here:
         supportedFieldNamesAndDefaults = new LinkedHashMap<>();
