@@ -158,7 +158,6 @@ task HaplotypeCallerTask {
         gatk --java-options "-Xmx${command_mem}m -DGATK_STACKTRACE_ON_USER_EXCEPTION=true" \
             HaplotypeCaller \
                 -I ${input_bam} \
-                -L ${interval_list} \
                 -O ${out_file_name} \
                 -R ${ref_fasta} \
                 ${interval_list_arg}${default="" sep=" -L " interval_list} \
