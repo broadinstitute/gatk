@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.copynumber;
 
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
+import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.stat.descriptive.rank.Percentile;
@@ -14,7 +15,7 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalIntervalArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredIntervalArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils;
@@ -22,6 +23,7 @@ import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStanda
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AnnotatedIntervalCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleCountCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleIntervalCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.LocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.SimpleCount;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.annotation.AnnotationKey;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.annotation.CopyNumberAnnotations;
@@ -36,31 +38,33 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
- * Given annotated intervals output by {@link AnnotateIntervals} and/or counts collected on those intervals output
- * by {@link CollectReadCounts}, outputs a filtered Picard interval list.  Parameters for filtering based on the
- * annotations and counts can be adjusted.  Annotation-based filters will be applied first, followed by count-based
- * filters.  The result may be passed via -L to other tools (e.g., {@link DetermineGermlineContigPloidy} and
- * {@link GermlineCNVCaller}) to mask intervals from analysis.
+ * Given specified intervals, annotated intervals output by {@link AnnotateIntervals}, and/or counts output by
+ * {@link CollectReadCounts}, outputs a filtered Picard interval list.  The set intersection of intervals from the
+ * specified intervals, the annotated intervals, and the first count file will be taken as the initial set of intervals
+ * on which to perform filtering.  Parameters for filtering based on the annotations and counts can be adjusted.
+ * Annotation-based filters will be applied first, followed by count-based filters.  The result may be passed via -L to
+ * other tools (e.g., {@link DetermineGermlineContigPloidy} and {@link GermlineCNVCaller}) to mask intervals from
+ * analysis.
  *
  * <h3>Inputs</h3>
  *
  * <ul>
  *     <li>
-           Intervals to be filtered.
+           Intervals to be filtered (typically, the bins output by {@link PreprocessIntervals}).
  *         The argument {@code interval-merging-rule} must be set to {@link IntervalMergingRule#OVERLAPPING_ONLY}
  *         and all other common arguments for interval padding or merging must be set to their defaults.
  *         A blacklist of regions in which intervals should always be filtered (regardless of other annotation-based
  *         or count-based filters) may also be provided via -XL; this can be used to filter pseudoautosomal regions
- *         (PARs), for example.
+ *         (PARs), for example.  Partial bins created by interval exclusion may be dropped upon intersection with
+ *         the intervals present in other optional inputs.
  *     </li>
  *     <li>
  *         (Optional) Annotated-intervals file from {@link AnnotateIntervals}.
- *         Must contain the intervals to be filtered as a subset.  Must be provided if no counts files are provided.
+ *         Must be provided if no counts files are provided.
  *     </li>
  *     <li>
  *         (Optional) Counts files (TSV or HDF5 output of {@link CollectReadCounts}).
- *         Must contain the intervals to be filtered as a subset.  Must be provided if no annotated-intervals file
- *         is provided.
+ *         Must be provided if no annotated-intervals file is provided.
  *     </li>
  * </ul>
  *
@@ -76,7 +80,7 @@ import java.util.stream.IntStream;
  *
  * <pre>
  *     gatk FilterIntervals \
- *          -L intervals.interval_list \
+ *          -L preprocessed_intervals.interval_list \
  *          -XL blacklist_intervals.interval_list \
  *          -I sample_1.counts.hdf5 \
  *          -I sample_2.counts.hdf5 \
@@ -87,14 +91,14 @@ import java.util.stream.IntStream;
  *
  * <pre>
  *     gatk FilterIntervals \
- *          -L intervals.interval_list \
+ *          -L preprocessed_intervals.interval_list \
  *          --annotated-intervals annotated_intervals.tsv \
  *          -O filtered_intervals.interval_list
  * </pre>
  *
  * <pre>
  *     gatk FilterIntervals \
- *          -L intervals.interval_list \
+ *          -L preprocessed_intervals.interval_list \
  *          -I sample_1.counts.hdf5 \
  *          -I sample_2.counts.hdf5 \
  *          ... \
@@ -125,7 +129,6 @@ public final class FilterIntervals extends CommandLineProgram {
 
     @Argument(
             doc = "Input file containing annotations for genomic intervals (output of AnnotateIntervals).  " +
-                    "All intervals specified via -L must be contained.  " +
                     "Must be provided if no counts files are provided.",
             fullName = CopyNumberStandardArgument.ANNOTATED_INTERVALS_FILE_LONG_NAME,
             optional = true
@@ -134,7 +137,6 @@ public final class FilterIntervals extends CommandLineProgram {
 
     @Argument(
             doc = "Input TSV or HDF5 files containing integer read counts in genomic intervals (output of CollectReadCounts).  " +
-                    "All intervals specified via -L must be contained.  " +
                     "Must be provided if no annotated-intervals file is provided.",
             fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
@@ -151,7 +153,7 @@ public final class FilterIntervals extends CommandLineProgram {
 
     @ArgumentCollection
     protected IntervalArgumentCollection intervalArgumentCollection
-            = new OptionalIntervalArgumentCollection();
+            = new RequiredIntervalArgumentCollection();
 
     @Argument(
             doc = "Minimum allowed value for GC-content annotation (inclusive).",
@@ -254,7 +256,7 @@ public final class FilterIntervals extends CommandLineProgram {
     )
     private double extremeCountFilterPercentageOfSamples = 90.;
 
-    private SimpleIntervalCollection specifiedIntervals;
+    private SimpleIntervalCollection intersectedIntervals;
     private AnnotatedIntervalCollection annotatedIntervals;
 
     @Override
@@ -281,33 +283,53 @@ public final class FilterIntervals extends CommandLineProgram {
         inputReadCountFiles.forEach(IOUtils::canReadFile);
         Utils.validateArg(inputReadCountFiles.size() == new HashSet<>(inputReadCountFiles).size(),
                 "List of input read-count files cannot contain duplicates.");
-
-        //parse inputs to resolve intervals and validate annotated intervals, if provided
-        if (inputReadCountFiles.isEmpty()) {
-            //only annotated intervals provided (no counts)
+        
+        //parse inputs to resolve and intersect intervals
+        final LocatableMetadata metadata;
+        final List<SimpleInterval> resolved;
+        final List<SimpleInterval> intersected;
+        if (inputAnnotatedIntervalsFile != null && inputReadCountFiles.isEmpty()) {
+            //only annotated intervals provided
             annotatedIntervals = new AnnotatedIntervalCollection(inputAnnotatedIntervalsFile);
-            specifiedIntervals = new SimpleIntervalCollection(
-                    annotatedIntervals.getMetadata(),
-                    intervalArgumentCollection.getIntervals(annotatedIntervals.getMetadata().getSequenceDictionary()));
-            Utils.validateArg(specifiedIntervals.size() != 0, "At least one interval must be specified.");
-            Utils.validateArg(new HashSet<>(annotatedIntervals.getIntervals()).containsAll(specifiedIntervals.getIntervals()),
-                    "Annotated intervals do not contain all specified intervals.");
-        } else {
-            //counts provided
+            metadata = annotatedIntervals.getMetadata();
+            resolved = intervalArgumentCollection.getIntervals(metadata.getSequenceDictionary());
+            intersected = ListUtils.intersection(
+                    resolved,
+                    annotatedIntervals.getIntervals());
+        } else if (inputAnnotatedIntervalsFile == null && !inputReadCountFiles.isEmpty()) {
+            //only counts provided
             final File firstReadCountFile = inputReadCountFiles.get(0);
-            specifiedIntervals = CopyNumberArgumentValidationUtils.resolveIntervals(
-                    firstReadCountFile, intervalArgumentCollection, logger);
-            if (inputAnnotatedIntervalsFile != null) {
-                //both annotated intervals and counts provided
-                annotatedIntervals = CopyNumberArgumentValidationUtils.validateAnnotatedIntervalsSubset(
-                        inputAnnotatedIntervalsFile, specifiedIntervals, logger);
-            }
+            final SimpleCountCollection firstReadCounts = SimpleCountCollection.read(firstReadCountFile);
+            metadata = firstReadCounts.getMetadata();
+            resolved = intervalArgumentCollection.getIntervals(metadata.getSequenceDictionary());
+            intersected = ListUtils.intersection(
+                    resolved,
+                    firstReadCounts.getIntervals());
+        } else {
+            //both annotated intervals and counts provided
+            annotatedIntervals = new AnnotatedIntervalCollection(inputAnnotatedIntervalsFile);
+            final File firstReadCountFile = inputReadCountFiles.get(0);
+            final SimpleCountCollection firstReadCounts = SimpleCountCollection.read(firstReadCountFile);
+            CopyNumberArgumentValidationUtils.isSameDictionary(
+                    annotatedIntervals.getMetadata().getSequenceDictionary(),
+                    firstReadCounts.getMetadata().getSequenceDictionary());
+            metadata = annotatedIntervals.getMetadata();
+            resolved = intervalArgumentCollection.getIntervals(metadata.getSequenceDictionary());
+            intersected = ListUtils.intersection(
+                    ListUtils.intersection(
+                            resolved,
+                            annotatedIntervals.getIntervals()),
+                    firstReadCounts.getIntervals());
         }
+        Utils.validateArg(!intersected.isEmpty(), "At least one interval must remain after intersection.");
+        logger.info(String.format("After interval resolution, %d intervals remain...", resolved.size()));
+        logger.info(String.format("After interval intersection, %d intervals remain...", intersected.size()));
+        intersectedIntervals = new SimpleIntervalCollection(metadata, intersected);
     }
 
     private SimpleIntervalCollection filterIntervals() {
-        final int numOriginalIntervals = specifiedIntervals.size();
-        final boolean[] mask = new boolean[numOriginalIntervals];     //if true, filter out; each filter modifies this mask
+        final int numIntersectedIntervals = intersectedIntervals.size();
+        final boolean[] mask = new boolean[numIntersectedIntervals];     //if true, filter out; each filter modifies this mask
 
         //apply annotation-based filters
         if (annotatedIntervals != null) {
@@ -315,17 +337,17 @@ public final class FilterIntervals extends CommandLineProgram {
             //for present annotations, apply corresponding filters
             final List<AnnotationKey<?>> annotationKeys = annotatedIntervals.getRecords().get(0).getAnnotationMap().getKeys();
             if (annotationKeys.contains(CopyNumberAnnotations.GC_CONTENT)) {    //this should always be true, but we check it anyway
-                updateMaskByAnnotationFilter(logger, annotatedIntervals, mask,
+                updateMaskByAnnotationFilter(logger, intersectedIntervals, annotatedIntervals, mask,
                         CopyNumberAnnotations.GC_CONTENT, "GC-content",
                         minimumGCContent, maximumGCContent);
             }
             if (annotationKeys.contains(CopyNumberAnnotations.MAPPABILITY)) {
-                updateMaskByAnnotationFilter(logger, annotatedIntervals, mask,
+                updateMaskByAnnotationFilter(logger, intersectedIntervals, annotatedIntervals, mask,
                         CopyNumberAnnotations.MAPPABILITY, "mappability",
                         minimumMappability, maximumMappability);
             }
             if (annotationKeys.contains(CopyNumberAnnotations.SEGMENTAL_DUPLICATION_CONTENT)) {
-                updateMaskByAnnotationFilter(logger, annotatedIntervals, mask,
+                updateMaskByAnnotationFilter(logger, intersectedIntervals, annotatedIntervals, mask,
                         CopyNumberAnnotations.SEGMENTAL_DUPLICATION_CONTENT, "segmental-duplication-content",
                         minimumSegmentalDuplicationContent, maximumSegmentalDuplicationContent);
             }
@@ -334,13 +356,13 @@ public final class FilterIntervals extends CommandLineProgram {
         //apply count-based filters
         if (!inputReadCountFiles.isEmpty()) {
             //get the read-count matrix (samples x specified intervals) and validate intervals and sequence dictionaries
-            final RealMatrix readCountMatrix = constructReadCountMatrix(logger, inputReadCountFiles, specifiedIntervals);
+            final RealMatrix readCountMatrix = constructReadCountMatrix(logger, inputReadCountFiles, intersectedIntervals);
             final int numSamples = readCountMatrix.getRowDimension();
             logger.info("Applying count-based filters...");
 
             //low-count filter: filter out intervals with a count strictly less than lowCountFilterCountThreshold
             //for strictly greater than lowCountFilterPercentageOfSamples
-            IntStream.range(0, numOriginalIntervals)
+            IntStream.range(0, numIntersectedIntervals)
                     .filter(i -> !mask[i])
                     .forEach(i -> {
                         if (Arrays.stream(readCountMatrix.getColumn(i))
@@ -353,14 +375,14 @@ public final class FilterIntervals extends CommandLineProgram {
                             "(intervals with a count < %d in > %s%% of samples fail), " +
                             "%d / %d intervals remain...",
                     lowCountFilterCountThreshold, lowCountFilterPercentageOfSamples,
-                    countNumberPassing(mask), numOriginalIntervals));
+                    countNumberPassing(mask), numIntersectedIntervals));
 
             //extreme-count filter: filter out remaining intervals with counts that fall outside of the per-sample percentiles
             //[extremeCountMinimumPercentile, extremeCountMaximumPercentile] for strictly greater than extremeCountFilterPercentageOfSamples
-            final boolean[][] percentileMask = new boolean[numSamples][numOriginalIntervals];
+            final boolean[][] percentileMask = new boolean[numSamples][numIntersectedIntervals];
             for (int sampleIndex = 0; sampleIndex < numSamples; sampleIndex++) {
                 final double[] counts = readCountMatrix.getRow(sampleIndex);
-                final double[] filteredCounts = IntStream.range(0, numOriginalIntervals)
+                final double[] filteredCounts = IntStream.range(0, numIntersectedIntervals)
                         .filter(i -> !mask[i])
                         .mapToDouble(i -> counts[i])
                         .toArray();
@@ -370,14 +392,14 @@ public final class FilterIntervals extends CommandLineProgram {
                 final double extremeCountMaximumPercentileThreshold = extremeCountFilterMaximumPercentile == 0.
                         ? 0.
                         : new Percentile(extremeCountFilterMaximumPercentile).evaluate(filteredCounts);
-                for (int intervalIndex = 0; intervalIndex < numOriginalIntervals; intervalIndex++) {
+                for (int intervalIndex = 0; intervalIndex < numIntersectedIntervals; intervalIndex++) {
                     final double count = readCountMatrix.getEntry(sampleIndex, intervalIndex);
                     if (!(extremeCountMinimumPercentileThreshold <= count && count <= extremeCountMaximumPercentileThreshold)) {
                         percentileMask[sampleIndex][intervalIndex] = true;
                     }
                 }
             }
-            IntStream.range(0, numOriginalIntervals)
+            IntStream.range(0, numIntersectedIntervals)
                     .filter(i -> !mask[i])
                     .forEach(i -> {
                         if (IntStream.range(0, numSamples)
@@ -390,28 +412,29 @@ public final class FilterIntervals extends CommandLineProgram {
                             "(intervals with a count percentile outside of [%s, %s] in > %s%% of samples fail), " +
                             "%d / %d intervals remain...",
                     extremeCountFilterMinimumPercentile, extremeCountFilterMaximumPercentile, extremeCountFilterPercentageOfSamples,
-                    countNumberPassing(mask), numOriginalIntervals));
+                    countNumberPassing(mask), numIntersectedIntervals));
         }
 
-        logger.info(String.format("%d / %d intervals passed all filters...", countNumberPassing(mask), numOriginalIntervals));
+        logger.info(String.format("%d / %d intervals passed all filters...", countNumberPassing(mask), numIntersectedIntervals));
 
         //return the filtered intervals as a SimpleIntervalCollection
         return new SimpleIntervalCollection(
-                specifiedIntervals.getMetadata(),
-                IntStream.range(0, numOriginalIntervals)
+                intersectedIntervals.getMetadata(),
+                IntStream.range(0, numIntersectedIntervals)
                         .filter(i -> !mask[i])
-                        .mapToObj(i -> specifiedIntervals.getRecords().get(i))
+                        .mapToObj(i -> intersectedIntervals.getRecords().get(i))
                         .collect(Collectors.toList()));
     }
 
     private static void updateMaskByAnnotationFilter(final Logger logger,
+                                                     final SimpleIntervalCollection intersectedIntervals,
                                                      final AnnotatedIntervalCollection annotatedIntervals,
                                                      final boolean[] mask,
                                                      final AnnotationKey<Double> annotationKey,
                                                      final String filterName,
                                                      final double minValue,
                                                      final double maxValue) {
-        IntStream.range(0, annotatedIntervals.size())
+        IntStream.range(0, intersectedIntervals.size())
                 .filter(i -> !mask[i])
                 .forEach(i -> {
                     final double value = annotatedIntervals.getRecords().get(i).getAnnotationMap().getValue(annotationKey);
@@ -419,17 +442,17 @@ public final class FilterIntervals extends CommandLineProgram {
                         mask[i] = true;
                     }});
         logger.info(String.format("After applying %s filter (intervals with values outside of [%s, %s] fail), %d / %d intervals remain...",
-                filterName, minValue, maxValue, countNumberPassing(mask), annotatedIntervals.size()));
+                filterName, minValue, maxValue, countNumberPassing(mask), intersectedIntervals.size()));
     }
 
     private static RealMatrix constructReadCountMatrix(final Logger logger,
                                                        final List<File> inputReadCountFiles,
-                                                       final SimpleIntervalCollection specifiedIntervals) {
+                                                       final SimpleIntervalCollection intersectedIntervals) {
         logger.info("Validating and aggregating input read-counts files...");
         final int numSamples = inputReadCountFiles.size();
-        final int numIntervals = specifiedIntervals.size();
+        final int numIntervals = intersectedIntervals.size();
         //construct the interval subset to pull out from the read-count files
-        final Set<SimpleInterval> intervalSubset = new HashSet<>(specifiedIntervals.getRecords());
+        final Set<SimpleInterval> intervalSubset = new HashSet<>(intersectedIntervals.getRecords());
         final RealMatrix readCountMatrix = new Array2DRowRealMatrix(numSamples, numIntervals);
         final ListIterator<File> inputReadCountFilesIterator = inputReadCountFiles.listIterator();
         while (inputReadCountFilesIterator.hasNext()) {
@@ -439,7 +462,7 @@ public final class FilterIntervals extends CommandLineProgram {
             final SimpleCountCollection readCounts = SimpleCountCollection.read(inputReadCountFile);
             if (!CopyNumberArgumentValidationUtils.isSameDictionary(
                     readCounts.getMetadata().getSequenceDictionary(),
-                    specifiedIntervals.getMetadata().getSequenceDictionary())) {
+                    intersectedIntervals.getMetadata().getSequenceDictionary())) {
                 logger.warn(String.format("Sequence dictionary for read-counts file %s is inconsistent with those for other inputs.", inputReadCountFile));
             }
             final double[] subsetReadCounts = readCounts.getRecords().stream()
