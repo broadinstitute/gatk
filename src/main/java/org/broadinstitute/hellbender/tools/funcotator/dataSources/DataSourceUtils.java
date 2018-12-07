@@ -315,13 +315,13 @@ final public class DataSourceUtils {
                     : resolveFilePathStringFromKnownPath( dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_SRC_FILE), configFilePath ).toUri().toString();
 
         final int lookaheadCacheSizePropertyValue = getLookAheadCacheBpPropertyValue(dataSourceProperties);
-        final int lookaheadCacheSize_bp = lookaheadCacheSizePropertyValue == -1 ? lookaheadFeatureCachingInBp : lookaheadCacheSizePropertyValue;
+        final int lookaheadCacheSizeFinal = lookaheadCacheSizePropertyValue == -1 ? lookaheadFeatureCachingInBp : lookaheadCacheSizePropertyValue;
 
-        logger.info( "Setting lookahead cache for data source: " + name + " : " + lookaheadCacheSize_bp );
+        logger.info( "Setting lookahead cache for data source: " + name + " : " + lookaheadCacheSizeFinal );
 
         // Get feature inputs by creating them with the tool instance itself.
         // This has the side effect of registering the FeatureInputs with the engine, so that they can be later queried.
-        return funcotatorToolInstance.addFeatureInputsAfterInitialization(sourceFile, name, featureType, lookaheadCacheSize_bp);
+        return funcotatorToolInstance.addFeatureInputsAfterInitialization(sourceFile, name, featureType, lookaheadCacheSizeFinal);
     }
 
     /**

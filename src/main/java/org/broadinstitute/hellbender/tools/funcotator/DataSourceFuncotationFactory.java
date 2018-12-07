@@ -41,6 +41,9 @@ public abstract class DataSourceFuncotationFactory implements Closeable {
     protected Map<String, String> annotationOverrideMap;
 
     /**
+     * Enables b37 data sources to be combined with hg19 data sources and work with the same input variants.
+     * Should only be used in cases where data sources cannot be made / found for hg19 and hg19 annotations are required.
+     * A value of {@code false} ONLY indicates that the data source is NOT b37.
      * If {@code true}, the backing data behind this {@link DataSourceFuncotationFactory} is based on the b37 reference AND we are using hg19 data.
      * If {@code false}, the backing data behind this the backing data behind this {@link DataSourceFuncotationFactory} is NOT based on the b37 reference.
      */

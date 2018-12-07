@@ -318,7 +318,9 @@ if [[ $r -eq 0 ]] && ${doRunLargeTests} ; then
     --ref-version ${REF_VER} \
     --output-file-format ${OUT_FORMAT} \
 		--java-options '-DGATK_STACKTRACE_ON_USER_EXCEPTION=true -Xmx16g' \
-  
+		--cloud-index-prefetch-buffer 40 \
+		--cloud-prefetch-buffer 80
+
   r=$?
 fi
 
