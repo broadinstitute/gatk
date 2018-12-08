@@ -5,7 +5,7 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBased
 
 import java.io.File;
 
-public class M2FiltersArgumentCollection extends AssemblyBasedCallerArgumentCollection {
+public class M2FiltersArgumentCollection {
     private static final long serialVersionUID = 9345L;
     public static final String LOG_SOMATIC_PRIOR_LONG_NAME = "log-somatic-prior";
     public static final String TUMOR_LOD_LONG_NAME = "tumor-lod";
