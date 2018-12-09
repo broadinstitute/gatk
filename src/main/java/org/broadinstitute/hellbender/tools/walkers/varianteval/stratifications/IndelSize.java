@@ -24,7 +24,7 @@ public class IndelSize extends VariantStratifier {
         }
     }
 
-    public List<Object> getRelevantStates(ReferenceContext referenceContext, ReadsContext readsContext, FeatureContext featureContext, VariantContext comp, String compName, VariantContext eval, String evalName, String sampleName, String FamilyName) {
+    public List<Object> getRelevantStates(ReferenceContext referenceContext, ReadsContext readsContext, VariantContext comp, String compName, VariantContext eval, String evalName, String sampleName, String FamilyName) {
         if (eval != null && eval.isIndel() && eval.isBiallelic()) {
             try {
                 int eventLength = 0;

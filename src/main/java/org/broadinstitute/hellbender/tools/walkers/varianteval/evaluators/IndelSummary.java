@@ -4,13 +4,11 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.log4j.Logger;
-import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.Analysis;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.DataPoint;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Collection;
@@ -141,8 +139,9 @@ public class IndelSummary extends VariantEvaluator implements StandardEval {
 
     @Override public int getComparisonOrder() { return 2; }
 
-    public void update2(VariantContext eval, VariantContext comp, final ReferenceContext referenceContext, final ReadsContext readsContext, final FeatureContext featureContext) {
-        if ( eval == null || (getWalker().ignoreAC0Sites() && eval.isMonomorphicInSamples()) )
+    @Override
+    public void update2(VariantContext eval, VariantContext comp, final ReferenceContext referenceContext, final ReadsContext readsContext) {
+        if ( eval == null || (getVariantEvalSourceProvider().ignoreAC0Sites() && eval.isMonomorphicInSamples()) )
             return;
 
         // update counts
@@ -159,7 +158,8 @@ public class IndelSummary extends VariantEvaluator implements StandardEval {
                 break;
             case INDEL:
                 //NOTE: this matches GATK3 behavior (limiting to overlapping the start position)
-                final Collection<VariantContext> gold = getWalker().goldStandard == null ? Collections.emptySet() : featureContext.getValues(getWalker().goldStandard, new SimpleInterval(eval.getContig(), eval.getStart(), eval.getStart()));
+                //TODO Fix Me: is this substitution correct ?
+                final Collection<VariantContext> gold = getVariantEvalSourceProvider().getOverlappingGolds(eval.getStart());
 
                 nIndelSites++;
                 if ( ! eval.isBiallelic() ) n_multiallelic_indel_sites++;

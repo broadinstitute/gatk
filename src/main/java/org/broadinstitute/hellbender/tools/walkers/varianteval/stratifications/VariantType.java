@@ -18,7 +18,7 @@ public class VariantType extends VariantStratifier {
             states.add(t.toString());
     }
 
-    public List<Object> getRelevantStates(ReferenceContext referenceContext, ReadsContext readsContext, FeatureContext featureContext, VariantContext comp, String compName, VariantContext eval, String evalName, String sampleName, String FamilyName) {
+    public List<Object> getRelevantStates(ReferenceContext referenceContext, ReadsContext readsContext, VariantContext comp, String compName, VariantContext eval, String evalName, String sampleName, String FamilyName) {
         return eval == null ? Collections.emptyList() : Collections.singletonList((Object)eval.getType().toString());
     }
 

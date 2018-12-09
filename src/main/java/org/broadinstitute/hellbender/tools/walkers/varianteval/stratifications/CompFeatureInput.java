@@ -13,8 +13,8 @@ import java.util.List;
 public class CompFeatureInput extends VariantStratifier implements RequiredStratification {
     @Override
     public void initialize() {
-        for ( FeatureInput<VariantContext> rod : getVariantEvalWalker().getComps() ) {
-            states.add(getVariantEvalWalker().getNameForInput(rod));
+        for ( FeatureInput<VariantContext> rod : getVariantEvalSourceProvider().getComps() ) {
+            states.add(getVariantEvalSourceProvider().getNameForInput(rod));
         }
 
         if (states.isEmpty()) {
@@ -22,7 +22,7 @@ public class CompFeatureInput extends VariantStratifier implements RequiredStrat
         }
     }
 
-    public List<Object> getRelevantStates(ReferenceContext referenceContext, ReadsContext readsContext, FeatureContext featureContext, VariantContext comp, String compName, VariantContext eval, String evalName, String sampleName, String FamilyName) {
+    public List<Object> getRelevantStates(ReferenceContext referenceContext, ReadsContext readsContext, VariantContext comp, String compName, VariantContext eval, String evalName, String sampleName, String FamilyName) {
         return Collections.singletonList(compName == null ? "none" : compName);
     }
 }

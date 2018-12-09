@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools.walkers.varianteval.evaluators;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.log4j.Logger;
-import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.Analysis;
@@ -66,8 +65,9 @@ public class MultiallelicSummary extends VariantEvaluator implements StandardEva
 
     @Override public int getComparisonOrder() { return 2; }
 
-    public void update2(VariantContext eval, VariantContext comp, final ReferenceContext referenceContext, final ReadsContext readsContext, final FeatureContext featureContext) {
-        if ( eval == null || (getWalker().ignoreAC0Sites() && eval.isMonomorphicInSamples()) )
+    @Override
+    public void update2(VariantContext eval, VariantContext comp, final ReferenceContext referenceContext, final ReadsContext readsContext) {
+        if ( eval == null || (getVariantEvalSourceProvider().ignoreAC0Sites() && eval.isMonomorphicInSamples()) )
             return;
 
         // update counts
@@ -128,7 +128,7 @@ public class MultiallelicSummary extends VariantEvaluator implements StandardEva
     }
 
     public void finalizeEvaluation() {
-        nProcessedLoci = getWalker().getnProcessedLoci();
+        nProcessedLoci = getVariantEvalSourceProvider().getnProcessedLoci();
         processedMultiSnpRatio = (double)nMultiSNPs / (double)nProcessedLoci;
         variantMultiSnpRatio = (double)nMultiSNPs / (double)nSNPs;
         processedMultiIndelRatio = (double)nMultiIndels / (double)nProcessedLoci;

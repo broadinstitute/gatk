@@ -4,9 +4,9 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.VariantContextUtils;
 import htsjdk.variant.vcf.VCFConstants;
+import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.CommandLineException;
-import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -20,14 +20,15 @@ import org.broadinstitute.hellbender.utils.samples.Sample;
 import org.reflections.Reflections;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class VariantEvalUtils {
-    private final VariantEval variantEvalWalker;
+    private final VariantEvalSourceProvider variantEvalSourceProvider;
     Logger logger;
 
-    public VariantEvalUtils(VariantEval variantEvalWalker) {
-        this.variantEvalWalker = variantEvalWalker;
-        this.logger = variantEvalWalker.getLogger();
+    public VariantEvalUtils(VariantEvalSourceProvider variantEvalSourceProvider) {
+        this.variantEvalSourceProvider = variantEvalSourceProvider;
+        this.logger = LogManager.getLogger(this.getClass());
     }
 
     private final static Map<String, Class<? extends VariantStratifier>> stratifierClasses;
@@ -122,7 +123,7 @@ public class VariantEvalUtils {
 
                 try {
                     VariantStratifier vs = c.newInstance();
-                    vs.setVariantEvalWalker(variantEvalWalker);
+                    vs.setVariantEvalSourceProvider(variantEvalSourceProvider);
                     vs.initialize();
 
                     strats.add(vs);
@@ -189,7 +190,7 @@ public class VariantEvalUtils {
      */
     public VariantContext getSubsetOfVariantContext(VariantContext vc, Set<String> sampleNames) {
         // if we want to preserve AC0 sites as polymorphic we need to not rederive alleles
-        final boolean deriveAlleles = variantEvalWalker.ignoreAC0Sites();
+        final boolean deriveAlleles = variantEvalSourceProvider.ignoreAC0Sites();
         return ensureAnnotations(vc, vc.subContextFromSamples(sampleNames, deriveAlleles));
     }
 
@@ -226,8 +227,8 @@ public class VariantEvalUtils {
      * @return the mapping of track to VC list that should be populated
      */
     public HashMap<FeatureInput<VariantContext>, HashMap<String, Collection<VariantContext>>>
-    bindVariantContexts(ReferenceContext referenceContext,
-                        FeatureContext featureContext,
+    bindVariantContexts(List<VariantContext> variantContexts,
+                        ReferenceContext referenceContext,
                         List<FeatureInput<VariantContext>> tracks,
                         boolean byFilter,
                         boolean subsetBySample,
@@ -241,22 +242,22 @@ public class VariantEvalUtils {
             HashMap<String, Collection<VariantContext>> mapping = new HashMap<>();
 
             //TODO: limiting to only those w/ the same start is GATK3 behavior.
-            for (VariantContext vc : featureContext.getValues(track, referenceContext.getInterval().getStart())) {
-
+            //for (VariantContext vc : featureContext.getValues(track, referenceContext.getInterval().getStart())) {
+            for (VariantContext vc : getVariantsForTrack(variantContexts, track, referenceContext.getInterval().getStart())) {
                 // First, filter the VariantContext to represent only the samples for evaluation
                 VariantContext vcsub = vc;
 
                 if ((subsetBySample) && vc.hasGenotypes())
-                    vcsub = getSubsetOfVariantContext(vc, variantEvalWalker.getSampleNamesForEvaluation());
+                    vcsub = getSubsetOfVariantContext(vc, variantEvalSourceProvider.getSampleNamesForEvaluation());
 
                 //always add a mapping for all samples together
                 if ((byFilter || !vcsub.isFiltered())) {
-                    addMapping(mapping, VariantEval.getAllSampleName(), vcsub);
+                    addMapping(mapping, variantEvalSourceProvider.getAllSampleName(), vcsub);
                 }
 
                 // Now, if stratifying, split the subsetted vc per sample and add each as a new context
                 if (vc.hasGenotypes() && trackPerSample) {
-                    for (String sampleName : variantEvalWalker.getSampleNamesForEvaluation()) {
+                    for (String sampleName : variantEvalSourceProvider.getSampleNamesForEvaluation()) {
                         VariantContext samplevc = getSubsetOfVariantContext(vc, sampleName);
 
                         if (byFilter || !samplevc.isFiltered()) {
@@ -265,14 +266,14 @@ public class VariantEvalUtils {
                     }
                 }
                 else if (vc.hasGenotypes() && trackPerFamily) {
-                    for (final String familyName : variantEvalWalker.getFamilyNamesForEvaluation()) {
+                    for (final String familyName : variantEvalSourceProvider.getFamilyNamesForEvaluation()) {
                         Set<String> familyMemberNames = new HashSet<>();
                         //if the current stratification family name is "all", then add all the families to the VC for evaluation here
-                        if (familyName.equals(VariantEval.getAllFamilyName())) {
-                            familyMemberNames = variantEvalWalker.getSampleNamesForEvaluation();
+                        if (familyName.equals(variantEvalSourceProvider.getAllFamilyName())) {
+                            familyMemberNames = variantEvalSourceProvider.getSampleNamesForEvaluation();
                         }
                         else {
-                            Set<Sample> familyMembers = variantEvalWalker.getSampleDB().getFamily(familyName);
+                            Set<Sample> familyMembers = variantEvalSourceProvider.getSampleDB().getFamily(familyName);
                             for (final Sample s : familyMembers) {
                                 familyMemberNames.add(s.getID());
                             }
@@ -303,6 +304,17 @@ public class VariantEvalUtils {
         }
 
         return bindings;
+    }
+
+    public List<VariantContext> getVariantsForTrack(final List<VariantContext> variantContexts,
+                                                     final FeatureInput track,
+                                                     final int startPosition) {
+        //TODO: is this start pos filter correct ?
+        final String trackName = track.getName();
+        final List<String> vNames = variantContexts.stream().map(vc -> vc.getSource()).collect(Collectors.toList());
+        final List<VariantContext> rtVCs = variantContexts.stream().filter(vc -> track.getName().equals(vc.getSource()) && vc.getStart() == startPosition).collect(Collectors.toList());
+        return rtVCs;
+
     }
 
     private void addMapping(HashMap<String, Collection<VariantContext>> mappings, String sample, VariantContext vc) {

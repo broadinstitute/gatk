@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools.walkers.varianteval.evaluators;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
-import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.Analysis;
@@ -32,8 +31,9 @@ public class ThetaVariantEvaluator extends VariantEvaluator {
         return 1;
     }
 
-    public void update1(VariantContext vc, final ReferenceContext referenceContext, final ReadsContext readsContext, final FeatureContext featureContext) {
-        if (vc == null || !vc.isSNP() || (getWalker().ignoreAC0Sites() && vc.isMonomorphicInSamples())) {
+    @Override
+    public void update1(VariantContext vc, final ReferenceContext referenceContext, final ReadsContext readsContext) {
+        if (vc == null || !vc.isSNP() || (getVariantEvalSourceProvider().ignoreAC0Sites() && vc.isMonomorphicInSamples())) {
             return;
         }
 

@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers.varianteval.evaluators;
 
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
-import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -62,9 +61,9 @@ public class IndelLengthHistogram extends VariantEvaluator implements StandardEv
     }
 
     @Override
-    public void update1(final VariantContext eval, final ReferenceContext referenceContext, final ReadsContext readsContext, final FeatureContext featureContext) {
+    public void update1(final VariantContext eval, final ReferenceContext referenceContext, final ReadsContext readsContext) {
         if ( eval.isIndel() && ! eval.isComplexIndel() ) {
-            if ( ! ( getWalker().ignoreAC0Sites() && eval.isMonomorphicInSamples() )) {
+            if ( ! ( getVariantEvalSourceProvider().ignoreAC0Sites() && eval.isMonomorphicInSamples() )) {
                 // only if we are actually polymorphic in the subsetted samples should we count the allele
                 for ( Allele alt : eval.getAlternateAlleles() ) {
                     final int alleleSize = alt.length() - eval.getReference().length();

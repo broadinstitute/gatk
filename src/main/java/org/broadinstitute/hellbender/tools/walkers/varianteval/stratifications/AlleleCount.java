@@ -4,7 +4,6 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.barclay.argparser.CommandLineException;
-import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -27,12 +26,12 @@ public class AlleleCount extends VariantStratifier {
     @Override
     public void initialize() {
         // we can only work with a single eval VCF, and it must have genotypes
-        if ( getVariantEvalWalker().getEvals().size() != 1 && !getVariantEvalWalker().mergeEvals )
+        if ( getVariantEvalSourceProvider().getEvals().size() != 1 && !getVariantEvalSourceProvider().getMergeEvals() )
             throw new CommandLineException.BadArgumentValue("AlleleCount", "AlleleCount stratification only works with a single eval vcf");
 
         // There are ploidy x n sample chromosomes
         // TODO -- generalize to handle multiple ploidy
-        nchrom = getVariantEvalWalker().getNumberOfSamplesForEvaluation() * getVariantEvalWalker().getSamplePloidy();
+        nchrom = getVariantEvalSourceProvider().getNumberOfSamplesForEvaluation() * getVariantEvalSourceProvider().getSamplePloidy();
         if ( nchrom < 2 )
             throw new CommandLineException.BadArgumentValue("AlleleCount", "AlleleCount stratification requires an eval vcf with at least one sample");
 
@@ -41,10 +40,10 @@ public class AlleleCount extends VariantStratifier {
             states.add(ac);
         }
 
-        getVariantEvalWalker().getLogger().info("AlleleCount using " + nchrom + " chromosomes");
+        getVariantEvalSourceProvider().getLogger().info("AlleleCount using " + nchrom + " chromosomes");
     }
 
-    public List<Object> getRelevantStates(ReferenceContext referenceContext, ReadsContext readsContext, FeatureContext featureContext, VariantContext comp, String compName, VariantContext eval, String evalName, String sampleName, String familyName) {
+    public List<Object> getRelevantStates(ReferenceContext referenceContext, ReadsContext readsContext, VariantContext comp, String compName, VariantContext eval, String evalName, String sampleName, String familyName) {
         if (eval != null) {
             int AC = 0; // by default, the site is considered monomorphic
 

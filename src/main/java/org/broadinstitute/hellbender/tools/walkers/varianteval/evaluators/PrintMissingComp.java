@@ -20,7 +20,8 @@ public class PrintMissingComp extends VariantEvaluator {
         return 2;   // we need to see each eval track and each comp track
     }
 
-    public void update2(VariantContext eval, VariantContext comp, final ReferenceContext referenceContext, final ReadsContext readsContext, final FeatureContext featureContext) {
+    @Override
+    public void update2(VariantContext eval, VariantContext comp, final ReferenceContext referenceContext, final ReadsContext readsContext) {
         final boolean compIsGood = comp != null && comp.isNotFiltered() && comp.isSNP();
         final boolean evalIsGood = eval != null && eval.isSNP();
 

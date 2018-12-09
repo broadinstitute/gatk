@@ -29,7 +29,7 @@ public class CpG extends VariantStratifier {
     }
 
     @Override
-    public List<Object> getRelevantStates(ReferenceContext referenceContext, ReadsContext readsContext, FeatureContext featureContext, VariantContext comp, String compName, VariantContext eval, String evalName, String sampleName, String FamilyName) {
+    public List<Object> getRelevantStates(ReferenceContext referenceContext, ReadsContext readsContext, VariantContext comp, String compName, VariantContext eval, String evalName, String sampleName, String FamilyName) {
         boolean isCpG = false;
         if (referenceContext != null && referenceContext.getBases() != null) {
             String fwRefBases = new String(referenceContext.getBases(0, 1));

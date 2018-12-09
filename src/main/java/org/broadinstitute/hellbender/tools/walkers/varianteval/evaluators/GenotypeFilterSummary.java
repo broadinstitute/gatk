@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers.varianteval.evaluators;
 
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
-import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.Analysis;
@@ -27,7 +26,7 @@ public class GenotypeFilterSummary extends VariantEvaluator {
     }
 
     @Override
-    public void update1(VariantContext eval, ReferenceContext referenceContext, ReadsContext readsContext, FeatureContext featureContext) {
+    public void update1(VariantContext eval, ReferenceContext referenceContext, ReadsContext readsContext) {
         Iterator<Genotype> it = eval.getGenotypes().iterator();
         while (it.hasNext()){
             Genotype g = it.next();

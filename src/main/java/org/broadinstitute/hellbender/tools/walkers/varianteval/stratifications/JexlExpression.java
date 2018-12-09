@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications;
 
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextUtils;
-import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.SortableJexlVCMatchExp;
@@ -22,7 +21,7 @@ public class JexlExpression extends VariantStratifier implements StandardStratif
 
     @Override
     public void initialize() {
-        jexlExpressions = getVariantEvalWalker().getJexlExpressions();
+        jexlExpressions = getVariantEvalSourceProvider().getJexlExpressions();
 
         states.add("none");
         for ( SortableJexlVCMatchExp jexlExpression : jexlExpressions ) {
@@ -30,7 +29,7 @@ public class JexlExpression extends VariantStratifier implements StandardStratif
         }
     }
 
-    public List<Object> getRelevantStates(ReferenceContext referenceContext, ReadsContext readsContext, FeatureContext featureContext, VariantContext comp, String compName, VariantContext eval, String evalName, String sampleName, String FamilyName) {
+    public List<Object> getRelevantStates(ReferenceContext referenceContext, ReadsContext readsContext, VariantContext comp, String compName, VariantContext eval, String evalName, String sampleName, String FamilyName) {
         ArrayList<Object> relevantStates = new ArrayList<Object>();
         relevantStates.add("none");
 

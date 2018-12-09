@@ -12,9 +12,9 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.VariantEval;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.Analysis;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.DataPoint;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.util.VariantEvalSourceProvider;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
@@ -130,7 +130,7 @@ public class VariantSummary extends VariantEvaluator implements StandardEval {
     }
 
 
-    public void initialize(VariantEval walker) {
+    public void initialize(VariantEvalSourceProvider walker) {
         super.initialize(walker);
 
         this.knownCNVs = walker.getKnownCNVsFile();
@@ -165,10 +165,10 @@ public class VariantSummary extends VariantEvaluator implements StandardEval {
         }
     }
 
-    private boolean overlapsKnownCNV(VariantContext cnv, FeatureContext featureContext) {
+    private boolean overlapsKnownCNV(VariantContext cnv) {
         if ( knownCNVs != null ) {
-            List<Feature> overlaps = featureContext.getValues(knownCNVs);
-            GenomeLocParser parser = new GenomeLocParser(getWalker().getReferenceDictionary());
+            List<Feature> overlaps = getVariantEvalSourceProvider().getOverlappingKnownCNVs();
+            GenomeLocParser parser = new GenomeLocParser(getVariantEvalSourceProvider().getProviderReferenceDictionary());
             GenomeLoc loc1 = parser.createGenomeLoc(cnv);
             for (Feature vc : overlaps) {
                 GenomeLoc loc2 = parser.createGenomeLoc(vc);
@@ -181,8 +181,9 @@ public class VariantSummary extends VariantEvaluator implements StandardEval {
         return false;
     }
 
-    public void update2(VariantContext eval, VariantContext comp, ReferenceContext referenceContext, ReadsContext readsContext, FeatureContext featureContext) {
-        if ( eval == null || (getWalker().ignoreAC0Sites() && eval.isMonomorphicInSamples()) )
+    @Override
+    public void update2(VariantContext eval, VariantContext comp, ReferenceContext referenceContext, ReadsContext readsContext) {
+        if ( eval == null || (getVariantEvalSourceProvider().ignoreAC0Sites() && eval.isMonomorphicInSamples()) )
             return;
 
         final Type type = getType(eval);
@@ -205,7 +206,7 @@ public class VariantSummary extends VariantEvaluator implements StandardEval {
         }
 
         // novelty calculation
-        if ( comp != null || (type == Type.CNV && overlapsKnownCNV(eval, featureContext)))
+        if ( comp != null || (type == Type.CNV && overlapsKnownCNV(eval)))
             knownVariantCounts.inc(type, ALL);
 
         // per sample metrics
@@ -229,7 +230,7 @@ public class VariantSummary extends VariantEvaluator implements StandardEval {
     }
 
     public void finalizeEvaluation() {
-        nProcessedLoci = getWalker().getnProcessedLoci();
+        nProcessedLoci = getVariantEvalSourceProvider().getnProcessedLoci();
         nSNPs = allVariantCounts.all(Type.SNP);
         nIndels = allVariantCounts.all(Type.INDEL);
         nSVs = allVariantCounts.all(Type.CNV);

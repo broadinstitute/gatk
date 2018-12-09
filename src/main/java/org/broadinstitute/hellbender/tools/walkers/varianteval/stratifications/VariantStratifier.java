@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.VariantEval;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.evaluators.VariantEvaluator;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications.manager.Stratifier;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.util.VariantEvalSourceProvider;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -14,7 +15,7 @@ import java.util.List;
 import java.util.Set;
 
 public abstract class VariantStratifier implements Comparable<VariantStratifier>, Stratifier<Object> {
-    private VariantEval variantEvalWalker;
+    private VariantEvalSourceProvider variantEvalSourceProvider;
     final private String name;
     final protected ArrayList<Object> states = new ArrayList<Object>();
 
@@ -30,7 +31,7 @@ public abstract class VariantStratifier implements Comparable<VariantStratifier>
 
     public abstract void initialize();
 
-    public abstract List<Object> getRelevantStates(ReferenceContext referenceContext, ReadsContext readsContext, FeatureContext featureContext, VariantContext comp, String compName, VariantContext eval, String evalName, String sampleName, String familyName);
+    public abstract List<Object> getRelevantStates(ReferenceContext referenceContext, ReadsContext readsContext, VariantContext comp, String compName, VariantContext eval, String evalName, String sampleName, String familyName);
 
     // -------------------------------------------------------------------------------------
     //
@@ -39,18 +40,18 @@ public abstract class VariantStratifier implements Comparable<VariantStratifier>
     // -------------------------------------------------------------------------------------
 
     /**
-     * @return a reference to the parent VariantEvalWalker running this stratification
+     * @return a reference to VariantEvalSourceProvider running this stratification
      */
-    public final VariantEval getVariantEvalWalker() {
-        return variantEvalWalker;
+    public final VariantEvalSourceProvider getVariantEvalSourceProvider() {
+        return variantEvalSourceProvider;
     }
 
     /**
-     * Should only be called by VariantEvalWalker itself
-     * @param variantEvalWalker
+     * Set the VariantEvalSourceProvider.
+     * @param variantEvalSourceProvider
      */
-    public final void setVariantEvalWalker(VariantEval variantEvalWalker) {
-        this.variantEvalWalker = variantEvalWalker;
+    public final void setVariantEvalSourceProvider(VariantEvalSourceProvider variantEvalSourceProvider) {
+        this.variantEvalSourceProvider = variantEvalSourceProvider;
     }
 
     public final int compareTo(VariantStratifier o1) {

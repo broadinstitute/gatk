@@ -6,21 +6,22 @@ import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.VariantEval;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.util.VariantEvalSourceProvider;
 
 public abstract class VariantEvaluator implements Comparable<VariantEvaluator> {
-    private VariantEval walker;
+    private VariantEvalSourceProvider sourceProvider;
     private final String simpleName;
 
     protected VariantEvaluator() {
         this.simpleName = getClass().getSimpleName();
     }
 
-    public void initialize(VariantEval walker) {
-        this.walker = walker;
+    public void initialize(VariantEvalSourceProvider sourceProvider) {
+        this.sourceProvider = sourceProvider;
     }
 
-    public VariantEval getWalker() {
-        return walker;
+    public VariantEvalSourceProvider getVariantEvalSourceProvider() {
+        return sourceProvider;
     }
 
     // Should return the number of VariantContexts expected as inputs to update.  Can be 1 or 2
@@ -28,10 +29,10 @@ public abstract class VariantEvaluator implements Comparable<VariantEvaluator> {
 
     // called at all sites, regardless of eval context itself; useful for counting processed bases
     // No longer available.  The processed bp is kept in VEW itself for performance reasons
-    public void update1(VariantContext eval, ReferenceContext referenceContext, ReadsContext readsContext, FeatureContext featureContext) {
+    public void update1(VariantContext eval, ReferenceContext referenceContext, ReadsContext readsContext) {
     }
 
-    public void update2(VariantContext eval, VariantContext comp, ReferenceContext referenceContext, ReadsContext readsContext, FeatureContext featureContext) {
+    public void update2(VariantContext eval, VariantContext comp, ReferenceContext referenceContext, ReadsContext readsContext) {
     }
 
     public void finalizeEvaluation() {}

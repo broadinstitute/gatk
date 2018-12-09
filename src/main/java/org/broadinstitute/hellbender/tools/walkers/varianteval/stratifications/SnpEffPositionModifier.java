@@ -35,7 +35,6 @@ public class SnpEffPositionModifier extends VariantStratifier {
 	public List<Object> getRelevantStates(
 			final ReferenceContext referenceContext,
 			final ReadsContext readsContext,
-			final FeatureContext featureContext,
 			final VariantContext comp,
 			final String compName,
 			final VariantContext eval,

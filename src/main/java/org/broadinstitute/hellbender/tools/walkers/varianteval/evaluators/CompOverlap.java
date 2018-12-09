@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers.varianteval.evaluators;
 
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
-import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.Analysis;
@@ -67,7 +66,8 @@ public class CompOverlap extends VariantEvaluator implements StandardEval {
         return false;
     }
 
-    public void update2(VariantContext eval, VariantContext comp, final ReferenceContext referenceContext, final ReadsContext readsContext, final FeatureContext featureContext) {
+    @Override
+    public void update2(VariantContext eval, VariantContext comp, final ReferenceContext referenceContext, final ReadsContext readsContext) {
         boolean evalIsGood = eval != null && eval.isPolymorphicInSamples();
         boolean compIsGood = comp != null && comp.isNotFiltered();
 

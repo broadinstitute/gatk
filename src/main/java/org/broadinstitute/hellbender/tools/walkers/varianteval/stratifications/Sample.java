@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications;
 
 import htsjdk.variant.variantcontext.VariantContext;
-import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.evaluators.VariantEvaluator;
@@ -19,10 +18,10 @@ import java.util.*;
 public class Sample extends VariantStratifier {
     @Override
     public void initialize() {
-        states.addAll(getVariantEvalWalker().getSampleNamesForStratification());
+        states.addAll(getVariantEvalSourceProvider().getSampleNamesForStratification());
     }
 
-    public List<Object> getRelevantStates(ReferenceContext referenceContext, ReadsContext readsContext, FeatureContext featureContext, VariantContext comp, String compName, VariantContext eval, String evalName, String sampleName, String FamilyName) {
+    public List<Object> getRelevantStates(ReferenceContext referenceContext, ReadsContext readsContext, VariantContext comp, String compName, VariantContext eval, String evalName, String sampleName, String FamilyName) {
         return Collections.singletonList(sampleName);
     }
 

@@ -1,24 +1,20 @@
 package org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications;
 
-import htsjdk.samtools.util.IntervalTree;
 import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.log4j.Logger;
 import org.broadinstitute.barclay.argparser.CommandLineException;
-import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.utils.GenomeLoc;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Stratifies the variants by whether they overlap an interval in the set provided on the command line.
  *
- * The primary use of this stratification is to provide a mechanism to divide asssessment of a call set up
+ * The primary use of this stratification is to provide a mechanism to divide assessment of a call set up
  * by whether a variant overlaps an interval or not.  I use this to differentiate between variants occurring
  * in CCDS exons vs. those in non-coding regions, in the 1000G call set, using a command line that looks like:
  *
@@ -37,15 +33,15 @@ public class IntervalStratification extends VariantStratifier {
     
     @Override
     public void initialize() {
-        if ( getVariantEvalWalker().intervalsFile == null )
+        if ( !getVariantEvalSourceProvider().getHasIntervalsDefined())
             throw new CommandLineException.MissingArgument("stratIntervals", "Must be provided when IntervalStratification is enabled");
 
         states.addAll(Arrays.asList("all", "overlaps.intervals", "outside.intervals"));
     }
 
-    public List<Object> getRelevantStates(ReferenceContext referenceContext, ReadsContext readsContext, FeatureContext featureContext, VariantContext comp, String compName, VariantContext eval, String evalName, String sampleName, String FamilyName) {
+    public List<Object> getRelevantStates(ReferenceContext referenceContext, ReadsContext readsContext, VariantContext comp, String compName, VariantContext eval, String evalName, String sampleName, String FamilyName) {
         if (eval != null) {
-            List<Feature> overlapping = featureContext.getValues(getVariantEvalWalker().intervalsFile);
+            List<Feature> overlapping = getVariantEvalSourceProvider().getOverlappingFromIntervals();
             if ( !overlapping.isEmpty() )
                 return OVERLAPPING;
             else

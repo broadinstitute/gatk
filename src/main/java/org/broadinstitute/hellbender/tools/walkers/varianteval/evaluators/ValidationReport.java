@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools.walkers.varianteval.evaluators;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
-import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -88,13 +87,13 @@ public class ValidationReport extends VariantEvaluator implements StandardEval {
     }
 
     @Override
-    public void update2(VariantContext eval, VariantContext comp, final ReferenceContext referenceContext, final ReadsContext readsContext, final FeatureContext featureContext) {
+    public void update2(VariantContext eval, VariantContext comp, final ReferenceContext referenceContext, final ReadsContext readsContext) {
         if ( comp != null ) { // we only need to consider sites in comp
             if ( REQUIRE_IDENTICAL_ALLELES && (eval != null && haveDifferentAltAlleles(eval, comp)))
                 nDifferentAlleleSites++;
             else {
                 SiteStatus evalStatus = calcSiteStatus(eval);
-                final Set<String> evalSamples = getWalker().getSampleNamesForEvaluation();
+                final Set<String> evalSamples = getVariantEvalSourceProvider().getSampleNamesForEvaluation();
                 if ( comp.hasGenotypes() && ! evalSamples.isEmpty() && comp.hasGenotypes(evalSamples) )
                     // if we have genotypes in both eval and comp, subset comp down just the samples in eval
                     comp = comp.subContextFromSamples(evalSamples, false);

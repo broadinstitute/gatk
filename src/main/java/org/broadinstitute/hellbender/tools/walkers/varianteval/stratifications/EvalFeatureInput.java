@@ -12,14 +12,14 @@ import java.util.List;
 public class EvalFeatureInput extends VariantStratifier implements RequiredStratification {
     @Override
     public void initialize() {
-        for ( FeatureInput<VariantContext> rod : getVariantEvalWalker().getEvals() ) {
-            states.add(getVariantEvalWalker().getNameForInput(rod));
-            if ( getVariantEvalWalker().mergeEvals )
+        for ( FeatureInput<VariantContext> rod : getVariantEvalSourceProvider().getEvals() ) {
+            states.add(getVariantEvalSourceProvider().getNameForInput(rod));
+            if ( getVariantEvalSourceProvider().getMergeEvals() )
                 break;
         }
     }
 
-    public List<Object> getRelevantStates(ReferenceContext referenceContext, ReadsContext readsContext, FeatureContext featureContext, VariantContext comp, String compName, VariantContext eval, String evalName, String sampleName, String FamilyName) {
+    public List<Object> getRelevantStates(ReferenceContext referenceContext, ReadsContext readsContext, VariantContext comp, String compName, VariantContext eval, String evalName, String sampleName, String FamilyName) {
         return Arrays.asList(evalName);
     }
 }

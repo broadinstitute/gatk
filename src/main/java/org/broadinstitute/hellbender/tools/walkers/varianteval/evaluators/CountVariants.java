@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers.varianteval.evaluators;
 
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
-import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -85,7 +84,8 @@ public class CountVariants extends VariantEvaluator implements StandardEval {
         return 1;   // we only need to see each eval track
     }
 
-    public void update1(VariantContext vc1, ReferenceContext referenceContext, ReadsContext readsContext, FeatureContext featureContext) {
+    @Override
+    public void update1(VariantContext vc1, ReferenceContext referenceContext, ReadsContext readsContext) {
         nCalledLoci++;
 
         // Note from Eric:
@@ -93,7 +93,7 @@ public class CountVariants extends VariantEvaluator implements StandardEval {
         // So in order to maintain consistency with the previous implementation (and the intention of the original author), I've
         // added in a proxy check for monomorphic status here.
         // Protect against case when vc only as no-calls too - can happen if we strafity by sample and sample as a single no-call.
-       if ( getWalker().ignoreAC0Sites() && vc1.isMonomorphicInSamples() ) {
+       if ( getVariantEvalSourceProvider().ignoreAC0Sites() && vc1.isMonomorphicInSamples() ) {
             nRefLoci++;
         } else {
              switch (vc1.getType()) {
@@ -181,7 +181,7 @@ public class CountVariants extends VariantEvaluator implements StandardEval {
     }
 
     public void finalizeEvaluation() {
-        nProcessedLoci = getWalker().getnProcessedLoci();
+        nProcessedLoci = getVariantEvalSourceProvider().getnProcessedLoci();
         variantRate = perLocusRate(nVariantLoci);
         variantRatePerBp = perLocusRInverseRate(nVariantLoci);
         heterozygosity = perLocusRate(nHets);

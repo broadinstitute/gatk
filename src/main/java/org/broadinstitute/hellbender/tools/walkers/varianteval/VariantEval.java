@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.varianteval;
 
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
@@ -24,6 +25,7 @@ import org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications.V
 import org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications.manager.StratificationManager;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.EvaluationContext;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.SortableJexlVCMatchExp;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.util.VariantEvalSourceProvider;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.VariantEvalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -123,7 +125,7 @@ import java.util.*;
 )
 @DocumentedFeature
 @BetaFeature
-public class VariantEval extends MultiVariantWalker {
+public class VariantEval extends MultiVariantWalkerGroupedOnStart implements VariantEvalSourceProvider {
     public static final String IS_SINGLETON_KEY = "ISSINGLETON";
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
@@ -433,61 +435,73 @@ public class VariantEval extends MultiVariantWalker {
         }
     }
 
-    private class PositionAggregator {
-        private SimpleInterval i = null;
+//    private class PositionAggregator {
+//        private SimpleInterval i = null;
+//
+//        private ReadsContext readsContext;
+//        private ReferenceContext referenceContext;
+//        private FeatureContext featureContext;
+//
+//        private void addVariant(VariantContext vc, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext) {
+//            if (i == null || !vc.getContig().equals(i.getContig()) || vc.getStart() != i.getStart()) {
+//                callDoApply();
+//
+//                i = new SimpleInterval(vc.getContig(), vc.getStart(), vc.getEnd());
+//                this.readsContext = readsContext;
+//                this.referenceContext = referenceContext;
+//                this.featureContext = featureContext;
+//            }
+//            else if (vc.getEnd() > i.getEnd()) {
+//                //expand region
+//                i = new SimpleInterval(i.getContig(), i.getStart(), vc.getEnd());
+//
+//                this.readsContext = new ReadsContext(this.readsContext, i);
+//                this.referenceContext = new ReferenceContext(this.referenceContext, i);
+//                this.featureContext = new FeatureContext(this.featureContext, i);
+//            }
+//        }
+//
+//        public void callDoApply(){
+//            if (i != null) {
+//                doApply(this.readsContext, this.referenceContext, this.featureContext);
+//                i = null;
+//            }
+//        }
+//
+//        public void onComplete() {
+//            callDoApply();
+//        }
+//    }
+//
+//    final PositionAggregator aggr = new PositionAggregator();
+//
+//    @Override
+//    public void apply(VariantContext variant, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext) {
+//        aggr.addVariant(variant, readsContext, referenceContext, featureContext);
+//    }
 
-        private ReadsContext readsContext;
-        private ReferenceContext referenceContext;
-        private FeatureContext featureContext;
-
-        private void addVariant(VariantContext vc, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext) {
-            if (i == null || !vc.getContig().equals(i.getContig()) || vc.getStart() != i.getStart()) {
-                callDoApply();
-
-                i = new SimpleInterval(vc.getContig(), vc.getStart(), vc.getEnd());
-                this.readsContext = readsContext;
-                this.referenceContext = referenceContext;
-                this.featureContext = featureContext;
-            }
-            else if (vc.getEnd() > i.getEnd()) {
-                //expand region
-                i = new SimpleInterval(i.getContig(), i.getStart(), vc.getEnd());
-
-                this.readsContext = new ReadsContext(this.readsContext, i);
-                this.referenceContext = new ReferenceContext(this.referenceContext, i);
-                this.featureContext = new FeatureContext(this.featureContext, i);
-            }
-        }
-
-        public void callDoApply(){
-            if (i != null) {
-                doApply(this.readsContext, this.referenceContext, this.featureContext);
-                i = null;
-            }
-        }
-
-        public void onComplete() {
-            callDoApply();
-        }
-    }
-
-    final PositionAggregator aggr = new PositionAggregator();
-
-    @Override
-    public void apply(VariantContext variant, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext) {
-        aggr.addVariant(variant, readsContext, referenceContext, featureContext);
-    }
-
-    public String getNameForInput(FeatureInput<VariantContext> input) {
-        return inputToNameMap.get(input);
-    }
+    List<VariantContext> currentVariantGroup;
+    FeatureContext cacheFeatureContext;
 
     /**
      * This will get called once per site where a variant is present in any input
      */
-    public void doApply(ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext) {
-        HashMap<FeatureInput<VariantContext>, HashMap<String, Collection<VariantContext>>> evalVCs = variantEvalUtils.bindVariantContexts(referenceContext, featureContext, evals, byFilterIsEnabled, true, perSampleIsEnabled, perFamilyIsEnabled, mergeEvals);
-        HashMap<FeatureInput<VariantContext>, HashMap<String, Collection<VariantContext>>> compVCs = variantEvalUtils.bindVariantContexts(referenceContext, featureContext, comps, byFilterIsEnabled, false, false, false, false);
+    @Override
+    public void apply(List<VariantContext> variantContexts, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext) {
+        // TODO: temp hack
+        currentVariantGroup = variantContexts;
+        // TODO: temp double hack
+        cacheFeatureContext = featureContext;
+
+        HashMap<FeatureInput<VariantContext>, HashMap<String, Collection<VariantContext>>> evalVCs =
+                variantEvalUtils.bindVariantContexts(
+                        variantContexts,
+                        referenceContext, evals, byFilterIsEnabled, true, perSampleIsEnabled, perFamilyIsEnabled, mergeEvals);
+        HashMap<FeatureInput<VariantContext>, HashMap<String, Collection<VariantContext>>> compVCs =
+                variantEvalUtils.bindVariantContexts(
+                        variantContexts,
+                        referenceContext, comps, byFilterIsEnabled, false, false, false, false);
+
 
         // for each eval track
         for ( final FeatureInput<VariantContext> evalInput : evals ) {
@@ -522,11 +536,11 @@ public class VariantEval extends MultiVariantWalker {
 
                     // for each comp track
                     for ( final FeatureInput<VariantContext> compInput : comps ) {
-                        processComp(referenceContext, readsContext, featureContext, eval, evalName, compInput, stratLevelName, compVCs, evalSetBySample);
+                        processComp(referenceContext, readsContext, eval, evalName, compInput, stratLevelName, compVCs, evalSetBySample);
                     }
 
                     if (comps.isEmpty()) {
-                        processComp(referenceContext, readsContext, featureContext, eval, evalName, null, stratLevelName, compVCs, evalSetBySample);
+                        processComp(referenceContext, readsContext, eval, evalName, null, stratLevelName, compVCs, evalSetBySample);
                     }
                 }
             }
@@ -535,7 +549,7 @@ public class VariantEval extends MultiVariantWalker {
         }
     }
 
-    private void processComp(ReferenceContext referenceContext, ReadsContext readsContext, FeatureContext featureContext, VariantContext eval, String evalName, FeatureInput<VariantContext> compInput, String stratLevelName, HashMap<FeatureInput<VariantContext>, HashMap<String, Collection<VariantContext>>> compVCs, Collection<VariantContext> evalSetBySample) {
+    private void processComp(ReferenceContext referenceContext, ReadsContext readsContext, VariantContext eval, String evalName, FeatureInput<VariantContext> compInput, String stratLevelName, HashMap<FeatureInput<VariantContext>, HashMap<String, Collection<VariantContext>>> compVCs, Collection<VariantContext> evalSetBySample) {
         String compName = getNameForInput(compInput);
 
         // no sample stratification for comps
@@ -547,27 +561,27 @@ public class VariantEval extends MultiVariantWalker {
 
         Collection<EvaluationContext> contextsForStratification;
         if (perFamilyIsEnabled)
-            contextsForStratification = getEvaluationContexts(referenceContext, readsContext, featureContext, eval, evalName, comp, compName, null, stratLevelName);
+            contextsForStratification = getEvaluationContexts(referenceContext, readsContext, eval, evalName, comp, compName, null, stratLevelName);
         else {
             String familyID;
             if (stratLevelName.equals("all"))
                 familyID = "all";
             else
                 familyID = sampleDB.getSample(stratLevelName).getFamilyID();
-            contextsForStratification = getEvaluationContexts(referenceContext, readsContext, featureContext, eval, evalName, comp, compName, stratLevelName, familyID);
+            contextsForStratification = getEvaluationContexts(referenceContext, readsContext, eval, evalName, comp, compName, stratLevelName, familyID);
         }
         for ( EvaluationContext nec : contextsForStratification ) {
 
             // eval against the comp
             synchronized (nec) {
-                nec.apply(referenceContext, readsContext, featureContext, comp, eval);
+                nec.apply(referenceContext, readsContext, comp, eval);
             }
 
             // eval=null against all comps of different type that aren't bound to another eval
             for ( VariantContext otherComp : compSet ) {
                 if ( otherComp != comp && ! compHasMatchingEval(otherComp, evalSetBySample) ) {
                     synchronized (nec) {
-                        nec.apply(referenceContext, readsContext, featureContext, otherComp, null);
+                        nec.apply(referenceContext, readsContext, otherComp, null);
                     }
                 }
             }
@@ -602,7 +616,6 @@ public class VariantEval extends MultiVariantWalker {
      *
      * @param referenceContext
      * @param readsContext
-     * @param featureContext
      * @param eval
      * @param evalName
      * @param comp
@@ -612,7 +625,6 @@ public class VariantEval extends MultiVariantWalker {
      */
     protected Collection<EvaluationContext> getEvaluationContexts(final ReferenceContext referenceContext,
                                                                   final ReadsContext readsContext,
-                                                                  final FeatureContext featureContext,
                                                                   final VariantContext eval,
                                                                   final String evalName,
                                                                   final VariantContext comp,
@@ -621,7 +633,7 @@ public class VariantEval extends MultiVariantWalker {
                                                                   final String familyName) {
         final List<List<Object>> states = new LinkedList<List<Object>>();
         for ( final VariantStratifier vs : stratManager.getStratifiers() ) {
-            states.add(vs.getRelevantStates(referenceContext, readsContext, featureContext, comp, compName, eval, evalName, sampleName, familyName));
+            states.add(vs.getRelevantStates(referenceContext, readsContext, comp, compName, eval, evalName, sampleName, familyName));
         }
         return stratManager.values(states);
     }
@@ -686,7 +698,7 @@ public class VariantEval extends MultiVariantWalker {
 
     @Override
     public Object onTraversalSuccess() {
-        aggr.onComplete();
+        //aggr.onComplete();
 
         logger.info("Finalizing variant report");
         
@@ -732,26 +744,76 @@ public class VariantEval extends MultiVariantWalker {
         return null;
     }
 
-    // Accessors
-    public Logger getLogger() { return logger; }
+    //VariantEvalSourceProvider Implementation
 
+    @Override
+    public List<VariantContext> getOverlappingKnowns(final int start) {
+        final List<VariantContext> ret = cacheFeatureContext.getValues(knowns, start);
+        return ret;
+    }
+
+    @Override
+    public SAMSequenceDictionary getProviderReferenceDictionary() {
+        return getReferenceDictionary();
+    }
+
+    @Override
+    public List<VariantContext> getOverlappingGolds(final int start) {
+        return cacheFeatureContext.getValues(goldStandard, start);
+    }
+
+    @Override
+    public List<Feature> getOverlappingKnownCNVs() {
+        //TODO: Implement for compatibility with variantSummary
+        return cacheFeatureContext.getValues(getKnownCNVsFile());
+    }
+
+    //TODO: this wants ALL of the features from the entire query interval for the intervals file,
+    // not just the ones in the current
+    @Override
+    public List<Feature> getOverlappingFromIntervals() {
+        return cacheFeatureContext.getValues(intervalsFile);
+    }
+
+    @Override
+    public boolean getHasIntervalsDefined(){ return intervalsFile != null; }
+
+    @Override
+    public String getNameForInput(FeatureInput<VariantContext> input) {
+        return inputToNameMap.get(input);
+    }
+
+    @Override
     public double getMinPhaseQuality() { return MIN_PHASE_QUALITY; }
 
+    @Override
     public int getSamplePloidy() { return ploidy; }
+
+    @Override
     public double getMendelianViolationQualThreshold() { return MENDELIAN_VIOLATION_QUAL_THRESHOLD; }
 
-    public static String getAllSampleName() { return ALL_SAMPLE_NAME; }
-    public static String getAllFamilyName() { return ALL_FAMILY_NAME; }
+    @Override
+    public String getAllSampleName() { return ALL_SAMPLE_NAME; }
 
+    @Override
+    public String getAllFamilyName() { return ALL_FAMILY_NAME; }
+
+    @Override
     public List<FeatureInput<VariantContext>> getKnowns() { return knowns; }
 
+    @Override
     public List<FeatureInput<VariantContext>> getEvals() { return evals; }
 
+    @Override
     public boolean isSubsettingToSpecificSamples() { return isSubsettingSamples; }
+
+    @Override
     public Set<String> getSampleNamesForEvaluation() { return sampleNamesForEvaluation; }
 
+    @Override
     public Set<String> getFamilyNamesForEvaluation() { return familyNamesForEvaluation; }
 
+    @Override
     public int getNumberOfSamplesForEvaluation() {
         if (sampleNamesForEvaluation!= null &&  !sampleNamesForEvaluation.isEmpty())
             return sampleNamesForEvaluation.size();
@@ -760,14 +822,20 @@ public class VariantEval extends MultiVariantWalker {
         }
 
     }
+
+    @Override
     public Set<String> getSampleNamesForStratification() { return sampleNamesForStratification; }
 
+    @Override
     public Set<String> getFamilyNamesForStratification() { return familyNamesForStratification; }
 
+    @Override
     public List<FeatureInput<VariantContext>> getComps() { return comps; }
 
+    @Override
     public Set<SortableJexlVCMatchExp> getJexlExpressions() { return jexlExpressions; }
 
+    @Override
     public Set<String> getContigNames() {
         final TreeSet<String> contigs = new TreeSet<>();
         for( final SAMSequenceRecord r :  getSequenceDictionaryForDrivingVariants().getSequences()) {
@@ -776,6 +844,7 @@ public class VariantEval extends MultiVariantWalker {
         return contigs;
     }
 
+    @Override
     public boolean ignoreAC0Sites() {
         return ! keepSitesWithAC0;
     }
@@ -796,16 +865,28 @@ public class VariantEval extends MultiVariantWalker {
         return sampleDBBuilder.getFinalSampleDB();
     }
 
+    @Override
     public SampleDB getSampleDB() {
         return sampleDB;
     }
 
+    @Override
     public long getnProcessedLoci() {
         return getTraversalIntervals().stream().mapToLong(SimpleInterval::size).sum();
     }
 
+    //TODO: why is this one File ?
+    @Override
     public FeatureInput<Feature> getKnownCNVsFile() {
         return knownCNVsFile;
+    }
+
+    @Override
+    public boolean getMergeEvals() { return mergeEvals; }
+
+    @Override
+    public VCFHeader getHeaderForEvalFeatures(FeatureInput<VariantContext> evals) {
+        return (VCFHeader) getHeaderForFeatures(evals);
     }
 
     @Override

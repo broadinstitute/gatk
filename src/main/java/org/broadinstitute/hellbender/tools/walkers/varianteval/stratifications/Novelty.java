@@ -1,13 +1,13 @@
 package org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications;
 
 import htsjdk.variant.variantcontext.VariantContext;
-import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -23,13 +23,13 @@ public class Novelty extends VariantStratifier implements StandardStratification
     @Override
     public void initialize() {
         states.addAll(Arrays.asList("all", "known", "novel"));
-        knowns = getVariantEvalWalker().getKnowns();
+        knowns = getVariantEvalSourceProvider().getKnowns();
     }
 
-    public List<Object> getRelevantStates(ReferenceContext referenceContext, ReadsContext readsContext, FeatureContext featureContext, VariantContext comp, String compName, VariantContext eval, String evalName, String sampleName, String FamilyName) {
+    public List<Object> getRelevantStates(ReferenceContext referenceContext, ReadsContext readsContext, VariantContext comp, String compName, VariantContext eval, String evalName, String sampleName, String FamilyName) {
         if (eval != null) {
-            //NOTE: this is limiting to matching start position, comparable to GATK3.  Unsure if we shoud carry behavior that forward
-            final Collection<VariantContext> knownComps = featureContext.getValues(knowns, eval.getStart());
+            //NOTE: this is limiting to matching start position, comparable to GATK3.  Unsure if we should carry behavior that forward
+            final Collection<VariantContext> knownComps = getVariantEvalSourceProvider().getOverlappingKnowns(eval.getStart());
             for ( final VariantContext c : knownComps ) {
                 // loop over sites, looking for something that matches the type eval
                 if ( eval.getType() == c.getType() || eval.getType() == VariantContext.Type.NO_VARIATION ) {
