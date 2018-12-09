@@ -552,6 +552,9 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                 trimmingResult.needsTrimming() ? untrimmedAssemblyResult.trimTo(trimmingResult.getCallableRegion()) : untrimmedAssemblyResult;
 
         final AssemblyRegion regionForGenotyping = assemblyResult.getRegionForGenotyping();
+        final List<GATKRead> readStubs = regionForGenotyping.getReads().stream()
+                .filter(r -> r.getLength() < AssemblyBasedCallerUtils.MINIMUM_READ_LENGTH_AFTER_TRIMMING).collect(Collectors.toList());
+        regionForGenotyping.removeAll(readStubs);
 
         // filter out reads from genotyping which fail mapping quality based criteria
         //TODO - why don't do this before any assembly is done? Why not just once at the beginning of this method
