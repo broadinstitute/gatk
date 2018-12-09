@@ -1,16 +1,17 @@
 {
-  "HaplotypeCaller.gatk_docker": "broadinstitute/gatk:4.0.11.0",
+  "HaplotypeCaller.gatk_docker": "broadinstitute/gatk-nightly:2018-12-07-4.0.11.0-88-g2ae01efda-SNAPSHOT",
 
   "HaplotypeCaller.input_bam": "gs://haplotypecallerspark-evaluation/inputData/NexPond-359781.bam",
   "HaplotypeCaller.input_bam_index": "gs://haplotypecallerspark-evaluation/inputData/NexPond-359781.bai",
+  "HaplotypeCaller.interval_list": "gs://haplotypecallerspark-evaluation/inputData/NIST.chr22.interval_list",
+  "HaplotypeCaller.out_vcf_name": "NexPond-359781.chr22.vcf",
+
   "HaplotypeCaller.ref_fasta": "gs://broad-references/hg19/v0/Homo_sapiens_assembly19.fasta",
   "HaplotypeCaller.ref_fasta_index": "gs://broad-references/hg19/v0/Homo_sapiens_assembly19.fasta.fai",
   "HaplotypeCaller.ref_fasta_dict": "gs://broad-references/hg19/v0/Homo_sapiens_assembly19.dict",
 
-  "HaplotypeCaller.interval_list": "gs://haplotypecallerspark-evaluation/inputData/NIST.chr22.interval_list",
-  "HaplotypeCaller.gvcf_mode": "false",
 
-  "HaplotypeCaller.out_vcf_name": "NexPond-359781.chr22.vcf",
+  "HaplotypeCaller.gvcf_mode": "false",
 
   "HaplotypeCaller.disk_space_gb": "512",
   "HaplotypeCaller.boot_disk_size_gb": "64",
