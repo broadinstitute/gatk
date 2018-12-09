@@ -220,8 +220,8 @@ task HaplotypeCallerSparkTask {
 
         endTime=`date +%s.%N`
         echo "EndTime: $endTime" >> timingInformation.txt
-        elapsedTime=`echo "scale=5;$endTime - $startTime" | bc`
-        echo "Elapsed Time: $elapsedTime" >> timingInformation.txt
+        #elapsedTime=`echo "scale=5;$endTime - $startTime" | bc`
+        #echo "Elapsed Time: $elapsedTime" >> timingInformation.txt
     >>>
 
     # ------------------------------------------------
