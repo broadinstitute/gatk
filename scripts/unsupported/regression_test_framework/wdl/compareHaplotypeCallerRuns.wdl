@@ -42,9 +42,9 @@ workflow ToolComparisonWdl {
     Int interval_padding
 
     # Default input files for HC and comparison:
-    String? truth_bucket_location = "gs://haplotypecallerspark-evaluation/groundTruth/"
-    String? input_bucket_location = "gs://haplotypecallerspark-evaluation/inputData/"
-    Array[String]? input_bams = [ "G94982.NA12878.bam", "G96830.NA12878.bam", "G96831.NA12878.bam", "G96832.NA12878.bam", "NexPond-359781.bam", "NexPond-412726.bam", "NexPond-445394.bam", "NexPond-472246.bam", "NexPond-506817.bam", "NexPond-538834.bam", "NexPond-572804.bam", "NexPond-603388.bam", "NexPond-633960.bam", "NexPond-656480.bam", "NexPond-679060.bam" ]
+    String truth_bucket_location = "gs://haplotypecallerspark-evaluation/groundTruth/"
+    String input_bucket_location = "gs://haplotypecallerspark-evaluation/inputData/"
+    Array[String] input_bams = [ "G94982.NA12878.bam", "G96830.NA12878.bam", "G96831.NA12878.bam", "G96832.NA12878.bam", "NexPond-359781.bam", "NexPond-412726.bam", "NexPond-445394.bam", "NexPond-472246.bam", "NexPond-506817.bam", "NexPond-538834.bam", "NexPond-572804.bam", "NexPond-603388.bam", "NexPond-633960.bam", "NexPond-656480.bam", "NexPond-679060.bam" ]
 
     File? gatk4_jar_override
     Int?  mem_gb
@@ -60,7 +60,7 @@ workflow ToolComparisonWdl {
         File inputBaseName = basename(input_bams[i])
         File indexFile = inputBaseName + ".bai"
 
-        String outputName = if gvcf_mode then sub(basename(input_bam), ".*\\.", "") + ".g.vcf" else ".g.vcf"
+        String outputName = if gvcf_mode then sub(basename(input_bams[i]), ".*\\.", "") + ".g.vcf" else ".g.vcf"
 
         call tool_wdl.HaplotypeCallerTask {
             input:
@@ -136,9 +136,9 @@ workflow ToolComparisonWdl {
     # ------------------------------------------------
     # Outputs:
     output {
-        File vcf_out     = HaplotypeCallerTask.output_vcf
-        File vcf_out_idx = HaplotypeCallerTask.output_vcf_index
-        File timingInfo  = HaplotypeCallerTask.timing_info
+#        File vcf_out     = HaplotypeCallerTask.output_vcf
+#        File vcf_out_idx = HaplotypeCallerTask.output_vcf_index
+#        File timingInfo  = HaplotypeCallerTask.timing_info
     }
 }
 
