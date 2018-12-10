@@ -121,7 +121,7 @@ public class SparkSharder {
 
         JavaRDD<ShardBoundary> paddedIntervals = intervals.map(ShardBoundary::paddedShardBoundary);
         if (useShuffle) {
-            throw new UnsupportedOperationException();
+            throw new UnsupportedOperationException("Shuffle not supported when sharding an RDD of intervals.");
         }
         return joinOverlapping(ctx, locatables, locatableClass, sequenceDictionary, paddedIntervals, maxLocatableLength,
                 new MapFunction<Tuple2<ShardBoundary, Iterable<L>>, Shard<L>>() {
@@ -210,7 +210,8 @@ public class SparkSharder {
                                                                                             int maxLocatableLength, FlatMapFunction2<Iterator<L>, Iterator<I>, T> f) {
 
         List<PartitionLocatable<SimpleInterval>> partitionReadExtents = computePartitionReadExtents(locatables, sequenceDictionary, maxLocatableLength);
-        List<SimpleInterval> firstLocatables = partitionReadExtents.stream().map(PartitionLocatable::getLocatable).collect(Collectors.toList());
+        List<SimpleInterval> firstLocatablesList = partitionReadExtents.stream().map(PartitionLocatable::getLocatable).collect(Collectors.toList());
+        Broadcast<List<SimpleInterval>> firstLocatablesBroadcast = ctx.broadcast(firstLocatablesList);
 
         // For each interval find which partition it starts and ends in.
         // An interval is processed in the partition it starts in. However, we need to make sure that
@@ -222,6 +223,7 @@ public class SparkSharder {
             int[] partitionIndexes = overlapDetectorBroadcast.getValue().getOverlaps(interval).stream()
                     .mapToInt(PartitionLocatable::getPartitionIndex).toArray();
             if (partitionIndexes.length == 0) {
+                final List<SimpleInterval> firstLocatables = firstLocatablesBroadcast.getValue();
                 // interval does not overlap any partition - add it to the one after the interval start
                 int i = Collections.binarySearch(firstLocatables, new SimpleInterval(interval), (o1, o2) -> IntervalUtils.compareLocatables(o1, o2, sequenceDictionary));
                 if (i >= 0) {
@@ -249,6 +251,7 @@ public class SparkSharder {
 
         indexedIntervalsRepartitioned.cache(); // cache since we need to do two calculations on the intervals
 
+        // Find the end partition index for each partition.
         Map<Integer, Integer> maxEndPartitionIndexesMap = indexedIntervalsRepartitioned.mapToPair((PairFunction<PartitionLocatable<I>, Integer, Integer>) partitionLocatable ->
                 new Tuple2<>(partitionLocatable.getPartitionIndex(), partitionLocatable.getEndPartitionIndex()))
                 .reduceByKey((Function2<Integer, Integer, Integer>) Math::max)
@@ -375,7 +378,7 @@ public class SparkSharder {
     }
 
     /**
-     * For each partition, find the interval that spans it.
+     * For each partition, find the interval that spans it, ordered by start position.
      */
     static <L extends Locatable> List<PartitionLocatable<SimpleInterval>> computePartitionReadExtents(JavaRDD<L> locatables, SAMSequenceDictionary sequenceDictionary, int maxLocatableLength) {
         // Find the first locatable in each partition. This is very efficient since only the first record in each partition is read.
