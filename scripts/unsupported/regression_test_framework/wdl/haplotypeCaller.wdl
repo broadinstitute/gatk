@@ -187,6 +187,6 @@ task HaplotypeCallerTask {
     output {
         File output_vcf       = "${out_file_name}"
         File output_vcf_index = "${out_file_name}.${index_format}"
-        File timing_info      = "timingInformation.txt"
+        File timing_info      = "${out_file_name}.timingInformation.txt"
     }
 }
