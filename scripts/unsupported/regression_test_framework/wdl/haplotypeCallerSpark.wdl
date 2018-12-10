@@ -205,6 +205,7 @@ task HaplotypeCallerSparkTask {
                 -I ${input_bam} \
                 -O ${out_file_name} \
                 -R ${ref_fasta} \
+                --read-validation-stringency STRICT \
                 ${interval_list_arg}${default="" sep=" -L " interval_list} \
                 ${contamination_arg}${default="" sep=" --contamination " contamination} \
                 ${interval_padding_arg}${default="" sep=" --interval-padding " interval_padding} \
