@@ -193,10 +193,6 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     @Argument(fullName= IGNORE_ITR_ARTIFACTS_LONG_NAME, doc="Turn off read transformer that clips artifacts associated with end repair insertions near inverted tandem repeats.", optional = true)
     public boolean dontClipITRArtifacts = false;
 
-    @Advanced
-    @Argument(fullName = GET_AF_FROM_AD_LONG_NAME, doc="Use allelic depth to calculate tumor allele fraction; recommended for mitochondrial applications", optional = true)
-    public boolean calculateAFfromAD = false;
-
     /**
      * If set to true, count an overlapping read pair as two separate reads instead of one for {@link StrandArtifact} and {@link StrandBiasBySample} annotations,
      * which is the correct behavior for these annotations. Note that doing so would break the independence assumption of reads and over-count the alt depth in these annotations.
