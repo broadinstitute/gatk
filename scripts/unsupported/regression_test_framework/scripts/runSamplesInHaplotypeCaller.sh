@@ -223,9 +223,10 @@ if ${ISCALLEDBYUSER} ; then
 
 	#----------------------------------
 	# Do real work here.
-    for inputBamName in $(gsutil ls ${INPUT_BUCKET_URL}/*.bam) ; do
+    for inputBamName in $(gsutil ls ${INPUT_BUCKET_URL}/*.bam | sort | uniq) ; do
 
-        echo "${inputBamName}" | grep -qE 'G96831|G96832|G94982|359781|412726|445394|472246|506817|538834|572804|603388|633960|656480|679060'
+#        echo "${inputBamName}" | grep -qE 'G96831|G96832|G94982|359781|412726|445394|472246|506817|538834|572804|603388|633960|656480|679060'
+        echo "${inputBamName}" | grep -qE 'G94982'
         r=$?
         [ $r -eq 0 ] && continue
 
@@ -241,12 +242,16 @@ if ${ISCALLEDBYUSER} ; then
                 gvcfModeSuffix=".gvcf"
             fi
 
+            echo "${inputBamName}" | grep -qE 'G96830|G96831'
+            r=$?
+            [ $r -eq 0 ] && $doGvcf && continue
+
             tmpJsonFile="haplotypeCaller.${b}${gvcfModeSuffix}.json"
-            createJsonInputsForHaplotypeCaller $doGvcf ${inputBamName} ${INPUT_BUCKET_URL}/${indexFile} ${OUTPUT_BUCKET_URL}/${outVariantFile} > ${tmpJsonFile}
+            createJsonInputsForHaplotypeCaller $doGvcf ${inputBamName} ${INPUT_BUCKET_URL}/${indexFile} ${outVariantFile} > ${tmpJsonFile}
 
             echo "Submitting ${tmpJsonFile}"
             ${CROMSHELL_SCRIPT} submit ${HAPLOTYPE_CALLER_WDL} ${tmpJsonFile}
-
+            sleep 1
         done
     done
 fi
