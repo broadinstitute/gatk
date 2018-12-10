@@ -221,7 +221,7 @@ task HaplotypeCallerSparkTask {
 
         endTime=`date +%s.%N`
         echo "EndTime: $endTime" >> timingInformation.txt
-        elapsedTime=`python -c "print $endTime - $startTime"`
+        elapsedTime=`python -c "print( $endTime - $startTime )"`
         echo "Elapsed Time: $elapsedTime" >> timingInformation.txt
     >>>
 
