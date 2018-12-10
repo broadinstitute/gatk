@@ -1,30 +1,18 @@
-# Calls variants on the given germline BAM file using HaplotypeCallerSpark.
+# Compare runs done on the haplotype caller.
 #
 # Description of inputs:
 #
 #   Required:
-#     String gatk_docker                                -  GATK Docker image in which to run
+#     String gatk_docker                                -  GATK Docker image in which to run, which contains the new HaplotypeCaller to be tested.
 #
-#     File input_bam                                    -  Input reads over which to call small variants with Haplotype Caller.
-#     File input_bam_index                              -  Index for the input BAM file.
-#     File ref_fasta                                    -  Reference FASTA file.
-#     File ref_fasta_dict                               -  Reference FASTA file dictionary.
-#     File ref_fasta_index                              -  Reference FASTA file index.
-#
-#     String spark_runner                               -  Which type of spark cluster to run on.
-#     String cluster                                    -  Server head of the cluster on which to run.
-#     String project                                    -  Project on the server under which to run.
 #
 #   Optional:
 #
-#     File? interval_list                               -  Interval list over which to call variants on the given BAM file.
-#     Boolean? gvcf_mode                                -  Whether to run in GVCF mode (default: false).
-#     Float? contamination                              -  Contamination threshold for HaplotypeCaller (default: 0.0).
-#
-#     Int? num_executors                                -  Number of machines on which to execute this job.
-#     Int? executor_cores                               -  Number of cores per machine.
-#     Int? executor_memory_gb                           -  Amount of memory to give to each machine (in gb).
-#     String? conf_options                              -  Miscellaneous spark configuration options.
+#     HaplotypeCaller:
+#       File? interval_list                             -  Interval list over which to call variants on the given BAM file.
+#       Boolean? gvcf_mode                              -  Whether to run in GVCF mode (default: false).
+#       Float? contamination                            -  Contamination threshold for HaplotypeCaller (default: 0.0).
+#       Int? interval_padding                           -  Amount of padding (in bp) to add to each interval you are including (default: 0).
 #
 #     File gatk4_jar_override                           -  Override Jar file containing GATK 4.  Use this when overriding the docker JAR or when using a backend without docker.
 #     Int  mem_gb                                       -  Amount of memory to give to the machine running each task in this workflow (in gb).
@@ -36,32 +24,27 @@
 # This WDL needs to decide whether to use the ``gatk_jar`` or ``gatk_jar_override`` for the jar location.  As of cromwell-0.24,
 # this logic *must* go into each task.  Therefore, there is a lot of duplicated code.  This allows users to specify a jar file
 # independent of what is in the docker file.  See the README.md for more info.
-workflow HaplotypeCallerSpark {
+
+import "haplotypeCaller.wdl" as tool_wdl
+import "genotypeConcordance.wdl" as analysis_1_wdl
+import "variantCallerConcordance.wdl" as analysis_2_wdl
+
+workflow ToolComparisonWdl {
 
     # ------------------------------------------------
     # Input args:
     String gatk_docker
 
-    File input_bam
-    File input_bam_index
-    File ref_fasta
-    File ref_fasta_dict
-    File ref_fasta_index
+    # Default input files for HC and comparison:
+    String? truth_bucket_location = "gs://haplotypecallerspark-evaluation/groundTruth/"
+    String? input_bucket_location = "gs://haplotypecallerspark-evaluation/inputData/"
+    Array[String]? input_bams = [ "G94982.NA12878.bam", "G96830.NA12878.bam", "G96831.NA12878.bam", "G96832.NA12878.bam", "NexPond-359781.bam", "NexPond-412726.bam", "NexPond-445394.bam", "NexPond-472246.bam", "NexPond-506817.bam", "NexPond-538834.bam", "NexPond-572804.bam", "NexPond-603388.bam", "NexPond-633960.bam", "NexPond-656480.bam", "NexPond-679060.bam" ]
 
-    String out_vcf_name
-
+    # Haplotype Caller args:
     File? interval_list
     Boolean? gvcf_mode
     Float? contamination
     Int? interval_padding
-
-    String spark_runner
-    String cluster
-    String project
-    Int? num_executors
-    Int? executor_cores
-    Int? executor_memory_gb
-    String? conf_options
 
     File? gatk4_jar_override
     Int?  mem_gb
@@ -71,45 +54,71 @@ workflow HaplotypeCallerSpark {
     Int? boot_disk_size_gb
 
     # ------------------------------------------------
-    # Call our tasks:
-    call HaplotypeCallerSparkTask {
-        input:
-            input_bam                 = input_bam,
-            input_bam_index           = input_bam_index,
-            ref_fasta                 = ref_fasta,
-            ref_fasta_dict            = ref_fasta_dict,
-            ref_fasta_index           = ref_fasta_index,
+    # Call our tool:
+    scatter (i in range(length(input_bams))) {
 
-            interval_list             = interval_list,
-            gvcf_mode                 = gvcf_mode,
-            contamination             = contamination,
-            interval_padding          = interval_padding,
+        File inputBaseName = basename(input_bams[i])
+        File indexFile = inputBaseName + ".bai"
 
-            out_file_name             = out_vcf_name,
+        call tool_wdl.HaplotypeCallerTask {
+            input:
+                input_bam                 = input_bucket_location + input_bams[i],
+                input_bam_index           = indexFile,
+                ref_fasta                 = "gs://broad-references/hg19/v0/Homo_sapiens_assembly19.fasta",
+                ref_fasta_dict            = "gs://broad-references/hg19/v0/Homo_sapiens_assembly19.fasta.fai",
+                ref_fasta_index           = "gs://broad-references/hg19/v0/Homo_sapiens_assembly19.dict",
 
-            spark_runner              = spark_runner,
-            cluster                   = cluster,
-            project                   = project,
-            num_executors             = num_executors,
-            executor_cores            = executor_cores,
-            executor_memory_gb        = executor_memory_gb,
-            conf_options              = conf_options,
+                interval_list             = interval_list,
+                gvcf_mode                 = gvcf_mode,
+                contamination             = contamination,
+                interval_padding          = interval_padding,
 
-            gatk_docker               = gatk_docker,
-            gatk_override             = gatk4_jar_override,
-            mem                       = mem_gb,
-            preemptible_attempts      = preemptible_attempts,
-            disk_space_gb             = disk_space_gb,
-            cpu                       = cpu,
-            boot_disk_size_gb         = boot_disk_size_gb
+                out_file_name             = inputBaseName + '.vcf',
+
+                gatk_docker               = gatk_docker,
+                gatk_override             = gatk4_jar_override,
+                mem                       = mem_gb,
+                preemptible_attempts      = preemptible_attempts,
+                disk_space_gb             = disk_space_gb,
+                cpu                       = cpu,
+                boot_disk_size_gb         = boot_disk_size_gb
+        }
+
+        File truthVcf = 
+        File truthBaseName = basename(truthVcf)
+        truthIndex = truthBaseName + ".idx"
+
+        call analysis_1_wdl.GenotypeConcordanceTask {
+            input:
+                call_vcf                  = HaplotypeCallerTask.output_vcf,
+                call_index                = HaplotypeCallerTask.output_vcf_index,
+                call_sample               = "NA12878",
+
+                truth_vcf                 = truthVcf,
+                truth_index               = truth_index,
+                truth_sample              = "NA12878",
+
+                interval_list             = interval_list,
+
+                output_base_name          = output_base_name,
+
+                gatk_docker               = gatk_docker,
+                gatk_override             = gatk4_jar_override,
+                mem                       = mem_gb,
+                preemptible_attempts      = preemptible_attempts,
+                disk_space_gb             = disk_space_gb,
+                cpu                       = cpu,
+                boot_disk_size_gb         = boot_disk_size_gb
+        }
+
     }
 
     # ------------------------------------------------
     # Outputs:
     output {
-        File vcf_out     = HaplotypeCallerSparkTask.output_vcf
-        File vcf_out_idx = HaplotypeCallerSparkTask.output_vcf_index
-        File timingInfo  = HaplotypeCallerSparkTask.timing_info
+        File vcf_out     = HaplotypeCallerTask.output_vcf
+        File vcf_out_idx = HaplotypeCallerTask.output_vcf_index
+        File timingInfo  = HaplotypeCallerTask.timing_info
     }
 }
 
@@ -117,7 +126,7 @@ workflow HaplotypeCallerSpark {
 # ==========================================================================================
 # ==========================================================================================
 
-task HaplotypeCallerSparkTask {
+task HaplotypeCallerTask {
 
     # ------------------------------------------------
     # Input args:
@@ -136,15 +145,6 @@ task HaplotypeCallerSparkTask {
 
     # Output Names:
     String out_file_name
-
-    # Spark Options:
-    String spark_runner
-    String cluster
-    String project
-    Int? num_executors
-    Int? executor_cores
-    Int? executor_memory_gb
-    String? conf_options
 
     # Runtime Options:
     String gatk_docker
@@ -179,18 +179,6 @@ task HaplotypeCallerSparkTask {
     Int command_mem = machine_mem - 1024
 
     # ------------------------------------------------
-    # Process optional spark args:
-    Int num_executors_default = 5
-    Int executor_cores_default = 4
-    String conf_options_default = ""
-
-    Int num_executors_val = if defined(num_executors) then num_executors * 1 else num_executors_default
-    Int executor_cores_val = if defined(executor_cores) then executor_cores * 1 else executor_cores_default
-    Int executor_memory_gb_val = if defined(executor_memory_gb) then executor_memory_gb * 1 else machine_mem
-
-    String conf_options_arg = if defined(conf_options) then " --conf " else ""
-
-    # ------------------------------------------------
     # Run our command:
     command <<<
         set -e
@@ -201,28 +189,19 @@ task HaplotypeCallerSparkTask {
         echo "StartTime: $startTime" > timingInformation.txt
 
         gatk --java-options "-Xmx${command_mem}m -DGATK_STACKTRACE_ON_USER_EXCEPTION=true" \
-            HaplotypeCallerSpark \
+            HaplotypeCaller \
                 -I ${input_bam} \
                 -O ${out_file_name} \
                 -R ${ref_fasta} \
-                --read-validation-stringency STRICT \
                 ${interval_list_arg}${default="" sep=" -L " interval_list} \
                 ${contamination_arg}${default="" sep=" --contamination " contamination} \
                 ${interval_padding_arg}${default="" sep=" --interval-padding " interval_padding} \
-                ${true="-ERC GVCF" false="" gvcf_mode} \
-                -- \
-                --spark-runner ${spark_runner} \
-                --cluster ${cluster} \
-                --project ${project} \
-                --num-executors ${num_executors_val} \
-                --executor-cores ${executor_cores_val} \
-                --executor-memory ${executor_memory_gb_val}g \
-                ${conf_options_arg}${default="" sep=" --conf " conf_options} \
+                ${true="-ERC GVCF" false="" gvcf_mode}
 
         endTime=`date +%s.%N`
         echo "EndTime: $endTime" >> timingInformation.txt
-        elapsedTime=`python -c "print $endTime - $startTime"`
-        echo "Elapsed Time: $elapsedTime" >> timingInformation.txt
+        #elapsedTime=`echo "scale=5;$endTime - $startTime" | bc`
+        #echo "Elapsed Time: $elapsedTime" >> timingInformation.txt
     >>>
 
     # ------------------------------------------------
