@@ -50,15 +50,49 @@ import static java.util.Collections.singleton;
  *   -R reference.fasta \
  *   -V input.vcf.gz \
  *   -O output.vcf.gz \
- *   --filter-expression "AB < 0.2 || MQ0 > 50" \
- *   --filter-name "my_filters"
+ *   --filter-name "my_filter1" \
+ *   --filter-expression "AB < 0.2" \
+ *   --filter-name "my_filter2" \
+ *   --filter-expression "MQ0 > 50"
  * </pre>
  *
  * <h3>Note</h3>
- * <p>Composing filtering expressions can range from very simple to extremely complicated depending on what you're
- * trying to do. Please see <a href='https://software.broadinstitute.org/gatk/documentation/article.php?id=1255'>this
- * document</a> for more details on how to compose and use filtering expressions effectively.</p>
+ * <p>
+ * Composing filtering expressions can range from very simple to extremely complicated depending on what you're
+ * trying to do.
+ * <p>
+ * Compound expressions (ones that specify multiple conditions connected by &&, AND, ||, or OR, and reference
+ * multiple attributes) require special consideration. By default, variants that are missing one or more of the
+ * attributes referenced in a compound expression are treated as PASS for the entire expression, even if the variant
+ * would satisfy the filter criteria for another part of the expression. This can lead to unexpected results if any
+ * of the attributes referenced in a compound expression are present for some variants, but missing for others.
+ * <p>
+ * It is strongly recommended that such expressions be provided as individual arguments, each referencing a
+ * single attribute and specifying a single criteria. This ensures that all of the individual expression are
+ * applied to each variant, even if a given variant is missing values for some of the expression conditions.
+ * <p>
+ * As an example, multiple individual expressions provided like this:
+ * <pre>
+ *   gatk VariantFiltration \
+ *   -R reference.fasta \
+ *   -V input.vcf.gz \
+ *   -O output.vcf.gz \
+ *   --filter-name "my_filter1" \
+ *   --filter-expression "AB < 0.2" \
+ *   --filter-name "my_filter2" \
+ *   --filter-expression "MQ0 > 50"
+ * </pre>
  *
+ * are preferable to a single compound expression such as this:
+ *
+ *  <pre>
+ *    gatk VariantFiltration \
+ *    -R reference.fasta \
+ *    -V input.vcf.gz \
+ *    -O output.vcf.gz \
+ *    --filter-name "my_filter" \
+ *    --filter-expression "AB < 0.2 || MQ0 > 50"
+ *  </pre>
  */
 @CommandLineProgramProperties(
         summary = "Filter variant calls based on INFO and/or FORMAT annotations.",
@@ -99,8 +133,11 @@ public final class VariantFiltration extends VariantWalker {
     /**
      * VariantFiltration accepts any number of JEXL expressions (so you can have two named filters by using
      * --filter-name One --filter-expression "X < 1" --filter-name Two --filter-expression "X > 2").
+     *
+     * It is preferable to use multiple expressions, each specifying an individual filter criteria, to a single
+     * compound expression that specifies multiple filter criteria.
      */
-    @Argument(fullName=FILTER_EXPRESSION_LONG_NAME, shortName="filter", doc="One or more expression used with INFO fields to filter", optional=true)
+    @Argument(fullName=FILTER_EXPRESSION_LONG_NAME, shortName="filter", doc="One or more expressions used with INFO fields to filter", optional=true)
     public List<String> filterExpressions = new ArrayList<>();
 
     /**
@@ -115,8 +152,11 @@ public final class VariantFiltration extends VariantWalker {
      * One can filter normally based on most fields (e.g. "GQ < 5.0"), but the GT (genotype) field is an exception. We have put in convenience
      * methods so that one can now filter out hets ("isHet == 1"), refs ("isHomRef == 1"), or homs ("isHomVar == 1"). Also available are
      * expressions isCalled, isNoCall, isMixed, and isAvailable, in accordance with the methods of the Genotype object.
+     *
+     * It is preferable to use multiple expressions, each specifying an individual filter criteria, to a single compound expression
+     * that specifies multiple filter criteria.
      */
-    @Argument(fullName=GENOTYPE_FILTER_EXPRESSION_LONG_NAME, shortName="G-filter", doc="One or more expression used with FORMAT (sample/genotype-level) fields to filter (see documentation guide for more info)", optional=true)
+    @Argument(fullName=GENOTYPE_FILTER_EXPRESSION_LONG_NAME, shortName="G-filter", doc="One or more expressions used with FORMAT (sample/genotype-level) fields to filter (see documentation guide for more info)", optional=true)
     public List<String> genotypeFilterExpressions = new ArrayList<>();
 
     /**
