@@ -34,8 +34,8 @@ import static org.broadinstitute.hellbender.tools.walkers.annotator.StrandArtifa
 public class StrandArtifact extends GenotypeAnnotation implements StandardMutectAnnotation {
     protected final OneShotLogger warning = new OneShotLogger(this.getClass());
 
-    public static final String POSTERIOR_PROBABILITIES_KEY = "SA_POST_PROB";
-    public static final String MAP_ALLELE_FRACTIONS_KEY = "SA_MAP_AF";
+    public static final String POSTERIOR_PROBABILITIES_KEY = GATKVCFConstants.STRAND_ARTIFACT_POSTERIOR_KEY;
+    public static final String MAP_ALLELE_FRACTIONS_KEY = GATKVCFConstants.STRAND_ARTIFACT_AF_KEY;
 
     // pseudocounts for the beta distribution over epsilon
     // alpha > 0 and beta > 0. alpha = beta = 1 gives us the flat prior

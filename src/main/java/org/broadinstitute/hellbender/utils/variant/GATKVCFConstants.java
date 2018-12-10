@@ -106,14 +106,14 @@ public final class GATKVCFConstants {
     // Mutect2-specific INFO keys
     public static final String TUMOR_LOD_KEY =                      "TLOD";
     public static final String NORMAL_LOD_KEY =                     "NLOD";
-    public static final String IN_PON_VCF_ATTRIBUTE =               "IN_PON";
-    public static final String NORMAL_ARTIFACT_LOD_ATTRIBUTE =      "N_ART_LOD";
-    public static final String POPULATION_AF_VCF_ATTRIBUTE =        "POP_AF";
-    public static final String GERMLINE_POSTERIORS_VCF_ATTRIBUTE =  "P_GERMLINE";
+    public static final String IN_PON_VCF_ATTRIBUTE =               "PON";
+    public static final String NORMAL_ARTIFACT_LOD_ATTRIBUTE =      "NALOD";
+    public static final String POPULATION_AF_VCF_ATTRIBUTE =        "POPAF";
+    public static final String GERMLINE_QUAL_VCF_ATTRIBUTE =  "GERMQ";
     public static final String REALIGNMENT_COUNTS_VCF_ATTRIBUTE =   "RCNTS";
-    public static final String POSTERIOR_PROB_OF_CONTAMINATION_ATTRIBUTE =  "P_CONTAM";
+    public static final String CONTAMINATION_QUAL_ATTRIBUTE =  "CONTQ";
     public static final List<String> STANDARD_MUTECT_INFO_FIELDS = Arrays.asList(NORMAL_LOD_KEY, TUMOR_LOD_KEY, NORMAL_ARTIFACT_LOD_ATTRIBUTE,
-            EVENT_COUNT_IN_HAPLOTYPE_KEY, IN_PON_VCF_ATTRIBUTE, POPULATION_AF_VCF_ATTRIBUTE, GERMLINE_POSTERIORS_VCF_ATTRIBUTE, POSTERIOR_PROB_OF_CONTAMINATION_ATTRIBUTE);
+            EVENT_COUNT_IN_HAPLOTYPE_KEY, IN_PON_VCF_ATTRIBUTE, POPULATION_AF_VCF_ATTRIBUTE, GERMLINE_QUAL_VCF_ATTRIBUTE, CONTAMINATION_QUAL_ATTRIBUTE);
 
     // FORMAT keys
     public static final String ALLELE_BALANCE_KEY =                 "AB";
@@ -136,13 +136,13 @@ public final class GATKVCFConstants {
 
     // M2-specific FORMAT keys
     public static final String ALLELE_FRACTION_KEY =                "AF";
-    public static final String STRAND_ARTIFACT_POSTERIOR_KEY =      "SA_POST_PROB"; // Strand Artifact Filter
-    public static final String STRAND_ARTIFACT_AF_KEY =             "SA_MAP_AF"; // Strand Artifact Filter
+    public static final String STRAND_ARTIFACT_POSTERIOR_KEY =      "SAPP"; // Strand Artifact Filter
+    public static final String STRAND_ARTIFACT_AF_KEY =             "SAAF"; // Strand Artifact Filter
     public static final String ROF_POSTERIOR_KEY =                  "P_RO"; // For read orientation filter
     public static final String ROF_PRIOR_KEY =                      "P_PRIOR_RO";
     public static final String ROF_TYPE_KEY =                       "ROF_TYPE";
-    public static final String ORIGINAL_CONTIG_MISMATCH_KEY =       "ORIGINAL_CONTIG_MISMATCH";
-    public static final String POTENTIAL_POLYMORPHIC_NUMT_KEY =     "POTENTIAL_POLYMORPHIC_NUMT";
+    public static final String ORIGINAL_CONTIG_MISMATCH_KEY =       "OCM";
+    public static final String POTENTIAL_POLYMORPHIC_NUMT_KEY =     "NUMT";
 
     //FILTERS
     /* Note that many filters used throughout GATK (most notably in VariantRecalibration) are dynamic,

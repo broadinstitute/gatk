@@ -47,8 +47,9 @@ public class Mutect2FilteringEngine {
         final int[] ADs = tumorGenotype.getAD();
         final int altCount = ADs[maxFractionIndex + 1];   // AD is all alleles, while AF is alts only, hence the +1 offset
         final int depth = (int) MathUtils.sum(ADs);
-        final double alleleFrequency = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc,
-                GATKVCFConstants.POPULATION_AF_VCF_ATTRIBUTE, () -> new double[] {0.0, 0.0}, 0)[maxFractionIndex];
+        final double[] negativeLog10AlleleFrequencies = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc,
+                GATKVCFConstants.POPULATION_AF_VCF_ATTRIBUTE, () -> new double[]{Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY}, Double.POSITIVE_INFINITY);
+        final double alleleFrequency = MathUtils.applyToArray(negativeLog10AlleleFrequencies, x -> Math.pow(10,-x))[maxFractionIndex];
 
         final double somaticLikelihood = 1.0 / (depth + 1);
 
@@ -58,7 +59,7 @@ public class Mutect2FilteringEngine {
         final double contaminantLikelihood = Math.max(singleContaminantLikelihood, manyContaminantLikelihood);
         final double posteriorProbOfContamination = (1 - somaticPriorProb) * contaminantLikelihood / ((1 - somaticPriorProb) * contaminantLikelihood + somaticPriorProb * somaticLikelihood);
 
-        filterResult.addAttribute(GATKVCFConstants.POSTERIOR_PROB_OF_CONTAMINATION_ATTRIBUTE, posteriorProbOfContamination);
+        filterResult.addAttribute(GATKVCFConstants.CONTAMINATION_QUAL_ATTRIBUTE, QualityUtils.errorProbToQual(posteriorProbOfContamination));
         if (posteriorProbOfContamination > MTFAC.maxContaminationProbability) {
             filterResult.addFilter(GATKVCFConstants.CONTAMINATION_FILTER_NAME);
         }
@@ -152,7 +153,8 @@ public class Mutect2FilteringEngine {
             final double[] tumorLog10OddsIfSomatic = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.TUMOR_LOD_KEY);
             final Optional<double[]> normalLods = vc.hasAttribute(GATKVCFConstants.NORMAL_LOD_KEY) ?
                     Optional.of(GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.NORMAL_LOD_KEY)) : Optional.empty();
-            final double[] populationAlleleFrequencies = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.POPULATION_AF_VCF_ATTRIBUTE);
+            final double[] negativeLog10AlleleFrequencies = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.POPULATION_AF_VCF_ATTRIBUTE);
+            final double[] populationAlleleFrequencies = MathUtils.applyToArray(negativeLog10AlleleFrequencies, x -> Math.pow(10,-x));
 
             final List<MinorAlleleFractionRecord> segments = tumorSegments.getOverlaps(vc).stream().collect(Collectors.toList());
 
@@ -186,7 +188,7 @@ public class Mutect2FilteringEngine {
             final double[] log10GermlinePosteriors = GermlineProbabilityCalculator.calculateGermlineProbabilities(
                     populationAlleleFrequencies, log10OddsOfGermlineHetVsSomatic, log10OddsOfGermlineHomAltVsSomatic, normalLods, MTFAC.log10PriorProbOfSomaticEvent);
 
-            filterResult.addAttribute(GATKVCFConstants.GERMLINE_POSTERIORS_VCF_ATTRIBUTE, log10GermlinePosteriors);
+            filterResult.addAttribute(GATKVCFConstants.GERMLINE_QUAL_VCF_ATTRIBUTE, Arrays.stream(log10GermlinePosteriors).mapToInt(p -> (int) QualityUtils.phredScaleLog10ErrorRate(p)).toArray());
             final int indexOfMaxTumorLod = MathUtils.maxElementIndex(tumorLog10OddsIfSomatic);
             if (log10GermlinePosteriors[indexOfMaxTumorLod] > Math.log10(MTFAC.maxGermlinePosterior)) {
                 filterResult.addFilter(GATKVCFConstants.GERMLINE_RISK_FILTER_NAME);
@@ -233,8 +235,9 @@ public class Mutect2FilteringEngine {
             return;
         }
 
+        // negative because vcf shows log odds of not artifact / artifact (in order to have bigger positive --> good)
         final double[] normalArtifactLods = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.NORMAL_ARTIFACT_LOD_ATTRIBUTE);
-        if (normalArtifactLods[indexOfMaxTumorLod] > MTFAC.NORMAL_ARTIFACT_LOD_THRESHOLD) {
+        if (-normalArtifactLods[indexOfMaxTumorLod] > MTFAC.NORMAL_ARTIFACT_LOD_THRESHOLD) {
             filterResult.addFilter(GATKVCFConstants.ARTIFACT_IN_NORMAL_FILTER_NAME);
             return;
         }

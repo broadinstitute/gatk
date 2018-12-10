@@ -545,7 +545,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "-R", MITO_REF.getAbsolutePath(),
                 "-L", "chrM:1-1000",
                 "--" + M2ArgumentCollection.MEDIAN_AUTOSOMAL_COVERAGE_LONG_NAME, "1556", //arbitrary "autosomal" mean coverage used only for testing
-                "--" + M2ArgumentCollection.MITOCHONDIRA_MODE_LONG_NAME,
+                "--" + M2ArgumentCollection.MITOCHONDRIA_MODE_LONG_NAME,
                 "-O", unfilteredVcf.getAbsolutePath());
         runCommandLine(args);
 
@@ -571,7 +571,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final File filteredVcf = createTempFile("filtered", ".vcf");
 
         new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-V", NA12878_MITO_VCF.getPath(),
-                "-O", filteredVcf.getPath(), "--" + M2ArgumentCollection.MITOCHONDIRA_MODE_LONG_NAME), FilterMutectCalls.class.getSimpleName()));
+                "-O", filteredVcf.getPath(), "--" + M2ArgumentCollection.MITOCHONDRIA_MODE_LONG_NAME), FilterMutectCalls.class.getSimpleName()));
 
         final List<VariantContext> variants = VariantContextTestUtils.streamVcf(filteredVcf).collect(Collectors.toList());
         final Iterator<String> expectedFilters = Arrays.asList(

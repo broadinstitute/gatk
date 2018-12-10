@@ -19,14 +19,14 @@ import java.util.stream.IntStream;
  */
 public class GermlineProbabilityCalculator {
 
-    public static Map<String, Object> getPopulationAFAnnotation(List<VariantContext> germlineResourceVariants,
-                                                                final List<Allele> altAlleles,
-                                                                final double afOfAllelesNotInGermlineResource) {
+    public static Map<String, Object> getNegativeLog10PopulationAFAnnotation(List<VariantContext> germlineResourceVariants,
+                                                                             final List<Allele> altAlleles,
+                                                                             final double afOfAllelesNotInGermlineResource) {
         final Optional<VariantContext> germlineVC = germlineResourceVariants.isEmpty() ? Optional.empty()
                 : Optional.of(germlineResourceVariants.get(0));  // assume only one VC per site
         final double[] populationAlleleFrequencies = getGermlineAltAlleleFrequencies(altAlleles, germlineVC, afOfAllelesNotInGermlineResource);
 
-        return ImmutableMap.of(GATKVCFConstants.POPULATION_AF_VCF_ATTRIBUTE, populationAlleleFrequencies);
+        return ImmutableMap.of(GATKVCFConstants.POPULATION_AF_VCF_ATTRIBUTE, MathUtils.applyToArray(populationAlleleFrequencies, x -> - Math.log10(x)));
     }
 
     public static double[] calculateGermlineProbabilities(final double[] populationAlleleFrequencies,

@@ -39,7 +39,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public static final String GET_AF_FROM_AD_LONG_NAME = "get-af-from-ad";
     public static final String ANNOTATE_BASED_ON_READS_LONG_NAME = "count-reads";
     public static final String MEDIAN_AUTOSOMAL_COVERAGE_LONG_NAME = "median-autosomal-coverage";
-    public static final String MITOCHONDIRA_MODE_LONG_NAME = "mitochondria-mode";
+    public static final String MITOCHONDRIA_MODE_LONG_NAME = "mitochondria-mode";
 
     public static final double DEFAULT_AF_FOR_TUMOR_ONLY_CALLING = 5e-8;
     public static final double DEFAULT_AF_FOR_TUMOR_NORMAL_CALLING = 1e-6;
@@ -114,7 +114,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      * --tumor-sample is also not explicitly required in mitochondria mode since a single sample bam is expected as input.
      * Mitochondria mode is also required in FilterMutectCalls if used here.
      */
-    @Argument(fullName = MITOCHONDIRA_MODE_LONG_NAME, optional = true, doc="Mitochondria mode sets emission and initial LODs to 0.")
+    @Argument(fullName = MITOCHONDRIA_MODE_LONG_NAME, optional = true, doc="Mitochondria mode sets emission and initial LODs to 0.")
     public Boolean mitochondria = false;
 
     /**

@@ -217,6 +217,9 @@ public final class Mutect2 extends AssemblyRegionWalker {
         if (MTAC.autosomalCoverage > 0) {
             annotations.add(new PolymorphicNuMT(MTAC.autosomalCoverage));
         }
+        if (MTAC.mitochondria) {
+            annotations.add(new OriginalAlignment());
+        }
         return annotations;
     }
 
