@@ -36,19 +36,23 @@ workflow ToolComparisonWdl {
     # Input args:
     String gatk_docker
 
+    # Default input files for HC and comparison:
+    String truth_bucket_location = "gs://haplotypecallerspark-evaluation/groundTruth/"
+    String input_bucket_location = "gs://haplotypecallerspark-evaluation/inputData/"
+    Array[String] input_bams = [ "G94982.NA12878.bam", "G96830.NA12878.bam", "G96831.NA12878.bam", "G96832.NA12878.bam", "NexPond-359781.bam", "NexPond-412726.bam", "NexPond-445394.bam", "NexPond-472246.bam", "NexPond-506817.bam", "NexPond-538834.bam", "NexPond-572804.bam", "NexPond-603388.bam", "NexPond-633960.bam", "NexPond-656480.bam", "NexPond-679060.bam" ]
+
+    File ref_fasta       = "gs://broad-references/hg19/v0/Homo_sapiens_assembly19.fasta"
+    File ref_fasta_dict  = "gs://broad-references/hg19/v0/Homo_sapiens_assembly19.fasta.fai"
+    File ref_fasta_index = "gs://broad-references/hg19/v0/Homo_sapiens_assembly19.dict"
+
     # Haplotype Caller args:
-    File interval_list
+    File interval_list = "gs://haplotypecallerspark-evaluation/inputData/whole_exome_illumina_coding_v1.Homo_sapiens_assembly19.targets.interval_list"
     Boolean gvcf_mode
     Float contamination
     Int interval_padding
 
     # Output bucket name:
     String output_bucket_base_location = "https://console.cloud.google.com/storage/browser/haplotypecallerspark-evaluation/testSets/"
-
-    # Default input files for HC and comparison:
-    String truth_bucket_location = "gs://haplotypecallerspark-evaluation/groundTruth/"
-    String input_bucket_location = "gs://haplotypecallerspark-evaluation/inputData/"
-    Array[String] input_bams = [ "G94982.NA12878.bam", "G96830.NA12878.bam", "G96831.NA12878.bam", "G96832.NA12878.bam", "NexPond-359781.bam", "NexPond-412726.bam", "NexPond-445394.bam", "NexPond-472246.bam", "NexPond-506817.bam", "NexPond-538834.bam", "NexPond-572804.bam", "NexPond-603388.bam", "NexPond-633960.bam", "NexPond-656480.bam", "NexPond-679060.bam" ]
 
     File? gatk4_jar_override
     Int?  mem_gb
@@ -75,9 +79,9 @@ workflow ToolComparisonWdl {
             input:
                 input_bam                 = input_bucket_location + input_bams[i],
                 input_bam_index           = input_bucket_location + indexFile,
-                ref_fasta                 = "gs://broad-references/hg19/v0/Homo_sapiens_assembly19.fasta",
-                ref_fasta_dict            = "gs://broad-references/hg19/v0/Homo_sapiens_assembly19.fasta.fai",
-                ref_fasta_index           = "gs://broad-references/hg19/v0/Homo_sapiens_assembly19.dict",
+                ref_fasta                 = ref_fasta,
+                ref_fasta_dict            = ref_fasta_dict,
+                ref_fasta_index           = ref_fasta_index,
 
                 interval_list             = interval_list,
                 gvcf_mode                 = gvcf_mode,
