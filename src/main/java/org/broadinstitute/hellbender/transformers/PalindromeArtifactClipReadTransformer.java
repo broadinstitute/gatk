@@ -72,6 +72,9 @@ public final class PalindromeArtifactClipReadTransformer implements ReadTransfor
         if (!read.isProperlyPaired() || adaptorBoundary == ReadUtils.CANNOT_COMPUTE_ADAPTOR_BOUNDARY) {
             return read;
         }
+        if (read.failsVendorQualityCheck()) {
+            return read;
+        }
 
         final Cigar cigar = read.getCigar();
         final CigarOperator firstOperator = cigar.getFirstCigarElement().getOperator();
@@ -122,7 +125,7 @@ public final class PalindromeArtifactClipReadTransformer implements ReadTransfor
             final ClippingOp clippingOp = readIsUpstreamOfMate ? new ClippingOp(0, potentialArtifactBaseCount - 1) :
                     new ClippingOp(read.getLength() - potentialArtifactBaseCount, read.getLength());
             readClipper.addOp(clippingOp);
-            read.setAttribute(PalindromeArtifactReadWalker.CLIPPED_KEY, 1);
+            read.setAttribute(PalindromeArtifactReadWalker.CLIPPED_KEY, clippingOp.getLength());
             return readClipper.clipRead(ClippingRepresentation.HARDCLIP_BASES);
         } else {
             return read;
