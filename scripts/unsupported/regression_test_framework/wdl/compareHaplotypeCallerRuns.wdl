@@ -35,16 +35,16 @@ workflow ToolComparisonWdl {
     # Input args:
     String gatk_docker
 
+    # Haplotype Caller args:
+    File interval_list
+    Boolean gvcf_mode
+    Float contamination
+    Int interval_padding
+
     # Default input files for HC and comparison:
     String? truth_bucket_location = "gs://haplotypecallerspark-evaluation/groundTruth/"
     String? input_bucket_location = "gs://haplotypecallerspark-evaluation/inputData/"
     Array[String]? input_bams = [ "G94982.NA12878.bam", "G96830.NA12878.bam", "G96831.NA12878.bam", "G96832.NA12878.bam", "NexPond-359781.bam", "NexPond-412726.bam", "NexPond-445394.bam", "NexPond-472246.bam", "NexPond-506817.bam", "NexPond-538834.bam", "NexPond-572804.bam", "NexPond-603388.bam", "NexPond-633960.bam", "NexPond-656480.bam", "NexPond-679060.bam" ]
-
-    # Haplotype Caller args:
-    File? interval_list
-    Boolean? gvcf_mode
-    Float? contamination
-    Int? interval_padding
 
     File? gatk4_jar_override
     Int?  mem_gb
@@ -60,6 +60,8 @@ workflow ToolComparisonWdl {
         File inputBaseName = basename(input_bams[i])
         File indexFile = inputBaseName + ".bai"
 
+        String outputName = if gvcf_mode then sub(basename(input_bam), ".*\\.", "") + ".g.vcf" else ".g.vcf"
+
         call tool_wdl.HaplotypeCallerTask {
             input:
                 input_bam                 = input_bucket_location + input_bams[i],
@@ -73,7 +75,7 @@ workflow ToolComparisonWdl {
                 contamination             = contamination,
                 interval_padding          = interval_padding,
 
-                out_file_name             = inputBaseName + '.vcf',
+                out_file_name             = outputName,
 
                 gatk_docker               = gatk_docker,
                 gatk_override             = gatk4_jar_override,
@@ -84,9 +86,9 @@ workflow ToolComparisonWdl {
                 boot_disk_size_gb         = boot_disk_size_gb
         }
 
-        File truthVcf = 
+        File truthVcf = input_bucket_location + outputName
         File truthBaseName = basename(truthVcf)
-        truthIndex = truthBaseName + ".idx"
+        File truthIndex = input_bucket_location + truthBaseName + ".idx"
 
         call analysis_1_wdl.GenotypeConcordanceTask {
             input:
@@ -95,12 +97,12 @@ workflow ToolComparisonWdl {
                 call_sample               = "NA12878",
 
                 truth_vcf                 = truthVcf,
-                truth_index               = truth_index,
+                truth_index               = truthIndex,
                 truth_sample              = "NA12878",
 
                 interval_list             = interval_list,
 
-                output_base_name          = output_base_name,
+                output_base_name          = outputName,
 
                 gatk_docker               = gatk_docker,
                 gatk_override             = gatk4_jar_override,
@@ -110,6 +112,24 @@ workflow ToolComparisonWdl {
                 cpu                       = cpu,
                 boot_disk_size_gb         = boot_disk_size_gb
         }
+
+        call analysis_2_wdl.Concordance {
+            input:
+                eval_vcf = HaplotypeCallerTask.output_vcf,
+                eval_vcf_idx = HaplotypeCallerTask.output_vcf_index,
+                truth_vcf = truthVcf,
+                truth_vcf_idx = truthIndex,
+                intervals = interval_list,
+
+                gatk_docker = gatk_docker,
+                gatk_override = gatk4_jar_override,
+                mem_gb = mem_gb,
+                disk_space_gb = disk_space_gb,
+                cpu = cpu,
+                boot_disk_size_gb = boot_disk_size_gb,
+                preemptible_attempts = preemptible_attempts
+        }
+
 
     }
 
