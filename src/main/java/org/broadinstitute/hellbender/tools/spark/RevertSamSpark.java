@@ -198,7 +198,8 @@ public class RevertSamSpark extends GATKSparkTool {
         return Collections.singletonList(ReadFilterLibrary.ALLOW_ALL_READS);
     }
 
-    public static List<String> DEFAULT_ATTRIBUTES_TO_CLEAR = Collections.unmodifiableList(new ArrayList<String>(){{
+    public static List<String> DEFAULT_ATTRIBUTES_TO_CLEAR = Collections.unmodifiableList(new ArrayList<String>(){
+        private static final long serialVersionUID = 1L;{
         add(SAMTag.NM.name());
         add(SAMTag.UQ.name());
         add(SAMTag.PG.name());
