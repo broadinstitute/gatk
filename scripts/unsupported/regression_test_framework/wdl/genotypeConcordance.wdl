@@ -125,6 +125,8 @@ task GenotypeConcordanceTask {
     # Process input args:
     String interval_list_arg = if defined(interval_list) then " --INTERVALS " else ""
 
+    String timing_output_file = "GenotypeConcordanceTask" + ".timingInformation.txt"
+
     ####################################################################################
     # Define default values and set up values for running:
     Boolean use_ssd = false
@@ -146,7 +148,7 @@ task GenotypeConcordanceTask {
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
 
         startTime=`date +%s.%N`
-        echo "StartTime: $startTime" > timingInformation.txt
+        echo "StartTime: $startTime" > ${timing_output_file}
 
         gatk --java-options "-Xmx${command_mem}m -DGATK_STACKTRACE_ON_USER_EXCEPTION=true" \
             GenotypeConcordance \
@@ -159,9 +161,9 @@ task GenotypeConcordanceTask {
                 --INTERSECT_INTERVALS true \
 
         endTime=`date +%s.%N`
-        echo "EndTime: $endTime" >> timingInformation.txt
+        echo "EndTime: $endTime" >> ${timing_output_file}
         elapsedTime=`python -c "print( $endTime - $startTime )"`
-        echo "Elapsed Time: $elapsedTime" >> timingInformation.txt
+        echo "Elapsed Time: $elapsedTime" >> ${timing_output_file}
     }
 
     ####################################################################################
@@ -181,6 +183,6 @@ task GenotypeConcordanceTask {
         File summary_metrics     = "${output_base_name}.genotype_concordance_summary_metrics"
         File detail_metrics      = "${output_base_name}.genotype_concordance_detail_metrics"
         File contingency_metrics = "${output_base_name}.genotype_concordance_contingency_metrics"
-        File timing_info         = "timingInformation.txt"
+        File timing_info         = timing_output_file
     }
 }

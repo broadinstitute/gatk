@@ -130,6 +130,8 @@ task HaplotypeCallerTask {
 
     String index_format = if sub(out_file_name, ".*\\.", "") == "vcf" then "idx" else "tbi"
 
+    String timing_output_file = out_file_name + ".timingInformation.txt"
+
     # ------------------------------------------------
     # Get machine settings:
     Boolean use_ssd = false
@@ -153,7 +155,7 @@ task HaplotypeCallerTask {
         export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
 
         startTime=`date +%s.%N`
-        echo "StartTime: $startTime" > timingInformation.txt
+        echo "StartTime: $startTime" > ${timing_output_file}
 
         gatk --java-options "-Xmx${command_mem}m -DGATK_STACKTRACE_ON_USER_EXCEPTION=true" \
             HaplotypeCaller \
@@ -166,9 +168,9 @@ task HaplotypeCallerTask {
                 ${true="-ERC GVCF" false="" gvcf_mode}
 
         endTime=`date +%s.%N`
-        echo "EndTime: $endTime" >> timingInformation.txt
+        echo "EndTime: $endTime" >> ${timing_output_file}
         elapsedTime=`python -c "print( $endTime - $startTime )"`
-        echo "Elapsed Time: $elapsedTime" >> timingInformation.txt
+        echo "Elapsed Time: $elapsedTime" >> ${timing_output_file}
     >>>
 
     # ------------------------------------------------
@@ -185,8 +187,8 @@ task HaplotypeCallerTask {
     # ------------------------------------------------
     # Outputs:
     output {
-        File output_vcf       = "${out_file_name}"
+        File output_vcf       = out_file_name
         File output_vcf_index = "${out_file_name}.${index_format}"
-        File timing_info      = "${out_file_name}.timingInformation.txt"
+        File timing_info      = timing_output_file
     }
 }
