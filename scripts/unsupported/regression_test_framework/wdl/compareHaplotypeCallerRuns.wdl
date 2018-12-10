@@ -62,6 +62,10 @@ workflow ToolComparisonWdl {
     Int? boot_disk_size_gb
 
     # ------------------------------------------------
+    # Create a folder in our output area for this run:
+    String output_folder_base = output_bucket_base_location + sub(sub(gatk_docker, "/", "-"), ":", "_") + "/"
+
+    # ------------------------------------------------
     # Call our tool:
     scatter (i in range(length(input_bams))) {
 
@@ -88,7 +92,7 @@ workflow ToolComparisonWdl {
                 contamination             = contamination,
                 interval_padding          = interval_padding,
 
-                out_file_name             = outputName,
+                out_file_name             = output_folder_base + outputName,
 
                 gatk_docker               = gatk_docker,
                 gatk_override             = gatk4_jar_override,
@@ -111,7 +115,7 @@ workflow ToolComparisonWdl {
 #
 #                interval_list             = interval_list,
 #
-#                output_base_name          = outputName,
+#                output_base_name          = output_folder_base + outputName,
 #
 #                gatk_docker               = gatk_docker,
 #                gatk_override             = gatk4_jar_override,
@@ -142,7 +146,8 @@ workflow ToolComparisonWdl {
         call analysis_3_wdl.CompareTimingTask {
             input:
                 truth_timing_file = truthVcf + ".timingInformation.txt",
-                call_timing_file = HaplotypeCallerTask.timing_info
+                call_timing_file = HaplotypeCallerTask.timing_info,
+                base_timing_output_name = output_folder_base + "timingDiff.txt"
         }
     }
 
