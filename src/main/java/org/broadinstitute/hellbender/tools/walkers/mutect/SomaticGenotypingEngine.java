@@ -193,17 +193,6 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
         return new CalledHaplotypes(outputCallsWithEventCountAnnotation, calledHaplotypes);
     }
 
-    public CalledHaplotypes callMutations(
-            final ReadLikelihoods<Haplotype> log10ReadLikelihoods,
-            final AssemblyResultSet assemblyResultSet,
-            final ReferenceContext referenceContext,
-            final SimpleInterval activeRegionWindow,
-            final FeatureContext featureContext,
-            final List<VariantContext> givenAlleles,
-            final SAMFileHeader header) {
-        return callMutations(log10ReadLikelihoods,assemblyResultSet, referenceContext, activeRegionWindow, featureContext, givenAlleles, header, false);
-    }
-
     private Set<Allele> getAllelesConsistentWithGivenAlleles(List<VariantContext> givenAlleles, int loc, VariantContext mergedVC) {
         final List<Pair<Allele, Allele>> givenAltAndRefAllelesInOriginalContext =  getVariantContextsFromGivenAlleles(loc, givenAlleles, false).stream()
                 .flatMap(vc -> vc.getAlternateAlleles().stream().map(allele -> ImmutablePair.of(allele, vc.getReference()))).collect(Collectors.toList());
