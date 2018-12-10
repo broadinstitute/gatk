@@ -71,9 +71,6 @@ public abstract class MultiVariantWalkerGroupedOnStart extends MultiVariantWalke
         } else {
             currentVariants.add(variant);
         }
-        if (referenceContext.hasBackingDataSource()){
-            referenceContext.setWindow(1, 1);
-        }
         spanningReferenceContext = getExpandedReferenceContext(currentVariants, spanningReferenceContext, referenceContext);
     }
 

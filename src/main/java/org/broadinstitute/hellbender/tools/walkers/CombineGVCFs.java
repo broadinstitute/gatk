@@ -122,6 +122,11 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
 
     @Override
     public void apply(List<VariantContext> variantContexts, ReferenceContext referenceContext) {
+
+        if (referenceContext.hasBackingDataSource()){
+            referenceContext.setWindow(1, 1);
+        }
+
         // Check that the input variant contexts do not contain MNPs as these may not be properly merged
         for (final VariantContext ctx : variantContexts) {
             if (GATKVariantContextUtils.isUnmixedMnpIgnoringNonRef(ctx)) {
