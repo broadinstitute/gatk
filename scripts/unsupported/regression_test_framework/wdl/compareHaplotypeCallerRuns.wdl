@@ -42,6 +42,9 @@ workflow ToolComparisonWdl {
     Float contamination
     Int interval_padding
 
+    # Output bucket name:
+    String output_bucket_base_location = "https://console.cloud.google.com/storage/browser/haplotypecallerspark-evaluation/testSets/"
+
     # Default input files for HC and comparison:
     String truth_bucket_location = "gs://haplotypecallerspark-evaluation/groundTruth/"
     String input_bucket_location = "gs://haplotypecallerspark-evaluation/inputData/"
@@ -122,7 +125,7 @@ workflow ToolComparisonWdl {
 #                truth_vcf = truthVcf,
 #                truth_vcf_idx = truthIndex,
 #                intervals = interval_list,
-#
+#a
 #                gatk_docker = gatk_docker,
 #                gatk_override = gatk4_jar_override,
 #                mem_gb = mem_gb,
@@ -137,8 +140,6 @@ workflow ToolComparisonWdl {
                 truth_timing_file = truthVcf + ".timingInformation.txt",
                 call_timing_file = HaplotypeCallerTask.timing_info
         }
-
-
     }
 
     # ------------------------------------------------
@@ -146,7 +147,7 @@ workflow ToolComparisonWdl {
     output {
 #        File vcf_out     = HaplotypeCallerTask.output_vcf
 #        File vcf_out_idx = HaplotypeCallerTask.output_vcf_index
-        File timingMetrics  = CompareTimingTask.timing_diff
+        Array[File] timingMetrics  = CompareTimingTask.timing_diff
     }
 }
 

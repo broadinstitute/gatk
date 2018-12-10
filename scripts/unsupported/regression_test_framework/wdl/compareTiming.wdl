@@ -28,6 +28,8 @@ workflow CompareTiming {
     File call_timing_file
     File truth_timing_file
 
+    String? base_timing_output_name
+
     Int?  mem_gb
     Int? preemptible_attempts
     Int? disk_space_gb
@@ -40,6 +42,8 @@ workflow CompareTiming {
         input:
             truth_timing_file         = truth_timing_file,
             call_timing_file          = call_timing_file,
+
+            base_timing_output_name = base_timing_output_name,
 
             gatk_docker               = gatk_docker,
             mem                       = mem_gb,
@@ -68,6 +72,8 @@ task CompareTimingTask {
     File truth_timing_file
     File call_timing_file
 
+    String? base_timing_output_name
+
     ####################################################################################
     # Runtime Inputs:
     String gatk_docker
@@ -77,6 +83,10 @@ task CompareTimingTask {
     Int? disk_space_gb
     Int? cpu
     Int? boot_disk_size_gb
+
+    ####################################################################################
+    # Default values:
+    String timing_diff_file_name = if defined(base_timing_output_name) then base_timing_output_name + ".timingDiff.txt" else "timingDiff.txt"
 
     ####################################################################################
     # Define default values and set up values for running:
@@ -93,8 +103,6 @@ task CompareTimingTask {
     Int machine_mem = if defined(mem) then mem * 1024 else default_ram_mb
     Int command_mem = machine_mem - 1024
 
-    String timingDiffFileName = "timingDiff.txt"
-
     ####################################################################################
     # Do the work:
     command {
@@ -110,8 +118,8 @@ task CompareTimingTask {
         echo "timeDiff = $timeDiff"
         echo "timeRatio = $timeRatio"
 
-        echo "TimeDiff: $timeDiff" >> ${timingDiffFileName}
-        echo "TimeRatio: $timeRatio" >> ${timingDiffFileName}
+        echo "TimeDiff: $timeDiff" >> ${timing_diff_file_name}
+        echo "TimeRatio: $timeRatio" >> ${timing_diff_file_name}
     }
 
     ####################################################################################
@@ -128,6 +136,6 @@ task CompareTimingTask {
     ####################################################################################
     # Outputs:
     output {
-        File timing_diff         = timingDiffFileName
+        File timing_diff         = timing_diff_file_name
     }
 }
