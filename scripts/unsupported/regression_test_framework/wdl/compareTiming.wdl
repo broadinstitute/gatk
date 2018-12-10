@@ -43,7 +43,7 @@ workflow CompareTiming {
             truth_timing_file         = truth_timing_file,
             call_timing_file          = call_timing_file,
 
-            base_timing_output_name = base_timing_output_name,
+            base_timing_output_name   = base_timing_output_name,
 
             gatk_docker               = gatk_docker,
             mem                       = mem_gb,
