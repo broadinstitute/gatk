@@ -23,7 +23,7 @@ workflow CompareTiming {
 
     # ------------------------------------------------
     # Input args:
-    String gatk_docker
+    String gatk_docker = "broadinstitute/gatk-nightly:2018-12-07-4.0.11.0-88-g2ae01efda-SNAPSHOT"
 
     File call_timing_file
     File truth_timing_file
