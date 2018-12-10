@@ -165,8 +165,14 @@ public class FindAssemblyRegionsSpark {
         // 4. Fill in the reads. Each shard is an assembly region, with its overlapping reads.
         JavaRDD<Shard<GATKRead>> assemblyRegionShardedReads = SparkSharder.shard(ctx, reads, GATKRead.class, header.getSequenceDictionary(), readlessAssemblyRegions, shardingArgs.readShardSize);
 
-        // 5. Convert shards to assembly regions.
-        JavaRDD<AssemblyRegion> assemblyRegions = assemblyRegionShardedReads.map((Function<Shard<GATKRead>, AssemblyRegion>) shard -> toAssemblyRegion(shard, header));
+        // 5. Convert shards to assembly regions. Reads downsampling is done again here, and is assumed to be consistent
+        // with the downsampling done in step 1, since it is deterministic by locus.
+        JavaRDD<AssemblyRegion> assemblyRegions = assemblyRegionShardedReads.mapPartitions((FlatMapFunction<Iterator<Shard<GATKRead>>, AssemblyRegion>) shardedReadIterator -> {
+            final ReadsDownsampler readsDownsampler = assemblyRegionArgs.maxReadsPerAlignmentStart > 0 ?
+                    new PositionalDownsampler(assemblyRegionArgs.maxReadsPerAlignmentStart, header) : null;
+            return Utils.stream(shardedReadIterator)
+                    .map(shardedRead -> toAssemblyRegion(shardedRead, header, readsDownsampler)).iterator();
+        });
 
         // 6. Add reference and feature context.
         return assemblyRegions.mapPartitions(getAssemblyRegionWalkerContextFunction(referenceFileName, bFeatureManager));
@@ -223,12 +229,16 @@ public class FindAssemblyRegionsSpark {
                         });
     }
 
-    private static AssemblyRegion toAssemblyRegion(Shard<GATKRead> shard, SAMFileHeader header) {
+    private static AssemblyRegion toAssemblyRegion(Shard<GATKRead> shard, SAMFileHeader header, ReadsDownsampler readsDownsampler) {
+        Shard<GATKRead> downsampledShardedRead =
+                new DownsampleableSparkReadShard(
+                        new ShardBoundary(shard.getInterval(), shard.getPaddedInterval()), shard, readsDownsampler);
+
         // TODO: interfaces could be improved to avoid casting
         ReadlessAssemblyRegion readlessAssemblyRegion = (ReadlessAssemblyRegion) ((ShardBoundaryShard<GATKRead>) shard).getShardBoundary();
         int extension = Math.max(shard.getInterval().getStart() - shard.getPaddedInterval().getStart(), shard.getPaddedInterval().getEnd() - shard.getInterval().getEnd());
         AssemblyRegion assemblyRegion = new AssemblyRegion(shard.getInterval(), Collections.emptyList(), readlessAssemblyRegion.isActive(), extension, header);
-        assemblyRegion.addAll(Lists.newArrayList(shard));
+        assemblyRegion.addAll(Lists.newArrayList(downsampledShardedRead));
         return assemblyRegion;
     }
 
