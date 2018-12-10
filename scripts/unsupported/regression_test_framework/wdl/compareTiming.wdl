@@ -23,7 +23,7 @@ workflow CompareTiming {
 
     # ------------------------------------------------
     # Input args:
-    String gatk_docker = "ubuntu:16.04"
+    String gatk_docker = "broadinstitute/gatk:gatkbase-2.0.2"
 
     File call_timing_file
     File truth_timing_file
