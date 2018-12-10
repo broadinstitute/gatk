@@ -23,12 +23,11 @@ workflow CompareTiming {
 
     # ------------------------------------------------
     # Input args:
-    String gatk_docker = "broadinstitute/gatk-nightly:2018-12-07-4.0.11.0-88-g2ae01efda-SNAPSHOT"
+    String gatk_docker = "ubuntu:16.04"
 
     File call_timing_file
     File truth_timing_file
 
-    File? gatk4_jar_override
     Int?  mem_gb
     Int? preemptible_attempts
     Int? disk_space_gb
@@ -43,7 +42,6 @@ workflow CompareTiming {
             call_timing_file          = call_timing_file,
 
             gatk_docker               = gatk_docker,
-            gatk_override             = gatk4_jar_override,
             mem                       = mem_gb,
             preemptible_attempts      = preemptible_attempts,
             disk_space_gb             = disk_space_gb,
@@ -74,7 +72,6 @@ task CompareTimingTask {
     # Runtime Inputs:
     String gatk_docker
 
-    File? gatk_override
     Int? mem
     Int? preemptible_attempts
     Int? disk_space_gb
@@ -101,14 +98,20 @@ task CompareTimingTask {
     ####################################################################################
     # Do the work:
     command {
-        truthElapsed=$( grep "Elapsed" ${truth_timing_file} | awk 'print $2')
-        callElapsed=$( grep "Elapsed" ${call_timing_file} | awk 'print $2')
+        truthElapsed=$( grep "Elapsed" ${truth_timing_file} | sed 's#.*[ \t]##')
+        callElapsed=$( grep "Elapsed" ${call_timing_file} | sed 's#.*[ \t]##')
+
+        echo "truthElapsed = $truthElapsed"
+        echo "callElapsed = $callElapsed"
 
         timeDiff=$( python -c "print $truthElapsed - $callElapsed" )
         timeRatio=$( python -c "print $callElapsed/$truthElapsed" )
 
+        echo "timeDiff = $timeDiff"
+        echo "timeRatio = $timeRatio"
+
         echo "TimeDiff: $timeDiff" >> ${timingDiffFileName}
-        echo "TimeDiff: $timeRatio" >> ${timingDiffFileName}
+        echo "TimeRatio: $timeRatio" >> ${timingDiffFileName}
     }
 
     ####################################################################################
