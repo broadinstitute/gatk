@@ -21,8 +21,7 @@ shopt -s expand_aliases
 ################################################################################
 
 #DEFAULT_DOCKERHUB_REPO_NAME="broadinstitute/gatk-nightly"
-DEFAULT_DOCKERHUB_REPO_NAME="gcr.io/broad-dsde-methods/broad-gatk-snapshots"
-#https://console.cloud.google.com/gcr/images/broad-dsde-methods/US/broad-gatk-snapshots
+DEFAULT_DOCKERHUB_REPO_NAME="us.gcr.io/broad-dsde-methods/broad-gatk-snapshots"
 
 ################################################################################
 
