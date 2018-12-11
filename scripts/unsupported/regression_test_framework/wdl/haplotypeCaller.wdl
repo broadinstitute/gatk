@@ -130,7 +130,8 @@ task HaplotypeCallerTask {
 
     String index_format = if sub(out_file_name, ".*\\.", "") == "vcf" then "idx" else "tbi"
 
-    String timing_output_file = out_file_name + ".timingInformation.txt"
+    String timing_output_file = basename(out_file_name) + ".timingInformation.txt"
+    String timing_output_file_gs_dir = out_file_name + ".timingInformation.txt"
 
     # ------------------------------------------------
     # Get machine settings:
@@ -171,6 +172,7 @@ task HaplotypeCallerTask {
         echo "EndTime: $endTime" >> ${timing_output_file}
         elapsedTime=`python -c "print( $endTime - $startTime )"`
         echo "Elapsed Time: $elapsedTime" >> ${timing_output_file}
+        gsutil cp ${timing_output_file} ${timing_output_file_gs_dir}
     >>>
 
     # ------------------------------------------------
