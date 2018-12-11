@@ -125,6 +125,15 @@ public final class ArgumentsBuilder {
     }
 
     /**
+     * add an argument with a given value to this builder
+     */
+    public ArgumentsBuilder addArgument(final String argumentName) {
+        Utils.nonNull(argumentName);
+        add("--" + argumentName);
+        return this;
+    }
+
+    /**
      * Add an argument with a given value to this builder without splitting the value string into multiple arguments at whitespace.
      * This is specifically to allow arguments with values that contain whitespace.
      */

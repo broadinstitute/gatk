@@ -114,7 +114,7 @@ public class MarkDuplicatesSparkUtils {
      *       highest scoring as duplicates.
      *   (b) Determine which duplicates are optical duplicates and increase the overall count.
      */
-    static JavaPairRDD<IndexPair<String>, Integer> transformToDuplicateNames(final SAMFileHeader header, final MarkDuplicatesScoringStrategy scoringStrategy, final OpticalDuplicateFinder finder, final JavaRDD<GATKRead>  reads, final int numReducers) {
+    static JavaPairRDD<IndexPair<String>, Integer> transformToDuplicateNames(final SAMFileHeader header, final MarkDuplicatesScoringStrategy scoringStrategy, final OpticalDuplicateFinder finder, final JavaRDD<GATKRead>  reads, final int numReducers, final boolean markOpticalDups) {
         // we treat these specially and don't mark them as duplicates
         final JavaRDD<GATKRead> mappedReads = reads.filter(ReadFilterLibrary.MAPPED::test);
 
@@ -194,7 +194,7 @@ public class MarkDuplicatesSparkUtils {
 
         final JavaPairRDD<ReadsKey, Iterable<MarkDuplicatesSparkRecord>> keyedPairs = pairedEnds.groupByKey(); //TODO evaluate replacing this with a smart aggregate by key.
 
-        return markDuplicateRecords(keyedPairs, finder);
+        return markDuplicateRecords(keyedPairs, finder, markOpticalDups);
     }
 
     /**
@@ -332,7 +332,7 @@ public class MarkDuplicatesSparkUtils {
      */
     @SuppressWarnings("unchecked")
     private static JavaPairRDD<IndexPair<String>, Integer> markDuplicateRecords(final JavaPairRDD<ReadsKey, Iterable<MarkDuplicatesSparkRecord>> keyedPairs,
-                                                                                final OpticalDuplicateFinder finder) {
+                                                                                final OpticalDuplicateFinder finder, final boolean markOpticalDups) {
         return keyedPairs.flatMapToPair(keyedPair -> {
             Iterable<MarkDuplicatesSparkRecord> pairGroups = keyedPair._2();
 
@@ -353,7 +353,7 @@ public class MarkDuplicatesSparkUtils {
             }
 
             if (Utils.isNonEmpty(pairs)) {
-                nonDuplicates.add(handlePairs(pairs, finder));
+                nonDuplicates.addAll(handlePairs(pairs, finder, markOpticalDups));
             }
 
             if (Utils.isNonEmpty(passthroughs)) {
@@ -387,15 +387,17 @@ public class MarkDuplicatesSparkUtils {
     private static List<Tuple2<IndexPair<String>,Integer>> handlePassthroughs(List<MarkDuplicatesSparkRecord> passthroughs) {
         // Emit the passthrough reads as non-duplicates.
         return passthroughs.stream()
-                .map(pair -> new Tuple2<>(new IndexPair<>(pair.getName(), pair.getPartitionIndex()), -1))
+                .map(pair -> new Tuple2<>(new IndexPair<>(pair.getName(), pair.getPartitionIndex()), MarkDuplicatesSpark.NO_OPTICAL_MARKER))
                 .collect(Collectors.toList());
     }
 
-    private static Tuple2<IndexPair<String>, Integer> handlePairs(List<Pair> pairs, OpticalDuplicateFinder finder) {
+    private static List<Tuple2<IndexPair<String>, Integer>> handlePairs(final List<Pair> pairs, final OpticalDuplicateFinder finder, final boolean markOpticalDups) {
         // save ourselves the trouble when there are no optical duplicates to worry about
         if (pairs.size() == 1) {
-            return (new Tuple2<>(new IndexPair<>(pairs.get(0).getName(), pairs.get(0).getPartitionIndex()), 0));
+            return Collections.singletonList(new Tuple2<>(new IndexPair<>(pairs.get(0).getName(), pairs.get(0).getPartitionIndex()), 0));
         }
+
+        List<Tuple2<IndexPair<String>, Integer>> output = new ArrayList<>();
 
         final Pair bestPair = pairs.stream()
                 .peek(pair -> finder.addLocationInformation(pair.getName(), pair))
@@ -406,23 +408,26 @@ public class MarkDuplicatesSparkUtils {
         final Map<Byte, List<Pair>> groupByOrientation = pairs.stream()
                 .collect(Collectors.groupingBy(Pair::getOrientationForOpticalDuplicates));
         final int numOpticalDuplicates;
-        //todo do we not have to split the reporting of these by orientation?
         if (groupByOrientation.containsKey(ReadEnds.FR) && groupByOrientation.containsKey(ReadEnds.RF)) {
             final List<Pair> peFR = new ArrayList<>(groupByOrientation.get(ReadEnds.FR));
             final List<Pair> peRF = new ArrayList<>(groupByOrientation.get(ReadEnds.RF));
-            numOpticalDuplicates = countOpticalDuplicates(finder, peFR, bestPair) + countOpticalDuplicates(finder, peRF, bestPair);
+            numOpticalDuplicates = countOpticalDuplicates(finder, peFR, bestPair, markOpticalDups? output : null) + countOpticalDuplicates(finder, peRF, bestPair, markOpticalDups? output : null);
         } else {
-            numOpticalDuplicates = countOpticalDuplicates(finder, pairs, bestPair);
+            numOpticalDuplicates = countOpticalDuplicates(finder, pairs, bestPair, markOpticalDups? output : null);
         }
-        return (new Tuple2<>(new IndexPair<>(bestPair.getName(), bestPair.getPartitionIndex()), numOpticalDuplicates));
+        output.add(new Tuple2<>(new IndexPair<>(bestPair.getName(), bestPair.getPartitionIndex()), numOpticalDuplicates));
+        return output;
     }
 
-    private static int countOpticalDuplicates(OpticalDuplicateFinder finder, List<Pair> scored, Pair best) {
+    private static int countOpticalDuplicates(OpticalDuplicateFinder finder, List<Pair> scored, Pair best, List<Tuple2<IndexPair<String>,Integer>> opticalDuplicateList) {
         final boolean[] opticalDuplicateFlags = finder.findOpticalDuplicates(scored, best);
         int numOpticalDuplicates = 0;
-        for (final boolean b : opticalDuplicateFlags) {
-            if (b) {
+        for (int i = 0; i < opticalDuplicateFlags.length; i++) {
+            if (opticalDuplicateFlags[i]) {
                 numOpticalDuplicates++;
+                if (opticalDuplicateList != null) {
+                    opticalDuplicateList.add(new Tuple2<>(new IndexPair<>(scored.get(i).getName(), scored.get(i).getPartitionIndex()), MarkDuplicatesSpark.OPTICAL_DUPLICATE_MARKER));
+                }
             }
         }
         return numOpticalDuplicates;

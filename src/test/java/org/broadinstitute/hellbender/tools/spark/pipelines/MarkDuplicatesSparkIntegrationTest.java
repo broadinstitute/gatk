@@ -17,14 +17,13 @@ import org.broadinstitute.hellbender.utils.read.markduplicates.GATKDuplicationMe
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+import picard.sam.markduplicates.MarkDuplicates;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Test(groups = "spark")
@@ -104,9 +103,8 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
         Map<String, List<String>> metricsExpected) throws IOException {
 
         ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--"+ StandardArgumentDefinitions.INPUT_LONG_NAME);
-        args.add(input.getPath());
-        args.add("--"+StandardArgumentDefinitions.OUTPUT_LONG_NAME);
+        args.addArgument(StandardArgumentDefinitions.INPUT_LONG_NAME, input.getPath());
+        args.addArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME);
 
         File outputFile = createTempFile("markdups", ".bam");
         outputFile.delete();
@@ -141,21 +139,15 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
         } catch (final FileNotFoundException ex) {
             System.err.println("Metrics file not found: " + ex);
         }
-        final List<GATKDuplicationMetrics> nonEmptyMetrics = metricsOutput.getMetrics().stream().filter(
-                metric ->
-                    metric.UNPAIRED_READS_EXAMINED != 0L ||
-                    metric.READ_PAIRS_EXAMINED != 0L ||
-                    metric.UNMAPPED_READS != 0L ||
-                    metric.UNPAIRED_READ_DUPLICATES != 0L ||
-                    metric.READ_PAIR_DUPLICATES != 0L ||
-                    metric.READ_PAIR_OPTICAL_DUPLICATES != 0L ||
-                    (metric.PERCENT_DUPLICATION != null && metric.PERCENT_DUPLICATION != 0.0 && !Double.isNaN(metric.PERCENT_DUPLICATION)) ||
-                    (metric.ESTIMATED_LIBRARY_SIZE != null && metric.ESTIMATED_LIBRARY_SIZE != 0L)
-        ).collect(Collectors.toList());
+        final List<GATKDuplicationMetrics> nonEmptyMetrics = getGatkDuplicationMetrics(metricsOutput);
 
         Assert.assertEquals(nonEmptyMetrics.size(), metricsExpected.size(),
                             "Wrong number of metrics with non-zero fields.");
-        for (int i = 0; i < nonEmptyMetrics.size(); i++ ){
+        compareMetricsToExpected(metricsExpected, nonEmptyMetrics);
+    }
+
+    protected void compareMetricsToExpected(Map<String, List<String>> metricsExpected, List<GATKDuplicationMetrics> nonEmptyMetrics) {
+        for (int i = 0; i < nonEmptyMetrics.size(); i++) {
             final GATKDuplicationMetrics observedMetrics = nonEmptyMetrics.get(i);
             List<?> expectedList = metricsExpected.get(observedMetrics.LIBRARY);
             Assert.assertNotNull(expectedList, "Unexpected library found: " + observedMetrics.LIBRARY);
@@ -169,11 +161,272 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
 
             //Note: IntelliJ does not like it when a parameter for a test is null (can't print it and skips the test)
             //so we work around it by passing in an 'expected 0L' and only comparing to it if the actual value is non-null
-            if (observedMetrics.ESTIMATED_LIBRARY_SIZE != null && (Long)expectedList.get(7) != 0L)  {
+            if (observedMetrics.ESTIMATED_LIBRARY_SIZE != null && (Long) expectedList.get(7) != 0L) {
                 Assert.assertEquals(observedMetrics.ESTIMATED_LIBRARY_SIZE, expectedList.get(7));
             }
         }
     }
+
+
+    protected List<GATKDuplicationMetrics> getGatkDuplicationMetrics(MetricsFile<GATKDuplicationMetrics, Comparable<?>> metricsOutput) {
+        return metricsOutput.getMetrics().stream().filter(
+                metric ->
+                        metric.UNPAIRED_READS_EXAMINED != 0L ||
+                                metric.READ_PAIRS_EXAMINED != 0L ||
+                                metric.UNMAPPED_READS != 0L ||
+                                metric.UNPAIRED_READ_DUPLICATES != 0L ||
+                                metric.READ_PAIR_DUPLICATES != 0L ||
+                                metric.READ_PAIR_OPTICAL_DUPLICATES != 0L ||
+                                (metric.PERCENT_DUPLICATION != null && metric.PERCENT_DUPLICATION != 0.0 && !Double.isNaN(metric.PERCENT_DUPLICATION)) ||
+                                (metric.ESTIMATED_LIBRARY_SIZE != null && metric.ESTIMATED_LIBRARY_SIZE != 0L)
+        ).collect(Collectors.toList());
+    }
+
+    @Test( dataProvider = "md")
+    public void testMarkDuplicatesSparkMarkingOpticalDuplicatesWithTagging(
+            final File input, final long totalExpected, final long dupsExpected,
+            Map<String, List<String>> metricsExpected) throws IOException {
+
+        ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
+        args.add(input.getPath());
+        args.add("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
+
+        File outputFile = createTempFile("markdups", ".bam");
+        outputFile.delete();
+        args.add(outputFile.getAbsolutePath());
+
+        args.add("--" + StandardArgumentDefinitions.METRICS_FILE_LONG_NAME);
+        File metricsFile = createTempFile("markdups_metrics", ".txt");
+        args.add(metricsFile.getAbsolutePath());
+
+        args.add("--" + MarkDuplicatesSparkArgumentCollection.DUPLICATE_TAGGING_POLICY_LONG_NAME);
+        args.add(MarkDuplicates.DuplicateTaggingPolicy.OpticalOnly);
+
+        runCommandLine(args.getArgsArray());
+
+        Assert.assertTrue(outputFile.exists(), "Can't find expected MarkDuplicates output file at " + outputFile.getAbsolutePath());
+
+        Set<String> opticalDuplicateNamesObserved = new HashSet<>();
+
+        final MetricsFile<GATKDuplicationMetrics, Comparable<?>> metricsOutput = new MetricsFile<>();
+        try {
+            metricsOutput.read(new FileReader(metricsFile));
+        } catch (final FileNotFoundException ex) {
+            System.err.println("Metrics file not found: " + ex);
+        }
+        final List<GATKDuplicationMetrics> nonEmptyMetrics = getGatkDuplicationMetrics(metricsOutput);
+
+
+        int totalReads = 0;
+        int duplicateReads = 0;
+        try (final ReadsDataSource outputReads = new ReadsDataSource(outputFile.toPath())) {
+            for (GATKRead read : outputReads) {
+                ++totalReads;
+
+                if (read.isDuplicate()) {
+                    ++duplicateReads;
+                }
+
+                if (MarkDuplicates.DUPLICATE_TYPE_SEQUENCING.equals(read.getAttributeAsString(MarkDuplicates.DUPLICATE_TYPE_TAG))) {
+                    opticalDuplicateNamesObserved.add(read.getName());
+                }
+            }
+        }
+
+        // Count the number of optical duplicates in the metrics and then compare against duplicates observed in the file
+        int expectedOpticalDuplicatesGroups = 0;
+        for (int i = 0; i < nonEmptyMetrics.size(); i++ ){
+            final GATKDuplicationMetrics observedMetrics = nonEmptyMetrics.get(i);
+            List<?> expectedList = metricsExpected.get(observedMetrics.LIBRARY);
+            expectedOpticalDuplicatesGroups += (Long) (expectedList.get(5));
+            Assert.assertEquals(observedMetrics.READ_PAIR_OPTICAL_DUPLICATES, expectedList.get(5));
+        }
+        Assert.assertEquals(opticalDuplicateNamesObserved.size(), expectedOpticalDuplicatesGroups, "Wrong number of optical duplicate marked reads in output BAM");
+    }
+
+    @Test( dataProvider = "md")
+    // Testing the DUPLICATE_TAGGING_POLICY_LONG_NAME = ALL option.
+    public void testMarkDuplicatesSparkMarkingAllDuplicatesWithTagging(
+            final File input, final long totalExpected, final long dupsExpected,
+            Map<String, List<String>> metricsExpected) throws IOException {
+
+        ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
+        args.add(input.getPath());
+        args.add("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
+
+        File outputFile = createTempFile("markdups", ".bam");
+        outputFile.delete();
+        args.add(outputFile.getAbsolutePath());
+
+        args.add("--" + StandardArgumentDefinitions.METRICS_FILE_LONG_NAME);
+        File metricsFile = createTempFile("markdups_metrics", ".txt");
+        args.add(metricsFile.getAbsolutePath());
+
+        args.add("--" + MarkDuplicatesSparkArgumentCollection.DUPLICATE_TAGGING_POLICY_LONG_NAME);
+        args.add(MarkDuplicates.DuplicateTaggingPolicy.All);
+
+        runCommandLine(args.getArgsArray());
+
+        Assert.assertTrue(outputFile.exists(), "Can't find expected MarkDuplicates output file at " + outputFile.getAbsolutePath());
+
+        final Set<String> opticalDuplicateNamesObserved = new HashSet<>();
+        final Set<String> libraryDuplicateNamesObserved = new HashSet<>();
+
+        final MetricsFile<GATKDuplicationMetrics, Comparable<?>> metricsOutput = new MetricsFile<>();
+        try {
+            metricsOutput.read(new FileReader(metricsFile));
+        } catch (final FileNotFoundException ex) {
+            System.err.println("Metrics file not found: " + ex);
+        }
+        final List<GATKDuplicationMetrics> nonEmptyMetrics = getGatkDuplicationMetrics(metricsOutput);
+
+
+        int totalReads = 0;
+        int duplicateReads = 0;
+        try (final ReadsDataSource outputReads = new ReadsDataSource(outputFile.toPath())) {
+            for (GATKRead read : outputReads) {
+                ++totalReads;
+
+                if (read.isDuplicate()) {
+                    ++duplicateReads;
+                }
+
+                if (MarkDuplicates.DUPLICATE_TYPE_SEQUENCING.equals(read.getAttributeAsString(MarkDuplicates.DUPLICATE_TYPE_TAG))) {
+                    opticalDuplicateNamesObserved.add(read.getName());
+                }
+                if (MarkDuplicates.DUPLICATE_TYPE_LIBRARY.equals(read.getAttributeAsString(MarkDuplicates.DUPLICATE_TYPE_TAG))) {
+                    libraryDuplicateNamesObserved.add(read.getName());
+                }
+            }
+        }
+
+        // Count the number of optical and library duplicates in the metrics and then compare against duplicates observed in the file
+        int expectedOpticalDuplicatesGroups = 0;
+        int expectedLibraryDuplicatesGroups = 0;
+        for (int i = 0; i < nonEmptyMetrics.size(); i++ ){
+            final GATKDuplicationMetrics observedMetrics = nonEmptyMetrics.get(i);
+            List<?> expectedList = metricsExpected.get(observedMetrics.LIBRARY);
+            expectedLibraryDuplicatesGroups += (Long) (expectedList.get(4));
+            expectedOpticalDuplicatesGroups += (Long) (expectedList.get(5));
+            Assert.assertEquals(observedMetrics.READ_PAIR_OPTICAL_DUPLICATES, expectedList.get(5));
+        }
+        Assert.assertEquals(opticalDuplicateNamesObserved.size(), expectedOpticalDuplicatesGroups, "Wrong number of optical duplicate marked reads in output BAM");
+        Assert.assertEquals(libraryDuplicateNamesObserved.size(), expectedLibraryDuplicatesGroups - expectedOpticalDuplicatesGroups, "Wrong number of duplicate marked reads in output BAM");
+    }
+
+
+    @Test( dataProvider = "md")
+    public void testMarkDuplicatesSparkDeletingDuplicateReads(
+            final File input, final long totalExpected, final long dupsExpected,
+            Map<String, List<String>> metricsExpected) throws IOException {
+
+        ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add("--"+ StandardArgumentDefinitions.INPUT_LONG_NAME);
+        args.add(input.getPath());
+        args.add("--"+StandardArgumentDefinitions.OUTPUT_LONG_NAME);
+
+        File outputFile = createTempFile("markdups", ".bam");
+        outputFile.delete();
+        args.add(outputFile.getAbsolutePath());
+
+        args.add("--"+StandardArgumentDefinitions.METRICS_FILE_LONG_NAME);
+        File metricsFile = createTempFile("markdups_metrics", ".txt");
+        args.add(metricsFile.getAbsolutePath());
+
+        args.add("--"+MarkDuplicatesSparkArgumentCollection.REMOVE_ALL_DUPLICATE_READS);
+
+        runCommandLine(args.getArgsArray());
+
+        Assert.assertTrue(outputFile.exists(), "Can't find expected MarkDuplicates output file at " + outputFile.getAbsolutePath());
+
+        int totalReads = 0;
+        int duplicateReads = 0;
+        try ( final ReadsDataSource outputReads = new ReadsDataSource(outputFile.toPath()) ) {
+            for ( GATKRead read : outputReads ) {
+                ++totalReads;
+
+                if ( read.isDuplicate() ) {
+                    ++duplicateReads;
+                }
+            }
+        }
+
+        Assert.assertEquals(totalReads, totalExpected - dupsExpected, "Wrong number of reads in output BAM");
+        Assert.assertEquals(duplicateReads, 0, "Wrong number of duplicate reads in output BAM");
+
+        final MetricsFile<GATKDuplicationMetrics, Comparable<?>> metricsOutput = new MetricsFile<>();
+        try {
+            metricsOutput.read(new FileReader(metricsFile));
+        } catch (final FileNotFoundException ex) {
+            System.err.println("Metrics file not found: " + ex);
+        }
+        final List<GATKDuplicationMetrics> nonEmptyMetrics = getGatkDuplicationMetrics(metricsOutput);
+
+        // Assert that the metrics haven't changed at all
+        Assert.assertEquals(nonEmptyMetrics.size(), metricsExpected.size(),
+                "Wrong number of metrics with non-zero fields.");
+        compareMetricsToExpected(metricsExpected, nonEmptyMetrics);
+    }
+
+
+    @Test( dataProvider = "md")
+    public void testMarkDuplicatesSparkDeletingOpticalDuplicateReads(
+            final File input, final long totalExpected, final long dupsExpected,
+            Map<String, List<String>> metricsExpected) throws IOException {
+
+        ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
+        args.add(input.getPath());
+        args.add("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
+
+        File outputFile = createTempFile("markdups", ".bam");
+        outputFile.delete();
+        args.add(outputFile.getAbsolutePath());
+
+        args.add("--" + StandardArgumentDefinitions.METRICS_FILE_LONG_NAME);
+        File metricsFile = createTempFile("markdups_metrics", ".txt");
+        args.add(metricsFile.getAbsolutePath());
+
+        args.add("--" + MarkDuplicatesSparkArgumentCollection.REMOVE_SEQUENCING_DUPLICATE_READS);
+
+        runCommandLine(args.getArgsArray());
+
+        Assert.assertTrue(outputFile.exists(), "Can't find expected MarkDuplicates output file at " + outputFile.getAbsolutePath());
+
+        int totalReads = 0;
+        int duplicateReads = 0;
+        try (final ReadsDataSource outputReads = new ReadsDataSource(outputFile.toPath())) {
+            for (GATKRead read : outputReads) {
+                ++totalReads;
+
+                if (read.isDuplicate()) {
+                    ++duplicateReads;
+                }
+            }
+        }
+
+        final MetricsFile<GATKDuplicationMetrics, Comparable<?>> metricsOutput = new MetricsFile<>();
+        try {
+            metricsOutput.read(new FileReader(metricsFile));
+        } catch (final FileNotFoundException ex) {
+            System.err.println("Metrics file not found: " + ex);
+        }
+        final List<GATKDuplicationMetrics> nonEmptyMetrics = getGatkDuplicationMetrics(metricsOutput);
+
+        // Asserting
+        int expectedOpticalDuplicatesGroups = 0;
+        for (int i = 0; i < nonEmptyMetrics.size(); i++ ){
+            final GATKDuplicationMetrics observedMetrics = nonEmptyMetrics.get(i);
+            List<?> expectedList = metricsExpected.get(observedMetrics.LIBRARY);
+            expectedOpticalDuplicatesGroups += (Long) expectedList.get(5);
+        }
+        // NOTE: this test will fail if we add a more comprehensive example set with optical duplicates containing secondary/supplementary reads because of how the test is counting optical duplicate reads.
+        Assert.assertEquals(totalReads, totalExpected - expectedOpticalDuplicatesGroups*2, "Wrong number of reads in output BAM");
+        Assert.assertEquals(duplicateReads, dupsExpected - expectedOpticalDuplicatesGroups*2, "Wrong number of duplicate reads in output BAM");
+    }
+
 
     @Test
     public void testHashCollisionHandling() {
