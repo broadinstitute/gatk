@@ -4,6 +4,7 @@ import htsjdk.samtools.seekablestream.SeekablePathStream;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.readers.LineIterator;
 import htsjdk.tribble.readers.PositionalBufferedStream;
+import htsjdk.variant.utils.VCFHeaderReader;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.*;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
@@ -12,7 +13,6 @@ import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
-import org.seqdoop.hadoop_bam.util.VCFHeaderReader;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 

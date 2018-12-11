@@ -38,14 +38,22 @@ public final class Path<T extends BaseVertex, E extends BaseEdge> {
      * @param graph the graph this path will follow through
      */
     public Path(final T initialVertex, final BaseGraph<T, E> graph) {
-        Utils.nonNull(initialVertex, "initialVertex cannot be null");
-        Utils.nonNull(graph, "graph cannot be null");
+        lastVertex = Utils.nonNull(initialVertex, "initialVertex cannot be null");
+        this.graph = Utils.nonNull(graph, "graph cannot be null");
         Utils.validateArg(graph.containsVertex(initialVertex), () -> "Vertex " + initialVertex + " must be part of graph " + graph);
 
-        lastVertex = initialVertex;
         edgesInOrder = new ArrayList<>(0);
         totalScore = 0;
+    }
+
+    /**
+     * Constructor that does not check arguments' validity i.e. doesn't check that edges are in order
+     */
+    public Path(final List<E> edgesInOrder, final T lastVertex, final BaseGraph<T,E> graph) {
+        this.lastVertex = lastVertex;
         this.graph = graph;
+        this.edgesInOrder = edgesInOrder;
+        totalScore = 0;
     }
 
     /**
@@ -142,6 +150,8 @@ public final class Path<T extends BaseVertex, E extends BaseEdge> {
      * @return a non-null list of edges
      */
     public List<E> getEdges() { return Collections.unmodifiableList(edgesInOrder); }
+
+    public E getLastEdge() { return edgesInOrder.get(length() - 1); }
 
     /**
      * Get the list of vertices in this path in order defined by the edges of the path

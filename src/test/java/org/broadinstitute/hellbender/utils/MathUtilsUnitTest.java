@@ -400,6 +400,12 @@ public final class MathUtilsUnitTest extends GATKBaseTest {
     }
 
     @Test
+    public void testSumCollection() {
+        final List<Integer> list = Arrays.asList(1,2,3,4,5);
+        Assert.assertEquals(MathUtils.sumDoubleFunction(list, n -> 0.5 * n), 7.5);
+    }
+
+    @Test
     public void testPromote() {
         int[] test = {0, 100, (int)1e10, (int)1e20};
         double[] prom = MathUtils.promote(test);

@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
+import htsjdk.samtools.Cigar;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
@@ -30,6 +31,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.File;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -41,6 +43,17 @@ public final class AssemblyBasedCallerUtils {
     public static final String SUPPORTED_ALLELES_TAG="XA";
     public static final String CALLABLE_REGION_TAG = "CR";
     public static final String ALIGNMENT_REGION_TAG = "AR";
+    public static final Function<Haplotype, Double> HAPLOTYPE_ALIGNMENT_TIEBREAKING_PRIORITY = h -> {
+        final Cigar cigar = h.getCigar();
+        final int referenceTerm = (h.isReference() ? 1 : 0);
+        final int cigarTerm = cigar == null ? 0 : (1 - cigar.numCigarElements());
+        return (double) referenceTerm + cigarTerm;
+    };
+
+    // After trimming to fit the assembly window, throw away read stubs shorter than this length
+    // if we don't, the several bases left of reads that end just within the assembly window can
+    // get realigned incorrectly.  See https://github.com/broadinstitute/gatk/issues/5060
+    public static final int MINIMUM_READ_LENGTH_AFTER_TRIMMING = 10;
 
     /**
      * Returns a map with the original read as a key and the realigned read as the value.
@@ -50,7 +63,7 @@ public final class AssemblyBasedCallerUtils {
      * @return never {@code null}
      */
     public static Map<GATKRead, GATKRead> realignReadsToTheirBestHaplotype(final ReadLikelihoods<Haplotype> originalReadLikelihoods, final Haplotype refHaplotype, final Locatable paddedReferenceLoc, final SmithWatermanAligner aligner) {
-        final Collection<ReadLikelihoods<Haplotype>.BestAllele> bestAlleles = originalReadLikelihoods.bestAllelesBreakingTies();
+        final Collection<ReadLikelihoods<Haplotype>.BestAllele> bestAlleles = originalReadLikelihoods.bestAllelesBreakingTies(HAPLOTYPE_ALIGNMENT_TIEBREAKING_PRIORITY);
         final Map<GATKRead, GATKRead> result = new HashMap<>(bestAlleles.size());
 
         for (final ReadLikelihoods<Haplotype>.BestAllele bestAllele : bestAlleles) {
@@ -181,18 +194,9 @@ public final class AssemblyBasedCallerUtils {
 
     public static ReadThreadingAssembler createReadThreadingAssembler(final AssemblyBasedCallerArgumentCollection args) {
         final ReadThreadingAssemblerArgumentCollection rtaac = args.assemblerArgs;
-        final ReadThreadingAssembler assemblyEngine = new ReadThreadingAssembler(rtaac.maxNumHaplotypesInPopulation, rtaac.kmerSizes, rtaac.dontIncreaseKmerSizesForCycles, rtaac.allowNonUniqueKmersInRef, rtaac.numPruningSamples);
-        assemblyEngine.setErrorCorrectKmers(rtaac.errorCorrectKmers);
-        assemblyEngine.setPruneFactor(rtaac.minPruneFactor);
+        final ReadThreadingAssembler assemblyEngine = rtaac.makeReadThreadingAssembler();
         assemblyEngine.setDebug(args.debug);
-        assemblyEngine.setDebugGraphTransformations(rtaac.debugGraphTransformations);
-        assemblyEngine.setRecoverDanglingBranches(!rtaac.doNotRecoverDanglingBranches);
-        assemblyEngine.setMinDanglingBranchLength(rtaac.minDanglingBranchLength);
         assemblyEngine.setMinBaseQualityToUseInAssembly(args.minBaseQualityScore);
-
-        if ( rtaac.graphOutput != null ) {
-            assemblyEngine.setGraphWriter(new File(rtaac.graphOutput));
-        }
 
         return assemblyEngine;
     }
@@ -266,6 +270,7 @@ public final class AssemblyBasedCallerUtils {
             final AssemblyResultSet assemblyResultSet = assemblyEngine.runLocalAssembly(region, referenceHaplotype, fullReferenceWithPadding,
                                                                                         paddedReferenceLoc, givenAlleles, readErrorCorrector, header,
                                                                                         aligner);
+            assemblyResultSet.setDebug(argumentCollection.debug);
             assemblyResultSet.debugDump(logger);
             return assemblyResultSet;
         } catch (final Exception e){
@@ -291,7 +296,7 @@ public final class AssemblyBasedCallerUtils {
     public static void annotateReadLikelihoodsWithRegions(final ReadLikelihoods<Haplotype> likelihoods,
                                                           final Locatable callableRegion) {
         //assign alignment regions to each read
-        final Collection<ReadLikelihoods<Haplotype>.BestAllele> bestHaplotypes = likelihoods.bestAllelesBreakingTies();
+        final Collection<ReadLikelihoods<Haplotype>.BestAllele> bestHaplotypes = likelihoods.bestAllelesBreakingTies(HAPLOTYPE_ALIGNMENT_TIEBREAKING_PRIORITY);
         for (final ReadLikelihoods<Haplotype>.BestAllele bestHaplotype : bestHaplotypes) {
             final GATKRead read = bestHaplotype.read;
             final Haplotype haplotype = bestHaplotype.allele;

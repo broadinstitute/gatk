@@ -23,10 +23,15 @@ import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.codecs.gencode.*;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.nio.NioFileCopierWithProgressMeter;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
+import java.io.File;
+import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -55,6 +60,9 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     // Private Static Members:
     /** Standard Logger.  */
     protected static final Logger logger = LogManager.getLogger(GencodeFuncotationFactory.class);
+
+    private static final String LOCAL_GENCODE_TRANSCRIPT_TMP_DIR_PREFIX = "localGencodeTranscriptFastaFolder";
+    private static final String LOCAL_GENCODE_TRANSCRIPT_FILE_BASE_NAME = "gencodeTranscriptFastaFile";
 
     /**
      * The window around splice sites to mark variants as {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification#SPLICE_SITE}.
@@ -194,7 +202,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     /**
      * Creates a {@link GencodeFuncotationFactory} with the 5'/3' flank sizes both set to 0.
      *
-     * @param gencodeTranscriptFastaFile {@link Path} to the FASTA file containing the sequences of all transcripts in the Gencode data source.
+     * @param gencodeTranscriptFastaFilePath {@link Path} to the FASTA file containing the sequences of all transcripts in the Gencode data source.
      * @param version The version {@link String} of Gencode from which {@link Funcotation}s will be made.
      * @param name A {@link String} containing the name of this {@link GencodeFuncotationFactory}.
      * @param transcriptSelectionMode The {@link TranscriptSelectionMode} by which representative/verbose transcripts will be chosen for overlapping variants.
@@ -202,20 +210,20 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      * @param annotationOverrides A {@link LinkedHashMap<String, String>} containing user-specified overrides for specific {@link Funcotation}s.
      * @param mainFeatureInput The backing {@link FeatureInput} for this {@link GencodeFuncotationFactory}, from which all {@link Funcotation}s will be created.
      */
-    public GencodeFuncotationFactory(final Path gencodeTranscriptFastaFile,
+    public GencodeFuncotationFactory(final Path gencodeTranscriptFastaFilePath,
                                      final String version,
                                      final String name,
                                      final TranscriptSelectionMode transcriptSelectionMode,
                                      final Set<String> userRequestedTranscripts,
                                      final LinkedHashMap<String, String> annotationOverrides,
                                      final FeatureInput<? extends Feature> mainFeatureInput) {
-        this(gencodeTranscriptFastaFile, version, name, transcriptSelectionMode, userRequestedTranscripts, annotationOverrides, mainFeatureInput, new FlankSettings(0, 0));
+        this(gencodeTranscriptFastaFilePath, version, name, transcriptSelectionMode, userRequestedTranscripts, annotationOverrides, mainFeatureInput, new FlankSettings(0, 0));
     }
 
     /**
      * Create a {@link GencodeFuncotationFactory}.
      *
-     * @param gencodeTranscriptFastaFile {@link Path} to the FASTA file containing the sequences of all transcripts in the Gencode data source.
+     * @param gencodeTranscriptFastaFilePath {@link Path} to the FASTA file containing the sequences of all transcripts in the Gencode data source.
      * @param version The version {@link String} of Gencode from which {@link Funcotation}s will be made.
      * @param name A {@link String} containing the name of this {@link GencodeFuncotationFactory}.
      * @param transcriptSelectionMode The {@link TranscriptSelectionMode} by which representative/verbose transcripts will be chosen for overlapping variants.
@@ -224,7 +232,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      * @param mainFeatureInput The backing {@link FeatureInput} for this {@link GencodeFuncotationFactory}, from which all {@link Funcotation}s will be created.
      * @param flankSettings Settings object containing our 5'/3' flank sizes
      */
-    public GencodeFuncotationFactory(final Path gencodeTranscriptFastaFile,
+    public GencodeFuncotationFactory(final Path gencodeTranscriptFastaFilePath,
                                      final String version,
                                      final String name,
                                      final TranscriptSelectionMode transcriptSelectionMode,
@@ -232,13 +240,40 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                                      final LinkedHashMap<String, String> annotationOverrides,
                                      final FeatureInput<? extends Feature> mainFeatureInput,
                                      final FlankSettings flankSettings) {
+        this(gencodeTranscriptFastaFilePath, version, name, transcriptSelectionMode, userRequestedTranscripts, annotationOverrides, mainFeatureInput, flankSettings, false);
+    }
+
+    /**
+     * Create a {@link GencodeFuncotationFactory}.
+     *
+     * @param gencodeTranscriptFastaFilePath {@link Path} to the FASTA file containing the sequences of all transcripts in the Gencode data source.
+     * @param version The version {@link String} of Gencode from which {@link Funcotation}s will be made.
+     * @param name A {@link String} containing the name of this {@link GencodeFuncotationFactory}.
+     * @param transcriptSelectionMode The {@link TranscriptSelectionMode} by which representative/verbose transcripts will be chosen for overlapping variants.
+     * @param userRequestedTranscripts A {@link Set<String>} containing Gencode TranscriptIDs that the user requests to be annotated with priority over all other transcripts for overlapping variants.
+     * @param annotationOverrides A {@link LinkedHashMap<String, String>} containing user-specified overrides for specific {@link Funcotation}s.
+     * @param mainFeatureInput The backing {@link FeatureInput} for this {@link GencodeFuncotationFactory}, from which all {@link Funcotation}s will be created.
+     * @param flankSettings Settings object containing our 5'/3' flank sizes
+     * @param isDataSourceB37 If {@code true}, indicates that the data source behind this {@link GencodeFuncotationFactory} contains B37 data.
+     */
+    public GencodeFuncotationFactory(final Path gencodeTranscriptFastaFilePath,
+                                     final String version,
+                                     final String name,
+                                     final TranscriptSelectionMode transcriptSelectionMode,
+                                     final Set<String> userRequestedTranscripts,
+                                     final LinkedHashMap<String, String> annotationOverrides,
+                                     final FeatureInput<? extends Feature> mainFeatureInput,
+                                     final FlankSettings flankSettings,
+                                     final boolean isDataSourceB37) {
 
         super(mainFeatureInput);
 
+        // Set up our local transcript fasta file.
+        // We must localize it (if not on disk) to make read times fast enough to be manageable:
+        gencodeTranscriptFastaFile = localizeGencodeTranscriptFastaFile( gencodeTranscriptFastaFilePath );
         this.flankSettings = flankSettings;
 
-        this.gencodeTranscriptFastaFile = gencodeTranscriptFastaFile;
-
+        // Initialize our transcript data source and ID map:
         transcriptFastaReferenceDataSource = ReferenceDataSource.of(gencodeTranscriptFastaFile);
         transcriptIdMap = createTranscriptIdMap(transcriptFastaReferenceDataSource);
 
@@ -247,6 +282,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         this.version = version;
 
         this.name = name;
+
+        this.dataSourceIsB37 = isDataSourceB37;
 
         // Go through each requested transcript and remove the version numbers from them if they exist:
         this.userRequestedTranscripts = new HashSet<>();
@@ -259,6 +296,46 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
         // Initialize overrides / defaults:
         initializeAnnotationOverrides( annotationOverrides );
+    }
+
+    private Path localizeGencodeTranscriptFastaFile( final Path gencodeTranscriptFastaFilePath ) {
+
+        // Is the path local or in the cloud:
+        if ( gencodeTranscriptFastaFilePath.getFileSystem().equals(FileSystems.getDefault()) ) {
+            // local path, just return it:
+            return gencodeTranscriptFastaFilePath;
+        }
+
+        // Not a local path!  We must localize it!
+
+        // Get the remote paths for the index and dictionary files:
+        final Path remoteGencodeTranscriptFastaIndexFilePath = IOUtils.getPath( ReferenceUtils.getFastaIndexFileName(gencodeTranscriptFastaFilePath.toUri().toString()) );
+        final Path remoteGencodeTranscriptFastaSequenceDictionaryFilePath = IOUtils.getPath( ReferenceUtils.getFastaDictionaryFileName(gencodeTranscriptFastaFilePath.toUri().toString()) );
+
+        // Create a place for the files:
+        final File tmpDir = IOUtils.createTempDir(LOCAL_GENCODE_TRANSCRIPT_TMP_DIR_PREFIX);
+        tmpDir.deleteOnExit();
+        final Path tmpDirPath = tmpDir.toPath();
+
+        // Create paths to the fasta, fasta index, and the sequence dictionary:
+        final Path localGencodeTranscriptFastaFilePath = tmpDirPath.resolve(LOCAL_GENCODE_TRANSCRIPT_FILE_BASE_NAME + ".fa");
+        final Path localGencodeTranscriptFastaIndexFilePath = IOUtils.getPath( ReferenceUtils.getFastaIndexFileName(localGencodeTranscriptFastaFilePath.toUri().toString()) );
+        final Path localGencodeTranscriptFastaSequenceDictionaryFilePath = IOUtils.getPath( ReferenceUtils.getFastaDictionaryFileName(localGencodeTranscriptFastaFilePath.toUri().toString()) );
+
+        // Copy the files to our local machine:
+        logger.info("Localizing Gencode transcript FASTA file for faster lookup times...");
+
+        // Copy FASTA:
+        NioFileCopierWithProgressMeter.create(gencodeTranscriptFastaFilePath, localGencodeTranscriptFastaFilePath, true).initiateCopy();
+
+        // Copy Index:
+        NioFileCopierWithProgressMeter.create(remoteGencodeTranscriptFastaIndexFilePath, localGencodeTranscriptFastaIndexFilePath, true).initiateCopy();
+
+        // Copy Sequence Dictionary:
+        NioFileCopierWithProgressMeter.create(remoteGencodeTranscriptFastaSequenceDictionaryFilePath, localGencodeTranscriptFastaSequenceDictionaryFilePath, true).initiateCopy();
+
+        // Bye Bye!
+        return localGencodeTranscriptFastaFilePath;
     }
 
     //==================================================================================================================
@@ -663,7 +740,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                  );
                 logger.warn("Creating default GencodeFuncotation on transcript " + transcript.getTranscriptId() + " for problem variant: " +
                                 variant.getContig() + ":" + variant.getStart() + "-" + variant.getEnd() + "(" + variant.getReference() + " -> " + altAllele + ")");
-                outputFuncotations.add( createDefaultFuncotationsOnProblemVariant( variant, altAllele, gtfFeature, reference, transcript, version ) );
+                outputFuncotations.add( createDefaultFuncotationsOnProblemVariant( variant, altAllele, gtfFeature, reference, transcript, version, getName() ) );
             }
         }
         return outputFuncotations;
@@ -685,6 +762,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      * @param reference The {@link ReferenceContext} for the given {@code variant}.
      * @param transcript The {@link GencodeGtfTranscriptFeature} which is being used to annotate the given {@code variant}.
      * @param version A {@link String} representing the version of the {@link GencodeFuncotationFactory} being used to annotate the given {@code variant}.
+     * @param dataSourceName A {@link String} containing the name of the data source instance.
      * @return A placeholder {@link GencodeFuncotation} for the given {@code variant}.
      */
     @VisibleForTesting
@@ -693,7 +771,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                                                                                final GencodeGtfGeneFeature gtfFeature,
                                                                                final ReferenceContext reference,
                                                                                final GencodeGtfTranscriptFeature transcript,
-                                                                               final String version) {
+                                                                               final String version,
+                                                                               final String dataSourceName) {
         // Create basic annotation information:
         final GencodeFuncotationBuilder gencodeFuncotationBuilder = createGencodeFuncotationBuilderWithTrivialFieldsPopulated(variant, altAllele, gtfFeature, transcript);
 
@@ -711,6 +790,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         gencodeFuncotationBuilder.setGcContent( calculateGcContent( variant.getReference(), altAllele, reference, gcContentWindowSizeBases ) );
 
         gencodeFuncotationBuilder.setVariantClassification(GencodeFuncotation.VariantClassification.COULD_NOT_DETERMINE);
+
+        gencodeFuncotationBuilder.setDataSourceName(dataSourceName);
 
         return gencodeFuncotationBuilder.build();
     }

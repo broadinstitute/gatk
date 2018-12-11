@@ -7,10 +7,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 /**
  * Test {@link org.broadinstitute.gatk.tools.walkers.genotyper.GenotypeAlleleCounts}
@@ -184,8 +181,11 @@ public final class GenotypeAlleleCountsUnitTest {
 
         GenotypeAlleleCounts current = GenotypeAlleleCounts.first(ploidy);
 
-        while (!current.containsAllele(MAXIMUM_ALLELE_INDEX + 1)) {
+        while (true) {
             final GenotypeAlleleCounts next = current.next();
+            if (next.containsAllele(MAXIMUM_ALLELE_INDEX + 1)) {
+                break;
+            }
 
             // test log10CombinationCount
             if (ploidy == 2) {
@@ -203,14 +203,18 @@ public final class GenotypeAlleleCountsUnitTest {
 
             //test forEach
             final List<Integer> alleleCountsAsList = new ArrayList<>(next.distinctAlleleCount()*2);
+            final Set<Integer> absentAlleles = new HashSet<>();
             next.forEachAlleleIndexAndCount((alleleIndex, alleleCount) -> {
                 alleleCountsAsList.add(alleleIndex);
                 alleleCountsAsList.add(alleleCount);});
+            next.forEachAbsentAlleleIndex(absentAlleles::add, MAXIMUM_ALLELE_INDEX + 1);
             final int[] actualAlleleCounts = new int[next.distinctAlleleCount()*2];
             next.copyAlleleCounts(actualAlleleCounts, 0);
 
             Assert.assertEquals(alleleCountsAsList.stream().mapToInt(n->n).toArray(), actualAlleleCounts);
 
+            Assert.assertEquals(absentAlleles.size(), MAXIMUM_ALLELE_INDEX + 1 - next.distinctAlleleCount());
+            next.forEachAlleleIndexAndCount((index, count) -> Assert.assertTrue(!absentAlleles.contains(index)));
 
 
             if (current.distinctAlleleCount() == 1) {

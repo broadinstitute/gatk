@@ -26,6 +26,9 @@ public class MappingQuality extends PerAlleleAnnotation implements StandardMutec
     }
 
     @Override
+    protected boolean includeRefAllele() { return true; }
+
+    @Override
     protected String getVcfKey() { return KEY; }
 
     @Override

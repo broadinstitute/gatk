@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -66,11 +67,6 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     public static final double MAX_ALT_FRACTION_IN_NORMAL = 0.3;
     public static final int MAX_NORMAL_QUAL_SUM = 100;
     public static final int MIN_PALINDROME_SIZE = 5;
-
-    // after trimming to fit the assembly window, throw away read stubs shorter than this length
-    // if we don't, the several bases left of reads that end just within the assembly window can
-    // get realigned incorrectly.  See https://github.com/broadinstitute/gatk/issues/5060
-    public static final int MINIMUM_READ_LENGTH_AFTER_TRIMMING = 10;
 
     private M2ArgumentCollection MTAC;
     private SAMFileHeader header;
@@ -193,6 +189,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
         final AssemblyRegion assemblyActiveRegion = AssemblyBasedCallerUtils.assemblyRegionWithWellMappedReads(originalAssemblyRegion, READ_QUALITY_FILTER_THRESHOLD, header);
         final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(assemblyActiveRegion, givenAlleles, MTAC, header, samplesList, logger, referenceReader, assemblyEngine, aligner);
+
         final SortedSet<VariantContext> allVariationEvents = untrimmedAssemblyResult.getVariationEvents(MTAC.maxMnpDistance);
         final AssemblyRegionTrimmer.Result trimmingResult = trimmer.trim(originalAssemblyRegion, allVariationEvents);
         if (!trimmingResult.isVariationPresent()) {
@@ -209,7 +206,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
         final AssemblyRegion regionForGenotyping = assemblyResult.getRegionForGenotyping();
         final List<GATKRead> readStubs = regionForGenotyping.getReads().stream()
-                .filter(r -> r.getLength() < MINIMUM_READ_LENGTH_AFTER_TRIMMING).collect(Collectors.toList());
+                .filter(r -> r.getLength() < AssemblyBasedCallerUtils.MINIMUM_READ_LENGTH_AFTER_TRIMMING).collect(Collectors.toList());
         regionForGenotyping.removeAll(readStubs);
 
         final Map<String,List<GATKRead>> reads = splitReadsBySample( regionForGenotyping.getReads() );
@@ -273,7 +270,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         final ReadPileup pileup = context.getBasePileup();
         final ReadPileup tumorPileup = pileup.getPileupForSample(tumorSample, header);
         final List<Byte> tumorAltQuals = altQuals(tumorPileup, refBase, MTAC.initialPCRErrorQual);
-        final double tumorLog10Odds = MathUtils.logToLog10(lnLikelihoodRatio(tumorPileup.size()-tumorAltQuals.size(), tumorAltQuals));
+        final double tumorLog10Odds = MathUtils.logToLog10(lnLikelihoodRatio(tumorPileup.size() - tumorAltQuals.size(), tumorAltQuals));
 
         if (tumorLog10Odds < MTAC.getInitialLod()) {
             return new ActivityProfileState(refInterval, 0.0);
@@ -348,10 +345,17 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         return result;
     }
 
-    // this implements the isActive() algorithm described in docs/mutect/mutect.pdf
     private static double lnLikelihoodRatio(final int refCount, final List<Byte> altQuals) {
+        return lnLikelihoodRatio(refCount, altQuals, 1);
+    }
+
+    // this implements the isActive() algorithm described in docs/mutect/mutect.pdf
+    // the multiplicative factor is for the special case where we pass a singleton list
+    // of alt quals and want to duplicate that alt qual over multiple reads
+    @VisibleForTesting
+    static double lnLikelihoodRatio(final int refCount, final List<Byte> altQuals, final double repeatFactor) {
         final double beta = refCount + 1;
-        final double alpha = altQuals.size() + 1;
+        final double alpha = repeatFactor * altQuals.size() + 1;
         final double digammaAlpha = Gamma.digamma(alpha);
         final double digammaBeta = Gamma.digamma(beta);
         final double digammaAlphaPlusBeta = Gamma.digamma(alpha + beta);
@@ -360,21 +364,26 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         final double lnTau = digammaAlpha - digammaAlphaPlusBeta;
         final double tau = FastMath.exp(lnTau);
 
-
-
         final double betaEntropy = Beta.logBeta(alpha, beta) - (alpha - 1)*digammaAlpha - (beta-1)*digammaBeta + (alpha + beta - 2)*digammaAlphaPlusBeta;
 
-        final double result = betaEntropy +  refCount * lnRho + altQuals.stream().mapToDouble(qual -> {
+        double readSum = 0;
+        for (final byte qual : altQuals) {
             final double epsilon = QualityUtils.qualToErrorProb(qual);
             final double gamma = rho * epsilon / (rho * epsilon + tau * (1-epsilon));
             final double bernoulliEntropy = -gamma * FastMath.log(gamma) - (1-gamma)*FastMath.log1p(-gamma);
             final double lnEpsilon = MathUtils.log10ToLog(QualityUtils.qualToErrorProbLog10(qual));
             final double lnOneMinusEpsilon = MathUtils.log10ToLog(QualityUtils.qualToProbLog10(qual));
-            return gamma * (lnRho + lnEpsilon) + (1-gamma)*(lnTau + lnOneMinusEpsilon) - lnEpsilon + bernoulliEntropy;
-        }).sum();
+            readSum += gamma * (lnRho + lnEpsilon) + (1-gamma)*(lnTau + lnOneMinusEpsilon) - lnEpsilon + bernoulliEntropy;
+        }
 
-        return result;
+        return betaEntropy +  refCount * lnRho + readSum * repeatFactor;
 
+    }
+
+    // same as above but with a constant error probability for several alts
+    public static double lnLikelihoodRatio(final int refCount, final int altCount, final double errorProbability) {
+        final byte qual = QualityUtils.errorProbToQual(errorProbability);
+        return lnLikelihoodRatio(refCount, Collections.singletonList(qual), altCount);
     }
 
     // check that we're next to a soft clip that is not due to a read that got out of sync and ended in a bunch of BQ2's

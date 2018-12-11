@@ -8,7 +8,6 @@ import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingGraph;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.collections.CountSet;
 import org.broadinstitute.hellbender.utils.haplotype.EventMap;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
@@ -42,7 +41,7 @@ public final class AssemblyResultSet {
     private boolean variationPresent;
     private Haplotype refHaplotype;
     private boolean wasTrimmed = false;
-    private final CountSet kmerSizes;
+    private final SortedSet<Integer>  kmerSizes;
     private SortedSet<VariantContext> variationEvents;
     private boolean debug;
     private static final Logger logger = LogManager.getLogger(AssemblyResultSet.class);
@@ -54,7 +53,7 @@ public final class AssemblyResultSet {
         assemblyResultByKmerSize = new LinkedHashMap<>(4);
         haplotypes = new LinkedHashSet<>(10);
         assemblyResultByHaplotype = new LinkedHashMap<>(10);
-        kmerSizes = new CountSet(4);
+        kmerSizes = new TreeSet<>();
     }
 
     /**
@@ -399,7 +398,7 @@ public final class AssemblyResultSet {
         if (kmerSizes.isEmpty()) {
             throw new IllegalStateException("there is yet no kmerSize in this assembly result set");
         }
-        return kmerSizes.max();
+        return kmerSizes.last();
     }
 
     /**
@@ -422,7 +421,7 @@ public final class AssemblyResultSet {
         if (kmerSizes.isEmpty()) {
             throw new IllegalStateException("there is yet no kmerSize in this assembly result set");
         }
-        return kmerSizes.min();
+        return kmerSizes.first();
     }
 
     /**
@@ -517,5 +516,9 @@ public final class AssemblyResultSet {
             variationEvents = EventMap.getAllVariantContexts(haplotypeList);
         }
         return variationEvents;
+    }
+
+    public void setDebug(boolean debug) {
+        this.debug = debug;
     }
 }

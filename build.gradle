@@ -7,7 +7,6 @@ buildscript {
      }
 }
 
-
 plugins {
     id "java"           // set up default java compile and test tasks
     id "application"    // provides installDist
@@ -57,7 +56,7 @@ repositories {
 }
 
 final requiredJavaVersion = "8"
-final htsjdkVersion = System.getProperty('htsjdk.version','2.18.0')
+final htsjdkVersion = System.getProperty('htsjdk.version','2.18.1')
 final picardVersion = System.getProperty('picard.version','2.18.16')
 final barclayVersion = System.getProperty('barclay.version','2.1.0')
 final sparkVersion = System.getProperty('spark.version', '2.2.0')
@@ -77,7 +76,6 @@ final docBuildDir = "$buildDir/docs"
 final pythonPackageArchiveName = 'gatkPythonPackageArchive.zip'
 final gatkCondaTemplate = "gatkcondaenv.yml.template"
 final gatkCondaYML = "gatkcondaenv.yml"
-final gatkCondaIntelYML = "gatkcondaenv.intel.yml"
 final largeResourcesFolder = "src/main/resources/large"
 final buildPrerequisitesMessage = "See https://github.com/broadinstitute/gatk#building for information on how to build GATK."
 
@@ -243,8 +241,14 @@ dependencies {
     // allows us to read from GCS also when testing locally (or on non-Dataproc clusters,
     // should we want to)
     compile 'com.google.cloud.bigdataoss:gcs-connector:1.6.3-hadoop2'
+
     compile 'org.apache.logging.log4j:log4j-api:2.3'
     compile 'org.apache.logging.log4j:log4j-core:2.3'
+    // include the apache commons-logging bridge that matches the log4j version we use so
+    // messages that originate with dependencies that use commons-logging (such as jexl)
+    // are routed to log4j
+    compile 'org.apache.logging.log4j:log4j-jcl:2.3'
+
     compile 'org.apache.commons:commons-lang3:3.5'
     compile 'org.apache.commons:commons-math3:3.5'
     compile 'org.apache.commons:commons-collections4:4.1'
@@ -279,10 +283,7 @@ dependencies {
 
     compile 'org.jgrapht:jgrapht-core:0.9.1'
 
-    compile('org.seqdoop:hadoop-bam:' + hadoopBamVersion) {
-        exclude group: 'org.apache.hadoop'
-        exclude module: 'htsjdk'
-    }
+    compile('org.disq-bio:disq:0.1.0')
     compile('org.apache.hadoop:hadoop-client:' + hadoopVersion) // should be a 'provided' dependency
     compile('com.github.jsr203hadoop:jsr203hadoop:1.0.3')
 
@@ -309,7 +310,7 @@ dependencies {
     // Dependency change for including MLLib
     compile('com.esotericsoftware:reflectasm:1.10.0:shaded')
 
-    compile('com.intel.gkl:gkl:0.8.5') {
+    compile('com.intel.gkl:gkl:0.8.6') {
         exclude module: 'htsjdk'
     }
 
@@ -474,10 +475,10 @@ task collectBundleIntoDir(type: Copy) {
 
     from("$buildDir/$pythonPackageArchiveName")
     from("$buildDir/$gatkCondaYML")
-    from("$buildDir/$gatkCondaIntelYML")
     from("scripts/sv", { into("scripts/sv") })
     from("scripts/cnv_wdl/", { into("scripts/cnv_wdl") })
     from("scripts/mutect2_wdl/", { into("scripts/mutect2_wdl") })
+    from("scripts/dataproc-cluster-ui", { into("scripts/")})
     into "$buildDir/bundle-files-collected"
 }
 

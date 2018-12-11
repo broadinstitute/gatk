@@ -58,10 +58,10 @@ public class RealignmentEngineUnitTest {
         final BwaMemAlignment aln90 = makeAlignment(0,90, 1, false);
         final BwaMemAlignment aln80 = makeAlignment(1,80, 1, true);
         final BwaMemAlignment aln70 = makeAlignment(0,70, 1, false);
-        Assert.assertTrue(RealignmentEngine.checkAlignments(Arrays.asList(aln70), 1).isGood());
-        Assert.assertTrue(RealignmentEngine.checkAlignments(Arrays.asList(aln90, aln80), 5).isGood());
-        Assert.assertTrue(RealignmentEngine.checkAlignments(Arrays.asList(aln90, aln80, aln70), 5).isGood());
-        Assert.assertFalse(RealignmentEngine.checkAlignments(Arrays.asList(aln90, aln80, aln70), 11).isGood());
+        Assert.assertTrue(RealignmentEngine.checkAlignments(Arrays.asList(aln70), 1, 0.0).isGood());
+        Assert.assertTrue(RealignmentEngine.checkAlignments(Arrays.asList(aln90, aln80), 5, 0.0).isGood());
+        Assert.assertTrue(RealignmentEngine.checkAlignments(Arrays.asList(aln90, aln80, aln70), 5,0.0).isGood());
+        Assert.assertFalse(RealignmentEngine.checkAlignments(Arrays.asList(aln90, aln80, aln70), 11,0.0).isGood());
     }
 
     @Test

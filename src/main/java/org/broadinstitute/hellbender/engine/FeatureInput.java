@@ -292,6 +292,13 @@ public final class FeatureInput<T extends Feature> implements Serializable {
     }
 
     /**
+     * @return The key/value {@link Map<String,String>} as supplied to create the data in this {@link FeatureInput}.
+     */
+    public Map<String, String> getKeyValueMap() {
+        return keyValueMap;
+    }
+
+    /**
      * FeatureInputs will be hashed by the engine, so make an effort to produce a reasonable hash code
      *
      * @return hash code for this FeatureInput (combination of hash code of the name and file)

@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers;
 import htsjdk.samtools.seekablestream.SeekablePathStream;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.Tribble;
+import htsjdk.variant.utils.VCFHeaderReader;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -18,7 +19,6 @@ import org.broadinstitute.hellbender.utils.runtime.ProcessController;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.GenomicsDBTestUtils;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
-import org.seqdoop.hadoop_bam.util.VCFHeaderReader;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -46,7 +46,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
 
     private static final File CEUTRIO_20_21_GATK3_4_G_VCF = new File(largeFileTestDir, "gvcfs/CEUTrio.20.21.gatk3.4.g.vcf");
     private static final String CEUTRIO_20_21_EXPECTED_VCF = "CEUTrio.20.21.gatk3.7_30_ga4f720357.expected.vcf";
-    private static final File NA12878_HG37 = new File(toolsTestDir + "haplotypecaller/expected.testGVCFMode.gatk4.g.vcf");
+    private static final File NA12878_HG37 = new File(toolsTestDir + "GenomicsDBImport/expected.testGVCFMode.gatk4.g.vcf");
     private static final List<String> ATTRIBUTES_WITH_JITTER = Arrays.asList(
             "AS_QD",
             "QD",//TODO QD and AS_QD have cap values and anything that reaches that is randomized.  It's difficult to reproduce the same random numbers across gatk3 -> 4
@@ -134,7 +134,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
     @DataProvider(name = "gvcfWithPPs")
     public Object[][] gvcfWithPPs() {
         return new Object[][] {
-                {getTestFile("../../haplotypecaller/expected.testGVCFMode.gatk4.posteriors.g.vcf"),
+                {getTestFile("../../GenomicsDBImport/expected.testGVCFMode.gatk4.posteriors.g.vcf"),
                         getTestFile( "expected.posteriors.genotyped.vcf"), NO_EXTRA_ARGS, b37_reference_20_21}
         };
     }

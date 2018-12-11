@@ -22,7 +22,7 @@
   "CNVGermlineCaseScatteredWorkflow.gcnv_num_thermal_advi_iters": 1,
   "CNVGermlineCaseScatteredWorkflow.intervals": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/ice_targets_chr20xy.interval_list",
   "CNVGermlineCaseScatteredWorkflow.filtered_intervals": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/ice_targets_chr20xy.preprocessed.filtered.interval_list",
-  "CNVGermlineCaseScatteredWorkflow.num_intervals_per_scatter": 30,
+  "CNVGermlineCaseScatteredWorkflow.num_intervals_per_scatter": 20,
   "CNVGermlineCaseScatteredWorkflow.num_samples_per_scatter_block": 2,
   "CNVGermlineCaseScatteredWorkflow.gcnv_max_advi_iter_first_epoch": 10,
   "CNVGermlineCaseScatteredWorkflow.gcnv_log_emission_sampling_rounds": 1,

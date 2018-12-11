@@ -118,8 +118,14 @@ public class Mutect2FilteringEngine {
     }
 
     private void applyMappingQualityFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final FilterResult filterResult) {
+        final List<Integer> indelLengths = vc.getIndelLengths();
+        final int indelLength = indelLengths == null ? 0 : indelLengths.stream().mapToInt(Math::abs).max().orElseGet(() -> 0);
         final int[] mappingQualityByAllele = getIntArrayTumorField(vc, MappingQuality.KEY);
-        if (mappingQualityByAllele != null && mappingQualityByAllele[0] < MTFAC.minMedianMappingQuality) {
+
+        // we use the mapping quality annotation of the alt allele in most cases, but for long indels we use the reference
+        // annotation.  We have to do this because the indel, even if it maps uniquely, gets a poor mapping quality
+        // by virtue of its mismatch.  The reference mapping quality is a decent proxy for the region's mappability.
+        if (mappingQualityByAllele != null && mappingQualityByAllele[indelLength < MTFAC.longIndelLength ? 1 : 0] < MTFAC.minMedianMappingQuality) {
             filterResult.addFilter(GATKVCFConstants.MEDIAN_MAPPING_QUALITY_FILTER_NAME);
         }
     }
@@ -134,7 +140,8 @@ public class Mutect2FilteringEngine {
     private void applyReadPositionFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final FilterResult filterResult) {
         final int[] readPositionByAllele = getIntArrayTumorField(vc, ReadPosition.KEY);
         if (readPositionByAllele != null) {
-            if (readPositionByAllele[0] < MTFAC.minMedianReadPosition) {
+            // a negative value is possible due to a bug: https://github.com/broadinstitute/gatk/issues/5492
+            if (readPositionByAllele[0] > -1 && readPositionByAllele[0] < MTFAC.minMedianReadPosition) {
                 filterResult.addFilter(GATKVCFConstants.READ_POSITION_FILTER_NAME);
             }
         }

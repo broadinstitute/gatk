@@ -29,8 +29,11 @@ public abstract class AssemblyBasedCallerArgumentCollection extends StandardCall
     @ArgumentCollection
     public AssemblyRegionTrimmerArgumentCollection assemblyRegionTrimmerArgs = new AssemblyRegionTrimmerArgumentCollection();
 
+    protected boolean useMutectAssemblerArgumentCollection() { return false; }
+
     @ArgumentCollection
-    public ReadThreadingAssemblerArgumentCollection assemblerArgs = new ReadThreadingAssemblerArgumentCollection();
+    public ReadThreadingAssemblerArgumentCollection assemblerArgs = useMutectAssemblerArgumentCollection() ?
+            new MutectReadThreadingAssemblerArgumentCollection() : new HaplotypeCallerReadThreadingAssemblerArgumentCollection();
 
     @ArgumentCollection
     public LikelihoodEngineArgumentCollection likelihoodArgs = new LikelihoodEngineArgumentCollection();

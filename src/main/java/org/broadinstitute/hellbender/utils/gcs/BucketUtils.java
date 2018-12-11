@@ -264,8 +264,7 @@ public final class BucketUtils {
      */
     public static boolean fileExists(String path) {
         final boolean MAYBE = false;
-        try {
-            InputStream inputStream = openFile(path);
+        try (InputStream inputStream = openFile(path)) {
             int ignored = inputStream.read();
         } catch (UserException.CouldNotReadInputFile notthere) {
             // file isn't there

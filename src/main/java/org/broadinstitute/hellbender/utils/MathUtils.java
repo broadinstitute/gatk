@@ -927,6 +927,22 @@ public final class MathUtils {
         return result;
     }
 
+    public static <E> double sumDoubleFunction(final Collection<E> collection, final ToDoubleFunction<E> function) {
+        double result = 0;
+        for (final E e: collection) {
+            result += function.applyAsDouble(e);
+        }
+        return result;
+    }
+
+    public static <E> int sumIntFunction(final Collection<E> collection, final ToIntFunction<E> function) {
+        int result = 0;
+        for (final E e: collection) {
+            result += function.applyAsInt(e);
+        }
+        return result;
+    }
+
     /**
      * Compares double values for equality (within 1e-6), or inequality.
      *

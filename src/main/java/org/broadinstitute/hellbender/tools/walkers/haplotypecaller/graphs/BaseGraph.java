@@ -431,17 +431,6 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
     }
 
     /**
-     * Prune all chains from this graph where all edges in the path have multiplicity < pruneFactor
-     *
-     * @see LowWeightChainPruner for more information
-     *
-     * @param pruneFactor all edges with multiplicity < this factor that aren't ref edges will be removed
-     */
-    public final void pruneLowWeightChains( final int pruneFactor ) {
-        new LowWeightChainPruner<V,E>(pruneFactor).pruneLowWeightChains(this);
-    }
-
-    /**
      * Remove all vertices in the graph that have in and out degree of 0
      */
     public void removeSingletonOrphanVertices() {

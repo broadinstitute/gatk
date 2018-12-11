@@ -1,22 +1,16 @@
 package org.broadinstitute.hellbender.engine.spark.datasources;
 
 import htsjdk.samtools.seekablestream.SeekableStreamFactory;
+import htsjdk.variant.utils.VCFHeaderReader;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.io.LongWritable;
-import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 import org.broadinstitute.hellbender.utils.variant.VariantContextVariantAdapter;
-import org.seqdoop.hadoop_bam.VCFInputFormat;
-import org.seqdoop.hadoop_bam.VariantContextWritable;
-import org.seqdoop.hadoop_bam.util.BGZFCodec;
-import org.seqdoop.hadoop_bam.util.BGZFEnhancedGzipCodec;
-import org.seqdoop.hadoop_bam.util.VCFHeaderReader;
+import org.disq_bio.disq.HtsjdkVariantsRddStorage;
 
 import java.io.IOException;
 import java.util.List;
@@ -65,16 +59,13 @@ public final class VariantsSparkSource {
      * @return JavaRDD<VariantContext> of variants from all files.
      */
     public JavaRDD<VariantContext> getParallelVariantContexts(final String vcf, final List<SimpleInterval> intervals) {
-        Configuration conf = new Configuration();
-        conf.setStrings("io.compression.codecs", BGZFEnhancedGzipCodec.class.getCanonicalName(),
-                BGZFCodec.class.getCanonicalName());
-        if (intervals != null && !intervals.isEmpty()) {
-            VCFInputFormat.setIntervals(conf, intervals);
+        try {
+            return HtsjdkVariantsRddStorage.makeDefault(ctx)
+                    .read(vcf, intervals)
+                    .getVariants();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
-        final JavaPairRDD<LongWritable, VariantContextWritable> rdd2 = ctx.newAPIHadoopFile(
-                vcf, VCFInputFormat.class, LongWritable.class, VariantContextWritable.class,
-                conf);
-        return rdd2.map(v1 -> v1._2().get());
     }
 
     public static VCFHeader getHeader(String filePath) {

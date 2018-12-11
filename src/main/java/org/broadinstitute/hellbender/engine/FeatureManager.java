@@ -210,6 +210,12 @@ public final class FeatureManager implements AutoCloseable {
         }
     }
 
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public void dumpAllFeatureCacheStats() {
+        for ( final FeatureDataSource f : featureSources.values() ) {
+            f.printCacheStats();
+        }
+    }
 
     /**
      * Add the feature data source to the given feature input.
@@ -450,7 +456,7 @@ public final class FeatureManager implements AutoCloseable {
     public static FeatureCodec<? extends Feature, ?> getCodecForFile( final Path featurePath, final Class<? extends Feature> featureType ) {
         // Make sure Path exists/is readable
         if ( ! Files.isReadable(featurePath) ) {
-            throw new UserException.CouldNotReadInputFile(featurePath);
+            throw new UserException.CouldNotReadInputFile(featurePath.toUri().toString());
         }
 
         // Gather all discovered codecs that claim to be able to decode the given file according to their

@@ -93,6 +93,48 @@ public class GATKProtectedVariantContextUtils {
         return attributeValueToIntArray(genotype.getExtendedAttribute(key), key, defaultValue, missingValue);
     }
 
+
+    /**
+     * Get Long attribute from a variant context.
+     *
+     * @param variantContext the target variant-context.
+     * @param attribute the name of the attribute containing the Long value.
+     * @return never {@code null}.
+     * @throws IllegalArgumentException if {@code variantContext} is {@code null} or {@code key} is {@code null}.
+     */
+    public static Long getAttributeAsLong(final VariantContext variantContext, final String attribute, final Long defaultValue) {
+        Utils.nonNull(variantContext);
+        Utils.nonNull(attribute);
+        Object x = variantContext.getAttribute(attribute);
+        if ( x == null || x.equals(VCFConstants.MISSING_VALUE_v4) ) return defaultValue;
+        if ( x instanceof Number ) return ((Number) x).longValue();
+        return Long.valueOf((String)x); // throws an exception if this isn't a string
+    }
+
+    /**
+     * Composes the Long List from a variant context.
+     *
+     * @param variantContext the target variant-context.
+     * @param attribute the name of the attribute containing the Long list.
+     * @return never {@code null}.
+     * @throws IllegalArgumentException if {@code variantContext} is {@code null} or {@code key} is {@code null}.
+     */
+    public static List<Long> getAttributeAsLongList(final VariantContext variantContext, final String attribute, final Long defaultValue) {
+        Utils.nonNull(variantContext);
+        Utils.nonNull(attribute);
+        return variantContext.getAttributeAsList(attribute).stream().map(
+                x -> {
+                    if (x == null || x.equals(VCFConstants.MISSING_VALUE_v4)) {
+                        return defaultValue;
+                    } else if (x instanceof Number) {
+                        return ((Number) x).longValue();
+                    } else {
+                        return Long.valueOf((String)x); // throws an exception if this isn't a string
+                    }
+                }
+        ).collect(Collectors.toList());
+    }
+
     private static double[] attributeValueToDoubleArray(final Object value, final String key, final Supplier<double[]> defaultResult, final double missingValue) {
         Utils.nonNull(key);
         final ToDoubleFunction<Object> doubleConverter = o -> {
@@ -166,6 +208,7 @@ public class GATKProtectedVariantContextUtils {
                     .mapToInt(intConverter).toArray();
         }
     }
+
 
     /**
      * Returns an attribute as a string.

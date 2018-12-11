@@ -283,6 +283,13 @@ def md5(file):
 
 def cacheJarOnGCS(jar, dryRun):
     staging = os.environ.get("GATK_GCS_STAGING")
+
+    if staging is not None:
+        staging = staging.strip('/')
+        staging = staging + '/'
+        if not staging.startswith("gs://"):
+            staging = "gs://" + staging
+    
     if dryRun is True:
         return jar
     elif staging is None:

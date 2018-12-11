@@ -263,7 +263,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             hcArgs.setSampleContamination(AlleleBiasedDownsamplingUtils.loadContaminationFile(hcArgs.CONTAMINATION_FRACTION_FILE, hcArgs.CONTAMINATION_FRACTION, sampleSet, logger));
         }
 
-        if ( hcArgs.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES && hcArgs.assemblerArgs.consensusMode ) {
+        if ( hcArgs.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES && hcArgs.assemblerArgs.consensusMode() ) {
             throw new UserException("HaplotypeCaller cannot be run in both GENOTYPE_GIVEN_ALLELES mode and in consensus mode at the same time. Please choose one or the other.");
         }
 
@@ -536,7 +536,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         // run the local assembler, getting back a collection of information on how we should proceed
         final AssemblyResultSet untrimmedAssemblyResult =  AssemblyBasedCallerUtils.assembleReads(region, givenAlleles, hcArgs, readsHeader, samplesList, logger, referenceReader, assemblyEngine, aligner);
-
+        
         final SortedSet<VariantContext> allVariationEvents = untrimmedAssemblyResult.getVariationEvents(hcArgs.maxMnpDistance);
         // TODO - line bellow might be unnecessary : it might be that assemblyResult will always have those alleles anyway
         // TODO - so check and remove if that is the case:
@@ -552,6 +552,9 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                 trimmingResult.needsTrimming() ? untrimmedAssemblyResult.trimTo(trimmingResult.getCallableRegion()) : untrimmedAssemblyResult;
 
         final AssemblyRegion regionForGenotyping = assemblyResult.getRegionForGenotyping();
+        final List<GATKRead> readStubs = regionForGenotyping.getReads().stream()
+                .filter(r -> r.getLength() < AssemblyBasedCallerUtils.MINIMUM_READ_LENGTH_AFTER_TRIMMING).collect(Collectors.toList());
+        regionForGenotyping.removeAll(readStubs);
 
         // filter out reads from genotyping which fail mapping quality based criteria
         //TODO - why don't do this before any assembly is done? Why not just once at the beginning of this method
@@ -604,7 +607,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                 assemblyResult.getPaddedReferenceLoc(),
                 regionForGenotyping.getSpan(),
                 features,
-                (hcArgs.assemblerArgs.consensusMode ? Collections.<VariantContext>emptyList() : givenAlleles),
+                (hcArgs.assemblerArgs.consensusMode() ? Collections.<VariantContext>emptyList() : givenAlleles),
                 emitReferenceConfidence(),
                 hcArgs.maxMnpDistance,
                 readsHeader,

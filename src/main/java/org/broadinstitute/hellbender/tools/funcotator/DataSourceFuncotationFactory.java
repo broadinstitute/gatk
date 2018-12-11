@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.io.Closeable;
 import java.util.*;
@@ -38,6 +39,15 @@ public abstract class DataSourceFuncotationFactory implements Closeable {
      * Map of ANNOTATION_NAME -> OVERRIDE_VALUE.
      */
     protected Map<String, String> annotationOverrideMap;
+
+    /**
+     * Enables b37 data sources to be combined with hg19 data sources and work with the same input variants.
+     * Should only be used in cases where data sources cannot be made / found for hg19 and hg19 annotations are required.
+     * A value of {@code false} ONLY indicates that the data source is NOT b37.
+     * If {@code true}, the backing data behind this {@link DataSourceFuncotationFactory} is based on the b37 reference AND we are using hg19 data.
+     * If {@code false}, the backing data behind this the backing data behind this {@link DataSourceFuncotationFactory} is NOT based on the b37 reference.
+     */
+    protected boolean dataSourceIsB37 = false;
 
     /**
      * The backing data store as a FeatureInput to leverage tribble querying.  Can be {@code null} for non-locatable
@@ -217,9 +227,27 @@ public abstract class DataSourceFuncotationFactory implements Closeable {
      * @param featureContext the FeatureContext to query
      * @return Features from our FeatureInput {@link #mainSourceFileAsFeatureInput} queried from the FeatureContext
      */
+    @SuppressWarnings("unchecked")
     protected List<Feature> queryFeaturesFromFeatureContext(final FeatureContext featureContext) {
-        @SuppressWarnings("unchecked")
-        final List<Feature> features = (List<Feature>)featureContext.getValues(mainSourceFileAsFeatureInput);
+        final List<Feature> features;
+
+        // Do we need to do a fuzzy hg19 / b37 conversion for querying our features:
+        if ( dataSourceIsB37 ) {
+            // Create a B37 interval:
+            final SimpleInterval b37Interval =
+                    new SimpleInterval(
+                            FuncotatorUtils.convertHG19ContigToB37Contig(featureContext.getInterval().getContig()),
+                            featureContext.getInterval().getStart(),
+                            featureContext.getInterval().getEnd()
+                        );
+            // Get the features:
+            features = (List<Feature>) featureContext.getValues(mainSourceFileAsFeatureInput, b37Interval);
+        }
+        // Query as normal:
+        else {
+            features = (List<Feature>) featureContext.getValues(mainSourceFileAsFeatureInput);
+        }
+
         return features;
     }
 

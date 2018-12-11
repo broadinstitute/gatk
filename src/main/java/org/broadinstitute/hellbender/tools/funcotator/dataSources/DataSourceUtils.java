@@ -3,8 +3,8 @@ package org.broadinstitute.hellbender.tools.funcotator.dataSources;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.VariantContext;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -51,7 +51,7 @@ final public class DataSourceUtils {
     private static final String  MANIFEST_SOURCE_LINE_START     = "Source:";
     private static final String  MANIFEST_ALT_SOURCE_LINE_START = "Alternate Source:";
     @VisibleForTesting
-    static final Pattern VERSION_PATTERN                = Pattern.compile(MANIFEST_VERSION_LINE_START + "\\s+(\\d+)\\.(\\d+)\\.(\\d\\d\\d\\d)(\\d\\d)(\\d\\d)(.*)");
+    static final Pattern VERSION_PATTERN                        = Pattern.compile(MANIFEST_VERSION_LINE_START + "\\s+(\\d+)\\.(\\d+)\\.(\\d\\d\\d\\d)(\\d\\d)(\\d\\d)(.*)");
     private static final Pattern SOURCE_PATTERN                 = Pattern.compile(MANIFEST_SOURCE_LINE_START + "\\s+(ftp.*)");
     private static final Pattern ALT_SOURCE_PATTERN             = Pattern.compile(MANIFEST_ALT_SOURCE_LINE_START + "\\s+(gs.*)");
 
@@ -75,6 +75,8 @@ final public class DataSourceUtils {
     public static final String MANIFEST_FILE_NAME                          = "MANIFEST.txt";
     public static final String DATA_SOURCES_FTP_PATH                       = "ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/funcotator/";
     public static final String DATA_SOURCES_BUCKET_PATH                    = "gs://broad-public-datasets/funcotator/";
+
+    // TODO: Turn these into an enum (Issue #5465 - https://github.com/broadinstitute/gatk/issues/5465):
     public static final String CONFIG_FILE_FIELD_NAME_NAME                 = "name";
     public static final String CONFIG_FILE_FIELD_NAME_VERSION              = "version";
     public static final String CONFIG_FILE_FIELD_NAME_SRC_FILE             = "src_file";
@@ -89,6 +91,10 @@ final public class DataSourceUtils {
     public static final String CONFIG_FILE_FIELD_NAME_CONTIG_COLUMN        = "contig_column";
     public static final String CONFIG_FILE_FIELD_NAME_START_COLUMN         = "start_column";
     public static final String CONFIG_FILE_FIELD_NAME_END_COLUMN           = "end_column";
+
+    // Optional config options:
+    public static final String CONFIG_FILE_FIELD_NAME_IS_B37_DATA_SOURCE   = "isB37DataSource";
+    public static final String CONFIG_FILE_FIELD_NAME_LOOKAHEAD_CACHE_BP   = "lookAheadCacheBp";
 
     //==================================================================================================================
     // Public Static Methods:
@@ -264,7 +270,7 @@ final public class DataSourceUtils {
             final FeatureInput<? extends Feature> featureInput;
             switch ( FuncotatorArgumentDefinitions.DataSourceType.getEnum(stringType) ) {
                 case LOCATABLE_XSV:
-                    featureInput = createAndRegisterFeatureInputs(path, properties, gatkToolInstance, lookaheadFeatureCachingInBp, XsvTableFeature.class);
+                    featureInput = createAndRegisterFeatureInputs(path, properties, gatkToolInstance, lookaheadFeatureCachingInBp, XsvTableFeature.class, true);
                     funcotationFactory = DataSourceUtils.createLocatableXsvDataSource(path, properties, annotationOverridesMap, featureInput);
                     break;
                 case SIMPLE_XSV:
@@ -274,16 +280,16 @@ final public class DataSourceUtils {
                     funcotationFactory = DataSourceUtils.createCosmicDataSource(path, properties, annotationOverridesMap);
                     break;
                 case GENCODE:
-                    featureInput = createAndRegisterFeatureInputs(path, properties, gatkToolInstance, lookaheadFeatureCachingInBp, GencodeGtfFeature.class);
+                    featureInput = createAndRegisterFeatureInputs(path, properties, gatkToolInstance, lookaheadFeatureCachingInBp, GencodeGtfFeature.class, false);
                     funcotationFactory = DataSourceUtils.createGencodeDataSource(path, properties, annotationOverridesMap, transcriptSelectionMode,
                             userTranscriptIdSet, featureInput, flankSettings);
                     break;
                 case VCF:
-                    featureInput = createAndRegisterFeatureInputs(path, properties, gatkToolInstance, lookaheadFeatureCachingInBp, VariantContext.class);
+                    featureInput = createAndRegisterFeatureInputs(path, properties, gatkToolInstance, lookaheadFeatureCachingInBp, VariantContext.class, false);
                     funcotationFactory = DataSourceUtils.createVcfDataSource(path, properties, annotationOverridesMap, featureInput);
                     break;
                 default:
-                    throw new GATKException("Unknown type of DataSourceFuncotationFactory encountered: " + stringType);
+                    throw new GATKException("Unknown type of DataSourceFuncotationFactory encountered: " + stringType );
             }
 
             // Add in our factory:
@@ -294,39 +300,28 @@ final public class DataSourceUtils {
         return dataSourceFactories;
     }
 
-    private static FeatureInput<? extends Feature> createAndRegisterFeatureInputs(final Path dataSourceFile,
+    private static FeatureInput<? extends Feature> createAndRegisterFeatureInputs(final Path configFilePath,
                                                                                   final Properties dataSourceProperties,
                                                                                   final GATKTool funcotatorToolInstance,
                                                                                   final int lookaheadFeatureCachingInBp,
-                                                                                  final Class<? extends Feature> featureType) {
-        Utils.nonNull(dataSourceFile);
+                                                                                  final Class<? extends Feature> featureType,
+                                                                                  final boolean useConfigFilePath) {
+        Utils.nonNull(configFilePath);
         Utils.nonNull(dataSourceProperties);
 
-        final String name      = dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_NAME);
-        final String sourceFile = dataSourceFile.resolveSibling(dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_SRC_FILE)).toString();
+        final String name       = dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_NAME);
+        final String sourceFile = useConfigFilePath
+                    ? configFilePath.toUri().toString()
+                    : resolveFilePathStringFromKnownPath( dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_SRC_FILE), configFilePath ).toUri().toString();
+
+        final int lookaheadCacheSizePropertyValue = getLookAheadCacheBpPropertyValue(dataSourceProperties);
+        final int lookaheadCacheSizeFinal = lookaheadCacheSizePropertyValue == -1 ? lookaheadFeatureCachingInBp : lookaheadCacheSizePropertyValue;
+
+        logger.info( "Setting lookahead cache for data source: " + name + " : " + lookaheadCacheSizeFinal );
 
         // Get feature inputs by creating them with the tool instance itself.
         // This has the side effect of registering the FeatureInputs with the engine, so that they can be later queried.
-        return funcotatorToolInstance.addFeatureInputsAfterInitialization(sourceFile, name, featureType, lookaheadFeatureCachingInBp);
-    }
-
-    /**
-     * Create {@link FeatureInput<? extends Feature>} FOR TESTING ONLY.
-     * @param dataSourceFile
-     * @param dataSourceProperties
-     * @return
-     */
-    private static FeatureInput<? extends Feature> createFeatureInputsForTesting(final Path dataSourceFile,
-                                                                                 final Properties dataSourceProperties) {
-
-        Utils.nonNull(dataSourceFile);
-        Utils.nonNull(dataSourceProperties);
-
-        final String name      = dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_NAME);
-        final String sourceFile = dataSourceFile.resolveSibling(dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_SRC_FILE)).toString();
-
-        // Get feature inputs by creating them with the funcotator tool instance itself:
-        return new FeatureInput<>(sourceFile, name, Collections.emptyMap());
+        return funcotatorToolInstance.addFeatureInputsAfterInitialization(sourceFile, name, featureType, lookaheadCacheSizeFinal);
     }
 
     /**
@@ -347,6 +342,7 @@ final public class DataSourceUtils {
 
         final String name      = dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_NAME);
         final String version   = dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_VERSION);
+        final boolean isB37    = getIsB37PropertyValue(dataSourceProperties);
 
         // Create a locatable XSV feature reader to handle XSV Locatable features:
         final LocatableXsvFuncotationFactory locatableXsvFuncotationFactory =
@@ -354,21 +350,42 @@ final public class DataSourceUtils {
                         name,
                         version,
                         annotationOverridesMap,
-                        featureInput
+                        featureInput,
+                        isB37
                 );
 
         // Set the supported fields by the LocatableXsvFuncotationFactory:
         locatableXsvFuncotationFactory.setSupportedFuncotationFields(
-                new ArrayList<>(
-                        Collections.singletonList(
-                                dataSourceFile.resolveSibling(
-                                        IOUtils.getPath( dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_SRC_FILE) )
-                                )
-                        )
-                )
+            resolveFilePathStringFromKnownPath(dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_SRC_FILE), dataSourceFile)
         );
 
         return locatableXsvFuncotationFactory;
+    }
+
+    /**
+     * Get if the properties has specified the `isB37` field {@link #CONFIG_FILE_FIELD_NAME_IS_B37_DATA_SOURCE} as true.
+     * If it is absent, it will default to {@code false}.
+     * @param dataSourceProperties {@link Properties} object from which to read the setting.
+     * @return The value of the {@link #CONFIG_FILE_FIELD_NAME_IS_B37_DATA_SOURCE} property.  If absent, {@code false}.
+     */
+    private static boolean getIsB37PropertyValue(final Properties dataSourceProperties) {
+        if ( dataSourceProperties.containsKey( CONFIG_FILE_FIELD_NAME_IS_B37_DATA_SOURCE ) ) {
+            return Boolean.valueOf(dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_IS_B37_DATA_SOURCE).replace(" ", ""));
+        }
+        return false;
+    }
+
+    /**
+     * Get if the properties has specified the `lookAheadCache` field {@link #CONFIG_FILE_FIELD_NAME_LOOKAHEAD_CACHE_BP} as true.
+     * If it is absent, it will default to {@code false}.
+     * @param dataSourceProperties {@link Properties} object from which to read the setting.
+     * @return The value of the {@link #CONFIG_FILE_FIELD_NAME_LOOKAHEAD_CACHE_BP} property.  If absent, {@code -1}.
+     */
+    private static int getLookAheadCacheBpPropertyValue(final Properties dataSourceProperties) {
+        if ( dataSourceProperties.containsKey( CONFIG_FILE_FIELD_NAME_LOOKAHEAD_CACHE_BP ) ) {
+            return Integer.valueOf(dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_LOOKAHEAD_CACHE_BP).replace(" ", ""));
+        }
+        return -1;
     }
 
     /**
@@ -386,17 +403,20 @@ final public class DataSourceUtils {
         Utils.nonNull(dataSourceProperties);
         Utils.nonNull(annotationOverridesMap);
 
+        final boolean isB37 = getIsB37PropertyValue(dataSourceProperties);
+
         // Create our SimpleKeyXsvFuncotationFactory:
         return new SimpleKeyXsvFuncotationFactory(
                         dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_NAME),
-                        dataSourceFile.resolveSibling(IOUtils.getPath(dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_SRC_FILE))),
+                        resolveFilePathStringFromKnownPath(dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_SRC_FILE), dataSourceFile),
                         dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_VERSION),
                         dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_XSV_DELIMITER),
                         Integer.valueOf(dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_XSV_KEY_COLUMN)),
                         SimpleKeyXsvFuncotationFactory.XsvDataKeyType.valueOf(dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_XSV_KEY)),
                         annotationOverridesMap,
                         0,
-                        Boolean.valueOf(dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_XSV_PERMISSIVE_COLS))
+                        Boolean.valueOf(dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_XSV_PERMISSIVE_COLS)),
+                        isB37
                 );
     }
 
@@ -415,11 +435,13 @@ final public class DataSourceUtils {
         Utils.nonNull(annotationOverridesMap);
 
         final String version   = dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_VERSION);
+        final boolean isB37    = getIsB37PropertyValue(dataSourceProperties);
 
         return new CosmicFuncotationFactory(
-                        dataSourceFile.resolveSibling(IOUtils.getPath(dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_SRC_FILE))),
+                        resolveFilePathStringFromKnownPath(dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_SRC_FILE), dataSourceFile),
                         annotationOverridesMap,
-                        version
+                        version,
+                        isB37
                 );
     }
 
@@ -453,17 +475,19 @@ final public class DataSourceUtils {
         final String fastaPath = dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_GENCODE_FASTA_PATH);
         final String version   = dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_VERSION);
         final String name      = dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_NAME);
+        final boolean isB37    = getIsB37PropertyValue(dataSourceProperties);
 
         // Create our gencode factory:
         return new GencodeFuncotationFactory(
-                dataSourceFile.resolveSibling(fastaPath),
+                resolveFilePathStringFromKnownPath( fastaPath, dataSourceFile ),
                 version,
                 name,
                 transcriptSelectionMode,
                 userTranscriptIdSet,
                 annotationOverridesMap,
                 featureInput,
-                flankSettings
+                flankSettings,
+                isB37
             );
     }
 
@@ -488,14 +512,16 @@ final public class DataSourceUtils {
         final String name       = dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_NAME);
         final String srcFile    = dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_SRC_FILE);
         final String version    = dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_VERSION);
+        final boolean isB37     = getIsB37PropertyValue(dataSourceProperties);
 
         // Create our VCF factory:
         return new VcfFuncotationFactory(
                 name,
                 version,
-                dataSourceFile.resolveSibling(srcFile).toAbsolutePath(),
+                resolveFilePathStringFromKnownPath(srcFile, dataSourceFile),
                 annotationOverridesMap,
-                featureInput
+                featureInput,
+                isB37
         );
     }
 
@@ -568,7 +594,7 @@ final public class DataSourceUtils {
                             versionDay       = Integer.valueOf(matcher.group(5));
                             versionDecorator = matcher.group(6);
 
-                            version = versionMajor + "." + versionMinor + "." + versionYear + "" + versionMonth + "" + versionDay;
+                            version = versionMajor + "." + versionMinor + "." + versionYear + "" + versionMonth + "" + versionDay + versionDecorator;
                         }
                         else {
                             logger.warn("README file has improperly formatted version string: " + line);
@@ -689,8 +715,13 @@ final public class DataSourceUtils {
         assertConfigPropertiesContainsKey(CONFIG_FILE_FIELD_NAME_PREPROCESSING_SCRIPT, configFileProperties, configFilePath);
         assertConfigPropertiesContainsKey(CONFIG_FILE_FIELD_NAME_TYPE, configFileProperties, configFilePath);
 
+        //Purposely disabled until new data sources go in.
+        // (https://github.com/broadinstitute/gatk/issues/5428)
+        // (https://github.com/broadinstitute/gatk/issues/5429)
+        //assertConfigPropertiesContainsKey(CONFIG_FILE_FIELD_NAME_IS_B37_DATA_SOURCE, configFileProperties, configFilePath);
+
         // Validate our source file:
-        assertPathFilePropertiesField( configFileProperties, CONFIG_FILE_FIELD_NAME_SRC_FILE, configFilePath);
+        assertPathFilePropertiesField(configFileProperties, CONFIG_FILE_FIELD_NAME_SRC_FILE, configFilePath);
 
         // Validate our type:
         final String stringType = configFileProperties.getProperty(CONFIG_FILE_FIELD_NAME_TYPE);
@@ -752,24 +783,52 @@ final public class DataSourceUtils {
     }
 
     /**
-     * Asserts that the given {@code field} is contained in the given {@code props} and is a file path.
-     * @param props {@link Properties} corresponding to the given {@code filePath} in which to check for the validity of {@code field}.
-     * @param field {@link String} name of the field, the existence and correct type of which will be confirmed in {@code props}.
-     * @param filePath {@link Path} to config file.  For output purposes only.
+     * Resolves the path string to a full path object using the given knownPath as a sibling file.
+     * Sibling file will only be used if it is determined that the given path string is not a relative path.
+     * @param filePathString {@link String} containing a file path to resolve.
+     * @param knownPath {@link Path} of a potential sibling file system entry.
+     * @return A {@link Path} object resolved to point to the given {@code filePathString}.
      */
-    public static void assertPathFilePropertiesField(final Properties props, final String field, final Path filePath) {
-        final Path sourceFilePath = filePath.resolveSibling(props.getProperty(field));
-        if ( !Files.exists(sourceFilePath) ) {
-            throw new UserException.BadInput("ERROR in config file: " + filePath.toUri().toString() +
-                    " - " + field + " does not exist: " + sourceFilePath);
+    public static Path resolveFilePathStringFromKnownPath(final String filePathString, final Path knownPath ) {
+
+        final Path rawFilePath = IOUtils.getPath(filePathString);
+
+        final Path absoluteFilePath;
+        if ( rawFilePath.isAbsolute() || (!rawFilePath.getFileSystem().equals(FileSystems.getDefault()))) {
+            // Absolute path or different file system.
+            // No need to resolve anything.
+            absoluteFilePath = rawFilePath;
         }
-        else if ( !Files.isRegularFile(sourceFilePath) ) {
-            throw new UserException.BadInput("ERROR in config file: " + filePath.toUri().toString() +
-                    " -  " + field + " is not a regular file: " + sourceFilePath);
+        else {
+            // If the path is not absolute, assume we must resolve it with our config file path:
+            absoluteFilePath = knownPath.resolveSibling(filePathString);
+            logger.info("Resolved local data source file path: " + rawFilePath.toUri().toString() + " -> " + absoluteFilePath.toUri().toString());
         }
-        else if ( !Files.isReadable(sourceFilePath) ) {
-            throw new UserException.BadInput("ERROR in config file: " + filePath.toUri().toString() +
-                    " - " + field + " is not readable: " + sourceFilePath);
+        return absoluteFilePath;
+    }
+
+    /**
+     * Asserts that the given {@code field} is contained in the given {@code props} and is a file path.
+     * @param props {@link Properties} corresponding to the given {@code configFilePath} in which to check for the validity of {@code field}.
+     * @param field {@link String} name of the field, the existence and correct type of which will be confirmed in {@code props}.
+     * @param configFilePath {@link Path} to config file.  For output purposes only.
+     */
+    public static void assertPathFilePropertiesField(final Properties props, final String field, final Path configFilePath) {
+
+        final String filePathString = props.getProperty(field);
+        final Path absoluteFilePath = resolveFilePathStringFromKnownPath(filePathString, configFilePath);
+
+        if ( !Files.exists(absoluteFilePath) ) {
+            throw new UserException.BadInput("ERROR in config file: " + configFilePath.toUri().toString() +
+                    " - " + field + " does not exist: " + absoluteFilePath);
+        }
+        else if ( !Files.isRegularFile(absoluteFilePath) ) {
+            throw new UserException.BadInput("ERROR in config file: " + configFilePath.toUri().toString() +
+                    " -  " + field + " is not a regular file: " + absoluteFilePath);
+        }
+        else if ( !Files.isReadable(absoluteFilePath) ) {
+            throw new UserException.BadInput("ERROR in config file: " + configFilePath.toUri().toString() +
+                    " - " + field + " is not readable: " + absoluteFilePath);
         }
     }
 

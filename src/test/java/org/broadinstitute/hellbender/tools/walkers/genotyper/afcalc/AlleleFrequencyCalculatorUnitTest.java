@@ -6,6 +6,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculator;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculators;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.MathUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -126,6 +127,40 @@ public class AlleleFrequencyCalculatorUnitTest extends GATKBaseTest {
         Assert.assertEquals(counts[1],0); // two samples
         Assert.assertEquals(counts[4],2); // five samples
         Assert.assertTrue(counts[8] >= 3); // ten samples
+    }
+
+    // a previous implementation of {@link AlleleFrequencyCalculator} had finite precision errors that manifested
+    // when there were very many confident samples.  This is a regression test for that bug.
+    // See https://github.com/broadinstitute/gatk/issues/4833
+    @Test
+    public void testManyVeryConfidentSamples() {
+        // flat prior to simplify back-of-the-envelope calculations
+        final AlleleFrequencyCalculator afCalc = new AlleleFrequencyCalculator(1, 1, 1, DEFAULT_PLOIDY);
+        final List<Allele> alleles = Arrays.asList(A,B,C);
+
+
+        final Genotype AC = genotypeWithObviousCall(DIPLOID, TRIALLELIC, new int[] {0,1,2,1}, EXTREMELY_CONFIDENT_PL);
+        for (final int numSamples : new int[] {100, 1000}) {
+
+            final VariantContext vc = makeVC(alleles, Collections.nCopies(numSamples, AC));
+            final AFCalculationResult result = afCalc.getLog10PNonRef(vc);
+            Assert.assertEquals(result.getAlleleCountAtMLE(B), 0);
+            Assert.assertEquals(result.getAlleleCountAtMLE(C), numSamples);
+
+            Assert.assertEquals(result.getLog10LikelihoodOfAFEq0(), result.getLog10PosteriorOfAFEq0ForAllele(C), numSamples * 0.01);
+
+            // with a large number of samples all with the AC genotype, the calculator will learn that the frequencies of the A and C alleles
+            // are 1/2, while the frequency of the B allele is 0.  Thus the only genotypes with appreciable priors are AA, AC, and CC
+            // with priors of 1/4, 1/2, and 1/4 and relative likelihoods of 1, 10^(PL/10), and 1
+            // the posterior probability of each sample having the C allele is thus
+            // (1 + 2*10^(PL/10))/(1 + 2*10^(PL/10) + 1) = (1 + x/2)/(1 + x), where x = 10^(-PL/10)
+
+            // to first-order in x, which is an extremely good approximation, this is 1 - x/2
+            // thus the probability that N identical samples don't have the C allele is (x/2)^N, and the log-10 probability of this is
+            // N * [log_10(1/2) - PL/10]
+            final double expectedLog10ProbabilityOfNoCAllele = numSamples * (MathUtils.LOG10_ONE_HALF - EXTREMELY_CONFIDENT_PL / 10);
+            Assert.assertEquals(result.getLog10PosteriorOfAFEq0ForAllele(C), expectedLog10ProbabilityOfNoCAllele, numSamples * 0.01);
+        }
     }
 
     @Test

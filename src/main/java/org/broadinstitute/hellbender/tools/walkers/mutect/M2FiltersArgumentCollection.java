@@ -5,7 +5,7 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBased
 
 import java.io.File;
 
-public class M2FiltersArgumentCollection extends AssemblyBasedCallerArgumentCollection {
+public class M2FiltersArgumentCollection {
     private static final long serialVersionUID = 9345L;
     public static final String LOG_SOMATIC_PRIOR_LONG_NAME = "log-somatic-prior";
     public static final String TUMOR_LOD_LONG_NAME = "tumor-lod";
@@ -34,6 +34,7 @@ public class M2FiltersArgumentCollection extends AssemblyBasedCallerArgumentColl
     public static final String STRICT_STRAND_BIAS_LONG_NAME = "strict-strand-bias";
     public static final String LOD_BY_DEPTH = "lod-divided-by-depth";
     public static final String NON_MT_ALT_READS_BY_ALT_READS = "non-mt-alts-divided-by-alts";
+    public static final String LONG_INDEL_LENGTH_LONG_NAME = "long-indel-length";
 
     public static final String FILTERING_STATS_LONG_NAME = "stats";
 
@@ -98,7 +99,7 @@ public class M2FiltersArgumentCollection extends AssemblyBasedCallerArgumentColl
     public int maxMedianFragmentLengthDifference = 10000;
 
     @Argument(fullName = MIN_MEDIAN_READ_POSITION_LONG_NAME, optional = true, doc = "filter variants for which the median position of alt alleles within reads is too near the end of reads.")
-    public int minMedianReadPosition = 5;
+    public int minMedianReadPosition = 1;
 
     @Argument(fullName = MAX_EVENTS_IN_REGION_LONG_NAME, optional = true, doc = "Variants coming from an assembly region with more than this many events are filtered")
     public int maxEventsInRegion = 2;
@@ -141,6 +142,9 @@ public class M2FiltersArgumentCollection extends AssemblyBasedCallerArgumentColl
 
     @Argument(fullName = MAX_DISTANCE_TO_FILTERED_CALL_ON_SAME_HAPLOTYPE_LONG_NAME, optional = true, doc = "On second filtering pass, variants with same PGT and PID tags as a filtered variant within this distance are filtered.")
     public int maxDistanceToFilteredCallOnSameHaplotype = 100;
+
+    @Argument(fullName = LONG_INDEL_LENGTH_LONG_NAME, optional = true, doc = "Indels of this length or greater are treated specially by the mapping quality filter.")
+    public int longIndelLength = 5;
 
     /**
      * Only variants with LOD divided by depth exceeding this threshold can pass filtering.

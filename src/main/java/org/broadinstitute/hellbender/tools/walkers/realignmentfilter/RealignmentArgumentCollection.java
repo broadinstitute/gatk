@@ -9,6 +9,7 @@ public class RealignmentArgumentCollection {
     public static final double DEFAULT_SEED_SPLIT_FACTOR = 0.5;
     public static final int DEFAULT_MAX_REASONABLE_FRAGMENT_LENGTH = 100000;
     public static final int DEFAULT_MIN_ALIGNER_SCORE_DIFFERENCE = 20;
+    public static final double DEFAULT_MIN_MISMATCH_RATIO = 2.5;
     public static final int DEFAULT_NUM_REGULAR_CONTIGS = 25;
 
     /**
@@ -34,6 +35,12 @@ public class RealignmentArgumentCollection {
      */
     @Argument(fullName = "min-aligner-score-difference", doc = "Minimum difference between best and second-best alignment for a read to be considered well-mapped", optional = true)
     public int minAlignerScoreDifference = DEFAULT_MIN_ALIGNER_SCORE_DIFFERENCE;
+
+    /**
+     * Minimum ratio between the number of mismatches in the second best and best alignments
+     */
+    @Argument(fullName = "min-mismatch-ratio", doc = "Minimum ratio between the number of mismatches in the second best and best alignments", optional = true)
+    public double minMismatchRatio = DEFAULT_MIN_MISMATCH_RATIO;
 
     /**
      * Number of regular i.e. non-alt contigs

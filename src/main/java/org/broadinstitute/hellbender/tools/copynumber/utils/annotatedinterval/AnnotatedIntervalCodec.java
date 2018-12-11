@@ -5,8 +5,10 @@ import htsjdk.samtools.SAMTextHeaderCodec;
 import htsjdk.tribble.AsciiFeatureCodec;
 import htsjdk.tribble.readers.LineIterator;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.DataSourceUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.codecs.xsvLocatableTable.XsvLocatableTableCodec;
@@ -38,6 +40,7 @@ public class AnnotatedIntervalCodec extends AsciiFeatureCodec<AnnotatedInterval>
     public static final String START_COL_COMMENT = "_StartHeader=";
     public static final String END_COL_COMMENT = "_EndHeader=";
 
+    private Path configFilePath;
     private XsvLocatableTableCodec xsvLocatableTableCodec;
     private AnnotatedIntervalHeader header;
 
@@ -46,9 +49,10 @@ public class AnnotatedIntervalCodec extends AsciiFeatureCodec<AnnotatedInterval>
         xsvLocatableTableCodec = new XsvLocatableTableCodec();
     }
 
-    public AnnotatedIntervalCodec(final Path overrideConfigFile) {
+    public AnnotatedIntervalCodec(final Path configFilePath) {
         super(AnnotatedInterval.class);
-        xsvLocatableTableCodec = new XsvLocatableTableCodec(overrideConfigFile);
+        this.configFilePath = configFilePath;
+        xsvLocatableTableCodec = new XsvLocatableTableCodec(configFilePath);
     }
 
     @Override
@@ -78,8 +82,8 @@ public class AnnotatedIntervalCodec extends AsciiFeatureCodec<AnnotatedInterval>
     }
 
     @Override
-    public boolean canDecode(final String path) {
-        return (path.endsWith(".seg") || path.endsWith(".maf") || path.endsWith(".maf.annotated")) && xsvLocatableTableCodec.canDecodeMinusExtensionChecks(path);
+    public boolean canDecode(final String pathString) {
+        return (pathString.endsWith(".seg") || pathString.endsWith(".maf") || pathString.endsWith(".maf.annotated")) && xsvLocatableTableCodec.canDecodeFileChecks(configFilePath.toUri().toString(), pathString);
     }
 
     /**
@@ -98,10 +102,15 @@ public class AnnotatedIntervalCodec extends AsciiFeatureCodec<AnnotatedInterval>
         Utils.nonNull(outputConfigFile);
 
         //TODO: Change this so that it outputs the first in the list.
-        final Properties headerNameProperties = XsvLocatableTableCodec.getAndValidateConfigFileContents(outputConfigFile);
-        final String contigColumnName = determineOutputColumnFromList(headerNameProperties.getProperty(XsvLocatableTableCodec.CONFIG_FILE_CONTIG_COLUMN_KEY));
-        final String startColumnName = determineOutputColumnFromList(headerNameProperties.getProperty(XsvLocatableTableCodec.CONFIG_FILE_START_COLUMN_KEY));
-        final String endColumnName = determineOutputColumnFromList(headerNameProperties.getProperty(XsvLocatableTableCodec.CONFIG_FILE_END_COLUMN_KEY));
+        final Pair<Boolean, Properties> validityAndPropertiesPair = XsvLocatableTableCodec.getAndValidateConfigFileContentsOnPath(outputConfigFile, true);
+        final boolean                   isValid                   = validityAndPropertiesPair.getLeft();
+        final Properties                headerNameProperties      = validityAndPropertiesPair.getRight();
+        if ( !isValid ) {
+            throw new UserException.BadInput("Error: invalid configuration file given: " + outputConfigFile.toUri().toString());
+        }
+        final String                    contigColumnName          = determineOutputColumnFromList(headerNameProperties.getProperty(DataSourceUtils.CONFIG_FILE_FIELD_NAME_CONTIG_COLUMN));
+        final String                    startColumnName           = determineOutputColumnFromList(headerNameProperties.getProperty(DataSourceUtils.CONFIG_FILE_FIELD_NAME_START_COLUMN));
+        final String                    endColumnName             = determineOutputColumnFromList(headerNameProperties.getProperty(DataSourceUtils.CONFIG_FILE_FIELD_NAME_END_COLUMN));
 
         XsvLocatableTableCodec.validateLocatableColumnName(contigColumnName);
         XsvLocatableTableCodec.validateLocatableColumnName(startColumnName);
