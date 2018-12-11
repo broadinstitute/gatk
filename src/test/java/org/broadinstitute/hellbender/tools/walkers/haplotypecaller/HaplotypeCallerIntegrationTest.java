@@ -5,6 +5,7 @@ import htsjdk.samtools.SamFiles;
 import htsjdk.tribble.Tribble;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
+import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
@@ -1158,8 +1159,12 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
     }
 
     private static String keyForVariant( final VariantContext variant ) {
+        Genotype genotype = variant.getGenotype(0);
+        if (genotype.isPhased()) { // unphase it for comparisons, since we rely on comparing the genotype string below
+            genotype = new GenotypeBuilder(genotype).phased(false).make();
+        }
         return String.format("%s:%d-%d %s %s", variant.getContig(), variant.getStart(), variant.getEnd(),
-                variant.getAlleles(), variant.getGenotype(0).getGenotypeString(false));
+                variant.getAlleles(), genotype.getGenotypeString(false));
     }
 
     private static boolean isGVCFReferenceBlock( final VariantContext vc ) {

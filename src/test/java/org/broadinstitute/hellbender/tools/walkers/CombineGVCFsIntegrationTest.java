@@ -32,7 +32,8 @@ import java.util.stream.Collectors;
 public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
     private static final List<String> NO_EXTRA_ARGS = Collections.emptyList();
     private static final List<String> ATTRIBUTES_TO_IGNORE = Arrays.asList(
-            "RAW_MQ"); //MQ data format and key have changed since GATK3
+            "RAW_MQ", //MQ data format and key have changed since GATK3
+            "PS"); //PS format field was added in GATK4
     private static final File NA12878_HG37 = new File(toolsTestDir + "haplotypecaller/expected.testGVCFMode.gatk4.g.vcf");
 
 

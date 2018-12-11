@@ -306,7 +306,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     }
 
     @Test
-    public void testGenomicsDBAbsolutePathDepndency() throws IOException {
+    public void testGenomicsDBAbsolutePathDependency() throws IOException {
         final File workspace = createTempDir("genomicsdb-tests-");
         final File workspace2 = createTempDir("genomicsdb-secondary-tests-");
 

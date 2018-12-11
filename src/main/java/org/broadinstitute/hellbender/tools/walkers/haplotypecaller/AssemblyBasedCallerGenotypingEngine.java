@@ -1,8 +1,11 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import htsjdk.variant.variantcontext.*;
+import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.lang3.tuple.Pair;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypingEngine;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypingOutputMode;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.OutputMode;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AFCalculatorProvider;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -585,10 +588,13 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
             // create a unique ID based on the leftmost one
             final String uniqueID = createUniqueID(originalCalls.get(indexes.get(0)));
 
+            // create the phase set identifier, which is the position of the first variant in the set
+            final int phaseSetID = originalCalls.get(indexes.get(0)).getStart();
+
             // update the VCs
             for ( final int index : indexes ) {
                 final VariantContext originalCall = originalCalls.get(index);
-                final VariantContext phasedCall = phaseVC(originalCall, uniqueID, phaseSetMapping.get(originalCall).getRight());
+                final VariantContext phasedCall = phaseVC(originalCall, uniqueID, phaseSetMapping.get(originalCall).getRight(), phaseSetID);
                 phasedCalls.set(index, phasedCall);
             }
         }
@@ -624,10 +630,19 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
      * @param phaseGT the phase GT string to use
      * @return phased non-null variant context
      */
-    private static VariantContext phaseVC(final VariantContext vc, final String ID, final String phaseGT) {
+    private static VariantContext phaseVC(final VariantContext vc, final String ID, final String phaseGT, final int phaseSetID) {
         final List<Genotype> phasedGenotypes = new ArrayList<>();
         for ( final Genotype g : vc.getGenotypes() ) {
-            phasedGenotypes.add(new GenotypeBuilder(g).attribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY, ID).attribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY, phaseGT).make());
+            final List<Allele> alleles = g.getAlleles();
+            if (phaseGT.equals(phase10) && g.isHet()) Collections.reverse(alleles); // swap the alleles if heterozygous
+            final Genotype genotype = new GenotypeBuilder(g)
+                .alleles(alleles)
+                .phased(true)
+                .attribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY, ID)
+                .attribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY, phaseGT)
+                .attribute(VCFConstants.PHASE_SET_KEY, phaseSetID)
+                .make();
+            phasedGenotypes.add(genotype);
         }
         return new VariantContextBuilder(vc).genotypes(phasedGenotypes).make();
     }

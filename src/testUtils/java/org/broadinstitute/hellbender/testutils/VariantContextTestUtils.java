@@ -288,6 +288,10 @@ public final class VariantContextTestUtils {
     }
 
     public static void assertGenotypesAreEqual(final Genotype actual, final Genotype expected) {
+        assertGenotypesAreEqual(actual, expected, Collections.emptyList());
+    }
+
+    public static void assertGenotypesAreEqual(final Genotype actual, final Genotype expected, final List<String> extendedAttributesToIgnore) {
         Assert.assertEquals(actual.getSampleName(), expected.getSampleName(), "Genotype names");
         Assert.assertTrue(CollectionUtils.isEqualCollection(actual.getAlleles(), expected.getAlleles()), "Genotype alleles");
         Assert.assertEquals(actual.getGenotypeString(false), expected.getGenotypeString(false), "Genotype string");
@@ -304,7 +308,7 @@ public final class VariantContextTestUtils {
         Assert.assertEquals(actual.getAD(), expected.getAD(), "Genotype AD");
         Assert.assertEquals(actual.hasGQ(), expected.hasGQ(), "Genotype hasGQ");
         Assert.assertEquals(actual.getGQ(), expected.getGQ(), "Genotype gq");
-        Assert.assertEquals(actual.hasPL(), expected.hasPL(), "Genotype hasPL");
+        Assert.assertEquals(actual.hasPL(), expected.hasPL(), "Genotype hasPL: " + actual.toString());
         Assert.assertEquals(actual.getPL(), expected.getPL(), "Genotype PL");
 
         Assert.assertEquals(actual.hasLikelihoods(), expected.hasLikelihoods(), "Genotype haslikelihoods");
@@ -312,7 +316,7 @@ public final class VariantContextTestUtils {
         Assert.assertEquals(actual.getLikelihoods(), expected.getLikelihoods(), "Genotype getLikelihoods");
 
         Assert.assertEquals(actual.getGQ(), expected.getGQ(), "Genotype phredScaledQual");
-        assertAttributesEquals(actual.getExtendedAttributes(), expected.getExtendedAttributes());
+        assertAttributesEquals(filterIgnoredAttributes(actual.getExtendedAttributes(), extendedAttributesToIgnore), filterIgnoredAttributes(expected.getExtendedAttributes(), extendedAttributesToIgnore));
         Assert.assertEquals(actual.isPhased(), expected.isPhased(), "Genotype isPhased");
         Assert.assertEquals(actual.getPloidy(), expected.getPloidy(), "Genotype getPloidy");
     }
@@ -405,7 +409,7 @@ public final class VariantContextTestUtils {
         }
     }
 
-    public static void assertVariantContextsAreEqual(final VariantContext actual, final VariantContext expected, final List<String> attributesToIgnore ) {
+    public static void assertVariantContextsAreEqual(final VariantContext actual, final VariantContext expected, final List<String> attributesToIgnore) {
         Assert.assertNotNull(actual, "VariantContext expected not null");
         Assert.assertEquals(actual.getContig(), expected.getContig(), "chr");
         Assert.assertEquals(actual.getStart(), expected.getStart(), "start");
@@ -420,12 +424,12 @@ public final class VariantContextTestUtils {
         Assert.assertEquals(actual.getFilters(), expected.getFilters(), "filters");
         BaseTest.assertEqualsDoubleSmart(actual.getPhredScaledQual(), expected.getPhredScaledQual());
 
-        assertVariantContextsHaveSameGenotypes(actual, expected);
+        assertVariantContextsHaveSameGenotypes(actual, expected, attributesToIgnore);
     }
 
-    private static Map<String, Object> filterIgnoredAttributes(final Map<String,Object> attributes, final List<String> attributesToIgnore){
+    private static Map<String, Object> filterIgnoredAttributes(final Map<String,Object> attributes, final List<String> attributesToIgnore) {
         return attributes.entrySet().stream()
-                .filter(p -> !attributesToIgnore.contains(p.getKey()))
+                .filter(p -> !attributesToIgnore.contains(p.getKey()) && p.getValue() != null)
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
@@ -458,13 +462,17 @@ public final class VariantContextTestUtils {
     }
 
     public static void assertVariantContextsHaveSameGenotypes(final VariantContext actual, final VariantContext expected) {
+        assertVariantContextsHaveSameGenotypes(actual, expected, Collections.emptyList());
+    }
+
+    public static void assertVariantContextsHaveSameGenotypes(final VariantContext actual, final VariantContext expected, final List<String> attributesToIgnore) {
         Assert.assertEquals(actual.hasGenotypes(), expected.hasGenotypes(), "hasGenotypes");
         if ( expected.hasGenotypes() ) {
             BaseTest.assertEqualsSet(actual.getSampleNames(), expected.getSampleNames(), "sample names set");
             Assert.assertEquals(actual.getSampleNamesOrderedByName(), expected.getSampleNamesOrderedByName(), "sample names");
             final Set<String> samples = expected.getSampleNames();
             for ( final String sample : samples ) {
-                assertGenotypesAreEqual(actual.getGenotype(sample), expected.getGenotype(sample));
+                assertGenotypesAreEqual(actual.getGenotype(sample), expected.getGenotype(sample), attributesToIgnore);
             }
         }
     }
