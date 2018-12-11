@@ -1,0 +1,9 @@
+{
+  "ToolComparisonWdl.gatk_docker": "jamesemery/gatk-nightly:je_aggregateChangesBranch",
+  "ToolComparisonWdl.CompareTimingTask.gatk_docker": "jamesemery/gatk-nightly:je_aggregateChangesBranch",
+  "ToolComparisonWdl.gvcf_mode": false,
+  "ToolComparisonWdl.contamination": 0.0,
+  "ToolComparisonWdl.interval_padding": 0.0
+}
+
+
