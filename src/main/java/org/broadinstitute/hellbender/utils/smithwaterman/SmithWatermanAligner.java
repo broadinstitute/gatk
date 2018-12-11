@@ -1,11 +1,18 @@
 package org.broadinstitute.hellbender.utils.smithwaterman;
 
+import htsjdk.samtools.Cigar;
+import htsjdk.samtools.CigarElement;
+import htsjdk.samtools.CigarOperator;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
+
 import java.io.Closeable;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Supplier;
 
 /**
@@ -87,5 +94,45 @@ public interface SmithWatermanAligner extends Closeable {
      */
     static SmithWatermanAligner getAligner(final Implementation type) {
         return type.createAligner();
+    }
+
+
+    default public SmithWatermanAlignment alignWithMismatches(final byte[] reference, final byte[] alternate, final SWParameters parameters, final SWOverhangStrategy overhangStrategy) {
+        final SmithWatermanAlignment alignment = align(reference, alternate, parameters, overhangStrategy);
+
+        return makeSpecificCigar(reference, alternate, alignment);
+    }
+    /**
+     * Takes a cigar and converts M operations to = and X according to the maching between ref and read
+     * @param reference
+     * @param alternate
+     * @param swPairwiseAlignment
+     * @return
+     */
+    default SmithWatermanAlignment makeSpecificCigar(final byte[] reference, final byte[] alternate, final SmithWatermanAlignment swPairwiseAlignment) {
+
+        final Cigar cigar = swPairwiseAlignment.getCigar();
+        final List<CigarElement> lce = new ArrayList<>(cigar.getCigarElements().size());
+        int referencePos = swPairwiseAlignment.getAlignmentOffset();
+        int readPos = 0;
+        final CigarElement ex = new CigarElement(1, CigarOperator.X);
+        final CigarElement equals = new CigarElement(1, CigarOperator.EQ);
+
+        for (final CigarElement ce : cigar) {
+            switch (ce.getOperator()) {
+                case M:
+                    for (int i = 0; i < ce.getLength(); i++) {
+                        lce.add(reference[referencePos + i] == alternate[readPos + i] ? equals : ex);
+
+                    }
+                    break;
+
+                default:
+                    lce.add(ce);
+            }
+            referencePos += ce.getOperator().consumesReferenceBases() ? ce.getLength() : 0;
+            readPos += ce.getOperator().consumesReadBases() ? ce.getLength() : 0;
+        }
+        return new SmithWatermanJavaAligner.SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), swPairwiseAlignment.getAlignmentOffset());
     }
 }

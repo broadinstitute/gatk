@@ -81,6 +81,14 @@ public abstract class SmithWatermanAlignerAbstractUnitTest extends GATKBaseTest 
                         match.append( ( i< ref.length && j < read.length ) ? (ref[i] == read[j] ? '.':'*' ) : ' ' );
                     }
                     break;
+                case EQ:
+                case X:
+                    for ( int z = 0 ; z < e.getLength() ; z++, i++, j++  ) {
+                        bref.append((i< ref.length)?(char) ref[i]:' ');
+                        bread.append((j < read.length)?(char) read[j]:' ');
+                        match.append( ( i< ref.length && j < read.length ) ? (e.getOperator()== CigarOperator.EQ ? '.':'*' ) : ' ' );
+                    }
+                    break;
                 case I :
                     for ( int z = 0 ; z < e.getLength(); z++, j++ ) {
                         bref.append('-');
@@ -260,6 +268,16 @@ public abstract class SmithWatermanAlignerAbstractUnitTest extends GATKBaseTest 
         }
     }
 
+    protected void assertSpecificAlignmentMatchesExpected(String reference, String read, int expectedStart, String expectedCigar, SWParameters weights, SWOverhangStrategy strategy) {
+        try(final SmithWatermanAligner sw = getAligner()) {
+            final SmithWatermanAlignment alignment = sw.alignWithMismatches(reference.getBytes(), read.getBytes(), weights, strategy);
+            printAlignment(reference.getBytes(), read.getBytes(), alignment, strategy);
+            Assert.assertEquals(alignment.getAlignmentOffset(), expectedStart);
+            Assert.assertEquals(alignment.getCigar().toString(), expectedCigar);
+        }
+    }
+
+
     @DataProvider
     public Object[][] getSubstringMatchLong(){
         return new Object[][]{
@@ -275,5 +293,13 @@ public abstract class SmithWatermanAlignerAbstractUnitTest extends GATKBaseTest 
         final String reference = "ATAGAAAATAGTTTTTGGAAATATGGGTGAAGAGACATCTCCTCTTATGGAAAAAGGGATTCTAGAATTTAACAATAAATATTCCCAACTTTCCCCAAGGCTTTAAAATCTACCTTGAAGGAGCAGCTGATGTATTTCTAGAACAGACTTAGGTGTCTTGGTGTGGCCTGTAAAGAGATACTGTCTTTCTCTTTTGAGTGTAAGAGAGAAAGGACAGTCTACTCAATAAAGAGTGCTGGGAAAACTGAATATCCACACACAGAATAATAAAACTAGATCCTATCTCTCACCATATACAAAGATCAACTCAAAACAAATTAAAGACCTAAATGTAAGACAAGAAATTATAAAACTACTAGAAAAAAACACAAGGGAAATGCTTCAGGACATTGGC";
         final String read      = "AAAAAAA";
         assertAlignmentMatchesExpected(reference, read, expectedStart, expectedCigar, SmithWatermanAligner.ORIGINAL_DEFAULT, strategy);
+    }
+
+    @Test
+    public void testalignWithMismatches(){
+        final String reference = "ATAGAAAATAGTTTTTGGAAATATGGGTGAAGAGACATCTCCTCTTATGGAAAAAGGGATTCTAGAATTTAACAATAAATATTCCCAACTTTCCCCAAGGCTTTAAAATCTACCTTGAAGGAGCAGCTGATGTATTTCTAGAACAGACTTAGGTGTCTTGGTGTGGCCTGTAAAGAGATACTGTCTTTCTCTTTTGAGTGTAAGAGAGAAAGGACAGTCTACTCAATAAAGAGTGCTGGGAAAACTGAATATCCACACACAGAATAATAAAACTAGATCCTATCTCTCACCATATACAAAGATCAACTCAAAACAAATTAAAGACCTAAATGTAAGACAAGAAATTATAAAACTACTAGAAAAAAACACAAGGGAAATGCTTCAGGACATTGGC";
+        final String read      = "AACAAAA";
+        final String expectedCigar = "4=1X2=";
+        assertSpecificAlignmentMatchesExpected(reference, read, 364, expectedCigar, SmithWatermanAligner.ORIGINAL_DEFAULT, SWOverhangStrategy.SOFTCLIP);
     }
 }

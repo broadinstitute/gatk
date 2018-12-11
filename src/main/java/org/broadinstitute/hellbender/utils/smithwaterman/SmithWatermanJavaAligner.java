@@ -228,7 +228,7 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
     /*
      * Class to store the result of calculating the CIGAR from the back track matrix
      */
-    private static final class SWPairwiseAlignmentResult implements SmithWatermanAlignment {
+    public static final class SWPairwiseAlignmentResult implements SmithWatermanAlignment {
         private final Cigar cigar;
         private final int alignmentOffset;
 
