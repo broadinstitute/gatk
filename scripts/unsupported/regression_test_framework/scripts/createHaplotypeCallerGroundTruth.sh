@@ -158,6 +158,8 @@ function createJsonInputsForHaplotypeCaller()
     echo "  \"HaplotypeCaller.input_bam_index\": \"${inputBai}\","
     echo "  \"HaplotypeCaller.out_vcf_name\": \"${outputVcfName}\","
     echo ""
+    echo "  \"HaplotypeCaller.interval_list\": \"gs://haplotypecallerspark-evaluation/inputData/whole_exome_illumina_coding_v1.Homo_sapiens_assembly19.targets.interval_list\","
+    echo ""
     echo "  \"HaplotypeCaller.ref_fasta\": \"gs://broad-references/hg19/v0/Homo_sapiens_assembly19.fasta\","
     echo "  \"HaplotypeCaller.ref_fasta_index\": \"gs://broad-references/hg19/v0/Homo_sapiens_assembly19.fasta.fai\","
     echo "  \"HaplotypeCaller.ref_fasta_dict\": \"gs://broad-references/hg19/v0/Homo_sapiens_assembly19.dict\","
@@ -225,8 +227,8 @@ if ${ISCALLEDBYUSER} ; then
 	# Do real work here.
     for inputBamName in $(gsutil ls ${INPUT_BUCKET_URL}/*.bam | sort | uniq) ; do
 
-#        echo "${inputBamName}" | grep -qE 'G96831|G96832|G94982|359781|412726|445394|472246|506817|538834|572804|603388|633960|656480|679060'
-        echo "${inputBamName}" | grep -qE 'G94982'
+#        echo "${inputBamName}" | grep -qE 'G96830|G96831|G96832|G94982|359781|412726|445394|472246|506817|538834|572804|603388|633960|656480|679060'
+        echo "${inputBamName}" | grep -qE 'G96830|G96831|G96832|G94982'
         r=$?
         [ $r -eq 0 ] && continue
 
@@ -242,9 +244,9 @@ if ${ISCALLEDBYUSER} ; then
                 gvcfModeSuffix=".gvcf"
             fi
 
-            echo "${inputBamName}" | grep -qE 'G96830|G96831'
-            r=$?
-            [ $r -eq 0 ] && $doGvcf && continue
+#            echo "${inputBamName}" | grep -qE 'G96830|G96831'
+#            r=$?
+#            [ $r -eq 0 ] && $doGvcf && continue
 
             tmpJsonFile="haplotypeCaller.${b}${gvcfModeSuffix}.json"
             createJsonInputsForHaplotypeCaller $doGvcf ${inputBamName} ${INPUT_BUCKET_URL}/${indexFile} ${outVariantFile} > ${tmpJsonFile}
