@@ -228,9 +228,9 @@ if ${ISCALLEDBYUSER} ; then
     for inputBamName in $(gsutil ls ${INPUT_BUCKET_URL}/*.bam | sort | uniq) ; do
 
 #        echo "${inputBamName}" | grep -qE 'G96830|G96831|G96832|G94982|359781|412726|445394|472246|506817|538834|572804|603388|633960|656480|679060'
-        echo "${inputBamName}" | grep -qE 'G96830|G96831|G96832|G94982'
-        r=$?
-        [ $r -eq 0 ] && continue
+#        echo "${inputBamName}" | grep -qEv 'G96830|G96831|G96832|G94982'
+#        r=$?
+#        [ $r -eq 0 ] && continue
 
         for doGvcf in true false ; do
             b=$( basename ${inputBamName} )
@@ -244,9 +244,10 @@ if ${ISCALLEDBYUSER} ; then
                 gvcfModeSuffix=".gvcf"
             fi
 
-#            echo "${inputBamName}" | grep -qE 'G96830|G96831'
+#            echo "${inputBamName}" | grep -qEv 'NexPond-412726.ba|506817|633960'
 #            r=$?
-#            [ $r -eq 0 ] && $doGvcf && continue
+#            [ $r -eq 0 ] && continue
+#            ! $doGvcf && continue
 
             tmpJsonFile="haplotypeCaller.${b}${gvcfModeSuffix}.json"
             createJsonInputsForHaplotypeCaller $doGvcf ${inputBamName} ${INPUT_BUCKET_URL}/${indexFile} ${outVariantFile} > ${tmpJsonFile}
