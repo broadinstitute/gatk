@@ -111,7 +111,8 @@ task HaplotypeCallerTask {
     Int? interval_padding
 
     # Output Names:
-    String out_file_name
+    String out_file_dir
+    String out_file_name = basename(out_file_dir)
 
     # Runtime Options:
     String gatk_docker
@@ -128,10 +129,10 @@ task HaplotypeCallerTask {
     String contamination_arg = if defined(contamination) && (contamination != "") then " --contamination " else ""
     String interval_padding_arg = if defined(interval_padding) && (interval_padding != "")then " --interval-padding " else ""
 
-    String index_format = if sub(out_file_name, ".*\\.", "") == "vcf" then "idx" else "tbi"
+    String index_format = if sub(out_file_dir, ".*\\.", "") == "vcf" then "idx" else "tbi"
 
-    String timing_output_file = basename(out_file_name) + ".timingInformation.txt"
-    String timing_output_file_gs_dir = out_file_name + ".timingInformation.txt"
+    String timing_output_file = basename(out_file_dir) + ".timingInformation.txt"
+    String timing_output_file_gs_dir = out_file_dir + ".timingInformation.txt"
 
     # ------------------------------------------------
     # Get machine settings:
@@ -173,6 +174,7 @@ task HaplotypeCallerTask {
         elapsedTime=`python -c "print( $endTime - $startTime )"`
         echo "Elapsed Time: $elapsedTime" >> ${timing_output_file}
         gsutil cp ${timing_output_file} ${timing_output_file_gs_dir}
+        gsutil cp  ${out_file_name} ${out_file_dir}
     >>>
 
     # ------------------------------------------------
