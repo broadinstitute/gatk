@@ -93,7 +93,7 @@ workflow ToolComparisonWdl {
                 contamination             = contamination,
                 interval_padding          = interval_padding,
 
-                out_file_name             = baseline_output_folder_base + outputName,
+                out_file_dir             = baseline_output_folder_base + outputName,
 
                 gatk_docker               = baseline_docker,
                 gatk_override             = gatk4_jar_override,
@@ -118,7 +118,7 @@ workflow ToolComparisonWdl {
                 contamination             = contamination,
                 interval_padding          = interval_padding,
 
-                out_file_name             = output_folder_base + outputName,
+                out_file_dir             = output_folder_base + outputName,
 
                 gatk_docker               = gatk_docker,
                 gatk_override             = gatk4_jar_override,
