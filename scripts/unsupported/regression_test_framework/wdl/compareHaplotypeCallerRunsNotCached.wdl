@@ -42,7 +42,7 @@ workflow ToolComparisonWdl {
     String input_bucket_location = "gs://haplotypecallerspark-evaluation/inputData/"
     #Array[String] input_bams = [ "G94982.NA12878.bam", "G96830.NA12878.bam", "G96831.NA12878.bam", "G96832.NA12878.bam", "NexPond-359781.bam", "NexPond-412726.bam", "NexPond-445394.bam", "NexPond-472246.bam", "NexPond-506817.bam", "NexPond-538834.bam", "NexPond-572804.bam", "NexPond-603388.bam", "NexPond-633960.bam", "NexPond-656480.bam", "NexPond-679060.bam" ]
 
-    Array[String] input_bams = [ "quick_sanity_check_data/NexPond-359781.chr22.vcf", "quick_sanity_check_data/NexPond-359781.chr22.copy.vcf" ]
+    Array[String] input_bams = [ "quick_sanity_check_data/NexPond-412726.chr15.copy.bam", "quick_sanity_check_data/NexPond-412726.chr15.bam" ]
 
     File ref_fasta       = "gs://broad-references/hg19/v0/Homo_sapiens_assembly19.fasta"
     File ref_fasta_dict  = "gs://broad-references/hg19/v0/Homo_sapiens_assembly19.fasta.fai"
