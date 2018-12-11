@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
+import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import org.apache.commons.math3.util.MathArrays;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAlleleCounts;
@@ -85,6 +86,9 @@ public final class AlleleFrequencyCalculator extends AFCalculator {
 
         final boolean spanningDeletionPresent = alleles.contains(Allele.SPAN_DEL);
         final Map<Integer, int[]> nonVariantIndicesByPloidy = new Int2ObjectArrayMap<>();
+
+        // re-usable buffers of the log10 genotype posteriors of genotypes missing each allele
+        final List<DoubleArrayList> log10AbsentPosteriors = IntStream.range(0,numAlleles).mapToObj(n -> new DoubleArrayList()).collect(Collectors.toList());
         for (final Genotype g : vc.getGenotypes()) {
             if (!g.hasLikelihoods()) {
                 continue;
@@ -107,26 +111,30 @@ public final class AlleleFrequencyCalculator extends AFCalculator {
                 log10PNoVariant += Math.min(0,MathUtils.log10SumLog10(nonVariantLog10Posteriors));
             }
 
-            // per allele non-log space probabilities of zero counts for this sample
-            // for each allele calculate the total probability of genotypes containing at least one copy of the allele
-            final double[] log10ProbabilityOfNonZeroAltAlleles = new double[numAlleles];
-            Arrays.fill(log10ProbabilityOfNonZeroAltAlleles, Double.NEGATIVE_INFINITY);
+            // if the VC is biallelic the allele-specific qual equals the variant qual
+            if (numAlleles == 2) {
+                continue;
+            }
 
+            // for each allele, we collect the log10 probabilities of genotypes in which the allele is absent, then add (in log space)
+            // to get the log10 probability that the allele is absent in this sample
+            log10AbsentPosteriors.forEach(DoubleArrayList::clear);  // clear the buffers.  Note that this is O(1) due to the primitive backing array
             for (int genotype = 0; genotype < glCalc.genotypeCount(); genotype++) {
                 final double log10GenotypePosterior = log10GenotypePosteriors[genotype];
-                glCalc.genotypeAlleleCountsAt(genotype).forEachAlleleIndexAndCount((alleleIndex, count) ->
-                        log10ProbabilityOfNonZeroAltAlleles[alleleIndex] =
-                                MathUtils.log10SumLog10(log10ProbabilityOfNonZeroAltAlleles[alleleIndex], log10GenotypePosterior));
+                glCalc.genotypeAlleleCountsAt(genotype).forEachAbsentAlleleIndex(a -> log10AbsentPosteriors.get(a).add(log10GenotypePosterior), numAlleles);
             }
 
-            for (int allele = 0; allele < numAlleles; allele++) {
-                // if prob of non hom ref == 1 up to numerical precision, short-circuit to avoid NaN
-                if (log10ProbabilityOfNonZeroAltAlleles[allele] >= 0) {
-                    log10POfZeroCountsByAllele[allele] = Double.NEGATIVE_INFINITY;
-                } else {
-                    log10POfZeroCountsByAllele[allele] += MathUtils.log10OneMinusPow10(log10ProbabilityOfNonZeroAltAlleles[allele]);
-                }
-            }
+            final double[] log10PNoAllele = log10AbsentPosteriors.stream()
+                    .mapToDouble(buffer -> MathUtils.log10SumLog10(buffer.toDoubleArray()))
+                    .map(x -> Math.min(0, x)).toArray();    // if prob of non hom ref > 1 due to finite precision, short-circuit to avoid NaN
+
+            // multiply the cumulative probabilities of alleles being absent, which is addition of logs
+            MathUtils.addToArrayInPlace(log10POfZeroCountsByAllele, log10PNoAllele);
+        }
+
+        // for biallelic the allele-specific qual equals the variant qual, and we short-circuited the calculation above
+        if (numAlleles == 2) {
+            log10POfZeroCountsByAllele[1] = log10PNoVariant;
         }
 
         // unfortunately AFCalculationResult expects integers for the MLE.  We really should emit the EM no-integer values
