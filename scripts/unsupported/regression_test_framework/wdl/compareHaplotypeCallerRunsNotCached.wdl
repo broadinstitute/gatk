@@ -46,7 +46,7 @@ workflow ToolComparisonWdl {
     File ref_fasta_index = "gs://broad-references/hg19/v0/Homo_sapiens_assembly19.dict"
 
     # Haplotype Caller args:
-    File interval_list = "gs://haplotypecallerspark-evaluation/inputData/whole_exome_illumina_coding_v1.Homo_sapiens_assembly19.targets.interval_list"
+    File? interval_list = "gs://haplotypecallerspark-evaluation/inputData/whole_exome_illumina_coding_v1.Homo_sapiens_assembly19.targets.interval_list"
     Boolean gvcf_mode
     Float contamination
     Int interval_padding
@@ -64,6 +64,7 @@ workflow ToolComparisonWdl {
     # ------------------------------------------------
     # Create a folder in our output area for this run:
     String output_folder_base = output_bucket_base_location + sub(sub(gatk_docker, "/", "-"), ":", "_") + "/"
+    String baseline_output_folder_base = output_bucket_base_location + sub(sub(baseline_docker, "/", "-"), ":", "_") + "/"
 
     # ------------------------------------------------
     # Call our tool:
@@ -92,7 +93,7 @@ workflow ToolComparisonWdl {
                 contamination             = contamination,
                 interval_padding          = interval_padding,
 
-                out_file_name             = output_folder_base + outputName,
+                out_file_name             = baseline_output_folder_base + outputName,
 
                 gatk_docker               = baseline_docker,
                 gatk_override             = gatk4_jar_override,
