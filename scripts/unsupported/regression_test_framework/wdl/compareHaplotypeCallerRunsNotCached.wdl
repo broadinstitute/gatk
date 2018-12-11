@@ -29,6 +29,7 @@ import "haplotypeCaller.wdl" as tool_wdl
 import "genotypeConcordance.wdl" as analysis_1_wdl
 import "variantCallerConcordance.wdl" as analysis_2_wdl
 import "compareTiming.wdl" as analysis_3_wdl
+import "combineTimingResults.wdl" as combine_timing_wdl
 
 workflow ToolComparisonWdl {
 
@@ -39,7 +40,9 @@ workflow ToolComparisonWdl {
     # Default input files for HC and comparison:
     String truth_bucket_location = "gs://haplotypecallerspark-evaluation/groundTruth/"
     String input_bucket_location = "gs://haplotypecallerspark-evaluation/inputData/"
-    Array[String] input_bams = [ "G94982.NA12878.bam", "G96830.NA12878.bam", "G96831.NA12878.bam", "G96832.NA12878.bam", "NexPond-359781.bam", "NexPond-412726.bam", "NexPond-445394.bam", "NexPond-472246.bam", "NexPond-506817.bam", "NexPond-538834.bam", "NexPond-572804.bam", "NexPond-603388.bam", "NexPond-633960.bam", "NexPond-656480.bam", "NexPond-679060.bam" ]
+    #Array[String] input_bams = [ "G94982.NA12878.bam", "G96830.NA12878.bam", "G96831.NA12878.bam", "G96832.NA12878.bam", "NexPond-359781.bam", "NexPond-412726.bam", "NexPond-445394.bam", "NexPond-472246.bam", "NexPond-506817.bam", "NexPond-538834.bam", "NexPond-572804.bam", "NexPond-603388.bam", "NexPond-633960.bam", "NexPond-656480.bam", "NexPond-679060.bam" ]
+
+    Array[String] input_bams = [ "quick_sanity_check_data/NexPond-359781.chr22.vcf", "quick_sanity_check_data/NexPond-359781.chr22.copy.vcf" ]
 
     File ref_fasta       = "gs://broad-references/hg19/v0/Homo_sapiens_assembly19.fasta"
     File ref_fasta_dict  = "gs://broad-references/hg19/v0/Homo_sapiens_assembly19.fasta.fai"
@@ -93,7 +96,7 @@ workflow ToolComparisonWdl {
                 contamination             = contamination,
                 interval_padding          = interval_padding,
 
-                out_file_dir             = baseline_output_folder_base + outputName,
+                out_file_name             = outputName,
 
                 gatk_docker               = baseline_docker,
                 gatk_override             = gatk4_jar_override,
@@ -118,7 +121,7 @@ workflow ToolComparisonWdl {
                 contamination             = contamination,
                 interval_padding          = interval_padding,
 
-                out_file_dir             = output_folder_base + outputName,
+                out_file_name             = outputName,
 
                 gatk_docker               = gatk_docker,
                 gatk_override             = gatk4_jar_override,
@@ -177,11 +180,21 @@ workflow ToolComparisonWdl {
         }
     }
 
+    call combine_timing_wdl.CombineTimingTask {
+        input:
+           timing_files = CompareTimingTask.timing_diff,
+           timing_names = CompareTimingTask.run_title
+    }
+
     # ------------------------------------------------
     # Outputs:
     output {
 #        File vcf_out     = HaplotypeCallerTask.output_vcf
 #        File vcf_out_idx = HaplotypeCallerTask.output_vcf_index
         Array[File] timingMetrics  = CompareTimingTask.timing_diff
+        File timingResutls = CombineTimingTask.combined_file
     }
+
+
+
 }
