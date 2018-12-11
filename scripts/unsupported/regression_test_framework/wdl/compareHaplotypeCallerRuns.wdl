@@ -69,7 +69,7 @@ workflow ToolComparisonWdl {
         File inputBaseName = basename(input_bams[i], ".bam")
         File indexFile = inputBaseName + ".bai"
 
-        String outputName = if gvcf_mode then inputBaseName + ".g.vcf" else inputBaseName + ".vcf"
+        String outputName = if gvcf_mode then inputBaseName + ".HC.g.vcf" else inputBaseName + ".HC.vcf"
 
         String truthBaseName = outputName
         File truthVcf = truth_bucket_location + truthBaseName

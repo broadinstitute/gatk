@@ -20,7 +20,9 @@ shopt -s expand_aliases
 
 ################################################################################
 
-DEFAULT_DOCKERHUB_REPO_NAME="broadinstitute/gatk-nightly"
+#DEFAULT_DOCKERHUB_REPO_NAME="broadinstitute/gatk-nightly"
+DEFAULT_DOCKERHUB_REPO_NAME="gcr.io/broad-dsde-methods/broad-gatk-snapshots"
+#https://console.cloud.google.com/gcr/images/broad-dsde-methods/US/broad-gatk-snapshots
 
 ################################################################################
 
@@ -225,7 +227,15 @@ if ${ISCALLEDBYUSER} ; then
         error "============================================================================="
         error "Pushing image to docker tag: ${dockerTag}"
         docker tag ${newTopImage} ${dockerTag}
-        docker push ${dockerTag}
+
+        # Make sure we push the correct way:
+        echo "${DEFAULT_DOCKERHUB_REPO_NAME}" | grep -q '^gcr.io/'
+        if [[ $? -eq 0 ]] ; then
+            gcloud docker -- push ${dockerTag}
+        else
+            docker push ${dockerTag}
+        fi
+
         docker image rm -f ${newTopImage}
     fi
 	exit 0
