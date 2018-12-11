@@ -148,6 +148,7 @@ workflow ToolComparisonWdl {
 
         call analysis_3_wdl.CompareTimingTask {
             input:
+                gatk_docker = gatk_docker,
                 truth_timing_file = truthVcf + ".timingInformation.txt",
                 call_timing_file = HaplotypeCallerTask.timing_info
         }
