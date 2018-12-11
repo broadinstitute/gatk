@@ -35,7 +35,7 @@ workflow ToolComparisonWdl {
     # ------------------------------------------------
     # Input args:
     String gatk_docker
-    String baseline_docker = "broadinstitute/gatk:4.0.11.0"
+
     # Default input files for HC and comparison:
     String truth_bucket_location = "gs://haplotypecallerspark-evaluation/groundTruth/"
     String input_bucket_location = "gs://haplotypecallerspark-evaluation/inputData/"
@@ -62,10 +62,6 @@ workflow ToolComparisonWdl {
     Int? boot_disk_size_gb
 
     # ------------------------------------------------
-    # Create a folder in our output area for this run:
-    String output_folder_base = output_bucket_base_location + sub(sub(gatk_docker, "/", "-"), ":", "_") + "/"
-
-    # ------------------------------------------------
     # Call our tool:
     scatter (i in range(length(input_bams))) {
 
@@ -78,31 +74,6 @@ workflow ToolComparisonWdl {
         File truthBaseName = outputName
         File truthVcf = truth_bucket_location + truthBaseName
         File truthIndex = truth_bucket_location + truthBaseName + ".idx"
-
-        call tool_wdl.HaplotypeCallerTask as baseline_run {
-            input:
-                input_bam                 = input_bucket_location + input_bams[i],
-                input_bam_index           = input_bucket_location + indexFile,
-                ref_fasta                 = ref_fasta,
-                ref_fasta_dict            = ref_fasta_dict,
-                ref_fasta_index           = ref_fasta_index,
-
-                interval_list             = interval_list,
-                gvcf_mode                 = gvcf_mode,
-                contamination             = contamination,
-                interval_padding          = interval_padding,
-
-                out_file_name             = output_folder_base + outputName,
-
-                gatk_docker               = baseline_docker,
-                gatk_override             = gatk4_jar_override,
-                mem                       = mem_gb,
-                preemptible_attempts      = preemptible_attempts,
-                disk_space_gb             = disk_space_gb,
-                cpu                       = cpu,
-                boot_disk_size_gb         = boot_disk_size_gb
-        }
-
 
         call tool_wdl.HaplotypeCallerTask {
             input:
@@ -117,7 +88,7 @@ workflow ToolComparisonWdl {
                 contamination             = contamination,
                 interval_padding          = interval_padding,
 
-                out_file_name             = output_folder_base + outputName,
+                out_file_name             = outputName,
 
                 gatk_docker               = gatk_docker,
                 gatk_override             = gatk4_jar_override,
@@ -140,7 +111,7 @@ workflow ToolComparisonWdl {
 #
 #                interval_list             = interval_list,
 #
-#                output_base_name          = output_folder_base + outputName,
+#                output_base_name          = outputName,
 #
 #                gatk_docker               = gatk_docker,
 #                gatk_override             = gatk4_jar_override,
@@ -170,9 +141,8 @@ workflow ToolComparisonWdl {
 
         call analysis_3_wdl.CompareTimingTask {
             input:
-                truth_timing_file = baseline_run.timing_info,
-                call_timing_file = HaplotypeCallerTask.timing_info,
-                base_timing_output_name = output_folder_base + "timingDiff.txt"
+                truth_timing_file = truthVcf + ".timingInformation.txt",
+                call_timing_file = HaplotypeCallerTask.timing_info
         }
     }
 

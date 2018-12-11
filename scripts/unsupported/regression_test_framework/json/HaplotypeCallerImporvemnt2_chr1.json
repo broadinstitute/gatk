@@ -1,0 +1,8 @@
+{
+  "ToolComparisonWdl.gatk_docker": "jamesemery/gatk-nightly:je_HaplotypeCallerMicroOptimization1",
+  "ToolComparisonWdl.CompareTimingTask.gatk_docker": "jamesemery/gatk-nightly:je_HaplotypeCallerMicroOptimization1",
+  "ToolComparisonWdl.gvcf_mode": false,
+  "ToolComparisonWdl.contamination": 0.0,
+  "ToolComparisonWdl.interval_padding": 0.0,
+  "ToolComparisonWdl.interval_list": "gs://haplotypecallerspark-evaluation/inputData/justchr1.interval_list"
+}
