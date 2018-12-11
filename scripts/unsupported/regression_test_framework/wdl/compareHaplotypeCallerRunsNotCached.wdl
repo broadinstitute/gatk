@@ -52,7 +52,7 @@ workflow ToolComparisonWdl {
     Int interval_padding
 
     # Output bucket name:
-    String output_bucket_base_location = "https://console.cloud.google.com/storage/browser/haplotypecallerspark-evaluation/testSets/"
+    String output_bucket_base_location = "gs://haplotypecallerspark-evaluation/testSets/"
 
     File? gatk4_jar_override
     Int?  mem_gb
