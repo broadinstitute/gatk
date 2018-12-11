@@ -86,7 +86,7 @@ task CompareTimingTask {
 
     ####################################################################################
     # Default values:
-    String timing_diff_file_name = if defined(base_timing_output_name) then base_timing_output_name + ".timingDiff.txt" else "timingDiff.txt"
+    String timing_diff_file_name = if defined(base_timing_output_name) then basename(base_timing_output_name) + ".timingDiff.txt" else "timingDiff.txt"
 
     ####################################################################################
     # Define default values and set up values for running:
