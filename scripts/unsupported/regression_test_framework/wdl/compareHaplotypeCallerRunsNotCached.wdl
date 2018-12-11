@@ -80,7 +80,7 @@ workflow ToolComparisonWdl {
         File truthVcf = truth_bucket_location + truthBaseName
         File truthIndex = truth_bucket_location + truthBaseName + ".idx"
 
-        call tool_wdl.HaplotypeCallerTask as baseline_run {
+        call tool_wdl.HaplotypeCallerTask as BaselineRun {
             input:
                 input_bam                 = input_bucket_location + input_bams[i],
                 input_bam_index           = input_bucket_location + indexFile,
@@ -93,7 +93,7 @@ workflow ToolComparisonWdl {
                 contamination             = contamination,
                 interval_padding          = interval_padding,
 
-                out_file_name             = baseline_output_folder_base + outputName,
+                out_file_dir             = baseline_output_folder_base + outputName,
 
                 gatk_docker               = baseline_docker,
                 gatk_override             = gatk4_jar_override,
@@ -118,7 +118,7 @@ workflow ToolComparisonWdl {
                 contamination             = contamination,
                 interval_padding          = interval_padding,
 
-                out_file_name             = output_folder_base + outputName,
+                out_file_dir             = output_folder_base + outputName,
 
                 gatk_docker               = gatk_docker,
                 gatk_override             = gatk4_jar_override,
@@ -171,7 +171,7 @@ workflow ToolComparisonWdl {
 
         call analysis_3_wdl.CompareTimingTask {
             input:
-                truth_timing_file = baseline_run.timing_info,
+                truth_timing_file = BaselineRun.timing_info,
                 call_timing_file = HaplotypeCallerTask.timing_info,
                 base_timing_output_name = output_folder_base + "timingDiff.txt"
         }

@@ -112,8 +112,8 @@ task CompareTimingTask {
         echo "truthElapsed = $truthElapsed"
         echo "callElapsed = $callElapsed"
 
-        timeDiff=$( python -c "print $truthElapsed - $callElapsed" )
-        timeRatio=$( python -c "print $callElapsed/$truthElapsed" )
+        timeDiff=$( python -c "print( $truthElapsed - $callElapsed)" )
+        timeRatio=$( python -c "print( $callElapsed/$truthElapsed)" )
 
         echo "timeDiff = $timeDiff"
         echo "timeRatio = $timeRatio"
