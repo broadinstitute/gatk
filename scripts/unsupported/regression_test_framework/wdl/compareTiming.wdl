@@ -137,5 +137,6 @@ task CompareTimingTask {
     # Outputs:
     output {
         File timing_diff         = timing_diff_file_name
+        String run_title         = call_timing_file
     }
 }
