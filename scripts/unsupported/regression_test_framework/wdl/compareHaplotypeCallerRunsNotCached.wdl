@@ -72,7 +72,7 @@ workflow ToolComparisonWdl {
 
         # Set up variables for this loop:
         File inputBaseName = basename(input_bams[i])
-        File indexFile = inputBaseName + ".bai"
+        File indexFile = sub(inputBaseName, "\\.bam$", ".bai")
 
         String outputName = if gvcf_mode then sub(basename(input_bams[i]), ".*\\.", "") + ".g.vcf" else ".vcf"
 
