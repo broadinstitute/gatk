@@ -71,7 +71,7 @@ workflow ToolComparisonWdl {
 
         String outputName = if gvcf_mode then inputBaseName + ".g.vcf" else inputBaseName + ".vcf"
 
-        File truthBaseName = outputName
+        String truthBaseName = outputName
         File truthVcf = truth_bucket_location + truthBaseName
         File truthIndex = truth_bucket_location + truthBaseName + ".idx"
 
