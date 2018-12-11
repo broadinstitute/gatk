@@ -126,9 +126,9 @@ task HaplotypeCallerTask {
 
     # ------------------------------------------------
     # Process input args:
-    String interval_list_arg = if defined(interval_list) && (interval_list != "") then " -L " else ""
-    String contamination_arg = if defined(contamination) && (contamination != "") then " --contamination " else ""
-    String interval_padding_arg = if defined(interval_padding) && (interval_padding != "")then " --interval-padding " else ""
+    String interval_list_arg = if defined(interval_list) then " -L " else ""
+    String contamination_arg = if defined(contamination) then " --contamination " else ""
+    String interval_padding_arg = if defined(interval_padding) then " --interval-padding " else ""
 
     String index_format = if sub(out_file_name, ".*\\.", "") == "vcf" then "idx" else "tbi"
 
