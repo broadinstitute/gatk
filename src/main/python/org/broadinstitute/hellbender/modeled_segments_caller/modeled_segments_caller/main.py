@@ -1069,7 +1069,7 @@ class ModeledSegmentsCaller:
     def __find_1D_clusters(self, data, interactive_image_filename: str):
         """Looks for clusters in 1D data by taking a Gaussian kernel density estimation of the data
            and finding the local minima of the density. The width of the Gaussian is chosen automatically,
-           based on the data.
+           based on the data if self.__copy_ratio_kernel_density_bandwidth is set to a negative value.
         """
 
         def __find_extremal_indices(myArray):
@@ -1092,80 +1092,103 @@ class ModeledSegmentsCaller:
                     minimum_indices.append(i)
             return minimum_indices
 
-        # Estimate the bandwidth of the Gaussians used for density estimation: we fit a set of Gaussians
-        # to the data and take the standard deviation of the smallest peak as the bandwidth
-        n_peaks, _, _, _ = self.__estimate_number_of_cr_clusters(data,
-                                                                 max_n_Gaussians = self.__max_n_peaks_in_copy_ratio,
-                                                                 alpha = 0.1,
-                                                                 min_std_dev = 0.05)
-        n_peaks, w_peaks, mu_peaks, sd_peaks = self.__estimate_number_of_cr_clusters(data,
-                                                                                     max_n_Gaussians = n_peaks + 2,
-                                                                                     alpha = 0.1, min_std_dev = 0.05)
-        ind = self.__indices_increasing_order(list(mu_peaks))
-        if self.__copy_ratio_kernel_density_bandwidth == None:
-            if len(sd_peaks) == 1:
-                bandwidth = 0.5 * sd_peaks[ind[0]]
-            else:
-                bandwidth = 0.5 * min([sd_peaks[ind[0]], sd_peaks[ind[1]]])
-            bandwidth = max([bandwidth, 0.015])
-        else:
+        def __find_cluster_separators(dataArray, gaussianKernelBandwidth, plotFigure=False, image_filename="no_image.png"):
+            # Convolve the data with a Gaussian kernel ("Gaussian kernel density estimation")
+            data_transposed = np.array(dataArray)[:, np.newaxis]
+            x = np.linspace(min(0, min(dataArray)), max(5, max(dataArray)), 1000)[:, np.newaxis]
+            kde = KernelDensity(kernel='gaussian', bandwidth=gaussianKernelBandwidth).fit(data_transposed)
+            k_density = np.exp(kde.score_samples(x))
+
+            extremal_indices = __find_extremal_indices(k_density)
+            extremal_indices.append(0)
+            extremal_indices.append(len(k_density)-1)
+            extremal_indices.sort()
+
+            # Filter out indices corresponding to small fluctuations only
+            scale = max(k_density) - min(k_density)
+            threshold = scale * self.__copy_ratio_peak_min_relative_height
+            filtered_extremal_indices = []
+            if len(extremal_indices) > 0:
+                last_value = k_density[extremal_indices[0]]
+                filtered_extremal_indices = [extremal_indices[0]]
+                for i in range(1, len(extremal_indices)):
+                    if abs(last_value - k_density[extremal_indices[i]]) >= threshold:
+                        filtered_extremal_indices.append(extremal_indices[i])
+                        last_value = k_density[extremal_indices[i]]
+
+            filtered_extremal_values = [k_density[i] for i in filtered_extremal_indices]
+            filered_minimum_indices = __find_minimum_indices(filtered_extremal_values)
+            _cluster_separators = [x[filtered_extremal_indices[i]] for i in filered_minimum_indices]
+
+            if plotFigure:
+                fig = plt.figure(2, dpi=400)
+
+                plt.subplot(211)
+                plt.plot(x, k_density, '-')
+                plt.plot(cluster_separators, np.zeros(len(cluster_separators)), 'r*')
+                plt.xlim(0, 5)
+                plt.ylabel('Kernel density')
+
+                plt.subplot(212)
+                plt.hist(data, density=1, bins=200)
+                plt.plot(cluster_separators, np.zeros(len(cluster_separators)), 'r*')
+                plt.xlim(0, 5)
+                plt.xlabel('Copy ratio')
+                plt.ylabel('Histogram and clusters')
+                plt.savefig(image_filename)
+                plt.close(fig)
+            return _cluster_separators
+
+        def __get_1D_cluster_info(dataArray, separators):
+            if separators is None or len(separators) == 0:
+                _n_peaks = 1
+                _mu_peaks = [np.mean(dataArray)]
+                _sd_peaks = [np.std(dataArray)]
+                return _n_peaks, _mu_peaks, _sd_peaks
+
+            separators = list(separators).sort()
+            _n_peaks=len(separators) + 1
+            data_groups = [] * _n_peaks
+            for d in data_groups:
+                appended=False
+                for _i in len(separators):
+                    if d >= separators[_i]:
+                        data_groups[_i].append(d)
+                        appended=True
+                        break
+                if not appended:
+                    data_groups[-1].append(d)
+            _mu_peaks = [0] * _n_peaks
+            _sd_peaks = [0] * _n_peaks
+            for _i in range(_n_peaks):
+                if len(data_groups[_i]) > 0:
+                    _mu_peaks[_i] = np.mean(data_groups[_i])
+                    _sd_peaks[_i] = np.std(data_groups[_i])
+                else:
+                    if _i == 0:
+                        _mu_peaks[_i] = 0.5 * separators[0]
+                    elif _i == n_peaks:
+                        _mu_peaks[_i] = separators[-1] + 0.5
+                    else:
+                        _mu_peaks[_i] = 0.5 * (separators[_i-1] + separators[_i])
+
+            return _n_peaks, _mu_peaks, _sd_peaks
+
+        if self.__copy_ratio_kernel_density_bandwidth > 0.:
             bandwidth = self.__copy_ratio_kernel_density_bandwidth
+        else:
+            cluster_separators = __find_cluster_separators(dataArray=data, gaussianKernelBandwidth=0.005)
+            _, _, sd_peaks = __get_1D_cluster_info(dataArray=data, separators=cluster_separators)
+            if len(sd_peaks) == 1:
+                bandwidth = 0.5 * sd_peaks[0]
+            else:
+                bandwidth = 0.5 * min([sd_peaks[0], sd_peaks[1]])
+            bandwidth = max([bandwidth, 0.005])
 
-        # Convolve the data with a Gaussian kernel ("Gaussian kernel density estimation")
-        dataTransposed = np.array(data)[:, np.newaxis]
-        x = np.linspace(min(0, min(data)), max(5, max(data)), 1000)[:, np.newaxis]
-        kde = KernelDensity(kernel='gaussian', bandwidth=bandwidth).fit(dataTransposed)
-        kDensity = np.exp(kde.score_samples(x))
-
-        extremal_indices = __find_extremal_indices(kDensity)
-        extremal_indices.append(0)
-        extremal_indices.append(len(kDensity)-1)
-        extremal_indices.sort()
-
-        # Filter out indices corresponding to small fluctuations only
-        scale = max(kDensity) - min(kDensity)
-        threshold = scale * self.__copy_ratio_peak_min_relative_height
-        filtered_extremal_indices = []
-        if len(extremal_indices) > 0:
-            last_value = kDensity[extremal_indices[0]]
-            filtered_extremal_indices = [extremal_indices[0]]
-            for i in range(1, len(extremal_indices)):
-                if abs(last_value - kDensity[extremal_indices[i]]) >= threshold:
-                    filtered_extremal_indices.append(extremal_indices[i])
-                    last_value = kDensity[extremal_indices[i]]
-
-        filtered_extremal_values = [kDensity[i] for i in filtered_extremal_indices]
-        filered_minimum_indices = __find_minimum_indices(filtered_extremal_values)
-        cluster_separators = [x[filtered_extremal_indices[i]] for i in filered_minimum_indices]
-
-        if self.__interactive:
-            xPlot = np.linspace(0, 5, 1000)
-            fig = plt.figure(3, dpi=400)
-            plt.subplot(311)
-            cols = ["r", "m", "c", "k", "y"]
-            plt.hist(self.__copy_ratio_median, weights=np.array(self.__weights), density=1, bins=200)
-            for i in range(len(w_peaks)):
-                y = [0] * len(xPlot)
-                rv = multivariate_normal(mu_peaks[i], sd_peaks[i]**2)
-                y = w_peaks[i] * rv.pdf(xPlot)
-                plt.plot(xPlot, y, cols[i % len(cols)])
-            plt.xlim(0, 5)
-            plt.ylabel('Copy ratio medians with weights')
-
-            plt.subplot(312)
-            plt.plot(x, kDensity, '-')
-            plt.plot(cluster_separators, np.zeros(len(cluster_separators)), 'r*')
-            plt.xlim(0, 5)
-            plt.ylabel('Kernel density')
-
-            plt.subplot(313)
-            plt.hist(data, density=1, bins=200)
-            plt.plot(cluster_separators, np.zeros(len(cluster_separators)), 'r*')
-            plt.xlim(0, 5)
-            plt.xlabel('Copy ratio')
-            plt.ylabel('Histogram and clusters')
-            plt.savefig(interactive_image_filename)
-            plt.close(fig)
+        cluster_separators = __find_cluster_separators(dataArray=data, gaussianKernelBandwidth=bandwidth,
+                                                       plotFigure=self.__interactive,
+                                                       image_filename=interactive_image_filename)
+        n_peaks, mu_peaks, sd_peaks = __get_1D_cluster_info(dataArray=data, separators=cluster_separators)
 
         return cluster_separators
 
