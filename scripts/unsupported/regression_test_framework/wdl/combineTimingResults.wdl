@@ -58,7 +58,7 @@ task CombineTimingTask {
         NAMES=(${sep=" " timing_names} )
 
         for ((i=0; i<${num_files}; i++)); do
-            printf "%s\n$s\n" ${dollar}{NAMES[i]} `cat ${dollar}{FILES[i]}`
+            printf "%s\n$s\n" ${dollar}{NAMES[i]} `cat ${dollar}{FILES[i]}` >> ${output_name}
         done
     >>>
 
