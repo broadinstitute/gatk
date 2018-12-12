@@ -109,42 +109,58 @@ public class Mutect2FilteringEngine {
     }
 
     private void applyBaseQualityFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final FilterResult filterResult) {
-        final int[] baseQualityByAllele = getIntArrayTumorField(vc, BaseQuality.KEY);
+        if (!vc.hasAttribute(BaseQuality.KEY)) {
+            return;
+        }
+
+        final List<Integer> baseQualityByAllele = vc.getAttributeAsIntList(BaseQuality.KEY, 0);
         final double[] tumorLods = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.TUMOR_LOD_KEY);
         final int indexOfMaxTumorLod = MathUtils.maxElementIndex(tumorLods);
 
-        if (baseQualityByAllele != null && baseQualityByAllele[indexOfMaxTumorLod + 1] < MTFAC.minMedianBaseQuality) {
+        if (baseQualityByAllele.get(indexOfMaxTumorLod + 1) < MTFAC.minMedianBaseQuality) {
             filterResult.addFilter(GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME);
         }
     }
 
     private void applyMappingQualityFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final FilterResult filterResult) {
+        if (!vc.hasAttribute(MappingQuality.KEY)) {
+            return;
+        }
+
         final List<Integer> indelLengths = vc.getIndelLengths();
         final int indelLength = indelLengths == null ? 0 : indelLengths.stream().mapToInt(Math::abs).max().orElseGet(() -> 0);
-        final int[] mappingQualityByAllele = getIntArrayTumorField(vc, MappingQuality.KEY);
+        final List<Integer> mappingQualityByAllele = vc.getAttributeAsIntList(MappingQuality.KEY, 0);
 
         // we use the mapping quality annotation of the alt allele in most cases, but for long indels we use the reference
         // annotation.  We have to do this because the indel, even if it maps uniquely, gets a poor mapping quality
         // by virtue of its mismatch.  The reference mapping quality is a decent proxy for the region's mappability.
-        if (mappingQualityByAllele != null && mappingQualityByAllele[indelLength < MTFAC.longIndelLength ? 1 : 0] < MTFAC.minMedianMappingQuality) {
+        if (mappingQualityByAllele.get(indelLength < MTFAC.longIndelLength ? 1 : 0) < MTFAC.minMedianMappingQuality) {
             filterResult.addFilter(GATKVCFConstants.MEDIAN_MAPPING_QUALITY_FILTER_NAME);
         }
     }
 
     private void applyMedianFragmentLengthDifferenceFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final FilterResult filterResult) {
-        final int[] fragmentLengthByAllele = getIntArrayTumorField(vc, FragmentLength.KEY);
-        if (fragmentLengthByAllele != null && Math.abs(fragmentLengthByAllele[1] - fragmentLengthByAllele[0]) > MTFAC.maxMedianFragmentLengthDifference) {
+        if (!vc.hasAttribute(FragmentLength.KEY)) {
+            return;
+        }
+
+        final List<Integer> fragmentLengthByAllele = vc.getAttributeAsIntList(FragmentLength.KEY, 0);
+
+        if (Math.abs(fragmentLengthByAllele.get(1) - fragmentLengthByAllele.get(0)) > MTFAC.maxMedianFragmentLengthDifference) {
             filterResult.addFilter(GATKVCFConstants.MEDIAN_FRAGMENT_LENGTH_DIFFERENCE_FILTER_NAME);
         }
     }
 
     private void applyReadPositionFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final FilterResult filterResult) {
-        final int[] readPositionByAllele = getIntArrayTumorField(vc, ReadPosition.KEY);
-        if (readPositionByAllele != null) {
-            // a negative value is possible due to a bug: https://github.com/broadinstitute/gatk/issues/5492
-            if (readPositionByAllele[0] > -1 && readPositionByAllele[0] < MTFAC.minMedianReadPosition) {
-                filterResult.addFilter(GATKVCFConstants.READ_POSITION_FILTER_NAME);
-            }
+        if (!vc.hasAttribute(ReadPosition.KEY)) {
+            return;
+        }
+
+        final List<Integer> readPositionByAllele = vc.getAttributeAsIntList(ReadPosition.KEY, 0);
+
+        // a negative value is possible due to a bug: https://github.com/broadinstitute/gatk/issues/5492
+        if (readPositionByAllele.get(0) > -1 && readPositionByAllele.get(0) < MTFAC.minMedianReadPosition) {
+            filterResult.addFilter(GATKVCFConstants.READ_POSITION_FILTER_NAME);
         }
     }
 

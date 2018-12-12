@@ -65,10 +65,9 @@ public class ReadPositionUnitTest extends GATKBaseTest {
         final ReadPosition rp = new ReadPosition();
         final GenotypeBuilder gb = new GenotypeBuilder(DUMMY_GENOTYPE);
 
-        rp.annotate(null, vc, DUMMY_GENOTYPE, gb, likelihoods);
-        final Genotype g = gb.make();
+        final Map<String, Object> annotation = rp.annotate(null, vc, likelihoods);
 
-        final int[] medianAltPositions = (int[]) g.getExtendedAttribute(ReadPosition.KEY);
+        final int[] medianAltPositions = (int[]) annotation.get(ReadPosition.KEY);
 
         Assert.assertEquals(medianAltPositions[0], 1);
     }
