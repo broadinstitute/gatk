@@ -240,9 +240,6 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
     private void addGenotypes(final LikelihoodMatrix<Allele> tumorLog10Matrix,
                               final Optional<LikelihoodMatrix<Allele>> normalLog10Matrix,
                               final VariantContextBuilder callVcb) {
-        final double[] tumorAlleleCounts = getEffectiveCounts(tumorLog10Matrix);
-        final int[] adArray = Arrays.stream(tumorAlleleCounts).mapToInt(x -> (int) FastMath.round(x)).toArray();
-        final int dp = (int) MathUtils.sum(adArray);
         final GenotypeBuilder gb = new GenotypeBuilder(tumorSample, tumorLog10Matrix.alleles());
         final double[] flatPriorPseudocounts = new IndexRange(0, tumorLog10Matrix.numberOfAlleles()).mapToDouble(n -> 1);
         final double[] alleleFractionsPosterior = tumorLog10Matrix.numberOfReads() == 0 ? flatPriorPseudocounts :
