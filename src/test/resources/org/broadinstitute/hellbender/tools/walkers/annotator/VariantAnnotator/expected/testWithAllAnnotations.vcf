@@ -12,14 +12,14 @@
 ##FORMAT=<ID=MMQ,Number=R,Type=Integer,Description="median mapping quality">
 ##FORMAT=<ID=MPOS,Number=A,Type=Integer,Description="median distance from end of read">
 ##FORMAT=<ID=NCount,Number=1,Type=Integer,Description="Counts Ns at site">
-##FORMAT=<ID=ORIGINAL_CONTIG_MISMATCH,Number=1,Type=Integer,Description="Number of alt reads whose original alignment doesn't match the current contig.">
+##FORMAT=<ID=NUMT,Number=1,Type=String,Description="Potentially a polymorphic NuMT false positive rather than a real mitochondrial variant.">
+##FORMAT=<ID=OCM,Number=1,Type=Integer,Description="Number of alt reads whose original alignment doesn't match the current contig.">
 ##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
-##FORMAT=<ID=POTENTIAL_POLYMORPHIC_NUMT,Number=1,Type=String,Description="Potentially a polymorphic NuMT false positive rather than a real mitochondrial variant.">
 ##FORMAT=<ID=P_PRIOR_RO,Number=1,Type=Float,Description="prior probability of read orientation-based artifacts under the present referene context">
 ##FORMAT=<ID=P_RO,Number=1,Type=Float,Description="posterior probability of read orientation-based artifacts">
 ##FORMAT=<ID=ROF_TYPE,Number=1,Type=String,Description="type of read orientation artifact (F1R2 or F2R1)">
-##FORMAT=<ID=SA_MAP_AF,Number=3,Type=Float,Description="MAP estimates of allele fraction given z">
-##FORMAT=<ID=SA_POST_PROB,Number=3,Type=Float,Description="posterior probabilities of the presence of strand artifact">
+##FORMAT=<ID=SAAF,Number=3,Type=Float,Description="MAP estimates of allele fraction given z">
+##FORMAT=<ID=SAPP,Number=3,Type=Float,Description="posterior probabilities of the presence of strand artifact">
 ##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fisher's Exact Test to detect strand bias.">
 ##FORMAT=<ID=UNIQ_ALT_READ_COUNT,Number=1,Type=Integer,Description="Number of ALT reads with unique start and mate end positions at a variant site">
 ##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">

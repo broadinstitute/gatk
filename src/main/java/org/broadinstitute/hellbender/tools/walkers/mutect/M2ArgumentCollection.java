@@ -36,10 +36,9 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public static final String MAX_MNP_DISTANCE_SHORT_NAME = "mnp-dist";
     public static final String IGNORE_ITR_ARTIFACTS_LONG_NAME = "ignore-itr-artifacts";
     public static final String ARTIFACT_PRIOR_TABLE_NAME = "orientation-bias-artifact-priors";
-    public static final String GET_AF_FROM_AD_LONG_NAME = "get-af-from-ad";
     public static final String ANNOTATE_BASED_ON_READS_LONG_NAME = "count-reads";
     public static final String MEDIAN_AUTOSOMAL_COVERAGE_LONG_NAME = "median-autosomal-coverage";
-    public static final String MITOCHONDIRA_MODE_LONG_NAME = "mitochondria-mode";
+    public static final String MITOCHONDRIA_MODE_LONG_NAME = "mitochondria-mode";
 
     public static final double DEFAULT_AF_FOR_TUMOR_ONLY_CALLING = 5e-8;
     public static final double DEFAULT_AF_FOR_TUMOR_NORMAL_CALLING = 1e-6;
@@ -114,7 +113,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      * --tumor-sample is also not explicitly required in mitochondria mode since a single sample bam is expected as input.
      * Mitochondria mode is also required in FilterMutectCalls if used here.
      */
-    @Argument(fullName = MITOCHONDIRA_MODE_LONG_NAME, optional = true, doc="Mitochondria mode sets emission and initial LODs to 0.")
+    @Argument(fullName = MITOCHONDRIA_MODE_LONG_NAME, optional = true, doc="Mitochondria mode sets emission and initial LODs to 0.")
     public Boolean mitochondria = false;
 
     /**
@@ -192,10 +191,6 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      */
     @Argument(fullName= IGNORE_ITR_ARTIFACTS_LONG_NAME, doc="Turn off read transformer that clips artifacts associated with end repair insertions near inverted tandem repeats.", optional = true)
     public boolean dontClipITRArtifacts = false;
-
-    @Advanced
-    @Argument(fullName = GET_AF_FROM_AD_LONG_NAME, doc="Use allelic depth to calculate tumor allele fraction; recommended for mitochondrial applications", optional = true)
-    public boolean calculateAFfromAD = false;
 
     /**
      * If set to true, count an overlapping read pair as two separate reads instead of one for {@link StrandArtifact} and {@link StrandBiasBySample} annotations,

@@ -152,15 +152,16 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
             final Optional<LikelihoodMatrix<Allele>> subsettedLog10NormalMatrix =
                     getForNormal(() -> new SubsettedLikelihoodMatrix<>(log10NormalMatrix.get(), allAllelesToEmit));
 
-            final Map<String, Object> populationAFAnnotation = GermlineProbabilityCalculator.getPopulationAFAnnotation(featureContext.getValues(MTAC.germlineResource, loc), tumorAltAlleles, MTAC.getDefaultAlleleFrequency());
+            final Map<String, Object> negativeLog10PopulationAFAnnotation = GermlineProbabilityCalculator.getNegativeLog10PopulationAFAnnotation(featureContext.getValues(MTAC.germlineResource, loc), tumorAltAlleles, MTAC.getDefaultAlleleFrequency());
 
             final VariantContextBuilder callVcb = new VariantContextBuilder(mergedVC)
                     .alleles(allAllelesToEmit)
-                    .attributes(populationAFAnnotation)
+                    .attributes(negativeLog10PopulationAFAnnotation)
                     .attribute(GATKVCFConstants.TUMOR_LOD_KEY, tumorAltAlleles.stream().mapToDouble(tumorLog10Odds::getAlt).toArray());
 
+            normalArtifactLog10Odds.ifPresent(values -> callVcb.attribute(GATKVCFConstants.NORMAL_ARTIFACT_LOD_ATTRIBUTE, Arrays.stream(values.asDoubleArray(tumorAltAlleles)).map(x->-x).toArray()));
+
             normalLog10Odds.ifPresent(values -> callVcb.attribute(GATKVCFConstants.NORMAL_LOD_KEY, values.asDoubleArray(tumorAltAlleles)));
-            normalArtifactLog10Odds.ifPresent(values -> callVcb.attribute(GATKVCFConstants.NORMAL_ARTIFACT_LOD_ATTRIBUTE, values.asDoubleArray(tumorAltAlleles)));
 
             if (!featureContext.getValues(MTAC.pon, mergedVC.getStart()).isEmpty()) {
                 callVcb.attribute(GATKVCFConstants.IN_PON_VCF_ATTRIBUTE, true);
@@ -190,17 +191,6 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
                 .map(vc -> new VariantContextBuilder(vc).attribute(GATKVCFConstants.EVENT_COUNT_IN_HAPLOTYPE_KEY, eventCount).make())
                 .collect(Collectors.toList());
         return new CalledHaplotypes(outputCallsWithEventCountAnnotation, calledHaplotypes);
-    }
-
-    public CalledHaplotypes callMutations(
-            final ReadLikelihoods<Haplotype> log10ReadLikelihoods,
-            final AssemblyResultSet assemblyResultSet,
-            final ReferenceContext referenceContext,
-            final SimpleInterval activeRegionWindow,
-            final FeatureContext featureContext,
-            final List<VariantContext> givenAlleles,
-            final SAMFileHeader header) {
-        return callMutations(log10ReadLikelihoods,assemblyResultSet, referenceContext, activeRegionWindow, featureContext, givenAlleles, header, false);
     }
 
     private Set<Allele> getAllelesConsistentWithGivenAlleles(List<VariantContext> givenAlleles, int loc, VariantContext mergedVC) {
@@ -250,18 +240,13 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
     private void addGenotypes(final LikelihoodMatrix<Allele> tumorLog10Matrix,
                               final Optional<LikelihoodMatrix<Allele>> normalLog10Matrix,
                               final VariantContextBuilder callVcb) {
-        final double[] tumorAlleleCounts = getEffectiveCounts(tumorLog10Matrix);
-        final int[] adArray = Arrays.stream(tumorAlleleCounts).mapToInt(x -> (int) FastMath.round(x)).toArray();
-        final int dp = (int) MathUtils.sum(adArray);
         final GenotypeBuilder gb = new GenotypeBuilder(tumorSample, tumorLog10Matrix.alleles());
         final double[] flatPriorPseudocounts = new IndexRange(0, tumorLog10Matrix.numberOfAlleles()).mapToDouble(n -> 1);
         final double[] alleleFractionsPosterior = tumorLog10Matrix.numberOfReads() == 0 ? flatPriorPseudocounts :
                 SomaticLikelihoodsEngine.alleleFractionsPosterior(getAsRealMatrix(tumorLog10Matrix), flatPriorPseudocounts);
-        if (!MTAC.calculateAFfromAD) {
-            // Use mean of the allele fraction posterior distribution
-            double[] tumorAlleleFractionsMean = MathUtils.normalizeFromRealSpace(alleleFractionsPosterior);
-            gb.attribute(GATKVCFConstants.ALLELE_FRACTION_KEY, Arrays.copyOfRange(tumorAlleleFractionsMean, 1, tumorAlleleFractionsMean.length));
-        }
+        // Use mean of the allele fraction posterior distribution
+        final double[] tumorAlleleFractionsMean = MathUtils.normalizeFromRealSpace(alleleFractionsPosterior);
+        gb.attribute(GATKVCFConstants.ALLELE_FRACTION_KEY, Arrays.copyOfRange(tumorAlleleFractionsMean, 1, tumorAlleleFractionsMean.length));
         final Genotype tumorGenotype = gb.make();
         final List<Genotype> genotypes = new ArrayList<>(Arrays.asList(tumorGenotype));
 
