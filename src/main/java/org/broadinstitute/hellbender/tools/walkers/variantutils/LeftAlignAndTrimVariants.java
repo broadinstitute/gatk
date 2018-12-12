@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.variantutils;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
@@ -16,7 +17,6 @@ import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantWalker;
-import org.broadinstitute.hellbender.tools.walkers.annotator.ChromosomeCounts;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
@@ -122,6 +122,12 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
     public static final String SPLIT_MULTIALLELEICS_LONG_NAME = "split-multi-allelics";
     public static final String KEEP_ORIGINAL_AC_LONG_NAME = "keep-original-ac";
     public static final String MAX_INDEL_LENGTH_LONG_NAME = "max-indel-length";
+
+    private static final int DEFAULT_MAX_LEADING_BASES= 1000;
+
+    @VisibleForTesting
+    static final int DEFAULT_MAX_INDEL_SIZE = 200;
+
     public static final String MAX_LEADING_BASES_LONG_NAME = "max-leading-bases";
     /**
      * Output file to which to write left aligned variants
@@ -155,26 +161,28 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
      * Maximum indel size to realign.  Indels larger than this will be left unadjusted.
      */
     @Argument(fullName = MAX_INDEL_LENGTH_LONG_NAME, doc = "Set maximum indel size to realign", optional = true)
-    protected static int maxIndelSize = 200;
+    protected int maxIndelSize = DEFAULT_MAX_INDEL_SIZE;
 
     /**
      * Distance in reference to look back before allele
      */
     @Argument(fullName = MAX_LEADING_BASES_LONG_NAME, doc = "Set max reference window size to look back before allele", optional = true)
-    protected static int maxLeadingBases = 1000;
+    protected int maxLeadingBases = DEFAULT_MAX_LEADING_BASES;
 
     @Hidden
     @Argument(fullName = "suppress-reference-path", optional = true,
             doc = "Suppress reference path in output for test result differencing")
     private boolean suppressReferencePath = false;
 
-    protected VariantContextWriter vcfWriter = null;
-    protected int numRealignedVariants;
-    protected int numVariantsSplit;
-    protected int numVariantsSplitTo;
-    protected int numVariantsTrimmed;
-    protected int numSkippedForLength;
-    protected int longestSkippedVariant;
+    private VariantContextWriter vcfWriter = null;
+    private int numRealignedVariants;
+    private int numVariantsSplit;
+    private int numVariantsSplitTo;
+    private int numVariantsTrimmed;
+    @VisibleForTesting
+    int numSkippedForLength;
+    @VisibleForTesting
+    int longestSkippedVariant;
     private int furthestEndOfEarlierVariant;
     private String currentContig;
 
