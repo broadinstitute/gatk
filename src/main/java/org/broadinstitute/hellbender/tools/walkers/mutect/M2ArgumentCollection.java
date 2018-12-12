@@ -36,7 +36,6 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public static final String MAX_MNP_DISTANCE_SHORT_NAME = "mnp-dist";
     public static final String IGNORE_ITR_ARTIFACTS_LONG_NAME = "ignore-itr-artifacts";
     public static final String ARTIFACT_PRIOR_TABLE_NAME = "orientation-bias-artifact-priors";
-    public static final String GET_AF_FROM_AD_LONG_NAME = "get-af-from-ad";
     public static final String ANNOTATE_BASED_ON_READS_LONG_NAME = "count-reads";
     public static final String MEDIAN_AUTOSOMAL_COVERAGE_LONG_NAME = "median-autosomal-coverage";
     public static final String MITOCHONDRIA_MODE_LONG_NAME = "mitochondria-mode";
