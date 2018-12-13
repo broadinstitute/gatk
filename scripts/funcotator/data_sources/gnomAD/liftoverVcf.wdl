@@ -273,13 +273,15 @@ task LiftoverVcfTask {
  }
 
 task MergeVcfsTask {
-     # inputs
+
+    # ------------------------------------------------
+    # Input args:
      Array[File] input_vcfs
 
-     # outputs
+     # Output Names:
      String output_vcf_file
 
-     # runtime
+     # Runtime Options:
      String gatk_docker
      File? gatk_override
      Int? mem
@@ -288,19 +290,27 @@ task MergeVcfsTask {
      Int? cpu
      Int? boot_disk_size_gb
 
-     Boolean use_ssd = false
+    # ------------------------------------------------
+    # Process input args:
+    String timing_output_file = basename(out_file_name) + ".timingInformation.txt"
 
-     # You may have to change the following two parameter values depending on the task requirements
-     Int default_ram_mb = 3000
-     # WARNING: In the workflow, you should calculate the disk space as an input to this task (disk_space_gb).  Please see [TODO: Link from Jose] for examples.
-     Int default_disk_space_gb = 100
+    # ------------------------------------------------
+    # Get machine settings:
+    Boolean use_ssd = false
 
-     Int default_boot_disk_size_gb = 15
+    # You may have to change the following two parameter values depending on the task requirements
+    Int default_ram_mb = 3 * 1024
+    # WARNING: In the workflow, you should calculate the disk space as an input to this task (disk_space_gb).  Please see [TODO: Link from Jose] for examples.
+    Int default_disk_space_gb = 100
 
-     # Mem is in units of GB but our command and memory runtime values are in MB
-     Int machine_mem = if defined(mem) then mem *1000 else default_ram_mb
-     Int command_mem = machine_mem - 1000
+    Int default_boot_disk_size_gb = 15
 
+    # Mem is in units of GB but our command and memory runtime values are in MB
+    Int machine_mem = if defined(mem) then mem * 1024 else default_ram_mb
+    Int command_mem = machine_mem - 1024
+
+    # ------------------------------------------------
+    # Run our command:
      command <<<
          set -e
          export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
@@ -319,6 +329,8 @@ task MergeVcfsTask {
         echo "Elapsed Time: $elapsedTime" >> timingInformation.txt
      >>>
 
+    # ------------------------------------------------
+    # Runtime settings:
      runtime {
          docker: gatk_docker
          memory: machine_mem + " MB"
@@ -328,8 +340,11 @@ task MergeVcfsTask {
          cpu: select_first([cpu, 1])
      }
 
+    # ------------------------------------------------
+    # Outputs:
      output {
          File vcf_file = "${output_vcf_file}"
+         File timing_info = timing_output_file
      }
  }
 
