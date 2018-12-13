@@ -1,4 +1,4 @@
-# Run IndexFeatureFile on a VCF file. 
+# Run IndexFeatureFile on an array of VCF files.
 #
 # Description of inputs:
 #

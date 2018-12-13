@@ -1,5 +1,7 @@
 # Create a TSV containing genomic position, dbSNP ID, alleles, and the allele frequency from v2.1 of gnomAD (hg19/b37).
 #
+# NOTE: This will by default download all of gnomAD to disk.  This is a big file, so be careful!
+#
 # Description of inputs:
 #
 #   Required:
@@ -45,7 +47,7 @@ workflow CreateGnomadAlleleFreqTsv {
     }
 
     output {
-        File vcf_file = CreateGnomadAlleleFreqTsvTask.tsvOut
+        File gnomadAlleleFreqTsv = CreateGnomadAlleleFreqTsvTask.gnomadAlleleFreqTsv
     }
 }
 
@@ -77,7 +79,6 @@ task CreateGnomadAlleleFreqTsvTask {
 
      # Mem is in units of GB but our command and memory runtime values are in MB
      Int machine_mem = if defined(mem_gb) then mem_gb * 1024 else default_ram_mb
-     Int command_mem = machine_mem - 1024
 
      # ------------------------------------------------
      # Run our command:
@@ -109,6 +110,6 @@ task CreateGnomadAlleleFreqTsvTask {
      # ------------------------------------------------
      # Outputs:
      output {
-         File tsvOut = "${out_file_name}"
+         File gnomadAlleleFreqTsv = "${out_file_name}"
      }
  }

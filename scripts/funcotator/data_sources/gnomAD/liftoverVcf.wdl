@@ -75,8 +75,15 @@ workflow LiftoverVcf {
 
       call IndexFeatureFileTask as IndexContigFiles {
         input:
-          gatk_docker       = gatk_docker,
-          input_vcf         = LiftoverVcfTask.vcf_file
+          input_vcf            = LiftoverVcfTask.vcf_file,
+
+          gatk_docker          = gatk_docker,
+          gatk_override        = gatk4_jar_override,
+          mem                  = mem_gb,
+          preemptible_attempts = preemptible_attempts,
+          disk_space_gb        = disk_space_gb,
+          cpu                  = cpu,
+          boot_disk_size_gb    = boot_disk_size_gb
       }
     }
 
@@ -84,14 +91,28 @@ workflow LiftoverVcf {
     scatter ( vcf_out_pair in [ [LiftoverVcfTask.lifted_over_vcf, lifted_over_vcf_name], [LiftoverVcfTask.lifted_over_rejects_vcf , lifted_over_rejects_vcf_name] ] ) {
       call MergeVcfsTask {
         input:
-          gatk_docker     = gatk_docker,
-          input_vcfs      = vcf_out_pair[0],
-          output_vcf_file = vcf_out_pair[1]
+          input_vcfs           = vcf_out_pair[0],
+          output_vcf_file      = vcf_out_pair[1],
+
+          gatk_docker          = gatk_docker,
+          gatk_override        = gatk4_jar_override,
+          mem                  = mem_gb,
+          preemptible_attempts = preemptible_attempts,
+          disk_space_gb        = disk_space_gb,
+          cpu                  = cpu,
+          boot_disk_size_gb    = boot_disk_size_gb
       }
       call IndexFeatureFileTask {
         input:
-          gatk_docker       = gatk_docker,
-          input_vcf         = MergeVcfsTask.vcf_file
+          input_vcf            = MergeVcfsTask.vcf_file,
+
+          gatk_docker          = gatk_docker,
+          gatk_override        = gatk4_jar_override,
+          mem                  = mem_gb,
+          preemptible_attempts = preemptible_attempts,
+          disk_space_gb        = disk_space_gb,
+          cpu                  = cpu,
+          boot_disk_size_gb    = boot_disk_size_gb
      }
     }
 
@@ -119,23 +140,23 @@ task indexFastaFileTask {
   Int? cpu
   Int? boot_disk_size_gb
 
-     # ------------------------------------------------
-     # Get machine settings:
-     Boolean use_ssd = false
+  # ------------------------------------------------
+  # Get machine settings:
+  Boolean use_ssd = false
 
-     # You may have to change the following two parameter values depending on the task requirements
-     Int default_ram_mb = 1024 * 3 
-     # WARNING: In the workflow, you should calculate the disk space as an input to this task (disk_space_gb).  Please see [TODO: Link from Jose] for examples.
-     Int default_disk_space_gb = 100
+  # You may have to change the following two parameter values depending on the task requirements
+  Int default_ram_mb = 1024 * 3
+  # WARNING: In the workflow, you should calculate the disk space as an input to this task (disk_space_gb).  Please see [TODO: Link from Jose] for examples.
+  Int default_disk_space_gb = 100
 
-     Int default_boot_disk_size_gb = 15
+  Int default_boot_disk_size_gb = 15
 
-     # Mem is in units of GB but our command and memory runtime values are in MB
-     Int machine_mem = if defined(mem) then mem * 1024 else default_ram_mb
-     Int command_mem = machine_mem - 1024
+  # Mem is in units of GB but our command and memory runtime values are in MB
+  Int machine_mem = if defined(mem) then mem * 1024 else default_ram_mb
+  Int command_mem = machine_mem - 1024
 
-     # ------------------------------------------------
-     # Run our command:
+  # ------------------------------------------------
+  # Run our command:
   command <<<
 
     set -e
@@ -144,21 +165,21 @@ task indexFastaFileTask {
   >>>
 
   # ------------------------------------------------
-     # Runtime settings:
-     runtime {
-         docker: gatk_docker
-         memory: machine_mem + " MB"
-         disks: "local-disk " + select_first([disk_space_gb, default_disk_space_gb]) + if use_ssd then " SSD" else " HDD"
-         bootDiskSizeGb: select_first([boot_disk_size_gb, default_boot_disk_size_gb])
-         preemptible: 0
-         cpu: select_first([cpu, 1])
-     }
+  # Runtime settings:
+  runtime {
+      docker: gatk_docker
+      memory: machine_mem + " MB"
+      disks: "local-disk " + select_first([disk_space_gb, default_disk_space_gb]) + if use_ssd then " SSD" else " HDD"
+      bootDiskSizeGb: select_first([boot_disk_size_gb, default_boot_disk_size_gb])
+      preemptible: 0
+      cpu: select_first([cpu, 1])
+  }
 
-     # ------------------------------------------------
-     # Outputs:
-     output {
-         File vcf_index         = "${input_fasta_file}.idx"
-     }
+  # ------------------------------------------------
+  # Outputs:
+  output {
+      File vcf_index         = "${input_fasta_file}.idx"
+  }
 
 }
 
