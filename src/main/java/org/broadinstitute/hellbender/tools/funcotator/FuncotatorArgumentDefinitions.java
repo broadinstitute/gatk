@@ -139,6 +139,7 @@ public class FuncotatorArgumentDefinitions {
             @Override
             public void assertConfigFilePropertiesAreValid(final Properties configFileProperties, final Path configFilePath) {
                 DataSourceUtils.assertConfigPropertiesContainsKey(DataSourceUtils.CONFIG_FILE_FIELD_NAME_GENCODE_FASTA_PATH, configFileProperties, configFilePath);
+                DataSourceUtils.assertConfigPropertiesContainsKey(DataSourceUtils.CONFIG_FILE_FIELD_NAME_NCBI_BUILD_VERSION, configFileProperties, configFilePath);
 
                 // Assert that the path is good:
                 DataSourceUtils.assertPathFilePropertiesField(configFileProperties, DataSourceUtils.CONFIG_FILE_FIELD_NAME_GENCODE_FASTA_PATH, configFilePath);

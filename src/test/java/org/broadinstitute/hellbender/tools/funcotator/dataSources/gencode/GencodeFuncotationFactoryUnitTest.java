@@ -77,7 +77,8 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                 FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE,
                 new HashSet<>(),
                 new LinkedHashMap<>(),
-                createFeatureInputForMuc16Ds(GencodeFuncotationFactory.DEFAULT_NAME));
+                createFeatureInputForMuc16Ds(GencodeFuncotationFactory.DEFAULT_NAME),
+                "TEST");
 
         // Add all to the closeable list:
         autoCloseableList.add( muc16NonBasicFeatureReader );
@@ -716,6 +717,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                             .setTranscriptLength(0)
                             .setVersion(versionString)
                             .setGeneTranscriptType(transcript1.getTranscriptType())
+                            .setNcbiBuild("TEST")
                             .build()
                 },
         };
@@ -1363,7 +1365,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                 GencodeFuncotationFactory.DEFAULT_NAME,
                 FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE,
                 requestedTranscriptIds,
-                new LinkedHashMap<>(), createFeatureInputForMuc16Ds(GencodeFuncotationFactory.DEFAULT_NAME))) {
+                new LinkedHashMap<>(), createFeatureInputForMuc16Ds(GencodeFuncotationFactory.DEFAULT_NAME), "HG19")) {
 
             // Generate our funcotations:
             final List<Feature> featureList = new ArrayList<>();
@@ -1423,8 +1425,9 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                                                                     GencodeFuncotationFactory.DEFAULT_NAME,
                                                                     FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE,
                                                                     new HashSet<>(),
-                                                                    new LinkedHashMap<>(), createFeatureInputForMuc16Ds(GencodeFuncotationFactory.DEFAULT_NAME)
-                                                                    )) {
+                                                                    new LinkedHashMap<>(),
+                                                                    createFeatureInputForMuc16Ds(GencodeFuncotationFactory.DEFAULT_NAME),
+                                                                    "HG19")) {
 
             // Generate our funcotations:
             final List<Feature> featureList = new ArrayList<>();
@@ -1506,7 +1509,8 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                 requestedTranscriptIds,
                 new LinkedHashMap<>(),
                 new FeatureInput<>(transcriptGtfFile, GencodeFuncotationFactory.DEFAULT_NAME, Collections.emptyMap()),
-                flankSettingsForTesting)) {
+                flankSettingsForTesting,
+                "TEST")) {
 
             final List<Feature> featureList = new ArrayList<>();
             featureList.add( gene );
@@ -1622,14 +1626,14 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 
         final GencodeFuncotationBuilder builder =
                 GencodeFuncotationFactory.createGencodeFuncotationBuilderWithTrivialFieldsPopulated(variant, altAllele,
-                        gtfFeature, transcript);
+                        gtfFeature, transcript, "TEST");
         final GencodeFuncotation gf = builder.gencodeFuncotation;
 
         // Ultra-trivial checks:
         Assert.assertEquals( gf.getRefAllele(), variant.getReference().getBaseString() );
         Assert.assertEquals( gf.getTranscriptStrand(), transcript.getGenomicStrand().encode() );
         Assert.assertEquals( gf.getHugoSymbol(), gtfFeature.getGeneName() );
-        Assert.assertEquals( gf.getNcbiBuild(), gtfFeature.getUcscGenomeVersion() );
+        Assert.assertEquals( gf.getNcbiBuild(), "TEST" );
         Assert.assertEquals( gf.getChromosome(), gtfFeature.getChromosomeName() );
         Assert.assertEquals( gf.getStart(), variant.getStart() );
         Assert.assertEquals( gf.getGeneTranscriptType(), transcript.getTranscriptType() );
@@ -1666,7 +1670,8 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                                                        final String dataSourceName,
                                                        final GencodeFuncotation expected) {
 
-        final GencodeFuncotation funcotation = GencodeFuncotationFactory.createDefaultFuncotationsOnProblemVariant(variant, altAllele, gtfFeature, reference, transcript, version, dataSourceName);
+        final GencodeFuncotation funcotation = GencodeFuncotationFactory.createDefaultFuncotationsOnProblemVariant(
+                variant, altAllele, gtfFeature, reference, transcript, version, dataSourceName, "TEST");
         Assert.assertEquals( funcotation, expected );
     }
 
@@ -1835,7 +1840,8 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                 GencodeFuncotationFactory.DEFAULT_NAME,
                 TranscriptSelectionMode.CANONICAL,
                 Collections.emptySet(),
-                new LinkedHashMap<>(), createFeatureInputForCntn4Ds(GencodeFuncotationFactory.DEFAULT_NAME))) {
+                new LinkedHashMap<>(), createFeatureInputForCntn4Ds(GencodeFuncotationFactory.DEFAULT_NAME),
+                "TEST")) {
             final List<Funcotation> gencodeFuncotations = funcotationFactory.createFuncotationsOnVariant(vc, referenceContext, gencodeFeatures);
             Assert.assertEquals(gencodeFuncotations.size(), 1);
         }
@@ -1846,7 +1852,8 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                 GencodeFuncotationFactory.DEFAULT_NAME,
                 TranscriptSelectionMode.BEST_EFFECT,
                 Collections.emptySet(),
-                new LinkedHashMap<>(), createFeatureInputForCntn4Ds(GencodeFuncotationFactory.DEFAULT_NAME))) {
+                new LinkedHashMap<>(), createFeatureInputForCntn4Ds(GencodeFuncotationFactory.DEFAULT_NAME),
+                "TEST")) {
             final List<Funcotation> gencodeFuncotations = funcotationFactory.createFuncotationsOnVariant(vc, referenceContext, gencodeFeatures);
             Assert.assertEquals(gencodeFuncotations.size(), 1);
         }
@@ -1857,7 +1864,8 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                 GencodeFuncotationFactory.DEFAULT_NAME,
                 TranscriptSelectionMode.ALL,
                 Collections.emptySet(),
-                new LinkedHashMap<>(), createFeatureInputForCntn4Ds(GencodeFuncotationFactory.DEFAULT_NAME))) {
+                new LinkedHashMap<>(), createFeatureInputForCntn4Ds(GencodeFuncotationFactory.DEFAULT_NAME),
+                "TEST")) {
             final List<Funcotation> gencodeFuncotations = funcotationFactory.createFuncotationsOnVariant(vc, referenceContext, gencodeFeatures);
             Assert.assertTrue(gencodeFuncotations.size() > 1);
         }
@@ -2478,7 +2486,8 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                 Collections.emptySet(),
                 new LinkedHashMap<>(),
                 gencodeFeatureInput,
-                new FlankSettings(fivePrimeFlankSize,threePrimeFlankSize))) {
+                new FlankSettings(fivePrimeFlankSize,threePrimeFlankSize),
+                "TEST")) {
 
             // We test against createFuncotations() rather than createFuncotationsOnVariant() here because
             // the flanking feature relies on the query done in createFuncotations(), and we need to test

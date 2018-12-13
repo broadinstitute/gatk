@@ -181,7 +181,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
     /**
      * The ncbiBuildVersion for this {@link GencodeFuncotationFactory}.
-     * Note: This is lazily cached.  It will be cached when first {@link GencodeGtfFeature} is received.
+     * Note: This value is passed in at construction time.
      */
     private String ncbiBuildVersion = null;
 
@@ -209,6 +209,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      * @param userRequestedTranscripts A {@link Set<String>} containing Gencode TranscriptIDs that the user requests to be annotated with priority over all other transcripts for overlapping variants.
      * @param annotationOverrides A {@link LinkedHashMap<String, String>} containing user-specified overrides for specific {@link Funcotation}s.
      * @param mainFeatureInput The backing {@link FeatureInput} for this {@link GencodeFuncotationFactory}, from which all {@link Funcotation}s will be created.
+     * @param ncbiBuildVersion The NCBI build version for this {@link GencodeFuncotationFactory} (can be found in the datasource config file)
      */
     public GencodeFuncotationFactory(final Path gencodeTranscriptFastaFilePath,
                                      final String version,
@@ -216,8 +217,9 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                                      final TranscriptSelectionMode transcriptSelectionMode,
                                      final Set<String> userRequestedTranscripts,
                                      final LinkedHashMap<String, String> annotationOverrides,
-                                     final FeatureInput<? extends Feature> mainFeatureInput) {
-        this(gencodeTranscriptFastaFilePath, version, name, transcriptSelectionMode, userRequestedTranscripts, annotationOverrides, mainFeatureInput, new FlankSettings(0, 0));
+                                     final FeatureInput<? extends Feature> mainFeatureInput,
+                                     final String ncbiBuildVersion) {
+        this(gencodeTranscriptFastaFilePath, version, name, transcriptSelectionMode, userRequestedTranscripts, annotationOverrides, mainFeatureInput, new FlankSettings(0, 0), ncbiBuildVersion);
     }
 
     /**
@@ -231,6 +233,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      * @param annotationOverrides A {@link LinkedHashMap<String, String>} containing user-specified overrides for specific {@link Funcotation}s.
      * @param mainFeatureInput The backing {@link FeatureInput} for this {@link GencodeFuncotationFactory}, from which all {@link Funcotation}s will be created.
      * @param flankSettings Settings object containing our 5'/3' flank sizes
+     * @param ncbiBuildVersion The NCBI build version for this {@link GencodeFuncotationFactory} (can be found in the datasource config file)
      */
     public GencodeFuncotationFactory(final Path gencodeTranscriptFastaFilePath,
                                      final String version,
@@ -239,8 +242,9 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                                      final Set<String> userRequestedTranscripts,
                                      final LinkedHashMap<String, String> annotationOverrides,
                                      final FeatureInput<? extends Feature> mainFeatureInput,
-                                     final FlankSettings flankSettings) {
-        this(gencodeTranscriptFastaFilePath, version, name, transcriptSelectionMode, userRequestedTranscripts, annotationOverrides, mainFeatureInput, flankSettings, false);
+                                     final FlankSettings flankSettings,
+                                     final String ncbiBuildVersion) {
+        this(gencodeTranscriptFastaFilePath, version, name, transcriptSelectionMode, userRequestedTranscripts, annotationOverrides, mainFeatureInput, flankSettings, false, ncbiBuildVersion);
     }
 
     /**
@@ -255,6 +259,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      * @param mainFeatureInput The backing {@link FeatureInput} for this {@link GencodeFuncotationFactory}, from which all {@link Funcotation}s will be created.
      * @param flankSettings Settings object containing our 5'/3' flank sizes
      * @param isDataSourceB37 If {@code true}, indicates that the data source behind this {@link GencodeFuncotationFactory} contains B37 data.
+     * @param ncbiBuildVersion The NCBI build version for this {@link GencodeFuncotationFactory} (can be found in the datasource config file)
      */
     public GencodeFuncotationFactory(final Path gencodeTranscriptFastaFilePath,
                                      final String version,
@@ -264,7 +269,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                                      final LinkedHashMap<String, String> annotationOverrides,
                                      final FeatureInput<? extends Feature> mainFeatureInput,
                                      final FlankSettings flankSettings,
-                                     final boolean isDataSourceB37) {
+                                     final boolean isDataSourceB37,
+                                     final String ncbiBuildVersion) {
 
         super(mainFeatureInput);
 
@@ -284,6 +290,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         this.name = name;
 
         this.dataSourceIsB37 = isDataSourceB37;
+
+        this.ncbiBuildVersion = ncbiBuildVersion;
 
         // Go through each requested transcript and remove the version numbers from them if they exist:
         this.userRequestedTranscripts = new HashSet<>();
@@ -713,11 +721,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
         final List<GencodeFuncotation> outputFuncotations = new ArrayList<>();
 
-        // Cache the ncbiBuildVersion:
-        if ( ncbiBuildVersion == null ) {
-            ncbiBuildVersion = gtfFeature.getUcscGenomeVersion();
-        }
-
         final List<GencodeGtfTranscriptFeature> basicTranscripts = gtfFeature.getTranscripts().stream()
                 .filter(GencodeFuncotationFactory::isBasic).collect(Collectors.toList());
 
@@ -765,6 +768,37 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      * @param dataSourceName A {@link String} containing the name of the data source instance.
      * @return A placeholder {@link GencodeFuncotation} for the given {@code variant}.
      */
+    private GencodeFuncotation createDefaultFuncotationsOnProblemVariant( final VariantContext variant,
+                                                                               final Allele altAllele,
+                                                                               final GencodeGtfGeneFeature gtfFeature,
+                                                                               final ReferenceContext reference,
+                                                                               final GencodeGtfTranscriptFeature transcript,
+                                                                               final String version,
+                                                                               final String dataSourceName) {
+        return createDefaultFuncotationsOnProblemVariant(variant, altAllele, gtfFeature, reference, transcript,
+                version, dataSourceName, this.ncbiBuildVersion);
+    }
+
+    /**
+     * Create a placeholder funcotation on a given {@code variant} and {@code allele} pair for a case that funcotator
+     * cannot yet handle, or would currently get wrong.
+     * Primarily this occurs when a variant is long and spans multiple types of {@link GencodeGtfFeature}s
+     * (i.e. it starts in an intron and ends in an exon or visa-versa). or is
+     * long and begins in a transcript and extends beyond a given transcript's end point.
+     * There are two such cases right now as manifested in the following issues:
+     *     https://github.com/broadinstitute/gatk/issues/3749
+     *     https://github.com/broadinstitute/gatk/issues/4307
+     * As noted in the above issues, other functional annotation tools also get these kinds of cases wrong.
+     * @param variant The {@link VariantContext} to annotate.
+     * @param altAllele The alternate {@link Allele} to annotate.
+     * @param gtfFeature The {@link GencodeGtfGeneFeature} overlapping the given {@code variant}.
+     * @param reference The {@link ReferenceContext} for the given {@code variant}.
+     * @param transcript The {@link GencodeGtfTranscriptFeature} which is being used to annotate the given {@code variant}.
+     * @param version A {@link String} representing the version of the {@link GencodeFuncotationFactory} being used to annotate the given {@code variant}.
+     * @param dataSourceName A {@link String} containing the name of the data source instance.
+     * @param ncbiBuildVersion NCBI build version
+     * @return A placeholder {@link GencodeFuncotation} for the given {@code variant}.
+     */
     @VisibleForTesting
     static final GencodeFuncotation createDefaultFuncotationsOnProblemVariant( final VariantContext variant,
                                                                                final Allele altAllele,
@@ -772,9 +806,10 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                                                                                final ReferenceContext reference,
                                                                                final GencodeGtfTranscriptFeature transcript,
                                                                                final String version,
-                                                                               final String dataSourceName) {
+                                                                               final String dataSourceName,
+                                                                               final String ncbiBuildVersion) {
         // Create basic annotation information:
-        final GencodeFuncotationBuilder gencodeFuncotationBuilder = createGencodeFuncotationBuilderWithTrivialFieldsPopulated(variant, altAllele, gtfFeature, transcript);
+        final GencodeFuncotationBuilder gencodeFuncotationBuilder = createGencodeFuncotationBuilderWithTrivialFieldsPopulated(variant, altAllele, gtfFeature, transcript, ncbiBuildVersion);
 
         // Set our version:
         gencodeFuncotationBuilder.setVersion(version);
@@ -2010,17 +2045,36 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
     /**
      * Creates a {@link GencodeFuncotationBuilder} with some of the fields populated.
+     *
      * @param variant The {@link VariantContext} for the current variant.
      * @param altAllele The alternate {@link Allele} we are currently annotating.
      * @param gtfFeature The current {@link GencodeGtfGeneFeature} read from the input feature file.
      * @param transcript The current {@link GencodeGtfTranscriptFeature} containing our {@code alternateAllele}.
      * @return A trivially populated {@link GencodeFuncotationBuilder} object.
      */
+     private GencodeFuncotationBuilder createGencodeFuncotationBuilderWithTrivialFieldsPopulated(final VariantContext variant,
+                                                                                                final Allele altAllele,
+                                                                                                final GencodeGtfGeneFeature gtfFeature,
+                                                                                                final GencodeGtfTranscriptFeature transcript) {
+        return createGencodeFuncotationBuilderWithTrivialFieldsPopulated(variant, altAllele, gtfFeature, transcript, this.ncbiBuildVersion);
+     }
+
+    /**
+     * Creates a {@link GencodeFuncotationBuilder} with some of the fields populated.
+     *
+     * @param variant The {@link VariantContext} for the current variant.
+     * @param altAllele The alternate {@link Allele} we are currently annotating.
+     * @param gtfFeature The current {@link GencodeGtfGeneFeature} read from the input feature file.
+     * @param transcript The current {@link GencodeGtfTranscriptFeature} containing our {@code alternateAllele}.
+     * @param ncbiBuildVersion NCBI build version
+     * @return A trivially populated {@link GencodeFuncotationBuilder} object.
+     */
      @VisibleForTesting
      static GencodeFuncotationBuilder createGencodeFuncotationBuilderWithTrivialFieldsPopulated(final VariantContext variant,
                                                                                                 final Allele altAllele,
                                                                                                 final GencodeGtfGeneFeature gtfFeature,
-                                                                                                final GencodeGtfTranscriptFeature transcript) {
+                                                                                                final GencodeGtfTranscriptFeature transcript,
+                                                                                                final String ncbiBuildVersion) {
 
          //TODO: Add gtfFeature.getGeneType() as an annotation field in the GencodeFuncotation - Issue #4408
 
@@ -2030,7 +2084,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                  .setRefAllele(variant.getReference())
                  .setStrand(transcript.getGenomicStrand())
                  .setHugoSymbol(gtfFeature.getGeneName())
-                 .setNcbiBuild(gtfFeature.getUcscGenomeVersion())
+                 .setNcbiBuild(ncbiBuildVersion)
                  .setChromosome(gtfFeature.getChromosomeName())
                  .setStart(variant.getStart())
                  .setGeneTranscriptType(transcript.getTranscriptType());
@@ -2289,12 +2343,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             funcotationBuilder.setGenomeChange(getGenomeChangeString(variant, altAllele));
         }
 
-        // If we have a cached value for the ncbiBuildVersion, we should add it:
-        // NOTE: This will only be true if we have previously annotated a non-IGR variant.
-        // TODO: This is issue #4404
-        if ( ncbiBuildVersion != null ) {
-            funcotationBuilder.setNcbiBuild( ncbiBuildVersion );
-        }
+        funcotationBuilder.setNcbiBuild(ncbiBuildVersion);
 
         // Set our reference context in the the FuncotatonBuilder:
         funcotationBuilder.setReferenceContext(FuncotatorUtils.createReferenceSnippet(variant.getReference(), altAllele, reference, Strand.POSITIVE, referenceWindow).getBaseString());
@@ -2344,15 +2393,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                 .setAnnotationTranscript(transcript.getTranscriptId())
                 .setReferenceContext(referenceBasesString)
                 .setGcContent(gcContent)
-                .setNcbiBuild(gtfFeature.getUcscGenomeVersion())
+                .setNcbiBuild(ncbiBuildVersion)
                 .setGeneTranscriptType(gtfFeature.getTranscriptType());
-
-        // If we have a cached value for the ncbiBuildVersion, we should add it:
-        // NOTE: This will only be true if we have previously annotated a non-IGR variant.
-        // TODO: This is issue #4404
-        if ( ncbiBuildVersion != null ) {
-            funcotationBuilder.setNcbiBuild( ncbiBuildVersion );
-        }
 
         // Set our version:
         funcotationBuilder.setVersion(version);
@@ -2401,12 +2443,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
         funcotationBuilder.setHugoSymbol( annotationTranscript.getGeneName() );
 
-        // If we have a cached value for the ncbiBuildVersion, we should add it:
-        // NOTE: This will only be true if we have previously annotated a non-IGR variant.
-        // TODO: This is issue #4404
-        if ( ncbiBuildVersion != null ) {
-            funcotationBuilder.setNcbiBuild( ncbiBuildVersion );
-        }
+        funcotationBuilder.setNcbiBuild(ncbiBuildVersion);
 
         final StrandCorrectedReferenceBases referenceBases = FuncotatorUtils.getBasesInWindowAroundReferenceAllele(variant.getReference(), reference, Strand.POSITIVE, referenceWindow);
 
@@ -2467,12 +2504,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
         funcotationBuilder.setHugoSymbol( annotationTranscript.getGeneName() );
 
-        // If we have a cached value for the ncbiBuildVersion, we should add it:
-        // NOTE: This will only be true if we have previously annotated a non-IGR variant.
-        // TODO: This is issue #4404
-        if ( ncbiBuildVersion != null ) {
-            funcotationBuilder.setNcbiBuild( ncbiBuildVersion );
-        }
+        funcotationBuilder.setNcbiBuild(ncbiBuildVersion);
 
         final StrandCorrectedReferenceBases referenceBases = FuncotatorUtils.getBasesInWindowAroundReferenceAllele(variant.getReference(), reference, Strand.POSITIVE, referenceWindow);
 
