@@ -142,7 +142,7 @@ task HaplotypeCallerTask {
     # You may have to change the following two parameter values depending on the task requirements
     Int default_ram_mb = 3 * 1024
     # WARNING: In the workflow, you should calculate the disk space as an input to this task (disk_space_gb).  Please see [TODO: Link from Jose] for examples.
-    Int default_disk_space_gb = 100
+    Int default_disk_space_gb = 400
 
     Int default_boot_disk_size_gb = 15
 
