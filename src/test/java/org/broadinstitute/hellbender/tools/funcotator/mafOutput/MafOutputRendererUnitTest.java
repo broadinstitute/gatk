@@ -133,7 +133,9 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
                 new LinkedHashMap<>(),
                 new LinkedHashMap<>(),
                 new HashSet<>(),
-                referenceVersion, excludedFields
+                referenceVersion,
+                excludedFields,
+                "Unknown"
         );
     }
 

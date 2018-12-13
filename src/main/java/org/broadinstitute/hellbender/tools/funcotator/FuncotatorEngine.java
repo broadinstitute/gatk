@@ -201,13 +201,17 @@ public final class FuncotatorEngine implements AutoCloseable {
         // Set up our output renderer:
         switch (funcotatorArgs.outputFormatType) {
             case MAF:
-                outputRenderer = new MafOutputRenderer(funcotatorArgs.outputFile.toPath(),
+                outputRenderer = new MafOutputRenderer(
+                        funcotatorArgs.outputFile.toPath(),
                         getFuncotationFactories(),
                         headerForVariants,
                         unaccountedForDefaultAnnotations,
                         unaccountedForOverrideAnnotations,
                         defaultToolVcfHeaderLines.stream().map(Object::toString).collect(Collectors.toCollection(LinkedHashSet::new)),
-                        funcotatorArgs.referenceVersion, funcotatorArgs.excludedFields);
+                        funcotatorArgs.referenceVersion,
+                        funcotatorArgs.excludedFields,
+                        gatkToolInstance.getVersion()
+                );
                 break;
 
             case VCF:
@@ -217,7 +221,9 @@ public final class FuncotatorEngine implements AutoCloseable {
                         headerForVariants,
                         unaccountedForDefaultAnnotations,
                         unaccountedForOverrideAnnotations,
-                        defaultToolVcfHeaderLines, funcotatorArgs.excludedFields
+                        defaultToolVcfHeaderLines,
+                        funcotatorArgs.excludedFields,
+                        gatkToolInstance.getVersion()
                 );
                 break;
             default:

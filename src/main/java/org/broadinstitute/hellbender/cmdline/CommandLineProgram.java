@@ -372,7 +372,7 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
      *
      * May be overridden by subclasses to provide a custom implementation if desired.
      */
-    protected String getVersion() {
+    public String getVersion() {
         String versionString = this.getClass().getPackage().getImplementationVersion();
         return versionString != null ?
                 versionString :
