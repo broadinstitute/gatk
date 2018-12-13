@@ -1,12 +1,11 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
+import com.google.common.collect.ImmutableMap;
 import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.variantcontext.Genotype;
-import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.vcf.VCFFormatHeaderLine;
 import htsjdk.variant.vcf.VCFHeaderLineCount;
 import htsjdk.variant.vcf.VCFHeaderLineType;
+import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -19,33 +18,30 @@ import java.util.stream.Collectors;
 /**
  * Apply an annotation based on aggregation data from all reads supporting each allele.
  */
-public abstract class PerAlleleAnnotation extends GenotypeAnnotation {
+public abstract class PerAlleleAnnotation extends InfoFieldAnnotation{
 
     /**
      * Calculate annotations for each allele based on given VariantContext and likelihoods for a given genotype's sample
      * and add the annotations to the GenotypeBuilder.  By default annotations are only calculated for alt alleles but
      * implementations may override the {@code includeRefAllele()} method.  See parent class docs in {@link GenotypeAnnotation}.
      */
-    public void annotate(final ReferenceContext ref,
+    public Map<String, Object> annotate(final ReferenceContext ref,
                          final VariantContext vc,
-                         final Genotype g,
-                         final GenotypeBuilder gb,
                          final ReadLikelihoods<Allele> likelihoods) {
-        Utils.nonNull(gb);
         Utils.nonNull(vc);
-        if ( g == null || likelihoods == null ) {
-            return;
+        if ( likelihoods == null ) {
+            return Collections.emptyMap();
         }
 
         final Map<Allele, List<Integer>> values = likelihoods.alleles().stream()
                 .collect(Collectors.toMap(a -> a, a -> new ArrayList<>()));
 
-        Utils.stream(likelihoods.bestAllelesBreakingTies(g.getSampleName()))
+        Utils.stream(likelihoods.bestAllelesBreakingTies())
                 .filter(ba -> ba.isInformative() && isUsableRead(ba.read))
                 .forEach(ba -> getValueForRead(ba.read, vc).ifPresent(v -> values.get(ba.allele).add(v)));
 
         final int[] statistics = vc.getAlleles().stream().filter(this::includeAllele).mapToInt(a -> aggregate(values.get(a))).toArray();
-        gb.attribute(getVcfKey(), statistics);
+        return ImmutableMap.of(getVcfKey(), statistics);
     }
 
     private boolean includeAllele(final Allele allele) {
@@ -60,8 +56,8 @@ public abstract class PerAlleleAnnotation extends GenotypeAnnotation {
     }
 
     @Override
-    public List<VCFFormatHeaderLine> getDescriptions() {
-        return Arrays.asList(new VCFFormatHeaderLine(getVcfKey(), includeRefAllele() ? VCFHeaderLineCount.R : VCFHeaderLineCount.A, VCFHeaderLineType.Integer, getDescription()));
+    public List<VCFInfoHeaderLine> getDescriptions() {
+        return Arrays.asList(new VCFInfoHeaderLine(getVcfKey(), includeRefAllele() ? VCFHeaderLineCount.R : VCFHeaderLineCount.A, VCFHeaderLineType.Integer, getDescription()));
     }
 
     @Override
