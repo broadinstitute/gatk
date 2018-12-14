@@ -91,7 +91,7 @@ public class ExamineChimericReads extends ReadPairWalker {
             logger.info("ref1:read2: " + alignment.getCigar().toString());
         }
         {
-            final SmithWatermanAlignment alignment = smithWatermanAligner.align(refTwo.getBytes(), SequenceUtil.reverseComplement(readOne.getBasesString()).getBytes(),
+            final SmithWatermanAlignment alignment = smithWatermanAligner.alignWithMismatches(refTwo.getBytes(), SequenceUtil.reverseComplement(readOne.getBasesString()).getBytes(),
                     swParameters, swOverhangStrategy);
 
             logger.info("ref1:read2': " + alignment.getCigar().toString());
