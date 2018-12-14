@@ -61,31 +61,31 @@ public class ExamineChimericReads extends ReadPairWalker {
         final String refTwo = readTwo.getAttributeAsString("RB");
 
         {
-            final SmithWatermanAlignment alignment = smithWatermanAligner.align(refOne.getBytes(), refTwo.getBytes(),
+            final SmithWatermanAlignment alignment = smithWatermanAligner.alignWithMismatches(refOne.getBytes(), refTwo.getBytes(),
                     swParameters, swOverhangStrategy);
 
             logger.info("ref1:ref2: "+ alignment.getCigar().toString());
         }
         {
-            final SmithWatermanAlignment alignment = smithWatermanAligner.align(refOne.getBytes(), SequenceUtil.reverseComplement(refTwo).getBytes(),
+            final SmithWatermanAlignment alignment = smithWatermanAligner.alignWithMismatches(refOne.getBytes(), SequenceUtil.reverseComplement(refTwo).getBytes(),
                     swParameters, swOverhangStrategy);
 
             logger.info("ref1:ref2': "+alignment.getCigar().toString());
         }
         {
-            final SmithWatermanAlignment alignment = smithWatermanAligner.align(refTwo.getBytes(), readOne.getBases(),
+            final SmithWatermanAlignment alignment = smithWatermanAligner.alignWithMismatches(refTwo.getBytes(), readOne.getBases(),
                     swParameters, swOverhangStrategy);
 
             logger.info("ref2:read1: " + alignment.getCigar().toString());
         }
         {
-            final SmithWatermanAlignment alignment = smithWatermanAligner.align(refTwo.getBytes(), SequenceUtil.reverseComplement(readOne.getBasesString()).getBytes(),
+            final SmithWatermanAlignment alignment = smithWatermanAligner.alignWithMismatches(refTwo.getBytes(), SequenceUtil.reverseComplement(readOne.getBasesString()).getBytes(),
                     swParameters, swOverhangStrategy);
 
             logger.info("ref2:read1': " + alignment.getCigar().toString());
         }
         {
-            final SmithWatermanAlignment alignment = smithWatermanAligner.align(refOne.getBytes(), readTwo.getBases(),
+            final SmithWatermanAlignment alignment = smithWatermanAligner.alignWithMismatches(refOne.getBytes(), readTwo.getBases(),
                     swParameters, swOverhangStrategy);
 
             logger.info("ref1:read2: " + alignment.getCigar().toString());
