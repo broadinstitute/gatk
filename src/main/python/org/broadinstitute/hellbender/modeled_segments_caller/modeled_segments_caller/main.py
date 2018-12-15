@@ -493,11 +493,11 @@ class LoadAndSampleCrAndAf:
                                                     self.__allele_fraction_10th_perc[i],
                                                     self.__allele_fraction_90th_perc[i])
             weights.append(w)
-        avg_weight = np.mean([weights[i] for i in range(len(weights))]) if len(weights) > 0 else 0.
-        avg_weight = np.mean([weights[i] for i in range(len(weights)) if weights[i] > 0.001 * avg_weight]) \
-            if len([weights[i] for i in range(len(weights)) if weights[i] > 0.001 * avg_weight]) > 0 \
+        median_weight = np.median([weights[i] for i in range(len(weights))]) if len(weights) > 0 else 0.
+        median_weight = np.median([weights[i] for i in range(len(weights)) if weights[i] > 0.001 * median_weight]) \
+            if len([weights[i] for i in range(len(weights)) if weights[i] > 0.001 * median_weight]) > 0 \
             else 0.
-        max_weight = float(self.__weight_ratio_max) * float(avg_weight)
+        max_weight = float(self.__weight_ratio_max) * float(median_weight)
         weights = [min([weights[i], max_weight]) for i in range(len(weights))]
         return weights
 
@@ -1095,7 +1095,7 @@ class ModeledSegmentsCaller:
         def __find_cluster_separators(dataArray, gaussianKernelBandwidth, plotFigure=False, image_filename="no_image.png"):
             # Convolve the data with a Gaussian kernel ("Gaussian kernel density estimation")
             data_transposed = np.array(dataArray)[:, np.newaxis]
-            x = np.linspace(min(0, min(dataArray)), max(5, max(dataArray)), 1000)[:, np.newaxis]
+            x = np.linspace(min(-1, min(dataArray)), max(5, max(dataArray)), 1000)[:, np.newaxis]
             kde = KernelDensity(kernel='gaussian', bandwidth=gaussianKernelBandwidth).fit(data_transposed)
             k_density = np.exp(kde.score_samples(x))
 
@@ -1118,20 +1118,20 @@ class ModeledSegmentsCaller:
 
             filtered_extremal_values = [k_density[i] for i in filtered_extremal_indices]
             filered_minimum_indices = __find_minimum_indices(filtered_extremal_values)
-            _cluster_separators = [x[filtered_extremal_indices[i]] for i in filered_minimum_indices]
+            _cluster_separators = [x[filtered_extremal_indices[i]][0] for i in filered_minimum_indices]
 
             if plotFigure:
                 fig = plt.figure(2, dpi=400)
 
                 plt.subplot(211)
                 plt.plot(x, k_density, '-')
-                plt.plot(cluster_separators, np.zeros(len(cluster_separators)), 'r*')
+                plt.plot(_cluster_separators, np.zeros(len(_cluster_separators)), 'r*')
                 plt.xlim(0, 5)
                 plt.ylabel('Kernel density')
 
                 plt.subplot(212)
                 plt.hist(data, density=1, bins=200)
-                plt.plot(cluster_separators, np.zeros(len(cluster_separators)), 'r*')
+                plt.plot(_cluster_separators, np.zeros(len(_cluster_separators)), 'r*')
                 plt.xlim(0, 5)
                 plt.xlabel('Copy ratio')
                 plt.ylabel('Histogram and clusters')
@@ -1139,25 +1139,30 @@ class ModeledSegmentsCaller:
                 plt.close(fig)
             return _cluster_separators
 
-        def __get_1D_cluster_info(dataArray, separators):
-            if separators is None or len(separators) == 0:
+        def __get_1D_cluster_stats(dataArray, separators):
+            if (separators is None) or (len(separators) == 0):
                 _n_peaks = 1
                 _mu_peaks = [np.mean(dataArray)]
                 _sd_peaks = [np.std(dataArray)]
                 return _n_peaks, _mu_peaks, _sd_peaks
 
-            separators = list(separators).sort()
+            separators = list(separators)
+            separators.sort()
             _n_peaks=len(separators) + 1
-            data_groups = [] * _n_peaks
-            for d in data_groups:
+
+            data_groups = []
+            for _i in range(_n_peaks):
+                data_groups.append([])
+            for d in dataArray:
                 appended=False
-                for _i in len(separators):
+                for _i in range(len(separators)-1, -1, -1):
                     if d >= separators[_i]:
-                        data_groups[_i].append(d)
+                        data_groups[_i+1].append(d)
                         appended=True
                         break
                 if not appended:
-                    data_groups[-1].append(d)
+                    data_groups[0].append(d)
+
             _mu_peaks = [0] * _n_peaks
             _sd_peaks = [0] * _n_peaks
             for _i in range(_n_peaks):
@@ -1177,18 +1182,18 @@ class ModeledSegmentsCaller:
         if self.__copy_ratio_kernel_density_bandwidth > 0.:
             bandwidth = self.__copy_ratio_kernel_density_bandwidth
         else:
-            cluster_separators = __find_cluster_separators(dataArray=data, gaussianKernelBandwidth=0.005)
-            _, _, sd_peaks = __get_1D_cluster_info(dataArray=data, separators=cluster_separators)
+            cluster_separators = __find_cluster_separators(dataArray=data, gaussianKernelBandwidth=0.015)
+            _, _, sd_peaks = __get_1D_cluster_stats(dataArray=data, separators=cluster_separators)
             if len(sd_peaks) == 1:
-                bandwidth = 0.5 * sd_peaks[0]
+                bandwidth = sd_peaks[0]
             else:
-                bandwidth = 0.5 * min([sd_peaks[0], sd_peaks[1]])
-            bandwidth = max([bandwidth, 0.005])
+                bandwidth = min([sd_peaks[0], sd_peaks[1]])
+            bandwidth = max([bandwidth, 0.010])
 
         cluster_separators = __find_cluster_separators(dataArray=data, gaussianKernelBandwidth=bandwidth,
                                                        plotFigure=self.__interactive,
                                                        image_filename=interactive_image_filename)
-        n_peaks, mu_peaks, sd_peaks = __get_1D_cluster_info(dataArray=data, separators=cluster_separators)
+        n_peaks, mu_peaks, sd_peaks = __get_1D_cluster_stats(dataArray=data, separators=cluster_separators)
 
         return cluster_separators
 
