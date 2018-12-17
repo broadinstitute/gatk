@@ -39,6 +39,8 @@ GATKDIR=${SCRIPTDIR}/../../../
 
 ################################################################################
 
+doForceRun=false
+
 doUnitTests=false
 doRunLargeTests=false
 
@@ -83,6 +85,7 @@ function usage()
   echo -e "                                              (org.broadinstitute.hellbender.tools.funcotator)"
   echo -e "  -t                                          run Funcotator on a large data file"
   echo -e "                                              (internally configured)"
+  echo -e "  -f                                          Force a run, ignoring build and file checks."
   echo -e "  -19                                         run with hg19 data sources/reference/input file"
   echo -e "                                              (default)"
   echo -e "  -38                                         run with hg38 data sources/reference/input file"
@@ -158,6 +161,9 @@ function assertInputFilesExist() {
 while [ $# -gt 0 ] ; do
 
   case "$1" in
+    -f)
+    doForceRun=true
+    ;;
     -c)
     doClean=true
     ;;
@@ -215,54 +221,58 @@ done
 ################################################################################
 
 r=1
-if ${doClean} ; then
-  ${GATKDIR}/gradlew clean compileJava compileTestJava installDist
-  r=$?
+if ${doForceRun} ; then
+  r=0
 else
-  ${GATKDIR}/gradlew compileJava compileTestJava installDist
-  r=$?
-fi 
-
-if [[ $r -eq 0 ]] && ${doUnitTests} ; then
-  echo "################################################################################"
-  echo "## Running Unit Tests... "
-  ${GATKDIR}/gradlew test \
-    --tests org.broadinstitute.hellbender.tools.funcotator* \
-    --tests org.broadinstitute.hellbender.utils.codecs.xsvLocatableTable* \
-    --tests org.broadinstitute.hellbender.utils.codecs.gencode* \
-    --tests org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.SimpleAnnotatedIntervalWriterUnitTest* \
-    --tests org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedIntervalCollectionUnitTest* \
-    --stacktrace  
-  r=$?
-fi
-
-################################################################################
-
-if [[ $r -eq 0 ]] && $MANUAL_MODE ; then 
-
-  echo "################################################################################"
-  echo "## Running MANUAL Test... "
-  echo
-  echo "########################################"
-  echo "## Using Reference: ${REF_VER}              ##"
-  echo "########################################"
+  if ${doClean} ; then
+    ${GATKDIR}/gradlew clean compileJava compileTestJava installDist
+    r=$?
+  else
+    ${GATKDIR}/gradlew compileJava compileTestJava installDist
+    r=$?
+  fi 
   
-  OUT_FORMAT_LOWER=$( echo "${OUT_FORMAT}" | tr 'A-Z' 'a-z' )
-  OUT_FILE_NAME=FUNCOTATOR_OUT.${OUT_FORMAT_LOWER}
-
-  assertInputFilesExist
-
-  ${GATKDIR}/gatk Funcotator \
-    -V ${INPUT} \
-    -O ${OUT_FILE_NAME} \
-    -R ${REF} \
-    --verbosity DEBUG \
-    --data-sources-path ${DATA_SOURCES_PATH} \
-    --ref-version ${REF_VER} \
-    --output-file-format ${OUT_FORMAT} -- --java-options '-DGATK_STACKTRACE_ON_USER_EXCEPTION=true'
+  if [[ $r -eq 0 ]] && ${doUnitTests} ; then
+    echo "################################################################################"
+    echo "## Running Unit Tests... "
+    ${GATKDIR}/gradlew test \
+      --tests org.broadinstitute.hellbender.tools.funcotator* \
+      --tests org.broadinstitute.hellbender.utils.codecs.xsvLocatableTable* \
+      --tests org.broadinstitute.hellbender.utils.codecs.gencode* \
+      --tests org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.SimpleAnnotatedIntervalWriterUnitTest* \
+      --tests org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedIntervalCollectionUnitTest* \
+      --stacktrace  
+    r=$?
+  fi
   
-  r=$?
-  exit $r
+  ################################################################################
+  
+  if [[ $r -eq 0 ]] && $MANUAL_MODE ; then 
+  
+    echo "################################################################################"
+    echo "## Running MANUAL Test... "
+    echo
+    echo "########################################"
+    echo "## Using Reference: ${REF_VER}              ##"
+    echo "########################################"
+    
+    OUT_FORMAT_LOWER=$( echo "${OUT_FORMAT}" | tr 'A-Z' 'a-z' )
+    OUT_FILE_NAME=FUNCOTATOR_OUT.${OUT_FORMAT_LOWER}
+  
+    assertInputFilesExist
+  
+    ${GATKDIR}/gatk Funcotator \
+      -V ${INPUT} \
+      -O ${OUT_FILE_NAME} \
+      -R ${REF} \
+      --verbosity DEBUG \
+      --data-sources-path ${DATA_SOURCES_PATH} \
+      --ref-version ${REF_VER} \
+      --output-file-format ${OUT_FORMAT} -- --java-options '-DGATK_STACKTRACE_ON_USER_EXCEPTION=true'
+    
+    r=$?
+    exit $r
+  fi
 fi
 
 if [[ $r -eq 0 ]] && ${doRunLargeTests} ; then
@@ -281,7 +291,7 @@ if [[ $r -eq 0 ]] && ${doRunLargeTests} ; then
     #INPUT=/Users/jonn/Development/gatk/src/test/resources/large/funcotator/regressionTestVariantSet2.vcf
     #INPUT=/Users/jonn/Development/gatk/src/test/resources/large/funcotator/regressionTestHg19Large.vcf
     #INPUT=/Users/jonn/Development/gatk/hg38_trio_liftoverb37.vcf
-    #INPUT=/Users/jonn/Development/gatk/tmp.vcf
+    INPUT=/Users/jonn/Development/gatk/tmp.vcf
     #INPUT=/Users/jonn/Development/gatk/tmp2.vcf
     #INPUT=/Users/jonn/Development/data_to_run/problem_samples/splice_site_should_not_be_splice_site/error_case.vcf
     
@@ -301,13 +311,15 @@ if [[ $r -eq 0 ]] && ${doRunLargeTests} ; then
   $useAOUDataSources && echo "Using AOU data sources." && DATA_SOURCES_PATH=/Users/jonn/Development/funcotator_dataSources.vAoU3
 
   # Use cloud data sources if we need them:
-  $useCloudDataSources && echo "Using cloud data sources." && DATA_SOURCES_PATH=/Users/jonn/Development/gatk/src/test/resources/large/funcotator/funcotator_dataSources_cloud_gnomad/
-  #$useCloudDataSources && echo "Using cloud data sources." && DATA_SOURCES_PATH=gs://hellbender/test/resources/large/funcotatorDataSourceCollection/funcotator_dataSources_cloud/
+  #$useCloudDataSources && echo "Using cloud data sources." && DATA_SOURCES_PATH=/Users/jonn/Development/gatk/src/test/resources/large/funcotator/funcotator_dataSources_cloud_gnomad/
+  $useCloudDataSources && echo "Using cloud data sources." && DATA_SOURCES_PATH=gs://broad-dsde-methods-jonn/funcotator_dataSources.v1.5.20181119s
 
   OUT_FORMAT_LOWER=$( echo "${OUT_FORMAT}" | tr 'A-Z' 'a-z' )
   OUT_FILE_NAME=FUNCOTATOR_OUT.${OUT_FORMAT_LOWER}
   
-  assertInputFilesExist
+  if ! ${doForceRun} ; then 
+    assertInputFilesExist
+  fi
 
   time ${GATKDIR}/gatk Funcotator \
     -V ${INPUT} \
@@ -317,9 +329,9 @@ if [[ $r -eq 0 ]] && ${doRunLargeTests} ; then
     --data-sources-path ${DATA_SOURCES_PATH} \
     --ref-version ${REF_VER} \
     --output-file-format ${OUT_FORMAT} \
-		--java-options '-DGATK_STACKTRACE_ON_USER_EXCEPTION=true -Xmx16g' \
-		--cloud-index-prefetch-buffer 40 \
-		--cloud-prefetch-buffer 80
+    --java-options '-DGATK_STACKTRACE_ON_USER_EXCEPTION=true -Xmx16g' \
+    --cloud-index-prefetch-buffer 40 \
+    --cloud-prefetch-buffer 80 > >(tee -a FUNCOTATOR.stdout.log) 2> >(tee -a FUNCOTATOR.stderr.log >&2)
 
   r=$?
 fi

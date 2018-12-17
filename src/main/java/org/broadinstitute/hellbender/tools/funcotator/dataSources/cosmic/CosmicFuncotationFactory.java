@@ -16,8 +16,12 @@ import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotati
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.nio.NioFileCopierWithProgressMeter;
 import org.sqlite.SQLiteConfig;
 
+import java.io.File;
+import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.sql.*;
 import java.util.*;
@@ -99,6 +103,9 @@ public class CosmicFuncotationFactory extends DataSourceFuncotationFactory {
     //==================================================================================================================
     // Private Members:
 
+    private static final String LOCAL_COSMIC_DB_TMP_DIR_PREFIX = "localCosmicDbFolder";
+    private static final String LOCAL_COSMIC_DB_FILE_NAME      = "cosmic.db";
+
     /**
      * The name of this {@link CosmicFuncotationFactory}.
      */
@@ -137,7 +144,7 @@ public class CosmicFuncotationFactory extends DataSourceFuncotationFactory {
                                     final String version,
                                     final boolean isDataSourceB37) {
 
-        this.pathToCosmicDb = pathToCosmicDb;
+        this.pathToCosmicDb = localizeCosmicDbFileIfRemote(pathToCosmicDb);
         this.version = version;
         this.dataSourceIsB37 = isDataSourceB37;
 
@@ -150,12 +157,12 @@ public class CosmicFuncotationFactory extends DataSourceFuncotationFactory {
             // We only want to read from the DB:
             config.setReadOnly(true);
 
-            logger.debug("Connecting to SQLite database at: " + pathToCosmicDb.toUri().toString());
-            dbConnection = DriverManager.getConnection("jdbc:sqlite:" + pathToCosmicDb.toUri().toString(), config.toProperties());
+            logger.debug("Connecting to SQLite database at: " + this.pathToCosmicDb.toUri().toString());
+            dbConnection = DriverManager.getConnection("jdbc:sqlite:" + this.pathToCosmicDb.toUri().toString(), config.toProperties());
             logger.debug("Connected to SQLite database!");
         }
         catch (final SQLException ex) {
-            throw new UserException("Unable to open SQLite DB for COSMIC at: " + pathToCosmicDb.toUri().toString(), ex);
+            throw new UserException("Unable to open SQLite DB for COSMIC at: " + this.pathToCosmicDb.toUri().toString(), ex);
         }
         catch (final ClassNotFoundException ex) {
             throw new UserException("Cannot load SQLite Java Package!", ex);
@@ -329,6 +336,34 @@ public class CosmicFuncotationFactory extends DataSourceFuncotationFactory {
 
     //==================================================================================================================
     // Instance Methods:
+
+    private Path localizeCosmicDbFileIfRemote(final Path cosmicDbPathMaybeRemote ) {
+
+        // Is the path local or in the cloud:
+        if ( cosmicDbPathMaybeRemote.getFileSystem().equals(FileSystems.getDefault()) ) {
+            // local path, just return it:
+            return cosmicDbPathMaybeRemote;
+        }
+
+        // Not a local path!  We must localize it!
+
+        // Create a place for the files:
+        final File tmpDir = IOUtils.createTempDir(LOCAL_COSMIC_DB_TMP_DIR_PREFIX);
+        tmpDir.deleteOnExit();
+        final Path tmpDirPath = tmpDir.toPath();
+
+        // Create paths to the fasta, fasta index, and the sequence dictionary:
+        final Path localCosmicDbFilePath = tmpDirPath.resolve(LOCAL_COSMIC_DB_FILE_NAME);
+
+        // Copy the files to our local machine:
+        logger.info("Localizing Cosmic db file for compatibility and faster lookup times...");
+
+        // Copy DB:
+        NioFileCopierWithProgressMeter.create(cosmicDbPathMaybeRemote, localCosmicDbFilePath, true).initiateCopy();
+
+        // Bye Bye!
+        return localCosmicDbFilePath;
+    }
 
     /**
      * Get the genome position of the current record in the given {@link ResultSet}.

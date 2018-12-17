@@ -1,0 +1,10 @@
+{
+  "CreateGnomadAlleleFreqTsv.gatk_docker": "broadinstitute/gatk:4.0.11.0",
+
+  "CreateGnomadAlleleFreqTsv.gnomAD_file": "gs://gnomad-public/release/2.1/vcf/genomes/gnomad.genomes.r2.1.sites.vcf.bgz",
+  "CreateGnomadAlleleFreqTsv.out_file_name": "gnomad.genomes.r2.1.sites.alleleFreqs.tsv",
+
+  "CreateGnomadAlleleFreqTsv.mem_gb": "128",
+  "CreateGnomadAlleleFreqTsv.disk_space_gb": "16384",
+  "CreateGnomadAlleleFreqTsv.boot_disk_size_gb": "100"
+}
