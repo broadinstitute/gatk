@@ -54,6 +54,13 @@ workflow LiftoverVcf {
 
     # Run liftover on each input VCF:
     scatter ( vcf in variant_vcfs ) {
+
+      # Get the name of this run's VCF file:
+      String vcf_extension = sub(vcf, "^.*.vcf", ".vcf" )
+      String vcf_base_name = basename( vcf, vcf_extension )
+      String scattered_vcf_name = vcf_base_name + ".LIFTOVER" + vcf_extension
+      String scattered_vcf_rejects_name = vcf_base_name + ".LIFTOVER_REJECTS" + vcf_extension
+
       call LiftoverVcfTask {
           input:
               input_vcf_file                              = vcf,
@@ -61,8 +68,8 @@ workflow LiftoverVcf {
               target_reference_sequence_fasta_file        = target_reference_sequence_fasta_file,
               target_reference_sequence_fasta_file_index  = target_reference_sequence_fasta_file_index,
               target_reference_sequence_fasta_file_dict   = target_reference_sequence_fasta_file_dict,
-              lifted_over_vcf_name                        = lifted_over_vcf_name,
-              lifted_over_rejects_vcf_name                = lifted_over_rejects_vcf_name,
+              lifted_over_vcf_name                        = scattered_vcf_name,
+              lifted_over_rejects_vcf_name                = scattered_vcf_rejects_name,
 
               warn_on_missing_contig                      = warn_on_missing_contig,
               write_original_position                     = write_original_position,

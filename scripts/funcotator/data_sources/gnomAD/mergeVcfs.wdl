@@ -6,7 +6,6 @@
 #     gatk_docker                    -  GATK Docker image in which to run
 #     variant_vcfs                   -  Array of Variant Context Files (VCF) containing the variants.
 #     output_vcf_file_name           -  Desired name of the resulting VCF output file.
-#     output_vcf_index_name          -  Desired name of the resulting VCF index output file.
 #
 #   Optional:
 #     File gatk4_jar_override        -  Override Jar file containing GATK 4.  Use this when overriding the docker JAR or when using a backend without docker.
@@ -69,6 +68,8 @@ task MergeVcfs {
      Int? cpu
      Int? boot_disk_size_gb
 
+    String dollar = "$"
+
     # ------------------------------------------------
     # Process input args:
     String timing_output_file = basename(output_vcf_file) + ".timingInformation.txt"
@@ -94,12 +95,32 @@ task MergeVcfs {
          set -e
          export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
 
+        fileListArgs=""
+
+        # Ensure that the names of the files end in the correct suffixes:
+        # (MergeVCFs requires compressed vcfs to end in '.vcf.gz')
+        for f in ${sep=' ' input_vcfs} ; do
+            base=$( basename $f )
+            d=$( dirname $f )
+            echo "$base" | grep -q ".vcf.bgz$"
+            r=$?
+            if [ $r -eq 0 ] ; then
+                newName=$( echo $base | sed 's#.vcf.bgz$#.vcf.gz#g' )
+                mv $f ${dollar}{d}/${dollar}{newName}
+                fileListArgs="${dollar}{fileListArgs} -I ${dollar}{d}/${dollar}{newName}"
+            else
+                fileListArgs="${dollar}{fileListArgs} -I $f"
+            fi
+        done
+
+        echo "Using file list: ${dollar}{fileListArgs}"
+
         startTime=`date +%s.%N`
         echo "StartTime: $startTime" > ${timing_output_file}
 
          gatk --java-options "-Xmx${command_mem}m -DGATK_STACKTRACE_ON_USER_EXCEPTION=true" \
             MergeVcfs \
-             -I ${sep=' -I ' input_vcfs} \
+             ${dollar}{fileListArgs} \
              -O ${output_vcf_file}
 
         endTime=`date +%s.%N`
