@@ -52,7 +52,19 @@ final class HomRefBlock extends GVCFBlock {
         this.ploidy = startingVC.getMaxPloidy(defaultPloidy);
     }
 
-
+    @SuppressWarnings("unchecked")
+    public static HomRefBlock fromVariantContext(final VariantContext vc) {
+        // TODO: what should bounds and ploidy be?
+        HomRefBlock homRefBlock = new HomRefBlock(vc, 0, VCFConstants.MAX_GENOTYPE_QUAL, 2);
+        Genotype genotype = vc.getGenotype(0);
+        homRefBlock.minPLs = genotype.getPL();
+        if (genotype.hasExtendedAttribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY)) {
+            homRefBlock.minPPs = PosteriorProbabilitiesUtils.extractInts(genotype.getExtendedAttribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY));
+        }
+        homRefBlock.end = vc.getAttributeAsInt(VCFConstants.END_KEY, vc.getStart());
+        homRefBlock.DPs.addAll((List<Integer>) genotype.getExtendedAttribute("DPs"));
+        return homRefBlock;
+    }
 
     // create a single Genotype with GQ and DP annotations
     @Override
@@ -69,6 +81,9 @@ final class HomRefBlock extends GVCFBlock {
         if (minPPs != null) {
             gb.attribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY, Utils.listFromPrimitives(minPPs));
         }
+
+        // store all the DPs in an attribute (which we clear before writing), so we can combine GVCF block boundaries if needed
+        gb.attribute("DPs", DPs);
 
         return gb.make();
     }
@@ -122,6 +137,40 @@ final class HomRefBlock extends GVCFBlock {
 
         end = newEnd;
         DPs.add(Math.max(genotype.getDP(), 0)); // DP must be >= 0
+    }
+
+    public void add(HomRefBlock homRefBlock) {
+        // TODO: check contiguous, non overlapping etc
+
+        if( minPLs == null ) {
+            minPLs = homRefBlock.getMinPLs();
+        }
+        else { // otherwise take the min with the provided genotype's PLs
+            final int[] pls = homRefBlock.getMinPLs();
+            if (pls.length != minPLs.length) {
+                throw new GATKException("trying to merge different PL array sizes: " + pls.length + " != " + minPLs.length);
+            }
+            for (int i = 0; i < pls.length; i++) {
+                minPLs[i] = Math.min(minPLs[i], pls[i]);
+            }
+        }
+
+        if (minPPs == null ) {
+            minPPs = homRefBlock.getMinPPs();
+        }
+        else { // otherwise take the min with the provided genotype's PPs
+            final int[] pps = homRefBlock.getMinPPs();
+            if (pps.length != minPPs.length) {
+                throw new GATKException("trying to merge different PP array sizes: " + pps.length + " != " + minPPs.length);
+            }
+            for (int i = 0; i < pps.length; i++) {
+                minPPs[i] = Math.min(minPPs[i], pps[i]);
+            }
+        }
+
+        end = Math.max(end, homRefBlock.end);
+        DPs.addAll(homRefBlock.DPs);
+
     }
 
     /** Get the min PLs observed within this band, can be null if no PLs have yet been observed */

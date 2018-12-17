@@ -1,9 +1,7 @@
 package org.broadinstitute.hellbender.utils.variant.writers;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.Range;
-import com.google.common.collect.RangeMap;
-import com.google.common.collect.TreeRangeMap;
+import com.google.common.collect.*;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -223,5 +221,26 @@ public class GVCFBlockCombiner implements PushPullTransformer<VariantContext> {
     @Override
     public void signalEndOfInput() {
         emitCurrentBlock();
+    }
+
+    public static List<VariantContext> combine(VariantContext vc1, VariantContext vc2) {
+        String sampleName1 = vc1.getGenotype(0).getSampleName();
+        String sampleName2 = vc2.getGenotype(0).getSampleName();
+        // TODO: also check both within same band
+        if (!canBeBanded(vc1) || !canBeBanded(vc2) || !sampleName1.equals(sampleName2)) {
+            return ImmutableList.of(vc1, vc2);
+        }
+        HomRefBlock homRefBlock1 = HomRefBlock.fromVariantContext(vc1);
+        if (!homRefBlock1.isContiguous(vc2)) {
+            return ImmutableList.of(vc1, vc2);
+        }
+        HomRefBlock homRefBlock2 = HomRefBlock.fromVariantContext(vc2);
+        homRefBlock1.add(homRefBlock2);
+        return ImmutableList.of(homRefBlock1.toVariantContext(sampleName1));
+    }
+
+    private static boolean canBeBanded(VariantContext vc) {
+        final Genotype g = vc.getGenotype(0);
+        return g.isHomRef() && vc.hasAlternateAllele(Allele.NON_REF_ALLELE) && vc.isBiallelic();
     }
 }

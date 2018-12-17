@@ -162,6 +162,30 @@ public class HomRefBlockUnitTest extends GATKBaseTest {
         Assert.assertTrue(genotype.getAlleles().stream().allMatch(a -> a.equals(REF)));
     }
 
+    @Test
+    public void testAddHomRefBlock() {
+        final VariantContext vc1 = getVariantContext();
+        final VariantContext vc2 = new VariantContextBuilder(SAMPLE_NAME, "20", 2, 2, getAlleles()).make();
+        final GenotypeBuilder gb = new GenotypeBuilder(SAMPLE_NAME, vc1.getAlleles());
+        final Genotype genotype1 = gb.GQ(15).DP(6).PL(new int[]{0, 10, 100}).make();
+        final Genotype genotype2 = gb.GQ(17).DP(10).PL(new int[]{0, 5, 80}).make();
+
+        final HomRefBlock block1 = getHomRefBlock(vc1);
+        block1.add(vc1.getEnd(), genotype1);
+
+        final HomRefBlock block2 = getHomRefBlock(vc2);
+        block2.add(vc2.getEnd(), genotype2);
+
+        block1.add(block2);
+
+        final VariantContext newVc = block1.toVariantContext(SAMPLE_NAME);
+        Assert.assertEquals(newVc.getGenotypes().size(), 1);
+        final Genotype genotype = newVc.getGenotypes().get(0);
+        Assert.assertEquals(genotype.getDP(),8); //dp should be median of the added DPs
+        Assert.assertEquals(genotype.getGQ(), 5); //GQ should have been recalculated with the minPls
+        Assert.assertTrue(genotype.getAlleles().stream().allMatch(a -> a.equals(REF)));
+    }
+
     public static HomRefBlock getHomRefBlock(VariantContext vc) {
         return new HomRefBlock(vc, 10, 20, HomoSapiensConstants.DEFAULT_PLOIDY);
     }
