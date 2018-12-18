@@ -85,6 +85,10 @@ public class GermlineProbabilityCalculator {
                                                                     final double log10OddsOfGermlineHomAltVsSomatic,
                                                                     final double populationAlleleFrequency,
                                                                     final double log10PriorProbOfSomaticEvent) {
+        if (populationAlleleFrequency == 1) {
+            return 0;
+        }
+        
         final double log10OneMinusPriorProbSomatic = MathUtils.log10OneMinusPow10(log10PriorProbOfSomaticEvent);
 
         final double log10PriorGermlineHet = Math.log10(2*populationAlleleFrequency*(1-populationAlleleFrequency));
