@@ -1,16 +1,20 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
+import com.google.common.collect.ImmutableMap;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFFormatHeaderLine;
 import htsjdk.variant.vcf.VCFHeaderLineType;
+import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import picard.sam.markduplicates.MarkDuplicates;
 
 import java.util.*;
@@ -34,42 +38,33 @@ import java.util.stream.Collectors;
  * <p>This annotation does not require or use any BAM file duplicate flags or UMI information, just the read alignments.</p>
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Number of non-duplicate-insert ALT reads (UNIQ_ALT_READ_COUNT)")
-public class UniqueAltReadCount extends GenotypeAnnotation {
-    public static final String UNIQUE_ALT_READ_SET_COUNT_KEY = "UNIQ_ALT_READ_COUNT";
+public class UniqueAltReadCount extends InfoFieldAnnotation {
+    public static final String KEY = GATKVCFConstants.UNIQUE_ALT_READ_SET_COUNT_KEY;
 
     @Override
     public List<String> getKeyNames() {
-        return Collections.singletonList(UNIQUE_ALT_READ_SET_COUNT_KEY);
+        return Collections.singletonList(KEY);
     }
 
     @Override
-    public List<VCFFormatHeaderLine> getDescriptions() {
-        return Arrays.asList(new VCFFormatHeaderLine(UNIQUE_ALT_READ_SET_COUNT_KEY, 1, VCFHeaderLineType.Integer,
-                "Number of ALT reads with unique start and mate end positions at a variant site"));
+    public List<VCFInfoHeaderLine> getDescriptions() {
+        return Collections.singletonList(GATKVCFHeaderLines.getInfoLine(KEY));
     }
 
     @Override
-    public void annotate(final ReferenceContext ref,
+    public Map<String, Object> annotate(final ReferenceContext ref,
                          final VariantContext vc,
-                         final Genotype g,
-                         final GenotypeBuilder gb,
                          final ReadLikelihoods<Allele> likelihoods) {
-        if (g.isHomRef()) {
-            // skip the normal sample
-            return;
-        }
 
         final Allele altAllele = vc.getAlternateAllele(0); // assume single-allelic
-        final String tumorSampleName = g.getSampleName();
-        Collection<ReadLikelihoods<Allele>.BestAllele> tumorBestAlleles = likelihoods.bestAllelesBreakingTies(tumorSampleName);
 
         // Build a map from the (Start Position, Fragment Size) tuple to the count of reads with that
         // start position and fragment size
-        Map<ImmutablePair<Integer, Integer>, Long> duplicateReadMap = tumorBestAlleles.stream()
+        Map<ImmutablePair<Integer, Integer>, Long> duplicateReadMap = likelihoods.bestAllelesBreakingTies().stream()
                 .filter(ba -> ba.allele.equals(altAllele) && ba.isInformative())
                 .map(ba -> new ImmutablePair<>(ba.read.getStart(), ba.read.getFragmentLength()))
                 .collect(Collectors.groupingBy(x -> x, Collectors.counting()));
 
-        gb.attribute(UNIQUE_ALT_READ_SET_COUNT_KEY, duplicateReadMap.size());
+        return ImmutableMap.of(KEY, duplicateReadMap.size());
     }
 }

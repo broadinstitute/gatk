@@ -13,7 +13,9 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConf
 import java.io.File;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection implements Serializable {
     private static final long serialVersionUID = 9341L;
@@ -75,11 +77,13 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     //TODO: so for now we require the user to specify bams *both* as inputs, with -I tumor.bam -I normal.bam
     //TODO: *and* as sample names e.g. -tumor <tumor sample> -normal <normal sample>
 
+    // As of GATK 4.1, any sample not specified as the normal is considered a tumor sample
+    @Deprecated
     @Argument(fullName = TUMOR_SAMPLE_LONG_NAME, shortName = TUMOR_SAMPLE_SHORT_NAME, doc = "BAM sample name of tumor.  May be URL-encoded as output by GetSampleName with -encode argument.", optional = true)
     protected String tumorSample = null;
 
-    @Argument(fullName = NORMAL_SAMPLE_LONG_NAME, shortName = NORMAL_SAMPLE_SHORT_NAME, doc = "BAM sample name of normal.  May be URL-encoded as output by GetSampleName with -encode argument.", optional = true)
-    protected String normalSample = null;
+    @Argument(fullName = NORMAL_SAMPLE_LONG_NAME, shortName = NORMAL_SAMPLE_SHORT_NAME, doc = "BAM sample name of normal(s), if any.  May be URL-encoded as output by GetSampleName with -encode argument.", optional = true)
+    protected List<String> normalSamples = new ArrayList<>();
 
     //TODO: END OF HACK ALERT
 
@@ -124,7 +128,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public double getDefaultAlleleFrequency() {
         return afOfAllelesNotInGermlineResource >= 0 ? afOfAllelesNotInGermlineResource :
                 (mitochondria ? DEFAULT_AF_FOR_MITO_CALLING:
-                (normalSample == null ? DEFAULT_AF_FOR_TUMOR_ONLY_CALLING : DEFAULT_AF_FOR_TUMOR_NORMAL_CALLING));
+                (normalSamples.isEmpty() ? DEFAULT_AF_FOR_TUMOR_ONLY_CALLING : DEFAULT_AF_FOR_TUMOR_NORMAL_CALLING));
     }
 
     /**
@@ -198,8 +202,8 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     @Argument(fullName = NORMAL_LOD_LONG_NAME, optional = true, doc = "LOD threshold for calling normal variant non-germline.")
     public double normalLod = 2.2;
 
-    @Argument(fullName = ARTIFACT_PRIOR_TABLE_NAME, optional = true, doc = "table of prior artifact probabilities for the read orientation filter model")
-    public File artifactPriorTable = null;
+    @Argument(fullName = ARTIFACT_PRIOR_TABLE_NAME, optional = true, doc = "tables of prior artifact probabilities for the read orientation filter model, one per tumor sample")
+    public List<File> artifactPriorTables = new ArrayList<>();
 
     /**
      * Two or more phased substitutions separated by this distance or less are merged into MNPs.

@@ -52,9 +52,28 @@ import java.util.stream.StreamSupport;
 public class Mutect2IntegrationTest extends CommandLineProgramTest {
     // positions 10,000,000 - 11,000,000 of chr 20 and with most annotations removed
     private static final File GNOMAD = new File(largeFileTestDir, "very-small-gnomad.vcf");
+
     private static final String DREAM_BAMS_DIR = largeFileTestDir + "mutect/dream_synthetic_bams/";
+    private static final File DREAM_4_NORMAL = new File(DREAM_BAMS_DIR, "normal_4.bam");
+    private static final File DREAM_3_NORMAL = new File(DREAM_BAMS_DIR, "normal_3.bam");
+    private static final File DREAM_4_TUMOR = new File(DREAM_BAMS_DIR, "tumor_4.bam");
+    private static final File DREAM_3_TUMOR = new File(DREAM_BAMS_DIR, "tumor_3.bam");
+    private static final File DREAM_2_NORMAL = new File(DREAM_BAMS_DIR, "normal_2.bam");
+    private static final File DREAM_1_NORMAL = new File(DREAM_BAMS_DIR, "normal_1.bam");
+    private static final File DREAM_2_TUMOR = new File(DREAM_BAMS_DIR, "tumor_2.bam");
+    private static final File DREAM_1_TUMOR = new File(DREAM_BAMS_DIR, "tumor_1.bam");;
+
     private static final String DREAM_VCFS_DIR = toolsTestDir + "mutect/dream/vcfs/";
+    private static final File DREAM_4_TRUTH = new File(DREAM_VCFS_DIR, "sample_4.vcf");
+    private static final File DREAM_3_TRUTH = new File(DREAM_VCFS_DIR, "sample_3.vcf");
+    private static final File DREAM_2_TRUTH = new File(DREAM_VCFS_DIR, "sample_2.vcf");
+    private static final File DREAM_1_TRUTH = new File(DREAM_VCFS_DIR, "sample_1.vcf");
+
     private static final String DREAM_MASKS_DIR = toolsTestDir + "mutect/dream/masks/";
+    private static final File DREAM_4_MASK = new File(DREAM_MASKS_DIR, "mask4.list");
+    private static final File DREAM_3_MASK = new File(DREAM_MASKS_DIR, "mask3.list");
+    private static final File DREAM_2_MASK = new File(DREAM_MASKS_DIR, "mask2.list");
+    private static final File DREAM_1_MASK = new File(DREAM_MASKS_DIR, "mask1.list");
 
     private static final File NO_CONTAMINATION_TABLE = new File(toolsTestDir, "mutect/no-contamination.table");
     private static final File FIVE_PCT_CONTAMINATION_TABLE = new File(toolsTestDir, "mutect/five-pct-contamination.table");
@@ -89,23 +108,14 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
      * @throws Exception
      */
     @Test(dataProvider = "dreamSyntheticData")
-    public void testDreamTumorNormal(final File tumorBam, final String tumorSample, final File normalBam, final String normalSample,
-                                     final File truthVcf, final File mask, final double requiredSensitivity, final boolean tumorOnly) throws Exception {
+    public void testDreamTumorNormal(final File tumorBam, final File normalBam, final File truthVcf, final File mask,
+                                     final double requiredSensitivity, final boolean tumorOnly) throws Exception {
         Utils.resetRandomGenerator();
         final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
         final File filteredVcf = createTempFile("filtered", ".vcf");
 
-        final File tumorNameFile = createTempFile("tumor_name", ".txt");
-        final File normalNameFile = createTempFile("normal_name", ".txt");
-
-        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-I", tumorBam.getAbsolutePath(), "-O", tumorNameFile.getAbsolutePath(), "-encode"), "GetSampleName"));
-        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-I", normalBam.getAbsolutePath(), "-O", normalNameFile.getAbsolutePath(), "-encode"), "GetSampleName"));
-        final String tumor = Files.readAllLines(tumorNameFile.toPath()).get(0);
-        final String normal = Files.readAllLines(normalNameFile.toPath()).get(0);
-
         final List<String> args = Arrays.asList(
                 "-I", tumorBam.getAbsolutePath(),
-                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, tumor,
                 "-R", b37_reference_20_21,
                 "-L", "20",
                 "--" + M2ArgumentCollection.GERMLINE_RESOURCE_LONG_NAME, GNOMAD.getAbsolutePath(),
@@ -118,6 +128,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         // tumor-only calling with gnomAD
         if (!tumorOnly) {
+            final String normal = getSampleName(normalBam);
             args.addAll(Arrays.asList("-I", normalBam.getAbsolutePath(), "-" + M2ArgumentCollection.NORMAL_SAMPLE_SHORT_NAME, normal));
         };
 
@@ -132,11 +143,12 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         // and no allele has length 1.
         VariantContextTestUtils.streamVcf(unfilteredVcf)
                 .forEach(vc -> {
-                    final Genotype tumorGenotype = vc.getGenotype(tumorSample);
-                    final int[] f1r2 = OrientationBiasUtils.getF1R2(tumorGenotype);
-                    Assert.assertEquals(f1r2.length, vc.getNAlleles());
-                    if (vc.getAlleles().stream().filter(a -> !a.isSymbolic()).map(a -> a.getBases()[0]).distinct().count() == 1) {
-                        Assert.assertTrue(vc.getAlleles().stream().anyMatch(a -> a.getBases().length == 1));
+                    for (final Genotype genotype : vc.getGenotypes()) {
+                        final int[] f1r2 = OrientationBiasUtils.getF1R2(genotype);
+                        Assert.assertEquals(f1r2.length, vc.getNAlleles());
+                        if (vc.getAlleles().stream().filter(a -> !a.isSymbolic()).map(a -> a.getBases()[0]).distinct().count() == 1) {
+                            Assert.assertTrue(vc.getAlleles().stream().anyMatch(a -> a.getBases().length == 1));
+                        }
                     }
                 });
 
@@ -156,16 +168,73 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         });
     }
 
+    private String getSampleName(File bam) throws IOException {
+        final File nameFile = createTempFile("sample_name", ".txt");
+        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-I", bam.getAbsolutePath(), "-O", nameFile.getAbsolutePath(), "-encode"), "GetSampleName"));
+        return Files.readAllLines(nameFile.toPath()).get(0);
+    }
+
+    @Test(dataProvider = "twoTumorData")
+    public void testTwoDreamTumorSamples(final File tumorBam1, final File tumorBam2, final Optional<File> normalBam,
+                                         final File truthVcf, final File mask, final double requiredSensitivity) throws Exception {
+        Utils.resetRandomGenerator();
+        final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
+        final File filteredVcf = createTempFile("filtered", ".vcf");
+
+        String normal = "";
+        if (normalBam.isPresent()) {
+            final File normalNameFile = createTempFile("normal_name", ".txt");
+            new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-I", normalBam.get().getAbsolutePath(), "-O", normalNameFile.getAbsolutePath(), "-encode"), "GetSampleName"));
+            normal = Files.readAllLines(normalNameFile.toPath()).get(0);
+        }
+
+        final List<String> args = Arrays.asList(
+                "-I", tumorBam1.getAbsolutePath(),
+                "-I", tumorBam2.getAbsolutePath(),
+                "-R", b37_reference_20_21,
+                "-L", "20",
+                "--" + M2ArgumentCollection.GERMLINE_RESOURCE_LONG_NAME, GNOMAD.getAbsolutePath(),
+                "-XL", mask.getAbsolutePath(),
+                "-O", unfilteredVcf.getAbsolutePath(),
+                "--" + M2ArgumentCollection.DOWNSAMPLING_STRIDE_LONG_NAME, "20",
+                "--max-reads-per-alignment-start", "4",
+                "--" + M2ArgumentCollection.MAX_SUSPICIOUS_READS_PER_ALIGNMENT_START_LONG_NAME, "4").stream().collect(Collectors.toList());;
+
+        if (normalBam.isPresent()) {
+            args.addAll(Arrays.asList("-I", normalBam.get().getAbsolutePath(), "-" + M2ArgumentCollection.NORMAL_SAMPLE_SHORT_NAME, normal));
+        };
+
+        runCommandLine(args);
+
+        // run FilterMutectCalls
+        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-V", unfilteredVcf.getAbsolutePath(), "-O", filteredVcf.getAbsolutePath()), FilterMutectCalls.class.getSimpleName()));
+
+        // run Concordance
+        final File concordanceSummary = createTempFile("concordance", ".txt");
+        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-truth", truthVcf.getAbsolutePath(), "-eval", filteredVcf.getAbsolutePath(), "-L", "20", "-XL", mask.getAbsolutePath(), "-summary", concordanceSummary.getAbsolutePath()), "Concordance"));
+
+        final List<ConcordanceSummaryRecord> summaryRecords = new ConcordanceSummaryRecord.Reader(concordanceSummary).toList();
+        summaryRecords.forEach(rec -> {
+            if (rec.getTruePositives() + rec.getFalseNegatives() > 0) {
+                Assert.assertTrue(rec.getSensitivity() > requiredSensitivity);
+                // tumor-only will have germline variants sneak in
+                if (normalBam.isPresent()) {
+                    //Assert.assertTrue(rec.getPrecision() > 0.5);
+                }
+            }
+        });
+    }
+
     // make a pon with a tumor and then use this pon to call somatic variants on the same tumor
     // if the pon is doing its job all calls should be filtered by this pon
     @Test(dataProvider = "dreamSyntheticDataSample1")
-    public void testPon(final File tumorBam, final String tumorSample, final File normalBam, final String normalSample) throws Exception {
+    public void testPon(final File tumorBam, final File normalBam) throws Exception {
         Utils.resetRandomGenerator();
+        final String normalSample = getSampleName(normalBam);
 
         final File ponVcf = createTempFile("pon", ".vcf");
         final String[] createPonArgs = {
                 "-I", tumorBam.getAbsolutePath(),
-                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, tumorSample,
                 "-I", normalBam.getAbsolutePath(),
                 "-" + M2ArgumentCollection.NORMAL_SAMPLE_SHORT_NAME, normalSample,
                 "-R", b37_reference_20_21,
@@ -179,7 +248,6 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final File filteredVcf = createTempFile("filtered", ".vcf");
         final String[] callWithPonArgs = {
                 "-I", tumorBam.getAbsolutePath(),
-                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, tumorSample,
                 "-I", normalBam.getAbsolutePath(),
                 "-" + M2ArgumentCollection.NORMAL_SAMPLE_SHORT_NAME, normalSample,
                 "-" + M2ArgumentCollection.PANEL_OF_NORMALS_SHORT_NAME, ponVcf.getAbsolutePath(),
@@ -206,16 +274,19 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     public void testTumorNormal() throws Exception {
         Utils.resetRandomGenerator();
         final File outputVcf = createTempFile("output", ".vcf");
+        final File filteredVcf = createTempFile("filtered", ".vcf");
 
         final File tumorBam = new File(DREAM_BAMS_DIR, "tumor.bam");
-        final String tumorName = "synthetic.challenge.set1.tumor";
         final File normalBam = new File(DREAM_BAMS_DIR, "normal.bam");
-        final String normalName = "synthetic.challenge.set1.normal";
+        final File normal2 = DREAM_2_NORMAL;
+        final String normalName = getSampleName(normalBam);
+        final String normal2Name = getSampleName(normal2);
 
         final String[] args = {
                 "-I", tumorBam.getAbsolutePath(),
-                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, tumorName,
                 "-I", normalBam.getAbsolutePath(),
+                "-I", normal2.getAbsolutePath(),
+                "-normal", normal2Name,
                 "-" + M2ArgumentCollection.NORMAL_SAMPLE_SHORT_NAME, normalName,
                 "-R", b37_reference_20_21,
                 "-L", "20:10000000-10100000", // this is 1/3 of the chr 20 interval of our mini-dbSNP
@@ -223,20 +294,21 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         };
 
         runCommandLine(args);
-        VariantContextTestUtils.streamVcf(outputVcf).forEach(a -> Assert.assertTrue(a.getGenotype(tumorName).hasAD()));
+        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-V", outputVcf.getAbsolutePath(), "-O", filteredVcf.getAbsolutePath()), FilterMutectCalls.class.getSimpleName()));
+
+        VariantContextTestUtils.streamVcf(outputVcf).flatMap(vc -> vc.getGenotypes().stream()).forEach(g -> Assert.assertTrue(g.hasAD()));
         final long numVariants = VariantContextTestUtils.streamVcf(outputVcf).count();
         Assert.assertTrue(numVariants < 4);
     }
 
     // run tumor-only using our mini gnomAD on NA12878, which is not a tumor
     @Test
-    public void testTumorOnly() throws Exception {
+    public void testTumorOnly() {
         Utils.resetRandomGenerator();
         final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
         final File filteredVcf = createTempFile("filtered", ".vcf");
 
         final List<String> args = Arrays.asList("-I", NA12878_20_21_WGS_bam,
-                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, "NA12878",
                 "-R", b37_reference_20_21,
                 "-L", "20:10000000-10010000",
                 "-O", unfilteredVcf.getAbsolutePath(),
@@ -268,7 +340,6 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
             final File outputVcf = createTempFile("unfiltered", ".vcf");
 
             final List<String> args = Arrays.asList("-I", bam.getAbsolutePath(),
-                    "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, "NA12878",
                     "-R", b37_reference_20_21,
                     "-L", "20:10019000-10022000",
                     "-O", outputVcf.getAbsolutePath(),
@@ -330,7 +401,6 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         final File givenAllelesVcf = new File(toolsTestDir, "mutect/gga_mode.vcf");
         final List<String> args = Arrays.asList("-I", NA12878_20_21_WGS_bam,
-                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, "NA12878",
                 "-R", b37_reference_20_21,
                 "-L", "20:9998500-10010000",
                 "-O", unfilteredVcf.getAbsolutePath(),
@@ -351,12 +421,10 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     @Test
     public void testGivenAllelesZeroCoverage() throws Exception {
         Utils.resetRandomGenerator();
-        final File bam = new File(DREAM_BAMS_DIR, "tumor_3.bam");
-        final String sample = "IS3.snv.indel.sv";
+        final File bam = DREAM_3_TUMOR;
         final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
         final File givenAllelesVcf = new File(toolsTestDir, "mutect/gga_mode_2.vcf");
         final List<String> args = Arrays.asList("-I", bam.getAbsolutePath(),
-                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, sample,
                 "-R", b37_reference_20_21,
                 "-L", "20:1119000-1120000",
                 "-O", unfilteredVcf.getAbsolutePath(),
@@ -368,11 +436,10 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     // make sure we have fixed a bug where germline resources with AF=. throw errors
     @Test
     public void testMissingAF() {
-        final File bam = new File(DREAM_BAMS_DIR, "tumor_4.bam");
+        final File bam = DREAM_4_TUMOR;
         final String sample = "synthetic.challenge.set4.tumour";
         final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
         final List<String> args = Arrays.asList("-I", bam.getAbsolutePath(),
-                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, sample,
                 "-R", b37_reference_20_21,
                 "--" + M2ArgumentCollection.GERMLINE_RESOURCE_LONG_NAME, GNOMAD_WITHOUT_AF_SNIPPET.getAbsolutePath(),
                 "-L", "20:10086110",
@@ -391,7 +458,6 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         final String[] args = {
                 "-I", NA12878_20_21_WGS_bam,
-                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, "NA12878",
                 "-R", b37_reference_20_21,
                 "-L", "20:10000000-20010000",
                 "--" + M2ArgumentCollection.GERMLINE_RESOURCE_LONG_NAME, GNOMAD.getAbsolutePath(),
@@ -454,7 +520,6 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final File outputVcf = createTempFile("output", ".vcf");
         final String[] args = {
                 "-I", CONSUMES_ZERO_REFERENCE_BASES,
-                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, "SM-612V3",
                 "-R", b37_reference_20_21,
                 "-O", outputVcf.getAbsolutePath()
         };
@@ -469,7 +534,6 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final File outputVcf = createTempFile("output", ".vcf");
         final String[] args = {
                 "-I", bamWithUnpairedReads,
-                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, "SM-612V3",
                 "-R", b37_reference_20_21,
                 "-O", outputVcf.getAbsolutePath()
         };
@@ -500,15 +564,13 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     public void testMinBaseQualityScore() throws Exception {
         Utils.resetRandomGenerator();
 
-        final File tumor = new File(DREAM_BAMS_DIR, "tumor_1.bam");
-        final String tumorSample = "tumor sample";
+        final File tumor = DREAM_1_TUMOR;
 
         final File outputAtLowThreshold = createTempFile("output", ".vcf");
         final File outputAtHighThreshold = createTempFile("output", ".vcf");
 
         final String[] lowThresholdArgs = {
                 "-I", tumor.getAbsolutePath(),
-                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, tumorSample,
                 "-R", b37_reference_20_21,
                 "-L", "20:10000000-13000000",
                 "-O", outputAtLowThreshold.getAbsolutePath(),
@@ -519,7 +581,6 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         final String[] highThresholdArgs = {
                 "-I", tumor.getAbsolutePath(),
-                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, tumorSample,
                 "-R", b37_reference_20_21,
                 "-L", "20:10000000-13000000",
                 "-O", outputAtHighThreshold.getAbsolutePath(),
@@ -573,7 +634,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "chrM:750-750 A*, [G]");
         Assert.assertTrue(expectedKeys.stream().allMatch(variantKeys::contains));
 
-        Assert.assertEquals(Integer.parseInt(variants.get(0).getGenotype("NA12878").getAnyAttribute(GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY).toString()), 1514, 5);
+        Assert.assertEquals(variants.get(0).getAttributeAsInt(GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY, 0), 1513);
         Assert.assertEquals(variants.get(0).getGenotype("NA12878").getAnyAttribute(GATKVCFConstants.POTENTIAL_POLYMORPHIC_NUMT_KEY), "true");
     }
 
@@ -746,7 +807,6 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
 
         final List<String> args = Arrays.asList("-I", DEEP_MITO_BAM.getAbsolutePath(),
-                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, DEEP_MITO_SAMPLE_NAME,
                 "-R", MITO_REF.getAbsolutePath(),
                 "-L", "chrM:1-1018",
                 "-ip", "300",
@@ -811,7 +871,6 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final File unfilteredVcf = File.createTempFile("unfiltered", ".vcf");
         final List<String> args = Arrays.asList(
                 "-I", samFile.getAbsolutePath(),
-                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, M2TestingUtils.DEFAULT_SAMPLE_NAME,
                 "-R", hg19_chr1_1M_Reference,
                 "-O", unfilteredVcf.getAbsolutePath());
         runCommandLine(args);
@@ -871,7 +930,6 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final String[] args = makeCommandLineArgs(Arrays.asList(
                 "-R", hg19_chr1_1M_Reference,
                 "-I", samFileWithOverlappingReads.getAbsolutePath(),
-                "-tumor", M2TestingUtils.DEFAULT_SAMPLE_NAME,
                 "-O", unfilteredVcf.getAbsolutePath(),
                 "--bamout", bamout.getAbsolutePath(),
                 "--" + M2ArgumentCollection.ANNOTATE_BASED_ON_READS_LONG_NAME, "true",
@@ -945,7 +1003,6 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         final List<String> args = Arrays.asList(
                 "-I", samWithNsandStrandBias.getAbsolutePath(),
-                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, M2TestingUtils.DEFAULT_SAMPLE_NAME,
                 "-R", hg19_chr1_1M_Reference,
                 "-A", "StrandBiasBySample",
                 "-A", "CountNs",
@@ -1009,25 +1066,33 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         }
     }
 
-    // tumor bam, tumor sample name, normal bam, normal sample name, truth vcf, required sensitivity, tumor only
+    // tumor bam, normal bam, truth vcf, required sensitivity, tumor only
     @DataProvider(name = "dreamSyntheticData")
     public Object[][] dreamSyntheticData() {
         return new Object[][]{
-                {new File(DREAM_BAMS_DIR, "tumor_1.bam"), "tumor sample", new File(DREAM_BAMS_DIR, "normal_1.bam"), "synthetic.challenge.set1.normal", new File(DREAM_VCFS_DIR, "sample_1.vcf"), new File(DREAM_MASKS_DIR, "mask1.list"), 0.97, false},
-                {new File(DREAM_BAMS_DIR, "tumor_2.bam"), "background.synth.challenge2.snvs.svs.tumorbackground", new File(DREAM_BAMS_DIR, "normal_2.bam"), "synthetic.challenge.set2.normal", new File(DREAM_VCFS_DIR, "sample_2.vcf"), new File(DREAM_MASKS_DIR, "mask2.list"), 0.95, false},
-                {new File(DREAM_BAMS_DIR, "tumor_2.bam"), "background.synth.challenge2.snvs.svs.tumorbackground", new File(DREAM_BAMS_DIR, "normal_2.bam"), "synthetic.challenge.set2.normal", new File(DREAM_VCFS_DIR, "sample_2.vcf"), new File(DREAM_MASKS_DIR, "mask2.list"), 0.95, true},
-                {new File(DREAM_BAMS_DIR, "tumor_3.bam"), "IS3.snv.indel.sv", new File(DREAM_BAMS_DIR, "normal_3.bam"), "G15512.prenormal.sorted", new File(DREAM_VCFS_DIR, "sample_3.vcf"), new File(DREAM_MASKS_DIR, "mask3.list"), 0.90, false},
-                {new File(DREAM_BAMS_DIR, "tumor_4.bam"), "synthetic.challenge.set4.tumour", new File(DREAM_BAMS_DIR, "normal_4.bam"), "synthetic.challenge.set4.normal", new File(DREAM_VCFS_DIR, "sample_4.vcf"), new File(DREAM_MASKS_DIR, "mask4.list"), 0.65, false},
-                {new File(DREAM_BAMS_DIR, "tumor_4.bam"), "synthetic.challenge.set4.tumour", new File(DREAM_BAMS_DIR, "normal_4.bam"), "synthetic.challenge.set4.normal", new File(DREAM_VCFS_DIR, "sample_4.vcf"), new File(DREAM_MASKS_DIR, "mask4.list"), 0.65, true},
-
+                {DREAM_1_TUMOR, DREAM_1_NORMAL, DREAM_1_TRUTH, DREAM_1_MASK, 0.97, false},
+                {DREAM_2_TUMOR, DREAM_2_NORMAL, DREAM_2_TRUTH, DREAM_2_MASK, 0.95, false},
+                {DREAM_2_TUMOR, DREAM_2_NORMAL, DREAM_2_TRUTH, DREAM_2_MASK, 0.95, true},
+                {DREAM_3_TUMOR, DREAM_3_NORMAL, DREAM_3_TRUTH, DREAM_3_MASK, 0.90, false},
+                {DREAM_4_TUMOR, DREAM_4_NORMAL, DREAM_4_TRUTH, DREAM_4_MASK, 0.65, false},
+                {DREAM_4_TUMOR, DREAM_4_NORMAL, DREAM_4_TRUTH, DREAM_4_MASK, 0.65, true},
         };
     }
 
-    // tumor bam, tumor sample name, normal bam, normal sample name, truth vcf, required sensitivity
+    // tumor bam, normal bam
     @DataProvider(name = "dreamSyntheticDataSample1")
     public Object[][] dreamSyntheticDataSample1() {
         return new Object[][]{
-                {new File(DREAM_BAMS_DIR, "tumor_1.bam"), "tumor sample", new File(DREAM_BAMS_DIR, "normal_1.bam"), "synthetic.challenge.set1.normal"}
+                {DREAM_1_TUMOR, DREAM_1_NORMAL}
+        };
+    }
+
+    // tumorBam1, tumorBam2, Optional<File> normalBam, truthVcf, mask, requiredSensitivity
+    @DataProvider(name = "twoTumorData")
+    public Object[][] twoTumorData() {
+        return new Object[][]{
+                {DREAM_1_TUMOR, DREAM_2_TUMOR, Optional.of(DREAM_1_NORMAL), DREAM_1_TRUTH, DREAM_1_MASK, 0.97},
+                {DREAM_3_TUMOR, DREAM_4_TUMOR, Optional.of(DREAM_3_NORMAL), DREAM_3_TRUTH, DREAM_3_MASK, 0.90}
         };
     }
 

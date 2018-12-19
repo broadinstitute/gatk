@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.tools.walkers.readorientation;
 
 import htsjdk.samtools.util.SequenceUtil;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -25,6 +27,8 @@ public class AltSiteRecord {
     private int altF1R2;
     private int depth;
     private Nucleotide altAllele;
+
+    public static final String SAMPLE_METADATA_TAG = "SAMPLE";
 
 
     public AltSiteRecord(final String referenceContext, final int refCount, final int altCount,
@@ -97,8 +101,9 @@ public class AltSiteRecord {
 
     /*** Writer ***/
     public static class AltSiteRecordTableWriter extends TableWriter<AltSiteRecord> {
-        public AltSiteRecordTableWriter(final File output) throws IOException {
+        public AltSiteRecordTableWriter(final File output, final String sample) throws IOException {
             super(output, AltSiteRecord.AltSiteRecordTableColumn.COLUMNS);
+            writeMetadata(SAMPLE_METADATA_TAG, sample);
         }
 
         @Override
@@ -135,18 +140,20 @@ public class AltSiteRecord {
         }
     }
 
-    /** Code for reading alt site records from a table **/
-    public static List<AltSiteRecord> readAltSiteRecords(final File table, final int initialListSize) {
+    /** Code for reading sample name and alt site records from a table **/
+    public static Pair<String, List<AltSiteRecord>> readAltSiteRecords(final File table, final int initialListSize) {
         List<AltSiteRecord> records = new ArrayList<>(initialListSize);
+        final String sample;
         try (AltSiteRecordTableReader reader = new AltSiteRecordTableReader(table)) {
+            sample = reader.getMetadata().get(SAMPLE_METADATA_TAG);
             reader.forEach(records::add);
         } catch (IOException e) {
             throw new UserException(String.format("Encountered an IO exception while reading from %s.", table), e);
         }
-        return records;
+        return ImmutablePair.of(sample, records);
     }
 
-    public static List<AltSiteRecord> readAltSiteRecords(final File table) {
+    public static Pair<String, List<AltSiteRecord>> readAltSiteRecords(final File table) {
         // arbitrarily initialize the list to size 100
         return readAltSiteRecords(table, 100);
     }

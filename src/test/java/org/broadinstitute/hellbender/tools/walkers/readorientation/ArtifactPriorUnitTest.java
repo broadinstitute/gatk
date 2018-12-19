@@ -35,7 +35,7 @@ public class ArtifactPriorUnitTest {
         final String referenceContext2 = "GTA";
         final String referenceContext3 = "CCC";
 
-        final ArtifactPriorCollection artifactPriorCollectionBefore = new ArtifactPriorCollection();
+        final ArtifactPriorCollection artifactPriorCollectionBefore = new ArtifactPriorCollection("sample");
         artifactPriorCollectionBefore.set(new ArtifactPrior(referenceContext1, pi, numExamples1, numAltExamples1));
         artifactPriorCollectionBefore.set(new ArtifactPrior(referenceContext2, pi, numExamples2, numAltExamples2));
         artifactPriorCollectionBefore.set(new ArtifactPrior(referenceContext3, pi, numExamples3, numAltExamples3));
@@ -75,7 +75,7 @@ public class ArtifactPriorUnitTest {
         ArtifactState.setStatePrior(pi2, 0.8, HOM_REF);
         ArtifactState.setStatePrior(pi2, 0.15, SOMATIC_HET);
 
-        final ArtifactPriorCollection artifactPriorCollectionBefore = new ArtifactPriorCollection();
+        final ArtifactPriorCollection artifactPriorCollectionBefore = new ArtifactPriorCollection("sample");
         artifactPriorCollectionBefore.set(new ArtifactPrior(referenceContext1, pi1, numExamples, numAltExamples));
         artifactPriorCollectionBefore.set(new ArtifactPrior(referenceContext2, pi2, numExamples, numAltExamples));
 
@@ -135,7 +135,7 @@ public class ArtifactPriorUnitTest {
         final String context = "ATG";
         final String revComp = "CAT";
 
-        final ArtifactPriorCollection priors = new ArtifactPriorCollection();
+        final ArtifactPriorCollection priors = new ArtifactPriorCollection("sample");
         priors.set(new ArtifactPrior(context, pi, 100, 10));
         Optional<ArtifactPrior> priorRevComp = priors.get(revComp);
 

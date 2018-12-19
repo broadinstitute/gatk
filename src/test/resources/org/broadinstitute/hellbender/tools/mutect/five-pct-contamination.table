@@ -1,2 +1,2 @@
-level	contamination	error
-whole_bam	0.05	0.001
+sample	level	contamination	error
+NA12878	whole_bam	0.05	0.001

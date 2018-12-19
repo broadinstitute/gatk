@@ -25,6 +25,8 @@ public class ArtifactPrior {
     private final int numExamples;
     private final int numAltExamples;
 
+    public static final String SAMPLE_METADATA_TAG = "SAMPLE";
+
     public ArtifactPrior(final String referenceContext, final double[] pi, final int numExamples, final int numAltExamples) {
         this.referenceContext = referenceContext;
         this.pi = pi;
@@ -63,8 +65,9 @@ public class ArtifactPrior {
     public int getNumAltExamples() { return numAltExamples; }
 
     public static class ArtifactPriorTableWriter extends TableWriter<ArtifactPrior> {
-        public ArtifactPriorTableWriter(final File output) throws IOException {
+        public ArtifactPriorTableWriter(final File output, final String sample) throws IOException {
             super(output, ArtifactPriorTableColumn.COLUMNS);
+            writeMetadata(SAMPLE_METADATA_TAG, sample);
         }
 
         @Override

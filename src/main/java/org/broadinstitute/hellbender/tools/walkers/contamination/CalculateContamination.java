@@ -113,22 +113,24 @@ public class CalculateContamination extends CommandLineProgram {
 
     @Override
     public Object doWork() {
-        final List<PileupSummary> sites = filterSitesByCoverage(PileupSummary.readFromFile(inputPileupSummariesTable));
+        final Pair<String, List<PileupSummary>> sampleAndsites = PileupSummary.readFromFile(inputPileupSummariesTable);
+        final String sample = sampleAndsites.getLeft();
+        final List<PileupSummary> sites = filterSitesByCoverage(sampleAndsites.getRight());
 
         // used the matched normal to genotype (i.e. find hom alt sites) if available
         final List<PileupSummary> genotypingSites = matchedPileupSummariesTable == null ? sites :
-                filterSitesByCoverage(PileupSummary.readFromFile(matchedPileupSummariesTable));
+                filterSitesByCoverage(PileupSummary.readFromFile(matchedPileupSummariesTable).getRight());
 
         final ContaminationModel genotypingModel = new ContaminationModel(genotypingSites);
 
         if (outputTumorSegmentation != null) {
             final ContaminationModel tumorModel = matchedPileupSummariesTable == null ? genotypingModel : new ContaminationModel(sites);
-            MinorAlleleFractionRecord.writeToFile(tumorModel.segmentationRecords(), outputTumorSegmentation);
+            MinorAlleleFractionRecord.writeToFile(sample, tumorModel.segmentationRecords(), outputTumorSegmentation);
         }
 
         final Pair<Double, Double> contaminationAndError = genotypingModel.calculateContaminationFromHoms(sites);
         ContaminationRecord.writeToFile(Arrays.asList(
-                new ContaminationRecord(contaminationAndError.getLeft(), contaminationAndError.getRight())), outputTable);
+                new ContaminationRecord(sample, contaminationAndError.getLeft(), contaminationAndError.getRight())), outputTable);
 
         return "SUCCESS";
     }

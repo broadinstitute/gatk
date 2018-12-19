@@ -3,9 +3,12 @@ package org.broadinstitute.hellbender.tools.walkers.mutect;
 
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
+import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
@@ -25,15 +28,15 @@ public class FilteringFirstPass {
     final List<FilterResult> filterResults;
     final Map<String, ImmutablePair<String, Integer>> filteredPhasedCalls;
     final Map<String, FilterStats> filterStats;
-    final String tumorSample;
+    final Set<String> normalSamples;
     boolean readyForSecondPass;
 
-    public FilteringFirstPass(final String tumorSample) {
+    public FilteringFirstPass(final Set<String> normalSamples) {
         filterResults = new ArrayList<>();
         filteredPhasedCalls = new HashMap<>();
         filterStats = new HashMap<>();
         readyForSecondPass = false;
-        this.tumorSample = tumorSample;
+        this.normalSamples = normalSamples;
     }
 
     public boolean isReadyForSecondPass() { return readyForSecondPass; }
@@ -45,7 +48,7 @@ public class FilteringFirstPass {
 
     public boolean isOnFilteredHaplotype(final VariantContext vc, final int maxDistance) {
 
-        final Genotype tumorGenotype = vc.getGenotype(tumorSample);
+        final Genotype tumorGenotype = getTumorGenotypeWithGreatestAlleleFraction(vc);
 
         if (!hasPhaseInfo(tumorGenotype)) {
             return false;
@@ -64,9 +67,16 @@ public class FilteringFirstPass {
         return filteredCall.getLeft().equals(pgt) && Math.abs(filteredCall.getRight() - position) <= maxDistance;
     }
 
+    private Genotype getTumorGenotypeWithGreatestAlleleFraction(final VariantContext vc) {
+        return vc.getGenotypes().stream()
+                    .filter(g ->  !normalSamples.contains(g.getSampleName()))
+                    .max(Comparator.comparingDouble(g -> MathUtils.arrayMax(GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(g, VCFConstants.ALLELE_FREQUENCY_KEY,
+                            () -> new double[] {0.0}, 0.0)))).get();
+    }
+
     public void add(final FilterResult filterResult, final VariantContext vc) {
         filterResults.add(filterResult);
-        final Genotype tumorGenotype = vc.getGenotype(tumorSample);
+        final Genotype tumorGenotype = getTumorGenotypeWithGreatestAlleleFraction(vc);
 
         if (!filterResult.getFilters().isEmpty() && hasPhaseInfo(tumorGenotype)) {
             final String pgt = (String) tumorGenotype.getExtendedAttribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY, "");

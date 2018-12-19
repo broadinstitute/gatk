@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.contamination;
 
 import htsjdk.samtools.util.Locatable;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -19,6 +20,8 @@ import java.util.List;
 public class MinorAlleleFractionRecord implements Locatable {
     private final SimpleInterval segment;
     private double minorAlleleFraction;
+
+    public static final String SAMPLE_METADATA_TAG = "SAMPLE";
 
     public MinorAlleleFractionRecord(final SimpleInterval segment, final double minorAlleleFraction) {
         this.segment = segment;
@@ -43,17 +46,19 @@ public class MinorAlleleFractionRecord implements Locatable {
     }
 
     //----- The following two public static methods read and write contamination files
-    public static void writeToFile(final List<MinorAlleleFractionRecord> records, final File outputTable) {
+    public static void writeToFile(final String sample, final List<MinorAlleleFractionRecord> records, final File outputTable) {
         try ( MinorAlleleFractionTableWriter writer = new MinorAlleleFractionTableWriter(outputTable) ) {
+            writer.writeMetadata(SAMPLE_METADATA_TAG, sample);
             writer.writeAllRecords(records);
         } catch (IOException e){
             throw new UserException(String.format("Encountered an IO exception while writing to %s.", outputTable));
         }
     }
 
-    public static List<MinorAlleleFractionRecord> readFromFile(final File tableFile) {
+    public static ImmutablePair<String, List<MinorAlleleFractionRecord>> readFromFile(final File tableFile) {
         try( MinorAlleleFractionTableReader reader = new MinorAlleleFractionTableReader(tableFile) ) {
-            return reader.toList();
+            final List<MinorAlleleFractionRecord> list = reader.toList();
+            return ImmutablePair.of(reader.getMetadata().get(SAMPLE_METADATA_TAG), list);
         } catch (IOException e){
             throw new UserException(String.format("Encountered an IO exception while reading from %s.", tableFile));
         }
@@ -75,7 +80,7 @@ public class MinorAlleleFractionRecord implements Locatable {
         }
     }
 
-    private static class MinorAlleleFractionTableReader extends TableReader<MinorAlleleFractionRecord> {
+    public static class MinorAlleleFractionTableReader extends TableReader<MinorAlleleFractionRecord> {
         public MinorAlleleFractionTableReader(final File file) throws IOException {
             super(file);
         }

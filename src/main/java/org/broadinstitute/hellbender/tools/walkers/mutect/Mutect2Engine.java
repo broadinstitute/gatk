@@ -78,8 +78,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     public static final int MINIMUM_BASE_QUALITY = 6;   // for active region determination
 
     private final SampleList samplesList;
-    private final String tumorSample;
-    private final String normalSample;
+    private final Set<String> normalSamples;
 
     private CachingIndexedFastaSequenceFile referenceReader;
     private ReadThreadingAssembler assemblyEngine;
@@ -108,15 +107,21 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         referenceReader = AssemblyBasedCallerUtils.createReferenceReader(Utils.nonNull(reference));
         aligner = SmithWatermanAligner.getAligner(MTAC.smithWatermanImplementation);
         samplesList = new IndexedSampleList(new ArrayList<>(ReadUtils.getSamplesFromHeader(header)));
-        tumorSample = decodeSampleNameIfNecessary(MTAC.tumorSample);
-        normalSample = MTAC.normalSample == null ? null : decodeSampleNameIfNecessary(MTAC.normalSample);
-        checkSampleInBamHeader(tumorSample);
-        checkSampleInBamHeader(normalSample);
+
+        // optimize set operations for the common cases of no normal and one normal
+        if (MTAC.normalSamples.isEmpty()) {
+            normalSamples = Collections.emptySet();
+        } else if (MTAC.normalSamples.size() == 1) {
+            normalSamples = Collections.singleton(decodeSampleNameIfNecessary(MTAC.normalSamples.iterator().next()));
+        } else {
+            normalSamples = MTAC.normalSamples.stream().map(this::decodeSampleNameIfNecessary).collect(Collectors.toSet());
+        }
+        normalSamples.forEach(this::checkSampleInBamHeader);
 
         annotationEngine = Utils.nonNull(annotatorEngine);
         assemblyEngine = MTAC.createReadThreadingAssembler();
         likelihoodCalculationEngine = AssemblyBasedCallerUtils.createLikelihoodCalculationEngine(MTAC.likelihoodArgs);
-        genotypingEngine = new SomaticGenotypingEngine(samplesList, MTAC, tumorSample, normalSample);
+        genotypingEngine = new SomaticGenotypingEngine(samplesList, MTAC, normalSamples);
         genotypingEngine.setAnnotationEngine(annotationEngine);
         haplotypeBAMWriter = AssemblyBasedCallerUtils.createBamWriter(MTAC, createBamOutIndex, createBamOutMD5, header);
         trimmer.initialize(MTAC.assemblyRegionTrimmerArgs, header.getSequenceDictionary(), MTAC.debug,
@@ -171,12 +176,10 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         headerInfo.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY));
         headerInfo.add(VCFStandardHeaderLines.getFormatLine(VCFConstants.PHASE_SET_KEY));
 
-        if (!MTAC.mitochondria) {
-            headerInfo.add(new VCFHeaderLine(TUMOR_SAMPLE_KEY_IN_VCF_HEADER, tumorSample));
-        }
-        if (hasNormal()) {
-            headerInfo.add(new VCFHeaderLine(NORMAL_SAMPLE_KEY_IN_VCF_HEADER, normalSample));
-        }
+        ReadUtils.getSamplesFromHeader(header).stream().filter(this::isTumorSample)
+                .forEach(s -> headerInfo.add(new VCFHeaderLine(TUMOR_SAMPLE_KEY_IN_VCF_HEADER, s)));
+
+        normalSamples.forEach(sample -> headerInfo.add(new VCFHeaderLine(NORMAL_SAMPLE_KEY_IN_VCF_HEADER, sample)));
         if (emitReferenceConfidence()) {
             headerInfo.addAll(referenceConfidenceModel.getVCFHeaderLines());
             headerInfo.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.TUMOR_LOD_KEY));
@@ -276,7 +279,15 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
     //TODO: should be a variable, not a function
     private boolean hasNormal() {
-        return (normalSample != null);
+        return !normalSamples.isEmpty();
+    }
+
+    private boolean isNormalSample(final String sample) {
+        return normalSamples.contains(sample);
+    }
+
+    private boolean isTumorSample(final String sample) {
+        return !isNormalSample(sample);
     }
 
     protected Map<String, List<GATKRead>> splitReadsBySample( final Collection<GATKRead> reads ) {
@@ -308,14 +319,14 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         }
 
         final ReadPileup pileup = context.getBasePileup();
-        final ReadPileup tumorPileup = pileup.getPileupForSample(tumorSample, header);
+        final ReadPileup tumorPileup = pileup.makeFilteredPileup(pe -> isTumorSample(ReadUtils.getSampleName(pe.getRead(), header)));
         final List<Byte> tumorAltQuals = altQuals(tumorPileup, refBase, MTAC.initialPCRErrorQual);
         final double tumorLog10Odds = MathUtils.logToLog10(lnLikelihoodRatio(tumorPileup.size() - tumorAltQuals.size(), tumorAltQuals));
 
         if (tumorLog10Odds < MTAC.getInitialLod()) {
             return new ActivityProfileState(refInterval, 0.0);
         } else if (hasNormal() && !MTAC.genotypeGermlineSites) {
-            final ReadPileup normalPileup = pileup.getPileupForSample(normalSample, header);
+            final ReadPileup normalPileup = pileup.makeFilteredPileup(pe -> isNormalSample(ReadUtils.getSampleName(pe.getRead(), header)));
             final List<Byte> normalAltQuals = altQuals(normalPileup, refBase, MTAC.initialPCRErrorQual);
             final int normalAltCount = normalAltQuals.size();
             final double normalQualSum = normalAltQuals.stream().mapToDouble(Byte::doubleValue).sum();

@@ -10,14 +10,11 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConfidenceMode;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.downsampling.MutectDownsampler;
 import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsampler;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
-import org.broadinstitute.hellbender.utils.variant.writers.SomaticGVCFWriter;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -187,22 +184,7 @@ public final class Mutect2 extends AssemblyRegionWalker {
     public AssemblyRegionEvaluator assemblyRegionEvaluator() { return m2Engine; }
 
     @Override
-    protected String[] customCommandLineValidation() {
-        if (MTAC.tumorSample == null && !MTAC.mitochondria) {
-            return new String[]{"Argument tumor-sample was missing: Argument 'tumor-sample' is required when not in mitochondria mode."};
-        }
-        return null;
-    }
-
-    @Override
     public void onTraversalStart() {
-        if (MTAC.mitochondria) {
-            final Set<String> samples = ReadUtils.getSamplesFromHeader(getHeaderForReads());
-            if (samples.size() != 1) {
-                throw new UserException(String.format("The input bam has more than one sample: %s", Arrays.toString(samples.toArray())));
-            }
-            MTAC.tumorSample = samples.iterator().next();
-        }
         VariantAnnotatorEngine annotatorEngine = new VariantAnnotatorEngine(makeVariantAnnotations(), null, Collections.emptyList(), false);
         m2Engine = new Mutect2Engine(MTAC, createOutputBamIndex, createOutputBamMD5, getHeaderForReads(), referenceArguments.getReferenceFileName(), annotatorEngine);
         vcfWriter = createVCFWriter(outputVCF);
@@ -223,9 +205,9 @@ public final class Mutect2 extends AssemblyRegionWalker {
     public Collection<Annotation> makeVariantAnnotations(){
         final Collection<Annotation> annotations = super.makeVariantAnnotations();
 
-        if (MTAC.artifactPriorTable != null){
+        if (!MTAC.artifactPriorTables.isEmpty()){
             // Enable the annotations associated with the read orientation model
-            annotations.add(new ReadOrientationArtifact(MTAC.artifactPriorTable));
+            annotations.add(new ReadOrientationArtifact(MTAC.artifactPriorTables));
             annotations.add(new ReferenceBases());
         }
         if (MTAC.autosomalCoverage > 0) {
