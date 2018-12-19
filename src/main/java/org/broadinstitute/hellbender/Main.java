@@ -338,6 +338,14 @@ public class Main {
 
         if (args.length < 1 || args[0].equals("-h") || args[0].equals("--help")) {
             printUsage(System.out, classes, commandLineName);
+        } else if ( args.length == 1 && (args[0].equals("-" + SpecialArgumentsCollection.VERSION_FULLNAME) || args[0].equals("--" + SpecialArgumentsCollection.VERSION_FULLNAME))) {
+            new CommandLineProgram(){
+                @Override
+                protected Object doWork() {
+                    System.out.println(String.format("%s v%s", getToolkitName(), getVersion()));
+                    return 0;
+                }
+            }.doWork();
         } else {
             if (simpleNameToClass.containsKey(args[0])) {
                 final Class<?> clazz = simpleNameToClass.get(args[0]);

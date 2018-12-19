@@ -109,4 +109,10 @@ public final class MainTest extends CommandLineProgramTest {
         }
     }
 
+    @Test
+    public void testVersion(){
+        //assert that --version doesn't crash.
+        Assert.assertNull(new Main().instanceMain(new String[]{"--version"}));
+    }
+
 }
