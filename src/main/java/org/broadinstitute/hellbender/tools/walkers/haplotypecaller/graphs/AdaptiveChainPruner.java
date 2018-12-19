@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.util.*;
+import java.util.function.ToDoubleFunction;
 import java.util.stream.Collectors;
 
 public class AdaptiveChainPruner<V extends BaseVertex, E extends BaseEdge> extends ChainPruner<V,E> {
@@ -49,7 +50,8 @@ public class AdaptiveChainPruner<V extends BaseVertex, E extends BaseEdge> exten
         });
 
         chains.stream().filter(c -> isChainPossibleVariant(c, graph))
-                .sorted(Comparator.comparingDouble(chainLogOdds::get).reversed())
+                .sorted(Comparator.comparingDouble((ToDoubleFunction<Path<V, E>>) chainLogOdds::get)
+                        .reversed().thenComparingInt(Path::getScore))
                 .skip(maxUnprunedVariants)
                 .forEach(result::add);
 

@@ -192,15 +192,6 @@ public final class AssemblyBasedCallerUtils {
         }
     }
 
-    public static ReadThreadingAssembler createReadThreadingAssembler(final AssemblyBasedCallerArgumentCollection args) {
-        final ReadThreadingAssemblerArgumentCollection rtaac = args.assemblerArgs;
-        final ReadThreadingAssembler assemblyEngine = rtaac.makeReadThreadingAssembler();
-        assemblyEngine.setDebug(args.debug);
-        assemblyEngine.setMinBaseQualityToUseInAssembly(args.minBaseQualityScore);
-
-        return assemblyEngine;
-    }
-
     public static Optional<HaplotypeBAMWriter> createBamWriter(final AssemblyBasedCallerArgumentCollection args,
                                                                final boolean createBamOutIndex,
                                                                final boolean createBamOutMD5,

@@ -5,6 +5,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.Hidden;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.StandardCallerArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
 import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 
@@ -29,11 +30,21 @@ public abstract class AssemblyBasedCallerArgumentCollection extends StandardCall
     @ArgumentCollection
     public AssemblyRegionTrimmerArgumentCollection assemblyRegionTrimmerArgs = new AssemblyRegionTrimmerArgumentCollection();
 
-    protected boolean useMutectAssemblerArgumentCollection() { return false; }
+    public ReadThreadingAssembler createReadThreadingAssembler() {
+        final ReadThreadingAssemblerArgumentCollection rtaac = assemblerArgs;
+        final ReadThreadingAssembler assemblyEngine = rtaac.makeReadThreadingAssembler();
+        assemblyEngine.setDebug(debug);
+        assemblyEngine.setMinBaseQualityToUseInAssembly(minBaseQualityScore);
+
+        return assemblyEngine;
+    }
+
+    protected ReadThreadingAssemblerArgumentCollection getReadThreadingAssemblerArgumentCollection() {
+        return new HaplotypeCallerReadThreadingAssemblerArgumentCollection();
+    }
 
     @ArgumentCollection
-    public ReadThreadingAssemblerArgumentCollection assemblerArgs = useMutectAssemblerArgumentCollection() ?
-            new MutectReadThreadingAssemblerArgumentCollection() : new HaplotypeCallerReadThreadingAssemblerArgumentCollection();
+    public ReadThreadingAssemblerArgumentCollection assemblerArgs = getReadThreadingAssemblerArgumentCollection();
 
     @ArgumentCollection
     public LikelihoodEngineArgumentCollection likelihoodArgs = new LikelihoodEngineArgumentCollection();

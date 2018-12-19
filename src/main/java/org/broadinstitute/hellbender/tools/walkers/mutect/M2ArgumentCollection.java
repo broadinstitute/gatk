@@ -5,6 +5,9 @@ import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.MutectReadThreadingAssemblerArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReadThreadingAssemblerArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
 
 import java.io.File;
 
@@ -48,8 +51,20 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public static final double DEFAULT_INITIAL_LOD = 2.0;
     public static final double DEFAULT_MITO_INITIAL_LOD = 0;
 
+    public static final double DEFAULT_PRUNING_LOG_ODDS_THRESHOLD = -4;
+
     @Override
-    protected boolean useMutectAssemblerArgumentCollection() { return true; }
+    protected ReadThreadingAssemblerArgumentCollection getReadThreadingAssemblerArgumentCollection(){
+        return new MutectReadThreadingAssemblerArgumentCollection();
+    }
+
+    @Override
+    public ReadThreadingAssembler createReadThreadingAssembler(){
+        if(mitochondria && assemblerArgs.pruningLog10OddsThreshold == ReadThreadingAssemblerArgumentCollection.DEFAULT_PRUNING_LOG_ODDS_THRESHOLD) {
+            assemblerArgs.pruningLog10OddsThreshold = DEFAULT_PRUNING_LOG_ODDS_THRESHOLD;
+        }
+        return super.createReadThreadingAssembler();
+    }
 
     //TODO: HACK ALERT HACK ALERT HACK ALERT
     //TODO: GATK4 does not yet have a way to tag inputs, eg -I:tumor tumor.bam -I:normal normal.bam,
