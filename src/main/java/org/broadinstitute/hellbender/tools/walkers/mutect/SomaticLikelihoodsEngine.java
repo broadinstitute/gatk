@@ -127,7 +127,7 @@ public class SomaticLikelihoodsEngine {
         return x < 1e-8 ? 0 : x * Math.log10(x);
     }
 
-    public static double log10DirichletNormalization(final double[] dirichletParams) {
+    public static double log10DirichletNormalization(final double... dirichletParams) {
         final double logNumerator = Gamma.logGamma(MathUtils.sum(dirichletParams));
         final double logDenominator = MathUtils.sum(MathUtils.applyToArray(dirichletParams, Gamma::logGamma));
         return MathUtils.logToLog10(logNumerator - logDenominator);

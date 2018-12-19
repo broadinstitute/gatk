@@ -18,7 +18,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.OrientationBiasFilterer;
 import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.OrientationBiasUtils;
 import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.PreAdapterOrientationScorer;
-import org.broadinstitute.hellbender.tools.walkers.mutect.FilterMutectCalls;
+import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.FilterMutectCalls;
 import org.broadinstitute.hellbender.utils.artifacts.Transition;
 import picard.analysis.artifacts.CollectSequencingArtifactMetrics;
 import picard.analysis.artifacts.SequencingArtifactMetrics;

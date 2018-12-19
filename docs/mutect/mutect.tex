@@ -9,6 +9,14 @@
 \usepackage{color}
 \usepackage{bm}
 
+\usepackage{xcolor}
+\usepackage{listings}
+\lstset{basicstyle=\ttfamily,
+  showstringspaces=false,
+  commentstyle=\color{red},
+  keywordstyle=\color{blue}
+}
+
 %Put an averaged random variable between brackets
 \newcommand{\ave}[1]{\left\langle #1 \right\rangle}
 
@@ -53,242 +61,86 @@
 
 \begin{document}
 
-\title{Mathematical Notes on Mutect2}
+\title{Notes on Mutect2}
 \author{David Benjamin}
 \email{davidben@broadinstitute.org}
-\affiliation{Broad Institute, 75 Ames Street, Cambridge, MA 02142}
+\affiliation{Broad Institute, 415 Main Street, Cambridge, MA 02142}
 \author{Takuto Sato}
-\email{tsato@broadinstitute.org}
-\affiliation{Broad Institute, 75 Ames Street, Cambridge, MA 02142}
+%\email{tsato@broadinstitute.org}
+\affiliation{Broad Institute, 415 Main Street, Cambridge, MA 02142}
+\author{Lee Lichtenstein}
+%\email{lichtens@broadinstitute.org}
+\affiliation{Broad Institute, 415 Main Street, Cambridge, MA 02142}
+\author{Megan Shand}
+%\email{mshand@broadinstitute.org}
+\affiliation{Broad Institute, 415 Main Street, Cambridge, MA 02142}
 
 \date{\today}
 
 \maketitle
 
-\section{Somatic Likelihoods Model}\label{introduction}
+%%%%%%
+%%%%%%
+%MUTECT2
+%%%%%%
+%%%%%%
+\section{Mutect2}
+Here we describe the command-line program \code{Mutect2} itself, which takes us from aligned reads to unfiltered, annotated variant calls.  Code block \ref{cmd-mutect2} shows how to invoke \code{Mutect2} using the gatk launch script.
 
-We have a set of potential somatic alleles and read-allele likelihoods $\ell_{ra} \equiv P({\rm read~}r|{\rm allele~}a)$.  We don't know which alleles are real somatic alleles and so we must compute, for each subset $\mathbb{A}$ of alleles, the likelihood that the reads come from $\mathbb{A}$.  A simple model for this likelihood is as follows: each read $r$ is associated with a latent indicator vector $\vz_r$ with one-hot encoding $z_{ra} = 1$ iff read $r$ came from allele $a \in \mathbb{A}$.  The conditional probability of the reads $\mathbb{R}$ given their allele assignments is
-\begin{equation}
-P( \mathbb{R} | \vz, \mathbb{A}) = \prod_{r \in \mathbb{R}} \prod_a \ell_{ra}^{z_{ra}}.
-\end{equation}
-The alleles are not equally likely because there is a latent vector $\vf$ of allele fractions -- $f_a$ is the allele fraction of allele $a$.  Since the components of $\vf$ sum to one it is a categorical distribution and can be given a Dirichlet prior,
-\begin{equation}
-P(\vf) = {\rm Dir}(\vf | \valpha).
-\end{equation}
-Then $f_a$ is the prior probability that a read comes from allele $a$ and thus the conditional probability of the indicators $\vz$ given the allele fractions $\vf$ is
-\begin{equation}
-P(\vz | \vf) = \prod_r \prod_a f_a^{z_{ra}}.
-\end{equation}
-The full-model likelihood is therefore
-\begin{equation}
-\mathbb{L}(\mathbb{A}) = P(\mathbb{R}, \vz, \vf | \mathbb{A}) = {\rm Dir}(\vf | \valpha) \prod_a  \prod_r \left( f_a \ell_{ra}\right)^{z_{ra}}.
-\label{full_likelihood}
-\end{equation}
-And the marginalized likelihood of $\mathbb{A}$, that is, the model evidence for allele subset $\mathbb{A}$, is
-\begin{equation}
-P(\mathbb{R} | \mathbb{A}) = \sum_\vz \int d \vf \, {\rm Dir}(\vf | \valpha) \prod_a  \prod_r \left( f_a \ell_{ra}\right)^{z_{ra}},
-\label{evidence}
-\end{equation}
-where the integral is over the probability simplex $\sum_a f_a = 1$.
+\begin{lstlisting}[language=bash,caption={Mutect2 command}, label={cmd-mutect2}]
+gatk Mutect2 -R reference.fasta \
+   -L intervals.interval_list \
+   -I tumor1.bam \
+   # Mutect2 may input more tumor samples from the same individual 
+   [-I tumor2.bam -I tumor3.bam . . .]  \
+   # Mutect2 may input matched normals from the same individual
+   [-I normal1.bam -I normal2.bam . . .]  \
+   # For most purposes Mutect2 should be supplied with gnomad
+   [-germline-resource af-only-gnomad.vcf] \
+    # Mutect2 may input a panel of normals to help identify technical artifacts
+   [-pon panel_of_normals.vcf . . .]  \
+   # Mutect2 may input parameters learned by CollectF1R2Counts
+   # and LearnReadOrientationModel for one or more tumor samples
+   [--orientation-bias-artifact-priors tumor1-artifact-prior.tsv . . .] \
+   -O unfiltered.vcf
+\end{lstlisting}
 
-The integral over $\vf$ is the normalization constant of a Dirichlet distribution and as such we can simply look up its formula.  However, the sum over all values of $\vz$ for all reads has exponentially many terms.  We will get around this difficulty by handling $\vz$ with a mean-field approximation in which we factorize the likelihood as $\mathbb{L} \approx q(\vz) q(\vf)$.  This approximation is exact in two limits: first, if there are many reads, each allele is associated with many reads and therefore the Law of Large Numbers causes $\vf$ and $\vz$ to become uncorrelated.  Second, if the allele assignments of reads are obvious $\vz_r$ is effectively not a random variable at all (there is no uncertainty as to which of component is non-zero) and also becomes uncorrelated with $\vf$.
+%%%%%
+%MODES
+%%%%%
+\subsection{Additional modes}
+The command above encompasses tumor-only, tumor-normal, and multiple-tumor somatic variant calling.  
 
-In the variational Bayesian mean-field formalism the value of $\vf$ that $\vz$ ``sees'' is the expectation of $\log \mathbb{L}$ with respect to $q(\vf)$ and vice versa.  That is,
-\begin{equation}
-q(\vf) \propto {\rm Dir}(\vf | \valpha) \prod_a  \prod_r f_a^{\bar{z}_{ra}} \propto {\rm Dir}(\vf | \valpha + \sum_r \bar{\vz}_r),
-\label{qf}
-\end{equation}
-where $\bar{z}_{ra} \equiv E_q \left[ z_{ra} \right]$, and
-\begin{equation}
-q(\vz_r) = \prod_a \left( \tilde{f}_a \ell_{ra}\right)^{z_{ra}}, \tilde{f}_a = \exp E[\ln f_a]
-\end{equation}
-Because $q(\vz)$ is categorical and $q(\vf)$ is Dirichlet\footnote{Note that we didn't \textit{impose} this in any way.  It simply falls out of the mean field equations.} the necessary mean fields are easily obtained and we have
-\begin{equation}
-\bar{z}_{ra} = \frac{\tilde{f}_a \ell_{ra}}{\sum_{a^\prime} \tilde{f}_{a^\prime} \ell_{ra^\prime}}
-\label{z_mean_field}
-\end{equation}
-and
-\begin{equation}
-\ln \tilde{f}_a = \psi(\alpha_a + \sum_r \bar{z}_{ra}) - \psi(\sum_{a^\prime} \alpha_{a^\prime} + N)
-\label{f_mean_field}
-\end{equation}
-where $\psi$ is the digamma function and $N$ is the number of reads.  To obtain $q(\vz)$ and $q(\vf)$ we iterate Equations \ref{z_mean_field} and \ref{f_mean_field} until convergence.  A very reasonable initialization is to set $\bar{z}_{ra} = 1$ if $a$ is the most likely allele for read $r$, 0 otherwise.  Having obtained the mean field of $\vz$, we would like to plug it into Eq \ref{evidence}.  We can't do this directly, of course, because Eq \ref{evidence} says nothing about our mean field factorization.  Rather, we need the variational approximation (Bishop's Eq 10.3) to the model evidence, which is
-\begin{align}
-\ln P(\mathbb{R} | \mathbb{A}) \approx& \sum_{\vz} \int d \vf q(\vz) q(\vf) \left[ \ln P(\mathbb{R}, \vz, \vf | \mathbb{A}) - \ln q(\vz) - \ln q(\vf) \right] \\
-=& E_q \left[ \ln P(\mathbb{R}, \vz, \vf | \mathbb{A}) \right] - E_q \left[ \ln q(\vz) \right] - E_q \left[ \ln q(\vf) \right]. \label{lagrangian}
-\end{align}
-Before we proceed, let's introduce some notation.  First, from Eq \ref{qf} the posterior $q(\vf)$ is
-\begin{equation}
-q(\vf) = {\rm Dir}(\vf | \vbeta), \quad \vbeta = \valpha + \sum_r \bar{\vz}_r.
-\end{equation}
-Second, let's define the log normalization constant of a Dirichlet distribution as $g$ so that
-\begin{equation}
-\ln {\rm Dir}(\vf | \vomega) = g(\vomega) + \sum_a (\omega_a - 1) \ln f_a, \quad g(\vomega) = \ln \Gamma(\sum_a \omega_a) - \sum_a \ln \Gamma(\omega_a).
-\end{equation}
-Finally, define the Dirichlet mean log (aka ``that digamma stuff") as $h$:
-\begin{equation}
-E_{\rm Dir(\vf | \vomega)} \left[ \ln f_a \right] = \psi(\omega_a) - \psi(\sum_{a^\prime} \omega_{a^\prime}) \equiv h_a(\vomega).
-\end{equation}
+\subsubsection{Mitochondria mode}
+For mitochondrial calling one should add the \code{--mitochondria-mode} flag to the \code{Mutect2} command line.  This switches several defaults from values appropriate to somatic variant calling to values that reflect the greater density of mitochondrial mutations.  It also activates annotations relevant to alignment artifacts involving nuclear paralogs to mitochondrial DNA.
 
-The log of Eq \ref{full_likelihood} is
-\begin{equation}
-\ln P(\mathbb{R}, \vz, \vf | \mathbb{A}) = g(\valpha) + \sum_a (\alpha_a - 1) \ln f_a + \sum_{ra} z_{ra} (\ln f_a + \ln \ell_{ra}).
-\end{equation}
-and thus the first term in Eq \ref{lagrangian} is
-\begin{align}
-E_q \left[ \ln P(\mathbb{R}, \vz, \vf | \mathbb{A}) \right] =& g(\valpha) + \sum_a (\alpha_a - 1) h_a(\vbeta) + \sum_{ra}\bar{z}_{ra} \left( h_a(\vbeta) + \ln \ell_{ra} \right) \\
-=& g(\valpha) + \sum_a (\beta_a - 1) h_a(\vbeta) + \sum_{ra}\bar{z}_{ra} \ln \ell_{ra}, \label{first_term}
-\end{align}
-where we used the relationship $\vbeta = \valpha + \sum_r \bar{\vz}_r$.
+\subsubsection{Force calling}
+One can force \code{Mutect2} to assemble and genotype all the variants in force-calls.vcf by adding \code{--genotyping-mode GENOTYPE\_GIVEN\_ALLELES -alleles force-calls.vcf} to the command line.  This injects all alleles in force-calls.vcf into the assembly graph, deactivates pruning of subgraphs contained them, and forces \code{Mutect2} to emit them in the output vcf regardless of their evidence.  In order to include even filtered alleles in force-calls.vcf, use the \code{--genotype-filtered-alleles} flag.  Force-called alleles are emitted \textit{in addition} to any alleles that \code{Mutect2} would otherwise discover.  This so-called GGA mode is useful for studying known driver mutations, for monitoring tumors after chemotherapy, and for validating calls from \code{Mutect2} or other tools against some orthogonal sequencing data.
 
-The second term in Eq \ref{lagrangian} is
-\begin{align}
-- E_q \left[ \ln q(\vz) \right] = - \sum_{ra} \bar{z}_{ra} \ln \bar{z}_{ra} \label{second_term}.
-\end{align}
-
-The third term in Eq \ref{lagrangian} is
-\begin{align}
-- E_q \left[ \ln q(\vf) \right] = -g(\vbeta) - \sum_a (\beta_a - 1) E_q [\ln f_a] = -g(\vbeta) - \sum_a (\beta_a - 1) h_a(\vbeta) \label{third_term}.
-\end{align}
-
-Adding Eqs \ref{first_term}, \ref{second_term}, and \ref{third_term} and noting the cancellation between parts of Eqs \ref{first_term} and \ref{third_term} we obtain
-\begin{equation}
-\ln P(\mathbb{R} | \mathbb{A}) \approx g(\valpha) - g(\vbeta) +  \sum_{ra} \bar{z}_{ra} \left( \ln \ell_{ra} - \ln \bar{z}_{ra} \right).
-\end{equation}
-
-We now have the model evidence for allele subset $\mathbb{A}$.  This lets us choose which alleles are true somatic variants.  It also lets us make calls on somatic loss of heterozygosity events.  Furthermore, instead of reporting max-likelihood allele fractions as before, we may emit the parameters of the Dirichlet posterior $q(\vf)$, which encode both the maximum likelihood allele fractions and their uncertainty.
-
-\section{Strand Artifact Model}
-
-\begin{figure}
-\centering
-\includegraphics[width=0.3\textwidth]{strand_artifact_pgm.png}
-\caption{\label{fig:strand artifact}The probabilistic graphical model for the strand artifact model}
-\end{figure}
-
-The strand artifact filter detects sequencing artifacts in which the evidence for the alt allele consists entirely of forward strand reads alone or reverse strand reads alone. We must detect this while taking into account the fact that at some loci, such as near the end of an exome target, \emph{all} reads are biased towards one direction, and therefore a bias towards a particular strand among alt reads is no cause for alarm.
-
-Let $z \in \{ z_+, z_-, z_o \}$ be a latent random variable with 1-hot encoding that represents the artifact state of a suspected variant. $z_+ = 1$ when the candidate variant is a forward strand artifact, $z_- = 1$ when it's a reverse artifact, and $z_o = 1$ when there's no artifact. At each locus, the conditional distribution over the number of forward alt reads $x^+$ is a binomial random variable
-
-\begin{equation}
-P(x^+ | f, \epsilon, z) = \text{Bin} (x^+ | n^+, f + \epsilon(1-f))^{z_+} \text{Bin} (x^+ | n^+, f)^{1 - z_+}
-\end{equation}
-
-where $n^+$ is the number of \emph{total} forward reads, $f$ is the allele fraction, and $\epsilon$ is the artifactual error rate, which is the probability that we mistakenly read a ref allele as alt due to strand artifact. We put a flat prior on $f$ and a beta prior on $\epsilon$. The conditional distribution of $x^-$ is defined analogously.
-
-In order to decide whether to filter a variant, we compute the posterior probabilities of $z$ given the observed alt read counts $X = \{ x^+, x^- \}$.  We obtain the likelihood $P(X | z)$ by marginalizing the latent variables $f$ and $\epsilon$ out of the joint distribution $P(X, f, \epsilon | z)$, and we do this for each of the three possible values of $z$ separately. First consider the case $z_+ = 1$, which we denote by the shorthand $z_+$ below.
+%%%%%%%%%%%%%%%%%%%%
+%ACTIVE REGION DETERMINATION
+%%%%%%%%%%%%%%%%%%%%
+\subsection{Finding Active Regions}
+\code{Mutect2} triages sites based on their pileup at a single base locus.  If there is sufficient evidence of variation \code{Mutect2} proceeds with local reassembly and realignment.  As in the downstream parts of \code{Mutect2} we seek a likelihood ratio between the existence and non-existence of an alt allele.  Instead of obtaining read likelihoods via Pair-HMM, we assign each base a likelihood.  For substitutions we can simply use the base quality.  For indels we assign a heuristic effective quality that increases with length.  Supposing we have an effective quality for each element in the read pileup we can now estimate the likelihoods of no variation and of a true alt allele with allele fraction $f$.  Let $\mathcal{R}$ and $\mathcal{A}$ denote the sets of ref and alt reads.  The likelihood of no variation is the likelihood that every alt read was in error.  Letting $\epsilon_i$ be the error probability of pileup element $i$ we have:
 
 \begin{align}
-P(X | z_+ )  &= \iint  P(X, f, \epsilon | z_+) \,df\,d\epsilon \nonumber \\
-		  &= \iint  P(f) P(\epsilon) P(x^+ | z_+, f, \epsilon) P(x^- | z_+, f, \epsilon) \,df\,d\epsilon \nonumber \\
-		  &= \iint \mathrm{Beta}(\epsilon|\alpha, \beta) \mathrm{Bin}(x^+ | n^+, f + \epsilon(1-f)) \mathrm{Bin}(x^- | n^-, f) \,df\,d\epsilon
-\end{align}
-
-where $\alpha$ and $\beta$ are fixed hyperparameters to the beta prior on $\epsilon$. By Bayes Rule the posterior probability of strand bias for forward reads is therefore
-
-\begin{align}
-P(z_+ | X) & \propto P(z_+) P(X | z_+) = \pi_+ P(X | z_+) 
-\end{align}
-
-where $\pi_+ = P(z_+)$ is a fixed prior probability of strand artifact. The posterior probability of reverse strand artifact $P(z_- | X)$ may be derived analogously. 
-
-The derivation of $P(z_o|X)$ is similar except that the integral becomes much simpler because $P(X|z_o)$ does not depend on the artifactual error rate $\epsilon$.
-
-\begin{align}
-P(X | z_o)  &= \iint P(\epsilon) P(x^+ | z_o, f, \epsilon) P(x^- | z_o, f, \epsilon) \,df\,d\epsilon \nonumber \\
-	 	 &= \int  P(x^+ | z_o, f) P(x^- | z_o, f) \,df \int  P(\epsilon) d\epsilon \nonumber \\
-		 &= \int  \mathrm{Bin}(x^+ | n^+, f) \mathrm{Bin}(x^- | n^-, f) \,df
-\end{align}
-
-And the posterior probability is
-
-\begin{equation}
-P(z_o | X) \propto P(z_o) P(X | z_o) =  \pi_o P(X | z_o) 
-\end{equation}
-
-where $\pi_o = P(z_o = 1)$ is the fixed prior probability of no artifact. We normalize the posteriors and filter the variant if the posterior probability of $z_+ = 1$ or $z_- = 1$ exceeds the threshold.
-
-\section{Germline Filter}\label{germline-filter}
-Suppose we have detected an allele such that its (somatic) likelihood in the tumor is $\ell_t$ and its (diploid) likelihood in the normal is $\ell_n$\footnote{This is the total likelihood for het and hom alt in the normal.}.  By convention, both of these are relative to a likelihood of $1$ for the allele \textit{not} to be found.  If we have no matched normal, $\ell_n = 1$.  Suppose we also have the population allele frequency $f$ of this allele.  Then the prior probabilities for the normal to be heterozygous and homozygous alt for the allele are $2f(1-f)$ and $f^2$ and the prior probability for the normal genotype not to contain the allele is $(1-f)^2$.  Finally, suppose that the prior for this allele to arise as a somatic variant is $\pi$.
-
-We can determine the posterior probability that the variant exists in the normal genotype by calculating the unnormalized probabilities of four possibilities:
-\begin{enumerate}
-\item The variant exists in the tumor and the normal as a germline het.  This has unnormalized probability $2f(1-f) \ell_n \ell_t (1 - \pi)$.
-\item The variant exists in the tumor and the normal as a germline hom alt.  This has unnormalized probability $f^2 \ell_n \ell_t (1 - \pi)$.
-\item The variant exists in the tumor but not the normal.  This has unnormalized probability $(1-f)^2 \ell_t \pi$.
-\end{enumerate}
-
-We exclude possibilities in which the variant does not exist in the tumor sample because we really want the conditional probability that the variant is germline given that it would otherwise be called.
-
-Normalizing, we obtain the following posterior probability that an allele is a germline variant:
-\begin{equation}
-P({\rm germline}) = \frac{(1) + (2)}{(1) + (2) + (3)} = \frac{\left(2f(1-f) + f^2 \right) \ell_n \ell_t (1 - \pi)}{\left(2f(1-f) + f^2 \right) \ell_n \ell_t  (1 - \pi) + \ell_t (1-f)^2  \pi}.
-\end{equation}
-
-The above equation, in which the factors of $\ell_t$ could cancel if we wished, is not quite right.  The tumor likelihood $\ell_t$ is the probability of the tumor data given that the allele exists in the tumor \textit{as a somatic variant}.  If the allele is in the tumor as a germline het we must modify $\ell_t$ to account for the fact that the allele fraction is determined by the ploidy -- it must be either $f_g$ or $1- f_g$with equal probability, where $f_g$ is the minor allele fraction of germline hets.  It would be awkward to recalculate the tumor likelihood with the allele frequency constrained to these two values\footnote{The model could easily accommodate this change, but the likelihoods are long gone from memory once the germline computation occurs.}, but we can estimate a correction factor as follows:  assuming that the posterior on the allele fraction in the somatic likelihoods model is fairly tight, the likelihood of $a$ alt reads out of $n$ total reads is $\binom na (1-f_t)^{n-a}f^a$, where $f_t$ is the tumor alt allele fraction.  That is, our sophisticated model that marginalizes over $f_t$ reduces to something more naive.  If the variant is a germline event, the likelihood becomes $\frac{1}{2} \binom na  \left[(1-f_g)^{n-a}f_g^a + f_g^{n-a}(1-f_g)^a \right]$.  Thus, in case (1) we have $\ell_t \rightarrow \chi \ell_t$, where
-\begin{equation}
-\chi = \frac{1}{2} \frac{(1-f_g)^{n-a}f_g^a + f_g^{n-a}(1-f_g)^a}{(1-f_t)^{n-a}f_t^a}.
-\end{equation}
-For germline hom alts, both the tumor and normal allele fractions will be similarly large, so to decent approximation we don't have to modify $\ell_t$.  Of course, this only applies if the allele fraction is large.  Rather than try to model the count of ref reads within a germline hom alt site, we simply set a threshold of allele fraction 0.9, so that in case (2) $\ell_t \rightarrow {\rm I}[f_t > 0.9] \ell_t$.
-and the corrected germline probability is
-\begin{equation}
-P({\rm germline}) = \frac{(1) + (2)}{(1) + (2) + (3)} = \frac{\left( 2f(1-f) \chi + {\rm I}[f_t > 0.9] f^2 \right) \ell_n (1 - \pi)}{\left( 2f(1-f) \chi + {\rm I}[f_t > 0.9] f^2 \right) \ell_n  (1 - \pi) + (1-f)^2  \pi}.
-\end{equation}
-To filter, we set a threshold on this posterior probability.
-
-So far we have assumed that the population allele frequency $f$ is known, which is the case if it is found in our germline resource, such as gnomAD.  If $f$ is not known we must make a reasonable guess as follows.  Suppose the prior distribution on $f$ is ${\rm Beta}(\alpha, \beta)$.  The mean $\alpha/(\alpha +\beta)$ of this prior is the average human heterozygosity $\theta \approx 10^{-3}$, so we have $\beta \approx \alpha / \theta$.  We need one more constraint to determine $\alpha$ and $\beta$, and since we are concerned with imputing $f$ when $f$ is small we use a condition based on rare variants.  Specifically, the number of variant alleles $n$ at some site in a germline resource with $N/2$ samples, hence $N$ chromosomes, is given by $f \sim {\rm Beta}(\alpha, \beta), n \sim {\rm Binom}(N,f)$.  That is, $n \sim {\rm BetaBinom}(\alpha, \beta, N)$.  The probability of a site being non-variant in every sample is then $P(n = 0) = {\rm BetaBinom}(0 | \alpha, \beta, N)$, which we equate to the empirical proportion of non-variant sites in our resource, about $7/8$ for exonic sites in gnomAD.  Solving, we obtain approximately $\alpha = 0.01, \beta = 10$ for gnomAD.  Now, given that some allele found by Mutect2 is not in the resource, the posterior on $f$ is ${\rm Beta}(\alpha, \beta + N)$, the mean of which is, since $\beta << N$, about $\alpha / N$.  By default, Mutect2 uses this value.
-
-\section{Contamination Filter}\label{contamination-filter}
-Suppose our tumor bam has contamination fraction $\alpha$ and that at some site we have $a$ alt reads out of $d$ total reads.  Suppose further that the alt allele has population allele frequency $f$.  We will compute a simple estimate of the posterior probability that these alt reads came from a contaminating sample and not from a true somatic variant.  Let $\pi$ be the prior probability of somatic variation as above.  Our crude model for the alt count distribution of somatic variation is a uniform distribution.  That is, we assume that any value of $a$ from $0$ to $d$ is equally likely.  Then the likelihood of the data given a true somatic variant is
-\begin{equation}
-P(a | {\rm somatic})  = \frac{1}{d + 1}.
-\end{equation}
-
-We consider two models of contamination.  If there are multiple contaminants we approximate each contaminant read as independent.  Then the probability of any given read being an alt contaminant read is $\alpha f$, so we have
-\begin{equation}
-P(a | {\rm many~contaminant}) = {\rm Binom}(a | d, \alpha f).
-\end{equation}
-If there is a single contaminating sample it is heterozygous with probability $2f(1-f)$ and homozygous for the alt with probability $f^2$, in which cases fractions $\alpha/2$ and $\alpha$ of all reads to be alt contaminants.  The contaminant is homozygous for the ref with probability $(1-f)^2$, which yields no alt reads. Thus
-\begin{equation}
-P(a | {\rm one~contaminant}) = 2f(1-f) {\rm Binom}(a | d, \alpha /2) + f^2 {\rm Binom}(a | d, \alpha) + (1-f)^2 {\rm I}[a = 0].
-\end{equation}
-We take the likelihood $P(a | {\rm contamination})$ to be the maximum of these, which admittedly is not quite rigorous.  Usually one will be overwhelmingly larger than the other, however, so it's a decent approximation.  Our posterior probability of contamination is then
-\begin{equation}
-P({\rm contamination} | a) = \frac{  P(a, {\rm contamination}) } {P(a, {\rm contamination}) + P(a, {\rm somatic}) } = \frac{  (1-\pi)P(a | {\rm contamination}) } {(1-\pi)P(a | {\rm contamination}) + \pi P(a | {\rm somatic}) }
-\end{equation}
-We filter by setting a threshold on this posterior probability.
-
-\section{Finding Active Regions}
-Mutect2 triages sites based on their pileup at a single base locus.  If there is sufficient evidence of variation Mutect2 proceeds with local reassembly and realignment.  As in the downstream parts of Mutect2 we seek a likelihood ratio between the existence and non-existence of an alt allele.  Instead of obtaining read likelihoods via Pair-HMM, we assign each base a likelihood.  For substitutions we can simply use the base quality.  For indels we assign a heuristic effective quality that increases with length.  Supposing we have an effective quality for each element in the read pileup we can now estimate the likelihoods of no variation and of a true alt allele with allele fraction $f$.  Let $\mathcal{R}$ and $\mathcal{A}$ denote the sets of ref and alt reads.  The likelihood of no variation is the likelihood that every alt read was in error.  Letting $\epsilon_i$ be the error probability of pileup element $i$ we have:
-
-\begin{equation}
-L({\rm no~variation}) = \prod_{i \in \mathcal{R}} (1 - \epsilon_i) \prod_{j \in \mathcal{A}} \epsilon_j \approx \prod_{j \in \mathcal{A}} \epsilon_j, 
-\end{equation}
-where the approximation amounts to ignoring the possibility that ref reads are actually alt, or, equivalently, giving each ref read infinite quality.  This is not necessary but it speeds the computation because, as we will see, we will only need to keep alt base qualities in memory.
-\begin{equation}
-L(f) = \prod_{i \in \mathcal{R}} \left[ (1 -f)(1 - \epsilon_i) + f \epsilon_i \right] \prod_{j \in \mathcal{A}} \left[f(1 - \epsilon_j) + (1 - f) \epsilon_j \right]
+L({\rm no~variation}) =& \prod_{i \in \mathcal{R}} (1 - \epsilon_i) \prod_{j \in \mathcal{A}} \epsilon_j \approx \prod_{j \in \mathcal{A}} \epsilon_j \\
+L(f) =& \prod_{i \in \mathcal{R}} \left[ (1 -f)(1 - \epsilon_i) + f \epsilon_i \right] \prod_{j \in \mathcal{A}} \left[f(1 - \epsilon_j) + (1 - f) \epsilon_j \right]
 \approx (1-f)^{N_{\rm ref}} \prod_{j \in \mathcal{A}} \left[f(1 - \epsilon_j) + (1 - f) \epsilon_j \right],
-\end{equation}
-where we again assign infinite base quality to ref reads and let $N_{\rm ref} = | \mathcal{R}|$.
-
-This is equivalent to the following model in which we give the $n$th alt read a latent indicator $z_j$ which equals 1 when the read is an error:
+\end{align}
+where the approximations amount to giving ref reads infinite quality, which speeds the computation, and we let $N_{\rm ref} = | \mathcal{R}|$.  This is equivalent to the following model in which we give the $n$th alt read a latent indicator $z_j$ which equals 1 when the read is an error:
 \begin{align}
 P({\rm reads}, f, \vz) = (1-f)^{N_{\rm ref}} \prod_{n=1}^{N_{\rm alt}} \left[ (1-f)\epsilon_n \right]^{z_n} \left[ f (1 - \epsilon_n) \right]^{1 - z_n}
 \end{align}
-We will approximate the model evidence $L(f) = \sum_\vz \int \, df P({\rm reads}, f, \vz)$ via a mean field variational Bayes approximation in which we factorize the full data likelihood as $P({\rm reads}, f, \vz) \approx q(f) q(\vz) = q(f) \prod_n q(z_n)$\footnote{The latter step is an induced factorization -- once $f$ and $\vz$ are decoupled, then the different $z_n$ become independent as well.}.  For simplicity and speed, we will not iteratively compute $q(f)$.  Rather, we use the fact that $z_n$ is almost always 0 to see, by inspection, that
+We approximate the model evidence $L(f) = \sum_\vz \int \, df P({\rm reads}, f, \vz)$ via a mean field variational Bayes approximation in which we factorize the full data likelihood as $P({\rm reads}, f, \vz) \approx q(f) q(\vz) = q(f) \prod_n q(z_n)$\footnote{The latter step is an induced factorization -- once $f$ and $\vz$ are decoupled, then the different $z_n$ become independent as well.}.  For simplicity and speed, we will not iteratively compute $q(f)$.  Rather, we use the fact that $z_n$ is almost always 0 to see, by inspection, that
 \begin{equation}
 q(f) \approx {\rm Beta}(f | \alpha, \beta), \quad \alpha = N_{\rm alt} + 1, \beta = N_{\rm ref} + 1.
 \end{equation}
-Here the ``$+1$"s come from the pseudocounts, one ref and one alt, of a flat prior of $f$.  Then, following the usual recipe of averaging the log likelihood with respect to $f$ and re-exponentiating, we find that $z_n$ ``sees" the following distribution:
-\begin{align}
-q(z_n) &\propto \left[ \epsilon_n \exp \overline{\ln (1 - f)} \right]^{z_n} \left[ (1 - \epsilon_n) \exp \overline{\ln f} \right]^{1 - z_n} \\
-&= \left[ \epsilon_n \rho \right]^{z_n} \left[ (1 - \epsilon_n) \tau \right]^{1 - z_n},
-\end{align}
-where we have defined the standard Beta distribution moments (with respect to $q(f)$) $\ln \rho \equiv \overline{\ln (1 - f)} = \psi(\beta) - \psi(\alpha + \beta)$ and $\ln \tau \equiv \overline{\ln f} = \psi(\alpha) - \psi(\alpha + \beta)$. By inspection, we see that
+Here the ``$+1$"s come from the pseudocounts of a flat prior on $f$.  Then, following the usual recipe of averaging the log likelihood with respect to $f$ and re-exponentiating, we find
 \begin{equation}
-q(z_n) = {\rm Bernoulli}(z_n | \gamma_n), \quad \gamma_n = \frac{ \rho \epsilon_n}{\rho \epsilon_n + \tau (1 - \epsilon_n)}.
+q(z_n) = {\rm Bernoulli}(z_n | \gamma_n), \quad \gamma_n = \frac{ \rho \epsilon_n}{\rho \epsilon_n + \tau (1 - \epsilon_n)},
 \end{equation}
-Then, Equation 10.3 of Bishop gives us the variational lower bound on $L(f)$:
+where $\ln \rho \equiv E_{q(f)}\left[ \ln (1 - f) \right] = \psi(\beta) - \psi(\alpha + \beta)$ and $\ln \tau \equiv E_{q(f)}\left[ \ln f \right] = \psi(\alpha) - \psi(\alpha + \beta)$.  Then, Equation 10.3 of Bishop gives us the variational lower bound on $L(f)$:
 \begin{align}
 L(f) &\approx E_q \left[ \ln P({\rm reads}, f, \vz) \right] + {\rm entropy}[q(f)] + \sum_n {\rm entropy}[q(z_n)] \\
 &= H(\alpha, \beta) +  N_{\rm ref} \ln \rho + \sum_n \left[ \gamma_n \ln \left( \rho \epsilon_n \right) + (1 - \gamma_n) \ln \left( \tau (1 - \epsilon_n) \right) + H(\gamma_n) \right],
@@ -308,12 +160,330 @@ where $H(\alpha, \beta)$ and $H(\gamma)$ are Beta and Bernoulli entropies.  We s
 \end{algorithm}
 To get the log odds we subtract the log likelihood, $\sum_n \ln \epsilon_n$, from $L(f)$.
 
+%%%%%%%%%%%%%%%
+%ASSEMBLY AND PAIR-HMM
+%%%%%%%%%%%%%%%
+\subsection{Local Assembly, Pair-HMM, and Realignment}
+These topics, which are common to \code{Mutect2} and \code{HaplotypeCaller}, are discussed in docs/local{\_}assembly.pdf, docs/pair{\_}hmm.pdf, and docs/variants{\_}from{\_}haplotypes.pdf in the gatk git repository.  As a black box, whenever the evidence in the previous section suffices to trigger local assembly and realignment, we end up at each candidate variant site with one read-vs-allele log likelihood matrix $\ell$ for each sample, where $ \ell_{ra}$ is the log probability of sequencing read $r$ given its base qualities and given that read $r$ is derived from a molecule exhibiting allele $a$.  \footnote{Technically, pair-HMM produces a read-vs-\textit{haplotype} likelihood matrix, which is then ``marginalized" to produce a set of read-vs-allele likelihood matrices.  In the future, \code{Mutect2} may operate directly on this read-vs-haplotype matrix in order to exploit the biological fact that there are only a few haplotypes in any region.}
+
+%%%%%%%%%%%%%%%%%%
+%SOMATIC LIKELIHOODS MODEL
+%%%%%%%%%%%%%%%%%%
+\subsection{Somatic Likelihoods Model}\label{introduction}
+We have a set of potential somatic alleles and read-allele likelihoods $\ell_{ra} \equiv P({\rm read~}r|{\rm allele~}a)$.  We don't know which alleles are real somatic alleles and so we must compute, for each subset $\mathbb{A}$ of alleles, the likelihood that the reads come from $\mathbb{A}$.  A simple model for this likelihood is as follows: each read $r$ is associated with a latent indicator vector $\vz_r$ with one-hot encoding $z_{ra} = 1$ iff read $r$ came from allele $a \in \mathbb{A}$.  The conditional probabilities of reads given alleles is $\ell_{ra}$.
+There is a latent vector $\vf$ of allele fractions such that $f_a$ is the allele fraction of allele $a$, that is, the prior probability that any given read comes from allele $a$.  Giving $\vf$ a Dirichlet prior, we have a full-model likelihood
+\begin{equation}
+P(\mathbb{R}, \vz, \vf | \mathbb{A}) = P(\vf) P(\vz | \vf)  P( \mathbb{R} | \vz, \mathbb{A}) = {\rm Dir}(\vf | \valpha) \prod_a  \prod_r \left( f_a \ell_{ra}\right)^{z_{ra}}.
+\label{full_likelihood}
+\end{equation}
+We want to marginalize the latent variables to obtain the evidence $P(\mathbb{R} | \mathbb{A})$, which we make tractable via a mean-field approximation $P(\mathbb{R}, \vz, \vf | \mathbb{A}) \approx q(\vz) q(\vf)$, which is exact in two limits.  First, if there are many reads, each allele is associated with many reads and therefore the Law of Large Numbers causes $\vf$ and $\vz$ to become uncorrelated.  Second, if the allele assignments of reads are obvious $\vz_r$ is effectively determinate, hence uncorrelated with $\vf$.  In the variational Bayesian mean-field formalism we have
+\begin{align}
+q(\vf) \propto& E_{q(\vz)} \left[ P(\mathbb{R}, \vz, \vf | \mathbb{A}) \right] \propto {\rm Dir}(\vf | \valpha + \sum_r \bar{\vz}_r) \equiv {\rm Dir}(\vf | \vbeta), \quad \vbeta = \valpha + \sum_r \bar{\vz}_r \label{z_mean_field}  \\
+q(\vz_r) \propto& E_{q(\vf)} \left[ P(\mathbb{R}, \vz, \vf | \mathbb{A}) \right]  \propto \prod_a \left( \tilde{f}_a \ell_{ra}\right)^{z_{ra}}, \label{f_mean_field}
+\end{align}
+where, with $\psi$ denoting the digamma function, the moments
+\begin{align}
+\bar{z}_{ra} =& E_{q(\vz)} \left[ z_{ra} \right] = \frac{\tilde{f}_a \ell_{ra}}{\sum_{a^\prime} \tilde{f}_{a^\prime} \ell_{ra^\prime}} \\
+\ln \tilde{f}_a =& E_{q(\vf)}[\ln f_a] = \psi(\beta_a) - \psi(\sum_{a^\prime} \beta_{a^\prime})
+\end{align}
+are easily obtained from the categorical distribution $q(\vz)$ and the Dirichlet distribution $q(\vf)$\footnote{Note that we didn't \textit{impose} this in any way.  It simply falls out of the mean field equations.}  We initialize $\bar{z}_{ra} = 1$ if $a$ is the most likely allele for read $r$, 0 otherwise and iterate Equations \ref{z_mean_field} and \ref{f_mean_field} until convergence. Having obtained the mean fields of $q(\vz)$ and $q(\vf)$, we use the variational approximation (Bishop's Eq 10.3) to the model evidence:
+\begin{align}
+\ln P(\mathbb{R} | \mathbb{A}) \approx  E_q \left[ \ln P(\mathbb{R}, \vz, \vf | \mathbb{A}) \right] - E_q \left[ \ln q(\vz) \right] - E_q \left[ \ln q(\vf) \right]. \label{lagrangian}
+\end{align}
+The terms in Eq \ref{lagrangian} all involve the standard moments mentioned above, so after a bit of algebraic cancellation we obtain
+\begin{equation}
+\ln P(\mathbb{R} | \mathbb{A}) \approx g(\valpha) - g(\vbeta) +  \sum_{ra} \bar{z}_{ra} \left( \ln \ell_{ra} - \ln \bar{z}_{ra} \right),
+\label{tumor-lod}
+\end{equation}
+where we define $g$ to be the Dirichlet distribution log normalization:
+\begin{equation}
+\ln \Gamma(\sum_a \omega_a) - \sum_a \ln \Gamma(\omega_a).
+\end{equation}
+
+We now have the model evidence for allele subset $\mathbb{A}$. The \code{TLOD} emitted by \code{Mutect2} for an alt allele is the log evidence ratio of an allele set containing all alleles versus an allele set excluding that allele.  That is, it is the log odds that an allele exists.  When multiple tumor samples are given, \code{Mutect2} computes a single \code{TLOD} by combining all tumor reads.
+
+%%%%%%%
+%%%%%%%
+%FILTERING
+%%%%%%%
+%%%%%%%
+\section{Filtering}
+The command line tool \code{FilterMutectCalls} inputs the unfiltered output of \code{Mutect2} and emits another vcf containing the same variants, annotated with the filters that they fail, if any.
+
+\begin{lstlisting}[language=bash,caption={FilterMutectCalls command}, label={cmd-mutect2}]
+gatk FilterMutectCalls -V unfiltered.vcf \
+   # FilterMutectCalls may input segmentation for one or more 
+   # tumor samples from CalculateContamination
+   [--tumor-segmentation segments1.table] \
+   [--tumor-segmentation segments2.table] \
+    # FilterMutectCalls may input contamination estimates for one or more 
+    #tumor samples from CalculateContamination
+   [--contamination-table contamination1.table] \
+   [--contamination-table contamination2.table] \
+   -O filtered.vcf
+\end{lstlisting}
+
+The optional inputs from the GATK 4 tool \code{CalculateContamination} are described below.
+
+%%%%%%%%%%
+%ARCHITECTURE
+%%%%%%%%%%
+\subsection{Filtering Architecture}
+\code{FilterMutectCalls} contains a set of filters, each of which computes an error probability for each candidate variant.  The filters are divided into three categories: technical artifacts, non-somatic, and sequencing error.  Roughly, we assume that different types of errors within a category are correlated, while different categories are independent.  For example, whether sequencing errors cause several bases to be misread is independent of whether the DNA being read came from a contaminating sample and of whether an error during library preparation caused a base error prior to sequencing.  To obtain an overall error probability \code{FilterMutectCalls} computes the maximum within categories and an independent product between categories.  That is:
+\begin{equation}
+P({\rm error}) = 1 - (1 - {\rm max~artifact~error~prob})(1 - {\rm max~non-somatic~prob})(1 - {\rm sequencing~error~prob}).
+\end{equation}
+\code{FilterMutectCalls} goes over an unfiltered vcf in three passes, two to learn any unknown parameters of the filters' models and to set a threshold on $P({\rm error})$, and one to apply the learned filters.  This section describes methods for determining the threshold on error probability.  One option is to simply set a fixed value $p$ on the error probability, below which a call is considered a real somatic variant.  This non-default behavior can be set via \code{--threshold-strategy CONSTANT --initial-threshold <double>}.
+
+\subsubsection{F Score Thresholding}
+\code{FilterMutectCalls} optimizes the F-score -- the harmonic mean of recall and precision -- as its default thresholding strategy.  The \code{--f-score-beta <double>} command line argument can be set to change the relative weight of recall to precision.  In order to optimize the F-score, \code{FilterMutectCalls} sorts all variants by the probability that they are errors, from least to greatest and calculated the F-score for thresholds in which the first $n$ variants pass, starting from $n = 0$ and ending at $n = N$, the total number of candidates.  This is a cheap $O(N)$ computation because initially the expected number of true positive and false positive calls are both zero.  When the threshold increases to admit a variant with error probability $p$, the expected number of true positive calls increases by $1 - p$ and the expected number of false positive calls increases by $p$.  The total expected number of real variants is $\sum_n (1 - p_n)$.  These quantities suffice to calculate recall and precision for every threshold.
+
+\subsubsection{False Discovery Rate Thresholding}
+\code{FilterMutectCalls} can also choose to maximize sensitivity subject to a maximum allowable false discovery rate using the \code{--threshold-strategy FALSE\_DISCOVERY\_RATE --false-discovery-rate <double>}.  For this calculation \code{FilterMutectCalls} also sorts the error probabilities $p_n$ from least to greatest.  If we allow the first $M$ variants to pass the expected false discovery rate is
+\begin{equation}
+\frac{1}{M} \sum_{n = 1}^{M} p_n
+\end{equation}
+This is a non-decreasing function of $M$ because it is the integral from $0$ to $M$ of the monotonic function $p$, hence its derivative with respect to $M$ is $p_M$, which is monotonic.  Thus it is easy to choose the highest $M$ such that the maximum false discovery rate is not exceeded.
+
+%%%%%%%%%
+%HARD FILTERS
+%%%%%%%%%
+\subsection{Hard Filters}
+Several filters are hard filters that assign an error probability of 1 whenever some annotation exceeds a threshold.  Here we summarize all the hard filters of \code{FilterMutectCalls}, the command line parameters that set their thresholds, and an explanation of the thresholded quantity.
+
+\begin{table}[h!]
+\centering
+ \begin{tabular}{|| c c c ||} 
+ \hline
+ Filter & Threshold & Explanation \\ [0.5ex] 
+ \hline\hline
+ \code{clustered\_events} & \code{max-events-in-region} & mutations sharing an assembly region \\
+ \code{duplicate\_evidence} & \code{unique-alt-read-count} & unique insert start/end pairs of alt reads \\
+ \code{multiallelic} & \code{max-alt-alleles-count} & passing alt alleles at a site \\
+ \code{base\_quality} & \code{min-median-base-quality} & median base quality of alt reads \\
+ \code{mapping\_quality} & \code{min-median-mapping-quality} & median mapping quality of alt reads \\
+ \code{fragment\_length} & \code{max-median-fragment-length-difference} & difference of alt and ref reads' median fragment lengths \\
+ \code{read\_position} &\code{min-median-read-position} & median distance of alt mutations from end of read \\
+ \code{panel\_of\_normals} & \code{panel-of-normals}  & presence in panel of normals \\
+ \hline
+ \end{tabular}
+\end{table}
+
+%%%%%%%%%%%%%%
+%AF CLUSTERING MODEL
+%%%%%%%%%%%%%%
+\subsection{Allele Fraction Clustering Model}
+Several of \code{FilterMutectCalls}'s probabilistic filters rely on the following graphical model for the tumor's spectrum of allele fractions of real variants.  At the top of the model is a binary indicator for whether a variant is neither a technical artifact or a non-somatic mutation.
+\begin{equation}
+P({\rm consider}) = (1 - {\rm max~artifact~error~prob})(1 - {\rm max~non-somatic~prob}).
+\end{equation}
+Note that possible sequencing errors, with error probability captured by the independent reads assumption of the \code{Mutect2} log odds, \textit{are} considered.  Next, a candidate SNV has prior probability $\pi_{\rm real} = \pi_{\rm SNV} / 3$ to be real and prior probability $1 - \pi{\rm SNV}/3$ to be a sequencing error, while a candidate indel of length $L$ (negative for deletions, positive for insertions) has prior probability $\pi_{\rm real} = \pi_L$ to be real.  Real variants are partitioned according to a mixture model with weights $\pi_{H}$ for a high-allele fraction cluster, $\pi_B$ for a ``background cluster'', and $\pi_{D} = 1 - \pi_H - \pi_B$ to be further clustered into according to a Dirichlet process with concentration $\alpha$.  Each non-error cluster has a characteristic distribution of allele fractions:  ${\rm Beta}(\alpha_H, \beta_H)$ and ${\rm Beta}(\alpha_B, \beta_B)$ for the high-allele fraction and background clusters, and Dirac $\delta$ functions for the Dirichlet clusters.  The idea of this partitioning is that there will usually be sharply-defined allele fractions corresponding to the hets of different subclones, which are captured by the Dirichlet clusters, but that homozygosity and copy-number variation produces deviations from this clustering.
+
+Provided that we stochastically assign a variant to be considered, the (relative) prior probabilities for each possibility are described by a modified Chinese Restaurant Process scheme:
+\begin{align}
+P({\rm Sequencing~error}) \propto& 1 - \pi_{\rm real} \\
+P({\rm High~AF}) \propto& \pi_{\rm real} \pi_H \\
+P({\rm Background}) \propto& \pi_{\rm real} \pi_B \\
+P({\rm Dirichlet}_j) \propto& \pi_{\rm real} \pi_D \frac{ N_j}{N_D + \alpha} \\
+P({\rm Dirichlet}_{\rm new}) \propto& \pi_{\rm real} \pi_D \frac{ \alpha}{N_D + \alpha},
+\end{align}
+where ${\rm D}_j$ denotes the $j$th existing Dirichlet Process cluster, ${\rm Dirichlet}_{\rm new}$ denotes a newly-created Dirichlet cluster, $N_j$ is the number of variants assigned to cluster $j$, and $N_D$ is the total number of variants assigned to Dirichlet clusters.
+
+\code{Mutect2} emits the likelihood ratio between sequencing error and a real variant assuming a flat prior.  However, we can approximately compute the likelihood ratio that a non-flat Beta prior would have produced.  We can do this because in Equation \ref{tumor-lod} a change in the prior allele fraction is unlikely to affect $\bar{z}$ very much - usually the allele that a read supports is clear regardless of prior.  Therefore, only the term $g(\valpha) - g(\vbeta)$ changes.  Since $\vbeta = \valpha + \vn$, where $\vn$ is the vector of observed read counts per allele we can convert the log-likelihood obtained with flat prior $\valpha_0$ to one reflecting an allele fraction prior $\valpha$ by adding
+\begin{equation}
+\Delta {\rm log~odds}(\valpha) = \Delta \ln P(\mathbb{R} | \mathbb{A}) = \left[ g(\valpha) - g(\valpha + \vn) \right] - \left[ g(\valpha_0) - g(\valpha_0 + \vn) \right].
+\end{equation}
+
+Since only \textit{ratios} of likelihoods are meaningful, we may WLOG set the likelihood of reads given sequencing error to be $1$ and then set the likelihood fo each allele fraction cluster to be $\exp \left[ {\rm Mutect2~log~odds} + \Delta {\rm log~odds}(\valpha) \right]$.  The likelihood of a new cluster is the average over all possible new allele fractions of the likelihood, which is, by definition, simply the original \code{Mutect2} likelihood that integrated over a flat prior.  Thus we have likelihoods for every cluster.  Combined with the priors, this gives us the conditional posterior for Gibbs sampling the cluster assignment of a candidate variant.
+
+We can estimate the parameters of the model by maximum likelihood.  For example, we estimate $\pi_L$ as the total number of length-$L$ indels in the non-error clusters divided by the total number of callable sites\footnote{This is emitted by \code{Mutect2} and passed to \code{FilterMutectCalls}.}, $\pi_B$ as the total number of variants assigned to the background cluster divided by the total number of non-error assignments.  The allele fraction of a Dirichlet cluster is estimated as its total alt read count divided by its total read count.  Final, the beta distributions of the high-allele fraction and background clusters are fit by brute force likelihood optimization.
+
+Once the model converges, the combination of cluster weights and allele-fraction-adjusted likelihoods lets us compute the posterior probability that a candidate variant is a sequencing error, which determines the \code{weak\_evidence} filter.  Since the clusters also define distributions on alt allele counts -- the high-AF and background clusters define beta-binomials and the Dirichlet clusters define binomial -- we also have the mixture model distribution $P({\rm alt~count} | {\rm total~count}, {\rm somatic})$, which the contamination and germline filters use.
 
 
-\section{Calculating Contamination}
-Below, we present the GATK's fast, simple, and accurate method for calculating the contamination of a sample.  This methods does not require a matched normal, makes no assumptions about the number of contaminating samples, and remains accurate even when the sample has a lot of copy number variation.
+%%%%%%%%%%%
+%STRAND ARTIFACT
+%%%%%%%%%%%
+\subsection{Strand Artifact Model}
 
-The inputs to our tool are a bam file and a vcf of common variants -- for example ExAC, gnomAD, or 1000 Genomes -- with their allele frequencies.  The basic idea, which comes from ContEst\footnote{ContEst: estimating cross-contamination of human samples in next-generation sequencing data, \textit{Bioinformatics} \textbf{27}, 2601 (2011)} by Kristian Cibulskis and others in the Broad Institute Cancer Genome Analysis group, is simply to count ref reads at hom alt sites and subtract the number of ref reads expected from sequencing error to obtain the number of ref reads contaminating these hom alt sites.  Finally, we use the allele frequencies to account for the fact that some contaminating reads have the alt allele.  The only subtlety is in distinguishing hom alt sites from loss of heterozygosity events, which we describe below.
+\begin{figure}
+\centering
+\includegraphics[width=0.3\textwidth]{strand_artifact_pgm.png}
+\caption{\label{fig:strand artifact}The probabilistic graphical model for the strand artifact model}
+\end{figure}
+
+The strand artifact filter detects sequencing artifacts in which the evidence for the alt allele consists entirely of forward strand reads alone or reverse strand reads alone. We must detect this while taking into account the fact that at some loci, such as near the end of an exome target, \emph{all} reads are biased towards one direction, and therefore a bias towards a particular strand among alt reads is no cause for alarm.
+
+Let $z \in \{ z_+, z_-, z_o \}$ be a latent random variable with 1-hot encoding that represents the artifact state of a suspected variant i.e. $z_+ = 1$ for a forward strand artifact, $z_- = 1$ for a reverse artifact, and $z_o = 1$ otherwise. At each locus, let $a_\pm$ be the number of forward (+) or reverse (-) strand alt reads and let $n_\pm$ be the total depth for each strand.  By modeling $a+_\pm$ relative to $n_\pm$ we account for inherent strand bias due to, for example, reads falling at the end of an exome target and do not confuse it for an artifact.  Let $f$ be the allele fraction of true variation in case $z_o = 1$.  Let $\epsilon$ be the strand bias error rate and let $\theta$ be the non-strand-biased error rate.  We will ignore the case in which significant strand bias coincides with real variation, first because this is exceedingly rare and ignoring it has a negligible effect on the parameters of our model, and secondly because such variants should be considered true positives.
+
+
+The conditional distributions of our model are binomial
+\begin{align}
+a_+ | \epsilon, \theta, f, z_+ = 1 &\sim \text{Bin} (a_+ | n_+, \epsilon) \\
+a_+ | \epsilon, \theta, f, z_- = 1 &\sim \text{Bin} (a_+ | n_+, \theta) \\
+a_+ | \epsilon, \theta, f, z_o = 1 &\sim \text{Bin} (a_+ | n_+, f),
+\end{align}
+and similarly for $a_-$.  Putting beta priors on $\epsilon$, $\theta$, and $f$, with parameters $(\alpha_\epsilon, \beta_\epsilon)$, $(\alpha_\theta, \beta_\theta)$, and $(\alpha_f, \beta_f)$ and marginalizing latent parameters we obtain likelihoods
+\begin{align}
+P(a_+, a_- | z_\pm = 1) =& \text{BetaBinom}(a_\pm | n_\pm, \alpha_\epsilon, \beta_\epsilon) \text{BetaBinom}(a_\mp | n_\mp, \alpha_\theta, \beta_\theta) \\
+P(a_+, a_- | z_o = 1) =& \int_0^1 \text{Beta}(f | \alpha_f, \beta_f) \text{Binom}(a_+ | n_+, f) \text{Binom}(a_- | n_-, f) \\ 
+                                  =& \frac{ \binom{n_+}{a_+} \binom{n_-}{a_-}}{\binom{n_+ + n_-}{a_+ + a_-}} \text{BetaBinom}(a_+ + a_- | n_+ + n_-, \alpha_f, \beta_f)
+\end{align}
+
+Finally, we let $\pi/2$ be the prior probability of a forward or reverse strand artifact.  From the above equations it is straightforward to calculate the posterior probability of $z$ and to learn $\pi$ iteratively via the EM algorithm.  It is somewhat more complicated to learn $(\alpha_\epsilon, \beta_\epsilon)$ and $(\alpha_\theta, \beta_\theta)$, so we treat these as fixed hyperparameters.  We use a flat prior $\alpha_f = \beta_f = 1$ for the true allele fraction.
+
+%%%%%%%
+%GERMLINE
+%%%%%%%
+\subsection{Germline Filter}\label{germline-filter}
+Suppose we have detected an allele such that its (somatic) likelihood in the tumor is $\ell_t$ and its (diploid) likelihood in the normal is $\ell_n$\footnote{This is the total likelihood for het and hom alt in the normal.}.  By convention, both of these are relative to a likelihood of $1$ for the allele \textit{not} to be found.  If we have no matched normal, $\ell_n = 1$.  Suppose we also have the population allele frequency $f$ of this allele.  Then the prior probabilities for the normal to be heterozygous and homozygous alt for the allele are $2f(1-f)$ and $f^2$ and the prior probability for the normal genotype not to contain the allele is $(1-f)^2$.  Finally, let the prior for this allele to arise as a somatic variant be $\pi$.
+
+If the variant exists in the tumor as a real somatic variant it has likelihood $\ell^S_t$, the adjusted \code{Mutect2} likelihood accounting for allele fraction clustering.  If it exists as a germline het in a segment with minor allele fraction $m$ the likelihood is $\ell_t(m)$ for the alt minor case and $\ell_t(1-m)$ for the alt major case, after adjusted the \code{Mutect2} likelihood toa ccount for pinning the allele fraction to $m$ or $1-m$.  We need the unnormalized probabilities of three possibilities:
+\begin{enumerate}
+\item The variant exists in the tumor and the normal as a germline het.  This has unnormalized probability $f(1-f) \ell_n (1 - \pi) \left( \ell_t(m) + \ell_t(1 - m) \right)$.
+\item The variant exists in the tumor and the normal as a germline hom alt.  This has unnormalized probability $f^2 \ell_n \ell_t(1) (1 - \pi)$.
+\item The variant exists in the tumor but not the normal.  This has unnormalized probability $(1-f)^2 \ell^S_t \pi$.
+\end{enumerate}
+
+We exclude possibilities in which the variant does not exist in the tumor sample because we really want the conditional probability that the variant is germline given that it would otherwise be called.  The normalized sun of the first two possibilities is the germline error probability.
+
+So far we have assumed that the population allele frequency $f$ is known, which is the case if it is found in our germline resource, such as gnomAD.  If $f$ is not known we must make a reasonable guess as follows.  Suppose the prior distribution on $f$ is ${\rm Beta}(\alpha, \beta)$.  The mean $\alpha/(\alpha +\beta)$ of this prior is the average human heterozygosity $\theta \approx 10^{-3}$, so we have $\beta \approx \alpha / \theta$.  We need one more constraint to determine $\alpha$ and $\beta$, and since we are concerned with imputing $f$ when $f$ is small we use a condition based on rare variants.  Specifically, the number of variant alleles $n$ at some site in a germline resource with $N/2$ samples, hence $N$ chromosomes, is given by $f \sim {\rm Beta}(\alpha, \beta), n \sim {\rm Binom}(N,f)$.  That is, $n \sim {\rm BetaBinom}(\alpha, \beta, N)$.  The probability of a site being non-variant in every sample is then $P(n = 0) = {\rm BetaBinom}(0 | \alpha, \beta, N)$, which we equate to the empirical proportion of non-variant sites in our resource, about $7/8$ for exonic sites in gnomAD.  Solving, we obtain approximately $\alpha = 0.01, \beta = 10$ for gnomAD.  Now, given that some allele found by \code{Mutect2} is not in the resource, the posterior on $f$ is ${\rm Beta}(\alpha, \beta + N)$, the mean of which is, since $\beta << N$, about $\alpha / N$.  By default, \code{Mutect2} uses this value.
+
+%%%%%%%%%%
+%CONTAMINATION
+%%%%%%%%%%
+\subsection{Contamination Filter}\label{contamination-filter}
+Suppose our tumor sample has contamination fraction $\alpha$ and that at some site we have $a$ alt reads out of $d$ total reads.  Suppose further that the alt allele has population allele frequency $f$.  We estimate the probability that these alt reads came from a contaminating sample and not from a true somatic variant.  Let $\pi$ be the prior probability of a somatic variation from the allele fraction clustering model.  Then alt read count likelihood $P(a | d, {\rm somatic})$ is also given by this model.  The possibility that the reads are due to contamination has prior $1 - \pi$ and we take the maximum likelihood among two models of contamination.
+
+If there are multiple contaminants we approximate each contaminant read as independent so that
+\begin{equation}
+P(a | d, {\rm many~contaminant}) = {\rm Binom}(a | d, \alpha f).
+\end{equation}
+If there is a single contaminating sample it is heterozygous with probability $2f(1-f)$ and homozygous for the alt with probability $f^2$, in which cases fractions $\alpha/2$ and $\alpha$ of all reads to be alt contaminants.  The contaminant is homozygous for the ref with probability $(1-f)^2$, which yields no alt reads. Thus
+\begin{equation}
+P(a | d, {\rm one~contaminant}) = 2f(1-f) {\rm Binom}(a | d, \alpha /2) + f^2 {\rm Binom}(a | d, \alpha) + (1-f)^2 {\rm I}[a = 0].
+\end{equation}
+Taking the maximum of these as the likelihood given contamination, we can easily compute the probability of contamination error.
+
+\subsection{Read Orientation Artifact Filter}
+The read orientation model is implemented in the following two tools that produce an input to \code{Mutect2}\footnote{\code{Mutect2} emits annotations that are picked up by \code{FilterMutectCalls}.}
+
+\begin{lstlisting}[language=bash,caption={LearnReadOrientationModel command}, label={cmd-mutect2}]
+gatk CollectF1R2Counts -R reference.fasta \
+   -I tumor.bam \
+   -alt-table tumor-alt.tsv \
+   -ref-hist tumor-ref.metrics \
+   -alt-hist tumor-alt.metrics
+   
+gatk LearnReadOrientationModel \
+   -alt-table tumor-alt.tsv \
+   -ref-hist tumor-ref.metrics \
+   -alt-hist tumor-alt.metrics \
+   -O tumor-artifact-prior.tsv
+\end{lstlisting}
+The output \code{tumor-artifact-prior.tsv} is then passed as the parameter to \code{Mutect2}'s \code{--orientation-bias-artifact-priors} argument, once (optionally) for each tumor sample.
+
+The read orientation artifact, also known as the orientation bias artifact, arises due to a chemical change in the nucleotide during library prep that results in, for example, G base-paring with A. This kind of artifact has a clear signature (e.g. C to A SNP that occurs predominantly for the middle C in the DNA sequence CCG), and it's single-stranded in nature. Downstream, this artifact manifests as low allele fraction SNPs whose evidence for the alt allele consists almost entirely F1R2 reads or F2R1 reads. A read pair is F1R2 (forward 1st, reverse 2nd) if the sequence of bases in Read 1 maps to the forward strand of the reference (F1), and the sequence of Read 2 to the reverse strand of the reference (R2). F2R1 is defined similarly.
+
+Without loss of generality, suppose that the reference context at locus $i$ is ACT. Let $\vz_i$ denote the genotype at locus $i$ with the one-hot encoding $z_{ik} = 1$ iff the genotype of locus $i$ is $k$, where the possible genotypes are
+\begin{equation*}
+z_i \in \{ \text{F1R2}_A, \text{F1R2}_G, \text{F1R2}_T, \text{F2R1}_A, \text{F2R1}_G, \text{F2R1}_T,  \text{Hom Ref}, \text{Germline Het}, \text{Somatic Het}, \text{Hom Var} \}
+\end{equation*}
+$z_i = \mathrm{F1R2_A}$ denotes that at locus $i$ we have an artifact in which the evidence for alt allele A consists entirely of reads in the F1R2 orientation. The remaining artifact states are defined analogously. Let $\vpi$ denote the prior probabilities of the $\vz_i$ under the reference context ACT. Then we have 
+\begin{equation}
+P(\vz_i) = \prod_k \pi_{k}^{z_{ik}}
+\end{equation}
+
+The number of alt reads at a locus depends on the genotype $z_i$. Let $n_i$ and $m_i$ denote the total depth and alt depth at locus $i$, respectively. The conditional distribution of $m_i$ is
+\begin{equation}
+P(m_i | z_{ik} = 1) = \mathrm{BetaBinomial}(m_i | n_i, \alpha_k, \beta_k)
+\end{equation}
+where $\alpha_k$ and $\beta_k$ are fixed hyperparameters for genotype $z_k$. When the site's genotype indicates in $m_i$ alt reads we expect a heavily skewed distribution of F1R2 reads. This is captured in the conditional distribution of F1R2 alt reads. Let $c_i$ denote the number of F1R2 reads among the $m_i$ alt reads at locus $i$. Then we have
+\begin{equation}
+P(c_i | m_i, z_{ik} = 1) = \mathrm{BetaBinomial}( c_i | m_i, \alpha'_k, \beta'_k)
+\end{equation}
+We learn the prior artifact probabilities $\vpi$ based on the observed values of $n_i$, $m_i$, $c_i$ for each of $N$ loci using the EM algorithm. In the E-step, we compute the posterior probabilities of $\vz_i$ for $i = 1 ... N$. The joint probabilities of $\vz$ factorizes over $i$, thus the posteriors over $\vz$ are independent across loci. 
+\begin{equation}
+P(z_{ik} = 1 | m_i, c_i) \propto P(z_{ik} = 1, m_i, c_i) = \pi_{k} \mathrm{BetaBinomial}(m_i | n_i, \alpha_k, \beta_k)  \mathrm{BetaBinomial}( c_i | m_i, \alpha'_k, \beta'_k)
+\end{equation}
+In the M-step we maximize the expectation of the log complete-data likelihood with respect to $\vpi$. The log complete data likelihood is given as
+\begin{equation}
+\ln P(\vz, \vm, \vc) = \sum_i \sum_k z_{ik} \big( \ln \pi_{k} + \ln \mathrm{BetaBinomial} ( m_i | n_i, \alpha_k, \beta_k)  + \ln \mathrm{BetaBinomial}( c_i | m_i, \alpha'_k, \beta'_k) \big)
+\end{equation}
+Maximizing the log likelihood under the constraint $\sum_k \pi_k = 1$ gives us
+\begin{equation}
+\pi_k = \frac{N_k}{N}
+\end{equation}
+where $N_k = \sum_i P(z_{ik} | m_i, c_i)$ is the effective count of loci with genotype $k$. We alternate E-step and M-step until convergence. We then use the learned prior genotype probabilities to compute the posterior artifact probabilities of variants in a vcf. The filtering threshold is set such that the false discovery rate doesn't exceed a specified value, as described below.
+
+%%%%%%%%%%%%%%
+%POLYMERASE SLIPPAGE
+%%%%%%%%%%%%%%
+\subsection{Polymerase Slippage}\label{polymerase-slippage}
+For indels in short tandem repeats (STRs) \code{FilterMutectCalls} uses a simple model for the possibility that alt reads are due to polymerase slippage.  The prior $\pi_L$ for a real variant of length $L$ comes from the allele fraction clustering model.  \code{FilterMutectCalls} assumes that polymerase slippage only occurs in STRs of 8 bases or more and only results in insertions or deletions of a single repeat unit.  The likelihood of $a$ alt reads out of $d$ total reads in the case of a real somatic variant is given by the allele fraction clustering model.  The likelihood in the case of polymerase slippage is the marginal of binomial likelihoods over a slippage rate with a uniform prior from 0 to $0.1$, which is a regularized Beta function.  Given priors and likelihoods, the error probability follows.
+
+%%%%%%%%%%%%%%
+%NORMAL ARTIFACT
+%%%%%%%%%%%%%%
+\subsection{Normal Artifacts}\label{normal-artifact}
+A matched normal is useful not only for detecting germline variants but also for distinguishing technical artifacts for somatic mutations.  Even a large panel of normals may not include, for example, mapping errors due to a rare SNP in a centromere, while a matched normal will exhibit such errors.  \code{Mutect2} emits a normal artifact log odds annotation by applying the somatic likelihoods model to the normal.  We combine this likelihood of the reads given that an artifact appears in the normal with a prior probability for normal artifacts to obtain a posterior error probability.  Since this prior is unknown, we use the rate of technical artifacts in the tumor detected by \code{FilterMutectCalls} as a proxy.
+
+%%%%%%%%%%%%%%
+%BAD HAPLOTYPE
+%%%%%%%%%%%%%%
+\subsection{Bad Haplotypes}\label{bad-haplotype}
+\code{Mutect2} emits phasing information for calls in the same assembly region.  We assign a ``bad haplotype" probability equal to the greatest technical artifact probability of any in-phas call within a certain distance, by default 100 bases.
+
+
+%%%%%%%%%%%%%
+%%%%%%%%%%%%%
+%RELATED GATK TOOLS
+%%%%%%%%%%%%%
+%%%%%%%%%%%%%
+\section{Related GATK Tools}
+The Broad somatics SNVs and indels pipeline involves several GATK tools besides \code{Mutect2} and \code{FilterMutectCalls}.  We describe them here.
+
+\subsection{Creating a Panel of Normals}
+Currently, a panel of normals is simply a vcf of blacklisted sites flagged as recurrent artifacts\footnote{\code{CreateSomaticPanelOfNormals} emits more information than this, but \code{Mutect2} does not yet use it.}.  One generates it by running \code{Mutect2} in tumor-only mode on a large number of normal samples, then running the following workflow:
+
+\begin{lstlisting}[language=bash,caption={CreateSomaticPanelOfNormals command}, label={cmd-mutect2}]
+gatk GenomicsDBImport -R reference.fasta -L intervals.interval_list \
+   --genomicsdb-workspace-path pon_db \
+   -V normal1.vcf \
+   -V normal2.vcf \
+   -V normal3.vcf . . .
+   
+gatk CreateSomaticPanelOfNormals -R reference.fasta -V gendb://pon_db -O pon.vcf
+\end{lstlisting}
+
+
+
+\subsection{Calculating Contamination}
+To calculate the cross-sample calculation of a tumor sample, one runs the GATK tools \code{GetPileupSummaries} and \code{CalculateContamination} as follows:
+
+\begin{lstlisting}[language=bash,caption={CalculateContamination command}, label={cmd-mutect2}]
+gatk GetPileupSummaries -I tumor.bam \
+   -V common-biallelic.vcf \
+   -L common-biallelic.vcf \
+   -O tumor.pileups
+
+# if a normal is present, it is helpful to obtain its pileup sumaries
+gatk GetPileupSummaries -I normal.bam \
+   -V common-biallelic.vcf \
+   -L common-biallelic.vcf \
+   -O tumor.pileups
+
+gatk CalculateContamination -I tumor.pileups \
+   # the normal pileups are useful but optional
+   [-matched normal.pileups] \
+   -O contamination.table \
+   # it is highly recommended to produce segments for FilterMutectCalls
+   [-tumor-segmentation segments.table]
+\end{lstlisting}
+
+\code{CalculateContamination} is the GATK's fast, simple, and accurate method for calculating the contamination of a sample.  This methods does not require a matched normal, makes no assumptions about the number of contaminating samples, and remains accurate even when the sample has a lot of copy number variation.
+
+The inputs are a bam file and a vcf of common variants -- for example ExAC, gnomAD, or 1000 Genomes -- with their allele frequencies.  The basic idea, which comes from ContEst\footnote{ContEst: estimating cross-contamination of human samples in next-generation sequencing data, \textit{Bioinformatics} \textbf{27}, 2601 (2011)} by Kristian Cibulskis and others in the Broad Institute Cancer Genome Analysis group, is simply to count ref reads at hom alt sites and subtract the number of ref reads expected from sequencing error to obtain the number of ref reads contaminating these hom alt sites.  Finally, we use the allele frequencies to account for the fact that some contaminating reads have the alt allele.  The only subtlety is in distinguishing hom alt sites from loss of heterozygosity events, which we describe below.
 
 Suppose we have a set $\mathbb{H}$ of SNPs at which our sample is homozygous for the alternate allele.  Let $N_{\rm ref}$ be the total number of ref reads at these sites.  We can decompose $N_{\rm ref}$ as follows:
 \begin{align}
@@ -362,7 +532,24 @@ Once we have learned the parameters of this model, we can easily infer the poste
 
 Finally, we note that the same calculation can be reversed by using alt reads in hom ref sites as the signal and replacing $f$ by $1-f$ everywhere above.  We use the estimate from hom refs as a backup when the hom alt estimate has too great an error, as can occur in the case of targeted panels with few sites.  We do not use this as our primary estimate because it is much more affected by uncertainty in the population allele frequencies and is thus susceptible to systematic bias.
 
-\section{Proposed tumor in normal estimation tool}
+\subsection{Filtering Alignment Artifacts}
+\code{FilterMutectCalls} does a fairly good job detecting all sorts of errors, including mapping artifacts.  When more precision is needed and a slight loss of sensitivity is acceptable, one can run the output of \code{FilterMutectCalls} through \code{FilterAlignmentArtifacts}.  This tool looks at every alt-supporting read together with its mate and maps both to the best reference available\footnote{That is, if the reads come from an hg19-aligned bam, they will still be realigned to hg38 if that is provided.} using an embedded BWA-mem with parameters optimized for detecting multimapping.  The tool requires a BWA mem reference image index file, which is available from the GATK resource bucket.  The first step below, in which this image is generated, is usually not necessary.
+
+\begin{lstlisting}[language=bash,caption={FilterAlignmentArtifacts command}, label={cmd-filter-alignment-artifacts}]
+gatk BwaMemIndexImageCreator -I reference.fasta -O reference.fasta.img
+
+gatk FilterAlignmentArtifacts \
+   # the reference argument is the bam's original alignment
+   -R original-reference.fasta \
+   # filtered calls from FilterMutectCalls
+   -V filtered.vcf \
+   -I tumor.bam \
+   --bwa-mem-index-image reference.fasta.img \
+   -O realignment-filtered.vcf
+\end{lstlisting}
+
+
+\subsection{Proposed tumor in normal estimation tool}
 
 Note: the following notes are just a proposal for which no GATK tool yet exists.  A popular tool is DeTiN\footnote{DeTiN: overcoming tumor-in-normal contamination, \textit{Nature Methods} \textbf{15}, 531 (2018)} by Amaro Taylor-Weiner and others at the Broad Institute Cancer Genome Analysis group.
 
@@ -370,8 +557,8 @@ Similar to the spirit of CalculateContamination, the fraction of tumor reads in 
 
 We propose the following steps to obtain our input of confident somatic SNVs:
 \begin{itemize}
-\item Run Mutect2 with the \code{--genotype-germline-sites} argument to obtain a preliminary list of somatic SNVs, including those that look like germline variants due to tumor-in-normal contamination.  For the sake of speed, we could implement a pileup-based mode in which we skip reassembly and equate read likelihoods with base qualities.  This would allow us to obtain variant annotations using the existing architecture of Mutect2 and therefore to filter calls with no new code.  
-\item Run FilterMutectCalls.  With default settings this eliminates the great majority of sequencing artifacts.  To eliminate even more we could increase the log odds threshold slightly, essentially requiring a slightly larger alt allele count.  Normally we don't do this because it sacrifices some sensitivity, but for our purposes here a 10 or 20 percent loss of sensitivity is perfectly acceptable as long as we are left with enough SNVs for our estimate.  It would also make sense to be especially stringent with variants that have any significant population allele frequency in gnomAD, as well as possible mapping errors.  Thus we might also run FilterAlignmentArtifacts with strict parameters.
+\item Run \code{Mutect2} with the \code{--genotype-germline-sites} argument to obtain a preliminary list of somatic SNVs, including those that look like germline variants due to tumor-in-normal contamination.  For the sake of speed, we could implement a pileup-based mode in which we skip reassembly and equate read likelihoods with base qualities.  This would allow us to obtain variant annotations using the existing architecture of \code{Mutect2} and therefore to filter calls with no new code.  
+\item Run \code{FilterMutectCalls}.  With default settings this eliminates the great majority of sequencing artifacts.  To eliminate even more we could increase the log odds threshold slightly, essentially requiring a slightly larger alt allele count.  Normally we don't do this because it sacrifices some sensitivity, but for our purposes here a 10 or 20 percent loss of sensitivity is perfectly acceptable as long as we are left with enough SNVs for our estimate.  It would also make sense to be especially stringent with variants that have any significant population allele frequency in gnomAD, as well as possible mapping errors.  Thus we might also run FilterAlignmentArtifacts with strict parameters.
 \item Reconsider all variants that are filtered only by the germline and/or normal artifact filters.  Those that have enough read counts in the normal that we conclude they are germline variants, as opposed to tumor in normal contamination, should remain filtered.  
 \end{itemize}
 
@@ -387,103 +574,5 @@ Hence we estimate
 \end{align}
 
 We could also iterate this process as in CalculateContamination: first get an initial guess of the tumor-in-normal fraction, then use the initial guess to improve our ``un-filtering" in the third step above.
-
-\section{Mutect2 filters}
-\code{Mutect2} emits candidate variants with a set of annotations.  After that \code{FilterMutectCalls} produces filtered calls by subjecting these variants to a series of hard filters that reject sites if some annotation is out of an allowable range.  Here are the command line arguments that control these filters, along with the annotations they relate to.
-
-\begin{itemize}
-\item  \code{tumor-lod} is the minimum likelihood of an allele as determined by the somatic likelihoods model required to pass.
-\item \code{max-events-in-region} is the maximum allowable number of called variants co-occurring in a single assembly region.  If the number of called variants exceeds this they will all be filtered.
-\item \code{unique-alt-read-count} is the minimum number of unique (start position, fragment length) pairs required to make a call.  This count is a proxy for the number of unique molecules (as opposed to PCR duplicates) supporting an allele.  Normally PCR duplicates are marked and filtered by the GATK engine, but in UMI-aware calling this may not be the case, hence the need for this filter.
-\item \code{max-alt-allele-count} is the maximum allowable number of alt alleles at a site.  By default only biallelic variants pass the filter.
-\item \code{max-germline-posterior} is the maximum posterior probability, as determined by the above germline probability model, that a variant is a germline event.
-\item \code{normal-artifact-lod} is the maximum acceptable likelihood of an allele in the normal \textit{by the somatic likelihoods model}.  This is different from the normal likelihood that goes into the germline model, which makes a diploid assumption.  Here we compute the normal likelihood as if it were a tumor in order to detect artifacts.  
-\item \code{max-strand-artifact-probability} is the posterior probability of a strand artifact, as determined by the model described above, required to apply the strand artifact filter.  This is necessary but not sufficient -- we also require the estimated max a posteriori allele fraction to be less than \code{min-strand-artifact-allele-fraction}.  The second condition prevents filtering real variants that also have significant strand bias, i.e. a true variant that \textit{also} has some artifactual reads.
-\item \code{min-median-base-quality} is the minimum median base quality of bases supporting a SNV.
-\item \code{min-median-mapping-quality} is the minimum median mapping quality of reads supporting an allele.
-\item \code{max-median-fragment-length-difference} is the maximum difference between the median fragment lengths reads supporting alt and reference alleles.  Note that fragment length is based on where paired reads are mapped, not the actual physical fragment length.
-\item \code{min-median-read-position} is the minimum median length of bases supporting an allele from the closest end of the read.  Indels positions are measured by the end farthest from the end of the read.
-\item If \code{FilterMutectCalls} is passed a \code{contamination-table} from \code{CalculateContamination} it will filter alleles with allele fraction less than the whole-bam contamination in the table\footnote{This should be made more sophisticated by integrating the possibility of contamination into the germline model.}.
-\end{itemize}
-
-Additionally, there are two unadjustable filters. the panel of normals filter removes all alleles at a site belonging to the panel of normals, which is a vcf of blacklisted artifact sites.  It can be disabled by not passing a panel of normals to \code{Mutect2}.  There is also an STR contraction filter which removes variants that are the deletion of a single repeat unit of an STR when this repeat unit contains more than one base.  This filter can be disabled with the argument \code{-XA TandemRepeat} which turns off the \code{TandemRepeat} annotation.
-
-Here for convenience is a table of \code{Mutect2} filters with their corresponding annotations specified by the \code{-A} argument\footnote{Most of these are default annotations and do not need to be invoked explicitly.}, vcf keys for these annotations, and command line arguments controlling filtering thresholds.
-
-\begin{table}[h!]
-\centering
- \begin{tabular}{|| c c c c ||} 
- \hline
- Filter & Annotation & Key & Argument \\ [0.5ex] 
- \hline\hline
- \code{t\_lod} & - &\code{TLOD} & \code{tumor\_lod} \\ 
- \code{clustered\_events} & - & \code{ECNT} & \code{max-events-in-region} \\
- \code{duplicate\_evidence} & \code{UniqueAltReadCount} & \code{UNIQ\_ALT\_READ\_COUNT} & \code{unique-alt-read-count} \\
- \code{multiallelic} & - & - & \code{max-alt-alleles-count} \\
- \code{germline\_risk} & - & \code{P\_GERMLINE} & \code{max-germline-posterior} \\
- \code{artifact\_in\_normal} & - & \code{N\_ART\_LOD} & \code{normal-artifact-lod} \\
- \code{strand\_artifact} & \code{StrandArtifact} & \code{SA\_POST\_PROB}, \code{SA\_MAX\_AF} & \code{max-strand-artifact-probability} \\
- \code{base\_quality} & \code{BaseQuality} & \code{MBQ} & \code{min-median-base-quality} \\
- \code{mapping\_quality} & \code{MappingQuality} & \code{MMQ} & \code{min-median-mapping-quality} \\
- \code{fragment\_length} & \code{FragmentLength} & \code{MFRL} & \code{max-median-fragment-length-difference} \\
- \code{read\_position} & \code{ReadPosition} & \code{MPOS} &\code{min-median-read-position} \\
- \code{panel\_of\_normals} & - & \code{IN\_PON} & \code{panel-of-normals} \\
- \code{contamination} & - & - & \code{contamination-table} \\
- \code{str\_contraction} & \code{TandemRepeat} & \code{RU}, \code{RPA} & - \\  [1ex] 
- \hline
- \end{tabular}
-\end{table}
-
-
-\section{Read Orientation Artifact Filter}
-
-The read orientation artifact, also known as the orientation bias artifact, arises due to a chemical change in the nucleotide during library prep that results in, for example, G base-paring with A. This kind of artifact has a clear signature (e.g. C to A SNP that occurs predominantly for the middle C in the DNA sequence CCG), and it's single-stranded in nature. Downstream, this artifact manifests as low allele fraction SNPs whose evidence for the alt allele consists almost entirely F1R2 reads or F2R1 reads. A read pair is F1R2 (forward 1st, reverse 2nd) if the sequence of bases in Read 1 maps to the forward strand of the reference (F1), and the sequence of Read 2 to the reverse strand of the reference (R2). F2R1 is defined similarly.
-
-Without loss of generality, suppose that the reference context at locus $i$ is ACT. Let $\vz_i$ denote the genotype at locus $i$ with the one-hot encoding $z_{ik} = 1$ iff the genotype of locus $i$ is $k$, where the possible genotypes are
-\begin{equation*}
-z_i \in \{ \text{F1R2}_A, \text{F1R2}_G, \text{F1R2}_T, \text{F2R1}_A, \text{F2R1}_G, \text{F2R1}_T,  \text{Hom Ref}, \text{Germline Het}, \text{Somatic Het}, \text{Hom Var} \}
-\end{equation*}
-$z_i = \mathrm{F1R2_A}$ denotes that at locus $i$ we have an artifact in which the evidence for alt allele A consists entirely of reads in the F1R2 orientation. The remaining artifact states are defined analogously. Let $\vpi$ denote the prior probabilities of the $\vz_i$ under the reference context ACT. Then we have 
-\begin{equation}
-P(\vz_i) = \prod_k \pi_{k}^{z_{ik}}
-\end{equation}
-
-The number of alt reads at a locus depends on the genotype $z_i$. Let $n_i$ and $m_i$ denote the total depth and alt depth at locus $i$, respectively. The conditional distribution of $m_i$ is
-\begin{equation}
-P(m_i | z_{ik} = 1) = \mathrm{BetaBinomial}(m_i | n_i, \alpha_k, \beta_k)
-\end{equation}
-where $\alpha_k$ and $\beta_k$ are fixed hyperparameters for genotype $z_k$. When the site's genotype indicates in $m_i$ alt reads we expect a heavily skewed distribution of F1R2 reads. This is captured in the conditional distribution of F1R2 alt reads. Let $c_i$ denote the number of F1R2 reads among the $m_i$ alt reads at locus $i$. Then we have
-\begin{equation}
-P(c_i | m_i, z_{ik} = 1) = \mathrm{BetaBinomial}( c_i | m_i, \alpha'_k, \beta'_k)
-\end{equation}
-We learn the prior artifact probabilities $\vpi$ based on the observed values of $n_i$, $m_i$, $c_i$ for each of $N$ loci using the EM algorithm. In the E-step, we compute the posterior probabilities of $\vz_i$ for $i = 1 ... N$. The joint probabilities of $\vz$ factorizes over $i$, thus the posteriors over $\vz$ are independent across loci. 
-\begin{equation}
-P(z_{ik} = 1 | m_i, c_i) \propto P(z_{ik} = 1, m_i, c_i) = \pi_{k} \mathrm{BetaBinomial}(m_i | n_i, \alpha_k, \beta_k)  \mathrm{BetaBinomial}( c_i | m_i, \alpha'_k, \beta'_k)
-\end{equation}
-In the M-step we maximize the expectation of the log complete-data likelihood with respect to $\vpi$. The log complete data likelihood is given as
-\begin{equation}
-\ln P(\vz, \vm, \vc) = \sum_i \sum_k z_{ik} \big( \ln \pi_{k} + \ln \mathrm{BetaBinomial} ( m_i | n_i, \alpha_k, \beta_k)  + \ln \mathrm{BetaBinomial}( c_i | m_i, \alpha'_k, \beta'_k) \big)
-\end{equation}
-Maximizing the log likelihood under the constraint $\sum_k \pi_k = 1$ gives us
-\begin{equation}
-\pi_k = \frac{N_k}{N}
-\end{equation}
-where $N_k = \sum_i P(z_{ik} | m_i, c_i)$ is the effective count of loci with genotype $k$. We alternate E-step and M-step until convergence. We then use the learned prior genotype probabilities to compute the posterior artifact probabilities of variants in a vcf. The filtering threshold is set such that the false discovery rate doesn't exceed a specified value, as described below.
-
-\section{Filtering False Discovery Rate}
-
-Let $p_1 \leq p_2 \leq ... \leq p_n$ denote ordered posterior probabilities that given variants are sequencing artifacts. Suppose we filter variants for which $p_i > p_j$ for some index $j$; that is, we keep the first $j$ variants as \code{PASS} and filter the rest. Then the expected number of false positives is
-\begin{equation}
-\mathbb{E} [ \mathrm{FP}(j)] = \sum_{i = 1}^{j} p_i
-\end{equation}
-And the expected false positive rate is
-\begin{equation} \label{eq:fpr}
-\mathbb{E} [ \mathrm{FPR}(j)]= \frac{1}{j} {\sum_{i = 1}^{j} p_i}
-\end{equation}
-We choose the threshold so as to maximize the number of variants to let through while keeping the false positive rate below $\delta \in [0, 1]$. In other words, we solve for
-\begin{equation}
-j^* = \mathrm{argmax}_j \mathbb{E} [ \mathrm{FPR}(j)]= \frac{1}{j} \sum_{i = 1}^{j} p_i
-\end{equation}
-under the constraint $ \mathbb{E} [ \mathrm{FPR}(j)] < \delta$. We can prove by induction that $\mathbb{E} [ \mathrm{FPR}(j)]$ is monotonically increasing in $j$. Thus we test $\mathbb{E} [ \mathrm{FPR}(j)]$ for $j = 1, \cdots, k$, where $k$ is the smallest integer such that $\mathbb{E} [ \rm{FPR}(k)] > \delta$, and set $j^* = k-1$. 
 
 \end{document}

@@ -57,15 +57,21 @@ public class BetaBinomialDistribution extends AbstractIntegerDistribution {
      */
     @Override
     public double probability(int k) {
+        return Math.exp(logProbability(k));
+    }
 
+    /**
+     * @param k number of successes.  Must be positive or zero.
+     * @return the value of the pdf at k
+     */
+    @Override
+    public double logProbability(int k) {
         ParamUtils.isPositiveOrZero(k, "Number of successes must be greater than or equal to zero.");
 
         // nchoosek * beta(k+alpha, n-k+beta)/ beta(alpha, beta)
         // binomialcoefficient is "n choose k"
-        if (k > n) {
-            return 0;
-        }
-        return max(0, CombinatoricsUtils.binomialCoefficientDouble(n, k) * Math.exp(Beta.logBeta(k+alpha, n - k + beta) - Beta.logBeta(alpha, beta)));
+        return k > n ? Double.NEGATIVE_INFINITY :
+                CombinatoricsUtils.binomialCoefficientLog(n,k) + Beta.logBeta(k+alpha, n - k + beta) - Beta.logBeta(alpha, beta);
     }
 
     /**

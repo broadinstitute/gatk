@@ -20,7 +20,8 @@ import org.broadinstitute.hellbender.testutils.CommandLineProgramTester;
 import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.OrientationBiasUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StrandBiasBySample;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerArgumentCollection;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReadThreadingAssemblerArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.FilterMutectCalls;
+import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.M2FiltersArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceSummaryRecord;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.ValidateVariants;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
@@ -35,7 +36,6 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-import scala.tools.nsc.transform.patmat.ScalaLogic;
 
 import java.io.File;
 import java.io.IOException;
@@ -75,6 +75,8 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     private static final File DREAM_2_MASK = new File(DREAM_MASKS_DIR, "mask2.list");
     private static final File DREAM_1_MASK = new File(DREAM_MASKS_DIR, "mask1.list");
 
+    private static final File DREAM_4_FALSE_POSITIVES = new File(DREAM_VCFS_DIR, "sample_4.false_positives.vcf");
+
     private static final File NO_CONTAMINATION_TABLE = new File(toolsTestDir, "mutect/no-contamination.table");
     private static final File FIVE_PCT_CONTAMINATION_TABLE = new File(toolsTestDir, "mutect/five-pct-contamination.table");
     private static final File TEN_PCT_CONTAMINATION_TABLE = new File(toolsTestDir, "mutect/ten-pct-contamination.table");
@@ -85,6 +87,8 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     private static final File MITO_REF = new File(toolsTestDir, "mutect/mito/Homo_sapiens_assembly38.mt_only.fasta");
     private static final File DEEP_MITO_BAM = new File(largeFileTestDir, "mutect/highDPMTsnippet.bam");
     private static final String DEEP_MITO_SAMPLE_NAME = "mixture";
+
+    private static final File FILTERING_DIR = new File(toolsTestDir, "mutect/filtering");
 
     private static final File GNOMAD_WITHOUT_AF_SNIPPET = new File(toolsTestDir, "mutect/gnomad-without-af.vcf");
 
@@ -167,6 +171,30 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 }
             }
         });
+    }
+
+    @Test
+    public void testNA12878NormalNormalFiltering() throws Exception {
+        Utils.resetRandomGenerator();
+        final File unfilteredVcf = new File(FILTERING_DIR, "NA12878.vcf");
+        final File contamination = new File(FILTERING_DIR, "contamination.table");
+        final File segments = new File(FILTERING_DIR, "segments.table");
+        final File stats = new File(FILTERING_DIR, "merged.stats");
+
+        final File filteredVcf = createTempFile("filtered", ".vcf");
+
+        // run FilterMutectCalls
+        new Main().instanceMain(makeCommandLineArgs(Arrays.asList(
+                "-V", unfilteredVcf.getAbsolutePath(), "-O", filteredVcf.getAbsolutePath(),
+                "--" + M2FiltersArgumentCollection.TUMOR_SEGMENTATION_LONG_NAME, segments.getAbsolutePath(),
+                "--" + M2FiltersArgumentCollection.CONTAMINATION_TABLE_LONG_NAME, contamination.getAbsolutePath(),
+                "--" + FilterMutectCalls.FILTERING_STATS_LONG_NAME, stats.getAbsolutePath()),
+                FilterMutectCalls.class.getSimpleName()));
+
+        final long numPassVariants = VariantContextTestUtils.streamVcf(filteredVcf)
+                .filter(vc -> vc.getFilters().isEmpty()).count();
+
+        Assert.assertTrue(numPassVariants < 10);
     }
 
     private String getSampleName(File bam) throws IOException {
@@ -1025,8 +1053,8 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         new Main().instanceMain(makeCommandLineArgs(Arrays.asList(
                 "-O", filteredVcf.getAbsolutePath(),
                 "-V", StrandBiasNVcf.getAbsolutePath(),
-                "-" + M2FiltersArgumentCollection.STRICT_STRAND_BIAS_LONG_NAME, "true",
-                "-" + M2FiltersArgumentCollection.N_RATIO_LONG_NAME, Double.toString(nRatio)),
+                "-" + M2FiltersArgumentCollection.MIN_READS_ON_EACH_STRAND_LONG_NAME, "1",
+                "-" + M2FiltersArgumentCollection.MAX_N_RATIO_LONG_NAME, Double.toString(nRatio)),
                 FilterMutectCalls.class.getSimpleName()));
 
         final Optional<VariantContext> vc = VariantContextTestUtils.streamVcf(filteredVcf).findAny();

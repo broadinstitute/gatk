@@ -157,7 +157,7 @@ final public class DataSourceUtils {
 
                         // Make sure we only have 1 of this data source:
                         if ( names.contains(configFileProperties.getProperty("name")) ) {
-                            throw new UserException.BadInput("Error: contains more than one dataset of name: "
+                            throw new UserException.BadInput("ERROR: contains more than one dataset of name: "
                                     + configFileProperties.getProperty("name") + " - one is: " + configFilePath.toUri().toString());
                         }
                         else {

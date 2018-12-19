@@ -16,11 +16,11 @@ import java.io.IOException;
 
 public class ConcordanceSummaryRecord {
     private static final String VARIANT_TYPE_COLUMN_NAME = "type";
-    private static final String TRUE_POSITIVE_COLUMN_NAME = "true-positive";
-    private static final String FALSE_POSITIVE_COLUMN_NAME = "false-positive";
-    private static final String FALSE_NEGATIVE_COLUMN_NAME = "false-negative";
-    private static final String SENSITIVITY_COLUMN_NAME = "sensitivity";
-    private static final String PRECISION_COLUMN_NAME = "precision";
+    private static final String TRUE_POSITIVE_COLUMN_NAME = "TP";
+    private static final String FALSE_POSITIVE_COLUMN_NAME = "FP";
+    private static final String FALSE_NEGATIVE_COLUMN_NAME = "FN";
+    private static final String SENSITIVITY_COLUMN_NAME = "RECALL";
+    private static final String PRECISION_COLUMN_NAME = "PRECISION";
     private static final String[] SUMMARY_TABLE_COLUMN_HEADER =
             {VARIANT_TYPE_COLUMN_NAME, TRUE_POSITIVE_COLUMN_NAME, FALSE_POSITIVE_COLUMN_NAME,
                     FALSE_NEGATIVE_COLUMN_NAME, SENSITIVITY_COLUMN_NAME, PRECISION_COLUMN_NAME};
@@ -60,8 +60,8 @@ public class ConcordanceSummaryRecord {
                     .set(TRUE_POSITIVE_COLUMN_NAME, record.getTruePositives())
                     .set(FALSE_POSITIVE_COLUMN_NAME, record.getFalsePositives())
                     .set(FALSE_NEGATIVE_COLUMN_NAME, record.getFalseNegatives())
-                    .set(SENSITIVITY_COLUMN_NAME, record.getSensitivity())
-                    .set(PRECISION_COLUMN_NAME, record.getPrecision());
+                    .set(SENSITIVITY_COLUMN_NAME, record.getSensitivity(), 3)
+                    .set(PRECISION_COLUMN_NAME, record.getPrecision(), 3);
         }
     }
 

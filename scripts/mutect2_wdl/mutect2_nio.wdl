@@ -303,6 +303,13 @@ workflow Mutect2 {
         }
     }
 
+    call MergeStats {
+        input:
+             stats = M2.stats,
+             gatk_override = gatk_override,
+             gatk_docker = gatk_docker
+    }
+
     if (run_ob_filter && !defined(tumor_sequencing_artifact_metrics)) {
         call CollectSequencingArtifactMetrics {
             input:
@@ -372,6 +379,7 @@ workflow Mutect2 {
             output_name = filtered_name,
             compress = compress,
             preemptible_attempts = preemptible_attempts,
+            mutect_stats = MergeStats.merged_stats,
             max_retries = max_retries,
             contamination_table = CalculateContamination.contamination_table,
             maf_segments = CalculateContamination.maf_segments,
@@ -466,6 +474,8 @@ workflow Mutect2 {
     output {
         File filtered_vcf = select_first([FilterAlignmentArtifacts.filtered_vcf, FilterByOrientationBias.filtered_vcf, Filter.filtered_vcf])
         File filtered_vcf_index = select_first([FilterAlignmentArtifacts.filtered_vcf_index, FilterByOrientationBias.filtered_vcf_index, Filter.filtered_vcf_index])
+        File filtering_stats = Filter.filtering_stats
+        File mutect_stats = MergeStats.merged_stats
         File? contamination_table = CalculateContamination.contamination_table
 
         File? oncotated_m2_maf = oncotate_m2.oncotated_m2_maf
@@ -629,6 +639,7 @@ task M2 {
             -O "${output_vcf}" \
             ${true='--bam-output bamout.bam' false='' make_bamout} \
             ${"--orientation-bias-artifact-priors " + artifact_prior_table} \
+            --stats mutect2.stats \
             ${m2_extra_args}
     >>>
 
@@ -648,6 +659,7 @@ task M2 {
         File output_bamOut = "bamout.bam"
         String tumor_sample = read_string("tumor_name.txt")
         String normal_sample = read_string("normal_name.txt")
+        File stats = "mutect2.stats"
     }
 }
 
@@ -752,6 +764,51 @@ task MergeBamOuts {
     output {
         File merged_bam_out = "${output_vcf_name}.out.bam"
         File merged_bam_out_index = "${output_vcf_name}.out.bai"
+    }
+}
+
+
+task MergeStats {
+    # inputs
+    Array[File]+ stats
+
+    File? gatk_override
+
+    # runtime
+    String gatk_docker
+    Int? mem
+    Int? preemptible_attempts
+    Int? max_retries
+    Int? disk_space
+    Int? cpu
+    Boolean use_ssd = false
+
+    # Mem is in units of GB but our command and memory runtime values are in MB
+    Int machine_mem = if defined(mem) then mem * 1000 else 2000
+    Int command_mem = machine_mem - 1000
+
+    command {
+        set -e
+        export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+
+
+        gatk --java-options "-Xmx${command_mem}m" MergeMutectStats \
+            -stats ${sep=" -stats " stats} -O merged.stats
+
+    }
+
+    runtime {
+        docker: gatk_docker
+        bootDiskSizeGb: 12
+        memory: machine_mem + " MB"
+        disks: "local-disk " + select_first([disk_space, 10]) + if use_ssd then " SSD" else " HDD"
+        preemptible: select_first([preemptible_attempts, 10])
+        maxRetries: select_first([max_retries, 0])
+        cpu: select_first([cpu, 1])
+    }
+
+    output {
+        File merged_stats = "merged.stats"
     }
 }
 
@@ -971,6 +1028,7 @@ task Filter {
     Boolean compress
     String output_vcf = output_name + if compress then ".vcf.gz" else ".vcf"
     String output_vcf_index = output_vcf + if compress then ".tbi" else ".idx"
+    File? mutect_stats
     File? contamination_table
     File? maf_segments
     String? m2_extra_filtering_args
@@ -999,6 +1057,8 @@ task Filter {
       	    -O ${output_vcf} \
       	    ${"--contamination-table " + contamination_table} \
       	    ${"--tumor-segmentation " + maf_segments} \
+      	    ${"-stats " + mutect_stats} \
+      	    --filtering-stats filtering.stats \
       	    ${m2_extra_filtering_args}
     }
 
@@ -1015,6 +1075,7 @@ task Filter {
     output {
         File filtered_vcf = "${output_vcf}"
         File filtered_vcf_index = "${output_vcf_index}"
+        File filtering_stats = "filtering.stats"
     }
 }
 

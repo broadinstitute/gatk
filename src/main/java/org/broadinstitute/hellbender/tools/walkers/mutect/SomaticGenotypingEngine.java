@@ -1,8 +1,11 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.primitives.Doubles;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.variant.variantcontext.*;
+import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
@@ -162,7 +165,7 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
             final List<Allele> allAllelesToEmit = ListUtils.union(Arrays.asList(mergedVC.getReference()), tumorAltAlleles);
 
 
-            final Map<String, Object> negativeLog10PopulationAFAnnotation = GermlineProbabilityCalculator.getNegativeLog10PopulationAFAnnotation(featureContext.getValues(MTAC.germlineResource, loc), tumorAltAlleles, MTAC.getDefaultAlleleFrequency());
+            final Map<String, Object> negativeLog10PopulationAFAnnotation = getNegativeLog10PopulationAFAnnotation(featureContext.getValues(MTAC.germlineResource, loc), tumorAltAlleles, MTAC.getDefaultAlleleFrequency());
 
             final VariantContextBuilder callVcb = new VariantContextBuilder(mergedVC)
                     .alleles(allAllelesToEmit)
@@ -341,7 +344,7 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
                     // keep the higher-quality read
                     readsToDiscard.add(read.likelihood < mate.likelihood ? read.read : mate.read);
 
-                    // mark the read to indicate that its mate was dropped - so that we can account for it in {@link StrandArtifact}
+                    // mark the read to indicate that its mate was dropped - so that we can account for it in {@link StrandArtifactFilter}
                     // and {@link StrandBiasBySample}
                     if (MTAC.annotateBasedOnReads){
                         final GATKRead readToKeep = read.likelihood >= mate.likelihood ? read.read : mate.read;
@@ -394,5 +397,33 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
 
     private <E> Optional<E> getForNormal(final Supplier<E> supplier) {
         return hasNormal ? Optional.of(supplier.get()) : Optional.empty();
+    }
+
+    private static Map<String, Object> getNegativeLog10PopulationAFAnnotation(List<VariantContext> germlineResourceVariants,
+                                                                             final List<Allele> altAlleles,
+                                                                             final double afOfAllelesNotInGermlineResource) {
+        final Optional<VariantContext> germlineVC = germlineResourceVariants.isEmpty() ? Optional.empty()
+                : Optional.of(germlineResourceVariants.get(0));  // assume only one VC per site
+        final double[] populationAlleleFrequencies = getGermlineAltAlleleFrequencies(altAlleles, germlineVC, afOfAllelesNotInGermlineResource);
+
+        return ImmutableMap.of(GATKVCFConstants.POPULATION_AF_VCF_ATTRIBUTE, MathUtils.applyToArray(populationAlleleFrequencies, x -> - Math.log10(x)));
+    }
+
+    @VisibleForTesting
+    static double[] getGermlineAltAlleleFrequencies(final List<Allele> altAlleles, final Optional<VariantContext> germlineVC, final double afOfAllelesNotInGermlineResource) {
+        if (germlineVC.isPresent())  {
+            final List<Double> germlineAltAFs = Mutect2Engine.getAttributeAsDoubleList(germlineVC.get(), VCFConstants.ALLELE_FREQUENCY_KEY, afOfAllelesNotInGermlineResource);
+            return altAlleles.stream()
+                    .mapToDouble(allele -> {
+                        final VariantContext vc = germlineVC.get();
+                        final OptionalInt germlineAltIndex = IntStream.range(0, vc.getNAlleles() - 1)
+                                .filter(n -> vc.getAlternateAllele(n).basesMatch(allele))
+                                .findAny();
+                        return germlineAltIndex.isPresent() ? germlineAltAFs.get(germlineAltIndex.getAsInt())
+                                : afOfAllelesNotInGermlineResource;
+                    }).toArray();
+        }
+
+        return Doubles.toArray(Collections.nCopies(altAlleles.size(), afOfAllelesNotInGermlineResource));
     }
 }

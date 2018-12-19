@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConfidenceMode;
+import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.FilterMutectCalls;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.downsampling.MutectDownsampler;
 import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsampler;
@@ -191,12 +192,17 @@ import java.util.List;
  )
 @DocumentedFeature
 public final class Mutect2 extends AssemblyRegionWalker {
+     public static final String MUTECT_STATS_SHORT_NAME = "stats";
+     public static final String DEFAULT_STATS_EXTENSION = ".stats";
 
     @ArgumentCollection
     protected M2ArgumentCollection MTAC = new M2ArgumentCollection();
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "File to which variants should be written")
     public File outputVCF;
+
+    @Argument(shortName = MUTECT_STATS_SHORT_NAME, doc = "Output statistics table", optional = true)
+    public String statsTable = null;
 
     private VariantContextWriter vcfWriter;
 
@@ -287,6 +293,8 @@ public final class Mutect2 extends AssemblyRegionWalker {
 
     @Override
     public Object onTraversalSuccess() {
+        m2Engine.writeMutectStats(new File(statsTable == null ? outputVCF + DEFAULT_STATS_EXTENSION : statsTable));
+
         return "SUCCESS";
     }
 

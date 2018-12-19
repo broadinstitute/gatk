@@ -9,9 +9,9 @@ import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.tools.walkers.annotator.ReferenceBases;
-import org.broadinstitute.hellbender.tools.walkers.mutect.FilterMutectCalls;
+import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.FilterMutectCalls;
 import org.broadinstitute.hellbender.tools.walkers.mutect.M2ArgumentCollection;
-import org.broadinstitute.hellbender.tools.walkers.mutect.M2FiltersArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.M2FiltersArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -69,7 +69,6 @@ public class ReadOrientationModelIntegrationTest extends CommandLineProgramTest 
         final File unfilteredVcf = GATKBaseTest.createTempFile("unfiltered", ".vcf");
         final File filteredVcf = GATKBaseTest.createTempFile("filtered", ".vcf");
         final File bamout = GATKBaseTest.createTempFile("SM-CEMAH", ".bam");
-        final File filterStats = GATKBaseTest.createTempFile("FilterStats", ".txt");
 
         new Main().instanceMain(makeCommandLineArgs(
                 Arrays.asList(
@@ -85,9 +84,8 @@ public class ReadOrientationModelIntegrationTest extends CommandLineProgramTest 
                         "-V", unfilteredVcf.getAbsolutePath(),
                         "-R", b37_reference_20_21,
                         "-O", filteredVcf.getAbsolutePath(),
-                        "--" + M2FiltersArgumentCollection.ORIENTATION_BIAS_FDR_LONG_NAME, "0.04",
-                        "--" + M2FiltersArgumentCollection.FILTERING_STATS_LONG_NAME, filterStats.getAbsolutePath()),
-                FilterMutectCalls.class.getSimpleName()));
+                        "--" + M2FiltersArgumentCollection.FALSE_DISCOVERY_RATE_LONG_NAME, "0.04",
+                FilterMutectCalls.class.getSimpleName())));
 
 
         // These artifacts have been verified manually

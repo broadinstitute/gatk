@@ -4,6 +4,7 @@ import org.apache.commons.math3.analysis.integration.gauss.GaussIntegrator;
 import org.apache.commons.math3.analysis.integration.gauss.GaussIntegratorFactory;
 
 import java.util.function.DoubleFunction;
+import java.util.function.DoubleUnaryOperator;
 import java.util.function.ToDoubleBiFunction;
 
 /**
@@ -12,7 +13,7 @@ import java.util.function.ToDoubleBiFunction;
 public class IntegrationUtils {
     private static final GaussIntegratorFactory integratorFactory = new GaussIntegratorFactory();
 
-    public static double integrate(final DoubleFunction<Double> getIntegrand,
+    public static double integrate(final DoubleUnaryOperator integrand,
                                    final double lowerBound,
                                    final double upperBound,
                                    final int numPoints) {
@@ -20,7 +21,7 @@ public class IntegrationUtils {
 
         final double[] gaussIntegrationWeights = new IndexRange(0, numPoints).mapToDouble(integrator::getWeight);
         final double[] gaussIntegrationAbscissas = new IndexRange(0, numPoints).mapToDouble(integrator::getPoint);
-        final double[] integrands = MathUtils.applyToArrayInPlace(gaussIntegrationAbscissas,getIntegrand::apply);
+        final double[] integrands = MathUtils.applyToArrayInPlace(gaussIntegrationAbscissas,integrand::applyAsDouble);
 
         return MathUtils.dotProduct(gaussIntegrationWeights, integrands);
     }

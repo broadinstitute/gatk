@@ -10,7 +10,7 @@ import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
-import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.commons.math3.special.Beta;
 import org.apache.commons.math3.special.Gamma;
 import org.apache.commons.math3.util.FastMath;
@@ -27,6 +27,7 @@ import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypingOutputMod
 import org.broadinstitute.hellbender.tools.walkers.genotyper.HomogeneousPloidyModel;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.*;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
+import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.FilterMutectCalls;
 import org.broadinstitute.hellbender.transformers.PalindromeArtifactClipReadTransformer;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.MathUtils;
@@ -49,6 +50,7 @@ import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
+import java.io.File;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -59,9 +61,11 @@ import java.util.stream.Collectors;
 public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
     private static final List<String> STANDARD_MUTECT_INFO_FIELDS = Arrays.asList(GATKVCFConstants.NORMAL_LOD_KEY, GATKVCFConstants.TUMOR_LOD_KEY, GATKVCFConstants.NORMAL_ARTIFACT_LOD_ATTRIBUTE,
-            GATKVCFConstants.EVENT_COUNT_IN_HAPLOTYPE_KEY, GATKVCFConstants.IN_PON_VCF_ATTRIBUTE, GATKVCFConstants.POPULATION_AF_VCF_ATTRIBUTE, GATKVCFConstants.GERMLINE_QUAL_VCF_ATTRIBUTE, GATKVCFConstants.CONTAMINATION_QUAL_ATTRIBUTE,
-            GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY, GATKVCFConstants.N_COUNT_KEY, GATKVCFConstants.UNIQUE_ALT_READ_SET_COUNT_KEY, GATKVCFConstants.STRAND_ARTIFACT_AF_KEY, GATKVCFConstants.STRAND_ARTIFACT_POSTERIOR_KEY);
-    private static final String MUTECT_VERSION = "2.1";
+            GATKVCFConstants.EVENT_COUNT_IN_HAPLOTYPE_KEY, GATKVCFConstants.IN_PON_VCF_ATTRIBUTE, GATKVCFConstants.POPULATION_AF_VCF_ATTRIBUTE,
+            GATKVCFConstants.GERMLINE_QUAL_VCF_ATTRIBUTE, GATKVCFConstants.CONTAMINATION_QUAL_ATTRIBUTE, GATKVCFConstants.SEQUENCING_QUAL_VCF_ATTRIBUTE,
+            GATKVCFConstants.POLYMERASE_SLIPPAGE_QUAL_VCF_ATTRIBUTE,
+            GATKVCFConstants.STRAND_QUAL_VCF_ATTRIBUTE, GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY, GATKVCFConstants.N_COUNT_KEY, GATKVCFConstants.UNIQUE_ALT_READ_SET_COUNT_KEY, GATKVCFConstants.STRAND_ARTIFACT_POSTERIOR_KEY);
+    private static final String MUTECT_VERSION = "2.2";
 
     public static final String TUMOR_SAMPLE_KEY_IN_VCF_HEADER = "tumor_sample";
     public static final String NORMAL_SAMPLE_KEY_IN_VCF_HEADER = "normal_sample";
@@ -78,6 +82,8 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
     private M2ArgumentCollection MTAC;
     private SAMFileHeader header;
+    private final int minCallableDepth;
+    public static final String CALLABLE_SITES_NAME = "callable";
 
     private static final int MIN_READ_LENGTH = 30;
     private static final int READ_QUALITY_FILTER_THRESHOLD = 20;
@@ -96,6 +102,8 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     private AssemblyRegionTrimmer trimmer = new AssemblyRegionTrimmer();
     private SomaticReferenceConfidenceModel referenceConfidenceModel = null;
 
+    private final MutableInt callableSites = new MutableInt(0);
+
     /**
      * Create and initialize a new HaplotypeCallerEngine given a collection of HaplotypeCaller arguments, a reads header,
      * and a reference file
@@ -110,6 +118,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     public Mutect2Engine(final M2ArgumentCollection MTAC, final boolean createBamOutIndex, final boolean createBamOutMD5, final SAMFileHeader header, final String reference, final VariantAnnotatorEngine annotatorEngine) {
         this.MTAC = Utils.nonNull(MTAC);
         this.header = Utils.nonNull(header);
+        minCallableDepth = MTAC.callableDepth;
         referenceReader = AssemblyBasedCallerUtils.createReferenceReader(Utils.nonNull(reference));
         aligner = SmithWatermanAligner.getAligner(MTAC.smithWatermanImplementation);
         samplesList = new IndexedSampleList(new ArrayList<>(ReadUtils.getSamplesFromHeader(header)));
@@ -166,7 +175,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     public void writeHeader(final VariantContextWriter vcfWriter, final Set<VCFHeaderLine> defaultToolHeaderLines) {
         final Set<VCFHeaderLine> headerInfo = new HashSet<>();
         headerInfo.add(new VCFHeaderLine("MutectVersion", MUTECT_VERSION));
-        headerInfo.add(new VCFHeaderLine(Mutect2FilteringEngine.FILTERING_STATUS_VCF_KEY, "Warning: unfiltered Mutect 2 calls.  Please run " + FilterMutectCalls.class.getSimpleName() + " to remove false positives."));
+        headerInfo.add(new VCFHeaderLine(FilterMutectCalls.FILTERING_STATUS_VCF_KEY, "Warning: unfiltered Mutect 2 calls.  Please run " + FilterMutectCalls.class.getSimpleName() + " to remove false positives."));
         headerInfo.addAll(annotationEngine.getVCFAnnotationDescriptions(false));
         headerInfo.addAll(defaultToolHeaderLines);
         STANDARD_MUTECT_INFO_FIELDS.stream().map(GATKVCFHeaderLines::getInfoLine).forEach(headerInfo::add);
@@ -324,6 +333,11 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         return AssemblyBasedCallerUtils.splitReadsBySample(samplesList, header, reads);
     }
 
+    public void writeMutectStats(final File statsTable) {
+        final List<MutectStats> stats = Arrays.asList(new MutectStats(CALLABLE_SITES_NAME, callableSites.getValue()));
+        MutectStats.writeToFile(stats, statsTable);
+    }
+
     public void shutdown() {
         likelihoodCalculationEngine.close();
         aligner.close();
@@ -349,6 +363,9 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         }
 
         final ReadPileup pileup = context.getBasePileup();
+        if (pileup.size() >= minCallableDepth) {
+            callableSites.increment();
+        }
         final ReadPileup tumorPileup = pileup.makeFilteredPileup(pe -> isTumorSample(ReadUtils.getSampleName(pe.getRead(), header)));
         final List<Byte> tumorAltQuals = altQuals(tumorPileup, refBase, MTAC.initialPCRErrorQual);
         final double tumorLog10Odds = MathUtils.logToLog10(lnLikelihoodRatio(tumorPileup.size() - tumorAltQuals.size(), tumorAltQuals));
