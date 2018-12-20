@@ -379,7 +379,9 @@ def runCommand(cmd, dryrun):
     else:
         sys.stderr.write( "\nRunning:\n")
         sys.stderr.write("    " + " ".join(cmd)+"\n")
-        check_call(cmd)
+        gatk_env = os.environ.copy()
+        gatk_env["SUPPRESS_GCLOUD_CREDS_WARNING"] = "true"
+        check_call(cmd, env=gatk_env)
 
 def getSplitArgs(args):
     inFirstGroup = True
