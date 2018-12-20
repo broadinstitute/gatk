@@ -59,14 +59,6 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
     @ArgumentCollection
     protected OpticalDuplicatesArgumentCollection opticalDuplicatesArgumentCollection = new OpticalDuplicatesArgumentCollection();
 
-    @Argument(fullName = MarkDuplicatesSparkArgumentCollection.REMOVE_ALL_DUPLICATE_READS, doc = "If true do not write duplicates to the output file instead of writing them with appropriate flags set.",
-            mutex = {MarkDuplicatesSparkArgumentCollection.DUPLICATE_TAGGING_POLICY_LONG_NAME, MarkDuplicatesSparkArgumentCollection.REMOVE_SEQUENCING_DUPLICATE_READS}, optional = true)
-    public boolean removeAllDuplicates = false;
-
-    @Argument(fullName = MarkDuplicatesSparkArgumentCollection.REMOVE_SEQUENCING_DUPLICATE_READS, doc = "If true do not write optical/sequencing duplicates to the output file instead of writing them with appropriate flags set.",
-            mutex = {MarkDuplicatesSparkArgumentCollection.DUPLICATE_TAGGING_POLICY_LONG_NAME, MarkDuplicatesSparkArgumentCollection.REMOVE_ALL_DUPLICATE_READS}, optional = true)
-    public boolean removeSequencingDuplicates = false;
-
     @Override
     public List<ReadFilter> getDefaultReadFilters() {
         return Collections.singletonList(ReadFilterLibrary.ALLOW_ALL_READS);
@@ -227,7 +219,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
         final OpticalDuplicateFinder finder = opticalDuplicatesArgumentCollection.READ_NAME_REGEX != null ?
                 new OpticalDuplicateFinder(opticalDuplicatesArgumentCollection.READ_NAME_REGEX, opticalDuplicatesArgumentCollection.OPTICAL_DUPLICATE_PIXEL_DISTANCE, null) : null;
         // If we need to remove optical duplicates, set the engine to mark optical duplicates using the DT tag.
-        if (removeSequencingDuplicates && markDuplicatesSparkArgumentCollection.taggingPolicy == MarkDuplicates.DuplicateTaggingPolicy.DontTag) {
+        if (markDuplicatesSparkArgumentCollection.removeSequencingDuplicates && markDuplicatesSparkArgumentCollection.taggingPolicy == MarkDuplicates.DuplicateTaggingPolicy.DontTag) {
             markDuplicatesSparkArgumentCollection.taggingPolicy = MarkDuplicates.DuplicateTaggingPolicy.OpticalOnly;
         }
 
@@ -242,9 +234,9 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
         }
         JavaRDD<GATKRead> readsForWriting = finalReadsForMetrics;
         // Filter out the duplicates if instructed to do so
-        if (removeAllDuplicates) {
+        if (markDuplicatesSparkArgumentCollection.removeAllDuplicates) {
             readsForWriting = readsForWriting.filter(r -> !r.isDuplicate());
-        } else if (removeSequencingDuplicates) {
+        } else if (markDuplicatesSparkArgumentCollection.removeSequencingDuplicates) {
             readsForWriting = readsForWriting.filter(r -> !MarkDuplicates.DUPLICATE_TYPE_SEQUENCING.equals(r.getAttributeAsString(MarkDuplicates.DUPLICATE_TYPE_TAG)));
         }
 
