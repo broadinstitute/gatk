@@ -61,7 +61,7 @@ final picardVersion = System.getProperty('picard.version','2.18.16')
 final barclayVersion = System.getProperty('barclay.version','2.1.0')
 final sparkVersion = System.getProperty('spark.version', '2.2.0')
 final hadoopVersion = System.getProperty('hadoop.version', '2.8.2')
-final hadoopBamVersion = System.getProperty('hadoopBam.version','7.10.0')
+final disqVersion = System.getProperty('disq.version','0.1.0')
 final tensorflowVersion = System.getProperty('tensorflow.version','1.9.0')
 final genomicsdbVersion = System.getProperty('genomicsdb.version','0.10.0-proto-3.0.0-beta-1+bdce8be25b873')
 final testNGVersion = '6.11'
@@ -283,7 +283,7 @@ dependencies {
 
     compile 'org.jgrapht:jgrapht-core:0.9.1'
 
-    compile('org.disq-bio:disq:0.1.0')
+    compile('org.disq-bio:disq:' + disqVersion)
     compile('org.apache.hadoop:hadoop-client:' + hadoopVersion) // should be a 'provided' dependency
     compile('com.github.jsr203hadoop:jsr203hadoop:1.0.3')
 
