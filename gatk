@@ -77,6 +77,9 @@ def main(args):
     signal.signal(signal.SIGINT, signal_handler)
 
     try:
+        if len(args) is 1 and args[0] == "--list":
+            args[0] = "--help"  # if we're invoked with --list, invoke the GATK with --help
+      
         if len(args) is 0 or (len(args) is 1 and (args[0] == "--help" or args[0] == "-h")):
             print("")
             print(" Usage template for all tools (uses --spark-runner LOCAL when used with a Spark tool)")
@@ -113,9 +116,6 @@ def main(args):
             print("                 java JVM at runtime.  ")
             print("                 Java options MUST be passed inside a single string with space-separated values.")
             sys.exit(0)
-
-        if len(args) is 1 and args[0] == "--list":
-            args[0] = "--help"  # if we're invoked with --list, invoke the GATK with --help
 
         dryRun = "--dry-run" in args
         if dryRun:
