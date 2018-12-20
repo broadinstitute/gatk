@@ -29,4 +29,12 @@ public final class MarkDuplicatesSparkArgumentCollection implements Serializable
     @Argument(fullName = MarkDuplicatesSparkArgumentCollection.DUPLICATE_TAGGING_POLICY_LONG_NAME, doc = "Determines how duplicate types are recorded in the DT optional attribute.", optional = true,
               mutex = {REMOVE_ALL_DUPLICATE_READS, REMOVE_SEQUENCING_DUPLICATE_READS})
     public MarkDuplicates.DuplicateTaggingPolicy taggingPolicy = MarkDuplicates.DuplicateTaggingPolicy.DontTag;
+
+    @Argument(fullName = MarkDuplicatesSparkArgumentCollection.REMOVE_ALL_DUPLICATE_READS, doc = "If true do not write duplicates to the output file instead of writing them with appropriate flags set.",
+            mutex = {MarkDuplicatesSparkArgumentCollection.DUPLICATE_TAGGING_POLICY_LONG_NAME, MarkDuplicatesSparkArgumentCollection.REMOVE_SEQUENCING_DUPLICATE_READS}, optional = true)
+    public boolean removeAllDuplicates = false;
+
+    @Argument(fullName = MarkDuplicatesSparkArgumentCollection.REMOVE_SEQUENCING_DUPLICATE_READS, doc = "If true do not write optical/sequencing duplicates to the output file instead of writing them with appropriate flags set.",
+            mutex = {MarkDuplicatesSparkArgumentCollection.DUPLICATE_TAGGING_POLICY_LONG_NAME, MarkDuplicatesSparkArgumentCollection.REMOVE_ALL_DUPLICATE_READS}, optional = true)
+    public boolean removeSequencingDuplicates = false;
 }
