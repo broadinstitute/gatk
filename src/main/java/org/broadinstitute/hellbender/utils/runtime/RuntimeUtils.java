@@ -67,7 +67,11 @@ public final class RuntimeUtils {
      * @return load the manifest file associated with the given class or null if loading fails
      */
     public static Manifest getManifest(Class<?> clazz) {
-        final String classPath = clazz.getResource(clazz.getSimpleName() + ".class").toString();
+        final URL resourceURL = clazz.getResource(clazz.getSimpleName() + ".class");
+        if( resourceURL == null) {
+            return null;
+        }
+        final String classPath = resourceURL.toString();
         if (classPath.startsWith("jar")) {
             final String manifestPath = classPath.substring(0, classPath.lastIndexOf("!") + 1) + "/META-INF/MANIFEST.MF";
             try ( final InputStream manifestStream = new URL(manifestPath).openStream() ) {
