@@ -1,39 +1,48 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr;
 
+import java.util.*;
+import java.io.File;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.Files;
+import java.io.IOException;
+import java.util.stream.Collectors;
+import java.io.UnsupportedEncodingException;
+
+import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
-import htsjdk.variant.vcf.VCFHeader;
-import htsjdk.variant.vcf.VCFHeaderLine;
 
-import org.broadinstitute.barclay.argparser.*;
-import org.broadinstitute.barclay.help.DocumentedFeature;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.hellbender.engine.filters.*;
-import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.io.Resource;
-import org.broadinstitute.hellbender.utils.python.StreamingPythonScriptExecutor;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.runtime.AsynchronousStreamWriter;
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
-import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.utils.runtime.AsynchronousStreamWriter;
+import org.broadinstitute.hellbender.utils.python.StreamingPythonScriptExecutor;
+
 import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 
 import com.intel.gkl.IntelGKLUtils;
 
-import java.io.*;
-import java.util.*;
-
-
 /**
  * Annotate a VCF with scores from a Convolutional Neural Network (CNN).
  *
- * This tool streams variants and their reference context to a python program
+ * This tool streams variants and their reference context to a python program,
  * which evaluates a pre-trained neural network on each variant.
+ * The default models were trained on single-sample VCFs.
+ * The default model should not be used on VCFs with annotations from joint call-sets.
+ *
  * The neural network performs convolutions over the reference sequence surrounding the variant
  * and combines those features with a multilayer perceptron on the variant annotations.
  *
@@ -44,6 +53,7 @@ import java.util.*;
  * Pre-trained 1D and 2D models are included in the distribution.
  * It is possible to train your own models with the tools:
  * {@link CNNVariantWriteTensors} and {@link CNNVariantTrain}.
+ * CNNVariantTrain will create a json architecture file and an hd5 weights file, which you can use with this tool.
  *
  *
  * <h3>1D Model with pre-trained architecture</h3>
@@ -63,8 +73,6 @@ import java.util.*;
  *   -V vcf_to_annotate.vcf.gz \
  *   -R reference.fasta \
  *   -O annotated.vcf \
- *   -inference-batch-size 2 \
- *   -transfer-batch-size 2 \
  *   -tensor-type read-tensor
  * </pre>
  *
@@ -75,11 +83,11 @@ import java.util.*;
  *   -V vcf_to_annotate.vcf.gz \
  *   -R reference.fasta \
  *   -O annotated.vcf \
- *   -architecture path/to/my_model.json \
- *   -weights path/to/my_weights.hd5
+ *   -architecture path/to/my_model_folder/1dmodel.json
+ *   -weights path/to/my_model_folder/1dmodel.hd5
  * </pre>
  *
- * <h3>2D Model with user-supplied architecture and weights:</h3>
+ * <h3>2D Model with user-supplied model architecture and weights:</h3>
  *
  * <pre>
  * gatk CNNScoreVariants \
@@ -87,14 +95,11 @@ import java.util.*;
  *   -V vcf_to_annotate.vcf.gz \
  *   -R reference.fasta \
  *   -O annotated.vcf \
- *   -inference-batch-size 2 \
- *   -transfer-batch-size 2 \
  *   -tensor-type read-tensor \
- *   -architecture path/to/my_model.json \
- *   -weights path/to/my_weights.hd5
+ *   -architecture path/to/my_model_folder/2dmodel.json
+ *   -weights path/to/my_model_folder/2dmodel.hd5
  * </pre>
  */
-@ExperimentalFeature
 @DocumentedFeature
 @CommandLineProgramProperties(
         summary = CNNScoreVariants.USAGE_SUMMARY,
@@ -122,6 +127,14 @@ public class CNNScoreVariants extends TwoPassVariantWalker {
     private static final int ALT_INDEX = 3;
     private static final int KEY_INDEX = 4;
     private static final int FIFO_STRING_INITIAL_CAPACITY = 1024;
+    private static final int MAX_BATCH_SIZE_1D = 1024;
+    private static final int MAX_BATCH_SIZE_2D = 64;
+
+    // These constants correspond to constants in the python code set in defines.py. They must be kept in sync.
+    private static final String DATA_VALUE_SEPARATOR = ","; // If changed make change in defines.py
+    private static final String DATA_TYPE_SEPARATOR = "\t"; // If changed make change in defines.py
+    private static final String ANNOTATION_SEPARATOR = ";"; // If changed make change in defines.py
+    private static final String ANNOTATION_SET_STRING = "=";// If changed make change in defines.py
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -139,6 +152,9 @@ public class CNNScoreVariants extends TwoPassVariantWalker {
 
     @Argument(fullName = "window-size", shortName = "window-size", doc = "Neural Net input window size", minValue = 0, optional = true)
     private int windowSize = 128;
+
+    @Argument(fullName = "read-limit", shortName = "read-limit", doc = "Maximum number of reads to encode in a tensor, for 2D models only.", minValue = 0, optional = true)
+    private int readLimit = 128;
 
     @Argument(fullName = "filter-symbolic-and-sv", shortName = "filter-symbolic-and-sv", doc = "If set will filter symbolic and and structural variants from the input VCF", optional = true)
     private boolean filterSymbolicAndSV = false;
@@ -199,17 +215,26 @@ public class CNNScoreVariants extends TwoPassVariantWalker {
     private String scoreKey;
     private Scanner scoreScan;
     private VariantContextWriter vcfWriter;
+    private String annotationSetString;
 
     private static String resourcePathReadTensor = Resource.LARGE_RUNTIME_RESOURCES_PATH + "/cnn_score_variants/small_2d.json";
     private static String resourcePathReferenceTensor = Resource.LARGE_RUNTIME_RESOURCES_PATH + "/cnn_score_variants/1d_cnn_mix_train_full_bn.json";
 
     @Override
     protected String[] customCommandLineValidation() {
+        if (tensorType.equals(TensorType.read_tensor)){
+            transferBatchSize = Math.max(transferBatchSize, MAX_BATCH_SIZE_2D);
+            inferenceBatchSize = Math.max(inferenceBatchSize, MAX_BATCH_SIZE_2D);
+        } else if (tensorType.equals(TensorType.reference)){
+            transferBatchSize = Math.max(transferBatchSize, MAX_BATCH_SIZE_1D);
+            inferenceBatchSize = Math.max(inferenceBatchSize, MAX_BATCH_SIZE_1D);
+        }
+
         if (inferenceBatchSize > transferBatchSize) {
             return new String[]{"Inference batch size must be less than or equal to transfer batch size."};
         }
 
-        if (weights == null && architecture == null){
+        if (architecture == null || weights == null){
             if (!tensorType.equals(TensorType.read_tensor) && !tensorType.equals(TensorType.reference)){
                 return new String[]{"No default architecture for tensor type:" + tensorType.name()};
             }
@@ -254,6 +279,11 @@ public class CNNScoreVariants extends TwoPassVariantWalker {
             }
         }
 
+        final VCFHeader inputHeader = getHeaderForVariants();
+        if(inputHeader.getGenotypeSamples().size() > 1) {
+            logger.warn("CNNScoreVariants is a single sample tool but the input VCF has more than 1 sample.");
+        }
+
         // Start the Python process and initialize a stream writer for streaming data to the Python code
         pythonExecutor.start(Collections.emptyList(), enableJournal, pythonProfileResults);
         pythonExecutor.initStreamWriter(AsynchronousStreamWriter.stringSerializer);
@@ -273,6 +303,7 @@ public class CNNScoreVariants extends TwoPassVariantWalker {
             pythonExecutor.sendSynchronousCommand("import vqsr_cnn" + NL);
 
             scoreKey = getScoreKeyAndCheckModelAndReadsHarmony();
+            annotationSetString = annotationKeys.stream().collect(Collectors.joining(DATA_VALUE_SEPARATOR));
             initializePythonArgsAndModel();
         } catch (IOException e) {
             throw new GATKException("Error when creating temp file and initializing python executor.", e);
@@ -351,10 +382,10 @@ public class CNNScoreVariants extends TwoPassVariantWalker {
 
     private void transferToPythonViaFifo(final VariantContext variant, final ReferenceContext referenceContext) {
         try {
-            final String outDat = String.format("%s\t%s\t%s\t%s\n",
-                    getVariantDataString(variant),
-                    new String(Arrays.copyOfRange(referenceContext.getBases(), 0, windowSize), "UTF-8"),
-                    getVariantInfoString(variant),
+            final String outDat = String.format("%s%s%s%s%s%s%s\n",
+                    getVariantDataString(variant), DATA_TYPE_SEPARATOR,
+                    new String(Arrays.copyOfRange(referenceContext.getBases(), 0, windowSize), "UTF-8"), DATA_TYPE_SEPARATOR,
+                    getVariantInfoString(variant), DATA_TYPE_SEPARATOR,
                     variant.isSNP() ? "SNP" : variant.isIndel() ? "INDEL" : "OTHER");
             batchList.add(outDat);
             curBatchSize++;
@@ -381,11 +412,11 @@ public class CNNScoreVariants extends TwoPassVariantWalker {
     private void transferReadsToPythonViaFifo(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext) {
         StringBuilder sb = new StringBuilder(FIFO_STRING_INITIAL_CAPACITY);
         try {
-            sb.append(String.format("%s\t%s\t%s\t%s\t",
-                    getVariantDataString(variant),
-                    new String(Arrays.copyOfRange(referenceContext.getBases(), 0, windowSize), "UTF-8"),
-                    getVariantInfoString(variant),
-                    variant.isSNP() ? "SNP" : variant.isIndel() ? "INDEL" : "OTHER"));
+            sb.append(String.format("%s%s%s%s%s%s%s%s",
+                    getVariantDataString(variant), DATA_TYPE_SEPARATOR,
+                    new String(Arrays.copyOfRange(referenceContext.getBases(), 0, windowSize), "UTF-8"), DATA_TYPE_SEPARATOR,
+                    getVariantInfoString(variant), DATA_TYPE_SEPARATOR,
+                    variant.isSNP() ? "SNP" : variant.isIndel() ? "INDEL" : "OTHER", DATA_TYPE_SEPARATOR));
         } catch (UnsupportedEncodingException e) {
             throw new GATKException("Trying to make string from reference, but unsupported encoding UTF-8.", e);
         }
@@ -397,42 +428,42 @@ public class CNNScoreVariants extends TwoPassVariantWalker {
         while (readIt.hasNext()) {
             sb.append(GATKReadToString(readIt.next()));
         }
-        sb.append("\n");
+        sb.append(NL);
         batchList.add(sb.toString());
         curBatchSize++;
     }
 
     private String GATKReadToString(GATKRead read) {
         StringBuilder sb = new StringBuilder(FIFO_STRING_INITIAL_CAPACITY);
-        sb.append(read.getBasesString() + "\t");
+        sb.append(read.getBasesString() + DATA_TYPE_SEPARATOR);
 
         appendQualityBytes(sb, read.getBaseQualities());
-        sb.append(read.getCigar().toString() + "\t");
-        sb.append(read.isReverseStrand() + "\t");
-        sb.append((read.isPaired() ? read.mateIsReverseStrand() : "false") + "\t");
-        sb.append(read.isFirstOfPair() + "\t");
-        sb.append(read.getMappingQuality() + "\t");
-        sb.append(Integer.toString(read.getUnclippedStart()) + "\t");
+        sb.append(read.getCigar().toString() + DATA_TYPE_SEPARATOR);
+        sb.append(read.isReverseStrand() + DATA_TYPE_SEPARATOR);
+        sb.append((read.isPaired() ? read.mateIsReverseStrand() : "false") + DATA_TYPE_SEPARATOR);
+        sb.append(read.isFirstOfPair() + DATA_TYPE_SEPARATOR);
+        sb.append(read.getMappingQuality() + DATA_TYPE_SEPARATOR);
+        sb.append(Integer.toString(read.getUnclippedStart()) + DATA_TYPE_SEPARATOR);
         return sb.toString();
     }
 
     private void appendQualityBytes(StringBuilder sb, byte[] qualities) {
         if(qualities.length == 0) {
-            sb.append("\t");
+            sb.append(DATA_TYPE_SEPARATOR);
             return;
         }
 
         for (int i = 0; i < qualities.length - 1; i++) {
-            sb.append(Integer.toString(qualities[i]) + ",");
+            sb.append(Integer.toString(qualities[i]) + DATA_VALUE_SEPARATOR);
         }
-        sb.append(Integer.toString(qualities[qualities.length - 1]) + "\t");
+        sb.append(Integer.toString(qualities[qualities.length - 1]) + DATA_TYPE_SEPARATOR);
     }
 
     private String getVariantDataString(final VariantContext variant) {
-        return String.format("%s\t%d\t%s\t%s",
-                variant.getContig(),
-                variant.getStart(),
-                variant.getReference().getBaseString(),
+        return String.format("%s%s%d%s%s%s%s",
+                variant.getContig(), DATA_TYPE_SEPARATOR,
+                variant.getStart(), DATA_TYPE_SEPARATOR,
+                variant.getReference().getBaseString(), DATA_TYPE_SEPARATOR,
                 variant.getAlternateAlleles().toString()
         );
     }
@@ -443,8 +474,9 @@ public class CNNScoreVariants extends TwoPassVariantWalker {
         for (final String attributeKey : annotationKeys) {
             if (variant.hasAttribute(attributeKey)) {
                 sb.append(attributeKey);
-                sb.append("=");
-                sb.append(variant.getAttribute(attributeKey).toString().replace(" ", "").replace("[", "").replace("]", "") + ";");
+                sb.append(ANNOTATION_SET_STRING);
+                sb.append(variant.getAttributeAsString(attributeKey, "0"));
+                sb.append(ANNOTATION_SEPARATOR);
             }
         }
         return sb.toString();
@@ -452,9 +484,13 @@ public class CNNScoreVariants extends TwoPassVariantWalker {
 
     private void executePythonCommand() {
         final String pythonCommand = String.format(
-                "vqsr_cnn.score_and_write_batch(args, model, tempFile, %d, %d, '%s')",
+                "vqsr_cnn.score_and_write_batch(model, tempFile, %d, %d, '%s', '%s', %d, %d, '%s')",
                 curBatchSize,
                 inferenceBatchSize,
+                tensorType,
+                annotationSetString,
+                windowSize,
+                readLimit,
                 outputTensorsDir) + NL;
         pythonExecutor.startBatchWrite(pythonCommand, batchList);
     }
@@ -465,7 +501,6 @@ public class CNNScoreVariants extends TwoPassVariantWalker {
         final Set<VCFHeaderLine> inputHeaders = inputHeader.getMetaDataInSortedOrder();
         final Set<VCFHeaderLine> hInfo = new HashSet<>(inputHeaders);
         hInfo.add(GATKVCFHeaderLines.getInfoLine(scoreKey));
-        VariantRecalibrationUtils.addVQSRStandardHeaderLines(hInfo);
         final TreeSet<String> samples = new TreeSet<>();
         samples.addAll(inputHeader.getGenotypeSamples());
         hInfo.addAll(getDefaultToolVCFHeaderLines());
@@ -486,8 +521,8 @@ public class CNNScoreVariants extends TwoPassVariantWalker {
         }
     }
 
-    private void initializePythonArgsAndModel(){
-        if (weights == null && architecture == null) {
+    private void initializePythonArgsAndModel() {
+        if (architecture == null && weights == null) {
             if (tensorType.equals(TensorType.read_tensor)) {
                 architecture = IOUtils.writeTempResourceFromPath(resourcePathReadTensor, null).getAbsolutePath();
                 weights = IOUtils.writeTempResourceFromPath(
@@ -500,19 +535,15 @@ public class CNNScoreVariants extends TwoPassVariantWalker {
             } else {
                 throw new GATKException("No default architecture for tensor type:" + tensorType.name());
             }
+        } else if (weights == null) {
+            weights = architecture.replace(".json", ".hd5");
+        } else if (architecture == null) {
+            architecture = weights.replace(".hd5", ".json");
         }
 
-        String getArgsAndModel;
-        if (weights != null && architecture != null) {
-            getArgsAndModel = String.format("args, model = vqsr_cnn.start_session_get_args_and_model(%d, %d, '%s', weights_hd5='%s')", intraOpThreads, interOpThreads, architecture, weights) + NL;
-            logger.info("Using key:" + scoreKey + " for CNN architecture:" + architecture + " and weights:" + weights);
-        } else if (architecture == null) {
-            getArgsAndModel = String.format("args, model = vqsr_cnn.start_session_get_args_and_model(%d, %d, None, weights_hd5='%s', tensor_type='%s')", intraOpThreads, interOpThreads, weights, tensorType.name()) + NL;
-            logger.info("Using key:" + scoreKey + " for CNN weights:" + weights);
-        } else {
-            getArgsAndModel = String.format("args, model = vqsr_cnn.start_session_get_args_and_model(%d, %d, '%s')", intraOpThreads, interOpThreads, architecture) + NL;
-            logger.info("Using key:" + scoreKey + " for CNN architecture:" + architecture);
-        }
+        String getArgsAndModel = String.format("args, model = vqsr_cnn.start_session_get_args_and_model(%d, %d, '%s', weights_hd5='%s')",
+                intraOpThreads, interOpThreads, architecture, weights) + NL;
+        logger.info("Using key:" + scoreKey + " for CNN architecture:" + architecture + " and weights:" + weights);
         pythonExecutor.sendSynchronousCommand(getArgsAndModel);
     }
 }

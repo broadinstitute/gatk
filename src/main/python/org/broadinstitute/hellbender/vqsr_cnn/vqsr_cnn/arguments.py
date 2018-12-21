@@ -5,6 +5,7 @@ import keras.backend as K
 
 from . import defines
 
+
 def parse_args():
     """Parse command line arguments.
 
@@ -46,7 +47,7 @@ def parse_args():
 
     # Annotation arguments
     parser.add_argument('--annotations', help='Array of annotation names, initialised via annotation_set argument')
-    parser.add_argument('--annotation_set', default='best_practices', choices=defines.ANNOTATIONS.keys(),
+    parser.add_argument('--annotation_set', default='best_practices', choices=defines.ANNOTATIONS_SETS.keys(),
                         help='Key which maps to an annotations list (or _ to ignore annotations).')
 
     # Dataset generation related arguments
@@ -147,6 +148,10 @@ def parse_args():
     parser.add_argument('--mode', help='High level recipe: write tensors, train, test or evaluate models.')
     parser.add_argument('--id', default='no_id',
                         help='Identifier for this run, user-defined string to keep experiments organized.')
+    parser.add_argument('--gatk_version', default='4.1.0.0',
+                        help='GATK version used to run this code.')
+    parser.add_argument('--model_version', default='1.0',
+                        help='Model version for this run.')
     parser.add_argument('--random_seed', default=12878, type=int,
                         help='Random seed to use throughout run.  Always use np.random.')
 
@@ -177,8 +182,8 @@ def annotations_from_args(args):
     Returns:
         list: Annotation strings as they appear in a VCF info/format field or None.
     """
-    if args.annotation_set and args.annotation_set in defines.ANNOTATIONS:
-        return defines.ANNOTATIONS[args.annotation_set]
+    if args.annotation_set and args.annotation_set in defines.ANNOTATIONS_SETS:
+        return defines.ANNOTATIONS_SETS[args.annotation_set]
     return None
 
 
@@ -194,7 +199,6 @@ def input_symbols_from_args(args):
     if args.input_symbol_set and args.input_symbol_set in defines.INPUT_SYMBOLS:
         return defines.INPUT_SYMBOLS[args.input_symbol_set]
     return None
-
 
 
 def weight_path_from_args(args):

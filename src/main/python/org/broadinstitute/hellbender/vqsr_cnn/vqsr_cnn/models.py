@@ -39,7 +39,7 @@ def args_and_model_from_semantics(semantics_json, weights_hd5=None, tensor_type=
 
 
 def set_args_and_get_model_from_semantics(args, semantics_json, weights_hd5=None):
-    '''Recreate a model from a json file specifying model semantics.
+    """Recreate a model from a json file specifying model semantics.
 
     Update the args namespace from the semantics file values.
     Assert that the serialized tensor map and the recreated one are the same.
@@ -53,9 +53,12 @@ def set_args_and_get_model_from_semantics(args, semantics_json, weights_hd5=None
 
     Returns:
         The Keras model
-    '''
+    """
     with open(semantics_json, 'r') as infile:
         semantics = json.load(infile)
+
+    if 'model_version' in semantics:
+        assert(args.model_version == semantics['model_version'])
 
     if 'input_tensor_map' in semantics:
         args.tensor_name = semantics['input_tensor_map_name']
@@ -564,14 +567,11 @@ def get_metrics(classes=None, dim=2):
         return [metrics.categorical_accuracy, precision, recall]
 
 
-
-
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~ Serialization ~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 def serialize_model_semantics(args, architecture_hd5):
-    '''Save a json file specifying model semantics, I/O contract.
+    """Save a json file specifying model semantics, I/O contract.
 
     Arguments
         args.tensor_name: String which indicates tensor map to use (from defines.py) or None
@@ -580,12 +580,14 @@ def serialize_model_semantics(args, architecture_hd5):
         args.annotations: List of annotations or None
         args.id: the id of the run will be the name of the semantics file
         architecture_hd5: Keras model and weights hd5 file (created with save_model())
-    '''
+    """
     semantics = {
-        'id' : args.id,
-        'output_labels' : args.labels,
-        'architecture' : os.path.basename(architecture_hd5),
-        'input_symbols' : args.input_symbols,
+        'id': args.id,
+        'output_labels': args.labels,
+        'architecture': os.path.basename(architecture_hd5),
+        'input_symbols': args.input_symbols,
+        'model_version': args.model_version,
+        'gatk_version': args.gatk_version,
     }
 
     if args.tensor_name:
