@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.utils;
 
-import com.google.api.client.repackaged.com.google.common.annotations.VisibleForTesting;
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
