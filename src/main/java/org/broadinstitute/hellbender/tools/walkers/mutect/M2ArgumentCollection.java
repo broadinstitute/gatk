@@ -51,9 +51,8 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public static final double DEFAULT_INITIAL_LOD = 2.0;
     public static final double DEFAULT_MITO_INITIAL_LOD = 0;
 
-    public static final double DEFAULT_PRUNING_LOG_ODDS_THRESHOLD = -4;
+    public static final double DEFAULT_MITO_PRUNING_LOG_ODDS_THRESHOLD = -4;
 
-    @Override
     protected ReadThreadingAssemblerArgumentCollection getReadThreadingAssemblerArgumentCollection(){
         return new MutectReadThreadingAssemblerArgumentCollection();
     }
@@ -61,7 +60,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     @Override
     public ReadThreadingAssembler createReadThreadingAssembler(){
         if(mitochondria && assemblerArgs.pruningLog10OddsThreshold == ReadThreadingAssemblerArgumentCollection.DEFAULT_PRUNING_LOG_ODDS_THRESHOLD) {
-            assemblerArgs.pruningLog10OddsThreshold = DEFAULT_PRUNING_LOG_ODDS_THRESHOLD;
+            assemblerArgs.pruningLog10OddsThreshold = DEFAULT_MITO_PRUNING_LOG_ODDS_THRESHOLD;
         }
         return super.createReadThreadingAssembler();
     }

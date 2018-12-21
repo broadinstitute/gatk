@@ -31,17 +31,14 @@ public abstract class AssemblyBasedCallerArgumentCollection extends StandardCall
     public AssemblyRegionTrimmerArgumentCollection assemblyRegionTrimmerArgs = new AssemblyRegionTrimmerArgumentCollection();
 
     public ReadThreadingAssembler createReadThreadingAssembler() {
-        final ReadThreadingAssemblerArgumentCollection rtaac = assemblerArgs;
-        final ReadThreadingAssembler assemblyEngine = rtaac.makeReadThreadingAssembler();
+        final ReadThreadingAssembler assemblyEngine = assemblerArgs.makeReadThreadingAssembler();
         assemblyEngine.setDebug(debug);
         assemblyEngine.setMinBaseQualityToUseInAssembly(minBaseQualityScore);
 
         return assemblyEngine;
     }
 
-    protected ReadThreadingAssemblerArgumentCollection getReadThreadingAssemblerArgumentCollection() {
-        return new HaplotypeCallerReadThreadingAssemblerArgumentCollection();
-    }
+    protected abstract ReadThreadingAssemblerArgumentCollection getReadThreadingAssemblerArgumentCollection();
 
     @ArgumentCollection
     public ReadThreadingAssemblerArgumentCollection assemblerArgs = getReadThreadingAssemblerArgumentCollection();
