@@ -17,6 +17,8 @@ import org.broadinstitute.hellbender.utils.runtime.RuntimeUtils;
 import java.io.PrintStream;
 import java.io.Serializable;
 import java.util.*;
+import java.util.jar.Attributes;
+import java.util.jar.Manifest;
 
 /**
  * This is the main class of Hellbender and is the way of executing individual command line programs.
@@ -339,13 +341,7 @@ public class Main {
         if (args.length < 1 || args[0].equals("-h") || args[0].equals("--help")) {
             printUsage(System.out, classes, commandLineName);
         } else if ( args.length == 1 && (args[0].equals("-" + SpecialArgumentsCollection.VERSION_FULLNAME) || args[0].equals("--" + SpecialArgumentsCollection.VERSION_FULLNAME))) {
-            new CommandLineProgram(){
-                @Override
-                protected Object doWork() {
-                    System.out.println(String.format("%s v%s", getToolkitName(), getVersion()));
-                    return 0;
-                }
-            }.doWork();
+            printVersionInfo(System.out);
         } else {
             if (simpleNameToClass.containsKey(args[0])) {
                 final Class<?> clazz = simpleNameToClass.get(args[0]);
@@ -552,5 +548,24 @@ public class Main {
             }
         }
         return message.toString();
+    }
+
+    /**
+     * Prints version information for the toolkit, including versions of important libraries.
+     * Subclasses may override to change this behavior.
+     */
+    protected void printVersionInfo(PrintStream out){
+        final String toolkitName = RuntimeUtils.getToolkitName(this.getClass());
+        final String version = RuntimeUtils.getVersion(this.getClass());
+        System.out.println(String.format("%s v%s", toolkitName, version));
+        final Manifest manifest = RuntimeUtils.getManifest(this.getClass());
+        if( manifest != null){
+            final Attributes manifestAttributes = manifest.getMainAttributes();
+            final String htsjdkVersion = manifestAttributes.getValue("htsjdk-Version");
+            final String picardVersion = manifestAttributes.getValue("Picard-Version");
+            out.println("HTSJDK Version: " + (htsjdkVersion != null ? htsjdkVersion : "unknown"));
+            out.println("Picard Version: " + (picardVersion != null ? picardVersion : "unknown"));
+        }
+
     }
 }
