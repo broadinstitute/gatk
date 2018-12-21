@@ -43,7 +43,7 @@ class LoadAndSampleCrAndAf:
         We attribute a weigth to each segment based on the tightness of their posteriors.
     """
     def __init__(self, filename: str, load_cr: bool = True, load_af: bool=True, do_logging: bool=True,
-                 weight_ratio_max=10., output_log_dir: str= "", output_log_prefix: str= ""):
+                 weight_ratio_max=100., output_log_dir: str= "", output_log_prefix: str= ""):
         """ Inputs:
             - filename: 'modelFinal.seg' file characterizing the posterior distribution of the
               copy ratio and the allele fraction data
@@ -213,19 +213,23 @@ class LoadAndSampleCrAndAf:
             if is_number(values[1]):
                 if len(values) >= 5:
                     segment_length = float(values[2]) - float(values[1])
-                    if (math.isnan(float(values[5]))
+                    if (((math.isnan(float(values[5]))
                         or math.isnan(float(values[6]))
                         or math.isnan(float(values[7]))
                         or 2**float(values[5]) > self.__max_copy_ratio_possible
                         or 2**float(values[6]) > self.__max_copy_ratio_possible
-                        or 2**float(values[7]) > self.__max_copy_ratio_possible):
+                        or 2**float(values[7]) > self.__max_copy_ratio_possible))
+                        and 0 < float(values[3])
+                        and 0 < float(values[4])):
                         cr_nan += segment_length
-                    if (math.isnan(float(values[8]))
+                    if ((math.isnan(float(values[8]))
                         or math.isnan(float(values[9]))
                         or math.isnan(float(values[10]))
                         or not (0. <= float(values[8]) <= 0.5)
                         or not (0. <= float(values[9]) <= 0.5)
-                        or not (0. <= float(values[10]) <= 0.5)):
+                        or not (0. <= float(values[10]) <= 0.5))
+                        and 0 < float(values[3])
+                        and 0 < float(values[4])):
                         af_nan += segment_length
                     all_sites += segment_length
         cr_nan_ratio_threshold = 0.80
@@ -262,15 +266,15 @@ class LoadAndSampleCrAndAf:
                             and not math.isnan(float(values[7]))
                             and not math.isnan(float(values[8]))
                             and not math.isnan(float(values[9]))
-                            and not math.isnan(float(values[10]))
-                            ):
+                            and not math.isnan(float(values[10]))):
                             if (2**float(values[5]) <= self.__max_copy_ratio_possible
                                 and 2**float(values[6]) <= self.__max_copy_ratio_possible
                                 and 2**float(values[7]) <= self.__max_copy_ratio_possible
                                 and 0. <= float(values[8]) <= 0.5
                                 and 0. <= float(values[9]) <= 0.5
                                 and 0. <= float(values[10]) <= 0.5
-                                ):
+                                and 0 < float(values[3])
+                                and 0 < float(values[4])):
                                 contig.append(str(values[0]))
                                 segment_start.append(int(values[1]))
                                 segment_end.append(int(values[2]))
@@ -295,7 +299,8 @@ class LoadAndSampleCrAndAf:
                             if (2**float(values[5]) <= self.__max_copy_ratio_possible
                                 and 2**float(values[6]) <= self.__max_copy_ratio_possible
                                 and 2**float(values[7]) <= self.__max_copy_ratio_possible
-                                ):
+                                and 0 < float(values[3])
+                                and 0 < float(values[4])):
                                 contig.append(str(values[0]))
                                 segment_start.append(int(values[1]))
                                 segment_end.append(int(values[2]))
@@ -320,7 +325,8 @@ class LoadAndSampleCrAndAf:
                             if(0. <= float(values[8]) <= 0.5
                                and 0. <= float(values[9]) <= 0.5
                                and 0. <= float(values[10]) <= 0.5
-                               ):
+                               and 0 < float(values[3])
+                               and 0 < float(values[4])):
                                 contig.append(str(values[0]))
                                 segment_start.append(int(values[1]))
                                 segment_end.append(int(values[2]))
@@ -486,20 +492,28 @@ class LoadAndSampleCrAndAf:
         """
         weights = []
         for i in range(self.__n_segments):
-            w = self.__determine_weight_one_segment(self.__copy_ratio_median[i],
-                                                    self.__copy_ratio_10th_perc[i],
-                                                    self.__copy_ratio_90th_perc[i],
-                                                    self.__allele_fraction_median[i],
-                                                    self.__allele_fraction_10th_perc[i],
-                                                    self.__allele_fraction_90th_perc[i])
+            # EXPERIMENTAL -- SWITCHING FROM POSTERIOR WIDTH BASED WEIGHTS TO SEGMENT LENGTH
+            #
+            # w = self.__determine_weight_one_segment(self.__copy_ratio_median[i],
+            #                                         self.__copy_ratio_10th_perc[i],
+            #                                         self.__copy_ratio_90th_perc[i],
+            #                                         self.__allele_fraction_median[i],
+            #                                         self.__allele_fraction_10th_perc[i],
+            #                                         self.__allele_fraction_90th_perc[i])
+            #
+            w = self.__n_points_cr[i]
+            #
+            # END: EXPERIMENTAL -- SWITCHING FROM POSTERIOR WIDTH BASED WEIGHTS TO SEGMENT LENGTH
+
             weights.append(w)
-        median_weight = np.median([weights[i] for i in range(len(weights))]) if len(weights) > 0 else 0.
-        median_weight = np.median([weights[i] for i in range(len(weights)) if weights[i] > 0.001 * median_weight]) \
-            if len([weights[i] for i in range(len(weights)) if weights[i] > 0.001 * median_weight]) > 0 \
+        mean_weight = np.mean([weights[i] for i in range(len(weights))]) if len(weights) > 0 else 0.
+        mean_weight = np.mean([weights[i] for i in range(len(weights)) if weights[i] > 0.001 * mean_weight]) \
+            if len([weights[i] for i in range(len(weights)) if weights[i] > 0.001 * mean_weight]) > 0 \
             else 0.
-        max_weight = float(self.__weight_ratio_max) * float(median_weight)
+        max_weight = float(self.__weight_ratio_max) * float(mean_weight)
         weights = [min([weights[i], max_weight]) for i in range(len(weights))]
         return weights
+
 
     def __determine_weight_one_segment(self, cr_median: float, cr_10: float, cr_90: float,
                                        af_median: float, af_10: float, af_90: float):
@@ -1163,19 +1177,22 @@ class ModeledSegmentsCaller:
                 if not appended:
                     data_groups[0].append(d)
 
-            _mu_peaks = [0] * _n_peaks
-            _sd_peaks = [0] * _n_peaks
+            _mu_peaks = []
+            _sd_peaks = []
             for _i in range(_n_peaks):
                 if len(data_groups[_i]) > 0:
-                    _mu_peaks[_i] = np.mean(data_groups[_i])
-                    _sd_peaks[_i] = np.std(data_groups[_i])
+                    _mu_peaks.append(np.mean(data_groups[_i]))
+                    _sd_peaks.append(np.std(data_groups[_i]))
                 else:
                     if _i == 0:
-                        _mu_peaks[_i] = 0.5 * separators[0]
+                        _mu_peaks.append(0.5 * separators[0])
+                        _sd_peaks.append(0)
                     elif _i == n_peaks:
-                        _mu_peaks[_i] = separators[-1] + 0.5
+                        _mu_peaks.append(separators[-1] + 0.5)
+                        _sd_peaks.append(0)
                     else:
-                        _mu_peaks[_i] = 0.5 * (separators[_i-1] + separators[_i])
+                        _mu_peaks.append(0.5 * (separators[_i-1] + separators[_i]))
+                        _sd_peaks.append(0)
 
             return _n_peaks, _mu_peaks, _sd_peaks
 
@@ -1211,9 +1228,9 @@ class ModeledSegmentsCaller:
             # ones. Therefore, we will take the copy number 2 region in copy ratio space to be the
             # 3 sigma region around the mean of the data.
             cr_mean = np.sum([self.__weights[i] * self.__copy_ratio_median[i]
-                              for i in range(len(self.__copy_ratio_median))]) / len(self.__copy_ratio_median)
+                              for i in range(len(self.__copy_ratio_median))]) / np.sum([self.__weights[i] for i in range(len(self.__copy_ratio_median))])
             cr_variance = np.sum([self.__weights[i] * (self.__copy_ratio_median[i] - cr_mean)**2
-                                  for i in range(len(self.__copy_ratio_median))]) / len(self.__copy_ratio_median)
+                                  for i in range(len(self.__copy_ratio_median))]) / np.sum([self.__weights[i] for i in range(len(self.__copy_ratio_median))])
             cr_std_dev = np.sqrt(cr_variance)
             cr_std_dev = max(cr_std_dev, 0.02)  # We don't want the standard deviation be very tight
             cn2_interval = [max([0, cr_mean - 3 * cr_std_dev]), cr_mean + 3 * cr_std_dev]
@@ -1222,8 +1239,8 @@ class ModeledSegmentsCaller:
         # The first interval shouldn't necessarily start from 0, but a value that takes the natural spread
         # of the peak in the copy number 1 candidate region into account.
         ind_segs_cn_1 = [i for i in range(len(self.__copy_ratio_median)) if self.__copy_ratio_median[i] < cluster_separators[0]]
-        cr_mean_cn_1 = np.sum([self.__weights[i] * self.__copy_ratio_median[i] for i in ind_segs_cn_1]) / len(ind_segs_cn_1)
-        cr_variance_cn_1 = np.sum([self.__weights[i] * (self.__copy_ratio_median[i] - cr_mean_cn_1)**2 for i in ind_segs_cn_1]) / len(ind_segs_cn_1)
+        cr_mean_cn_1 = np.sum([self.__weights[i] * self.__copy_ratio_median[i] for i in ind_segs_cn_1]) / np.sum([self.__weights[i] for i in ind_segs_cn_1])
+        cr_variance_cn_1 = np.sum([self.__weights[i] * (self.__copy_ratio_median[i] - cr_mean_cn_1)**2 for i in ind_segs_cn_1]) / np.sum([self.__weights[i] for i in ind_segs_cn_1])
         cr_std_dev_cn_1 = np.sqrt(cr_variance_cn_1)
         cr_std_dev_cn_1 = max([cr_std_dev_cn_1, 0.02]) # We don't want the standard deviation be very tight
         cn1_interval_candidate = [max([0, cr_mean_cn_1 - 3 * cr_std_dev_cn_1]), cluster_separators[0]]
@@ -1269,7 +1286,7 @@ class ModeledSegmentsCaller:
                                                   if (normal_range_af[0] <= af[0] <= normal_range_af[1])]
 
         if (len(normal_range_af_cn1_interval_candidate) > 0
-            and (np.sum(np.array(normal_range_af_cn1_interval_candidate)[:,1]) / np.sum(np.array(af__cn1_interval_candidate))
+            and (np.sum(np.array(normal_range_af_cn1_interval_candidate)[:,1]) / np.sum(np.array(af__cn1_interval_candidate)[:,1])
                      > self.__min_fraction_of_points_in_normal_allele_fraction_region)):
             cn2_interval = cn1_interval_candidate
             color_1 = 'k'
@@ -1458,7 +1475,7 @@ class ModeledSegmentsCaller:
             elif n_d_a == "CNLOH":
                 y_color.append((0.4, 0.4, 0.4))
             else:
-                y_color.append((1.0, 1.0, 1.0))
+                y_color.append((1.0, 1.0, 0.0))
 
         contig_beginning_end = []
         current_contig = self.__contig[0]
@@ -1650,10 +1667,10 @@ class ModeledSegmentsCaller:
                 colors.append((0.0, 1.0, 0.0))
             elif classification[i] == "-":
                 colors.append((0.0, 0.0, 1.0))
-            elif classification == "CNLOH":
+            elif classification[i] == "CNLOH":
                 colors.append((0.4, 0.4, 0.4))
             else:
-                colors.append((1.0, 1.0, 1.0))
+                colors.append((1.0, 1.0, 0.0))
         plt.scatter(samples[:,0], samples[:,1], c=colors, alpha=0.8, s=10)
 
     def __plot_Gaussian_mixture_fit(self):
@@ -1743,18 +1760,20 @@ class ModeledSegmentsCaller:
             else:
                 if self.__load_cr and self.__load_af:
                     if(len(values) >= 5
-                       and not math.isnan(float(values[5]))
-                       and not math.isnan(float(values[6]))
-                       and not math.isnan(float(values[7]))
-                       and not math.isnan(float(values[8]))
-                       and not math.isnan(float(values[9]))
-                       and not math.isnan(float(values[10]))
-                       and 2**float(values[5]) <= self.__max_copy_ratio_possible
-                       and 2**float(values[6]) <= self.__max_copy_ratio_possible
-                       and 2**float(values[7]) <= self.__max_copy_ratio_possible
-                       and 0. <= float(values[8]) <= 0.5
-                       and 0. <= float(values[9]) <= 0.5
-                       and 0. <= float(values[10]) <= 0.5
+                        and not math.isnan(float(values[5]))
+                        and not math.isnan(float(values[6]))
+                        and not math.isnan(float(values[7]))
+                        and not math.isnan(float(values[8]))
+                        and not math.isnan(float(values[9]))
+                        and not math.isnan(float(values[10]))
+                        and 2**float(values[5]) <= self.__max_copy_ratio_possible
+                        and 2**float(values[6]) <= self.__max_copy_ratio_possible
+                        and 2**float(values[7]) <= self.__max_copy_ratio_possible
+                        and 0. <= float(values[8]) <= 0.5
+                        and 0. <= float(values[9]) <= 0.5
+                        and 0. <= float(values[10]) <= 0.5
+                        and 0. < float(values[3])
+                        and 0. < float(values[4])
                        ):
                         file_data += line.strip() + "\t" + str(self.__normal_del_ampl(self.__copy_ratio_median[i],
                                                                                       self.__allele_fraction_median[i],
@@ -1767,12 +1786,14 @@ class ModeledSegmentsCaller:
                         i += 1
                 elif self.__load_cr:
                     if(len(values) >= 5
-                       and not math.isnan(float(values[5]))
-                       and not math.isnan(float(values[6]))
-                       and not math.isnan(float(values[7]))
-                       and 2**float(values[5]) <= self.__max_copy_ratio_possible
-                       and 2**float(values[6]) <= self.__max_copy_ratio_possible
-                       and 2**float(values[7]) <= self.__max_copy_ratio_possible
+                        and not math.isnan(float(values[5]))
+                        and not math.isnan(float(values[6]))
+                        and not math.isnan(float(values[7]))
+                        and 2**float(values[5]) <= self.__max_copy_ratio_possible
+                        and 2**float(values[6]) <= self.__max_copy_ratio_possible
+                        and 2**float(values[7]) <= self.__max_copy_ratio_possible
+                        and 0 < float(values[3])
+                        and 0 < float(values[4])
                        ):
                         file_data += line.strip() + "\t" + str(self.__normal_del_ampl_cr_only(self.__copy_ratio_median[i],
                                                                                               avg_normal_cr, std_dev_normal_cr,
@@ -1784,12 +1805,14 @@ class ModeledSegmentsCaller:
                         i += 1
                 elif self.__load_af:
                     if(len(values) >= 5
-                       and not math.isnan(float(values[8]))
-                       and not math.isnan(float(values[9]))
-                       and not math.isnan(float(values[10]))
-                       and 0. <= float(values[8]) <= 0.5
-                       and 0. <= float(values[9]) <= 0.5
-                       and 0. <= float(values[10]) <= 0.5
+                        and not math.isnan(float(values[8]))
+                        and not math.isnan(float(values[9]))
+                        and not math.isnan(float(values[10]))
+                        and 0. <= float(values[8]) <= 0.5
+                        and 0. <= float(values[9]) <= 0.5
+                        and 0. <= float(values[10]) <= 0.5
+                        and 0 < float(values[3])
+                        and 0 < float(values[4])
                        ):
                         if self.__responsibilities_normal[i] >= self.__responsibility_threshold_normal:
                             file_data += line.strip() + "\t" + "0"
