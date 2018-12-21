@@ -569,8 +569,8 @@ class ModeledSegmentsCaller:
                  interactive_output_copy_ratio_suffix:str="_copy_ratio_fit.png",
                  interactive_output_copy_ratio_clustering_suffix:str="_copy_ratio_clusters.png",
                  normal_minor_allele_fraction_threshold: float=0.475,
-                 copy_ratio_peak_min_relative_height: float=0.03,
-                 copy_ratio_kernel_density_bandwidth: float=0.025,
+                 copy_ratio_peak_min_relative_height: float=0.02,
+                 copy_ratio_kernel_density_bandwidth: float=-0.025,
                  min_weight_first_cr_peak_cr_data_only: float=0.35,
                  min_fraction_of_points_in_normal_allele_fraction_region: float=0.15,
                  responsibility_threshold_normal: float=0.5,
@@ -578,7 +578,6 @@ class ModeledSegmentsCaller:
                  n_inference_iterations: int=120000,
                  inference_total_grad_norm_constraint: float=50.,
                  n_extra_Gaussians_mixture_model: int=12,
-                 max_n_peaks_in_copy_ratio: int=10,
                  gaussian_prior_standard_deviation: float=0.002
                  ):
         """ On initialization, the caller loads the copy ratio and allele fraction data from
@@ -625,7 +624,6 @@ class ModeledSegmentsCaller:
         self.__n_inference_iterations = n_inference_iterations
         self.__inference_total_grad_norm_constraint = inference_total_grad_norm_constraint
         self.__n_extra_Gaussians_mixture_model = n_extra_Gaussians_mixture_model
-        self.__max_n_peaks_in_copy_ratio = max_n_peaks_in_copy_ratio
         self.__gaussian_prior_standard_deviation = max([abs(gaussian_prior_standard_deviation), 0.000001])
 
         # Set the maximal value of the PHRED score we allow (since we don't want it to be off the scale on the plots)
