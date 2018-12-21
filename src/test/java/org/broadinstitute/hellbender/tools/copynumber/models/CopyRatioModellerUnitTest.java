@@ -30,7 +30,7 @@ public final class CopyRatioModellerUnitTest extends GATKBaseTest {
 
     // note: the following tolerance could actually be made much smaller if we used more segments and/or
     // more intervals -- most of the error is the sampling error of a finite simulated data set, not numerical error of MCMC
-    private static final double ABSOLUTE_TOLERANCE = 0.01;
+    private static final double ABSOLUTE_TOLERANCE = 0.015;
 
     @Test
     public void testMCMC() {

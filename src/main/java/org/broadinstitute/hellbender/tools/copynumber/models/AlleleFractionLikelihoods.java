@@ -2,13 +2,9 @@ package org.broadinstitute.hellbender.tools.copynumber.models;
 
 import org.apache.commons.math3.special.Gamma;
 import org.apache.commons.math3.util.FastMath;
-import org.broadinstitute.hellbender.tools.copynumber.formats.records.AllelicCount;
 import org.broadinstitute.hellbender.utils.MathUtils;
 
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
 import java.util.stream.IntStream;
 
 import static org.apache.commons.math3.util.FastMath.sqrt;
@@ -47,77 +43,61 @@ import static org.broadinstitute.hellbender.utils.MathUtils.log10ToLog;
 final class AlleleFractionLikelihoods {
     private static final double EPSILON = 1E-10;
 
-    private static final FunctionCache logGammaCache = new FunctionCache(Gamma::logGamma);
-    private static final FunctionCache logCache = new FunctionCache(FastMath::log);
-
-    private static final class FunctionCache extends LinkedHashMap<Double, Double> {
-        private static final long serialVersionUID = 19841647L;
-        private static final int MAX_SIZE = 100_000;
-
-        private final Function<Double, Double> mappingFunction;
-
-        FunctionCache(final Function<Double, Double> mappingFunction) {
-            this.mappingFunction = mappingFunction;
-        }
-
-        Double computeIfAbsent(final Double key) {
-            return super.computeIfAbsent(key, mappingFunction);
-        }
-
-        @Override
-        protected boolean removeEldestEntry(final Map.Entry<Double, Double> eldest) {
-            return size() >= MAX_SIZE;
-        }
-    }
+    private static final FunctionCache<Double> logGammaCache = new FunctionCache<>(Gamma::logGamma);
+    private static final FunctionCache<Double> logCache = new FunctionCache<>(AlleleFractionLikelihoods::log);
 
     private AlleleFractionLikelihoods() {}
 
-    static double segmentLogLikelihood(final AlleleFractionGlobalParameters parameters,
-                                       final double minorFraction,
-                                       final List<AlleleFractionSegmentedData.IndexedAllelicCount> allelicCountsInSegment) {
+    static double hetLogLikelihood(final AlleleFractionGlobalParameters parameters,
+                                   final double minorFraction,
+                                   final AlleleFractionSegmentedData.IndexedAllelicCount allelicCount) {
         final double alpha = parameters.getAlpha();
         final double beta = parameters.getBeta();
         final double pi = parameters.getOutlierProbability();
 
-        //we compute some quantities that will be reused
+        //we cache some quantities that will be reused
         final double logPi = logCache.computeIfAbsent(pi);
         final double logNotPi = logCache.computeIfAbsent((1 - pi) / 2);
         final double logcCommon = alpha * logCache.computeIfAbsent(beta) - logGammaCache.computeIfAbsent(alpha);
         final double majorFraction = 1 - minorFraction;
-        final double logMinorFraction = log(minorFraction);
-        final double logMajorFraction = log(majorFraction);
+        final double logMinorFraction = logCache.computeIfAbsent(minorFraction);
+        final double logMajorFraction = logCache.computeIfAbsent(majorFraction);
 
-        double logLikelihood = 0.;
-        for (final AllelicCount allelicCount : allelicCountsInSegment) {
-            final int a = allelicCount.getAltReadCount();
-            final int r = allelicCount.getRefReadCount();
-            final int n = a + r;
+        final int a = allelicCount.getAltReadCount();
+        final int r = allelicCount.getRefReadCount();
+        final int n = a + r;
 
-            //alt-minor calculation
-            final double lambda0AltMinor = biasPosteriorMode(alpha, beta, minorFraction, a, r);
-            final double kappaAltMinor = biasPosteriorCurvature(alpha, minorFraction, r, n, lambda0AltMinor);
-            final double rhoAltMinor = biasPosteriorEffectiveAlpha(lambda0AltMinor, kappaAltMinor);
-            final double tauAltMinor = biasPosteriorEffectiveBeta(lambda0AltMinor, kappaAltMinor);
-            final double logcAltMinor = logcCommon + a * logMinorFraction + r * logMajorFraction
-                    + (r + alpha - rhoAltMinor) * log(lambda0AltMinor) + (tauAltMinor - beta) * lambda0AltMinor
-                    - n * log(minorFraction + majorFraction * lambda0AltMinor);
-            final double altMinorLogLikelihood = logNotPi + logcAltMinor + Gamma.logGamma(rhoAltMinor) - rhoAltMinor * log(tauAltMinor);
+        //alt-minor calculation
+        final double lambda0AltMinor = biasPosteriorMode(alpha, beta, minorFraction, a, r);
+        final double kappaAltMinor = biasPosteriorCurvature(alpha, minorFraction, r, n, lambda0AltMinor);
+        final double rhoAltMinor = biasPosteriorEffectiveAlpha(lambda0AltMinor, kappaAltMinor);
+        final double tauAltMinor = biasPosteriorEffectiveBeta(lambda0AltMinor, kappaAltMinor);
+        final double logcAltMinor = logcCommon + a * logMinorFraction + r * logMajorFraction
+                + (r + alpha - rhoAltMinor) * log(lambda0AltMinor) + (tauAltMinor - beta) * lambda0AltMinor
+                - n * log(minorFraction + majorFraction * lambda0AltMinor);
+        final double altMinorLogLikelihood = logNotPi + logcAltMinor + Gamma.logGamma(rhoAltMinor) - rhoAltMinor * log(tauAltMinor);
 
-            //ref-minor calculation
-            final double lambda0RefMinor = biasPosteriorMode(alpha, beta, majorFraction, a, r);
-            final double kappaRefMinor = biasPosteriorCurvature(alpha, majorFraction, r, n, lambda0RefMinor);
-            final double rhoRefMinor = biasPosteriorEffectiveAlpha(lambda0RefMinor, kappaRefMinor);
-            final double tauRefMinor = biasPosteriorEffectiveBeta(lambda0RefMinor, kappaRefMinor);
-            final double logcRefMinor = logcCommon + a * logMajorFraction + r * logMinorFraction
-                    + (r + alpha - rhoRefMinor) * log(lambda0RefMinor) + (tauRefMinor - beta) * lambda0RefMinor
-                    - n * log(majorFraction + minorFraction * lambda0RefMinor);
-            final double refMinorLogLikelihood = logNotPi + logcRefMinor + Gamma.logGamma(rhoRefMinor) - rhoRefMinor * log(tauRefMinor);
+        //ref-minor calculation
+        final double lambda0RefMinor = biasPosteriorMode(alpha, beta, majorFraction, a, r);
+        final double kappaRefMinor = biasPosteriorCurvature(alpha, majorFraction, r, n, lambda0RefMinor);
+        final double rhoRefMinor = biasPosteriorEffectiveAlpha(lambda0RefMinor, kappaRefMinor);
+        final double tauRefMinor = biasPosteriorEffectiveBeta(lambda0RefMinor, kappaRefMinor);
+        final double logcRefMinor = logcCommon + a * logMajorFraction + r * logMinorFraction
+                + (r + alpha - rhoRefMinor) * log(lambda0RefMinor) + (tauRefMinor - beta) * lambda0RefMinor
+                - n * log(majorFraction + minorFraction * lambda0RefMinor);
+        final double refMinorLogLikelihood = logNotPi + logcRefMinor + Gamma.logGamma(rhoRefMinor) - rhoRefMinor * log(tauRefMinor);
 
-            final double outlierLogLikelihood = logPi + log10ToLog(log10Factorial(a) + log10Factorial(r) - log10Factorial(a + r + 1));
+        final double outlierLogLikelihood = logPi + log10ToLog(log10Factorial(a) + log10Factorial(r) - log10Factorial(a + r + 1));
 
-            logLikelihood += MathUtils.logSumExp(altMinorLogLikelihood, refMinorLogLikelihood, outlierLogLikelihood);
-        }
-        return logLikelihood;
+        return MathUtils.logSumExp(altMinorLogLikelihood, refMinorLogLikelihood, outlierLogLikelihood);
+    }
+
+    static double segmentLogLikelihood(final AlleleFractionGlobalParameters parameters,
+                                       final double minorFraction,
+                                       final List<AlleleFractionSegmentedData.IndexedAllelicCount> allelicCountsInSegment) {
+        return allelicCountsInSegment.stream()
+                .mapToDouble(allelicCount -> hetLogLikelihood(parameters, minorFraction, allelicCount))
+                .sum();
     }
 
     /**
