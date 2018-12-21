@@ -104,7 +104,6 @@ public final class CallModeledSegments extends CommandLineProgram {
     public static final String N_INFERENCE_ITERATIONS = "n-inference-iterations";
     public static final String INFERENCE_TOTAL_GRAD_NORM_CONSTRAINT = "inference-total-grad-norm-constraint";
     public static final String N_EXTRA_GAUSSIANS_MIXTURE_MODEL = "n-extra-gaussians-mixture-model";
-    public static final String MAX_N_PEAKS_IN_COPY_RATIO = "max-n-peaks-in-copy-ratio";
     public static final String GAUSSIAN_PRIOR_STANDARD_DEVIATION = "gaussian-prior-standard-deviation";
 
 
@@ -180,7 +179,7 @@ public final class CallModeledSegments extends CommandLineProgram {
             fullName = WEIGHT_RATIO_MAX,
             optional = true
     )
-    private double weightRatioMax=10.;
+    private double weightRatioMax=100.;
 
     @Argument(
             doc = "If the allele fraction value of a peak fitted to the data is above this threshold and its copy "
@@ -196,15 +195,15 @@ public final class CallModeledSegments extends CommandLineProgram {
             fullName = COPY_RATIO_PEAK_MIN_RELATIVE_HEIGHT,
             optional = true
     )
-    private double copyRatioPeakMinRelativeHeight=0.05;
+    private double copyRatioPeakMinRelativeHeight=0.0125;
 
     @Argument(
             doc = "During the copy ratio clustering, we smoothen the data using a Gaussian kernel of "
-                    + "this bandwidth.",
+                    + "this bandwidth. If its value is not set, it is learnt from the data.",
             fullName = COPY_RATIO_KERNEL_DENSITY_BANDWIDTH,
             optional = true
     )
-    private double copyRatioKernelDensityBandwidth=0.025;
+    private double copyRatioKernelDensityBandwidth=-0.025;
 
     @Argument(
             doc = "If only copy ratio data is taken into account, and we find more than one cluster in the "
@@ -222,7 +221,7 @@ public final class CallModeledSegments extends CommandLineProgram {
             fullName = MIN_FRACTION_OF_POINTS_IN_NORMAL_ALLELE_FRACTION_REGION,
             optional = true
     )
-    private double minFractionOfPointsInNormalAlleleFractionRegion=0.05;
+    private double minFractionOfPointsInNormalAlleleFractionRegion=0.15;
 
     @Argument(
             doc = "Segments are considered normal if the responsibility in the Gaussian mixture model of them being "
@@ -268,14 +267,6 @@ public final class CallModeledSegments extends CommandLineProgram {
     @Argument(
             doc = "In order to discover the different copy number states, the clusters in the copy ratio data "
                     + "is determined. This constant limits the maximum number of peaks that can be found in the data.",
-            fullName = MAX_N_PEAKS_IN_COPY_RATIO,
-            optional = true
-    )
-    private int maxNPeaksInCopyRatio=10 ;
-
-    @Argument(
-            doc = "In order to discover the different copy number states, the clusters in the copy ratio data "
-                    + "is determined. This constant limits the maximum number of peaks that can be found in the data.",
             fullName = GAUSSIAN_PRIOR_STANDARD_DEVIATION,
             optional = true
     )
@@ -308,8 +299,6 @@ public final class CallModeledSegments extends CommandLineProgram {
                 "The upper limit on the norm of the gradient during the inference algorithm needs to be positive.");
         Utils.validateArg(0 <= nExtraGaussiansMixtureModel,
                 "The number of extra Gaussians allowed for fitting (on top of the initial estimate) needs to be 0 or positive.");
-        Utils.validateArg(0 < maxNPeaksInCopyRatio,
-                "The upper limit on the number of clusters in the copy ratio data needs to be positive.");
         Utils.validateArg(0 < gaussianPriorStandardDeviation,
                 "The standard deviation of the prior of the Gaussian mean and standard deviation should be positive.");
 
@@ -380,8 +369,7 @@ public final class CallModeledSegments extends CommandLineProgram {
                 "--" + MAX_PHRED_SCORE_NORMAL.replace('-','_') + "=" + String.valueOf(maxPhredScoreNormal),
                 "--" + N_INFERENCE_ITERATIONS.replace('-','_') + "=" + String.valueOf(nInferenceIterations),
                 "--" + INFERENCE_TOTAL_GRAD_NORM_CONSTRAINT.replace('-','_') + "=" + String.valueOf(inferenceTotalGradNormConstraint),
-                "--" + GAUSSIAN_PRIOR_STANDARD_DEVIATION.replace('-','_') + "=" + String.valueOf(gaussianPriorStandardDeviation),
-                "--" + MAX_N_PEAKS_IN_COPY_RATIO.replace('-','_') + "=" + String.valueOf(maxNPeaksInCopyRatio)));
+                "--" + GAUSSIAN_PRIOR_STANDARD_DEVIATION.replace('-','_') + "=" + String.valueOf(gaussianPriorStandardDeviation)));
 
         return executor.executeScript(
                 new Resource(script, CallModeledSegments.class),
