@@ -45,6 +45,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
     public static final String INTERVAL_TEST_DATA = publicTestDir + "org/broadinstitute/hellbender/utils/interval/";
     public static final String emptyIntervals = publicTestDir + "empty_intervals.list";
     public static final String FULL_HG19_DICT = publicTestDir + "Homo_sapiens_assembly19.dict";
+    public static final String FULL_HG38_DICT = publicTestDir + "large/Homo_sapiens_assembly38.dict";
     private List<GenomeLoc> hg19ReferenceLocs;
     private List<GenomeLoc> hg19exomeIntervals;
 
@@ -161,6 +162,32 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
     @Test(dataProvider = "SpanningInterval")
     public void testSpanningInterval(final List<? extends Locatable> locs, final SimpleInterval expectedResult) throws Exception {
         Assert.assertEquals(IntervalUtils.getSpanningInterval(locs), expectedResult);
+    }
+
+    @Test
+    public void testSpanningIntervalForIntervalList() throws Exception {
+        final List<SimpleInterval> exonsTwoContigs =
+                Arrays.asList(new SimpleInterval("chr2:11719-12377"),
+                                new SimpleInterval("chr2:12445-14651"),
+                                new SimpleInterval("chr2:14855-15188"),
+                                new SimpleInterval("chr2:15646-16097"),
+                                new SimpleInterval("chr2:16457-18516"),
+                                new SimpleInterval("chr10:38664-41779"),
+                                new SimpleInterval("chr10:42659-43102"),
+                                new SimpleInterval("chr10:45288-46537"),
+                                new SimpleInterval("chr10:46657-47020"),
+                                new SimpleInterval("chr10:197419-202755"));
+        
+        //spanning intervals should be one per contig, sorted by contig according to the dictionary (not lexicographically -- I'm looking at you, Bedtools)
+        final List<SimpleInterval> expected =
+                Arrays.asList(new SimpleInterval("chr2:11719-18516"), new SimpleInterval("chr10:38664-202755"));
+
+        final SAMSequenceDictionary dictionary = SAMSequenceDictionaryExtractor.extractDictionary(new File(FULL_HG38_DICT).toPath());
+        final List<SimpleInterval> spanning = IntervalUtils.getSpanningIntervals(exonsTwoContigs, dictionary);
+        Assert.assertTrue(spanning.size() == expected.size());
+        for (int i = 0; i < expected.size(); i++) {
+            Assert.assertTrue(spanning.get(i).equals(expected.get(i)));
+        }
     }
 
     // -------------------------------------------------------------------------------------

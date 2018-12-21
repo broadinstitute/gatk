@@ -152,7 +152,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     }
 
     @Test
-    public void testGenomicsDBImportWith1000Intervals() throws IOException {
+    public void testGenomicsDBImportWith1000IntervalsToBeMerged() throws IOException {
         final String workspace = createTempDir("genomicsdb-tests-").getAbsolutePath() + "/workspace";
         LinkedList<SimpleInterval> intervals = new LinkedList<SimpleInterval>();
         //[ 17960187, 17981445 ]
@@ -444,9 +444,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         vcfInputs.forEach(vcf -> args.addArgument("V", vcf));
         args.addArgument("batch-size", String.valueOf(batchSize));
         args.addArgument(GenomicsDBImport.VCF_INITIALIZER_THREADS_LONG_NAME, String.valueOf(threads));
-        if (mergeIntervals) {
-            args.addArgument(GenomicsDBImport.MERGE_INPUT_INTERVALS_LONG_NAME);
-        }
+        args.addBooleanArgument(GenomicsDBImport.MERGE_INPUT_INTERVALS_LONG_NAME, mergeIntervals);
         if (useBufferSize) {
             args.addArgument("genomicsdb-vcf-buffer-size", String.valueOf(bufferSizePerSample));
         }
