@@ -151,14 +151,16 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         testGenomicsDBImporter(LOCAL_GVCFS, MULTIPLE_INTERVALS, COMBINED_MULTI_INTERVAL, b38_reference_20_21, true, 1);
     }
 
-    private void testGenomicsDBImportWith1000Intervals() throws IOException {
+    @Test
+    public void testGenomicsDBImportWith1000IntervalsToBeMerged() throws IOException {
         final String workspace = createTempDir("genomicsdb-tests-").getAbsolutePath() + "/workspace";
         LinkedList<SimpleInterval> intervals = new LinkedList<SimpleInterval>();
         //[ 17960187, 17981445 ]
         int base = 17960187;
         for (int i = 0; i < 1000; ++i)
             intervals.add(new SimpleInterval("chr20", base + 20 * i, base + 20 * i + 10)); //intervals of size 10 separated by 10
-        writeToGenomicsDB(new ArrayList<String>(Arrays.asList(LOCAL_GVCFS.get(0))), intervals, workspace, 0, false, 0, 1);
+        writeToGenomicsDB(new ArrayList<String>(Arrays.asList(LOCAL_GVCFS.get(0))), intervals, workspace, 0,
+                false, 0, 1, true);
     }
 
     @Test
@@ -431,14 +433,21 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
 
     private void writeToGenomicsDB(final List<String> vcfInputs, final List<SimpleInterval> intervals, final String workspace,
                                    final int batchSize, final Boolean useBufferSize, final int bufferSizePerSample, int threads) {
+        writeToGenomicsDB(vcfInputs, intervals, workspace, batchSize, useBufferSize, bufferSizePerSample, threads, false);
+    }
+
+    private void writeToGenomicsDB(final List<String> vcfInputs, final List<SimpleInterval> intervals, final String workspace,
+                                   final int batchSize, final Boolean useBufferSize, final int bufferSizePerSample, int threads, final boolean mergeIntervals) {
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addArgument(GenomicsDBImport.WORKSPACE_ARG_LONG_NAME, workspace);
         intervals.forEach(interval -> args.addArgument("L", IntervalUtils.locatableToString(interval)));
         vcfInputs.forEach(vcf -> args.addArgument("V", vcf));
         args.addArgument("batch-size", String.valueOf(batchSize));
         args.addArgument(GenomicsDBImport.VCF_INITIALIZER_THREADS_LONG_NAME, String.valueOf(threads));
-        if (useBufferSize)
+        args.addBooleanArgument(GenomicsDBImport.MERGE_INPUT_INTERVALS_LONG_NAME, mergeIntervals);
+        if (useBufferSize) {
             args.addArgument("genomicsdb-vcf-buffer-size", String.valueOf(bufferSizePerSample));
+        }
 
         runCommandLine(args);
     }
