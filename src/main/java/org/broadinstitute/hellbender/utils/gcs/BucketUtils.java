@@ -383,6 +383,7 @@ public final class BucketUtils {
             // enable requester pays and indicate who pays
             builder = builder.autoDetectRequesterPays(true).userProject(requesterProject);
         }
+        builder.usePseudoDirectories(true);
         return builder.build();
     }
 
