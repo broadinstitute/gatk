@@ -149,7 +149,7 @@ public class M2FiltersArgumentCollection {
      * Only variants with LOD divided by depth exceeding this threshold can pass filtering.
      */
     @Argument(fullName = LOD_BY_DEPTH, doc="LOD by depth threshold for filtering variant", optional = true)
-    public double lodByDepth = 0.005;
+    public double lodByDepth = 0.0035;
 
     /**
      * Only variants with alt reads originally aligned outside of the mitochondria (known NuMTs) divided by total alt

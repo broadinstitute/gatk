@@ -25,6 +25,11 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     public static final String GQ_BAND_LONG_NAME = "gvcf-gq-bands";
     public static final String GQ_BAND_SHORT_NAME = "GQB";
 
+    @Override
+    protected ReadThreadingAssemblerArgumentCollection getReadThreadingAssemblerArgumentCollection() {
+        return new HaplotypeCallerReadThreadingAssemblerArgumentCollection();
+    }
+
     /**
      * You can use this argument to specify that HC should process a single sample out of a multisample BAM file. This
      * is especially useful if your samples are all in the same file but you need to run them individually through HC

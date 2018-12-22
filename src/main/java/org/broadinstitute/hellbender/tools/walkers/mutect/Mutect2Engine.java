@@ -111,7 +111,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         checkSampleInBamHeader(normalSample);
 
         annotationEngine = Utils.nonNull(annotatorEngine);
-        assemblyEngine = AssemblyBasedCallerUtils.createReadThreadingAssembler(MTAC);
+        assemblyEngine = MTAC.createReadThreadingAssembler();
         likelihoodCalculationEngine = AssemblyBasedCallerUtils.createLikelihoodCalculationEngine(MTAC.likelihoodArgs);
         genotypingEngine = new SomaticGenotypingEngine(samplesList, MTAC, tumorSample, normalSample);
         genotypingEngine.setAnnotationEngine(annotationEngine);

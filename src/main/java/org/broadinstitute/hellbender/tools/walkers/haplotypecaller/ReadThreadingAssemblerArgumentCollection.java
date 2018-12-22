@@ -15,6 +15,8 @@ import java.util.List;
 public abstract class ReadThreadingAssemblerArgumentCollection implements Serializable {
     private static final long serialVersionUID = 1L;
 
+    public static final double DEFAULT_PRUNING_LOG_ODDS_THRESHOLD = 1.0;
+
     // -----------------------------------------------------------------------------------------------
     // arguments to control internal behavior of the read threading assembler
     // -----------------------------------------------------------------------------------------------
@@ -98,7 +100,7 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
      */
     @Advanced
     @Argument(fullName="pruning-lod-threshold", doc = "Log-10 likelihood ratio threshold for adaptive pruning algorithm", optional = true)
-    public double pruningLog10OddsThreshold = 1.0;
+    public double pruningLog10OddsThreshold = DEFAULT_PRUNING_LOG_ODDS_THRESHOLD;
 
     /**
      * The maximum number of variants in graph the adaptive pruner will allow
