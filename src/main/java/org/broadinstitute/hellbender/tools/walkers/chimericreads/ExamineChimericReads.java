@@ -1,5 +1,8 @@
 package org.broadinstitute.hellbender.tools.walkers.chimericreads;
 
+import htsjdk.samtools.Cigar;
+import htsjdk.samtools.CigarElement;
+import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.util.SequenceUtil;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -11,6 +14,7 @@ import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
+import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignerUtils;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignment;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanJavaAligner;
 
@@ -26,18 +30,18 @@ import java.util.Set;
 )
 public class ExamineChimericReads extends ReadPairWalker {
     private final SmithWatermanAligner smithWatermanAligner = SmithWatermanJavaAligner.getInstance();
-    private final SWOverhangStrategy swOverhangStrategy = SWOverhangStrategy.LEADING_INDEL;
+    private final SWOverhangStrategy swOverhangStrategy = SWOverhangStrategy.SOFTCLIP;
 
     private SWParameters swParameters = null;
 
     @Argument(fullName = "match_value")
-    int MATCH_VALUE = SmithWatermanAligner.STANDARD_NGS.getMatchValue();
+    int MATCH_VALUE = 5;
     @Argument(fullName = "mismatch_value")
-    int MISMATCH_PENALTY_VALUE = SmithWatermanAligner.STANDARD_NGS.getMismatchPenalty();
+    int MISMATCH_PENALTY_VALUE = -4;
     @Argument(fullName = "gap_open_value")
-    int GAP_OPEN_VALUE = SmithWatermanAligner.STANDARD_NGS.getGapOpenPenalty();
+    int GAP_OPEN_VALUE = -12;
     @Argument(fullName = "gap_extend_value")
-    int GAP_EXTEND_VALUE = SmithWatermanAligner.STANDARD_NGS.getGapExtendPenalty();
+    int GAP_EXTEND_VALUE = -2;
 
     @Override
     public void onTraversalStart() {
@@ -61,41 +65,69 @@ public class ExamineChimericReads extends ReadPairWalker {
         final String refTwo = readTwo.getAttributeAsString("RB");
 
         {
-            final SmithWatermanAlignment alignment = smithWatermanAligner.alignWithMismatches(refOne.getBytes(), refTwo.getBytes(),
-                    swParameters, swOverhangStrategy);
+            final byte[] seq1 = refOne.getBytes();
+            final byte[] seq2 = refTwo.getBytes();
 
-            logger.info("ref1:ref2: "+ alignment.getCigar().toString());
+            alignAndInfo(seq1, seq2, "ref1:ref2: ");
         }
         {
-            final SmithWatermanAlignment alignment = smithWatermanAligner.alignWithMismatches(refOne.getBytes(), SequenceUtil.reverseComplement(refTwo).getBytes(),
-                    swParameters, swOverhangStrategy);
+            final byte[] seq1 = refOne.getBytes();
+            final byte[] seq2 = SequenceUtil.reverseComplement(refTwo).getBytes();
 
-            logger.info("ref1:ref2': "+alignment.getCigar().toString());
+            alignAndInfo(seq1, seq2, "ref1:ref2': ");
         }
-        {
-            final SmithWatermanAlignment alignment = smithWatermanAligner.alignWithMismatches(refTwo.getBytes(), readOne.getBases(),
-                    swParameters, swOverhangStrategy);
 
-            logger.info("ref2:read1: " + alignment.getCigar().toString());
-        }
-        {
-            final SmithWatermanAlignment alignment = smithWatermanAligner.alignWithMismatches(refTwo.getBytes(), SequenceUtil.reverseComplement(readOne.getBasesString()).getBytes(),
-                    swParameters, swOverhangStrategy);
+//        {
+//            final byte[] seq1 = refTwo.getBytes();
+//            final byte[] seq2 = readOne.getBases();
+//
+//            alignAndInfo(seq1, seq2, "ref2:read1: ");
+//        }
+//        {
+//            final byte[] seq1 = refTwo.getBytes();
+//            final byte[] seq2 = SequenceUtil.reverseComplement(readOne.getBasesString()).getBytes();
+//
+//            alignAndInfo(seq1, seq2, "ref2:read1': ");
+//        }
+//        {
+//            final byte[] seq1 = refOne.getBytes();
+//            final byte[] seq2 = SequenceUtil.reverseComplement(readTwo.getBasesString()).getBytes();
+//
+//            alignAndInfo(seq1, seq2, "ref1:read2': ");
+//        }
+//        {
+//            final byte[] seq1 = refTwo.getBytes();
+//            final byte[] seq2 = SequenceUtil.reverseComplement(readOne.getBasesString()).getBytes();
+//
+//            alignAndInfo(seq1, seq2, "ref2:read1': ");
+//        }
+    }
 
-            logger.info("ref2:read1': " + alignment.getCigar().toString());
-        }
-        {
-            final SmithWatermanAlignment alignment = smithWatermanAligner.alignWithMismatches(refOne.getBytes(), readTwo.getBases(),
-                    swParameters, swOverhangStrategy);
+    private void alignAndInfo(final byte[] seq1, final byte[] seq2, final String what) {
+        final SmithWatermanAlignment alignmentMis = smithWatermanAligner.alignWithMismatches(seq1, seq2, swParameters, swOverhangStrategy);
+        final SmithWatermanAlignment alignment = smithWatermanAligner.align(seq1, seq2, swParameters, swOverhangStrategy);
 
-            logger.info("ref1:read2: " + alignment.getCigar().toString());
-        }
-        {
-            final SmithWatermanAlignment alignment = smithWatermanAligner.alignWithMismatches(refTwo.getBytes(), SequenceUtil.reverseComplement(readOne.getBasesString()).getBytes(),
-                    swParameters, swOverhangStrategy);
+        logger.info(what + alignmentMis.getCigar().toString());
+        logger.info(alignment.getCigar().toString());
+        logger.info(String.format("%d matches, and %d equals, rate= %g", countMatches(alignment.getCigar()),
+                countEquals(alignmentMis.getCigar()),
+                countEquals(alignmentMis.getCigar()) / (double) countMatches(alignment.getCigar())));
+        SmithWatermanAlignerUtils.printAlignment(seq1, seq2, alignmentMis, swOverhangStrategy);
+    }
 
-            logger.info("ref1:read2': " + alignment.getCigar().toString());
-        }
+    private int countMatches(final Cigar cigar) {
+        return countOps(cigar,CigarOperator.M);
+    }
+
+    private int countEquals(final Cigar cigar){
+        return countOps(cigar,CigarOperator.EQ);
+    }
+
+    private int countOps(final Cigar cigar, final CigarOperator op){
+        return cigar.getCigarElements().stream()
+                .filter(e->e.getOperator()== op)
+                .mapToInt(CigarElement::getLength)
+                .sum();
     }
 
     @Override

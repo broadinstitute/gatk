@@ -114,7 +114,7 @@ public interface SmithWatermanAligner extends Closeable {
         final Cigar cigar = swPairwiseAlignment.getCigar();
         final List<CigarElement> lce = new ArrayList<>(cigar.getCigarElements().size());
         int referencePos = swPairwiseAlignment.getAlignmentOffset();
-        int readPos = 0;
+        int altPos = 0;
         final CigarElement ex = new CigarElement(1, CigarOperator.X);
         final CigarElement equals = new CigarElement(1, CigarOperator.EQ);
 
@@ -122,8 +122,7 @@ public interface SmithWatermanAligner extends Closeable {
             switch (ce.getOperator()) {
                 case M:
                     for (int i = 0; i < ce.getLength(); i++) {
-                        lce.add(reference[referencePos + i] == alternate[readPos + i] ? equals : ex);
-
+                        lce.add(reference[referencePos + i] == alternate[altPos + i] ? equals : ex);
                     }
                     break;
 
@@ -131,7 +130,7 @@ public interface SmithWatermanAligner extends Closeable {
                     lce.add(ce);
             }
             referencePos += ce.getOperator().consumesReferenceBases() ? ce.getLength() : 0;
-            readPos += ce.getOperator().consumesReadBases() ? ce.getLength() : 0;
+            altPos += ce.getOperator().consumesReadBases() ? ce.getLength() : 0;
         }
         return new SmithWatermanJavaAligner.SWPairwiseAlignmentResult(AlignmentUtils.consolidateCigar(new Cigar(lce)), swPairwiseAlignment.getAlignmentOffset());
     }

@@ -82,8 +82,8 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
         }
         else {
             // run full Smith-Waterman
-            final int n = reference.length+1;
-            final int m = alternate.length+1;
+            final int n = reference.length + 1;
+            final int m = alternate.length + 1;
             final int[][] sw = new int[n][m];
             final int[][] btrack=new int[n][m];
 
