@@ -41,7 +41,7 @@ import java.util.stream.Collectors;
                 "This tool can only handle exactly one validation PAIR at a time and this should not be RNA.\n" +
                 "Multiallelics in a VCF are not supported and will be skipped.\n" +
                 "This tool will validate germline mutations as true positives.\n",
-        oneLineSummary = "Check the variants in a VCF against a tumor-normal pair of bams representing the same samples, though not the ones from the actual calls.",
+        oneLineSummary = "Check variants in a VCF against tumor-normal bams representing the same samples.",
         programGroup = VariantEvaluationProgramGroup.class
 )
 @ExperimentalFeature

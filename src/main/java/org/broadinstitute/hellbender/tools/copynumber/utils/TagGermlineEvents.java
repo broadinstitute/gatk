@@ -15,8 +15,8 @@ import java.io.File;
 import java.util.List;
 
 @CommandLineProgramProperties(
-        oneLineSummary = "(EXPERIMENTAL) Do a simplistic tagging of germline events in a tumor segment file.",
-        summary = "(EXPERIMENTAL) A tool for tagging possible germline events in a tumor segment file.  The algorithm used is very simplistic.  Segments called as amplified or deleted in the normal are matched by breakpoints (+/- some padding) or reciprocal overlap.",
+        oneLineSummary = "Do a simplistic tagging of germline events in a tumor segment file.",
+        summary = "A tool for tagging possible germline events in a tumor segment file.  The algorithm used is very simplistic.  Segments called as amplified or deleted in the normal are matched by breakpoints (+/- some padding) or reciprocal overlap.",
         programGroup = CopyNumberProgramGroup.class)
 @ExperimentalFeature
 public class TagGermlineEvents extends GATKTool{

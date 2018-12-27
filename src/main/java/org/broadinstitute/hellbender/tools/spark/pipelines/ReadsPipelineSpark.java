@@ -89,7 +89,7 @@ import java.util.stream.Collectors;
 public class ReadsPipelineSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 
-    static final String USAGE_ONE_LINE_SUMMARY = "Takes unaligned or aligned reads and runs BWA (if specified), MarkDuplicates, BQSR, and HaplotypeCaller to generate a VCF file of variants";
+    static final String USAGE_ONE_LINE_SUMMARY = "Runs BWA (if specified), MarkDuplicates, BQSR, and HaplotypeCaller on unaligned or aligned reads to generate a VCF.";
     static final String USAGE_SUMMARY = "Takes unaligned or aligned reads and runs BWA (if specified), MarkDuplicates, BQSR, and HaplotypeCaller. The final result is analysis-ready variants.";
 
     @Override
