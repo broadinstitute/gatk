@@ -276,11 +276,11 @@ public final class ReadThreadingAssemblerUnitTest extends GATKBaseTest {
     private void assertSingleBubble(final TestAssembler assembler, final String one, final String two) {
         final SeqGraph graph = assembler.assemble();
         graph.simplifyGraph();
-        final List<KBestHaplotype> paths = new KBestHaplotypeFinder(graph);
+        final List<KBestHaplotype> paths = new KBestHaplotypeFinder(graph).findBestHaplotypes();
         Assert.assertEquals(paths.size(), 2);
         final Set<String> expected = new HashSet<>(Arrays.asList(one, two));
         for ( final KBestHaplotype path : paths ) {
-            final String seq = new String(path.bases());
+            final String seq = new String(path.getBases());
             Assert.assertTrue(expected.contains(seq));
             expected.remove(seq);
         }
@@ -343,7 +343,7 @@ public final class ReadThreadingAssemblerUnitTest extends GATKBaseTest {
         Assert.assertNotNull(graph.getReferenceSourceVertex());
         Assert.assertNotNull(graph.getReferenceSinkVertex());
 
-        final List<KBestHaplotype> paths = new KBestHaplotypeFinder(graph);
+        final List<KBestHaplotype> paths = new KBestHaplotypeFinder(graph).findBestHaplotypes();
         Assert.assertEquals(paths.size(), 1);
     }
 
@@ -389,10 +389,10 @@ public final class ReadThreadingAssemblerUnitTest extends GATKBaseTest {
         assembler.addSequence(ReadThreadingGraphUnitTest.getBytes(read2), false);
 
         final SeqGraph graph = assembler.assemble();
-        final List<KBestHaplotype> paths = new KBestHaplotypeFinder(graph);
+        final List<KBestHaplotype> paths = new KBestHaplotypeFinder(graph).findBestHaplotypes();
         Assert.assertEquals(paths.size(), 2);
-        final byte[] refPath = paths.get(0).bases().length == ref.length() ? paths.get(0).bases() : paths.get(1).bases();
-        final byte[] altPath = paths.get(0).bases().length == ref.length() ? paths.get(1).bases() : paths.get(0).bases();
+        final byte[] refPath = paths.get(0).getBases().length == ref.length() ? paths.get(0).getBases() : paths.get(1).getBases();
+        final byte[] altPath = paths.get(0).getBases().length == ref.length() ? paths.get(1).getBases() : paths.get(0).getBases();
         Assert.assertEquals(refPath, ReadThreadingGraphUnitTest.getBytes(ref));
         Assert.assertEquals(altPath, ReadThreadingGraphUnitTest.getBytes(read1));
     }

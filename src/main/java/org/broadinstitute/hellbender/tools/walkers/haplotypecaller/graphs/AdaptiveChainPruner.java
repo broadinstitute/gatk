@@ -51,7 +51,7 @@ public class AdaptiveChainPruner<V extends BaseVertex, E extends BaseEdge> exten
 
         chains.stream().filter(c -> isChainPossibleVariant(c, graph))
                 .sorted(Comparator.comparingDouble((ToDoubleFunction<Path<V, E>>) chainLogOdds::get)
-                        .reversed().thenComparingInt(Path::getScore))
+                        .reversed().thenComparingInt(Path::length))
                 .skip(maxUnprunedVariants)
                 .forEach(result::add);
 
