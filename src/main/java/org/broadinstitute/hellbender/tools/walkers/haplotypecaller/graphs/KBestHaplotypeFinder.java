@@ -1,9 +1,11 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 
+import org.apache.commons.lang3.mutable.MutableInt;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.jgrapht.alg.CycleDetector;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Efficient algorithm to obtain the list of best haplotypes given the {@link SeqGraph instace}.
@@ -67,6 +69,9 @@ public final class KBestHaplotypeFinder {
         final PriorityQueue<KBestHaplotype> queue = new PriorityQueue<>(Comparator.comparingDouble(KBestHaplotype::score).reversed());
         sources.forEach(source -> queue.add(new KBestHaplotype(source, graph)));
 
+        final Map<SeqVertex, MutableInt> vertexCounts = graph.vertexSet().stream()
+                .collect(Collectors.toMap(v -> v, v -> new MutableInt(0)));
+
         while (!queue.isEmpty() && result.size() < maxNumberOfHaplotypes) {
             final KBestHaplotype pathToExtend = queue.poll();
             final SeqVertex vertexToExtend = pathToExtend.getLastVertex();
@@ -80,7 +85,10 @@ public final class KBestHaplotypeFinder {
                 }
 
                 for (final BaseEdge edge : outgoingEdges) {
-                    queue.add(new KBestHaplotype(pathToExtend, edge, totalOutgoingMultiplicity));
+                    final SeqVertex targetVertex = graph.getEdgeTarget(edge);
+                    if (vertexCounts.get(targetVertex).getAndIncrement() < maxNumberOfHaplotypes) {
+                        queue.add(new KBestHaplotype(pathToExtend, edge, totalOutgoingMultiplicity));
+                    }
                 }
             }
         }
