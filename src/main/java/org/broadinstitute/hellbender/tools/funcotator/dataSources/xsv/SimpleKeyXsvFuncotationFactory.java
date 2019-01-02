@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.DataSourceFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
 import org.broadinstitute.hellbender.tools.funcotator.FuncotatorArgumentDefinitions;
+import org.broadinstitute.hellbender.tools.funcotator.FuncotatorUtils;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -222,8 +223,12 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
             if ( keyType == XsvDataKeyType.GENE_NAME ) {
                 key = gencodeFuncotation.getHugoSymbol();
             }
+            else if ( keyType == XsvDataKeyType.TRANSCRIPT_ID ) {
+                // Ignore the transcript version number when matching on transcript ID:
+                key = FuncotatorUtils.getTranscriptIdWithoutVersionNumber(gencodeFuncotation.getAnnotationTranscript());
+            }
             else {
-                key = gencodeFuncotation.getAnnotationTranscript();
+                throw new GATKException.ShouldNeverReachHereException("Unrecognized key type: " + keyType);
             }
 
             // Get our annotations:
@@ -341,7 +346,12 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
             final List<String> dataRow = Utils.split(rawRow, delimiter);
 
             // Remove the key column:
-            final String rowKey = dataRow.remove(keyColumn);
+            String rowKey = dataRow.remove(keyColumn);
+            if ( keyType == XsvDataKeyType.TRANSCRIPT_ID ) {
+                // If the key is a transcript ID, strip off the transcript version so that we don't consider it when
+                // matching on transcript ID:
+                rowKey = FuncotatorUtils.getTranscriptIdWithoutVersionNumber(rowKey);
+            }
 
             // Make sure we have the same number of columns:
             if ( (dataRow.size() != annotationColumnNames.size()) ) {
