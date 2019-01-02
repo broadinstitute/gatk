@@ -23,7 +23,9 @@ import java.util.*;
 public class RevertSamSparkIntegrationTest extends CommandLineProgramTest {
 
 
-    public static List<String> defaultAttributesToClearPlusXT = new ArrayList<String>() {{
+    private static List<String> defaultAttributesToClearPlusXT = new ArrayList<String>() {
+        private static final long serialVersionUID = 1L;
+        {
         addAll(RevertSamSpark.DEFAULT_ATTRIBUTES_TO_CLEAR);
         add("XT");
     }};
@@ -307,7 +309,7 @@ public class RevertSamSparkIntegrationTest extends CommandLineProgramTest {
         isValid = RevertSamSpark.isOutputMapHeaderValid(Arrays.asList("OUTPUT"));
         Assert.assertEquals(isValid, false);
 
-        isValid = RevertSamSpark.isOutputMapHeaderValid(Collections.EMPTY_LIST);
+        isValid = RevertSamSpark.isOutputMapHeaderValid(Collections.emptyList());
         Assert.assertEquals(isValid, false);
     }
 
