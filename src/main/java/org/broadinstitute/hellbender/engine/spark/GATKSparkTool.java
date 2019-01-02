@@ -549,8 +549,6 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
         readsHeader = createHeaderMerger().getMergedHeader();
     }
 
-
-
     /**
      * Create a header merger from the individual SAM/BAM headers in our readers
      *
@@ -559,6 +557,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     private SamFileHeaderMerger createHeaderMerger() {
         return new SamFileHeaderMerger(identifySortOrder(readInputs.values()), readInputs.values(), true);
     }
+
     @VisibleForTesting
     static SAMFileHeader.SortOrder identifySortOrder(final Collection<SAMFileHeader> headers){
         final Set<SAMFileHeader.SortOrder> sortOrders = headers.stream().map(SAMFileHeader::getSortOrder).collect(Collectors.toSet());
