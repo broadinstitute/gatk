@@ -43,7 +43,7 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
     private OutputStreamWriter srWriter;
 
     SortedMap<SplitPos, Integer> splitCounts;
-    SortedSet<GATKRead> discordantPairs;
+    SortedSet<DiscordantRead> discordantPairs;
 
     @Override
     public boolean requiresReads() {
@@ -67,12 +67,12 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
 
         splitCounts = new TreeMap<>(comparator);
 
-        final Comparator<GATKRead> discReadComparator =
-                Comparator.comparing((GATKRead r) -> getBestAvailableSequenceDictionary().getSequenceIndex(r.getContig()))
-                        .thenComparing(GATKRead::getStart)
-                        .thenComparing((GATKRead r) -> getBestAvailableSequenceDictionary().getSequenceIndex(r.getMateContig()))
-                        .thenComparing(GATKRead::getMateStart)
-                        .thenComparing(GATKRead::getName);
+        final Comparator<DiscordantRead> discReadComparator =
+                Comparator.comparing((DiscordantRead r) -> getBestAvailableSequenceDictionary().getSequenceIndex(r.getContig()))
+                        .thenComparing(DiscordantRead::getStart)
+                        .thenComparing((DiscordantRead r) -> getBestAvailableSequenceDictionary().getSequenceIndex(r.getMateContig()))
+                        .thenComparing(DiscordantRead::getMateStart)
+                        .thenComparing(DiscordantRead::getName);
 
         discordantPairs = new TreeSet<>(discReadComparator);
 
@@ -80,6 +80,110 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
 
     public boolean isExcluded(final GATKRead read) {
         return read.isUnmapped() || read.mateIsUnmapped() || read.isSecondaryAlignment() || read.isDuplicate() || read.isSupplementaryAlignment();
+    }
+
+    static class DiscordantRead {
+        boolean readReverseStrand;
+        boolean mateReverseStrand;
+        String contig;
+        int start;
+        String mateContig;
+        int mateStart;
+        String name;
+
+        public DiscordantRead(final GATKRead read) {
+            this.readReverseStrand = read.isReverseStrand();
+            this.mateReverseStrand = read.mateIsReverseStrand();
+            this.contig = read.getContig();
+            this.start = read.getStart();
+            this.mateContig = read.getMateContig();
+            this.mateStart = read.getMateStart();
+            this.name = read.getName();
+        }
+
+        public boolean isReadReverseStrand() {
+            return readReverseStrand;
+        }
+
+        public void setReadReverseStrand(final boolean readReverseStrand) {
+            this.readReverseStrand = readReverseStrand;
+        }
+
+        public boolean isMateReverseStrand() {
+            return mateReverseStrand;
+        }
+
+        public void setMateReverseStrand(final boolean mateReverseStrand) {
+            this.mateReverseStrand = mateReverseStrand;
+        }
+
+        public String getContig() {
+            return contig;
+        }
+
+        public void setContig(final String contig) {
+            this.contig = contig;
+        }
+
+        public int getStart() {
+            return start;
+        }
+
+        public void setStart(final int start) {
+            this.start = start;
+        }
+
+        public String getMateContig() {
+            return mateContig;
+        }
+
+        public void setMateContig(final String mateContig) {
+            this.mateContig = mateContig;
+        }
+
+        public int getMateStart() {
+            return mateStart;
+        }
+
+        public void setMateStart(final int mateStart) {
+            this.mateStart = mateStart;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(final String name) {
+            this.name = name;
+        }
+
+        @Override
+        public boolean equals(final Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            final DiscordantRead that = (DiscordantRead) o;
+
+            if (readReverseStrand != that.readReverseStrand) return false;
+            if (mateReverseStrand != that.mateReverseStrand) return false;
+            if (start != that.start) return false;
+            if (mateStart != that.mateStart) return false;
+            if (contig != null ? !contig.equals(that.contig) : that.contig != null) return false;
+            if (mateContig != null ? !mateContig.equals(that.mateContig) : that.mateContig != null) return false;
+            return name != null ? name.equals(that.name) : that.name == null;
+        }
+
+        @Override
+        public int hashCode() {
+            int result = (readReverseStrand ? 1 : 0);
+            result = 31 * result + (mateReverseStrand ? 1 : 0);
+            result = 31 * result + (contig != null ? contig.hashCode() : 0);
+            result = 31 * result + start;
+            result = 31 * result + (mateContig != null ? mateContig.hashCode() : 0);
+            result = 31 * result + mateStart;
+            result = 31 * result + (name != null ? name.hashCode() : 0);
+            return result;
+        }
     }
 
     static class SplitPos {
@@ -134,15 +238,15 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
         final int readSeqId = getBestAvailableSequenceDictionary().getSequenceIndex(read.getContig());
         final int mateSeqId = getBestAvailableSequenceDictionary().getSequenceIndex(read.getMateContig());
         if (readSeqId < mateSeqId) {
-            discordantPairs.add(read);
+            discordantPairs.add(new DiscordantRead(read));
         } else if (readSeqId == mateSeqId) {
             if (read.getStart() < read.getMateStart()) {
-                discordantPairs.add(read);
+                discordantPairs.add(new DiscordantRead(read));
             } else if (read.getStart() == read.getMateStart()) {
 
                 final boolean seenBefore = observedDiscordantNames.remove(read.getName());
                 if (! seenBefore) {
-                    discordantPairs.add(read);
+                    discordantPairs.add(new DiscordantRead(read));
                     observedDiscordantNames.add(read.getName());
                 }
             }
@@ -154,9 +258,9 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
         discordantPairs.clear();
     }
 
-    private void writeDiscordantPair(final GATKRead r) {
-        final String strandA = r.isReverseStrand() ? "-" : "+";
-        final String strandB = r.mateIsReverseStrand() ? "-" : "+";
+    private void writeDiscordantPair(final DiscordantRead r) {
+        final String strandA = r.isReadReverseStrand() ? "-" : "+";
+        final String strandB = r.isMateReverseStrand() ? "-" : "+";
 
         try {
             // subtract 1 from positions to match pysam output
@@ -196,7 +300,7 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
     private void flushSplitCounts() {
         splitCounts.forEach((position, count) -> {
             try {
-                // subtract one fron pos to match pysam results
+                // subtract one from pos to match pysam results
                 srWriter.write(currentChrom + "\t" + (position.pos - 1) + "\t" + position.direction.getDescription() + "\t" + count + "\t" + sampleName + "\n");
             } catch (IOException e) {
                 throw new GATKException("Could not write to sr file", e);
