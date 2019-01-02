@@ -289,13 +289,8 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
                 traverseUnmapped = false;
             }
             traversalParameters = new TraversalParameters(getIntervals(), traverseUnmapped);
-        }
-        if ( intervalArgumentCollection.intervalsSpecified() ) {
-            traversalParameters = intervalArgumentCollection.getTraversalParameters(getHeaderForReads().getSequenceDictionary());
-        } else if ( hasUserSuppliedIntervals() ) { // intervals may have been supplied by editIntervals
-            traversalParameters = new TraversalParameters(getIntervals(), false);
         } else {
-            traversalParameters = null; // no intervals were specified so return all reads (mapped and unmapped)
+            traversalParameters = null;
         }
 
         JavaRDD<GATKRead> output = null;
@@ -557,7 +552,6 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     private SamFileHeaderMerger createHeaderMerger() {
         return new SamFileHeaderMerger(identifySortOrder(readInputs.values()), readInputs.values(), true);
     }
-
     @VisibleForTesting
     static SAMFileHeader.SortOrder identifySortOrder(final Collection<SAMFileHeader> headers){
         final Set<SAMFileHeader.SortOrder> sortOrders = headers.stream().map(SAMFileHeader::getSortOrder).collect(Collectors.toSet());
