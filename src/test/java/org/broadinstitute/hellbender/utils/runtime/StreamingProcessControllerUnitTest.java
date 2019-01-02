@@ -103,25 +103,6 @@ public class StreamingProcessControllerUnitTest extends BaseTest {
         Assert.assertEquals(getLineFromTempFile(tempFile), "some output");
     }
 
-    @Test(groups = "python", timeOut = 10000)
-    public void testStderrRedirect() {
-        final StreamingProcessController controller = initializePythonControllerWithAckFIFO(true);
-
-        // write to stderr, but we expect to get it from stdout due to redirection
-        controller.writeProcessInput("import sys" + NL + "sys.stderr.write('error output to stderr\\n')" + NL);
-        boolean ack = requestAndWaitForAck(controller);
-        Assert.assertTrue(ack);
-
-        ProcessOutput po = controller.getProcessOutput();
-
-        Assert.assertNotNull(po.getStdout());
-        Assert.assertNotNull(po.getStdout().getBufferString());
-        Assert.assertNotNull(po.getStdout().getBufferString().contains("error output to stderr"));
-
-        controller.terminate();
-        Assert.assertFalse(controller.getProcess().isAlive());
-    }
-
     @Test(timeOut = 10000)
     public void testFIFOLifetime() {
         // cat is a red herring here; we're just testing that a FIFO is created, and then deleted after termination
