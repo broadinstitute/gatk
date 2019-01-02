@@ -117,7 +117,7 @@ public class RevertSamSpark extends GATKSparkTool {
             " Output format can be overridden with the outputByReadgroupFileFormat option.\n" +
             "Note: If the program fails due to a SAM validation error, consider setting the VALIDATION_STRINGENCY option to " +
             "LENIENT or SILENT if the failures are expected to be obviated by the reversion process " +
-            "(e.g. invalid alignment information will be obviated when the keepAlignmentInformation option is used).\n" +
+            "(e.g. invalid alignment information will be obviated when the keep-alignment-information option is used).\n" +
             "";
     public static final String OUTPUT_MAP_READ_GROUP_FIELD_NAME = "READ_GROUP_ID";
     public static final String OUTPUT_MAP_OUTPUT_FILE_FIELD_NAME = "OUTPUT";
@@ -167,10 +167,10 @@ public class RevertSamSpark extends GATKSparkTool {
     public static final String DONT_REMOVE_DUPLICATE_INFORMATION_LONG_NAME = "remove-duplicate-information";
     @Argument(fullName = DONT_REMOVE_DUPLICATE_INFORMATION_LONG_NAME, doc = "By default we remove duplicate read flags from all reads.  Note that if this is true, " +
             " the output may have the unusual but sometimes desirable trait of having unmapped reads that are marked as duplicates.")
-    public boolean dontRemoveDuplicateInformation = false;
+    public boolean keepDuplicateInformation = false;
 
     public static final String KEEP_ALIGNMENT_INFORMATION = "keep-alignment-information";
-    @Argument(fullName = KEEP_ALIGNMENT_INFORMATION, doc = "Remove all alignment information from the file.")
+    @Argument(fullName = KEEP_ALIGNMENT_INFORMATION, doc = "Don't remove any of the alignment information from the file.")
     public boolean keepAlignmentInformation = false;
 
     public static final String ATTRIBUTE_TO_CLEAR_LONG_NAME = "attributes-to-clear";
@@ -198,7 +198,7 @@ public class RevertSamSpark extends GATKSparkTool {
         return Collections.singletonList(ReadFilterLibrary.ALLOW_ALL_READS);
     }
 
-    public static List<String> DEFAULT_ATTRIBUTES_TO_CLEAR = Collections.unmodifiableList(new ArrayList<String>(){
+    final public static List<String> DEFAULT_ATTRIBUTES_TO_CLEAR = Collections.unmodifiableList(new ArrayList<String>(){
         private static final long serialVersionUID = 1L;{
         add(SAMTag.NM.name());
         add(SAMTag.UQ.name());
@@ -530,7 +530,7 @@ public class RevertSamSpark extends GATKSparkTool {
             });
         }
 
-        if (!dontRemoveDuplicateInformation) {
+        if (!keepDuplicateInformation) {
             reads = reads.map(r -> {r.setIsDuplicate(false); return r;});
         }
 
