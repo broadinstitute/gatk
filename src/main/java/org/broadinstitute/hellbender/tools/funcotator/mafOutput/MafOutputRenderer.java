@@ -156,10 +156,13 @@ public class MafOutputRenderer extends OutputRenderer {
      *
      * @param outputFilePath {@link Path} to output file (must not be null).
      * @param dataSources {@link List} of {@link DataSourceFuncotationFactory} to back our annotations (must not be null).
-     * @param inputFileHeader {@link VCFHeader} of input VCF file to preserve.
-     * @param unaccountedForDefaultAnnotations {@link LinkedHashMap} of default annotations that must be added.
-     * @param unaccountedForOverrideAnnotations {@link LinkedHashMap} of override annotations that must be added.
-     * @param toolHeaderLines Lines to add to the header with information about Funcotator.
+     * @param inputFileHeader {@link VCFHeader} of input VCF file to preserve (must not be null).
+     * @param unaccountedForDefaultAnnotations {@link LinkedHashMap} of default annotations that must be added (must not be null).
+     * @param unaccountedForOverrideAnnotations {@link LinkedHashMap} of override annotations that must be added (must not be null).
+     * @param toolHeaderLines Lines to add to the header with information about the tool (must not be null).
+     * @param referenceVersion Version of the reference we're using (must not be null).
+     * @param excludedOutputFields Fields that should not be rendered in the final output. Only exact name matches will be excluded (must not be null).
+     * @param toolVersion The version number of the tool used to produce the MAF file (must not be null).
      */
     public MafOutputRenderer(final Path outputFilePath,
                              final List<DataSourceFuncotationFactory> dataSources,
@@ -167,7 +170,19 @@ public class MafOutputRenderer extends OutputRenderer {
                              final LinkedHashMap<String, String> unaccountedForDefaultAnnotations,
                              final LinkedHashMap<String, String> unaccountedForOverrideAnnotations,
                              final Set<String> toolHeaderLines,
-                             final String referenceVersion, final Set<String> excludedOutputFields) {
+                             final String referenceVersion,
+                             final Set<String> excludedOutputFields,
+                             final String toolVersion) {
+        super(toolVersion);
+
+        Utils.nonNull(outputFilePath);
+        Utils.nonNull(dataSources);
+        Utils.nonNull(inputFileHeader);
+        Utils.nonNull(unaccountedForDefaultAnnotations);
+        Utils.nonNull(unaccountedForOverrideAnnotations);
+        Utils.nonNull(toolHeaderLines);
+        Utils.nonNull(referenceVersion);
+        Utils.nonNull(excludedOutputFields);
 
         // Set our internal variables from the input:
         this.outputFilePath = outputFilePath;
@@ -190,9 +205,7 @@ public class MafOutputRenderer extends OutputRenderer {
 
         // Merge the default annotations into our manualAnnotations:
         manualAnnotations = new LinkedHashMap<>();
-        if ( unaccountedForDefaultAnnotations != null ) {
-            manualAnnotations.putAll(unaccountedForDefaultAnnotations);
-        }
+        manualAnnotations.putAll(unaccountedForDefaultAnnotations);
 
         // Handle our override annotations a little differently:
         this.overrideAnnotations = unaccountedForOverrideAnnotations;
@@ -639,7 +652,7 @@ public class MafOutputRenderer extends OutputRenderer {
             writer.write(MafOutputRendererConstants.COMMENT_STRING);
             writer.write(" ");
             writer.write(" Funcotator ");
-            writer.write(Funcotator.VERSION);
+            writer.write(toolVersion);
             writer.write(" | Date ");
             writer.write(new SimpleDateFormat("yyyymmdd'T'hhmmss").format(new Date()));
             writer.write(" | ");

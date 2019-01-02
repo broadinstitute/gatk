@@ -1318,7 +1318,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         // Needs to get aliases from the MAF, since AF (and maybe more) has its name changed.  So create a dummy
         //  MafOutputRenderer that mimics the one that is used in the command line invocation above and get the aliases.
         final File dummyOutputFile = getOutputFile(FuncotatorArgumentDefinitions.OutputFormatType.MAF);
-        final MafOutputRenderer dummyMafOutputRenderer = new MafOutputRenderer(dummyOutputFile.toPath(), Collections.emptyList(), new VCFHeader(), new LinkedHashMap<>(), new LinkedHashMap<>(), new HashSet<>(), "b37", new HashSet<String>());
+        final MafOutputRenderer dummyMafOutputRenderer = new MafOutputRenderer(dummyOutputFile.toPath(), Collections.emptyList(), new VCFHeader(), new LinkedHashMap<>(), new LinkedHashMap<>(), new HashSet<>(), "b37", new HashSet<String>(), "Unknown");
         final Map<String, Set<String>> mafAliasMap = dummyMafOutputRenderer.getReverseOutputFieldNameMap();
 
         // Get all of the alias lists
