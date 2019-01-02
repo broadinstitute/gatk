@@ -75,9 +75,6 @@ public class VcfOutputRenderer extends OutputRenderer {
     /** List of the fields that will get rendered in the funcotation annotation.  Excluded fields have been removed.  */
     private final List<String> finalFuncotationFieldNames;
 
-    /** The version of the tool used to produce the VCF file. */
-    private final String toolVersion;
-
     //==================================================================================================================
     
     /**
@@ -100,6 +97,8 @@ public class VcfOutputRenderer extends OutputRenderer {
                              final Set<VCFHeaderLine> defaultToolVcfHeaderLines,
                              final Set<String> excludedOutputFields,
                              final String toolVersion) {
+        super(toolVersion);
+
         Utils.nonNull(vcfWriter);
         Utils.nonNull(dataSources);
         Utils.nonNull(existingHeader);
@@ -107,12 +106,10 @@ public class VcfOutputRenderer extends OutputRenderer {
         Utils.nonNull(unaccountedForOverrideAnnotations);
         Utils.nonNull(defaultToolVcfHeaderLines);
         Utils.nonNull(excludedOutputFields);
-        Utils.nonNull(toolVersion);
 
         this.vcfWriter = vcfWriter;
         this.existingHeader = existingHeader;
         this.dataSourceFactories = dataSources;
-        this.toolVersion = toolVersion;
 
         // Merge the annotations into our manualAnnotations:
         manualAnnotations = new LinkedHashMap<>();

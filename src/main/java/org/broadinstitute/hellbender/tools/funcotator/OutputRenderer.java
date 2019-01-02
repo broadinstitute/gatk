@@ -34,7 +34,28 @@ public abstract class OutputRenderer implements AutoCloseable {
      */
     protected List<DataSourceFuncotationFactory> dataSourceFactories;
 
+    /**
+     * The version of the tool used to produce the output file.
+     */
+    protected final String toolVersion;
+
     //==================================================================================================================
+
+    /**
+     * Initialize an OutputRenderer
+     *
+     * @param toolVersion The version number of the tool used to produce the output file (must not be null).
+     */
+    public OutputRenderer(final String toolVersion) {
+        this.toolVersion = Utils.nonNull(toolVersion);
+    }
+
+    /**
+     * @return the version number of the tool used to produce the output file
+     */
+    public String getToolVersion() {
+        return toolVersion;
+    }
 
     /**
      * @return A {@link String} containing information about the data sources that are used to create the {@link Funcotation}s by this {@link OutputRenderer}.

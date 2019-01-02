@@ -148,9 +148,6 @@ public class MafOutputRenderer extends OutputRenderer {
     /** Fields that should be removed in the final MAF file. */
     private final Set<String> excludedOutputFields;
 
-    /** The version of the tool used to produce the MAF file. */
-    private final String toolVersion;
-
     //==================================================================================================================
     // Constructors:
 
@@ -176,6 +173,8 @@ public class MafOutputRenderer extends OutputRenderer {
                              final String referenceVersion,
                              final Set<String> excludedOutputFields,
                              final String toolVersion) {
+        super(toolVersion);
+
         Utils.nonNull(outputFilePath);
         Utils.nonNull(dataSources);
         Utils.nonNull(inputFileHeader);
@@ -184,7 +183,6 @@ public class MafOutputRenderer extends OutputRenderer {
         Utils.nonNull(toolHeaderLines);
         Utils.nonNull(referenceVersion);
         Utils.nonNull(excludedOutputFields);
-        Utils.nonNull(toolVersion);
 
         // Set our internal variables from the input:
         this.outputFilePath = outputFilePath;
@@ -192,7 +190,6 @@ public class MafOutputRenderer extends OutputRenderer {
         this.inputFileHeader = inputFileHeader;
         this.dataSourceFactories = dataSources;
         this.referenceVersion = referenceVersion;
-        this.toolVersion = toolVersion;
 
         this.tnPairs = SamplePairExtractor.extractPossibleTumorNormalPairs(this.inputFileHeader);
         if (tnPairs.size() == 0) {
