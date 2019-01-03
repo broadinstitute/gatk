@@ -285,7 +285,7 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
         if (currentChrom == null) {
             currentChrom = read.getContig();
         }
-        if (dist > maxSplitDist) {
+        if (dist > maxSplitDist || currentChrom != read.getContig()) {
             flushSplitCounts();
             currentChrom = read.getContig();
         }
@@ -330,6 +330,7 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
     @Override
     public Object onTraversalSuccess() {
         flushSplitCounts();
+        flushDiscordantReadPairs();
         return null;
     }
 
