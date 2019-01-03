@@ -29,6 +29,7 @@ import org.broadinstitute.hellbender.utils.codecs.table.TableCodec;
 import org.broadinstitute.hellbender.utils.codecs.table.TableFeature;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.spark.SparkUtils;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import scala.Tuple2;
@@ -521,7 +522,7 @@ public class RevertSamSpark extends GATKSparkTool {
 
         if (!dontRestoreOriginalQualities) {
             reads = reads.map(r -> {
-                final byte[] oq = r.getOriginalBaseQualities();
+                final byte[] oq = ReadUtils.getOriginalBaseQualities(r);
                 if (oq != null) {
                     r.setBaseQualities(oq);
                     r.setAttribute("OQ", (String)null);
@@ -545,7 +546,7 @@ public class RevertSamSpark extends GATKSparkTool {
                 rec.setIsUnplaced();
                 rec.setCigar(SAMRecord.NO_ALIGNMENT_CIGAR);
 
-                rec.setInferredInsertSize(0);
+                rec.setFragmentLength(0);
                 rec.setIsSecondaryAlignment(false);
                 rec.setIsProperlyPaired(false);
 

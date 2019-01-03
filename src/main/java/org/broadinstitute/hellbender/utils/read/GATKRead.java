@@ -305,20 +305,6 @@ public interface GATKRead extends Locatable {
     byte[] getBaseQualities();
 
     /**
-     * If the original base quality scores have been store in the "OQ" tag will return the numeric
-     * score as a byte[]
-     */
-    default byte[] getOriginalBaseQualities() {
-        final String oqString = getAttributeAsString("OQ");
-        if (oqString != null && !oqString.isEmpty()) {
-            return SAMUtils.fastqToPhred(oqString);
-        }
-        else {
-            return null;
-        }
-    }
-
-    /**
      * @return Base qualities as binary phred scores (not ASCII), or an empty byte[] if base qualities are not present.
      *
      * This method differs from {@link #getBaseQualities} in that implementations are free to avoid making a
@@ -494,12 +480,6 @@ public interface GATKRead extends Locatable {
      * To mark a read as mapped, use {@link #setPosition}
      */
     void setIsUnplaced();
-
-    /**
-     * insert size (difference btw 5' end of read & 5' end of mate), if possible, else 0.
-     * Negative if mate maps to lower position than read.
-     */
-    void setInferredInsertSize(int insertSize);
 
     /**
      * @return True if this read's mate is unmapped (this includes mates that have a position but are explicitly marked as unmapped,
