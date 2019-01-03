@@ -194,12 +194,13 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
 
     @Test( dataProvider = "md")
     public void testMarkDuplicatesSparkMarkingOpticalDuplicatesWithTagging(
-            final File input, final long totalExpected, final long dupsExpected,
+            final File[] inputFiles, final long totalExpected, final long dupsExpected,
             Map<String, List<String>> metricsExpected) throws IOException {
 
         ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
-        args.add(input.getPath());
+        for (File input : inputFiles) {
+            args.addArgument(StandardArgumentDefinitions.INPUT_LONG_NAME,input.getPath());
+        }
         args.add("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
 
         File outputFile = createTempFile("markdups", ".bam");
@@ -258,12 +259,13 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
     @Test( dataProvider = "md")
     // Testing the DUPLICATE_TAGGING_POLICY_LONG_NAME = ALL option.
     public void testMarkDuplicatesSparkMarkingAllDuplicatesWithTagging(
-            final File input, final long totalExpected, final long dupsExpected,
+            final File[] inputFiles, final long totalExpected, final long dupsExpected,
             Map<String, List<String>> metricsExpected) throws IOException {
 
         ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
-        args.add(input.getPath());
+        for (File input : inputFiles) {
+            args.addArgument(StandardArgumentDefinitions.INPUT_LONG_NAME,input.getPath());
+        }
         args.add("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
 
         File outputFile = createTempFile("markdups", ".bam");
@@ -329,12 +331,13 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
 
     @Test( dataProvider = "md")
     public void testMarkDuplicatesSparkDeletingDuplicateReads(
-            final File input, final long totalExpected, final long dupsExpected,
+            final File[] inputFiles, final long totalExpected, final long dupsExpected,
             Map<String, List<String>> metricsExpected) throws IOException {
 
         ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--"+ StandardArgumentDefinitions.INPUT_LONG_NAME);
-        args.add(input.getPath());
+        for (File input : inputFiles) {
+            args.addArgument(StandardArgumentDefinitions.INPUT_LONG_NAME,input.getPath());
+        }
         args.add("--"+StandardArgumentDefinitions.OUTPUT_LONG_NAME);
 
         File outputFile = createTempFile("markdups", ".bam");
@@ -383,12 +386,13 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
 
     @Test( dataProvider = "md")
     public void testMarkDuplicatesSparkDeletingOpticalDuplicateReads(
-            final File input, final long totalExpected, final long dupsExpected,
+            final File[] inputFiles, final long totalExpected, final long dupsExpected,
             Map<String, List<String>> metricsExpected) throws IOException {
 
         ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
-        args.add(input.getPath());
+        for (File input : inputFiles) {
+            args.addArgument(StandardArgumentDefinitions.INPUT_LONG_NAME,input.getPath());
+        }
         args.add("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
 
         File outputFile = createTempFile("markdups", ".bam");
