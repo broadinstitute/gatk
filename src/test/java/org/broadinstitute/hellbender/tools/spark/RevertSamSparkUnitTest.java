@@ -21,6 +21,11 @@ public class RevertSamSparkUnitTest extends CommandLineProgramTest {
     private final File nonExistentOutputMap = getTestFile("revert_sam_does_not_exist.txt");
     private final File badHeaderOutputMap = getTestFile("revert_sam_bad_header_output_map.txt");
 
+    @Override
+    public String getToolTestDataDir() {
+        return "src/test/resources/org/broadinstitute/hellbender/tools/spark/revertsamspark";
+    }
+
     @Test
     public static void testFilePathsWithoutMapFile() {
         final SAMReadGroupRecord rg1 = new SAMReadGroupRecord("rg1");

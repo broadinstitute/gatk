@@ -82,7 +82,7 @@ public final class TableCodec extends AsciiFeatureCodec<TableFeature> {
 
     @Override
     public TableFeature decode(final String line) {
-        if ((headerDelimiter != null && ! line.startsWith(headerDelimiter)) ||
+        if ((headerDelimiter != null && line.startsWith(headerDelimiter)) ||
                 (headerDelimiter == null && !havePassedHeader) ||
                 line.startsWith(COMMENT_DELIMITER) || line.startsWith(IGV_HEADER_DELIMITER)) {
             havePassedHeader = true;

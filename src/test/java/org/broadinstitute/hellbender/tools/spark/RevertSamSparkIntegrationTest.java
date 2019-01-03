@@ -22,8 +22,6 @@ import java.util.*;
 @Test(groups = "Spark")
 public class RevertSamSparkIntegrationTest extends CommandLineProgramTest {
 
-
-
     private static List<String> defaultAttributesToClearPlusXT = new ArrayList<String>() {
         private static final long serialVersionUID = 1L;
         {
@@ -47,7 +45,7 @@ public class RevertSamSparkIntegrationTest extends CommandLineProgramTest {
 
     @Override
     public String getToolTestDataDir() {
-        return "src/test/resources/org/broadinstitute/hellbender/tools/spark/RevertSamSpark";
+        return "src/test/resources/org/broadinstitute/hellbender/tools/spark/revertsamspark";
     }
 
     @DataProvider(name="positiveTestData")
