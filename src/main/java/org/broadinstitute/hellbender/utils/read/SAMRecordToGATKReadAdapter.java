@@ -448,13 +448,6 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
     }
 
     @Override
-    public void setInferredInsertSize(int insertSize) {
-        clearCachedValues();
-
-        samRecord.setInferredInsertSize(insertSize);
-    }
-
-    @Override
     public boolean mateIsUnmapped() {
         Utils.validate(isPaired(), "Cannot get mate information for an unpaired read");
 
@@ -493,7 +486,6 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
         samRecord.setMateReferenceIndex(SAMRecord.NO_ALIGNMENT_REFERENCE_INDEX);
         samRecord.setMateAlignmentStart(SAMRecord.NO_ALIGNMENT_START);
     }
-
 
     @Override
     public boolean isReverseStrand() {
