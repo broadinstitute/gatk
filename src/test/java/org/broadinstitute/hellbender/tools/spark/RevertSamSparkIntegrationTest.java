@@ -23,6 +23,7 @@ import java.util.*;
 public class RevertSamSparkIntegrationTest extends CommandLineProgramTest {
 
 
+
     private static List<String> defaultAttributesToClearPlusXT = new ArrayList<String>() {
         private static final long serialVersionUID = 1L;
         {
@@ -44,7 +45,10 @@ public class RevertSamSparkIntegrationTest extends CommandLineProgramTest {
 
     private static final String unmappedRead = "both_reads_present_only_first_aligns/2";
 
-
+    @Override
+    public String getToolTestDataDir() {
+        return "src/test/resources/org/broadinstitute/hellbender/tools/spark/RevertSamSpark";
+    }
 
     @DataProvider(name="positiveTestData")
     public Object[][] positiveTestData() {

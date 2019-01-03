@@ -440,11 +440,11 @@ public final class SamAssertionUtils {
         // We can't use ArgumentsBuilder since it assumes GATK argument names, but we're running a Picard
         // tool, which uses upper case argument names.
         final List<String> args = new ArrayList<>(6);
-        args.add("--input");
+        args.add("-I");
         args.add(input.getAbsolutePath());
-        args.add("--output");
+        args.add("-O");
         args.add(output.getAbsolutePath());
-        args.add("--sortOrder");
+        args.add("-SO");
         args.add(SAMFileHeader.SortOrder.coordinate.name());
         args.add("--VALIDATION_STRINGENCY");
         args.add(stringency.name());
