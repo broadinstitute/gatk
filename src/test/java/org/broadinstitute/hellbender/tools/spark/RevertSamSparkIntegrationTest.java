@@ -43,11 +43,6 @@ public class RevertSamSparkIntegrationTest extends CommandLineProgramTest {
 
     private static final String unmappedRead = "both_reads_present_only_first_aligns/2";
 
-    @Override
-    public String getToolTestDataDir() {
-        return "src/test/resources/org/broadinstitute/hellbender/tools/spark/revertsamspark";
-    }
-
     @DataProvider(name="positiveTestData")
     public Object[][] positiveTestData() {
         return new Object[][] {
