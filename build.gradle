@@ -376,6 +376,7 @@ tasks.withType(Jar) {
     manifest {
         attributes 'Implementation-Title': 'The Genome Analysis Toolkit (GATK)',
                 'Implementation-Version': version,
+                'Toolkit-Short-Name' : 'GATK',
                 'Main-Class': project.mainClassName,
                 'Picard-Version': picardVersion,
                 'htsjdk-Version': htsjdkVersion

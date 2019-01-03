@@ -22,11 +22,10 @@ import org.broadinstitute.hellbender.utils.config.ConfigFactory;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.runtime.RuntimeUtils;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.InetAddress;
-import java.net.URL;
 import java.nio.file.*;
 import java.text.DecimalFormat;
 import java.time.Duration;
@@ -293,7 +292,7 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
 
     /**
      * If this tool is either Experimental or Beta, return a warning message advising against use in production
-     * environment.
+     * envirogetnment.
      * @param useTerminalColor true if the message should include highlighting terminal colorization
      * @return a warning message if the tool is Beta or Experimental, otherwise null
      */
@@ -353,17 +352,21 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
      * May be overridden by subclasses to provide a custom implementation if desired.
      */
     protected String getToolkitName() {
-        final String implementationTitle = getClass().getPackage().getImplementationTitle();
-        return implementationTitle != null ? implementationTitle : getClass().getPackage().getName();
+        return RuntimeUtils.getToolkitName(this.getClass());
     }
 
     /**
-     * @return An abbreviated name of the toolkit for this tool. Subclasses may override to provide
-     *         a custom toolkit name.
+     * @return An abbreviated name of the toolkit for this tool. Looks for "Tool-Short-Name" in the manifest by default.
+     *         Uses {@link #DEFAULT_TOOLKIT_SHORT_NAME} if the manifest is unavailable.
+     * Subclasses may override to do something different.
      */
     protected String getToolkitShortName() {
-        // TODO: stored in the jar manifest, like {@link CommandLineProgram#getToolkitName}
-        return DEFAULT_TOOLKIT_SHORT_NAME;
+        final Manifest manifest = RuntimeUtils.getManifest(this.getClass());
+        if( manifest != null){
+            return manifest.getMainAttributes().getValue("Toolkit-Short-Name");
+        } else {
+            return DEFAULT_TOOLKIT_SHORT_NAME;
+        }
     }
 
     /**
@@ -373,10 +376,7 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
      * May be overridden by subclasses to provide a custom implementation if desired.
      */
     public String getVersion() {
-        String versionString = this.getClass().getPackage().getImplementationVersion();
-        return versionString != null ?
-                versionString :
-                "Unavailable";
+       return RuntimeUtils.getVersion(this.getClass());
     }
 
     /**
@@ -394,21 +394,13 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
      * May be overridden by subclasses to provide a custom implementation if desired.
      */
     protected void printLibraryVersions() {
-        try {
-            final String classPath = getClass().getResource(getClass().getSimpleName() + ".class").toString();
-            if (classPath.startsWith("jar")) {
-                final String manifestPath = classPath.substring(0, classPath.lastIndexOf("!") + 1) + "/META-INF/MANIFEST.MF";
-                try ( final InputStream manifestStream = new URL(manifestPath).openStream() ) {
-                    final Attributes manifestAttributes = new Manifest(manifestStream).getMainAttributes();
-                    final String htsjdkVersion = manifestAttributes.getValue("htsjdk-Version");
-                    final String picardVersion = manifestAttributes.getValue("Picard-Version");
-
-                    logger.info("HTSJDK Version: " + (htsjdkVersion != null ? htsjdkVersion : "unknown"));
-                    logger.info("Picard Version: " + (picardVersion != null ? picardVersion : "unknown"));
-                }
-            }
-        }
-        catch (IOException ignored) {
+        final Manifest manifest = RuntimeUtils.getManifest(this.getClass());
+        if( manifest != null ){
+                final Attributes manifestAttributes = manifest.getMainAttributes();
+                final String htsjdkVersion = manifestAttributes.getValue("htsjdk-Version");
+                final String picardVersion = manifestAttributes.getValue("Picard-Version");
+                logger.info("HTSJDK Version: " + (htsjdkVersion != null ? htsjdkVersion : "unknown"));
+                logger.info("Picard Version: " + (picardVersion != null ? picardVersion : "unknown"));
         }
     }
 
@@ -426,9 +418,8 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
         }
         else {
             // At DEBUG verbosity, print all the HTSJDK defaults:
-            Defaults.allDefaults().entrySet().stream().forEach(e->
-                    logger.info("HTSJDK " + Defaults.class.getSimpleName() + "." + e.getKey() + " : " + e.getValue())
-            );
+            Defaults.allDefaults()
+                    .forEach((key, value) -> logger.info("HTSJDK " + Defaults.class.getSimpleName() + "." + key + " : " + value));
         }
 
         // Log the configuration options:
