@@ -93,6 +93,8 @@ import static java.util.Collections.singleton;
  *    --filter-name "my_filter" \
  *    --filter-expression "AB < 0.2 || MQ0 > 50"
  *  </pre>
+ * See this <a href="https://www.broadinstitute.org/gatk/guide/article?id=1255">article about using JEXL expressions</a>
+ * for more information.
  */
 @CommandLineProgramProperties(
         summary = "Filter variant calls based on INFO and/or FORMAT annotations.",
