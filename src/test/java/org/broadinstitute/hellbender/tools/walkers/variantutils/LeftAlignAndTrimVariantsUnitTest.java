@@ -20,6 +20,10 @@ import java.util.*;
 import java.util.stream.*;
 import java.io.File;
 
+/**
+ * These tests should be refactored. They currently call LeftalignAndTrimVariants instance methods without
+ * putting it through the tool lifecycle.
+ */
 public class LeftAlignAndTrimVariantsUnitTest extends GATKBaseTest {
     final String refBases1 = "GCAGAGCTGACCCTCCCTCCCCTCTCCCAGTGCAACAGCACGGGCGGCGACTGCTTTTACCGAGGCTACACGTCAGGCGTGGCGGCTGTCCAGGACTGGTACCACTTCCACTATGTGGATCTCTGCTGAGGACCAGGAAAGCCAGCACCCGCAGAGACTCTTCCCCAGTGCTCCATACGATCACCATTCTCTGCAGAAGG";
     final String longStr = "AGTCGCTCGAGCTCGAGCTCGAGTGTGCGCTCTACAGCTCAGCTCGCTCGCACACAT";
@@ -96,7 +100,7 @@ public class LeftAlignAndTrimVariantsUnitTest extends GATKBaseTest {
                     ReferenceContext ref = new ReferenceContext(refSource, interval);
 
                     final VariantContext vc = new VariantContextBuilder("test", artificialContig, indelIndex + 1, indelIndex + alleles.get(0).length(), alleles).make();
-                    final boolean expectRealigned = (indelIndex != repeatStart - 1) && (indelRepeats * strLength <= LeftAlignAndTrimVariants.maxIndelSize);
+                    final boolean expectRealigned = (indelIndex != repeatStart - 1) && (indelRepeats * strLength <= LeftAlignAndTrimVariants.DEFAULT_MAX_INDEL_SIZE);
                     final int expectedStart = expectRealigned ? repeatStart : indelIndex + 1;
                     tests.add(new Object[]{vc, ref, expectRealigned, expectedStart});
                 }
@@ -155,7 +159,7 @@ public class LeftAlignAndTrimVariantsUnitTest extends GATKBaseTest {
         Assert.assertEquals(1, leftAligner.numSkippedForLength);
         leftAligner.longestSkippedVariant = 0;
         leftAligner.numSkippedForLength = 0;
-        LeftAlignAndTrimVariants.maxIndelSize = lengthSkippedVariant;
+        leftAligner.maxIndelSize = lengthSkippedVariant;
         leftAligner.leftAlign(vc, ref);
         Assert.assertEquals(0, leftAligner.longestSkippedVariant);
         Assert.assertEquals(0, leftAligner.numSkippedForLength);
