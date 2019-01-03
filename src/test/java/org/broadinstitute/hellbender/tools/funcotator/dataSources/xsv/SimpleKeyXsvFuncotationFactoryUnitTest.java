@@ -397,4 +397,32 @@ public class SimpleKeyXsvFuncotationFactoryUnitTest extends GATKBaseTest {
         }
     }
 
+    /*
+     * Test that when we match on transcript IDs, we ignore the transcript version numbers
+     */
+    @Test
+    public void testCreateFuncotationsIgnoresTranscriptVersions() {
+        final SimpleKeyXsvFuncotationFactory xsvFuncotationFactory = new SimpleKeyXsvFuncotationFactory(
+                defaultName,
+                IOUtils.getPath(FuncotatorTestConstants.XSV_CSV_MUC16_PATH),
+                "VERSION",
+                ",",
+                1,
+                SimpleKeyXsvFuncotationFactory.XsvDataKeyType.TRANSCRIPT_ID
+        );
+
+        // Our test file FuncotatorTestConstants.XSV_CSV_MUC16_PATH has transcript ID "ENST00000263967.3",
+        // so this will test whether we ignore the transcript versions when matching on ID:
+        final GencodeFuncotation gencodeFuncotation =
+                new GencodeFuncotationBuilder().setAnnotationTranscript("ENST00000263967.4").build();
+
+        final List<Funcotation> funcotations = xsvFuncotationFactory.createFuncotationsOnVariant(defaultVariantContext, defaultReferenceContext,
+                Collections.emptyList(), Collections.singletonList(gencodeFuncotation));
+
+        Assert.assertEquals(funcotations.size(), 1, "Wrong number of funcotations returned");
+        final Funcotation funcotation = funcotations.get(0);
+        Assert.assertTrue(funcotation instanceof TableFuncotation, "Got back a funcotation of the wrong type");
+        final TableFuncotation tableFuncotation = (TableFuncotation)funcotation;
+        Assert.assertEquals(tableFuncotation.get(defaultName + "_Beatle"), "Harrison", "Wrong value for the Beatle column in returned funcotation");
+    }
 }
