@@ -976,22 +976,7 @@ public final class IOUtils {
      * @param fileToDelete file or directory to be deleted at JVM shutdown.
      */
     public static void deleteOnExit(final Path fileToDelete){
-        Runtime.getRuntime().addShutdownHook(new Thread() {
-            @Override
-            public void run() {
-                try {
-                    if (Files.isDirectory(fileToDelete)) {
-                        deleteRecursively(fileToDelete);
-                    } else {
-                        Files.deleteIfExists(fileToDelete);
-                    }
-                } catch (ClosedFileSystemException e){
-                    // This happens if we've correctly closed a jimfs file system but have marked files in it for deletion.
-                } catch (IOException e) {
-                    logger.warn("Failed to delete file: " + fileToDelete.toUri().toString() + ".", e);
-                }
-            }
-        });
+       DeleteRecursivelyOnExitPathHook.add(fileToDelete);
     }
 
     /**
