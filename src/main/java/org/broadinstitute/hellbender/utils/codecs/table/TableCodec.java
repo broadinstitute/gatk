@@ -5,6 +5,7 @@ import htsjdk.tribble.readers.LineIterator;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -67,9 +68,7 @@ public final class TableCodec extends AsciiFeatureCodec<TableFeature> {
      */
     public TableCodec(final String headerLineDelimiter) {
         super(TableFeature.class);
-        if ( "".equals(headerLineDelimiter) ) {
-            throw new GATKException("HeaderLineDelimiter must either be a valid delimiter or null");
-        }
+        Utils.nonEmpty(headerLineDelimiter);
         headerDelimiter = headerLineDelimiter;
     }
 

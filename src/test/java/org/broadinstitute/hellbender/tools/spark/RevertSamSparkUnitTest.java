@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.spark;
 
 import htsjdk.samtools.SAMReadGroupRecord;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -10,6 +11,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -86,9 +88,42 @@ public class RevertSamSparkUnitTest extends CommandLineProgramTest {
     }
 
     @Test
+    public static void testGetDefaultExtension() {
+        Assert.assertEquals(RevertSamSpark.getDefaultExtension("this.is.a.sam", RevertSamSpark.FileType.dynamic), ".sam");
+        //Assert.assertEquals(RevertSamSpark.getDefaultExtension("this.is.a.cram", RevertSamSpark.FileType.dynamic), ".cram"); //TODO https://github.com/broadinstitute/gatk/issues/5559
+        Assert.assertEquals(RevertSamSpark.getDefaultExtension("this.is.a.bam", RevertSamSpark.FileType.dynamic), ".bam");
+        Assert.assertEquals(RevertSamSpark.getDefaultExtension("foo", RevertSamSpark.FileType.dynamic), ".bam");
+    }
+
+    @Test
     public static void testValidateOutputParamsNotByReadGroupDir() throws IOException {
         final List<String> errors = RevertSamSpark.validateOutputParamsNotByReadGroup(createTempDir("testValidateOutputParamsNotByReadGroupDir").getAbsolutePath(), null);
         Assert.assertEquals(errors.size(), 1);
         Assert.assertEquals(errors.get(0).contains("should not be a directory"), true);
+    }
+
+    @Test
+    public void testAssertAllReadGroupsMappedSuccess() {
+        final SAMReadGroupRecord rg1 = new SAMReadGroupRecord("rg1");
+        final SAMReadGroupRecord rg2 = new SAMReadGroupRecord("rg2");
+
+        final Map<String, Path> outputMap = new HashMap<>();
+        outputMap.put("rg1", IOUtils.getPath(new File("/foo/bar/rg1.bam").getAbsolutePath()));
+        outputMap.put("rg2", IOUtils.getPath(new File("/foo/bar/rg2.bam").getAbsolutePath()));
+        RevertSamSpark.assertAllReadGroupsMapped(outputMap, Arrays.asList(rg1, rg2));
+        RevertSamSpark.assertAllReadGroupsMapped(outputMap, Arrays.asList(rg1));
+        RevertSamSpark.assertAllReadGroupsMapped(outputMap, Arrays.asList(rg2));
+    }
+
+    @Test(expectedExceptions = {GATKException.class})
+    public void testAssertAllReadGroupsMappedFailure() {
+        final SAMReadGroupRecord rg1 = new SAMReadGroupRecord("rg1");
+        final SAMReadGroupRecord rg2 = new SAMReadGroupRecord("rg2");
+        final SAMReadGroupRecord rg3 = new SAMReadGroupRecord("rg3");
+
+        final Map<String, Path> outputMap = new HashMap<>();
+        outputMap.put("rg1", IOUtils.getPath(new File("/foo/bar/rg1.bam").getAbsolutePath()));
+        outputMap.put("rg2", IOUtils.getPath(new File("/foo/bar/rg2.bam").getAbsolutePath()));
+        RevertSamSpark.assertAllReadGroupsMapped(outputMap, Arrays.asList(rg1, rg2, rg3));
     }
 }
