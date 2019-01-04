@@ -28,10 +28,10 @@ import static org.broadinstitute.hellbender.utils.variant.writers.GVCFWriter.GVC
 /**
  * Combines variants into GVCF blocks.
  */
-public final class GVCFBlockCombiner implements PushPullTransformer<VariantContext> {
-    private final RangeMap<Integer, Range<Integer>> gqPartitions;
-    private final int defaultPloidy;
-    private final Queue<VariantContext> toOutput = new ArrayDeque<>();
+public class GVCFBlockCombiner implements PushPullTransformer<VariantContext> {
+    final RangeMap<Integer, Range<Integer>> gqPartitions;
+    final int defaultPloidy;
+    final Queue<VariantContext> toOutput = new ArrayDeque<>();
 
     /**
      * fields updated on the fly during GVCFWriter operation
@@ -40,9 +40,9 @@ public final class GVCFBlockCombiner implements PushPullTransformer<VariantConte
     private String contigOfNextAvailableStart = null;
     private String sampleName = null;
 
-    private HomRefBlock currentBlock = null;
+    GVCFBlock currentBlock = null;
 
-    public GVCFBlockCombiner(List<Integer> gqPartitions, int defaultPloidy) {
+    public GVCFBlockCombiner(List<Number> gqPartitions, int defaultPloidy) {
         this.gqPartitions = parsePartitions(gqPartitions);
         this.defaultPloidy = defaultPloidy;
     }
@@ -53,16 +53,19 @@ public final class GVCFBlockCombiner implements PushPullTransformer<VariantConte
      * Each individual block covers a band of genotype qualities with the splits between bands occurring at values in {@code gqPartitions}.
      * There will be {@code gqPartitions.size() +1} bands produced covering the entire possible range of genotype qualities from 0 to {@link VCFConstants#MAX_GENOTYPE_QUAL}.
      *
+     * Note that this has to return a RangeMap with concrete types because Numbers aren't Comparable
+     *
      * @param gqPartitions proposed GQ partitions
      * @return a list of HomRefBlocks accepting bands of genotypes qualities split at the points specified in gqPartitions
      */
     @VisibleForTesting
-    static RangeMap<Integer,Range<Integer>> parsePartitions(final List<Integer> gqPartitions) {
+    RangeMap<Integer,Range<Integer>> parsePartitions(final List<Number> gqPartitions) {
         Utils.nonEmpty(gqPartitions);
         Utils.containsNoNull(gqPartitions, "The list of GQ partitions contains a null integer");
         final RangeMap<Integer, Range<Integer>> result = TreeRangeMap.create();
         int lastThreshold = 0;
-        for (final Integer value : gqPartitions) {
+        for (final Number num : gqPartitions) {
+            final int value = num.intValue();
             if (value < 0) {
                 throw new IllegalArgumentException("The list of GQ partitions contains a non-positive integer.");
             } else if (value > MAX_GENOTYPE_QUAL + 1) {
@@ -134,11 +137,12 @@ public final class GVCFBlockCombiner implements PushPullTransformer<VariantConte
         return result;
     }
 
-    private boolean genotypeCanBeMergedInCurrentBlock(final Genotype g) {
-        return currentBlock != null
-                && currentBlock.withinBounds(Math.min(g.getGQ(), MAX_GENOTYPE_QUAL))
-                && currentBlock.getPloidy() == g.getPloidy()
-                && (currentBlock.getMinPLs() == null || !g.hasPL() || (currentBlock.getMinPLs().length == g.getPL().length));
+    boolean genotypeCanBeMergedInCurrentBlock(final Genotype g) {
+        final HomRefBlock currentHomRefBlock = (HomRefBlock)currentBlock;
+        return currentHomRefBlock != null
+                && currentHomRefBlock.withinBounds(Math.min(g.getGQ(), MAX_GENOTYPE_QUAL))
+                && currentHomRefBlock.getPloidy() == g.getPloidy()
+                && (currentHomRefBlock.getMinPLs() == null || !g.hasPL() || (currentHomRefBlock.getMinPLs().length == g.getPL().length));
     }
 
     /**
@@ -148,7 +152,7 @@ public final class GVCFBlockCombiner implements PushPullTransformer<VariantConte
      * @param g  the genotype of the sample from vc that should be used to initialize the block
      * @return a newly allocated and initialized block containing g already
      */
-    private HomRefBlock createNewBlock(final VariantContext vc, final Genotype g) {
+    GVCFBlock createNewBlock(final VariantContext vc, final Genotype g) {
         // figure out the GQ limits to use based on the GQ of g
         final int gq = Math.min(g.getGQ(), MAX_GENOTYPE_QUAL);
         final Range<Integer> partition = gqPartitions.get(gq);

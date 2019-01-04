@@ -9,14 +9,15 @@ import java.util.List;
 
 /**
  * Genome-wide VCF writer
+ * Merges blocks based on GQ
  */
-public final class GVCFWriter implements VariantContextWriter {
+public class GVCFWriter implements VariantContextWriter {
 
     public final static String GVCF_BLOCK = "GVCFBlock";
 
     /** Where we'll ultimately write our VCF records */
-    private final VariantContextWriter underlyingWriter;
-    private final GVCFBlockCombiner gvcfBlockCombiner;
+    final VariantContextWriter underlyingWriter;
+    GVCFBlockCombiner gvcfBlockCombiner;
 
     /**
      * Create a new GVCF writer
@@ -36,7 +37,7 @@ public final class GVCFWriter implements VariantContextWriter {
      * @param gqPartitions     a list of GQ partitions, this list must be non-empty and every element must be larger than previous element
      * @param defaultPloidy    the assumed ploidy for input variant context without one.
      */
-    public GVCFWriter(final VariantContextWriter underlyingWriter, final List<Integer> gqPartitions, final int defaultPloidy) {
+    public GVCFWriter(final VariantContextWriter underlyingWriter, final List<Number> gqPartitions, final int defaultPloidy) {
         this.underlyingWriter = Utils.nonNull(underlyingWriter);
         this.gvcfBlockCombiner = new GVCFBlockCombiner(gqPartitions, defaultPloidy);
     }

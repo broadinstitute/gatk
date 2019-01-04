@@ -16,6 +16,7 @@ import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AFCalculator
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerGenotypingEngine;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerUtils;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyResultSet;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConfidenceUtils;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
@@ -83,7 +84,8 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
             final FeatureContext featureContext,
             final List<VariantContext> givenAlleles,
             final SAMFileHeader header,
-            final boolean withBamOut) {
+            final boolean withBamOut,
+            final boolean emitRefConf) {
         Utils.nonNull(log10ReadLikelihoods);
         Utils.validateArg(log10ReadLikelihoods.numberOfSamples() > 0, "likelihoods have no samples");
         Utils.nonNull(activeRegionWindow);
@@ -109,7 +111,7 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
 
         for( final int loc : startPosKeySet ) {
             final List<VariantContext> eventsAtThisLoc = getVariantContextsFromActiveHaplotypes(loc, haplotypes, false);
-            final VariantContext mergedVC = AssemblyBasedCallerUtils.makeMergedVariantContext(eventsAtThisLoc);
+            VariantContext mergedVC = AssemblyBasedCallerUtils.makeMergedVariantContext(eventsAtThisLoc);
             if( mergedVC == null ) {
                 continue;
             }
@@ -119,6 +121,11 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
             final ReadLikelihoods<Allele> log10Likelihoods = log10ReadLikelihoods.marginalize(alleleMapper,
                     new SimpleInterval(mergedVC).expandWithinContig(ALLELE_EXTENSION, header.getSequenceDictionary()));
             filterOverlappingReads(log10Likelihoods, mergedVC.getReference(), loc, false);
+
+            if (emitRefConf) {
+                mergedVC = ReferenceConfidenceUtils.addNonRefSymbolicAllele(mergedVC);
+                log10Likelihoods.addNonReferenceAllele(Allele.NON_REF_ALLELE);
+            }
 
             final LikelihoodMatrix<Allele> log10TumorMatrix = log10Likelihoods.sampleMatrix(log10Likelihoods.indexOfSample(tumorSample));
             final Optional<LikelihoodMatrix<Allele>> log10NormalMatrix =
@@ -221,9 +228,15 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
     }
 
     // compute the likelihoods that each allele is contained at some allele fraction in the sample
-    private PerAlleleCollection<Double> somaticLog10Odds(final LikelihoodMatrix<Allele> log10Matrix) {
+    protected PerAlleleCollection<Double> somaticLog10Odds(final LikelihoodMatrix<Allele> log10Matrix) {
+        int alleleListEnd = log10Matrix.alleles().size()-1;
+        final int nonRefIndex = log10Matrix.alleles().contains(Allele.NON_REF_ALLELE)
+            && log10Matrix.alleles().get(alleleListEnd).equals(Allele.NON_REF_ALLELE) ? alleleListEnd : -1;
+        if (log10Matrix.alleles().contains(Allele.NON_REF_ALLELE) && !(log10Matrix.alleles().get(alleleListEnd).equals(Allele.NON_REF_ALLELE))) {
+            throw new IllegalStateException("<NON_REF> must be last in the allele list.");
+        }
         final double log10EvidenceWithAllAlleles = log10Matrix.numberOfReads() == 0 ? 0 :
-                SomaticLikelihoodsEngine.log10Evidence(getAsRealMatrix(log10Matrix));
+                SomaticLikelihoodsEngine.log10Evidence(getAsRealMatrix(log10Matrix), MTAC.minAF, nonRefIndex);
 
         final PerAlleleCollection<Double> lods = new PerAlleleCollection<>(PerAlleleCollection.Type.ALT_ONLY);
         final int refIndex = getRefIndex(log10Matrix);
@@ -231,7 +244,7 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
             final Allele allele = log10Matrix.getAllele(a);
             final LikelihoodMatrix<Allele> log10MatrixWithoutThisAllele = SubsettedLikelihoodMatrix.excludingAllele(log10Matrix, allele);
             final double log10EvidenceWithoutThisAllele = log10MatrixWithoutThisAllele.numberOfReads() == 0 ? 0 :
-                    SomaticLikelihoodsEngine.log10Evidence(getAsRealMatrix(log10MatrixWithoutThisAllele));
+                    SomaticLikelihoodsEngine.log10Evidence(getAsRealMatrix(log10MatrixWithoutThisAllele), MTAC.minAF, log10MatrixWithoutThisAllele.numberOfAlleles() > 1 ? nonRefIndex-1 : -1);  //nonRefIndex-1 because we're evaluating without one allele; if th
             lods.setAlt(allele, log10EvidenceWithAllAlleles - log10EvidenceWithoutThisAllele);
         });
         return lods;

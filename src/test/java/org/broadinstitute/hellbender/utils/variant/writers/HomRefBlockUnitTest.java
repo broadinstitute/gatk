@@ -31,7 +31,7 @@ public class HomRefBlockUnitTest extends GATKBaseTest {
     @Test
     public void testBasicConstruction() {
         final VariantContext vc = getVariantContext();
-        final HomRefBlock band = getHomRefBlock(vc);
+        final GVCFBlock band = getHomRefBlock(vc);
         Assert.assertSame(band.getStartingVC(), vc);
         Assert.assertEquals(band.getRef(), vc.getReference());
         Assert.assertEquals(band.getGQLowerBound(), 10);
@@ -105,7 +105,7 @@ public class HomRefBlockUnitTest extends GATKBaseTest {
     @Test(expectedExceptions = GATKException.class)
     public void testCantAddDifferentNumbersOfPls(){
         final VariantContext vc = getVariantContext();
-        final HomRefBlock band = getHomRefBlock(getVariantContext());
+        final GVCFBlock band = getHomRefBlock(getVariantContext());
         band.add(vc.getStart(), getValidGenotypeBuilder().make() );
         band.add(vc.getStart() + 1, getValidGenotypeBuilder().PL(new int[] {1,2,4,5,6}).make() );
     }
@@ -114,7 +114,7 @@ public class HomRefBlockUnitTest extends GATKBaseTest {
         return new int[]{0,10,100};
     }
 
-    private static void assertValues(final HomRefBlock band, final int minDP, final int medianDP) {
+    private static void assertValues(final GVCFBlock band, final int minDP, final int medianDP) {
         Assert.assertEquals(band.getMinDP(), minDP);
         Assert.assertEquals(band.getMedianDP(), medianDP);
     }
@@ -138,7 +138,7 @@ public class HomRefBlockUnitTest extends GATKBaseTest {
     @Test(dataProvider = "ContiguousData")
     public void testIsContiguous(final String contig, final int pos, final boolean expected) {
         final VariantContext vc = getVariantContext();
-        final HomRefBlock band = getHomRefBlock(vc);
+        final GVCFBlock band = getHomRefBlock(vc);
         final VariantContext testVC = new VariantContextBuilder(vc).chr(contig).start(pos).stop(pos).make();
         Assert.assertEquals(band.isContiguous(testVC), expected);
     }
@@ -169,7 +169,7 @@ public class HomRefBlockUnitTest extends GATKBaseTest {
     @Test
     public void testAddGQGreaterThanMaxGenotypeQual() {
         final VariantContext vc = getVariantContext();
-        final HomRefBlock block90_100 = new HomRefBlock(vc, 90, 100, HomoSapiensConstants.DEFAULT_PLOIDY);
+        final GVCFBlock block90_100 = new HomRefBlock(vc, 90, 100, HomoSapiensConstants.DEFAULT_PLOIDY);
 
         // Test that adding a Genotype with GQ > 99 succeeds (ie., doesn't throw).
         // Internally, HomRefBlock should treat this GQ as 99.
@@ -178,6 +178,6 @@ public class HomRefBlockUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testConstructorThrowsOnUpperGQBoundTooLarge() {
-        final HomRefBlock block = new HomRefBlock(getVariantContext(), 90, 101, HomoSapiensConstants.DEFAULT_PLOIDY);
+        final GVCFBlock block = new HomRefBlock(getVariantContext(), 90, 101, HomoSapiensConstants.DEFAULT_PLOIDY);
     }
 }
