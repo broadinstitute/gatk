@@ -42,8 +42,8 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
     private OutputStreamWriter peWriter;
     private OutputStreamWriter srWriter;
 
-    SortedMap<SplitPos, Integer> splitCounts;
-    SortedSet<DiscordantRead> discordantPairs;
+    HashMap<SplitPos, Integer> splitCounts;
+    PriorityQueue<DiscordantRead> discordantPairs;
 
     @Override
     public boolean requiresReads() {
@@ -57,15 +57,7 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
         peWriter = new OutputStreamWriter(new BlockCompressedOutputStream(peFile));
         srWriter = new OutputStreamWriter(new BlockCompressedOutputStream(srFile));
 
-        final Comparator<SplitPos> comparator = (o1, o2) -> {
-            if (o1.pos != o2.pos) {
-                return new Integer(o1.pos).compareTo(o2.pos);
-            } else {
-                return o1.direction.compareTo(o2.direction);
-            }
-        };
-
-        splitCounts = new TreeMap<>(comparator);
+        splitCounts = new HashMap<>(maxSplitDist * 3);
 
         final Comparator<DiscordantRead> discReadComparator =
                 Comparator.comparing((DiscordantRead r) -> getBestAvailableSequenceDictionary().getSequenceIndex(r.getContig()))
@@ -74,7 +66,7 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
                         .thenComparing(DiscordantRead::getMateStart)
                         .thenComparing(DiscordantRead::getName);
 
-        discordantPairs = new TreeSet<>(discReadComparator);
+        discordantPairs = new PriorityQueue<>(discReadComparator);
 
     }
 
@@ -298,8 +290,17 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
     }
 
     private void flushSplitCounts() {
-        splitCounts.forEach((position, count) -> {
+        final Comparator<SplitPos> comparator = (o1, o2) -> {
+            if (o1.pos != o2.pos) {
+                return new Integer(o1.pos).compareTo(o2.pos);
+            } else {
+                return o1.direction.compareTo(o2.direction);
+            }
+        };
+
+        splitCounts.keySet().stream().sorted(comparator).forEach(position -> {
             try {
+                int count = splitCounts.get(position);
                 // subtract one from pos to match pysam results
                 srWriter.write(currentChrom + "\t" + (position.pos - 1) + "\t" + position.direction.getDescription() + "\t" + count + "\t" + sampleName + "\n");
             } catch (IOException e) {
