@@ -1254,7 +1254,6 @@ class ModeledSegmentsCaller:
 
         if self.__interactive:
             fig = plt.figure(1, dpi=300)
-            plt.hist(self.__copy_ratio_median, weights=np.array(self.__weights), color = "k", bins = 100, density = True)
             plt.plot(cn1_interval_candidate[0], [0], "rv")
             plt.plot(cn1_interval_candidate[1], [0], "rv")
             plt.plot(cn2_interval_candidate[0], [0], "g*")
@@ -1636,7 +1635,9 @@ class ModeledSegmentsCaller:
         plt.yticks(np.arange(0, 0.6, 0.1))
 
         plt.subplot(224)
-        plt.hist(self.__copy_ratio_median, weights=np.array(self.__weights), bins = "auto", color = "k")
+        #plt.hist(self.__copy_ratio_median, weights=np.array(self.__weights), bins = "auto", color = "k")
+        plt.hist(np.array(self.__copy_ratio_median), weights=np.array(self.__weights), color="k")
+        # plt.hist(self.__copy_ratio_median_sampled, bins = "auto", color = "k")
         plt.xlabel("Copy ratio")
         plt.xlim((0, 5))
         plt.xticks(np.arange(0, 6, 1))
