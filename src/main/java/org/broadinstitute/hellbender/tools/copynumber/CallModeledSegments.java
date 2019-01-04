@@ -24,7 +24,7 @@ import java.util.*;
  *
  * <p>The input data are provided by {@link ModelSegments}, and they characterize the posterior copy number
  * and allele fraction distribution of each segment. {@link CallModeledSegments} recovers the distributions from this
- * data and samples data points from it for each segment. The number of sampled points is chosen proportional to the
+ * data and samples data points from it for each segment. The number of sampled points is chosen proportionally to the
  * length of the segments. <p/>
  *
  * <p>The sampled data is then clustered using scikit-learn by fitting Gaussians to it in (copy_ratio, allele_fraction)
@@ -37,12 +37,13 @@ import java.util.*;
  *
  * <p>The range of 'normal copy ratio values' is identified as the range of copy ratio data arising from copy number 2
  * events. First, {@link CallModeledSegments} looks for clusters in the one dimensional copy ratio data by
- * fitting Gaussians to it. Peaks whose weight is below the threshold determined by the flag
- * are not considered for further processing. The peak with the lowest non-zero copy ratio either comes from copy
- * 'copy-ratio-peak-min-weight' number 1 or copy number 2 events. If this peak has considerable fraction of points
+ * smoothening the data and looking for local minima. Peaks whose weight is below the threshold determined by the flag
+ * 'copy-ratio-peak-min-relative-height' are not considered for further processing. The peak with the lowest non-zero
+ * copy ratio either comes from copy number 1 or copy number 2 events. If this peak has considerable fraction of points
  * close to 0.5, then we say that it comes from copy number 2 events. Otherwise, we consider the peak of second lowest
- * copy ratio to be the copy number 2 peak. (The fraction of points that need to be in the (normal_MAF_threshold, 0.500)
- * region is an input from the user, using the 'min-fraction-of-points-in-normal-allele-fraction-region' flag.)
+ * copy ratio to be the copy number 2 peak. The fraction of points that need to be in the
+ * (normal-minor-allele-fraction-threshold, 0.500) range is an input from the user, given by the
+ * 'min-fraction-of-points-in-normal-allele-fraction-region' flag.
  * </p>
  *
  * <h3>Usage examples</h3>
@@ -55,7 +56,7 @@ import java.util.*;
  *   --load-allele-fraction true \
  *   --output-prefix my_somatic_run_001 \
  *   --normal-minor-allele-fraction-threshold 0.475 \
- *   --copy-ratio-peak-min-relative-height 0.04 \
+ *   --copy-ratio-peak-min-relative-height 0.02 \
  *   --min-fraction-of-points-in-normal-allele-fraction-region 0.15
  *
  * </pre>
@@ -199,7 +200,8 @@ public final class CallModeledSegments extends CommandLineProgram {
 
     @Argument(
             doc = "During the copy ratio clustering, we smoothen the data using a Gaussian kernel of "
-                    + "this bandwidth. If its value is not set, it is learnt from the data.",
+                    + "this bandwidth. If its value is not set by the user (or if it is set to a negative value), "
+                    + "it will be learnt from the data.",
             fullName = COPY_RATIO_KERNEL_DENSITY_BANDWIDTH,
             optional = true
     )
@@ -207,8 +209,9 @@ public final class CallModeledSegments extends CommandLineProgram {
 
     @Argument(
             doc = "If only copy ratio data is taken into account, and we find more than one cluster in the "
-                    + "data, then the first peak is considered normal if its relative weight compared to the second"
-                    + "peak is above this threshold (or if the weight of the second peak is smaller than 5%.",
+                    + "data, we identify the copy ratio peak using this parameter. The lowest copy ratio peak is "
+                    + "considered normal if its relative weight compared to the second lowest "
+                    + "peak is above this threshold.",
             fullName = MIN_WEIGHT_FIRST_CR_PEAK_CR_DATA_ONLY,
             optional = true
     )
@@ -225,14 +228,15 @@ public final class CallModeledSegments extends CommandLineProgram {
 
     @Argument(
             doc = "Segments are considered normal if the responsibility in the Gaussian mixture model of them being "
-                + "normal exceeds this threshold (set to 0.5 by default).",
+                + "normal exceeds this threshold.",
             fullName = RESPONSIBILITY_THRESHOLD_NORMAL_SEGMENTS,
             optional = true
     )
     private double responsibilityThresholdNormal=0.5;
 
     @Argument(
-            doc = "Upper cut-off for the PHRED scores on normal samples, to make sure that they are not off the "
+            doc = "Upper cut-off for the PHRED scores corresponding to the probability that the segment is classified "
+                    + "as normal. The upper cutoff is there to make sure that the scores are not off the "
                     + "scale on the plots.",
             fullName = MAX_PHRED_SCORE_NORMAL,
             optional = true
