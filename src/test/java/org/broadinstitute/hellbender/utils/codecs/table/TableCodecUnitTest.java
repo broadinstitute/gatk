@@ -175,8 +175,8 @@ public final class TableCodecUnitTest extends GATKBaseTest {
     @DataProvider(name = "stringNull")
     public Object[][] stringNull() {
         List<Object[]> params = new ArrayList<>();
-        params.add(new String[]{TableCodec.HEADER_DELIMITER + " foo"});
-        params.add(new String[]{TableCodec.HEADER_DELIMITER + " bar"});
+        params.add(new String[]{TableCodec.DEFAULT_HEADER_DELIMITER + " foo"});
+        params.add(new String[]{TableCodec.DEFAULT_HEADER_DELIMITER + " bar"});
         params.add(new String[]{TableCodec.IGV_HEADER_DELIMITER + " baz"});
         return params.toArray(new Object[][]{});
     }
@@ -191,8 +191,8 @@ public final class TableCodecUnitTest extends GATKBaseTest {
     @DataProvider(name = "stringNotNull")
     public Object[][] stringNotNull() {
         List<Object[]> params = new ArrayList<>();
-        params.add(new String[]{"foo " + TableCodec.HEADER_DELIMITER});
-        params.add(new String[]{"foo " + TableCodec.HEADER_DELIMITER});
+        params.add(new String[]{"foo " + TableCodec.DEFAULT_HEADER_DELIMITER});
+        params.add(new String[]{"foo " + TableCodec.DEFAULT_HEADER_DELIMITER});
         params.add(new String[]{"foo " + TableCodec.IGV_HEADER_DELIMITER});
         return params.toArray(new Object[][]{});
     }

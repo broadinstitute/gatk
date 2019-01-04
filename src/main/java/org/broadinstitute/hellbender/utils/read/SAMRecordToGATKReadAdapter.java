@@ -482,10 +482,10 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
         setIsPaired(true);
 
         samRecord.setMateUnmappedFlag(true);
+        samRecord.setMateNegativeStrandFlag(false);
         samRecord.setMateReferenceIndex(SAMRecord.NO_ALIGNMENT_REFERENCE_INDEX);
         samRecord.setMateAlignmentStart(SAMRecord.NO_ALIGNMENT_START);
     }
-
 
     @Override
     public boolean isReverseStrand() {
