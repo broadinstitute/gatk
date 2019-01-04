@@ -68,7 +68,10 @@ public final class TableCodec extends AsciiFeatureCodec<TableFeature> {
      */
     public TableCodec(final String headerLineDelimiter) {
         super(TableFeature.class);
-        Utils.nonEmpty(headerLineDelimiter);
+        if ( "".equals(headerLineDelimiter) ) {
+            // Note, it is valid for headerLineDelimiter to be null, just not empty as the regex breaks in that case.
+            throw new GATKException("HeaderLineDelimiter must either be a valid delimiter or null");
+        }
         headerDelimiter = headerLineDelimiter;
     }
 
