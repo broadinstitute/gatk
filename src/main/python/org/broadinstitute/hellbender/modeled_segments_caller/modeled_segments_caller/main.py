@@ -1,4 +1,5 @@
 import matplotlib
+matplotlib.use('Agg')
 import logging
 import datetime
 import numpy as np
@@ -22,7 +23,6 @@ from theano.tensor.nlinalg import det
 from copy import deepcopy
 from typing import List
 
-matplotlib.use('Agg')
 
 RANDOM_SEED = 123
 
@@ -260,20 +260,20 @@ class LoadAndSampleCrAndAf:
                 values = line.strip().split()
                 if is_number(values[1]):
                     if len(values) >= 5:
-                        if (not math.isnan(float(values[5]))
-                            and not math.isnan(float(values[6]))
-                            and not math.isnan(float(values[7]))
-                            and not math.isnan(float(values[8]))
-                            and not math.isnan(float(values[9]))
-                            and not math.isnan(float(values[10]))):
-                            if (2**float(values[5]) <= self.__max_copy_ratio_possible
-                                and 2**float(values[6]) <= self.__max_copy_ratio_possible
-                                and 2**float(values[7]) <= self.__max_copy_ratio_possible
-                                and 0. <= float(values[8]) <= 0.5
-                                and 0. <= float(values[9]) <= 0.5
-                                and 0. <= float(values[10]) <= 0.5
-                                and 0 < float(values[3])
-                                and 0 < float(values[4])):
+                        if not math.isnan(float(values[5])) \
+                                and not math.isnan(float(values[6])) \
+                                and not math.isnan(float(values[7])) \
+                                and not math.isnan(float(values[8])) \
+                                and not math.isnan(float(values[9])) \
+                                and not math.isnan(float(values[10])):
+                            if 2**float(values[5]) <= self.__max_copy_ratio_possible \
+                                    and 2**float(values[6]) <= self.__max_copy_ratio_possible \
+                                    and 2**float(values[7]) <= self.__max_copy_ratio_possible \
+                                    and 0. <= float(values[8]) <= 0.5 \
+                                    and 0. <= float(values[9]) <= 0.5 \
+                                    and 0. <= float(values[10]) <= 0.5 \
+                                    and 0 < float(values[3]) \
+                                    and 0 < float(values[4]):
                                 contig.append(str(values[0]))
                                 segment_start.append(int(values[1]))
                                 segment_end.append(int(values[2]))
@@ -291,14 +291,13 @@ class LoadAndSampleCrAndAf:
                 values = line.strip().split()
                 if is_number(values[1]):
                     if len(values) >= 5:
-                        if (not math.isnan(float(values[5]))
-                            and not math.isnan(float(values[6]))
-                            and not math.isnan(float(values[7]))
-                            ):
-                            if (2**float(values[5]) <= self.__max_copy_ratio_possible
-                                and 2**float(values[6]) <= self.__max_copy_ratio_possible
-                                and 2**float(values[7]) <= self.__max_copy_ratio_possible
-                                and 0 < float(values[3])):
+                        if not math.isnan(float(values[5])) \
+                                and not math.isnan(float(values[6])) \
+                                and not math.isnan(float(values[7])):
+                            if 2**float(values[5]) <= self.__max_copy_ratio_possible \
+                                    and 2**float(values[6]) <= self.__max_copy_ratio_possible \
+                                    and 2**float(values[7]) <= self.__max_copy_ratio_possible \
+                                    and 0 < float(values[3]):
                                 contig.append(str(values[0]))
                                 segment_start.append(int(values[1]))
                                 segment_end.append(int(values[2]))
@@ -316,14 +315,13 @@ class LoadAndSampleCrAndAf:
                 values = line.strip().split()
                 if is_number(values[1]):
                     if len(values) >= 5:
-                        if (not math.isnan(float(values[8]))
-                            and not math.isnan(float(values[9]))
-                            and not math.isnan(float(values[10]))
-                            ):
-                            if(0. <= float(values[8]) <= 0.5
-                               and 0. <= float(values[9]) <= 0.5
-                               and 0. <= float(values[10]) <= 0.5
-                               and 0 < float(values[4])):
+                        if not math.isnan(float(values[8])) \
+                                and not math.isnan(float(values[9])) \
+                                and not math.isnan(float(values[10])):
+                            if 0. <= float(values[8]) <= 0.5 \
+                                    and 0. <= float(values[9]) <= 0.5 \
+                                    and 0. <= float(values[10]) <= 0.5 \
+                                    and 0 < float(values[4]):
                                 contig.append(str(values[0]))
                                 segment_start.append(int(values[1]))
                                 segment_end.append(int(values[2]))
@@ -571,7 +569,7 @@ class ModeledSegmentsCaller:
                  min_weight_first_cr_peak_cr_data_only: float=0.35,
                  min_fraction_of_points_in_normal_allele_fraction_region: float=0.15,
                  responsibility_threshold_normal: float=0.5,
-                 max_phred_score_normal: float=100.,
+                 max_phred_score_normal: float=1000.,
                  n_inference_iterations: int=120000,
                  inference_total_grad_norm_constraint: float=50.,
                  n_extra_Gaussians_mixture_model: int=12,
@@ -620,7 +618,7 @@ class ModeledSegmentsCaller:
         self.__min_weight_first_cr_peak_cr_data_only = min_weight_first_cr_peak_cr_data_only
         self.__n_inference_iterations = n_inference_iterations
         self.__inference_total_grad_norm_constraint = inference_total_grad_norm_constraint
-        self.__n_extra_Gaussians_mixture_model = n_extra_Gaussians_mixture_model
+        self.__n_extra_gaussians_mixture_model = n_extra_Gaussians_mixture_model
         self.__gaussian_prior_standard_deviation = max([abs(gaussian_prior_standard_deviation), 0.000001])
 
         # Set the maximal value of the PHRED score we allow (since we don't want it to be off the scale on the plots)
@@ -822,15 +820,15 @@ class ModeledSegmentsCaller:
                                               if cluster_assignments[i]==k]) / total_weight
         return np.array(centroids), cluster_assignments
 
-    def __fit_weighted_Gaussian_mixture_ADVI(self, data_points, weights, n_Gaussians_proposed, n_extra_Gaussians):
+    def __fit_weighted_Gaussian_mixture_ADVI(self, data_points, weights, n_gaussians_proposed, n_extra_gaussians):
         # Function that fits Gaussians to data with weights. The dimension of the data can be arbitrary.
         # Inputs:
         # - data_points is two dimensional: pairs of copy ratio and allele fraction values.
         # - weights: the weights of the segments
-        # - n_Gaussians_proposed: we start by k-means clustering of the data into n_Gaussians_proposed clusters
+        # - n_gaussians_proposed: we start by k-means clustering of the data into n_gaussians_proposed clusters
         #   and merge them if they are too close. The resulting number of clusters is n_Gaussians. These clusters' means
         #   are used as starting points of the 2D fit of Gaussians
-        # - n_extra_Gaussians: we also allow some initially randomly positioned Gaussians that can cover additional
+        # - n_extra_gaussians: we also allow some initially randomly positioned Gaussians that can cover additional
         #   structure of the data if there is any
 
         if len(data_points) == 0:
@@ -847,14 +845,14 @@ class ModeledSegmentsCaller:
 
         [mu_estimates, cluster_assignments] = self.__weighted_k_means(data=data_points,
                                                                       weights=weights,
-                                                                      n_clusters=n_Gaussians_proposed)
+                                                                      n_clusters=n_gaussians_proposed)
         n_Gaussians = len(mu_estimates)
         pi_init = np.random.uniform(0, 1, n_Gaussians)
-        n_Gaussians += n_extra_Gaussians
-        pi_init = np.append(pi_init, [0.02] * n_extra_Gaussians)
+        n_Gaussians += n_extra_gaussians
+        pi_init = np.append(pi_init, [0.02] * n_extra_gaussians)
         mu_init = np.append(mu_estimates, [[np.random.uniform(min(np.array(data_points)[:,0]),max(np.array(data_points)[:,0])),
                                             np.random.uniform(min(np.array(data_points)[:,1]),max(np.array(data_points)[:,1]))]
-                                           for _ in range(n_extra_Gaussians)])
+                                           for _ in range(n_extra_gaussians)])
         pi_init = pi_init / np.sum(pi_init)
         epsilon = 1e-9
 
@@ -878,7 +876,7 @@ class ModeledSegmentsCaller:
         with pm.Model() as model:
             mus = [MvNormal('mu_%d' % i,
                             mu=mu_init[i],
-                            tau=pm.floatX((1/0.0001)*np.eye(2)) if i<(n_Gaussians-n_extra_Gaussians) else pm.floatX((1/0.2)*np.eye(2)),
+                            tau=pm.floatX((1/0.0001)*np.eye(2)) if i<(n_Gaussians-n_extra_gaussians) else pm.floatX((1/0.2)*np.eye(2)),
                             testval=mu_init[i],
                             shape=(2,))
                    for i in range(n_Gaussians)]
@@ -908,11 +906,6 @@ class ModeledSegmentsCaller:
         gbij = approx.gbij
         means = gbij.rmap(approx.mean.eval())
         cov = approx.cov.eval()
-        sds = gbij.rmap(np.diag(cov)**.5)
-
-        #means = approx.bij.rmap(approx.mean.eval())
-        #cov = approx.cov.eval()
-        #sds = approx.bij.rmap(np.diag(cov)**.5)
 
         mu_result = []
         pi_result = list(pm.distributions.transforms.t_stick_breaking(epsilon).backward(means['pis_stickbreaking__']).eval())
@@ -932,7 +925,7 @@ class ModeledSegmentsCaller:
 
         return [pi_result, mu_result, cov_result]
 
-    def __choose_normal_segments__cr_af_data(self, n_Gaussians_proposed: int=30):
+    def __choose_normal_segments__cr_af_data(self, n_gaussians_proposed: int=30):
         """ Choose those Gaussians from the fitted distribution that cover the
             normal segments. The Gaussians are fitted using Bayesian variational
             inference in the  two dimensional space of copy ratio and allele fraction axes.
@@ -961,13 +954,13 @@ class ModeledSegmentsCaller:
 
         [pis_cn_2, mus_cn_2, covs_cn_2] = self.__fit_weighted_Gaussian_mixture_ADVI(data_points=data_cn_2,
                                                                                     weights=weights_cn_2,
-                                                                                    n_Gaussians_proposed=3,
-                                                                                    n_extra_Gaussians=3)
+                                                                                    n_gaussians_proposed=3,
+                                                                                    n_extra_gaussians=3)
 
         [pis_other, mus_other, covs_other] = self.__fit_weighted_Gaussian_mixture_ADVI(data_points=data_other,
-                                                                                       weights=weights_other,
-                                                                                       n_Gaussians_proposed=n_Gaussians_proposed,
-                                                                                       n_extra_Gaussians=self.__n_extra_Gaussians_mixture_model)
+                                                            weights=weights_other,
+                                                            n_gaussians_proposed=n_gaussians_proposed,
+                                                            n_extra_gaussians=self.__n_extra_gaussians_mixture_model)
         pis = pis_cn_2 + pis_other
         mus = mus_cn_2 + mus_other
         covs = covs_cn_2 + covs_other
