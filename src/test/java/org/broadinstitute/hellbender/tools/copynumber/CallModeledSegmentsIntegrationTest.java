@@ -31,7 +31,7 @@ public class CallModeledSegmentsIntegrationTest extends CommandLineProgramTest {
 
     @DataProvider
     public Iterator<Object[]> simulatedData() {
-        // The data provider contains the inputs of the runTest method
+        // The data provider contains the inputs of the runTest method:
         // inputFile, truthFile, loadCopyRatio, loadAlleleFraction, interactiveMode
         List<Object[]> result = new LinkedList<>();
         result.add(new Object[] {INPUT_SIMULATED_NORMAL_DATA, INPUT_SIMULATED_NORMAL_TRUTH,
@@ -65,8 +65,6 @@ public class CallModeledSegmentsIntegrationTest extends CommandLineProgramTest {
                          final boolean loadAlleleFraction,
                          final boolean interactiveRun,
                          final String outputPrefix) {
-        // Method running the tests.
-
         // Make sure that either the copy ratio or the allele fraction data is loaded
         if (!loadCopyRatio && !loadAlleleFraction) {
             System.out.println("Error: either copy ratio or allele fraction or both need to be loaded.");

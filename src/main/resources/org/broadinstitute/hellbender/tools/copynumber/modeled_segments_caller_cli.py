@@ -54,8 +54,8 @@ group.add_argument("--weight_ratio_max",
                    required=False,
                    default=100.,
                    help="Upon loading the data from file, we set an upper cut-off to the segment weights, "
-                        "given by weight_ratio_max * mean(weights). This is required as ModeledSegments might "
-                        "over-estimate these weights.")
+                        "given by weight_ratio_max * mean(weights). This is required since, rarely, "
+                        "ModelSegments might over-estimate these weights.")
 
 group.add_argument("--log",
                    type=str,
@@ -114,7 +114,7 @@ group.add_argument("--normal_minor_allele_fraction_threshold",
 group.add_argument("--copy_ratio_peak_min_relative_height",
                    type=float,
                    required=False,
-                   default=0.03,
+                   default=0.02,
                    help="During the copy ratio clustering, peaks with weights smaller than this ratio are not "
                         "taken into account.")
 
@@ -123,22 +123,24 @@ group.add_argument("--copy_ratio_kernel_density_bandwidth",
                    required=False,
                    default=-0.025,
                    help="During the copy ratio clustering, we smoothen the data using a Gaussian kernel of "
-                        "this bandwidth. If not specified, its value is lerned from the data.")
+                        "this bandwidth. If not specified (or if it is set to a negative value), it is lerned "
+                        "from the data.")
 
 group.add_argument("--min_weight_first_cr_peak_cr_data_only",
                    type=float,
                    required=False,
                    default=0.35,
                    help="If only copy ratio data is taken into account, and we find more than one cluster in the "
-                        "data, then the first peak is considered normal if its relative weight compared to the second"
-                        "peak is above this threshold (or if the weight of the second peak is smaller than 5%.")
+                        "data, we identify the copy ratio peak using this parameter. The lowest copy ratio peak is "
+                        "considered normal if its relative weight compared to the second lowest "
+                        "peak is above this threshold.")
 
 group.add_argument("--min_fraction_of_points_in_normal_allele_fraction_region",
                    type=float,
                    required=False,
-                   default=0.15,
+                   default=0.20,
                    help="The region of copy ratio values are is considered normal only if at least this "
-                        "fraction of points are above the normalMinorAlleleFractionThreshold",)
+                        "fraction of points are above the normalMinorAlleleFractionThreshold.",)
 
 group.add_argument("--responsibility_threshold_normal",
                    type=float,
