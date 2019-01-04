@@ -488,7 +488,7 @@ class LoadAndSampleCrAndAf:
             #                                         self.__allele_fraction_median[i],
             #                                         self.__allele_fraction_10th_perc[i],
             #                                         self.__allele_fraction_90th_perc[i])
-            w = self.__n_points_cr
+            w = self.__n_points_cr[i]
             weights.append(w)
 
         # Set an upper limit to the weights possible. This upper limit is needed since, in rare cases,
