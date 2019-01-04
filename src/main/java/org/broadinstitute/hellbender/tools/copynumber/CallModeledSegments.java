@@ -241,7 +241,7 @@ public final class CallModeledSegments extends CommandLineProgram {
             fullName = MAX_PHRED_SCORE_NORMAL,
             optional = true
     )
-    private double maxPhredScoreNormal=1000.;
+    private double maxPhredScoreNormal=100.;
 
     @Argument(
             doc = "Maximum number of iterations of the automatic differentiation variational inference "
