@@ -482,13 +482,13 @@ class LoadAndSampleCrAndAf:
         """
         weights = []
         for i in range(self.__n_segments):
-            w = self.__determine_weight_one_segment(self.__copy_ratio_median[i],
-                                                    self.__copy_ratio_10th_perc[i],
-                                                    self.__copy_ratio_90th_perc[i],
-                                                    self.__allele_fraction_median[i],
-                                                    self.__allele_fraction_10th_perc[i],
-                                                    self.__allele_fraction_90th_perc[i])
-
+            # w = self.__determine_weight_one_segment(self.__copy_ratio_median[i],
+            #                                         self.__copy_ratio_10th_perc[i],
+            #                                         self.__copy_ratio_90th_perc[i],
+            #                                         self.__allele_fraction_median[i],
+            #                                         self.__allele_fraction_10th_perc[i],
+            #                                         self.__allele_fraction_90th_perc[i])
+            w = self.__n_points_cr
             weights.append(w)
 
         # Set an upper limit to the weights possible. This upper limit is needed since, in rare cases,
