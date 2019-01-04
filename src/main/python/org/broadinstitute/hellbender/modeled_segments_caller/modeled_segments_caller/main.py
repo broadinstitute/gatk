@@ -1458,7 +1458,7 @@ class ModeledSegmentsCaller:
                 max_phred_score=self.__max_PHRED_score
             )] * 2)
 
-            n_d_a = self.__normal_del_ampl(self.__copy_ratio_median[i], self.__allele_fraction_median[i], avg_normal_cr,
+            n_d_a = self.__classify_segment(self.__copy_ratio_median[i], self.__allele_fraction_median[i], avg_normal_cr,
                                            std_dev_normal_cr, self.__responsibilities_normal[i])
             if n_d_a == "+":
                 y_color.append((1.0, 0.0, 1.0))
@@ -1635,9 +1635,7 @@ class ModeledSegmentsCaller:
         plt.yticks(np.arange(0, 0.6, 0.1))
 
         plt.subplot(224)
-        #plt.hist(self.__copy_ratio_median, weights=np.array(self.__weights), bins = "auto", color = "k")
         plt.hist(np.array(self.__copy_ratio_median), weights=np.array(self.__weights), color="k")
-        # plt.hist(self.__copy_ratio_median_sampled, bins = "auto", color = "k")
         plt.xlabel("Copy ratio")
         plt.xlim((0, 5))
         plt.xticks(np.arange(0, 6, 1))
@@ -1647,26 +1645,26 @@ class ModeledSegmentsCaller:
         plt.close(fig)
 
     def __plot_classification(self):
-        """ Plot the medians of the distributions in copy ratio and allele fraction space
-            and indicate the normal and not normal segments with different colors.
+        """ Plot segments as points in the two-dimensional copy ratio and allele fraction space (weights not indicated).
+            Indicate the normal, CNLOH, deleted and amplified segments with different colors.
         """
         samples = np.asarray([self.__copy_ratio_median, self.__allele_fraction_median]).T
         [avg_normal_cr, std_dev_normal_cr] = self.__average_and_std_dev_copy_ratio_normal_segments()
-        classification = [self.__normal_del_ampl(self.__copy_ratio_median[i], self.__allele_fraction_median[i],
+        classification = [self.__classify_segment(self.__copy_ratio_median[i], self.__allele_fraction_median[i],
                                                  avg_normal_cr, std_dev_normal_cr, self.__responsibilities_normal[i])
                           for i in range(len(self.__copy_ratio_median))]
         colors = []
         for i in range(len(classification)):
             if classification[i] == "+":
-                colors.append((1.0, 0.0, 1.0))
+                colors.append((1, 0, 1))
             elif classification[i] == "0":
-                colors.append((0.0, 1.0, 0.0))
+                colors.append((0, 1, 0))
             elif classification[i] == "-":
-                colors.append((0.0, 0.0, 1.0))
+                colors.append((0, 0, 1))
             elif classification[i] == "CNLOH":
                 colors.append((0.4, 0.4, 0.4))
             else:
-                colors.append((1.0, 1.0, 0.0))
+                colors.append((1, 1, 0))
         plt.scatter(samples[:,0], samples[:,1], c=colors, alpha=0.8, s=10)
 
     def __plot_Gaussian_mixture_fit(self):
@@ -1689,8 +1687,8 @@ class ModeledSegmentsCaller:
 
         x = np.array(mu)[:,0]
         y = np.array(mu)[:,1]
-        xerr = np.sqrt(np.array(cov)[:,0])
-        yerr = np.sqrt(np.array(cov)[:,1])
+        xerr = np.sqrt(np.array(cov)[:, 0])
+        yerr = np.sqrt(np.array(cov)[:, 1])
         for i in range(len(x)):
             rel_w = pis[i] / max(pis)
             if rel_w > 0.01:
@@ -1708,8 +1706,8 @@ class ModeledSegmentsCaller:
         plt.ylim((0, 0.5))
 
     def __gray_background_contigs(self, contig_beginning_end: List, ymin: float, ymax: float, ax):
-        """Create a gray/white alternating background, in which the length of the individual stripes is
-           proportional to the corresponding contig.
+        """Create a gray/white alternating background for the plots of the segments. In this plot, the length of
+           the individual stripes is proportional to the length of the corresponding contig (in base pair units).
         """
 
         # The array contig_beginning_end should consist of pairs that contain the beginning and the end
@@ -1720,8 +1718,8 @@ class ModeledSegmentsCaller:
         y = [[ymin] * (2*n_contigs), [ymax] * (2*n_contigs)]
         z = []
         for i in range(n_contigs):
-            z.append(i%2)
-            z.append(i%2)
+            z.append(i % 2)
+            z.append(i % 2)
         z = [z]
 
         plt.xlim(contig_beginning_end[0][0], contig_beginning_end[-1][1])
@@ -1739,6 +1737,8 @@ class ModeledSegmentsCaller:
 
     def __save_calls_to_file(self):
         """ Save the calls and the corresponding PHRED scores into file.
+            Preserve the data in the modelFinal.seg input file and add a column for the classification of the segment
+            and a second one for the PHRED score of the responsibility that the segment is normal.
         """
         input_filename = self.__cr_af_data.get_input_filename()
         [avg_normal_cr, std_dev_normal_cr] = self.__average_and_std_dev_copy_ratio_normal_segments()
@@ -1770,7 +1770,7 @@ class ModeledSegmentsCaller:
                         and 0. < float(values[3])
                         and 0. < float(values[4])
                        ):
-                        file_data += line.strip() + "\t" + str(self.__normal_del_ampl(self.__copy_ratio_median[i],
+                        file_data += line.strip() + "\t" + str(self.__classify_segment(self.__copy_ratio_median[i],
                                                                                       self.__allele_fraction_median[i],
                                                                                       avg_normal_cr, std_dev_normal_cr,
                                                                                       self.__responsibilities_normal[i]))
@@ -1790,7 +1790,7 @@ class ModeledSegmentsCaller:
                         and 0 < float(values[3])
                         and 0 < float(values[4])
                        ):
-                        file_data += line.strip() + "\t" + str(self.__normal_del_ampl_cr_only(self.__copy_ratio_median[i],
+                        file_data += line.strip() + "\t" + str(self.__classify_segment_cr_only(self.__copy_ratio_median[i],
                                                                                               avg_normal_cr, std_dev_normal_cr,
                                                                                               self.__responsibilities_normal[i]))
                         file_data += "\t"
@@ -1823,17 +1823,17 @@ class ModeledSegmentsCaller:
         output_file.write(file_header + file_data)
         output_file.close()
 
-    def __normal_del_ampl(self, cr: float, af: float, avg_normal_cr_: float, std_dev_normal_cr_: float,
+    def __classify_segment(self, cr: float, af: float, avg_normal_cr_: float, std_dev_normal_cr_: float,
                           responsibility_normal: float):
-        """ Determines if the copy ratio value cr corresponds to a deletion (-),
-            an amplification (+), a normal segment (0), a normal copy ratio
-            with imbalanced allele fraction (CNLOH) or cannot be decided but not
-            normal.
+        """ Determines if the copy ratio value cr and allele fraction value af corresponds to a deletion ('-'),
+            an amplification ('+'), a normal segment ('0'), a normal copy ratio
+            with imbalanced allele fraction ('CNLOH'). The output is the corresponding string.
         """
         minimum_af_for_normal = 0.5 - 2 * (0.5 - self.__normal_minor_allele_fraction_threshold)
 
-        if (responsibility_normal > self.__responsibility_threshold_normal and af >= minimum_af_for_normal
-            and cr <= self.__normal_range_cr[1] and cr >= self.__normal_range_cr[0]):
+        if responsibility_normal > self.__responsibility_threshold_normal \
+                and af >= minimum_af_for_normal \
+                and self.__normal_range_cr[0] <= cr <= self.__normal_range_cr[1]:
             return "0"
         else:
             if self.__load_cr and self.__load_af:
@@ -1846,14 +1846,14 @@ class ModeledSegmentsCaller:
             else:
                 return "/"
 
-    def __normal_del_ampl_cr_only(self, cr: float, avg_normal_cr_: float, std_dev_normal_cr_: float,
-                                responsibility_normal: float):
-        """ Determines if the copy ratio value cr corresponds to a deletion (-),
-            an amplification (+), a normal segment (0), a normal copy ratio
-            with imbalanced allele fraction (CNLOH) or cannot be decided but not
-            normal.
+    def __classify_segment_cr_only(self, cr: float, avg_normal_cr_: float, std_dev_normal_cr_: float,
+                                  responsibility_normal: float):
+        """ Determines if the copy ratio value cr corresponds to a deletion ('-'),
+            an amplification ('+'), a normal segment ('0'), a normal copy ratio
+            with imbalanced allele fraction ('CNLOH') or cannot be decided but not
+            normal. The output is the corresponding string.
         """
-        if (responsibility_normal > self.__responsibility_threshold_normal):
+        if responsibility_normal > self.__responsibility_threshold_normal:
             return "0"
         else:
             if cr > min([avg_normal_cr_ + 2 * std_dev_normal_cr_, self.__normal_range_cr[1]]):
