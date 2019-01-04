@@ -566,9 +566,9 @@ class ModeledSegmentsCaller:
                  copy_ratio_peak_min_relative_height: float=0.0125,
                  copy_ratio_kernel_density_bandwidth: float=-0.025,
                  min_weight_first_cr_peak_cr_data_only: float=0.35,
-                 min_fraction_of_points_in_normal_allele_fraction_region: float=0.15,
+                 min_fraction_of_points_in_normal_allele_fraction_region: float=0.25,
                  responsibility_threshold_normal: float=0.5,
-                 max_phred_score_normal: float=1000.,
+                 max_phred_score_normal: float=100.,
                  n_inference_iterations: int=120000,
                  inference_total_grad_norm_constraint: float=50.,
                  n_extra_Gaussians_mixture_model: int=12,
@@ -1246,6 +1246,7 @@ class ModeledSegmentsCaller:
 
         if self.__interactive:
             fig = plt.figure(1, dpi=300)
+            plt.hist(self.__copy_ratio_median, weights=np.array(self.__weights), color="k", bins=100, density=True)
             plt.plot(cn1_interval_candidate[0], [0], "rv")
             plt.plot(cn1_interval_candidate[1], [0], "rv")
             plt.plot(cn2_interval_candidate[0], [0], "g*")
@@ -1453,15 +1454,15 @@ class ModeledSegmentsCaller:
             n_d_a = self.__classify_segment(self.__copy_ratio_median[i], self.__allele_fraction_median[i], avg_normal_cr,
                                            std_dev_normal_cr, self.__responsibilities_normal[i])
             if n_d_a == "+":
-                y_color.append((1.0, 0.0, 1.0))
+                y_color.append((1, 0, 1))
             elif n_d_a == "0":
-                y_color.append((0.0, 1.0, 0.0))
+                y_color.append((0, 1, 0))
             elif n_d_a == "-":
-                y_color.append((0.0, 0.0, 1.0))
+                y_color.append((0, 0, 1))
             elif n_d_a == "CNLOH":
                 y_color.append((0.4, 0.4, 0.4))
             else:
-                y_color.append((1.0, 1.0, 0.0))
+                y_color.append((1, 1, 0))
 
         contig_beginning_end = []
         current_contig = self.__contig[0]
