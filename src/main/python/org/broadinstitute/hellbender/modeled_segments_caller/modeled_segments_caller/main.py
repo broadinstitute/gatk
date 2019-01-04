@@ -1,34 +1,33 @@
 import matplotlib
-matplotlib.use('Agg')
+import logging
+import datetime
+import numpy as np
+import scipy
+import math
+import random
+import theano.tensor as tt
+import pymc3 as pm
 from matplotlib import pyplot as plt
 from matplotlib.collections import LineCollection
 from matplotlib.colors import LogNorm
 from matplotlib import ticker
-import numpy as np
-import scipy
 from scipy.stats import multivariate_normal
 from scipy.optimize import minimize
 from sklearn import mixture, cluster
 from sklearn.neighbors import KernelDensity
-import math
-import random
 from pymc3 import MvNormal, Dirichlet, DensityDist
 from pymc3.variational.callbacks import CheckParametersConvergence
-import pymc3 as pm
 from pymc3.math import logsumexp
-import theano.tensor as tt
 from theano.tensor.nlinalg import det
 from copy import deepcopy
 from typing import List
-import logging
-import datetime
 
+matplotlib.use('Agg')
 
 RANDOM_SEED = 123
 
 
 def is_number(s):
-    """ Decide if 's' is a number. """
     try:
         float(s)
         return True
@@ -37,16 +36,16 @@ def is_number(s):
 
 
 class LoadAndSampleCrAndAf:
-    """ Class that loads the copy ratio and allele fraction data from the modelFinal.seg file.
-        In this data file, both the copy ratio and the allele fraction posterior distribution are
+    """ Class that loads the copy ratio and allele fraction data from the modelFinal.seg file, which is the output of
+        ModelSegments. In this data file, both the copy ratio and the allele fraction posterior distribution are
         characterized by the distribution's median, 10th and 90th percentile.
-        We attribute a weigth to each segment based on the tightness of their posteriors.
+        We attribute a weight to each segment based on the tightness of their posteriors.
     """
     def __init__(self, filename: str, load_cr: bool = True, load_af: bool=True, do_logging: bool=True,
                  weight_ratio_max=100., output_log_dir: str= "", output_log_prefix: str= ""):
         """ Inputs:
             - filename: 'modelFinal.seg' file characterizing the posterior distribution of the
-              copy ratio and the allele fraction data
+              copy ratio and the allele fraction data (output of ModelSegments)
             - load_cr: whether to load copy ratio data
             - load_af: whether to load the allele fraction data
             - weight_ratio_max: defines the maximum value that the weights of points can take.
@@ -60,7 +59,7 @@ class LoadAndSampleCrAndAf:
                 # If no directory is given for logging, we use the input file's directory
                 input_filename_ending = filename.split("/")[-1]
                 input_dir = filename.split(input_filename_ending)[0]
-                self.__output_log_dir=input_dir
+                self.__output_log_dir = input_dir
             else:
                 self.__output_log_dir = output_log_dir
                 if output_log_dir[-1] != "/":
@@ -87,8 +86,7 @@ class LoadAndSampleCrAndAf:
             self.__logger.info("load_copy_ratio: {0}".format(load_cr))
             self.__logger.info("load_allele_fraction: {0}".format(load_af))
         else:
-            # In the future, whenever we find that self.__log_filename is an empty string, we don't do logging,
-            # otherwise we do.
+            # In the future, we only do logging whenever we find that self.__log_filename is not an empty string.
             self.__log_filename = ""
             self.__output_log_dir = ""
             self.__output_log_prefix = ""
@@ -133,7 +131,7 @@ class LoadAndSampleCrAndAf:
         # we sample the number of points in each segment to be proportional to their weights
         if not output_log_prefix == "":
             self.__logger.info("Sampling data points according to the segment weights.")
-        self.__copy_ratio_median_sampled, self.__allele_fraction_median_sampled = self.__sample_points()
+        self.__copy_ratio_median_sampled, self.__allele_fraction_median_sampled = self.__sample_segments()
 
         if not output_log_prefix == "":
             self.__logger.info("Finished.\n\n\n")
@@ -191,8 +189,8 @@ class LoadAndSampleCrAndAf:
         allele_fraction_median = []    # median of the allele fraction posterior distribution
         allele_fraction_10th_perc = [] # 10th percentile of the allele fraction posterior distribution
         allele_fraction_90th_perc = [] # 90th percentile of the allele fraction posterior distribution
-        contig = []                    # contig (which chromosome the segments are on)
-        segment_start = []             # starting positions of the segments (base pair)
+        contig = []                    # contig (chromosome)
+        segment_start = []             # starting positions of the segments (in base pair units)
         segment_end = []               # ending positions of the segments (base pair)
         segment_lengths = []           # length of segments (base pair)
         n_points_cr = []               # number of copy ratio data points taken from the segment (base pair)
@@ -214,20 +212,21 @@ class LoadAndSampleCrAndAf:
                 if len(values) >= 5:
                     segment_length = float(values[2]) - float(values[1])
                     if (((math.isnan(float(values[5]))
-                        or math.isnan(float(values[6]))
-                        or math.isnan(float(values[7]))
-                        or 2**float(values[5]) > self.__max_copy_ratio_possible
-                        or 2**float(values[6]) > self.__max_copy_ratio_possible
-                        or 2**float(values[7]) > self.__max_copy_ratio_possible))
+                          or math.isnan(float(values[6]))
+                          or math.isnan(float(values[7]))
+                          or 2**float(values[5]) > self.__max_copy_ratio_possible
+                          or 2**float(values[6]) > self.__max_copy_ratio_possible
+                          or 2**float(values[7]) > self.__max_copy_ratio_possible))
                         and 0 < float(values[3])
-                        and 0 < float(values[4])):
+                        and 0 < float(values[4])
+                        ):
                         cr_nan += segment_length
                     if ((math.isnan(float(values[8]))
-                        or math.isnan(float(values[9]))
-                        or math.isnan(float(values[10]))
-                        or not (0. <= float(values[8]) <= 0.5)
-                        or not (0. <= float(values[9]) <= 0.5)
-                        or not (0. <= float(values[10]) <= 0.5))
+                         or math.isnan(float(values[9]))
+                         or math.isnan(float(values[10]))
+                         or not (0. <= float(values[8]) <= 0.5)
+                         or not (0. <= float(values[9]) <= 0.5)
+                         or not (0. <= float(values[10]) <= 0.5))
                         and 0 < float(values[3])
                         and 0 < float(values[4])):
                         af_nan += segment_length
@@ -247,10 +246,10 @@ class LoadAndSampleCrAndAf:
                                    "We will thus not load copy ratio data.")
             self.__load_cr = False
         if af_nan_ratio >= af_nan_ratio_threshold:
-            if self.__load_cr and not self.__log_filename == "":
+            if self.__load_af and not self.__log_filename == "":
                 self.__logger.info("More than {0}%% ".format(100 * af_nan_ratio_threshold) +
                                    "of the lines have NaN allele fraction values. " +
-                                   "We will thus not load copy ratio data.")
+                                   "We will thus not load allele fraction data.")
             self.__load_af = False
         if (not self.__load_cr) and (not self.__load_af) and (not self.__log_filename == ""):
             self.__logger.info("Error: No copy ratio and no allele fraction data will be loaded.")
@@ -260,7 +259,7 @@ class LoadAndSampleCrAndAf:
             for line in lines:
                 values = line.strip().split()
                 if is_number(values[1]):
-                    if(len(values) >= 5):
+                    if len(values) >= 5:
                         if (not math.isnan(float(values[5]))
                             and not math.isnan(float(values[6]))
                             and not math.isnan(float(values[7]))
@@ -299,8 +298,7 @@ class LoadAndSampleCrAndAf:
                             if (2**float(values[5]) <= self.__max_copy_ratio_possible
                                 and 2**float(values[6]) <= self.__max_copy_ratio_possible
                                 and 2**float(values[7]) <= self.__max_copy_ratio_possible
-                                and 0 < float(values[3])
-                                and 0 < float(values[4])):
+                                and 0 < float(values[3])):
                                 contig.append(str(values[0]))
                                 segment_start.append(int(values[1]))
                                 segment_end.append(int(values[2]))
@@ -325,7 +323,6 @@ class LoadAndSampleCrAndAf:
                             if(0. <= float(values[8]) <= 0.5
                                and 0. <= float(values[9]) <= 0.5
                                and 0. <= float(values[10]) <= 0.5
-                               and 0 < float(values[3])
                                and 0 < float(values[4])):
                                 contig.append(str(values[0]))
                                 segment_start.append(int(values[1]))
@@ -348,7 +345,7 @@ class LoadAndSampleCrAndAf:
 
     def fit_beta_distribution(self, af_median: float, af_10: float, af_90: float):
         """ Fit the beta distribution to the allele fraction distribution,
-            when the 50th (median), 10th and 90th percentiles are known.
+            when the 50th (af_median), 10th (af_10) and 90th (af_90) percentiles are known.
         """
 
         def __find_beta_percentile(a_: float, b_: float, perc_: float):
@@ -365,12 +362,13 @@ class LoadAndSampleCrAndAf:
                 minimization algorithm that fits the parameters
                 of the beta distribution that best describe the
                 median, 10th and 90th percentiles.
-                This initial condition should be close to the solution.
+                This initial condition should be close to the solution and starting
+                from it should lead to fast convergence.
 
                 Approximations:
                 - We approximate the std deviation of the beta distribution with
                   0.5*(90th_percentile - 10th_percentile).
-                  This is a rough but not very bad estimate.
+                  This is a rough but good estimate.
                   The variance is given by var = a*b / ((a+b)**2 * (a+b+1)).
                 - Since the beta distributions that we need to fit is usually tight
                   (and in the not tight case the minimization just works fine), we
@@ -391,11 +389,12 @@ class LoadAndSampleCrAndAf:
             """ This function defines the fitting error. We require that the median
                 and the width of the distribution (difference between the 10th and
                 90th percentile) be as accurate as possible. """
-            # Note, that we do not take the errors of the 10th and 90th percentile,
-            # only the error of determining their difference.
+            # Note, that we do not consider the fitting errors of the data points at the
+            # 10th and 90th percentiles, only the fitting error of their difference.
             # The reason for this choice is that the errors in the 10th and 90th
             # percentile can be much larger than those of the median, as these are
-            # at the tails of the distribution.
+            # at the tails of the distribution. We thus consider the range between the
+            # 10th and 90th percentiles to be a better parameter to fit.
             a_ = ab[0]
             b_ = ab[1]
             af_median_prediction = __find_beta_percentile(a_, b_, 0.5)
@@ -422,7 +421,7 @@ class LoadAndSampleCrAndAf:
         """
 
         def __find_gamma_percentile(a_, b_, perc_):
-            # Get the copy ratio value corresponding to the percentile 'perc'
+            # Get the value of the gamma distribution corresponding to the percentile 'perc'
             if perc_ < 0:
                 return 0
             if perc_ > 1:
@@ -434,15 +433,11 @@ class LoadAndSampleCrAndAf:
                 algorithm, i.e. we approximate the values of a and b and start
                 minimizing from there.
                 Approximations:
-                - We approximate the std deviation with
-                  0.5*(90th_percentile - 10th_percentile).
-                  This is a rough but OK estimate.
-                  The variance is given by var = a/b**2.
+                - We approximate the std deviation with 0.5*(90th_percentile - 10th_percentile).
+                  This is a rough but good estimate. The variance is given by var = a/b**2.
                 - Since the beta distributions that we need to fit is usually tight,
-                  we approximate the mean with the median.
-                  The mean has a simple formula mean = a / b
-                We solve the approximate equations for the mean and the
-                variance and get a and b from there.
+                  we approximate the mean with the median. The mean has a simple formula mean = a / b
+                We solve the approximate equations for the mean and the variance and get a and b from there.
             """
             std_dev_estimate = 0.5 * (cr_90_ - cr_10_)
             var_estimate = std_dev_estimate ** 2
@@ -455,12 +450,10 @@ class LoadAndSampleCrAndAf:
             return [a0_, b0_]
 
         def __gamma_err(ab):
-            """ This function defines the fitting error. We require that
-                the median and the width of the distribution
-                (difference between the 10th and 90th percentile)
-                be as accurate as possible.
-                However, we do not want the 10th and 90th percentiles to be
-                accurate, only their difference.
+            """ This function defines the fitting error. We require that the median and the range of the distribution
+                between the 10th and 90th percentile be as accurate as possible.
+                We only consider the fitting error to the difference between the 10th and 90th percentiles, but not
+                to the percentiles themselves.
                 The reason for this choice is that the errors in the 10th and 90th
                 percentile can be large, as these are at the tails of the distribution.
             """
@@ -485,40 +478,39 @@ class LoadAndSampleCrAndAf:
 
     def __determine_weights(self):
         """ This function determines the weights associated with the segment medians.
-            It fits a gamma distribution to the copy ratio and a beta distribution to
+            It fits a gamma distribution to the copy ratio data and a beta distribution to
             the allele fraction data. Then, it determines the variance of these
             distributions and sets the weight to be equal to the harmonic mean of the
             variances. (It assumes infinite covariance for missing data)
         """
         weights = []
         for i in range(self.__n_segments):
-            # EXPERIMENTAL -- SWITCHING FROM POSTERIOR WIDTH BASED WEIGHTS TO SEGMENT LENGTH
-            #
-            # w = self.__determine_weight_one_segment(self.__copy_ratio_median[i],
-            #                                         self.__copy_ratio_10th_perc[i],
-            #                                         self.__copy_ratio_90th_perc[i],
-            #                                         self.__allele_fraction_median[i],
-            #                                         self.__allele_fraction_10th_perc[i],
-            #                                         self.__allele_fraction_90th_perc[i])
-            #
-            w = self.__n_points_cr[i]
-            #
-            # END: EXPERIMENTAL -- SWITCHING FROM POSTERIOR WIDTH BASED WEIGHTS TO SEGMENT LENGTH
+            w = self.__determine_weight_one_segment(self.__copy_ratio_median[i],
+                                                    self.__copy_ratio_10th_perc[i],
+                                                    self.__copy_ratio_90th_perc[i],
+                                                    self.__allele_fraction_median[i],
+                                                    self.__allele_fraction_10th_perc[i],
+                                                    self.__allele_fraction_90th_perc[i])
 
             weights.append(w)
+
+        # Set an upper limit to the weights possible. This upper limit is needed since, in rare cases,
+        # ModelSegments sometimes puts overly tight posteriors on the segments, which are thus overrepresented.
         mean_weight = np.mean([weights[i] for i in range(len(weights))]) if len(weights) > 0 else 0.
         mean_weight = np.mean([weights[i] for i in range(len(weights)) if weights[i] > 0.001 * mean_weight]) \
             if len([weights[i] for i in range(len(weights)) if weights[i] > 0.001 * mean_weight]) > 0 \
             else 0.
         max_weight = float(self.__weight_ratio_max) * float(mean_weight)
         weights = [min([weights[i], max_weight]) for i in range(len(weights))]
-        return weights
 
+        return weights
 
     def __determine_weight_one_segment(self, cr_median: float, cr_10: float, cr_90: float,
                                        af_median: float, af_10: float, af_90: float):
-        """ Sample n_points data points from each segment, according to the gamma
-            and beta distributions whose 10th, 50th and 90th percentiles are given.
+        """ Get the weight of the segment, as given by the harmonic mean of the inverse variances of the copy ratio
+            and allele fraction posteriors of the means. The parameters of the distributions are determined by
+            fitting gamma and beta distributions whose 10th, 50th and 90th percentiles of the copy ratio and allele
+            fraction posteriors, respectively.
         """
         if self.__load_cr:
             [cr_a, cr_b] = self.fit_gamma_distribution(cr_median=cr_median, cr_10=cr_10, cr_90=cr_90)
@@ -526,14 +518,18 @@ class LoadAndSampleCrAndAf:
         else:
             var_cr = 0.
         if self.__load_af:
-            [af_a, af_b] = self.fit_beta_distribution(2 * af_median, 2 * af_10, 2 * af_90)
+            # Since the beta distribution's support is between 0 and 1, and minor the allele fraction values are
+            # between 0 and 0.5, we need to multiply them by 2 when we fit the beta distribution to them.
+            [af_a, af_b] = self.fit_beta_distribution(2*af_median, 2*af_10, 2*af_90)
             var_af = (af_a * af_b) / (af_a + af_b)**2 / (af_a + af_b + 1)
         else:
             var_af = 0.
         weight = 1./(var_cr + var_af)
         return weight
 
-    def __sample_points(self):
+    def __sample_segments(self):
+        # Sample the segments so that their frequency in the output is proportional to the segment weights.
+        # Only used by __find_1D_clusters.
         total_number_of_points = 40 * len(self.__copy_ratio_median)
         if self.__n_segments > 0:
             avg_number_of_points = total_number_of_points / self.__n_segments
@@ -550,6 +546,7 @@ class LoadAndSampleCrAndAf:
             allele_fraction_median_sampled += [self.__allele_fraction_median[i]] * n_pts
         return copy_ratio_median_sampled, allele_fraction_median_sampled
 
+
 class ModeledSegmentsCaller:
     """ This class takes an instance of the class LoadAndSampleCrAndAf as input, which contains the
         data from the input file. It then identifies the normal segments. It outputs the plots of
@@ -557,10 +554,10 @@ class ModeledSegmentsCaller:
         into files.
     """
     def __init__(self, cr_af_data: LoadAndSampleCrAndAf, interactive: bool=True,
-                 output_image_dir: str= "",
-                 output_calls_dir: str= "",
-                 output_image_prefix:str= "",
-                 output_calls_prefix: str= "",
+                 output_image_dir: str="",
+                 output_calls_dir: str="",
+                 output_image_prefix:str="",
+                 output_calls_prefix: str="",
                  output_image_suffix: str=".png",
                  output_calls_suffix: str=".called.seg",
                  interactive_output_calls_image_suffix:str="_classification.png",
@@ -581,16 +578,16 @@ class ModeledSegmentsCaller:
                  gaussian_prior_standard_deviation: float=0.002
                  ):
         """ On initialization, the caller loads the copy ratio and allele fraction data from
-            the LoadAndSampleCrAndAf class. It then identifies normal segments and saves the
-            results, including the plots.
+            the LoadAndSampleCrAndAf class. It then identifies normal, CNLOH, deleted and amplified segments
+            and saves the results, including the plots.
         """
 
         # Initialize random number generator
         np.random.seed(RANDOM_SEED)
 
         # Start logging, continuing the log file that was written when cr_af_data was created
-        self.__log_filename=cr_af_data.get_log_filename()
-        self.__logger=cr_af_data.get_logger()
+        self.__log_filename = cr_af_data.get_log_filename()
+        self.__logger = cr_af_data.get_logger()
         if not self.__log_filename == "":
             self.__logger.info("* ---- {0} ---- *".format(str(datetime.datetime.now())))
             self.__logger.info("Initializing class CNVCaller")
@@ -1639,7 +1636,7 @@ class ModeledSegmentsCaller:
         plt.yticks(np.arange(0, 0.6, 0.1))
 
         plt.subplot(224)
-        plt.hist(self.__copy_ratio_median_sampled, bins = "auto", color = "k")
+        plt.hist(self.__copy_ratio_median, weights=np.array(self.__weights), bins = "auto", color = "k")
         plt.xlabel("Copy ratio")
         plt.xlim((0, 5))
         plt.xticks(np.arange(0, 6, 1))
@@ -1674,7 +1671,6 @@ class ModeledSegmentsCaller:
     def __plot_Gaussian_mixture_fit(self):
         """ Plot the fit of Gaussian clusters to the 2D copy ratio and allele fraction data.
         """
-        # samples = np.asarray([self.__copy_ratio_median_sampled, self.__allele_fraction_median_sampled]).T
         [pis, mu, cov] = self.__gaussian_mixture_fit
 
         n_Gaussians = len(pis)
