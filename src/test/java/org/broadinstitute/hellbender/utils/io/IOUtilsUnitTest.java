@@ -318,7 +318,7 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
         byte[] dataRead = IOUtils.readFileIntoByteArray(tempFile, readBufferSize);
 
         Assert.assertEquals(dataRead.length, dataWritten.length);
-        Assert.assertEquals(dataWritten, dataRead);
+        Assert.assertEquals(dataRead, dataWritten);
     }
 
     @Test( dataProvider = "ByteArrayIOTestData" )
@@ -330,7 +330,7 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
         byte[] dataRead = IOUtils.readStreamIntoByteArray(new FileInputStream(tempFile), readBufferSize);
 
         Assert.assertEquals(dataRead.length, dataWritten.length);
-        Assert.assertEquals(dataWritten, dataRead);
+        Assert.assertEquals(dataRead, dataWritten);
     }
 
     @Test( expectedExceptions = UserException.CouldNotReadInputFile.class )
@@ -362,7 +362,7 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
         //This just tests that the code runs without crashing.
         //It runs at jvm shutdown so there isn't a good way to test it properly.
         //If you see a directory in the hellbender main folder called
-        final File dir = new File( "I_SHOULD_HAVE_BEEN_DELETED");
+        final File dir = new File(GATKBaseTest.publicTestDir + "I_SHOULD_HAVE_BEEN_DELETED");
         IOUtils.deleteOnExit(dir.toPath());
 
         FileUtils.mkdir(dir, true);

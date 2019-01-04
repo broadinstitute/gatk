@@ -115,7 +115,7 @@ public final class IOUtils {
      */
     public static File createTempDir(String prefix) {
         try {
-            final Path tmpDir = Files.createTempDirectory(prefix);
+            final Path tmpDir = Files.createTempDirectory(prefix).normalize();
             deleteOnExit(tmpDir);
             return tmpDir.toFile();
         } catch (final IOException | SecurityException e) {
@@ -971,9 +971,10 @@ public final class IOUtils {
     }
 
     /**
-     * Schedule a file to be deleted on JVM shutdown.
+     * Schedule a file or directory to be deleted on JVM shutdown.
      *
-     * @param fileToDelete file or directory to be deleted at JVM shutdown.
+     * This calls {@link IOUtils#deleteRecursively(Path)} on {@code fileToDelete }as a shutdown hook.
+     * @param fileToDelete file or directory to be deleted recursively at JVM shutdown.
      */
     public static void deleteOnExit(final Path fileToDelete){
        DeleteRecursivelyOnExitPathHook.add(fileToDelete);

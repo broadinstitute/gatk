@@ -9,7 +9,9 @@ import java.util.LinkedHashSet;
 /**
  * Class to hold a set of {@link Path} to be delete on the JVM exit through a shutdown hook.
  *
- * <p>This class is a modification of {@link htsjdk.samtools.util.nio}
+ * <p>This class is a modification of {@link htsjdk.samtools.util.nio.DeleteOnExitPathHook}
+ *
+ * This class should be considered an implementation detail of {@link IOUtils#deleteOnExit(Path)} and not used directly.
  */
 class DeleteRecursivelyOnExitPathHook {
     private static LinkedHashSet<Path> paths = new LinkedHashSet<>();
@@ -22,7 +24,8 @@ class DeleteRecursivelyOnExitPathHook {
     /**
      * Adds a {@link Path} for deletion on JVM exit.
      *
-     * @param path path to be deleted.
+     * @param path path to be deleted.  This path may be a non-empty directory and the entire directory structure will
+     *            be deleted.
      *
      * @throws IllegalStateException if the shutdown hook is in progress.
      */
