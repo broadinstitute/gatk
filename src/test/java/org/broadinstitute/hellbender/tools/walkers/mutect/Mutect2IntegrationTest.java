@@ -634,7 +634,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "chrM:750-750 A*, [G]");
         Assert.assertTrue(expectedKeys.stream().allMatch(variantKeys::contains));
 
-        Assert.assertEquals(variants.get(0).getAttributeAsInt(GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY, 0), 1513);
+        Assert.assertEquals(variants.get(0).getAttributeAsInt(GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY, 0), 1517);
         Assert.assertEquals(variants.get(0).getGenotype("NA12878").getAnyAttribute(GATKVCFConstants.POTENTIAL_POLYMORPHIC_NUMT_KEY), "true");
     }
 
@@ -693,7 +693,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final List<String> variantKeys = new ArrayList<>(variantMap.keySet());
 
         final List<String> expectedKeys = Arrays.asList(
-                "chrM:152-152 T*, [<NON_REF>, C]",
+                "chrM:152-153 TA*, [<NON_REF>, CA, CC]",
                 "chrM:263-263 A*, [<NON_REF>, G]",
                 "chrM:297-297 A*, [<NON_REF>, AC, C]",  //alt alleles get sorted when converted to keys
                 //"chrM:301-301 A*, [<NON_REF>, AC, ACC]",
