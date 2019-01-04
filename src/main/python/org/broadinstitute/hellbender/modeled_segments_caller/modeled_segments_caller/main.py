@@ -1,28 +1,27 @@
 import matplotlib
 matplotlib.use('Agg')
-import logging
-import datetime
-import numpy as np
-import scipy
-import math
-import random
-import theano.tensor as tt
-import pymc3 as pm
-from matplotlib import pyplot as plt
+import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 from matplotlib.colors import LogNorm
 from matplotlib import ticker
+import numpy as np
+import scipy
 from scipy.stats import multivariate_normal
 from scipy.optimize import minimize
 from sklearn import mixture, cluster
 from sklearn.neighbors import KernelDensity
+import math
+import random
 from pymc3 import MvNormal, Dirichlet, DensityDist
 from pymc3.variational.callbacks import CheckParametersConvergence
+import pymc3 as pm
 from pymc3.math import logsumexp
+import theano.tensor as tt
 from theano.tensor.nlinalg import det
 from copy import deepcopy
 from typing import List
-
+import logging
+import datetime
 
 RANDOM_SEED = 123
 
