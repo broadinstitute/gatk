@@ -157,21 +157,21 @@ public class CallModeledSegmentsIntegrationTest extends CommandLineProgramTest {
 
         // Calculating the frequency of disagreeing base pairs between the output and the truth data
         boolean onlyNormaSegments = true;   // True iff the algorithm has found normal segments only
-        double totalWeight = 0.;
-        double segmentWeight;
-        double weightDifferent = 0.;
+        double totalLength = 0.;
+        double segmentLength;
+        double lengthDifferent = 0.;
         for (int i=0; i<outputDataRecords.size(); i++) {
-            segmentWeight = outputDataRecords.get(i).getWeight();
-            totalWeight += segmentWeight;
+            segmentLength = outputDataRecords.get(i).getEnd() - outputDataRecords.get(i).getStart() + 1;
+            totalLength += segmentLength;
             if (!(outputDataRecords.get(i).getCallNormal()).equals(truthDataRecords.get(i).getCallNormal())) {
-                weightDifferent += segmentWeight;
+                lengthDifferent += segmentLength;
             }
             if (!outputDataRecords.get(i).getCallNormal().equals("0")) {
                 onlyNormaSegments = false;
             }
         }
 
-        if (weightDifferent / totalWeight > errorTolerance) {
+        if (lengthDifferent / totalLength > errorTolerance) {
             System.out.println("Error: the calls in the truth data and the output are different:");
             printComparison(outputDataRecords, truthDataRecords);
             Assert.assertTrue(false);
