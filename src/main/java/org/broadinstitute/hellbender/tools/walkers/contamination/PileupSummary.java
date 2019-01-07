@@ -10,10 +10,7 @@ import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
-import org.broadinstitute.hellbender.utils.tsv.DataLine;
-import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
-import org.broadinstitute.hellbender.utils.tsv.TableReader;
-import org.broadinstitute.hellbender.utils.tsv.TableWriter;
+import org.broadinstitute.hellbender.utils.tsv.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -31,8 +28,6 @@ public class PileupSummary implements Locatable {
     private final int totalCount;
 
     private final double alleleFrequency;
-
-    public static final String SAMPLE_METADATA_TAG = "SAMPLE";
 
     public PileupSummary(String contig, int position, int refCount, int altCount, int otherAltsCount, double alleleFrequency) {
         this.contig = contig;
@@ -96,7 +91,7 @@ public class PileupSummary implements Locatable {
     //----- The following two public static methods read and write pileup summary files
     public static void writeToFile(final String sample, final List<PileupSummary> records, final File outputTable) {
         try ( PileupSummaryTableWriter writer = new PileupSummaryTableWriter(outputTable) ) {
-            writer.writeMetadata(SAMPLE_METADATA_TAG, sample);
+            writer.writeMetadata(TableUtils.SAMPLE_METADATA_TAG, sample);
             writer.writeAllRecords(records);
         } catch (IOException e){
             throw new UserException(String.format("Encountered an IO exception while writing to %s.", outputTable));
@@ -106,7 +101,7 @@ public class PileupSummary implements Locatable {
     public static ImmutablePair<String, List<PileupSummary>> readFromFile(final File tableFile) {
         try( PileupSummaryTableReader reader = new PileupSummaryTableReader(tableFile) ) {
             final List<PileupSummary> pileupSummaries = reader.toList();
-            return ImmutablePair.of(reader.getMetadata().get(PileupSummary.SAMPLE_METADATA_TAG), pileupSummaries);
+            return ImmutablePair.of(reader.getMetadata().get(TableUtils.SAMPLE_METADATA_TAG), pileupSummaries);
         } catch (IOException e){
             throw new UserException(String.format("Encountered an IO exception while reading from %s.", tableFile));
         }

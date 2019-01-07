@@ -7,6 +7,7 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.List;
 import java.util.OptionalDouble;
@@ -22,7 +23,6 @@ import java.util.OptionalInt;
  */
 @DocumentedFeature(groupName= HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Median base quality of bases supporting each allele (MBQ)")
 public class BaseQuality extends PerAlleleAnnotation implements StandardMutectAnnotation {
-    public static final String KEY = "MBQ";
 
     @Override
     protected int aggregate(final List<Integer> values) {
@@ -30,7 +30,7 @@ public class BaseQuality extends PerAlleleAnnotation implements StandardMutectAn
     }
 
     @Override
-    protected String getVcfKey() { return KEY; }
+    protected String getVcfKey() { return GATKVCFConstants.MEDIAN_BASE_QUALITY_KEY; }
 
     @Override
     protected String getDescription() { return "median base quality"; }

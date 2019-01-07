@@ -19,16 +19,19 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Stores the results of the first pass of {@link FilterMutectCalls}, a purely online step in which each variant is
  * not "aware" of other variants, and learns various global properties necessary for a more refined second step.
  */
 public class FilteringFirstPass {
-    final List<FilterResult> filterResults;
-    final Map<String, ImmutablePair<String, Integer>> filteredPhasedCalls;
-    final Map<String, FilterStats> filterStats;
-    final Set<String> normalSamples;
+    private final List<FilterResult> filterResults;
+
+    // for each PID, the positions with PGTs of filtered genotypes
+    private final Map<String, ImmutablePair<Integer, Set<String>>> filteredPhasedCalls;
+    private final Map<String, FilterStats> filterStats;
+    private final Set<String> normalSamples;
     boolean readyForSecondPass;
 
     public FilteringFirstPass(final Set<String> normalSamples) {
@@ -58,13 +61,13 @@ public class FilteringFirstPass {
         final String pid = (String) tumorGenotype.getExtendedAttribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY, "");
         final int position = vc.getStart();
 
-        final Pair<String, Integer> filteredCall = filteredPhasedCalls.get(pid);
+        final Pair<Integer, Set<String>> filteredCall = filteredPhasedCalls.get(pid);
         if (filteredCall == null) {
             return false;
         }
 
-        // Check that vc occurs on the filtered haplotype
-        return filteredCall.getLeft().equals(pgt) && Math.abs(filteredCall.getRight() - position) <= maxDistance;
+        // Check that vc occurs on a filtered haplotype
+        return filteredCall.getRight().contains(pgt) && Math.abs(filteredCall.getLeft() - position) <= maxDistance;
     }
 
     private Genotype getTumorGenotypeWithGreatestAlleleFraction(final VariantContext vc) {
@@ -76,13 +79,18 @@ public class FilteringFirstPass {
 
     public void add(final FilterResult filterResult, final VariantContext vc) {
         filterResults.add(filterResult);
-        final Genotype tumorGenotype = getTumorGenotypeWithGreatestAlleleFraction(vc);
 
-        if (!filterResult.getFilters().isEmpty() && hasPhaseInfo(tumorGenotype)) {
-            final String pgt = (String) tumorGenotype.getExtendedAttribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY, "");
-            final String pid = (String) tumorGenotype.getExtendedAttribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY, "");
-            final int position = vc.getStart();
-            filteredPhasedCalls.put(pid, new ImmutablePair<>(pgt, position));
+        final int position = vc.getStart();
+        if (!filterResult.getFilters().isEmpty()) {
+            final Map<String, Set<String>> phasedGTsForEachPhaseID = vc.getGenotypes().stream()
+                    .filter(gt -> !normalSamples.contains(gt.getSampleName()))
+                    .filter(FilteringFirstPass::hasPhaseInfo)
+                    .collect(Collectors.groupingBy(g -> (String) g.getExtendedAttribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY, ""),
+                            Collectors.mapping(g -> (String) g.getExtendedAttribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY, ""), Collectors.toSet())));
+
+            for (final Map.Entry<String, Set<String>> pidAndPgts : phasedGTsForEachPhaseID.entrySet()) {
+                filteredPhasedCalls.put(pidAndPgts.getKey(), new ImmutablePair<>(position, pidAndPgts.getValue()));
+            }
         }
     }
 

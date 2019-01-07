@@ -173,11 +173,11 @@ public class Mutect2FilteringEngine {
     }
 
     private void applyBaseQualityFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final FilterResult filterResult) {
-        if (!vc.hasAttribute(BaseQuality.KEY)) {
+        if (!vc.hasAttribute(GATKVCFConstants.MEDIAN_BASE_QUALITY_KEY)) {
             return;
         }
 
-        final List<Integer> baseQualityByAllele = vc.getAttributeAsIntList(BaseQuality.KEY, 0);
+        final List<Integer> baseQualityByAllele = vc.getAttributeAsIntList(GATKVCFConstants.MEDIAN_BASE_QUALITY_KEY, 0);
         final double[] tumorLods = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.TUMOR_LOD_KEY);
         final int indexOfMaxTumorLod = MathUtils.maxElementIndex(tumorLods);
 
@@ -338,7 +338,7 @@ public class Mutect2FilteringEngine {
         // the above filter misses artifacts whose support in the normal consists entirely of low base quality reads
         // Since a lot of low-BQ reads is itself evidence of an artifact, we filter these by hand via an estimated LOD
         // that uses the average base quality of *ref* reads in the normal
-        final int medianRefBaseQuality = vc.getAttributeAsIntList(BaseQuality.KEY, IMPUTED_NORMAL_BASE_QUALITY).get(0);
+        final int medianRefBaseQuality = vc.getAttributeAsIntList(GATKVCFConstants.MEDIAN_BASE_QUALITY_KEY, IMPUTED_NORMAL_BASE_QUALITY).get(0);
         final double normalPValue = 1 - new BinomialDistribution(null, normalDepth, QualityUtils.qualToErrorProb(medianRefBaseQuality))
                 .cumulativeProbability(normalAltDepth - 1);
 

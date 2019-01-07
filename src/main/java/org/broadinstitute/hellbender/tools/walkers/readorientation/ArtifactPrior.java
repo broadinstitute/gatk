@@ -1,19 +1,12 @@
 package org.broadinstitute.hellbender.tools.walkers.readorientation;
 
 import htsjdk.samtools.util.SequenceUtil;
-import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.tsv.DataLine;
-import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
-import org.broadinstitute.hellbender.utils.tsv.TableReader;
-import org.broadinstitute.hellbender.utils.tsv.TableWriter;
-import scala.collection.Seq;
+import org.broadinstitute.hellbender.utils.tsv.*;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -24,8 +17,6 @@ public class ArtifactPrior {
     private final double[] pi;
     private final int numExamples;
     private final int numAltExamples;
-
-    public static final String SAMPLE_METADATA_TAG = "SAMPLE";
 
     public ArtifactPrior(final String referenceContext, final double[] pi, final int numExamples, final int numAltExamples) {
         this.referenceContext = referenceContext;
@@ -67,7 +58,7 @@ public class ArtifactPrior {
     public static class ArtifactPriorTableWriter extends TableWriter<ArtifactPrior> {
         public ArtifactPriorTableWriter(final File output, final String sample) throws IOException {
             super(output, ArtifactPriorTableColumn.COLUMNS);
-            writeMetadata(SAMPLE_METADATA_TAG, sample);
+            writeMetadata(TableUtils.SAMPLE_METADATA_TAG, sample);
         }
 
         @Override

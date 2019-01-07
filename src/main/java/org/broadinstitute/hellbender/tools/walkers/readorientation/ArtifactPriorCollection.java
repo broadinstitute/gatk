@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.readorientation;
 import htsjdk.samtools.util.SequenceUtil;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.tsv.TableUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -68,7 +69,7 @@ public class ArtifactPriorCollection {
         final String sample;
         try (ArtifactPrior.ArtifactPriorTableReader reader = new ArtifactPrior.ArtifactPriorTableReader(input)) {
             priors = reader.toList();
-            sample = reader.getMetadata().get(ArtifactPrior.SAMPLE_METADATA_TAG);
+            sample = reader.getMetadata().get(TableUtils.SAMPLE_METADATA_TAG);
             if (priors.size() != F1R2FilterConstants.NUM_KMERS){
                 Utils.warnUser("Reading from a prior table that was not created by ArtifactPriorCollection::writeArtifactPriors");
             }

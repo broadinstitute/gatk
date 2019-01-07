@@ -6,10 +6,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.tsv.DataLine;
-import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
-import org.broadinstitute.hellbender.utils.tsv.TableReader;
-import org.broadinstitute.hellbender.utils.tsv.TableWriter;
+import org.broadinstitute.hellbender.utils.tsv.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -27,8 +24,6 @@ public class AltSiteRecord {
     private int altF1R2;
     private int depth;
     private Nucleotide altAllele;
-
-    public static final String SAMPLE_METADATA_TAG = "SAMPLE";
 
 
     public AltSiteRecord(final String referenceContext, final int refCount, final int altCount,
@@ -103,7 +98,7 @@ public class AltSiteRecord {
     public static class AltSiteRecordTableWriter extends TableWriter<AltSiteRecord> {
         public AltSiteRecordTableWriter(final File output, final String sample) throws IOException {
             super(output, AltSiteRecord.AltSiteRecordTableColumn.COLUMNS);
-            writeMetadata(SAMPLE_METADATA_TAG, sample);
+            writeMetadata(TableUtils.SAMPLE_METADATA_TAG, sample);
         }
 
         @Override
@@ -145,7 +140,7 @@ public class AltSiteRecord {
         List<AltSiteRecord> records = new ArrayList<>(initialListSize);
         final String sample;
         try (AltSiteRecordTableReader reader = new AltSiteRecordTableReader(table)) {
-            sample = reader.getMetadata().get(SAMPLE_METADATA_TAG);
+            sample = reader.getMetadata().get(TableUtils.SAMPLE_METADATA_TAG);
             reader.forEach(records::add);
         } catch (IOException e) {
             throw new UserException(String.format("Encountered an IO exception while reading from %s.", table), e);

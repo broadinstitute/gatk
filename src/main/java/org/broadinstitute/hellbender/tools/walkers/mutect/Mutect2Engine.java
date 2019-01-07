@@ -57,6 +57,9 @@ import java.util.stream.Collectors;
  */
 public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
+    private static final List<String> STANDARD_MUTECT_INFO_FIELDS = Arrays.asList(GATKVCFConstants.NORMAL_LOD_KEY, GATKVCFConstants.TUMOR_LOD_KEY, GATKVCFConstants.NORMAL_ARTIFACT_LOD_ATTRIBUTE,
+            GATKVCFConstants.EVENT_COUNT_IN_HAPLOTYPE_KEY, GATKVCFConstants.IN_PON_VCF_ATTRIBUTE, GATKVCFConstants.POPULATION_AF_VCF_ATTRIBUTE, GATKVCFConstants.GERMLINE_QUAL_VCF_ATTRIBUTE, GATKVCFConstants.CONTAMINATION_QUAL_ATTRIBUTE,
+            GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY, GATKVCFConstants.N_COUNT_KEY, GATKVCFConstants.UNIQUE_ALT_READ_SET_COUNT_KEY, GATKVCFConstants.STRAND_ARTIFACT_AF_KEY, GATKVCFConstants.STRAND_ARTIFACT_POSTERIOR_KEY);
     private static final String MUTECT_VERSION = "2.1";
 
     public static final String TUMOR_SAMPLE_KEY_IN_VCF_HEADER = "tumor_sample";
@@ -163,7 +166,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         headerInfo.add(new VCFHeaderLine(Mutect2FilteringEngine.FILTERING_STATUS_VCF_KEY, "Warning: unfiltered Mutect 2 calls.  Please run " + FilterMutectCalls.class.getSimpleName() + " to remove false positives."));
         headerInfo.addAll(annotationEngine.getVCFAnnotationDescriptions(false));
         headerInfo.addAll(defaultToolHeaderLines);
-        GATKVCFConstants.STANDARD_MUTECT_INFO_FIELDS.stream().map(GATKVCFHeaderLines::getInfoLine).forEach(headerInfo::add);
+        STANDARD_MUTECT_INFO_FIELDS.stream().map(GATKVCFHeaderLines::getInfoLine).forEach(headerInfo::add);
 
         VCFStandardHeaderLines.addStandardFormatLines(headerInfo, true,
                 VCFConstants.GENOTYPE_KEY,
