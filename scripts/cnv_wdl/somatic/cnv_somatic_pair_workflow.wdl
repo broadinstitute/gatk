@@ -397,28 +397,28 @@ workflow CNVSomaticPairWorkflow {
         Int modeled_segments_normal_disk = ceil(size(DenoiseReadCountsNormal.denoised_copy_ratios, "GB")) + ceil(size(ModelSegmentsNormal.modeled_segments, "GB")) + disk_pad
         call CallModeledSegments as CallModeledSegmentsNormal {
             input:
-            entity_id = CollectCountsTumor.entity_id,
-            modeled_segments_input_file = ModelSegmentsNormal.modeled_segments,
-            load_copy_ratio = load_copy_ratio,
-            load_allele_fraction = load_allele_fraction,
-            normal_minor_allele_fraction_threshold = normal_minor_allele_fraction_threshold,
-            copy_ratio_peak_min_relative_height = copy_ratio_peak_min_relative_height,
-            copy_ratio_kernel_density_bandwidth = copy_ratio_kernel_density_bandwidth,
-            min_fraction_of_points_in_normal_allele_fraction_region = min_fraction_of_points_in_normal_allele_fraction_region,
-            min_weight_first_cr_peak_cr_data_only = min_weight_first_cr_peak_cr_data_only,
-            min_fraction_of_points_in_normal_allele_fraction_region = min_fraction_of_points_in_normal_allele_fraction_region,
-            n_inference_iterations  = n_inference_iterations,
-            inference_total_grad_norm_constraint = inference_total_grad_norm_constraint,
-            n_extra_gaussians_mixture_model = n_extra_gaussians_mixture_model,
-            max_phred_score_normal = max_phred_score_normal,
-            gaussian_prior_standard_deviation = gaussian_prior_standard_deviation,
-            responsibility_threshold_normal = responsibility_threshold_normal,
-            weight_ratio_max = weight_ratio_max,
-            gatk4_jar_override = gatk4_jar_override,
-            gatk_docker = gatk_docker,
-            mem_gb = mem_gb_for_call_modeled_segments,
-            disk_space_gb = modeled_segments_normal_disk,
-            preemptible_attempts = preemptible_attempts
+                entity_id = CollectCountsTumor.entity_id,
+                modeled_segments_input_file = ModelSegmentsNormal.modeled_segments,
+                load_copy_ratio = load_copy_ratio,
+                load_allele_fraction = load_allele_fraction,
+                normal_minor_allele_fraction_threshold = normal_minor_allele_fraction_threshold,
+                copy_ratio_peak_min_relative_height = copy_ratio_peak_min_relative_height,
+                copy_ratio_kernel_density_bandwidth = copy_ratio_kernel_density_bandwidth,
+                min_fraction_of_points_in_normal_allele_fraction_region = min_fraction_of_points_in_normal_allele_fraction_region,
+                min_weight_first_cr_peak_cr_data_only = min_weight_first_cr_peak_cr_data_only,
+                min_fraction_of_points_in_normal_allele_fraction_region = min_fraction_of_points_in_normal_allele_fraction_region,
+                n_inference_iterations  = n_inference_iterations,
+                inference_total_grad_norm_constraint = inference_total_grad_norm_constraint,
+                n_extra_gaussians_mixture_model = n_extra_gaussians_mixture_model,
+                max_phred_score_normal = max_phred_score_normal,
+                gaussian_prior_standard_deviation = gaussian_prior_standard_deviation,
+                responsibility_threshold_normal = responsibility_threshold_normal,
+                weight_ratio_max = weight_ratio_max,
+                gatk4_jar_override = gatk4_jar_override,
+                gatk_docker = gatk_docker,
+                mem_gb = mem_gb_for_call_modeled_segments,
+                disk_space_gb = modeled_segments_normal_disk,
+                preemptible_attempts = preemptible_attempts
         }
 
         # The files from other tasks are small enough to just combine into one disk variable and pass to the normal plotting tasks
@@ -605,7 +605,7 @@ task ModelSegments {
     Int command_mem_mb = machine_mem_mb - 3000
 
     # If optional output_dir not specified, use "out"
-    String output_dir_ = select_first([output_dir, "out/"])
+    String output_dir_ = select_first([output_dir, "out"])
 
     command <<<
         set -e
@@ -698,7 +698,7 @@ task CallModeledSegments {
     Int machine_mem_mb = select_first([mem_gb, 7]) * 1000
     Int command_mem_mb = machine_mem_mb - 1000
 
-    String output_dir_ = select_first([output_dir, "out/"])
+    String output_dir_ = select_first([output_dir, "out"])
     String output_prefix_ = select_first([output_prefix, entity_id])
 
     command <<<
@@ -760,7 +760,7 @@ task PlotDenoisedCopyRatios {
     Int command_mem_mb = machine_mem_mb - 1000
 
     # If optional output_dir not specified, use "out"
-    String output_dir_ = select_first([output_dir, "out/"])
+    String output_dir_ = select_first([output_dir, "out"])
 
     command <<<
         set -e
@@ -816,7 +816,7 @@ task PlotModeledSegments {
     Int command_mem_mb = machine_mem_mb - 1000
 
     # If optional output_dir not specified, use "out"
-    String output_dir_ = select_first([output_dir, "out/"])
+    String output_dir_ = select_first([output_dir, "out"])
 
     command <<<
         set -e
