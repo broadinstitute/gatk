@@ -11,7 +11,6 @@ import java.util.List;
 public class ModeledSegment implements Locatable {
     private final SimpleInterval interval;
     private final int numPointsCopyRatio;
-
     private final int numPointsAlleleFraction;
 
     private final SimplePosteriorSummary log2CopyRatioSimplePosteriorSummary;
