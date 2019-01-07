@@ -1,0 +1,10 @@
+Metadata-Version: 1.0
+Name: modeled-segments-caller
+Version: 0.0.0
+Summary: Calls normal segments using the output of ModeledSegments.
+Home-page: https://broadinstitute.org/
+Author: Marton Kanasz-Nagy
+Author-email: martonkn@broadinstitute.org
+License: UNKNOWN
+Description: UNKNOWN
+Platform: UNKNOWN
