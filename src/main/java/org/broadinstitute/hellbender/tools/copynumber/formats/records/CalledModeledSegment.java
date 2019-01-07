@@ -15,10 +15,6 @@ public class CalledModeledSegment implements Locatable {
     private final SimpleInterval interval;
     private final int numPointsCopyRatio;
     private final int numPointsAlleleFraction;
-<<<<<<< HEAD
-    private final double weight;
-=======
->>>>>>> 4976a48467c0c65e77b994aa416d371d06569fbc
 
     private final SimplePosteriorSummary log2CopyRatioSimplePosteriorSummary;
     private final SimplePosteriorSummary minorAlleleFractionSimplePosteriorSummary;
@@ -38,10 +34,6 @@ public class CalledModeledSegment implements Locatable {
         this.interval = Utils.nonNull(interval);
         this.numPointsCopyRatio = numPointsCopyRatio;
         this.numPointsAlleleFraction = numPointsAlleleFraction;
-<<<<<<< HEAD
-        this.weight = 0.;
-=======
->>>>>>> 4976a48467c0c65e77b994aa416d371d06569fbc
         this.log2CopyRatioSimplePosteriorSummary = Utils.nonNull(log2CopyRatioSimplePosteriorSummary);
         this.minorAlleleFractionSimplePosteriorSummary = Utils.nonNull(minorAlleleFractionSimplePosteriorSummary);
         this.callNormal = callNormal;
@@ -63,11 +55,6 @@ public class CalledModeledSegment implements Locatable {
         return this.interval.getEnd();
     }
 
-<<<<<<< HEAD
-    public double getWeight() {return this.weight; }
-
-=======
->>>>>>> 4976a48467c0c65e77b994aa416d371d06569fbc
     public SimpleInterval getInterval() {
         return this.interval;
     }
