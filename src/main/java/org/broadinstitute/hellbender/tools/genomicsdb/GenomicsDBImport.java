@@ -247,7 +247,7 @@ public final class GenomicsDBImport extends GATKTool {
     @Argument(fullName = VCF_INITIALIZER_THREADS_LONG_NAME,
             shortName = VCF_INITIALIZER_THREADS_LONG_NAME,
             doc = "How many simultaneous threads to use when opening VCFs in batches; higher values may improve performance " +
-                    "when network latency is an issue",
+                    "when network latency is an issue. Multiple reader threads are not supported when running with multiple intervals.",
             optional = true,
             minValue = 1)
     private int vcfInitializerThreads = 1;
@@ -507,8 +507,8 @@ public final class GenomicsDBImport extends GATKTool {
                 this.inputPreloadExecutorService = Executors.newFixedThreadPool(vcfInitializerThreads, threadFactory);
             }
             else {
-                logger.info("GenomicsDBImport cannot use multiple VCF reader threads for initialization when the "
-                    + "number of intervals is greater than 1");
+                logger.warn("GenomicsDBImport cannot use multiple VCF reader threads for initialization when the "
+                    + "number of intervals is greater than 1. Falling back to serial VCF reader initialization.");
                 inputPreloadExecutorService = null;
             }
         } else {
