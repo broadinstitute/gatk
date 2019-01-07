@@ -123,7 +123,6 @@ workflow CNVSomaticPairWorkflow {
     Int? n_inference_iterations
     Float? inference_total_grad_norm_constraint
     Int? n_extra_gaussians_mixture_model
-    Float? gaussian_prior_standard_deviation
     Float? responsibility_threshold_normal
     Float? weight_ratio_max
     Int? mem_gb_for_call_modeled_segments
@@ -272,7 +271,6 @@ workflow CNVSomaticPairWorkflow {
             max_phred_score_normal = max_phred_score_normal,
             inference_total_grad_norm_constraint = inference_total_grad_norm_constraint,
             n_extra_gaussians_mixture_model = n_extra_gaussians_mixture_model,
-            gaussian_prior_standard_deviation = gaussian_prior_standard_deviation,
             responsibility_threshold_normal = responsibility_threshold_normal,
             weight_ratio_max = weight_ratio_max,
             gatk4_jar_override = gatk4_jar_override,
@@ -397,28 +395,27 @@ workflow CNVSomaticPairWorkflow {
         Int modeled_segments_normal_disk = ceil(size(DenoiseReadCountsNormal.denoised_copy_ratios, "GB")) + ceil(size(ModelSegmentsNormal.modeled_segments, "GB")) + disk_pad
         call CallModeledSegments as CallModeledSegmentsNormal {
             input:
-                entity_id = CollectCountsTumor.entity_id,
-                modeled_segments_input_file = ModelSegmentsNormal.modeled_segments,
-                load_copy_ratio = load_copy_ratio,
-                load_allele_fraction = load_allele_fraction,
-                normal_minor_allele_fraction_threshold = normal_minor_allele_fraction_threshold,
-                copy_ratio_peak_min_relative_height = copy_ratio_peak_min_relative_height,
-                copy_ratio_kernel_density_bandwidth = copy_ratio_kernel_density_bandwidth,
-                min_fraction_of_points_in_normal_allele_fraction_region = min_fraction_of_points_in_normal_allele_fraction_region,
-                min_weight_first_cr_peak_cr_data_only = min_weight_first_cr_peak_cr_data_only,
-                min_fraction_of_points_in_normal_allele_fraction_region = min_fraction_of_points_in_normal_allele_fraction_region,
-                n_inference_iterations  = n_inference_iterations,
-                inference_total_grad_norm_constraint = inference_total_grad_norm_constraint,
-                n_extra_gaussians_mixture_model = n_extra_gaussians_mixture_model,
-                max_phred_score_normal = max_phred_score_normal,
-                gaussian_prior_standard_deviation = gaussian_prior_standard_deviation,
-                responsibility_threshold_normal = responsibility_threshold_normal,
-                weight_ratio_max = weight_ratio_max,
-                gatk4_jar_override = gatk4_jar_override,
-                gatk_docker = gatk_docker,
-                mem_gb = mem_gb_for_call_modeled_segments,
-                disk_space_gb = modeled_segments_normal_disk,
-                preemptible_attempts = preemptible_attempts
+            entity_id = CollectCountsTumor.entity_id,
+            modeled_segments_input_file = ModelSegmentsNormal.modeled_segments,
+            load_copy_ratio = load_copy_ratio,
+            load_allele_fraction = load_allele_fraction,
+            normal_minor_allele_fraction_threshold = normal_minor_allele_fraction_threshold,
+            copy_ratio_peak_min_relative_height = copy_ratio_peak_min_relative_height,
+            copy_ratio_kernel_density_bandwidth = copy_ratio_kernel_density_bandwidth,
+            min_fraction_of_points_in_normal_allele_fraction_region = min_fraction_of_points_in_normal_allele_fraction_region,
+            min_weight_first_cr_peak_cr_data_only = min_weight_first_cr_peak_cr_data_only,
+            min_fraction_of_points_in_normal_allele_fraction_region = min_fraction_of_points_in_normal_allele_fraction_region,
+            n_inference_iterations  = n_inference_iterations,
+            inference_total_grad_norm_constraint = inference_total_grad_norm_constraint,
+            n_extra_gaussians_mixture_model = n_extra_gaussians_mixture_model,
+            max_phred_score_normal = max_phred_score_normal,
+            responsibility_threshold_normal = responsibility_threshold_normal,
+            weight_ratio_max = weight_ratio_max,
+            gatk4_jar_override = gatk4_jar_override,
+            gatk_docker = gatk_docker,
+            mem_gb = mem_gb_for_call_modeled_segments,
+            disk_space_gb = modeled_segments_normal_disk,
+            preemptible_attempts = preemptible_attempts
         }
 
         # The files from other tasks are small enough to just combine into one disk variable and pass to the normal plotting tasks
@@ -456,7 +453,7 @@ workflow CNVSomaticPairWorkflow {
     if (select_first([is_run_oncotator, false])) {
         call CNVOncotator.CNVOncotatorWorkflow as CNVOncotatorWorkflow {
             input:
-                 called_file = CallModeledSegmentsTumor.called_modeled_segments_data,
+                 called_file = CallModeledSegmentsTumor.called_copy_ratio_segments,
                  additional_args = additional_args_for_oncotator,
                  oncotator_docker = oncotator_docker,
                  mem_gb_for_oncotator = mem_gb_for_oncotator,
@@ -482,6 +479,14 @@ workflow CNVSomaticPairWorkflow {
         File allele_fraction_parameters_begin_tumor = ModelSegmentsTumor.allele_fraction_parameters_begin
         File copy_ratio_parameters_tumor = ModelSegmentsTumor.copy_ratio_parameters
         File allele_fraction_parameters_tumor = ModelSegmentsTumor.allele_fraction_parameters
+        File called_copy_ratio_segments_tumor = CallModeledSegmentsTumor.called_copy_ratio_segments
+        File? called_copy_ratio_segments_plot_tumor = CallModeledSegmentsTumor.called_copy_ratio_segments_plot
+        File? call_modeled_segments_tumor_summary_plot = CallModeledSegmentsTumor.summary_plot
+        File? call_modeled_segments_tumor_classification_plot = CallModeledSegmentsTumor.classification_plot
+        File? call_modeled_segments_tumor_copy_ratio_fit_plot = CallModeledSegmentsTumor.copy_ratio_fit_plot
+        # File? call_modeled_segments_tumor_copy_number_1_and_2_allele_fractions = CallModeledSegmentsTumor.copy_number_1_and_2_allele_fractions
+        # File? call_modeled_segments_tumor_copy_ratio_clusters = CallModeledSegmentsTumor.copy_ratio_clusters
+        File? call_modeled_segments_tumor_log_file = CallModeledSegmentsTumor.log_file
         File denoised_copy_ratios_plot_tumor = PlotDenoisedCopyRatiosTumor.denoised_copy_ratios_plot
         File denoised_copy_ratios_lim_4_plot_tumor = PlotDenoisedCopyRatiosTumor.denoised_copy_ratios_lim_4_plot
         File standardized_MAD_tumor = PlotDenoisedCopyRatiosTumor.standardized_MAD
@@ -505,9 +510,17 @@ workflow CNVSomaticPairWorkflow {
         File? copy_ratio_parameters_begin_normal = ModelSegmentsNormal.copy_ratio_parameters_begin
         File? allele_fraction_parameters_begin_normal = ModelSegmentsNormal.allele_fraction_parameters_begin
         File? modeled_segments_normal_data = ModelSegmentsNormal.modeled_segments
+        File? modeled_segments_tumor_data = ModelSegmentsTumor.modeled_segments
         File? copy_ratio_parameters_normal = ModelSegmentsNormal.copy_ratio_parameters
         File? allele_fraction_parameters_normal = ModelSegmentsNormal.allele_fraction_parameters
-        File? called_modeled_segments_data_normal = CallModeledSegmentsNormal.called_modeled_segments_data
+        File? called_copy_ratio_segments_normal = CallModeledSegmentsNormal.called_copy_ratio_segments
+        File? called_copy_ratio_segments_plot_normal = CallModeledSegmentsNormal.called_copy_ratio_segments_plot
+        File? call_modeled_segments_normal_summary_plot = CallModeledSegmentsNormal.summary_plot
+        File? call_modeled_segments_normal_classification_plot = CallModeledSegmentsNormal.classification_plot
+        File? call_modeled_segments_normal_copy_ratio_fit_plot = CallModeledSegmentsNormal.copy_ratio_fit_plot
+        # File? call_modeled_segments_normal_copy_number_1_and_2_allele_fractions = CallModeledSegmentsNormal.copy_number_1_and_2_allele_fractions
+        # File? call_modeled_segments_normal_copy_ratio_clusters = CallModeledSegmentsNormal.copy_ratio_clusters
+        File? call_modeled_segments_normal_log_file = CallModeledSegmentsNormal.log_file
         File? denoised_copy_ratios_plot_normal = PlotDenoisedCopyRatiosNormal.denoised_copy_ratios_plot
         File? denoised_copy_ratios_lim_4_plot_normal = PlotDenoisedCopyRatiosNormal.denoised_copy_ratios_lim_4_plot
         File? standardized_MAD_normal = PlotDenoisedCopyRatiosNormal.standardized_MAD
@@ -684,7 +697,6 @@ task CallModeledSegments {
     Int? n_extra_gaussians_mixture_model
     Float? responsibility_threshold_normal
     Float? weight_ratio_max
-    Float? gaussian_prior_standard_deviation
     File? gatk4_jar_override
 
     # Runtime parameters
@@ -713,17 +725,17 @@ task CallModeledSegments {
             --output ${output_dir_} \
             --output-prefix ${output_prefix_} \
             --normal-minor-allele-fraction-threshold ${default="0.475" normal_minor_allele_fraction_threshold} \
-            --copy-ratio-peak-min-relative-height ${default="0.015" copy_ratio_peak_min_relative_height} \
+            --copy-ratio-peak-min-relative-height ${default="0.020" copy_ratio_peak_min_relative_height} \
             --copy-ratio-kernel-density-bandwidth ${default="-0.025" copy_ratio_kernel_density_bandwidth} \
             --min-weight-first-cr-peak-cr-data-only ${default="0.35" min_weight_first_cr_peak_cr_data_only} \
             --min-fraction-of-points-in-normal-allele-fraction-region ${default="0.15" min_fraction_of_points_in_normal_allele_fraction_region} \
             --max-phred-score-normal ${default="100." max_phred_score_normal} \
             --n-inference-iterations ${default="120000" n_inference_iterations} \
-            --inference-total-grad-norm-constraint ${default="50" inference_total_grad_norm_constraint} \
+            --inference-total-grad-norm-constraint ${default="50." inference_total_grad_norm_constraint} \
             --n-extra-gaussians-mixture-model ${default="12" n_extra_gaussians_mixture_model} \
+            --weight-ratio-max ${default="100" weight_ratio_max} \
             --responsibility-threshold-normal ${default="0.5" responsibility_threshold_normal} \
-            --weight-ratio-max ${default="10" weight_ratio_max} \
-            --gaussian-prior-standard-deviation ${default="0.002" gaussian_prior_standard_deviation}
+            --interactive "true"
     >>>
 
     runtime {
@@ -735,7 +747,14 @@ task CallModeledSegments {
     }
 
     output {
-        File called_modeled_segments_data = "${output_dir_}${output_prefix_}.called.seg"
+        File called_copy_ratio_segments = "${output_dir_}/${output_prefix_}.called.seg"
+        File called_copy_ratio_segments_plot = "${output_dir_}/${output_prefix_}.png"
+        File summary_plot = "${output_dir_}/${output_prefix_}_summary_plot.png"
+        File classification_plot = "${output_dir_}/${output_prefix_}_classification.png"
+        File copy_ratio_fit_plot = "${output_dir_}/${output_prefix_}_copy_ratio_fit.png"
+        # File? copy_number_1_and_2_allele_fractions = "${output_dir_}/${output_prefix_}_allele_fraction_CN1_and_CN2_candidate_intervals.png"
+        # File? copy_ratio_clusters = "${output_dir_}/${output_prefix_}_copy_ratio_clusters.png"
+        File? log_file = "${output_dir_}/${output_prefix_}.log"
     }
 }
 
@@ -845,3 +864,4 @@ task PlotModeledSegments {
         File modeled_segments_plot = "${output_dir_}/${entity_id}.modeled.png"
     }
 }
+
