@@ -15,10 +15,13 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConf
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.downsampling.MutectDownsampler;
 import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsampler;
+import org.broadinstitute.hellbender.utils.variant.writers.SomaticGVCFWriter;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * <p>Call somatic short variants via local assembly of haplotypes.
