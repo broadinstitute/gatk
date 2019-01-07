@@ -35,9 +35,3 @@ funcotator_tmp
 /bin/
 .project
 
-# Added by Marton
-Mutect2FilteringStats.tsv
-temp_staging/
-
-src/main/python/org/broadinstitute/hellbender/modeled_segments_caller/dist/
-src/main/python/org/broadinstitute/hellbender/modeled_segments_caller/modeled_segments_caller.egg-info/
