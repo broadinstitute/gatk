@@ -194,6 +194,8 @@ after_script:
       scripts/travis/install_and_authenticate_to_gcloud.sh;
     fi;
     $GCLOUD_HOME/gsutil -m cp -z html -z js -z xml -z css -r build/reports/tests gs:/$HELLBENDER_TEST_LOGS$REPORT_PATH/;
+    $GCLOUD_HOME/gsutil -m cp -z html -z js -z xml -z css -r scripts/cnv_cromwell_tests/somatic/cromwell-executions/CNVSomaticPairWorkflow gs:/$HELLBENDER_TEST_LOGS$REPORT_PATH/CNVSomaticPairWorkflow/;
+    $GCLOUD_HOME/gsutil -m cp -z html -z js -z xml -z css -r scripts/cnv_cromwell_tests/somatic/cromwell-executions/CNVSomaticPanelWorkflow gs:/$HELLBENDER_TEST_LOGS$REPORT_PATH/CNVSomaticPanelWorkflow/;
     echo "See the test report at https://storage.googleapis.com$HELLBENDER_TEST_LOGS$REPORT_PATH/tests/test/index.html";
   fi;
 
