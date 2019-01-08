@@ -36,7 +36,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @CommandLineProgramProperties(
-        summary = "Bare-bones implementation heavily inspired by MutationValidator from Broad CGA group.\n" +
+        summary = "Check variants in a VCF against tumor-normal bams representing the same samples, though not the ones from the actual calls.\n" +
+                "Bare-bones implementation heavily inspired by MutationValidator from Broad CGA group.\n" +
                 "The algorithm is not the same.\n" +
                 "This tool can only handle exactly one validation PAIR at a time and this should not be RNA.\n" +
                 "Multiallelics in a VCF are not supported and will be skipped.\n" +

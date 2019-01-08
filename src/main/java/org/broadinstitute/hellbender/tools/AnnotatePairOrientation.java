@@ -8,8 +8,8 @@ import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
@@ -40,7 +40,7 @@ import java.util.*;
         oneLineSummary = "Annotate a non-M2 VCF (using the associated tumor bam) with pair orientation fields (e.g. " + GATKVCFConstants.F1R2_KEY + " ).",
         programGroup = VariantEvaluationProgramGroup.class
 )
-@BetaFeature
+@ExperimentalFeature
 public class AnnotatePairOrientation extends VariantWalker {
 
     @Argument(

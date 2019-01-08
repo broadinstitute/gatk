@@ -447,11 +447,11 @@ public class Main {
         final String summaryLine;
 
         if (experimentalFeature != null) {
-            summaryLine = String.format("%s%s %s%.120s", RED, "(EXPERIMENTAL Tool)", CYAN, clpProperties.oneLineSummary());
+            summaryLine = String.format("%s%s %s%s", RED, "(EXPERIMENTAL Tool)", CYAN, clpProperties.oneLineSummary());
         } else if (betaFeature != null) {
-            summaryLine = String.format("%s%s %s%.120s", RED, "(BETA Tool)", CYAN, clpProperties.oneLineSummary());
+            summaryLine = String.format("%s%s %s%s", RED, "(BETA Tool)", CYAN, clpProperties.oneLineSummary());
         } else {
-            summaryLine = String.format("%s%.120s", CYAN, clpProperties.oneLineSummary());
+            summaryLine = String.format("%s%s", CYAN, clpProperties.oneLineSummary());
         }
         final String annotatedToolName = getDisplayNameForToolClass(toolClass);
         if (toolClass.getSimpleName().length() >= 45) {
