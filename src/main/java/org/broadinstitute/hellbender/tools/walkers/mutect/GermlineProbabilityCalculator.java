@@ -19,7 +19,7 @@ import java.util.stream.IntStream;
  */
 public class GermlineProbabilityCalculator {
     // numerical precision safeguard in case of bad JVMs inverting the negative log-10 population allele frequency
-    private static final double EPSILON = 1.0e-20;
+    private static final double EPSILON = 1.0e-10;
 
     public static Map<String, Object> getNegativeLog10PopulationAFAnnotation(List<VariantContext> germlineResourceVariants,
                                                                              final List<Allele> altAlleles,
