@@ -1,6 +1,9 @@
 codecov:
   branch: master
 
+ignore:
+  src/test/**/*
+
 coverage:
   precision: 3
   round: nearest
