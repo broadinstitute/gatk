@@ -1134,7 +1134,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         IntervalUtils.loadIntervals(intervalArgs, IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, genomeLocParser);
     }
 
-    @Test(expectedExceptions=UserException.MalformedFile.class, dataProvider="invalidIntervalTestData")
+    @Test(expectedExceptions={UserException.MalformedFile.class, UserException.MalformedGenomeLoc.class}, dataProvider="invalidIntervalTestData")
     public void testLoadIntervalsInvalidPicardIntervalHandling(GenomeLocParser genomeLocParser,
                                                   String contig, int intervalStart, int intervalEnd ) throws Exception {
 
@@ -1177,7 +1177,7 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         IntervalUtils.intervalFileToList(genomeLocParser, picardIntervalFile.getAbsolutePath());
     }
 
-    @Test(expectedExceptions=UserException.CouldNotReadInputFile.class, dataProvider="invalidIntervalTestData")
+    @Test(expectedExceptions={UserException.CouldNotReadInputFile.class, UserException.MalformedGenomeLoc.class}, dataProvider="invalidIntervalTestData")
     public void testIntervalFileToListInvalidPicardIntervalHandling(GenomeLocParser genomeLocParser,
                                        String contig, int intervalStart, int intervalEnd ) throws Exception {
 
