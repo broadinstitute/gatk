@@ -20,7 +20,7 @@ public class AltSiteRecordUnitTest extends GATKBaseTest {
     @Test
     public void test() throws IOException {
         File table = BaseTest.createTempFile("alt-site-design-matrix","tsv");
-        AltSiteRecord.AltSiteRecordTableWriter writer = new AltSiteRecord.AltSiteRecordTableWriter(table);
+        AltSiteRecord.AltSiteRecordTableWriter writer = new AltSiteRecord.AltSiteRecordTableWriter(table, "SAMPLE");
 
         List<String> referenceContexts = Arrays.asList("ACT", "GAT", "CCA");
         final int numRowsPerContext = 100;
@@ -40,7 +40,7 @@ public class AltSiteRecordUnitTest extends GATKBaseTest {
 
         writer.close();
 
-        List<AltSiteRecord> altDesignMatrix = AltSiteRecord.readAltSiteRecords(table, numRowsPerContext * referenceContexts.size());
+        List<AltSiteRecord> altDesignMatrix = AltSiteRecord.readAltSiteRecords(table, numRowsPerContext * referenceContexts.size()).getRight();
         final Map<String, List<AltSiteRecord>> recordsByContext = altDesignMatrix.stream()
                 .collect(Collectors.groupingBy(AltSiteRecord::getReferenceContext));
         recordsByContext.values().forEach(recs -> Assert.assertEquals(recs.size(), numRowsPerContext));

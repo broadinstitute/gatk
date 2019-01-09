@@ -204,7 +204,7 @@ public class LearnReadOrientationModelEngineUnitTest extends CommandLineProgramT
 
         final MetricsFile<?, Integer> refMetricsFile = new MetricsFile<>();
 
-        final AltSiteRecord.AltSiteRecordTableWriter altTableWriter = new AltSiteRecord.AltSiteRecordTableWriter(altMatrixOutput);
+        final AltSiteRecord.AltSiteRecordTableWriter altTableWriter = new AltSiteRecord.AltSiteRecordTableWriter(altMatrixOutput, "sample");
 
         final double epsilon = 1e-3;
         final int numRefExamples = 10_000;

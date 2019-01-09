@@ -3,6 +3,8 @@ package org.broadinstitute.hellbender.tools.walkers.mutect;
 import org.broadinstitute.barclay.argparser.Argument;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 public class M2FiltersArgumentCollection {
     private static final long serialVersionUID = 9345L;
@@ -44,7 +46,7 @@ public class M2FiltersArgumentCollection {
      */
     @Argument(fullName = TUMOR_SEGMENTATION_LONG_NAME,
             doc="Pileup summaries for the tumor sample as output by CalculateContamination", optional = true)
-    public File tumorSegmentationTable = null;
+    public List<File> tumorSegmentationTables = new ArrayList<>();
 
     /**
      * Prior log-10 probability that any given site has a somatic allele. Impacts germline probability calculation.
@@ -110,7 +112,7 @@ public class M2FiltersArgumentCollection {
     public double strandArtifactAlleleFractionThreshold = 0.01;
 
     @Argument(fullName = CONTAMINATION_TABLE_LONG_NAME, optional = true, doc = "Table containing contamination information.")
-    public File contaminationTable = null;
+    public List<File> contaminationTable = new ArrayList<>();
 
     @Argument(fullName = CONTAMINATION_ESTIMATE_LONG_NAME, optional = true, doc = "Estimate of contamination.")
     public double contaminationEstimate = 0;

@@ -70,6 +70,8 @@ public final class TableUtils {
      */
     public static final String ESCAPE_STRING = String.valueOf(ESCAPE_CHARACTER);
 
+    public static final String SAMPLE_METADATA_TAG = "SAMPLE";
+
     /**
      * Creates a new table reader given an record extractor factory based from the columns found in the input.
      * <p>

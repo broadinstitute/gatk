@@ -12,6 +12,7 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.contamination.ContaminationRecord;
 import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
@@ -23,6 +24,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -102,12 +104,20 @@ public final class FilterMutectCalls extends TwoPassVariantWalker {
         vcfWriter = createVCFWriter(new File(outputVcf));
         vcfWriter.writeHeader(vcfHeader);
 
-        final String tumorSample = getTumorSampleName();
-        final VCFHeaderLine normalSampleHeaderLine = getHeaderForVariants().getMetaDataLine(Mutect2Engine.NORMAL_SAMPLE_KEY_IN_VCF_HEADER);
-        final Optional<String> normalSample = normalSampleHeaderLine == null ? Optional.empty() : Optional.of(normalSampleHeaderLine.getValue());
+        final Set<String> normalSamples = getNormalSampleNames();
 
-        filteringEngine = new Mutect2FilteringEngine(MTFAC, tumorSample, normalSample);
-        filteringFirstPass = new FilteringFirstPass(tumorSample);
+        final Map<String, Double> contaminationBySample = MTFAC.contaminationTable.stream()
+                .map(file -> ContaminationRecord.readFromFile(file).get(0))
+                .collect(Collectors.toMap(rec -> rec.getSample(), rec -> rec.getContamination()));
+
+        for (final String sample : vcfHeader.getSampleNamesInOrder()) {
+            if (!contaminationBySample.containsKey(sample)) {
+                contaminationBySample.put(sample, MTFAC.contaminationEstimate);
+            }
+        }
+
+        filteringEngine = new Mutect2FilteringEngine(MTFAC, normalSamples, contaminationBySample);
+        filteringFirstPass = new FilteringFirstPass(normalSamples);
     }
 
     @Override
@@ -145,15 +155,10 @@ public final class FilterMutectCalls extends TwoPassVariantWalker {
         }
     }
 
-    private String getTumorSampleName() {
-        return MTFAC.mitochondria ? getMitoSampleName() : getHeaderForVariants().getMetaDataLine(Mutect2Engine.TUMOR_SAMPLE_KEY_IN_VCF_HEADER).getValue();
-    }
-
-    private String getMitoSampleName() {
-        ArrayList<String> allSampleNames = getHeaderForVariants().getSampleNamesInOrder();
-        if(allSampleNames.size() != 1) {
-            throw new UserException(String.format("Expected single sample VCF in mitochondria mode, but there were %s samples.", allSampleNames.size()));
-        }
-        return allSampleNames.get(0);
+    private Set<String> getNormalSampleNames() {
+        return getHeaderForVariants().getMetaDataInInputOrder().stream()
+                .filter(line -> line.getKey().equals(Mutect2Engine.NORMAL_SAMPLE_KEY_IN_VCF_HEADER))
+                .map(VCFHeaderLine::getValue)
+                .collect(Collectors.toSet());
     }
 }

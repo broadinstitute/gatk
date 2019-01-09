@@ -1,15 +1,20 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
+import com.google.common.primitives.Doubles;
 import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
+import org.apache.commons.lang3.mutable.MutableDouble;
+import org.apache.commons.lang3.mutable.MutableInt;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.math3.distribution.BinomialDistribution;
+import org.apache.commons.math3.util.MathArrays;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
-import org.broadinstitute.hellbender.tools.walkers.contamination.ContaminationRecord;
 import org.broadinstitute.hellbender.tools.walkers.contamination.MinorAlleleFractionRecord;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -21,48 +26,78 @@ public class Mutect2FilteringEngine {
     private static final int IMPUTED_NORMAL_BASE_QUALITY = 30;  // only used if normal base quality annotation fails somehow
     private static final double MIN_NORMAL_ARTIFACT_RATIO = 0.1;    // don't call normal artifact if allele fraction in normal is much smaller than allele fraction in tumor
     private M2FiltersArgumentCollection MTFAC;
-    private final double contamination;
+    private final Map<String, Double> contaminationBySample;
     private final double somaticPriorProb;
-    private final String tumorSample;
-    private final Optional<String> normalSample;
-    final OverlapDetector<MinorAlleleFractionRecord> tumorSegments;
+    private final Set<String> normalSamples;
+    final Map<String, OverlapDetector<MinorAlleleFractionRecord>> tumorSegments;
     public static final String FILTERING_STATUS_VCF_KEY = "filtering_status";
 
-    public Mutect2FilteringEngine(final M2FiltersArgumentCollection MTFAC, final String tumorSample, final Optional<String> normalSample) {
+    public Mutect2FilteringEngine(final M2FiltersArgumentCollection MTFAC, final Set<String> normalSamples, final Map<String, Double> contaminationBySample) {
         this.MTFAC = MTFAC;
-        contamination = MTFAC.contaminationTable == null ? MTFAC.contaminationEstimate : ContaminationRecord.readFromFile(MTFAC.contaminationTable).get(0).getContamination();
-        this.tumorSample = tumorSample;
-        this.normalSample = normalSample;
+        this.contaminationBySample = contaminationBySample;
+        this.normalSamples = normalSamples;
         somaticPriorProb = Math.pow(10, MTFAC.log10PriorProbOfSomaticEvent);
-        final List<MinorAlleleFractionRecord> tumorMinorAlleleFractionRecords = MTFAC.tumorSegmentationTable == null ?
-                Collections.emptyList() : MinorAlleleFractionRecord.readFromFile(MTFAC.tumorSegmentationTable);
-        tumorSegments = OverlapDetector.create(tumorMinorAlleleFractionRecords);
+        tumorSegments = MTFAC.tumorSegmentationTables.stream()
+                .map(MinorAlleleFractionRecord::readFromFile)
+                .collect(Collectors.toMap(ImmutablePair::getLeft, p -> OverlapDetector.create(p.getRight())));
     }
 
     private void applyContaminationFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final FilterResult filterResult) {
-        final Genotype tumorGenotype = vc.getGenotype(tumorSample);
-        final double[] alleleFractions = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(tumorGenotype, VCFConstants.ALLELE_FREQUENCY_KEY,
-                () -> new double[] {1.0}, 1.0);
-        final int maxFractionIndex = MathUtils.maxElementIndex(alleleFractions);
-        final int[] ADs = tumorGenotype.getAD();
-        final int altCount = ADs[maxFractionIndex + 1];   // AD is all alleles, while AF is alts only, hence the +1 offset
-        final int depth = (int) MathUtils.sum(ADs);
-        final double[] negativeLog10AlleleFrequencies = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc,
-                GATKVCFConstants.POPULATION_AF_VCF_ATTRIBUTE, () -> new double[]{Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY}, Double.POSITIVE_INFINITY);
-        final double alleleFrequency = MathUtils.applyToArray(negativeLog10AlleleFrequencies, x -> Math.pow(10,-x))[maxFractionIndex];
 
-        final double somaticLikelihood = 1.0 / (depth + 1);
+        final List<ImmutablePair<Integer, Double>> depthsAndPosteriors = new ArrayList<>();
 
-        final double singleContaminantLikelihood = 2 * alleleFrequency * (1 - alleleFrequency) * MathUtils.binomialProbability(depth, altCount, contamination/2)
-                + MathUtils.square(alleleFrequency) * MathUtils.binomialProbability(depth, altCount, contamination);
-        final double manyContaminantLikelihood = MathUtils.binomialProbability(depth, altCount, contamination * alleleFrequency);
-        final double contaminantLikelihood = Math.max(singleContaminantLikelihood, manyContaminantLikelihood);
-        final double posteriorProbOfContamination = (1 - somaticPriorProb) * contaminantLikelihood / ((1 - somaticPriorProb) * contaminantLikelihood + somaticPriorProb * somaticLikelihood);
+        for (final Genotype tumorGenotype : vc.getGenotypes()) {
+            if (normalSamples.contains(tumorGenotype.getSampleName())) {
+                continue;
+            }
+
+            final double contamination = contaminationBySample.get(tumorGenotype.getSampleName());
+
+            final double[] alleleFractions = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(tumorGenotype, VCFConstants.ALLELE_FREQUENCY_KEY,
+                    () -> new double[] {1.0}, 1.0);
+            final int maxFractionIndex = MathUtils.maxElementIndex(alleleFractions);
+            final int[] ADs = tumorGenotype.getAD();
+            final int altCount = ADs[maxFractionIndex + 1];   // AD is all alleles, while AF is alts only, hence the +1 offset
+            final int depth = (int) MathUtils.sum(ADs);
+            final double[] negativeLog10AlleleFrequencies = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc,
+                    GATKVCFConstants.POPULATION_AF_VCF_ATTRIBUTE, () -> new double[]{Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY}, Double.POSITIVE_INFINITY);
+            final double alleleFrequency = MathUtils.applyToArray(negativeLog10AlleleFrequencies, x -> Math.pow(10,-x))[maxFractionIndex];
+
+            final double somaticLikelihood = 1.0 / (depth + 1);
+
+            final double singleContaminantLikelihood = 2 * alleleFrequency * (1 - alleleFrequency) * MathUtils.binomialProbability(depth, altCount, contamination /2)
+                    + MathUtils.square(alleleFrequency) * MathUtils.binomialProbability(depth, altCount, contamination);
+            final double manyContaminantLikelihood = MathUtils.binomialProbability(depth, altCount, contamination * alleleFrequency);
+            final double contaminantLikelihood = Math.max(singleContaminantLikelihood, manyContaminantLikelihood);
+            final double posteriorProbOfContamination = (1 - somaticPriorProb) * contaminantLikelihood / ((1 - somaticPriorProb) * contaminantLikelihood + somaticPriorProb * somaticLikelihood);
+
+            depthsAndPosteriors.add(ImmutablePair.of(altCount, posteriorProbOfContamination));
+        }
+
+        double posteriorProbOfContamination = weightedMedianPosteriorProbability(depthsAndPosteriors);
 
         filterResult.addAttribute(GATKVCFConstants.CONTAMINATION_QUAL_ATTRIBUTE, QualityUtils.errorProbToQual(posteriorProbOfContamination));
         if (posteriorProbOfContamination > MTFAC.maxContaminationProbability) {
             filterResult.addFilter(GATKVCFConstants.CONTAMINATION_FILTER_NAME);
         }
+    }
+
+    // weighted median -- what's the lowest posterior probability that accounts for samples with half of the total alt depth
+    private double weightedMedianPosteriorProbability(List<ImmutablePair<Integer, Double>> depthsAndPosteriors) {
+        final int totalAltDepth = depthsAndPosteriors.stream().mapToInt(ImmutablePair::getLeft).sum();
+
+        // sort from lowest to highest posterior probability of artifact
+        depthsAndPosteriors.sort(Comparator.comparingDouble(p -> p.getRight()));
+
+        int cumulativeAltCount = 0;
+
+        for (final ImmutablePair<Integer, Double> pair : depthsAndPosteriors) {
+            cumulativeAltCount += pair.getLeft();
+            if (cumulativeAltCount * 2 >= totalAltDepth) {
+                return pair.getRight();
+            }
+        }
+        return 0;
     }
 
     private void applyTriallelicFilter(final VariantContext vc, final FilterResult filterResult) {
@@ -90,7 +125,8 @@ public class Mutect2FilteringEngine {
             if (referenceSTRBaseCount >= MTFAC.minPcrSlippageBases && Math.abs(numPCRSlips) == 1) {
                 // calculate the p-value that out of n reads we would have at least k slippage reads
                 // if this p-value is small we keep the variant (reject the PCR slippage hypothesis)
-                final int[] ADs = vc.getGenotype(tumorSample).getAD();
+                final int[] ADs = sumADsOverSamples(vc, true, false);
+
                 final int depth = ADs == null ? 0 : (int) MathUtils.sum(ADs);
                 final double oneSidedPValueOfSlippage = (ADs == null || ADs.length < 2) ? 1.0 :
                         new BinomialDistribution(null, depth, MTFAC.pcrSlippageRate).cumulativeProbability(ADs[1] - 1, depth);
@@ -101,6 +137,34 @@ public class Mutect2FilteringEngine {
         }
     }
 
+    private int[] sumADsOverSamples(final VariantContext vc, final boolean includeTumor, final boolean includeNormal) {
+        final int[] ADs = new int[vc.getNAlleles()];
+        vc.getGenotypes().stream()
+                .filter(g -> includeTumor || normalSamples.contains(g.getSampleName()))
+                .filter(g -> includeNormal || !normalSamples.contains(g.getSampleName()))
+                .map(Genotype::getAD).forEach(ad -> new IndexRange(0, vc.getNAlleles()).forEach(n -> ADs[n] += ad[n]));
+        return ADs;
+    }
+
+    private double[] weightedAverageOfTumorAFs(final VariantContext vc) {
+        double totalWeight = 0.0;
+        final double[] AFs = new double[vc.getNAlleles() - 1];
+        for (final Genotype g : vc.getGenotypes()) {
+            if (normalSamples.contains(g.getSampleName())) {
+                continue;
+            } else {
+                final double weight = MathUtils.sum(g.getAD());
+                totalWeight += weight;
+                final double[] sampleAFs = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(g, VCFConstants.ALLELE_FREQUENCY_KEY,
+                        () -> new double[] {0.0}, 0.0);
+                MathArrays.scaleInPlace(weight, sampleAFs);
+                MathUtils.addToArrayInPlace(AFs, sampleAFs);
+            }
+        }
+        MathArrays.scaleInPlace(1/totalWeight, AFs);
+        return AFs;
+    }
+
     private static void applyPanelOfNormalsFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final FilterResult filterResult) {
         final boolean siteInPoN = vc.hasAttribute(GATKVCFConstants.IN_PON_VCF_ATTRIBUTE);
         if (siteInPoN) {
@@ -109,11 +173,11 @@ public class Mutect2FilteringEngine {
     }
 
     private void applyBaseQualityFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final FilterResult filterResult) {
-        if (!vc.hasAttribute(BaseQuality.KEY)) {
+        if (!vc.hasAttribute(GATKVCFConstants.MEDIAN_BASE_QUALITY_KEY)) {
             return;
         }
 
-        final List<Integer> baseQualityByAllele = vc.getAttributeAsIntList(BaseQuality.KEY, 0);
+        final List<Integer> baseQualityByAllele = vc.getAttributeAsIntList(GATKVCFConstants.MEDIAN_BASE_QUALITY_KEY, 0);
         final double[] tumorLods = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.TUMOR_LOD_KEY);
         final int indexOfMaxTumorLod = MathUtils.maxElementIndex(tumorLods);
 
@@ -172,15 +236,30 @@ public class Mutect2FilteringEngine {
             final double[] negativeLog10AlleleFrequencies = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.POPULATION_AF_VCF_ATTRIBUTE);
             final double[] populationAlleleFrequencies = MathUtils.applyToArray(negativeLog10AlleleFrequencies, x -> Math.pow(10,-x));
 
-            final List<MinorAlleleFractionRecord> segments = tumorSegments.getOverlaps(vc).stream().collect(Collectors.toList());
+            final MutableDouble weightedSumOfMafs = new MutableDouble(0);
+            for (final Genotype tumorGenotype : vc.getGenotypes()) {
+                final String sample = tumorGenotype.getSampleName();
+                if (normalSamples.contains(sample)) {
+                    continue;
+                }
 
-            // minor allele fraction -- we abbreviate the name to make the formulas below less cumbersome
-            final double maf = segments.isEmpty() ? 0.5 : segments.get(0).getMinorAlleleFraction();
+                final List<MinorAlleleFractionRecord> segments = tumorSegments.containsKey(sample) ? tumorSegments.get(sample).getOverlaps(vc).stream().collect(Collectors.toList())
+                        : Collections.emptyList();
 
-            final double[] altAlleleFractions = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc.getGenotype(tumorSample), GATKVCFConstants.ALLELE_FRACTION_KEY, () -> null, 0);
+                // minor allele fraction -- we abbreviate the name to make the formulas below less cumbersome
+                final double maf = segments.isEmpty() ? 0.5 : segments.get(0).getMinorAlleleFraction();
+
+                weightedSumOfMafs.add(maf * MathUtils.sum(tumorGenotype.getAD()));
+            }
+
+            final double[] altAlleleFractions = weightedAverageOfTumorAFs(vc);
 
             // note that this includes the ref
-            final int[] alleleCounts = vc.getGenotype(tumorSample).getAD();
+            final int[] alleleCounts = sumADsOverSamples(vc, true, false);
+
+            // weighted average of sample minor allele fractions.  This is the expected allele fraction of a germline het in the aggregated read counts
+            final double maf = weightedSumOfMafs.getValue() / MathUtils.sum(alleleCounts);
+
             // exclude the ref
             final int[] altCounts = Arrays.copyOfRange(alleleCounts, 1, alleleCounts.length);
 
@@ -233,13 +312,11 @@ public class Mutect2FilteringEngine {
         final double[] tumorLods = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.TUMOR_LOD_KEY);
         final int indexOfMaxTumorLod = MathUtils.maxElementIndex(tumorLods);
 
-        Genotype tumorGenotype = vc.getGenotype(tumorSample);
-        final int[] tumorAlleleDepths = tumorGenotype.getAD();
+        final int[] tumorAlleleDepths = sumADsOverSamples(vc, true, false);
         final int tumorDepth = (int) MathUtils.sum(tumorAlleleDepths);
         final int tumorAltDepth = tumorAlleleDepths[indexOfMaxTumorLod + 1];
 
-        Genotype normalGenotype = vc.getGenotype(normalSample.get());
-        final int[] normalAlleleDepths = normalGenotype.getAD();
+        final int[] normalAlleleDepths = sumADsOverSamples(vc, false, true);
         final int normalDepth = (int) MathUtils.sum(normalAlleleDepths);
         final int normalAltDepth = normalAlleleDepths[indexOfMaxTumorLod + 1];
 
@@ -261,9 +338,8 @@ public class Mutect2FilteringEngine {
         // the above filter misses artifacts whose support in the normal consists entirely of low base quality reads
         // Since a lot of low-BQ reads is itself evidence of an artifact, we filter these by hand via an estimated LOD
         // that uses the average base quality of *ref* reads in the normal
-        final int normalMedianRefBaseQuality = GATKProtectedVariantContextUtils.getAttributeAsIntArray(
-                normalGenotype, BaseQuality.KEY, () -> new int[] {IMPUTED_NORMAL_BASE_QUALITY}, IMPUTED_NORMAL_BASE_QUALITY)[0];
-        final double normalPValue = 1 - new BinomialDistribution(null, normalDepth, QualityUtils.qualToErrorProb(normalMedianRefBaseQuality))
+        final int medianRefBaseQuality = vc.getAttributeAsIntList(GATKVCFConstants.MEDIAN_BASE_QUALITY_KEY, IMPUTED_NORMAL_BASE_QUALITY).get(0);
+        final double normalPValue = 1 - new BinomialDistribution(null, normalDepth, QualityUtils.qualToErrorProb(medianRefBaseQuality))
                 .cumulativeProbability(normalAltDepth - 1);
 
         if (normalPValue < M2FiltersArgumentCollection.normalPileupPValueThreshold) {
@@ -272,24 +348,25 @@ public class Mutect2FilteringEngine {
     }
 
     private void applyStrandArtifactFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final FilterResult filterResult) {
-        Genotype tumorGenotype = vc.getGenotype(tumorSample);
-        final double[] posteriorProbabilities = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(
-                tumorGenotype, (GATKVCFConstants.STRAND_ARTIFACT_POSTERIOR_KEY), () -> null, -1);
-        final double[] mapAlleleFractionEstimates = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(
-                tumorGenotype, (GATKVCFConstants.STRAND_ARTIFACT_AF_KEY), () -> null, -1);
+        if (!vc.hasAttribute(GATKVCFConstants.STRAND_ARTIFACT_POSTERIOR_KEY)) {
+            return;
+        }
+
+        final List<Double> posteriorProbabilities = vc.getAttributeAsDoubleList(GATKVCFConstants.STRAND_ARTIFACT_POSTERIOR_KEY, 0.0);
+        final List<Double> mapAlleleFractionEstimates = vc.getAttributeAsDoubleList(GATKVCFConstants.STRAND_ARTIFACT_AF_KEY, 0.0);
 
         if (posteriorProbabilities == null || mapAlleleFractionEstimates == null){
             return;
         }
 
-        final int maxZIndex = MathUtils.maxElementIndex(posteriorProbabilities);
+        final int maxZIndex = MathUtils.maxElementIndex(Doubles.toArray(posteriorProbabilities));
 
         if (maxZIndex == StrandArtifact.ArtifactState.NO_ARTIFACT.ordinal()){
             return;
         }
 
-        if (posteriorProbabilities[maxZIndex] > MTFAC.strandArtifactPosteriorProbThreshold &&
-                mapAlleleFractionEstimates[maxZIndex] < MTFAC.strandArtifactAlleleFractionThreshold){
+        if (posteriorProbabilities.get(maxZIndex) > MTFAC.strandArtifactPosteriorProbThreshold &&
+                mapAlleleFractionEstimates.get(maxZIndex) < MTFAC.strandArtifactAlleleFractionThreshold){
             filterResult.addFilter(GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME);
         }
     }
@@ -304,13 +381,11 @@ public class Mutect2FilteringEngine {
     // This filter checks for the case in which PCR-duplicates with unique UMIs (which we assume is caused by false adapter priming)
     // amplify the erroneous signal for an alternate allele.
     private void applyDuplicatedAltReadFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final FilterResult filterResult) {
-        final Genotype tumorGenotype = vc.getGenotype(tumorSample);
-
-        if (!tumorGenotype.hasExtendedAttribute(UniqueAltReadCount.UNIQUE_ALT_READ_SET_COUNT_KEY)) {
+        if (!vc.hasAttribute(UniqueAltReadCount.KEY)) {
             return;
         }
 
-        final int uniqueReadSetCount = GATKProtectedVariantContextUtils.getAttributeAsInt(tumorGenotype, UniqueAltReadCount.UNIQUE_ALT_READ_SET_COUNT_KEY, -1);
+        final int uniqueReadSetCount = vc.getAttributeAsInt(UniqueAltReadCount.KEY, 1);
 
         if (uniqueReadSetCount <= MTFAC.uniqueAltReadCount) {
             filterResult.addFilter(GATKVCFConstants.DUPLICATED_EVIDENCE_FILTER_NAME);
@@ -322,13 +397,25 @@ public class Mutect2FilteringEngine {
             return;
         }
 
-        final Genotype tumorGenotype = vc.getGenotype(tumorSample);
+         final List<ImmutablePair<Integer, Double>> depthsAndPosteriors = new ArrayList<>();
 
-        if (! tumorGenotype.hasExtendedAttribute(GATKVCFConstants.ROF_POSTERIOR_KEY) || ! tumorGenotype.hasExtendedAttribute(GATKVCFConstants.ROF_PRIOR_KEY)){
-            return;
-        }
+         for (final Genotype tumorGenotype : vc.getGenotypes()) {
+             if (normalSamples.contains(tumorGenotype.getSampleName())) {
+                 continue;
+             }
 
-        final double artifactPosterior = GATKProtectedVariantContextUtils.getAttributeAsDouble(tumorGenotype, GATKVCFConstants.ROF_POSTERIOR_KEY, -1.0);
+             if (! tumorGenotype.hasExtendedAttribute(GATKVCFConstants.ROF_POSTERIOR_KEY) || ! tumorGenotype.hasExtendedAttribute(GATKVCFConstants.ROF_PRIOR_KEY)){
+                 continue;
+             }
+
+             final double artifactPosterior = GATKProtectedVariantContextUtils.getAttributeAsDouble(tumorGenotype, GATKVCFConstants.ROF_POSTERIOR_KEY, 0.0);
+             final int[] ADs = tumorGenotype.getAD();
+             final int altCount = (int) MathUtils.sum(ADs) - ADs[0];
+
+             depthsAndPosteriors.add(ImmutablePair.of(altCount, artifactPosterior));
+         }
+
+        final double artifactPosterior = weightedMedianPosteriorProbability(depthsAndPosteriors);
 
         if (! firstPass.isPresent()) {
             // During first pass we simply collect the posterior artifact probabilities
@@ -355,52 +442,48 @@ public class Mutect2FilteringEngine {
             return;
         }
 
-        final Genotype tumorGenotype = vc.getGenotype(tumorSample);
-        if (! tumorGenotype.hasExtendedAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY)) {
-            return;
-        }
-        final int[] strandBiasCounts = GATKProtectedVariantContextUtils.getAttributeAsIntArray(tumorGenotype, GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY, ()->null, -1);
+        final MutableInt altForwardCount = new MutableInt(0);
+        final MutableInt altReverseCount = new MutableInt(0);
 
-        final int altForwardCount = StrandBiasBySample.getAltForwardCountFromFlattenedContingencyTable(strandBiasCounts);
-        final int altReverseCount = StrandBiasBySample.getAltReverseCountFromFlattenedContingencyTable(strandBiasCounts);
+        for (final Genotype g : vc.getGenotypes()) {
+            if (normalSamples.contains(g.getSampleName())) {
+                continue;
+            } else if (!g.hasExtendedAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY)) {
+                return;
+            } else {
+                final int[] strandBiasCounts = GATKProtectedVariantContextUtils.getAttributeAsIntArray(g, GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY, () -> null, 0);
+                altForwardCount.add(StrandBiasBySample.getAltForwardCountFromFlattenedContingencyTable(strandBiasCounts));
+                altReverseCount.add(StrandBiasBySample.getAltReverseCountFromFlattenedContingencyTable(strandBiasCounts));
+            }
+        }
 
         // filter if there is no alt evidence in the forward or reverse strand
-        if ( altForwardCount == 0 || altReverseCount == 0) {
+        if ( altForwardCount.getValue() == 0 || altReverseCount.getValue() == 0) {
             filterResult.addFilter(GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME);
         }
     }
 
     private void applyNRatioFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final FilterResult filterResult) {
-        final Genotype tumorGenotype = vc.getGenotype(tumorSample);
-        final double[] alleleFractions = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(tumorGenotype, VCFConstants.ALLELE_FREQUENCY_KEY,
-                () -> new double[] {1.0}, 1.0);
-        final int maxFractionIndex = MathUtils.maxElementIndex(alleleFractions);
-        final int[] ADs = tumorGenotype.getAD();
-        final int altCount = ADs[maxFractionIndex + 1];
+        final int[] ADs = sumADsOverSamples(vc, true, true);
+        final int altCount = (int) MathUtils.sum(ADs) - ADs[0];
       
         // if there is no NCount annotation or the altCount is 0, don't apply the filter
-        if (!tumorGenotype.hasExtendedAttribute(GATKVCFConstants.N_COUNT_KEY) || altCount == 0 ) {
+        if (altCount == 0 ) {
             return;
         }
 
-        final int NCount = GATKProtectedVariantContextUtils.getAttributeAsInt(tumorGenotype, GATKVCFConstants.N_COUNT_KEY,-1);
+        final int NCount = vc.getAttributeAsInt(GATKVCFConstants.N_COUNT_KEY,0);
 
         if ((double) NCount / altCount >= MTFAC.nRatio ) {
             filterResult.addFilter(GATKVCFConstants.N_RATIO_FILTER_NAME);
         }
     }
-  
+
     private void applyChimericOriginalAlignmentFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final FilterResult filterResult) {
 
-        final Genotype tumorGenotype = vc.getGenotype(tumorSample);
-        final double[] alleleFractions = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(tumorGenotype, VCFConstants.ALLELE_FREQUENCY_KEY,
-                () -> new double[] {1.0}, 1.0);
-        final int maxFractionIndex = MathUtils.maxElementIndex(alleleFractions);
-        final int[] ADs = tumorGenotype.getAD();
-        final int altCount = ADs[maxFractionIndex + 1];
-
-        if (tumorGenotype.hasAnyAttribute(GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY) && vc.isBiallelic()) {
-            final int nonMtOa = GATKProtectedVariantContextUtils.getAttributeAsInt(tumorGenotype, GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY, -1);
+        if (vc.hasAttribute(GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY) && vc.isBiallelic()) {
+            final int altCount = vc.getGenotypes().stream().mapToInt(g -> g.getAD()[1]).sum();
+            final int nonMtOa = vc.getAttributeAsInt(GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY, 0);
             if ((double) nonMtOa / altCount > MTFAC.nonMtAltByAlt) {
                 filterResult.addFilter(GATKVCFConstants.CHIMERIC_ORIGINAL_ALIGNMENT_FILTER_NAME);
             }
@@ -449,9 +532,4 @@ public class Mutect2FilteringEngine {
 
         return filterResult;
     }
-
-    private int[] getIntArrayTumorField(final VariantContext vc, final String key) {
-        return GATKProtectedVariantContextUtils.getAttributeAsIntArray(vc.getGenotype(tumorSample), key, () -> null, 0);
-    }
-
 }

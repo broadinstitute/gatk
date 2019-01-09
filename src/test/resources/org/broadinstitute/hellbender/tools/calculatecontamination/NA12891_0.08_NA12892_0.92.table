@@ -1,3 +1,4 @@
+#<METADATA>SAMPLE=sample
 contig	position	ref_count	alt_count	other_alt_count	allele_frequency
 1	17365	506	45	2	0.136
 1	17385	488	53	5	0.122

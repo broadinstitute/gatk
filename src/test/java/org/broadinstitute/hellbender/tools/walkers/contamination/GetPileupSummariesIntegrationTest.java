@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.contamination;
 
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.testng.Assert;
@@ -28,7 +29,11 @@ public class GetPileupSummariesIntegrationTest extends CommandLineProgramTest {
         };
         runCommandLine(args);
 
-        final List<PileupSummary> result = PileupSummary.readFromFile(output);
+        final ImmutablePair<String, List<PileupSummary>> sampleAndResult = PileupSummary.readFromFile(output);
+
+        final List<PileupSummary> result = sampleAndResult.getRight();
+        final String sample = sampleAndResult.getLeft();
+        Assert.assertEquals(sample, "NA12878");
 
         // compare to IGV manual inspection
         final PileupSummary ps1 = result.get(0);
