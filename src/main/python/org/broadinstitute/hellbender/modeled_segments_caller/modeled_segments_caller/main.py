@@ -482,13 +482,26 @@ class LoadAndSampleCrAndAf:
         """
         weights = []
         for i in range(self.__n_segments):
+            # Due to an issue with ModelSegments' calculation of the posterior probabilities, the weights of long
+            # segments were vastly smaller than they should be. This led to various issues of the segmentation.
+            # This is not an issue of __determine_weight_one_segment or other functions in CallModeledSegments.
+            # We currently resolve this issue by making the weights equal to the number of copy number points in the
+            # segment. Based on my discussion with Sam Lee, he will address this issue in an upcoming PR of
+            # ModelSegments. After that, the lines below can be changed appropriately. (Note that the function
+            # __determine_weight_one_segment has been thoroughly tested, and there should be no issue with this part
+            # of the code after.)
+            #
+            # Uncomment the code below once the issue of ModelSegments is resolved.
             # w = self.__determine_weight_one_segment(self.__copy_ratio_median[i],
             #                                         self.__copy_ratio_10th_perc[i],
             #                                         self.__copy_ratio_90th_perc[i],
             #                                         self.__allele_fraction_median[i],
             #                                         self.__allele_fraction_10th_perc[i],
             #                                         self.__allele_fraction_90th_perc[i])
+            #
+            # Delete the line below once the issue with ModelSegments is resolved.
             w = self.__n_points_cr[i]
+
             weights.append(w)
 
         # Set an upper limit to the weights possible. This upper limit is needed since, in rare cases,
