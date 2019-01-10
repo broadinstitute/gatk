@@ -231,7 +231,8 @@ public final class ModelSegments extends CommandLineProgram {
     public static final String ALLELE_FRACTION_LEGACY_SEGMENTS_FILE_SUFFIX = ".af.igv" + SEGMENTS_FILE_SUFFIX;
 
     //het genotyping argument names
-    public static final String MINIMUM_TOTAL_ALLELE_COUNT_LONG_NAME = "minimum-total-allele-count";
+    public static final String MINIMUM_TOTAL_ALLELE_COUNT_CASE_LONG_NAME = "minimum-total-allele-count-case";
+    public static final String MINIMUM_TOTAL_ALLELE_COUNT_NORMAL_LONG_NAME = "minimum-total-allele-count-normal";
     public static final String GENOTYPING_HOMOZYGOUS_LOG_RATIO_THRESHOLD_LONG_NAME = "genotyping-homozygous-log-ratio-threshold";
     public static final String GENOTYPING_BASE_ERROR_RATE_LONG_NAME = "genotyping-base-error-rate";
 
@@ -248,8 +249,8 @@ public final class ModelSegments extends CommandLineProgram {
     public static final String MINOR_ALLELE_FRACTION_PRIOR_ALPHA_LONG_NAME = "minor-allele-fraction-prior-alpha";
     public static final String NUMBER_OF_SAMPLES_COPY_RATIO_LONG_NAME = "number-of-samples-copy-ratio";
     public static final String NUMBER_OF_BURN_IN_SAMPLES_COPY_RATIO_LONG_NAME = "number-of-burn-in-samples-copy-ratio";
-    public static final String NUM_SAMPLES_ALLELE_FRACTION_LONG_NAME = "number-of-samples-allele-fraction";
-    public static final String NUM_BURN_IN_ALLELE_FRACTION_LONG_NAME = "number-of-burn-in-samples-allele-fraction";
+    public static final String NUMBER_OF_SAMPLES_ALLELE_FRACTION_LONG_NAME = "number-of-samples-allele-fraction";
+    public static final String NUMBER_OF_BURN_IN_SAMPLES_ALLELE_FRACTION_LONG_NAME = "number-of-burn-in-samples-allele-fraction";
 
     //smoothing argument names
     public static final String SMOOTHING_CREDIBLE_INTERVAL_THRESHOLD_COPY_RATIO_LONG_NAME = "smoothing-credible-interval-threshold-copy-ratio";
@@ -292,12 +293,22 @@ public final class ModelSegments extends CommandLineProgram {
     private String outputDir;
 
     @Argument(
-            doc = "Minimum total count for filtering allelic counts, if available.",
-            fullName = MINIMUM_TOTAL_ALLELE_COUNT_LONG_NAME,
+            doc = "Minimum total count for filtering allelic counts in the case sample, if available.  " +
+                    "The default value of zero is appropriate for matched-normal mode; " +
+                    "increase to an appropriate value for case-only mode.",
+            fullName = MINIMUM_TOTAL_ALLELE_COUNT_CASE_LONG_NAME,
             minValue = 0,
             optional = true
     )
-    private int minTotalAlleleCount = 30;
+    private int minTotalAlleleCountCase = 0;
+
+    @Argument(
+            doc = "Minimum total count for filtering allelic counts in the matched-normal sample, if available.",
+            fullName = MINIMUM_TOTAL_ALLELE_COUNT_NORMAL_LONG_NAME,
+            minValue = 0,
+            optional = true
+    )
+    private int minTotalAlleleCountNormal = 30;
 
     @Argument(
             doc = "Log-ratio threshold for genotyping and filtering homozygous allelic counts, if available.  " +
@@ -414,7 +425,7 @@ public final class ModelSegments extends CommandLineProgram {
 
     @Argument(
             doc = "Total number of MCMC samples for allele-fraction model.",
-            fullName = NUM_SAMPLES_ALLELE_FRACTION_LONG_NAME,
+            fullName = NUMBER_OF_SAMPLES_ALLELE_FRACTION_LONG_NAME,
             optional = true,
             minValue = 1
     )
@@ -422,7 +433,7 @@ public final class ModelSegments extends CommandLineProgram {
 
     @Argument(
             doc = "Number of burn-in samples to discard for allele-fraction model.",
-            fullName = NUM_BURN_IN_ALLELE_FRACTION_LONG_NAME,
+            fullName = NUMBER_OF_BURN_IN_SAMPLES_ALLELE_FRACTION_LONG_NAME,
             optional = true,
             minValue = 0
     )
@@ -619,12 +630,14 @@ public final class ModelSegments extends CommandLineProgram {
 
         logger.info("Genotyping heterozygous sites from available allelic counts...");
 
+        AllelicCountCollection filteredAllelicCounts = allelicCounts;
+
         //filter on total count in case sample
-        logger.info(String.format("Filtering allelic counts with total count less than %d...", minTotalAlleleCount));
-        AllelicCountCollection filteredAllelicCounts = new AllelicCountCollection(
+        logger.info(String.format("Filtering allelic counts with total count less than %d...", minTotalAlleleCountCase));
+        filteredAllelicCounts = new AllelicCountCollection(
                 metadata,
-                allelicCounts.getRecords().stream()
-                        .filter(ac -> ac.getTotalReadCount() >= minTotalAlleleCount)
+                filteredAllelicCounts.getRecords().stream()
+                        .filter(ac -> ac.getTotalReadCount() >= minTotalAlleleCountCase)
                         .collect(Collectors.toList()));
         logger.info(String.format("Retained %d / %d sites after filtering on total count...",
                 filteredAllelicCounts.size(), allelicCounts.size()));
@@ -645,6 +658,7 @@ public final class ModelSegments extends CommandLineProgram {
         if (normalAllelicCounts == null) {
             //filter on homozygosity in case sample
             logger.info("No matched normal was provided, not running in matched-normal mode...");
+
             logger.info("Performing binomial testing and filtering homozygous allelic counts...");
             hetAllelicCounts = new AllelicCountCollection(
                     metadata,
@@ -672,11 +686,11 @@ public final class ModelSegments extends CommandLineProgram {
             }
 
             //filter on total count in matched normal
-            logger.info(String.format("Filtering allelic counts in matched normal with total count less than %d...", minTotalAlleleCount));
+            logger.info(String.format("Filtering allelic counts in matched normal with total count less than %d...", minTotalAlleleCountNormal));
             AllelicCountCollection filteredNormalAllelicCounts = new AllelicCountCollection(
                     normalMetadata,
                     normalAllelicCounts.getRecords().stream()
-                            .filter(ac -> ac.getTotalReadCount() >= minTotalAlleleCount)
+                            .filter(ac -> ac.getTotalReadCount() >= minTotalAlleleCountNormal)
                             .collect(Collectors.toList()));
             logger.info(String.format("Retained %d / %d sites in matched normal after filtering on total count...",
                     filteredNormalAllelicCounts.size(), normalAllelicCounts.size()));
