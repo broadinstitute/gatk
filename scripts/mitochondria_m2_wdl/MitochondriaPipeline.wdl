@@ -318,7 +318,7 @@ task RevertSam {
   }
   runtime {
     disks: "local-disk " + disk_size + " HDD"
-    memory: "1200 MB"
+    memory: "2 GB"
     docker: "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.1-1540490856"
     preemptible: select_first([preemptible_tries, 5])
   }
