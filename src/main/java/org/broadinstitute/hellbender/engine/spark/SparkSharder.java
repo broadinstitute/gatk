@@ -469,7 +469,7 @@ public class SparkSharder {
 
     /**
      * Compares {@link PartitionLocatable} objects using a {@link htsjdk.samtools.SAMSequenceDictionary} sequence ordering.
-     * @param <L> he interval type
+     * @param <L> the interval type
      */
     private static class PartitionLocatableComparator<L extends Locatable> implements Comparator<PartitionLocatable<L>>, Serializable {
         private static final long serialVersionUID = 1L;
