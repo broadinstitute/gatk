@@ -29,7 +29,7 @@
 #
 #############
 
-import "cnv_common_tasks.wdl" as CNVTasks
+import "../cnv_common_tasks.wdl" as CNVTasks
 import "cnv_somatic_oncotator_workflow.wdl" as CNVOncotator
 
 workflow CNVSomaticPairWorkflow {
