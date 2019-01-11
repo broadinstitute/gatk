@@ -94,7 +94,7 @@ before_install:
   fi;
 # Download Cromwell jar -- if you change the version, please change the CROMWELL_JAR env variable above, too.
 - if [[ $RUN_CNV_GERMLINE_COHORT_WDL == true || $RUN_CNV_GERMLINE_CASE_WDL == true || $RUN_CNV_SOMATIC_WDL == true || $RUN_M2_WDL == true || $RUN_CNN_WDL == true ]]; then
-    wget -O $CROMWELL_JAR https://github.com/broadinstitute/cromwell/releases/download/30.2/cromwell-30.2.jar;
+    wget -O $CROMWELL_JAR https://github.com/broadinstitute/cromwell/releases/download/36/cromwell-36.jar;
   fi;
 # Download git lfs files
 - git lfs version

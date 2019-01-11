@@ -224,7 +224,7 @@ task SubsetBam {
   # runtime
   Int? preemptible_tries
   Float bam_size = size(input_bam, "GB")
-  Float ref_size = if defined(ref_fasta) then size(ref_fasta, "GB") + size(ref_fasta_index, "GB") + size(ref_dict, "GB") else 0.0
+  Float ref_size = if defined(ref_fasta) then size(ref_fasta, "GB") + size(ref_fasta_index, "GB") + size(ref_dict, "GB") else 0
   Int disk_size = ceil(bam_size * 2 + ref_size) + 20
   Int final_preemptible_tries = if bam_size > 110.0 then 0 else select_first([preemptible_tries, 5])
 
