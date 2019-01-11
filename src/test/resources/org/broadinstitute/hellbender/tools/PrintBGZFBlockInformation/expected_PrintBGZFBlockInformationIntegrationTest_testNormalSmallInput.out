@@ -1,0 +1,22 @@
+BGZF block information for file: 4featuresHG38Header.vcf.gz
+
+Block at file offset 0
+	- compressed size: 12409
+	- uncompressed size: 65498
+
+Block at file offset 12409
+	- compressed size: 6497
+	- uncompressed size: 65498
+
+Block at file offset 18906
+	- compressed size: 6229
+	- uncompressed size: 46819
+
+Block at file offset 25135
+	- compressed size: 28
+	- uncompressed size: 0
+
+*****************************************
+Final BGZF 0-byte terminator block FOUND!
+*****************************************
+

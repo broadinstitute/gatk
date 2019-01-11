@@ -2,7 +2,8 @@ package org.broadinstitute.hellbender.tools;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -11,10 +12,10 @@ import java.io.IOException;
 public class PrintBGZFBlockInformationIntegrationTest extends CommandLineProgramTest {
 
     @Test
-    public void testNormalInput() throws IOException {
+    public void testNormalLargeInput() throws IOException {
         final File input = new File(largeFileTestDir, "gvcfs/HG00096.g.vcf.gz");
-        final File actualOutput = createTempFile("PrintBGZFBlockInformationIntegrationTest_testNormalInput", ".out");
-        final File expectedOutput = new File(toolsTestDir + "diagnostics/expected_PrintBGZFBlockInformationIntegrationTest_testNormalInput.out");
+        final File actualOutput = createTempFile("PrintBGZFBlockInformationIntegrationTest_testNormalLargeInput", ".out");
+        final File expectedOutput = new File(toolsTestDir + "PrintBGZFBlockInformation/expected_PrintBGZFBlockInformationIntegrationTest_testNormalLargeInput.out");
 
         final String[] args = {
             "--bgzf-file", input.getAbsolutePath(),
@@ -23,5 +24,74 @@ public class PrintBGZFBlockInformationIntegrationTest extends CommandLineProgram
         runCommandLine(args);
 
         IntegrationTestSpec.assertEqualTextFiles(actualOutput, expectedOutput);
+    }
+
+    @Test
+    public void testNormalSmallInput() throws IOException {
+        final File input = new File(toolsTestDir, "PrintBGZFBlockInformation/4featuresHG38Header.vcf.gz");
+        final File actualOutput = createTempFile("PrintBGZFBlockInformationIntegrationTest_testNormalSmallInput", ".out");
+        final File expectedOutput = new File(toolsTestDir + "PrintBGZFBlockInformation/expected_PrintBGZFBlockInformationIntegrationTest_testNormalSmallInput.out");
+
+        final String[] args = {
+                "--bgzf-file", input.getAbsolutePath(),
+                "--"  + StandardArgumentDefinitions.OUTPUT_LONG_NAME, actualOutput.getAbsolutePath()
+        };
+        runCommandLine(args);
+
+        IntegrationTestSpec.assertEqualTextFiles(actualOutput, expectedOutput);
+    }
+
+    @Test
+    public void testMissingBGZFTerminatorBlock() throws IOException {
+        final File input = new File(toolsTestDir, "PrintBGZFBlockInformation/4featuresHG38Header.NO_BGZF_TERMINATOR_BLOCK.vcf.gz");
+        final File actualOutput = createTempFile("PrintBGZFBlockInformationIntegrationTest_testMissingBGZFTerminatorBlock", ".out");
+        final File expectedOutput = new File(toolsTestDir + "PrintBGZFBlockInformation/expected_PrintBGZFBlockInformationIntegrationTest_testMissingBGZFTerminatorBlock.out");
+
+        final String[] args = {
+                "--bgzf-file", input.getAbsolutePath(),
+                "--"  + StandardArgumentDefinitions.OUTPUT_LONG_NAME, actualOutput.getAbsolutePath()
+        };
+        runCommandLine(args);
+
+        IntegrationTestSpec.assertEqualTextFiles(actualOutput, expectedOutput);
+    }
+
+    @Test(expectedExceptions= UserException.CouldNotReadInputFile.class)
+    public void testTruncatedFinalBlock() throws IOException {
+        final File input = new File(toolsTestDir, "PrintBGZFBlockInformation/4featuresHG38Header.TRUNCATED_FINAL_BLOCK.vcf.gz");
+        final File actualOutput = createTempFile("PrintBGZFBlockInformationIntegrationTest_testTruncatedFinalBlock", ".out");
+
+        final String[] args = {
+                "--bgzf-file", input.getAbsolutePath(),
+                "--"  + StandardArgumentDefinitions.OUTPUT_LONG_NAME, actualOutput.getAbsolutePath()
+        };
+        runCommandLine(args);
+    }
+
+    @Test
+    public void testExtraTerminatorBlockInMiddle() throws IOException {
+        final File input = new File(toolsTestDir, "PrintBGZFBlockInformation/4featuresHG38Header.EXTRA_TERMINATOR_BLOCK_IN_MIDDLE.vcf.gz");
+        final File actualOutput = createTempFile("PrintBGZFBlockInformationIntegrationTest_testExtraTerminatorBlockInMiddle", ".out");
+        final File expectedOutput = new File(toolsTestDir + "PrintBGZFBlockInformation/expected_PrintBGZFBlockInformationIntegrationTest_testExtraTerminatorBlockInMiddle.out");
+
+        final String[] args = {
+                "--bgzf-file", input.getAbsolutePath(),
+                "--"  + StandardArgumentDefinitions.OUTPUT_LONG_NAME, actualOutput.getAbsolutePath()
+        };
+        runCommandLine(args);
+
+        IntegrationTestSpec.assertEqualTextFiles(actualOutput, expectedOutput);
+    }
+
+    @Test(expectedExceptions= UserException.CouldNotReadInputFile.class)
+    public void testRegularGzipFile() throws IOException {
+        final File input = new File(toolsTestDir, "PrintBGZFBlockInformation/4featuresHG38Header.REGULAR_GZIP.vcf.gz");
+        final File actualOutput = createTempFile("PrintBGZFBlockInformationIntegrationTest_testRegularGzipFile", ".out");
+
+        final String[] args = {
+                "--bgzf-file", input.getAbsolutePath(),
+                "--"  + StandardArgumentDefinitions.OUTPUT_LONG_NAME, actualOutput.getAbsolutePath()
+        };
+        runCommandLine(args);
     }
 }

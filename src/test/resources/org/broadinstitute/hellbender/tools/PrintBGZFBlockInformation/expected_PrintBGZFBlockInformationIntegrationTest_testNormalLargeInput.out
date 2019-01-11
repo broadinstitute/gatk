@@ -1,3 +1,5 @@
+BGZF block information for file: HG00096.g.vcf.gz
+
 Block at file offset 0
 	- compressed size: 12932
 	- uncompressed size: 65280
@@ -1709,4 +1711,8 @@ Block at file offset 4342381
 Block at file offset 4345593
 	- compressed size: 28
 	- uncompressed size: 0
+
+*****************************************
+Final BGZF 0-byte terminator block FOUND!
+*****************************************
 
