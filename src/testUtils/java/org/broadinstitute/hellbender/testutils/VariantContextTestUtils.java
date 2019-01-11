@@ -396,6 +396,7 @@ public final class VariantContextTestUtils {
         int numFailed = 0;
 
         for (int i = 0; i < v1.size(); i++) {
+            // assertVariantContextsAreEqual( v1.get(i), v2.get(i), Collections.emptyList() );
             if (! v1.get(i).toStringDecodeGenotypes().equals(v2.get(i).toStringDecodeGenotypes())){
                 logger.error("Variant Comparison Error: different element (compared by toStringDecodeGenotypes) " + i + ":\n" + v1.get(i) + "\n" + v2.get(i));
                 passed = false;

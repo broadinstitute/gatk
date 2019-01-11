@@ -358,7 +358,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         // Set the name if we have to:
         if ( codec instanceof NameAwareCodec ) {
             final NameAwareCodec namedCodec = (NameAwareCodec) codec;
-            namedCodec.setName( featureInput.getFeaturePath() );
+            namedCodec.setName( featureInput.getName() );
         }
 
         return codec;
