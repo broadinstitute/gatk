@@ -68,17 +68,19 @@ public abstract class MultiVariantWalker extends VariantWalkerBase {
                     }
                     drivingVariantsFeatureInputs.add(featureInput);
 
-                    //Add each driving variants FeatureInput to the feature manager so that it can be queried, using a lookahead value
-                    //of 0 to avoid caching because of windowed queries that need to "look behind" as well.
+                    // Add each driving variants FeatureInput to the feature manager so that it can be queried, using a lookahead value
+                    // of 0 to avoid caching because of windowed queries that need to "look behind" as well.
                     features.addToFeatureSources(0, featureInput, VariantContext.class, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
                                                  referenceArguments.getReferencePath());
                 }
         );
-        // Create a (MultiVariantDataSource) FeatureDataSource for the driving variants inputs, but use a lookahead value from getDrivingVariantCacheLookAheadBases()
+
+        // Create a (MultiVariantDataSource) FeatureDataSource for the driving variants inputs using the
+        // cache lookahead value from getDrivingVariantCacheLookAheadBases()
         drivingVariants = new MultiVariantDataSource(drivingVariantsFeatureInputs, getDrivingVariantCacheLookAheadBases(), cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
                                                      referenceArguments.getReferencePath());
 
-        // Note: the intervals for the driving variants are set in onStartup
+        // Note: the intervals for the driving variants are set in onStartup()
     }
 
     /**

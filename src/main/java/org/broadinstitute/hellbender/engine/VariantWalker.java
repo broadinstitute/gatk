@@ -52,16 +52,17 @@ public abstract class VariantWalker extends VariantWalkerBase {
     protected void initializeDrivingVariants() {
         drivingVariantsFeatureInput = new FeatureInput<>(drivingVariantFile, "drivingVariantFile");
 
-        // Create a FeatureDataSource for the driving variants FeatureInput, using a lookahead value from getDrivingVariantCacheLookAheadBases()
+        // Create a FeatureDataSource for the driving variants FeatureInput, using the
+        // cache lookahead value from getDrivingVariantCacheLookAheadBases()
         drivingVariants = new FeatureDataSource<>(drivingVariantsFeatureInput, getDrivingVariantCacheLookAheadBases(), VariantContext.class, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
                                                   referenceArguments.getReferencePath());
 
-        // Also add the driving variants FeatureInput to FeatureManager so it can be queried, but use a lookahead value of 0
-        // to avoid caching because of windowed queries that need to "look behind" as well.
+        // Also add the driving variants FeatureInput to FeatureManager as well so that it can be queried,
+        // but use a lookahead value of 0 to avoid caching because of windowed queries that need to "look behind" as well.
         features.addToFeatureSources(0, drivingVariantsFeatureInput, VariantContext.class, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
                                      referenceArguments.getReferencePath());
 
-        //Note: the intervals for the driving variants are set in onStartup
+        // Note: the intervals for the driving variants are set in onStartup()
     }
 
     /**

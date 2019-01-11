@@ -30,7 +30,8 @@ public abstract class VariantWalkerBase extends GATKTool {
 
     /**
      * Default value to control the size of the cache for our driving variants input(s)
-     * (specifically, the number of additional bases worth of overlapping records to cache for driving variants).
+     * (specifically, the number of additional bases worth of overlapping records to cache for
+     * queries on the driving variants).
      */
     public static final int DEFAULT_DRIVING_VARIANTS_LOOKAHEAD_BASES = 100_000;
 
@@ -49,8 +50,8 @@ public abstract class VariantWalkerBase extends GATKTool {
         // determined by {@link #getDrivingVariantCacheLookAheadBases}.
         //
         // TODO: I think reducing the lookahead for side inputs from DEFAULT_DRIVING_VARIANTS_LOOKAHEAD_BASES to
-        // FeatureDataSource.DEFAULT_QUERY_LOOKAHEAD_BASES will likely hurt performance for tools like VQSR, but lets
-        // test it
+        // TODO: FeatureDataSource.DEFAULT_QUERY_LOOKAHEAD_BASES will likely hurt performance for tools like VQSR,
+        // TODO: but let's test it
         features = new FeatureManager(this, DEFAULT_DRIVING_VARIANTS_LOOKAHEAD_BASES, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
                                       referenceArguments.getReferencePath());
         initializeDrivingVariants();
@@ -104,10 +105,14 @@ public abstract class VariantWalkerBase extends GATKTool {
     protected abstract Spliterator<VariantContext> getSpliteratorForDrivingVariants();
 
     /**
-     * When performing a query on the driving variants input(s), the number of lookahead bases for which overlapping
-     * variants should be pre-fetched and cached.
-     * Subclasses can set this value by overriding this method.
-     * @return the number of bases ahead of a query to prefetch
+     * When performing a query on the driving variants input(s), the number of additional bases beyond the end
+     * of the query for which overlapping variants should be pre-fetched and cached.
+     *
+     * Defaults to {@link #DEFAULT_DRIVING_VARIANTS_LOOKAHEAD_BASES}
+     *
+     * Subclasses can customize this value by overriding this method.
+     *
+     * @return the number of additional bases to prefetch and cache beyond a query on the driving variants
      */
     protected int getDrivingVariantCacheLookAheadBases(){
         return DEFAULT_DRIVING_VARIANTS_LOOKAHEAD_BASES;
