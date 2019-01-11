@@ -6,7 +6,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.iterators.ByteArrayIterator;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 
-import java.io.File;
+import java.nio.file.Path;
 import java.util.Iterator;
 
 /**
@@ -21,12 +21,27 @@ public interface ReferenceDataSource extends GATKDataSource<Byte>, AutoCloseable
      *
      * The provided fasta file must have companion .fai and .dict files.
      *
-     * @param fastaFile reference fasta file
+     * @param fastaPath reference fasta Path
      */
-    public static ReferenceDataSource of(final File fastaFile) {
-        return new ReferenceFileSource(fastaFile);
+    public static ReferenceDataSource of(final Path fastaPath) {
+        return new ReferenceFileSource(fastaPath);
     }
 
+    /**
+     * Initialize this data source using a fasta file.
+     *
+     * The provided fasta file must have companion .fai and .dict files.
+     *
+     * If {@code preserveFileBases} is {@code true}, will NOT convert IUPAC bases in the file to `N` and will NOT capitalize lower-case bases.
+     *
+     * NOTE: Most GATK tools do not support data created by setting {@code preserveFileBases} to {@code true}.
+     *
+     * @param fastaPath reference fasta Path
+     * @param preserveAmbiguityCodesAndCapitalization Whether to preserve the original bases in the given reference file path.
+     */
+    public static ReferenceDataSource of(final Path fastaPath, final boolean preserveAmbiguityCodesAndCapitalization) {
+        return new ReferenceFileSource(fastaPath, preserveAmbiguityCodesAndCapitalization);
+    }
 
     /**
      * Initialize this data source using ReferenceBases and corresponding sequence dictionary.

@@ -1,21 +1,26 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.util.stream.DoubleStream;
 
 /**
  * Holds information about a genotype call of a single sample reference vs. any non-ref event
+ *
+ * IMPORTANT PERFORMANCE NOTE!!! Allowing direct field access (within this class only) speeds up
+ * the HaplotypeCaller by ~10% vs. accessing the fields indirectly via setters, as seen in a profiler.
  */
-final class RefVsAnyResult {
+public final class RefVsAnyResult extends ReferenceConfidenceResult {
     /**
      * The genotype likelihoods for ref/ref ref/non-ref non-ref/non-ref
+     *
+     * Fields are visible because direct field access for this particular class has a major performance
+     * impact on the HaplotypeCaller, as noted above, and the class itself is nested within
+     * ReferenceConfidenceModel anyway.
      */
-    private final double[] genotypeLikelihoods;
+    final double[] genotypeLikelihoods;
 
-    private int refDepth = 0;
-    private int nonRefDepth = 0;
+    int[] finalPhredScaledGenotypeLikelihoods;
 
     /**
      * Creates a new ref-vs-alt result indicating the genotype likelihood vector capacity.
@@ -27,22 +32,7 @@ final class RefVsAnyResult {
     public RefVsAnyResult(final int likelihoodCapacity) {
         ParamUtils.isPositiveOrZero(likelihoodCapacity, "likelihood capacity is negative");
         genotypeLikelihoods = new double[likelihoodCapacity];
-    }
-
-    double[] getGenotypeLikelihoods() {
-        return genotypeLikelihoods;
-    }
-
-    /**
-     * @return Get the DP (sum of AD values)
-     */
-    int getDP() { return refDepth + nonRefDepth; }
-
-    /**
-     * Return the AD fields. Returns a newly allocated array every time.
-     */
-    int[] getAD(){
-        return new int[]{refDepth, nonRefDepth};
+        finalPhredScaledGenotypeLikelihoods = new int[likelihoodCapacity];
     }
 
     /**
@@ -50,21 +40,7 @@ final class RefVsAnyResult {
      * Caps the het and hom var likelihood values by the hom ref likelihood.
      * The capping is done on the fly.
      */
-    double[] getGenotypeLikelihoodsCappedByHomRefLikelihood(){
+    double[] getGenotypeLikelihoodsCappedByHomRefLikelihood() {
         return DoubleStream.of(genotypeLikelihoods).map(d -> Math.min(d, genotypeLikelihoods[0])).toArray();
-    }
-
-    void incrementRefAD(final int by){
-        Utils.validateArg(by >= 0, "expected a non-negative number but got " + by);
-        refDepth += by;
-    }
-
-    void incrementNonRefAD(final int by){
-        Utils.validateArg(by >= 0, "expected a non-negative number but got " + by);
-        nonRefDepth += by;
-    }
-
-    public void addGenotypeLikelihood(final int idx, final double by) {
-        genotypeLikelihoods[idx] += by;
     }
 }

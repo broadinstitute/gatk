@@ -1,7 +1,8 @@
 package org.broadinstitute.hellbender.cmdline;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.broadinstitute.hellbender.exceptions.PicardNonZeroExitException;
+import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -45,7 +46,7 @@ public final class PicardCommandLineProgramExecutorIntegrationTest extends Comma
         IntegrationTestSpec.assertEqualTextFiles(outfile, expectedFile);
     }
 
-    @Test
+    @Test(expectedExceptions=PicardNonZeroExitException.class)
     public void testPicardNormalizeFastaWithBadArgs() throws IOException {
         final File input = new File(TEST_DATA_PATH, "testfasta.fasta");
         final File outfile = createTempFile("normalized", ".fasta");

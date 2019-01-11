@@ -1,18 +1,20 @@
 package org.broadinstitute.hellbender.tools.walkers;
 
-import htsjdk.tribble.TribbleException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.ValidateVariants;
 import org.testng.annotations.Test;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 
 import static org.broadinstitute.hellbender.tools.walkers.variantutils.ValidateVariants.ValidationType.*;
 
 public final class ValidateVariantsIntegrationTest extends CommandLineProgramTest {
+
+    private static final String MITO_REF = toolsTestDir + "mutect/mito/Homo_sapiens_assembly38.mt_only.fasta";
 
     public String baseTestString(final boolean sharedFile, final String file, final boolean exclude, final ValidateVariants.ValidationType type) {
 
@@ -21,7 +23,7 @@ public final class ValidateVariantsIntegrationTest extends CommandLineProgramTes
 
     public String baseTestString(boolean sharedFile, String file, boolean exclude, ValidateVariants.ValidationType type, String region, String reference) {
         final String filePath = sharedFile ? file: getToolTestDataDir() + file;
-        final String typeArgString = exclude ? " --validationTypeToExclude " + type.name() : excludeValidationTypesButString(type);
+        final String typeArgString = exclude ? " --validation-type-to-exclude " + type.name() : excludeValidationTypesButString(type);
         final String intervals = region == null ? "" : " -L " + region;
         final String referenceString = reference == null ? "" : " -R " + reference;
 
@@ -30,7 +32,7 @@ public final class ValidateVariantsIntegrationTest extends CommandLineProgramTes
 
     public String baseTestStringWithoutReference(boolean sharedFile, String file, boolean exclude, ValidateVariants.ValidationType type) {
         final String filePath = sharedFile ? file: getToolTestDataDir() + file;
-        final String typeArgString = exclude ? " --validationTypeToExclude " + type.name() : excludeValidationTypesButString(type);
+        final String typeArgString = exclude ? " --validation-type-to-exclude " + type.name() : excludeValidationTypesButString(type);
         return " --variant " + filePath + typeArgString;
     }
 
@@ -41,7 +43,7 @@ public final class ValidateVariantsIntegrationTest extends CommandLineProgramTes
         final StringBuilder sbuilder = new StringBuilder();
         for (final ValidateVariants.ValidationType t : CONCRETE_TYPES) {
             if (t != type) {
-                sbuilder.append(" --validationTypeToExclude ").append(t.toString());
+                sbuilder.append(" --validation-type-to-exclude ").append(t.toString());
             }
         }
         return sbuilder.toString();
@@ -276,6 +278,14 @@ public final class ValidateVariantsIntegrationTest extends CommandLineProgramTes
     public void testBadGvcfRegions() throws IOException {
         IntegrationTestSpec spec = new IntegrationTestSpec(
                 baseTestString(false, "NA12891.AS.chr20snippet.missingrefblock.g.vcf", true, ALLELES, "20:10433000-10437000", b37_reference_20_21) + " -gvcf  ",
+                0, UserException.class);
+        spec.executeTest("tests capture of a gvcf missing a reference block", this);
+    }
+
+    @Test
+    public void testBadGvcfOutOfOrder() throws IOException {
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString(false, "badGVCF.outOfOrder.g.vcf", true, ALLELES, "chrM:1-1000", MITO_REF) + " -gvcf  ",
                 0, UserException.class);
         spec.executeTest("tests capture of a gvcf missing a reference block", this);
     }

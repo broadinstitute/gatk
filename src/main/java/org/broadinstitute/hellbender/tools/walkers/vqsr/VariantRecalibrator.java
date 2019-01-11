@@ -17,7 +17,7 @@ import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.Hidden;
-import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
+import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.ReadsContext;
@@ -68,9 +68,9 @@ import java.util.*;
  * assigned a score and filter status.</p>
  *
  * <p>VQSR is probably the hardest part of the Best Practices to get right, so be sure to read the
- * <a href='https://www.broadinstitute.org/gatk/guide/article?id=39'>method documentation</a>,
- * <a href='https://www.broadinstitute.org/gatk/guide/article?id=1259'>parameter recommendations</a> and
- * <a href='https://www.broadinstitute.org/gatk/guide/article?id=2805'>tutorial</a> to really understand what these
+ * <a href='https://software.broadinstitute.org/gatk/guide/article?id=39'>method documentation</a>,
+ * <a href='https://software.broadinstitute.org/gatk/guide/article?id=1259'>parameter recommendations</a> and
+ * <a href='https://software.broadinstitute.org/gatk/guide/article?id=2805'>tutorial</a> to really understand what these
  * tools do and how to use them for best results on your own data.</p>
  *
  * <h3>Inputs</h3>
@@ -93,35 +93,35 @@ import java.util.*;
  *
  * <h4>Recalibrating SNPs in exome data</h4>
  * <pre>
- * ./gatk-launch VariantRecalibrator \
- *   -R reference.fasta \
- *   -V input.vcf \
- *   --resource hapmap,known=false,training=true,truth=true,prior=15.0 hapmap_3.3.b37.sites.vcf \
- *   --resource omni,known=false,training=true,truth=false,prior=12.0 1000G_omni2.5.b37.sites.vcf \
- *   --resource 1000G,known=false,training=true,truth=false,prior=10.0 1000G_phase1.snps.high_confidence.vcf \
- *   --resource dbsnp,known=true,training=false,truth=false,prior=2.0 dbsnp_135.b37.vcf \
- *   -an QD -an MQ -an MQRankSum -an ReadPosRankSum -an FS -an SOR -an InbreedingCoeff \
+ * gatk VariantRecalibrator \
+ *   -R Homo_sapiens_assembly38.fasta \
+ *   -V input.vcf.gz \
+ *   --resource hapmap,known=false,training=true,truth=true,prior=15.0:hapmap_3.3.hg38.sites.vcf.gz \
+ *   --resource omni,known=false,training=true,truth=false,prior=12.0:1000G_omni2.5.hg38.sites.vcf.gz \
+ *   --resource 1000G,known=false,training=true,truth=false,prior=10.0:1000G_phase1.snps.high_confidence.hg38.vcf.gz \
+ *   --resource dbsnp,known=true,training=false,truth=false,prior=2.0:Homo_sapiens_assembly38.dbsnp138.vcf.gz \
+ *   -an QD -an MQ -an MQRankSum -an ReadPosRankSum -an FS -an SOR \
  *   -mode SNP \
- *   --recalFile output.recal \
- *   -tranchesFile output.tranches \
- *   --rscriptFile output.plots.R
+ *   -O output.recal \
+ *   --tranches-file output.tranches \
+ *   --rscript-file output.plots.R
  * </pre>
  *
  * <h4>Allele-specific version of the SNP recalibration (beta)</h4>
  * <pre>
- * ./gatk-launch VariantRecalibrator \
- *   -R reference.fasta \
- *   -V input.vcf \
+ * gatk VariantRecalibrator \
+ *   -R Homo_sapiens_assembly38.fasta \
+ *   -V input.vcf.gz \
  *   -AS \
- *   --resource hapmap,known=false,training=true,truth=true,prior=15.0:hapmap_3.3.b37.sites.vcf \
- *   --resource omni,known=false,training=true,truth=false,prior=12.0:1000G_omni2.5.b37.sites.vcf \
- *   --resource 1000G,known=false,training=true,truth=false,prior=10.0:1000G_phase1.snps.high_confidence.vcf \
- *   --resource dbsnp,known=true,training=false,truth=false,prior=2.0 dbsnp_135.b37.vcf \
- *   -an QD -an MQ -an MQRankSum -an ReadPosRankSum -an FS -an SOR -an InbreedingCoeff \
+ *   --resource hapmap,known=false,training=true,truth=true,prior=15.0:hapmap_3.3.hg38.sites.vcf.gz \
+ *   --resource omni,known=false,training=true,truth=false,prior=12.0:1000G_omni2.5.hg38.sites.vcf.gz \
+ *   --resource 1000G,known=false,training=true,truth=false,prior=10.0:1000G_phase1.snps.high_confidence.hg38.vcf.gz \
+ *   --resource dbsnp,known=true,training=false,truth=false,prior=2.0:Homo_sapiens_assembly38.dbsnp138.vcf.gz \
+ *   -an QD -an MQ -an MQRankSum -an ReadPosRankSum -an FS -an SOR \
  *   -mode SNP \
- *   --recalFile output.AS.recal \
- *   --tranchesFile output.AS.tranches \
- *   --rscriptFile output.plots.AS.R
+ *   -O output.AS.recal \
+ *   --tranches-file output.AS.tranches \
+ *   --rscript-file output.plots.AS.R
  * </pre>
  * <p>Note that to use the allele-specific (AS) mode, the input VCF must have been produced using allele-specific
  * annotations in HaplotypeCaller. Note also that each allele will have a separate line in the output recalibration
@@ -134,7 +134,7 @@ import java.util.*;
  * They are not meant to be taken as specific recommendations of values to use in your own work, and they may be
  * different from the values cited elsewhere in our documentation. For the latest and greatest recommendations on
  * how to set parameter values for your own analyses, please read the Best Practices section of the documentation,
- * especially the <a href='https://www.broadinstitute.org/gatk/guide/article?id=1259'>FAQ document</a> on VQSR parameters.</li>
+ * especially the <a href='https://software.broadinstitute.org/gatk/guide/article?id=1259'>FAQ document</a> on VQSR parameters.</li>
  * <li>Whole genomes and exomes take slightly different parameters, so make sure you adapt your commands accordingly! See
  * the documents linked above for details.</li>
  * <li>If you work with small datasets (e.g. targeted capture experiments or small number of exomes), you will run into
@@ -158,7 +158,7 @@ import java.util.*;
 @CommandLineProgramProperties(
         summary = "Build a recalibration model to score variant quality for filtering purposes",
         oneLineSummary = "Build a recalibration model to score variant quality for filtering purposes",
-        programGroup = VariantProgramGroup.class
+        programGroup = VariantFilteringProgramGroup.class
 )
 @DocumentedFeature
 public class VariantRecalibrator extends MultiVariantWalker {
@@ -203,7 +203,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
             doc="The output recal file used by ApplyRecalibration", optional=false)
     private String output;
 
-    @Argument(fullName="tranches_file", shortName="tranchesFile", doc="The output tranches file used by ApplyRecalibration", optional=false)
+    @Argument(fullName="tranches-file", doc="The output tranches file used by ApplyRecalibration", optional=false)
     private String TRANCHES_FILE;
 
     /////////////////////////////
@@ -212,11 +212,11 @@ public class VariantRecalibrator extends MultiVariantWalker {
     /**
      * The expected transition / transversion ratio of true novel variants in your targeted region (whole genome, exome, specific
      * genes), which varies greatly by the CpG and GC content of the region. See expected Ti/Tv ratios section of the GATK best
-     * practices documentation (http://www.broadinstitute.org/gatk/guide/best-practices) for more information.
+     * practices documentation (https://software.broadinstitute.org/gatk/guide/best-practices) for more information.
      * Normal values are 2.15 for human whole genome values and 3.2 for human whole exomes. Note
      * that this parameter is used for display purposes only and isn't used anywhere in the algorithm!
      */
-    @Argument(fullName="target_titv",
+    @Argument(fullName="target-titv",
             shortName="titv",
             doc="The expected novel Ti/Tv ratio to use when calculating FDR tranches and for display on the optimization curve output figures. (approx 2.15 for whole genome experiments). ONLY USED FOR PLOTTING PURPOSES!",
             optional=true)
@@ -225,7 +225,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
     /**
      * See the input VCF file's INFO field for a list of all available annotations.
      */
-    @Argument(fullName="use_annotation",
+    @Argument(fullName="use-annotation",
             shortName="an",
             doc="The names of the annotations which should used for calculations",
             optional=false)
@@ -235,29 +235,28 @@ public class VariantRecalibrator extends MultiVariantWalker {
      * Add truth sensitivity slices through the call set at the given values. The default values are 100.0, 99.9, 99.0, and 90.0
      * which will result in 4 estimated tranches in the final call set: the full set of calls (100% sensitivity at the accessible
      * sites in the truth set), a 99.9% truth sensitivity tranche, along with progressively smaller tranches at 99% and 90%.
+     * Note: You must pass in each tranche as a separate value (e.g. -tranche 100.0 -tranche 99.9).
      */
-    @Argument(fullName="TStranche",
+    @Argument(fullName="truth-sensitivity-tranche",
             shortName="tranche",
             doc="The levels of truth sensitivity at which to slice the data. (in percent, that is 1.0 for 1 percent)",
             optional=true)
     private List<Double> TS_TRANCHES = new ArrayList<Double>(Arrays.asList(100.0, 99.9, 99.0, 90.0));
 
     /**
-     * For this to work properly, the -ignoreFilter argument should also be applied to the ApplyRecalibration command.
+     * For this to work properly, the --ignore-filter argument should also be applied to the ApplyRecalibration command.
      */
-    @Argument(fullName="ignore_filter",
-            shortName="ignoreFilter",
+    @Argument(fullName="ignore-filter",
             doc="If specified, the variant recalibrator will also use variants marked as filtered by the specified filter name in the input VCF file",
             optional=true)
     private List<String> IGNORE_INPUT_FILTERS = new ArrayList<>();
 
-    @Argument(fullName="ignore_all_filters",
-            shortName="ignoreAllFilters",
+    @Argument(fullName="ignore-all-filters",
             doc="If specified, the variant recalibrator will ignore all input filters. Useful to rerun the VQSR from a filtered output file.",
             optional=true)
     private boolean IGNORE_ALL_FILTERS = false;
 
-    @Argument(fullName="rscript_file", shortName="rscriptFile", doc="The output rscript file generated by the VQSR to aid in visualization of the input data and learned model", optional=true)
+    @Argument(fullName="rscript-file",doc="The output rscript file generated by the VQSR to aid in visualization of the input data and learned model", optional=true)
     private String RSCRIPT_FILE = null;
 
     /**
@@ -267,18 +266,16 @@ public class VariantRecalibrator extends MultiVariantWalker {
      *  to help describe the normalization. The model fit report can be read in with our R gsalib package. Individual
      *  model Gaussians can be subset by the value in the "Gaussian" column if desired.
      */
-    @Argument(fullName="output_model",
-            shortName = "outputModel",
+    @Argument(fullName="output-model",
             doc="If specified, the variant recalibrator will output the VQSR model to this file path.",
             optional=true)
     private String outputModel = null;
 
     /**
      *  The filename for a VQSR model fit to use to recalibrate the input variants. This model should be generated using
-     *  a previous VariantRecalibration run with the --output_model argument.
+     *  a previous VariantRecalibration run with the --output-model argument.
      */
-    @Argument(fullName="input_model",
-            shortName = "inputModel",
+    @Argument(fullName="input-model",
             doc="If specified, the variant recalibrator will read the VQSR model from this file path.",
             optional=true)
     private String inputModel = null;
@@ -286,18 +283,19 @@ public class VariantRecalibrator extends MultiVariantWalker {
     /**
      * This argument is intended to be used in a more complicated VQSR scheme meant for very large WGS callsets that
      * require a prohibitive amount of memory for classic VQSR. Given that training data is downsampled once it exceeds
-     * --maxNumTrainingData, reading in additional data to build the model only serves to consume resources. However,
+     * --max-num-training-data, reading in additional data to build the model only serves to consume resources. However,
      * with this argument the output recal file will also be downsampled. The recommended VQSR procedure when using this
-     * argument is to run VariantRecalibrator once with sampling and designate an --output_model file. Then
+     * argument is to run VariantRecalibrator once with sampling and designate an --output-model file. Then
      * VariantRecalibrator can be run a second time scattered using the -scatterTranches argument and that file as an
-     * --input_model.  The scattered recal files can be gathered with the GatherVcfs tool and the scattered tranches can
+     * --input-model.  The scattered recal files can be gathered with the GatherVcfs tool and the scattered tranches can
      * be gathered with the GatherTranches tool.
      *
      */
-    @Argument(fullName="sample_every_Nth_variant",
-            shortName = "sampleEvery",
-            doc="If specified, the variant recalibrator will use (and output) only a subset of variants consisting of every Nth variant where N is specified by this argument; for use with -outputModel -- see argument details",
+    @Argument(fullName="sample-every-Nth-variant",
+            shortName = "sample-every",
+            doc="If specified, the variant recalibrator will use (and output) only a subset of variants consisting of every Nth variant where N is specified by this argument; for use with --output-model -- see argument details",
             optional=true)
+    @Hidden
     private int sampleMod = 1;
 
     /**
@@ -307,10 +305,10 @@ public class VariantRecalibrator extends MultiVariantWalker {
      *  scattered VariantRecalibrator.
      */
 
-    @Argument(fullName="output_tranches_for_scatter",
-            shortName = "scatterTranches",
+    @Argument(fullName="output-tranches-for-scatter",
             doc="Output tranches in a format appropriate to running VariantRecalibrator in scatter-gather",
             optional = true)
+    @Hidden
     private boolean scatterTranches = false;
 
     /**
@@ -321,8 +319,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
      * Alternative lists of tranche values should only be used for testing.
      */
     @Hidden
-    @Argument(fullName="VQSLODtranche",
-            shortName="VQSLODtranche",
+    @Argument(fullName="vqslod-tranche",
             doc="The levels of VQSLOD at which to slice the data.",
             optional=true)
     private List<Double> VQSLOD_TRANCHES = new ArrayList<>(1000);
@@ -357,8 +354,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
      * in order to generate a more robust model.
      */
     @Advanced
-    @Argument(fullName="max_attempts",
-            shortName = "max_attempts",
+    @Argument(fullName="max-attempts",
             doc="Number of attempts to build a model before failing",
             optional=true)
     @VisibleForTesting
@@ -368,11 +364,13 @@ public class VariantRecalibrator extends MultiVariantWalker {
     // Debug Arguments
     /////////////////////////////
     @Advanced
-    @Argument(fullName = "trustAllPolymorphic",
-            shortName = "allPoly",
+    @Argument(fullName = "trust-all-polymorphic",
             doc = "Trust that all the input training sets' unfiltered records contain only polymorphic sites to drastically speed up the computation.",
             optional=true)
     private boolean TRUST_ALL_POLYMORPHIC = false;
+
+    @VisibleForTesting
+    protected List<Integer> annotationOrder = null;
 
     /////////////////////////////
     // Private Member Variables
@@ -452,11 +450,9 @@ public class VariantRecalibrator extends MultiVariantWalker {
             pPMixTable = reportIn.getTable("GoodGaussianPMix");
             final GATKReportTable anMeansTable = reportIn.getTable("AnnotationMeans");
             final GATKReportTable anStDevsTable = reportIn.getTable("AnnotationStdevs");
-            numAnnotations = dataManager.annotationKeys.size();
 
-            if ( numAnnotations != pmmTable.getNumColumns()-1 || numAnnotations != nmmTable.getNumColumns()-1 ) { // -1 because the first column is the gaussian number.
-                throw new CommandLineException( "Annotations specified on the command line do not match annotations in the model report." );
-            }
+            orderAndValidateAnnotations(anMeansTable, dataManager.annotationKeys);
+            numAnnotations = annotationOrder.size();
 
             final Map<String, Double> anMeans = getMapFromVectorTable(anMeansTable);
             final Map<String, Double> anStdDevs = getMapFromVectorTable(anStDevsTable);
@@ -473,7 +469,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
         final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
         if (hasReference()) {
             hInfo = VcfUtils.updateHeaderContigLines(
-                    hInfo, referenceArguments.getReferenceFile(), sequenceDictionary, true);
+                    hInfo, referenceArguments.getReferencePath(), sequenceDictionary, true);
         }
         else if (null != sequenceDictionary) {
             hInfo = VcfUtils.updateHeaderContigLines(hInfo, null, sequenceDictionary, true);
@@ -485,6 +481,31 @@ public class VariantRecalibrator extends MultiVariantWalker {
         for ( int iii = 0; iii < REPLICATE * 2; iii++ ) {
             replicate.add(Utils.getRandomGenerator().nextDouble());
         }
+    }
+
+    /**
+     * Order and validate annotations according to the annotations in the serialized model
+     * Annotations on the command line must be the same as those in the model report or this will throw an exception.
+     * Sets the {@code annotationOrder} list to map from command line order to the model report's order.
+     * n^2 because we typically use 7 or less annotations.
+     * @param annotationTable GATKReportTable of annotations read from the serialized model file
+     */
+    protected void orderAndValidateAnnotations(final GATKReportTable annotationTable, final List<String> annotationKeys){
+        annotationOrder = new ArrayList<Integer>(annotationKeys.size());
+
+        for (int i = 0; i < annotationTable.getNumRows(); i++){
+            String serialAnno = (String)annotationTable.get(i, "Annotation");
+            for (int j = 0; j < annotationKeys.size(); j++) {
+                if (serialAnno.equals( annotationKeys.get(j))){
+                    annotationOrder.add(j);
+                }
+            }
+        }
+
+        if(annotationOrder.size() != annotationTable.getNumRows() || annotationOrder.size() != annotationKeys.size()) {
+            throw new CommandLineException( "Annotations specified on the command line do not match annotations in the model report." );
+        }
+
     }
 
     //---------------------------------------------------------------------------------------------------------------
@@ -612,7 +633,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
         for (int i = 1; i <= max_attempts; i++) {
             try {
                 dataManager.setData(reduceSum);
-                dataManager.normalizeData(inputModel == null); // Each data point is now (x - mean) / standard deviation
+                dataManager.normalizeData(inputModel == null, annotationOrder); // Each data point is now (x - mean) / standard deviation
 
                 final GaussianMixtureModel goodModel;
                 final GaussianMixtureModel badModel;
@@ -637,7 +658,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
 
                     if (badModel.failedToConverge || goodModel.failedToConverge) {
                         throw new UserException(
-                                "NaN LOD value assigned. Clustering with this few variants and these annotations is unsafe. Please consider " + (badModel.failedToConverge ? "raising the number of variants used to train the negative model (via --minNumBadVariants 5000, for example)." : "lowering the maximum number of Gaussians allowed for use in the model (via --maxGaussians 4, for example)."));
+                                "NaN LOD value assigned. Clustering with this few variants and these annotations is unsafe. Please consider " + (badModel.failedToConverge ? "raising the number of variants used to train the negative model (via --minimum-bad-variants 5000, for example)." : "lowering the maximum number of Gaussians allowed for use in the model (via --max-gaussians 4, for example)."));
                     }
                 }
 

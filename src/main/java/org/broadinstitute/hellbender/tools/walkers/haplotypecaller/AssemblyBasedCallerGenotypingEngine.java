@@ -1,8 +1,11 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import htsjdk.variant.variantcontext.*;
+import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.lang3.tuple.Pair;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypingEngine;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypingOutputMode;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.OutputMode;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AFCalculatorProvider;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -13,6 +16,7 @@ import org.broadinstitute.hellbender.utils.haplotype.EventMap;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.*;
 import java.util.function.Predicate;
@@ -43,13 +47,6 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
     @Override
     protected boolean forceSiteEmission() {
         return configuration.outputMode == OutputMode.EMIT_ALL_SITES || configuration.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES;
-    }
-
-    @Override
-    protected boolean forceKeepAllele(final Allele allele) {
-        return allele == Allele.NON_REF_ALLELE ||
-                configuration.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES ||
-                configuration.emitReferenceConfidence != ReferenceConfidenceMode.NONE;
     }
 
     /**
@@ -89,62 +86,179 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
      * @param ref the reference bases (over the same interval as the haplotypes)
      * @param refLoc the span of the reference bases
      * @param activeAllelesToGenotype alleles we want to ensure are scheduled for genotyping (GGA mode)
+     * @param maxMnpDistance Phased substitutions separated by this distance or less are merged into MNPs.  More than
+     *                       two substitutions occurring in the same alignment block (ie the same M/X/EQ CIGAR element)
+     *                       are merged until a substitution is separated from the previous one by a greater distance.
+     *                       That is, if maxMnpDistance = 1, substitutions at positions 10,11,12,14,15,17 are partitioned into a MNP
+     *                       at 10-12, a MNP at 14-15, and a SNP at 17.
      * @return never {@code null} but perhaps an empty list if there is no variants to report.
      */
     protected TreeSet<Integer> decomposeHaplotypesIntoVariantContexts(final List<Haplotype> haplotypes,
                                                                       final byte[] ref,
                                                                       final SimpleInterval refLoc,
-                                                                      final List<VariantContext> activeAllelesToGenotype) {
-        return activeAllelesToGenotype.isEmpty() ? EventMap.buildEventMapsForHaplotypes(haplotypes, ref, refLoc, configuration.debug) :
-                activeAllelesToGenotype.stream().map(vc -> new Integer(vc.getStart())).collect(Collectors.toCollection(TreeSet<Integer>::new));
+                                                                      final List<VariantContext> activeAllelesToGenotype,
+                                                                      final int maxMnpDistance) {
+        final boolean inGGAMode = ! activeAllelesToGenotype.isEmpty();
 
-    }
+        // Using the cigar from each called haplotype figure out what events need to be written out in a VCF file
+        // IMPORTANT NOTE: This needs to be done even in GGA mode, as this method call has the side effect of setting the
+        // event maps in the Haplotype objects!
+        final TreeSet<Integer> startPosKeySet = EventMap.buildEventMapsForHaplotypes(haplotypes, ref, refLoc, configuration.debug, maxMnpDistance);
 
-    protected static List<VariantContext> getVCsAtThisLocation(final List<Haplotype> haplotypes,
-                                                               final int loc,
-                                                               final List<VariantContext> activeAllelesToGenotype) {
-        // the overlapping events to merge into a common reference view
-        final List<VariantContext> eventsAtThisLoc = new ArrayList<>();
-
-        if( activeAllelesToGenotype.isEmpty() ) {
-            final List<VariantContext> events = haplotypes.stream().map(h -> h.getEventMap().get(loc))
-                    .filter(Objects::nonNull).collect(Collectors.toList());
-            for (final VariantContext vc : events) {
-                if (eventsAtThisLoc.stream().noneMatch(vc::hasSameAllelesAs)) {
-                    eventsAtThisLoc.add(vc);
-                }
-            }
-        } else { // we are in GGA mode!
-            int compCount = 0;
+        if ( inGGAMode ) {
+            startPosKeySet.clear();
             for( final VariantContext compVC : activeAllelesToGenotype ) {
-                if( compVC.getStart() == loc ) {
-                    int alleleCount = 0;
-                    for( final Allele compAltAllele : compVC.getAlternateAlleles() ) {
-                        final List<Allele> alleleSet = Arrays.asList(compVC.getReference(), compAltAllele);
-
-                        //TODO: this source name seems arbitrary and probably just has to be unique
-                        //TODO: how about replace it by vcSourceName = String.parseInt(nameCounter++)?
-                        final String vcSourceName = "Comp" + compCount + "Allele" + alleleCount;
-                        // check if this event is already in the list of events due to a repeat in the input alleles track
-                        final VariantContext candidateEventToAdd = new VariantContextBuilder(compVC).alleles(alleleSet).source(vcSourceName).make();
-                        if (eventsAtThisLoc.stream().noneMatch(candidateEventToAdd::hasSameAllelesAs))  {
-                            eventsAtThisLoc.add(candidateEventToAdd);
-                        }
-                        alleleCount++;
-                    }
-                }
-                compCount++;
+                startPosKeySet.add(compVC.getStart());
             }
         }
 
-        return eventsAtThisLoc;
+        return startPosKeySet;
     }
 
-    protected static Map<Allele, List<Haplotype>> createAlleleMapper(final List<VariantContext> eventsAtThisLoc,
-                                                                     final VariantContext mergedVC,
+    /**
+     * This class exists to allow VariantContext objects to be compared based only on their location and set of alleles,
+     * providing a more liberal equals method so that VariantContext objects can be placed into a Set
+     * which retains only VCs that have non-redundant location and Allele lists.
+     */
+    protected static class LocationAndAlleles {
+        private final int loc;
+        private final List<Allele> alleles;
+
+        public LocationAndAlleles(final int loc, final List<Allele> alleles) {
+            this.loc = loc;
+            this.alleles = alleles;
+        }
+
+        public int getLoc() {
+            return loc;
+        }
+
+        public List<Allele> getAlleles() {
+            return alleles;
+        }
+
+        @Override
+        public boolean equals(final Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            final LocationAndAlleles that = (LocationAndAlleles) o;
+
+            if (loc != that.loc) return false;
+            return alleles != null ? alleles.equals(that.alleles) : that.alleles == null;
+        }
+
+        @Override
+        public int hashCode() {
+            return 31 * loc + (alleles != null ? alleles.hashCode() : 0);
+        }
+
+    }
+
+    /**
+     * Returns the list of given alleles active at this location. This method will include events that span the current
+     * location if includeSpanningEvents is set to true; otherwise it will only include events that have loc as their \
+     * start position.
+     * @param loc The start position we are genotyping
+     * @param activeAllelesToGenotype The list of given alleles for the current active region, empty unless we are in GGA mode
+     * @param includeSpanningEvents If true, will also return events that span loc
+     */
+    protected static List<VariantContext> getVariantContextsFromGivenAlleles(final int loc,
+                                                                             final List<VariantContext> activeAllelesToGenotype,
+                                                                             final boolean includeSpanningEvents) {
+        final Set<LocationAndAlleles> uniqueLocationsAndAlleles = new HashSet<>();
+        final List<VariantContext> results = new ArrayList<>();
+
+        int givenAlleleSourceCount = 0;
+        for( final VariantContext givenAlleleVC : activeAllelesToGenotype ) {
+            if( givenAlleleVC.getStart() <= loc && givenAlleleVC.getEnd() >= loc) {
+                if (! (includeSpanningEvents || givenAlleleVC.getStart() == loc)) {
+                    continue;
+                }
+                int alleleCount = 0;
+                for( final Allele givenAltAllele : givenAlleleVC.getAlternateAlleles() ) {
+                    final List<Allele> alleleSet = Arrays.asList(givenAlleleVC.getReference(), givenAltAllele);
+
+                    //TODO: this source name seems arbitrary and probably just has to be unique
+                    //TODO: how about replace it by vcSourceName = String.parseInt(nameCounter++)?
+                    final String vcSourceName = "Comp" + givenAlleleSourceCount + "Allele" + alleleCount;
+                    // check if this event is already in the list of events due to a repeat in the input alleles track
+                    final VariantContext candidateEventToAdd = new VariantContextBuilder(givenAlleleVC).alleles(alleleSet)
+                            .genotypes(GenotypesContext.NO_GENOTYPES).source(vcSourceName).make();
+
+                    final LocationAndAlleles locationAndAlleles = new LocationAndAlleles(candidateEventToAdd.getStart(), candidateEventToAdd.getAlleles());
+                    if (! uniqueLocationsAndAlleles.contains(locationAndAlleles)) {
+                        uniqueLocationsAndAlleles.add(locationAndAlleles);
+                        results.add(candidateEventToAdd);
+                    }
+
+                    alleleCount++;
+                }
+            }
+            givenAlleleSourceCount++;
+        }
+        return results;
+    }
+
+    /**
+     * Returns the list of events discovered in assembled haplotypes that are active at this location. The results will
+     * include events that span the current location if includeSpanningEvents is set to true; otherwise it will only
+     * include events that have loc as their start position.
+     * @param loc The start position we are genotyping
+     * @param haplotypes list of active haplotypes at the current location
+     * @param includeSpanningEvents If true, will also return events that span loc
+     */
+    protected static List<VariantContext> getVariantContextsFromActiveHaplotypes(final int loc,
+                                                                                 final List<Haplotype> haplotypes,
+                                                                                 final boolean includeSpanningEvents) {
+        final List<VariantContext> results = new ArrayList<>();
+        final Set<LocationAndAlleles> uniqueLocationsAndAlleles = new HashSet<>();
+
+        haplotypes.stream()
+                .flatMap(h -> Utils.stream(h.getEventMap().getOverlappingEvents(loc)))
+                .filter(Objects::nonNull)
+                .filter(v -> (includeSpanningEvents || v.getStart() == loc))
+                .forEach(v -> {
+                    final LocationAndAlleles locationAndAlleles = new LocationAndAlleles(v.getStart(), v.getAlleles());
+                    if (! uniqueLocationsAndAlleles.contains(locationAndAlleles)) {
+                        uniqueLocationsAndAlleles.add(locationAndAlleles);
+                        results.add(v);
+                    }
+                });
+        return results;
+    }
+
+    /**
+     * Returns a mapping from Allele in the mergedVC, which represents all of the alleles being genotyped at loc,
+     * to a list of Haplotypes that support that allele. If the mergedVC includes a spanning deletion allele, all
+     * haplotypes that support spanning deletions will be assigned to that allele in the map.
+     * @param mergedVC The merged variant context for the locus, which includes all active alternate alleles merged to a single reference allele
+     * @param loc The active locus being genotyped
+     * @param haplotypes Haplotypes for the current active region
+     * @return
+     */
+    protected static Map<Allele, List<Haplotype>> createAlleleMapper(final VariantContext mergedVC,
                                                                      final int loc,
                                                                      final List<Haplotype> haplotypes) {
-        Utils.validateArg(haplotypes.size() > eventsAtThisLoc.size(), "expected haplotypes.size() >= eventsAtThisLoc.size() + 1");
+        return createAlleleMapper(mergedVC, loc, haplotypes, null);
+    }
+
+    /**
+     * Returns a mapping from Allele in the mergedVC, which represents all of the alleles being genotyped at loc,
+     * to a list of Haplotypes that support that allele. If activeAllelesToGenotype contains any entries, haplotypes supporting
+     * spanning events that do not start at this location are included only if they match one of the given alleles, a
+     * necessary check for the desired behavior of HaplotypeCaller's genotype given alleles mode. Otherwise, if the mergedVC
+     * includes a spanning deletion allele, all haplotypes that support spanning deletions will be assigned to that allele in the map.
+     * @param mergedVC The merged variant context for the locus, which includes all active alternate alleles merged to a single reference allele
+     * @param loc The active locus being genotyped
+     * @param haplotypes Haplotypes for the current active region
+     * @param activeAllelesToGenotype Given alleles being genotyped in the active region, if running in GGA mode; can be null or empty otherwise
+     * @return
+     */
+    protected static Map<Allele, List<Haplotype>> createAlleleMapper(final VariantContext mergedVC,
+                                                                     final int loc,
+                                                                     final List<Haplotype> haplotypes,
+                                                                     final List<VariantContext> activeAllelesToGenotype) {
 
         final Map<Allele, List<Haplotype>> result = new LinkedHashMap<>();
 
@@ -157,22 +271,81 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
         mergedVC.getAlternateAlleles().stream().filter(a -> !a.isSymbolic()).forEach(a -> result.put(a, new ArrayList<>()));
 
         for (final Haplotype h : haplotypes) {
-            final VariantContext haplotypeVC = h.getEventMap().get(loc);
-            if (haplotypeVC == null) {    //no events --> this haplotype supports the reference at this locus
+
+            final List<VariantContext> spanningEvents = h.getEventMap().getOverlappingEvents(loc);
+
+            if (spanningEvents.isEmpty()) {    //no events --> this haplotype supports the reference at this locus
                 result.get(ref).add(h);
-            } else {
-                //TODO: this only works if eventsAtThisLoc's and mergedVC's alleles are ordered identically.
-                //TODO: this is in fact the case (see AssemblyBasedCallerUtils::makeMergedVariantContext), but
-                //TODO: that's not good enough
-                for (int n = 0; n < eventsAtThisLoc.size(); n++) {
-                    if (haplotypeVC.hasSameAllelesAs(eventsAtThisLoc.get(n))) {
-                        result.get(mergedVC.getAlternateAllele(n)).add(h);
-                        break;
+                continue;
+            }
+
+            for (VariantContext spanningEvent : spanningEvents) {
+                if (spanningEvent.getStart() == loc) {
+                    // the event starts at the current location
+
+                    if (spanningEvent.getReference().length() == mergedVC.getReference().length()) {
+                        // reference allele lengths are equal; we can just use the spanning event's alt allele
+                        // in the case of GGA mode the spanning event might not match an allele in the mergedVC
+                        if (result.containsKey(spanningEvent.getAlternateAllele(0))) {
+                            // variant contexts derived from the event map have only one alt allele each, so we can just
+                            // grab the first one (we're not assuming that the sample is biallelic)
+                            result.get(spanningEvent.getAlternateAllele(0)).add(h);
+                        }
+                    } else if (spanningEvent.getReference().length() < mergedVC.getReference().length()) {
+                        // spanning event has shorter ref allele than merged VC; we need to pad out its alt allele
+                        final Map<Allele, Allele> spanningEventAlleleMappingToMergedVc
+                                = GATKVariantContextUtils.createAlleleMapping(mergedVC.getReference(), spanningEvent, new ArrayList<>());
+                        final Allele remappedSpanningEventAltAllele = spanningEventAlleleMappingToMergedVc.get(spanningEvent.getAlternateAllele(0));
+                        // in the case of GGA mode the spanning event might not match an allele in the mergedVC
+                        if (result.containsKey(remappedSpanningEventAltAllele)) {
+                            result.get(remappedSpanningEventAltAllele).add(h);
+                        }
+                    } else {
+                        // the process of creating the merged VC in AssemblyBasedCallerUtils::makeMergedVariantContext should have
+                        // already padded out the reference allele, therefore this spanning VC must not be in events at this site
+                        // because we're in GGA mode and it's not an allele we want
+                        continue;
+                    }
+
+                } else {
+                    // the event starts prior to the current location, so it's a spanning deletion
+                    if (activeAllelesToGenotype != null && activeAllelesToGenotype.size() > 0) {
+                        // in HC GGA mode we need to check to make sure that spanning deletion
+                        // events actually match one of the alleles we were given to genotype
+                        final boolean eventMatchesGivenAllele = eventMatchesGivenAllele(activeAllelesToGenotype, spanningEvent);
+                        if (eventMatchesGivenAllele) {
+                            if (!result.containsKey(Allele.SPAN_DEL)) {
+                                result.put(Allele.SPAN_DEL, new ArrayList<>());
+                            }
+                            result.get(Allele.SPAN_DEL).add(h);
+                        }
+
+                    } else {
+                        if (! result.containsKey(Allele.SPAN_DEL)) {
+                            result.put(Allele.SPAN_DEL, new ArrayList<>());
+                        }
+                        result.get(Allele.SPAN_DEL).add(h);
+                    }
+                    break;
+                }
+            }
+
+        }
+        return result;
+    }
+
+    private static boolean eventMatchesGivenAllele(final List<VariantContext> activeAllelesToGenotype, final VariantContext spanningEvent) {
+        for (VariantContext givenVC : activeAllelesToGenotype) {
+            if (givenVC.getStart() == spanningEvent.getStart() && givenVC.getReference().equals(spanningEvent.getReference())) {
+                for (Allele a : spanningEvent.getAlternateAlleles()) {
+                    if (givenVC.hasAlternateAllele(a)) {
+                        return true;
                     }
                 }
             }
+
         }
-        return result;
+        return false;
     }
 
     // Builds the read-likelihoods collection to use for annotation considering user arguments and the collection
@@ -191,9 +364,9 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
         // We can reuse for annotation the likelihood for genotyping as long as there is no contamination filtering
         // or the user want to use the contamination filtered set for annotations.
         // Otherwise (else part) we need to do it again.
-        if (configuration.USE_FILTERED_READ_MAP_FOR_ANNOTATIONS || !configuration.isSampleContaminationPresent()) {
+        if (configuration.useFilteredReadMapForAnnotations || !configuration.isSampleContaminationPresent()) {
             readAlleleLikelihoodsForAnnotations = readAlleleLikelihoodsForGenotyping;
-            readAlleleLikelihoodsForAnnotations.filterToOnlyOverlappingUnclippedReads(loc);
+            readAlleleLikelihoodsForAnnotations.filterToOnlyOverlappingReads(loc);
         } else {
             readAlleleLikelihoodsForAnnotations = readHaplotypeLikelihoods.marginalize(alleleMapper, loc);
             if (emitReferenceConfidence) {
@@ -224,7 +397,7 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
                 continue;
             }
             final List<GATKRead> newList = originalList.stream()
-                    .filter(read -> ReadLikelihoods.unclippedReadOverlapsRegion(read, loc))
+                    .filter(read -> read.overlaps(loc))
                     .collect(Collectors.toCollection(() -> new ArrayList<>(originalList.size())));
 
             if (!newList.isEmpty()) {
@@ -273,7 +446,8 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
 
             // keep track of the haplotypes that contain this particular alternate allele
             final Allele alt = call.getAlternateAllele(0);
-            final Predicate<VariantContext> hasThisAlt = vc -> vc.getStart() == call.getStart() && vc.getAlternateAlleles().contains(alt);
+            final Predicate<VariantContext> hasThisAlt = vc -> (vc.getStart() == call.getStart() && vc.getAlternateAlleles().contains(alt)) ||
+                    (Allele.SPAN_DEL.equals(alt) && vc.getStart() < call.getStart() && vc.getEnd() >= call.getStart());
             final Set<Haplotype> hapsWithAllele = calledHaplotypes.stream()
                     .filter(h -> h.getEventMap().getVariantContexts().stream().anyMatch(hasThisAlt))
                     .collect(Collectors.toCollection(HashSet<Haplotype>::new));
@@ -414,10 +588,13 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
             // create a unique ID based on the leftmost one
             final String uniqueID = createUniqueID(originalCalls.get(indexes.get(0)));
 
+            // create the phase set identifier, which is the position of the first variant in the set
+            final int phaseSetID = originalCalls.get(indexes.get(0)).getStart();
+
             // update the VCs
             for ( final int index : indexes ) {
                 final VariantContext originalCall = originalCalls.get(index);
-                final VariantContext phasedCall = phaseVC(originalCall, uniqueID, phaseSetMapping.get(originalCall).getRight());
+                final VariantContext phasedCall = phaseVC(originalCall, uniqueID, phaseSetMapping.get(originalCall).getRight(), phaseSetID);
                 phasedCalls.set(index, phasedCall);
             }
         }
@@ -453,10 +630,19 @@ public abstract class AssemblyBasedCallerGenotypingEngine extends GenotypingEngi
      * @param phaseGT the phase GT string to use
      * @return phased non-null variant context
      */
-    private static VariantContext phaseVC(final VariantContext vc, final String ID, final String phaseGT) {
+    private static VariantContext phaseVC(final VariantContext vc, final String ID, final String phaseGT, final int phaseSetID) {
         final List<Genotype> phasedGenotypes = new ArrayList<>();
         for ( final Genotype g : vc.getGenotypes() ) {
-            phasedGenotypes.add(new GenotypeBuilder(g).attribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY, ID).attribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY, phaseGT).make());
+            final List<Allele> alleles = g.getAlleles();
+            if (phaseGT.equals(phase10) && g.isHet()) Collections.reverse(alleles); // swap the alleles if heterozygous
+            final Genotype genotype = new GenotypeBuilder(g)
+                .alleles(alleles)
+                .phased(true)
+                .attribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY, ID)
+                .attribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY, phaseGT)
+                .attribute(VCFConstants.PHASE_SET_KEY, phaseSetID)
+                .make();
+            phasedGenotypes.add(genotype);
         }
         return new VariantContextBuilder(vc).genotypes(phasedGenotypes).make();
     }

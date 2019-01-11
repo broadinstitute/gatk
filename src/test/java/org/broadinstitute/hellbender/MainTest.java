@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import java.security.Permission;
 import java.util.Collections;
 import java.util.List;
 
@@ -48,6 +49,70 @@ public final class MainTest extends CommandLineProgramTest {
         // test that the usage is not shown if help is printed
         final String usage = captureStderr(() -> main.instanceMain(new String[]{"-h"}));
         Assert.assertFalse(usage.contains(clpName));
+    }
+
+
+    private static final class ExitNotAllowedException extends SecurityException {
+        private static final long serialVersionUID = 1L;
+        final int status;
+
+        ExitNotAllowedException(int status) {
+            this.status = status;
+        }
+    }
+
+    private static final class ThrowOnExitSecurityManager extends SecurityManager {
+
+        @Override
+        public void checkPermission(Permission perm) {
+            // allow anything.
+        }
+
+        @Override
+        public void checkPermission(Permission perm, Object context) {
+            // allow anything.
+        }
+
+        @Override
+        public void checkExit(int status) {
+            super.checkExit(status);
+            // always throw
+            throw new ExitNotAllowedException(status);
+        }
+    }
+
+    @Test(singleThreaded = true)
+    public void testMainErrorWithoutStackTrace() {
+        final SecurityManager backup = System.getSecurityManager();
+        try {
+            System.setSecurityManager(new ThrowOnExitSecurityManager());
+            new Main().mainEntry(new String[]{"PrintReadsW"});
+            Assert.fail("Should never reach here");
+        } catch (ExitNotAllowedException e) {
+            // does exist as if it is an user exception
+            Assert.assertEquals(e.status, Main.USER_EXCEPTION_EXIT_VALUE);
+        } finally {
+            System.setSecurityManager(backup);
+        }
+    }
+    @Test(singleThreaded = true)
+    public void testNonZeroPicardReturnValue() {
+        final SecurityManager backup = System.getSecurityManager();
+        try {
+            System.setSecurityManager(new ThrowOnExitSecurityManager());
+            new Main().mainEntry(new String[]{"ExtractSequences"});
+            Assert.fail("Should never reach here");
+        } catch (final ExitNotAllowedException e) {
+            Assert.assertEquals(e.status, Main.PICARD_TOOL_EXCEPTION);
+        } finally {
+            System.setSecurityManager(backup);
+        }
+    }
+
+    @Test
+    public void testVersion(){
+        //assert that --version doesn't crash.
+        Assert.assertNull(new Main().instanceMain(new String[]{"--version"}));
     }
 
 }

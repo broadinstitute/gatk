@@ -3,11 +3,14 @@ package org.broadinstitute.hellbender.engine.filters;
 import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.cmdline.ReadFilterArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.io.Serializable;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 /**
  * Keep only reads from the specified library.
@@ -16,8 +19,8 @@ import java.io.Serializable;
 public final class LibraryReadFilter extends ReadFilter implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    @Argument(fullName = "library", shortName = "library", doc="Name of the library to keep", optional=false)
-    public String libraryToKeep = null;
+    @Argument(fullName = ReadFilterArgumentDefinitions.LIBRARY_NAME, shortName = ReadFilterArgumentDefinitions.LIBRARY_NAME, doc="Name of the library to keep", optional=false)
+    public Set<String> libraryToKeep = new LinkedHashSet<>();
 
     // Command line parser requires a no-arg constructor
     public LibraryReadFilter() { }
@@ -28,6 +31,10 @@ public final class LibraryReadFilter extends ReadFilter implements Serializable 
     @Override
     public boolean test( final GATKRead read ) {
         final String library = ReadUtils.getLibrary(read, samHeader);
-        return library != null && library.equals(libraryToKeep);
+        if (library == null) {
+            return false;
+        }
+
+        return libraryToKeep.contains(library);
     }
 }

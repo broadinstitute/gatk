@@ -16,6 +16,10 @@ public class OneShotLogger {
         logger = LogManager.getLogger(clazz);
     }
 
+    public OneShotLogger(final Logger logger) {
+        this.logger = logger;
+    }
+
     /*
      * Will write a warning only once for an instance, otherwise it doesn't emit a message
      */

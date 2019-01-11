@@ -12,8 +12,10 @@ import java.io.Serializable;
 public class MetricsArgumentCollection implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
-            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "File to write the output to.")
+    @Argument(
+            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+            doc = "File to write the output to.")
     public String output;
 
 }

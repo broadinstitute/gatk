@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.codecs.sampileup;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMUtils;
+import htsjdk.samtools.util.IOUtil;
 import htsjdk.tribble.*;
 import htsjdk.tribble.exception.CodecLineParsingException;
 import htsjdk.tribble.index.tabix.TabixFormat;
@@ -57,7 +58,7 @@ public class SAMPileupCodec extends AsciiFeatureCodec<SAMPileupFeature> {
     @Override
     public boolean canDecode(final String path) {
         final String noBlockCompressedPath;
-        if (AbstractFeatureReader.hasBlockCompressedExtension(path)) {
+        if (IOUtil.hasBlockCompressedExtension(path)) {
             noBlockCompressedPath = FilenameUtils.removeExtension(path).toLowerCase();
         } else {
             noBlockCompressedPath = path.toLowerCase();

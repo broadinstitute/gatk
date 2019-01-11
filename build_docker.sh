@@ -42,12 +42,6 @@ Optional arguments:  \n \
 	exit 1
 fi
 
-# Make sure sudo or root was used.
-if [ "$(whoami)" != "root" ]; then
-	echo "You must have superuser privileges (through sudo or root user) to run this script"
-	exit 1
-fi
-
 # -z is like "not -n"
 if [ -z ${IS_NOT_LATEST} ] && [ -n "${IS_HASH}" ] && [ -n "${IS_PUSH}" ]; then
 	echo -e "\n##################"
@@ -103,6 +97,13 @@ if [ -n "$STAGING_DIR" ]; then
     GIT_CHECKOUT_COMMAND="git checkout ${GITHUB_DIR}${GITHUB_TAG}"
     echo "${GIT_CHECKOUT_COMMAND}"
     ${GIT_CHECKOUT_COMMAND}
+    # Since the large runtime resources are compiled into the jar, they have to be available to
+    # the build when it's done as part of the Docker build. Although the build itself will pull
+    # them from the lfs server if they're not present, the Docker doesn't have git-lfs installed
+    # so that would fail. So pull them into the staging areas so they'll be copied directly.
+    GIT_PULL_LARGE_COMMAND="git lfs pull --include src/main/resources/large/"
+    echo ${GIT_PULL_LARGE_COMMAND}
+    ${GIT_PULL_LARGE_COMMAND}
 fi
 
 # Build
@@ -111,8 +112,22 @@ if [ -n "${IS_PUSH}" ]; then
 else
     RELEASE=false
 fi
+./gradlew clean collectBundleIntoDir shadowTestClassJar shadowTestJar -Drelease=$RELEASE
+ZIPPATHGATK=$( find ./build -name "*bundle-files-collected" )
+mv ${ZIPPATHGATK} ./unzippedJar
+ZIPPATHPYTHON=$( find ./unzippedJar -name "gatkPython*.zip" )
+unzip -o -j ${ZIPPATHPYTHON} -d ./unzippedJar/scripts
+
+mkdir ${STAGING_ABSOLUTE_PATH:-.}/testJars
+mv $( find ./build/libs/ -name "gatk*test.jar" ) ${STAGING_ABSOLUTE_PATH:-.}/testJars
+mv $( find ./build/libs/ -name "gatk*testDependencies.jar" ) ${STAGING_ABSOLUTE_PATH:-.}/testJars
+
 echo "Building image to tag ${REPO_PRJ}:${GITHUB_TAG}..."
-docker build -t ${REPO_PRJ}:${GITHUB_TAG} --build-arg DRELEASE=$RELEASE .
+if [ -n "${IS_PUSH}" ]; then
+    docker build -t ${REPO_PRJ}:${GITHUB_TAG} --squash --build-arg ZIPPATH=./unzippedJar .
+else
+    docker build -t ${REPO_PRJ}:${GITHUB_TAG} --build-arg ZIPPATH=./unzippedJar .
+fi
 
 if [ -z "${IS_NOT_RUN_UNIT_TESTS}" ] ; then
 
@@ -126,9 +141,13 @@ if [ -z "${IS_NOT_RUN_UNIT_TESTS}" ] ; then
 	git lfs pull
     chmod -R a+w ${STAGING_ABSOLUTE_PATH}/src/test/resources
 
-	echo docker run ${REMOVE_CONTAINER_STRING} -v ${STAGING_ABSOLUTE_PATH}/src/test/resources:/testdata -t ${REPO_PRJ}:${GITHUB_TAG} bash /root/run_unit_tests.sh
-	docker run ${REMOVE_CONTAINER_STRING} -v ${STAGING_ABSOLUTE_PATH}/src/test/resources:/testdata -t ${REPO_PRJ}:${GITHUB_TAG} bash /root/run_unit_tests.sh
+    cp build.gradle build.gradle.backup
+    cp /scripts/docker/dockertest.gradle .
+
+	echo docker run ${REMOVE_CONTAINER_STRING} -v  ${STAGING_ABSOLUTE_PATH}:/gatkCloneMountPoint -v  ${STAGING_ABSOLUTE_PATH}/testJars:/jars -t ${REPO_PRJ}:${GITHUB_TAG} bash /root/run_unit_tests.sh
+    docker run ${REMOVE_CONTAINER_STRING} -v  ${STAGING_ABSOLUTE_PATH}:/gatkCloneMountPoint -v  ${STAGING_ABSOLUTE_PATH}/testJars:/jars -t ${REPO_PRJ}:${GITHUB_TAG} bash /root/run_unit_tests.sh
 	echo " Unit tests passed..."
+	mv build.gradle.backup build.gradle
 fi
 
 ## Push
@@ -143,7 +162,7 @@ if [ -n "${IS_PUSH}" ]; then
 
 	if [ -z "${IS_NOT_LATEST}" ] && [ -z "${IS_HASH}" ] ; then
 		echo "Updating latest tag in ${REPO_PRJ}"
-		docker build -t ${REPO_PRJ}:latest .
+		docker tag ${REPO_PRJ}:${GITHUB_TAG} ${REPO_PRJ}:latest
 		docker push ${REPO_PRJ}:latest
 		
 		echo "Updating latest tag in ${GCR_REPO}"

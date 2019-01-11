@@ -558,20 +558,39 @@ public final class GATKReportTable {
         out.println();
     }
 
+    /**
+     * @return The number of rows in this table
+     */
     public int getNumRows() {
         return underlyingData.size();
     }
 
+    /**
+     * @return The number of columns in this table
+     */
     public int getNumColumns() {
         return columnInfo.size();
     }
 
+    /**
+     * @return A list of GATKReportColumn objects describing this table
+     */
     public List<GATKReportColumn> getColumnInfo() {
         return columnInfo;
     }
 
+    /**
+     * @return The name of this table
+     */
     public String getTableName() {
         return tableName;
+    }
+
+    /**
+     * @return The description for this table
+     */
+    public String getTableDescription() {
+        return tableDescription;
     }
 
     /**

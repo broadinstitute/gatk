@@ -4,7 +4,8 @@ import htsjdk.samtools.Cigar;
 import htsjdk.samtools.TextCigarCodec;
 import htsjdk.variant.variantcontext.*;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.utils.test.ArtificialAnnotationUtils;
+import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
+import org.broadinstitute.hellbender.testutils.ArtificialAnnotationUtils;
 import org.broadinstitute.hellbender.utils.MannWhitneyU;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
@@ -102,9 +103,10 @@ public class AS_ReadPosRankSumTestUnitTest extends ReducibleAnnotationBaseTest {
 
         MannWhitneyU.Result expectedAlt = mannWhitneyU.test(new double[]{1.0, 2.0},new double[]{3.0, 4.0}, MannWhitneyU.TestType.FIRST_DOMINATES);
         String firstExpected = "|"+String.format("%.1f",Math.round(Math.floor((expectedAlt.getZ() )/0.1))*0.1)+",1";
+        String firstNonRawExpected = String.format("%.3f",expectedAlt.getZ());
 
         Assert.assertEquals(annotateRaw.get(key1), firstExpected);
-        Assert.assertEquals(annotateNonRaw.get(key1), firstExpected);
+        Assert.assertEquals(annotateNonRaw.get(key2), firstNonRawExpected);
 
         final long positionEnd = 8L;  //past middle
         final VariantContext vcEnd= makeVC(positionEnd);
@@ -115,9 +117,10 @@ public class AS_ReadPosRankSumTestUnitTest extends ReducibleAnnotationBaseTest {
 
         expectedAlt = mannWhitneyU.test(new double[]{(positionEnd-startAlts[1]),(positionEnd-startAlts[0]) },new double[]{(startRefs[0]+readLength-positionEnd-1), (startRefs[1]+readLength-positionEnd-1)}, MannWhitneyU.TestType.FIRST_DOMINATES);
         String secondExpected = "|"+String.format("%.1f",Math.round(Math.floor((expectedAlt.getZ() )/0.1))*0.1)+",1";
+        String secondNonRawExpected = String.format("%.3f",expectedAlt.getZ());
 
         Assert.assertEquals(annotateEndRaw.get(key1), secondExpected );
-        Assert.assertEquals(annotateEndNonRaw.get(key1), secondExpected );
+        Assert.assertEquals(annotateEndNonRaw.get(key2), secondNonRawExpected );
 
         final long positionPastEnd = 20L;  //past middle
         final VariantContext vcPastEnd= makeVC(positionPastEnd);
@@ -126,12 +129,12 @@ public class AS_ReadPosRankSumTestUnitTest extends ReducibleAnnotationBaseTest {
         final Map<String, Object> annotatePastEndRaw = ann.annotateRawData(ref, vcPastEnd, likelihoods);
         final Map<String, Object> annotatePastEndNonRaw = ann.annotate(ref, vcPastEnd, likelihoods);
         Assert.assertEquals(annotatePastEndRaw.get(key1), "|");
-        Assert.assertEquals(annotatePastEndNonRaw.get(key1), "|");
+        Assert.assertEquals(annotatePastEndNonRaw.get(key2), null);
     }
     
     @Override
-    protected List<String> getAnnotationsToUse() {
-        return Collections.singletonList(AS_ReadPosRankSumTest.class.getSimpleName());
+    protected List<Annotation> getAnnotationsToUse() {
+        return Collections.singletonList(new AS_ReadPosRankSumTest());
     }
 
     @Override

@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.engine.filters;
 
 import htsjdk.samtools.Cigar;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.tools.AddOriginalAlignmentTags;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
@@ -264,6 +265,20 @@ public final class ReadFilterLibrary {
             return read.isUnmapped() || (read.getEnd() - read.getStart() + 1) >= 0;}}
 
     /**
+     * If original alignment and mate original alignment tags exist, filter reads that were originally chimeric (mates were on different contigs).
+     */
+    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary = HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Filters reads whose original alignment was chimeric.")
+    public static class NonChimericOriginalAlignmentReadFilter extends ReadFilter {
+        private static final long serialVersionUID = 1L;
+        @Override public boolean test(final GATKRead read) {
+            if (read.hasAttribute(AddOriginalAlignmentTags.OA_TAG_NAME) && read.hasAttribute(AddOriginalAlignmentTags.MATE_CONTIG_TAG_NAME)) {
+                return AddOriginalAlignmentTags.getOAContig(read).equals(read.getAttributeAsString(AddOriginalAlignmentTags.MATE_CONTIG_TAG_NAME));
+            }
+            return true;
+        }
+    }
+
+    /**
      * Static, stateless read filter instances
      */
     public static final AllowAllReadsReadFilter ALLOW_ALL_READS = new AllowAllReadsReadFilter();
@@ -285,11 +300,12 @@ public final class ReadFilterLibrary {
     public static final PairedReadFilter PAIRED = new PairedReadFilter();
     public static final ProperlyPairedReadFilter PROPERLY_PAIRED = new ProperlyPairedReadFilter();
     public static final PassesVendorQualityCheckReadFilter PASSES_VENDOR_QUALITY_CHECK = new PassesVendorQualityCheckReadFilter();
-    public static final PrimaryLineReadFilter PRIMARY_ALIGNMENT = new PrimaryLineReadFilter();
+    public static final PrimaryLineReadFilter PRIMARY_LINE = new PrimaryLineReadFilter();
     public static final ReadLengthEqualsCigarLengthReadFilter READLENGTH_EQUALS_CIGARLENGTH = new ReadLengthEqualsCigarLengthReadFilter();
     public static final SecondOfPairReadFilter SECOND_OF_PAIR = new SecondOfPairReadFilter();
     public static final SeqIsStoredReadFilter SEQ_IS_STORED = new SeqIsStoredReadFilter();
     public static final ValidAlignmentStartReadFilter VALID_ALIGNMENT_START = new ValidAlignmentStartReadFilter();
     public static final ValidAlignmentEndReadFilter VALID_ALIGNMENT_END = new ValidAlignmentEndReadFilter();
+    public static final NonChimericOriginalAlignmentReadFilter NON_CHIMERIC_ORIGINAL_ALIGNMENT_READ_FILTER = new NonChimericOriginalAlignmentReadFilter();
 
 }

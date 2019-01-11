@@ -4,11 +4,12 @@ import htsjdk.samtools.BamFileIoUtils;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.cram.build.CramIO;
+import htsjdk.samtools.util.IOUtil;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.NullWritable;
-import org.apache.hadoop.mapred.FileAlreadyExistsException;
-import org.apache.hadoop.mapreduce.*;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.parquet.avro.AvroParquetOutputFormat;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
@@ -17,19 +18,17 @@ import org.apache.spark.broadcast.Broadcast;
 import org.bdgenomics.adam.models.RecordGroupDictionary;
 import org.bdgenomics.adam.models.SequenceDictionary;
 import org.bdgenomics.formats.avro.AlignmentRecord;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.GATKReadToBDGAlignmentRecordConverter;
 import org.broadinstitute.hellbender.utils.read.HeaderlessSAMRecordCoordinateComparator;
 import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 import org.broadinstitute.hellbender.utils.spark.SparkUtils;
-import org.seqdoop.hadoop_bam.*;
-import org.seqdoop.hadoop_bam.util.SAMFileMerger;
+import org.disq_bio.disq.*;
 import scala.Tuple2;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.Comparator;
 
@@ -39,71 +38,7 @@ import java.util.Comparator;
  */
 public final class ReadsSparkSink {
 
-    // Output format class for writing BAM files through saveAsNewAPIHadoopFile. Must be public.
-    public static class SparkBAMOutputFormat extends KeyIgnoringBAMOutputFormat<NullWritable> {
-        public static SAMFileHeader bamHeader = null;
-
-        public static void setHeader(final SAMFileHeader header) {
-            bamHeader = header;
-        }
-
-        @Override
-        public RecordWriter<NullWritable, SAMRecordWritable> getRecordWriter(TaskAttemptContext ctx) throws IOException {
-            setSAMHeader(bamHeader);
-            // use BAM extension for part files since they are valid BAM files
-            return getRecordWriter(ctx, getDefaultWorkFile(ctx, BamFileIoUtils.BAM_FILE_EXTENSION));
-        }
-
-        @Override
-        public void checkOutputSpecs(JobContext job) throws IOException {
-            try {
-                super.checkOutputSpecs(job);
-            } catch (FileAlreadyExistsException e) {
-                // delete existing files before overwriting them
-                final Path outDir = getOutputPath(job);
-                outDir.getFileSystem(job.getConfiguration()).delete(outDir, true);
-            }
-        }
-    }
-
-    public static class SparkHeaderlessBAMOutputFormat extends SparkBAMOutputFormat {
-        public SparkHeaderlessBAMOutputFormat() {
-            setWriteHeader(false);
-        }
-    }
-
-    // Output format class for writing CRAM files through saveAsNewAPIHadoopFile. Must be public.
-    public static class SparkCRAMOutputFormat extends KeyIgnoringCRAMOutputFormat<NullWritable> {
-        public static SAMFileHeader bamHeader = null;
-
-        public static void setHeader(final SAMFileHeader header) {
-            bamHeader = header;
-        }
-
-        @Override
-        public RecordWriter<NullWritable, SAMRecordWritable> getRecordWriter(TaskAttemptContext ctx) throws IOException {
-            setSAMHeader(bamHeader);
-            // use CRAM extension for part files since they are valid CRAM files
-            return getRecordWriter(ctx, getDefaultWorkFile(ctx, CramIO.CRAM_FILE_EXTENSION));
-        }
-
-        @Override
-        public void checkOutputSpecs(JobContext job) throws IOException {
-            try {
-                super.checkOutputSpecs(job);
-            } catch (FileAlreadyExistsException e) {
-                // delete existing files before overwriting them
-                Path outDir = getOutputPath(job);
-                outDir.getFileSystem(job.getConfiguration()).delete(outDir, true);
-            }
-        }
-    }
-
-    public static class SparkHeaderlessCRAMOutputFormat extends SparkCRAMOutputFormat {
-        public SparkHeaderlessCRAMOutputFormat() {
-            setWriteHeader(false);
-        }
-    }
+    private final static Logger logger = LogManager.getLogger(ReadsSparkSink.class);
 
     /**
      * writeReads writes rddReads to outputFile with header as the file header.
@@ -117,7 +52,7 @@ public final class ReadsSparkSink {
     public static void writeReads(
             final JavaSparkContext ctx, final String outputFile, final String referenceFile, final JavaRDD<GATKRead> reads,
             final SAMFileHeader header, ReadsWriteFormat format) throws IOException {
-        writeReads(ctx, outputFile, referenceFile, reads, header, format, 0);
+        writeReads(ctx, outputFile, referenceFile, reads, header, format, 0, null);
     }
 
     /**
@@ -130,18 +65,17 @@ public final class ReadsSparkSink {
      * @param format should the output be a single file, sharded, ADAM, etc.
      * @param numReducers the number of reducers to use when writing a single file. A value of zero indicates that the default
      *                    should be used.
+     * @param outputPartsDir directory for temporary files for SINGLE output format, should be null for default value of filename + .output
      */
     public static void writeReads(
             final JavaSparkContext ctx, final String outputFile, final String referenceFile, final JavaRDD<GATKRead> reads,
-            final SAMFileHeader header, ReadsWriteFormat format, final int numReducers) throws IOException {
-
-        SAMFormat samOutputFormat = IOUtils.isCramFileName(outputFile) ? SAMFormat.CRAM : SAMFormat.BAM;
+            final SAMFileHeader header, ReadsWriteFormat format, final int numReducers, final String outputPartsDir) throws IOException {
 
         String absoluteOutputFile = BucketUtils.makeFilePathAbsolute(outputFile);
         String absoluteReferenceFile = referenceFile != null ?
                                         BucketUtils.makeFilePathAbsolute(referenceFile) :
                                         referenceFile;
-        setHadoopBAMConfigurationProperties(ctx, absoluteOutputFile, absoluteReferenceFile, format);
+      ReadsSparkSource.checkCramReference(ctx, absoluteOutputFile, absoluteReferenceFile);
 
         // The underlying reads are required to be in SAMRecord format in order to be
         // written out, so we convert them to SAMRecord explicitly here. If they're already
@@ -150,12 +84,48 @@ public final class ReadsSparkSink {
         final JavaRDD<SAMRecord> samReads = reads.map(read -> read.convertToSAMRecord(null));
 
         if (format == ReadsWriteFormat.SINGLE) {
-            writeReadsSingle(ctx, absoluteOutputFile, absoluteReferenceFile, samOutputFormat, samReads, header, numReducers);
+            FileCardinalityWriteOption fileCardinalityWriteOption = FileCardinalityWriteOption.SINGLE;
+            final String outputPartsDirectory = (outputPartsDir == null)? getDefaultPartsDirectory(outputFile)  : outputPartsDir;
+            TempPartsDirectoryWriteOption tempPartsDirectoryWriteOption = new TempPartsDirectoryWriteOption(outputPartsDirectory);
+            if (absoluteOutputFile.endsWith(BamFileIoUtils.BAM_FILE_EXTENSION) ||
+                    absoluteOutputFile.endsWith(CramIO.CRAM_FILE_EXTENSION) ||
+                    absoluteOutputFile.endsWith(IOUtil.SAM_FILE_EXTENSION)) {
+                // don't specify a write option for format since it is inferred from the extension in the path
+                writeReads(ctx, absoluteOutputFile, absoluteReferenceFile, samReads, header, numReducers, fileCardinalityWriteOption, tempPartsDirectoryWriteOption);
+            } else {
+                // default to BAM
+                ReadsFormatWriteOption formatWriteOption = ReadsFormatWriteOption.BAM;
+                writeReads(ctx, absoluteOutputFile, absoluteReferenceFile, samReads, header, numReducers, formatWriteOption, fileCardinalityWriteOption, tempPartsDirectoryWriteOption);
+            }
         } else if (format == ReadsWriteFormat.SHARDED) {
-            saveAsShardedHadoopFiles(ctx, absoluteOutputFile, absoluteReferenceFile, samOutputFormat, samReads, header, true);
+            if (outputPartsDir!=null) {
+                throw new  GATKException(String.format("You specified the bam output parts directory %s, but requested a sharded output format which does not use this option",outputPartsDir));
+            }
+            ReadsFormatWriteOption formatWriteOption = ReadsFormatWriteOption.BAM; // use BAM if output file is a directory
+            FileCardinalityWriteOption fileCardinalityWriteOption = FileCardinalityWriteOption.MULTIPLE;
+            writeReads(ctx, absoluteOutputFile, absoluteReferenceFile, samReads, header, numReducers, formatWriteOption, fileCardinalityWriteOption);
         } else if (format == ReadsWriteFormat.ADAM) {
+            if (outputPartsDir!=null) {
+                throw new  GATKException(String.format("You specified the bam output parts directory %s, but requested an ADAM output format which does not use this option",outputPartsDir));
+            }
             writeReadsADAM(ctx, absoluteOutputFile, samReads, header);
         }
+    }
+
+    private static void writeReads(
+            final JavaSparkContext ctx, final String outputFile, final String referenceFile, final JavaRDD<SAMRecord> reads,
+            final SAMFileHeader header, final int numReducers, final WriteOption... writeOptions) throws IOException {
+
+        final JavaRDD<SAMRecord> sortedReads = sortSamRecordsToMatchHeader(reads, header, numReducers);
+        Broadcast<SAMFileHeader> headerBroadcast = ctx.broadcast(header);
+        final JavaRDD<SAMRecord> sortedReadsWithHeader = sortedReads.map(read -> {
+            read.setHeaderStrict(headerBroadcast.getValue());
+            return read;
+        });
+        HtsjdkReadsRdd htsjdkReadsRdd = new HtsjdkReadsRdd(header, sortedReadsWithHeader);
+        HtsjdkReadsRddStorage.makeDefault(ctx)
+                .referenceSourcePath(referenceFile)
+                .write(htsjdkReadsRdd, outputFile, writeOptions);
     }
 
     private static void writeReadsADAM(
@@ -181,116 +151,45 @@ public final class ReadsSparkSink {
                 outputFile, Void.class, AlignmentRecord.class, AvroParquetOutputFormat.class, job.getConfiguration());
     }
 
-    private static void saveAsShardedHadoopFiles(
-            final JavaSparkContext ctx, final String outputFile, final String referenceFile,
-            final SAMFormat samOutputFormat, final JavaRDD<SAMRecord> reads, final SAMFileHeader header,
-            final boolean writeHeader) throws IOException {
-        // Set the static header on the driver thread.
-        if (samOutputFormat == SAMFormat.CRAM) {
-            SparkCRAMOutputFormat.setHeader(header);
-        } else {
-            SparkBAMOutputFormat.setHeader(header);
-        }
-
-        final Broadcast<SAMFileHeader> headerBroadcast = ctx.broadcast(header);
-
-        // SparkBAM/CRAMOutputFormat are static classes, so we need to copy the header to each worker then call
-        final JavaRDD<SAMRecord> readsRDD = setHeaderForEachPartition(reads, samOutputFormat, headerBroadcast);
-
-        // The expected format for writing is JavaPairRDD where the key is ignored and the value is SAMRecordWritable.
-        final JavaPairRDD<SAMRecord, SAMRecordWritable> rddSamRecordWriteable = pairReadsWithSAMRecordWritables(headerBroadcast, readsRDD);
-
-        rddSamRecordWriteable.saveAsNewAPIHadoopFile(outputFile, SAMRecord.class, SAMRecordWritable.class, getOutputFormat(samOutputFormat, writeHeader), ctx.hadoopConfiguration());
-    }
-
-    /**
-     * SparkBAM/CRAMOutputFormat has a static header value which must be set on each executor.
-     */
-    private static JavaRDD<SAMRecord> setHeaderForEachPartition(final JavaRDD<SAMRecord> reads, final SAMFormat samOutputFormat, final Broadcast<SAMFileHeader> headerBroadcast) {
-        if (samOutputFormat == SAMFormat.CRAM) {
-            return reads.mapPartitions(readIterator -> {
-                SparkCRAMOutputFormat.setHeader(headerBroadcast.getValue());
-                return readIterator;
-            });
-        }
-        else {
-            return reads.mapPartitions(readIterator -> {
-                SparkBAMOutputFormat.setHeader(headerBroadcast.getValue());
-                return readIterator;
-            });
-        }
-    }
-
-    private static void writeReadsSingle(
-            final JavaSparkContext ctx, final String outputFile, final String referenceFile, final SAMFormat samOutputFormat, final JavaRDD<SAMRecord> reads,
-            final SAMFileHeader header, final int numReducers) throws IOException {
-
-        final JavaRDD<SAMRecord> sortedReads = SparkUtils.sortReads(reads, header, numReducers);
-        final String outputPartsDirectory = outputFile + ".parts/";
-        saveAsShardedHadoopFiles(ctx, outputPartsDirectory, referenceFile, samOutputFormat, sortedReads,  header, false);
-        SAMFileMerger.mergeParts(outputPartsDirectory, outputFile, samOutputFormat, header);
-    }
-
-    private static Class<? extends OutputFormat<NullWritable, SAMRecordWritable>> getOutputFormat(final SAMFormat samFormat, final boolean writeHeader) {
-        if (samFormat == SAMFormat.CRAM) {
-            return writeHeader ? SparkCRAMOutputFormat.class : SparkHeaderlessCRAMOutputFormat.class;
-        }
-        else {
-            return writeHeader ? SparkBAMOutputFormat.class : SparkHeaderlessBAMOutputFormat.class;
-        }
-    }
-
-    private static JavaPairRDD<SAMRecord, SAMRecordWritable> pairReadsWithSAMRecordWritables(Broadcast<SAMFileHeader> headerBroadcast, JavaRDD<SAMRecord> records) {
-        return records.mapToPair(read -> {
-            read.setHeaderStrict(headerBroadcast.getValue());
-            final SAMRecordWritable samRecordWritable = new SAMRecordWritable();
-            samRecordWritable.set(read);
-            return new Tuple2<>(read, samRecordWritable);
-        });
-    }
-
     private static void deleteHadoopFile(String fileToObliterate, Configuration conf) throws IOException {
         final Path pathToDelete = new Path(fileToObliterate);
         pathToDelete.getFileSystem(conf).delete(pathToDelete, true);
     }
 
     /**
-     * Propagate any values that need to be passed to Hadoop-BAM through configuration properties:
-     *
-     *   - if the output file is a CRAM file, the reference value, which must be a URI which includes
-     *     a scheme, will also be set
-     *   - if the output file is not CRAM, the reference property is *unset* to prevent Hadoop-BAM
-     *     from passing a stale value through to htsjdk when multiple calls are made serially
-     *     with different outputs but the same Spark context
+     * Gets the default parts directory for a given file by appending .parts/ to the end of it
      */
-    private static void setHadoopBAMConfigurationProperties(final JavaSparkContext ctx, final String outputName,
-                                                            final String referenceName, final ReadsWriteFormat format) {
-        final Configuration conf = ctx.hadoopConfiguration();
+    public static String getDefaultPartsDirectory(String file) {
+        return file + ".parts/";
+    }
 
-        if (!IOUtils.isCramFileName(outputName)) { // only set the reference for CRAM output
-            conf.unset(CRAMInputFormat.REFERENCE_SOURCE_PATH_PROPERTY);
-            if (format == ReadsWriteFormat.SINGLE && IOUtils.isBamFileName(outputName)) {
-                conf.setBoolean(BAMOutputFormat.WRITE_SPLITTING_BAI, true);
-            } else {
-                conf.setBoolean(BAMOutputFormat.WRITE_SPLITTING_BAI, false);
-            }
+    /**
+     * Sorts the given reads according to the sort order in the header.
+     * @param reads the reads to sort
+     * @param header the header specifying the sort order,
+     *               if the header specifies {@link SAMFileHeader.SortOrder#unsorted} or {@link SAMFileHeader.SortOrder#unknown}
+     *               then no sort will be performed
+     * @param numReducers the number of reducers to use; a value of 0 means use the default number of reducers
+     * @return a sorted RDD of reads
+     */
+    private static JavaRDD<SAMRecord> sortSamRecordsToMatchHeader(final JavaRDD<SAMRecord> reads, final SAMFileHeader header, final int numReducers) {
+        final Comparator<SAMRecord> comparator = getSAMRecordComparator(header);
+        if ( comparator == null ) {
+            return reads;
+        } else {
+            return SparkUtils.sortUsingElementsAsKeys(reads, comparator, numReducers);
         }
-        else {
-            if (null == referenceName) {
-                throw new UserException.MissingReference("A reference is required for CRAM output");
-            }
-            else {
-                if (ReferenceTwoBitSource.isTwoBit(referenceName)) { // htsjdk can't handle 2bit reference files
-                    throw new UserException("A 2bit file cannot be used as a CRAM file reference");
-                }
-                else { // Hadoop-BAM requires the reference to be a URI, including scheme
-                    String referenceURI =
-                            null == new Path(referenceName).toUri().getScheme() ?
-                                "file://" + new File(referenceName).getAbsolutePath() :
-                                referenceName;
-                    conf.set(CRAMInputFormat.REFERENCE_SOURCE_PATH_PROPERTY, referenceURI);
-                }
-            }
+    }
+
+    //Returns the comparator to use or null if no sorting is required.
+    private static Comparator<SAMRecord> getSAMRecordComparator(final SAMFileHeader header) {
+        switch (header.getSortOrder()){
+            case coordinate: return new HeaderlessSAMRecordCoordinateComparator(header);
+            //duplicate isn't supported because it doesn't work right on headerless SAMRecords
+            case duplicate: throw new UserException.UnimplementedFeature("The sort order \"duplicate\" is not supported in Spark.");
+            case queryname:
+            case unsorted:   return header.getSortOrder().getComparatorInstance();
+            default:         return null; //NOTE: javac warns if you have this (useless) default BUT it errors out if you remove this default.
         }
     }
 

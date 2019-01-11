@@ -13,7 +13,7 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
+import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.MetricsReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
@@ -44,7 +44,7 @@ summary = "Program to generate a data table and pdf chart of " +
         "mean base quality by cycle from a SAM/BAM file.  Works best on a single lane/run of data, but can be applied to " +
         "merged BAMs. Uses R to generate chart output.",
         oneLineSummary = "MeanQualityByCycle on Spark",
-        programGroup = SparkProgramGroup.class
+        programGroup = DiagnosticsAndQCProgramGroup.class
 )
 @BetaFeature
 public final class MeanQualityByCycleSpark extends GATKSparkTool {
@@ -197,7 +197,7 @@ public final class MeanQualityByCycleSpark extends GATKSparkTool {
     protected void runTool(final JavaSparkContext ctx) {
         final JavaRDD<GATKRead> reads = getReads();
         final MetricsFile<?, Integer> metricsFile = calculateMeanQualityByCycle(reads);
-        saveResults(metricsFile, getHeaderForReads(), getReadSourceName());
+        saveResults(metricsFile, getHeaderForReads(), getReadSourceName().get(0));
     }
 
     /**

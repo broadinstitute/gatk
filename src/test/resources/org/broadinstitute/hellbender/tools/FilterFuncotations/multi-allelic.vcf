@@ -1,0 +1,9 @@
+##fileformat=VCFv4.2
+##Funcotator Version=0.0.3 | Gencode 27 ALL | LMMKnown 20180618
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##INFO=<ID=FUNCOTATION,Number=A,Type=String,Description="Functional annotation from the Funcotator tool.  Funcotation fields are: Gencode_27_annotationTranscript|ACMG_recommendation_Disease_Name|ClinVar_VCF_CLNSIG|ACMGLMMLof_LOF_Mechanism|Gencode_27_variantClassification|ExAC_AC_AFR|ExAC_AN_AFR|ExAC_AC_AMR|ExAC_AN_AMR|ExAC_AC_EAS|ExAC_AN_EAS|ExAC_AC_FIN|ExAC_AN_FIN|ExAC_AC_NFE|ExAC_AN_NFE|ExAC_AC_OTH|ExAC_AN_OTH|ExAC_AC_SAS|ExAC_AN_SAS|LMMKnown_LMM_FLAGGED">
+##buildName=GRCh38
+##contig=<ID=chr1,length=248956422,assembly=Homo_sapiens_assembly38.fasta>
+##reference=file:///cromwell_root/broad-references/hg38/v0/Homo_sapiens_assembly38.fasta
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+chr1	55039931	.	G	A,T	.	.	FUNCOTATION=[ENST00000302118.5|Paragangliomas_%20_4_%20_(MIM_%20_115310)|Likely_pathogenic|YES|NONSENSE|5|1000|6|1000|7|1000|8|1000|0|1000|0|1000|9|1000|],[ENST00000302118.5|||||10|100|10|100|10|100|10|100|10|100|10|100|10|100|true]

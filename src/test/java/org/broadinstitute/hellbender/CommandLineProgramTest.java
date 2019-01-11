@@ -1,13 +1,8 @@
 package org.broadinstitute.hellbender;
 
-import org.broadinstitute.hellbender.utils.runtime.ProcessController;
-import org.broadinstitute.hellbender.utils.runtime.ProcessOutput;
-import org.broadinstitute.hellbender.utils.runtime.ProcessSettings;
-import org.broadinstitute.hellbender.utils.test.CommandLineProgramTester;
-import org.testng.Assert;
+import org.broadinstitute.hellbender.testutils.CommandLineProgramTester;
 
 import java.io.File;
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -30,6 +25,11 @@ public abstract class CommandLineProgramTest extends GATKBaseTest implements Com
     @Override
     public Object runCommandLine(final List<String> args) {
         return new Main().instanceMain(makeCommandLineArgs(args));
+    }
+
+    @Override
+    public Object runCommandLine(final List<String> args, final String toolName) {
+        return new Main().instanceMain(makeCommandLineArgs(args, toolName));
     }
 
 }

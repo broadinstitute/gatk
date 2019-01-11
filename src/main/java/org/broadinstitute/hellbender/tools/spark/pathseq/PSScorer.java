@@ -42,7 +42,7 @@ public final class PSScorer {
 
         //Group reads into pairs
         final JavaRDD<Iterable<GATKRead>> groupedReads = groupReadsIntoPairs(pairedReads,
-                unpairedReads, scoreArgs.readsPerPartition);
+                unpairedReads, scoreArgs.readsPerPartitionEstimate);
 
         //Load taxonomy database, created by running PathSeqBuildReferenceTaxonomy with this reference
         final PSTaxonomyDatabase taxDB = readTaxonomyDatabase(scoreArgs.taxonomyDatabasePath);
@@ -107,7 +107,7 @@ public final class PSScorer {
         } else if (unpairedReads != null) {
             groupedReads = unpairedReads.map(Collections::singletonList);
         } else {
-            throw new UserException.BadInput("No reads were loaded. Ensure --pairedInput and/or --unpairedInput are set and valid.");
+            throw new UserException.BadInput("No reads were loaded. Ensure --paired-input and/or --unpaired-input are set and valid.");
         }
         return groupedReads;
     }
@@ -451,7 +451,6 @@ public final class PSScorer {
         }
     }
 
-
     /**
      * Helper class for storing alignment hit information
      */
@@ -466,9 +465,17 @@ public final class PSScorer {
             this.cigar = cigar;
         }
 
-        public int getNumMatches() { return numMatches; }
-        public String getAccession() { return accession; }
-        public Cigar getCigar() { return cigar; }
+        public int getNumMatches() {
+            return numMatches;
+        }
+
+        public String getAccession() {
+            return accession;
+        }
+
+        public Cigar getCigar() {
+            return cigar;
+        }
     }
 
 }

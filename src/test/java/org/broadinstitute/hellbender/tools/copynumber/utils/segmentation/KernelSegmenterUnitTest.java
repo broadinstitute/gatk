@@ -36,22 +36,22 @@ public final class KernelSegmenterUnitTest extends GATKBaseTest {
 
         final Random rng = new Random(RANDOM_SEED);
         rng.setSeed(RANDOM_SEED);
-        final List<Double> dataGaussian = IntStream.range(0, numPoints).boxed()
-                .map(i -> Math.abs(i / 100 - 5) + 0.1 * rng.nextGaussian())
+        final List<Double> dataGaussian = IntStream.range(0, numPoints)
+                .mapToObj(i -> Math.abs(i / 100 - 5) + 0.1 * rng.nextGaussian())
                 .collect(Collectors.toList());
         final List<Integer> changepointsExpectedGaussian = Arrays.asList(
                 299, 699, 99, 899, 399, 199, 599, 499, 799);            //from python implementation
 
         rng.setSeed(RANDOM_SEED);
-        final List<Double> dataZeroMeanMultimodal = IntStream.range(0, numPoints).boxed()
-                .map(i -> 2 * (rng.nextBoolean() ? -1 : 1) * Math.abs(i / 100 - 5) + 0.1 * rng.nextGaussian())
+        final List<Double> dataZeroMeanMultimodal = IntStream.range(0, numPoints)
+                .mapToObj(i -> 2 * (rng.nextBoolean() ? -1 : 1) * Math.abs(i / 100 - 5) + 0.1 * rng.nextGaussian())
                 .collect(Collectors.toList());
         final List<Integer> changepointsExpectedZeroMeanMultimodal = Arrays.asList(
                 499, 599, 799, 699, 399, 899, 299, 199, 99);            //from python implementation
 
         rng.setSeed(RANDOM_SEED);
-        final List<Double> dataGaussianNoSegments = IntStream.range(0, numPoints).boxed()
-                .map(i -> 0.1 * rng.nextGaussian())
+        final List<Double> dataGaussianNoSegments = IntStream.range(0, numPoints)
+                .mapToObj(i -> 0.1 * rng.nextGaussian())
                 .collect(Collectors.toList());
         final List<Integer> changepointsExpectedGaussianNoSegments = Collections.emptyList();
 
@@ -106,8 +106,8 @@ public final class KernelSegmenterUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "dataKernelSegmenter")
     public void testKernelSegmenterExtremePenalty(final List<Double> data,
-                                    final BiFunction<Double, Double, Double> kernel,
-                                    final List<Integer> changepointsExpected) {
+                                                  final BiFunction<Double, Double, Double> kernel,
+                                                  final List<Integer> changepointsExpected) {
         final int maxNumChangepoints = 25;
         final int kernelApproximationDimension = 20;
         final List<Integer> windowSizes = Arrays.asList(8, 16, 32, 64);

@@ -1,0 +1,3 @@
+READ_GROUP_ID	OUTPUT
+rg1	/path/to/my_rg_1.ubam
+rg2	/path/to/my_rg_2.ubam

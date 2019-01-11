@@ -7,7 +7,7 @@ import htsjdk.samtools.TextCigarCodec;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanJavaAligner;
-import org.broadinstitute.hellbender.utils.test.ReadClipperTestUtils;
+import org.broadinstitute.hellbender.testutils.ReadClipperTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -184,31 +184,31 @@ public final class CigarUtilsUnitTest {
     @Test(dataProvider = "testData_countRefBasesBasedOnCigar")
     public void testCountRefBasesBasedOnCigar(final String cigarStrIn, final int start, final int end, final int expected){
         final GATKRead read = ReadClipperTestUtils.makeReadFromCigar(cigarStrIn);
-        final int actual = CigarUtils.countRefBasesBasedOnCigar(read, start, end);
+        final int actual = CigarUtils.countRefBasesBasedOnUnclippedAlignment(read, start, end);
         Assert.assertEquals(actual, expected, cigarStrIn);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testCountRefBasesBasedOnCigarNull(){
-        CigarUtils.countRefBasesBasedOnCigar(null, 1, 2);
+        CigarUtils.countRefBasesBasedOnUnclippedAlignment(null, 1, 2);
     }
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testCountRefBasesBasedOnCigarStart1(){
         final String cigarStrIn = "1M1=1X";
         final GATKRead read = ReadClipperTestUtils.makeReadFromCigar(cigarStrIn);
-        CigarUtils.countRefBasesBasedOnCigar(read, -1, 1);
+        CigarUtils.countRefBasesBasedOnUnclippedAlignment(read, -1, 1);
     }
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testCountRefBasesBasedOnCigarStart2(){
         final String cigarStrIn = "1M1=1X";
         final GATKRead read = ReadClipperTestUtils.makeReadFromCigar(cigarStrIn);
-        CigarUtils.countRefBasesBasedOnCigar(read, 2, 1);
+        CigarUtils.countRefBasesBasedOnUnclippedAlignment(read, 2, 1);
     }
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testCountRefBasesBasedOnCigarEnd2(){
         final String cigarStrIn = "1M1=1X";
         final GATKRead read = ReadClipperTestUtils.makeReadFromCigar(cigarStrIn);
-        CigarUtils.countRefBasesBasedOnCigar(read, 1, 6);
+        CigarUtils.countRefBasesBasedOnUnclippedAlignment(read, 1, 6);
     }
 
 
@@ -464,7 +464,7 @@ public final class CigarUtilsUnitTest {
     public Object[][] allClipFunkyCigars() {
         final Object[][] randomValidCigars = randomValidCigars();
         final List<Object[]> result = new ArrayList<>(randomValidCigars.length + 10);
-        result.add(new Object[] {TextCigarCodec.decode("10S20S30S")}); // all softclips.
+        result.add(new Object[] {TextCigarCodec.decode("10S20S30S")}); // all soft-clips.
         result.add(new Object[] {TextCigarCodec.decode("10H10S")}); // H and S.
         result.add(new Object[] {TextCigarCodec.decode("10H10S30H")}); // H, S and H.
         result.add(new Object[] {TextCigarCodec.decode("10S30H")}); // S and H.

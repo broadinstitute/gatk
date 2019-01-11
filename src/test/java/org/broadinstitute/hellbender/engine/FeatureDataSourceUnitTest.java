@@ -3,11 +3,13 @@ package org.broadinstitute.hellbender.engine;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFFileReader;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -24,7 +26,7 @@ public final class FeatureDataSourceUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testHandleNullFile() {
-        FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(null);
+        FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>((File)null);
     }
 
     @Test(expectedExceptions = UserException.CouldNotReadInputFile.class)
@@ -68,6 +70,13 @@ public final class FeatureDataSourceUnitTest extends GATKBaseTest {
             Assert.assertEquals(dict.size(), 4);
             Assert.assertEquals(dict.getSequences().stream().map(s->s.getSequenceName()).collect(Collectors.toList()), Arrays.asList("1", "2", "3", "4"));
         }
+    }
+
+    @Test (expectedExceptions = UserException.MissingIndex.class)
+    // this test asserts that a helpful exception is thrown for blockZipped files lacking an index as they may not be fully supported
+    //TODO this is a temporary fix until https://github.com/broadinstitute/gatk/issues/4224 has been resolved
+    public void testUnindexedBZippedFile() {
+        new FeatureDataSource<>(new File(toolsTestDir + "IndexFeatureFile/4featuresHG38Header.unindexed.vcf.gz"));
     }
 
     @DataProvider(name = "CompleteIterationTestData")
@@ -242,6 +251,25 @@ public final class FeatureDataSourceUnitTest extends GATKBaseTest {
             }
 
             checkVariantQueryResults(queryResults, expectedVariantIDs, queryInterval);
+        }
+    }
+
+    @Test
+    public void testQueryAllHG38Intervals() {
+        SAMSequenceDictionary sd;
+        final File testFile = new File (FEATURE_DATA_SOURCE_TEST_DIRECTORY, "Homo_sapiens_assembly38.headerOnly.vcf.gz");
+
+        try (VCFFileReader vcfReader = new VCFFileReader(testFile, false)) {
+            sd = vcfReader.getFileHeader().getSequenceDictionary();
+        }
+
+        // Test that we can execute a query using any hg38 contig name against a VCF with an hg38 sequence dictionary.
+        // Since the query is provided as a SimpleInterval, no interval query parsing or disambiguation is executed by
+        // this code path, but GenomeLocParserUnitTest IntervalUtilsUnitTest have corresponding tests that ensures that
+        // no hg38 query can be ambiguous.
+        try (final FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(testFile)) {
+            sd.getSequences().stream().forEach(
+                    hg38Contig -> featureSource.query(new SimpleInterval(hg38Contig.getSequenceName(), 1, hg38Contig.getSequenceLength())));
         }
     }
 

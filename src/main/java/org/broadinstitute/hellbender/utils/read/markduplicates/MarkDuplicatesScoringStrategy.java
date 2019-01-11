@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.read.markduplicates;
 
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.util.function.ToIntFunction;
 
@@ -25,10 +26,13 @@ public enum MarkDuplicatesScoringStrategy {
 
     /**
      * Given a read, compute the reads's score for mark duplicates.
+     *
+     * NOTE: this code is intended to match {@link htsjdk.samtools.DuplicateScoringStrategy.ScoringStrategy} behavior.
      */
-    public int score(final GATKRead read){
+    public short score(final GATKRead read){
         Utils.nonNull(read);
-        return scoring.applyAsInt(read);
+        // We max out at Short.MAX_VALUE / 2 to prevent overflow if we add two very high quality/length reads into pairs
+        return (short) (Math.min(scoring.applyAsInt(read), Short.MAX_VALUE / 2) + (read.failsVendorQualityCheck() ? (short) (Short.MIN_VALUE / 2) : 0));
     }
 
     //Bases below this quality will not be included in picking the best read from a set of duplicates.

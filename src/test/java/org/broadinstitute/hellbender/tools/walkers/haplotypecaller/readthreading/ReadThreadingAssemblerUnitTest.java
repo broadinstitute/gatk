@@ -4,10 +4,11 @@ import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.reference.IndexedFastaSequenceFile;
+import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyResultSet;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.KBestHaplotype;
@@ -21,27 +22,33 @@ import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanJavaAligner;
-import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
+import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.*;
 
 public final class ReadThreadingAssemblerUnitTest extends GATKBaseTest {
 
     private static final boolean DEBUG = false;
 
-    private IndexedFastaSequenceFile seq;
+    private ReferenceSequenceFile seq;
     private SAMFileHeader header;
 
     @BeforeClass
-    public void setup() throws FileNotFoundException {
-        seq = new CachingIndexedFastaSequenceFile(new File(hg19_chr1_1M_Reference));
+    public void setup() {
+        seq = new CachingIndexedFastaSequenceFile(Paths.get(hg19_chr1_1M_Reference));
         header = ArtificialReadUtils.createArtificialSamHeader(seq.getSequenceDictionary());
+    }
+
+    @AfterClass
+    public void cleanup() throws IOException {
+        seq.close();
     }
 
     @DataProvider(name = "AssembleIntervalsData")
@@ -233,9 +240,8 @@ public final class ReadThreadingAssemblerUnitTest extends GATKBaseTest {
         final List<GATKRead> reads = new LinkedList<>();
 
         private TestAssembler(final int kmerSize) {
-            assembler = new ReadThreadingAssembler(100000, Arrays.asList(kmerSize));
+            assembler = new ReadThreadingAssembler(100000, Arrays.asList(kmerSize), 0);
             assembler.setJustReturnRawGraph(true);
-            assembler.setPruneFactor(0);
             header = ArtificialReadUtils.createArtificialSamHeader();
         }
 
@@ -270,11 +276,11 @@ public final class ReadThreadingAssemblerUnitTest extends GATKBaseTest {
     private void assertSingleBubble(final TestAssembler assembler, final String one, final String two) {
         final SeqGraph graph = assembler.assemble();
         graph.simplifyGraph();
-        final List<KBestHaplotype> paths = new KBestHaplotypeFinder(graph);
+        final List<KBestHaplotype> paths = new KBestHaplotypeFinder(graph).findBestHaplotypes();
         Assert.assertEquals(paths.size(), 2);
         final Set<String> expected = new HashSet<>(Arrays.asList(one, two));
         for ( final KBestHaplotype path : paths ) {
-            final String seq = new String(path.bases());
+            final String seq = new String(path.getBases());
             Assert.assertTrue(expected.contains(seq));
             expected.remove(seq);
         }
@@ -337,7 +343,7 @@ public final class ReadThreadingAssemblerUnitTest extends GATKBaseTest {
         Assert.assertNotNull(graph.getReferenceSourceVertex());
         Assert.assertNotNull(graph.getReferenceSinkVertex());
 
-        final List<KBestHaplotype> paths = new KBestHaplotypeFinder(graph);
+        final List<KBestHaplotype> paths = new KBestHaplotypeFinder(graph).findBestHaplotypes();
         Assert.assertEquals(paths.size(), 1);
     }
 
@@ -383,10 +389,10 @@ public final class ReadThreadingAssemblerUnitTest extends GATKBaseTest {
         assembler.addSequence(ReadThreadingGraphUnitTest.getBytes(read2), false);
 
         final SeqGraph graph = assembler.assemble();
-        final List<KBestHaplotype> paths = new KBestHaplotypeFinder(graph);
+        final List<KBestHaplotype> paths = new KBestHaplotypeFinder(graph).findBestHaplotypes();
         Assert.assertEquals(paths.size(), 2);
-        final byte[] refPath = paths.get(0).bases().length == ref.length() ? paths.get(0).bases() : paths.get(1).bases();
-        final byte[] altPath = paths.get(0).bases().length == ref.length() ? paths.get(1).bases() : paths.get(0).bases();
+        final byte[] refPath = paths.get(0).getBases().length == ref.length() ? paths.get(0).getBases() : paths.get(1).getBases();
+        final byte[] altPath = paths.get(0).getBases().length == ref.length() ? paths.get(1).getBases() : paths.get(0).getBases();
         Assert.assertEquals(refPath, ReadThreadingGraphUnitTest.getBytes(ref));
         Assert.assertEquals(altPath, ReadThreadingGraphUnitTest.getBytes(read1));
     }

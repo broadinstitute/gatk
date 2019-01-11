@@ -103,10 +103,6 @@ public final class PathUnitTest extends GATKBaseTest {
         Assert.assertEquals(path1.length(), 1);
         Assert.assertEquals(path2.length(), 2);
 
-        Assert.assertEquals(path.getScore(), 0);
-        Assert.assertEquals(path1.getScore(), 1);
-        Assert.assertEquals(path2.getScore(), 3); //score is not the same as length - uses multiplicity
-
         Assert.assertTrue(path2.containsVertex(v1));
         Assert.assertTrue(path2.containsVertex(v2));
         Assert.assertTrue(path2.containsVertex(v3));

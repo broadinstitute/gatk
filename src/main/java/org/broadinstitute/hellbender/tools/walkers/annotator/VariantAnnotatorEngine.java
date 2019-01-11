@@ -3,18 +3,20 @@ package org.broadinstitute.hellbender.tools.walkers.annotator;
 import com.google.common.collect.Sets;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.*;
-import org.broadinstitute.barclay.argparser.CommandLineException;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.VariantAnnotationArgumentCollection;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotationData;
 import org.broadinstitute.hellbender.utils.ClassUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
-import org.reflections.ReflectionUtils;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.*;
 import java.util.function.Predicate;
@@ -30,16 +32,45 @@ public final class VariantAnnotatorEngine {
     private final List<InfoFieldAnnotation> infoAnnotations;
     private final List<GenotypeAnnotation> genotypeAnnotations;
     private Set<String> reducibleKeys;
+    private List<VAExpression> expressions = new ArrayList<>();
 
     private final VariantOverlapAnnotator variantOverlapAnnotator;
+    private boolean expressionAlleleConcordance;
+    private final boolean useRawAnnotations;
 
-    private VariantAnnotatorEngine(final AnnotationManager annots,
+    private final static Logger logger = LogManager.getLogger(VariantAnnotatorEngine.class);
+
+    /**
+     * Creates an annotation engine from a list of selected annotations output from command line parsing
+     * @param annotationList list of annotation objects (with any parameters already filled) to include
+     * @param dbSNPInput input for variants from a known set from DbSNP or null if not provided.
+     *                   The annotation engine will mark variants overlapping anything in this set using {@link htsjdk.variant.vcf.VCFConstants#DBSNP_KEY}.
+     * @param featureInputs list of inputs with known variants.
+     *                   The annotation engine will mark variants overlapping anything in those sets using the name given by {@link FeatureInput#getName()}.
+     *                   Note: the DBSNP FeatureInput should be passed in separately, and not as part of this List - an GATKException will be thrown otherwise.
+     *                   Note: there are no non-DBSNP comparison FeatureInputs an empty List should be passed in here, rather than null.
+     * @param useRaw When this is set to true, the annotation engine will call {@link ReducibleAnnotation#annotateRawData(ReferenceContext, VariantContext, ReadLikelihoods)}
+     *               on annotations that extend {@link ReducibleAnnotation}, instead of {@link InfoFieldAnnotation#annotate(ReferenceContext, VariantContext, ReadLikelihoods)},
+     *               which is the default for all annotations.
+     */
+    public VariantAnnotatorEngine(final Collection<Annotation> annotationList,
                                    final FeatureInput<VariantContext> dbSNPInput,
-                                   final List<FeatureInput<VariantContext>> featureInputs){
-        infoAnnotations = annots.createInfoFieldAnnotations();
-        genotypeAnnotations = annots.createGenotypeAnnotations();
+                                   final List<FeatureInput<VariantContext>> featureInputs,
+                                   final boolean useRaw){
+        Utils.nonNull(featureInputs, "comparisonFeatureInputs is null");
+        infoAnnotations = new ArrayList<>();
+        genotypeAnnotations = new ArrayList<>();
+        for (Annotation annot : annotationList) {
+            if (annot instanceof InfoFieldAnnotation) {
+                infoAnnotations.add((InfoFieldAnnotation) annot);
+            }
+            if (annot instanceof GenotypeAnnotation) {
+                genotypeAnnotations.add((GenotypeAnnotation) annot);
+            }
+        }
         variantOverlapAnnotator = initializeOverlapAnnotator(dbSNPInput, featureInputs);
         reducibleKeys = new HashSet<>();
+        useRawAnnotations = useRaw;
         for (InfoFieldAnnotation annot : infoAnnotations) {
             if (annot instanceof ReducibleAnnotation) {
                 reducibleKeys.add(((ReducibleAnnotation) annot).getRawKeyName());
@@ -47,68 +78,6 @@ public final class VariantAnnotatorEngine {
         }
     }
 
-    /**
-     * Makes the engine for all known annotation types (minus the excluded ones).
-     * @param annotationsToExclude list of annotations to exclude (pass an empty list to indicate that there are no exclusions)
-     * @param dbSNPInput input for variants from a known set from DbSNP or null if not provided.
-     *                   The annotation engine will mark variants overlapping anything in this set using {@link htsjdk.variant.vcf.VCFConstants#DBSNP_KEY}.
-     * @param comparisonFeatureInputs list of inputs with known variants.
-     *                   The annotation engine will mark variants overlapping anything in those sets using the name given by {@link FeatureInput#getName()}.
-     *                   Note: the DBSNP FeatureInput should be passed in separately, and not as part of this List - an GATKException will be thrown otherwise.
-     *                   Note: there are no non-DBSNP comparison FeatureInputs an empty List should be passed in here, rather than null.
-     */
-    public static VariantAnnotatorEngine ofAllMinusExcluded(final List<String> annotationsToExclude,
-                                                            final FeatureInput<VariantContext> dbSNPInput,
-                                                            final List<FeatureInput<VariantContext>> comparisonFeatureInputs) {
-        Utils.nonNull(annotationsToExclude, "annotationsToExclude is null");
-        Utils.nonNull(comparisonFeatureInputs, "comparisonFeatureInputs is null");
-        return new VariantAnnotatorEngine(AnnotationManager.ofAllMinusExcluded(annotationsToExclude), dbSNPInput, comparisonFeatureInputs);
-    }
-
-    /**
-     * Makes the engine for given annotation types and groups (minus the excluded ones).
-     * @param annotationGroupsToUse list of annotations groups to include
-     * @param annotationsToUse     list of of annotations to include
-     * @param annotationsToExclude list of annotations to exclude
-     * @param dbSNPInput input for variants from a known set from DbSNP or null if not provided.
-     *                   The annotation engine will mark variants overlapping anything in this set using {@link htsjdk.variant.vcf.VCFConstants#DBSNP_KEY}.
-     * @param comparisonFeatureInputs list of inputs with known variants.
-     *                   The annotation engine will mark variants overlapping anything in those sets using the name given by {@link FeatureInput#getName()}.
-     *                   Note: the DBSNP FeatureInput should be passed in separately, and not as part of this List - an GATKException will be thrown otherwise.
-     *                   Note: there are no non-DBSNP comparison FeatureInputs an empty List should be passed in here, rather than null.
-     */
-    public static VariantAnnotatorEngine ofSelectedMinusExcluded(final List<String> annotationGroupsToUse,
-                                                                 final List<String> annotationsToUse,
-                                                                 final List<String> annotationsToExclude,
-                                                                 final FeatureInput<VariantContext> dbSNPInput,
-                                                                 final List<FeatureInput<VariantContext>> comparisonFeatureInputs) {
-        Utils.nonNull(annotationGroupsToUse, "annotationGroupsToUse is null");
-        Utils.nonNull(annotationsToUse, "annotationsToUse is null");
-        Utils.nonNull(annotationsToExclude, "annotationsToExclude is null");
-        Utils.nonNull(comparisonFeatureInputs, "comparisonFeatureInputs is null");
-        return new VariantAnnotatorEngine(AnnotationManager.ofSelectedMinusExcluded(annotationGroupsToUse, annotationsToUse, annotationsToExclude), dbSNPInput, comparisonFeatureInputs);
-    }
-
-    /**
-     * An overload of {@link org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine#ofSelectedMinusExcluded ofSelectedMinusExcluded}
-     * except that it accepts a {@link org.broadinstitute.hellbender.cmdline.argumentcollections.VariantAnnotationArgumentCollection} as input.
-     * @param argumentCollection            VariantAnnotationArgumentCollection containing requested annotations.
-     * @param dbSNPInput                    input for variants from a known set from DbSNP or null if not provided.
-     *                   The annotation engine will mark variants overlapping anything in this set using {@link htsjdk.variant.vcf.VCFConstants#DBSNP_KEY}.
-     * @param comparisonFeatureInputs list of inputs with known variants.
-     *                   The annotation engine will mark variants overlapping anything in those sets using the name given by {@link FeatureInput#getName()}.
-     *                   Note: the DBSNP FeatureInput should be passed in separately, and not as part of this List - an GATKException will be thrown otherwise.
-     *                   Note: there are no non-DBSNP comparison FeatureInputs an empty List should be passed in here, rather than null.
-     * @return a VariantAnnotatorEngine initialized with the requested annotations
-     */
-    public static VariantAnnotatorEngine ofSelectedMinusExcluded(final VariantAnnotationArgumentCollection argumentCollection,
-                                                                 final FeatureInput<VariantContext> dbSNPInput,
-                                                                 final List<FeatureInput<VariantContext>> comparisonFeatureInputs) {
-        return ofSelectedMinusExcluded(argumentCollection.annotationGroupsToUse,
-                argumentCollection.annotationsToUse,
-                argumentCollection.annotationsToExclude,
-                dbSNPInput, comparisonFeatureInputs);
-    }
     private VariantOverlapAnnotator initializeOverlapAnnotator(final FeatureInput<VariantContext> dbSNPInput, final List<FeatureInput<VariantContext>> featureInputs) {
         final Map<FeatureInput<VariantContext>, String> overlaps = new LinkedHashMap<>();
         for ( final FeatureInput<VariantContext> fi : featureInputs) {
@@ -123,7 +92,6 @@ public final class VariantAnnotatorEngine {
 
         return new VariantOverlapAnnotator(dbSNPInput, overlaps);
     }
-
 
     /**
      * Returns the list of genotype annotations that will be applied.
@@ -173,10 +141,37 @@ public final class VariantAnnotatorEngine {
             }
         }
 
+        // Add header lines corresponding to the expression target files
+        for (final VariantAnnotatorEngine.VAExpression expression : getRequestedExpressions()) {
+            // special case the ID field
+            if (expression.fieldName.equals("ID")) {
+                descriptions.add(new VCFInfoHeaderLine(expression.fullName, 1, VCFHeaderLineType.String, "ID field transferred from external VCF resource"));
+            } else {
+                final VCFInfoHeaderLine targetHeaderLine = ((VCFHeader) new FeatureDataSource<>(expression.binding, 100, VariantContext.class).getHeader())
+                        .getInfoHeaderLines().stream()
+                        .filter(l -> l.getID().equals(expression.fieldName))
+                        .findFirst().orElse(null);
+
+                VCFInfoHeaderLine lineToAdd;
+                if (targetHeaderLine != null) {
+                    expression.sethInfo(targetHeaderLine);
+                    if (targetHeaderLine.getCountType() == VCFHeaderLineCount.INTEGER) {
+                        lineToAdd = new VCFInfoHeaderLine(expression.fullName, targetHeaderLine.getCount(), targetHeaderLine.getType(), targetHeaderLine.getDescription());
+                    } else {
+                        lineToAdd = new VCFInfoHeaderLine(expression.fullName, targetHeaderLine.getCountType(), targetHeaderLine.getType(), targetHeaderLine.getDescription());
+                    }
+                } else {
+                    lineToAdd = new VCFInfoHeaderLine(expression.fullName, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Value transferred from another external VCF resource");
+                    logger.warn(String.format("The requested expression attribute \"%s\" is missing from the header in its resource file %s", expression.fullName, expression.binding.getName()));
+                }
+                descriptions.add(lineToAdd);
+                expression.sethInfo(lineToAdd);
+            }
+        }
+
         Utils.validate(!descriptions.contains(null), "getVCFAnnotationDescriptions should not contain null. This error is likely due to an incorrect implementation of getDescriptions() in one or more of the annotation classes");
         return descriptions;
     }
-
 
     /**
      * Combine (raw) data for reducible annotations (those that use raw data in gVCFs)
@@ -247,6 +242,7 @@ public final class VariantAnnotatorEngine {
      * @param ref the reference context of the variant to annotate or null if there is none
      * @param likelihoods likelihoods indexed by sample, allele, and read within sample. May be null
      * @param addAnnot function that indicates if the given annotation type should be added to the variant
+     *
      */
     public VariantContext annotateContext(final VariantContext vc,
                                           final FeatureContext features,
@@ -255,6 +251,7 @@ public final class VariantAnnotatorEngine {
                                           final Predicate<VariantAnnotation> addAnnot) {
         Utils.nonNull(vc, "vc cannot be null");
         Utils.nonNull(features, "features cannot be null");
+        Utils.nonNull(addAnnot, "addAnnot cannot be null");
 
         // annotate genotypes, creating another new VC in the process
         final VariantContextBuilder builder = new VariantContextBuilder(vc);
@@ -262,9 +259,16 @@ public final class VariantAnnotatorEngine {
         final VariantContext newGenotypeAnnotatedVC = builder.make();
 
         final Map<String, Object> infoAnnotMap = new LinkedHashMap<>(newGenotypeAnnotatedVC.getAttributes());
+        annotateExpressions(vc, features, ref, infoAnnotMap);
+
         for ( final InfoFieldAnnotation annotationType : this.infoAnnotations) {
             if (addAnnot.test(annotationType)){
-                final Map<String, Object> annotationsFromCurrentType = annotationType.annotate(ref, newGenotypeAnnotatedVC, likelihoods);
+                final Map<String, Object> annotationsFromCurrentType;
+                if (useRawAnnotations && annotationType instanceof ReducibleAnnotation) {
+                    annotationsFromCurrentType = ((ReducibleAnnotation) annotationType).annotateRawData(ref, newGenotypeAnnotatedVC, likelihoods);
+                } else {
+                    annotationsFromCurrentType = annotationType.annotate(ref, newGenotypeAnnotatedVC, likelihoods);
+                }
                 if ( annotationsFromCurrentType != null ) {
                     infoAnnotMap.putAll(annotationsFromCurrentType);
                 }
@@ -309,118 +313,193 @@ public final class VariantAnnotatorEngine {
         return reducibleKeys.contains(key);
     }
 
-    private static final class AnnotationManager {
+    /**
+     * A container object for storing the objects necessary for carrying over expression annotations.
+     * It holds onto the source feature input as well as any relevant header lines in order to alter the vcfHeader.
+     */
+    public static class VAExpression {
 
-        private final List<String> annotationGroupsToUse;
-        private final List<String> annotationsToUse;
-        private final List<String> annotationsToExclude;
+        final private String fullName, fieldName;
+        final private FeatureInput<VariantContext> binding;
+        private VCFInfoHeaderLine hInfo;
 
-        private AnnotationManager(final List<String> annotationGroupsToUse, final List<String> annotationsToUse, final List<String> annotationsToExclude){
-            this.annotationGroupsToUse = annotationGroupsToUse;
-            this.annotationsToUse = annotationsToUse;
-            this.annotationsToExclude = annotationsToExclude;
-
-            final Set<String> allAnnotationNames = new LinkedHashSet<>(AnnotationManager.getAllAnnotationNames());
-            final Set<String> unknownAnnots = Sets.difference(new LinkedHashSet<>(annotationsToUse), allAnnotationNames);
-            assertAnnotationExists(unknownAnnots);
-
-            final Set<String> unknownAnnotsExclude = Sets.difference(new LinkedHashSet<>(annotationsToExclude), allAnnotationNames);
-            assertAnnotationExists(unknownAnnotsExclude);
-
-            final Set<String> unknownGroups =  Sets.difference(new LinkedHashSet<>(annotationGroupsToUse), new LinkedHashSet<>(AnnotationManager.getAllAnnotationGroupNames()));
-            if (!unknownGroups.isEmpty()){
-                throw new CommandLineException.BadArgumentValue("group", "Unknown annotation group in " + unknownGroups + ". Known groups are " + AnnotationManager.getAllAnnotationGroupNames());
+        public VAExpression(String fullExpression, List<FeatureInput<VariantContext>> dataSourceList){
+            final int indexOfDot = fullExpression.lastIndexOf(".");
+            if ( indexOfDot == -1 ) {
+                throw new UserException.BadInput("The requested expression '"+fullExpression+"' is invalid, it should be in VCFFile.value format");
             }
-        }
 
-        private void assertAnnotationExists(final Set<String> missingAnnots){
-            if (!missingAnnots.isEmpty()){
-                throw new CommandLineException.BadArgumentValue("annotation", "Annotation " + missingAnnots + " not found; please check that you have specified the name correctly");
+            fullName = fullExpression;
+            fieldName = fullExpression.substring(indexOfDot+1);
+
+            final String bindingName = fullExpression.substring(0, indexOfDot);
+            Optional<FeatureInput<VariantContext>> binding = dataSourceList.stream().filter(ds -> ds.getName().equals(bindingName)).findFirst();
+            if (!binding.isPresent()) {
+                throw new UserException.BadInput("The requested expression '"+fullExpression+"' is invalid, could not find vcf input file");
             }
+            this.binding = binding.get();
         }
 
-        /**
-         * An annotation will be included only when:
-         * - it is in one of the annotation groups or
-         * - it is listed explicitly
-         * - and it is not excluded explicitly.
-         */
-        static AnnotationManager ofSelectedMinusExcluded(final List<String> annotationGroupsToUse, final List<String> annotationsToUse, final List<String> annotationsToExclude){
-            final List<String> groups = new ArrayList<>(annotationGroupsToUse);//make copy
-            final List<String> annots = new ArrayList<>(annotationsToUse);//make copy
-            final List<String> excludes = new ArrayList<>(annotationsToExclude);//make copy
-            return new AnnotationManager(groups, annots, excludes);
+        public void sethInfo(VCFInfoHeaderLine hInfo) {
+            this.hInfo = hInfo;
         }
+    }
 
-        /**
-         * An annotation will be included only when it is not excluded explicitly.
-         */
-        static AnnotationManager ofAllMinusExcluded(final List<String> annotationsToExclude){
-            final List<String> groups = getAllAnnotationGroupNames();
-            final List<String> annots = getAllAnnotationNames();
-            return new AnnotationManager(groups, annots, annotationsToExclude);
+    protected List<VAExpression> getRequestedExpressions() { return expressions; }
+
+    // select specific expressions to use
+    public void addExpressions(Set<String> expressionsToUse, List<FeatureInput<VariantContext>> dataSources, boolean expressionAlleleConcordance) {//, Set<VCFHeaderLines>) {
+        // set up the expressions
+        for ( final String expression : expressionsToUse ) {
+            expressions.add(new VAExpression(expression, dataSources));
         }
+        this.expressionAlleleConcordance = expressionAlleleConcordance;
+    }
 
-        private static List<String> getAllAnnotationNames() {
-            final Set<VariantAnnotation> union = Sets.union(new LinkedHashSet<>(makeAllGenotypeAnnotations()), new LinkedHashSet<>(AnnotationManager.makeAllInfoFieldAnnotations()));
-            return union.stream().map(a -> a.getClass().getSimpleName()).collect(Collectors.toList());
-        }
+    /**
+     * Handles logic for expressions for variant contexts. Used to add annotations from one vcf file into the fields
+     * of another if the variant contexts match sufficiently between the two files.
+     *
+     * @param vc  VariantContext to add annotations to
+     * @param features  FeatureContext object containing extra VCF features to add to vc
+     * @param ref  Reference context object corresponding to the region overlapping vc
+     * @param attributes  running list of attributes into which to place new annotations
+     */
+    private void annotateExpressions(final VariantContext vc,
+                                     final FeatureContext features,
+                                     final ReferenceContext ref,
+                                     final Map<String, Object> attributes){
+        Utils.nonNull(vc);
 
-        /**
-         * Annotation group names are simple names of all interfaces that are subtypes of {@ Annotation}.
-         */
-        public static List<String> getAllAnnotationGroupNames() {
-            return ClassUtils.knownSubInterfaceSimpleNames(Annotation.class);
-        }
+        // each requested expression
+        for ( final VAExpression expression : expressions ) {
+            List<VariantContext> variantContexts = features.getValues(expression.binding, vc.getStart());
 
-        public List<InfoFieldAnnotation> createInfoFieldAnnotations() {
-            final List<InfoFieldAnnotation> all = makeAllInfoFieldAnnotations();
-            return filterAnnotations(all);
-        }
+            if (!variantContexts.isEmpty()) {
+                // get the expression's variant context
+                VariantContext expressionVC = variantContexts.iterator().next();
 
-        private static List<InfoFieldAnnotation> makeAllInfoFieldAnnotations() {
-            return ClassUtils.makeInstancesOfSubclasses(InfoFieldAnnotation.class, Annotation.class.getPackage());
-        }
+                // special-case the ID field
+                if (expression.fieldName.equals("ID")) {
+                    if (expressionVC.hasID()) {
+                        attributes.put(expression.fullName, expressionVC.getID());
+                    }
+                } else if (expression.fieldName.equals("ALT")) {
+                    attributes.put(expression.fullName, expressionVC.getAlternateAllele(0).getDisplayString());
+                } else if (expression.fieldName.equals("FILTER")) {
+                    final String filterString = expressionVC.isFiltered() ? expressionVC.getFilters().stream().collect(Collectors.joining(",")) : "PASS";
+                    attributes.put(expression.fullName, filterString);
+                } else if (expressionVC.hasAttribute(expression.fieldName)) {
+                    // find the info field
+                    final VCFInfoHeaderLine hInfo = expression.hInfo;
+                    if (hInfo == null) {
+                        throw new UserException("Cannot annotate expression " + expression.fullName + " at " + ref.getInterval() + " for variant allele(s) " + vc.getAlleles() + ", missing header info");
+                    }
 
-        public List<GenotypeAnnotation> createGenotypeAnnotations() {
-            final List<GenotypeAnnotation> all = makeAllGenotypeAnnotations();
-            return filterAnnotations(all);
-        }
+                    //
+                    // Add the info field annotations
+                    //
+                    final boolean useRefAndAltAlleles = VCFHeaderLineCount.R == hInfo.getCountType();
+                    final boolean useAltAlleles = VCFHeaderLineCount.A == hInfo.getCountType();
 
-        private static List<GenotypeAnnotation> makeAllGenotypeAnnotations() {
-            return ClassUtils.makeInstancesOfSubclasses(GenotypeAnnotation.class, Annotation.class.getPackage());
-        }
+                    // Annotation uses ref and/or alt alleles or enforce allele concordance
+                    if ((useAltAlleles || useRefAndAltAlleles) || expressionAlleleConcordance) {
 
-        /**
-         * Returns a list of annotations that either:
-         *  - belong to at least one of the requested annotation groups
-         *  - belong to the set of requested annotations
-         *
-         *  - and are NOT listed for exclusion
-         *
-         *  The list is sorted by simple name of the class.
-         */
-        private <T extends VariantAnnotation> List<T> filterAnnotations(final List<T> all) {
-            final SortedSet<T> annotations = new TreeSet<>(Comparator.comparing(t -> t.getClass().getSimpleName()));
+                        // remove brackets and spaces from expression value
+                        final String cleanedExpressionValue = expressionVC.getAttribute(expression.fieldName,"").toString().replaceAll("[\\[\\]\\s]", "");
 
-            final Set<Class<?>> knownAnnotationGroups = ClassUtils.knownSubInterfaces(Annotation.class);
+                        // get comma separated expression values
+                        final ArrayList<String> expressionValuesList = new ArrayList<>(Arrays.asList(cleanedExpressionValue.split(",")));
 
-            for (final T t : all){
-                if (!annotationsToExclude.contains(t.getClass().getSimpleName())) {
-                    //if any group matches requested groups, it's in
-                    @SuppressWarnings("unchecked")
-                    final Set<Class<?>> annotationGroupsForT = ReflectionUtils.getAllSuperTypes(t.getClass(), sup -> sup.isInterface() && knownAnnotationGroups.contains(sup));
-                    if (annotationGroupsForT.stream().anyMatch(iface -> annotationGroupsToUse.contains(iface.getSimpleName()))) {
-                        annotations.add(t);
-                    } else if (annotationsToUse.contains(t.getClass().getSimpleName())) {
-                        annotations.add(t);
+                        boolean canAnnotate = false;
+                        // get the minimum biallelics without genotypes
+
+                        final List<VariantContext> minBiallelicVCs = getMinRepresentationBiallelics(vc);
+                        final List<VariantContext> minBiallelicExprVCs = getMinRepresentationBiallelics(expressionVC);
+
+                        // check concordance
+                        final List<String> annotationValues = new ArrayList<>();
+                        for (final VariantContext biallelicVC : minBiallelicVCs) {
+                            // check that ref and alt alleles are the same
+                            List<Allele> exprAlleles = biallelicVC.getAlleles();
+                            boolean isAlleleConcordant = false;
+                            int i = 0;
+                            for (final VariantContext biallelicExprVC : minBiallelicExprVCs) {
+                                List<Allele> alleles = biallelicExprVC.getAlleles();
+                                // concordant
+                                if (alleles.equals(exprAlleles)) {
+                                    // get the value for the reference if needed.
+                                    if (i == 0 && useRefAndAltAlleles) {
+                                        annotationValues.add(expressionValuesList.get(i++));
+                                    }
+                                    // use annotation expression and add to vc
+                                    annotationValues.add(expressionValuesList.get(i));
+                                    isAlleleConcordant = true;
+                                    canAnnotate = true;
+                                    break;
+                                }
+                                i++;
+                            }
+
+                            // can not find allele match so set to annotation value to zero
+                            if (!isAlleleConcordant) {
+                                annotationValues.add("0");
+                            }
+                        }
+
+                        // some allele matches so add the annotation values
+                        if (canAnnotate) {
+                            attributes.put(expression.fullName, annotationValues);
+                        }
+                    } else {
+                        // use all of the expression values
+                        attributes.put(expression.fullName, expressionVC.getAttribute(expression.fieldName));
                     }
                 }
             }
+        }
+    }
 
-            return Collections.unmodifiableList(new ArrayList<>(annotations));
+    /**
+     * Break the variant context into bialleles (reference and alternate alleles) and trim to a minimum representation
+     *
+     * @param vc variant context to annotate
+     * @return list of biallelics trimmed to a minimum representation
+     */
+    private List<VariantContext> getMinRepresentationBiallelics(final VariantContext vc) {
+        final List<VariantContext> minRepresentationBiallelicVCs = new ArrayList<>();
+        if (vc.getNAlleles() > 2) {
+            // TODO, this doesn't actually need to be done, we can simulate it at less cost
+            for (int i = 1; i < vc.getNAlleles(); i++) {
+                // Determining if the biallelic would have been considered a SNP
+                if (! (vc.getReference().length() == 1 && vc.getAlternateAllele(i-1).length() == 1) ) {
+                    minRepresentationBiallelicVCs.add(GATKVariantContextUtils.trimAlleles(
+                            new VariantContextBuilder(vc)
+                                    .alleles(Arrays.asList(vc.getReference(),vc.getAlternateAllele(i-1)))
+                                    .attributes(removeIrrelevantAttributes(vc.getAttributes())).make(), true, true));
+                } else {
+                    minRepresentationBiallelicVCs.add(new VariantContextBuilder(vc)
+                            .alleles(Arrays.asList(vc.getReference(),vc.getAlternateAllele(i-1)))
+                            .attributes(removeIrrelevantAttributes(vc.getAttributes())).make());
+                }
+            }
+        } else {
+            minRepresentationBiallelicVCs.add(vc);
         }
 
+        return minRepresentationBiallelicVCs;
+    }
+
+    private Map<String, Object> removeIrrelevantAttributes(Map<String, Object> attributes) {
+        // since the VC has been subset, remove the invalid attributes
+        Map<String, Object> ret = new HashMap<>(attributes);
+        for ( final String key : attributes.keySet() ) {
+            if ( !(key.equals(VCFConstants.ALLELE_COUNT_KEY) || key.equals(VCFConstants.ALLELE_FREQUENCY_KEY) || key.equals(VCFConstants.ALLELE_NUMBER_KEY)) ) {
+                ret.remove(key);
+            }
+        }
+
+        return ret;
     }
 
 }

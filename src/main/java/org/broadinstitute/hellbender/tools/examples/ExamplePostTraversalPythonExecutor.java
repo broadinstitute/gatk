@@ -24,6 +24,9 @@ import java.util.Arrays;
  *
  * Dependencies (must be included in the GATK docker image):
  * <ul><li>None.</li></ul>
+ *
+ * See https://github.com/broadinstitute/gatk/wiki/Writing-GATK-Tools-that-use-Python for more information
+ * on using Python with GATK.
  */
 @CommandLineProgramProperties(
         summary = "Example/toy program that uses a Python script.",

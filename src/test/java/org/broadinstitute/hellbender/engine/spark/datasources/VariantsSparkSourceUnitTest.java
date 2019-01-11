@@ -6,10 +6,9 @@ import org.apache.commons.collections.CollectionUtils;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
-import org.broadinstitute.hellbender.engine.datasources.VariantsSource;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
+import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 import org.broadinstitute.hellbender.utils.variant.VariantContextVariantAdapter;
 import org.testng.Assert;
@@ -21,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.function.Function;
 
 public final class VariantsSparkSourceUnitTest extends GATKBaseTest {
     @DataProvider(name = "loadVariants")
@@ -73,10 +73,36 @@ public final class VariantsSparkSourceUnitTest extends GATKBaseTest {
         // retrieve the same set of variants, but through VariantsSource, and wrapped by
         // the same wrapper class used by VariantsSparkSource to facilitate comparison
         List<GATKVariant> variantsList =
-                VariantsSource.getVariantsListAs
-                        (vcfList, vc -> VariantContextVariantAdapter.sparkVariantAdapter(vc));
+                getVariantsListAs(vcfList, vc -> VariantContextVariantAdapter.sparkVariantAdapter(vc));
 
         Assert.assertTrue(CollectionUtils.isEqualCollection(rddParallelVariants.collect(), variantsList));
+    }
+
+    /**
+     * getVariantsListAs grabs the variants from local files (or perhaps eventually buckets), applies
+     * the wrapper function to each object, and returns them as a list of objects of the type returned
+     * by the wrapper function
+     * @param variantSources list of files  to read from
+     * @param wrapFunction function applied to each VariantContext returned
+     */
+    private static <T> List<T> getVariantsListAs( List<String> variantSources, Function<VariantContext, T> wrapFunction ) {
+        final List<T> aggregatedResults = new ArrayList<>();
+
+        for ( final String variantSource : variantSources ) {
+            try ( final FeatureDataSource<VariantContext> dataSource =
+                          new FeatureDataSource<>(variantSource, null, 0, VariantContext.class) ) {
+                aggregatedResults.addAll(wrapQueryResults(dataSource.iterator(), wrapFunction));
+            }
+        }
+        return aggregatedResults;
+    }
+
+    private static <T> List<T> wrapQueryResults( final Iterator<VariantContext> queryResults, final Function<VariantContext, T> wrapFunction) {
+        final List<T> wrappedResults = new ArrayList<>();
+        while ( queryResults.hasNext() ) {
+            wrappedResults.add(wrapFunction.apply(queryResults.next()));
+        }
+        return wrappedResults;
     }
 
     /**

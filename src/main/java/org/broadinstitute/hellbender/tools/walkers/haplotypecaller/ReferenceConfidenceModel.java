@@ -9,25 +9,23 @@ import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFSimpleHeaderLine;
-import org.broadinstitute.hellbender.engine.AlignmentContext;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.PloidyModel;
-import org.broadinstitute.hellbender.utils.MathUtils;
-import org.broadinstitute.hellbender.utils.QualityUtils;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.tools.walkers.variantutils.PosteriorProbabilitiesUtils;
+import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
-import org.broadinstitute.hellbender.utils.locusiterator.LocusIteratorByState;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Code for estimating the reference confidence
@@ -36,10 +34,13 @@ import java.util.*;
  * well-determined REF/REF diploid genotype.
  *
  */
-public final class ReferenceConfidenceModel {
+public class ReferenceConfidenceModel {
 
     private final SampleList samples;
     private final int indelInformativeDepthIndelSize;
+    private final int numRefSamplesForPrior;
+
+    private final PosteriorProbabilitiesUtils.PosteriorProbabilitiesOptions options;
 
     /**
      * Surrogate quality score for no base calls.
@@ -90,6 +91,15 @@ public final class ReferenceConfidenceModel {
     private static final int IDX_HOM_REF = 0;
 
     /**
+     * Options related to posterior probability calcs
+     */
+    private static final boolean useInputSamplesAlleleCounts = false;  //by definition ref-conf will be single-sample; inputs should get ignored but let's be explicit
+    private static final boolean useMLEAC = true;
+    private static final boolean ignoreInputSamplesForMissingVariants = true;
+    private static final boolean useFlatPriorsForIndels = false;
+
+
+    /**
      * Create a new ReferenceConfidenceModel
      *
      * @param samples the list of all samples we'll be considering with this model
@@ -98,7 +108,8 @@ public final class ReferenceConfidenceModel {
      */
     public ReferenceConfidenceModel(final SampleList samples,
                                     final SAMFileHeader header,
-                                    final int indelInformativeDepthIndelSize) {
+                                    final int indelInformativeDepthIndelSize,
+                                    final int numRefForPrior) {
         Utils.nonNull(samples, "samples cannot be null");
         Utils.validateArg( samples.numberOfSamples() > 0, "samples cannot be empty");
         Utils.nonNull(header, "header cannot be empty");
@@ -107,6 +118,10 @@ public final class ReferenceConfidenceModel {
 
         this.samples = samples;
         this.indelInformativeDepthIndelSize = indelInformativeDepthIndelSize;
+        this.numRefSamplesForPrior = numRefForPrior;
+        this.options = new PosteriorProbabilitiesUtils.PosteriorProbabilitiesOptions(HomoSapiensConstants.SNP_HETEROZYGOSITY,
+                HomoSapiensConstants.INDEL_HETEROZYGOSITY, useInputSamplesAlleleCounts, useMLEAC, ignoreInputSamplesForMissingVariants,
+                useFlatPriorsForIndels);
     }
 
     /**
@@ -117,6 +132,17 @@ public final class ReferenceConfidenceModel {
         final Set<VCFHeaderLine> headerLines = new LinkedHashSet<>();
         headerLines.add(new VCFSimpleHeaderLine(GATKVCFConstants.SYMBOLIC_ALLELE_DEFINITION_HEADER_TAG, GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE_NAME, "Represents any possible alternative allele at this location"));
         return headerLines;
+    }
+
+    public List<VariantContext> calculateRefConfidence(final Haplotype refHaplotype,
+                                                       final Collection<Haplotype> calledHaplotypes,
+                                                       final SimpleInterval paddedReferenceLoc,
+                                                       final AssemblyRegion activeRegion,
+                                                       final ReadLikelihoods<Haplotype> readLikelihoods,
+                                                       final PloidyModel ploidyModel,
+                                                       final List<VariantContext> variantCalls) {
+        return calculateRefConfidence(refHaplotype, calledHaplotypes, paddedReferenceLoc, activeRegion, readLikelihoods,
+                ploidyModel, variantCalls, false, Collections.emptyList());
     }
 
     /**
@@ -146,7 +172,9 @@ public final class ReferenceConfidenceModel {
                                                        final AssemblyRegion activeRegion,
                                                        final ReadLikelihoods<Haplotype> readLikelihoods,
                                                        final PloidyModel ploidyModel,
-                                                       final List<VariantContext> variantCalls) {
+                                                       final List<VariantContext> variantCalls,
+                                                       final boolean applyPriors,
+                                                       final List<VariantContext> VCpriors) {
         Utils.nonNull(refHaplotype, "refHaplotype cannot be null");
         Utils.nonNull(calledHaplotypes, "calledHaplotypes cannot be null");
         Utils.validateArg(calledHaplotypes.contains(refHaplotype), "calledHaplotypes must contain the refHaplotype");
@@ -159,7 +187,7 @@ public final class ReferenceConfidenceModel {
         final int ploidy = ploidyModel.samplePloidy(0); // the first sample = the only sample in reference-confidence mode.
 
         final SimpleInterval refSpan = activeRegion.getSpan();
-        final List<ReadPileup> refPileups = getPileupsOverReference(refHaplotype, calledHaplotypes, paddedReferenceLoc, activeRegion, refSpan, readLikelihoods);
+        final List<ReadPileup> refPileups = AssemblyBasedCallerUtils.getPileupsOverReference(activeRegion.getHeader(), refSpan, readLikelihoods, samples);
         final byte[] ref = refHaplotype.getBases();
         final List<VariantContext> results = new ArrayList<>(refSpan.size());
         final String sampleName = readLikelihoods.getSample(0);
@@ -169,29 +197,39 @@ public final class ReferenceConfidenceModel {
             final Locatable curPos = pileup.getLocation();
             final int offset = curPos.getStart() - refSpan.getStart();
 
-            final VariantContext overlappingSite = getOverlappingVariantContext(curPos, variantCalls);
+            final VariantContext overlappingSite = GATKVariantContextUtils.getOverlappingVariantContext(curPos, variantCalls);
+            final List<VariantContext> currentPriors = getMatchingPriors(curPos, overlappingSite, VCpriors);
             if ( overlappingSite != null && overlappingSite.getStart() == curPos.getStart() ) {
-                results.add(overlappingSite);
+                if (applyPriors) {
+                    results.add(PosteriorProbabilitiesUtils.calculatePosteriorProbs(overlappingSite, currentPriors,
+                            numRefSamplesForPrior, options));
+                }
+                else {
+                    results.add(overlappingSite);
+                }
             } else {
                 // otherwise emit a reference confidence variant context
-                results.add(makeReferenceConfidenceVariantContext(ploidy, ref, sampleName, globalRefOffset, pileup, curPos, offset));
+                results.add(makeReferenceConfidenceVariantContext(ploidy, ref, sampleName, globalRefOffset, pileup, curPos, offset, applyPriors, currentPriors));
             }
         }
 
         return results;
     }
 
-    private VariantContext makeReferenceConfidenceVariantContext(final int ploidy,
+
+   public VariantContext makeReferenceConfidenceVariantContext(final int ploidy,
                                                                  final byte[] ref,
                                                                  final String sampleName,
                                                                  final int globalRefOffset,
                                                                  final ReadPileup pileup,
                                                                  final Locatable curPos,
-                                                                 final int offset) {
+                                                                 final int offset,
+                                                                 final boolean applyPriors,
+                                                                 final List<VariantContext> VCpriors) {
         // Assume infinite population on a single sample.
         final int refOffset = offset + globalRefOffset;
         final byte refBase = ref[refOffset];
-        final RefVsAnyResult homRefCalc = calcGenotypeLikelihoodsOfRefVsAny(ploidy, pileup, refBase, BASE_QUAL_THRESHOLD, null);
+        final ReferenceConfidenceResult homRefCalc = calcGenotypeLikelihoodsOfRefVsAny(ploidy, pileup, refBase, BASE_QUAL_THRESHOLD, null, true);
 
         final Allele refAllele = Allele.create(refBase, true);
         final List<Allele> refSiteAlleles = Arrays.asList(refAllele, Allele.NON_REF_ALLELE);
@@ -200,6 +238,20 @@ public final class ReferenceConfidenceModel {
         gb.AD(homRefCalc.getAD());
         gb.DP(homRefCalc.getDP());
 
+        doIndelRefConfCalc(ploidy, ref, pileup, refOffset, homRefCalc);
+
+       addGenotypeData(homRefCalc, gb);
+        if(!applyPriors) {
+            return vcb.genotypes(gb.make()).make();
+        }
+        else {
+            return PosteriorProbabilitiesUtils.calculatePosteriorProbs(vcb.genotypes(gb.make()).make(), VCpriors, numRefSamplesForPrior, options);
+            //TODO FIXME: after new-qual refactoring, these should be static calls to AF calculator
+        }
+    }
+
+    public void doIndelRefConfCalc(final int ploidy, final byte[] ref, final ReadPileup pileup, final int refOffset, final ReferenceConfidenceResult refResult) {
+        final RefVsAnyResult homRefCalc = (RefVsAnyResult)refResult;
         // genotype likelihood calculation
         final GenotypeLikelihoods snpGLs = GenotypeLikelihoods.fromLog10Likelihoods(homRefCalc.getGenotypeLikelihoodsCappedByHomRefLikelihood());
         final int nIndelInformativeReads = calcNIndelInformativeReads(pileup, refOffset, ref, indelInformativeDepthIndelSize);
@@ -213,12 +265,13 @@ public final class ReferenceConfidenceModel {
         // as our GLs for the site.
         final GenotypeLikelihoods leastConfidenceGLs = getGLwithWorstGQ(indelGLs, snpGLs);
 
-        final int[] leastConfidenceGLsAsPLs = leastConfidenceGLs.getAsPLs();
-        gb.GQ(GATKVariantContextUtils.calculateGQFromPLs(leastConfidenceGLsAsPLs));
-        gb.PL(leastConfidenceGLsAsPLs);
+        homRefCalc.finalPhredScaledGenotypeLikelihoods = leastConfidenceGLs.getAsPLs();
+    }
 
-        vcb.genotypes(gb.make());
-        return vcb.make();
+    public void addGenotypeData(final ReferenceConfidenceResult result, final GenotypeBuilder gb) {
+        final int[] pls = ((RefVsAnyResult)result).finalPhredScaledGenotypeLikelihoods;
+        gb.PL(pls);
+        gb.GQ(GATKVariantContextUtils.calculateGQFromPLs(pls));
     }
 
     /**
@@ -295,11 +348,12 @@ public final class ReferenceConfidenceModel {
      * @param hqSoftClips running average data structure (can be null) to collect information about the number of high quality soft clips
      * @return a RefVsAnyResult genotype call.
      */
-    public RefVsAnyResult calcGenotypeLikelihoodsOfRefVsAny(final int ploidy,
+    public ReferenceConfidenceResult calcGenotypeLikelihoodsOfRefVsAny(final int ploidy,
                                                         final ReadPileup pileup,
                                                         final byte refBase,
                                                         final byte minBaseQual,
-                                                        final MathUtils.RunningAverage hqSoftClips) {
+                                                        final MathUtils.RunningAverage hqSoftClips,
+                                                            final boolean readsWereRealigned) {
 
         final int likelihoodCount = ploidy + 1;
         final double log10Ploidy = MathUtils.log10(ploidy);
@@ -312,103 +366,71 @@ public final class ReferenceConfidenceModel {
                 continue;
             }
             readCount++;
-            applyPileupElementRefVsNonRefLikelihoodAndCount(refBase, likelihoodCount, log10Ploidy, result, p, qual, hqSoftClips);
+            applyPileupElementRefVsNonRefLikelihoodAndCount(refBase, likelihoodCount, log10Ploidy, result, p, qual, hqSoftClips, readsWereRealigned);
         }
         final double denominator = readCount * log10Ploidy;
         for (int i = 0; i < likelihoodCount; i++) {
-            result.addGenotypeLikelihood(i, -denominator);
+            result.genotypeLikelihoods[i] -= denominator;
         }
         return result;
     }
 
-    private void applyPileupElementRefVsNonRefLikelihoodAndCount(final byte refBase, final int likelihoodCount, final double log10Ploidy, final RefVsAnyResult result, final PileupElement element, final byte qual, final MathUtils.RunningAverage hqSoftClips) {
-        final boolean isAlt = element.getBase() != refBase || element.isDeletion() || element.isBeforeDeletionStart()
-                || element.isAfterDeletionEnd() || element.isBeforeInsertion() || element.isAfterInsertion() || element.isNextToSoftClip();
+    private void applyPileupElementRefVsNonRefLikelihoodAndCount(final byte refBase, final int likelihoodCount, final double log10Ploidy, final RefVsAnyResult result, final PileupElement element, final byte qual, final MathUtils.RunningAverage hqSoftClips, final boolean readsWereRealigned) {
+        final boolean isAlt = readsWereRealigned ? isAltAfterAssembly(element, refBase) : isAltBeforeAssembly(element, refBase);
         final double referenceLikelihood;
         final double nonRefLikelihood;
         if (isAlt) {
             nonRefLikelihood = QualityUtils.qualToProbLog10(qual);
             referenceLikelihood = QualityUtils.qualToErrorProbLog10(qual) + MathUtils.LOG10_ONE_THIRD;
-            result.incrementNonRefAD(1);
+            result.nonRefDepth++;
         } else {
             referenceLikelihood = QualityUtils.qualToProbLog10(qual);
             nonRefLikelihood = QualityUtils.qualToErrorProbLog10(qual) + MathUtils.LOG10_ONE_THIRD;
-            result.incrementRefAD(1);
+            result.refDepth++;
         }
         // Homozygous likelihoods don't need the logSum trick.
-        result.addGenotypeLikelihood(0, referenceLikelihood + log10Ploidy);
-        result.addGenotypeLikelihood(likelihoodCount - 1, nonRefLikelihood + log10Ploidy);
+        result.genotypeLikelihoods[0] += referenceLikelihood + log10Ploidy;
+        result.genotypeLikelihoods[likelihoodCount - 1] += nonRefLikelihood + log10Ploidy;
         // Heterozygous likelihoods need the logSum trick:
         for (int i = 1, j = likelihoodCount - 2; i < likelihoodCount - 1; i++, j--) {
-            result.addGenotypeLikelihood(i,
+            result.genotypeLikelihoods[i] +=
                     MathUtils.approximateLog10SumLog10(
                             referenceLikelihood + MathUtils.log10(j),
-                            nonRefLikelihood + MathUtils.log10(i)));
+                            nonRefLikelihood + MathUtils.log10(i));
         }
         if (isAlt && hqSoftClips != null && element.isNextToSoftClip()) {
             hqSoftClips.add(AlignmentUtils.calcNumHighQualitySoftClips(element.getRead(), HQ_BASE_QUALITY_SOFTCLIP_THRESHOLD));
         }
     }
 
-    /**
-     * Get a list of pileups that span the entire active region span, in order, one for each position
-     */
-    private List<ReadPileup> getPileupsOverReference(final Haplotype refHaplotype,
-                                                           final Collection<Haplotype> calledHaplotypes,
-                                                           final SimpleInterval paddedReferenceLoc,
-                                                           final AssemblyRegion activeRegion,
-                                                           final SimpleInterval activeRegionSpan,
-                                                           final ReadLikelihoods<Haplotype> readLikelihoods) {
-        Utils.validateArg(calledHaplotypes.contains(refHaplotype), "calledHaplotypes must contain the refHaplotype");
-        Utils.validateArg(readLikelihoods.numberOfSamples() == 1, () -> "readLikelihoods must contain exactly one sample but it contained " + readLikelihoods.numberOfSamples());
-
-        final List<GATKRead> reads = activeRegion.getReads();
-
-        final LocusIteratorByState libs = new LocusIteratorByState(reads.iterator(), LocusIteratorByState.NO_DOWNSAMPLING,
-                false, samples.asSetOfSamples(), activeRegion.getHeader(), true);
-
-        final int startPos = activeRegionSpan.getStart();
-        final List<ReadPileup> pileups = new ArrayList<>(activeRegionSpan.getEnd() - startPos);
-        AlignmentContext next = libs.advanceToLocus(startPos, true);
-        for ( int curPos = startPos; curPos <= activeRegionSpan.getEnd(); curPos++ ) {
-            if ( next != null && next.getLocation().getStart() == curPos ) {
-                pileups.add(next.getBasePileup());
-                next = libs.hasNext() ? libs.next() : null;
-            } else {
-                // no data, so we create empty pileups
-                pileups.add(new ReadPileup(new SimpleInterval(activeRegionSpan.getContig(), curPos, curPos)));
-            }
-        }
-
-        return pileups;
+    protected static boolean isAltBeforeAssembly(final PileupElement element, final byte refBase){
+        return element.getBase() != refBase || element.isDeletion() || element.isBeforeDeletionStart()
+                || element.isAfterDeletionEnd() || element.isBeforeInsertion() || element.isAfterInsertion() || element.isNextToSoftClip();
     }
 
+    protected static boolean isAltAfterAssembly(final PileupElement element, final byte refBase){
+        return element.getBase() != refBase || element.isDeletion(); //we shouldn't have soft clips after assembly
+    }
+
+
     /**
-     * Return the rightmost variant context in maybeOverlapping that overlaps curPos
-     *
-     * @param curPos non-null genome loc
-     * @param maybeOverlapping a collection of variant contexts that might overlap curPos
-     * @return a VariantContext, or null if none overlaps
+     * Note that we don't have to match alleles because the PosteriorProbabilitesUtils will take care of that
+     * @param curPos position of interest for genotyping
+     * @param call (may be null)
+     * @param priorList priors within the current ActiveRegion
+     * @return prior VCs representing the same variant position as call
      */
-    @VisibleForTesting
-    VariantContext getOverlappingVariantContext(final Locatable curPos, final Collection<VariantContext> maybeOverlapping) {
-        final SimpleInterval curPosSI = new SimpleInterval(curPos);
-        VariantContext overlaps = null;
-        for ( final VariantContext vc : maybeOverlapping ) {
-            if ( curPosSI.overlaps(vc) ) {
-                if ( overlaps == null || vc.getStart() > overlaps.getStart() ) {
-                    overlaps = vc;
-                }
-            }
-        }
-        return overlaps;
+    List<VariantContext> getMatchingPriors(final Locatable curPos, final VariantContext call, final List<VariantContext> priorList) {
+        final int position = call != null ? call.getStart() : curPos.getStart();
+        return priorList.stream().filter(vc -> position == vc.getStart()).collect(Collectors.toList());
     }
 
     /**
      * Compute the sum of mismatching base qualities for readBases aligned to refBases at readStart / refStart
      * assuming no insertions or deletions in the read w.r.t. the reference
      *
-     * @param read the read
+     * @param readBases non-null bases of the read
+     * @param readQuals non-null quals of the read
      * @param readStart the starting position of the read (i.e., that aligns it to a position in the reference)
      * @param refBases the reference bases
      * @param refStart the offset into refBases that aligns to the readStart position in readBases
@@ -416,24 +438,26 @@ public final class ReferenceConfidenceModel {
      * @return the sum of quality scores for readBases that mismatch their corresponding ref bases
      */
     @VisibleForTesting
-    int sumMismatchingQualities(final GATKRead read,
+    int sumMismatchingQualities(final byte[] readBases,
+                                final byte[] readQuals,
                                 final int readStart,
                                 final byte[] refBases,
                                 final int refStart,
                                 final int maxSum) {
-        final int n = Math.min(read.getLength() - readStart, refBases.length - refStart);
+        final int n = Math.min(readBases.length - readStart, refBases.length - refStart);
         int sum = 0;
 
         for ( int i = 0; i < n; i++ ) {
-            final byte readBase = read.getBase(readStart + i);
+            final byte readBase = readBases[readStart + i];
             final byte refBase  = refBases[refStart + i];
-            if ( readBase != refBase ) {
-                sum += read.getBaseQuality(readStart + i);
-                if ( sum > maxSum ){ // abort early
+            if ( !Nucleotide.intersect(readBase, refBase) && !(readBase == AlignmentUtils.GAP_CHARACTER)) {
+                sum += readQuals[readStart + i];
+                if ( sum > maxSum ) { // abort early
                     return sum;
                 }
             }
         }
+
         return sum;
     }
 
@@ -441,7 +465,7 @@ public final class ReferenceConfidenceModel {
      * Compute whether a read is informative to eliminate an indel of size <= maxIndelSize segregating at readStart/refStart
      *
      * @param read the read
-     * @param readStart the starting position of the read (i.e., that aligns it to a position in the reference)
+     * @param readStart the index with respect to @{param}refBases where the read starts
      * @param refBases the reference bases
      * @param refStart the offset into refBases that aligns to the readStart position in readBases
      * @param maxIndelSize the max indel size to consider for the read to be informative
@@ -458,17 +482,24 @@ public final class ReferenceConfidenceModel {
             return false;
         }
 
-        final int baselineMMSum = sumMismatchingQualities(read, readStart, refBases, refStart, Integer.MAX_VALUE);
+        // We are safe to use the faster no-copy versions of getBases and getBaseQualities here,
+        // since we're not modifying the returned arrays in any way. This makes a small difference
+        // in the HaplotypeCaller profile, since this method is a major hotspot.
+        final byte[] readBases = AlignmentUtils.getBasesAlignedOneToOne(read);  //calls getBasesNoCopy if CIGAR is all match
+        final byte[] readQuals = AlignmentUtils.getBaseQualsAlignedOneToOne(read);
+
+
+        final int baselineMMSum = sumMismatchingQualities(readBases, readQuals, readStart, refBases, refStart, Integer.MAX_VALUE);
 
         // consider each indel size up to max in term, checking if an indel that deletes either the ref bases (deletion
         // or read bases (insertion) would fit as well as the origin baseline sum of mismatching quality scores
         for ( int indelSize = 1; indelSize <= maxIndelSize; indelSize++ ) {
             // check insertions:
-            if (sumMismatchingQualities(read, readStart + indelSize, refBases, refStart, baselineMMSum) <= baselineMMSum) {
+            if (sumMismatchingQualities(readBases, readQuals, readStart + indelSize, refBases, refStart, baselineMMSum) <= baselineMMSum) {
                 return false;
             }
             // check deletions:
-            if (sumMismatchingQualities(read, readStart, refBases, refStart + indelSize, baselineMMSum) <= baselineMMSum) {
+            if (sumMismatchingQualities(readBases, readQuals, readStart, refBases, refStart + indelSize, baselineMMSum) <= baselineMMSum) {
                 return false;
             }
         }
@@ -480,7 +511,7 @@ public final class ReferenceConfidenceModel {
      * Calculate the number of indel informative reads at pileup
      *
      * @param pileup a pileup
-     * @param pileupOffsetIntoRef the position of the pileup in the reference
+     * @param pileupOffsetIntoRef index along the reference corresponding to the pileup
      * @param ref the ref bases
      * @param maxIndelSize maximum indel size to consider in the informativeness calculation
      * @return an integer >= 0
@@ -489,16 +520,14 @@ public final class ReferenceConfidenceModel {
     int calcNIndelInformativeReads(final ReadPileup pileup, final int pileupOffsetIntoRef, final byte[] ref, final int maxIndelSize) {
         int nInformative = 0;
         for ( final PileupElement p : pileup ) {
-            final GATKRead read = p.getRead();
-            final int offset = p.getOffset();
-
             // doesn't count as evidence
             if ( p.isBeforeDeletionStart() || p.isBeforeInsertion() || p.isDeletion() ) {
                 continue;
             }
 
-            // todo -- this code really should handle CIGARs directly instead of relying on the above tests
-            if ( isReadInformativeAboutIndelsOfSize(read, offset, ref, pileupOffsetIntoRef, maxIndelSize) ) {
+            final int offset = getCigarModifiedOffset(p);
+
+            if ( isReadInformativeAboutIndelsOfSize(p.getRead(), offset, ref, pileupOffsetIntoRef, maxIndelSize) ) {
                 nInformative++;
                 if( nInformative > MAX_N_INDEL_INFORMATIVE_READS ) {
                     return MAX_N_INDEL_INFORMATIVE_READS;
@@ -506,6 +535,25 @@ public final class ReferenceConfidenceModel {
             }
         }
         return nInformative;
+    }
+
+    /**
+     * Calculate the index of the current pileup position against the reference-aligned read
+     * This offset should be representative of the "IGV view" for the read where insertions are collapsed and deletions
+     * are padded so that we can easily count the mismatches against the reference
+     * @param p the PileupElement containing the offset as an index into the read base sequence
+     * @return the new reference-aligned index/offset
+     */
+    @VisibleForTesting
+    protected int getCigarModifiedOffset (final PileupElement p){
+        final GATKRead read = p.getRead();
+        int offset = (p.getCurrentCigarElement().getOperator().consumesReferenceBases() || p.getCurrentCigarElement().getOperator() == CigarOperator.S)? p.getOffsetInCurrentCigar() : 0;
+        for (final CigarElement elem : read.getCigar().getCigarElements().subList(0, p.getCurrentCigarOffset())) {
+            if (elem.getOperator().consumesReferenceBases() || elem.getOperator() == CigarOperator.S) {
+                offset += elem.getLength();
+            }
+        }
+        return offset;
     }
 
     /**

@@ -4,7 +4,7 @@ import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.tools.validation.CompareBaseQualities;
-import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -52,9 +52,9 @@ public final class BothStepsOfBQSRIntegrationTest extends CommandLineProgramTest
         args1.addInput(bamIn);
         args1.addOutput(recalOut);
         args1.addArgument("L", interval);
-        args1.addFileArgument("knownSites", new File(dbsnp_138_b37_20_21_vcf));
+        args1.addFileArgument("known-sites", new File(dbsnp_138_b37_20_21_vcf));
         args1.addReference(new File(b37_reference_20_21));
-        args1.addBooleanArgument("indelBQSR", !skipIndels);
+        args1.addBooleanArgument("indels", !skipIndels);
         new Main().instanceMain(makeCommandLineArgs(args1.getArgsList(), BaseRecalibrator.class.getSimpleName()));
         return recalOut;
     }

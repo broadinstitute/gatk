@@ -1,23 +1,35 @@
 package org.broadinstitute.hellbender.tools.spark.transforms.markduplicates;
 
+import com.esotericsoftware.kryo.DefaultSerializer;
+import com.esotericsoftware.kryo.serializers.FieldSerializer;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.*;
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.metrics.MetricsFile;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
-import org.broadinstitute.hellbender.engine.AuthHolder;
+import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.broadcast.Broadcast;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.metrics.MetricsUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.read.markduplicates.*;
+import org.broadinstitute.hellbender.utils.read.markduplicates.sparkrecords.*;
+import org.broadinstitute.hellbender.utils.spark.SparkUtils;
+import picard.sam.markduplicates.util.OpticalDuplicateFinder;
+import picard.sam.markduplicates.util.ReadEnds;
 import scala.Tuple2;
 
 import java.io.Serializable;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Utility classes and functions for Mark Duplicates.
@@ -26,76 +38,234 @@ public class MarkDuplicatesSparkUtils {
 
     // Used to set an attribute on the GATKRead marking this read as an optical duplicate.
     public static final String OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME = "OD";
+    // This comparator represents the tiebreaking for PairedEnds duplicate marking.
+    // We compare first on score, followed by unclipped start position (which is reversed here because of the expected ordering)
+    private static final Comparator<TransientFieldPhysicalLocation> PAIRED_ENDS_SCORE_COMPARATOR = Comparator.comparing(TransientFieldPhysicalLocation::getScore)
+            .thenComparing(TransientFieldPhysicalLocationComparator.INSTANCE.reversed());
+
+    /**
+     * Returns the library associated with the provided read's read group.
+     * Or the specified default if no library is found
+     *
+     * @param read read whose library to retrieve
+     * @param header SAM header containing read groups
+     * @return the library for the provided read's read group as a String,
+     *         or the default value if the read has no read group.
+     */
+    public static String getLibraryForRead(final GATKRead read, final SAMFileHeader header, String defaultLibrary) {
+        final SAMReadGroupRecord readGroup = ReadUtils.getSAMReadGroupRecord(read, header);
+        if (readGroup != null) {
+            String library = readGroup.getLibrary();
+            return library==null? defaultLibrary : library;
+        } else {
+            if (read.getReadGroup() == null) {
+                throw new UserException.ReadMissingReadGroup(read);
+            } else {
+                throw new UserException.HeaderMissingReadGroup(read);
+            }
+        }
+    }
+
+    /**
+     * Wrapper object used for storing an object and some type of index information.
+     *
+     * MarkDuplicates uses this object remember which partition of the original bam each read came from in order to
+     * efficiently zip their duplicate marked data back into the correct place without shuffling the original bam.
+     */
+    @DefaultSerializer(FieldSerializer.class)
+    public static class IndexPair<T>{
+        private final T value;
+        private final int index;
+
+        public T getValue() {
+            return value;
+        }
+
+        public int getIndex() {
+            return index;
+        }
+
+        @VisibleForTesting
+        IndexPair(T value, int index) {
+            this.value = value;
+            this.index = index;
+        }
+
+        @Override
+        public String toString() {
+            return "indexpair["+index+","+value.toString()+"]";
+        }
+    }
 
     /**
      * (0) filter: remove unpaired reads and reads with an unmapped mate.
      * (1) keyReadsByName: label each read with its read group and read name.
      * (2) GroupByKey: group together reads with the same group and name.
-     * (3) keyPairedEndsWithAlignmentInfo:
-     *   (a) Sort each group of reads (see GATKOrder below).
-     *   (b) Pair consecutive reads into PairedEnds. In most cases there will only be two reads
-     *       with the same name. TODO: explain why there might be more.
+     * (3) keyMarkDuplicatesSparkRecords with alignment info:
+     *   (a) Generate a fragment or emptyFragment from each read if it's unpaired.
+     *   (b) Pair grouped reads into MarkDuplicatesSparkRecord. In most cases there will only be two reads
+     *       with the same name. Mapped reads missing mates will be emitted as fragments, more than two reads will cause an exception.
      *   (c) Label each read with alignment information: Library, reference index,
      *       stranded unclipped start and reverse strand.
-     *   (d) Leftover reads are emitted, unmodified, as an unpaired end.
-     * (4) GroupByKey: Group PairedEnds that share alignment information. These pairs
+     *   (d) Unmapped Pairs, Templates of entirely non-primary reads, etc are passed through as unmarked reads
+     * (4) GroupByKey: Group MarkDuplicatesSparkRecord that share alignment information. These pairs
      *     are duplicates of each other.
      * (5) markDuplicatePairs:
      *   (a) For each group created by (4), sort the pairs by score and mark all but the
      *       highest scoring as duplicates.
      *   (b) Determine which duplicates are optical duplicates and increase the overall count.
      */
-    static JavaRDD<GATKRead> transformReads(final SAMFileHeader header, final MarkDuplicatesScoringStrategy scoringStrategy, final OpticalDuplicateFinder finder, final JavaRDD<GATKRead> reads, final int numReducers) {
+    static JavaPairRDD<IndexPair<String>, Integer> transformToDuplicateNames(final SAMFileHeader header, final MarkDuplicatesScoringStrategy scoringStrategy, final OpticalDuplicateFinder finder, final JavaRDD<GATKRead>  reads, final int numReducers, final boolean markOpticalDups) {
+        // we treat these specially and don't mark them as duplicates
+        final JavaRDD<GATKRead> mappedReads = reads.filter(ReadFilterLibrary.MAPPED::test);
 
-        JavaPairRDD<String, Iterable<GATKRead>> keyedReads;
-        if (SAMFileHeader.SortOrder.queryname.equals(header.getSortOrder())) {
-            // reads are already sorted by name, so perform grouping within the partition (no shuffle)
-            keyedReads = spanReadsByKey(header, reads);
-        } else {
-            // sort by group and name (incurs a shuffle)
-            JavaPairRDD<String, GATKRead> keyReadPairs = reads.mapToPair(read -> new Tuple2<>(ReadsKey.keyForRead(header, read), read));
-            keyedReads = keyReadPairs.groupByKey(numReducers);
-        }
+        final JavaPairRDD<String, Iterable<IndexPair<GATKRead>>> keyedReads = getReadsGroupedByName(header, mappedReads, numReducers);
 
-        JavaPairRDD<String, Iterable<PairedEnds>> keyedPairs = keyedReads.flatMapToPair(keyedRead -> {
-            List<Tuple2<String, PairedEnds>> out = Lists.newArrayList();
-            // Write each read out as a pair with only the first slot filled
-            for (GATKRead read : keyedRead._2()) {
-                read.setIsDuplicate(false);
-                final PairedEnds pair = PairedEnds.of(read);
-                out.add(new Tuple2<>(pair.keyForFragment(header), pair));
+        final Broadcast<Map<String, Short>> headerReadGroupIndexMap = JavaSparkContext.fromSparkContext(reads.context()).broadcast( getHeaderReadGroupIndexMap(header));
+        final Broadcast<Map<String, Byte>> libraryIndex = JavaSparkContext.fromSparkContext(reads.context()).broadcast( constructLibraryIndex(header));
+
+        // Place all the reads into a single RDD of MarkDuplicatesSparkRecord objects
+        final JavaPairRDD<ReadsKey, MarkDuplicatesSparkRecord> pairedEnds = keyedReads.flatMapToPair(keyedRead -> {
+            final List<Tuple2<ReadsKey, MarkDuplicatesSparkRecord>> out = Lists.newArrayList();
+            final IndexPair<?>[] hadNonPrimaryRead = {null};
+
+            final List<IndexPair<GATKRead>> primaryReads = Utils.stream(keyedRead._2())
+                    ////// Making The Fragments //////
+                    // Make a PairedEnd object with no second read for each fragment (and an empty one for each paired read)
+                    .peek(readWithIndex -> {
+                        final GATKRead read = readWithIndex.getValue();
+                        if (!(read.isSecondaryAlignment()||read.isSupplementaryAlignment())) {
+                            PairedEnds fragment = (ReadUtils.readHasMappedMate(read)) ?
+                                    MarkDuplicatesSparkRecord.newEmptyFragment(read, header, libraryIndex.getValue()) :
+                                    MarkDuplicatesSparkRecord.newFragment(read, header, readWithIndex.getIndex(), scoringStrategy, libraryIndex.getValue());
+
+                            out.add(new Tuple2<>(fragment.key(), fragment));
+                        } else {
+                            hadNonPrimaryRead[0] = readWithIndex;
+                        }
+                    })
+                    .filter(indexPair -> !(indexPair.getValue().isSecondaryAlignment()||indexPair.getValue().isSupplementaryAlignment()))
+                    .collect(Collectors.toList());
+
+            // Catching the case where there are only secondary and supplementary reads in the readname group
+            if (primaryReads.isEmpty()) {
+                final MarkDuplicatesSparkRecord pass = MarkDuplicatesSparkRecord.getPassthrough((GATKRead)hadNonPrimaryRead[0].getValue(), hadNonPrimaryRead[0].getIndex());
+                out.add(new Tuple2<>(pass.key(), pass));
+                return out.iterator();
+
+                // Mark duplicates cant properly handle templates with more than two reads in a pair
+            } else if (primaryReads.size()>2) {
+                throw new UserException.UnimplementedFeature(String.format("MarkDuplicatesSpark only supports singleton fragments and pairs. We found the following group with >2 primary reads: ( %d number of reads)." +
+                        " \n%s.", primaryReads.size(), primaryReads.stream().map(Object::toString).collect(Collectors.joining("\n"))));
             }
+
+            ////// Making The Paired Reads //////
             // Write each paired read with a mapped mate as a pair
-            final List<GATKRead> sorted = Lists.newArrayList(Iterables.filter(keyedRead._2(), read -> ReadUtils.readHasMappedMate(read)));
-            sorted.sort(new GATKOrder(header));
-            PairedEnds pair = null;
-            //Records are sorted, we iterate over them and pair them up.
-            for (final GATKRead record : sorted) {
-                if (pair == null) {                                //first in pair
-                    pair = PairedEnds.of(record);
-                } else {                                           //second in pair
-                    pair.and(record);
-                    out.add(new Tuple2<>(pair.key(header), pair));
-                    pair = null;                                   //back to first
-                }
-            }
-            if (pair != null) {                                    //left over read
-                out.add(new Tuple2<>(pair.key(header), pair));
-            }
-            return out.iterator();
-        }).groupByKey(numReducers);
+            final List<IndexPair<GATKRead>> mappedPair = primaryReads.stream()
+                    .filter(readWithIndex -> ReadUtils.readHasMappedMate(readWithIndex.getValue()))
+                    .collect(Collectors.toList());
 
-        return markPairedEnds(keyedPairs, scoringStrategy, finder, header);
+            // If there are two primary reads in the group pass them as a pair
+            if (mappedPair.size()==2) {
+                final GATKRead firstRead = mappedPair.get(0).getValue();
+                final IndexPair<GATKRead> secondRead = mappedPair.get(1);
+                final Pair pair = MarkDuplicatesSparkRecord.newPair(firstRead, secondRead.getValue(), header, secondRead.getIndex(), scoringStrategy, libraryIndex.getValue());
+                // Validate and add the read group to the pair
+                final Short readGroup = headerReadGroupIndexMap.getValue().get(firstRead.getReadGroup());
+                if (readGroup != null) {
+                    pair.setReadGroup(readGroup);
+                } else {
+                    throw (firstRead.getReadGroup()==null) ?
+                            new UserException.ReadMissingReadGroup(firstRead) :
+                            new UserException.HeaderMissingReadGroup(firstRead);
+                }
+                out.add(new Tuple2<>(pair.key(), pair));
+
+                // If there is one paired read in the template this probably means the bam is missing its mate, don't duplicate mark it
+            } else if (mappedPair.size()==1) {
+                final IndexPair<GATKRead> firstRead = mappedPair.get(0);
+                final MarkDuplicatesSparkRecord pass = MarkDuplicatesSparkRecord.getPassthrough(firstRead.getValue(), firstRead.getIndex());
+                out.add(new Tuple2<>(pass.key(), pass));
+            }
+            // If mappedPair is empty here, it probably means that we had a fragment with an unmapped mate, which has already been built
+            // and added to out. So we just pass through and return.
+
+            return out.iterator();
+        });
+
+        final JavaPairRDD<ReadsKey, Iterable<MarkDuplicatesSparkRecord>> keyedPairs = pairedEnds.groupByKey(); //TODO evaluate replacing this with a smart aggregate by key.
+
+        return markDuplicateRecords(keyedPairs, finder, markOpticalDups);
     }
 
-    static JavaPairRDD<String, Iterable<GATKRead>> spanReadsByKey(final SAMFileHeader header, final JavaRDD<GATKRead> reads) {
-        JavaPairRDD<String, GATKRead> nameReadPairs = reads.mapToPair(read -> new Tuple2<>(read.getName(), read));
-        return spanByKey(nameReadPairs).flatMapToPair(namedRead -> {
+    /**
+     * Method which generates a map of the libraries found tagged in readgroups from the header so they can be serialized as indexes to save space
+     */
+    public static Map<String, Byte> constructLibraryIndex(final SAMFileHeader header) {
+        final List<String> discoveredLibraries = header.getReadGroups().stream()
+                .map(r -> { String library = r.getLibrary();
+                            return library==null? LibraryIdGenerator.UNKNOWN_LIBRARY : library;} )
+                .distinct()
+                .collect(Collectors.toList());
+        if (discoveredLibraries.size() > 255) {
+            throw new GATKException("Detected too many read libraries among read groups header, currently MarkDuplicatesSpark only supports up to 256 unique readgroup libraries but " + discoveredLibraries.size() + " were found");
+        }
+        final Iterator<Byte> iterator = IntStream.range(0, discoveredLibraries.size()).boxed().map(Integer::byteValue).iterator();
+        return Maps.uniqueIndex(iterator, idx -> discoveredLibraries.get(idx));
+    }
+
+    /**
+     * Method which generates a map of the readgroups from the header so they can be serialized as indexes
+     */
+    private static Map<String, Short> getHeaderReadGroupIndexMap(final SAMFileHeader header) {
+        final List<SAMReadGroupRecord> readGroups = header.getReadGroups();
+        if (readGroups.size() > 65535) {
+            throw new GATKException("Detected too many read groups in the header, currently MarkDuplicatesSpark only supports up to 65535 unique readgroup IDs but " + readGroups.size() + " were found");
+        }
+        if (readGroups.size()==0) {
+            throw new UserException.BadInput("Sam file header missing Read Group fields. MarkDuplicatesSpark currently requires reads to be labeled with read group tags, please add read groups tags to your reads");
+        }
+        final Iterator<Short> iterator = IntStream.range(0, readGroups.size()).boxed().map(Integer::shortValue).iterator();
+        return Maps.uniqueIndex(iterator, idx -> readGroups.get(idx).getId() );
+    }
+
+    /**
+     * Method that ensures the reads are grouped together keyed by their readname groups with indexpairs represeting the source partition.
+     * If the bam is querygrouped/queryname sorted then it calls spanReadsByKey to perform the mapping operation
+     * If the bam is sorted in some other way it performs a groupBy operation on the key
+     */
+    private static JavaPairRDD<String, Iterable<IndexPair<GATKRead>>> getReadsGroupedByName(SAMFileHeader header, JavaRDD<GATKRead> reads, int numReducers) {
+
+        final JavaPairRDD<String, Iterable<IndexPair<GATKRead>>> keyedReads;
+        final JavaRDD<IndexPair<GATKRead>> indexedReads = reads.mapPartitionsWithIndex(
+                (index, iter) -> Utils.stream(iter).map(read -> {
+                    if (!(read.getClass() == SAMRecordToGATKReadAdapter.class)) {
+                        throw new GATKException(String.format("MarkDuplicatesSpark currently only supports SAMRecords as an underlying reads data source class, %s found instead",
+                                read.getClass().toString()));
+                    }
+                    return new IndexPair<>(read, index);}).iterator(), false);
+        if (ReadUtils.isReadNameGroupedBam(header)) {
+            // reads are already grouped by name, so perform grouping within the partition (no shuffle)
+            keyedReads = spanReadsByKey(indexedReads);
+        } else {
+            // sort by group and name (incurs a shuffle)
+            throw new GATKException(String.format("MarkDuplicatesSparkUtils.mark() requires input reads to be queryname sorted or querygrouped, yet the header indicated it was in %s order instead", header.getSortOrder()));
+        }
+        return keyedReads;
+    }
+
+    /**
+     * Method which takes an RDD of reads that is guaranteed to have every readname group placed together on the same
+     * partition and maps those so a JavaPairRDD with the readname as the key.
+     */
+    private static JavaPairRDD<String, Iterable<IndexPair<GATKRead>>> spanReadsByKey(final JavaRDD<IndexPair<GATKRead>> reads) {
+        JavaPairRDD<String, IndexPair<GATKRead>> nameReadPairs = reads.mapToPair(read -> new Tuple2<>(read.getValue().getName(), read));
+        return SparkUtils.spanByKey(nameReadPairs).flatMapToPair(namedRead -> {
             // for each name, separate reads by key (group name)
-            List<Tuple2<String, Iterable<GATKRead>>> out = Lists.newArrayList();
-            ListMultimap<String, GATKRead> multi = LinkedListMultimap.create();
-            for (GATKRead read : namedRead._2()) {
-                multi.put(ReadsKey.keyForRead(header, read), read);
+            List<Tuple2<String, Iterable<IndexPair<GATKRead>>>> out = Lists.newArrayList();
+            ListMultimap<String, IndexPair<GATKRead>> multi = LinkedListMultimap.create();
+            for (IndexPair<GATKRead> read : namedRead._2()) {
+                multi.put(ReadsKey.keyForRead(read.getValue()), read);
             }
             for (String key : multi.keySet()) {
                 // list from Multimap is not serializable by Kryo, so put in a new array list
@@ -105,213 +275,160 @@ public class MarkDuplicatesSparkUtils {
         });
     }
 
-    /**
-     * Like <code>groupByKey</code>, but assumes that values are already sorted by key, so no shuffle is needed,
-     * which is much faster.
-     * @param rdd the input RDD
-     * @param <K> type of keys
-     * @param <V> type of values
-     * @return an RDD where each the values for each key are grouped into an iterable collection
-     */
-    static <K, V> JavaPairRDD<K, Iterable<V>> spanByKey(JavaPairRDD<K, V> rdd) {
-        return rdd.mapPartitionsToPair(iter -> spanningIterator(iter));
-    }
 
     /**
-     * An iterator that groups values having the same key into iterable collections.
-     * @param iterator an iterator over key-value pairs
-     * @param <K> type of keys
-     * @param <V> type of values
-     * @return an iterator over pairs of keys and grouped values
+     * Primary landing point for MarkDuplicateSparkRecords:
+     *  - Handles separating out hashed keys into into groups by start position/readgroup
+     *  - Further separates out MarkDuplicatesSparkRecord by their record objects
+     *  - Farms out to methods which handles each group
+     *  - Collects the results and returns an iterator
      */
-    static <K, V> Iterator<Tuple2<K, Iterable<V>>> spanningIterator(Iterator<Tuple2<K, V>> iterator) {
-        final PeekingIterator<Tuple2<K, V>> iter = Iterators.peekingIterator(iterator);
-        return new AbstractIterator<Tuple2<K, Iterable<V>>>() {
-            @Override
-            protected Tuple2<K, Iterable<V>> computeNext() {
-                K key = null;
-                List<V> group = Lists.newArrayList();
-                while (iter.hasNext()) {
-                    if (key == null) {
-                        Tuple2<K, V> next = iter.next();
-                        key = next._1();
-                        V value = next._2();
-                        group.add(value);
-                        continue;
-                    }
-                    K nextKey = iter.peek()._1(); // don't advance...
-                    if (nextKey.equals(key)) {
-                        group.add(iter.next()._2()); // .. unless the keys match
-                    } else {
-                        return new Tuple2<>(key, group);
-                    }
-                }
-                if (key != null) {
-                    return new Tuple2<>(key, group);
-                }
-                return endOfData();
-            }
-        };
-    }
+    @SuppressWarnings("unchecked")
+    private static JavaPairRDD<IndexPair<String>, Integer> markDuplicateRecords(final JavaPairRDD<ReadsKey, Iterable<MarkDuplicatesSparkRecord>> keyedPairs,
+                                                                                final OpticalDuplicateFinder finder, final boolean markOpticalDups) {
+        return keyedPairs.flatMapToPair(keyedPair -> {
+            Iterable<MarkDuplicatesSparkRecord> pairGroups = keyedPair._2();
 
-    static JavaRDD<GATKRead> markPairedEnds(final JavaPairRDD<String, Iterable<PairedEnds>> keyedPairs,
-                                            final MarkDuplicatesScoringStrategy scoringStrategy,
-                                            final OpticalDuplicateFinder finder, final SAMFileHeader header) {
-        return keyedPairs.flatMap(keyedPair -> {
-            Iterable<PairedEnds> pairedEnds = keyedPair._2();
-            final ImmutableListMultimap<Boolean, PairedEnds> paired = Multimaps.index(pairedEnds, pair -> pair.second() != null);
+            final List<Tuple2<IndexPair<String>, Integer>> nonDuplicates = Lists.newArrayList();
+            final Map<MarkDuplicatesSparkRecord.Type, List<MarkDuplicatesSparkRecord>> stratifiedByType = splitByType(pairGroups);
 
             // Each key corresponds to either fragments or paired ends, not a mixture of both.
+            final List<MarkDuplicatesSparkRecord> emptyFragments = stratifiedByType.get(MarkDuplicatesSparkRecord.Type.EMPTY_FRAGMENT);
+            final List<MarkDuplicatesSparkRecord> fragments = stratifiedByType.get(MarkDuplicatesSparkRecord.Type.FRAGMENT);
+            final List<Pair> pairs = (List<Pair>)(List)stratifiedByType.get(MarkDuplicatesSparkRecord.Type.PAIR);
+            final List<MarkDuplicatesSparkRecord> passthroughs = stratifiedByType.get(MarkDuplicatesSparkRecord.Type.PASSTHROUGH);
 
-            if (ReadsKey.isFragment(keyedPair._1())) { // fragments
-                return handleFragments(pairedEnds, scoringStrategy, header).iterator();
+            //empty MarkDuplicatesSparkRecord signify that a pair has a mate somewhere else
+            // If there are any non-fragment placeholders at this site, mark everything as duplicates, otherwise compute the best score
+            if (Utils.isNonEmpty(fragments) && !Utils.isNonEmpty(emptyFragments)) {
+                final Tuple2<IndexPair<String>, Integer> bestFragment = handleFragments(fragments, finder);
+                nonDuplicates.add(bestFragment);
             }
 
-            List<GATKRead> out = Lists.newArrayList();
-
-            // As in Picard, unpaired ends left alone.
-            for (final PairedEnds pair : paired.get(false)) {
-                out.add(pair.first());
+            if (Utils.isNonEmpty(pairs)) {
+                nonDuplicates.addAll(handlePairs(pairs, finder, markOpticalDups));
             }
 
-            // Order by score using ReadCoordinateComparator for tie-breaking.
-            Comparator<PairedEnds> pairedEndsComparator =
-                    Comparator.<PairedEnds, Integer>comparing(pe -> pe.score(scoringStrategy)).reversed()
-                            .thenComparing((o1, o2) -> new ReadCoordinateComparator(header).compare(o1.first(), o2.first()));
-            final List <PairedEnds> scored = paired.get(true).stream().sorted(pairedEndsComparator).collect(Collectors.toList());
-
-            final PairedEnds best = Iterables.getFirst(scored, null);
-            if (best == null) {
-                return out.iterator();
+            if (Utils.isNonEmpty(passthroughs)) {
+                nonDuplicates.addAll(handlePassthroughs(passthroughs));
             }
 
-            // Mark everyone who's not best as a duplicate
-            for (final PairedEnds pair : Iterables.skip(scored, 1)) {
-                pair.first().setIsDuplicate(true);
-                pair.second().setIsDuplicate(true);
-            }
-
-            // Now, add location information to the paired ends
-            for (final PairedEnds pair : scored) {
-                // Both elements in the pair have the same name
-                finder.addLocationInformation(pair.first().getName(), pair);
-            }
-
-            // This must happen last, as findOpticalDuplicates mutates the list.
-            // Split by orientation and count duplicates in each group separately.
-            final ImmutableListMultimap<Byte, PairedEnds> groupByOrientation = Multimaps.index(scored, pe -> pe.getOrientationForOpticalDuplicates());
-            final int numOpticalDuplicates;
-            if (groupByOrientation.containsKey(ReadEnds.FR) && groupByOrientation.containsKey(ReadEnds.RF)){
-                final List<PairedEnds> peFR = new ArrayList<>(groupByOrientation.get(ReadEnds.FR));
-                final List<PairedEnds> peRF = new ArrayList<>(groupByOrientation.get(ReadEnds.RF));
-                numOpticalDuplicates = countOpticalDuplicates(finder, peFR) +  countOpticalDuplicates(finder, peRF);
-            } else {
-                numOpticalDuplicates = countOpticalDuplicates(finder, scored);
-            }
-            best.first().setAttribute(OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME, numOpticalDuplicates);
-
-            for (final PairedEnds pair : scored) {
-                out.add(pair.first());
-                out.add(pair.second());
-            }
-            return out.iterator();
+            return nonDuplicates.iterator();
         });
     }
 
-    private static int countOpticalDuplicates(OpticalDuplicateFinder finder, List<PairedEnds> scored) {
-        final boolean[] opticalDuplicateFlags = finder.findOpticalDuplicates(scored);
+    /**
+     * split MarkDuplicatesSparkRecord into groups by their type
+     */
+    private static Map<MarkDuplicatesSparkRecord.Type, List<MarkDuplicatesSparkRecord>> splitByType(Iterable<MarkDuplicatesSparkRecord> duplicateGroup) {
+        final EnumMap<MarkDuplicatesSparkRecord.Type, List<MarkDuplicatesSparkRecord>> byType = new EnumMap<>(MarkDuplicatesSparkRecord.Type.class);
+        for(MarkDuplicatesSparkRecord pair: duplicateGroup) {
+            byType.compute(pair.getType(), (key, value) -> {
+                if (value == null) {
+                    final ArrayList<MarkDuplicatesSparkRecord> pairedEnds = new ArrayList<>();
+                    pairedEnds.add(pair);
+                    return pairedEnds;
+                } else {
+                    value.add(pair);
+                    return value;
+                }
+            });
+        }
+        return byType;
+    }
+
+    private static List<Tuple2<IndexPair<String>,Integer>> handlePassthroughs(List<MarkDuplicatesSparkRecord> passthroughs) {
+        // Emit the passthrough reads as non-duplicates.
+        return passthroughs.stream()
+                .map(pair -> new Tuple2<>(new IndexPair<>(pair.getName(), pair.getPartitionIndex()), MarkDuplicatesSpark.NO_OPTICAL_MARKER))
+                .collect(Collectors.toList());
+    }
+
+    private static List<Tuple2<IndexPair<String>, Integer>> handlePairs(final List<Pair> pairs, final OpticalDuplicateFinder finder, final boolean markOpticalDups) {
+        // save ourselves the trouble when there are no optical duplicates to worry about
+        if (pairs.size() == 1) {
+            return Collections.singletonList(new Tuple2<>(new IndexPair<>(pairs.get(0).getName(), pairs.get(0).getPartitionIndex()), 0));
+        }
+
+        List<Tuple2<IndexPair<String>, Integer>> output = new ArrayList<>();
+
+        final Pair bestPair = pairs.stream()
+                .peek(pair -> finder.addLocationInformation(pair.getName(), pair))
+                .max(PAIRED_ENDS_SCORE_COMPARATOR)
+                .orElseThrow(() -> new GATKException.ShouldNeverReachHereException("There was no best pair because the stream was empty, but it shouldn't have been empty."));
+
+        // Split by orientation and count duplicates in each group separately.
+        final Map<Byte, List<Pair>> groupByOrientation = pairs.stream()
+                .collect(Collectors.groupingBy(Pair::getOrientationForOpticalDuplicates));
+        final int numOpticalDuplicates;
+        if (groupByOrientation.containsKey(ReadEnds.FR) && groupByOrientation.containsKey(ReadEnds.RF)) {
+            final List<Pair> peFR = new ArrayList<>(groupByOrientation.get(ReadEnds.FR));
+            final List<Pair> peRF = new ArrayList<>(groupByOrientation.get(ReadEnds.RF));
+            numOpticalDuplicates = countOpticalDuplicates(finder, peFR, bestPair, markOpticalDups? output : null) + countOpticalDuplicates(finder, peRF, bestPair, markOpticalDups? output : null);
+        } else {
+            numOpticalDuplicates = countOpticalDuplicates(finder, pairs, bestPair, markOpticalDups? output : null);
+        }
+        output.add(new Tuple2<>(new IndexPair<>(bestPair.getName(), bestPair.getPartitionIndex()), numOpticalDuplicates));
+        return output;
+    }
+
+    private static int countOpticalDuplicates(OpticalDuplicateFinder finder, List<Pair> scored, Pair best, List<Tuple2<IndexPair<String>,Integer>> opticalDuplicateList) {
+        final boolean[] opticalDuplicateFlags = finder.findOpticalDuplicates(scored, best);
         int numOpticalDuplicates = 0;
-        for (final boolean b : opticalDuplicateFlags) {
-            if (b) {
+        for (int i = 0; i < opticalDuplicateFlags.length; i++) {
+            if (opticalDuplicateFlags[i]) {
                 numOpticalDuplicates++;
+                if (opticalDuplicateList != null) {
+                    opticalDuplicateList.add(new Tuple2<>(new IndexPair<>(scored.get(i).getName(), scored.get(i).getPartitionIndex()), MarkDuplicatesSpark.OPTICAL_DUPLICATE_MARKER));
+                }
             }
         }
         return numOpticalDuplicates;
     }
 
-    private static List<GATKRead> handleFragments(Iterable<PairedEnds> pairedEnds, final MarkDuplicatesScoringStrategy scoringStrategy, final SAMFileHeader header) {
-        List<GATKRead> reads = Lists.newArrayList();
-
-        final Iterable<GATKRead> transform = Iterables.transform(pairedEnds, pair -> pair.first());
-        Iterable<GATKRead> readsCopy = Iterables.transform(transform, GATKRead::copy);
-        final Map<Boolean, List<GATKRead>> byPairing = Utils.stream(readsCopy).collect(Collectors.partitioningBy(
-                read -> ReadUtils.readHasMappedMate(read)
-        ));
-        // Note the we emit only fragments from this mapper.
-        if (byPairing.get(true).isEmpty()) {
-            // There are no paired reads, mark all but the highest scoring fragment as duplicate.
-            Comparator<GATKRead> fragmentsComparator = Comparator.<GATKRead, Integer>comparing(read -> scoringStrategy.score(read)).reversed().thenComparing(new ReadCoordinateComparator(header));
-            List <GATKRead> frags = byPairing.get(false).stream().sorted(fragmentsComparator).collect(Collectors.toList());
-            if (!frags.isEmpty()) {
-                reads.add(frags.get(0));                        //highest score - just emit
-                for (final GATKRead record : Iterables.skip(frags, 1)) {  //lower   scores - mark as dups and emit
-                    record.setIsDuplicate(true);
-                    reads.add(record);
-                }
-            }
-        } else {
-            // There are paired ends so we mark all fragments as duplicates.
-            for (final GATKRead record : byPairing.get(false)) {
-                record.setIsDuplicate(true);
-                reads.add(record);
-            }
-        }
-        return reads;
+    /**
+     * If there are fragments with no non-fragments overlapping at a site, select the best one according to PAIRED_ENDS_SCORE_COMPARATOR
+     */
+    private static Tuple2<IndexPair<String>, Integer> handleFragments(List<MarkDuplicatesSparkRecord> duplicateFragmentGroup, OpticalDuplicateFinder finder) {
+        return duplicateFragmentGroup.stream()
+                .map(f -> (Fragment)f)
+                .peek(f -> finder.addLocationInformation(f.getName(), f))
+                .max(PAIRED_ENDS_SCORE_COMPARATOR)
+                .map(best -> new Tuple2<>(new IndexPair<>(best.getName(), best.getPartitionIndex()), -1))
+                .orElse(null);
     }
 
-
-    static JavaPairRDD<String, DuplicationMetrics> generateMetrics(final SAMFileHeader header, final JavaRDD<GATKRead> reads) {
-        return reads.filter(read -> !read.isSecondaryAlignment() && !read.isSupplementaryAlignment())
-                .mapToPair(read -> {
+    static JavaPairRDD<String, GATKDuplicationMetrics> generateMetrics(final SAMFileHeader header, final JavaRDD<GATKRead> reads) {
+        return reads.mapToPair(read -> {
                     final String library = LibraryIdGenerator.getLibraryName(header, read.getReadGroup());
-                    DuplicationMetrics metrics = new DuplicationMetrics();
+                    GATKDuplicationMetrics metrics = new GATKDuplicationMetrics();
                     metrics.LIBRARY = library;
-                    if (read.isUnmapped()) {
-                        ++metrics.UNMAPPED_READS;
-                    } else if (!read.isPaired() || read.mateIsUnmapped()) {
-                        ++metrics.UNPAIRED_READS_EXAMINED;
-                    } else {
-                        ++metrics.READ_PAIRS_EXAMINED;
-                    }
-
-                    if (read.isDuplicate()) {
-                        if (!read.isPaired() || read.mateIsUnmapped()) {
-                            ++metrics.UNPAIRED_READ_DUPLICATES;
-                        } else {
-                            ++metrics.READ_PAIR_DUPLICATES;
-                        }
-                    }
-                    if (read.hasAttribute(OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME)) {
+                    metrics.updateMetrics(read);
+                    // NOTE: we use the SAMRecord transientAttribute field here specifically to prevent the already
+                    // serialized read from being parsed again here for performance reasons.
+                    if (((SAMRecordToGATKReadAdapter) read).getTransientAttribute(OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME)!=null) {
+                        // NOTE: there is a safety check above in getReadsGroupedByName()
                         metrics.READ_PAIR_OPTICAL_DUPLICATES +=
-                                read.getAttributeAsInteger(OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME);
+                                (int)((SAMRecordToGATKReadAdapter) read).getTransientAttribute(OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME);
                     }
                     return new Tuple2<>(library, metrics);
                 })
-                .foldByKey(new DuplicationMetrics(), (metricsSum, m) -> {
-                    if (metricsSum.LIBRARY == null) {
-                        metricsSum.LIBRARY = m.LIBRARY;
-                    }
-                    // This should never happen, as we grouped by key using library as the key.
+                .foldByKey(new GATKDuplicationMetrics(), (metricsSum, m) -> {
+                    metricsSum.merge(m);
                     if (!metricsSum.LIBRARY.equals(m.LIBRARY)) {
                         throw new GATKException("Two different libraries encountered while summing metrics: " + metricsSum.LIBRARY
                                 + " and " + m.LIBRARY);
                     }
-                    metricsSum.UNMAPPED_READS += m.UNMAPPED_READS;
-                    metricsSum.UNPAIRED_READS_EXAMINED += m.UNPAIRED_READS_EXAMINED;
-                    metricsSum.READ_PAIRS_EXAMINED += m.READ_PAIRS_EXAMINED;
-                    metricsSum.UNPAIRED_READ_DUPLICATES += m.UNPAIRED_READ_DUPLICATES;
-                    metricsSum.READ_PAIR_DUPLICATES += m.READ_PAIR_DUPLICATES;
-                    metricsSum.READ_PAIR_OPTICAL_DUPLICATES += m.READ_PAIR_OPTICAL_DUPLICATES;
                     return metricsSum;
                 })
                 .mapValues(metrics -> {
-                    DuplicationMetrics copy = metrics.copy();
+                    final GATKDuplicationMetrics copy = metrics.copy();
                     // Divide these by 2 because they are counted for each read
                     // when they should be counted by pair.
                     copy.READ_PAIRS_EXAMINED = metrics.READ_PAIRS_EXAMINED / 2;
                     copy.READ_PAIR_DUPLICATES = metrics.READ_PAIR_DUPLICATES / 2;
 
-                    copy.calculateDerivedMetrics();
+                    copy.calculateDerivedFields();
                     if (copy.ESTIMATED_LIBRARY_SIZE == null) {
                         copy.ESTIMATED_LIBRARY_SIZE = 0L;
                     }
@@ -324,19 +441,19 @@ public class MarkDuplicatesSparkUtils {
      * Note: the SamFileHeader is needed in order to include libraries that didn't have any duplicates.
      * @param result metrics object, potentially pre-initialized with headers,
      */
-    public static void saveMetricsRDD(final MetricsFile<DuplicationMetrics, Double> result, final SAMFileHeader header, final JavaPairRDD<String, DuplicationMetrics> metricsRDD, final String metricsOutputPath, AuthHolder authHolder) {
+    public static void saveMetricsRDD(final MetricsFile<GATKDuplicationMetrics, Double> result, final SAMFileHeader header, final JavaPairRDD<String, GATKDuplicationMetrics> metricsRDD, final String metricsOutputPath) {
         final LibraryIdGenerator libraryIdGenerator = new LibraryIdGenerator(header);
 
-        final Map<String, DuplicationMetrics> nonEmptyMetricsByLibrary = metricsRDD.collectAsMap();           //Unknown Library
-        final Map<String, DuplicationMetrics> emptyMapByLibrary = libraryIdGenerator.getMetricsByLibraryMap();//with null
+        final Map<String, GATKDuplicationMetrics> nonEmptyMetricsByLibrary = metricsRDD.collectAsMap();           //Unknown Library
+        final Map<String, GATKDuplicationMetrics> emptyMapByLibrary = libraryIdGenerator.getMetricsByLibraryMap();//with null
 
         final List<String> sortedListOfLibraryNames = new ArrayList<>(Sets.union(emptyMapByLibrary.keySet(), nonEmptyMetricsByLibrary.keySet()));
         sortedListOfLibraryNames.sort(Utils.COMPARE_STRINGS_NULLS_FIRST);
-        for (final String library : sortedListOfLibraryNames){
+        for (final String library : sortedListOfLibraryNames) {
             //if a non-empty exists, take it, otherwise take from the the empties. This is done to include libraries with zero data in them.
             //But not all libraries are listed in the header (esp in testing data) so we union empty and non-empty
-            final DuplicationMetrics metricsToAdd = nonEmptyMetricsByLibrary.containsKey(library) ? nonEmptyMetricsByLibrary.get(library) : emptyMapByLibrary.get(library);
-            metricsToAdd.calculateDerivedMetrics();
+            final GATKDuplicationMetrics metricsToAdd = nonEmptyMetricsByLibrary.containsKey(library) ? nonEmptyMetricsByLibrary.get(library) : emptyMapByLibrary.get(library);
+            metricsToAdd.calculateDerivedFields();
             result.addMetric(metricsToAdd);
         }
 
@@ -348,58 +465,44 @@ public class MarkDuplicatesSparkUtils {
     }
 
     /**
-     * GATKRead comparator that compares based on mapping position followed by SAM flags.
+     * Comparator for TransientFieldPhysicalLocation objects by their attributes and strandedness. This comparator is intended to serve as a tiebreaker
+     * for the score comparator.
+     *
+     * It compares two PhysicalLocation  the orientation of the strand, followed by their physical location attributes,
+     * and finally as a final tiebreaker the readname lexicographical order.
+     *
+     * NOTE: Because the original records were grouped by start position, we know that they must be unique once they hit this
+     *       comparator and thus we don't need to worry about further tiebreaking for this method.
      */
-    final static class GATKOrder implements Comparator<GATKRead>, Serializable {
-        private static final long serialVersionUID = 1l;
-        private final SAMFileHeader header;
-        // TODO: Unify with other comparators in the codebase
+    public static final class TransientFieldPhysicalLocationComparator implements Comparator<TransientFieldPhysicalLocation>, Serializable {
+        private static final long serialVersionUID = 1L;
 
-        public GATKOrder(final SAMFileHeader header) {
-            this.header = header;
-        }
+        public static final TransientFieldPhysicalLocationComparator INSTANCE = new TransientFieldPhysicalLocationComparator();
+        private TransientFieldPhysicalLocationComparator() { }
 
         @Override
-        public int compare(final GATKRead lhs, final GATKRead rhs) {
-            if (rhs == lhs) return 0; //shortcut
+        public int compare( TransientFieldPhysicalLocation first, TransientFieldPhysicalLocation second ) {
+            int result = 0;
 
-            final int res1 = Integer.compare(ReadUtils.getReferenceIndex(lhs, header), ReadUtils.getReferenceIndex(rhs, header));
-            if (res1 != 0) return res1;
+            //This is done to mimic SAMRecordCoordinateComparator's behavior
+            if (first.isRead1ReverseStrand() != second.isRead1ReverseStrand()) {
+                return first.isRead1ReverseStrand() ? -1: 1;
+            }
 
-            final int res2 = Long.compare(lhs.getStart(), rhs.getStart());
-            if (res2 != 0) return res2;
+            if (first.getTile() != second.getTile()) {
+                return first.getTile() - second.getTile();
+            }
+            if (first.getX() != second.getX()) {
+                return first.getX() - second.getX();
+            }
+            if (first.getY() != second.getY()) {
+                return first.getY() - second.getY();
+            }
 
-            final int res3 = Boolean.compare(lhs.isDuplicate(), rhs.isDuplicate());
-            if (res3 != 0) return res3;
-
-            final int res4 = Boolean.compare(lhs.failsVendorQualityCheck(), rhs.failsVendorQualityCheck());
-            if (res4 != 0) return res4;
-
-            final int res5 = Boolean.compare(lhs.isPaired(), rhs.isPaired());
-            if (res5 != 0) return res5;
-
-            final int res6 = Boolean.compare(lhs.isProperlyPaired(), rhs.isProperlyPaired());
-            if (res6 != 0) return res6;
-
-            //Note: negate the result because we want first-of-pair to be before second
-            //ie, want 'second' to be sorted after first, so want to return -1 for (true, false)
-            final int res7 = -Boolean.compare(lhs.isFirstOfPair(), rhs.isFirstOfPair());
-            if (res7 != 0) return res7;
-
-            final int res8 = Boolean.compare(lhs.isSecondaryAlignment(), rhs.isSecondaryAlignment());
-            if (res8 != 0) return res8;
-
-            final int res9 = Boolean.compare(lhs.isSupplementaryAlignment(), rhs.isSupplementaryAlignment());
-            if (res9 != 0) return res9;
-
-            final int res10 = Integer.compare(lhs.getMappingQuality(), rhs.getMappingQuality());
-            if (res10 != 0) return res10;
-
-            final int res11 = Integer.compare(ReadUtils.getMateReferenceIndex(lhs, header), ReadUtils.getMateReferenceIndex(rhs, header));
-            if (res11 != 0) return res11;
-
-            final int res12 = Long.compare(lhs.getMateStart(), rhs.getMateStart());
-            return res12;
+            if ( first.getName() != null && second.getName() != null ) {
+                result = first.getName().compareTo(second.getName());
+            }
+            return result;
         }
     }
 }

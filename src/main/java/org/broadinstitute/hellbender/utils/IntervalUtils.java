@@ -4,7 +4,6 @@ import htsjdk.samtools.QueryInterval;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
-import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
 import htsjdk.samtools.util.Locatable;
@@ -21,10 +20,13 @@ import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
-import org.broadinstitute.hellbender.utils.text.XReadLines;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.nio.PathLineIterator;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.io.File;
-import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -34,6 +36,8 @@ import java.util.stream.Collectors;
  * can appear in GATK-based applications.
  */
 public final class IntervalUtils {
+
+    private static final Logger log = LogManager.getLogger(IntervalUtils.class);
 
     /**
      * Recognized extensions for interval files
@@ -266,7 +270,7 @@ public final class IntervalUtils {
                     "interval or an interval file instead.");
         }
         // If it's a Feature-containing file, convert it to a list of intervals
-        else if ( FeatureManager.isFeatureFile(new File(arg)) ) {
+        else if ( FeatureManager.isFeatureFile(IOUtils.getPath(arg)) ) {
             rawIntervals.addAll(featureFileToIntervals(parser, arg));
         }
         // If it's an interval file, add its contents to the raw interval list
@@ -303,12 +307,11 @@ public final class IntervalUtils {
      * Converts a Feature-containing file to a list of intervals
      *
      * @param parser GenomeLocParser for creating intervals
-     * @param featureFileName file containing Features to convert to intervals
+     * @param featureFile file containing Features to convert to intervals
      * @return a List of intervals corresponding to the locations of the Features in the provided file
      * @throws UserException.CouldNotReadInputFile if the provided file is not in a supported Feature file format
      */
-    public static List<GenomeLoc> featureFileToIntervals( final GenomeLocParser parser, final String featureFileName ) {
-        final File featureFile = new File(featureFileName);
+    public static List<GenomeLoc> featureFileToIntervals( final GenomeLocParser parser, final String featureFile ) {
 
         try ( final FeatureDataSource<? extends Feature> dataSource = new FeatureDataSource<>(featureFile) ) {
             final List<GenomeLoc> featureIntervals = new ArrayList<>();
@@ -332,7 +335,7 @@ public final class IntervalUtils {
         Utils.nonNull(glParser, "glParser is null");
         Utils.nonNull(fileName, "file name is null");
 
-        final File inputFile = new File(fileName);
+        final Path inputPath = IOUtils.getPath(fileName);
         final List<GenomeLoc> ret = new ArrayList<>();
 
         /**
@@ -342,7 +345,7 @@ public final class IntervalUtils {
         boolean isPicardInterval = false;
         try {
             // Note: Picard will skip over intervals with contigs not in the sequence dictionary
-            final IntervalList il = IntervalList.fromFile(inputFile);
+            final IntervalList il = IntervalList.fromPath(inputPath);
             isPicardInterval = true;
 
             for (final Interval interval : il.getIntervals()) {
@@ -356,7 +359,7 @@ public final class IntervalUtils {
                 else if ( glParser.isValidGenomeLoc(interval.getContig(), interval.getStart(), interval.getEnd(), true)) {
                     ret.add(glParser.createGenomeLoc(interval.getContig(), interval.getStart(), interval.getEnd(), true));
                 } else {
-                    throw new UserException(inputFile.getAbsolutePath() +  " has an invalid interval : " + interval) ;
+                    throw new UserException(inputPath.toUri() +  " has an invalid interval : " + interval) ;
                 }
             }
         }
@@ -364,23 +367,20 @@ public final class IntervalUtils {
         catch (final Exception e) {
             if ( isPicardInterval ) // definitely a picard file, but we failed to parse
             {
-                throw new UserException.CouldNotReadInputFile(inputFile, e);
+                throw new UserException.CouldNotReadInputFile(inputPath, e);
             } else {
-                try (XReadLines reader = new XReadLines(new File(fileName))) {
+                try (PathLineIterator reader = new PathLineIterator(inputPath)) {
                     for (final String line : reader) {
                         if (!line.trim().isEmpty()) {
                             ret.add(glParser.parseGenomeLoc(line));
                         }
                     }
                 }
-                catch (final IOException e2) {
-                    throw new UserException.CouldNotReadInputFile(inputFile, e2);
-                }
             }
         }
 
         if ( ret.isEmpty() ) {
-            throw new UserException.MalformedFile(new File(fileName), "It contains no intervals.");
+            throw new UserException.MalformedFile(inputPath, "It contains no intervals.");
         }
 
         return ret;
@@ -527,8 +527,6 @@ public final class IntervalUtils {
      */
     public static boolean isIntervalFile(final String str, final boolean checkExists) {
         Utils.nonNull(str);
-        final File file = new File(str);
-
         boolean hasIntervalFileExtension = false;
         for ( final String extension : INTERVAL_FILE_EXTENSIONS ) {
             if ( str.toLowerCase().endsWith(extension) ) {
@@ -537,10 +535,11 @@ public final class IntervalUtils {
         }
 
         if ( hasIntervalFileExtension ) {
-            if ( ! checkExists || file.exists() ) {
+            final Path path = IOUtils.getPath(str);
+            if ( ! checkExists || Files.exists(path) ) {
                 return true;
             } else {
-                throw new UserException.CouldNotReadInputFile(file, "The interval file does not exist.");
+                throw new UserException.CouldNotReadInputFile(path, "The interval file does not exist.");
             }
         }
         else {
@@ -553,14 +552,16 @@ public final class IntervalUtils {
      * @param reference The reference for the intervals.
      * @return A map of contig names with their sizes.
      */
-    public static Map<String, Integer> getContigSizes(final File reference) {
-        final ReferenceSequenceFile referenceSequenceFile = createReference(reference);
-        final List<GenomeLoc> locs = GenomeLocSortedSet.createSetFromSequenceDictionary(referenceSequenceFile.getSequenceDictionary()).toList();
-        final Map<String, Integer> lengths = new LinkedHashMap<>();
-        for (final GenomeLoc loc: locs) {
-            lengths.put(loc.getContig(), loc.size());
+    public static Map<String, Integer> getContigSizes(final Path reference) {
+        try(final CachingIndexedFastaSequenceFile referenceSequenceFile = new CachingIndexedFastaSequenceFile(reference)) {
+            final List<GenomeLoc> locs = GenomeLocSortedSet.createSetFromSequenceDictionary(
+                    referenceSequenceFile.getSequenceDictionary()).toList();
+            final Map<String, Integer> lengths = new LinkedHashMap<>();
+            for (final GenomeLoc loc : locs) {
+                lengths.put(loc.getContig(), loc.size());
+            }
+            return lengths;
         }
-        return lengths;
     }
 
     /**
@@ -956,8 +957,49 @@ public final class IntervalUtils {
         return sortAndMergeIntervals(parser, expanded, IntervalMergingRule.ALL).toList();
     }
 
-    private static ReferenceSequenceFile createReference(final File fastaFile) {
-            return CachingIndexedFastaSequenceFile.checkAndCreate(fastaFile);
+    /**
+     * Pads the provided intervals by the specified amount, sorts the resulting intervals, and merges intervals
+     * that are adjacent/overlapping after padding.
+     *
+     * @param intervals intervals to pad
+     * @param basePairs number of bases of padding to add to each side of each interval
+     * @param dictionary sequence dictionary used to restrict padded intervals to the bounds of their contig
+     * @return the provided intervals padded by the specified amount, sorted, with adjacent/overlapping intervals merged
+     */
+    public static List<SimpleInterval> getIntervalsWithFlanks(final List<SimpleInterval> intervals, final int basePairs, final SAMSequenceDictionary dictionary) {
+        final GenomeLocParser parser = new GenomeLocParser(dictionary);
+        final List<GenomeLoc> intervalsAsGenomeLocs = genomeLocsFromLocatables(parser, intervals);
+        final List<GenomeLoc> paddedGenomeLocs = getIntervalsWithFlanks(parser, intervalsAsGenomeLocs, basePairs);
+        return convertGenomeLocsToSimpleIntervals(paddedGenomeLocs);
+    }
+
+    /**
+     * Accepts a sorted List of intervals, and returns a List of Lists of intervals grouped by contig,
+     * one List per contig.
+     *
+     * @param sortedIntervals sorted List of intervals to group by contig
+     * @return A List of Lists of intervals, one List per contig
+     */
+    public static List<List<SimpleInterval>> groupIntervalsByContig(final List<SimpleInterval> sortedIntervals) {
+        final List<List<SimpleInterval>> intervalGroups = new ArrayList<>();
+        List<SimpleInterval> currentGroup = new ArrayList<>();
+        String currentContig = null;
+
+        for ( final SimpleInterval currentInterval : sortedIntervals ) {
+            if ( currentContig != null && ! currentContig.equals(currentInterval.getContig()) ) {
+                intervalGroups.add(currentGroup);
+                currentGroup = new ArrayList<>();
+            }
+
+            currentContig = currentInterval.getContig();
+            currentGroup.add(currentInterval);
+        }
+
+        if ( ! currentGroup.isEmpty() ) {
+            intervalGroups.add(currentGroup);
+        }
+
+        return intervalGroups;
     }
 
     private static LinkedHashMap<String, List<GenomeLoc>> splitByContig(final List<GenomeLoc> sorted) {
@@ -1009,6 +1051,111 @@ public final class IntervalUtils {
                 .collect(Collectors.toList());
     }
 
+
+    /**
+     * Given an interval query string and a sequence dictionary, determine if the query string can be
+     * resolved as a valid interval query against more than one contig in the dictionary, i.e., more than
+     * one of:
+     *
+     *     prefix
+     *     prefix:nnn
+     *     prefix:nnn+
+     *     prefix:nnn-nnn
+     *
+     * and return the list of all possible interpretations (there can never be more than 2). Note that for
+     * an ambiguity to exist, the query string must contain at least one colon.
+     *
+     * @param intervalQueryString
+     * @param sequenceDictionary
+     * @return List<SimpleInterval> containing 0, 1, or 2 valid interpretations of {code queryString} given
+     * {@code sequenceDictionary}. If the list is empty, the query doesn't match any contig in the sequence
+     * dictionary. If the list contains more than one interval, the query string is ambiguous and should be
+     * rejected. If the list contains a single interval, the query is unambiguous and can be safely used to
+     * conduct a query.
+     * @thows IllegalArgumentException if the query only matches a single contig in the dictionary, but the start
+     * and end positions are not valid
+     * @throws NumberFormatException if the query only matches a single contig in the dictionary, but the query
+     * interval paramaters (start, end) cannot be parsed
+     */
+    public static List<SimpleInterval> getResolvedIntervals(
+            final String intervalQueryString,
+            final SAMSequenceDictionary sequenceDictionary) {
+        Utils.nonNull(intervalQueryString);
+        Utils.validateArg(!intervalQueryString.isEmpty(), "intervalQueryString should not be empty");
+
+        // Keep a list of all valid interpretations
+        final List<SimpleInterval> resolvedIntervals = new ArrayList<>();
+
+        // Treat the entire query string as a contig name. If it exists in the sequence dictionary,
+        // count that as one valid interpretation.
+        final SAMSequenceRecord queryAsContigName = sequenceDictionary.getSequence(intervalQueryString);
+        if (queryAsContigName != null) {
+            resolvedIntervals.add(new SimpleInterval(intervalQueryString, 1, queryAsContigName.getSequenceLength()));
+        }
+
+        // The query must contain at least one colon for an ambiguity to exist.
+        final int lastColonIndex = intervalQueryString.lastIndexOf(SimpleInterval.CONTIG_SEPARATOR);
+        if (lastColonIndex == -1) {
+            return resolvedIntervals;
+        }
+
+        // Get a prefix containing everything up to the last colon, and see if it represents a valid contig.
+        final String prefix = intervalQueryString.substring(0, lastColonIndex);
+        final SAMSequenceRecord prefixSequence = sequenceDictionary.getSequence(prefix);
+        if (prefixSequence == null) {
+            return resolvedIntervals;
+        }
+
+        try {
+            final int lastDashIndex = intervalQueryString.lastIndexOf(SimpleInterval.START_END_SEPARATOR);
+            int startPos;
+            int endPos;
+
+            // Try to resolve the suffix as a query against the contig represented by the prefix.
+            if (intervalQueryString.endsWith(SimpleInterval.END_OF_CONTIG)) {
+                // try to resolve as "prefix:nnn+"
+                startPos = SimpleInterval.parsePositionThrowOnFailure(intervalQueryString.substring(lastColonIndex + 1, intervalQueryString.length()-1));
+                endPos = prefixSequence.getSequenceLength();
+            } else if (lastDashIndex > lastColonIndex) {
+                // try to resolve as "prefix:start-end"
+                startPos = SimpleInterval.parsePositionThrowOnFailure(intervalQueryString.substring(lastColonIndex + 1, lastDashIndex));
+                endPos = SimpleInterval.parsePositionThrowOnFailure(intervalQueryString.substring(lastDashIndex + 1, intervalQueryString.length()));
+            } else {
+                // finally, try to resolve as "prefix:nnn"
+                startPos = SimpleInterval.parsePositionThrowOnFailure(intervalQueryString.substring(lastColonIndex + 1, intervalQueryString.length()));
+                endPos = startPos;
+            }
+
+            if (SimpleInterval.isValid(prefix, startPos, endPos)) {
+                // We've pre-tested to validate the positions, so add this interval. This should never throw.
+                resolvedIntervals.add(new SimpleInterval(prefix, startPos, endPos));
+            } else {
+                // Positions don't appear to be valid, but we don't want to throw if there is any other valid
+                // interpretation of the query string
+                if (resolvedIntervals.isEmpty()) {
+                    // validatePositions throws on validation failure, which is guaranteed if we got here
+                    SimpleInterval.validatePositions(prefix, startPos, endPos);
+                }
+            }
+        } catch (NumberFormatException e) {
+            // parsing of the start or end pos failed
+            if (resolvedIntervals.isEmpty()) {
+                throw e;
+            } else {
+                // We're interpreting this as a query against a full contig, but its POSSIBLE that the user
+                // mis-entered the start or stop position, and had they entered them correctly, would have resulted
+                // in an ambiguity. So accept the query as an interval for the full contig, but issue a warning
+                // saying how the query as resolved.
+                log.warn(String.format(
+                        "The query interval string \"%s\" is interpreted as a query against the contig named \"%s\", " +
+                                "but may have been intended as an (accidentally malformed) query against the contig named \"%s\"",
+                        intervalQueryString,
+                        resolvedIntervals.get(0).getContig(),
+                        prefixSequence.getSequenceName()));
+            }
+        }
+        return resolvedIntervals;
+    }
 
     /**
      * Create a new interval, bounding start and stop by the start and end of contig
@@ -1113,6 +1260,20 @@ public final class IntervalUtils {
 
 
     // (end of shard-related code)
+
+    /**
+     * Get a single interval per contig that includes all of the specified intervals
+     * (This is used to improve GenomicsDB performance for exomes)
+     * @param locations the intervals to be merged/spanned
+     * @param sequenceDictionary for contig sorting
+     * @return a sorted list intervals containing the input intervals, one per contig
+     */
+    public static List<SimpleInterval> getSpanningIntervals(final List<? extends Locatable> locations, final SAMSequenceDictionary sequenceDictionary){
+        return locations.stream()
+                .collect(Collectors.groupingBy(Locatable::getContig))
+                .values().stream().map(IntervalUtils::getSpanningInterval).sorted((i1,i2)->compareLocatables(i1,i2,sequenceDictionary))
+                .collect(Collectors.toList());
+    }
 
     /**
      * Combine the breakpoints of multiple intervals and return a list of locatables based on the updated breakpoints.
@@ -1264,7 +1425,7 @@ public final class IntervalUtils {
      * @param locatables List of locatables to test.  {@code null} will never throw an exception.
      * @param <T> Locatable class
      */
-    private static <T extends Locatable> void validateNoOverlappingIntervals(List<T> locatables) {
+    public static <T extends Locatable> void validateNoOverlappingIntervals(List<T> locatables) {
         // Do not throw an exception for empty or null lists.
         if (CollectionUtils.isEmpty(locatables)) {
             return;
@@ -1351,7 +1512,7 @@ public final class IntervalUtils {
      * The order of contigs/sequences in the dictionary is the order of the sorting here.
      *
      * @param dictionary dictionary to use for the sorting.  Intervals with sequences not in this dictionary will cause
-     *                   exceptions to be thrown.  Never {@ode null}.
+     *                   exceptions to be thrown.  Never {@code null}.
      * @return an instance of {@code Comapator<Locatable>} for use in sorting of Locatables.
      */
     public static Comparator<Locatable> getDictionaryOrderComparator(final SAMSequenceDictionary dictionary) {
@@ -1364,5 +1525,30 @@ public final class IntervalUtils {
      */
     public enum IntervalBreakpointType {
         START_BREAKPOINT, END_BREAKPOINT
+    }
+
+    /**
+     * Determine whether the two intervals specified overlap each other by at least the threshold proportion specified.
+     * This is a commutative operation.
+     *
+     * @param interval1 Never {@code null}
+     * @param interval2 Never {@code null}
+     * @param reciprocalOverlapThreshold proportion of the segments that must overlap.  Must be between 0.0 and 1.0 (inclusive).
+     * @return whether there is a reciprocal overlap exceeding the given threshold.  If reciprocalOverlapThreshold is 0,
+     * always returns true, even if intervals do not overlap.
+     */
+    public static boolean isReciprocalOverlap(final SimpleInterval interval1, final SimpleInterval interval2, final double reciprocalOverlapThreshold) {
+        Utils.nonNull(interval1);
+        Utils.nonNull(interval2);
+        ParamUtils.inRange(reciprocalOverlapThreshold, 0.0, 1.0, "Reciprocal threshold must be between 0.0 and 1.0.");
+
+        if (reciprocalOverlapThreshold == 0.) {
+            return true;
+        }
+
+        // This overlap check is required, since intersect call below requires that the intervals overlap.
+        return interval1.overlaps(interval2) &&
+                (interval1.intersect(interval2).size() >= (interval2.size() * reciprocalOverlapThreshold)) &&
+                (interval2.intersect(interval1).size() >= (interval1.size() * reciprocalOverlapThreshold));
     }
 }

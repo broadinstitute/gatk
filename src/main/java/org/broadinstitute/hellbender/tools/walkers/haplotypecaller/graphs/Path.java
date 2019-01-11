@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.Cigar;
 import joptsimple.internal.Strings;
 import org.apache.commons.lang3.ArrayUtils;
@@ -18,16 +19,13 @@ import java.util.stream.Collectors;
  * class to keep track of paths
  *
  */
-public final class Path<T extends BaseVertex, E extends BaseEdge> {
+public class Path<T extends BaseVertex, E extends BaseEdge> {
 
     // the last vertex seen in the path
     private final T lastVertex;
 
     // the list of edges comprising the path
     private final List<E> edgesInOrder;
-
-    // the scores for the path
-    private final int totalScore;
 
     // the graph from which this path originated
     private final BaseGraph<T, E> graph;
@@ -38,14 +36,20 @@ public final class Path<T extends BaseVertex, E extends BaseEdge> {
      * @param graph the graph this path will follow through
      */
     public Path(final T initialVertex, final BaseGraph<T, E> graph) {
-        Utils.nonNull(initialVertex, "initialVertex cannot be null");
-        Utils.nonNull(graph, "graph cannot be null");
+        lastVertex = Utils.nonNull(initialVertex, "initialVertex cannot be null");
+        this.graph = Utils.nonNull(graph, "graph cannot be null");
         Utils.validateArg(graph.containsVertex(initialVertex), () -> "Vertex " + initialVertex + " must be part of graph " + graph);
 
-        lastVertex = initialVertex;
         edgesInOrder = new ArrayList<>(0);
-        totalScore = 0;
+    }
+
+    /**
+     * Constructor that does not check arguments' validity i.e. doesn't check that edges are in order
+     */
+    public Path(final List<E> edgesInOrder, final T lastVertex, final BaseGraph<T,E> graph) {
+        this.lastVertex = lastVertex;
         this.graph = graph;
+        this.edgesInOrder = edgesInOrder;
     }
 
     /**
@@ -68,7 +72,6 @@ public final class Path<T extends BaseVertex, E extends BaseEdge> {
         edgesInOrder = new ArrayList<>(p.length() + 1);
         edgesInOrder.addAll(p.edgesInOrder);
         edgesInOrder.add(edge);
-        totalScore = p.totalScore + edge.getMultiplicity();
     }
 
     /**
@@ -99,16 +102,11 @@ public final class Path<T extends BaseVertex, E extends BaseEdge> {
         edgesInOrder = new ArrayList<>(p.length() + 1);
         edgesInOrder.add(edge);
         edgesInOrder.addAll(p.getEdges());
-        totalScore = p.totalScore + edge.getMultiplicity();
     }
 
-    /**
-     * Check that two paths have the same edges and total score
-     * @param path the other path we might be the same as
-     * @return true if this and path are the same
-     */
-    public boolean pathsAreTheSame(final Path<T,E> path) {
-        return totalScore == path.totalScore && edgesInOrder.equals(path.edgesInOrder);
+    @VisibleForTesting
+    boolean pathsAreTheSame(final Path<T,E> path) {
+        return edgesInOrder.equals(path.edgesInOrder);
     }
 
     /**
@@ -125,7 +123,7 @@ public final class Path<T extends BaseVertex, E extends BaseEdge> {
     @Override
     public String toString() {
         final String joinedPath = Strings.join(getVertices().stream().map(v -> v.getSequenceString()).collect(Collectors.toList()), "->");
-        return String.format("Path{score=%d, path=%s}", totalScore, joinedPath);
+        return String.format("Path{path=%s}", joinedPath);
     }
 
     /**
@@ -143,6 +141,8 @@ public final class Path<T extends BaseVertex, E extends BaseEdge> {
      */
     public List<E> getEdges() { return Collections.unmodifiableList(edgesInOrder); }
 
+    public E getLastEdge() { return edgesInOrder.get(length() - 1); }
+
     /**
      * Get the list of vertices in this path in order defined by the edges of the path
      * @return a non-null, non-empty list of vertices
@@ -153,12 +153,6 @@ public final class Path<T extends BaseVertex, E extends BaseEdge> {
         result.addAll(edgesInOrder.stream().map(graph::getEdgeTarget).collect(Collectors.toList()));
         return result;
     }
-
-    /**
-     * Get the total score of this path (bigger is better)
-     * @return a positive integer
-     */
-    public int getScore() { return totalScore; }
 
     /**
      * Get the final vertex of the path

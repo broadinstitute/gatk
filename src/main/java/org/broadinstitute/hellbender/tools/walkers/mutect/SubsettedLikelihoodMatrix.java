@@ -34,10 +34,13 @@ public class SubsettedLikelihoodMatrix<A extends Allele> implements LikelihoodMa
     }
 
     public static <A extends Allele> SubsettedLikelihoodMatrix<A> excludingAllele(final LikelihoodMatrix<A> matrix, final Allele excludedAllele) {
-        final List<A> alleles = matrix.alleles().stream().filter(a -> !a.basesMatch(excludedAllele)).collect(Collectors.toList());
+        final List<A> alleles = matrix.alleles().stream().filter(a -> !basesMatch(a,excludedAllele)).collect(Collectors.toList());
         Utils.validateArg(alleles.size() == matrix.numberOfAlleles() - 1, "More than one allele excluded.");
         return new SubsettedLikelihoodMatrix<A>(matrix, alleles);
     }
+
+    //TODO: take this hack out
+    public static boolean basesMatch(final Allele a, final Allele b) { return a.getBases() == b.getBases() || Arrays.equals(a.getBases(), b.getBases()); }
 
     @Override
     public List<GATKRead> reads() { return matrix.reads(); }

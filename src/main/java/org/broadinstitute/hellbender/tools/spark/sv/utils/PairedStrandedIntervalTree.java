@@ -9,7 +9,6 @@ import scala.Tuple2;
 
 import java.util.Collections;
 import java.util.Iterator;
-import java.util.stream.Collectors;
 
 @DefaultSerializer(PairedStrandedIntervalTree.Serializer.class)
 public class PairedStrandedIntervalTree<V> implements Iterable<Tuple2<PairedStrandedIntervals, V>> {

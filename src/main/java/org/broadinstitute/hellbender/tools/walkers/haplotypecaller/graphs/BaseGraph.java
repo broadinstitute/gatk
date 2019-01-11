@@ -225,8 +225,8 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
         final Set<E> blacklistedEdgeSet = blacklistedEdge.isPresent() ? Collections.singleton(blacklistedEdge.get()) : Collections.emptySet();
 
         // if we got here, then we aren't on a reference path
-        final Optional<E> edge = outgoingEdges.stream().filter(e -> !blacklistedEdgeSet.contains(e)).findAny();
-        return edge.isPresent() ? getEdgeTarget(edge.get()) : null;
+        final List<E> edges = outgoingEdges.stream().filter(e -> !blacklistedEdgeSet.contains(e)).limit(2).collect(Collectors.toList());
+        return edges.size() == 1 ? getEdgeTarget(edges.get(0)) : null;
     }
 
     /**
@@ -431,17 +431,6 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
     }
 
     /**
-     * Prune all chains from this graph where all edges in the path have multiplicity < pruneFactor
-     *
-     * @see LowWeightChainPruner for more information
-     *
-     * @param pruneFactor all edges with multiplicity < this factor that aren't ref edges will be removed
-     */
-    public final void pruneLowWeightChains( final int pruneFactor ) {
-        new LowWeightChainPruner<V,E>(pruneFactor).pruneLowWeightChains(this);
-    }
-
-    /**
      * Remove all vertices in the graph that have in and out degree of 0
      */
     public void removeSingletonOrphanVertices() {
@@ -586,7 +575,7 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
      * @return a edge
      */
     private E getSingletonEdge(final Collection<E> edges) {
-        Utils.validateArg(edges.size() <= 1, "Cannot get a single incoming edge for a vertex with multiple incoming edges " + edges);
+        Utils.validateArg(edges.size() <= 1, () -> "Cannot get a single incoming edge for a vertex with multiple incoming edges " + edges);
         return edges.isEmpty() ? null : edges.iterator().next();
     }
 

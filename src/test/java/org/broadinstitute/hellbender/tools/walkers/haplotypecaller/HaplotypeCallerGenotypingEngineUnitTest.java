@@ -6,6 +6,7 @@ import htsjdk.variant.variantcontext.*;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
+import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -44,7 +45,7 @@ public final class HaplotypeCallerGenotypingEngineUnitTest extends GATKBaseTest 
         public Map<Integer,VariantContext> calcAlignment() {
             final SmithWatermanAlignment alignment = SmithWatermanJavaAligner.getInstance().align(ref, hap, new SWParameters(3, -1, -4, -1), SWOverhangStrategy.SOFTCLIP);
             final Haplotype h = new Haplotype(hap, false, alignment.getAlignmentOffset(), alignment.getCigar());
-            return new EventMap(h, ref, new SimpleInterval("4", 1, 1 + ref.length), "name");
+            return new EventMap(h, ref, new SimpleInterval("4", 1, 1 + ref.length), "name", 1);
         }
 
         public String toString() {
@@ -474,6 +475,7 @@ public final class HaplotypeCallerGenotypingEngineUnitTest extends GATKBaseTest 
         final Allele altT = Allele.create("T", false);
         final Allele altT2 = Allele.create("TT", false);
         final Allele altG = Allele.create("G", false);
+        final Allele altT3 = Allele.create("TTT", false);
 
         // then create several haplotypes, assign ad-hoc scores
         final Haplotype hapRef = new Haplotype("AAAAA".getBytes());
@@ -540,6 +542,13 @@ public final class HaplotypeCallerGenotypingEngineUnitTest extends GATKBaseTest 
         Assert.assertEquals(allelesToKeep.size(), 1);
         it = allelesToKeep.iterator();
         Assert.assertEquals(it.next(), ref);
+
+        // in the case of GGA mode there could be an allele with no haplotype support
+        alleleMapper.put(altT3, new ArrayList<>());
+        allelesToKeep = HaplotypeCallerGenotypingEngine.whichAllelesToKeepBasedonHapScores(alleleMapper, 1);
+        Assert.assertEquals(allelesToKeep.size(), 1);
+        it = allelesToKeep.iterator();
+        Assert.assertEquals(it.next(), ref);
     }
 
     @Test
@@ -550,5 +559,43 @@ public final class HaplotypeCallerGenotypingEngineUnitTest extends GATKBaseTest 
 
         Assert.assertEquals(reducedVC.getNAlleles(), 3);
         Assert.assertTrue(reducedVC.getAlleles().containsAll(Arrays.asList(Allele.create("A", true), Allele.create("T", false), Allele.create("C", false))));
+    }
+
+    @Test
+    public void testReplaceWithSpanDelVC() {
+        final VariantContext snp = new VariantContextBuilder("source", "1", 1000000, 1000000,
+                Arrays.asList(Allele.create("A", true),
+                        Allele.create("G", false))).make();
+        final VariantContext snpReplacement =
+                HaplotypeCallerGenotypingEngine.replaceWithSpanDelVC(snp, Allele.create("A", true), 1000000);
+
+        Assert.assertEquals(snpReplacement, snp);
+
+        final VariantContext spanDel = new VariantContextBuilder("source", "1", 999995, 1000005,
+                Arrays.asList(Allele.create("AAAAAAAAAAA", true),
+                        Allele.create("A", false))).make();
+
+        final VariantContext spanDelReplacement =
+                HaplotypeCallerGenotypingEngine.replaceWithSpanDelVC(spanDel, Allele.create("A", true), 1000000);
+
+        final VariantContext expectedSpanDelReplacement = new VariantContextBuilder("source", "1", 1000000, 1000000,
+                Arrays.asList(Allele.create("A", true),
+                        Allele.SPAN_DEL)).make();
+
+        VariantContextTestUtils.assertVariantContextsAreEqual(spanDelReplacement,
+                expectedSpanDelReplacement, Collections.emptyList());
+
+        final VariantContext spanDelWithGt = new VariantContextBuilder("source", "1", 999995, 1000005,
+                Arrays.asList(Allele.create("AAAAAAAAAAA", true),
+                        Allele.create("A", false)))
+                .genotypes(new GenotypeBuilder("S1",
+                        Arrays.asList(spanDel.getAlleles().get(0), spanDel.getAlleles().get(1))).make()).make();
+
+        final VariantContext spanDelWithGTReplacement =
+                HaplotypeCallerGenotypingEngine.replaceWithSpanDelVC(spanDelWithGt, Allele.create("A", true), 1000000);
+
+        VariantContextTestUtils.assertVariantContextsAreEqual(spanDelWithGTReplacement,
+                expectedSpanDelReplacement, Collections.emptyList());
+
     }
 }

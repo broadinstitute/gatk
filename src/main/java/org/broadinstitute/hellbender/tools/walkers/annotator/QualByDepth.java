@@ -67,36 +67,7 @@ public final class QualByDepth extends InfoFieldAnnotation implements StandardAn
             return Collections.emptyMap();
         }
 
-        int depth = 0;
-        int ADrestrictedDepth = 0;
-
-        for ( final Genotype genotype : genotypes ) {
-            // we care only about variant calls with likelihoods
-            if ( !genotype.isHet() && !genotype.isHomVar() ) {
-                continue;
-            }
-
-            // if we have the AD values for this sample, let's make sure that the variant depth is greater than 1!
-            if ( genotype.hasAD() ) {
-                final int[] AD = genotype.getAD();
-                final int totalADdepth = (int) MathUtils.sum(AD);
-                if ( totalADdepth != 0 ) {
-                    if (totalADdepth - AD[0] > 1) {
-                        ADrestrictedDepth += totalADdepth;
-                    }
-                    depth += totalADdepth;
-                }
-            } else if (likelihoods != null) {
-                depth += likelihoods.sampleReadCount(likelihoods.indexOfSample(genotype.getSampleName()));
-            } else if ( genotype.hasDP() ) {
-                depth += genotype.getDP();
-            }
-        }
-
-        // if the AD-restricted depth is a usable value (i.e. not zero), then we should use that one going forward
-        if ( ADrestrictedDepth > 0 ) {
-            depth = ADrestrictedDepth;
-        }
+        final int depth = getDepth(genotypes, likelihoods);
 
         if ( depth == 0 ) {
             return Collections.emptyMap();
@@ -126,6 +97,43 @@ public final class QualByDepth extends InfoFieldAnnotation implements StandardAn
         } else {
             return IDEAL_HIGH_QD + Utils.getRandomGenerator().nextGaussian() * JITTER_SIGMA;
         }
+    }
+
+    public static int getDepth(final GenotypesContext genotypes, final ReadLikelihoods<Allele> likelihoods) {
+        int depth = 0;
+        int ADrestrictedDepth = 0;
+
+        for ( final Genotype genotype : genotypes ) {
+            // we care only about variant calls with likelihoods
+            if ( !genotype.isHet() && !genotype.isHomVar() ) {
+                continue;
+            }
+
+            // if we have the AD values for this sample, let's make sure that the variant depth is greater than 1!
+            if ( genotype.hasAD() ) {
+                final int[] AD = genotype.getAD();
+                final int totalADdepth = (int) MathUtils.sum(AD);
+                if ( totalADdepth != 0 ) {
+                    if (totalADdepth - AD[0] > 1) {
+                        ADrestrictedDepth += totalADdepth;
+                    }
+                    depth += totalADdepth;
+                    continue;
+                }
+            }
+            // if there is no AD value or it is a dummy value, we want to look to other means to get the depth
+            if (likelihoods != null) {
+                depth += likelihoods.sampleReadCount(likelihoods.indexOfSample(genotype.getSampleName()));
+            } else if ( genotype.hasDP() ) {
+                depth += genotype.getDP();
+            }
+        }
+
+        // if the AD-restricted depth is a usable value (i.e. not zero), then we should use that one going forward
+        if ( ADrestrictedDepth > 0 ) {
+            depth = ADrestrictedDepth;
+        }
+        return depth;
     }
 
     @Override

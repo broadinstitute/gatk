@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.utils.hmm;
 
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.math3.util.Pair;
-import org.broadinstitute.hellbender.utils.GATKProtectedMathUtils;
+import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.*;
@@ -37,17 +37,17 @@ final class TestHMM implements HMM<TestHMM.Datum, Integer, TestHMM.State> {
 
         final DoubleUnaryOperator phredToLog = d -> d * -.1 * LN_OF_10;
         final double[] logPriorsRaw = DoubleStream.of(priors).map(phredToLog).toArray();
-        final double logPriorsSum = GATKProtectedMathUtils.logSumExp(logPriorsRaw);
+        final double logPriorsSum = MathUtils.logSumExp(logPriorsRaw);
         final double[] logPriors = DoubleStream.of(logPriorsRaw).map(d -> d - logPriorsSum).toArray();
 
         final double[][] logEmissionProbs = Stream.of(emission)
                 .map(x -> { final double[] result = DoubleStream.of(x).map(phredToLog).toArray();
-                            final double sum = GATKProtectedMathUtils.logSumExp(result);
+                            final double sum = MathUtils.logSumExp(result);
                             return DoubleStream.of(result).map(d -> d - sum).toArray(); })
                 .toArray(double[][]::new);
         final double[][] logTransitionProbs = Stream.of(transition)
                 .map(x -> { final double[] result = DoubleStream.of(x).map(phredToLog).toArray();
-                            final double sum = GATKProtectedMathUtils.logSumExp(result);
+                            final double sum = MathUtils.logSumExp(result);
                             return DoubleStream.of(result).map(d -> d - sum).toArray(); })
                 .toArray(double[][]::new);
         return new TestHMM(logPriors, logEmissionProbs, logTransitionProbs);
@@ -184,7 +184,7 @@ final class TestHMM implements HMM<TestHMM.Datum, Integer, TestHMM.State> {
         for (int i = 0; i < logTransitionProbs.length; i++) {
             logTransitionProbs[i] = logTransitionProbability(previousState, previousPosition, State.values()[i], nextPosition);
         }
-        final double total = Math.exp(GATKProtectedMathUtils.logSumExp(logTransitionProbs));
+        final double total = Math.exp(MathUtils.logSumExp(logTransitionProbs));
         final double uniform = rdn.nextDouble() * total;
         double accumulative = 0;
         for (int i = 0; i < logTransitionProbs.length; i++) {
@@ -201,7 +201,7 @@ final class TestHMM implements HMM<TestHMM.Datum, Integer, TestHMM.State> {
         for (int i = 0; i < logEmissionProbs.length; i++) {
             logEmissionProbs[i] = logEmissionProbability(Datum.values()[i], state, position);
         }
-        final double total = Math.exp(GATKProtectedMathUtils.logSumExp(logEmissionProbs));
+        final double total = Math.exp(MathUtils.logSumExp(logEmissionProbs));
 
         final double uniform = rdn.nextDouble() * total;
         double accumulate = 0;
@@ -215,7 +215,7 @@ final class TestHMM implements HMM<TestHMM.Datum, Integer, TestHMM.State> {
     }
 
     private State generateFirstState(final Integer firstPosition, final Random rdn) {
-        final double uniform = rdn.nextDouble() * Math.exp(GATKProtectedMathUtils.logSumExp(priors));
+        final double uniform = rdn.nextDouble() * Math.exp(MathUtils.logSumExp(priors));
         double accumulative = 0;
         for (int i = 0; i < priors.length; i++) {
             accumulative += Math.exp(logPriorProbability(State.values()[i], firstPosition));

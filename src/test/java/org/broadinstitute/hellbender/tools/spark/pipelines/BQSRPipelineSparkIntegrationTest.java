@@ -2,13 +2,8 @@ package org.broadinstitute.hellbender.tools.spark.pipelines;
 
 import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceTwoBitSource;
-import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.walkers.bqsr.BQSRTestData;
-import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
-import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
+import org.broadinstitute.hellbender.testutils.SamAssertionUtils;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -36,17 +31,12 @@ public class BQSRPipelineSparkIntegrationTest extends CommandLineProgramTest {
             this.expectedFileName = expectedFileName;
         }
 
-        public String getCommandLineNoApiKey() {
+        public String getCommandLine() {
             return  " -R " + referenceURL +
                     " -I " + bam +
                     " " + args +
-                    (knownSites.isEmpty() ? "": " --knownSites " + knownSites) +
+                    (knownSites.isEmpty() ? "": " --known-sites " + knownSites) +
                     " -O %s";
-        }
-
-        public String getCommandLine() {
-            return  getCommandLineNoApiKey() +
-                    " --apiKey " + getGCPTestApiKey();
         }
 
         @Override
@@ -62,7 +52,6 @@ public class BQSRPipelineSparkIntegrationTest extends CommandLineProgramTest {
     @DataProvider(name = "BQSRLocalRefTest")
     public Object[][] createBQSRLocalRefTestData() {
         final String GRCh37Ref_2021 = b37_reference_20_21;
-        final String GRCh37Ref2bit_chr2021 = b37_2bit_reference_20_21;
         final String hiSeqBam_chr20 = getResourceDir() + WGS_B37_CH20_1M_1M1K_BAM;
         final String dbSNPb37_20 = getResourceDir() + DBSNP_138_B37_CH20_1M_1M1K_VCF;
 
@@ -74,16 +63,11 @@ public class BQSRPipelineSparkIntegrationTest extends CommandLineProgramTest {
         return new Object[][]{
                 // input local, computation local.
                 //Note: these output files were created by running GATK3
-                {new BQSRTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, dbSNPb37_20, ".bam", "-indelBQSR -enableBAQ " +"--joinStrategy BROADCAST", getResourceDir() + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.recalibrated.DIQ.bam")},
-                {new BQSRTest(GRCh37Ref_2021, hiSeqBam_chr20, dbSNPb37_20, ".bam", "-indelBQSR -enableBAQ " +"--joinStrategy SHUFFLE", getResourceDir() + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.recalibrated.DIQ.bam")},
-                {new BQSRTest(GRCh37Ref_2021, hiSeqBam_chr20, dbSNPb37_20, ".bam", "-indelBQSR -enableBAQ " +"--joinStrategy OVERLAPS_PARTITIONER", getResourceDir() + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.recalibrated.DIQ.bam")},
-                {new BQSRTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, dbSNPb37_20, ".bam", "-indelBQSR -enableBAQ " +"--joinStrategy BROADCAST", getResourceDir() + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.recalibrated.DIQ.bam")},
+                {new BQSRTest(GRCh37Ref_2021, hiSeqBam_chr20, dbSNPb37_20, ".bam", "-indels --enable-baq", getResourceDir() + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.recalibrated.DIQ.bam")},
 
                 //Output generated with GATK4 (resulting BAM has 4 differences with GATK3)
-                {new BQSRTest(b37_reference_20_21 , hiSeqBam_20_21_100000, more20Sites, ".bam", "-indelBQSR -enableBAQ " +"--joinStrategy SHUFFLE -knownSites " + more21Sites, getResourceDir() + "expected.MultiSite.bqsr.pipeline.bam")},
-                {new BQSRTest(b37_reference_20_21 , hiSeqCram_20_21_100000, more20Sites, ".cram", "-indelBQSR -enableBAQ " +"--joinStrategy SHUFFLE -knownSites " + more21Sites, getResourceDir() + "expected.MultiSite.bqsr.pipeline.cram")},
-                {new BQSRTest(b37_2bit_reference_20_21 , hiSeqBam_20_21_100000, more20Sites, ".bam", "-indelBQSR -enableBAQ " +"--joinStrategy BROADCAST -knownSites " + more21Sites, getResourceDir() + "expected.MultiSite.bqsr.pipeline.bam")},
-                {new BQSRTest(b37_reference_20_21 , hiSeqBam_20_21_100000, more20Sites, ".bam", "-indelBQSR -enableBAQ " +"--joinStrategy OVERLAPS_PARTITIONER -knownSites " + more21Sites, getResourceDir() + "expected.MultiSite.bqsr.pipeline.bam")},
+                {new BQSRTest(b37_reference_20_21 , hiSeqBam_20_21_100000, more20Sites, ".bam", "-indels --enable-baq --known-sites " + more21Sites, getResourceDir() + "expected.MultiSite.bqsr.pipeline.bam")},
+                {new BQSRTest(b37_reference_20_21 , hiSeqCram_20_21_100000, more20Sites, ".cram", "-indels --enable-baq --known-sites " + more21Sites, getResourceDir() + "expected.MultiSite.bqsr.pipeline.cram")},
        };
     }
 
@@ -103,7 +87,7 @@ public class BQSRPipelineSparkIntegrationTest extends CommandLineProgramTest {
             args.add("-R");
             args.add(referenceFile.getAbsolutePath());
         }
-        args.add("--knownSites");
+        args.add("--known-sites");
         args.add(params.knownSites);
         if (params.args != null) {
             Stream.of(params.args.trim().split(" ")).forEach(args::add);
@@ -111,27 +95,6 @@ public class BQSRPipelineSparkIntegrationTest extends CommandLineProgramTest {
 
         runCommandLine(args);
 
-        if (referenceFile != null && !ReferenceTwoBitSource.isTwoBit(referenceFile.getName())) { // htsjdk can't handle 2bit reference files
-            SamAssertionUtils.assertEqualBamFiles(outFile, new File(params.expectedFileName), referenceFile, true, ValidationStringency.SILENT);
-        }
-        else {
-            SamAssertionUtils.assertEqualBamFiles(outFile, new File(params.expectedFileName), true, ValidationStringency.SILENT);
-        }
-    }
-
-    @Test(groups = "spark")
-    public void testBlowUpOnBroadcastIncompatibleReference() throws IOException {
-        //this should blow up because broadcast requires a 2bit reference
-        final String hiSeqBam_chr20 = getResourceDir() + WGS_B37_CH20_1M_1M1K_BAM;
-        final String dbSNPb37_chr20 = getResourceDir() + DBSNP_138_B37_CH20_1M_1M1K_VCF;
-
-        BQSRTest params = new BQSRTest(b37_reference_20_21, hiSeqBam_chr20, dbSNPb37_chr20, ".bam", "-indelBQSR -enableBAQ " +"--joinStrategy BROADCAST", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_RECAL);
-
-        ArgumentsBuilder ab = new ArgumentsBuilder().add(params.getCommandLineNoApiKey());
-        IntegrationTestSpec spec = new IntegrationTestSpec(
-                ab.getString(),
-                1,
-                UserException.Require2BitReferenceForBroadcast.class);
-        spec.executeTest("testBQSR-" + params.args, this);
+        SamAssertionUtils.assertEqualBamFiles(outFile, new File(params.expectedFileName), referenceFile, true, ValidationStringency.SILENT);
     }
 }

@@ -25,7 +25,7 @@ public class BwaMemAlignmentUtils {
     public static SAMRecord applyAlignment( final String readName, final byte[] basesArg, final byte[] qualsArg,
                                            final String readGroup, final BwaMemAlignment alignment,
                                            final List<String> refNames, final SAMFileHeader header,
-                                           final boolean softclipAlts, final boolean alwaysGenerateASandXS ) {
+                                           final boolean softClipAlts, final boolean alwaysGenerateASandXS ) {
         final SAMRecord samRecord = new SAMRecord(header);
         samRecord.setReadName(readName);
         final int samFlag = alignment.getSamFlag();
@@ -46,7 +46,7 @@ public class BwaMemAlignmentUtils {
         if ( alignment.getCigar() != null && !alignment.getCigar().isEmpty() ) {
             final Cigar cigar = TextCigarCodec.decode(alignment.getCigar());
             Cigar tmpCigar = cigar;
-            if ( !softclipAlts && SAMFlag.SUPPLEMENTARY_ALIGNMENT.isSet(samFlag) ) {
+            if ( !softClipAlts && SAMFlag.SUPPLEMENTARY_ALIGNMENT.isSet(samFlag) ) {
                 if ( tmpCigar.getFirstCigarElement().getOperator() == CigarOperator.S ||
                         tmpCigar.getLastCigarElement().getOperator() == CigarOperator.S ) {
                     tmpCigar = new Cigar();
@@ -88,6 +88,7 @@ public class BwaMemAlignmentUtils {
             samRecord.setReadBases(SAMRecord.NULL_SEQUENCE);
             samRecord.setBaseQualities(SAMRecord.NULL_QUALS);
         }
+        //TODO: there ought to be a way to indicate a set of tag names that ought to be copied -- we're just doing RG
         if ( readGroup != null ) samRecord.setAttribute(SAMTag.RG.name(), readGroup);
         return samRecord;
     }

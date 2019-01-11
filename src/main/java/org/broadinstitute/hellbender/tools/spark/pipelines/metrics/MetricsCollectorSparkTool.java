@@ -70,7 +70,7 @@ public abstract class MetricsCollectorSparkTool<T extends MetricsArgumentCollect
                 getHeaderForReads().getSortOrder(),
                 getExpectedSortOrder(),
                 false,
-                getReadSourceName()
+                getReadSourceName().get(0)
         );
 
         // Execute the collector lifecycle
@@ -84,7 +84,7 @@ public abstract class MetricsCollectorSparkTool<T extends MetricsArgumentCollect
         initialize(collectorArgs, getHeaderForReads(), getDefaultHeaders());
         final JavaRDD<GATKRead> filteredReads = getReads();
         collectMetrics(filteredReads, getHeaderForReads());
-        saveMetrics(getReadSourceName());
+        saveMetrics(getReadSourceName().get(0));
     }
 
 }

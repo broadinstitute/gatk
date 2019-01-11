@@ -81,20 +81,19 @@ public final class RScriptExecutor extends ScriptExecutor {
     }
 
     public boolean exec() {
-        List<File> tempFiles = new ArrayList<>();
+        final List<File> tempDirs = new ArrayList<>();
         try {
-            File tempLibSourceDir  = IOUtils.tempDir("RlibSources.", "");
-            File tempLibInstallationDir = IOUtils.tempDir("Rlib.", "");
-            tempFiles.add(tempLibSourceDir);
-            tempFiles.add(tempLibInstallationDir);
+            File tempLibSourceDir  = IOUtils.createTempDir("RlibSources.");
+            File tempLibInstallationDir = IOUtils.createTempDir("Rlib.");
+            tempDirs.add(tempLibSourceDir);
+            tempDirs.add(tempLibInstallationDir);
 
             StringBuilder expression = new StringBuilder("tempLibDir = '").append(tempLibInstallationDir).append("';");
 
             if (!this.libraries.isEmpty()) {
                 List<String> tempLibraryPaths = new ArrayList<>();
                 for (RScriptLibrary library: this.libraries) {
-                    File tempLibrary = library.writeLibrary(tempLibSourceDir);
-                    tempFiles.add(tempLibrary);
+                    final File tempLibrary = library.writeLibraryToTempFile(tempLibSourceDir);
                     tempLibraryPaths.add(tempLibrary.getAbsolutePath());
                 }
 
@@ -110,8 +109,7 @@ public final class RScriptExecutor extends ScriptExecutor {
             }
 
             for (Resource script: this.scriptResources) {
-                File tempScript = IOUtils.writeTempResource(script);
-                tempFiles.add(tempScript);
+                final File tempScript = IOUtils.writeTempResource(script);
                 expression.append("source('").append(tempScript.getAbsolutePath()).append("');");
             }
 
@@ -137,8 +135,10 @@ public final class RScriptExecutor extends ScriptExecutor {
                 return false;
             }
         } finally {
-            for (File temp: tempFiles)
-                FileUtils.deleteQuietly(temp);
+            for (final File tempDir: tempDirs) {
+                // deletes the dirs and their contents
+                FileUtils.deleteQuietly(tempDir);
+            }
         }
     }
 }

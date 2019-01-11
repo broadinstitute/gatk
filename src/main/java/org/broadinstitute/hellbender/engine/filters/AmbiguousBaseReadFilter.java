@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.engine.filters;
 
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.cmdline.ReadFilterArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -15,15 +16,15 @@ public final class AmbiguousBaseReadFilter extends ReadFilter {
     private static final long serialVersionUID = 1L;
 
     @Argument(doc = "Threshold fraction of ambiguous bases",
-            fullName = "ambigFilterFrac",
+            fullName = ReadFilterArgumentDefinitions.AMBIGUOUS_FILTER_FRACTION_NAME,
             optional = true,
-            mutex = {"ambigFilterBases"})
+            mutex = {ReadFilterArgumentDefinitions.AMBIGUOUS_FILTER_BASES_NAME})
     public double maxAmbiguousBaseFraction = 0.05;
 
     @Argument(doc = "Threshold number of ambiguous bases. If null, uses threshold fraction; otherwise, overrides threshold fraction.",
-            fullName = "ambigFilterBases",
+            fullName = ReadFilterArgumentDefinitions.AMBIGUOUS_FILTER_BASES_NAME,
             optional = true,
-            mutex = {"ambigFilterFrac"})
+            mutex = {ReadFilterArgumentDefinitions.AMBIGUOUS_FILTER_FRACTION_NAME})
     public Integer maxAmbiguousBases = null;
 
     public AmbiguousBaseReadFilter() {}

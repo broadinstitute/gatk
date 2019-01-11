@@ -4,7 +4,8 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
+import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -24,19 +25,19 @@ import java.util.List;
         summary = "Simple tool to revert the quality scores in a SAM/BAM/CRAM file. Copies the scores from the OQ tag to the quality scores.",
         oneLineSummary = "Revert Quality Scores in a SAM/BAM/CRAM file",
         usageExample = "hellbender RevertQualityScores -I input.bam -O output.bam",
-        programGroup = ReadProgramGroup.class
+        programGroup = ReadDataManipulationProgramGroup.class
 )
 
 public class RevertBaseQualityScores extends ReadWalker {
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc="Write output to this file")
-    public File OUTPUT;
+    public String OUTPUT;
 
     private SAMFileGATKReadWriter outputWriter;
 
     @Override
     public void onTraversalStart() {
-        outputWriter = createSAMWriter(OUTPUT, true);
+        outputWriter = createSAMWriter(IOUtils.getPath(OUTPUT), true);
     }
 
     @Override

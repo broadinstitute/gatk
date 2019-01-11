@@ -20,6 +20,7 @@ import org.broadinstitute.hellbender.engine.Shard;
 import org.broadinstitute.hellbender.engine.ShardBoundary;
 import org.broadinstitute.hellbender.engine.ShardBoundaryShard;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import scala.Option;
@@ -49,8 +50,8 @@ public class SparkSharder {
      * @param <L> the {@link Locatable} type
      * @return an RDD of {@link Shard} of overlapping {@link Locatable} objects (including overlapping only padding)
      */
-    public static <L extends Locatable> JavaRDD<Shard<L>> shard(JavaSparkContext ctx, JavaRDD<L> locatables, Class<L> locatableClass,
-                                                                SAMSequenceDictionary sequenceDictionary, List<ShardBoundary> intervals,
+    public static <L extends Locatable, SB extends ShardBoundary> JavaRDD<Shard<L>> shard(JavaSparkContext ctx, JavaRDD<L> locatables, Class<L> locatableClass,
+                                                                SAMSequenceDictionary sequenceDictionary, List<SB> intervals,
                                                                 int maxLocatableLength) {
         return shard(ctx, locatables, locatableClass, sequenceDictionary, intervals, maxLocatableLength, false);
     }
@@ -68,25 +69,11 @@ public class SparkSharder {
      * @param <L> the {@link Locatable} type
      * @return an RDD of {@link Shard} of overlapping {@link Locatable} objects (including overlapping only padding)
      */
-    public static <L extends Locatable> JavaRDD<Shard<L>> shard(JavaSparkContext ctx, JavaRDD<L> locatables, Class<L> locatableClass,
-                                                                SAMSequenceDictionary sequenceDictionary, List<ShardBoundary> intervals,
+    public static <L extends Locatable, SB extends ShardBoundary> JavaRDD<Shard<L>> shard(JavaSparkContext ctx, JavaRDD<L> locatables, Class<L> locatableClass,
+                                                                SAMSequenceDictionary sequenceDictionary, List<SB> intervals,
                                                                 int maxLocatableLength, boolean useShuffle) {
 
-        List<ShardBoundary> paddedIntervals = intervals.stream().map(sb -> new ShardBoundary(sb.getInterval(), sb.getPaddedInterval()) {
-            private static final long serialVersionUID = 1L;
-            @Override
-            public String getContig() {
-                return getPaddedInterval().getContig();
-            }
-            @Override
-            public int getStart() {
-                return getPaddedInterval().getStart();
-            }
-            @Override
-            public int getEnd() {
-                return getPaddedInterval().getEnd();
-            }
-        }).collect(Collectors.toList());
+        List<ShardBoundary> paddedIntervals = intervals.stream().map(ShardBoundary::paddedShardBoundary).collect(Collectors.toList());
         if (useShuffle) {
             OverlapDetector<ShardBoundary> overlapDetector = OverlapDetector.create(paddedIntervals);
             Broadcast<OverlapDetector<ShardBoundary>> overlapDetectorBroadcast = ctx.broadcast(overlapDetector);
@@ -95,14 +82,14 @@ public class SparkSharder {
                 return overlaps.stream().map(key -> new Tuple2<>(key, locatable)).collect(Collectors.toList()).iterator();
             });
             JavaPairRDD<ShardBoundary, Iterable<L>> grouped = intervalsToLocatables.groupByKey();
-            return grouped.map((org.apache.spark.api.java.function.Function<Tuple2<ShardBoundary, Iterable<L>>, Shard<L>>) value -> new ShardBoundaryShard<>(value._1(), value._2()));
+            return grouped.map((org.apache.spark.api.java.function.Function<Tuple2<ShardBoundary, Iterable<L>>, Shard<L>>) value -> value._1().createShard(value._2()));
         }
         return joinOverlapping(ctx, locatables, locatableClass, sequenceDictionary, paddedIntervals, maxLocatableLength,
                 new MapFunction<Tuple2<ShardBoundary, Iterable<L>>, Shard<L>>() {
             private static final long serialVersionUID = 1L;
             @Override
-            public Shard<L> call(Tuple2<ShardBoundary, Iterable<L>> value) throws Exception {
-                return new ShardBoundaryShard<>(value._1(), value._2());
+            public Shard<L> call(Tuple2<ShardBoundary, Iterable<L>> value) {
+                return value._1().createShard(value._2());
             }
         });
     }
@@ -171,11 +158,13 @@ public class SparkSharder {
         }
         OverlapDetector<PartitionLocatable<SimpleInterval>> overlapDetector = OverlapDetector.create(partitionReadExtents);
         List<PartitionLocatable<I>> indexedIntervals = new ArrayList<>();
+        int lastPartitionStartIndex = 0;
         for (I interval : intervals) {
             int[] partitionIndexes = overlapDetector.getOverlaps(interval).stream()
                     .mapToInt(PartitionLocatable::getPartitionIndex).toArray();
             if (partitionIndexes.length == 0) {
-                // interval does not overlap any partition - skip it
+                // interval does not overlap any partition - add it to the last one
+                indexedIntervals.add(new PartitionLocatable<>(lastPartitionStartIndex, interval));
                 continue;
             }
             Arrays.sort(partitionIndexes);
@@ -185,6 +174,7 @@ public class SparkSharder {
             if (endIndex > maxEndPartitionIndexes.get(startIndex)) {
                 maxEndPartitionIndexes.set(startIndex, endIndex);
             }
+            lastPartitionStartIndex = startIndex;
         }
 
         JavaRDD<L> coalescedRdd = coalesce(locatables, locatableClass, new RangePartitionCoalescer(maxEndPartitionIndexes));
@@ -202,54 +192,100 @@ public class SparkSharder {
 
     /**
      * Turn a pair of iterators over intervals and locatables, into a single iterator over pairs made up of an interval and
-     * the locatables that overlap it. Intervals with no overlapping locatables are dropped.
+     * the locatables that overlap it. Intervals with no overlapping locatables are included.
      */
     static <L extends Locatable, I extends Locatable> Iterator<Tuple2<I, Iterable<L>>> locatablesPerShard(Iterator<L> locatables, Iterator<I> shards, SAMSequenceDictionary sequenceDictionary, int maxLocatableLength) {
         if (!shards.hasNext()) {
             return Collections.emptyIterator();
         }
-        PeekingIterator<L> peekingLocatables = Iterators.peekingIterator(locatables);
         PeekingIterator<I> peekingShards = Iterators.peekingIterator(shards);
         Iterator<Tuple2<I, Iterable<L>>> iterator = new AbstractIterator<Tuple2<I, Iterable<L>>>() {
-            // keep track of current and next, since locatables can overlap two shards
-            I currentShard = peekingShards.next();
-            I nextShard = peekingShards.hasNext() ? peekingShards.next() : null;
-            List<L> currentLocatables = Lists.newArrayList();
-            List<L> nextLocatables = Lists.newArrayList();
+            Queue<PendingShard<L, I>> pendingShards = new ArrayDeque<>();
 
             @Override
             protected Tuple2<I, Iterable<L>> computeNext() {
-                if (currentShard == null) {
-                    return endOfData();
-                }
-                while (peekingLocatables.hasNext()) {
-                    if (toRightOf(currentShard, peekingLocatables.peek(), sequenceDictionary)) {
-                        break;
-                    }
-                    L locatable = peekingLocatables.next();
+                Tuple2<I, Iterable<L>> nextShard = null;
+
+                while (locatables.hasNext() && nextShard == null) {
+                    L locatable = locatables.next();
                     if (locatable.getContig() != null) {
                         int size = locatable.getEnd() - locatable.getStart() + 1;
                         if (size > maxLocatableLength) {
                             throw new UserException(String.format("Max size of locatable exceeded. Max size is %s, but locatable size is %s. Try increasing shard size and/or padding. Locatable: %s", maxLocatableLength, size, locatable));
                         }
                     }
-                    if (overlaps(currentShard, locatable)) {
-                        currentLocatables.add(locatable);
+
+                    // Add any new shards that start before the end of the read to the queue
+                    while (peekingShards.hasNext() && !IntervalUtils.isAfter(peekingShards.peek(), locatable, sequenceDictionary)) {
+                        pendingShards.add(new PendingShard<>(peekingShards.next()));
                     }
-                    if (nextShard != null && overlaps(nextShard, locatable)) {
-                        nextLocatables.add(locatable);
+
+                    // Add the read to any shards that it overlaps
+                    for (PendingShard<L, I> pendingShard : pendingShards) {
+                        if (overlaps(pendingShard, locatable)) {
+                            pendingShard.addLocatable(locatable);
+                        }
+                    }
+
+                    // A pending shard only becomes ready once our reads iterator has advanced beyond the end of its extended span
+                    // (this ensures that we've loaded all reads that belong in the new shard)
+                    if (!pendingShards.isEmpty() && IntervalUtils.isAfter(locatable, pendingShards.peek(), sequenceDictionary)) {
+                        nextShard = pendingShards.poll().get();
                     }
                 }
-                // current shard is finished, either because the current locatable is to the right of it, or there are no more locatables
-                Tuple2<I, Iterable<L>> tuple = new Tuple2<>(currentShard, currentLocatables);
-                currentShard = nextShard;
-                nextShard = peekingShards.hasNext() ? peekingShards.next() : null;
-                currentLocatables = nextLocatables;
-                nextLocatables = Lists.newArrayList();
-                return tuple;
+
+                if (!locatables.hasNext()) {
+                    // Pull on intervals until it is exhausted
+                    while (peekingShards.hasNext()) {
+                        pendingShards.add(new PendingShard<>(peekingShards.next()));
+                    }
+
+                    // Grab the next pending shard if there is one, unless we already have a shard ready to go
+                    if (!pendingShards.isEmpty() && nextShard == null) {
+                        nextShard = pendingShards.poll().get();
+                    }
+                }
+
+                if (nextShard == null) {
+                    return endOfData();
+                }
+
+                return nextShard;
             }
         };
-        return Iterators.filter(iterator, input -> input._2().iterator().hasNext());
+        return iterator;
+    }
+
+    private static class PendingShard<L extends Locatable, I extends Locatable> implements Locatable {
+        private I interval;
+        private List<L> locatables = new ArrayList<>();
+
+        public PendingShard(I interval) {
+            this.interval = interval;
+        }
+
+        public void addLocatable(L locatable) {
+            locatables.add(locatable);
+        }
+
+        @Override
+        public String getContig() {
+            return interval.getContig();
+        }
+
+        @Override
+        public int getStart() {
+            return interval.getStart();
+        }
+
+        @Override
+        public int getEnd() {
+            return interval.getEnd();
+        }
+
+        public Tuple2<I, Iterable<L>> get() {
+            return new Tuple2<>(interval, locatables);
+        }
     }
 
     /**

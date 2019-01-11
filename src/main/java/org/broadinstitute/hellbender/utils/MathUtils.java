@@ -1,15 +1,28 @@
 package org.broadinstitute.hellbender.utils;
 
+import org.apache.commons.math3.distribution.EnumeratedDistribution;
+import org.apache.commons.math3.exception.DimensionMismatchException;
 import org.apache.commons.math3.exception.NotStrictlyPositiveException;
 import org.apache.commons.math3.exception.NumberIsTooLargeException;
+import org.apache.commons.math3.linear.RealMatrix;
+import org.apache.commons.math3.random.RandomGenerator;
+import org.apache.commons.math3.special.Beta;
 import org.apache.commons.math3.special.Gamma;
+import org.apache.commons.math3.stat.descriptive.moment.Variance;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
+import org.apache.commons.math3.util.FastMath;
+import org.apache.commons.math3.util.MathArrays;
+import org.apache.commons.math3.util.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
-import java.util.Arrays;
-import java.util.Collection;
+import javax.annotation.Nonnull;
+import java.util.*;
 import java.util.function.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * MathUtils is a static class (no instantiation allowed!) with some useful math methods.
@@ -24,7 +37,11 @@ public final class MathUtils {
 
     public static final double LOG10_ONE_HALF = Math.log10(0.5);
 
+    public static final double LOG_ONE_HALF = FastMath.log(0.5);
+
     public static final double LOG10_ONE_THIRD = -Math.log10(3.0);
+    public static final double INV_LOG_2 = 1.0 / Math.log(2.0);
+    public static final double INV_LOG_10 = 1.0 / Math.log(10);
 
     private static final double LN_10 = Math.log(10);
 
@@ -41,11 +58,430 @@ public final class MathUtils {
      */
     public static final double LOG10_OF_E = Math.log10(Math.E);
     public static final double FAIR_BINOMIAL_PROB_LOG10_0_5 = Math.log10(0.5);
+    /**
+     * Threshold used to determine best way to calculate log(1-exp(a))
+     * based on https://cran.r-project.org/web/packages/Rmpfr/vignettes/log1mexp-note.pdf
+     */
+    private static final double LN_1_M_EXP_THRESHOLD = - Math.log(2);
 
     /**
      * Private constructor.  No instantiating this class!
      */
     private MathUtils() { }
+
+    /**
+     * Computes $\log(\sum_i e^{a_i})$ trying to avoid underflow issues by using the log-sum-exp trick.
+     *
+     * <p>
+     * This trick consists of shifting all the log values by the maximum so that exponent values are
+     * much larger (close to 1) before they are summed. Then the result is shifted back down by
+     * the same amount in order to obtain the correct value.
+     * </p>
+     * @return any double value.
+     */
+    public static double logSumExp(final double ... values) {
+        double max = arrayMax(Utils.nonNull(values));
+        double sum = 0.0;
+        for (int i = 0; i < values.length; ++i) {
+            if (values[i] != Double.NEGATIVE_INFINITY) {
+                sum += Math.exp(values[i] - max);
+            }
+        }
+        return max + Math.log(sum);
+    }
+
+    public static double logSumExp(final Collection<Double> values) {
+        double max = Collections.max(Utils.nonNull(values));
+        double sum = 0.0;
+        for (final double val : values) {
+            if (val != Double.NEGATIVE_INFINITY) {
+                sum += Math.exp(val - max);
+            }
+        }
+        return max + Math.log(sum);
+    }
+
+    public static double mean(final double ... values) {
+        Utils.nonNull(values);
+        return mean(values, 0, values.length);
+    }
+
+    public static double[] rowMeans(final RealMatrix matrix) {
+        Utils.nonNull(matrix);
+        return IntStream.range(0, matrix.getRowDimension())
+                .mapToDouble(r -> mean(matrix.getRow(r))).toArray();
+    }
+
+    public static double[] rowVariances(final RealMatrix matrix) {
+        Utils.nonNull(matrix);
+        final Variance varianceEvaluator = new Variance();
+        return IntStream.range(0, matrix.getRowDimension())
+                .mapToDouble(r -> varianceEvaluator.evaluate(matrix.getRow(r))).toArray();
+    }
+
+    /**
+     * Calculates the standard deviation per row from a matrix.
+     * @param matrix the input matrix.
+     * @return never {@code null}, an array with as many positions as rows in {@code matrix}.
+     * @throws IllegalArgumentException if {@code matrix} is {@code null}.
+     */
+    public static double[] rowStdDevs(final RealMatrix matrix) {
+        Utils.nonNull(matrix);
+        final Variance varianceEvaluator = new Variance();
+        return IntStream.range(0, matrix.getRowDimension())
+                .mapToDouble(r -> Math.sqrt(varianceEvaluator.evaluate(matrix.getRow(r)))).toArray();
+    }
+
+    /**
+     * Calculates the mean per column from a matrix.
+     * @param matrix the input matrix.
+     * @return never {@code null}, an array with as many positions as columns in {@code matrix}.
+     * @throws IllegalArgumentException if {@code matrix} is {@code null}.
+     */
+    public static double[] columnMeans(final RealMatrix matrix) {
+        Utils.nonNull(matrix);
+        return IntStream.range(0, matrix.getColumnDimension())
+                .mapToDouble(c -> mean(matrix.getColumn(c))).toArray();
+    }
+
+    /**
+     * Calculates the standard deviation per column from a matrix.
+     * @param matrix the input matrix.
+     * @return never {@code null}, an array with as many positions as columns in {@code matrix}.
+     * @throws IllegalArgumentException if {@code matrix} is {@code null}.
+     */
+    public static double[] columnStdDevs(final RealMatrix matrix) {
+        Utils.nonNull(matrix);
+        final Variance varianceEvaluator = new Variance();
+        return IntStream.range(0, matrix.getColumnDimension())
+                .mapToDouble(c -> Math.sqrt(varianceEvaluator.evaluate(matrix.getColumn(c)))).toArray();
+    }
+
+    /**
+     * Calculate the standard deviation of a collection of {@link Number} instances.
+     * @param values the input values.
+     * @return the standard deviation.
+     * @throws IllegalArgumentException if {@code values} is {@code null} or it contains {@code null}.
+     */
+    public static double stdDev(final Collection<? extends Number> values) {
+        Utils.nonNull(values);
+        Utils.containsNoNull(values, "input values must not contain a null");
+        final double[] doubleValues = values.stream()
+                .mapToDouble(Number::doubleValue).toArray();
+        return stdDev(doubleValues);
+    }
+
+    /**
+     * Calculate the standard deviation of a double array.
+     * @param values the input values.
+     * @return the standard deviation.
+     * @throws IllegalArgumentException if {@code values} is {@code null}.
+     */
+    public static double stdDev(final double ... values) {
+        Utils.nonNull(values);
+        return Math.sqrt(new Variance().evaluate(values));
+    }
+
+    /**
+     * Create a set number of points, linearly spaced, between a minimum and maximum.
+     *
+     * Inspired by http://stackoverflow.com/questions/6208878/java-version-of-matlabs-linspace
+     *
+     * NaN are allowed, but will likely give useless results.
+     *
+     * @param min starting value
+     * @param max ending value
+     * @param points number of points, must be greater than -1
+     * @return Never {@code null}
+     */
+    public static double[] createEvenlySpacedPoints(final double min, final double max, int points) {
+        ParamUtils.isPositiveOrZero(points, "Number of points must be >= 0");
+        if (points == 1) {
+            return new double[] {max};
+        }
+        if (points == 0) {
+            return new double[] {};
+        }
+        return IntStream.range(0, points).mapToDouble(n -> min + n * (max - min) / (points - 1)).toArray();
+    }
+
+    // given a list of options and a function for calculating their probabilities (these must sum to 1 over the whole list)
+    // randomly choose one option from the implied categorical distribution
+    public static <E> E randomSelect(final List<E> choices, final Function<E, Double> probabilityFunction, final RandomGenerator rng) {
+        Utils.nonNull(choices);
+        Utils.nonNull(probabilityFunction);
+        Utils.nonNull(rng);
+        final List<Pair<E, Double>> pmf = choices.stream()
+                .map(e -> new Pair<>(e, probabilityFunction.apply(e))).collect(Collectors.toList());
+        return new EnumeratedDistribution<>(rng, pmf).sample();
+    }
+
+    /**
+     *  Return an array with column sums in each entry
+     *
+     * @param matrix Never {@code null}
+     * @return Never {@code null}
+     */
+    public static double[] columnSums(final RealMatrix matrix) {
+        Utils.nonNull(matrix);
+
+        return IntStream.range(0, matrix.getColumnDimension())
+                .mapToDouble(c -> sum(matrix.getColumn(c))).toArray();
+    }
+
+    /**
+     *  Return an array with row sums in each entry
+     *
+     * @param matrix Never {@code null}
+     * @return Never {@code null}
+     */
+    public static double[] rowSums(final RealMatrix matrix) {
+        Utils.nonNull(matrix);
+
+        return IntStream.range(0, matrix.getRowDimension())
+                .mapToDouble(r -> sum(matrix.getRow(r))).toArray();
+    }
+
+    /**
+     *  Return sum of 3d array
+     *
+     * @param array Never {@code null}
+     * @return sum of array
+     */
+    public static double sum(final double[][][] array) {
+        Utils.nonNull(array);
+        double result = 0;
+        for (double[][] d: array) {
+            for (double[] da: d){
+                for (double daa: da) {
+                    result += daa;
+                }
+            }
+        }
+        return result;
+    }
+
+    public static int minIndex(final int ... values) {
+        Utils.nonNull(values);
+        if (values.length == 0) {
+            return -1;
+        }
+        int minValue = values[0];
+        int minIndex = 0;
+        for (int i = 0; i < values.length; i++) {
+            final int nextValue = values[i];
+            if (nextValue < minValue) {
+                minValue = nextValue;
+                minIndex = i;
+            }
+        }
+        return minIndex;
+    }
+
+    /**
+     * Given an int array returns the difference between the second smallest element
+     * and the smallest element.
+     * @param values the input values.
+     * @param defaultValue value to return in case the input array has zero or only one element.
+     * @return 0 if the input array has less than 2 elements, otherwise the second smallest
+     * - the smallest.
+     * @throws IllegalArgumentException if {@code values} is {@code null}.
+     */
+    public static int secondSmallestMinusSmallest(final int[] values, final int defaultValue) {
+        Utils.nonNull(values);
+        if (values.length <= 1) {
+            return defaultValue;
+        } else {
+            int smallest = values[0];
+            int secondSmallest = Integer.MAX_VALUE;
+            for (int i = 1; i < values.length; i++) {
+                if (values[i] < smallest) {
+                    secondSmallest = smallest;
+                    smallest = values[i];
+                } else if (values[i] < secondSmallest) {
+                    secondSmallest = values[i];
+                }
+            }
+            return secondSmallest - smallest;
+        }
+    }
+
+    /**
+     * Returns the smallest power of 2 that exceeds or equals {@code val}
+     * @param val input value
+     * @return power of 2 integer
+     * @throws IllegalArgumentException if an int overflow is encountered
+     */
+    public static int smallestPowerOfTwoGreaterThan(final int val) {
+        ParamUtils.inRange(val, 0, Integer.MAX_VALUE/2, "The smallest power of 2 greater than this value is greater than Integer.MAX_VALUE or negative input.");
+        return val > 1 ? Integer.highestOneBit(val - 1) << 1 : 1;
+    }
+
+    /**
+     * Shrinks or expands a double array uniformly to a given length >= 2 ({@code newLength}) using nearest
+     * neighbor interpolation. The routine works as follows: it puts the array on a uniform partition of the unit
+     * interval on the real axis and and overlaps it with the desired grid. The value at a new grid point is
+     * set to its nearest neighbor from the original grid. For example, if data = {1, 2, 3} and newLength = 4,
+     * the output will be {1, 2, 2, 3}:
+     *
+     *      data     = 1     2     3
+     *      old grid = x     x     x
+     *      new grid = x   x   x   x
+     *      new data = 1   2   2   3
+     *
+     * @param data original array
+     * @param newLength length of the new array
+     * @return interpolated array
+     * @throws IllegalArgumentException if the input array is empty
+     */
+    public static double[] nearestNeighborUniform1DInterpolate(@Nonnull final double[] data, final int newLength) {
+        Utils.nonNull(data);
+        Utils.validateArg(data.length > 0, "The input array is empty.");
+        Utils.validateArg(newLength >= 2, "The new length of the array must be >= 2");
+        final double fact = (double)(data.length - 1)/(newLength - 1);
+        return IntStream.range(0, newLength).mapToDouble(i -> data[(int) FastMath.floor(i*fact + 0.5)]).toArray();
+    }
+
+    /**
+     * Find the maximum difference between entries of two arrays.  This is useful for testing convergence, for example
+     */
+    public static double maxDifference(final List<Double> array1, final List<Double> array2) {
+        Utils.nonNull(array1);
+        Utils.nonNull(array2);
+        Utils.validateArg(array1.size() == array2.size(), "arrays must have same length.");
+        Utils.validateArg(array1.size() > 0, "arrays must be non-empty");
+        return IntStream.range(0, array1.size()).mapToDouble(n -> Math.abs(array1.get(n) - array2.get(n))).max().getAsDouble();
+    }
+
+    public static double[] posteriors(double[] log10Priors, double[] log10Likelihoods) {
+        return normalizeFromLog10ToLinearSpace(MathArrays.ebeAdd(log10Priors, log10Likelihoods));
+    }
+
+    public static int[] normalizePLs(int[] PLs) {
+        final int[] newPLs = new int[PLs.length];
+        final int smallest = arrayMin(PLs);
+        for(int i=0; i<PLs.length; i++) {
+            newPLs[i] = PLs[i]-smallest;
+        }
+        return newPLs;
+    }
+
+    public static int[] ebeAdd(final int[] a, final int[] b) throws DimensionMismatchException {
+            if (a.length != b.length) {
+                throw new DimensionMismatchException(a.length, b.length);
+            }
+
+            final int[] result = a.clone();
+            for (int i = 0; i < a.length; i++) {
+                result[i] += b[i];
+            }
+            return result;
+    }
+
+    // sum of int -> double[] function mapped to an index range
+    public static double[] sumArrayFunction(final int min, final int max, final IntToDoubleArrayFunction function) {
+        Utils.validateArg(max >= min, "max must be at least as great as min");
+        final double[] result = function.apply(min);
+        for (int n = min + 1; n < max; n++) {
+            final double[] newValues = function.apply(n);
+            Utils.validateArg(newValues.length == result.length, "array function returns different sizes for different inputs!");
+            for (int i = 0; i < result.length; i++) {
+                result[i] += newValues[i];
+            }
+        }
+        return result;
+    }
+
+    public static void addToArrayInPlace(final double[] array, final double[] summand) {
+        Utils.validateArg(array.length == summand.length, "Arrays must have same length");
+        for (int n = 0; n < array.length; n++) {
+            array[n] += summand[n];
+        }
+    }
+
+    public static int median(final int[] values) {
+        Utils.nonNull(values);
+        return (int) FastMath.round(new Median().evaluate(Arrays.stream(values).mapToDouble(n -> n).toArray()));
+    }
+
+    public static double dotProduct(double[] a, double[] b){
+        return sum(MathArrays.ebeMultiply(Utils.nonNull(a), Utils.nonNull(b)));
+    }
+
+    /**
+     * Calculates the complement of a log probability.
+     *
+     * <p>
+     *     With complement of {@code x} we mean: {@code log(1-log(x))}.
+     * </p>
+     * @param x the input log probability.
+     * @return {@code log(1-log(x))}
+     */
+    public static double logProbComplement(final double x) {
+        return x >= LN_1_M_EXP_THRESHOLD
+                ? Math.log(-Math.expm1(x))
+                : Math.log1p(-Math.exp(x));
+    }
+
+    /**
+     * Transform a log scaled probability (x) into the Phred scaled
+     * equivalent or its complement (1-x) Phred scaled equivalent.
+     * <p>
+     *     This method tolerates probabilities slightly larger than 1.0
+     *     (> 0.0 in log scale) which may occur occasionally due to
+     *     float point calculation rounding.
+     * </p>
+     * <p>
+     *     The value returned is a phred score capped by {@code maxPhredScore}.
+     * </p>
+     *
+     * @param rawLogProb the probability.
+     * @param complement whether to return the direct Phred transformation ({@code false})
+     *                    or its complement ({@code true)}.
+     * @param phredScorePrecision Phred score precision (i.e. quantization unit)
+     * @param maxLogProb maximum tolerated log probability
+     * @param maxPhredScore maximum reported Phred score
+     * @return a values between 0 and {@code maxPhredScore}.
+     * @throws GATKException if {@code rawLogProb} is larger than {@code maxLogProb}.
+     */
+    public static double logProbToPhredScore(final double rawLogProb, final boolean complement,
+                                             final double maxPhredScore, final double maxLogProb,
+                                             final double phredScorePrecision) {
+        if (rawLogProb > maxLogProb) {
+            throw new GATKException(String.format("possible numerical instability problem: the log-probability is too" +
+                    " large: %g > 0.0 (with maximum tolerance %g)", rawLogProb, maxLogProb));
+        }
+        /* make sure that the probability is less than 1 in linear scale. there are cases where
+         * log probability exceeds 0.0 due to floating point errors. */
+        final double logProbEqOrLessThan0 = Math.min(0.0, rawLogProb);
+
+        // Accurate way to calculate log(1-exp(a))
+        // based on https://cran.r-project.org/web/packages/Rmpfr/vignettes/log1mexp-note.pdf
+        final double finalLogProb = complement
+                ? logProbComplement(logProbEqOrLessThan0)
+                : logProbEqOrLessThan0;
+
+        final double absoluteQualScore = QualityUtils.phredScaleLog10ErrorRate(finalLogProb * INV_LOG_10);
+        final double exactValue = Math.min(maxPhredScore, absoluteQualScore);
+        // We round the value to the required precession.
+        return roundPhred(exactValue, phredScorePrecision);
+    }
+
+    /**
+     * Round a Phred scaled score to precision {@code phredScorePrecision}
+     *
+     * @param value raw Phred score
+     * @param phredScorePrecision Phred score precision
+     * @return rounded Phred score
+     */
+    public static double roundPhred(final double value, final double phredScorePrecision) {
+        return Math.round(value / phredScorePrecision) * phredScorePrecision;
+    }
+
+    @FunctionalInterface
+    public interface IntToDoubleArrayFunction {
+        double[] apply(int value);
+    }
 
 
     /**
@@ -203,6 +639,7 @@ public final class MathUtils {
      * @return true if vector is well-formed, false otherwise
      */
     public static boolean goodLog10ProbVector(final double[] vector, final int expectedSize, final boolean shouldSumToOne) {
+        Utils.nonNull(vector);
         return vector.length == expectedSize &&
                 allMatch(vector, MathUtils::goodLog10Probability) &&
                 !( shouldSumToOne && compareDoubles(sumLog10(vector), 1.0, 1e-4) != 0 );
@@ -212,7 +649,7 @@ public final class MathUtils {
      *  Returns the sum of values whose log10s we have. That is, returns sum(10^x_i).
      */
     public static double sumLog10(final double[] log10values) {
-        return Math.pow(10.0, log10SumLog10(log10values));
+        return Math.pow(10.0, log10SumLog10(Utils.nonNull(log10values)));
     }
 
     /** Compute Z=X-Y for two numeric vectors X and Y
@@ -249,14 +686,15 @@ public final class MathUtils {
     }
 
     public static double log10sumLog10(final double[] log10values) {
-        return log10sumLog10(log10values, 0);
+        return log10sumLog10(Utils.nonNull(log10values), 0);
     }
 
     public static double log10sumLog10(final double[] log10p, final int start) {
-        return log10sumLog10(log10p, start, log10p.length);
+        return log10sumLog10(Utils.nonNull(log10p), start, log10p.length);
     }
 
     public static double log10sumLog10(final double[] log10p, final int start, final int finish) {
+        Utils.nonNull(log10p);
         if (start >= finish) {
             return Double.NEGATIVE_INFINITY;
         }
@@ -368,10 +806,11 @@ public final class MathUtils {
     }
 
     public static double approximateLog10SumLog10(final double[] vals) {
-        return approximateLog10SumLog10(vals, vals.length);
+        return approximateLog10SumLog10(Utils.nonNull(vals), vals.length);
     }
 
     public static double approximateLog10SumLog10(final double[] vals, final int endIndex) {
+        Utils.nonNull(vals);
         final int maxElementIndex = MathUtils.maxElementIndex(vals, endIndex);
         double approxSum = vals[maxElementIndex];
 
@@ -418,6 +857,7 @@ public final class MathUtils {
      * the length of the input array or {@code fromIndex} is larger than {@code toIndex}.
      */
     public static double approximateLog10SumLog10(final double[] vals, final int fromIndex, final int toIndex) {
+        Utils.nonNull(vals);
         if (fromIndex == toIndex) return Double.NEGATIVE_INFINITY;
         final int maxElementIndex = MathUtils.maxElementIndex(vals,fromIndex,toIndex);
         double approxSum = vals[maxElementIndex];
@@ -434,6 +874,7 @@ public final class MathUtils {
     }
 
     public static double sum(final double[] values) {
+        Utils.nonNull(values);
         double s = 0.0;
         for (double v : values)
             s += v;
@@ -441,6 +882,7 @@ public final class MathUtils {
     }
 
     public static long sum(final int[] x) {
+        Utils.nonNull(x);
         long total = 0;
         for (int v : x)
             total += v;
@@ -448,6 +890,7 @@ public final class MathUtils {
     }
 
     public static int sum(final byte[] x) {
+        Utils.nonNull(x);
         int total = 0;
         for (byte v : x)
             total += (int)v;
@@ -455,6 +898,7 @@ public final class MathUtils {
     }
 
     public static long sum(final long[] x) {
+        Utils.nonNull(x);
         int total = 0;
         for (long v : x)
             total += v;
@@ -463,7 +907,11 @@ public final class MathUtils {
 
     /** Returns the sum of the elements in the array starting with start and ending before stop. */
     public static long sum(final long[] arr, final int start, final int stop) {
-        return sum(Arrays.copyOfRange(arr, start, stop));
+        long result = 0;
+        for (int n = start; n < stop; n++) {
+            result += arr[n];
+        }
+        return result;
     }
 
     /** Returns the sum of the elements in the array starting with start and ending before stop. */
@@ -472,7 +920,27 @@ public final class MathUtils {
         Utils.validateArg(start <= stop, () -> start + " > " + stop);
         Utils.validateArg(start >= 0, () -> start + " < " + 0);
         Utils.validateArg(stop <= arr.length, () -> stop + " >  " + arr.length);
-        return sum(Arrays.copyOfRange(arr, start, stop));
+        double result = 0.0;
+        for (int n = start; n < stop; n++) {
+            result += arr[n];
+        }
+        return result;
+    }
+
+    public static <E> double sumDoubleFunction(final Collection<E> collection, final ToDoubleFunction<E> function) {
+        double result = 0;
+        for (final E e: collection) {
+            result += function.applyAsDouble(e);
+        }
+        return result;
+    }
+
+    public static <E> int sumIntFunction(final Collection<E> collection, final ToIntFunction<E> function) {
+        int result = 0;
+        for (final E e: collection) {
+            result += function.applyAsInt(e);
+        }
+        return result;
     }
 
     /**
@@ -561,6 +1029,9 @@ public final class MathUtils {
      */
     public static double log10BinomialProbability(final int n, final int k, final double log10p) {
         Utils.validateArg(log10p < 1.0e-18, "log10p: Log10-probability must be 0 or less");
+        if (log10p == Double.NEGATIVE_INFINITY){
+            return k == 0 ? 0 : Double.NEGATIVE_INFINITY;
+        }
         double log10OneMinusP = Math.log10(1 - Math.pow(10.0, log10p));
         return log10BinomialCoefficient(n, k) + log10p * k + log10OneMinusP * (n - k);
     }
@@ -573,14 +1044,15 @@ public final class MathUtils {
     }
 
     public static double log10SumLog10(final double[] log10Values, final int start) {
-        return log10SumLog10(log10Values, start, log10Values.length);
+        return log10SumLog10(Utils.nonNull(log10Values), start, log10Values.length);
     }
 
     public static double log10SumLog10(final double[] log10Values) {
-        return log10SumLog10(log10Values, 0);
+        return log10SumLog10(Utils.nonNull(log10Values), 0);
     }
 
     public static double log10SumLog10(final double[] log10Values, final int start, final int finish) {
+        Utils.nonNull(log10Values);
         if (start >= finish) {
             return Double.NEGATIVE_INFINITY;
         }
@@ -609,6 +1081,10 @@ public final class MathUtils {
         return a > b ? a + Math.log10(1 + Math.pow(10.0, b - a)) : b + Math.log10(1 + Math.pow(10.0, a - b));
     }
 
+    public static double logSumLog(final double a, final double b) {
+        return a > b ? a + FastMath.log(1 + FastMath.exp(b - a)) : b + FastMath.log(1 + FastMath.exp(a - b));
+    }
+
     /**
      * Calculate f(x) = log10 ( Normal(x | mu = mean, sigma = sd) )
      * @param mean the desired mean of the Normal distribution
@@ -635,6 +1111,8 @@ public final class MathUtils {
     }
 
     public static double distanceSquared(final double[] x, final double[] y) {
+        Utils.nonNull(x);
+        Utils.nonNull(y);
         return new IndexRange(0, x.length).sum(n -> square(x[n] - y[n]));
     }
 
@@ -645,7 +1123,7 @@ public final class MathUtils {
      * @return the normalized-in-place array
      */
     public static double[] normalizeFromLog10ToLinearSpace(final double[] array) {
-        return normalizeLog10(array, false, true);
+        return normalizeLog10(Utils.nonNull(array), false, true);
     }
 
     /**
@@ -655,7 +1133,7 @@ public final class MathUtils {
      * @return the normalized-in-place array, maybe log transformed
      */
     public static double[] normalizeLog10(final double[] array) {
-        return normalizeLog10(array, true, true);
+        return normalizeLog10(Utils.nonNull(array), true, true);
     }
 
 
@@ -669,7 +1147,7 @@ public final class MathUtils {
      * @return
      */
     public static double[] normalizeLog10(final double[] array, final boolean takeLog10OfOutput, final boolean inPlace) {
-        final double log10Sum = log10SumLog10(array);
+        final double log10Sum = log10SumLog10(Utils.nonNull(array));
         final double[] result = inPlace ? applyToArrayInPlace(array, x -> x - log10Sum) : applyToArray(array, x -> x - log10Sum);
         return takeLog10OfOutput ? result : applyToArrayInPlace(result, x -> Math.pow(10.0, x));
     }
@@ -677,6 +1155,7 @@ public final class MathUtils {
 
     //TODO: delete after we are satisfied with the concordance of VQSR with GATK3
     public static double[] normalizeLog10DeleteMePlease(final double[] array, final boolean takeLog10OfOutput) {
+        Utils.nonNull(array);
         final double maxValue = arrayMax(array);
         final double[] normalized = applyToArray(array, x -> Math.pow(10.0, x - maxValue));
         final double sum = sum(normalized);
@@ -697,6 +1176,7 @@ public final class MathUtils {
      * @return the scaled-in-place array
      */
     public static double[] scaleLogSpaceArrayForNumericalStability(final double[] array) {
+        Utils.nonNull(array);
         final double maxValue = arrayMax(array);
         return applyToArrayInPlace(array, x -> x - maxValue);
     }
@@ -711,6 +1191,7 @@ public final class MathUtils {
      * @return a newly allocated array corresponding the normalized values in array
      */
     public static double[] normalizeFromRealSpace(final double[] array) {
+        Utils.nonNull(array);
         if ( array.length == 0 )
             return array;
 
@@ -720,11 +1201,11 @@ public final class MathUtils {
     }
 
     public static int maxElementIndex(final double[] array) {
-        return maxElementIndex(array, array.length);
+        return maxElementIndex(Utils.nonNull(array), array.length);
     }
 
     public static int maxElementIndex(final double[] array, final int start, final int endIndex) {
-        Utils.nonNull(array, "array may not be null");
+        Utils.nonNull(array);
         Utils.validateArg(array.length > 0, "array may not be empty");
         Utils.validateArg(start <= endIndex, "Start cannot be after end.");
 
@@ -737,11 +1218,34 @@ public final class MathUtils {
     }
 
     public static int maxElementIndex(final double[] array, final int endIndex) {
-        return maxElementIndex(array, 0, endIndex);
+        return maxElementIndex(Utils.nonNull(array), 0, endIndex);
     }
 
     public static double arrayMax(final double[] array) {
+        Utils.nonNull(array);
         return array[maxElementIndex(array)];
+    }
+
+    public static int arrayMin(final int[] array) {
+        Utils.nonNull(array);
+        int min=array[0];
+        for(int i=0; i<array.length; i++) {
+            if(array[i] < min) {
+                min = array[i];
+            }
+        }
+        return min;
+    }
+
+    public static double arrayMin(final double[] array) {
+        Utils.nonNull(array);
+        double min=array[0];
+        for(int i=0; i<array.length; i++) {
+            if(array[i] < min) {
+                min = array[i];
+            }
+        }
+        return min;
     }
 
     /**
@@ -789,6 +1293,7 @@ public final class MathUtils {
      * @return
      */
     public static double[] toLog10(final double[] prRealSpace) {
+        Utils.nonNull(prRealSpace);
         return applyToArray(prRealSpace, Math::log10);
     }
 
@@ -848,11 +1353,13 @@ public final class MathUtils {
 
     /** Calculate the mean of an array of doubles. */
     public static double mean(final double[] in, final int start, final int stop) {
+        Utils.nonNull(in);
         return stop <= start ? Double.NaN : Arrays.stream(in, start, stop).average().getAsDouble();
     }
 
     /** "Promotes" an int[] into a double array with the same values (or as close as precision allows). */
     public static double[] promote(final int[] is) {
+        Utils.nonNull(is);
         return new IndexRange(0, is.length).mapToDouble(n -> (double) is[n]);
     }
 
@@ -909,6 +1416,8 @@ public final class MathUtils {
      * @return - associated likelihood
      */
     public static double dirichletMultinomial(double[] params, int[] counts) {
+        Utils.nonNull(params);
+        Utils.nonNull(counts);
         Utils.validateArg(params.length == counts.length, "The number of dirichlet parameters must match the number of categories");
         final double dirichletSum = sum(params);
         final int countSum = (int) sum(counts);
@@ -926,8 +1435,27 @@ public final class MathUtils {
      * This method has been benchmarked and performs as well as array-only code.
      */
     public static double[] applyToArray(final double[] array, final DoubleUnaryOperator func) {
-        Utils.nonNull(func, "function may not be null");
-        Utils.nonNull(array, "array may not be null");
+        Utils.nonNull(func);
+        Utils.nonNull(array);
+        final double[] result = new double[array.length];
+        for (int m = 0; m < result.length; m++) {
+            result[m] = func.applyAsDouble(array[m]);
+        }
+        return result;
+    }
+
+    /**
+     * The following method implements Arrays.stream(array).map(func).toArray(), which is concise but performs poorly due
+     * to the overhead of creating a stream, especially with small arrays.  Thus we wrap the wordy but fast array code
+     * in the following method which permits concise Java 8 code.
+     *
+     * Returns a new array -- the original array in not modified.
+     *
+     * This method has been benchmarked and performs as well as array-only code.
+     */
+    public static double[] applyToArray(final int[] array, final IntToDoubleFunction func) {
+        Utils.nonNull(func);
+        Utils.nonNull(array);
         final double[] result = new double[array.length];
         for (int m = 0; m < result.length; m++) {
             result[m] = func.applyAsDouble(array[m]);
@@ -945,8 +1473,8 @@ public final class MathUtils {
      * This method has been benchmarked and performs as well as array-only code.
      */
     public static double[] applyToArrayInPlace(final double[] array, final DoubleUnaryOperator func) {
-        Utils.nonNull(array, "array may not be null");
-        Utils.nonNull(func, "function may not be null");
+        Utils.nonNull(array);
+        Utils.nonNull(func);
         for (int m = 0; m < array.length; m++) {
             array[m] = func.applyAsDouble(array[m]);
         }
@@ -957,8 +1485,8 @@ public final class MathUtils {
      * Test whether all elements of a double[] array satisfy a double -> boolean predicate
      */
     public static boolean allMatch(final double[] array, final DoublePredicate pred) {
-        Utils.nonNull(array, "array may not be null");
-        Utils.nonNull(pred, "predicate may not be null");
+        Utils.nonNull(array);
+        Utils.nonNull(pred);
         for (final double x : array) {
             if (!pred.test(x)) {
                 return false;
@@ -979,5 +1507,42 @@ public final class MathUtils {
             }
         }
         return true;
+    }
+
+    /**
+     *
+     * @param array array of integers
+     * @return index of the max. In case of a tie, return the smallest index
+     */
+    public static int maxElementIndex(final int[] array){
+        int maxIndex = 0;
+        int currentMax = Integer.MIN_VALUE;
+        for (int i = 0; i < array.length; i++){
+            if (array[i] > currentMax){
+                maxIndex = i;
+                currentMax = array[i];
+            }
+        }
+        return maxIndex;
+    }
+
+    /**
+     *
+     * Computes the log10 probability density of BetaBinomial(k|n, alpha, beta)
+     *
+     * @param alpha pseudocount of number of heads
+     * @param beta pseudocount of number of tails
+     * @param k value to evaluate
+     * @param n number of coin flips
+     * @return probability density function evaluated at k
+     */
+    public static double log10BetaBinomialProbability(final int k, final int n, final double alpha, final double beta){
+        Utils.validateArg(k <= n, String.format("k must be less than or equal to n but got k = %d, n = %d", k, n));
+        return log10BinomialCoefficient(n, k) + Beta.logBeta(k + alpha, n - k + beta) * LOG10_OF_E -
+                Beta.logBeta(alpha, beta) * LOG10_OF_E;
+    }
+
+    public static boolean isAProbability(final double p){
+        return p >= 0 && p <= 1;
     }
 }

@@ -13,7 +13,7 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
+import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.MetricsReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
@@ -39,7 +39,7 @@ import java.util.List;
         summary = "Program to chart " +
                 "quality score distributions in a SAM/BAM file.",
         oneLineSummary = "QualityScoreDistribution on Spark",
-        programGroup = SparkProgramGroup.class
+        programGroup = DiagnosticsAndQCProgramGroup.class
 )
 @BetaFeature
 public final class QualityScoreDistributionSpark extends GATKSparkTool {
@@ -134,7 +134,7 @@ public final class QualityScoreDistributionSpark extends GATKSparkTool {
                 (counts1, counts2) -> counts1.merge(counts2));
 
         final MetricsFile<?, Byte> metrics = makeMetrics(result);
-        saveResults(metrics, getHeaderForReads(), getReadSourceName());
+        saveResults(metrics, getHeaderForReads(), getReadSourceName().get(0));
     }
 
     //Convert the count object into a metrics object so save in a report

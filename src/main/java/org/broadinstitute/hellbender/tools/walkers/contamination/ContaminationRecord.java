@@ -15,17 +15,17 @@ import java.util.List;
  * Created by David Benjamin on 2/13/17.
  */
 public class ContaminationRecord {
-    private String level;
+    private String sample;
     private double contamination;
     private double error;
 
-    public ContaminationRecord(final String level, final double contamination, final double error) {
-        this.level = level;
+    public ContaminationRecord(final String sample, final double contamination, final double error) {
+        this.sample = sample;
         this.contamination = contamination;
         this.error = error;
     }
 
-    public String getLevel() { return level; }
+    public String getSample() { return sample; }
 
     public double getContamination() {
         return contamination;
@@ -36,7 +36,7 @@ public class ContaminationRecord {
     }
 
     //----- The following two public static methods read and write contamination files
-    public static void writeContaminationTable(final List<ContaminationRecord> records, final File outputTable) {
+    public static void writeToFile(final List<ContaminationRecord> records, final File outputTable) {
         try ( ContaminationRecord.ContaminationTableWriter writer = new ContaminationRecord.ContaminationTableWriter(outputTable) ) {
             writer.writeAllRecords(records);
         } catch (IOException e){
@@ -44,7 +44,7 @@ public class ContaminationRecord {
         }
     }
 
-    public static List<ContaminationRecord> readContaminationTable(final File tableFile) {
+    public static List<ContaminationRecord> readFromFile(final File tableFile) {
         try( ContaminationTableReader reader = new ContaminationTableReader(tableFile) ) {
             return reader.toList();
         } catch (IOException e){
@@ -60,8 +60,8 @@ public class ContaminationRecord {
 
         @Override
         protected void composeLine(final ContaminationRecord record, final DataLine dataLine) {
-            dataLine.set(ContaminationTableColumn.LEVEL.toString(), record.getLevel())
-                    .set(ContaminationTableColumn.CONTAMINATION.toString(), record.getContamination())
+            dataLine.set(ContaminationTableColumn.SAMPLE.toString(), record.getSample())
+                .set(ContaminationTableColumn.CONTAMINATION.toString(), record.getContamination())
                     .set(ContaminationTableColumn.ERROR.toString(), record.getError());
         }
     }
@@ -73,7 +73,7 @@ public class ContaminationRecord {
 
         @Override
         protected ContaminationRecord createRecord(final DataLine dataLine) {
-            final String sample = dataLine.get(ContaminationTableColumn.LEVEL);
+            final String sample = dataLine.get(ContaminationTableColumn.SAMPLE);
             final double contamination = dataLine.getDouble(ContaminationTableColumn.CONTAMINATION);
             final double error = dataLine.getDouble(ContaminationTableColumn.ERROR);
             return new ContaminationRecord(sample, contamination, error);
@@ -81,7 +81,7 @@ public class ContaminationRecord {
     }
 
     private enum ContaminationTableColumn {
-        LEVEL("level"),
+        SAMPLE("sample"),
         CONTAMINATION("contamination"),
         ERROR("error");
 
@@ -96,19 +96,6 @@ public class ContaminationRecord {
             return columnName;
         }
 
-        public static final TableColumnCollection COLUMNS = new TableColumnCollection(LEVEL, CONTAMINATION, ERROR);
-    }
-
-    public enum Level {
-        WHOLE_BAM("whole_bam"),
-        READ_GROUP("read_group"),
-        LANE("lane");
-
-        private String value;
-
-        Level(final String value) { this.value = value; }
-
-        @Override
-        public String toString() { return value; }
+        public static final TableColumnCollection COLUMNS = new TableColumnCollection(SAMPLE, CONTAMINATION, ERROR);
     }
 }

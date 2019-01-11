@@ -1,11 +1,12 @@
 package org.broadinstitute.hellbender.engine.spark;
 
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.utils.SerializableFunction;
 import com.google.common.collect.Lists;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.broadinstitute.hellbender.engine.ReferenceShard;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -15,7 +16,6 @@ import scala.Tuple2;
 
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 /**
  * RefBasesForReads queries the Google Genomics API for reference bases overlapping all of the reads.
@@ -51,7 +51,7 @@ import java.util.stream.StreamSupport;
  *  KV<read c, ref bases 2c>
  *
  * The reference bases paired with each read can be customized by passing in a reference window function
- * inside the {@link org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource} argument to {@link #addBases}. See {@link org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions} for examples.
+ * inside the {@link ReferenceMultiSparkSource} argument to {@link #addBases}. See {@link ReferenceWindowFunctions} for examples.
  */
 public final class ShuffleJoinReadsWithRefBases {
 
@@ -62,7 +62,7 @@ public final class ShuffleJoinReadsWithRefBases {
      * @param reads The reads for which to extract reference sequence information
      * @return The JavaPairRDD that contains each read along with the corresponding ReferenceBases object
      */
-    public static JavaPairRDD<GATKRead, ReferenceBases> addBases(final ReferenceMultiSource referenceDataflowSource,
+    public static JavaPairRDD<GATKRead, ReferenceBases> addBases(final ReferenceMultiSparkSource referenceDataflowSource,
                                                                  final JavaRDD<GATKRead> reads) {
         // TODO: reimpl this method by calling out to the more complex version?
         SerializableFunction<GATKRead, SimpleInterval> windowFunction = referenceDataflowSource.getReferenceWindowFunction();
@@ -83,7 +83,7 @@ public final class ShuffleJoinReadsWithRefBases {
             final List<SimpleInterval> readWindows = Utils.stream(iReads).map(read -> windowFunction.apply(read)).collect(Collectors.toList());
 
             SimpleInterval interval = IntervalUtils.getSpanningInterval(readWindows);
-            ReferenceBases bases = referenceDataflowSource.getReferenceBases(null, interval);
+            ReferenceBases bases = referenceDataflowSource.getReferenceBases(interval);
             for (GATKRead r : iReads) {
                 final ReferenceBases subset = bases.getSubset(windowFunction.apply(r));
                 out.add(new Tuple2<>(r, subset));
@@ -99,7 +99,7 @@ public final class ShuffleJoinReadsWithRefBases {
      * @param keyedByRead The read-keyed RDD for which to extract reference sequence information
      * @return The JavaPairRDD that contains each read along with the corresponding ReferenceBases object and the value
      */
-    public static <T> JavaPairRDD<GATKRead, Tuple2<T, ReferenceBases>> addBases(final ReferenceMultiSource referenceDataflowSource,
+    public static <T> JavaPairRDD<GATKRead, Tuple2<T, ReferenceBases>> addBases(final ReferenceMultiSparkSource referenceDataflowSource,
                                                                                 final JavaPairRDD<GATKRead, T> keyedByRead) {
         SerializableFunction<GATKRead, SimpleInterval> windowFunction = referenceDataflowSource.getReferenceWindowFunction();
 
@@ -120,7 +120,7 @@ public final class ShuffleJoinReadsWithRefBases {
 
             SimpleInterval interval = IntervalUtils.getSpanningInterval(readWindows);
             // TODO: don't we need to support GCS PipelineOptions?
-            ReferenceBases bases = referenceDataflowSource.getReferenceBases(null, interval);
+            ReferenceBases bases = referenceDataflowSource.getReferenceBases(interval);
             for (Tuple2<GATKRead, T> p : iReads) {
                 final ReferenceBases subset = bases.getSubset(windowFunction.apply(p._1()));
                 out.add(new Tuple2<>(p._1(), new Tuple2<>(p._2(), subset)));

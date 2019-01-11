@@ -29,12 +29,10 @@ public class UniqueAltReadCountUnitTest {
     public void testSingleDuplicate() throws IOException {
         final ReadLikelihoods<Allele> likelihoods = createTestLikelihoods(Optional.empty());
         final UniqueAltReadCount uniqueAltReadCountAnnotation = new UniqueAltReadCount();
-        final GenotypeBuilder genotypeBuilder = new GenotypeBuilder(sampleName);
-        uniqueAltReadCountAnnotation.annotate(null, vc, genotypeBuilder.make(), genotypeBuilder, likelihoods);
+        final Map<String, Object> annotations = uniqueAltReadCountAnnotation.annotate(null, vc, likelihoods);
 
-        final Genotype genotype = genotypeBuilder.make();
 
-        final int uniqueReadSetCount = GATKProtectedVariantContextUtils.getAttributeAsInt(genotype, UniqueAltReadCount.UNIQUE_ALT_READ_SET_COUNT_KEY, -1);
+        final int uniqueReadSetCount = (int) annotations.get(UniqueAltReadCount.KEY);
         Assert.assertEquals(uniqueReadSetCount, 1);
     }
 
@@ -45,24 +43,19 @@ public class UniqueAltReadCountUnitTest {
         // should get three unique sets of ALT reads
         final int numUniqueStarts1 = 3;
         final ReadLikelihoods<Allele> likelihoods1 = createTestLikelihoods(Optional.of(numUniqueStarts1));
-        final GenotypeBuilder genotypeBuilder1 = new GenotypeBuilder(sampleName);
-        duplicateReadCountsAnnotation.annotate(null, vc, genotypeBuilder1.make(), genotypeBuilder1, likelihoods1);
+        final Map<String, Object> annotations1 = duplicateReadCountsAnnotation.annotate(null, vc, likelihoods1);
 
-        final Genotype genotype1 = genotypeBuilder1.make();
 
-        final int uniqueReadSetCount1 = GATKProtectedVariantContextUtils.getAttributeAsInt(genotype1, UniqueAltReadCount.UNIQUE_ALT_READ_SET_COUNT_KEY, -1);
-
+        final int uniqueReadSetCount1 = (int) annotations1.get(UniqueAltReadCount.KEY);
         Assert.assertEquals(uniqueReadSetCount1, numUniqueStarts1);
 
         // here ALT reads are all distinct
         final int numUniqueStarts2 = numAltReads;
         final ReadLikelihoods<Allele> likelihoods2 = createTestLikelihoods(Optional.of(numUniqueStarts2));
-        final GenotypeBuilder genotypeBuilder2 = new GenotypeBuilder(sampleName);
-        duplicateReadCountsAnnotation.annotate(null, vc, genotypeBuilder2.make(), genotypeBuilder2, likelihoods2);
+        final Map<String, Object> annotations2 = duplicateReadCountsAnnotation.annotate(null, vc, likelihoods2);
 
-        final Genotype genotype2 = genotypeBuilder2.make();
 
-        final int uniqueReadSetCount2 = GATKProtectedVariantContextUtils.getAttributeAsInt(genotype2, UniqueAltReadCount.UNIQUE_ALT_READ_SET_COUNT_KEY, -1);
+        final int uniqueReadSetCount2 = (int) annotations2.get(UniqueAltReadCount.KEY);
 
         Assert.assertEquals(uniqueReadSetCount2, numUniqueStarts2);
     }

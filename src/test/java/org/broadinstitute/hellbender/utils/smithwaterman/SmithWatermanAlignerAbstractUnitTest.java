@@ -43,7 +43,7 @@ public abstract class SmithWatermanAlignerAbstractUnitTest extends GATKBaseTest 
 
         if ( overhangStrategy != SWOverhangStrategy.SOFTCLIP ) {
 
-            // we need to go through all the hassle below only if we do not do softclipping;
+            // we need to go through all the hassle below only if we do not do soft-clipping;
             // otherwise offset is never negative
             if ( offset < 0 ) {
                 for (  ; j < (-offset) ; j++ ) {

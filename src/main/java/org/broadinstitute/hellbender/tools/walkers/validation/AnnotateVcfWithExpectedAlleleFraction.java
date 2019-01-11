@@ -13,7 +13,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
+import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -40,10 +40,10 @@ import java.util.stream.Collectors;
  * <h3>Example</h3>
  *
  * <pre>
- * gatk-launch --javaOptions "-Xmx4g" AnnotateVcfWithExpectedAlleleFraction \
+ * gatk --java-options "-Xmx4g" AnnotateVcfWithExpectedAlleleFraction \
  *   -V input.vcf \
  *   -O output.vcf \
- *   -mixingFractions mixingFractions.table
+ *   --mixing-fractions mixingFractions.table
  * </pre>
  *
  * Created by David Benjamin on 1/31/17.
@@ -53,7 +53,7 @@ import java.util.stream.Collectors;
                 " fractions of the different samples in the pool via the formula" +
                 " Expected allele fraction = SUM_samples {mixing_fraction(sample) * [0 if hom ref, 0.5 is het, 1.0 if hom var]}",
         oneLineSummary = "(Internal) Annotate a vcf with expected allele fractions in pooled sequencing",
-        programGroup = VariantProgramGroup.class
+        programGroup = VariantEvaluationProgramGroup.class
 )
 @DocumentedFeature
 public class AnnotateVcfWithExpectedAlleleFraction extends VariantWalker {

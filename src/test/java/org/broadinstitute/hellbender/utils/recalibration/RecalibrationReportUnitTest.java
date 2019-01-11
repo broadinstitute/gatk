@@ -144,7 +144,7 @@ public final class RecalibrationReportUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions = UserException.class)
     public void testUnsupportedCovariates(){
-        File file = new File(publicTestDir + "org/broadinstitute/hellbender/tools/" + "unsupported-covariates.table.gz");
+        File file = new File(toolsTestDir + "unsupported-covariates.table.gz");
         new RecalibrationReport(file);
     }
 

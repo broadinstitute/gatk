@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreadin
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.TextCigarCodec;
 import org.apache.commons.lang3.tuple.Pair;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.Kmer;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.KBestHaplotype;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.KBestHaplotypeFinder;
@@ -11,8 +12,8 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.SeqGra
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanJavaAligner;
-import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -158,6 +159,32 @@ public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
     }
 
     @Test(enabled = !DEBUG)
+    // Test showing that if a read gets completely clipped in the ReadThreadingAssembler, that the assembly will not crash
+    public void testEmptyReadBeingAddedToGraph() {
+
+        // b37 20:12655200-12655850
+        final String ref = "CAATTGTCATAGAGAGTGACAAATGTTTCAAAAGCTTATTGACCCCAAGGTGCAGCGGTGCACATTAGAGGGCACCTAAGACAGCCTACAGGGGTCAGAAAAGATGTCTCAGAGGGACTCACACCTGAGCTGAGTTGTGAAGGAAGAGCAGGATAGAATGAGCCAAAGATAAAGACTCCAGGCAAAAGCAAATGAGCCTGAGGGAAACTGGAGCCAAGGCAAGAGCAGCAGAAAAGAGCAAAGCCAGCCGGTGGTCAAGGTGGGCTACTGTGTATGCAGAATGAGGAAGCTGGCCAAGTAGACATGTTTCAGATGATGAACATCCTGTATACTAGATGCATTGGAACTTTTTTCATCCCCTCAACTCCACCAAGCCTCTGTCCACTCTTGGTACCTCTCTCCAAGTAGACATATTTCAGATCATGAACATCCTGTGTACTAGATGCATTGGAAATTTTTTCATCCCCTCAACTCCACCCAGCCTCTGTCCACACTTGGTACCTCTCTCTATTCATATCTCTGGCCTCAAGGAGGGTATTTGGCATTAGTAAATAAATTCCAGAGATACTAAAGTCAGATTTTCTAAGACTGGGTGAATGACTCCATGGAAGAAGTGAAAAAGAGGAAGTTGTAATAGGGAGACCTCTTCGG";
+
+        // SNP at 20:12655528 creates a cycle for small kmers
+        final String alt = "CAATTGTCATAGAGAGTGACAAATGTTTCAAAAGCTTATTGACCCCAAGGTGCAGCGGTGCACATTAGAGGGCACCTAAGACAGCCTACAGGGGTCAGAAAAGATGTCTCAGAGGGACTCACACCTGAGCTGAGTTGTGAAGGAAGAGCAGGATAGAATGAGCCAAAGATAAAGACTCCAGGCAAAAGCAAATGAGCCTGAGGGAAACTGGAGCCAAGGCAAGAGCAGCAGAAAAGAGCAAAGCCAGCCGGTGGTCAAGGTGGGCTACTGTGTATGCAGAATGAGGAAGCTGGCCAAGTAGACATGTTTCAGATGATGAACATCCTGTGTACTAGATGCATTGGAACTTTTTTCATCCCCTCAACTCCACCAAGCCTCTGTCCACTCTTGGTACCTCTCTCCAAGTAGACATATTTCAGATCATGAACATCCTGTGTACTAGATGCATTGGAAATTTTTTCATCCCCTCAACTCCACCCAGCCTCTGTCCACACTTGGTACCTCTCTCTATTCATATCTCTGGCCTCAAGGAGGGTATTTGGCATTAGTAAATAAATTCCAGAGATACTAAAGTCAGATTTTCTAAGACTGGGTGAATGACTCCATGGAAGAAGTGAAAAAGAGGAAGTTGTAATAGGGAGACCTCTTCGG";
+
+        final List<GATKRead> reads = new ArrayList<>();
+        for ( int index = 0; index < alt.length() - 100; index += 20 ) {
+            reads.add(ArtificialReadUtils.createArtificialRead(Arrays.copyOfRange(alt.getBytes(), index, index + 100), Utils.dupBytes((byte) 30, 100), 100 + "M"));
+        }
+        reads.add(ReadUtils.emptyRead(reads.get(0)));
+
+        // test that there are cycles detected for small kmer
+        final ReadThreadingGraph rtgraph25 = new ReadThreadingGraph(25);
+        rtgraph25.addSequence("ref", ref.getBytes(), true);
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
+        for ( final GATKRead read : reads ) {
+            rtgraph25.addRead(read, header);
+        }
+        rtgraph25.buildGraphIfNecessary();
+    }
+
+    @Test(enabled = !DEBUG)
     public void testNsInReadsAreNotUsedForGraph() {
 
         final int length = 100;
@@ -177,7 +204,8 @@ public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
         rtgraph.buildGraphIfNecessary();
 
         final SeqGraph graph = rtgraph.toSequenceGraph();
-        Assert.assertEquals(new KBestHaplotypeFinder(graph, graph.getReferenceSourceVertex(), graph.getReferenceSinkVertex()).size(), 1);
+        final List<KBestHaplotype> paths = new KBestHaplotypeFinder(graph, graph.getReferenceSourceVertex(), graph.getReferenceSinkVertex()).findBestHaplotypes();
+        Assert.assertEquals(paths.size(), 1);
     }
 
 // TODO -- update to use determineKmerSizeAndNonUniques directly
@@ -399,7 +427,7 @@ public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
         // confirm that we created the appropriate bubble in the graph only if expected
         rtgraph.cleanNonRefPaths();
         final SeqGraph seqGraph = rtgraph.toSequenceGraph();
-        final List<KBestHaplotype> paths = new KBestHaplotypeFinder(seqGraph, seqGraph.getReferenceSourceVertex(), seqGraph.getReferenceSinkVertex());
+        final List<KBestHaplotype> paths = new KBestHaplotypeFinder(seqGraph, seqGraph.getReferenceSourceVertex(), seqGraph.getReferenceSinkVertex()).findBestHaplotypes();
         Assert.assertEquals(paths.size(), shouldBeMerged ? 2 : 1);
     }
 

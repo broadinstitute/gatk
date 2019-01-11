@@ -1,18 +1,16 @@
 package org.broadinstitute.hellbender.tools.walkers.rnaseq;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.testng.annotations.Test;
 
-import java.io.File;
 import java.util.Arrays;
 
 public final class ASEReadCounterIntegrationTest extends CommandLineProgramTest {
-    private static final String aseDirRelative = "src/test/resources/org/broadinstitute/hellbender/tools/walkers/rnaseq/ASEReadCounter";
-    public static final String aseTestDir = new File(gatkDirectory, aseDirRelative).getAbsolutePath() + "/";
+    public static final String aseTestDir = toolsTestDir + "walkers/rnaseq/ASEReadCounter/";
 
     @Test
     public void testASEReadCounterWithHighMQ() throws Exception {
@@ -65,7 +63,7 @@ public final class ASEReadCounterIntegrationTest extends CommandLineProgramTest 
     @Test
     public void testASEReadCounterMinDepth70() throws Exception {
         IntegrationTestSpec spec = new IntegrationTestSpec(
-                "-R " + b37_reference_20_21 + " -I " + largeFileTestDir + "NA12878.RNAseq.bam -V " + aseTestDir + "NA12878.chr20_2444518_2637800.RNAseq.SYNONYMOUS_CODING.vcf -mmq 60 -mbq 10 -O %s -minDepth 70",
+                "-R " + b37_reference_20_21 + " -I " + largeFileTestDir + "NA12878.RNAseq.bam -V " + aseTestDir + "NA12878.chr20_2444518_2637800.RNAseq.SYNONYMOUS_CODING.vcf -mmq 60 -mbq 10 -O %s -min-depth 70",
                 Arrays.asList(aseTestDir + "expected.ASEReadCount.MinDepth70.table"));
         spec.executeTest("test high mq with no read passing", this);
     }
@@ -73,7 +71,7 @@ public final class ASEReadCounterIntegrationTest extends CommandLineProgramTest 
     @Test
     public void testASEReadCounterFileFormat() throws Exception {
         IntegrationTestSpec spec = new IntegrationTestSpec(
-                "-R " + b37_reference_20_21 + " -I " + largeFileTestDir + "NA12878.RNAseq.bam -V " + aseTestDir + "NA12878.chr20_2444518_2637800.RNAseq.SYNONYMOUS_CODING.vcf -mmq 60 -mbq 10 -O %s --outputFormat CSV",
+                "-R " + b37_reference_20_21 + " -I " + largeFileTestDir + "NA12878.RNAseq.bam -V " + aseTestDir + "NA12878.chr20_2444518_2637800.RNAseq.SYNONYMOUS_CODING.vcf -mmq 60 -mbq 10 -O %s --output-format CSV",
                 Arrays.asList(aseTestDir + "expected.ASEReadCount.FileFormat.table"));
         spec.executeTest("test high mq with no read passing", this);
     }
@@ -129,7 +127,7 @@ public final class ASEReadCounterIntegrationTest extends CommandLineProgramTest 
     @Test
     public void testASEReadCounterImproperPairs() throws Exception {
         IntegrationTestSpec spec = new IntegrationTestSpec(
-                "-R " + b37_reference_20_21 + " -I " + largeFileTestDir + "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam -V " + aseTestDir + "NA12878.chr20_2444518_2637800.RNAseq.IMPROPER_PAIR.vcf -mmq 60 -mbq 10 -O %s --outputFormat CSV",
+                "-R " + b37_reference_20_21 + " -I " + largeFileTestDir + "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam -V " + aseTestDir + "NA12878.chr20_2444518_2637800.RNAseq.IMPROPER_PAIR.vcf -mmq 60 -mbq 10 -O %s --output-format CSV",
                 Arrays.asList(aseTestDir + "expected.ASEReadCount.ImproperPair.table"));
         spec.executeTest("test improper pairs", this);
     }

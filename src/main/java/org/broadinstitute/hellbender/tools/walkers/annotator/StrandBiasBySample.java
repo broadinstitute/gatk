@@ -104,5 +104,11 @@ public final class StrandBiasBySample extends GenotypeAnnotation {
     public List<VCFFormatHeaderLine> getDescriptions() {
         return Collections.singletonList(GATKVCFHeaderLines.getFormatLine(getKeyNames().get(0)));
     }
-}
 
+    public static int getAltForwardCountFromFlattenedContingencyTable(final int[] contingencyTable) {
+        return contingencyTable[ARRAY_DIM];
+    }
+    public static int getAltReverseCountFromFlattenedContingencyTable(final int[] contingencyTable) {
+        return contingencyTable[ARRAY_DIM+1];
+    }
+}

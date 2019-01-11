@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -70,10 +71,7 @@ public class PowerCalculationUtils {
         Utils.nonNull(referenceAllele);
 
         // Go through the read pileup and find all new bases.
-        final List<PileupElement> pileupElementsPassingQuality = Utils.stream(readPileup.iterator())
-                .filter(pe -> !pe.isDeletion())
-                .filter(pe -> pe.getQual() >= minBaseQualityCutoff)
-                .collect(Collectors.toList());
+        final List<PileupElement> pileupElementsPassingQuality = retrievePileupElements(readPileup, minBaseQualityCutoff);
 
         final long numAlternate = pileupElementsPassingQuality.stream()
                 .filter(pe -> (GATKProtectedVariantContextUtils.doesReadContainAllele(pe, referenceAllele) == Trilean.FALSE)
@@ -83,6 +81,37 @@ public class PowerCalculationUtils {
                 .filter(pe -> (GATKProtectedVariantContextUtils.doesReadContainAllele(pe, referenceAllele) == Trilean.TRUE)
                 && !pe.isBeforeDeletionStart() && !pe.isBeforeInsertion()).count();
 
-        return (double) numAlternate / ((double) numReference + (double) numAlternate);
+        return numReference + numAlternate == 0 ? 0.0 : (double) numAlternate / ((double) numReference + (double) numAlternate);
+    }
+
+    private static List<PileupElement> retrievePileupElements(final ReadPileup readPileup, final int minBaseQualityCutoff) {
+        return Utils.stream(readPileup.iterator())
+                    .filter(pe -> !pe.isDeletion())
+                    .filter(pe -> pe.getQual() >= minBaseQualityCutoff)
+                    .collect(Collectors.toList());
+    }
+
+    /**
+     * Get a count of the number of reads supporting an allele in a given pileup.
+     *
+     * @param readPileup pileup to query for the allele.  Never {@code null}
+     * @param referenceAllele  reference allele corresponding to alt allele.  Never {@code null}
+     * @param altAllele Allele to query. Never {@code null}
+     * @param minBaseQualityCutoff only count the bases that exceed the min base quality.  For xNP, it is the min quality
+     *                             all overlapping loci.  For indels, this is the base preceding the indel itself.  Must be positive or zero.
+     *                             Zero indicates that all reads should pass this filter.
+     * @return count of reads supporting the given allele in the given pileup.
+     */
+    public static long calculateNumReadsSupportingAllele(final ReadPileup readPileup, final Allele referenceAllele, final Allele altAllele, int minBaseQualityCutoff) {
+        ParamUtils.isPositiveOrZero(minBaseQualityCutoff, "Cannot have a negative minBaseQualityCutoff.");
+        Utils.nonNull(readPileup);
+        Utils.nonNull(altAllele);
+        Utils.nonNull(referenceAllele);
+
+        final List<PileupElement> pileupElementsPassingQuality = retrievePileupElements(readPileup, minBaseQualityCutoff);
+
+        return pileupElementsPassingQuality.stream()
+                .filter(pe -> altAllele.equals(GATKProtectedVariantContextUtils.chooseAlleleForRead(pe, referenceAllele, Collections.singletonList(altAllele), minBaseQualityCutoff)))
+                .count();
     }
 }

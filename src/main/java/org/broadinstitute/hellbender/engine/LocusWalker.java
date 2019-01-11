@@ -9,13 +9,16 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.locusiterator.AlignmentContextIteratorBuilder;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.locusiterator.AlignmentContextIteratorBuilder;
 import org.broadinstitute.hellbender.utils.locusiterator.LIBSDownsamplingInfo;
 import org.broadinstitute.hellbender.utils.locusiterator.LocusIteratorByState;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -132,7 +135,7 @@ public abstract class LocusWalker extends GATKTool {
     @Override
     protected final void onStartup() {
         super.onStartup();
-        if ( hasIntervals() ) {
+        if ( hasUserSuppliedIntervals() ) {
             reads.setTraversalBounds(intervalArgumentCollection.getTraversalParameters(getHeaderForReads().getSequenceDictionary()));
         }
     }
@@ -164,7 +167,7 @@ public abstract class LocusWalker extends GATKTool {
         alignmentContextIteratorBuilder.setIncludeNs(includeNs());
 
         final Iterator<AlignmentContext> iterator = alignmentContextIteratorBuilder.build(
-                readIterator, header, intervalsForTraversal, getBestAvailableSequenceDictionary(),
+                readIterator, header, userIntervals, getBestAvailableSequenceDictionary(),
                 hasReference());
 
         // iterate over each alignment, and apply the function
@@ -211,7 +214,7 @@ public abstract class LocusWalker extends GATKTool {
             if (getBestAvailableSequenceDictionary() == null) {
                 throw new UserException.MissingReference("Could not create a sequence dictionary nor find a reference.  Therefore, emitting empty loci is impossible and this tool cannot be run.  The easiest fix here is to specify a reference dictionary.");
             }
-            if (!hasReference() && !hasIntervals()) {
+            if (!hasReference() && !hasUserSuppliedIntervals()) {
                 logger.warn("****************************************");
                 logger.warn("* Running this tool without a reference nor intervals can yield unexpected results, since it will emit results for loci with no reads.  A sequence dictionary has been found.  The easiest way avoid this message is to specify a reference.");
                 logger.warn("****************************************");

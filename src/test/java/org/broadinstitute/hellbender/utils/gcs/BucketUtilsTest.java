@@ -1,11 +1,15 @@
 package org.broadinstitute.hellbender.utils.gcs;
 
+import com.google.cloud.storage.contrib.nio.CloudStorageConfiguration;
 import htsjdk.samtools.util.IOUtil;
 import java.net.URI;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.utils.test.MiniClusterUtils;
+import org.broadinstitute.hellbender.testutils.MiniClusterUtils;
+import org.broadinstitute.hellbender.utils.config.ConfigFactory;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -17,7 +21,9 @@ import java.security.GeneralSecurityException;
 public final class BucketUtilsTest extends GATKBaseTest {
 
     static {
-        BucketUtils.setGlobalNIODefaultOptions();
+        BucketUtils.setGlobalNIODefaultOptions(
+            ConfigFactory.getInstance().getGATKConfig().gcsMaxRetries(),
+            ConfigFactory.getInstance().getGATKConfig().gcsProjectForRequesterPays());
     }
 
     @Test(groups={"bucket"})
@@ -34,6 +40,16 @@ public final class BucketUtilsTest extends GATKBaseTest {
 
         // this does not throw NullPointerException.
         String x = "" + null + "://";
+
+    }
+
+    @Test
+    public void testGetCloudStorageConfiguration() {
+        String mockProject = "yes";
+        int mockReopens = 100;
+        CloudStorageConfiguration config = BucketUtils.getCloudStorageConfiguration(mockReopens, mockProject);
+        Assert.assertEquals(config.maxChannelReopens(), mockReopens);
+        Assert.assertEquals(config.userProject(), mockProject);
     }
 
     @Test
@@ -155,6 +171,30 @@ public final class BucketUtilsTest extends GATKBaseTest {
 
         BucketUtils.deleteFile(intermediate);
         Assert.assertFalse(BucketUtils.fileExists(intermediate));
+    }
+
+    @Test
+    public void testDeleteRecursively() throws IOException {
+        final File dir = Files.createTempDirectory("test-dir").normalize().toFile();
+        final File file = new File(dir, "new-file");
+        Assert.assertTrue(file.createNewFile());
+        Assert.assertTrue(file.exists());
+        BucketUtils.deleteRecursively(dir.toString());
+        Assert.assertFalse(dir.exists());
+    }
+
+    @Test(groups={"bucket"})
+    public void testDeleteRecursivelyGCS() throws IOException {
+        final String gcsFolder = BucketUtils.randomRemotePath(getGCPTestStaging(), "test-dir", "");
+        final Path gcsFolderPath = IOUtils.getPath(gcsFolder+"/");
+        Files.createDirectory(gcsFolderPath);
+        Assert.assertTrue(Files.exists(gcsFolderPath));
+        Assert.assertTrue(Files.isDirectory(gcsFolderPath));
+        final Path gcsFilePath = Files.createFile(IOUtils.getPath(gcsFolder+"/"+"new-file"));
+        Assert.assertTrue(Files.exists(gcsFilePath));
+        BucketUtils.deleteRecursively(gcsFolderPath.toUri().toString());
+        Assert.assertFalse(Files.exists(gcsFilePath));
+        Assert.assertFalse(Files.exists(IOUtils.getPath(gcsFolder)));
     }
 
 }

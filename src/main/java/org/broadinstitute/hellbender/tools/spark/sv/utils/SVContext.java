@@ -4,7 +4,7 @@ import htsjdk.samtools.*;
 import htsjdk.variant.variantcontext.StructuralVariantType;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -37,7 +37,7 @@ public final class SVContext extends VariantContext {
     private static final int MISSING_LENGTH = -2;
 
     /**
-     * Indicates that the variant does not have a length or this could not be determined.
+     * Indicates that the variant does not have a length or this could not be determined, e.g. for BND records.
      */
     public static final int NO_LENGTH = -1;
 
@@ -138,7 +138,7 @@ public final class SVContext extends VariantContext {
      * @param reference the reference to use as source.
      * @return never {@code null}.
      */
-    public Haplotype composeHaplotypeBasedOnReference(final int index, final int paddingSize, final ReferenceMultiSource reference)  {
+    public Haplotype composeHaplotypeBasedOnReference(final int index, final int paddingSize, final ReferenceMultiSparkSource reference)  {
         Utils.nonNull(reference, "the input reference cannot be null");
         ParamUtils.isPositiveOrZero(paddingSize, "the input padding must be 0 or greater");
         ParamUtils.inRange(index, 0, 1, "the input allele index must be 0 or 1");
@@ -160,7 +160,7 @@ public final class SVContext extends VariantContext {
 
         final ReferenceBases bases;
         try {
-            bases = reference.getReferenceBases(null, referenceInterval);
+            bases = reference.getReferenceBases(referenceInterval);
         } catch (final IOException ex) {
             throw new GATKException("could not read reference file");
         }

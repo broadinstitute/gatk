@@ -1,11 +1,14 @@
 package org.broadinstitute.hellbender.tools.walkers.rnaseq;
 
+import htsjdk.samtools.Cigar;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
+import htsjdk.samtools.reference.ReferenceSequenceFile;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
+import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.GATKReadWriter;
 import org.broadinstitute.hellbender.GATKBaseTest;
@@ -242,7 +245,7 @@ public final class OverhangFixingManagerUnitTest extends GATKBaseTest {
     }
 
     private static class OverhangFixingManagerAlwaysSplit10000Reads extends OverhangFixingManager {
-        public OverhangFixingManagerAlwaysSplit10000Reads(SAMFileHeader header, GATKReadWriter writer, GenomeLocParser genomeLocParser, IndexedFastaSequenceFile referenceReader, int maxRecordsInMemory, int maxMismatchesInOverhangs, int maxBasesInOverhangs, boolean doNotFixOverhangs, boolean secondaryReads) {
+        public OverhangFixingManagerAlwaysSplit10000Reads(SAMFileHeader header, GATKReadWriter writer, GenomeLocParser genomeLocParser, ReferenceSequenceFile referenceReader, int maxRecordsInMemory, int maxMismatchesInOverhangs, int maxBasesInOverhangs, boolean doNotFixOverhangs, boolean secondaryReads) {
             super(header, writer, genomeLocParser, referenceReader, maxRecordsInMemory, maxMismatchesInOverhangs, maxBasesInOverhangs, doNotFixOverhangs, secondaryReads);
         }
         @Override
@@ -269,5 +272,32 @@ public final class OverhangFixingManagerUnitTest extends GATKBaseTest {
         manager.addReadGroup(Collections.singletonList(ArtificialReadUtils.createArtificialRead(hg19Header, "read1", 2, 10000, new byte[]{(byte)'A'}, new byte[]{(byte)'A'}, "6M")));
         Assert.assertEquals(manager.getReadsInQueueForTesting().size(), 1);
     }
+
+    @Test
+    public void testReadWithDeletionsWindowSpanning() {
+        final OverhangFixingManager manager = new OverhangFixingManager(getHG19Header(), null, hg19GenomeLocParser, hg19ReferenceReader, 100, 100, 30, false, true);
+        // Create a splice that is going to overlap into the deletion of our read, forcing us to check for mismatches to the reference
+        OverhangFixingManager.Splice splice = manager.addSplicePosition("1",6816, 11247);
+        // Create a read that has a long deletion relative to its remaining mapped bases after splitting
+        GATKRead read = ArtificialReadUtils.createArtificialRead(hg19Header, "read1", 0, 11244, new byte[100], new byte[100], "97S2M18D1M");
+        OverhangFixingManager.SplitRead split = manager.getSplitRead(read);
+        manager.fixSplit(split,splice);
+        // Assert that no splitting happened (and no array exception) by asserting a copy of the read was not placed in split.read
+        Assert.assertTrue(split.read==read);
+    }
+
+    @Test
+    public void testReadWithOnlyInsertionInsideSpan() {
+        final OverhangFixingManager manager = new OverhangFixingManager(getHG19Header(), null, hg19GenomeLocParser, hg19ReferenceReader, 100, 100, 30, false, true);
+        // Create a splice that is going to overlap into the deletion of our read, forcing us to check for mismatches to the reference
+        OverhangFixingManager.Splice splice = manager.addSplicePosition("1",6816, 11247);
+        // Create a read that is entirely an insertion inside of the splice to demonstrate it is handled without creating an invalid loc
+        GATKRead read = ArtificialReadUtils.createArtificialRead(hg19Header, "read1", 0, 11244, new byte[100], new byte[100], "100I");
+        OverhangFixingManager.SplitRead split = manager.getSplitRead(read);
+        manager.fixSplit(split,splice);
+        // Assert that no splitting happened (and no array exception) by asserting a copy of the read was not placed in split.read
+        Assert.assertTrue(split.read==read);
+    }
+
 
 }

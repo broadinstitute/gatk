@@ -9,48 +9,40 @@ import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeaderLine;
-import htsjdk.variant.vcf.VCFSimpleHeaderLine;
-import java.io.File;
-import java.nio.file.Path;
-import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Stream;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
+import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalIntervalArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalReadInputArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalReferenceInputArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.ReadInputArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.ReferenceInputArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredIntervalArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredReadInputArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredReferenceInputArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.*;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.config.ConfigFactory;
+import org.broadinstitute.hellbender.utils.config.GATKConfig;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+
+import java.io.File;
+import java.nio.file.Path;
+import java.time.ZonedDateTime;
+import java.util.*;
+import java.util.stream.Stream;
 
 /**
  * Base class for all GATK tools. Tool authors that wish to write a "GATK" tool but not use one of
@@ -73,17 +65,17 @@ public abstract class GATKTool extends CommandLineProgram {
             doc = "Use the given sequence dictionary as the master/canonical sequence dictionary.  Must be a .dict file.", optional = true, common = true)
     private String masterSequenceDictionaryFilename = null;
 
-    public static final String SECONDS_BETWEEN_PROGRESS_UPDATES_NAME = "secondsBetweenProgressUpdates";
+    public static final String SECONDS_BETWEEN_PROGRESS_UPDATES_NAME = "seconds-between-progress-updates";
     @Argument(fullName = SECONDS_BETWEEN_PROGRESS_UPDATES_NAME, shortName = SECONDS_BETWEEN_PROGRESS_UPDATES_NAME, doc = "Output traversal statistics every time this many seconds elapse", optional = true, common = true)
     private double secondsBetweenProgressUpdates = ProgressMeter.DEFAULT_SECONDS_BETWEEN_UPDATES;
 
-    @Argument(fullName = StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, shortName = StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, doc = "If specified, do not check the sequence dictionaries from our inputs for compatibility. Use at your own risk!", optional = true, common = true)
-    private boolean disableSequenceDictionaryValidation = false;
+    @ArgumentCollection
+    protected SequenceDictionaryValidationArgumentCollection seqValidationArguments = getSequenceDictionaryValidationArgumentCollection();
 
     @Argument(fullName=StandardArgumentDefinitions.CREATE_OUTPUT_BAM_INDEX_LONG_NAME,
             shortName=StandardArgumentDefinitions.CREATE_OUTPUT_BAM_INDEX_SHORT_NAME,
             doc = "If true, create a BAM/CRAM index when writing a coordinate-sorted BAM/CRAM file.", optional=true, common = true)
-    public boolean createOutputBamIndex = true;
+    public boolean createOutputBamIndex = ConfigFactory.getInstance().getGATKConfig().createOutputBamIndex();
 
     @Argument(fullName=StandardArgumentDefinitions.CREATE_OUTPUT_BAM_MD5_LONG_NAME,
             shortName=StandardArgumentDefinitions.CREATE_OUTPUT_BAM_MD5_SHORT_NAME,
@@ -124,6 +116,10 @@ public abstract class GATKTool extends CommandLineProgram {
             optional = true)
     public boolean disableBamIndexCaching = false;
 
+    @Argument(fullName = StandardArgumentDefinitions.SITES_ONLY_LONG_NAME,
+            doc = "If true, don't emit genotype fields when writing vcf file output.", optional = true)
+    public boolean outputSitesOnlyVCFs = false;
+
     /**
      * Master sequence dictionary to be used instead of all other dictionaries (if provided).
      */
@@ -152,15 +148,16 @@ public abstract class GATKTool extends CommandLineProgram {
     /**
      * Our source of Feature data (null if no source of Features was provided)
      */
-    FeatureManager features;
+    public FeatureManager features;
 
     /**
+     *
      * Intervals to be used for traversal (null if no intervals were provided).
      *
      * Walker base classes (ReadWalker, etc.) are responsible for hooking these intervals up to
      * their particular driving data source.
      */
-    List<SimpleInterval> intervalsForTraversal;
+    List<SimpleInterval> userIntervals;
 
     /**
      * Progress meter to print out traversal statistics. Subclasses must invoke
@@ -175,7 +172,11 @@ public abstract class GATKTool extends CommandLineProgram {
      */
     @Override
     public List<? extends CommandLinePluginDescriptor<?>> getPluginDescriptors() {
-        return Collections.singletonList(new GATKReadFilterPluginDescriptor(getDefaultReadFilters()));
+        GATKReadFilterPluginDescriptor readFilterDescriptor = new GATKReadFilterPluginDescriptor(getDefaultReadFilters());
+        return useVariantAnnotations()?
+                Arrays.asList(readFilterDescriptor, new GATKAnnotationPluginDescriptor(
+                        getDefaultVariantAnnotations(), getDefaultVariantAnnotationGroups())):
+                Collections.singletonList(readFilterDescriptor);
     }
 
     /**
@@ -216,6 +217,64 @@ public abstract class GATKTool extends CommandLineProgram {
         return hasReads() ?
                 readFilterPlugin.getMergedCountingReadFilter(getHeaderForReads()) :
                 new CountingReadFilter(ReadFilterLibrary.ALLOW_ALL_READS);
+    }
+
+    /**
+     * Must be overridden in order to add annotation arguments to the engine. If this is set to true the engine will
+     * dynamically discover all {@link Annotation}s in the package defined by {@link org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationPluginDescriptor#pluginPackageName} and automatically
+     * generate and add command line arguments allowing the user to specify which annotations or groups of annotations to use.
+     *
+     * To specify default annotations for a tool simply specify them using {@link #getDefaultVariantAnnotationGroups()} or {@link #getDefaultVariantAnnotations()}
+     *
+     * To access instantiated annotation objects simply use {@link #makeVariantAnnotations()}.
+     */
+    public boolean useVariantAnnotations() {
+        return false;
+    }
+
+    /**
+     * Returns the default list of {@link Annotation}s that are used for this tool. The annotations returned
+     * by this method are subject to selective enabling/disabling by the user via the command line. The
+     * default implementation returns an empty list. Subclasses can override to provide alternative annotations.
+     *
+     * @return List of individual annotations to be applied for this tool.
+     */
+    public List<Annotation> getDefaultVariantAnnotations() {
+        return Collections.emptyList();
+    }
+
+    /**
+     * Returns the default list of annotation groups that are used for this tool. The annotations returned
+     * by this method will have default arguments, which can be overridden with specific arguments using
+     * {@link #getDefaultVariantAnnotations()}. Returned annotation groups are subject to selective enabling/disabling
+     * by the user via the command line. The default implementation returns an empty list.
+     *
+     * @return List of annotation groups to be applied for this tool.
+     */
+    public List<Class<? extends Annotation>> getDefaultVariantAnnotationGroups() {
+        return Collections.emptyList();
+    }
+
+    /**
+     * Returns a list of annotations that can be applied to VariantContexts. This implementation combines
+     * the default annotations for this tool (returned by {@link #getDefaultVariantAnnotations()} and {@link #getDefaultVariantAnnotationGroups()})
+     * along with any annotations command line directives specified by the user (such as enabling other annotations/groups
+     * or disabling default annotations) and returns a collection of all the annotation arguments instantiated.
+     *
+     * NOTE: Most tools will not need to override the method, and should only do so in order to provide custom
+     * behavior or processing of the final annotations based on other command line input. To change the default
+     * annotations used by the tool, override {@link #getDefaultVariantAnnotations()} instead.
+     *
+     * To apply returned annotations to a VariantContext, simply use a {@link org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine}
+     * constructed with the discovered annotations.
+     */
+    public Collection<Annotation> makeVariantAnnotations(){
+        if (!useVariantAnnotations()) {
+            throw new GATKException("Tool requested variant annotations but has not overridden 'useVariantAnnotations()' to return true");
+        }
+        final GATKAnnotationPluginDescriptor annotationPlugin =
+                getCommandLineParser().getPluginDescriptor(GATKAnnotationPluginDescriptor.class);
+        return annotationPlugin.getResolvedInstances();
     }
 
     /**
@@ -273,18 +332,20 @@ public abstract class GATKTool extends CommandLineProgram {
      *         The default implementation returns a value (40 MB) that is suitable for tools with a small
      *         number of large cloud inputs. Tools with large numbers of cloud inputs will likely want to
      *         override to specify a smaller size.
+     *         This value is maintained in the {@link GATKConfig} file.
      */
     public int getDefaultCloudPrefetchBufferSize() {
-        return 40;
+        return ConfigFactory.getInstance().getGATKConfig().cloudPrefetchBuffer();
     }
 
     /**
      * @return Default size in MB of the cloud index prefetch buffer. May be overridden by individual tools.
      *         A return value of -1 means to use the same value as returned by {@link #getDefaultCloudPrefetchBufferSize()}.
      *         The default implementation returns -1.
+     *         This value is maintained in the {@link GATKConfig} file.
      */
     public int getDefaultCloudIndexPrefetchBufferSize() {
-        return -1;
+        return ConfigFactory.getInstance().getGATKConfig().cloudIndexPrefetchBuffer();
     }
 
     /**
@@ -300,7 +361,7 @@ public abstract class GATKTool extends CommandLineProgram {
      * May be overridden by traversals that require custom initialization of the reference data source.
      */
     void initializeReference() {
-        reference = referenceArguments.getReferenceFile() != null ? ReferenceDataSource.of(referenceArguments.getReferenceFile()) : null;
+        reference = referenceArguments.getReferencePath() != null ? ReferenceDataSource.of(referenceArguments.getReferencePath()) : null;
     }
 
     /**
@@ -313,7 +374,7 @@ public abstract class GATKTool extends CommandLineProgram {
         if (! readArguments.getReadFiles().isEmpty()) {
             SamReaderFactory factory = SamReaderFactory.makeDefault().validationStringency(readArguments.getReadValidationStringency());
             if (hasReference()) { // pass in reference if available, because CRAM files need it
-                factory = factory.referenceSequence(referenceArguments.getReferenceFile());
+                factory = factory.referenceSequence(referenceArguments.getReferencePath());
             }
             else if (hasCramInput()) {
                 throw new UserException.MissingReference("A reference file is required when using CRAM files.");
@@ -381,7 +442,7 @@ public abstract class GATKTool extends CommandLineProgram {
                         "via the -R argument or you can run the tool UpdateVCFSequenceDictionary on your vcf.");
             }
 
-            intervalsForTraversal = intervalArgumentCollection.getIntervals(sequenceDictionary);
+            userIntervals = intervalArgumentCollection.getIntervals(sequenceDictionary);
         }
     }
 
@@ -415,10 +476,10 @@ public abstract class GATKTool extends CommandLineProgram {
     /**
      * Are sources of intervals available?
      *
-     * @return true if intervals are available, otherwise false
+     * @return true if user-supplied intervals are available, otherwise false
      */
-    public final boolean hasIntervals() {
-        return intervalsForTraversal != null;
+    public final boolean hasUserSuppliedIntervals() {
+        return userIntervals != null;
     }
 
     /**
@@ -455,6 +516,17 @@ public abstract class GATKTool extends CommandLineProgram {
      */
     public boolean requiresIntervals() {
         return false;
+    }
+
+
+    /**
+     * Get the {@link SequenceDictionaryValidationArgumentCollection} for the tool.
+     * Subclasses may override this method in order to customize validation options.
+     *
+     * @return a SequenceDictionaryValidationArgumentCollection
+     */
+    protected SequenceDictionaryValidationArgumentCollection getSequenceDictionaryValidationArgumentCollection() {
+        return new SequenceDictionaryValidationArgumentCollection.StandardValidationCollection();
     }
 
     /**
@@ -567,7 +639,7 @@ public abstract class GATKTool extends CommandLineProgram {
 
         initializeIntervals(); // Must be initialized after reference, reads and features, since intervals currently require a sequence dictionary from another data source
 
-        if ( ! disableSequenceDictionaryValidation ) {
+        if ( seqValidationArguments.performSequenceDictionaryValidation()) {
             validateSequenceDictionaries();
         }
 
@@ -642,7 +714,7 @@ public abstract class GATKTool extends CommandLineProgram {
         }
 
         // we don't currently have access to seqdicts from intervals
-        //if (hasIntervals()) {}
+        //if (hasUserSuppliedIntervals()) {}
     }
 
     /**
@@ -681,14 +753,15 @@ public abstract class GATKTool extends CommandLineProgram {
      * @return SAMFileWriter
      */
     public final SAMFileGATKReadWriter createSAMWriter(final Path outputPath, final boolean preSorted) {
-        if (!hasReference() && IOUtils.isCramFile(outputPath)) {
+        final boolean isCramFile = IOUtils.isCramFile(outputPath);
+        if (!hasReference() && isCramFile) {
             throw new UserException.MissingReference("A reference file is required for writing CRAM files");
         }
 
         return new SAMFileGATKReadWriter(
             ReadUtils.createCommonSAMWriter(
                 outputPath,
-                referenceArguments.getReferenceFile(),
+                referenceArguments.getReferencePath(),
                 getHeaderForSAMWriter(),
                 preSorted,
                 createOutputBamIndex,
@@ -722,6 +795,10 @@ public abstract class GATKTool extends CommandLineProgram {
             } else {
                 options.add(Options.INDEX_ON_THE_FLY);
             }
+        }
+
+        if (outputSitesOnlyVCFs) {
+            options.add(Options.DO_NOT_WRITE_GENOTYPES);
         }
 
         return GATKVariantContextUtils.createVCFWriter(
@@ -759,17 +836,13 @@ public abstract class GATKTool extends CommandLineProgram {
      * date and command line, otherwise an empty set.
      */
     protected Set<VCFHeaderLine> getDefaultToolVCFHeaderLines() {
-        final Set<VCFHeaderLine> gatkToolHeaderLines = new HashSet<>();
         if (addOutputVCFCommandLine) {
-            final Map<String, String> simpleHeaderLineMap = new HashMap<>(4);
-            simpleHeaderLineMap.put("ID", this.getClass().getSimpleName());
-            simpleHeaderLineMap.put("Version", getVersion());
-            simpleHeaderLineMap.put("Date", Utils.getDateTimeForDisplay((ZonedDateTime.now())));
-            simpleHeaderLineMap.put("CommandLine", getCommandLine());
-            gatkToolHeaderLines.add(new VCFHeaderLine("source", this.getClass().getSimpleName()));
-            gatkToolHeaderLines.add(new VCFSimpleHeaderLine(String.format("%sCommandLine", getToolkitName()), simpleHeaderLineMap));
+            return GATKVariantContextUtils
+                    .getDefaultVCFHeaderLines(getToolkitShortName(), this.getClass().getSimpleName(),
+                            getVersion(), Utils.getDateTimeForDisplay((ZonedDateTime.now())), getCommandLine());
+        } else {
+            return new HashSet<>();
         }
-        return gatkToolHeaderLines;
     }
 
     /**
@@ -790,17 +863,51 @@ public abstract class GATKTool extends CommandLineProgram {
     }
 
     /**
-     * @return The name of toolkit for this tool. Subclasses may override to provide a custom toolkit name.
+     * A method to allow a user to inject {@link FeatureInput}s after initialization that were not
+     * specified as command-line arguments.
+     *
+     * @param filePath path to the Feature file to register
+     * @param name what to call the Feature input
+     * @param featureType class of features
+     * @param featureQueryLookahead look ahead this many bases during queries that produce cache misses
+     * @return The {@link FeatureInput} used as the key for this data source.
      */
-    protected String getToolkitName() { return "GATK"; }
+    public FeatureInput<? extends Feature> addFeatureInputsAfterInitialization(final String filePath,
+                                                                               final String name,
+                                                                               final Class<? extends Feature> featureType,
+                                                                               final int featureQueryLookahead) {
+
+        final FeatureInput<? extends Feature> featureInput = new FeatureInput<>(filePath, name);
+
+        // Add the FeatureInput to our FeatureManager so that it will be available for FeatureContext queries
+        // from the tool
+        features.addToFeatureSources(
+                featureQueryLookahead,
+                featureInput,
+                featureType,
+                cloudPrefetchBuffer,
+                cloudIndexPrefetchBuffer,
+                referenceArguments.getReferencePath()
+        );
+
+        return featureInput;
+    }
 
     /**
      * Returns the name of this tool.
-     * The default implementation returns the result of calling {@link# getToolkitName} followed by the simple
+     * The default implementation returns the result of calling {@link #getToolkitShortName} followed by the simple
      * name of the class. Subclasses may override.
      */
     public String getToolName() {
-        return String.format("%s %s", getToolkitName(), getClass().getSimpleName());
+        return String.format("%s %s", getToolkitShortName(), getClass().getSimpleName());
+    }
+
+    /**
+     * Returns the list of intervals to iterate, either limited to the user-supplied intervals or the entire reference genome if none were specified.
+     * If no reference was supplied, null is returned
+     */
+    public List<SimpleInterval> getTraversalIntervals() {
+        return hasUserSuppliedIntervals() ? userIntervals : hasReference() ? IntervalUtils.getAllIntervalsForReference(getReferenceDictionary()) : null;
     }
 
     /**

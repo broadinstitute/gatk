@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers;
 
 import htsjdk.variant.variantcontext.*;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
+import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.testng.Assert;
@@ -165,6 +165,6 @@ public class GenotypeGVCFsUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "getSpanningAndNonSpanningAlleles")
     public void testIsSpanningDeletion(Allele allele, boolean expected){
-        Assert.assertEquals(GenotypeGVCFs.isSpanningDeletion(allele), expected);
+        Assert.assertEquals(GATKVCFConstants.isSpanningDeletion(allele), expected);
     }
 }

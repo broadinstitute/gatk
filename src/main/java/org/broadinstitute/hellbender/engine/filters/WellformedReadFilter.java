@@ -46,7 +46,7 @@ public final class WellformedReadFilter extends ReadFilter {
     private ReadFilter wellFormedFilter = null;
 
     // Command line parser requires a no-arg constructor
-    public WellformedReadFilter() {
+    public  WellformedReadFilter() {
     }
 
     @Override

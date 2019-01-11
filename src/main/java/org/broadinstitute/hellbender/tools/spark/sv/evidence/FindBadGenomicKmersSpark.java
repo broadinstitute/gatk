@@ -11,8 +11,8 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSparkProgramGroup;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import picard.cmdline.programgroups.ReferenceProgramGroup;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
@@ -30,13 +30,44 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * SparkTool to identify 63-mers in the reference that occur more than 3 times.
+ * Identifies sequences that occur at high frequency in a reference
+ *
+ * <p>Search the reference for kmers (fixed-length substrings) that occur more than a specified number of times,
+ * and list them to an output file.  The resulting output file is appropriate for use as the --kmers-to-ignore
+ * input file by the StructuralVariationDiscoveryPipelineSpark tool, which will ignore these kmers when trying
+ * to produce candidate reads for local assemblies.</p>
+ *
+ * <h3>Inputs</h3>
+ * <ul>
+ *     <li>A reference.</li>
+ * </ul>
+ *
+ * <h3>Output</h3>
+ * <ul>
+ *     <li>A text file describing the ubiquitous kmers.</li>
+ * </ul>
+ *
+ * <h3>Usage example</h3>
+ * <pre>
+ *   gatk FindBadGenomicKmersSpark \
+ *     -R reference.fasta \
+ *     -O kmers_to_ignore.txt
+ * </pre>
+ * <p>This tool can be run without explicitly specifying Spark options. That is to say, the given example command
+ * without Spark options will run locally. See
+ * <a href ="https://software.broadinstitute.org/gatk/documentation/article?id=10060">Tutorial#10060</a>
+ * for an example of how to set up and run a Spark tool on a cloud Spark cluster.</p>
  */
 @DocumentedFeature
-@CommandLineProgramProperties(summary="Find the set of high copy number kmers in a reference.",
-        oneLineSummary="find ref kmers with high copy number",
-        programGroup = StructuralVariationSparkProgramGroup.class)
 @BetaFeature
+@CommandLineProgramProperties(
+        oneLineSummary = "Identifies sequences that occur at high frequency in a reference",
+        summary =
+        "Search the reference for kmers (fixed-length substrings) that occur more than a specified number of times," +
+        " and list them to an output file.  The resulting output file is appropriate for use as the --kmers-to-ignore" +
+        " input file by the StructuralVariationDiscoveryPipelineSpark tool, which will ignore these kmers when trying" +
+        " to produce candidate reads for local assemblies.",
+        programGroup = ReferenceProgramGroup.class)
 public final class FindBadGenomicKmersSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 
@@ -50,14 +81,14 @@ public final class FindBadGenomicKmersSpark extends GATKSparkTool {
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
     private String outputFile;
 
-    @Argument(doc = "kmer size", fullName = "kSize", optional = true)
+    @Argument(doc = "kmer size", fullName = "k-size")
     private int kSize = StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection.KMER_SIZE;
 
-    @Argument(doc = "maximum kmer DUST score", fullName = "kmerMaxDUSTScore")
+    @Argument(doc = "maximum kmer DUST score", fullName = "kmer-max-dust-score")
     private int maxDUSTScore = StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection.MAX_DUST_SCORE;
 
     @Argument(doc = "additional high copy kmers (mitochondrion, e.g.) fasta file name",
-            fullName = "highCopyFasta", optional = true)
+            fullName = "high-copy-fasta", optional = true)
     private String highCopyFastaFilename;
 
     @Override
@@ -71,7 +102,7 @@ public final class FindBadGenomicKmersSpark extends GATKSparkTool {
         final SAMFileHeader hdr = getHeaderForReads();
         SAMSequenceDictionary dict = null;
         if ( hdr != null ) dict = hdr.getSequenceDictionary();
-        final ReferenceMultiSource referenceMultiSource = getReference();
+        final ReferenceMultiSparkSource referenceMultiSource = getReference();
         Collection<SVKmer> killList = findBadGenomicKmers(ctx, kSize, maxDUSTScore, referenceMultiSource, dict);
         if ( highCopyFastaFilename != null ) {
             killList = SVUtils.uniquify(killList, processFasta(kSize, maxDUSTScore, highCopyFastaFilename));
@@ -85,7 +116,7 @@ public final class FindBadGenomicKmersSpark extends GATKSparkTool {
     static List<SVKmer> findBadGenomicKmers( final JavaSparkContext ctx,
                                              final int kSize,
                                              final int maxDUSTScore,
-                                             final ReferenceMultiSource ref,
+                                             final ReferenceMultiSparkSource ref,
                                              final SAMSequenceDictionary readsDict ) {
         // Generate reference sequence RDD.
         final SAMSequenceDictionary dict = ref.getReferenceSequenceDictionary(readsDict);

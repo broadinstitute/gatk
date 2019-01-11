@@ -20,6 +20,8 @@ public final class GATKVCFConstants {
     public static final String ALLELE_SPECIFIC_PREFIX =             "AS_";
     public static final String AS_FILTER_STATUS_KEY =               "AS_FilterStatus";
     public static final String RAW_RMS_MAPPING_QUALITY_KEY =        "RAW_MQ";
+    public static final String MAPPING_QUALITY_DEPTH =              "MQ_DP";  //NOTE: this is deprecated in favor of the new RAW_MQandDP below
+    public static final String RAW_MAPPING_QUALITY_WITH_DEPTH_KEY = "RAW_MQandDP";
     public static final String AS_RMS_MAPPING_QUALITY_KEY =         "AS_MQ";
     public static final String AS_RAW_RMS_MAPPING_QUALITY_KEY =     "AS_RAW_MQ";
     public static final String AS_CULPRIT_KEY =                     "AS_culprit";
@@ -74,13 +76,14 @@ public final class GATKVCFConstants {
     public static final String NON_DIPLOID_RATIO_KEY =              "OND";
     public static final String ORIGINAL_CONTIG_KEY =                "OriginalChr"; //LiftoverVariants
     public static final String ORIGINAL_START_KEY =                 "OriginalStart"; //LiftoverVariants
-    public static final String N_BASE_COUNT_KEY =                   "PercentNBase";
     public static final String RBP_INCONSISTENT_KEY =               "PhasingInconsistent"; //ReadBackedPhasing
     public static final String GENOTYPE_PRIOR_KEY =                 "PG";
     public static final String POSITIVE_LABEL_KEY =                 "POSITIVE_TRAIN_SITE";
     public static final String QUAL_BY_DEPTH_KEY =                  "QD";
     public static final String AS_QUAL_BY_DEPTH_KEY =               "AS_QD";
     public static final String AS_QUAL_KEY =                        "AS_QUAL";
+    public static final String RAW_QUAL_APPROX_KEY =                "QUALapprox";
+    public static final String VARIANT_DEPTH_KEY =                  "VarDP";
     public static final String READ_POS_RANK_SUM_KEY =              "ReadPosRankSum";
     public static final String AS_READ_POS_RANK_SUM_KEY =           "AS_ReadPosRankSum";
     public static final String AS_RAW_READ_POS_RANK_SUM_KEY =       "AS_RAW_ReadPosRankSum";
@@ -94,22 +97,29 @@ public final class GATKVCFConstants {
     public static final String TRANSMISSION_DISEQUILIBRIUM_KEY =    "TDT";
     public static final String VARIANT_TYPE_KEY =                   "VariantType";
     public static final String VQS_LOD_KEY =                        "VQSLOD";
+    public static final String CNN_1D_KEY =                         "CNN_1D";
+    public static final String CNN_2D_KEY =                         "CNN_2D";
     public static final String F1R2_KEY =                           "F1R2";
     public static final String F2R1_KEY =                           "F2R1";
 
     // Mutect2-specific INFO keys
     public static final String TUMOR_LOD_KEY =                      "TLOD";
     public static final String NORMAL_LOD_KEY =                     "NLOD";
-    public static final String IN_PON_VCF_ATTRIBUTE =               "IN_PON";
-    public static final String NORMAL_ARTIFACT_LOD_ATTRIBUTE =      "N_ART_LOD";
-    public static final String POPULATION_AF_VCF_ATTRIBUTE =        "POP_AF";
-    public static final String GERMLINE_POSTERIORS_VCF_ATTRIBUTE =  "P_GERMLINE";
-    public static final List<String> STANDARD_MUTECT_INFO_FIELDS = Arrays.asList(NORMAL_LOD_KEY, TUMOR_LOD_KEY, NORMAL_ARTIFACT_LOD_ATTRIBUTE,
-            EVENT_COUNT_IN_HAPLOTYPE_KEY, IN_PON_VCF_ATTRIBUTE, POPULATION_AF_VCF_ATTRIBUTE, GERMLINE_POSTERIORS_VCF_ATTRIBUTE);
+    public static final String IN_PON_VCF_ATTRIBUTE =               "PON";
+    public static final String NORMAL_ARTIFACT_LOD_ATTRIBUTE =      "NALOD";
+    public static final String POPULATION_AF_VCF_ATTRIBUTE =        "POPAF";
+    public static final String GERMLINE_QUAL_VCF_ATTRIBUTE =  "GERMQ";
+    public static final String REALIGNMENT_COUNTS_VCF_ATTRIBUTE =   "RCNTS";
+    public static final String CONTAMINATION_QUAL_ATTRIBUTE =  "CONTQ";
+    public static final String ORIGINAL_CONTIG_MISMATCH_KEY =       "OCM";
+    public static final String N_COUNT_KEY =                        "NCount";
+    public static final String UNIQUE_ALT_READ_SET_COUNT_KEY = "UNIQ_ALT_READ_COUNT";
+    public static final String STRAND_ARTIFACT_POSTERIOR_KEY =      "SAPP"; // Strand Artifact Filter
+    public static final String STRAND_ARTIFACT_AF_KEY =             "SAAF"; // Strand Artifact Filter
+    public static final String MEDIAN_BASE_QUALITY_KEY = "MBQ";
 
-    //FORMAT keys
+    // FORMAT keys
     public static final String ALLELE_BALANCE_KEY =                 "AB";
-    public static final String ALLELE_FRACTION_KEY =                "AF"; //M2
     public static final String PL_FOR_ALL_SNP_ALLELES_KEY =         "APL";
     public static final String RBP_HAPLOTYPE_KEY =                  "HP"; //ReadBackedPhasing
     public static final String AVG_INTERVAL_DP_BY_SAMPLE_KEY =      "IDP"; //DiagnoseTargets
@@ -127,6 +137,13 @@ public final class GATKVCFConstants {
     public final static String TRANSMISSION_PROBABILITY_KEY =       "TP"; //PhaseByTransmission
     public static final String ZERO_COVERAGE_LOCI =                 "ZL"; //DiagnoseTargets
 
+    // M2-specific FORMAT keys
+    public static final String ALLELE_FRACTION_KEY =                "AF";
+    public static final String ROF_POSTERIOR_KEY =                  "P_RO"; // For read orientation filter
+    public static final String ROF_PRIOR_KEY =                      "P_PRIOR_RO";
+    public static final String ROF_TYPE_KEY =                       "ROF_TYPE";
+    public static final String POTENTIAL_POLYMORPHIC_NUMT_KEY =     "NUMT";
+
     //FILTERS
     /* Note that many filters used throughout GATK (most notably in VariantRecalibration) are dynamic,
        their names (or descriptions) depend on some threshold.  Those filters are not included here
@@ -134,6 +151,7 @@ public final class GATKVCFConstants {
     public static final String CLUSTERED_EVENTS_FILTER_NAME =                 "clustered_events"; //M2
     public static final String GERMLINE_RISK_FILTER_NAME =                    "germline_risk"; //M2
     public static final String LOW_QUAL_FILTER_NAME =                         "LowQual";
+    public static final String ALIGNMENT_ARTIFACT_FILTER_NAME =               "alignment_artifact";
     public static final String PON_FILTER_NAME =                              "panel_of_normals"; //M2
     public static final String STR_CONTRACTION_FILTER_NAME =                  "str_contraction"; //M2
     public static final String TUMOR_LOD_FILTER_NAME =                        "t_lod"; //M2
@@ -146,13 +164,21 @@ public final class GATKVCFConstants {
     public final static String MEDIAN_FRAGMENT_LENGTH_DIFFERENCE_FILTER_NAME = "fragment_length";
     public final static String READ_POSITION_FILTER_NAME =                      "read_position";
     public final static String CONTAMINATION_FILTER_NAME =                      "contamination";
+    public final static String READ_ORIENTATION_ARTIFACT_FILTER_NAME =          "read_orientation_artifact";
+    public final static String BAD_HAPLOTYPE_FILTER_NAME =          "bad_haplotype";
+    public final static String STRICT_STRAND_BIAS_FILTER_NAME =                     "strict_strand_bias";
+    public final static String N_RATIO_FILTER_NAME =                         "n_ratio";
+    public final static String CHIMERIC_ORIGINAL_ALIGNMENT_FILTER_NAME =        "chimeric_original_alignment"; //mitochondria
+    public final static String LOW_AVG_ALT_QUALITY_FILTER_NAME =                "low_avg_alt_quality"; //mitochondria
 
     public static final List<String> MUTECT_FILTER_NAMES = Arrays.asList(STR_CONTRACTION_FILTER_NAME,
             PON_FILTER_NAME, CLUSTERED_EVENTS_FILTER_NAME, TUMOR_LOD_FILTER_NAME, GERMLINE_RISK_FILTER_NAME,
             MULTIALLELIC_FILTER_NAME, STRAND_ARTIFACT_FILTER_NAME, ARTIFACT_IN_NORMAL_FILTER_NAME,
             MEDIAN_BASE_QUALITY_FILTER_NAME, MEDIAN_MAPPING_QUALITY_FILTER_NAME,
             MEDIAN_FRAGMENT_LENGTH_DIFFERENCE_FILTER_NAME,
-            READ_POSITION_FILTER_NAME, CONTAMINATION_FILTER_NAME, DUPLICATED_EVIDENCE_FILTER_NAME);
+            READ_POSITION_FILTER_NAME, CONTAMINATION_FILTER_NAME, DUPLICATED_EVIDENCE_FILTER_NAME,
+            READ_ORIENTATION_ARTIFACT_FILTER_NAME, BAD_HAPLOTYPE_FILTER_NAME, CHIMERIC_ORIGINAL_ALIGNMENT_FILTER_NAME,
+            LOW_AVG_ALT_QUALITY_FILTER_NAME, STRICT_STRAND_BIAS_FILTER_NAME, N_RATIO_FILTER_NAME);
 
     // Symbolic alleles
     public final static String SYMBOLIC_ALLELE_DEFINITION_HEADER_TAG = "ALT";

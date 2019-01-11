@@ -2,11 +2,11 @@ package org.broadinstitute.hellbender.engine;
 
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.iterators.ReadFilteringIterator;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
-import java.util.Collections;
-import java.util.Iterator;
+import java.util.*;
 
 /**
  * Wrapper around ReadsDataSource that presents reads overlapping a specific interval to a client,
@@ -64,6 +64,15 @@ public final class ReadsContext implements Iterable<GATKRead> {
     }
 
     /**
+     * Create a ReadsContext using the data source from the provided ReadsContext, with the supplied
+     * interval.
+     *
+     */
+    public ReadsContext (ReadsContext readsContext, SimpleInterval interval){
+        this(readsContext.dataSource, interval, readsContext.readFilter);
+    }
+
+    /**
      * Does this context have a backing source of reads data?
      *
      * @return true if there is a backing ReadsDataSource, otherwise false
@@ -90,6 +99,16 @@ public final class ReadsContext implements Iterable<GATKRead> {
      */
     @Override
     public Iterator<GATKRead> iterator() {
+        return iterator(interval);
+    }
+
+    /**
+     * Get an iterator over the reads of the backing data source over a given interval. Will return an empty iterator if this
+     * context has no backing source of reads.
+     *
+     * @return iterator over the reads in this context
+     */
+    public Iterator<GATKRead> iterator(final SimpleInterval interval) {
         // We can't perform a query if we lack either a dataSource or an interval to query on
         if ( dataSource == null || interval == null ) {
             return Collections.<GATKRead>emptyList().iterator();

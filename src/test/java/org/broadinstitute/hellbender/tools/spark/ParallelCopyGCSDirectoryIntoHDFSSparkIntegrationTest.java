@@ -7,15 +7,18 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
-import org.broadinstitute.hellbender.utils.test.MiniClusterUtils;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
+import org.broadinstitute.hellbender.testutils.MiniClusterUtils;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 
 public class ParallelCopyGCSDirectoryIntoHDFSSparkIntegrationTest extends CommandLineProgramTest {
@@ -38,8 +41,8 @@ public class ParallelCopyGCSDirectoryIntoHDFSSparkIntegrationTest extends Comman
             final Path tempPath = MiniClusterUtils.getTempPath(cluster, "test", "dir");
             final String gcpInputPath = getGCPTestInputPath() + "huge/CEUTrio.HiSeq.WGS.b37.NA12878.chr1_4.bam.bai";
             String args =
-                    "--inputGCSPath " + gcpInputPath +
-                            " --outputHDFSDirectory " + tempPath;
+                    "--" + ParallelCopyGCSDirectoryIntoHDFSSpark.INPUT_GCS_PATH_LONG_NAME + " " + gcpInputPath +
+                            " --" + ParallelCopyGCSDirectoryIntoHDFSSpark.OUTPUT_HDFS_DIRECTORY_LONG_NAME + " " + tempPath;
             ArgumentsBuilder ab = new ArgumentsBuilder().add(args);
             IntegrationTestSpec spec = new IntegrationTestSpec(
                     ab.getString(),
@@ -70,8 +73,21 @@ public class ParallelCopyGCSDirectoryIntoHDFSSparkIntegrationTest extends Comman
         }
     }
 
-    @Test(groups = {"spark", "bucket"})
-    public void testCopyDirectory() throws Exception {
+    @DataProvider(name = "directoryCopy")
+    public Object[][] getDirectoryParams() {
+        final String gcpInputPath = getGCPTestInputPath() + "parallel_copy/";
+        final List<Object[]> tests = new ArrayList<>();
+        tests.add(new Object[]{gcpInputPath, null, new String[] { "foo.txt", "bar.txt"}, new String[] { "d3b07384d113edec49eaa6238ad5ff00", "c157a79031e1c40f85931829bc5fc552"}});
+        tests.add(new Object[]{gcpInputPath, "foo*", new String[] { "foo.txt" }, new String[] { "d3b07384d113edec49eaa6238ad5ff00" }});
+        return tests.toArray(new Object[][]{});
+    }
+
+
+    @Test(groups = {"spark", "bucket"}, dataProvider = "directoryCopy")
+    public void testCopyDirectory(final String gcpInputPath,
+                                  final String glob,
+                                  final String[] expectedFilesCopied,
+                                  final String[] expectedMD5s) throws Exception {
         MiniDFSCluster cluster = null;
         try {
             final Configuration conf = new Configuration();
@@ -83,10 +99,11 @@ public class ParallelCopyGCSDirectoryIntoHDFSSparkIntegrationTest extends Comman
             final Path tempPath = MiniClusterUtils.getTempPath(cluster, "test", "dir");
 
             // directory contains two small files named foo.txt and bar.txt
-            final String gcpInputPath = getGCPTestInputPath() + "parallel_copy/";
+
             String args =
-                    "--inputGCSPath " + gcpInputPath +
-                            " --outputHDFSDirectory " + tempPath;
+                    "--" + ParallelCopyGCSDirectoryIntoHDFSSpark.INPUT_GCS_PATH_LONG_NAME + " " + gcpInputPath +
+                            (glob == null ? "" : " --" + ParallelCopyGCSDirectoryIntoHDFSSpark.INPUT_GLOB + " " + glob) +
+                            " --" + ParallelCopyGCSDirectoryIntoHDFSSpark.OUTPUT_HDFS_DIRECTORY_LONG_NAME + " " + tempPath;
             ArgumentsBuilder ab = new ArgumentsBuilder().add(args);
             IntegrationTestSpec spec = new IntegrationTestSpec(
                     ab.getString(),
@@ -108,11 +125,16 @@ public class ParallelCopyGCSDirectoryIntoHDFSSparkIntegrationTest extends Comman
                 }
             }
 
-            Assert.assertEquals(filesFound, 2);
+            Assert.assertEquals(filesFound, expectedFilesCopied.length);
+
+            for (int i = 0; i < expectedFilesCopied.length; i++) {
+                String fileName = expectedFilesCopied[i];
+                String md5 = expectedMD5s[i];
+                Assert.assertEquals(Utils.calculateFileMD5(new File(tempDir + "/" + fileName)), md5);
+            }
 
 
-            Assert.assertEquals(Utils.calculateFileMD5(new File(tempDir + "/foo.txt")), "d3b07384d113edec49eaa6238ad5ff00");
-            Assert.assertEquals(Utils.calculateFileMD5(new File(tempDir + "/bar.txt")), "c157a79031e1c40f85931829bc5fc552");
+
         } finally {
             MiniClusterUtils.stopCluster(cluster);
         }

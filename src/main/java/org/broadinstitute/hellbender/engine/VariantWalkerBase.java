@@ -4,22 +4,25 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
+import org.broadinstitute.hellbender.engine.filters.CountingVariantFilter;
 import org.broadinstitute.hellbender.engine.filters.VariantFilter;
 import org.broadinstitute.hellbender.engine.filters.VariantFilterLibrary;
+import org.broadinstitute.hellbender.transformers.VariantTransformer;
 import org.broadinstitute.hellbender.utils.IndexUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
-import java.nio.file.Path;
 import java.util.Spliterator;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 /**
- * Base class for variant walkers, which process one variant at a time from one or more sources of variants,
+ * Base class for variant walkers, which process variants from one or more sources of variants,
  * with optional contextual information from a reference, sets of reads, and/or supplementary sources of
  * Features.
  *
- * Subclasses must implement the {@link #apply} method to process each variant, {@link #initializeDrivingVariants},
- * {@link #getHeaderForVariants}, {@link #getSequenceDictionaryForDrivingVariants},
+ * Subclasses must implement the {@link #traverse} method to process variants, {@link #initializeDrivingVariants},
+ * {@link #getHeaderForVariants},
+ * {@link #getSequenceDictionaryForDrivingVariants},
  * {@link #getSpliteratorForDrivingVariants}, and may optionally implement {@link #onTraversalStart},
  * {@link #onTraversalSuccess} and/or {@link #closeTool}.
  */
@@ -95,25 +98,63 @@ public abstract class VariantWalkerBase extends GATKTool {
     protected abstract Spliterator<VariantContext> getSpliteratorForDrivingVariants();
 
     /**
-     * Implementation of variant-based traversal.
-     * Subclasses can override to provide their own behavior but default implementation should be suitable for most uses.
+     * Returns the pre-filter variant transformer (simple or composite) that will be applied to the variants before filtering.
+     * The default implementation uses the {@link VariantTransformer#identity()}.
+     * Default implementation of {@link #traverse()} calls this method once before iterating over the variants and reuses
+     * the transformer object to avoid object allocation.
+     *
+     * Subclasses can extend to provide own transformers (i.e. override and call super).
+     * Multiple transformers can be composed by using {@link VariantTransformer} composition methods.
      */
-    @Override
-    public void traverse() {
-        final VariantFilter variantfilter = makeVariantFilter();
-        final CountingReadFilter readFilter = makeReadFilter();
-        // Process each variant in the input stream.
-        StreamSupport.stream(getSpliteratorForDrivingVariants(), false)
-                .filter(variantfilter)
-                .forEach(variant -> {
-                    final SimpleInterval variantInterval = new SimpleInterval(variant);
-                    apply(variant,
-                            new ReadsContext(reads, variantInterval, readFilter),
-                            new ReferenceContext(reference, variantInterval),
-                            new FeatureContext(features, variantInterval));
+    public VariantTransformer makePreVariantFilterTransformer() {
+        return VariantTransformer.identity();
+    }
 
-                    progressMeter.update(variantInterval);
-                });
+    /**
+     * Returns the post-filter variant transformer (simple or composite) that will be applied to the variants after filtering.
+     * The default implementation uses the {@link VariantTransformer#identity()}.
+     * Default implementation of {@link #traverse()} calls this method once before iterating over the variants and reuses
+     * the transformer object to avoid object allocation.
+     *
+     * Subclasses can extend to provide own transformers (i.e. override and call super).
+     * Multiple transformers can be composed by using {@link VariantTransformer} composition methods.
+     */
+    public VariantTransformer makePostVariantFilterTransformer(){
+        return VariantTransformer.identity();
+    }
+
+    /**
+     * Returns a stream over the variants, which are:
+     *
+     * 1. Transformed with {@link #makePreVariantFilterTransformer()}.
+     * 2. Filtered with {@code filter}.
+     * 3. Transformed with {@link #makePostVariantFilterTransformer()}.
+     */
+    protected Stream<VariantContext> getTransformedVariantStream(final CountingVariantFilter filter) {
+        final VariantTransformer preTransformer  = makePreVariantFilterTransformer();
+        final VariantTransformer postTransformer = makePostVariantFilterTransformer();
+        return getTransformedVariantStream(getSpliteratorForDrivingVariants(),
+                preTransformer,
+                filter,
+                postTransformer);
+    }
+
+    /**
+     * Returns a stream over the variants returned by source, which are:
+     *
+     * 1. Transformed with preTransformer.
+     * 2. Filtered with filter.
+     * 3. Transformed with postTransformer.
+     */
+    protected Stream<VariantContext> getTransformedVariantStream(
+            final Spliterator<VariantContext> source,
+            final VariantTransformer preTransformer,
+            final CountingVariantFilter filter,
+            final VariantTransformer postTransformer) {
+        return StreamSupport.stream(source, false)
+                .map(preTransformer)
+                .filter(filter)
+                .map(postTransformer);
     }
 
     /**
@@ -125,28 +166,8 @@ public abstract class VariantWalkerBase extends GATKTool {
      * Subclasses can extend to provide own filters (ie override and call super).
      * Multiple filters can be composed by using {@link VariantFilter} composition methods.
      */
-    protected VariantFilter makeVariantFilter() {
-        return VariantFilterLibrary.ALLOW_ALL_VARIANTS;
+    protected CountingVariantFilter makeVariantFilter() {
+        return new CountingVariantFilter(VariantFilterLibrary.ALLOW_ALL_VARIANTS);
     }
-
-    /**
-     * Process an individual variant. Must be implemented by tool authors.
-     * In general, tool authors should simply stream their output from apply(), and maintain as little internal state
-     * as possible.
-     *
-     * @param variant Current variant being processed.
-     * @param readsContext Reads overlapping the current variant. Will be an empty, but non-null, context object
-     *                     if there is no backing source of reads data (in which case all queries on it will return
-     *                     an empty array/iterator)
-     * @param referenceContext Reference bases spanning the current variant. Will be an empty, but non-null, context object
-     *                         if there is no backing source of reference data (in which case all queries on it will return
-     *                         an empty array/iterator). Can request extra bases of context around the current variant's interval
-     *                         by invoking {@link ReferenceContext#setWindow}
-     *                         on this object before calling {@link ReferenceContext#getBases}
-     * @param featureContext Features spanning the current variant. Will be an empty, but non-null, context object
-     *                       if there is no backing source of Feature data (in which case all queries on it will return an
-     *                       empty List).
-     */
-    public abstract void apply( VariantContext variant, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext );
 
 }

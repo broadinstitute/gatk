@@ -18,7 +18,7 @@ public final class DownsampleableSparkReadShard implements Shard<GATKRead>, Seri
 
     private final ShardBoundary boundaries;
     private final Iterable<GATKRead> reads;
-    private ReadsDownsampler downsampler;
+    private final ReadsDownsampler downsampler;
 
     /**
      * @param boundaries the boundary defining the shard

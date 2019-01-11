@@ -4,6 +4,8 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
+import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AlleleSpecificAnnotationData;
@@ -28,12 +30,17 @@ import java.util.stream.Stream;
 public final class ReferenceConfidenceVariantContextMerger {
 
     private final GenotypeLikelihoodCalculators calculators;
+    private final VCFHeader vcfInputHeader;
     protected final VariantAnnotatorEngine annotatorEngine;
-    protected final OneShotLogger warning = new OneShotLogger(this.getClass());
+    protected final OneShotLogger oneShotAnnotationLogger = new OneShotLogger(this.getClass());
+    protected final OneShotLogger oneShotHeaderLineLogger = new OneShotLogger(this.getClass());
 
-    public ReferenceConfidenceVariantContextMerger(VariantAnnotatorEngine engine){
+    public ReferenceConfidenceVariantContextMerger(VariantAnnotatorEngine engine, final VCFHeader inputHeader) {
+        Utils.nonNull(inputHeader, "A VCF header must be provided");
+
         calculators = new GenotypeLikelihoodCalculators();
         annotatorEngine = engine;
+        vcfInputHeader = inputHeader;
     }
 
     /**
@@ -159,8 +166,7 @@ public final class ReferenceConfidenceVariantContextMerger {
      * @return never {@code null}
      */
     //TODO as part of a larger refactoring effort {@link #remapAlleles} can be merged with {@link GATKVariantContextUtils#remapAlleles}.
-    @VisibleForTesting
-    static List<Allele> remapAlleles(final VariantContext vc, final Allele refAllele) {
+    public static List<Allele> remapAlleles(final VariantContext vc, final Allele refAllele) {
         final Allele vcRef = vc.getReference();
         final byte[] refBases = refAllele.getBases();
         final int extraBaseCount = refBases.length - vcRef.getBases().length;
@@ -173,6 +179,9 @@ public final class ReferenceConfidenceVariantContextMerger {
 
         for (final Allele a : vc.getAlternateAlleles()) {
             if (a.isSymbolic()) {
+                result.add(a);
+            } else if ( a == Allele.SPAN_DEL ) {
+                // add SPAN_DEL directly so we don't try to extend the bases
                 result.add(a);
             } else if (a.isCalled()) {
                 result.add(extendAllele(a, extraBaseCount, refBases));
@@ -310,7 +319,7 @@ public final class ReferenceConfidenceVariantContextMerger {
     /**
      * Determines the ref allele given the provided reference base at this position
      *
-     * @param VCs     collection of unsorted genomic VCs
+     * @param VCs     collection of unsorted genomic VariantContexts
      * @param loc     the current location
      * @param refBase the reference allele to use if all contexts in the VC are spanning
      * @return new Allele or null if no reference allele/base is available
@@ -379,19 +388,41 @@ public final class ReferenceConfidenceVariantContextMerger {
                     annotationMap.put(key, values);
                 }
                 try {
-                    values.add(parseNumber(value.toString()));
+                    values.add(parseNumericInfoAttributeValue(vcfInputHeader, key, value.toString()));
                 } catch (final NumberFormatException e) {
-                    warning.warn(String.format("Detected invalid annotations: When trying to merge variant contexts at location %s:%d the annotation %s was not a numerical value and was ignored",vcPair.getVc().getContig(),vcPair.getVc().getStart(),p.toString()));
+                    oneShotAnnotationLogger.warn(String.format("Detected invalid annotations: When trying to merge variant contexts at location %s:%d the annotation %s was not a numerical value and was ignored",vcPair.getVc().getContig(),vcPair.getVc().getStart(),p.toString()));
                 }
             }
         }
     }
 
-    private Comparable<?> parseNumber(String stringValue) {
-        if (stringValue.contains(".")) {
-            return Double.parseDouble(stringValue);
-        } else {
-            return Integer.parseInt(stringValue);
+    // Use the VCF header's declared type for the given attribute to ensure that all the values for that attribute
+    // across all the VCs being merged have the same boxed representation. Some VCs have a serialized value of "0"
+    // for FLOAT attributes, with no embedded decimal point, but we still need to box those into Doubles, or the
+    // subsequent sorting required to obtain the median will fail due to the list having a mix of Comparable<Integer>
+    // and Comparable<Double>.
+    private Comparable<?> parseNumericInfoAttributeValue(final VCFHeader vcfHeader, final String key, final String stringValue) {
+        final VCFInfoHeaderLine infoLine = vcfHeader.getInfoHeaderLine(key);
+        if (infoLine == null) {
+            oneShotHeaderLineLogger.warn(String.format("At least one attribute was found (%s) for which there is no corresponding header line", key));
+            if (stringValue.contains(".")) {
+                return Double.parseDouble(stringValue);
+            } else {
+                return Integer.parseInt(stringValue);
+            }
+        }
+        switch (infoLine.getType()) {
+            case Integer:
+                return Integer.parseInt(stringValue);
+            case Float:
+                return Double.parseDouble(stringValue);
+            default:
+                throw new NumberFormatException(
+                        String.format(
+                                "The VCF header specifies type %s type for INFO attribute key %s, but a numeric value is required",
+                                infoLine.getType().name(),
+                                key)
+                );
         }
     }
 

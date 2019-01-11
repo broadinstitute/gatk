@@ -67,7 +67,7 @@ public final class PSUtils {
 
     /**
      * Returns a deep copy of the input header with an empty sequence dictionary, and logs warnings if the input may
-     * be aligned but --isHostAligned was not set to true (or vice versa).
+     * be aligned but --is-host-aligned was not set to true (or vice versa).
      */
     public static SAMFileHeader checkAndClearHeaderSequences(final SAMFileHeader inputHeader, final PSFilterArgumentCollection filterArgs, final Logger logger) {
 
@@ -79,10 +79,10 @@ public final class PSUtils {
         final SAMFileHeader header = inputHeader.clone();
 
         if (filterArgs.alignedInput && (header.getSequenceDictionary() == null || header.getSequenceDictionary().isEmpty())) {
-            logger.warn("--isHostAligned is true but the BAM header contains no sequences");
+            logger.warn("--is-host-aligned is true but the BAM header contains no sequences");
         }
         if (!filterArgs.alignedInput && header.getSequenceDictionary() != null && !header.getSequenceDictionary().isEmpty()) {
-            logger.warn("--isHostAligned is false but there are one or more sequences in the BAM header");
+            logger.warn("--is-host-aligned is false but there are one or more sequences in the BAM header");
         }
 
         //Clear header sequences
@@ -91,21 +91,31 @@ public final class PSUtils {
         return header;
     }
 
-    public static int getMatchesLessDeletions(final Cigar cigar, final int numMismatches) {
+    public static int getMatchesLessDeletions(final Cigar cigar, final int nmTagValue) {
         Utils.nonNull(cigar, "Cannot get match score for null cigar");
-        Utils.validateArg(numMismatches >= 0, "numMismatches cannot be negative");
-        int numMatches = -numMismatches;
+        Utils.validateArg(nmTagValue >= 0, "NM tag value cannot be negative");
+        int numMatchesOrMismatches = 0;
         int numDeletions = 0;
+        int numInsertions = 0;
         final List<CigarElement> cigarElements = cigar.getCigarElements();
         for (final CigarElement e : cigarElements) {
             if (e.getOperator().isAlignment()) {
-                numMatches += e.getLength();
+                numMatchesOrMismatches += e.getLength();
             } else if (e.getOperator().equals(CigarOperator.DELETION)) {
                 numDeletions += e.getLength();
+            } else if (e.getOperator().equals(CigarOperator.INSERTION)) {
+                numInsertions += e.getLength();
             }
         }
+        final int numSubstitutions = nmTagValue - numDeletions - numInsertions;
+        final int numMatches = numMatchesOrMismatches - numSubstitutions;
+        if (numSubstitutions < 0) {
+            logger.warn("Invalid arguments passed to getMatchesLessDeletions(): NM tag value was less than the number of insertions and deletions combined. Returning 0.");
+            return 0;
+        }
         if (numMatches < 0) {
-            logger.warn("Invalid arguments passed to getMatchesLessDeletions(): numMismatches was greater than the number of matches/mismatches in the cigar. Returning 0.");
+            logger.warn("Invalid arguments passed to getMatchesLessDeletions(): Combined number of matches and mismatches was less than the number of substitutions. Returning 0.");
+            return 0;
         }
         return numMatches - numDeletions;
     }

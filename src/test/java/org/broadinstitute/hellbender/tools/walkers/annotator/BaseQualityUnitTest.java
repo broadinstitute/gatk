@@ -5,6 +5,7 @@ import htsjdk.variant.variantcontext.*;
 import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -63,11 +64,11 @@ public class BaseQualityUnitTest {
         final BaseQuality bq = new BaseQuality();
         final GenotypeBuilder gb = new GenotypeBuilder(DUMMY_GENOTYPE);
 
-        bq.annotate(null, vc, DUMMY_GENOTYPE, gb, likelihoods);
+        final Map<String, Object> annotation = bq.annotate(null, vc, likelihoods);
         final Genotype g = gb.make();
 
-        final int[] medianAltQuals = (int[]) g.getExtendedAttribute(BaseQuality.KEY);
+        final int[] medianAltQuals = (int[]) annotation.get(GATKVCFConstants.MEDIAN_BASE_QUALITY_KEY);
 
-        Assert.assertEquals(medianAltQuals[0], 25);
+        Assert.assertEquals(medianAltQuals[1], 25);
     }
 }

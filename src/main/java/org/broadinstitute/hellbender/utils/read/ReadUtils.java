@@ -1,42 +1,29 @@
 package org.broadinstitute.hellbender.utils.read;
 
-import htsjdk.samtools.Cigar;
-import htsjdk.samtools.CigarElement;
-import htsjdk.samtools.CigarOperator;
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMFileWriter;
-import htsjdk.samtools.SAMFileWriterFactory;
-import htsjdk.samtools.SAMReadGroupRecord;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.SAMSequenceRecord;
-import htsjdk.samtools.SAMTag;
-import htsjdk.samtools.SAMUtils;
-import htsjdk.samtools.SamStreams;
+import htsjdk.samtools.*;
 import htsjdk.samtools.cram.build.CramIO;
-import java.io.BufferedInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.nio.file.OpenOption;
-import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.OptionalInt;
-import java.util.Set;
-import java.util.TreeSet;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
+import org.broadinstitute.hellbender.utils.QualityUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
+
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.OpenOption;
+import java.nio.file.Path;
+import java.util.*;
 
 /**
  * A miscellaneous collection of utilities for working with reads, headers, etc.
@@ -318,11 +305,19 @@ public final class ReadUtils {
     }
 
     /**
-     * @param read read to check
-     * @return true if the read is paired and has a mapped mate, otherwise false
+     * @param read read to query
+     * @return true if the read has a mate and that mate is mapped, otherwise false
      */
     public static boolean readHasMappedMate( final GATKRead read ) {
         return read.isPaired() && ! read.mateIsUnmapped();
+    }
+
+    /**
+     * @param read read to query
+     * @return true if the read has a mate and that mate is mapped, otherwise false
+     */
+    public static boolean readHasMappedMate( final SAMRecord read ) {
+        return read.getReadPairedFlag() && ! read.getMateUnmappedFlag();
     }
 
     /**
@@ -386,6 +381,58 @@ public final class ReadUtils {
         Utils.nonNull(tag);
         final Integer obj = read.getAttributeAsInteger(tag);
         return obj == null ? OptionalInt.empty() : OptionalInt.of(obj);
+    }
+
+    /**
+     * Helper method for interrogating if a read and its mate (if it exists) are unmapped
+     * @param read a read with mate information to interrogate
+     * @return true if this read and its are unmapped
+     */
+    public static boolean readAndMateAreUnmapped(GATKRead read) {
+        return read.isUnmapped() && (!read.isPaired() || read.mateIsUnmapped());
+    }
+
+    /**
+     * Interrogates the header to determine if the bam is expected to be sorted such that reads with the same name appear in order.
+     * This can correspond to either a queryname sorted bam or a querygrouped bam (unordered readname groups)
+     * @param header header corresponding to the bam file in question
+     * @return true if the header has has the right readname group
+     */
+    public static boolean isReadNameGroupedBam(SAMFileHeader header) {
+        return SAMFileHeader.SortOrder.queryname.equals(header.getSortOrder()) || SAMFileHeader.GroupOrder.query.equals(header.getGroupOrder());
+    }
+
+    /**
+     * Create a map of reads overlapping {@code interval} to their mates by looking for all possible mates within some
+     * maximum fragment size.  This is not guaranteed to find all mates, in particular near structural variant breakpoints
+     * where mates may align far away.
+     *
+     * The algorithm is:
+     * 1) make two maps of read name --> read for reads overlapping {@code interval}, one for first-of-pair reads and one
+     *    for second-of-pair reads.
+     * 2) For all reads in an expanded interval padded by {@code fragmentSize} on both sides look for a read of the same name
+     *    that is second-of-pair if this read is first-of-pair or vice-versa.  If such a read is found then this is that read's mate.
+     *
+     * @param readsContext
+     * @param fragmentSize the maximum distance on either side of {@code interval} to look for mates.
+     * @return a map of reads ot their mates for all reads for which a mate could be found.
+     */
+    public static Map<GATKRead, GATKRead> getReadToMateMap(final ReadsContext readsContext, final int fragmentSize) {
+        final Map<String, GATKRead> readOnes = new HashMap<>();
+        final Map<String, GATKRead> readTwos = new HashMap<>();
+        Utils.stream(readsContext.iterator()).forEach(read -> (read.isFirstOfPair() ? readOnes : readTwos).put(read.getName(), read));
+
+        final Map<GATKRead, GATKRead> result = new HashMap<>();
+        final SimpleInterval originalInterval = readsContext.getInterval();
+        final SimpleInterval expandedInterval = new SimpleInterval(originalInterval.getContig(), Math.max(1, originalInterval.getStart() - fragmentSize), originalInterval.getEnd() + fragmentSize);
+        Utils.stream(readsContext.iterator(expandedInterval)).forEach(mate -> {
+            final GATKRead read = (mate.isFirstOfPair() ? readTwos : readOnes).get(mate.getName());
+            if (read != null) {
+                result.put(read, mate);
+            }
+        });
+
+        return result;
     }
 
     /**
@@ -628,8 +675,8 @@ public final class ReadUtils {
     }
 
     public static int getReadCoordinateForReferenceCoordinateUpToEndOfRead(final GATKRead read, final int refCoord, final ClippingTail tail) {
-        final int leftmostSafeVariantPosition = Math.max(getSoftStart(read), refCoord);
-        return getReadCoordinateForReferenceCoordinate(getSoftStart(read), read.getCigar(), leftmostSafeVariantPosition, tail, false);
+        final int leftmostSafeVariantPosition = Math.max(read.getSoftStart(), refCoord);
+        return getReadCoordinateForReferenceCoordinate(read.getSoftStart(), read.getCigar(), leftmostSafeVariantPosition, tail, false);
     }
 
     /**
@@ -647,7 +694,7 @@ public final class ReadUtils {
      * @return the read coordinate corresponding to the requested reference coordinate for clipping.
      */
     public static int getReadCoordinateForReferenceCoordinate(final GATKRead read, final int refCoord, final ClippingTail tail) {
-        return getReadCoordinateForReferenceCoordinate(getSoftStart(read), read.getCigar(), refCoord, tail, false);
+        return getReadCoordinateForReferenceCoordinate(read.getSoftStart(), read.getCigar(), refCoord, tail, false);
     }
 
     /**
@@ -667,7 +714,7 @@ public final class ReadUtils {
      * @return the read coordinate corresponding to the requested reference coordinate. (see warning!)
      */
     public static Pair<Integer, Boolean> getReadCoordinateForReferenceCoordinate(GATKRead read, int refCoord) {
-        return getReadCoordinateForReferenceCoordinate(getSoftStart(read), read.getCigar(), refCoord, false);
+        return getReadCoordinateForReferenceCoordinate(read.getSoftStart(), read.getCigar(), refCoord, false);
     }
 
     public static int getReadCoordinateForReferenceCoordinate(final int alignmentStart, final Cigar cigar, final int refCoord, final ClippingTail tail, final boolean allowGoalNotReached) {
@@ -704,7 +751,8 @@ public final class ReadUtils {
             if (allowGoalNotReached) {
                 return new MutablePair<>(CLIPPING_GOAL_NOT_REACHED, false);
             } else {
-                throw new GATKException("Somehow the requested coordinate is not covered by the read. Too many deletions?");
+                throw new GATKException(String.format("Somehow the requested coordinate is not covered by the read. Too many deletions? alignment Start: %d, Cigar: %s, refCoord: %s ",
+                        alignmentStart, cigar.toString(), refCoord));
             }
         }
         boolean goalReached = refBases == goal;
@@ -881,7 +929,7 @@ public final class ReadUtils {
     }
 
     /**
-     * Creates an "empty" read with the provided read's read group and mate
+     * Creates an "empty", unmapped read with the provided read's read group and mate
      * information, but empty (not-null) fields:
      *  - Cigar String
      *  - Read Bases
@@ -896,6 +944,8 @@ public final class ReadUtils {
     public static GATKRead emptyRead( final GATKRead read ) {
         final GATKRead emptyRead = read.copy();
 
+        emptyRead.setIsUnmapped();
+        emptyRead.setMappingQuality(0);
         emptyRead.setCigar("");
         emptyRead.setBases(new byte[0]);
         emptyRead.setBaseQualities(new byte[0]);
@@ -1033,7 +1083,7 @@ public final class ReadUtils {
     {
         return createCommonSAMWriter(
             (null == outputFile ? null : outputFile.toPath()),
-            referenceFile,
+            null == referenceFile ? null : referenceFile.toPath(),
             header,
             preSorted,
             createOutputBamIndex,
@@ -1054,7 +1104,7 @@ public final class ReadUtils {
      */
     public static SAMFileWriter createCommonSAMWriter(
         final Path outputPath,
-        final File referenceFile,
+        final Path referenceFile,
         final SAMFileHeader header,
         final boolean preSorted,
         boolean createOutputBamIndex,
@@ -1092,7 +1142,7 @@ public final class ReadUtils {
             final boolean preSorted)
     {
         return createCommonSAMWriterFromFactory(factory,
-            Utils.nonNull(outputFile).toPath(), referenceFile, header, preSorted);
+            Utils.nonNull(outputFile).toPath(), referenceFile == null ? null : referenceFile.toPath(), header, preSorted);
     }
 
     /**
@@ -1110,7 +1160,7 @@ public final class ReadUtils {
     public static SAMFileWriter createCommonSAMWriterFromFactory(
         final SAMFileWriterFactory factory,
         final Path outputPath,
-        final File referenceFile,
+        final Path referenceFile,
         final SAMFileHeader header,
         final boolean preSorted,
         OpenOption... openOptions)
@@ -1129,17 +1179,29 @@ public final class ReadUtils {
      * Validate that a file has CRAM contents by checking that it has a valid CRAM file header
      * (no matter what the extension).
      *
-     * @param putativeCRAMFile File to check.
+     * @param putativeCRAMPath File to check.
      * @return true if the file has a valid CRAM file header, otherwise false
      */
-    public static boolean hasCRAMFileContents(final File putativeCRAMFile) {
-        try (final FileInputStream fileStream = new FileInputStream(putativeCRAMFile);
-             final BufferedInputStream bis = new BufferedInputStream(fileStream)) {
-            return SamStreams.isCRAMFile(bis);
+    public static boolean hasCRAMFileContents(final Path putativeCRAMPath) {
+        try (final InputStream fileStream = Files.newInputStream(putativeCRAMPath)) {
+            try (final BufferedInputStream bis = new BufferedInputStream(fileStream)) {
+                return SamStreams.isCRAMFile(bis);
+            }
         }
         catch (IOException e) {
             throw new UserException.CouldNotReadInputFile(e.getMessage());
         }
+    }
+
+    /**
+     * Validate that a file has CRAM contents by checking that it has a valid CRAM file header
+     * (no matter what the extension).
+     *
+     * @param putativeCRAMFile File to check.
+     * @return true if the file has a valid CRAM file header, otherwise false
+     */
+    public static boolean hasCRAMFileContents(final File putativeCRAMFile) {
+        return hasCRAMFileContents(putativeCRAMFile.toPath());
     }
 
     public static boolean isNonPrimary(GATKRead read) {
@@ -1161,7 +1223,7 @@ public final class ReadUtils {
      * @return whether or not the base is in the adaptor
      */
     public static boolean isBaseInsideAdaptor(final GATKRead read, long basePos) {
-        final int adaptorBoundary = ReadUtils.getAdaptorBoundary(read);
+        final int adaptorBoundary = read.getAdaptorBoundary();
         if (adaptorBoundary == CANNOT_COMPUTE_ADAPTOR_BOUNDARY || read.getFragmentLength() > DEFAULT_ADAPTOR_SIZE)
             return false;
 
@@ -1400,5 +1462,28 @@ public final class ReadUtils {
                 return read.getLength() - offset + CigarUtils.countRightHardClippedBases(read.getCigar());
             }
         }
+    }
+
+    /**
+     * @param read a GATK read
+     * @return true if the read is F2R1, false otherwise
+     */
+    public static boolean isF2R1(final GATKRead read) {
+        return read.isReverseStrand() == read.isFirstOfPair();
+    }
+
+    /**
+     * @param read a GATK read
+     * @return true if the read is F1R2, false otherwise
+     */
+    public static boolean isF1R2(final GATKRead read) {
+        return read.isReverseStrand() != read.isFirstOfPair();
+    }
+
+    /**
+     * Used to be called isUsableRead()
+     **/
+    public static boolean readHasReasonableMQ(final GATKRead read){
+        return read.getMappingQuality() != 0 && read.getMappingQuality() != QualityUtils.MAPPING_QUALITY_UNAVAILABLE;
     }
 }

@@ -6,6 +6,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFCodec;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.testutils.SparkTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -73,7 +74,19 @@ public final class FeatureInputUnitTest extends GATKBaseTest {
                 {"myname:gendb://myJsons", "gendb://myJsons", "myname"},
                 {"myname,key1=value1:gendb://myJsons", "gendb://myJsons", "myname"},
                 {"myname//:gendb://myJsons", "gendb://myJsons", "myname//"},
-                {"myname:gendb://", "gendb://", "myname"}
+                {"myname:gendb://", "gendb://", "myname"},
+
+                {"gendb.gs://myBucket/myJsons", "gendb.gs://myBucket/myJsons", "gendb.gs://myBucket/myJsons"},
+                {"myname:gendb.gs://myJsons", "gendb.gs://myJsons", "myname"},
+                {"myname,key1=value1:gendb.gs://myJsons", "gendb.gs://myJsons", "myname"},
+                {"myname//:gendb.gs://myJsons", "gendb.gs://myJsons", "myname//"},
+                {"myname:gendb.gs://", "gendb.gs://", "myname"},
+
+                {"gendb.hdfs://localhost/myJsons", "gendb.hdfs://localhost/myJsons", "gendb.hdfs://localhost/myJsons"},
+                {"myname:gendb.hdfs://myJsons", "gendb.hdfs://myJsons", "myname"},
+                {"myname,key1=value1:gendb.hdfs://myJsons", "gendb.hdfs://myJsons", "myname"},
+                {"myname//:gendb.hdfs://myJsons", "gendb.hdfs://myJsons", "myname//"},
+                {"myname:gendb.hdfs://", "gendb.hdfs://", "myname"}
         };
     }
     
@@ -210,22 +223,9 @@ public final class FeatureInputUnitTest extends GATKBaseTest {
     @SuppressWarnings("unchecked")
     @Test
     public void testFeatureCodecCacheSerialization() throws IOException, ClassNotFoundException {
-        FeatureInput<VariantContext> featureInput = getVariantFeatureInputWithCachedCodec();
+        final FeatureInput<VariantContext>featureInput = getVariantFeatureInputWithCachedCodec();
 
-        // serialize
-        byte[] serializedFeatureInput;
-        try (final ByteArrayOutputStream bos = new ByteArrayOutputStream();
-             final ObjectOutputStream oos = new ObjectOutputStream(bos)) {
-            oos.writeObject(featureInput);
-            serializedFeatureInput = bos.toByteArray();
-        }
-        Assert.assertNotNull(serializedFeatureInput);
-
-        // deserialize
-        FeatureInput<VariantContext> roundTrippedFeatureInput;
-        try (final ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(serializedFeatureInput))) {
-            roundTrippedFeatureInput = (FeatureInput<VariantContext>) ois.readObject();
-        }
+        final FeatureInput<VariantContext> roundTrippedFeatureInput = SparkTestUtils.roundTripThroughJavaSerialization(featureInput);
         Assert.assertNotNull(roundTrippedFeatureInput);
 
         // we expect to lose the cached feature codec class on serialization, but retain the feature path
@@ -257,4 +257,23 @@ public final class FeatureInputUnitTest extends GATKBaseTest {
         Assert.assertEquals(namelessGenomicsDB.toString(), "gendb://" + new File("file1").getAbsolutePath(), "String representation of nameless FeatureInput with genomicsDB path incorrect");
         Assert.assertEquals(namedGenomicsDB.toString(), "name:gendb://" + new File("file1").getAbsolutePath(), "String representation of named FeatureInput with genomicsDB path incorrect");
     }
+
+    @DataProvider(name = "HasUserSuppliedNameData")
+    public Object[][] hasUserSuppliedNameData() {
+        return new Object[][] {
+                {"hdfs://localhost/user/my.vcf", false},
+                {"myname:hdfs://localhost/user/my.vcf", true},
+                {"myname,key1=value1:hdfs://localhost/user/my.vcf", true},
+                {"myname//:hdfs://localhost/user/my.vcf", true},
+                {"myname//:/user/my.vcf", true},
+                {"/user/my.vcf", false},
+        };
+    }
+
+    @Test(dataProvider = "HasUserSuppliedNameData")
+    public void testHasUserSuppliedName(final String inputString, final boolean isUserSupplied) {
+        final FeatureInput<VariantContext> input = new FeatureInput<>(inputString);
+        Assert.assertEquals(input.hasUserSuppliedName(), isUserSupplied);
+    }
+
 }

@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.variantcontext.*;
+import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -79,9 +80,17 @@ public final class AlleleSubsettingUtils {
             }
 
             final boolean useNewLikelihoods = newLikelihoods != null && (depth != 0 || GATKVariantContextUtils.isInformative(newLikelihoods));
-            final GenotypeBuilder gb = useNewLikelihoods ? new GenotypeBuilder(g).PL(newLikelihoods).log10PError(newLog10GQ) : new GenotypeBuilder(g).noPL().noGQ();
-
-            GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(), gb, assignmentMethod, newLikelihoods, allelesToKeep);
+            final GenotypeBuilder gb = new GenotypeBuilder(g);
+            if (useNewLikelihoods) {
+                final Map<String, Object> attributes = new HashMap<>(g.getExtendedAttributes());
+                gb.PL(newLikelihoods).log10PError(newLog10GQ);
+                attributes.remove(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY);
+                gb.noAttributes().attributes(attributes);
+            }
+            else {
+                gb.noPL().noGQ();
+            }
+            GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(), gb, assignmentMethod, newLikelihoods, allelesToKeep, g.getAlleles());
 
             // restrict SAC to the new allele subset
             if (g.hasExtendedAttribute(GATKVCFConstants.STRAND_COUNT_BY_SAMPLE_KEY)) {
@@ -98,6 +107,43 @@ public final class AlleleSubsettingUtils {
             newGTs.add(gb.make());
         }
         return newGTs;
+    }
+
+    /**
+     * Add the VCF INFO field annotations for the used alleles when subsetting
+     *
+     * @param vc                    original variant context
+     * @param builder               variant context builder with subset of original variant context's alleles
+     * @param keepOriginalChrCounts keep the orignal chromosome counts before subsetting
+     * @return variant context builder with updated INFO field attribute values
+     */
+    public static void addInfoFieldAnnotations(final VariantContext vc, final VariantContextBuilder builder,
+                                               final boolean keepOriginalChrCounts) {
+        Utils.nonNull(vc);
+        Utils.nonNull(builder);
+        Utils.nonNull(builder.getAlleles());
+
+        final List<Allele> alleles = builder.getAlleles();
+        if (alleles.size() < 2)
+            throw new IllegalArgumentException("the variant context builder must contain at least 2 alleles");
+
+        // don't have to subset, the original vc has the same number and hence, the same alleles
+        boolean keepOriginal = (vc.getAlleles().size() == alleles.size());
+
+        List<Integer> alleleIndecies = builder.getAlleles().stream().map(a -> vc.getAlleleIndex(a)).collect(Collectors.toList());
+        if (keepOriginalChrCounts) {
+            if (vc.hasAttribute(VCFConstants.ALLELE_COUNT_KEY))
+                builder.attribute(GATKVCFConstants.ORIGINAL_AC_KEY, keepOriginal ?
+                        vc.getAttribute(VCFConstants.ALLELE_COUNT_KEY) : alleleIndecies.stream().filter(i -> i > 0).map(j -> vc.getAttributeAsList(VCFConstants.ALLELE_COUNT_KEY).get(j - 1)).collect(Collectors.toList()).get(0));
+            if (vc.hasAttribute(VCFConstants.ALLELE_FREQUENCY_KEY))
+                builder.attribute(GATKVCFConstants.ORIGINAL_AF_KEY, keepOriginal ?
+                        vc.getAttribute(VCFConstants.ALLELE_FREQUENCY_KEY) : alleleIndecies.stream().filter(i -> i > 0).map(j -> vc.getAttributeAsList(VCFConstants.ALLELE_FREQUENCY_KEY).get(j - 1)).collect(Collectors.toList()).get(0));
+            if (vc.hasAttribute(VCFConstants.ALLELE_NUMBER_KEY)) {
+                builder.attribute(GATKVCFConstants.ORIGINAL_AN_KEY, vc.getAttribute(VCFConstants.ALLELE_NUMBER_KEY));
+            }
+        }
+
+        VariantContextUtils.calculateChromosomeCounts(builder, true);
     }
 
     /**

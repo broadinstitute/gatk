@@ -8,9 +8,9 @@ import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingGraph;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.collections.CountSet;
 import org.broadinstitute.hellbender.utils.haplotype.EventMap;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -41,7 +41,7 @@ public final class AssemblyResultSet {
     private boolean variationPresent;
     private Haplotype refHaplotype;
     private boolean wasTrimmed = false;
-    private final CountSet kmerSizes;
+    private final SortedSet<Integer>  kmerSizes;
     private SortedSet<VariantContext> variationEvents;
     private boolean debug;
     private static final Logger logger = LogManager.getLogger(AssemblyResultSet.class);
@@ -53,7 +53,7 @@ public final class AssemblyResultSet {
         assemblyResultByKmerSize = new LinkedHashMap<>(4);
         haplotypes = new LinkedHashSet<>(10);
         assemblyResultByHaplotype = new LinkedHashMap<>(10);
-        kmerSizes = new CountSet(4);
+        kmerSizes = new TreeSet<>();
     }
 
     /**
@@ -398,7 +398,7 @@ public final class AssemblyResultSet {
         if (kmerSizes.isEmpty()) {
             throw new IllegalStateException("there is yet no kmerSize in this assembly result set");
         }
-        return kmerSizes.max();
+        return kmerSizes.last();
     }
 
     /**
@@ -421,7 +421,7 @@ public final class AssemblyResultSet {
         if (kmerSizes.isEmpty()) {
             throw new IllegalStateException("there is yet no kmerSize in this assembly result set");
         }
-        return kmerSizes.min();
+        return kmerSizes.first();
     }
 
     /**
@@ -501,15 +501,24 @@ public final class AssemblyResultSet {
      *
      * <p/>
      * The result is sorted incrementally by location.
-     *
+     * @param maxMnpDistance Phased substitutions separated by this distance or less are merged into MNPs.  More than
+     *                       two substitutions occuring in the same alignment block (ie the same M/X/EQ CIGAR element)
+     *                       are merged until a substitution is separated from the previous one by a greater distance.
+     *                       That is, if maxMnpDistance = 1, substitutions at 10,11,12,14,15,17 are partitioned into a MNP
+     *                       at 10-12, a MNP at 14-15, and a SNP at 17.  May not be negative.
      * @return never {@code null}, but perhaps an empty collection.
      */
-    public SortedSet<VariantContext> getVariationEvents() {
+    public SortedSet<VariantContext> getVariationEvents(final int maxMnpDistance) {
+        ParamUtils.isPositiveOrZero(maxMnpDistance, "maxMnpDistance may not be negative.");
         if (variationEvents == null) {
             final List<Haplotype> haplotypeList = getHaplotypeList();
-            EventMap.buildEventMapsForHaplotypes(haplotypeList, fullReferenceWithPadding, paddedReferenceLoc, debug);
+            EventMap.buildEventMapsForHaplotypes(haplotypeList, fullReferenceWithPadding, paddedReferenceLoc, debug, maxMnpDistance);
             variationEvents = EventMap.getAllVariantContexts(haplotypeList);
         }
         return variationEvents;
+    }
+
+    public void setDebug(boolean debug) {
+        this.debug = debug;
     }
 }

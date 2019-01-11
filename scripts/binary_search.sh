@@ -71,7 +71,7 @@ genCorrectOutput () {
 #
 genTestOutput () {
   # change this line to run the computation you're testing.
-  ./hb BaseRecalibratorDataflow --runner=BLOCKING --numWorkers=1 -R gg://reference/EOSsjdnTicvzwAE -I $CLOUDINPUT --baseRecalibrationKnownVariants tstBQSR/dbsnp_132.b37.excluding_sites_after_129.chr17_69k_70k.vcf --apiKey=$GOOGLE_API_KEY --project=genomics-pipelines --staging=gs://jpmartin/staging-jpmartin -sortAllCols --RECAL_TABLE_FILE $TESTOUTPUT 2>&1 > $WORKDIR/testgen.log || echo "test output gen reports an error"
+  ./hb BaseRecalibratorDataflow --runner=BLOCKING --numWorkers=1 -R gg://reference/EOSsjdnTicvzwAE -I $CLOUDINPUT --baseRecalibrationKnownVariants tstBQSR/dbsnp_132.b37.excluding_sites_after_129.chr17_69k_70k.vcf --project=genomics-pipelines --staging=gs://jpmartin/staging-jpmartin -sortAllCols --RECAL_TABLE_FILE $TESTOUTPUT 2>&1 > $WORKDIR/testgen.log || echo "test output gen reports an error"
 }
 
 # This tries to shrink a failing interval by removing less than half.

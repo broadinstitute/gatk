@@ -13,8 +13,9 @@ import java.util.Objects;
 public class ShardBoundary implements Locatable, Serializable {
     private static final long serialVersionUID = 1L;
 
-    private final SimpleInterval interval;
-    private final SimpleInterval paddedInterval;
+    protected final SimpleInterval interval;
+    protected final SimpleInterval paddedInterval;
+    protected final boolean padded;
 
     /**
      * Create a new ShardBoundary from the given intervals
@@ -23,17 +24,21 @@ public class ShardBoundary implements Locatable, Serializable {
      * @param paddedInterval the interval covered by the shard's padding, must contain the shard interval
      */
     public ShardBoundary(final SimpleInterval interval, final SimpleInterval paddedInterval) {
+        this(interval, paddedInterval, false);
+    }
+
+    protected ShardBoundary(final SimpleInterval interval, final SimpleInterval paddedInterval, final boolean padded) {
         Utils.nonNull(interval);
         Utils.nonNull(paddedInterval);
         Utils.validateArg(paddedInterval.contains(interval), "interval must be contained within paddedInterval");
         this.interval = interval;
         this.paddedInterval = paddedInterval;
+        this.padded = padded;
     }
-
 
     @Override
     public String getContig() {
-        return interval.getContig();
+        return (padded ? paddedInterval : interval).getContig();
     }
 
     /**
@@ -41,7 +46,7 @@ public class ShardBoundary implements Locatable, Serializable {
      */
     @Override
     public int getStart() {
-        return interval.getStart();
+        return (padded ? paddedInterval : interval).getStart();
     }
 
     /**
@@ -49,7 +54,7 @@ public class ShardBoundary implements Locatable, Serializable {
      */
     @Override
     public int getEnd() {
-        return interval.getEnd();
+        return (padded ? paddedInterval : interval).getEnd();
     }
 
     /**
@@ -64,6 +69,14 @@ public class ShardBoundary implements Locatable, Serializable {
      */
     public SimpleInterval getPaddedInterval() {
         return paddedInterval;
+    }
+
+    public ShardBoundary paddedShardBoundary() {
+        return padded ? this : new ShardBoundary(interval, paddedInterval, true);
+    }
+
+    public <T> Shard<T> createShard(Iterable<T> locatables) {
+        return new ShardBoundaryShard<>(this, locatables);
     }
 
     @Override
@@ -87,5 +100,14 @@ public class ShardBoundary implements Locatable, Serializable {
     @Override
     public int hashCode() {
         return Objects.hash(interval, paddedInterval);
+    }
+
+    @Override
+    public String toString() {
+        return "ShardBoundary{" +
+                "interval=" + interval +
+                ", paddedInterval=" + paddedInterval +
+                ", padded=" + padded +
+                '}';
     }
 }

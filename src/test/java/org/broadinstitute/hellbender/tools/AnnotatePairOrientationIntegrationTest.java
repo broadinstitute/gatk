@@ -5,8 +5,8 @@ import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
-import org.nd4j.linalg.io.StringUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -16,11 +16,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class AnnotatePairOrientationIntegrationTest extends CommandLineProgramTest {
-    private static final File TEST_VCF_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/");
     private static final File TEST_BAM_DIR = new File("src/test/resources/large/mutect/dream_synthetic_bams/");
 
-    final static String TEST_VCF = TEST_VCF_DIR.getAbsolutePath() + "/test_no_pair_orientation_info.vcf";
-    final static String TEST_VCF_INDELS = TEST_VCF_DIR.getAbsolutePath() + "/test_no_pair_orientation_info_indels.vcf";
+    final static String TEST_VCF = toolsTestDir + "/test_no_pair_orientation_info.vcf";
+    final static String TEST_VCF_INDELS = toolsTestDir + "/test_no_pair_orientation_info_indels.vcf";
     final static String TEST_BAM_TUMOR = TEST_BAM_DIR.getAbsolutePath() + "/tumor_1.bam";
     final static String TEST_BAM_NORMAL = TEST_BAM_DIR.getAbsolutePath() + "/normal_1.bam";
     final static String TEST_BAM_TUMOR_INDELS = TEST_BAM_DIR.getAbsolutePath() + "/tumor_3.bam";
@@ -87,7 +86,7 @@ public class AnnotatePairOrientationIntegrationTest extends CommandLineProgramTe
         final String[][] gtF1R2F2R1 = {{"22,0", "11,0", "9,9", "8,4"},{"11,0","15,0", "11,8","9,10"}};
 
         assertOrientationAnnotationValues(variantContexts, gtF1R2F2R1, "synthetic.challenge.set1.normal",
-                "synthetic.challenge.set1.tumor");
+                "tumor sample");
     }
 
     private List<VariantContext> getVariantContextsFromFile(File vcfFile) {
@@ -123,8 +122,8 @@ public class AnnotatePairOrientationIntegrationTest extends CommandLineProgramTe
             for (int j = 0; j < annotations.size(); j ++) {
                 final String annotation = annotations.get(j);
                 final String tumorF1r2 = tumorGenotype.getExtendedAttribute(annotation).toString();
-                Assert.assertNotNull(StringUtils.split(tumorF1r2, ","));
-                Assert.assertEquals(StringUtils.split(tumorF1r2, ",").length, 2);
+                Assert.assertNotNull(Utils.split(tumorF1r2, ","));
+                Assert.assertEquals(Utils.split(tumorF1r2, ",").size(), 2);
                 Assert.assertEquals(tumorF1r2, gtF1R2F2R1[i][j+annotations.size()]);
             }
         }

@@ -31,7 +31,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         final File outName = createTempFile("test_variants_for_index.vcf", ".idx");
 
         final String[] args = {
-                "--feature_file" ,  ORIG_FILE.getAbsolutePath(),
+                "--feature-file" ,  ORIG_FILE.getAbsolutePath(),
                 "-O" ,  outName.getAbsolutePath()
         };
         final Object res = this.runCommandLine(args);
@@ -49,7 +49,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         final File ORIG_FILE = getTestFile("test_variants_for_index.vcf");
 
         final String[] args = {
-                "--feature_file" ,  ORIG_FILE.getAbsolutePath(),
+                "--feature-file" ,  ORIG_FILE.getAbsolutePath(),
         };
         final Object res = this.runCommandLine(args);
         final File tribbleIndex = Tribble.indexFile(ORIG_FILE);
@@ -68,7 +68,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         final File outName = createTempFile("test_nonFeature_file.txt.blockgz.gz.", ".tbi");
 
         final String[] args = {
-                "--feature_file", ORIG_FILE.getAbsolutePath(),
+                "--feature-file", ORIG_FILE.getAbsolutePath(),
                 "-O", outName.getAbsolutePath()
         };
         final Object res = this.runCommandLine(args);
@@ -80,7 +80,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         final File outName = createTempFile("test_variants_for_index.bcf.blockgz.gz.", ".tbi");
 
         final String[] args = {
-                "--feature_file", ORIG_FILE.getAbsolutePath(),
+                "--feature-file", ORIG_FILE.getAbsolutePath(),
                 "-O", outName.getAbsolutePath()
         };
         final Object res = this.runCommandLine(args);
@@ -92,7 +92,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         final File outName = createTempFile("test_variants_for_index.blockgz.gz.", ".idx");
 
         final String[] args = {
-                "--feature_file" ,  ORIG_FILE.getAbsolutePath(),
+                "--feature-file" ,  ORIG_FILE.getAbsolutePath(),
                 "-O" ,  outName.getAbsolutePath()
         };
         this.runCommandLine(args);
@@ -104,7 +104,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         final File outName = createTempFile("test_variants_for_index.blockgz.gz.", TabixUtils.STANDARD_INDEX_EXTENSION);
 
         final String[] args = {
-                "--feature_file" ,  ORIG_FILE.getAbsolutePath(),
+                "--feature-file" ,  ORIG_FILE.getAbsolutePath(),
                 "-O" ,  outName.getAbsolutePath()
         };
         final Object res = this.runCommandLine(args);
@@ -127,7 +127,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         final File outIndexFile = new File(tempDir, inputCopy.getName() + TabixUtils.STANDARD_INDEX_EXTENSION);
 
         final String[] args = {
-                "--feature_file" ,  inputCopy.getAbsolutePath(),
+                "--feature-file" ,  inputCopy.getAbsolutePath(),
                 "-O" ,  outIndexFile.getAbsolutePath()
         };
         final Object res = this.runCommandLine(args);
@@ -154,7 +154,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
     public void testVCFGZIndex_inferredName(){
         final File ORIG_FILE = getTestFile("test_variants_for_index.vcf.blockgz.gz"); //made by bgzip
         final String[] args = {
-                "--feature_file" ,  ORIG_FILE.getAbsolutePath(),
+                "--feature-file" ,  ORIG_FILE.getAbsolutePath(),
         };
         final Object res = this.runCommandLine(args);
         final File tabixIndex = new File(ORIG_FILE.getAbsolutePath() + TabixUtils.STANDARD_INDEX_EXTENSION);
@@ -169,24 +169,24 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         checkIndex(index, Arrays.asList("1", "2", "3", "4"));
     }
 
-    @Test(expectedExceptions = UserException.MalformedFile.class)
+    @Test(expectedExceptions = UserException.CouldNotIndexFile.class)
     public void testVCFGZIPIndex() throws IOException {
         //This tests blows up because the input file is not blocked gzipped
         final File ORIG_FILE = getTestFile("test_variants_for_index.vcf.gzip.gz"); //made by gzip
         final File outName = createTempFile("test_variants_for_index.gzip.gz.", ".tbi");
         final String[] args = {
-                "--feature_file" ,  ORIG_FILE.getAbsolutePath(),
+                "--feature-file" ,  ORIG_FILE.getAbsolutePath(),
                 "-O" ,  outName.getAbsolutePath()
         };
         final Object res = this.runCommandLine(args);
     }
 
-    @Test(expectedExceptions = UserException.MalformedFile.class)
+    @Test(expectedExceptions = UserException.CouldNotIndexFile.class)
     public void testVCFGZIPIndex_inferredName() throws IOException {
         //This tests blows up because the input file is not blocked gzipped
         final File ORIG_FILE = getTestFile("test_variants_for_index.vcf.gzip.gz"); //made by gzip
         final String[] args = {
-                "--feature_file" ,  ORIG_FILE.getAbsolutePath(),
+                "--feature-file" ,  ORIG_FILE.getAbsolutePath(),
         };
         final Object res = this.runCommandLine(args);
     }
@@ -197,7 +197,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         final File outName = createTempFile("test_variants_for_index.bcf.", ".idx");
 
         final String[] args = {
-                "--feature_file" ,  ORIG_FILE.getAbsolutePath(),
+                "--feature-file" ,  ORIG_FILE.getAbsolutePath(),
                 "-O" ,  outName.getAbsolutePath()
         };
         final Object res = this.runCommandLine(args);
@@ -209,13 +209,13 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         checkIndex(index, Arrays.asList("1"));
     }
 
-    @Test(expectedExceptions = TribbleException.InvalidHeader.class)
+    @Test(expectedExceptions = UserException.CouldNotIndexFile.class)
     public void testUncompressedBCF2_2Index() {
         final File ORIG_FILE = getTestFile("test_variants_for_index.BCF22uncompressed.bcf");
         final File outName = createTempFile("test_variants_for_index.BCF22uncompressed.bcf", ".idx");
 
         final String[] args = {
-                "--feature_file", ORIG_FILE.getAbsolutePath(),
+                "--feature-file", ORIG_FILE.getAbsolutePath(),
                 "-O", outName.getAbsolutePath()
         };
         final Object res = this.runCommandLine(args);
@@ -227,7 +227,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         final File outName = createTempFile("test_variants_for_index.BCF22compressed.bcf.blockgz.gz", ".idx");
 
         final String[] args = {
-                "--feature_file", ORIG_FILE.getAbsolutePath(),
+                "--feature-file", ORIG_FILE.getAbsolutePath(),
                 "-O", outName.getAbsolutePath()
         };
         final Object res = this.runCommandLine(args);
@@ -241,7 +241,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         final File outName = createTempFile("test_variants_for_index.gvcf_treated_as_vcf.vcf.", ".idx");
 
         final String[] args = {
-                "--feature_file" ,  ORIG_FILE.getAbsolutePath(),
+                "--feature-file" ,  ORIG_FILE.getAbsolutePath(),
                 "-O" ,  outName.getAbsolutePath()
         };
         final Object res = this.runCommandLine(args);
@@ -259,7 +259,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         final File outName = createTempFile("test_variants_for_index.g.vcf.", ".idx");
 
         final String[] args = {
-                "--feature_file" ,  ORIG_FILE.getAbsolutePath(),
+                "--feature-file" ,  ORIG_FILE.getAbsolutePath(),
                 "-O" ,  outName.getAbsolutePath()
         };
         final Object res = this.runCommandLine(args);
@@ -281,7 +281,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         final File outName = createTempFile(ORIG_FILE.getName(), (indexClass == TabixIndex.class) ?
                 TabixUtils.STANDARD_INDEX_EXTENSION : ".idx");
         final String[] args = {
-                "--feature_file" ,  ORIG_FILE.getAbsolutePath(),
+                "--feature-file" ,  ORIG_FILE.getAbsolutePath(),
                 "-O" ,  outName.getAbsolutePath()
         };
         final Object res = this.runCommandLine(args);
@@ -319,7 +319,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         final File outName = createTempFile(ORIG_FILE.getName(), TabixUtils.STANDARD_INDEX_EXTENSION);
 
         final String[] args = {
-                "--feature_file" ,  ORIG_FILE.getAbsolutePath(),
+                "--feature-file" ,  ORIG_FILE.getAbsolutePath(),
                 "-O" ,  outName.getAbsolutePath()
         };
         final Object res = this.runCommandLine(args);
@@ -346,7 +346,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         final File outName = createTempFile("test_variants_for_index.vcf.", ".idx");
 
         final String[] args = {
-                "--feature_file" ,  ORIG_FILE.getAbsolutePath(),
+                "--feature-file" ,  ORIG_FILE.getAbsolutePath(),
                 "-O" ,  outName.getAbsolutePath()
         };
         final Object res = this.runCommandLine(args);
@@ -361,7 +361,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         final File outName = new File(doesNotExist, "joe.txt");  //we can't write to this because parent does not exist
 
         final String[] args = {
-                "--feature_file" ,  ORIG_FILE.getAbsolutePath(),
+                "--feature-file" ,  ORIG_FILE.getAbsolutePath(),
                 "-O" ,  outName.getAbsolutePath()
         };
         final Object res = this.runCommandLine(args);

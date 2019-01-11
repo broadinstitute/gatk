@@ -1,18 +1,19 @@
 package org.broadinstitute.hellbender.engine.spark;
 
+import com.google.common.collect.Iterators;
 import htsjdk.samtools.ValidationStringency;
-import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.tools.spark.pipelines.PrintReadsSpark;
 import org.broadinstitute.hellbender.tools.spark.pipelines.PrintVariantsSpark;
+import org.broadinstitute.hellbender.tools.spark.transforms.markduplicates.MarkDuplicatesSpark;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
-import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
-import org.broadinstitute.hellbender.utils.test.DataprocTestUtils;
-import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.DataprocTestUtils;
+import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -22,7 +23,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.Iterator;
 
@@ -54,7 +54,7 @@ public class DataprocIntegrationTest extends CommandLineProgramTest{
         argBuilder.addArgument("input", gcsInputPath)
                 .addArgument("output", outputPath)
                 //set the partition size to something small enough that we force multiple partitions to be written
-                .addArgument("bamPartitionSize", String.valueOf(10*1024*1024));
+                .addArgument(GATKSparkTool.BAM_PARTITION_SIZE_LONG_NAME, String.valueOf(10*1024*1024));
         DataprocTestUtils.launchGatkTool(PrintReadsSpark.class.getSimpleName(), argBuilder.getArgsList(), clusterName);
         final File expected = copyLocally(gcsInputPath, "expected");
         final File actual = copyLocally(outputPath, "actual");
@@ -99,5 +99,31 @@ public class DataprocIntegrationTest extends CommandLineProgramTest{
         Files.delete(output);
         Files.copy(input, output);
         return output.toFile();
+    }
+
+    //test that MarkDuplicatesSpark doesn't explode on a tiny file
+    @Test(groups = {"cloud", "bucket"})
+    public void markDuplicatesSparkOnDataproc() throws IOException {
+        final String gcsInputPath = getGCPTestInputPath() + "large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.tiny.queryname.noMD.bam";
+        final String bamOut = BucketUtils.getTempFilePath(getGCPTestStaging(), ".bam");
+        final String metricsOut = BucketUtils.getTempFilePath(getGCPTestStaging(), ".metrics");
+
+        final ArgumentsBuilder argBuilder = new ArgumentsBuilder();
+        argBuilder.addArgument("I", gcsInputPath)
+                .addArgument("O", bamOut)
+                .addArgument("M", metricsOut);
+
+        DataprocTestUtils.launchGatkTool(MarkDuplicatesSpark.class.getSimpleName(), argBuilder.getArgsList(), clusterName);
+        final File actual = copyLocally(bamOut, "actual");
+
+        //assert that the output has the right number of reads and they're ordered correctly
+        assertReadsAreInCoordinatishOrder(actual);
+        try( ReadsDataSource reader = new ReadsDataSource(actual.toPath())){
+            Assert.assertEquals(Iterators.size(reader.iterator()), 1838);
+        }
+
+        //and that the metrics file is not empty
+        Assert.assertTrue( Files.size(IOUtils.getPath(metricsOut)) > 0);
+
     }
 }

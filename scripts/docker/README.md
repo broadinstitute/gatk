@@ -83,6 +83,11 @@ BRANCH=`git rev-parse --symbolic-full-name --abbrev-ref HEAD`
 sudo bash build_docker.sh -e `git rev-parse ${BRANCH}` -s -r -d ${STAGING_DIR}
 ```
 
+```bash
+# Same as above except do not run the unit tests.
+sudo bash build_docker.sh -e `git rev-parse ${BRANCH}` -s -u -d ${STAGING_DIR}
+```
+
 #### Run GATK4 gradle tests in existing latest tagged docker image
 
 *Note that the unit tests are run during a build of the Dockerfile*

@@ -1,0 +1,287 @@
+##fileformat=VCFv4.2
+##fileDate=Thu Sept 6 15:53:20 UTC 2018
+##reference=/cromwell_root/broad-references/hg19/v0/Homo_sapiens_assembly19.fasta
+##contig=<ID=1,length=249250621,assembly=b37>
+##contig=<ID=2,length=243199373,assembly=b37>
+##contig=<ID=3,length=198022430,assembly=b37>
+##contig=<ID=4,length=191154276,assembly=b37>
+##contig=<ID=5,length=180915260,assembly=b37>
+##contig=<ID=6,length=171115067,assembly=b37>
+##contig=<ID=7,length=159138663,assembly=b37>
+##contig=<ID=8,length=146364022,assembly=b37>
+##contig=<ID=9,length=141213431,assembly=b37>
+##contig=<ID=10,length=135534747,assembly=b37>
+##contig=<ID=11,length=135006516,assembly=b37>
+##contig=<ID=12,length=133851895,assembly=b37>
+##contig=<ID=13,length=115169878,assembly=b37>
+##contig=<ID=14,length=107349540,assembly=b37>
+##contig=<ID=15,length=102531392,assembly=b37>
+##contig=<ID=16,length=90354753,assembly=b37>
+##contig=<ID=17,length=81195210,assembly=b37>
+##contig=<ID=18,length=78077248,assembly=b37>
+##contig=<ID=19,length=59128983,assembly=b37>
+##contig=<ID=20,length=63025520,assembly=b37>
+##contig=<ID=21,length=48129895,assembly=b37>
+##contig=<ID=22,length=51304566,assembly=b37>
+##contig=<ID=X,length=155270560,assembly=b37>
+##contig=<ID=Y,length=59373566,assembly=b37>
+##contig=<ID=MT,length=16569,assembly=b37>
+##contig=<ID=GL000207.1,length=4262,assembly=b37>
+##contig=<ID=GL000226.1,length=15008,assembly=b37>
+##contig=<ID=GL000229.1,length=19913,assembly=b37>
+##contig=<ID=GL000231.1,length=27386,assembly=b37>
+##contig=<ID=GL000210.1,length=27682,assembly=b37>
+##contig=<ID=GL000239.1,length=33824,assembly=b37>
+##contig=<ID=GL000235.1,length=34474,assembly=b37>
+##contig=<ID=GL000201.1,length=36148,assembly=b37>
+##contig=<ID=GL000247.1,length=36422,assembly=b37>
+##contig=<ID=GL000245.1,length=36651,assembly=b37>
+##contig=<ID=GL000197.1,length=37175,assembly=b37>
+##contig=<ID=GL000203.1,length=37498,assembly=b37>
+##contig=<ID=GL000246.1,length=38154,assembly=b37>
+##contig=<ID=GL000249.1,length=38502,assembly=b37>
+##contig=<ID=GL000196.1,length=38914,assembly=b37>
+##contig=<ID=GL000248.1,length=39786,assembly=b37>
+##contig=<ID=GL000244.1,length=39929,assembly=b37>
+##contig=<ID=GL000238.1,length=39939,assembly=b37>
+##contig=<ID=GL000202.1,length=40103,assembly=b37>
+##contig=<ID=GL000234.1,length=40531,assembly=b37>
+##contig=<ID=GL000232.1,length=40652,assembly=b37>
+##contig=<ID=GL000206.1,length=41001,assembly=b37>
+##contig=<ID=GL000240.1,length=41933,assembly=b37>
+##contig=<ID=GL000236.1,length=41934,assembly=b37>
+##contig=<ID=GL000241.1,length=42152,assembly=b37>
+##contig=<ID=GL000243.1,length=43341,assembly=b37>
+##contig=<ID=GL000242.1,length=43523,assembly=b37>
+##contig=<ID=GL000230.1,length=43691,assembly=b37>
+##contig=<ID=GL000237.1,length=45867,assembly=b37>
+##contig=<ID=GL000233.1,length=45941,assembly=b37>
+##contig=<ID=GL000204.1,length=81310,assembly=b37>
+##contig=<ID=GL000198.1,length=90085,assembly=b37>
+##contig=<ID=GL000208.1,length=92689,assembly=b37>
+##contig=<ID=GL000191.1,length=106433,assembly=b37>
+##contig=<ID=GL000227.1,length=128374,assembly=b37>
+##contig=<ID=GL000228.1,length=129120,assembly=b37>
+##contig=<ID=GL000214.1,length=137718,assembly=b37>
+##contig=<ID=GL000221.1,length=155397,assembly=b37>
+##contig=<ID=GL000209.1,length=159169,assembly=b37>
+##contig=<ID=GL000218.1,length=161147,assembly=b37>
+##contig=<ID=GL000220.1,length=161802,assembly=b37>
+##contig=<ID=GL000213.1,length=164239,assembly=b37>
+##contig=<ID=GL000211.1,length=166566,assembly=b37>
+##contig=<ID=GL000199.1,length=169874,assembly=b37>
+##contig=<ID=GL000217.1,length=172149,assembly=b37>
+##contig=<ID=GL000216.1,length=172294,assembly=b37>
+##contig=<ID=GL000215.1,length=172545,assembly=b37>
+##contig=<ID=GL000205.1,length=174588,assembly=b37>
+##contig=<ID=GL000219.1,length=179198,assembly=b37>
+##contig=<ID=GL000224.1,length=179693,assembly=b37>
+##contig=<ID=GL000223.1,length=180455,assembly=b37>
+##contig=<ID=GL000195.1,length=182896,assembly=b37>
+##contig=<ID=GL000212.1,length=186858,assembly=b37>
+##contig=<ID=GL000222.1,length=186861,assembly=b37>
+##contig=<ID=GL000200.1,length=187035,assembly=b37>
+##contig=<ID=GL000193.1,length=189789,assembly=b37>
+##contig=<ID=GL000194.1,length=191469,assembly=b37>
+##contig=<ID=GL000225.1,length=211173,assembly=b37>
+##contig=<ID=GL000192.1,length=547496,assembly=b37>
+##contig=<ID=NC_007605,length=171823,assembly=b37>
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+1	752566	rs3094315	G	A	.	PASS	.
+1	752721	rs3131972	A	G	.	PASS	.
+1	762320	exm2268640	C	T	.	PASS	.
+1	798959	rs11240777	G	A	.	PASS	.
+1	838555	rs4970383	C	A	.	PASS	.
+1	846808	rs4475691	C	T	.	PASS	.
+1	861349	exm41	C	T	.	PASS	.
+1	861808	rs13302982	A	G	.	PASS	.
+1	865545	exm1916089	G	A	.	PASS	.
+1	865584	exm44	G	A	.	PASS	.
+1	865625	exm46	G	A	.	PASS	.
+1	865628	exm47	G	A	.	PASS	.
+1	865662	exm51	G	A	.	PASS	.
+1	865665	exm53	G	A	.	PASS	.
+1	865694	exm55	C	T	.	PASS	.
+1	865700	exm56	C	T	.	PASS	.
+1	866429	exm60	C	T	.	PASS	.
+1	871276	exm85	G	A	.	PASS	.
+1	878697	exm151	G	A	.	PASS	.
+1	880167	exm2253572	G	A	.	PASS	.
+1	880943	exm249	G	A	.	PASS	.
+1	881554	exm255	C	T	.	PASS	.
+1	881627	exm2253575	G	A	.	PASS	.
+1	887521	variant.16	T	C	.	PASS	.
+1	891309	exm360	C	T	.	PASS	.
+1	891358	exm369	G	T	.	PASS	.
+1	891384	exm371	G	A	.	PASS	.
+1	891393	exm372	G	A	.	PASS	.
+1	894573	exm2264981	G	A	.	PASS	.
+1	900427	exm596	G	A	.	PASS	.
+1	904165	rs28391282	G	A	.	PASS	.
+1	906472	exm1918903	G	A	.	PASS	.
+1	908390	exm739	G	A	.	PASS	.
+1	908585	exm741	G	A	.	PASS	.
+1	908587	exm742	G	A	.	PASS	.
+1	909320	exm2253598	C	T	.	PASS	.
+1	918573	rs2341354	A	G	.	PASS	.
+1	928836	rs9777703	C	T	.	PASS	.
+1	932457	rs1891910	G	A	.	PASS	.
+1	934735	exm860	A	C	.	PASS	.
+1	934770	exm861	G	A	.	PASS	.
+1	934801	exm866	C	T	.	PASS	.
+1	935085	exm878	G	A	.	PASS	.
+1	935089	exm880	C	G	.	PASS	.
+1	944564	rs3128117	T	C	.	PASS	.
+1	981345	exm1123	C	T	.	PASS	.
+1	990417	rs2465136	T	C	.	PASS	.
+1	998395	rs7526076	A	G	.	PASS	.
+1	1062638	rs9442373	C	A	.	PASS	.
+1	1066403	rs10907182	T	C	.	PASS	.
+1	1097335	rs9442385	T	G	.	PASS	.
+1	1106784	rs4442317	T	C	.	PASS	.
+1	1115954	exm1571	C	T	.	PASS	.
+1	1120536	psy_rs77950429	G	A	.	PASS	.
+1	1138913	rs3819001	T	C	.	PASS	.
+1	1139062	exm1677	G	A	.	PASS	.
+1	1139268	exm1688	G	A	.	PASS	.
+1	1140855	exm1726	C	T	.	PASS	.
+1	1152917	exm1808	G	A	.	PASS	.
+1	1152971	exm1812	T	C	.	PASS	.
+1	1153047	exm1822	C	T	.	PASS	.
+1	1178848	exm1965	G	A	.	PASS	.
+1	1179619	exm1987	C	A	.	PASS	.
+1	1211292	exm-rs6685064	C	T	.	PASS	.
+1	1216848	exm2059	G	A	.	PASS	.
+1	1219382	exm2062	C	G	.	PASS	.
+1	1219401	exm2063	C	T	.	PASS	.
+1	1222519	exm2129	C	T	.	PASS	.
+1	1227897	rs3737721	A	G	.	PASS	.
+1	1249193	indel.166	C	CGCAA	.	PASS	.
+1	1250794	variant.168	G	A	.	PASS	.
+1	1254678	exm2656	G	A	.	PASS	.
+1	1256453	exm2676	G	A	.	PASS	.
+1	1366830	rs873927	A	G	.	PASS	.
+1	1550992	exm3957	C	A	.	PASS	.
+1	1551927	exm3962	T	C	.	PASS	.
+1	1551952	exm3966	G	A	.	PASS	.
+1	1558792	exm3973	T	C	.	PASS	.
+1	1647785	indel.249	CT	C	.	PASS	.
+1	2146966	rs7512482	T	C	.	PASS	.
+1	2327075	rs3736330	C	T	.	PASS	.
+1	2408058	exm5658	C	T	.	PASS	.
+1	2450733	indel.338	AG	A	.	PASS	.
+1	2564465	kgp10938344	T	C	.	PASS	.
+1	3542385	indel.400	GA	G	.	PASS	.
+1	3789041	indel.451	CT	C	.	PASS	.
+1	3800158	indel.452	TG	T	.	PASS	.
+1	3821782	rs11589102	G	A	.	PASS	.
+1	3822703	rs10909830	C	T	.	PASS	.
+1	3823395	kgp9113347	C	T	.	PASS	.
+1	3825525	rs35383955	C	T	.	PASS	.
+1	4002498	psy_rs7538691	T	C	.	PASS	.
+1	6550505	exm2233725	C	T	.	PASS	.
+1	6556585	exm9669	G	A	.	PASS	.
+1	6635345	indel.549	TC	T	.	PASS	.
+1	7897138	indel.606	CA	C	.	PASS	.
+1	7913430	rs228648	G	A	.	PASS	.
+1	8045014	indel.625	GGCC	G	.	PASS	.
+1	9994822	indel.687	CT	C	.	PASS	.
+1	10478954	indel.710	TC	T	.	PASS	.
+1	11906068	exm15531	A	G	.	PASS	.
+1	12069756	indel.888	CACTT	C	.	PASS	.
+1	12776344	exm16961	A	T	.	PASS	.
+1	13933727	exm18587	A	G	.	PASS	.
+1	15671649	exm19151	T	C	.	PASS	.
+1	17634718	exm23564	A	G	.	PASS	.
+1	17942591	exm23940	G	A	.	PASS	.
+1	21800057	indel.1508	G	GC	.	PASS	.
+1	21896823	exm28148	C	T	.	PASS	.
+1	23435538	rs16827981	G	A	.	PASS	.
+1	23435538	rs16827981	G	AT	.	PASS	.
+1	23751126	exm30864	T	A	.	PASS	.
+1	23756350	exm30867	T	C	.	PASS	.
+1	24201027	var_1_24201027	AG	A	.	PASS	.
+1	24687425	indel.1723	T	TA	.	PASS	.
+1	31791962	exm39079	A	G	.	PASS	.
+1	32620194	exm40264	A	G	.	PASS	.
+1	36558985	exm44727	T	G	.	PASS	.
+1	43232984	exm51112	T	C	.	PASS	.
+1	45974886	exm55303	G	C	.	PASS	.
+1	47013404	exm56794	A	G	.	PASS	.
+1	47075329	exm56885	A	G	.	PASS	.
+1	55207184	var_1_55207184	T	TAG	.	PASS	.
+1	55307347	exm62368	T	G	.	PASS	.
+1	60228254	exm1845312	T	C	.	PASS	.
+1	67160814	rs1325267	C	T	.	PASS	.
+1	67288063	indel.4057	G	GCT	.	PASS	.
+1	67773351	rs12142823	C	T	.	PASS	.
+1	74671167	var_1_74671167	A	ATTTC	.	PASS	.
+1	86841963	indel.4587	G	GT	.	PASS	.
+1	92729242	indel.4840	A	AG	.	PASS	.
+1	100327026	rs2307129	C	T	.	PASS	.
+1	110300600	indel.5498	C	CCTGCTGGTTTT	.	PASS	.
+1	113010195	exm84380	T	G	.	PASS	.
+1	114447565	exm2230834	G	A	.	PASS	.
+1	120307172	indel.6031	A	ATTGGCCTCCAGGGCCA	.	PASS	.
+1	156571202	exm109653	G	A	.	PASS	.
+1	171154418	rs28369797	C	T	.	PASS	.
+1	209932121	rs10489341	C	T	.	PASS	.
+1	228296020	variant.10429	C	A	.	PASS	.
+2	3519739	rs6422709	C	A	.	PASS	.
+2	27603003	exm181213	G	A	.	PASS	.
+2	36818090	exm186382	T	C	.	PASS	.
+2	169926086	rs11889286	C	T	.	PASS	.
+2	187487140	indel.64390	A	ACCT	.	PASS	.
+2	220462640	exm269819	G	T	.	PASS	.
+2	238667455	indel.66367	G	GTAA	.	PASS	.
+3	57743569	exm325975	C	T	.	PASS	.
+3	178936088	.	A	AGGT	.	PASS	.
+3	178936088	.	A	AGGTGCT	.	PASS	.
+3	178936089	.	C	CG	.	PASS	.
+3	178936089	.	C	CGT	.	PASS	.
+3	178936089	.	C	CGTC	.	PASS	.
+3	178936089	.	C	CGTCG	.	PASS	.
+3	178936089	.	CT	C	.	PASS	.
+3	178936089	.	CTG	C	.	PASS	.
+3	178936089	.	CTGA	C	.	PASS	.
+3	178936089	.	CTGAG	C	.	PASS	.
+3	178936089	.	CTGAGCA	C	.	PASS	.
+3	178936089	.	CTGAGCAGGA	C	.	PASS	.
+3	178936089	.	CTGAGC	CGTCCA	.	PASS	.
+3	178936090	.	T	TA	.	PASS	.
+3	178936090	.	T	TAT	.	PASS	.
+3	178936090	.	T	TATT	.	PASS	.
+3	178936090	.	T	TATTG	.	PASS	.
+3	178936090	.	TG	T	.	PASS	.
+3	178936090	.	TGA	T	.	PASS	.
+3	178936090	.	TGAG	T	.	PASS	.
+3	178936090	.	TGAGC	T	.	PASS	.
+3	178936090	.	TGAGCAG	T	.	PASS	.
+3	178936090	.	T	TGAG	.	PASS	.
+3	178936090	.	T	TGAGC	.	PASS	.
+4	82126215	var_4_82126215	C	A	.	PASS	.
+4	87028376	exm411105	G	A	.	PASS	.
+5	1882759	.	C	CAT	.	PASS	.
+6	88255394	var_6_88255394	CTTT	C	.	PASS	.
+10	120795681	indel.14858	TCTCGGTCTCTTG	T	.	PASS	.
+12	11243923	indel.23289	TTTCACC	T	.	PASS	.
+12	55820040	indel.25160	GA	G	.	PASS	.
+13	60738150	.	C	A	.	PASS	.
+13	60738150	.	CAC	C	.	PASS	.
+13	60738150	.	C	CAC	.	PASS	.
+19	9091787	.	A	ATTT	.	PASS	.
+19	9091787	.	A	ATTTTTT	.	PASS	.
+19	9091787	.	ACCCA	A	.	PASS	.
+19	9091788	.	CCCA	C	.	PASS	.
+19	9091788	.	C	CTAA	.	PASS	.
+19	9091788	.	C	CTAATAA	.	PASS	.
+19	9091789	.	CCA	C	.	PASS	.
+19	9091789	.	C	CT	.	PASS	.
+19	9091789	.	C	CTA	.	PASS	.
+19	9091789	.	C	CTAA	.	PASS	.
+19	9091789	.	C	CTAATAA	.	PASS	.
+19	9091789	.	CCAGGA	CGTCCT	.	PASS	.
+19	9091790	.	C	CA	.	PASS	.
+19	9091790	.	C	CAT	.	PASS	.
+19	9091790	.	C	CATG	.	PASS	.
+19	9091790	.	CA	C	.	PASS	.

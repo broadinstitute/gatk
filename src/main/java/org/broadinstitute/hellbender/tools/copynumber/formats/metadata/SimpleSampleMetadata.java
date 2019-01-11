@@ -1,11 +1,20 @@
 package org.broadinstitute.hellbender.tools.copynumber.formats.metadata;
 
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMReadGroupRecord;
 import org.broadinstitute.hellbender.utils.Utils;
 
+import java.io.Serializable;
+
 /**
+ * Metadata associated with a single sample.
+ *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public class SimpleSampleMetadata implements SampleMetadata {
+public class SimpleSampleMetadata implements SampleMetadata, Serializable {
+
+    private static final long serialVersionUID = 0L;
+
     private final String sampleName;
 
     public SimpleSampleMetadata(final String sampleName) {
@@ -33,5 +42,21 @@ public class SimpleSampleMetadata implements SampleMetadata {
     @Override
     public int hashCode() {
         return sampleName.hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return "SimpleSampleMetadata{" +
+                "sampleName='" + sampleName + '\'' +
+                '}';
+    }
+
+    @Override
+    public SAMFileHeader toHeader() {
+        final SAMReadGroupRecord readGroupRecord = new SAMReadGroupRecord(MetadataUtils.GATK_CNV_READ_GROUP_ID);
+        readGroupRecord.setAttribute(SAMReadGroupRecord.READ_GROUP_SAMPLE_TAG, sampleName);
+        final SAMFileHeader header = new SAMFileHeader();
+        header.addReadGroup(readGroupRecord);
+        return header;
     }
 }

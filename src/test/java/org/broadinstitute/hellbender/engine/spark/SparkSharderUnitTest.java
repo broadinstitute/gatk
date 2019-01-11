@@ -89,7 +89,8 @@ public class SparkSharderUnitTest extends GATKBaseTest implements Serializable {
         List<SimpleInterval> intervals = ImmutableList.of(
                 new SimpleInterval("1", 2, 4),
                 new SimpleInterval("1", 8, 12),
-                new SimpleInterval("1", 11, 22));
+                new SimpleInterval("1", 11, 22),
+                new SimpleInterval("1", 31, 42));
 
         Iterator<Tuple2<SimpleInterval, Iterable<TestRead>>> it = SparkSharder.locatablesPerShard(reads.iterator(), intervals.iterator(), sequenceDictionary, STANDARD_READ_LENGTH);
         assertTrue(it.hasNext());
@@ -106,6 +107,69 @@ public class SparkSharderUnitTest extends GATKBaseTest implements Serializable {
         next = it.next();
         assertEquals(next._1(), intervals.get(2));
         assertEquals(next._2(), ImmutableList.of(reads.get(7), reads.get(8), reads.get(9), reads.get(10)));
+
+        assertTrue(it.hasNext());
+        next = it.next();
+        assertEquals(next._1(), intervals.get(3));
+        assertEquals(next._2(), ImmutableList.of());
+    }
+
+    @Test
+    public void testReadsSpanningMoreThanTwoIntervals() throws IOException {
+
+        // This test checks that iterating over the reads and intervals at the same time produces the overlapping
+        // reads for each interval.
+
+        // Note that the read spanning 5-7 overlaps three intervals (i.e. more than two).
+
+        //                      1                   2
+        //    1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7
+        // ---------------------------------------------------------
+        // Reads in partition 0
+        //   [-----]
+        //           [-----]
+        //               [-----]
+        //                       [-----]
+        //                         [-----]
+        //                                   [-----]
+        //                                           [-----]
+        //                                                   [-----]
+        // ---------------------------------------------------------
+        // Intervals
+        //     [-------]
+        //             [---]
+        //               [-------------------------------]
+        //
+        //                      1                   2
+        // ---------------------------------------------------------
+        //    1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7
+
+        List<TestRead> reads = ImmutableList.of(
+                new TestRead(1, 3), new TestRead(5, 7), new TestRead(7, 9),
+                new TestRead(11, 13), new TestRead(12, 14),
+                new TestRead(17, 19), new TestRead(21, 23), new TestRead(25, 27)
+        );
+
+        List<SimpleInterval> intervals = ImmutableList.of(
+                new SimpleInterval("1", 2, 5),
+                new SimpleInterval("1", 6, 7),
+                new SimpleInterval("1", 7, 22));
+
+        Iterator<Tuple2<SimpleInterval, Iterable<TestRead>>> it = SparkSharder.locatablesPerShard(reads.iterator(), intervals.iterator(), sequenceDictionary, STANDARD_READ_LENGTH);
+        assertTrue(it.hasNext());
+        Tuple2<SimpleInterval, Iterable<TestRead>> next = it.next();
+        assertEquals(next._1(), intervals.get(0));
+        assertEquals(next._2(), ImmutableList.of(reads.get(0), reads.get(1)));
+
+        assertTrue(it.hasNext());
+        next = it.next();
+        assertEquals(next._1(), intervals.get(1));
+        assertEquals(next._2(), ImmutableList.of(reads.get(1), reads.get(2)));
+
+        assertTrue(it.hasNext());
+        next = it.next();
+        assertEquals(next._1(), intervals.get(2));
+        assertEquals(next._2(), ImmutableList.of(reads.get(1), reads.get(2), reads.get(3), reads.get(4), reads.get(5), reads.get(6)));
 
         assertFalse(it.hasNext());
     }

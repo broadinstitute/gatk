@@ -4,9 +4,15 @@ import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import org.apache.commons.math3.distribution.AbstractIntegerDistribution;
+import org.apache.commons.math3.distribution.IntegerDistribution;
+import org.apache.commons.math3.random.JDKRandomGenerator;
+import org.apache.commons.math3.random.RandomGenerator;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.util.Arrays;
+import java.util.Random;
 
 /** Histogram of observations on a compact set of non-negative integer values. */
 @DefaultSerializer(IntHistogram.Serializer.class)
@@ -22,7 +28,7 @@ public final class IntHistogram {
         totalObservations = 0;
     }
 
-    private IntHistogram( final long[] counts, final long totalObservations ) {
+    private IntHistogram( final long[] counts, final long totalObservations) {
         this.counts = counts;
         this.totalObservations = totalObservations;
     }
@@ -33,6 +39,7 @@ public final class IntHistogram {
         long total = 0L;
         for ( int idx = 0; idx != len; ++idx ) {
             final long val = input.readLong();
+            final double idxSum = val * idx;
             total += val;
             counts[idx] = val;
         }
@@ -122,6 +129,110 @@ public final class IntHistogram {
         }
     }
 
+    /**
+     * Composes an empirical distribution based on the current contents fo the histogram.
+     * <p>
+     *     Later changes in the histogram won't affect the returned distribution.
+     * </p>
+     * <p>
+     *     You can indicate an arbitrary "smoothing" count number which added to the
+     *     observed frequency of every value. This way non observed values won't necessarily
+     *     have a probability of zero.
+     * </p>
+     * <p>
+     *     The supported space is enclosed in <code>[0,{@link Integer#MAX_VALUE max_int}]</code>.
+     *     So the probalility of negative values is 0 and the probability of 0 and positive values is
+     *     always at least <code>smoothing / num. of observations</code>.
+     * </p>
+     * <p>
+     *     Despite that the probability of very large values not tracked by the histogram is not zero,
+     *     the cumulative probability is said to reach 1.0 at the largest tracked number.
+     *     As a consequence the distribution is actually not a proper one (unknown normalization constant).
+     * </p>
+     * <p>
+     *     However since we expect that just a small fraction of the observations will fall outside the tracked range
+     *     we assume that is a proper distribution as far as the calculation of the mean, variance, density and
+     *     cumulative density is concern.
+     * </p>
+     *
+     * @param smoothing zero or a positive number of counts to each value.
+     * @return never {@code null}.
+     */
+    public AbstractIntegerDistribution empiricalDistribution(final int smoothing) {
+        ParamUtils.isPositiveOrZero(smoothing, "the smoothing must be zero or positive");
+        final long[] counts = Arrays.copyOfRange(this.counts, 0, this.counts.length - 1);
+        final double[] cumulativeCounts = new double[counts.length];
+        double sum = 0;
+        double sqSum = 0;
+        for (int i = 0; i < counts.length; i++) {
+            final long newCount = (counts[i] += smoothing);
+            sum += newCount * i;
+            sqSum += i * newCount * i;
+        }
+        cumulativeCounts[0] = counts[0];
+        for (int i = 1; i < counts.length; i++) {
+            cumulativeCounts[i] = counts[i] + cumulativeCounts[i - 1];
+        }
+        final double totalCounts = cumulativeCounts[counts.length - 1];
+        final double inverseTotalCounts = 1.0 / totalCounts;
+        final double mean = sum / totalCounts;
+        final double variance = sqSum / totalCounts - mean * mean;
+        final int seed = Arrays.hashCode(counts);
+        final RandomGenerator rdnGen = new JDKRandomGenerator();
+        rdnGen.setSeed(seed);
+        return new AbstractIntegerDistribution(rdnGen) {
+
+            private static final long serialVersionUID = -1L;
+
+            @Override
+            public double probability(int x) {
+                if (x < 0) {
+                    return 0.0;
+                } else if (x >= counts.length) {
+                    return smoothing * inverseTotalCounts;
+                } else {
+                    return counts[x] * inverseTotalCounts;
+                }
+            }
+
+            @Override
+            public double cumulativeProbability(int x) {
+                if (x < 0) {
+                    return 0;
+                } else if (x >= counts.length) {
+                    return 1.0;
+                } else {
+                    return cumulativeCounts[x] * inverseTotalCounts;
+                }
+            }
+
+            @Override
+            public double getNumericalMean() {
+                return mean;
+            }
+
+            @Override
+            public double getNumericalVariance() {
+                return variance;
+            }
+
+            @Override
+            public int getSupportLowerBound() {
+                return 0;
+            }
+
+            @Override
+            public int getSupportUpperBound() {
+                return Integer.MAX_VALUE;
+            }
+
+            @Override
+            public boolean isSupportConnected() {
+                return true;
+            }
+        };
+    }
+
     @DefaultSerializer(CDF.Serializer.class)
     public final static class CDF {
         final float[] cdfFractions;
@@ -136,6 +247,11 @@ public final class IntHistogram {
                 sum += intHistogram.getNObservations(observedValue);
                 cdfFractions[observedValue] = (float)sum / nCounts;
             }
+        }
+
+        public CDF(final float[] cdfFractions, final long nCounts) {
+            this.cdfFractions = cdfFractions;
+            this.nCounts = nCounts;
         }
 
         private CDF( final Kryo kryo, final Input input ) {

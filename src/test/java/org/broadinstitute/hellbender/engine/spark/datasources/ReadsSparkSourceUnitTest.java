@@ -7,37 +7,29 @@ import htsjdk.samtools.*;
 import org.apache.hadoop.fs.Path;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.api.java.function.FlatMapFunction;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.TraversalParameters;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadConstants;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.utils.test.MiniClusterUtils;
+import org.broadinstitute.hellbender.testutils.MiniClusterUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
 import java.util.List;
 
 import static org.testng.Assert.assertEquals;
 
 public class ReadsSparkSourceUnitTest extends GATKBaseTest {
-
-    private static final String dir = "src/test/resources/org/broadinstitute/hellbender/tools/";
-    private static final String dirBQSR = dir + "BQSR/";
-
+    private static final String dirBQSR = toolsTestDir + "BQSR/";
 
     @DataProvider(name = "loadReads")
     public Object[][] loadReads() {
@@ -46,7 +38,7 @@ public class ReadsSparkSourceUnitTest extends GATKBaseTest {
                 {dirBQSR + "HiSeq.1mb.1RG.2k_lines.alternate.bam", null},
                 {dirBQSR + "expected.HiSeq.1mb.1RG.2k_lines.alternate.recalibrated.DIQ.bam", null},
                 {NA12878_chr17_1k_CRAM, v37_chr17_1Mb_Reference},
-                {dir + "valid.cram", dir + "valid.fasta"}
+                {toolsTestDir + "valid.cram", toolsTestDir + "valid.fasta"}
         };
     }
 
@@ -69,7 +61,7 @@ public class ReadsSparkSourceUnitTest extends GATKBaseTest {
     // this tests handling the case where a reference is specified but the file doesn't exist
     @Test(expectedExceptions = UserException.MissingReference.class)
     public void loadReadsNonExistentReference() {
-        doLoadReads(dir + "valid.cram",
+        doLoadReads(toolsTestDir + "valid.cram",
                 GATKBaseTest.getSafeNonExistentFile("NonExistentReference.fasta").getAbsolutePath(),
                 ReadConstants.DEFAULT_READ_VALIDATION_STRINGENCY);
     }
@@ -90,7 +82,7 @@ public class ReadsSparkSourceUnitTest extends GATKBaseTest {
         Assert.assertEquals(serialReads.size(), parallelReads.size());
     }
 
-    @Test(expectedExceptions = UserException.class, expectedExceptionsMessageRegExp = ".*Failed to read bam header from hdfs://bogus/path.bam.*")
+    @Test(expectedExceptions = UserException.class, expectedExceptionsMessageRegExp = ".*java.net.UnknownHostException: bogus.*")
     public void readsSparkSourceUnknownHostTest() {
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
         ReadsSparkSource readSource = new ReadsSparkSource(ctx, ReadConstants.DEFAULT_READ_VALIDATION_STRINGENCY);
@@ -161,7 +153,7 @@ public class ReadsSparkSourceUnitTest extends GATKBaseTest {
         JavaRDD<GATKRead> allInOnePartition = readSource.getParallelReads(bam, null);
         JavaRDD<GATKRead> smallPartitions = readSource.getParallelReads(bam, null,  100 * 1024); // 100 kB
         Assert.assertEquals(allInOnePartition.partitions().size(), 1);
-        Assert.assertEquals(smallPartitions.partitions().size(), 2);
+        Assert.assertEquals(smallPartitions.partitions().size(), 3);
     }
 
     @Test(groups = "spark")
@@ -270,50 +262,5 @@ public class ReadsSparkSourceUnitTest extends GATKBaseTest {
             records.add(read);
         }
         return ctx.parallelize(records);
-    }
-
-    @DataProvider(name="readPairsAndPartitions")
-    public Object[][] readPairsAndPartitions() {
-        return new Object[][] {
-                // number of pairs, number of partitions, expected reads per partition
-                { 1, 1, new int[] {2} },
-                { 2, 2, new int[] {2, 2} },
-                { 3, 2, new int[] {4, 2} },
-                { 3, 3, new int[] {2, 2, 2} },
-                { 6, 2, new int[] {6, 6} },
-                { 6, 3, new int[] {4, 4, 4} },
-                { 6, 4, new int[] {4, 2, 4, 2} },
-        };
-    }
-
-    @Test(dataProvider = "readPairsAndPartitions")
-    public void testPutPairsInSamePartition(int numPairs, int numPartitions, int[] expectedReadsPerPartition) throws IOException {
-        JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
-        SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
-        header.setSortOrder(SAMFileHeader.SortOrder.queryname);
-        JavaRDD<GATKRead> reads = createPairedReads(ctx, header, numPairs, numPartitions);
-        ReadsSparkSource readsSparkSource = new ReadsSparkSource(ctx);
-        JavaRDD<GATKRead> pairedReads = readsSparkSource.putPairsInSamePartition(header, reads);
-        List<List<GATKRead>> partitions = pairedReads.mapPartitions((FlatMapFunction<Iterator<GATKRead>, List<GATKRead>>) it ->
-                Iterators.singletonIterator(Lists.newArrayList(it))).collect();
-        assertEquals(partitions.size(), numPartitions);
-        for (int i = 0; i < numPartitions; i++) {
-            assertEquals(partitions.get(i).size(), expectedReadsPerPartition[i]);
-        }
-        assertEquals(Arrays.stream(expectedReadsPerPartition).sum(), numPairs * 2);
-    }
-
-    private JavaRDD<GATKRead> createPairedReads(JavaSparkContext ctx, SAMFileHeader header, int numPairs, int numPartitions) {
-        final int readSize = 151;
-        final int fragmentLen = 400;
-        final String templateName = "readpair";
-        int leftStart = 10000;
-        List<GATKRead> reads = new ArrayList<>();
-        for (int i = 0; i < numPairs;i++) {
-            leftStart += readSize * 2;
-            int rightStart = leftStart + fragmentLen - readSize;
-            reads.addAll(ArtificialReadUtils.createPair(header, templateName + i, readSize, leftStart, rightStart, true, false));
-        }
-        return ctx.parallelize(reads, numPartitions);
     }
 }

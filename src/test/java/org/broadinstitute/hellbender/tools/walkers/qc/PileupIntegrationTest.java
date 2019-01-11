@@ -2,13 +2,11 @@ package org.broadinstitute.hellbender.tools.walkers.qc;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 
 /**
  * @author Daniel Gomez-Sanchez (magicDGS)
@@ -67,7 +65,7 @@ public class PileupIntegrationTest extends CommandLineProgramTest {
                 " -L 20:10000092-10000112" +
                         " -R " + b37_reference_20_21 +
                         " -I " + NA12878_20_21_WGS_bam +
-                        " -outputInsertLength " +
+                        " -output-insert-length " +
                         " -O %s",
                 Arrays.asList(TEST_OUTPUT_DIRECTORY + "expectedInsertLengthPileup.txt")
         );

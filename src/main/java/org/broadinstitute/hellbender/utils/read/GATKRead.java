@@ -1,10 +1,6 @@
 package org.broadinstitute.hellbender.utils.read;
 
-import com.google.api.services.genomics.model.Read;
-import htsjdk.samtools.Cigar;
-import htsjdk.samtools.CigarElement;
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.*;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.StringUtil;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -15,15 +11,14 @@ import java.util.List;
 /**
  * Unified read interface for use throughout the GATK.
  *
- * Adapter classes implementing this interface exist for both htsjdk's {@link SAMRecord} ({@link SAMRecordToGATKReadAdapter})
- * and the Google Genomics {@link Read} ({@link GoogleGenomicsReadToGATKReadAdapter})
+ * Adapter classes implementing this interface exist for htsjdk's {@link SAMRecord} ({@link SAMRecordToGATKReadAdapter})
  *
  * Since the adapter classes wrap the raw reads without making a copy, care must be taken to avoid
  * exposing the encapsulated reads, particularly if modifying reads in-place. As a result, this interface
  * should probably only be implemented by core engine-level classes.
  *
  * All GATKRead methods that return mutable reference types make defensive copies, with the exception
- * of the conversion methods {@link #convertToSAMRecord} and {@link #convertToGoogleGenomicsRead}.
+ * of the conversion method {@link #convertToSAMRecord}.
  *
  * Note that {@link #getContig} and {@link #getStart} will not expose nominal positions assigned to unmapped
  * reads for sorting purposes -- for unmapped reads, these methods will always return {@code null} or 0,
@@ -125,6 +120,57 @@ public interface GATKRead extends Locatable {
     int getUnclippedEnd();
 
     /**
+     * Calculates the reference coordinate for the beginning of the read taking into account soft clips but not hard clips.
+     *
+     * Note: {@link #getUnclippedStart} adds soft and hard clips, this method only adds soft clips.
+     *
+     * @return the unclipped start of the read taking soft clips (but not hard clips) into account
+     */
+    default int getSoftStart() {
+        return ReadUtils.getSoftStart(this);
+    }
+
+    /**
+     * Calculates the reference coordinate for the end of the read taking into account soft clips but not hard clips.
+     *
+     * Note: {@link #getUnclippedEnd} adds soft and hard clips, this method only adds soft clips.
+     *
+     * @return the unclipped end of the read taking soft clips (but not hard clips) into account
+     */
+    default int getSoftEnd() {
+        return ReadUtils.getSoftEnd(this);
+    }
+
+    /**
+     * Finds the adaptor boundary around the read and returns the first base inside the adaptor that is closest to
+     * the read boundary. If the read is in the positive strand, this is the first base after the end of the
+     * fragment (Picard calls it 'insert'), if the read is in the negative strand, this is the first base before the
+     * beginning of the fragment.
+     *
+     * There are two cases we need to treat here:
+     *
+     * 1) Our read is in the reverse strand :
+     *
+     *     <----------------------| *
+     *   |--------------------->
+     *
+     *   in these cases, the adaptor boundary is at the mate start (minus one)
+     *
+     * 2) Our read is in the forward strand :
+     *
+     *   |---------------------->   *
+     *     <----------------------|
+     *
+     *   in these cases the adaptor boundary is at the start of the read plus the inferred insert size (plus one)
+     *
+     * @return the reference coordinate for the adaptor boundary (effectively the first base IN the adaptor, closest to the read).
+     * CANNOT_COMPUTE_ADAPTOR_BOUNDARY if the read is unmapped or the mate is mapped to another contig.
+     */
+    default int getAdaptorBoundary() {
+        return ReadUtils.getAdaptorBoundary(this);
+    }
+
+    /**
      * @return The contig that this read's mate is mapped to, or {@code null} if the mate is unmapped
      * @throws IllegalStateException if the read is not paired (has no mate)
      */
@@ -208,6 +254,21 @@ public interface GATKRead extends Locatable {
     byte[] getBases();
 
     /**
+     * @return The read sequence as ASCII bytes ACGTN=, or an empty byte[] if no sequence is present.
+     *
+     * This method differs from {@link #getBases} in that implementations are free to avoid making a
+     * defensive copy, if it's possible to avoid a copy.
+     *
+     * WARNING: This method MAY NOT make a defensive copy of the bases array before returning it, so modifying the
+     * returned array MAY alter the bases in the actual read. CALLER BEWARE!
+     */
+    default byte[] getBasesNoCopy() {
+        // By default we delegate to the copying version. If implementations are able to avoid a copy,
+        // they can override with a no-copy implementation.
+        return getBases();
+    }
+
+    /**
      * @return The base at index i.
      * The default implementation returns getBases()[i].
      * Subclasses may override to provide a more efficient implementations but must preserve the
@@ -242,6 +303,21 @@ public interface GATKRead extends Locatable {
      * returned array will not alter the base qualities in the read.
      */
     byte[] getBaseQualities();
+
+    /**
+     * @return Base qualities as binary phred scores (not ASCII), or an empty byte[] if base qualities are not present.
+     *
+     * This method differs from {@link #getBaseQualities} in that implementations are free to avoid making a
+     * defensive copy, if it's possible to avoid a copy.
+     *
+     * WARNING: This method MAY NOT make a defensive copy of the base qualities array before returning it, so modifying
+     * the returned array MAY alter the base qualities in the read. CALLER BEWARE!
+     */
+    default byte[] getBaseQualitiesNoCopy() {
+        // By default we delegate to the copying version. If implementations are able to avoid a copy,
+        // they can override with a no-copy implementation.
+        return getBaseQualities();
+    }
 
     /**
      * @return The number of base qualities in the read sequence.
@@ -391,6 +467,21 @@ public interface GATKRead extends Locatable {
     void setIsUnmapped();
 
     /**
+     * Does the read have a position assigned to it for sorting purposes.
+     * @return `true iff this read has no assigned position or contig.
+     */
+    boolean isUnplaced();
+
+    /**
+     * Mark the read as unmapped, and also removes mapping information from the read (i.e. sets contig to {@link ReadConstants#UNSET_CONTIG} and position to {@link ReadConstants#UNSET_POSITION}).
+     *
+     * NOTE: this does not remove the cigar string from the read, use {@link #setCigar(Cigar)}
+     *
+     * To mark a read as mapped, use {@link #setPosition}
+     */
+    void setIsUnplaced();
+
+    /**
      * @return True if this read's mate is unmapped (this includes mates that have a position but are explicitly marked as unmapped,
      *         as well as mates that lack a fully-defined position but are not explicitly marked as unmapped). Otherwise false.
      * @throws IllegalStateException if the read is not paired (has no mate)
@@ -398,7 +489,7 @@ public interface GATKRead extends Locatable {
     boolean mateIsUnmapped();
 
     /**
-     * Mark the read's mate as unmapped (lacking a defined position on the genome).
+     * Mark the read's mate as unmapped (lacking a defined position on the genome). (i.e. sets mate contig to {@link ReadConstants#UNSET_CONTIG} and position to {@link ReadConstants#UNSET_POSITION}).
      *
      * To mark the read's mate as mapped, use {@link #setMatePosition}
      *
@@ -406,6 +497,23 @@ public interface GATKRead extends Locatable {
      * were invoked with true.
      */
     void setMateIsUnmapped();
+
+    /**
+     * Does the reads mate have a position assigned to it for sorting purposes..
+     * @return `true iff this reads mate has no assigned position or contig.
+     */
+    boolean mateIsUnplaced();
+
+    /**
+     * Mark the read's mate as unmapped (lacking a defined position on the genome). In contrast with {@link #setMateIsUnmapped},
+     * this method will revert the mapping information for the mate (i.e. sets the mate's contig to "*" and position to 0).
+     *
+     * To mark the read's mate as mapped, use {@link #setMatePosition}
+     *
+     * Calling this method has the additional effect of marking the read as paired, as if {@link #setIsPaired}
+     * were invoked with true.
+     */
+    void setMateIsUnplaced();
 
     /**
      * @return True if this read is on the reverse strand as opposed to the forward strand, otherwise false.
@@ -605,10 +713,9 @@ public interface GATKRead extends Locatable {
      * @return A copy of this read. The copy will not necessarily be a true deep copy (the fields
      *         encapsulated by the read itself may be shallow copied), but should be safe to use freely in general
      *         given that all GATKRead methods that return mutable reference types make defensive copies
-     *         (with the exception of the conversion methods {@link #convertToSAMRecord} and
-     *         {@link #convertToGoogleGenomicsRead}, but these are safe to call on copies since the
-     *         encapsulated reads do get shallow copied at a minimum by this method, so modifications
-     *         to the fields within a copied read will not alter the original).
+     *         (with the exception of the conversion method {@link #convertToSAMRecord,
+     *         but these are safe to call on copies since the encapsulated reads do get shallow copied at a minimum by
+     *         this method, so modifications to the fields within a copied read will not alter the original).
      */
     GATKRead copy();
 
@@ -631,21 +738,17 @@ public interface GATKRead extends Locatable {
     SAMRecord convertToSAMRecord( final SAMFileHeader header );
 
     /**
-     * Convert this read into a Google Genomics model read.
-     *
-     * Warning: the return value is not guaranteed to be independent from this read (eg., if the read
-     * is already in Google Genomics format, no copy will be made).
-     *
-     * @return This read as a Google Genomics model read.
-     */
-    Read convertToGoogleGenomicsRead();
-
-    /**
      * Get a string representation of this read in SAM string format, terminated with '\n'. Fields are separated by '\t',
      *
      * @return SAM string representation of this read.
      */
     String getSAMString();
+
+    /**
+     * Modify this read by reverse complementing its bases and reversing its quality scores. Implementations may
+     * also update tags that are known to need updating after the reverse complement operation.
+     */
+    public void reverseComplement();
 
     /**
      * A human-digestable representation of the read.

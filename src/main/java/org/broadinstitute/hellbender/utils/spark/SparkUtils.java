@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.utils.spark;
 
+import com.google.common.collect.*;
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.SAMTextHeaderCodec;
 import htsjdk.samtools.util.BinaryCodec;
@@ -9,22 +9,26 @@ import htsjdk.samtools.util.BlockCompressedOutputStream;
 import htsjdk.samtools.util.BlockCompressedStreamConstants;
 import htsjdk.samtools.util.RuntimeIOException;
 import org.apache.commons.io.FileUtils;
-import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.log4j.Logger;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.api.java.function.FlatMapFunction2;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.read.*;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.read.*;
 import scala.Tuple2;
 
-
 import java.io.*;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Iterator;
+import java.util.List;
 
 /**
  * Miscellaneous Spark-related utilities
@@ -75,7 +79,7 @@ public final class SparkUtils {
      * @param outputStream stream to write the SAM header to
      */
     private static void writeBAMHeaderToStream( final SAMFileHeader samFileHeader, final OutputStream outputStream ) {
-        final BlockCompressedOutputStream blockCompressedOutputStream = new BlockCompressedOutputStream(outputStream, null);
+        final BlockCompressedOutputStream blockCompressedOutputStream = new BlockCompressedOutputStream(outputStream, (File)null);
         final BinaryCodec outputBinaryCodec = new BinaryCodec(new DataOutputStream(blockCompressedOutputStream));
 
         final String headerString;
@@ -120,22 +124,41 @@ public final class SparkUtils {
     }
 
     /**
-     * Sorts the given reads in coordinate sort order.
-     * @param reads the reads to sort
-     * @param header the reads header, which must specify coordinate sort order
-     * @param numReducers the number of reducers to use; a value of 0 means use the default number of reducers
-     * @return a sorted RDD of reads
+     * Do a total sort of an RDD of {@link GATKRead} according to the sort order in the header.
+     * @param reads a JavaRDD of reads which may or may not be sorted
+     * @param header a header which specifies the desired new sort order.
+     *               Only {@link SAMFileHeader.SortOrder#coordinate} and {@link SAMFileHeader.SortOrder#queryname} are supported.
+     *               All others will result in {@link GATKException}
+     * @param numReducers number of reducers to use when sorting
+     * @return a new JavaRDD or reads which is globally sorted in a way that is consistent with the sort order given in the header
      */
-    public static JavaRDD<GATKRead> coordinateSortReads(final JavaRDD<GATKRead> reads, final SAMFileHeader header, final int numReducers) {
-        Utils.validate(header.getSortOrder().equals(SAMFileHeader.SortOrder.coordinate), "Header must specify coordinate sort order, but was" + header.getSortOrder());
+    public static JavaRDD<GATKRead> sortReadsAccordingToHeader(final JavaRDD<GATKRead> reads, final SAMFileHeader header, final int numReducers){
+        final SAMFileHeader.SortOrder order = header.getSortOrder();
+        switch (order){
+            case coordinate:
+                return sortUsingElementsAsKeys(reads, new ReadCoordinateComparator(header), numReducers);
+            case queryname:
+                final JavaRDD<GATKRead> sortedReads = sortUsingElementsAsKeys(reads, new ReadQueryNameComparator(), numReducers);
+                return putReadsWithTheSameNameInTheSamePartition(header, sortedReads, JavaSparkContext.fromSparkContext(reads.context()));
+            default:
+                throw new GATKException("Sort order: " + order + " is not supported.");
+        }
+    }
+
+    /**
+     *   Do a global sort of an RDD using the given comparator.
+     *   This method uses the RDD elements themselves as the keys in the spark key/value sort.  This may be inefficient
+     *   if the comparator only uses looks at a small fraction of the element to perform the comparison.
+     */
+    public static <T> JavaRDD<T> sortUsingElementsAsKeys(JavaRDD<T> elements, Comparator<T> comparator, int numReducers) {
+        Utils.nonNull(comparator);
+        Utils.nonNull(elements);
 
         // Turn into key-value pairs so we can sort (by key). Values are null so there is no overhead in the amount
         // of data going through the shuffle.
-        final JavaPairRDD<GATKRead, Void> rddReadPairs = reads.mapToPair(read -> new Tuple2<>(read, (Void) null));
+        final JavaPairRDD<T, Void> rddReadPairs = elements.mapToPair(read -> new Tuple2<>(read, (Void) null));
 
-        // do a total sort so that all the reads in partition i are less than those in partition i+1
-        final Comparator<GATKRead> comparator = new ReadCoordinateComparator(header);
-        final JavaPairRDD<GATKRead, Void> readVoidPairs;
+        final JavaPairRDD<T, Void> readVoidPairs;
         if (numReducers > 0) {
             readVoidPairs = rddReadPairs.sortByKey(comparator, true, numReducers);
         } else {
@@ -145,38 +168,129 @@ public final class SparkUtils {
     }
 
     /**
-     * Sorts the given reads according to the sort order in the header.
-     * @param reads the reads to sort
-     * @param header the header specifying the sort order
-     * @param numReducers the number of reducers to use; a vlue of 0 means use the default number of reducers
-     * @return a sorted RDD of reads
+     * Ensure all reads with the same name appear in the same partition of a queryname sorted RDD.
+     * This avoids a global shuffle and only transfers the leading elements from each partition which is fast in most
+     * cases.
+     *
+     * The RDD must be queryname sorted.  If there are so many reads with the same name that they span multiple partitions
+     * this will throw {@link GATKException}.
      */
-    public static JavaRDD<SAMRecord> sortReads(final JavaRDD<SAMRecord> reads, final SAMFileHeader header, final int numReducers) {
-        // Turn into key-value pairs so we can sort (by key). Values are null so there is no overhead in the amount
-        // of data going through the shuffle.
-        final JavaPairRDD<SAMRecord, Void> rddReadPairs = reads.mapToPair(read -> new Tuple2<>(read, (Void) null));
+    public static JavaRDD<GATKRead> putReadsWithTheSameNameInTheSamePartition(final SAMFileHeader header, final JavaRDD<GATKRead> reads, final JavaSparkContext ctx) {
+        Utils.validateArg(ReadUtils.isReadNameGroupedBam(header), () -> "Reads must be queryname grouped or sorted. " +
+                "Actual sort:" + header.getSortOrder() + "  Actual grouping:" +header.getGroupOrder());
+        int numPartitions = reads.getNumPartitions();
+        final String firstNameInBam = reads.first().getName();
+        // Find the first group in each partition
+        List<List<GATKRead>> firstReadNameGroupInEachPartition = reads
+                .mapPartitions(it -> { PeekingIterator<GATKRead> current = Iterators.peekingIterator(it);
+                                List<GATKRead> firstGroup = new ArrayList<>(2);
+                                firstGroup.add(current.next());
+                                String name = firstGroup.get(0).getName();
+                                while (current.hasNext() && current.peek().getName().equals(name)) {
+                                    firstGroup.add(current.next());
+                                }
+                                return Iterators.singletonIterator(firstGroup);
+                                })
+                .collect();
 
-        // do a total sort so that all the reads in partition i are less than those in partition i+1
-        final Comparator<SAMRecord> comparator = getSAMRecordComparator(header);
-        final JavaPairRDD<SAMRecord, Void> readVoidPairs;
-        if (comparator == null){
-            readVoidPairs = rddReadPairs; //no sort
-        } else if (numReducers > 0) {
-            readVoidPairs = rddReadPairs.sortByKey(comparator, true, numReducers);
-        } else {
-            readVoidPairs = rddReadPairs.sortByKey(comparator);
+        // Checking for pathological cases (read name groups that span more than 2 partitions)
+        String groupName = null;
+        for (List<GATKRead> group : firstReadNameGroupInEachPartition) {
+            if (group!=null && !group.isEmpty()) {
+                // If a read spans multiple partitions we expect its name to show up multiple times and we don't expect this to work properly
+                if (groupName != null && group.get(0).getName().equals(groupName)) {
+                    throw new GATKException(String.format("The read name '%s' appeared across multiple partitions this could indicate there was a problem " +
+                            "with the sorting or that the rdd has too many partitions, check that the file is queryname sorted and consider decreasing the number of partitions", groupName));
+                }
+                groupName =  group.get(0).getName();
+            }
         }
-        return readVoidPairs.keys();
+
+        // Shift left, so that each partition will be joined with the first read group from the _next_ partition
+        List<List<GATKRead>> firstReadInNextPartition = new ArrayList<>(firstReadNameGroupInEachPartition.subList(1, numPartitions));
+        firstReadInNextPartition.add(null); // the last partition does not have any reads to add to it
+
+        // Join the reads with the first read from the _next_ partition, then filter out the first reads in this partition
+        return reads.zipPartitions(ctx.parallelize(firstReadInNextPartition, numPartitions),
+                (FlatMapFunction2<Iterator<GATKRead>, Iterator<List<GATKRead>>, GATKRead>) (it1, it2) -> {
+            PeekingIterator<GATKRead> current = Iterators.peekingIterator(it1);
+            String firstName = current.peek().getName();
+            // Make sure we don't remove reads from the first partition
+            if (!firstNameInBam.equals(firstName)) {
+                // skip the first read name group in the _current_ partition since it will be handled in the previous partition
+                while (current.hasNext() && current.peek() != null && current.peek().getName().equals(firstName)) {
+                    current.next();
+                }
+            }
+            // append the first reads in the _next_ partition to the _current_ partition
+            PeekingIterator<List<GATKRead>> next = Iterators.peekingIterator(it2);
+            if (next.hasNext() && next.peek() != null) {
+                return Iterators.concat(current, next.peek().iterator());
+            }
+            return current;
+        });
     }
 
-    //Returns the comparator to use or null if no sorting is required.
-    private static Comparator<SAMRecord> getSAMRecordComparator(final SAMFileHeader header) {
-        switch (header.getSortOrder()){
-            case coordinate: return new HeaderlessSAMRecordCoordinateComparator(header);
-            case duplicate:
-            case queryname:
-            case unsorted:   return header.getSortOrder().getComparatorInstance();
-            default:         return null; //NOTE: javac warns if you have this (useless) default BUT it errors out if you remove this default.
+    /**
+     * Like <code>groupByKey</code>, but assumes that values are already sorted by key, so no shuffle is needed,
+     * which is much faster.
+     * @param rdd the input RDD
+     * @param <K> type of keys
+     * @param <V> type of values
+     * @return an RDD where each the values for each key are grouped into an iterable collection
+     */
+    public static <K, V> JavaPairRDD<K, Iterable<V>> spanByKey(JavaPairRDD<K, V> rdd) {
+        return rdd.mapPartitionsToPair(SparkUtils::getSpanningIterator);
+    }
+
+    /**
+     * An iterator that groups values having the same key into iterable collections.
+     * @param iterator an iterator over key-value pairs
+     * @param <K> type of keys
+     * @param <V> type of values
+     * @return an iterator over pairs of keys and grouped values
+     */
+    public static <K, V> Iterator<Tuple2<K, Iterable<V>>> getSpanningIterator(Iterator<Tuple2<K, V>> iterator) {
+        final PeekingIterator<Tuple2<K, V>> iter = Iterators.peekingIterator(iterator);
+        return new AbstractIterator<Tuple2<K, Iterable<V>>>() {
+            @Override
+            protected Tuple2<K, Iterable<V>> computeNext() {
+                K key = null;
+                List<V> group = Lists.newArrayList();
+                while (iter.hasNext()) {
+                    if (key == null) {
+                        Tuple2<K, V> next = iter.next();
+                        key = next._1();
+                        V value = next._2();
+                        group.add(value);
+                        continue;
+                    }
+                    K nextKey = iter.peek()._1(); // don't advance...
+                    if (nextKey.equals(key)) {
+                        group.add(iter.next()._2()); // .. unless the keys match
+                    } else {
+                        return new Tuple2<>(key, group);
+                    }
+                }
+                if (key != null) {
+                    return new Tuple2<>(key, group);
+                }
+                return endOfData();
+            }
+        };
+    }
+
+    /**
+     * Sort reads into queryname order if they are not already sorted
+     */
+    public static JavaRDD<GATKRead> querynameSortReadsIfNecessary(JavaRDD<GATKRead> reads, int numReducers, SAMFileHeader header) {
+        JavaRDD<GATKRead> sortedReadsForMarking;
+        if (ReadUtils.isReadNameGroupedBam(header)) {
+            sortedReadsForMarking = reads;
+        } else {
+            header.setSortOrder(SAMFileHeader.SortOrder.queryname);
+            sortedReadsForMarking = sortReadsAccordingToHeader(reads, header, numReducers);
         }
+        return sortedReadsForMarking;
     }
 }

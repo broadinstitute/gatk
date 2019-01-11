@@ -3,37 +3,41 @@ package org.broadinstitute.hellbender.tools.walkers.validation;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
-import htsjdk.variant.vcf.VCFHeader;
-import htsjdk.variant.vcf.VCFHeaderLine;
-import htsjdk.variant.vcf.VCFHeaderLineType;
-import htsjdk.variant.vcf.VCFInfoHeaderLine;
+import htsjdk.variant.vcf.*;
 import org.apache.commons.collections4.Predicate;
+import org.apache.commons.lang.mutable.MutableInt;
 import org.apache.commons.lang.mutable.MutableLong;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
-import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.AbstractConcordanceWalker;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.VariantsToTable;
 import org.broadinstitute.hellbender.utils.Utils;
+import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.EnumMap;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
- * Evaluate concordance of an input VCF against a validated truth VCF
+ * Evaluate site-level concordance of an input VCF against a truth VCF.
  *
- * <p>This tool evaluates an input VCF against a VCF that has been validated and is considered to represent ground truth.
- * The summary statistics (# true positives, # false positives, # false negatives, sensitivity, precision) are reported
- * in a TSV file (--summary). Note that this tool assumes that the truth VCF only contains PASS variants.</p>
+ * <p>This tool evaluates two variant callsets against each other and produces a six-column summary metrics table. The summary:</p>
  *
- * <p>Optionally, the tool also produces VCFs of the following variant records, annotated with each variant's concordance status:</p>
+ * <ul>
+ *     <li>stratifies SNP and INDEL calls,</li>
+ *     <li>tallies true-positive, false-positive and false-negative calls,</li>
+ *     <li>and calculates sensitivity and precision.</li>
+ * </ul>
+ *
+ * <p>The tool assumes all records in the --truth VCF are passing truth variants. For the -eval VCF, the tool uses only unfiltered passing calls.</p>
+ *
+ * <p>Optionally, the tool can be set to produce VCFs of the following variant records, annotated with each variant's concordance status:</p>
  * <ul>
  *     <li>True positives and false negatives (i.e. all variants in the truth VCF): useful for calculating sensitivity</li>
  *     <li>True positives and false positives (i.e. all variants in the eval VCF): useful for obtaining a training data
@@ -43,11 +47,11 @@ import java.util.Set;
  * <p>These output VCFs can be passed to {@link VariantsToTable} to produce a TSV file for statistical analysis in R
  * or Python.</p>
  *
- * <h3>Usage examples</h3>
+ * <h3>Usage example</h3>
  *
  * <pre>
- * gatk-launch --javaOptions "-Xmx4g" Concordance \
- *   -R reference.fasta \
+ * gatk Concordance \
+ *   -R reference.fa \
  *   -eval eval.vcf \
  *   --truth truth.vcf \
  *   --summary summary.tsv    
@@ -55,25 +59,32 @@ import java.util.Set;
  *
  */
 @CommandLineProgramProperties(
-        summary = "This tool evaluates an input VCF against a VCF that has been validated and is considered to represent ground truth.\n" +
-                " The summary statistics (# true positives, # false positives, # false negatives, sensitivity, precision) are reported \n" +
-                " in a TSV file (--summary). Note that this tool assumes that the truth VCF only contains PASS variants.",
-        oneLineSummary = "Evaluate concordance of an input VCF against a validated truth VCF",
-        programGroup = VariantProgramGroup.class
+        summary = Concordance.USAGE_SUMMARY,
+        oneLineSummary = Concordance.USAGE_ONE_LINE_SUMMARY,
+        programGroup = VariantEvaluationProgramGroup.class
 )
 @DocumentedFeature
 @BetaFeature
 public class Concordance extends AbstractConcordanceWalker {
+
+    static final String USAGE_ONE_LINE_SUMMARY = "Evaluate concordance of an input VCF against a validated truth VCF";
+    static final String USAGE_SUMMARY = "This tool evaluates an input VCF against a VCF that has been validated" +
+            " and is considered to represent ground truth.\n" +
+            " The summary statistics (# true positives, # false positives, # false negatives, sensitivity, precision) are reported \n" +
+            " in a TSV file (--summary). Note that this tool assumes that the truth VCF only contains PASS variants.";
+
     public static final String SUMMARY_LONG_NAME = "summary";
     public static final String SUMMARY_SHORT_NAME = "S";
 
-    public static final String TRUE_POSITIVES_AND_FALSE_NEGATIVES_LONG_NAME = "truePositivesAndFalseNegatives";
-    public static final String TRUE_POSITIVES_AND_FALSE_NEGATIVES_SHORT_NAME = "tpfn";
-    public static final String TRUE_POSITIVES_AND_FALSE_POSITIVES_LONG_NAME = "truePositivesAndFalsePositives";
-    public static final String TRUE_POSITIVES_AND_FALSE_POSITIVES_SHORT_NAME = "tpfp";
-    public static final String FILTERED_TRUE_NEGATIVES_AND_FALSE_NEGATIVES_LONG_NAME = "filteredTrueNegativesAndFalseNegatives";
-    public static final String FILTERED_TRUE_NEGATIVES_AND_FALSE_NEGATIVES_SHORT_NAME = "ftnfn";
+    public static final String FILTER_ANALYSIS_LONG_NAME = "filter-analysis";
 
+    public static final String TRUE_POSITIVES_AND_FALSE_NEGATIVES_LONG_NAME = "true-positives-and-false-negatives";
+    public static final String TRUE_POSITIVES_AND_FALSE_NEGATIVES_SHORT_NAME = "tpfn";
+    public static final String TRUE_POSITIVES_AND_FALSE_POSITIVES_LONG_NAME = "true-positives-and-false-positives";
+    public static final String TRUE_POSITIVES_AND_FALSE_POSITIVES_SHORT_NAME = "tpfp";
+    public static final String FILTERED_TRUE_NEGATIVES_AND_FALSE_NEGATIVES_LONG_NAME = "filtered-true-negatives-and-false-negatives";
+    public static final String FILTERED_TRUE_NEGATIVES_AND_FALSE_NEGATIVES_SHORT_NAME = "ftnfn";
+    
     public static final String TRUTH_STATUS_VCF_ATTRIBUTE = "STATUS";
     private static VCFInfoHeaderLine TRUTH_STATUS_HEADER_LINE =
             new VCFInfoHeaderLine(TRUTH_STATUS_VCF_ATTRIBUTE, 1,VCFHeaderLineType.String, "Truth status: TP/FP/FN for true positive/false positive/false negative.");
@@ -82,6 +93,11 @@ public class Concordance extends AbstractConcordanceWalker {
             fullName = SUMMARY_LONG_NAME,
             shortName = SUMMARY_SHORT_NAME)
     protected File summary;
+
+    @Argument(doc = "A table of the contribution of each filter to true and false negatives",
+            fullName = FILTER_ANALYSIS_LONG_NAME,
+            optional = true)
+    protected File filterAnalysis;
 
     @Argument(doc = "A vcf to write true positives and false negatives",
             fullName = TRUE_POSITIVES_AND_FALSE_NEGATIVES_LONG_NAME,
@@ -108,6 +124,8 @@ public class Concordance extends AbstractConcordanceWalker {
     private VariantContextWriter truePositivesAndFalsePositivesVcfWriter;
     private VariantContextWriter filteredTrueNegativesAndFalseNegativesVcfWriter;
 
+    private final Map<String, FilterAnalysisRecord> filterAnalysisRecords = new HashMap<>();
+
     @Override
     public void onTraversalStart() {
         Set<VCFHeaderLine> defaultToolHeaderLines = getDefaultToolVCFHeaderLines();
@@ -115,6 +133,8 @@ public class Concordance extends AbstractConcordanceWalker {
             snpCounts.put(state, new MutableLong(0));
             indelCounts.put(state, new MutableLong(0));
         }
+
+        final VCFHeader evalHeader = getEvalHeader();
 
         if (truePositivesAndFalseNegativesVcf != null) {
             truePositivesAndFalseNegativesVcfWriter = createVCFWriter(truePositivesAndFalseNegativesVcf);
@@ -126,18 +146,22 @@ public class Concordance extends AbstractConcordanceWalker {
 
         if (truePositivesAndFalsePositivesVcf != null) {
             truePositivesAndFalsePositivesVcfWriter = createVCFWriter(truePositivesAndFalsePositivesVcf);
-            final VCFHeader evalHeader = getEvalHeader();
+
             defaultToolHeaderLines.forEach(evalHeader::addMetaDataLine);
             evalHeader.addMetaDataLine(TRUTH_STATUS_HEADER_LINE);
             truePositivesAndFalsePositivesVcfWriter.writeHeader(evalHeader);
         }
+
         if (filteredTrueNegativesAndFalseNegativesVcf != null) {
             filteredTrueNegativesAndFalseNegativesVcfWriter = createVCFWriter(filteredTrueNegativesAndFalseNegativesVcf);
-            final VCFHeader evalHeader = getEvalHeader();
             evalHeader.addMetaDataLine(TRUTH_STATUS_HEADER_LINE);
             defaultToolHeaderLines.forEach(evalHeader::addMetaDataLine);
             filteredTrueNegativesAndFalseNegativesVcfWriter.writeHeader(evalHeader);
         }
+
+        final List<String> filtersInVcf = evalHeader.getFilterLines().stream().map(VCFFilterHeaderLine::getID).collect(Collectors.toList());
+        filtersInVcf.forEach(filter -> filterAnalysisRecords.put(filter, new FilterAnalysisRecord(filter, 0,0,0,0)));
+
     }
 
     @Override
@@ -167,6 +191,28 @@ public class Concordance extends AbstractConcordanceWalker {
                 break;
             default:
                 throw new IllegalStateException("Unexpected ConcordanceState: " + concordanceState.toString());
+        }
+
+        if (filterAnalysis != null && concordanceState == ConcordanceState.FILTERED_TRUE_NEGATIVE || concordanceState == ConcordanceState.FILTERED_FALSE_NEGATIVE) {
+            final Set<String> filters = truthVersusEval.getEval().getFilters();
+            final boolean unique = filters.size() == 1;
+            filters.stream().map(filterAnalysisRecords::get).forEach(record -> updateFilterAnalysisRecord(record, concordanceState, unique));
+        }
+    }
+
+    private void updateFilterAnalysisRecord(final FilterAnalysisRecord record, final ConcordanceState state, final boolean isOnlyFilter) {
+        if (state == ConcordanceState.FILTERED_TRUE_NEGATIVE) {
+            record.incrementTrueNegative();
+            if (isOnlyFilter) {
+                record.incrementUniqueTrueNegative();
+            }
+        } else if (state == ConcordanceState.FILTERED_FALSE_NEGATIVE) {
+            record.incrementFalseNegative();
+            if (isOnlyFilter) {
+                record.incrementUniqueFalseNegative();
+            }
+        } else {
+            throw new IllegalStateException("This method should only be called on a filtered ConcordanceState.");
         }
     }
 
@@ -221,6 +267,10 @@ public class Concordance extends AbstractConcordanceWalker {
                     indelCounts.get(ConcordanceState.FALSE_NEGATIVE).longValue() + indelCounts.get(ConcordanceState.FILTERED_FALSE_NEGATIVE).longValue()));
         } catch (IOException e){
             throw new UserException("Encountered an IO exception writing the concordance summary table", e);
+        }
+
+        if (filterAnalysis != null) {
+            FilterAnalysisRecord.writeToFile(filterAnalysisRecords.values(), filterAnalysis);
         }
 
         if (truePositivesAndFalsePositivesVcfWriter != null) {

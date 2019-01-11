@@ -6,8 +6,10 @@ import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.walkers.mutect.SomaticGenotypingEngine;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
+import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
@@ -41,12 +43,21 @@ public abstract class StrandBiasTest extends InfoFieldAnnotation {
         }
 
         if (likelihoods != null) {
-            return calculateAnnotationFromLikelihoods(likelihoods, vc);
+            if (vc.isSNP() && !likelihoods.hasFilledLikelihoods() && (likelihoods.readCount() != 0)) {
+                return calculateAnnotationFromStratifiedContexts(likelihoods.getStratifiedPileups(vc), vc);
+            }
+
+            if (likelihoods.hasFilledLikelihoods()) {
+                return calculateAnnotationFromLikelihoods(likelihoods, vc);
+            }
         }
         return Collections.emptyMap();
     }
 
     protected abstract Map<String, Object> calculateAnnotationFromGTfield(final GenotypesContext genotypes);
+
+    protected abstract Map<String, Object> calculateAnnotationFromStratifiedContexts(final Map<String, List<PileupElement>> stratifiedContexts,
+                                                                                     final VariantContext vc);
 
     protected abstract Map<String, Object> calculateAnnotationFromLikelihoods(final ReadLikelihoods<Allele> likelihoods,
                                                                               final VariantContext vc);
@@ -128,7 +139,7 @@ public abstract class StrandBiasTest extends InfoFieldAnnotation {
         final int[][] table = new int[ARRAY_DIM][ARRAY_DIM];
         for (final String sample : samples) {
             final int[] sampleTable = new int[ARRAY_SIZE];
-            likelihoods.bestAlleles(sample).stream()
+            likelihoods.bestAllelesBreakingTies(sample).stream()
                     .filter(ba -> ba.isInformative())
                     .forEach(ba -> updateTable(sampleTable, ba.allele, ba.read, ref, allAlts));
             if (passesMinimumThreshold(sampleTable, minCount)) {
@@ -160,8 +171,14 @@ public abstract class StrandBiasTest extends InfoFieldAnnotation {
             final int offset = matchesRef ? 0 : ARRAY_DIM;
 
             // a normal read with an actual strand
-            final boolean isFW = !read.isReverseStrand();
-            table[offset + (isFW ? 0 : 1)]++;
+            final boolean isForward = !read.isReverseStrand();
+            table[offset + (isForward ? 0 : 1)]++;
+
+            // This read's mate got discarded by SomaticGenotypingEngine::clipOverlappingReads()
+            if (read.hasAttribute(SomaticGenotypingEngine.DISCARDED_MATE_READ_TAG)){
+                // Note that if this read is forward, then we increment its mate which we assume is reverse
+                table[offset + (isForward ? 1 : 0)]++;
+            }
         }
     }
 
@@ -222,4 +239,35 @@ public abstract class StrandBiasTest extends InfoFieldAnnotation {
         table[1][1] = array[3];
         return table;
     }
+
+    /**
+     Allocate and fill a 2x2 strand contingency table.  In the end, it'll look something like this:
+     *             fw      rc
+     *   allele1   #       #
+     *   allele2   #       #
+     * @return a 2x2 contingency table over SNP sites
+     */
+    protected static int[][] getPileupContingencyTable(final Map<String, List<PileupElement>> stratifiedContexts,
+                                                       final Allele ref,
+                                                       final List<Allele> allAlts,
+                                                       final int minQScoreToConsider,
+                                                       final int minCount ) {
+        int[][] table = new int[ARRAY_DIM][ARRAY_DIM];
+
+        for (final Map.Entry<String, List<PileupElement>> sample : stratifiedContexts.entrySet() ) {
+            final int[] myTable = new int[ARRAY_SIZE];
+            for (final PileupElement p : sample.getValue()) {
+                if (PileupElement.isUsableBaseForAnnotation(p) && Math.min(p.getQual(), p.getMappingQual()) >= minQScoreToConsider) {
+                    updateTable(myTable, Allele.create(p.getBase(), false), p.getRead(), ref, allAlts);
+                }
+            }
+
+            if ( passesMinimumThreshold( myTable, minCount ) ) {
+                copyToMainTable(myTable, table);
+            }
+        }
+        return table;
+    }
+
+
 }

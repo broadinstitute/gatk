@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.engine;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureCodec;
@@ -8,12 +9,15 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.CommandLineParser;
 import org.broadinstitute.barclay.argparser.ClassFinder;
+import org.broadinstitute.barclay.argparser.CommandLineParser;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.config.ConfigFactory;
+import org.broadinstitute.hellbender.utils.config.GATKConfig;
 
 import java.io.File;
 import java.lang.reflect.Field;
@@ -29,7 +33,7 @@ import java.util.stream.Collectors;
  * Handles discovery of available codecs and Feature arguments, file format detection and codec selection,
  * and creation/management/querying of FeatureDataSources for each source of Features.
  *
- * At startup, walks the packages specified in CODEC_PACKAGES to discover what codecs are available
+ * At startup, walks the packages specified in {@link GATKConfig#codec_packages} in the config file to discover what codecs are available
  * to decode Feature-containing files.
  *
  * Then, given a tool instance, it discovers what FeatureInput argument fields are declared in the
@@ -44,19 +48,12 @@ public final class FeatureManager implements AutoCloseable {
     private static final Logger logger = LogManager.getLogger(FeatureManager.class);
 
     /**
-     * We will search these packages at startup to look for FeatureCodecs
-     */
-    private static final List<String> CODEC_PACKAGES = Arrays.asList("htsjdk.variant",
-                                                                     "htsjdk.tribble",
-                                                                     "org.broadinstitute.hellbender.utils.codecs");
-
-    /**
      * All codecs descend from this class
      */
     private static final Class<FeatureCodec> CODEC_BASE_CLASS = FeatureCodec.class;
 
     /**
-     * The codec classes we locate when searching CODEC_PACKAGES
+     * The codec classes we locate when searching codec packages
      */
     private static final Set<Class<?>> DISCOVERED_CODECS;
 
@@ -66,12 +63,16 @@ public final class FeatureManager implements AutoCloseable {
     private static final Class<FeatureInput> FEATURE_ARGUMENT_CLASS = FeatureInput.class;
 
     /**
-     * At startup, walk through the packages in CODEC_PACKAGES, and save any (concrete) FeatureCodecs discovered
+     * At startup, walk through the packages in codec packages, and save any (concrete) FeatureCodecs discovered
      * in DISCOVERED_CODECS
      */
     static {
+
+        // Get our configuration:
+        final GATKConfig config = ConfigFactory.getInstance().getGATKConfig();
+
         final ClassFinder finder = new ClassFinder();
-        for ( final String codecPackage : CODEC_PACKAGES ) {
+        for ( final String codecPackage : config.codec_packages() ) {
             finder.find(codecPackage, CODEC_BASE_CLASS);
         }
         // Exclude abstract classes and interfaces from the list of discovered codec classes
@@ -155,6 +156,30 @@ public final class FeatureManager implements AutoCloseable {
     }
 
     /**
+     * Same as {@link FeatureManager#FeatureManager(CommandLineProgram, int, int, int, Path)}, except used when the
+     *  FeatureInputs (and associated types) are known.
+     *
+     *  This constructor should only be used in test code.
+     *
+     * @param featureInputsToTypeMap {@link Map} of a {@link FeatureInput} to the output type that must extend {@link Feature}.  Never {@code null}
+     * @param toolInstanceName See {@link FeatureManager#FeatureManager(CommandLineProgram, int, int, int, Path)}
+     * @param featureQueryLookahead See {@link FeatureManager#FeatureManager(CommandLineProgram, int, int, int, Path)}
+     * @param cloudPrefetchBuffer See {@link FeatureManager#FeatureManager(CommandLineProgram, int, int, int, Path)}
+     * @param cloudIndexPrefetchBuffer See {@link FeatureManager#FeatureManager(CommandLineProgram, int, int, int, Path)}
+     * @param reference See {@link FeatureManager#FeatureManager(CommandLineProgram, int, int, int, Path)}
+     */
+    @VisibleForTesting
+    FeatureManager(final Map<FeatureInput<? extends Feature>, Class<? extends Feature>> featureInputsToTypeMap, final String toolInstanceName, final int featureQueryLookahead, final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer, final Path reference) {
+
+        Utils.nonNull(featureInputsToTypeMap);
+
+        this.toolInstanceSimpleClassName = toolInstanceName;
+        this.featureSources = new LinkedHashMap<>();
+        Utils.nonNull(featureInputsToTypeMap);
+        featureInputsToTypeMap.forEach((k,v) -> addToFeatureSources(featureQueryLookahead, k, v, cloudPrefetchBuffer, cloudIndexPrefetchBuffer, reference));
+    }
+
+    /**
      * Given our tool instance, discover all argument of type FeatureInput (or Collections thereof), determine
      * the type of each Feature-containing file, and add a FeatureDataSource for each file to our query pool.
      *
@@ -185,6 +210,12 @@ public final class FeatureManager implements AutoCloseable {
         }
     }
 
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public void dumpAllFeatureCacheStats() {
+        for ( final FeatureDataSource f : featureSources.values() ) {
+            f.printCacheStats();
+        }
+    }
 
     /**
      * Add the feature data source to the given feature input.
@@ -425,7 +456,7 @@ public final class FeatureManager implements AutoCloseable {
     public static FeatureCodec<? extends Feature, ?> getCodecForFile( final Path featurePath, final Class<? extends Feature> featureType ) {
         // Make sure Path exists/is readable
         if ( ! Files.isReadable(featurePath) ) {
-            throw new UserException.CouldNotReadInputFile(featurePath);
+            throw new UserException.CouldNotReadInputFile(featurePath.toUri().toString());
         }
 
         // Gather all discovered codecs that claim to be able to decode the given file according to their
@@ -494,8 +525,8 @@ public final class FeatureManager implements AutoCloseable {
      * @param file file to check
      * @return True if the file exists and contains Features (ie., we have a FeatureCodec that can decode it), otherwise false
      */
-    public static boolean isFeatureFile( final File file ) {
-        return file.exists() && ! getCandidateCodecsForFile(file.toPath()).isEmpty();
+    public static boolean isFeatureFile( final Path file ) {
+        return Files.exists(file) && ! getCandidateCodecsForFile(file).isEmpty();
     }
 
     /**

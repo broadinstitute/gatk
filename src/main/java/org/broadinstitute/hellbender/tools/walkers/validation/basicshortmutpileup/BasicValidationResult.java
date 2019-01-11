@@ -16,11 +16,12 @@ public class BasicValidationResult implements Locatable {
     private final Allele reference;
     private final Allele alternate;
     private final String filters;
+    private final long numAltSupportingReadsInNormal;
 
     public BasicValidationResult(final Locatable interval, final int minValidationReadCount, final boolean isEnoughValidationReads,
                                  final boolean isOutOfNoiseFloor, final double power, final int validationAltCount,
                                  final int validationRefCount, final int discoveryAltCount, final int discoveryRefCount, final Allele ref,
-                                 final Allele alt, final String filters) {
+                                 final Allele alt, final String filters, final long numAltSupportingReadsInNormal) {
         this.minValidationReadCount = minValidationReadCount;
         this.isEnoughValidationReads = isEnoughValidationReads;
         this.isOutOfNoiseFloor = isOutOfNoiseFloor;
@@ -33,6 +34,7 @@ public class BasicValidationResult implements Locatable {
         this.alternate = alt;
         this.reference = ref;
         this.filters = filters;
+        this.numAltSupportingReadsInNormal = numAltSupportingReadsInNormal;
     }
 
     public int getValidationAltCount() {
@@ -97,5 +99,9 @@ public class BasicValidationResult implements Locatable {
 
     public String getFilters() {
         return filters;
+    }
+
+    public long getNumAltSupportingReadsInNormal() {
+        return numAltSupportingReadsInNormal;
     }
 }

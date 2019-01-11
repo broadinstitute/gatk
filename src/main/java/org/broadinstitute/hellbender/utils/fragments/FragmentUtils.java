@@ -23,13 +23,15 @@ public final class FragmentUtils {
      * are not treated independently.
      *
      * Assumes that firstRead starts before secondRead (according to their soft clipped starts)
-     *
-     * @param clippedFirstRead the left most read
+     * Sets the qualities of clippedFirstRead and clippedSecondRead to mimic a merged read or
+     * nothing if the algorithm cannot create a meaningful one
+     *  @param clippedFirstRead the left most read
      * @param clippedSecondRead the right most read
+     * @param correctOverlappingBaseQualities
      *
-     * @return a strandless merged read of first and second, or null if the algorithm cannot create a meaningful one
      */
-    public static void adjustQualsOfOverlappingPairedFragments(final GATKRead clippedFirstRead, final GATKRead clippedSecondRead) {
+    public static void adjustQualsOfOverlappingPairedFragments(final GATKRead clippedFirstRead, final GATKRead clippedSecondRead,
+                                                               final boolean correctOverlappingBaseQualities) {
         Utils.nonNull(clippedFirstRead);
         Utils.nonNull(clippedSecondRead);
         Utils.validateArg(clippedFirstRead.getName().equals(clippedSecondRead.getName()), () ->
@@ -50,6 +52,10 @@ public final class FragmentUtils {
         final byte[] secondReadQuals = clippedSecondRead.getBaseQualities();
 
         for ( int i = 0; i < numOverlappingBases; i++ ) {
+            if (! correctOverlappingBaseQualities) {
+                break;
+            }
+
             final int firstReadIndex = firstReadStop + i;
             final byte firstReadBase = firstReadBases[firstReadIndex];
             final byte secondReadBase = secondReadBases[i];
@@ -68,17 +74,17 @@ public final class FragmentUtils {
         clippedSecondRead.setBaseQualities(secondReadQuals);
     }
 
-    public static void adjustQualsOfOverlappingPairedFragments( final List<GATKRead> overlappingPair ) {
+    public static void adjustQualsOfOverlappingPairedFragments(final List<GATKRead> overlappingPair, final boolean correctOverlappingBaseQualities) {
         Utils.validateArg( overlappingPair.size() == 2, () -> "Found overlapping pair with " + overlappingPair.size() + " reads, but expecting exactly 2.");
 
         final GATKRead firstRead = overlappingPair.get(0);
         final GATKRead secondRead = overlappingPair.get(1);
 
-        if ( ReadUtils.getSoftStart(secondRead) < ReadUtils.getSoftStart(firstRead) ) {
-            adjustQualsOfOverlappingPairedFragments(secondRead, firstRead);
+        if ( secondRead.getSoftStart() < firstRead.getSoftStart() ) {
+            adjustQualsOfOverlappingPairedFragments(secondRead, firstRead, correctOverlappingBaseQualities);
         }
         else {
-            adjustQualsOfOverlappingPairedFragments(firstRead, secondRead);
+            adjustQualsOfOverlappingPairedFragments(firstRead, secondRead, correctOverlappingBaseQualities);
         }
     }
 }

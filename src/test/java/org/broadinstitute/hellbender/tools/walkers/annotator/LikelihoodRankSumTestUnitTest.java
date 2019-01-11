@@ -8,7 +8,7 @@ import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.ArtificialAnnotationUtils;
+import org.broadinstitute.hellbender.testutils.ArtificialAnnotationUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
@@ -80,13 +80,6 @@ public final class LikelihoodRankSumTestUnitTest extends GATKBaseTest {
         final double zScore = mannWhitneyU.test(new double[]{altBestAlleleLL[0], altBestAlleleLL[1]}, new double[]{refBestAlleleLL[0], refBestAlleleLL[1]}, MannWhitneyU.TestType.FIRST_DOMINATES).getZ();
         final String zScoreStr= String.format("%.3f", zScore);
         Assert.assertEquals(annotate.get(GATKVCFConstants.LIKELIHOOD_RANK_SUM_KEY), zScoreStr);
-    }
-
-    @Test(expectedExceptions = IllegalStateException.class)
-    public void testBlowupOnCallWithoutAllele(){
-        final LikelihoodRankSumTest ann = new LikelihoodRankSumTest();
-        final GATKRead read1 = makeRead();
-        ann.getElementForRead(read1, read1.getStart());
     }
 
 }

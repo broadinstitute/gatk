@@ -4,10 +4,10 @@ import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.lang3.tuple.Pair;
-import org.broadinstitute.hellbender.engine.FeatureDataSource;
-import org.broadinstitute.hellbender.utils.artifacts.Transition;
-import org.broadinstitute.hellbender.utils.UniqueIDWrapper;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.utils.UniqueIDWrapper;
+import org.broadinstitute.hellbender.utils.artifacts.Transition;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -16,7 +16,7 @@ import java.io.File;
 import java.util.*;
 
 public class OrientationBiasFiltererUnitTest extends GATKBaseTest {
-    private static final File TEST_RESOURCE_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/exome/orientationbiasvariantfilter/");
+    private static final File TEST_RESOURCE_DIR = new File(toolsTestDir, "exome/orientationbiasvariantfilter/");
     public static final String smallM2Vcf = TEST_RESOURCE_DIR.getAbsolutePath() + "/small_m2.vcf";
     public static final String smallM2VcfMore = TEST_RESOURCE_DIR.getAbsolutePath() + "/small_m2_more_variants.vcf";
     public static final String smallM2HighPloidy = TEST_RESOURCE_DIR.getAbsolutePath() + "/high_ploidy.vcf";

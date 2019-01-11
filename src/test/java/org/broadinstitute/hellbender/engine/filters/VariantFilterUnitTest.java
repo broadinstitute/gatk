@@ -9,6 +9,7 @@ import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.GATKBaseTest;
 
+import org.broadinstitute.hellbender.utils.Utils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -30,7 +31,7 @@ public class VariantFilterUnitTest extends GATKBaseTest {
     VariantContext mnpVC;
 
     public VariantFilterUnitTest() throws FileNotFoundException {
-        initGenomeLocParser();
+        initializeHG19Reference();
         snpVC = createArtificialVC(
                 "id1",
                 new SimpleInterval("1", 42, 42),
@@ -102,4 +103,40 @@ public class VariantFilterUnitTest extends GATKBaseTest {
         VariantTypesVariantFilter vtvf = new VariantTypesVariantFilter(typesSet);
         Assert.assertTrue(vtvf.test(vc) == expected);
     }
+
+    @DataProvider
+    public Object[][] getNotSymbolicOrSVFilterTestVCs() {
+        return new Object[][]{
+                {snpVC, true},
+                {new VariantContextBuilder(snpVC).alleles(   // SYMBOLIC
+                        Arrays.asList(
+                                Allele.create("A", true),
+                                Allele.create("<CNV>", false))).make(), false},
+                {new VariantContextBuilder(snpVC).alleles(   // SV = > 150 indel
+                        Arrays.asList(
+                                Allele.create("A", true),
+                                Allele.create("A" + Utils.dupChar('G', 151), false))).make(), false},
+        };
+    }
+
+    @Test(dataProvider = "getNotSymbolicOrSVFilterTestVCs")
+    public void testNotSVOrSymbolicVariantFilter(VariantContext vc, boolean expected) {
+        Assert.assertEquals(VariantFilterLibrary.NOT_SV_OR_SYMBOLIC.test(vc), expected);
+    }
+
+    @DataProvider
+    public Object[][] getPassesFiltersFilterTestVCs() {
+        return new Object[][]{
+                {snpVC, true},
+                {new VariantContextBuilder(snpVC).unfiltered().make(), true},
+                {new VariantContextBuilder(snpVC).passFilters().make(), true},
+                {new VariantContextBuilder(snpVC).filter("unbelievable").make(), false},
+        };
+    }
+
+    @Test(dataProvider = "getPassesFiltersFilterTestVCs")
+    public void testPassesFiltersVariantFilter(VariantContext vc, boolean expected) {
+        Assert.assertEquals(VariantFilterLibrary.PASSES_FILTERS.test(vc), expected);
+    }
+
 }

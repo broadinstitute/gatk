@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyResul
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyResultSet;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReadErrorCorrector;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.*;
+import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
@@ -21,7 +22,6 @@ import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
-import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -57,34 +57,38 @@ public final class ReadThreadingAssembler {
     private boolean debugGraphTransformations = false;
     private boolean recoverDanglingBranches = true;
     private int minDanglingBranchLength = 0;
-
-    private static final byte MIN_BASE_QUALITY_TO_USE_IN_ASSEMBLY = DEFAULT_MIN_BASE_QUALITY_TO_USE;
-
+    
     protected byte minBaseQualityToUseInAssembly = DEFAULT_MIN_BASE_QUALITY_TO_USE;
-    private int pruneFactor = 2;
-
-    protected boolean errorCorrectKmers = false;
+    private int pruneFactor;
+    private final ChainPruner<MultiDeBruijnVertex, MultiSampleEdge> chainPruner;
 
     private File debugGraphOutputPath = null;  //Where to write debug graphs, if unset it defaults to the current working dir
     private File graphOutputPath = null;
 
-    public ReadThreadingAssembler(final int maxAllowedPathsForReadThreadingAssembler, final List<Integer> kmerSizes, final boolean dontIncreaseKmerSizesForCycles, final boolean allowNonUniqueKmersInRef, final int numPruningSamples) {
+    public ReadThreadingAssembler(final int maxAllowedPathsForReadThreadingAssembler, final List<Integer> kmerSizes,
+                                  final boolean dontIncreaseKmerSizesForCycles, final boolean allowNonUniqueKmersInRef,
+                                  final int numPruningSamples, final int pruneFactor, final boolean useAdaptivePruning,
+                                  final double initialErrorRateForPruning, final double pruningLog10OddsThreshold,
+                                  final int maxUnprunedVariants) {
         Utils.validateArg( maxAllowedPathsForReadThreadingAssembler >= 1, "numBestHaplotypesPerGraph should be >= 1 but got " + maxAllowedPathsForReadThreadingAssembler);
         this.kmerSizes = kmerSizes;
         this.dontIncreaseKmerSizesForCycles = dontIncreaseKmerSizesForCycles;
         this.allowNonUniqueKmersInRef = allowNonUniqueKmersInRef;
         this.numPruningSamples = numPruningSamples;
+        this.pruneFactor = pruneFactor;
+        chainPruner = useAdaptivePruning ? new AdaptiveChainPruner<>(initialErrorRateForPruning, MathUtils.log10ToLog(pruningLog10OddsThreshold), maxUnprunedVariants) :
+                new LowWeightChainPruner<>(pruneFactor);
         numBestHaplotypesPerGraph = maxAllowedPathsForReadThreadingAssembler;
     }
 
     @VisibleForTesting
-    ReadThreadingAssembler(final int maxAllowedPathsForReadThreadingAssembler, final List<Integer> kmerSizes) {
-        this(maxAllowedPathsForReadThreadingAssembler, kmerSizes, true, true, 1);
+    ReadThreadingAssembler(final int maxAllowedPathsForReadThreadingAssembler, final List<Integer> kmerSizes, final int pruneFactor) {
+        this(maxAllowedPathsForReadThreadingAssembler, kmerSizes, true, true, 1, pruneFactor, false, 0.001, 2, Integer.MAX_VALUE);
     }
 
     @VisibleForTesting
     ReadThreadingAssembler() {
-        this(DEFAULT_NUM_PATHS_PER_GRAPH, Arrays.asList(25));
+        this(DEFAULT_NUM_PATHS_PER_GRAPH, Arrays.asList(25), 2);
     }
 
     /**
@@ -178,7 +182,7 @@ public final class ReadThreadingAssembler {
         final int activeRegionStart = refHaplotype.getAlignmentStartHapwrtRef();
 
         for( final VariantContext compVC : givenHaplotypes ) {
-            Utils.validateArg(GATKVariantContextUtils.overlapsRegion(compVC, activeRegionWindow), " some variant provided does not overlap with active region window");
+            Utils.validateArg(compVC.overlaps(activeRegionWindow), " some variant provided does not overlap with active region window");
             for( final Allele compAltAllele : compVC.getAlternateAlleles() ) {
                 final Haplotype insertedRefHaplotype = refHaplotype.insertAllele(compVC.getReference(), compAltAllele, activeRegionStart + compVC.getStart() - activeRegionWindow.getStart(), compVC.getStart());
                 if( insertedRefHaplotype != null ) { // can be null if the requested allele can't be inserted into the haplotype
@@ -196,21 +200,19 @@ public final class ReadThreadingAssembler {
         final Set<Haplotype> returnHaplotypes = new LinkedHashSet<>();
 
         final int activeRegionStart = refHaplotype.getAlignmentStartHapwrtRef();
-        final Collection<KBestHaplotypeFinder> finders = new ArrayList<>(graphs.size());
         int failedCigars = 0;
 
         for( final SeqGraph graph : graphs ) {
             final SeqVertex source = graph.getReferenceSourceVertex();
             final SeqVertex sink = graph.getReferenceSinkVertex();
             Utils.validateArg( source != null && sink != null, () -> "Both source and sink cannot be null but got " + source + " and sink " + sink + " for graph " + graph);
-            final KBestHaplotypeFinder haplotypeFinder = new KBestHaplotypeFinder(graph,source,sink);
-            finders.add(haplotypeFinder);
-            final Iterator<KBestHaplotype> bestHaplotypes = haplotypeFinder.iterator(numBestHaplotypesPerGraph);
 
-            while (bestHaplotypes.hasNext()) {
-                final KBestHaplotype kBestHaplotype = bestHaplotypes.next();
+            for (final KBestHaplotype kBestHaplotype : new KBestHaplotypeFinder(graph,source,sink).findBestHaplotypes(numBestHaplotypesPerGraph)) {
                 final Haplotype h = kBestHaplotype.haplotype();
                 if( !returnHaplotypes.contains(h) ) {
+                    if (kBestHaplotype.isReference()) {
+                        refHaplotype.setScore(kBestHaplotype.score());
+                    }
                     final Cigar cigar = CigarUtils.calculateCigar(refHaplotype.getBases(), h.getBases(), aligner);
 
                     if ( cigar == null ) {
@@ -244,16 +246,6 @@ public final class ReadThreadingAssembler {
         // Make sure that the ref haplotype is amongst the return haplotypes and calculate its score as
         // the first returned by any finder.
         if (!returnHaplotypes.contains(refHaplotype)) {
-            double refScore = Double.NaN;
-            for (final KBestHaplotypeFinder finder : finders) {
-                final double candidate = finder.score(refHaplotype);
-                if (Double.isNaN(candidate)) {
-                    continue;
-                }
-                refScore = candidate;
-                break;
-            }
-            refHaplotype.setScore(refScore);
             returnHaplotypes.add(refHaplotype);
         }
 
@@ -444,7 +436,7 @@ public final class ReadThreadingAssembler {
             return null;
         }
 
-        final ReadThreadingGraph rtgraph = new ReadThreadingGraph(kmerSize, debugGraphTransformations, MIN_BASE_QUALITY_TO_USE_IN_ASSEMBLY, numPruningSamples);
+        final ReadThreadingGraph rtgraph = new ReadThreadingGraph(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples);
 
         rtgraph.setThreadingStartOnlyAtExistingVertex(!recoverDanglingBranches);
 
@@ -490,7 +482,7 @@ public final class ReadThreadingAssembler {
         // prune all of the chains where all edges have multiplicity < pruneFactor.  This must occur
         // before recoverDanglingTails in the graph, so that we don't spend a ton of time recovering
         // tails that we'll ultimately just trim away anyway, as the dangling tail edges have weight of 1
-        rtgraph.pruneLowWeightChains(pruneFactor);
+        chainPruner.pruneLowWeightChains(rtgraph);
 
         // look at all chains in the graph that terminate in a non-ref node (dangling sources and sinks) and see if
         // we can recover them by merging some N bases from the chain back into the reference
@@ -566,18 +558,6 @@ public final class ReadThreadingAssembler {
     //
     // -----------------------------------------------------------------------------------------------
 
-    public int getPruneFactor() {
-        return pruneFactor;
-    }
-
-    public boolean shouldErrorCorrectKmers() {
-        return errorCorrectKmers;
-    }
-
-    public void setErrorCorrectKmers(boolean errorCorrectKmers) {
-        this.errorCorrectKmers = errorCorrectKmers;
-    }
-
     public void setGraphWriter(File graphOutputPath) {
         this.graphOutputPath = graphOutputPath;
     }
@@ -603,10 +583,6 @@ public final class ReadThreadingAssembler {
     }
 
     public boolean isRecoverDanglingBranches() { return recoverDanglingBranches; }
-
-    public void setPruneFactor(final int pruneFactor) {
-        this.pruneFactor = pruneFactor;
-    }
 
     public void setDebugGraphTransformations(final boolean debugGraphTransformations) {
         this.debugGraphTransformations = debugGraphTransformations;

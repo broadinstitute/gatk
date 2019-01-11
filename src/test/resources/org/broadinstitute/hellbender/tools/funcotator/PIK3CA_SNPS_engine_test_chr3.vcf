@@ -1,0 +1,8 @@
+##fileformat=VCFv4.1
+##fileDate=201708028
+##source=FuncotatorTestsV0.1
+##reference=file:///Users/jonn/Development/references/Homo_sapiens_assembly19.fasta
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+chr3	178866587	.	G	A	40	.	.
+chr3	178916400	.	A	T	40	.	.
+chr3	178916617	.	C	T	40	.	.

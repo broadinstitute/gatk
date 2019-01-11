@@ -8,7 +8,8 @@ import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.GATKReadWriter;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.utils.test.ReadClipperTestUtils;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.testutils.ReadClipperTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -37,6 +38,21 @@ public final class SplitNCigarReadsUnitTest extends GATKBaseTest {
         public TestManager( final SAMFileHeader header , DummyTestWriter writer) {
             super(header, writer, hg19GenomeLocParser, hg19ReferenceReader, 10000, 1, 40, false, true);
         }
+    }
+
+    @Test
+    public void testEmptyReads() {
+        DummyTestWriter writer = new DummyTestWriter();
+        header.setSequenceDictionary(hg19GenomeLocParser.getSequenceDictionary());
+        TestManager manager = new TestManager(header, writer);
+        manager.activateWriting();
+
+        //Testing that bogus splits make it through unaffected
+        GATKRead read1 = ReadUtils.emptyRead(ReadClipperTestUtils.makeReadFromCigar("1S4N2S3N4H"));
+        SplitNCigarReads.splitNCigarRead(read1, manager, true, header, true);
+        manager.flush();
+        Assert.assertEquals(1, writer.writtenReads.size());
+        Assert.assertEquals("*", writer.writtenReads.get(0).getCigar().toString());
     }
 
     @Test

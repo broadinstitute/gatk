@@ -10,26 +10,26 @@ import htsjdk.tribble.SimpleFeature;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.vcf.VCFFileReader;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
-import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertTrue;
-import static org.testng.Assert.assertFalse;
+import static org.testng.Assert.*;
 
 /**
  * Test out the functionality of the new genome loc parser
@@ -434,16 +434,18 @@ public final class GenomeLocParserUnitTest extends GATKBaseTest {
     }
 
     @Test
-    public void testcreateGenomeLocOnContig() throws FileNotFoundException {
-        final CachingIndexedFastaSequenceFile seq = new CachingIndexedFastaSequenceFile(new File(exampleReference));
-        final SAMSequenceDictionary dict = seq.getSequenceDictionary();
-        final GenomeLocParser genomeLocParser = new GenomeLocParser(dict);
+    public void testCreateGenomeLocOnContig() throws IOException {
+        try(final CachingIndexedFastaSequenceFile seq = new CachingIndexedFastaSequenceFile(
+                IOUtils.getPath(exampleReference))) {
+            final SAMSequenceDictionary dict = seq.getSequenceDictionary();
+            final GenomeLocParser genomeLocParser = new GenomeLocParser(dict);
 
-        for ( final SAMSequenceRecord rec : dict.getSequences() ) {
-            final GenomeLoc loc = genomeLocParser.createOverEntireContig(rec.getSequenceName());
-            Assert.assertEquals(loc.getContig(), rec.getSequenceName());
-            Assert.assertEquals(loc.getStart(), 1);
-            Assert.assertEquals(loc.getStop(), rec.getSequenceLength());
+            for (final SAMSequenceRecord rec : dict.getSequences()) {
+                final GenomeLoc loc = genomeLocParser.createOverEntireContig(rec.getSequenceName());
+                Assert.assertEquals(loc.getContig(), rec.getSequenceName());
+                Assert.assertEquals(loc.getStart(), 1);
+                Assert.assertEquals(loc.getStop(), rec.getSequenceLength());
+            }
         }
     }
 
@@ -501,6 +503,48 @@ public final class GenomeLocParserUnitTest extends GATKBaseTest {
         Assert.assertEquals(padded.getContig(), input.getContig());
         Assert.assertEquals(padded.getStart(), Math.max(input.getStart() - pad, 1));
         Assert.assertEquals(padded.getStop(), Math.min(input.getStop() + pad, contigLength));
+    }
+
+    @Test
+    public void testQueryAllHG38Intervals() {
+        SAMSequenceDictionary sd;
+        final File testFile = new File (publicTestDir, "org/broadinstitute/hellbender/engine/Homo_sapiens_assembly38.headerOnly.vcf.gz");
+
+        try (VCFFileReader vcfReader = new VCFFileReader(testFile, false)) {
+            sd = vcfReader.getFileHeader().getSequenceDictionary();
+        }
+
+        // Test that we can use any contig from hg38 as a query against a VCF with an hg38 sequence dictionary, in any
+        // query format, without ambiguity.
+        final GenomeLocParser localGenomeLocParser = new GenomeLocParser(sd);
+        sd.getSequences().stream().forEach(
+                hg38Contig -> {
+                    assertValidUniqueInterval(
+                            localGenomeLocParser,
+                            hg38Contig.getSequenceName(),
+                            new SimpleInterval(hg38Contig.getSequenceName(), 1, hg38Contig.getSequenceLength()));
+                    assertValidUniqueInterval(
+                            localGenomeLocParser,
+                            hg38Contig.getSequenceName() + ":1",
+                            new SimpleInterval(hg38Contig.getSequenceName(), 1, 1));
+                    assertValidUniqueInterval(
+                            localGenomeLocParser,
+                            hg38Contig.getSequenceName() + ":1+",
+                            new SimpleInterval(hg38Contig.getSequenceName(), 1, hg38Contig.getSequenceLength()));
+                    assertValidUniqueInterval(
+                            localGenomeLocParser,
+                            hg38Contig.getSequenceName() + ":1-1",
+                            new SimpleInterval(hg38Contig.getSequenceName(), 1, 1));
+                }
+        );
+    }
+
+    private void assertValidUniqueInterval(
+            final GenomeLocParser localGenomeLocParser,
+            final String queryString,
+            final SimpleInterval expectedInterval) {
+        final SimpleInterval actualInterval = new SimpleInterval(localGenomeLocParser.parseGenomeLoc(queryString));
+        Assert.assertEquals(actualInterval, expectedInterval);
     }
 
 }

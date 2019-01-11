@@ -11,7 +11,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.MetricAccumulationLevelArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
+import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.metrics.*;
@@ -21,37 +21,72 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import java.util.*;
 
 /**
- * Tool that instantiates and executes multiple metrics programs using a single RDD.
+ * Runs multiple metrics collection modules for a given alignment file. The tool leverages the
+ * Spark framework for faster operation. Importantly, the aligned reads are loaded into a Spark RDD only once,
+ * and the same RDD is used for each metric collection tasks to cut down on I/O time. The tool runs two modules, CollectInsertSizeMetrics
+ * and CollectQualityYieldMetrics, with default options and fixed output extensions.
+ *
+ * <p>
+ * It is possible to tune the level at which to collect metrics--READ GROUP, LIBRARY, SAMPLE or ALL_READS--with
+ * the --metric-accumulation-level argument.
+ * </p>
+ *
+ * <h3>Usage example</h3>
+ * <pre>
+ * gatk CollectMultipleMetricsSpark \
+ *   -I gs://cloud-bucket/input.bam \
+ *   -O gs://cloud-bucket/output_basename \
+ *   -- \
+ *   --spark-runner GCS \
+ *   --cluster my-dataproc-cluster
+ * </pre>
+ *
+ * <p>
+ * See <a href=http://broadinstitute.github.io/picard/picard-metric-definitions.html>
+ *     http://broadinstitute.github.io/picard/picard-metric-definitions.html</a>
+ * for an explanation of module metrics. See <a href ="https://software.broadinstitute.org/gatk/documentation/article?id=10060">
+ *     Tutorial#10060</a> for an example of how to set up and run a Spark tool on a cloud Spark cluster.
+ * </p>
+ *
  */
 @CommandLineProgramProperties(
-        summary = "Takes an input SAM/BAM/CRAM file and reference sequence and runs one or more Spark " +
-                "metrics modules at the same time to cut down on I/O. Currently all programs are run with " +
-                "default options and fixed output extensions, but this may become more flexible in future.",
-        oneLineSummary = "A \"meta-metrics\" calculating program that produces multiple metrics for the provided SAM/BAM/CRAM file",
-        programGroup = SparkProgramGroup.class
+        summary = "Instantiates and executes multiple metrics collection tasks for a given SAM/BAM/CRAM file. " +
+                "The tool leverages the Spark framework for faster operation. Importantly, the aligned reads are " +
+                "loaded into a Spark RDD only once, and the same RDD is used for each metric collection tasks to " +
+                "cut down on I/O time. Currently all programs are run  with default options and fixed output " +
+                "extensions.",
+        oneLineSummary = "Runs multiple metrics collection modules for a given alignment file",
+        programGroup = DiagnosticsAndQCProgramGroup.class
 )
 @DocumentedFeature
 @BetaFeature
 public final class CollectMultipleMetricsSpark extends GATKSparkTool {
-
     private static final long serialVersionUID = 1L;
 
-    @Argument(fullName=StandardArgumentDefinitions.ASSUME_SORTED_LONG_NAME,
-                shortName = StandardArgumentDefinitions.ASSUME_SORTED_SHORT_NAME,
-                doc = "If true (default), then the sort order in the header file will be ignored.")
+    @Argument(
+            doc = "If true (default), then the sort order in the header file will be ignored.",
+            fullName = StandardArgumentDefinitions.ASSUME_SORTED_LONG_NAME,
+            shortName = StandardArgumentDefinitions.ASSUME_SORTED_SHORT_NAME
+    )
     public boolean ASSUME_SORTED = true;
 
-    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
-                shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-                doc = "Base name of output files.")
+    @Argument(
+            doc = "Base name of output files.",
+            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
+    )
     public String outputBaseName;
 
     @ArgumentCollection
-    MetricAccumulationLevelArgumentCollection metricAccumulationLevel = new MetricAccumulationLevelArgumentCollection();
+    MetricAccumulationLevelArgumentCollection metricAccumulationLevel =
+            new MetricAccumulationLevelArgumentCollection();
 
-    @Argument(fullName="collectors",
+    @Argument(
+            fullName = "collectors",
             doc = "List of metrics collectors to apply during the pass through the SAM file. " +
-                  "If no collectors are specified than all collectors will be run", optional = true)
+                    "If no collectors are specified than all collectors will be run",
+            optional = true
+    )
     public List<SparkCollectors> userCollectors = new ArrayList<>();
 
     public interface SparkCollectorProvider {
@@ -158,7 +193,7 @@ public final class CollectMultipleMetricsSpark extends GATKSparkTool {
                     unFilteredReads.filter(r -> readFilter.test(r)),
                     getHeaderForReads()
             );
-            metricsCollector.saveMetrics(getReadSourceName());
+            metricsCollector.saveMetrics(getReadSourceName().get(0));
         }
     }
 

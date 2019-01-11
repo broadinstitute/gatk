@@ -4,14 +4,17 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.metrics.MetricAccumulationLevel;
-import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.*;
 
+/**
+ * Integration tests for {@link CollectInsertSizeMetricsSpark}.
+ */
 public final class CollectInsertSizeMetricsSparkIntegrationTest extends CommandLineProgramTest {
     private static final File TEST_DATA_DIR = new File(
             "src/test/resources/org/broadinstitute/hellbender/metrics/analysis/CollectInsertSizeMetrics");
@@ -63,8 +66,8 @@ public final class CollectInsertSizeMetricsSparkIntegrationTest extends CommandL
         args.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
         args.add(textOut.getAbsolutePath());
 
-        args.add("--producePlot");
-        args.add("-" + "histogramPlotFile");
+        args.add("--produce-plot");
+        args.add("-" + "histogram-plot-file");
         args.add(pdfOut.getAbsolutePath());
 
         if (null != referenceName) {

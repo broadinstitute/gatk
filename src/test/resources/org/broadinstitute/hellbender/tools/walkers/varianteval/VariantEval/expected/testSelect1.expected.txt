@@ -1,0 +1,1045 @@
+#:GATKReport.v1.1:9
+#:GATKTable:12:36:%s:%s:%s:%s:%s:%s:%d:%d:%d:%.2f:%d:%.2f:;
+#:GATKTable:CompOverlap:The overlap between eval and comp sites
+CompOverlap  CompFeatureInput  CpG      EvalFeatureInput  JexlExpression  Novelty  nEvalVariants  novelSites  nVariantsAtComp  compRate  nConcordant  concordantRate
+CompOverlap  comp_genotypes    CpG      eval              DP50            all                  0           0                0      0.00            0            0.00
+CompOverlap  comp_genotypes    CpG      eval              DP50            known                0           0                0      0.00            0            0.00
+CompOverlap  comp_genotypes    CpG      eval              DP50            novel                0           0                0      0.00            0            0.00
+CompOverlap  comp_genotypes    CpG      eval              none            all                 10          10                0      0.00            0            0.00
+CompOverlap  comp_genotypes    CpG      eval              none            known                1           1                0      0.00            0            0.00
+CompOverlap  comp_genotypes    CpG      eval              none            novel                9           9                0      0.00            0            0.00
+CompOverlap  comp_genotypes    all      eval              DP50            all                  2           2                0      0.00            0            0.00
+CompOverlap  comp_genotypes    all      eval              DP50            known                1           1                0      0.00            0            0.00
+CompOverlap  comp_genotypes    all      eval              DP50            novel                1           1                0      0.00            0            0.00
+CompOverlap  comp_genotypes    all      eval              none            all                266         266                0      0.00            0            0.00
+CompOverlap  comp_genotypes    all      eval              none            known                7           7                0      0.00            0            0.00
+CompOverlap  comp_genotypes    all      eval              none            novel              259         259                0      0.00            0            0.00
+CompOverlap  comp_genotypes    non_CpG  eval              DP50            all                  2           2                0      0.00            0            0.00
+CompOverlap  comp_genotypes    non_CpG  eval              DP50            known                1           1                0      0.00            0            0.00
+CompOverlap  comp_genotypes    non_CpG  eval              DP50            novel                1           1                0      0.00            0            0.00
+CompOverlap  comp_genotypes    non_CpG  eval              none            all                256         256                0      0.00            0            0.00
+CompOverlap  comp_genotypes    non_CpG  eval              none            known                6           6                0      0.00            0            0.00
+CompOverlap  comp_genotypes    non_CpG  eval              none            novel              250         250                0      0.00            0            0.00
+CompOverlap  dbsnp             CpG      eval              DP50            all                  0           0                0      0.00            0            0.00
+CompOverlap  dbsnp             CpG      eval              DP50            known                0           0                0      0.00            0            0.00
+CompOverlap  dbsnp             CpG      eval              DP50            novel                0           0                0      0.00            0            0.00
+CompOverlap  dbsnp             CpG      eval              none            all                 10           9                1     10.00            1          100.00
+CompOverlap  dbsnp             CpG      eval              none            known                1           0                1    100.00            1          100.00
+CompOverlap  dbsnp             CpG      eval              none            novel                9           9                0      0.00            0            0.00
+CompOverlap  dbsnp             all      eval              DP50            all                  2           1                1     50.00            1          100.00
+CompOverlap  dbsnp             all      eval              DP50            known                1           0                1    100.00            1          100.00
+CompOverlap  dbsnp             all      eval              DP50            novel                1           1                0      0.00            0            0.00
+CompOverlap  dbsnp             all      eval              none            all                266         259                7      2.63            2           28.57
+CompOverlap  dbsnp             all      eval              none            known                7           0                7    100.00            2           28.57
+CompOverlap  dbsnp             all      eval              none            novel              259         259                0      0.00            0            0.00
+CompOverlap  dbsnp             non_CpG  eval              DP50            all                  2           1                1     50.00            1          100.00
+CompOverlap  dbsnp             non_CpG  eval              DP50            known                1           0                1    100.00            1          100.00
+CompOverlap  dbsnp             non_CpG  eval              DP50            novel                1           1                0      0.00            0            0.00
+CompOverlap  dbsnp             non_CpG  eval              none            all                256         250                6      2.34            1           16.67
+CompOverlap  dbsnp             non_CpG  eval              none            known                6           0                6    100.00            1           16.67
+CompOverlap  dbsnp             non_CpG  eval              none            novel              250         250                0      0.00            0            0.00
+
+#:GATKTable:31:36:%s:%s:%s:%s:%s:%s:%d:%d:%d:%d:%.8f:%.8f:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%.2e:%.2f:%.2f:%.2e:%.2f:%.2f:;
+#:GATKTable:CountVariants:Counts different classes of variants in the sample
+CountVariants  CompFeatureInput  CpG      EvalFeatureInput  JexlExpression  Novelty  nProcessedLoci  nCalledLoci  nRefLoci  nVariantLoci  variantRate  variantRatePerBp     nSNPs  nMNPs  nInsertions  nDeletions  nComplex  nSymbolic  nMixed  nNoCalls  nHets  nHomRef  nHomVar  nSingletons  nHomDerived  heterozygosity  heterozygosityPerBp  hetHomRatio  indelRate  indelRatePerBp  insertionDeletionRatio
+CountVariants  comp_genotypes    CpG      eval              DP50            all          3101976562            0         0             0   0.00000000           0.00000000      0      0            0           0         0          0       0         0      0        0        0            0            0        0.00e+00                 0.00         0.00   0.00e+00            0.00                    0.00
+CountVariants  comp_genotypes    CpG      eval              DP50            known        3101976562            0         0             0   0.00000000           0.00000000      0      0            0           0         0          0       0         0      0        0        0            0            0        0.00e+00                 0.00         0.00   0.00e+00            0.00                    0.00
+CountVariants  comp_genotypes    CpG      eval              DP50            novel        3101976562            0         0             0   0.00000000           0.00000000      0      0            0           0         0          0       0         0      0        0        0            0            0        0.00e+00                 0.00         0.00   0.00e+00            0.00                    0.00
+CountVariants  comp_genotypes    CpG      eval              none            all          3101976562           10         0            10   0.00000000   310197656.00000000     10      0            0           0         0          0       0         0     13        7       10            1            0        4.19e-09         238613581.00         1.30   0.00e+00            0.00                    0.00
+CountVariants  comp_genotypes    CpG      eval              none            known        3101976562            1         0             1   0.00000000  3101976562.00000000      1      0            0           0         0          0       0         0      1        1        1            0            0        3.22e-10        3101976562.00         1.00   0.00e+00            0.00                    0.00
+CountVariants  comp_genotypes    CpG      eval              none            novel        3101976562            9         0             9   0.00000000   344664062.00000000      9      0            0           0         0          0       0         0     12        6        9            1            0        3.87e-09         258498046.00         1.33   0.00e+00            0.00                    0.00
+CountVariants  comp_genotypes    all      eval              DP50            all          3101976562            2         0             2   0.00000000  1550988281.00000000      2      0            0           0         0          0       0         0      2        0        4            0            0        6.45e-10        1550988281.00         0.50   0.00e+00            0.00                    0.00
+CountVariants  comp_genotypes    all      eval              DP50            known        3101976562            1         0             1   0.00000000  3101976562.00000000      1      0            0           0         0          0       0         0      1        0        2            0            0        3.22e-10        3101976562.00         0.50   0.00e+00            0.00                    0.00
+CountVariants  comp_genotypes    all      eval              DP50            novel        3101976562            1         0             1   0.00000000  3101976562.00000000      1      0            0           0         0          0       0         0      1        0        2            0            0        3.22e-10        3101976562.00         0.50   0.00e+00            0.00                    0.00
+CountVariants  comp_genotypes    all      eval              none            all          3101976562          266         0           266   0.00000009    11661566.00000000    266      0            0           0         0          0       0         0    392      194      212           40            0        1.26e-07           7913205.00         1.85   0.00e+00            0.00                    0.00
+CountVariants  comp_genotypes    all      eval              none            known        3101976562            7         0             7   0.00000000   443139508.00000000      7      0            0           0         0          0       0         0      8        5        8            1            0        2.58e-09         387747070.00         1.00   0.00e+00            0.00                    0.00
+CountVariants  comp_genotypes    all      eval              none            novel        3101976562          259         0           259   0.00000008    11976743.00000000    259      0            0           0         0          0       0         0    384      189      204           39            0        1.24e-07           8078063.00         1.88   0.00e+00            0.00                    0.00
+CountVariants  comp_genotypes    non_CpG  eval              DP50            all          3101976562            2         0             2   0.00000000  1550988281.00000000      2      0            0           0         0          0       0         0      2        0        4            0            0        6.45e-10        1550988281.00         0.50   0.00e+00            0.00                    0.00
+CountVariants  comp_genotypes    non_CpG  eval              DP50            known        3101976562            1         0             1   0.00000000  3101976562.00000000      1      0            0           0         0          0       0         0      1        0        2            0            0        3.22e-10        3101976562.00         0.50   0.00e+00            0.00                    0.00
+CountVariants  comp_genotypes    non_CpG  eval              DP50            novel        3101976562            1         0             1   0.00000000  3101976562.00000000      1      0            0           0         0          0       0         0      1        0        2            0            0        3.22e-10        3101976562.00         0.50   0.00e+00            0.00                    0.00
+CountVariants  comp_genotypes    non_CpG  eval              none            all          3101976562          256         0           256   0.00000008    12117095.00000000    256      0            0           0         0          0       0         0    379      187      202           39            0        1.22e-07           8184634.00         1.88   0.00e+00            0.00                    0.00
+CountVariants  comp_genotypes    non_CpG  eval              none            known        3101976562            6         0             6   0.00000000   516996093.00000000      6      0            0           0         0          0       0         0      7        4        7            1            0        2.26e-09         443139508.00         1.00   0.00e+00            0.00                    0.00
+CountVariants  comp_genotypes    non_CpG  eval              none            novel        3101976562          250         0           250   0.00000008    12407906.00000000    250      0            0           0         0          0       0         0    372      183      195           38            0        1.20e-07           8338646.00         1.91   0.00e+00            0.00                    0.00
+CountVariants  dbsnp             CpG      eval              DP50            all          3101976562            0         0             0   0.00000000           0.00000000      0      0            0           0         0          0       0         0      0        0        0            0            0        0.00e+00                 0.00         0.00   0.00e+00            0.00                    0.00
+CountVariants  dbsnp             CpG      eval              DP50            known        3101976562            0         0             0   0.00000000           0.00000000      0      0            0           0         0          0       0         0      0        0        0            0            0        0.00e+00                 0.00         0.00   0.00e+00            0.00                    0.00
+CountVariants  dbsnp             CpG      eval              DP50            novel        3101976562            0         0             0   0.00000000           0.00000000      0      0            0           0         0          0       0         0      0        0        0            0            0        0.00e+00                 0.00         0.00   0.00e+00            0.00                    0.00
+CountVariants  dbsnp             CpG      eval              none            all          3101976562           10         0            10   0.00000000   310197656.00000000     10      0            0           0         0          0       0         0     13        7       10            1            0        4.19e-09         238613581.00         1.30   0.00e+00            0.00                    0.00
+CountVariants  dbsnp             CpG      eval              none            known        3101976562            1         0             1   0.00000000  3101976562.00000000      1      0            0           0         0          0       0         0      1        1        1            0            0        3.22e-10        3101976562.00         1.00   0.00e+00            0.00                    0.00
+CountVariants  dbsnp             CpG      eval              none            novel        3101976562            9         0             9   0.00000000   344664062.00000000      9      0            0           0         0          0       0         0     12        6        9            1            0        3.87e-09         258498046.00         1.33   0.00e+00            0.00                    0.00
+CountVariants  dbsnp             all      eval              DP50            all          3101976562            2         0             2   0.00000000  1550988281.00000000      2      0            0           0         0          0       0         0      2        0        4            0            0        6.45e-10        1550988281.00         0.50   0.00e+00            0.00                    0.00
+CountVariants  dbsnp             all      eval              DP50            known        3101976562            1         0             1   0.00000000  3101976562.00000000      1      0            0           0         0          0       0         0      1        0        2            0            0        3.22e-10        3101976562.00         0.50   0.00e+00            0.00                    0.00
+CountVariants  dbsnp             all      eval              DP50            novel        3101976562            1         0             1   0.00000000  3101976562.00000000      1      0            0           0         0          0       0         0      1        0        2            0            0        3.22e-10        3101976562.00         0.50   0.00e+00            0.00                    0.00
+CountVariants  dbsnp             all      eval              none            all          3101976562          266         0           266   0.00000009    11661566.00000000    266      0            0           0         0          0       0         0    392      194      212           40            0        1.26e-07           7913205.00         1.85   0.00e+00            0.00                    0.00
+CountVariants  dbsnp             all      eval              none            known        3101976562            7         0             7   0.00000000   443139508.00000000      7      0            0           0         0          0       0         0      8        5        8            1            0        2.58e-09         387747070.00         1.00   0.00e+00            0.00                    0.00
+CountVariants  dbsnp             all      eval              none            novel        3101976562          259         0           259   0.00000008    11976743.00000000    259      0            0           0         0          0       0         0    384      189      204           39            0        1.24e-07           8078063.00         1.88   0.00e+00            0.00                    0.00
+CountVariants  dbsnp             non_CpG  eval              DP50            all          3101976562            2         0             2   0.00000000  1550988281.00000000      2      0            0           0         0          0       0         0      2        0        4            0            0        6.45e-10        1550988281.00         0.50   0.00e+00            0.00                    0.00
+CountVariants  dbsnp             non_CpG  eval              DP50            known        3101976562            1         0             1   0.00000000  3101976562.00000000      1      0            0           0         0          0       0         0      1        0        2            0            0        3.22e-10        3101976562.00         0.50   0.00e+00            0.00                    0.00
+CountVariants  dbsnp             non_CpG  eval              DP50            novel        3101976562            1         0             1   0.00000000  3101976562.00000000      1      0            0           0         0          0       0         0      1        0        2            0            0        3.22e-10        3101976562.00         0.50   0.00e+00            0.00                    0.00
+CountVariants  dbsnp             non_CpG  eval              none            all          3101976562          256         0           256   0.00000008    12117095.00000000    256      0            0           0         0          0       0         0    379      187      202           39            0        1.22e-07           8184634.00         1.88   0.00e+00            0.00                    0.00
+CountVariants  dbsnp             non_CpG  eval              none            known        3101976562            6         0             6   0.00000000   516996093.00000000      6      0            0           0         0          0       0         0      7        4        7            1            0        2.26e-09         443139508.00         1.00   0.00e+00            0.00                    0.00
+CountVariants  dbsnp             non_CpG  eval              none            novel        3101976562          250         0           250   0.00000008    12407906.00000000    250      0            0           0         0          0       0         0    372      183      195           38            0        1.20e-07           8338646.00         1.91   0.00e+00            0.00                    0.00
+
+#:GATKTable:8:720:%s:%s:%s:%s:%s:%s:%d:%.2f:;
+#:GATKTable:IndelLengthHistogram:Indel length histogram
+IndelLengthHistogram  CompFeatureInput  CpG      EvalFeatureInput  JexlExpression  Novelty  Length  Freq
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            all         -10  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            all          -9  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            all          -8  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            all          -7  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            all          -6  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            all          -5  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            all          -4  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            all          -3  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            all          -2  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            all          -1  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            all           1  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            all           2  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            all           3  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            all           4  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            all           5  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            all           6  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            all           7  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            all           8  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            all           9  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            all          10  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            known       -10  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            known        -9  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            known        -8  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            known        -7  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            known        -6  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            known        -5  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            known        -4  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            known        -3  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            known        -2  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            known        -1  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            known         1  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            known         2  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            known         3  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            known         4  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            known         5  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            known         6  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            known         7  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            known         8  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            known         9  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            known        10  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            novel       -10  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            novel        -9  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            novel        -8  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            novel        -7  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            novel        -6  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            novel        -5  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            novel        -4  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            novel        -3  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            novel        -2  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            novel        -1  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            novel         1  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            novel         2  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            novel         3  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            novel         4  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            novel         5  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            novel         6  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            novel         7  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            novel         8  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            novel         9  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              DP50            novel        10  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            all         -10  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            all          -9  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            all          -8  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            all          -7  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            all          -6  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            all          -5  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            all          -4  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            all          -3  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            all          -2  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            all          -1  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            all           1  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            all           2  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            all           3  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            all           4  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            all           5  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            all           6  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            all           7  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            all           8  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            all           9  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            all          10  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            known       -10  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            known        -9  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            known        -8  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            known        -7  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            known        -6  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            known        -5  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            known        -4  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            known        -3  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            known        -2  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            known        -1  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            known         1  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            known         2  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            known         3  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            known         4  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            known         5  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            known         6  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            known         7  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            known         8  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            known         9  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            known        10  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            novel       -10  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            novel        -9  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            novel        -8  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            novel        -7  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            novel        -6  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            novel        -5  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            novel        -4  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            novel        -3  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            novel        -2  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            novel        -1  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            novel         1  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            novel         2  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            novel         3  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            novel         4  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            novel         5  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            novel         6  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            novel         7  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            novel         8  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            novel         9  0.00
+IndelLengthHistogram  comp_genotypes    CpG      eval              none            novel        10  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            all         -10  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            all          -9  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            all          -8  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            all          -7  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            all          -6  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            all          -5  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            all          -4  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            all          -3  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            all          -2  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            all          -1  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            all           1  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            all           2  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            all           3  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            all           4  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            all           5  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            all           6  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            all           7  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            all           8  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            all           9  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            all          10  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            known       -10  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            known        -9  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            known        -8  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            known        -7  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            known        -6  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            known        -5  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            known        -4  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            known        -3  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            known        -2  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            known        -1  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            known         1  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            known         2  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            known         3  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            known         4  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            known         5  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            known         6  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            known         7  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            known         8  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            known         9  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            known        10  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            novel       -10  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            novel        -9  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            novel        -8  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            novel        -7  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            novel        -6  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            novel        -5  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            novel        -4  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            novel        -3  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            novel        -2  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            novel        -1  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            novel         1  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            novel         2  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            novel         3  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            novel         4  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            novel         5  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            novel         6  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            novel         7  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            novel         8  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            novel         9  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              DP50            novel        10  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            all         -10  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            all          -9  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            all          -8  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            all          -7  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            all          -6  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            all          -5  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            all          -4  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            all          -3  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            all          -2  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            all          -1  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            all           1  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            all           2  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            all           3  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            all           4  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            all           5  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            all           6  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            all           7  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            all           8  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            all           9  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            all          10  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            known       -10  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            known        -9  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            known        -8  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            known        -7  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            known        -6  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            known        -5  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            known        -4  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            known        -3  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            known        -2  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            known        -1  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            known         1  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            known         2  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            known         3  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            known         4  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            known         5  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            known         6  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            known         7  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            known         8  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            known         9  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            known        10  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            novel       -10  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            novel        -9  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            novel        -8  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            novel        -7  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            novel        -6  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            novel        -5  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            novel        -4  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            novel        -3  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            novel        -2  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            novel        -1  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            novel         1  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            novel         2  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            novel         3  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            novel         4  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            novel         5  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            novel         6  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            novel         7  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            novel         8  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            novel         9  0.00
+IndelLengthHistogram  comp_genotypes    all      eval              none            novel        10  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            all         -10  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            all          -9  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            all          -8  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            all          -7  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            all          -6  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            all          -5  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            all          -4  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            all          -3  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            all          -2  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            all          -1  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            all           1  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            all           2  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            all           3  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            all           4  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            all           5  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            all           6  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            all           7  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            all           8  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            all           9  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            all          10  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            known       -10  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            known        -9  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            known        -8  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            known        -7  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            known        -6  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            known        -5  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            known        -4  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            known        -3  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            known        -2  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            known        -1  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            known         1  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            known         2  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            known         3  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            known         4  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            known         5  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            known         6  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            known         7  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            known         8  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            known         9  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            known        10  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            novel       -10  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            novel        -9  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            novel        -8  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            novel        -7  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            novel        -6  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            novel        -5  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            novel        -4  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            novel        -3  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            novel        -2  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            novel        -1  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            novel         1  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            novel         2  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            novel         3  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            novel         4  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            novel         5  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            novel         6  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            novel         7  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            novel         8  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            novel         9  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              DP50            novel        10  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            all         -10  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            all          -9  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            all          -8  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            all          -7  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            all          -6  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            all          -5  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            all          -4  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            all          -3  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            all          -2  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            all          -1  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            all           1  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            all           2  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            all           3  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            all           4  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            all           5  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            all           6  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            all           7  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            all           8  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            all           9  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            all          10  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            known       -10  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            known        -9  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            known        -8  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            known        -7  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            known        -6  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            known        -5  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            known        -4  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            known        -3  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            known        -2  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            known        -1  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            known         1  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            known         2  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            known         3  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            known         4  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            known         5  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            known         6  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            known         7  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            known         8  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            known         9  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            known        10  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            novel       -10  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            novel        -9  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            novel        -8  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            novel        -7  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            novel        -6  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            novel        -5  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            novel        -4  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            novel        -3  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            novel        -2  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            novel        -1  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            novel         1  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            novel         2  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            novel         3  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            novel         4  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            novel         5  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            novel         6  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            novel         7  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            novel         8  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            novel         9  0.00
+IndelLengthHistogram  comp_genotypes    non_CpG  eval              none            novel        10  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            all         -10  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            all          -9  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            all          -8  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            all          -7  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            all          -6  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            all          -5  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            all          -4  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            all          -3  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            all          -2  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            all          -1  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            all           1  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            all           2  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            all           3  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            all           4  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            all           5  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            all           6  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            all           7  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            all           8  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            all           9  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            all          10  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            known       -10  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            known        -9  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            known        -8  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            known        -7  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            known        -6  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            known        -5  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            known        -4  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            known        -3  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            known        -2  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            known        -1  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            known         1  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            known         2  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            known         3  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            known         4  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            known         5  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            known         6  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            known         7  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            known         8  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            known         9  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            known        10  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            novel       -10  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            novel        -9  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            novel        -8  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            novel        -7  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            novel        -6  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            novel        -5  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            novel        -4  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            novel        -3  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            novel        -2  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            novel        -1  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            novel         1  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            novel         2  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            novel         3  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            novel         4  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            novel         5  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            novel         6  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            novel         7  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            novel         8  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            novel         9  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              DP50            novel        10  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            all         -10  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            all          -9  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            all          -8  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            all          -7  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            all          -6  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            all          -5  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            all          -4  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            all          -3  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            all          -2  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            all          -1  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            all           1  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            all           2  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            all           3  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            all           4  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            all           5  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            all           6  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            all           7  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            all           8  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            all           9  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            all          10  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            known       -10  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            known        -9  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            known        -8  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            known        -7  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            known        -6  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            known        -5  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            known        -4  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            known        -3  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            known        -2  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            known        -1  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            known         1  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            known         2  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            known         3  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            known         4  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            known         5  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            known         6  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            known         7  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            known         8  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            known         9  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            known        10  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            novel       -10  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            novel        -9  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            novel        -8  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            novel        -7  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            novel        -6  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            novel        -5  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            novel        -4  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            novel        -3  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            novel        -2  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            novel        -1  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            novel         1  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            novel         2  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            novel         3  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            novel         4  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            novel         5  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            novel         6  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            novel         7  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            novel         8  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            novel         9  0.00
+IndelLengthHistogram  dbsnp             CpG      eval              none            novel        10  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            all         -10  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            all          -9  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            all          -8  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            all          -7  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            all          -6  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            all          -5  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            all          -4  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            all          -3  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            all          -2  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            all          -1  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            all           1  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            all           2  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            all           3  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            all           4  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            all           5  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            all           6  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            all           7  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            all           8  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            all           9  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            all          10  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            known       -10  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            known        -9  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            known        -8  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            known        -7  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            known        -6  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            known        -5  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            known        -4  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            known        -3  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            known        -2  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            known        -1  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            known         1  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            known         2  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            known         3  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            known         4  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            known         5  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            known         6  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            known         7  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            known         8  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            known         9  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            known        10  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            novel       -10  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            novel        -9  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            novel        -8  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            novel        -7  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            novel        -6  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            novel        -5  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            novel        -4  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            novel        -3  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            novel        -2  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            novel        -1  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            novel         1  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            novel         2  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            novel         3  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            novel         4  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            novel         5  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            novel         6  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            novel         7  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            novel         8  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            novel         9  0.00
+IndelLengthHistogram  dbsnp             all      eval              DP50            novel        10  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            all         -10  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            all          -9  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            all          -8  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            all          -7  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            all          -6  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            all          -5  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            all          -4  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            all          -3  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            all          -2  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            all          -1  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            all           1  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            all           2  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            all           3  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            all           4  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            all           5  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            all           6  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            all           7  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            all           8  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            all           9  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            all          10  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            known       -10  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            known        -9  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            known        -8  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            known        -7  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            known        -6  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            known        -5  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            known        -4  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            known        -3  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            known        -2  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            known        -1  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            known         1  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            known         2  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            known         3  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            known         4  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            known         5  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            known         6  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            known         7  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            known         8  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            known         9  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            known        10  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            novel       -10  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            novel        -9  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            novel        -8  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            novel        -7  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            novel        -6  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            novel        -5  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            novel        -4  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            novel        -3  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            novel        -2  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            novel        -1  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            novel         1  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            novel         2  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            novel         3  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            novel         4  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            novel         5  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            novel         6  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            novel         7  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            novel         8  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            novel         9  0.00
+IndelLengthHistogram  dbsnp             all      eval              none            novel        10  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            all         -10  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            all          -9  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            all          -8  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            all          -7  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            all          -6  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            all          -5  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            all          -4  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            all          -3  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            all          -2  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            all          -1  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            all           1  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            all           2  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            all           3  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            all           4  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            all           5  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            all           6  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            all           7  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            all           8  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            all           9  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            all          10  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            known       -10  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            known        -9  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            known        -8  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            known        -7  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            known        -6  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            known        -5  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            known        -4  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            known        -3  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            known        -2  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            known        -1  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            known         1  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            known         2  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            known         3  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            known         4  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            known         5  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            known         6  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            known         7  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            known         8  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            known         9  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            known        10  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            novel       -10  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            novel        -9  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            novel        -8  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            novel        -7  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            novel        -6  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            novel        -5  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            novel        -4  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            novel        -3  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            novel        -2  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            novel        -1  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            novel         1  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            novel         2  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            novel         3  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            novel         4  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            novel         5  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            novel         6  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            novel         7  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            novel         8  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            novel         9  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              DP50            novel        10  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            all         -10  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            all          -9  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            all          -8  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            all          -7  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            all          -6  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            all          -5  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            all          -4  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            all          -3  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            all          -2  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            all          -1  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            all           1  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            all           2  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            all           3  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            all           4  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            all           5  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            all           6  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            all           7  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            all           8  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            all           9  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            all          10  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            known       -10  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            known        -9  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            known        -8  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            known        -7  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            known        -6  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            known        -5  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            known        -4  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            known        -3  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            known        -2  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            known        -1  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            known         1  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            known         2  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            known         3  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            known         4  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            known         5  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            known         6  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            known         7  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            known         8  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            known         9  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            known        10  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            novel       -10  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            novel        -9  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            novel        -8  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            novel        -7  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            novel        -6  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            novel        -5  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            novel        -4  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            novel        -3  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            novel        -2  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            novel        -1  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            novel         1  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            novel         2  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            novel         3  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            novel         4  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            novel         5  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            novel         6  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            novel         7  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            novel         8  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            novel         9  0.00
+IndelLengthHistogram  dbsnp             non_CpG  eval              none            novel        10  0.00
+
+#:GATKTable:31:36:%s:%s:%s:%s:%s:%s:%d:%d:%d:%d:%d:%s:%s:%s:%s:%s:%d:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:;
+#:GATKTable:IndelSummary:Evaluation summary for indels
+IndelSummary  CompFeatureInput  CpG      EvalFeatureInput  JexlExpression  Novelty  n_SNPs  n_singleton_SNPs  n_indels  n_singleton_indels  n_indels_matching_gold_standard  gold_standard_matching_rate  n_multiallelic_indel_sites  percent_of_sites_with_more_than_2_alleles  SNP_to_indel_ratio  SNP_to_indel_ratio_for_singletons  n_novel_indels  indel_novelty_rate  n_insertions  n_deletions  insertion_to_deletion_ratio  n_large_deletions  n_large_insertions  insertion_to_deletion_ratio_for_large_indels  n_coding_indels_frameshifting  n_coding_indels_in_frame  frameshift_rate_for_coding_indels  SNP_het_to_hom_ratio  indel_het_to_hom_ratio  ratio_of_1_and_2_to_3_bp_insertions  ratio_of_1_and_2_to_3_bp_deletions
+IndelSummary  comp_genotypes    CpG      eval              DP50            all           0                 0         0                   0                                0                           NA                           0                                         NA                  NA                                 NA               0                  NA             0            0                           NA                  0                   0                                            NA                              0                         0                                 NA                    NA                      NA                                   NA                                  NA
+IndelSummary  comp_genotypes    CpG      eval              DP50            known         0                 0         0                   0                                0                           NA                           0                                         NA                  NA                                 NA               0                  NA             0            0                           NA                  0                   0                                            NA                              0                         0                                 NA                    NA                      NA                                   NA                                  NA
+IndelSummary  comp_genotypes    CpG      eval              DP50            novel         0                 0         0                   0                                0                           NA                           0                                         NA                  NA                                 NA               0                  NA             0            0                           NA                  0                   0                                            NA                              0                         0                                 NA                    NA                      NA                                   NA                                  NA
+IndelSummary  comp_genotypes    CpG      eval              none            all          10                 1         0                   0                                0                           NA                           0                                         NA                  NA                                 NA               0                  NA             0            0                           NA                  0                   0                                            NA                              0                         0                                 NA                  1.30                      NA                                   NA                                  NA
+IndelSummary  comp_genotypes    CpG      eval              none            known         1                 0         0                   0                                0                           NA                           0                                         NA                  NA                                 NA               0                  NA             0            0                           NA                  0                   0                                            NA                              0                         0                                 NA                  1.00                      NA                                   NA                                  NA
+IndelSummary  comp_genotypes    CpG      eval              none            novel         9                 1         0                   0                                0                           NA                           0                                         NA                  NA                                 NA               0                  NA             0            0                           NA                  0                   0                                            NA                              0                         0                                 NA                  1.33                      NA                                   NA                                  NA
+IndelSummary  comp_genotypes    all      eval              DP50            all           2                 0         0                   0                                0                           NA                           0                                         NA                  NA                                 NA               0                  NA             0            0                           NA                  0                   0                                            NA                              0                         0                                 NA                  0.50                      NA                                   NA                                  NA
+IndelSummary  comp_genotypes    all      eval              DP50            known         1                 0         0                   0                                0                           NA                           0                                         NA                  NA                                 NA               0                  NA             0            0                           NA                  0                   0                                            NA                              0                         0                                 NA                  0.50                      NA                                   NA                                  NA
+IndelSummary  comp_genotypes    all      eval              DP50            novel         1                 0         0                   0                                0                           NA                           0                                         NA                  NA                                 NA               0                  NA             0            0                           NA                  0                   0                                            NA                              0                         0                                 NA                  0.50                      NA                                   NA                                  NA
+IndelSummary  comp_genotypes    all      eval              none            all         266                40         0                   0                                0                           NA                           0                                         NA                  NA                                 NA               0                  NA             0            0                           NA                  0                   0                                            NA                              0                         0                                 NA                  1.85                      NA                                   NA                                  NA
+IndelSummary  comp_genotypes    all      eval              none            known         7                 1         0                   0                                0                           NA                           0                                         NA                  NA                                 NA               0                  NA             0            0                           NA                  0                   0                                            NA                              0                         0                                 NA                  1.00                      NA                                   NA                                  NA
+IndelSummary  comp_genotypes    all      eval              none            novel       259                39         0                   0                                0                           NA                           0                                         NA                  NA                                 NA               0                  NA             0            0                           NA                  0                   0                                            NA                              0                         0                                 NA                  1.88                      NA                                   NA                                  NA
+IndelSummary  comp_genotypes    non_CpG  eval              DP50            all           2                 0         0                   0                                0                           NA                           0                                         NA                  NA                                 NA               0                  NA             0            0                           NA                  0                   0                                            NA                              0                         0                                 NA                  0.50                      NA                                   NA                                  NA
+IndelSummary  comp_genotypes    non_CpG  eval              DP50            known         1                 0         0                   0                                0                           NA                           0                                         NA                  NA                                 NA               0                  NA             0            0                           NA                  0                   0                                            NA                              0                         0                                 NA                  0.50                      NA                                   NA                                  NA
+IndelSummary  comp_genotypes    non_CpG  eval              DP50            novel         1                 0         0                   0                                0                           NA                           0                                         NA                  NA                                 NA               0                  NA             0            0                           NA                  0                   0                                            NA                              0                         0                                 NA                  0.50                      NA                                   NA                                  NA
+IndelSummary  comp_genotypes    non_CpG  eval              none            all         256                39         0                   0                                0                           NA                           0                                         NA                  NA                                 NA               0                  NA             0            0                           NA                  0                   0                                            NA                              0                         0                                 NA                  1.88                      NA                                   NA                                  NA
+IndelSummary  comp_genotypes    non_CpG  eval              none            known         6                 1         0                   0                                0                           NA                           0                                         NA                  NA                                 NA               0                  NA             0            0                           NA                  0                   0                                            NA                              0                         0                                 NA                  1.00                      NA                                   NA                                  NA
+IndelSummary  comp_genotypes    non_CpG  eval              none            novel       250                38         0                   0                                0                           NA                           0                                         NA                  NA                                 NA               0                  NA             0            0                           NA                  0                   0                                            NA                              0                         0                                 NA                  1.91                      NA                                   NA                                  NA
+IndelSummary  dbsnp             CpG      eval              DP50            all           0                 0         0                   0                                0                           NA                           0                                         NA                  NA                                 NA               0                  NA             0            0                           NA                  0                   0                                            NA                              0                         0                                 NA                    NA                      NA                                   NA                                  NA
+IndelSummary  dbsnp             CpG      eval              DP50            known         0                 0         0                   0                                0                           NA                           0                                         NA                  NA                                 NA               0                  NA             0            0                           NA                  0                   0                                            NA                              0                         0                                 NA                    NA                      NA                                   NA                                  NA
+IndelSummary  dbsnp             CpG      eval              DP50            novel         0                 0         0                   0                                0                           NA                           0                                         NA                  NA                                 NA               0                  NA             0            0                           NA                  0                   0                                            NA                              0                         0                                 NA                    NA                      NA                                   NA                                  NA
+IndelSummary  dbsnp             CpG      eval              none            all          10                 1         0                   0                                0                           NA                           0                                         NA                  NA                                 NA               0                  NA             0            0                           NA                  0                   0                                            NA                              0                         0                                 NA                  1.30                      NA                                   NA                                  NA
+IndelSummary  dbsnp             CpG      eval              none            known         1                 0         0                   0                                0                           NA                           0                                         NA                  NA                                 NA               0                  NA             0            0                           NA                  0                   0                                            NA                              0                         0                                 NA                  1.00                      NA                                   NA                                  NA
+IndelSummary  dbsnp             CpG      eval              none            novel         9                 1         0                   0                                0                           NA                           0                                         NA                  NA                                 NA               0                  NA             0            0                           NA                  0                   0                                            NA                              0                         0                                 NA                  1.33                      NA                                   NA                                  NA
+IndelSummary  dbsnp             all      eval              DP50            all           2                 0         0                   0                                0                           NA                           0                                         NA                  NA                                 NA               0                  NA             0            0                           NA                  0                   0                                            NA                              0                         0                                 NA                  0.50                      NA                                   NA                                  NA
+IndelSummary  dbsnp             all      eval              DP50            known         1                 0         0                   0                                0                           NA                           0                                         NA                  NA                                 NA               0                  NA             0            0                           NA                  0                   0                                            NA                              0                         0                                 NA                  0.50                      NA                                   NA                                  NA
+IndelSummary  dbsnp             all      eval              DP50            novel         1                 0         0                   0                                0                           NA                           0                                         NA                  NA                                 NA               0                  NA             0            0                           NA                  0                   0                                            NA                              0                         0                                 NA                  0.50                      NA                                   NA                                  NA
+IndelSummary  dbsnp             all      eval              none            all         266                40         0                   0                                0                           NA                           0                                         NA                  NA                                 NA               0                  NA             0            0                           NA                  0                   0                                            NA                              0                         0                                 NA                  1.85                      NA                                   NA                                  NA
+IndelSummary  dbsnp             all      eval              none            known         7                 1         0                   0                                0                           NA                           0                                         NA                  NA                                 NA               0                  NA             0            0                           NA                  0                   0                                            NA                              0                         0                                 NA                  1.00                      NA                                   NA                                  NA
+IndelSummary  dbsnp             all      eval              none            novel       259                39         0                   0                                0                           NA                           0                                         NA                  NA                                 NA               0                  NA             0            0                           NA                  0                   0                                            NA                              0                         0                                 NA                  1.88                      NA                                   NA                                  NA
+IndelSummary  dbsnp             non_CpG  eval              DP50            all           2                 0         0                   0                                0                           NA                           0                                         NA                  NA                                 NA               0                  NA             0            0                           NA                  0                   0                                            NA                              0                         0                                 NA                  0.50                      NA                                   NA                                  NA
+IndelSummary  dbsnp             non_CpG  eval              DP50            known         1                 0         0                   0                                0                           NA                           0                                         NA                  NA                                 NA               0                  NA             0            0                           NA                  0                   0                                            NA                              0                         0                                 NA                  0.50                      NA                                   NA                                  NA
+IndelSummary  dbsnp             non_CpG  eval              DP50            novel         1                 0         0                   0                                0                           NA                           0                                         NA                  NA                                 NA               0                  NA             0            0                           NA                  0                   0                                            NA                              0                         0                                 NA                  0.50                      NA                                   NA                                  NA
+IndelSummary  dbsnp             non_CpG  eval              none            all         256                39         0                   0                                0                           NA                           0                                         NA                  NA                                 NA               0                  NA             0            0                           NA                  0                   0                                            NA                              0                         0                                 NA                  1.88                      NA                                   NA                                  NA
+IndelSummary  dbsnp             non_CpG  eval              none            known         6                 1         0                   0                                0                           NA                           0                                         NA                  NA                                 NA               0                  NA             0            0                           NA                  0                   0                                            NA                              0                         0                                 NA                  1.00                      NA                                   NA                                  NA
+IndelSummary  dbsnp             non_CpG  eval              none            novel       250                38         0                   0                                0                           NA                           0                                         NA                  NA                                 NA               0                  NA             0            0                           NA                  0                   0                                            NA                              0                         0                                 NA                  1.91                      NA                                   NA                                  NA
+
+#:GATKTable:14:36:%s:%s:%s:%s:%s:%s:%.2f:%d:%d:%d:%d:%s:%.2f:%.2f:;
+#:GATKTable:MetricsCollection:Metrics Collection
+MetricsCollection  CompFeatureInput  CpG      EvalFeatureInput  JexlExpression  Novelty  concordantRate  nSNPs  nSNPloci  nIndels  nIndelLoci  indelRatio  indelRatioLociBased  tiTvRatio
+MetricsCollection  comp_genotypes    CpG      eval              DP50            all                0.00      0         0        0           0          NA                 0.00       0.00
+MetricsCollection  comp_genotypes    CpG      eval              DP50            known              0.00      0         0        0           0          NA                 0.00       0.00
+MetricsCollection  comp_genotypes    CpG      eval              DP50            novel              0.00      0         0        0           0          NA                 0.00       0.00
+MetricsCollection  comp_genotypes    CpG      eval              none            all                0.00     10        10        0           0          NA                 0.00       1.50
+MetricsCollection  comp_genotypes    CpG      eval              none            known              0.00      1         1        0           0          NA                 0.00       1.00
+MetricsCollection  comp_genotypes    CpG      eval              none            novel              0.00      9         9        0           0          NA                 0.00       1.25
+MetricsCollection  comp_genotypes    all      eval              DP50            all                0.00      2         2        0           0          NA                 0.00       1.00
+MetricsCollection  comp_genotypes    all      eval              DP50            known              0.00      1         1        0           0          NA                 0.00       1.00
+MetricsCollection  comp_genotypes    all      eval              DP50            novel              0.00      1         1        0           0          NA                 0.00       0.00
+MetricsCollection  comp_genotypes    all      eval              none            all                0.00    266       266        0           0          NA                 0.00       2.33
+MetricsCollection  comp_genotypes    all      eval              none            known              0.00      7         7        0           0          NA                 0.00       1.33
+MetricsCollection  comp_genotypes    all      eval              none            novel              0.00    259       259        0           0          NA                 0.00       2.36
+MetricsCollection  comp_genotypes    non_CpG  eval              DP50            all                0.00      2         2        0           0          NA                 0.00       1.00
+MetricsCollection  comp_genotypes    non_CpG  eval              DP50            known              0.00      1         1        0           0          NA                 0.00       1.00
+MetricsCollection  comp_genotypes    non_CpG  eval              DP50            novel              0.00      1         1        0           0          NA                 0.00       0.00
+MetricsCollection  comp_genotypes    non_CpG  eval              none            all                0.00    256       256        0           0          NA                 0.00       2.37
+MetricsCollection  comp_genotypes    non_CpG  eval              none            known              0.00      6         6        0           0          NA                 0.00       1.00
+MetricsCollection  comp_genotypes    non_CpG  eval              none            novel              0.00    250       250        0           0          NA                 0.00       2.42
+MetricsCollection  dbsnp             CpG      eval              DP50            all                0.00      0         0        0           0          NA                 0.00       0.00
+MetricsCollection  dbsnp             CpG      eval              DP50            known              0.00      0         0        0           0          NA                 0.00       0.00
+MetricsCollection  dbsnp             CpG      eval              DP50            novel              0.00      0         0        0           0          NA                 0.00       0.00
+MetricsCollection  dbsnp             CpG      eval              none            all              100.00     10        10        0           0          NA                 0.00       1.50
+MetricsCollection  dbsnp             CpG      eval              none            known            100.00      1         1        0           0          NA                 0.00       1.00
+MetricsCollection  dbsnp             CpG      eval              none            novel              0.00      9         9        0           0          NA                 0.00       1.25
+MetricsCollection  dbsnp             all      eval              DP50            all              100.00      2         2        0           0          NA                 0.00       1.00
+MetricsCollection  dbsnp             all      eval              DP50            known            100.00      1         1        0           0          NA                 0.00       1.00
+MetricsCollection  dbsnp             all      eval              DP50            novel              0.00      1         1        0           0          NA                 0.00       0.00
+MetricsCollection  dbsnp             all      eval              none            all               28.57    266       266        0           0          NA                 0.00       2.33
+MetricsCollection  dbsnp             all      eval              none            known             28.57      7         7        0           0          NA                 0.00       1.33
+MetricsCollection  dbsnp             all      eval              none            novel              0.00    259       259        0           0          NA                 0.00       2.36
+MetricsCollection  dbsnp             non_CpG  eval              DP50            all              100.00      2         2        0           0          NA                 0.00       1.00
+MetricsCollection  dbsnp             non_CpG  eval              DP50            known            100.00      1         1        0           0          NA                 0.00       1.00
+MetricsCollection  dbsnp             non_CpG  eval              DP50            novel              0.00      1         1        0           0          NA                 0.00       0.00
+MetricsCollection  dbsnp             non_CpG  eval              none            all               16.67    256       256        0           0          NA                 0.00       2.37
+MetricsCollection  dbsnp             non_CpG  eval              none            known             16.67      6         6        0           0          NA                 0.00       1.00
+MetricsCollection  dbsnp             non_CpG  eval              none            novel              0.00    250       250        0           0          NA                 0.00       2.42
+
+#:GATKTable:21:36:%s:%s:%s:%s:%s:%s:%d:%d:%d:%.5f:%.3f:%d:%d:%.5f:%.3f:%d:%d:%.2f:%d:%d:%s:;
+#:GATKTable:MultiallelicSummary:Evaluation summary for multi-allelic variants
+MultiallelicSummary  CompFeatureInput  CpG      EvalFeatureInput  JexlExpression  Novelty  nProcessedLoci  nSNPs  nMultiSNPs  processedMultiSnpRatio  variantMultiSnpRatio  nIndels  nMultiIndels  processedMultiIndelRatio  variantMultiIndelRatio  nTi  nTv  TiTvRatio  knownSNPsPartial  knownSNPsComplete  SNPNoveltyRate
+MultiallelicSummary  comp_genotypes    CpG      eval              DP50            all          3101976562      0           0                 0.00000                   NaN        0             0                   0.00000                     NaN    0    0        NaN                 0                  0              NA
+MultiallelicSummary  comp_genotypes    CpG      eval              DP50            known        3101976562      0           0                 0.00000                   NaN        0             0                   0.00000                     NaN    0    0        NaN                 0                  0              NA
+MultiallelicSummary  comp_genotypes    CpG      eval              DP50            novel        3101976562      0           0                 0.00000                   NaN        0             0                   0.00000                     NaN    0    0        NaN                 0                  0              NA
+MultiallelicSummary  comp_genotypes    CpG      eval              none            all          3101976562     10           0                 0.00000                 0.000        0             0                   0.00000                     NaN    0    0        NaN                 0                  0              NA
+MultiallelicSummary  comp_genotypes    CpG      eval              none            known        3101976562      1           0                 0.00000                 0.000        0             0                   0.00000                     NaN    0    0        NaN                 0                  0              NA
+MultiallelicSummary  comp_genotypes    CpG      eval              none            novel        3101976562      9           0                 0.00000                 0.000        0             0                   0.00000                     NaN    0    0        NaN                 0                  0              NA
+MultiallelicSummary  comp_genotypes    all      eval              DP50            all          3101976562      2           0                 0.00000                 0.000        0             0                   0.00000                     NaN    0    0        NaN                 0                  0              NA
+MultiallelicSummary  comp_genotypes    all      eval              DP50            known        3101976562      1           0                 0.00000                 0.000        0             0                   0.00000                     NaN    0    0        NaN                 0                  0              NA
+MultiallelicSummary  comp_genotypes    all      eval              DP50            novel        3101976562      1           0                 0.00000                 0.000        0             0                   0.00000                     NaN    0    0        NaN                 0                  0              NA
+MultiallelicSummary  comp_genotypes    all      eval              none            all          3101976562    266           0                 0.00000                 0.000        0             0                   0.00000                     NaN    0    0        NaN                 0                  0              NA
+MultiallelicSummary  comp_genotypes    all      eval              none            known        3101976562      7           0                 0.00000                 0.000        0             0                   0.00000                     NaN    0    0        NaN                 0                  0              NA
+MultiallelicSummary  comp_genotypes    all      eval              none            novel        3101976562    259           0                 0.00000                 0.000        0             0                   0.00000                     NaN    0    0        NaN                 0                  0              NA
+MultiallelicSummary  comp_genotypes    non_CpG  eval              DP50            all          3101976562      2           0                 0.00000                 0.000        0             0                   0.00000                     NaN    0    0        NaN                 0                  0              NA
+MultiallelicSummary  comp_genotypes    non_CpG  eval              DP50            known        3101976562      1           0                 0.00000                 0.000        0             0                   0.00000                     NaN    0    0        NaN                 0                  0              NA
+MultiallelicSummary  comp_genotypes    non_CpG  eval              DP50            novel        3101976562      1           0                 0.00000                 0.000        0             0                   0.00000                     NaN    0    0        NaN                 0                  0              NA
+MultiallelicSummary  comp_genotypes    non_CpG  eval              none            all          3101976562    256           0                 0.00000                 0.000        0             0                   0.00000                     NaN    0    0        NaN                 0                  0              NA
+MultiallelicSummary  comp_genotypes    non_CpG  eval              none            known        3101976562      6           0                 0.00000                 0.000        0             0                   0.00000                     NaN    0    0        NaN                 0                  0              NA
+MultiallelicSummary  comp_genotypes    non_CpG  eval              none            novel        3101976562    250           0                 0.00000                 0.000        0             0                   0.00000                     NaN    0    0        NaN                 0                  0              NA
+MultiallelicSummary  dbsnp             CpG      eval              DP50            all          3101976562      0           0                 0.00000                   NaN        0             0                   0.00000                     NaN    0    0        NaN                 0                  0              NA
+MultiallelicSummary  dbsnp             CpG      eval              DP50            known        3101976562      0           0                 0.00000                   NaN        0             0                   0.00000                     NaN    0    0        NaN                 0                  0              NA
+MultiallelicSummary  dbsnp             CpG      eval              DP50            novel        3101976562      0           0                 0.00000                   NaN        0             0                   0.00000                     NaN    0    0        NaN                 0                  0              NA
+MultiallelicSummary  dbsnp             CpG      eval              none            all          3101976562     10           0                 0.00000                 0.000        0             0                   0.00000                     NaN    0    0        NaN                 0                  0              NA
+MultiallelicSummary  dbsnp             CpG      eval              none            known        3101976562      1           0                 0.00000                 0.000        0             0                   0.00000                     NaN    0    0        NaN                 0                  0              NA
+MultiallelicSummary  dbsnp             CpG      eval              none            novel        3101976562      9           0                 0.00000                 0.000        0             0                   0.00000                     NaN    0    0        NaN                 0                  0              NA
+MultiallelicSummary  dbsnp             all      eval              DP50            all          3101976562      2           0                 0.00000                 0.000        0             0                   0.00000                     NaN    0    0        NaN                 0                  0              NA
+MultiallelicSummary  dbsnp             all      eval              DP50            known        3101976562      1           0                 0.00000                 0.000        0             0                   0.00000                     NaN    0    0        NaN                 0                  0              NA
+MultiallelicSummary  dbsnp             all      eval              DP50            novel        3101976562      1           0                 0.00000                 0.000        0             0                   0.00000                     NaN    0    0        NaN                 0                  0              NA
+MultiallelicSummary  dbsnp             all      eval              none            all          3101976562    266           0                 0.00000                 0.000        0             0                   0.00000                     NaN    0    0        NaN                 0                  0              NA
+MultiallelicSummary  dbsnp             all      eval              none            known        3101976562      7           0                 0.00000                 0.000        0             0                   0.00000                     NaN    0    0        NaN                 0                  0              NA
+MultiallelicSummary  dbsnp             all      eval              none            novel        3101976562    259           0                 0.00000                 0.000        0             0                   0.00000                     NaN    0    0        NaN                 0                  0              NA
+MultiallelicSummary  dbsnp             non_CpG  eval              DP50            all          3101976562      2           0                 0.00000                 0.000        0             0                   0.00000                     NaN    0    0        NaN                 0                  0              NA
+MultiallelicSummary  dbsnp             non_CpG  eval              DP50            known        3101976562      1           0                 0.00000                 0.000        0             0                   0.00000                     NaN    0    0        NaN                 0                  0              NA
+MultiallelicSummary  dbsnp             non_CpG  eval              DP50            novel        3101976562      1           0                 0.00000                 0.000        0             0                   0.00000                     NaN    0    0        NaN                 0                  0              NA
+MultiallelicSummary  dbsnp             non_CpG  eval              none            all          3101976562    256           0                 0.00000                 0.000        0             0                   0.00000                     NaN    0    0        NaN                 0                  0              NA
+MultiallelicSummary  dbsnp             non_CpG  eval              none            known        3101976562      6           0                 0.00000                 0.000        0             0                   0.00000                     NaN    0    0        NaN                 0                  0              NA
+MultiallelicSummary  dbsnp             non_CpG  eval              none            novel        3101976562    250           0                 0.00000                 0.000        0             0                   0.00000                     NaN    0    0        NaN                 0                  0              NA
+
+#:GATKTable:15:36:%s:%s:%s:%s:%s:%s:%d:%d:%.2f:%d:%d:%.2f:%d:%d:%.2f:;
+#:GATKTable:TiTvVariantEvaluator:Ti/Tv Variant Evaluator
+TiTvVariantEvaluator  CompFeatureInput  CpG      EvalFeatureInput  JexlExpression  Novelty  nTi  nTv  tiTvRatio  nTiInComp  nTvInComp  TiTvRatioStandard  nTiDerived  nTvDerived  tiTvDerivedRatio
+TiTvVariantEvaluator  comp_genotypes    CpG      eval              DP50            all        0    0       0.00          0          0               0.00           0           0              0.00
+TiTvVariantEvaluator  comp_genotypes    CpG      eval              DP50            known      0    0       0.00          0          0               0.00           0           0              0.00
+TiTvVariantEvaluator  comp_genotypes    CpG      eval              DP50            novel      0    0       0.00          0          0               0.00           0           0              0.00
+TiTvVariantEvaluator  comp_genotypes    CpG      eval              none            all        6    4       1.50          0          0               0.00           0           0              0.00
+TiTvVariantEvaluator  comp_genotypes    CpG      eval              none            known      1    0       1.00          0          0               0.00           0           0              0.00
+TiTvVariantEvaluator  comp_genotypes    CpG      eval              none            novel      5    4       1.25          0          0               0.00           0           0              0.00
+TiTvVariantEvaluator  comp_genotypes    all      eval              DP50            all        1    1       1.00          0          0               0.00           0           0              0.00
+TiTvVariantEvaluator  comp_genotypes    all      eval              DP50            known      1    0       1.00          0          0               0.00           0           0              0.00
+TiTvVariantEvaluator  comp_genotypes    all      eval              DP50            novel      0    1       0.00          0          0               0.00           0           0              0.00
+TiTvVariantEvaluator  comp_genotypes    all      eval              none            all      186   80       2.33          9          6               1.50           0           0              0.00
+TiTvVariantEvaluator  comp_genotypes    all      eval              none            known      4    3       1.33          0          0               0.00           0           0              0.00
+TiTvVariantEvaluator  comp_genotypes    all      eval              none            novel    182   77       2.36          9          6               1.50           0           0              0.00
+TiTvVariantEvaluator  comp_genotypes    non_CpG  eval              DP50            all        1    1       1.00          0          0               0.00           0           0              0.00
+TiTvVariantEvaluator  comp_genotypes    non_CpG  eval              DP50            known      1    0       1.00          0          0               0.00           0           0              0.00
+TiTvVariantEvaluator  comp_genotypes    non_CpG  eval              DP50            novel      0    1       0.00          0          0               0.00           0           0              0.00
+TiTvVariantEvaluator  comp_genotypes    non_CpG  eval              none            all      180   76       2.37          9          6               1.50           0           0              0.00
+TiTvVariantEvaluator  comp_genotypes    non_CpG  eval              none            known      3    3       1.00          0          0               0.00           0           0              0.00
+TiTvVariantEvaluator  comp_genotypes    non_CpG  eval              none            novel    177   73       2.42          9          6               1.50           0           0              0.00
+TiTvVariantEvaluator  dbsnp             CpG      eval              DP50            all        0    0       0.00          0          0               0.00           0           0              0.00
+TiTvVariantEvaluator  dbsnp             CpG      eval              DP50            known      0    0       0.00          0          0               0.00           0           0              0.00
+TiTvVariantEvaluator  dbsnp             CpG      eval              DP50            novel      0    0       0.00          0          0               0.00           0           0              0.00
+TiTvVariantEvaluator  dbsnp             CpG      eval              none            all        6    4       1.50     116311      12277               9.47           0           0              0.00
+TiTvVariantEvaluator  dbsnp             CpG      eval              none            known      1    0       1.00          1          0               1.00           0           0              0.00
+TiTvVariantEvaluator  dbsnp             CpG      eval              none            novel      5    4       1.25     116310      12277               9.47           0           0              0.00
+TiTvVariantEvaluator  dbsnp             all      eval              DP50            all        1    1       1.00          1          0               1.00           0           0              0.00
+TiTvVariantEvaluator  dbsnp             all      eval              DP50            known      1    0       1.00          1          0               1.00           0           0              0.00
+TiTvVariantEvaluator  dbsnp             all      eval              DP50            novel      0    1       0.00          0          0               0.00           0           0              0.00
+TiTvVariantEvaluator  dbsnp             all      eval              none            all      186   80       2.33     832556     367413               2.27           0           0              0.00
+TiTvVariantEvaluator  dbsnp             all      eval              none            known      4    3       1.33          4          3               1.33           0           0              0.00
+TiTvVariantEvaluator  dbsnp             all      eval              none            novel    182   77       2.36     832552     367410               2.27           0           0              0.00
+TiTvVariantEvaluator  dbsnp             non_CpG  eval              DP50            all        1    1       1.00          1          0               1.00           0           0              0.00
+TiTvVariantEvaluator  dbsnp             non_CpG  eval              DP50            known      1    0       1.00          1          0               1.00           0           0              0.00
+TiTvVariantEvaluator  dbsnp             non_CpG  eval              DP50            novel      0    1       0.00          0          0               0.00           0           0              0.00
+TiTvVariantEvaluator  dbsnp             non_CpG  eval              none            all      180   76       2.37     716245     355136               2.02           0           0              0.00
+TiTvVariantEvaluator  dbsnp             non_CpG  eval              none            known      3    3       1.00          3          3               1.00           0           0              0.00
+TiTvVariantEvaluator  dbsnp             non_CpG  eval              none            novel    177   73       2.42     716242     355133               2.02           0           0              0.00
+
+#:GATKTable:25:36:%s:%s:%s:%s:%s:%s:%d:%d:%d:%d:%d:%.2f:%.2f:%.2f:%.2f:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:;
+#:GATKTable:ValidationReport:Assess site accuracy and sensitivity of callset against follow-up validation assay
+ValidationReport  CompFeatureInput  CpG      EvalFeatureInput  JexlExpression  Novelty  nComp    TP  FP  FN       TN  sensitivity  specificity  PPV     FDR   CompMonoEvalNoCall  CompMonoEvalFiltered  CompMonoEvalMono  CompMonoEvalPoly  CompPolyEvalNoCall  CompPolyEvalFiltered  CompPolyEvalMono  CompPolyEvalPoly  CompFiltered  nDifferentAlleleSites
+ValidationReport  comp_genotypes    CpG      eval              DP50            all            0   0   0        0   0          NaN       100.00     NaN   NaN                   0                     0                 0                 0                   0                     0                 0                 0             0                      0
+ValidationReport  comp_genotypes    CpG      eval              DP50            known          0   0   0        0   0          NaN       100.00     NaN   NaN                   0                     0                 0                 0                   0                     0                 0                 0             0                      0
+ValidationReport  comp_genotypes    CpG      eval              DP50            novel          0   0   0        0   0          NaN       100.00     NaN   NaN                   0                     0                 0                 0                   0                     0                 0                 0             0                      0
+ValidationReport  comp_genotypes    CpG      eval              none            all            0   0   0        0   0          NaN       100.00     NaN   NaN                   0                     0                 0                 0                   0                     0                 0                 0             0                      0
+ValidationReport  comp_genotypes    CpG      eval              none            known          0   0   0        0   0          NaN       100.00     NaN   NaN                   0                     0                 0                 0                   0                     0                 0                 0             0                      0
+ValidationReport  comp_genotypes    CpG      eval              none            novel          0   0   0        0   0          NaN       100.00     NaN   NaN                   0                     0                 0                 0                   0                     0                 0                 0             0                      0
+ValidationReport  comp_genotypes    all      eval              DP50            all            0   0   0        0   0          NaN       100.00     NaN   NaN                   0                     0                 0                 0                   0                     0                 0                 0             0                      0
+ValidationReport  comp_genotypes    all      eval              DP50            known          0   0   0        0   0          NaN       100.00     NaN   NaN                   0                     0                 0                 0                   0                     0                 0                 0             0                      0
+ValidationReport  comp_genotypes    all      eval              DP50            novel          0   0   0        0   0          NaN       100.00     NaN   NaN                   0                     0                 0                 0                   0                     0                 0                 0             0                      0
+ValidationReport  comp_genotypes    all      eval              none            all           15   0   0       15   0         0.00       100.00     NaN   NaN                   0                     0                 0                 0                  15                     0                 0                 0             0                      0
+ValidationReport  comp_genotypes    all      eval              none            known          0   0   0        0   0          NaN       100.00     NaN   NaN                   0                     0                 0                 0                   0                     0                 0                 0             0                      0
+ValidationReport  comp_genotypes    all      eval              none            novel         15   0   0       15   0         0.00       100.00     NaN   NaN                   0                     0                 0                 0                  15                     0                 0                 0             0                      0
+ValidationReport  comp_genotypes    non_CpG  eval              DP50            all            0   0   0        0   0          NaN       100.00     NaN   NaN                   0                     0                 0                 0                   0                     0                 0                 0             0                      0
+ValidationReport  comp_genotypes    non_CpG  eval              DP50            known          0   0   0        0   0          NaN       100.00     NaN   NaN                   0                     0                 0                 0                   0                     0                 0                 0             0                      0
+ValidationReport  comp_genotypes    non_CpG  eval              DP50            novel          0   0   0        0   0          NaN       100.00     NaN   NaN                   0                     0                 0                 0                   0                     0                 0                 0             0                      0
+ValidationReport  comp_genotypes    non_CpG  eval              none            all           15   0   0       15   0         0.00       100.00     NaN   NaN                   0                     0                 0                 0                  15                     0                 0                 0             0                      0
+ValidationReport  comp_genotypes    non_CpG  eval              none            known          0   0   0        0   0          NaN       100.00     NaN   NaN                   0                     0                 0                 0                   0                     0                 0                 0             0                      0
+ValidationReport  comp_genotypes    non_CpG  eval              none            novel         15   0   0       15   0         0.00       100.00     NaN   NaN                   0                     0                 0                 0                  15                     0                 0                 0             0                      0
+ValidationReport  dbsnp             CpG      eval              DP50            all            0   0   0        0   0          NaN       100.00     NaN   NaN                   0                     0                 0                 0                   0                     0                 0                 0             0                      0
+ValidationReport  dbsnp             CpG      eval              DP50            known          0   0   0        0   0          NaN       100.00     NaN   NaN                   0                     0                 0                 0                   0                     0                 0                 0             0                      0
+ValidationReport  dbsnp             CpG      eval              DP50            novel          0   0   0        0   0          NaN       100.00     NaN   NaN                   0                     0                 0                 0                   0                     0                 0                 0             0                      0
+ValidationReport  dbsnp             CpG      eval              none            all       133417   1   0   133416   0         0.00       100.00  100.00  0.00                   0                     0                 0                 0              133416                     0                 0                 1             0                      0
+ValidationReport  dbsnp             CpG      eval              none            known          1   1   0        0   0       100.00       100.00  100.00  0.00                   0                     0                 0                 0                   0                     0                 0                 1             0                      0
+ValidationReport  dbsnp             CpG      eval              none            novel     133416   0   0   133416   0         0.00       100.00     NaN   NaN                   0                     0                 0                 0              133416                     0                 0                 0             0                      0
+ValidationReport  dbsnp             all      eval              DP50            all            1   1   0        0   0       100.00       100.00  100.00  0.00                   0                     0                 0                 0                   0                     0                 0                 1             0                      0
+ValidationReport  dbsnp             all      eval              DP50            known          1   1   0        0   0       100.00       100.00  100.00  0.00                   0                     0                 0                 0                   0                     0                 0                 1             0                      0
+ValidationReport  dbsnp             all      eval              DP50            novel          0   0   0        0   0          NaN       100.00     NaN   NaN                   0                     0                 0                 0                   0                     0                 0                 0             0                      0
+ValidationReport  dbsnp             all      eval              none            all      1375319   7   0  1375312   0         0.00       100.00  100.00  0.00                   0                     0                 0                 0             1375312                     0                 0                 7             0                      0
+ValidationReport  dbsnp             all      eval              none            known          7   7   0        0   0       100.00       100.00  100.00  0.00                   0                     0                 0                 0                   0                     0                 0                 7             0                      0
+ValidationReport  dbsnp             all      eval              none            novel    1375312   0   0  1375312   0         0.00       100.00     NaN   NaN                   0                     0                 0                 0             1375312                     0                 0                 0             0                      0
+ValidationReport  dbsnp             non_CpG  eval              DP50            all            1   1   0        0   0       100.00       100.00  100.00  0.00                   0                     0                 0                 0                   0                     0                 0                 1             0                      0
+ValidationReport  dbsnp             non_CpG  eval              DP50            known          1   1   0        0   0       100.00       100.00  100.00  0.00                   0                     0                 0                 0                   0                     0                 0                 1             0                      0
+ValidationReport  dbsnp             non_CpG  eval              DP50            novel          0   0   0        0   0          NaN       100.00     NaN   NaN                   0                     0                 0                 0                   0                     0                 0                 0             0                      0
+ValidationReport  dbsnp             non_CpG  eval              none            all      1241902   6   0  1241896   0         0.00       100.00  100.00  0.00                   0                     0                 0                 0             1241896                     0                 0                 6             0                      0
+ValidationReport  dbsnp             non_CpG  eval              none            known          6   6   0        0   0       100.00       100.00  100.00  0.00                   0                     0                 0                 0                   0                     0                 0                 6             0                      0
+ValidationReport  dbsnp             non_CpG  eval              none            novel    1241896   0   0  1241896   0         0.00       100.00     NaN   NaN                   0                     0                 0                 0             1241896                     0                 0                 0             0                      0
+
+#:GATKTable:21:36:%s:%s:%s:%s:%s:%s:%d:%d:%d:%.2f:%s:%d:%.2f:%.1f:%d:%s:%d:%.1f:%d:%s:%d:;
+#:GATKTable:VariantSummary:1000 Genomes Phase I summary of variants table
+VariantSummary  CompFeatureInput  CpG      EvalFeatureInput  JexlExpression  Novelty  nSamples  nProcessedLoci  nSNPs  TiTvRatio  SNPNoveltyRate  nSNPsPerSample  TiTvRatioPerSample  SNPDPPerSample  nIndels  IndelNoveltyRate  nIndelsPerSample  IndelDPPerSample  nSVs  SVNoveltyRate  nSVsPerSample
+VariantSummary  comp_genotypes    CpG      eval              DP50            all             3      3101976562      0       0.00              NA               0                0.00             0.0        0                NA                 0               0.0     0             NA              0
+VariantSummary  comp_genotypes    CpG      eval              DP50            known           3      3101976562      0       0.00              NA               0                0.00             0.0        0                NA                 0               0.0     0             NA              0
+VariantSummary  comp_genotypes    CpG      eval              DP50            novel           3      3101976562      0       0.00              NA               0                0.00             0.0        0                NA                 0               0.0     0             NA              0
+VariantSummary  comp_genotypes    CpG      eval              none            all             3      3101976562     10       1.50          100.00               8                1.56             8.0        0                NA                 0               0.0     0             NA              0
+VariantSummary  comp_genotypes    CpG      eval              none            known           3      3101976562      1       1.00          100.00               1                0.67             1.0        0                NA                 0               0.0     0             NA              0
+VariantSummary  comp_genotypes    CpG      eval              none            novel           3      3101976562      9       1.25          100.00               7                1.33             7.0        0                NA                 0               0.0     0             NA              0
+VariantSummary  comp_genotypes    all      eval              DP50            all             3      3101976562      2       1.00          100.00               2                1.00             2.0        0                NA                 0               0.0     0             NA              0
+VariantSummary  comp_genotypes    all      eval              DP50            known           3      3101976562      1       1.00          100.00               1                1.00             1.0        0                NA                 0               0.0     0             NA              0
+VariantSummary  comp_genotypes    all      eval              DP50            novel           3      3101976562      1       0.00          100.00               1                0.00             1.0        0                NA                 0               0.0     0             NA              0
+VariantSummary  comp_genotypes    all      eval              none            all             3      3101976562    266       2.33          100.00             201                2.28           201.0        0                NA                 0               0.0     0             NA              0
+VariantSummary  comp_genotypes    all      eval              none            known           3      3101976562      7       1.33          100.00               5                2.00             5.0        0                NA                 0               0.0     0             NA              0
+VariantSummary  comp_genotypes    all      eval              none            novel           3      3101976562    259       2.36          100.00             196                2.30           196.0        0                NA                 0               0.0     0             NA              0
+VariantSummary  comp_genotypes    non_CpG  eval              DP50            all             3      3101976562      2       1.00          100.00               2                1.00             2.0        0                NA                 0               0.0     0             NA              0
+VariantSummary  comp_genotypes    non_CpG  eval              DP50            known           3      3101976562      1       1.00          100.00               1                1.00             1.0        0                NA                 0               0.0     0             NA              0
+VariantSummary  comp_genotypes    non_CpG  eval              DP50            novel           3      3101976562      1       0.00          100.00               1                0.00             1.0        0                NA                 0               0.0     0             NA              0
+VariantSummary  comp_genotypes    non_CpG  eval              none            all             3      3101976562    256       2.37          100.00             194                2.32           194.0        0                NA                 0               0.0     0             NA              0
+VariantSummary  comp_genotypes    non_CpG  eval              none            known           3      3101976562      6       1.00          100.00               5                1.50             5.0        0                NA                 0               0.0     0             NA              0
+VariantSummary  comp_genotypes    non_CpG  eval              none            novel           3      3101976562    250       2.42          100.00             189                2.36           189.0        0                NA                 0               0.0     0             NA              0
+VariantSummary  dbsnp             CpG      eval              DP50            all             3      3101976562      0       0.00              NA               0                0.00             0.0        0                NA                 0               0.0     0             NA              0
+VariantSummary  dbsnp             CpG      eval              DP50            known           3      3101976562      0       0.00              NA               0                0.00             0.0        0                NA                 0               0.0     0             NA              0
+VariantSummary  dbsnp             CpG      eval              DP50            novel           3      3101976562      0       0.00              NA               0                0.00             0.0        0                NA                 0               0.0     0             NA              0
+VariantSummary  dbsnp             CpG      eval              none            all             3      3101976562     10       1.50           90.00               8                1.56             8.0        0                NA                 0               0.0     0             NA              0
+VariantSummary  dbsnp             CpG      eval              none            known           3      3101976562      1       1.00            0.00               1                0.67             1.0        0                NA                 0               0.0     0             NA              0
+VariantSummary  dbsnp             CpG      eval              none            novel           3      3101976562      9       1.25          100.00               7                1.33             7.0        0                NA                 0               0.0     0             NA              0
+VariantSummary  dbsnp             all      eval              DP50            all             3      3101976562      2       1.00           50.00               2                1.00             2.0        0                NA                 0               0.0     0             NA              0
+VariantSummary  dbsnp             all      eval              DP50            known           3      3101976562      1       1.00            0.00               1                1.00             1.0        0                NA                 0               0.0     0             NA              0
+VariantSummary  dbsnp             all      eval              DP50            novel           3      3101976562      1       0.00          100.00               1                0.00             1.0        0                NA                 0               0.0     0             NA              0
+VariantSummary  dbsnp             all      eval              none            all             3      3101976562    266       2.33           97.37             201                2.28           201.0        0                NA                 0               0.0     0             NA              0
+VariantSummary  dbsnp             all      eval              none            known           3      3101976562      7       1.33            0.00               5                2.00             5.0        0                NA                 0               0.0     0             NA              0
+VariantSummary  dbsnp             all      eval              none            novel           3      3101976562    259       2.36          100.00             196                2.30           196.0        0                NA                 0               0.0     0             NA              0
+VariantSummary  dbsnp             non_CpG  eval              DP50            all             3      3101976562      2       1.00           50.00               2                1.00             2.0        0                NA                 0               0.0     0             NA              0
+VariantSummary  dbsnp             non_CpG  eval              DP50            known           3      3101976562      1       1.00            0.00               1                1.00             1.0        0                NA                 0               0.0     0             NA              0
+VariantSummary  dbsnp             non_CpG  eval              DP50            novel           3      3101976562      1       0.00          100.00               1                0.00             1.0        0                NA                 0               0.0     0             NA              0
+VariantSummary  dbsnp             non_CpG  eval              none            all             3      3101976562    256       2.37           97.66             194                2.32           194.0        0                NA                 0               0.0     0             NA              0
+VariantSummary  dbsnp             non_CpG  eval              none            known           3      3101976562      6       1.00            0.00               5                1.50             5.0        0                NA                 0               0.0     0             NA              0
+VariantSummary  dbsnp             non_CpG  eval              none            novel           3      3101976562    250       2.42          100.00             189                2.36           189.0        0                NA                 0               0.0     0             NA              0
+

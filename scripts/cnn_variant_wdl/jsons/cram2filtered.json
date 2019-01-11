@@ -1,0 +1,21 @@
+{
+  "Cram2FilteredVcf.input_file": "gs://gatk-test-data/wgs_cram/NA12878_20k_hg38/NA12878.cram",
+  "Cram2FilteredVcf.reference_fasta": "gs://broad-references/hg38/v0/Homo_sapiens_assembly38.fasta",
+  "Cram2FilteredVcf.reference_dict": "gs://broad-references/hg38/v0/Homo_sapiens_assembly38.dict",
+  "Cram2FilteredVcf.reference_fasta_index": "gs://broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai",
+  "Cram2FilteredVcf.resource_fofn": "gs://broad-dsde-methods/cnn-variant-score/vcfs/resource_fofn.txt",
+  "Cram2FilteredVcf.resource_fofn_index": "gs://broad-dsde-methods/cnn-variant-score/vcfs/resource_fofn_index.txt",
+  "Cram2FilteredVcf.output_prefix": "hg38_20k_na12878",
+  "Cram2FilteredVcf.info_key": "CNN_2D",
+  "Cram2FilteredVcf.snp_tranches": " --snp-tranche 99.9 ",
+  "Cram2FilteredVcf.indel_tranches": " --indel-tranche 99.5 ",
+  "Cram2FilteredVcf.tensor_type":"read_tensor",
+  "Cram2FilteredVcf.calling_intervals": "gs://broad-references/hg38/v0/wgs_calling_regions.hg38.interval_list",
+  "Cram2FilteredVcf.gatk_docker": "broadinstitute/gatk",
+  "Cram2FilteredVcf.preemptible_attempts": 10,
+  "Cram2FilteredVcf.inference_batch_size": 8,
+  "Cram2FilteredVcf.transfer_batch_size": 32,
+  "Cram2FilteredVcf.mem_gb": 7,
+  "Cram2FilteredVcf.extra_args": "--dont-trim-active-regions -stand-call-conf 0 -A Coverage -A ChromosomeCounts -A BaseQuality -A FragmentLength -A MappingQuality -A ReadPosition ",
+  "Cram2FilteredVcf.scatter_count": 4
+}

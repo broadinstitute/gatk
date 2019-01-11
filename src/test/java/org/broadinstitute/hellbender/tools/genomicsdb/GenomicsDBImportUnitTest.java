@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.genomicsdb;
 
-import com.intel.genomicsdb.GenomicsDBImporter;
+import com.intel.genomicsdb.importer.GenomicsDBImporter;
 import htsjdk.tribble.FeatureReader;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -16,6 +16,8 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.net.URI;
+import java.net.URISyntaxException;
 
 public class GenomicsDBImportUnitTest extends GATKBaseTest {
 
@@ -28,7 +30,7 @@ public class GenomicsDBImportUnitTest extends GATKBaseTest {
                                                         "Sample1\tfile1\n";
 
     @DataProvider
-    public Object[][] getBadTestFiles(){
+    public Object[][] getBadSampleNameMapFiles(){
         return new Object[][]{
                 {"Sample1\tsamplePath\n"
                 +"Sample1\tsamplePath"},        // duplicate sample name
@@ -41,21 +43,44 @@ public class GenomicsDBImportUnitTest extends GATKBaseTest {
                 {"Sample1\tfile1\t"},           // extra tab
                 {"Sample1\nfile"},              // newline instead of tab
                 {"\t"},                         // only tab
-                {"Sample1 file1"},              // non-tab whitespace
-                {"Sample 1\tfile1"},            // white space in a token
+                {"Sample1 file1"},              // 1 column
+                {" name name\tfile1"},          // preceding whitespace
+                {"name name \tfile1"},          // trailing whitespace
         };
     }
 
-    @Test(dataProvider = "getBadTestFiles", expectedExceptions = UserException.BadInput.class)
+    @Test(dataProvider = "getBadSampleNameMapFiles", expectedExceptions = UserException.BadInput.class)
     public void testBadInputFiles(final String text){
         final File sampleFile = IOUtils.writeTempFile(text, "badSampleMapping", ".txt");
         GenomicsDBImport.loadSampleNameMapFile(sampleFile.toPath()  );
     }
 
+    @DataProvider
+    public Object[][] getGoodSampleNameMapFileSyntax(){
+        return new Object[][]{
+                // Note: none of these files are real, these are just valid files syntactically
+                {"Sample1\tsamplePath1 \n"
+                +"Sample2\tsamplePath2", new String[][] {{"Sample1","samplePath1"},{"Sample2","samplePath2"}}},     // normal sample names
+                {"Sample1 001\tFile", new String[][] {{"Sample1 001","File"}}},          // sample names with whitespace
+                {"name name\tfile1 ", new String[][] {{"name name","file1"}}},          // trailing whitespace second column
+                {"name name\t file1 ", new String[][] {{"name name","file1"}}}        // leading and trailing whitespace second colum
+                };
+    }
+
+    @Test(dataProvider = "getGoodSampleNameMapFileSyntax")
+    public void testValidSampleFiles(final String text, final String[][] expectedEntries){
+        final File sampleFile = IOUtils.writeTempFile(text, "goodSampleMapping", ".txt");
+        final LinkedHashMap<String, URI> outputMap = GenomicsDBImport.loadSampleNameMapFile(sampleFile.toPath());
+        Assert.assertEquals(outputMap.size(),expectedEntries.length);
+
+        Arrays.stream(expectedEntries).forEach(s -> { Assert.assertTrue(outputMap.containsKey(s[0]));
+                                                      Assert.assertEquals(outputMap.get(s[0]).toString(),s[1]);});
+    }
+
     @Test
     public void testLoadSampleNameMapFilePreservesOrder(){
         final File sampleFile = IOUtils.writeTempFile(UNORDERED_SAMPLE_MAP, "badSampleMapping", ".txt");
-        final LinkedHashMap<String, Path> unsortedMap = GenomicsDBImport.loadSampleNameMapFile(sampleFile.toPath());
+        final LinkedHashMap<String, URI> unsortedMap = GenomicsDBImport.loadSampleNameMapFile(sampleFile.toPath());
         Assert.assertEquals(new ArrayList<>(unsortedMap.keySet()), Arrays.asList("Sample3", "Sample2", "Sample1"));
     }
 
@@ -70,19 +95,17 @@ public class GenomicsDBImportUnitTest extends GATKBaseTest {
     @Test(dataProvider = "getSampleMaps")
     public void testLoadSampleNameMapFileInSortedOrder(final String sampleMapText){
         final File sampleFile = IOUtils.writeTempFile(sampleMapText, "sampleMapping", ".txt");
-        final Map<String, Path> expected = new LinkedHashMap<>();
-        expected.put("Sample1", Paths.get("file1"));
-        expected.put("Sample2", Paths.get("file2"));
-        expected.put("Sample3", Paths.get("file3"));
-        final Map<String, Path> actual = GenomicsDBImport.loadSampleNameMapFileInSortedOrder(sampleFile.toPath());
+        final Map<String, URI> expected = new LinkedHashMap<>();
+        try {
+            expected.put("Sample1", new URI("file1"));
+            expected.put("Sample2", new URI("file2"));
+            expected.put("Sample3", new URI("file3"));
+        }
+        catch(URISyntaxException e) {
+            throw new RuntimeException("Malformed URI "+e.toString());
+        }
+        final Map<String, URI> actual = GenomicsDBImport.loadSampleNameMapFileInSortedOrder(sampleFile.toPath());
         Assert.assertEquals(actual, expected);
         Assert.assertEquals(actual.keySet().iterator().next(), "Sample1");
-    }
-
-    @Test(expectedExceptions = IllegalArgumentException.class)
-    public void testNullFeatureReadersToFail() {
-        final Map<String, FeatureReader<VariantContext>> sampleToReaderMap = new LinkedHashMap<>();
-        sampleToReaderMap.put("Sample1", null);
-        GenomicsDBImporter.generateSortedCallSetMap(sampleToReaderMap, true, true, 0L);
     }
 }

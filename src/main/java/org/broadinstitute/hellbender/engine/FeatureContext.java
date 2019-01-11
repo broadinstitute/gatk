@@ -1,13 +1,13 @@
 package org.broadinstitute.hellbender.engine;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.tribble.Feature;
+import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import java.nio.file.Path;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -52,7 +52,7 @@ public class FeatureContext {
      * return an empty List.
      */
     public FeatureContext() {
-        this(null, null);
+        this((FeatureManager)null, null);
     }
 
     /**
@@ -66,6 +66,15 @@ public class FeatureContext {
     public FeatureContext(final FeatureManager featureManager, final SimpleInterval interval) {
         this.featureManager = featureManager;
         this.interval = interval;
+    }
+
+    /**
+     * Creates a new FeatureContext given a FeatureContext and a query interval. This will reference the FeatureManager
+     * from the original and use the supplied interval.
+     *
+     */
+    public FeatureContext (FeatureContext featureContext, SimpleInterval interval){
+        this(featureContext.featureManager, interval);
     }
 
     /**
@@ -289,5 +298,33 @@ public class FeatureContext {
      */
     private <T extends Feature> List<T> subsetToStartPosition(final Collection<T> features, final int start) {
         return features.stream().filter(feat -> feat.getStart() == start).collect(Collectors.toList());
+    }
+
+    /**
+     * Convenience method to create a new instance for test methods.
+     * This method should be used for testing only.
+     *
+     * @param featureInputsWithType {@link Map} of a {@link FeatureInput} to the output type that must extend {@link Feature}.
+     *                                         Never {@code null}, but empty list is acceptable.
+     * @param dummyToolInstanceName A name to use for the "tool".  Any string will work here.  Never {@code null}.
+     * @param interval genomic interval for the result.  Typically, this would be the interval of the variant.  Never {@link null}.
+     * @param featureQueryLookahead When querying FeatureDataSources, cache this many extra bases of context beyond
+     *                              the end of query intervals in anticipation of future queries. Must be >= 0.  If uncertain, use zero.
+     * @param cloudPrefetchBuffer See {@link FeatureManager#FeatureManager(CommandLineProgram, int, int, int, Path)}  If uncertain, use zero.
+     * @param cloudIndexPrefetchBuffer See {@link FeatureManager#FeatureManager(CommandLineProgram, int, int, int, Path)}  If uncertain, use zero.
+     * @param reference See {@link FeatureManager#FeatureManager(CommandLineProgram, int, int, int, Path)}  If uncertain, use {@code null}.
+     */
+    @VisibleForTesting
+    public static FeatureContext createFeatureContextForTesting(final Map<FeatureInput<? extends Feature>, Class<? extends Feature>> featureInputsWithType, final String dummyToolInstanceName,
+                                                      final SimpleInterval interval, final int featureQueryLookahead, final int cloudPrefetchBuffer,
+                                                      final int cloudIndexPrefetchBuffer, final Path reference) {
+        Utils.nonNull(featureInputsWithType);
+        Utils.nonNull(dummyToolInstanceName);
+        Utils.nonNull(interval);
+
+        final FeatureManager featureManager = new FeatureManager(featureInputsWithType, dummyToolInstanceName,
+                featureQueryLookahead, cloudPrefetchBuffer, cloudIndexPrefetchBuffer, reference);
+
+        return new FeatureContext(featureManager, interval);
     }
 }

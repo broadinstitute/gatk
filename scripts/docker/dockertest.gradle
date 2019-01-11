@@ -1,0 +1,88 @@
+
+buildscript {
+    repositories {
+        mavenCentral()
+        jcenter() // for shadow plugin
+     }
+}
+
+
+plugins {
+    id "java"           // set up default java compile and test tasks
+    id "jacoco"
+}
+
+repositories {
+    mavenCentral()
+    jcenter()
+    maven {
+        url "https://broadinstitute.jfrog.io/broadinstitute/libs-snapshot/" //for htsjdk snapshots
+    }
+    mavenLocal()
+}
+
+apply from: "testsettings.gradle"
+
+// This method unpacks the classes from a jar. This is necessary because the version of testNG we use cannot discover test
+// classes from fram a .jar file, so we must unpackage them in order to run the tests.
+task unpackTestJar(type: Copy){
+    String testClassesJar = "$System.env.TEST_JAR"
+    String testClassesDir = "$System.env.CP_DIR"
+
+    description = "Unpackage classes from 'System.env.TEST_JAR' into 'System.env.CP_DIR'"
+
+    if (testClassesJar != "null"){
+        from zipTree(testClassesJar)
+        into testClassesDir
+    }
+}
+
+task testOnPackagedReleaseJar(type: Test){
+    String testClassesJar = "$System.env.TEST_JAR"
+    String testDependencyJar = "$System.env.TEST_DEPENDENCY_JAR"
+    String gatkJar = "$System.env.GATK_JAR"
+    String testClassesUnpacked = "$System.env.CP_DIR"
+
+    description = "A test task intended to be run on the release jar inside the docker image of gatk with dependencies provided as volumes"
+
+    dependsOn unpackTestJar
+
+    doFirst {
+        if (testDependencyJar == "null") {
+            throw new GradleException("Environment variable 'TEST_DEPENDENCY_JAR' not specified")
+        }
+        if (gatkJar == "null") {
+            throw new GradleException("Environment variable 'GATK_JAR' not specified")
+        }
+        if (testClassesJar == "null") {
+            throw new GradleException("Environment variable 'TEST_JAR' not specified")
+        }
+        logger.lifecycle("The classpath used for this test:")
+        classpath.each {println it}
+    }
+
+    classpath = files( gatkJar, testDependencyJar, testClassesJar)
+    testClassesDir = file(testClassesUnpacked)
+}
+
+// Task intended to collect coverage data from testOnPackagedReleaseJar executed inside the docker image
+// the classpath for these tests is set at execution time for testOnPackagedReleaseJar
+task jacocoTestReportOnPackagedReleaseJar(type: JacocoReport) {
+    String sourceFiles = "$System.env.SOURCE_DIR"
+    String testClassesUnpacked = "$System.env.CP_DIR"
+
+    dependsOn testOnPackagedReleaseJar
+    executionData testOnPackagedReleaseJar
+    additionalSourceDirs = files(sourceSets.main.allJava.srcDirs)
+
+    sourceDirectories = files(sourceFiles)
+    classDirectories =  files(testClassesUnpacked)
+
+    group = "Reporting"
+    description = "Generate Jacoco coverage reports after running tests inside the docker image."
+
+    reports {
+        xml.enabled = true
+        html.enabled = true
+    }
+}

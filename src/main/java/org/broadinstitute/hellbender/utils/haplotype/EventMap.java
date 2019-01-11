@@ -12,10 +12,12 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 
 import java.io.Serializable;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Extract simple VariantContext events from a single haplotype
@@ -34,14 +36,13 @@ public final class EventMap extends TreeMap<Integer, VariantContext> {
     private final Locatable refLoc;
     private final String sourceNameToAdd;
 
-    public EventMap(final Haplotype haplotype, final byte[] ref, final Locatable refLoc, final String sourceNameToAdd) {
+    public EventMap(final Haplotype haplotype, final byte[] ref, final Locatable refLoc, final String sourceNameToAdd, final int maxMnpDistance) {
         super();
         this.haplotype = haplotype;
         this.ref = ref;
         this.refLoc = refLoc;
         this.sourceNameToAdd = sourceNameToAdd;
-
-        processCigarForInitialEvents();
+        processCigarForInitialEvents(maxMnpDistance);
     }
 
     /**
@@ -57,7 +58,16 @@ public final class EventMap extends TreeMap<Integer, VariantContext> {
             addVC(vc);
     }
 
-    protected void processCigarForInitialEvents() {
+    /**
+     *
+     * @param maxMnpDistance Phased substitutions separated by this distance or less are merged into MNPs.  More than
+     *                       two substitutions occuring in the same alignment block (ie the same M/X/EQ CIGAR element)
+     *                       are merged until a substitution is separated from the previous one by a greater distance.
+     *                       That is, if maxMnpDistance = 1, substitutions at 10,11,12,14,15,17 are partitioned into a MNP
+     *                       at 10-12, a MNP at 14-15, and a SNP at 17.  May not be negative.
+     */
+    protected void processCigarForInitialEvents(final int maxMnpDistance) {
+        ParamUtils.isPositiveOrZero(maxMnpDistance, "maxMnpDistance may not be negative.");
         final Cigar cigar = haplotype.getCigar();
         final byte[] alignment = haplotype.getBases();
 
@@ -126,20 +136,30 @@ public final class EventMap extends TreeMap<Integer, VariantContext> {
                 case EQ:
                 case X:
                 {
-                    for( int iii = 0; iii < elementLength; iii++ ) {
-                        final byte refByte = ref[refPos];
-                        final byte altByte = alignment[alignmentPos];
-                        if( refByte != altByte ) { // SNP!
-                            if( BaseUtils.isRegularBase(refByte) && BaseUtils.isRegularBase(altByte) ) {
-                                final List<Allele> snpAlleles = new ArrayList<>();
-                                snpAlleles.add( Allele.create( refByte, true ) );
-                                snpAlleles.add( Allele.create( altByte, false ) );
-                                proposedEvents.add(new VariantContextBuilder(sourceNameToAdd, refLoc.getContig(), refLoc.getStart() + refPos, refLoc.getStart() + refPos, snpAlleles).make());
-                            }
+                    final Queue<Integer> mismatchOffsets = new ArrayDeque<>();    // a FIFO queue of substitutions
+                    for( int offset = 0; offset < elementLength; offset++ ) {
+                        final byte refByte = ref[refPos + offset ];
+                        final byte altByte = alignment[alignmentPos + offset];
+                        final boolean mismatch = refByte != altByte && BaseUtils.isRegularBase(refByte) && BaseUtils.isRegularBase(altByte);
+                        if (mismatch) {
+                            mismatchOffsets.add(offset);
                         }
-                        refPos++;
-                        alignmentPos++;
                     }
+
+                    while (!mismatchOffsets.isEmpty()) {
+                        final int start = mismatchOffsets.poll();
+                        int end = start;
+                        while (!mismatchOffsets.isEmpty() && mismatchOffsets.peek() - end <= maxMnpDistance) {
+                            end = mismatchOffsets.poll();
+                        }
+                        final Allele refAllele = Allele.create(Arrays.copyOfRange(ref, refPos + start, refPos + end + 1), true);
+                        final Allele altAllele = Allele.create(Arrays.copyOfRange(alignment, alignmentPos + start, alignmentPos + end + 1), false);
+                        proposedEvents.add(new VariantContextBuilder(sourceNameToAdd, refLoc.getContig(), refLoc.getStart() + refPos + start, refLoc.getStart() + refPos + end, Arrays.asList(refAllele, altAllele)).make());
+                    }
+
+                    // move refPos and alignmentPos forward to the end of this cigar element
+                    refPos += elementLength;
+                    alignmentPos += elementLength;
                     break;
                 }
                 case N:
@@ -339,12 +359,19 @@ public final class EventMap extends TreeMap<Integer, VariantContext> {
      * @param ref the reference bases
      * @param refLoc the span of the reference bases
      * @param debug if true, we'll emit debugging information during this operation
+     * @param maxMnpDistance Phased substitutions separated by this distance or less are merged into MNPs.  More than
+     *                       two substitutions occuring in the same alignment block (ie the same M/X/EQ CIGAR element)
+     *                       are merged until a substitution is separated from the previous one by a greater distance.
+     *                       That is, if maxMnpDistance = 1, substitutions at 10,11,12,14,15,17 are partitioned into a MNP
+     *                       at 10-12, a MNP at 14-15, and a SNP at 17.  May not be negative.
      * @return a sorted set of start positions of all events among all haplotypes
      */
     public static TreeSet<Integer> buildEventMapsForHaplotypes( final List<Haplotype> haplotypes,
                                                                 final byte[] ref,
                                                                 final Locatable refLoc,
-                                                                final boolean debug) {
+                                                                final boolean debug,
+                                                                final int maxMnpDistance) {
+        ParamUtils.isPositiveOrZero(maxMnpDistance, "maxMnpDistance may not be negative.");
         // Using the cigar from each called haplotype figure out what events need to be written out in a VCF file
         final TreeSet<Integer> startPosKeySet = new TreeSet<>();
         int hapNumber = 0;
@@ -352,7 +379,7 @@ public final class EventMap extends TreeMap<Integer, VariantContext> {
         if( debug ) logger.info("=== Best Haplotypes ===");
         for( final Haplotype h : haplotypes ) {
             // Walk along the alignment and turn any difference from the reference into an event
-            h.setEventMap(new EventMap(h, ref, refLoc, "HC" + hapNumber++));
+            h.setEventMap(new EventMap(h, ref, refLoc, "HC" + hapNumber++, maxMnpDistance));
             startPosKeySet.addAll(h.getEventMap().getStartPositions());
 
             if( debug ) {
@@ -363,6 +390,13 @@ public final class EventMap extends TreeMap<Integer, VariantContext> {
         }
 
         return startPosKeySet;
+    }
+
+    /**
+     * Returns any events in the map that overlap loc, including spanning deletions and events that start at loc.
+     */
+    public List<VariantContext> getOverlappingEvents(final int loc) {
+        return headMap(loc, true).values().stream().filter(v -> v.getEnd() >= loc).collect(Collectors.toList());
     }
 
     private static class VariantContextComparator implements Comparator<VariantContext>, Serializable {

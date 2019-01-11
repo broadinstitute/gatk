@@ -56,8 +56,7 @@ public abstract class TwoPassReadWalker extends ReadWalker {
      * @param f function applied to each read, should produce some useful side effect
      */
     private void traverseReads(final CountingReadFilter countedFilter, final GATKApply f) {
-        Utils.stream(reads)
-                .filter(countedFilter)
+        getTransformedReadStream(countedFilter)
                 .forEach(read -> {
                     final SimpleInterval readInterval = getReadInterval(read);
                     f.consume(read,

@@ -17,11 +17,14 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * List samples that are non-reference at a given site
+ * List samples that are non-reference at a given variant site
  *
- * <p>The output is a list of the samples that are genotyped as having one or more variant alleles. This allows you to easily determine which samples are non-reference (heterozygous or homozygous-variant) and compare them to samples that are homozygous-reference.</p>
+ * <p>The output is a list of the samples that are genotyped as having one or more variant alleles. This allows you to
+ * easily determine which samples are non-reference (heterozygous or homozygous-variant) and compare them to samples
+ * that are homozygous-reference. This annotation is particularly useful for large cohorts where the genotype fields are
+ * difficult to manually match with sample names.</p>
  */
-@DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="List samples that are non-REF at site (Samples)")
+@DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="List of samples that are not homozygous reference at a variant site (Samples)")
 public final class SampleList extends InfoFieldAnnotation {
 
     @Override

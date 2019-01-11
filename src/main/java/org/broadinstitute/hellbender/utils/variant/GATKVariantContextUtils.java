@@ -1,8 +1,10 @@
 package org.broadinstitute.hellbender.utils.variant;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.util.CollectionUtil;
+import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Locatable;
-import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.TribbleException;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.Options;
@@ -10,6 +12,7 @@ import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeaderLine;
+import htsjdk.variant.vcf.VCFSimpleHeaderLine;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.ArrayUtils;
@@ -17,11 +20,12 @@ import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAlleleCounts;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculator;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculators;
-import org.broadinstitute.hellbender.utils.*;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
+import org.broadinstitute.hellbender.utils.BaseUtils;
+import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.io.File;
 import java.io.Serializable;
@@ -46,6 +50,30 @@ public final class GATKVariantContextUtils {
 
     public static boolean isInformative(final double[] gls) {
         return MathUtils.sum(gls) < GATKVariantContextUtils.SUM_GL_THRESH_NOCALL;
+    }
+
+    /**
+     * A method that constructs a mutable set of VCF header lines containing the tool name, version, date and command line,
+     * and return to the requesting tool.
+     * @param toolkitShortName  short name for the tool kit, e.g. "gatk"
+     * @param toolName          name of the tool
+     * @param versionString     version of the tool
+     * @param dateTime          date and time at invocation of the tool
+     * @param cmdLine           command line (e.g. options, flags) when the tool is invoked.
+     * @return A mutable set of VCF header lines containing the tool name, version, date and command line.
+     */
+    public static Set<VCFHeaderLine> getDefaultVCFHeaderLines(final String toolkitShortName, final String toolName,
+                                                              final String versionString, final String dateTime,
+                                                              final String cmdLine) {
+        final Set<VCFHeaderLine> defaultVCFHeaderLines = new HashSet<>();
+        final Map<String, String> simpleHeaderLineMap = new HashMap<>(4);
+        simpleHeaderLineMap.put("ID", toolName);
+        simpleHeaderLineMap.put("Version", versionString);
+        simpleHeaderLineMap.put("Date", dateTime);
+        simpleHeaderLineMap.put("CommandLine", cmdLine);
+        defaultVCFHeaderLines.add(new VCFHeaderLine("source", toolName));
+        defaultVCFHeaderLines.add(new VCFSimpleHeaderLine(String.format("%sCommandLine", toolkitShortName), simpleHeaderLineMap));
+        return defaultVCFHeaderLines;
     }
 
     /**
@@ -105,7 +133,7 @@ public final class GATKVariantContextUtils {
             return VariantContextWriterBuilder.OutputType.VCF;
         } else if (extension.equals(VcfUtils.BCF_FILE_EXTENSION)) {
             return VariantContextWriterBuilder.OutputType.BCF;
-        } else if (AbstractFeatureReader.hasBlockCompressedExtension(outputFile.getPath())) {
+        } else if (IOUtil.hasBlockCompressedExtension(outputFile.getPath())) {
             return VariantContextWriterBuilder.OutputType.BLOCK_COMPRESSED_VCF;
         }
         return VariantContextWriterBuilder.OutputType.UNSPECIFIED;
@@ -118,54 +146,6 @@ public final class GATKVariantContextUtils {
      */
     @Deprecated
     public final static List<Allele> NO_CALL_ALLELES = Arrays.asList(Allele.NO_CALL, Allele.NO_CALL);
-
-
-    /**
-     * Checks whether a variant-context overlaps with a region.
-     *
-     * <p>
-     *     No event overlaps an unmapped region.
-     * </p>
-     *
-     * @param variantContext variant-context to test the overlap with.
-     * @param region region to test the overlap with.
-     *
-     * @throws IllegalArgumentException if either region or event is {@code null}.
-     *
-     * @return {@code true} if there is an overlap between the event described and the active region provided.
-     */
-    public static boolean overlapsRegion(final VariantContext variantContext, final GenomeLoc region) {
-        Utils.nonNull(region, "the active region is null");
-        Utils.nonNull(variantContext);
-
-        if (region.isUnmapped())
-            return false;
-        if (variantContext.getEnd() < region.getStart())
-            return false;
-        if (variantContext.getStart() > region.getStop())
-            return false;
-        return variantContext.getContig().equals(region.getContig());
-    }
-
-    /**
-     * Checks whether a variant-context overlaps with a region.
-     *
-     * @param variantContext variant-context to test the overlap with.
-     * @param region region to test the overlap with.
-     *
-     * @throws IllegalArgumentException if either region or event is {@code null}.
-     *
-     * @return {@code true} if there is an overlap between the event described and the active region provided.
-     */
-    public static boolean overlapsRegion(final VariantContext variantContext, final SimpleInterval region) {
-        Utils.nonNull(region, "the active region is null");
-        Utils.nonNull(variantContext);
-        if (variantContext.getEnd() < region.getStart())
-            return false;
-        if (variantContext.getStart() > region.getEnd())
-            return false;
-        return variantContext.getContig().equals(region.getContig());
-    }
 
     private static boolean hasPLIncompatibleAlleles(final Collection<Allele> alleleSet1, final Collection<Allele> alleleSet2) {
         final Iterator<Allele> it1 = alleleSet1.iterator();
@@ -271,7 +251,11 @@ public final class GATKVariantContextUtils {
                                         final GenotypeBuilder gb,
                                         final GenotypeAssignmentMethod assignmentMethod,
                                         final double[] genotypeLikelihoods,
-                                        final List<Allele> allelesToUse) {
+                                        final List<Allele> allelesToUse,
+                                        final List<Allele> originalGT) {
+        if(originalGT == null && assignmentMethod == GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL) {
+            throw new IllegalArgumentException("origianlGT cannot be null if assignmentMethod is BEST_MATCH_TO_ORIGINAL");
+        }
         if (assignmentMethod == GenotypeAssignmentMethod.SET_TO_NO_CALL) {
             gb.alleles(noCallAlleles(ploidy)).noGQ();
         } else if (assignmentMethod == GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN) {
@@ -288,7 +272,43 @@ public final class GATKVariantContextUtils {
                     gb.log10PError(GenotypeLikelihoods.getGQLog10FromLikelihoods(maxLikelihoodIndex, genotypeLikelihoods));
                 }
             }
+        } else if (assignmentMethod == GenotypeAssignmentMethod.SET_TO_NO_CALL_NO_ANNOTATIONS) {
+            gb.alleles(noCallAlleles(ploidy)).noGQ().noAD().noPL().noAttributes();
+        } else if (assignmentMethod == GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL) {
+            final List<Allele> best = new LinkedList<>();
+            final Allele ref = allelesToUse.get(0);
+            for (final Allele originalAllele : originalGT) {
+                best.add((allelesToUse.contains(originalAllele) || originalAllele.isNoCall()) ? originalAllele : ref);
+            }
+            gb.alleles(best);
         }
+    }
+
+    public static void makeGenotypeCall(final int ploidy,
+                                        final GenotypeBuilder gb,
+                                        final GenotypeAssignmentMethod assignmentMethod,
+                                        final double[] genotypeLikelihoods,
+                                        final List<Allele> allelesToUse){
+        makeGenotypeCall(ploidy,gb,assignmentMethod,genotypeLikelihoods,allelesToUse,null);
+    }
+
+    /**
+     * Return the rightmost variant context in maybeOverlapping that overlaps curPos
+     *
+     * @param curPos non-null genome loc
+     * @param maybeOverlapping a collection of variant contexts that might overlap curPos
+     * @return the rightmost VariantContext, or null if none overlaps
+     */
+    public static VariantContext getOverlappingVariantContext(final Locatable curPos, final Collection<VariantContext> maybeOverlapping) {
+        VariantContext overlaps = null;
+        for ( final VariantContext vc : maybeOverlapping ) {
+            if ( curPos.overlaps(vc) ) {
+                if ( overlaps == null || vc.getStart() > overlaps.getStart() ) {
+                    overlaps = vc;
+                }
+            }
+        }
+        return overlaps;
     }
 
     public enum GenotypeMergeType {
@@ -886,7 +906,7 @@ public final class GATKVariantContextUtils {
         return loc == null || loc.getStart() == vc.getStart();
     }
 
-    private static AlleleMapper resolveIncompatibleAlleles(final Allele refAllele, final VariantContext vc, final LinkedHashSet<Allele> allAlleles) {
+    public static AlleleMapper resolveIncompatibleAlleles(final Allele refAllele, final VariantContext vc, final LinkedHashSet<Allele> allAlleles) {
         if ( refAllele.equals(vc.getReference()) )
             return new AlleleMapper(vc);
         else {
@@ -914,7 +934,7 @@ public final class GATKVariantContextUtils {
      * @param currentAlleles     the list of alleles already created
      * @return a non-null mapping of original alleles to new (extended) ones
      */
-    private static Map<Allele, Allele> createAlleleMapping(final Allele refAllele,
+    public static Map<Allele, Allele> createAlleleMapping(final Allele refAllele,
                                                            final VariantContext oneVC,
                                                            final Collection<Allele> currentAlleles) {
         final Allele myRef = oneVC.getReference();
@@ -923,20 +943,22 @@ public final class GATKVariantContextUtils {
 
         final Map<Allele, Allele> map = new LinkedHashMap<>();
         for ( final Allele a : oneVC.getAlternateAlleles() ) {
-            if ( isUsableAlternateAllele(a) ) {
+            if ( isNonSymbolicExtendableAllele(a) ) {
                 Allele extended = Allele.extend(a, extraBases);
                 for ( final Allele b : currentAlleles )
                     if ( extended.equals(b) )
                         extended = b;
                 map.put(a, extended);
+            } else if (a.equals(Allele.SPAN_DEL)) {
+                map.put(a, a);
             }
         }
 
         return map;
     }
 
-    private static boolean isUsableAlternateAllele(final Allele allele) {
-        return ! (allele.isReference() || allele.isSymbolic() );
+    private static boolean isNonSymbolicExtendableAllele(final Allele allele) {
+        return ! (allele.isReference() || allele.isSymbolic() || allele.equals(Allele.SPAN_DEL));
     }
 
     public static List<VariantContext> sortVariantContextsByPriority(Collection<VariantContext> unsortedVCs, List<String> priorityListOfVCs, GenotypeMergeType mergeOption ) {
@@ -1243,6 +1265,78 @@ public final class GATKVariantContextUtils {
     }
 
     /**
+     * Split variant context into its biallelic components if there are more than 2 alleles
+     * <p>
+     * For VC has A/B/C alleles, returns A/B and A/C contexts.
+     * Alleles are right trimmed to satisfy VCF conventions
+     * <p>
+     * If vc is biallelic or non-variant it is just returned
+     * <p>
+     * Chromosome counts are updated (but they are by definition 0)
+     *
+     * @param vc                       a potentially multi-allelic variant context
+     * @param trimLeft                 if true, we will also left trim alleles, potentially moving the resulting vcs forward on the genome
+     * @param genotypeAssignmentMethod assignment strategy for the (subsetted) PLs
+     * @param keepOriginalChrCounts    keep the orignal chromosome counts before subsetting
+     * @return a list of bi-allelic (or monomorphic) variant context
+     */
+    public static List<VariantContext> splitVariantContextToBiallelics(final VariantContext vc, final boolean trimLeft, final GenotypeAssignmentMethod genotypeAssignmentMethod,
+                                                                       final boolean keepOriginalChrCounts) {
+        Utils.nonNull(vc);
+
+        if (!vc.isVariant() || vc.isBiallelic())
+            // non variant or biallelics already satisfy the contract
+            return Collections.singletonList(vc);
+        else {
+            final List<VariantContext> biallelics = new LinkedList<>();
+
+            // if any of the genotypes are het-not-ref (i.e. 1/2), set all of them to no-call
+            final GenotypeAssignmentMethod genotypeAssignmentMethodUsed = hasHetNonRef(vc.getGenotypes()) ? GenotypeAssignmentMethod.SET_TO_NO_CALL_NO_ANNOTATIONS : genotypeAssignmentMethod;
+
+            for (final Allele alt : vc.getAlternateAlleles()) {
+                final VariantContextBuilder builder = new VariantContextBuilder(vc);
+
+                // make biallelic alleles
+                final List<Allele> alleles = Arrays.asList(vc.getReference(), alt);
+                builder.alleles(alleles);
+
+                // since the VC has been subset, remove the invalid attributes
+                for (final String key : vc.getAttributes().keySet()) {
+                    if (!(key.equals(VCFConstants.ALLELE_COUNT_KEY) || key.equals(VCFConstants.ALLELE_FREQUENCY_KEY) || key.equals(VCFConstants.ALLELE_NUMBER_KEY)) ||
+                            genotypeAssignmentMethodUsed == GenotypeAssignmentMethod.SET_TO_NO_CALL_NO_ANNOTATIONS) {
+                        builder.rmAttribute(key);
+                    }
+                }
+
+                // subset INFO field annotations if available if genotype is called
+                if (genotypeAssignmentMethodUsed != GenotypeAssignmentMethod.SET_TO_NO_CALL_NO_ANNOTATIONS &&
+                        genotypeAssignmentMethodUsed != GenotypeAssignmentMethod.SET_TO_NO_CALL)
+                    AlleleSubsettingUtils.addInfoFieldAnnotations(vc, builder, keepOriginalChrCounts);
+
+                builder.genotypes(AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(),2,vc.getAlleles(), alleles, genotypeAssignmentMethodUsed,vc.getAttributeAsInt("DP",0)));
+                final VariantContext trimmed = trimAlleles(builder.make(), trimLeft, true);
+                biallelics.add(trimmed);
+            }
+
+            return biallelics;
+        }
+    }
+
+    /**
+     * Check if any of the genotypes is heterozygous, non-reference (i.e. 1/2)
+     *
+     * @param genotypesContext genotype information
+     * @return true if any of the genotypes are heterozygous, non-reference, false otherwise
+     */
+    private static boolean hasHetNonRef(final GenotypesContext genotypesContext) {
+        for (final Genotype gt : genotypesContext) {
+            if (gt.isHetNonRef())
+                return true;
+        }
+        return false;
+    }
+
+    /**
      * Splits the alleles for the provided variant context into its primitive parts.
      * Requires that the input VC be bi-allelic, so calling methods should first call splitVariantContextToBiallelics() if needed.
      * Currently works only for MNPs.
@@ -1484,6 +1578,323 @@ public final class GATKVariantContextUtils {
         filtersAsList.add(filterToAppend);
         filtersAsList.sort(String::compareToIgnoreCase);
         return filtersAsList;
+    }
+
+    /**
+     * Determines whether the given reference and alternate alleles constitute a frameshift mutation.
+     * @param reference The reference {@link Allele}.  Must not be {@code null}.
+     * @param alternate The alternate / variant {@link Allele}.  Must not be {@code null}.
+     * @return {@code true} if replacing the reference with the alternate results in a frameshift.  {@code false} otherwise.
+     */
+    public static boolean isFrameshift(final Allele reference, final Allele alternate) {
+
+        Utils.nonNull(reference);
+        Utils.nonNull(alternate);
+
+        // We know it's a frameshift if we have a replacement that is not of a
+        // length evenly divisible by 3 because that's how many bases are read at once:
+        return ((Math.abs( reference.length() - alternate.length() ) % 3) != 0);
+    }
+
+    /**
+     * Determines whether the given reference and alternate alleles constitute a frameshift mutation.
+     * @param reference The {@link String} containing the bases of the reference allele.  Must not be {@code null}.
+     * @param alternate The {@link String} containing the bases of the alternate allele.  Must not be {@code null}.
+     * @return {@code true} if replacing the reference with the alternate results in a frameshift.  {@code false} otherwise.
+     */
+    public static boolean isFrameshift(final String reference, final String alternate) {
+
+        Utils.nonNull(reference);
+        Utils.nonNull(alternate);
+
+        final String refComparable = reference.replaceAll("\\*", "");
+        final String altComperable = alternate.replaceAll("\\*", "");
+
+        // We know it's a frameshift if we have a replacement that is not of a
+        // length evenly divisible by 3 because that's how many bases are read at once:
+        return ((Math.abs( refComparable.length() - altComperable.length() ) % 3) != 0);
+    }
+
+    /**
+     * Determines whether the given reference and alternate alleles constitute a frameshift mutation.
+     * This does not take into account the cases where either or both of the alleles overlap splice sites.
+     * @param startPos Genomic start position (1-based, inclusive) of the variant.  Must be > 0.
+     * @param refEnd Genomic end position (1-based, inclusive) of the reference allele.  Must be > 0.
+     * @param altEnd Genomic end position (1-based, inclusive) of the alternate allele.  Must be > 0.
+     * @return {@code true} if replacing the reference with the alternate results in a frameshift.  {@code false} otherwise.
+     */
+    public static boolean isFrameshift(final int startPos, final int refEnd, final int altEnd) {
+
+        ParamUtils.isPositive( startPos, "Genomic positions must be > 0." );
+        ParamUtils.isPositive( refEnd, "Genomic positions must be > 0." );
+        ParamUtils.isPositive( altEnd, "Genomic positions must be > 0." );
+
+        final int refLength = refEnd - startPos + 1;
+        final int altLength = altEnd - startPos + 1;
+
+        // We know it's a frameshift if we have a replacement that is not of a
+        // length evenly divisible by 3 because that's how many bases are read at once:
+        return ((Math.abs( refLength - altLength ) % 3) != 0);
+    }
+
+    /**
+     * Determines whether the given reference and alternate alleles constitute an insertion mutation.
+     * @param reference The reference {@link Allele}.   Must not be {@code null}.
+     * @param alternate The alternate / variant {@link Allele}.   Must not be {@code null}.
+     * @return {@code true} if replacing the reference with the alternate results in an insertion.  {@code false} otherwise.
+     */
+    public static boolean isInsertion(final Allele reference, final Allele alternate) {
+
+        Utils.nonNull(reference);
+        Utils.nonNull(alternate);
+
+        // If we have more bases in the alternate, we have an insertion:
+        return reference.length() < alternate.length();
+    }
+
+    /**
+     * Determines whether the given reference and alternate alleles constitute an insertion mutation.
+     * @param reference A {@link String} containing the bases of the reference allele.  Must not be {@code null}.
+     * @param alternate A {@link String} containing the bases of the alternate / variant allele.  Must not be {@code null}.
+     * @return {@code true} if replacing the reference with the alternate results in an insertion.  {@code false} otherwise.
+     */
+    public static boolean isInsertion(final String reference, final String alternate) {
+
+        Utils.nonNull(reference);
+        Utils.nonNull(alternate);
+
+        final String refComparable = reference.replaceAll("\\*", "");
+        final String altComperable = alternate.replaceAll("\\*", "");
+
+        // If we have more bases in the alternate, we have an insertion:
+        return refComparable.length() < altComperable.length();
+    }
+
+    /**
+     * Determines whether the given reference and alternate alleles constitute a deletion mutation.
+     * @param reference A {@link String} containing the bases of the reference allele.  Must not be {@code null}.
+     * @param alternate A {@link String} containing the bases of the alternate / variant allele.  Must not be {@code null}.
+     * @return {@code true} if replacing the reference with the alternate results in a deletion.  {@code false} otherwise.
+     */
+    public static boolean isDeletion(final String reference, final String alternate) {
+
+        Utils.nonNull(reference);
+        Utils.nonNull(alternate);
+
+        final String refComparable = reference.replaceAll("\\*", "");
+        final String altComperable = alternate.replaceAll("\\*", "");
+
+        // If we have fewer bases in the alternate, we have a deletion:
+        return refComparable.length() > altComperable.length();
+    }
+
+    /**
+     * Determines whether the given reference and alternate alleles constitute a deletion mutation.
+     * @param reference The reference {@link Allele}.  Must not be {@code null}.
+     * @param alternate The alternate / variant {@link Allele}.  Must not be {@code null}.
+     * @return {@code true} if replacing the reference with the alternate results in a deletion.  {@code false} otherwise.
+     */
+    public static boolean isDeletion(final Allele reference, final Allele alternate) {
+
+        Utils.nonNull(reference);
+        Utils.nonNull(alternate);
+
+        // If we have fewer bases in the alternate, we have a deletion:
+        return reference.length() > alternate.length();
+    }
+
+    /**
+     * Determines whether the given reference and alternate alleles constitute an insertion or deletion mutation.
+     * @param reference A {@link String} containing the bases of the reference allele.  Must not be {@code null}.
+     * @param alternate A {@link String} containing the bases of the alternate / variant allele.  Must not be {@code null}.
+     * @return {@code true} if replacing the reference with the alternate results in an insertion or deletion.  {@code false} otherwise.
+     */
+    public static boolean isIndel(final String reference, final String alternate) {
+
+        Utils.nonNull(reference);
+        Utils.nonNull(alternate);
+
+        final String refComparable = reference.replaceAll("\\*", "");
+        final String altComperable = alternate.replaceAll("\\*", "");
+
+        // If we do not have the same number of bases in the reference and alternate alleles,
+        // then we have an indel:
+        return refComparable.length() != altComperable.length();
+    }
+
+    /**
+     * Determines whether the given reference and alternate alleles constitute an insertion or deletion mutation.
+     * @param reference The reference {@link Allele}.  Must not be {@code null}.
+     * @param alternate The alternate / variant {@link Allele}.  Must not be {@code null}.
+     * @return {@code true} if replacing the reference with the alternate results in an insertion or deletion.  {@code false} otherwise.
+     */
+    public static boolean isIndel(final Allele reference, final Allele alternate) {
+
+        Utils.nonNull(reference);
+        Utils.nonNull(alternate);
+
+        // If we do not have the same number of bases in the reference and alternate alleles,
+        // then we have an indel:
+        return reference.length() != alternate.length();
+    }
+
+    /**
+     * Determines whether the given reference and alternate alleles constitute a polymorphism in one or more nucleotides (XNP).
+     * @param reference The reference {@link Allele}.  Must not be {@code null}.
+     * @param alternate The alternate / variant {@link Allele}.  Must not be {@code null}.
+     * @return {@code true} if replacing the reference with the alternate results in an XNP.  {@code false} otherwise.
+     */
+    public static boolean isXnp(final Allele reference, final Allele alternate) {
+
+        Utils.nonNull(reference);
+        Utils.nonNull(alternate);
+
+        // If we have an equal number of bases in the reference and the alternate, we have an ONP:
+        return (reference.length() == alternate.length()) && (!reference.equals(alternate));
+    }
+
+    /**
+     * Determines whether the given reference and alternate alleles constitute a polymorphism in one or more nucleotides (XNP).
+     * @param reference A {@link String} containing the bases of the reference allele.  Must not be {@code null}.
+     * @param alternate A {@link String} containing the bases of the alternate / variant allele.  Must not be {@code null}.
+     * @return {@code true} if replacing the reference with the alternate results in an XNP.  {@code false} otherwise.
+     */
+    public static boolean isXnp(final String reference, final String alternate) {
+
+        Utils.nonNull(reference);
+        Utils.nonNull(alternate);
+
+        final String refComparable = reference.replaceAll("\\*", "");
+        final String altComperable = alternate.replaceAll("\\*", "");
+
+        // If we have an equal number of bases in the reference and the alternate, we have an ONP:
+        return ((refComparable.length() == altComperable.length()) && (!refComparable.equals(altComperable)));
+    }
+
+    /**
+     * @param vc {@link VariantContext to test}
+     * @return true if the only alternate allele for this VariantContext is a spanning deletion, otherwise false.
+     */
+    public static boolean isSpanningDeletionOnly(final VariantContext vc){
+        return vc.getAlternateAlleles().size() == 1 && GATKVCFConstants.isSpanningDeletion(vc.getAlternateAllele(0));
+    }
+
+    /**
+     *
+     * Attempt to match allele ref/alt pairs, even if the allele pairs in the given variant contexts are equivalent,
+     *  but not exact.
+     *
+     * For example, if variant 1 and variant2 have the same position, but
+     * Variant 1: "A", T", "C"
+     * Variant 2: "ACCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT", "TCCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT", "A", "AC"
+     *
+     * Then the returned array would be:  {0, -1}
+     * Since A>T matches in variant1 matches the the first alt allele in variant 2.  And A>C does not match any allele
+     *  in variant 2.
+     *
+     * Do not use this method for doing a full split of a variant context into biallelic components.  This method
+     *  ignores (and drops) genotypes and INFO attributes.  It is really meant just for alleles, but works on a
+     *  VariantContext to better leverage existing code in
+     *  {@link GATKVariantContextUtils#trimAlleles(VariantContext, boolean, boolean)}
+     *
+     * @param variant1 Never {@code null}
+     * @param variant2 Never {@code null}
+     * @return Returns indexes into the alternate alleles of variant2.  Note that this method assumes that (when biallelic) the variant
+     *  contexts are already trimmed.  See {@link GATKVariantContextUtils#trimAlleles(VariantContext, boolean, boolean)}
+     *  Never {@code null}.  The length will be equal to the number of alternate alleles in variant1.  A value of -1
+     *  indicates no match in variant2.  If the reference alleles do not match, the output array will be populated
+     *  exclusively with -1.
+     */
+    public static int[] matchAllelesOnly(final VariantContext variant1, final VariantContext variant2) {
+        Utils.nonNull(variant1);
+        Utils.nonNull(variant2);
+
+        // Grab the trivial case:
+        if (variant1.isBiallelic() && variant2.isBiallelic()) {
+            if (variant1.getAlternateAllele(0).equals(variant2.getAlternateAllele(0)) &&
+                    (variant1.getReference().equals(variant2.getReference()))) {
+                return new int[]{0};
+            } else {
+                return new int[]{-1};
+            }
+        }
+
+        // Handle the case where one or both of the input VCs are not biallelic.
+        final int[] result = new int[variant1.getAlternateAlleles().size()];
+
+        // First split (and trim) all variant contexts into biallelics.  We are only going ot be interested in the alleles.
+        final List<VariantContext> splitVariants1 = simpleSplitIntoBiallelics(variant1);
+        final List<VariantContext> splitVariants2 = simpleSplitIntoBiallelics(variant2);
+
+        // Second, match on ref and alt.  If match occurs add it to the output list.
+        for (int i = 0; i < splitVariants1.size(); i++) {
+            result[i] = -1;
+            for (int j = 0; j < splitVariants2.size(); j++) {
+                final VariantContext splitVariant1 = splitVariants1.get(i);
+                final VariantContext splitVariant2 = splitVariants2.get(j);
+                if (splitVariant1.getAlternateAllele(0).equals(splitVariant2.getAlternateAllele(0))
+                        && splitVariant1.getReference().equals(splitVariant2.getReference())) {
+                    result[i] = j;
+                }
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Do not use this method for doing a full split of a variant context into biallelic components.  This method
+     *  ignores (and drops) genotypes and INFO attributes.  It is really meant just for alleles, but works on a
+     *  VariantContext to better leverage existing code in
+     *  {@link GATKVariantContextUtils#trimAlleles(VariantContext, boolean, boolean)}
+     *
+     * This method is trying to be fast, otherwise.
+     *
+     * @param vc variant context to split into simple biallelics.  Never {@code null}
+     * @return a list of variant contexts.  Each will be biallelic.  Length will be the number of alt alleles in the input vc.
+     * Note that the variant contexts are usually stripped of attributes and genotypes.  Never {@code null}.  Empty list
+     * if variant context has no alt alleles.
+     */
+    private static List<VariantContext> simpleSplitIntoBiallelics(final VariantContext vc) {
+        Utils.nonNull(vc);
+        final List<VariantContext> result = new ArrayList<>();
+
+        if (vc.isBiallelic()) {
+            return Collections.singletonList(vc);
+        } else {
+            // Since variant context builders are slow to keep re-creating.  Just create one and spew variant contexts from it, since
+            //  the only difference will be the alternate allele.  Initialize the VCB with a dummy alternate allele,
+            //  since it will be overwritten in all cases.
+            final VariantContextBuilder vcb = new VariantContextBuilder("SimpleSplit", vc.getContig(), vc.getStart(), vc.getEnd(),
+                    Arrays.asList(vc.getReference(), Allele.NO_CALL));
+            vc.getAlternateAlleles().forEach(allele -> result.add(GATKVariantContextUtils.trimAlleles(
+                    vcb.alleles(Arrays.asList(vc.getReference(), allele)).make(true), true, true)
+                    )
+            );
+        }
+
+        return result;
+    }
+
+    /**
+     * Returns true if the context represents a MNP. If the context supplied contains the GVCF NON_REF symbolic
+     * allele, then the determination is performed after discarding the NON_REF symbolic allele.
+     *
+     * @param vc a Variant context
+     * @return true if the context represents an unmixed MNP (i.e. all alleles are non-symbolic and of the same
+     *         length > 1), false otherwise
+     */
+    public static boolean isUnmixedMnpIgnoringNonRef(final VariantContext vc) {
+        final List<Allele> alleles = vc.getAlleles();
+        int length = vc.getReference().length(); // ref allele cannot be symbolic
+        if (length < 2) { return false; }
+
+        for (final Allele a : alleles) {
+            if (a.isSymbolic() && !Allele.NON_REF_ALLELE.equals(a)) { return false; }
+            else if (!a.isSymbolic() && a.length() != length) { return false; }
+        }
+
+        return true;
     }
 }
 

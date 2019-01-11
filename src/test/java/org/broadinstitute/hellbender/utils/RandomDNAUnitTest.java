@@ -5,7 +5,6 @@ import htsjdk.samtools.SAMSequenceRecord;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
-import org.apache.commons.math3.stat.inference.ChiSquareTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -19,6 +18,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.IntStream;
 
+/**
+ * Unit tests for {@link RandomDNA}.
+ */
 public final class RandomDNAUnitTest {
 
     private static final int TEST_BASES_PER_LINE = 73;
@@ -34,6 +36,101 @@ public final class RandomDNAUnitTest {
             try { if (fastaFile != null) fastaFile.delete(); } catch (final RuntimeException ex) {};
         }
     }
+
+    @Test
+    public void testBufferMaxCapacity() {
+        Assert.assertTrue(RandomDNA.NEXT_BASES_MAX_CAPACITY >= RandomDNA.BASES_IN_AN_INT, "invalid value for NEXT_BASES_MAX_CAPACITY");
+    }
+
+    @Test
+    public void testBasesInIntConstantConstraints() {
+        Assert.assertTrue(RandomDNA.BASES_IN_AN_INT >= 3);
+        Assert.assertTrue(RandomDNA.BASES_IN_AN_INT <= Integer.SIZE / 2);
+    }
+
+    /**
+     * Checks that several ways to compose an array of bases actually result on the same sequence of bases
+     * given a fixed seed.
+     */
+    @Test
+    public void testSequenceEquivalenceShort() {
+        final int seed = 1311;
+        final RandomDNA rdn1 = new RandomDNA(seed);
+        final RandomDNA rdn2 = new RandomDNA(seed);
+        final RandomDNA rdn3 = new RandomDNA(seed);
+        final RandomDNA rdn4 = new RandomDNA(seed);
+        final RandomDNA rdn5 = new RandomDNA(seed);
+
+        final byte[] seq1 = rdn1.nextBases(132);
+
+        final byte[] seq2 = new byte[132];
+        for (int i = 0; i < seq2.length; i++) {
+            seq2[i] = rdn2.nextBase();
+        }
+
+        final byte[] seq3 = new byte[132];
+        rdn3.nextBases(seq3);
+
+        final byte[] seq4 = new byte[132];
+        rdn4.nextBases(seq4, 0, 100);
+        rdn4.nextBases(seq4, 100, 32);
+
+        final byte[] seq5 = new byte[132];
+        rdn5.nextBases(seq5, 0, 90);
+        for (int i = 0; i < 10; i++)
+            seq5[90 + i] = rdn5.nextBase();
+        rdn5.nextBases(seq5, 100, 10);
+        for (int i = 0; i < 22; i++) {
+            seq5[110 + i] = rdn5.nextBase();
+        }
+
+        Assert.assertEquals(seq1, seq2);
+        Assert.assertEquals(seq1, seq3);
+        Assert.assertEquals(seq1, seq4);
+        Assert.assertEquals(seq1, seq5);
+    }
+
+    @Test
+    public void testSequenceEquivalenceLong() {
+        final int seed = 1311;
+        final RandomDNA rdn1 = new RandomDNA(seed);
+        final RandomDNA rdn2 = new RandomDNA(seed);
+        final RandomDNA rdn3 = new RandomDNA(seed);
+        final RandomDNA rdn4 = new RandomDNA(seed);
+        final RandomDNA rdn5 = new RandomDNA(seed);
+
+        final byte[] seq1 = rdn1.nextBases(1320);
+
+        final byte[] seq2 = new byte[1320];
+        for (int i = 0; i < seq2.length; i++) {
+            seq2[i] = rdn2.nextBase();
+        }
+
+        final byte[] seq3 = new byte[1320];
+        rdn3.nextBases(seq3);
+
+        final byte[] seq4 = new byte[1320];
+        rdn4.nextBases(seq4, 0, 1000);
+        rdn4.nextBases(seq4, 1000, 320);
+
+        final byte[] seq5 = new byte[1320];
+        rdn5.nextBases(seq5, 0, 900);
+        for (int i = 0; i < 100; i++)
+            seq5[900 + i] = rdn5.nextBase();
+        rdn5.nextBases(seq5, 1000, 100);
+        for (int i = 0; i < 220; i++) {
+            seq5[1100 + i] = rdn5.nextBase();
+        }
+
+        for (int i = 0; i < 1320; i++) {
+            Assert.assertEquals(seq1[i], seq2[i], "" + i);
+        }
+        Assert.assertEquals(seq1, seq2);
+        Assert.assertEquals(seq1, seq3);
+        Assert.assertEquals(seq1, seq4);
+        Assert.assertEquals(seq1, seq5);
+    }
+
 
     private void assertFastaFileAndDictMatch(final File fastaFile, final int basesPerLine, final SAMSequenceDictionary dict) {
         try (final BufferedReader reader = new BufferedReader(new FileReader(fastaFile))) {
@@ -52,8 +149,8 @@ public final class RandomDNAUnitTest {
                         final String lineBases = line.trim();
                         final String nextLine = reader.readLine();
                         for (final byte base : lineBases.getBytes()) {
-                            final Nucleotide nuc = Nucleotide.valueOf(base);
-                            Assert.assertTrue(nuc.isConcrete());
+                            final Nucleotide nuc = Nucleotide.decode(base);
+                            Assert.assertTrue(nuc.isStandard());
                             frequencies.add(nuc);
                         }
                         if (nextLine != null && !nextLine.matches("^>.*$")){
@@ -128,13 +225,6 @@ public final class RandomDNAUnitTest {
         final double s = std; // not really because it's the population not the sample dtd but it'll do
         Assert.assertTrue(mean < expectedMean + 2 * s / Math.sqrt(n * m), "unexpected mean:" + mean);
         Assert.assertTrue(mean > expectedMean-2*s/Math.sqrt(n*m), "unexpected mean:" +mean);
-    }
-
-    public void assertUniformity(final Nucleotide.Counter freqs) {
-        final long[] observed = new long[] { freqs.get(Nucleotide.A), freqs.get(Nucleotide.C), freqs.get(Nucleotide.G), freqs.get(Nucleotide.T)};
-        final ChiSquareTest test = new ChiSquareTest();
-        final double pValue = test.chiSquareTest(new double[] { 0.25, 0.25, 0.25, 0.25 }, observed );
-        Assert.assertTrue( pValue > 0.001);
     }
 
     private int[] pairwiseAdd(int[] a, int[] b) {

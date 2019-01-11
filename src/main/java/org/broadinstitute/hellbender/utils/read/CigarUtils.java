@@ -18,6 +18,14 @@ public final class CigarUtils {
     // these values were chosen via optimization against the NA12878 knowledge base
     public static final SWParameters NEW_SW_PARAMETERS = new SWParameters(200, -150, -260, -11);
 
+    // In Mutect2 and HaplotypeCaller reads are realigned to their *best* haplotypes, which is very different from a generic alignment.
+    // The {@code NEW_SW_PARAMETERS} penalize a substitution error more than an indel up to a length of 9 bases!
+    // Suppose, for example, that a read has a single substitution error, say C -> T, on its last base.  Those parameters
+    // would prefer to extend a deletion until the next T on the reference is found in order to avoid the substitution, which is absurd.
+    // Since these parameters are for aligning a read to the biological sequence we believe it comes from, the parameters
+    // we choose should correspond to sequencer error.  They *do not* have anything to do with the prevalence of true variation!
+    public static final SWParameters ALIGNMENT_TO_BEST_HAPLOTYPE_SW_PARAMETERS = new SWParameters(10, -15, -30, -5);
+
     private static final String SW_PAD = "NNNNNNNNNN";
 
     private CigarUtils(){}
@@ -77,16 +85,11 @@ public final class CigarUtils {
 
     /**
      * Compute the number of reference bases between the start (inclusive) and end (exclusive) cigar elements.
-     * Note: The method does NOT use CigarOperator.consumesReferenceBases, since it checks something different.
-     * The idea is you remove some elements from the beginning of the cigar string,
-     * and want to recalculate what if the new starting reference position,
-     * you want to count all the elements that indicate existing bases in the reference
-     * (everything but I and P).
+     * Reference bases are counted as the number of positions w.r.t. the reference spanned by an alignment to that reference.
      * For example original position = 10. cigar: 2M3I2D1M. If you remove the 2M the new starting position is 12.
      * If you remove the 2M3I it is still 12. If you remove 2M3I2D (not reasonable cigar), you will get position 14.
      */
-    @SuppressWarnings("fallthru")
-    public static int countRefBasesBasedOnCigar(final GATKRead read, final int cigarStartIndex, final int cigarEndIndex){
+    public static int countRefBasesBasedOnUnclippedAlignment(final GATKRead read, final int cigarStartIndex, final int cigarEndIndex){
         if (read == null){
             throw new IllegalArgumentException("null read");
         }
@@ -97,21 +100,26 @@ public final class CigarUtils {
         int result = 0;
         for(int i = cigarStartIndex; i < cigarEndIndex; i++){
             final CigarElement cigarElement = elems.get(i);
-            switch (cigarElement.getOperator()) {
-                case M:
-                case D:
-                case N:
-                case EQ:
-                case X:
-                case S:
-                case H:
-                    result += cigarElement.getLength();
-                    break;
-                case I:
-                case P:        //for these two, nothing happens.
-                    break;
-                default:
-                    throw new GATKException("Unsupported cigar operator: " + cigarElement.getOperator());
+            final CigarOperator operator = cigarElement.getOperator();
+            if (operator.consumesReferenceBases() || operator.isClipping()) {
+                result += cigarElement.getLength();
+            }
+        }
+        return result;
+    }
+
+    public static int countRefBasesIncludingSoftClips(final GATKRead read, final int cigarStartIndex, final int cigarEndIndex){
+        Utils.nonNull(read, "null read");
+        final List<CigarElement> elems = read.getCigarElements();
+        if (cigarStartIndex < 0 || cigarEndIndex > elems.size() || cigarStartIndex > cigarEndIndex){
+            throw new IllegalArgumentException("invalid index:" + 0 + " -" + elems.size());
+        }
+        int result = 0;
+        for(int i = cigarStartIndex; i < cigarEndIndex; i++){
+            final CigarElement cigarElement = elems.get(i);
+            final CigarOperator operator = cigarElement.getOperator();
+            if (operator.consumesReferenceBases() || operator == CigarOperator.S) {
+                result += cigarElement.getLength();
             }
         }
         return result;
@@ -281,10 +289,19 @@ public final class CigarUtils {
 
         //Note: this is a performance optimization.
         // If two strings are equal (a O(n) check) then it's trivial to get CIGAR for them.
-        if (Arrays.equals(refSeq, altSeq)){
-            final Cigar matching = new Cigar();
-            matching.add(new CigarElement(refSeq.length, CigarOperator.MATCH_OR_MISMATCH));
-            return matching;
+        // Furthermore, if their lengths are equal and their element-by-element comparison yields two or fewer mismatches
+        // it's also a trivial M-only CIGAR, because in order to have equal length one would need at least one insertion and
+        // one deletion, in which case two substitutions is a better alignment.
+        if (altSeq.length == refSeq.length){
+            int mismatchCount = 0;
+            for (int n = 0; n < refSeq.length && mismatchCount <= 2; n++) {
+                mismatchCount += (altSeq[n] == refSeq[n] ? 0 : 1);
+            }
+            if (mismatchCount <= 2) {
+                final Cigar matching = new Cigar();
+                matching.add(new CigarElement(refSeq.length, CigarOperator.MATCH_OR_MISMATCH));
+                return matching;
+            }
         }
 
         final Cigar nonStandard;

@@ -3,11 +3,14 @@ package org.broadinstitute.hellbender.engine;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
-import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.MultiVariantInputArgumentCollection;
+import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.SortedSet;
 import java.util.Spliterator;
 
 /**
@@ -20,11 +23,8 @@ import java.util.Spliterator;
  */
 public abstract class MultiVariantWalker extends VariantWalkerBase {
 
-    // NOTE: using File rather than FeatureInput<VariantContext> here so that we can keep this driving source
-    //       of variants separate from any other potential sources of Features
-    @Argument(fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME, shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME,
-                doc = "One or more VCF files containing variants", common = false, optional = false)
-    public List<String> drivingVariantFiles = new ArrayList<>();
+    @ArgumentCollection
+    protected MultiVariantInputArgumentCollection multiVariantInputArgumentCollection = getMultiVariantInputArgumentCollection();
 
     // NOTE: keeping the driving source of variants separate from other, supplementary FeatureInputs in our FeatureManager
     // in GATKTool we do add the driving source to the Feature manager but we do need to treat it differently and thus this
@@ -44,14 +44,23 @@ public abstract class MultiVariantWalker extends VariantWalkerBase {
     @Override
     protected final void onStartup() {
         super.onStartup();
-        if ( hasIntervals() ) {
-            drivingVariants.setIntervalsForTraversal(intervalsForTraversal);
+
+        if ( hasUserSuppliedIntervals() ) {
+            drivingVariants.setIntervalsForTraversal(userIntervals);
         }
+    }
+
+    /**
+     * Return an argument collection that provides the driving variants.  This allows subclasses to override and use a different
+     * argument pattern besides the default -V
+     */
+    protected MultiVariantInputArgumentCollection getMultiVariantInputArgumentCollection() {
+        return new MultiVariantInputArgumentCollection.DefaultMultiVariantInputArgumentCollection();
     }
 
     @Override
     protected void initializeDrivingVariants() {
-        drivingVariantFiles.stream().forEach(
+        multiVariantInputArgumentCollection.getDrivingVariantPaths().stream().forEach(
                 f -> {
                     FeatureInput<VariantContext> featureInput = new FeatureInput<>(f);
                     if (drivingVariantsFeatureInputs.contains(featureInput)) {
@@ -89,6 +98,46 @@ public abstract class MultiVariantWalker extends VariantWalkerBase {
     }
 
     /**
+     * Implementation of variant-based traversal.
+     * Subclasses can override to provide their own behavior but default implementation should be suitable for most uses.
+     */
+    @Override
+    public void traverse() {
+        final CountingReadFilter readFilter = makeReadFilter();
+        // Process each variant in the input stream.
+        getTransformedVariantStream( makeVariantFilter() )
+                .forEach(variant -> {
+                    final SimpleInterval variantInterval = new SimpleInterval(variant);
+                    apply(variant,
+                            new ReadsContext(reads, variantInterval, readFilter),
+                            new ReferenceContext(reference, variantInterval),
+                            new FeatureContext(features, variantInterval));
+
+                    progressMeter.update(variantInterval);
+                });
+    }
+
+    /**
+     * Process an individual variant. Must be implemented by tool authors.
+     * In general, tool authors should simply stream their output from apply(), and maintain as little internal state
+     * as possible.
+     *
+     * @param variant Current variant being processed.
+     * @param readsContext Reads overlapping the current variant. Will be an empty, but non-null, context object
+     *                     if there is no backing source of reads data (in which case all queries on it will return
+     *                     an empty array/iterator)
+     * @param referenceContext Reference bases spanning the current variant. Will be an empty, but non-null, context object
+     *                         if there is no backing source of reference data (in which case all queries on it will return
+     *                         an empty array/iterator). Can request extra bases of context around the current variant's interval
+     *                         by invoking {@link ReferenceContext#setWindow}
+     *                         on this object before calling {@link ReferenceContext#getBases}
+     * @param featureContext Features spanning the current variant. Will be an empty, but non-null, context object
+     *                       if there is no backing source of Feature data (in which case all queries on it will return an
+     *                       empty List).
+     */
+    public abstract void apply( VariantContext variant, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext );
+
+    /**
      * Close all data sources.
      *
      * Marked final so that tool authors don't override it. Tool authors should override {@link #onTraversalSuccess} and/or
@@ -100,5 +149,14 @@ public abstract class MultiVariantWalker extends VariantWalkerBase {
         if (drivingVariants != null) {
             drivingVariants.close();
         }
+    }
+
+    /**
+     * Get in name-sorted order a list of samples merged from the driving variants files.
+     *
+     * @return SampleSet merged requiring unique names from the drivingVariants
+     */
+    public final SortedSet<String> getSamplesForVariants() {
+        return drivingVariants.getSamples();
     }
 }

@@ -1,13 +1,13 @@
 package org.broadinstitute.hellbender.tools.examples;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;
 
 public class ExampleAssemblyRegionWalkerIntegrationTest extends CommandLineProgramTest {
-    private static final String TEST_OUTPUT_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/tools/examples/";
+    private static final String TEST_OUTPUT_DIRECTORY = exampleTestDir;
 
     @Test
     public void testExampleAssemblyRegionWalker() throws Exception {

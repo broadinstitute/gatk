@@ -4,6 +4,7 @@ import com.google.common.collect.Lists;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.Hidden;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
 
 import java.io.Serializable;
 import java.util.List;
@@ -11,18 +12,20 @@ import java.util.List;
 /**
  * Set of arguments related to the {@link org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler}
  */
-public final class ReadThreadingAssemblerArgumentCollection implements Serializable {
+public abstract class ReadThreadingAssemblerArgumentCollection implements Serializable {
     private static final long serialVersionUID = 1L;
+
+    public static final double DEFAULT_PRUNING_LOG_ODDS_THRESHOLD = 1.0;
 
     // -----------------------------------------------------------------------------------------------
     // arguments to control internal behavior of the read threading assembler
     // -----------------------------------------------------------------------------------------------
 
     /**
-     * Multiple kmer sizes can be specified, using e.g. `-kmerSize 10 -kmerSize 25`.
+     * Multiple kmer sizes can be specified, using e.g. `--kmer-size 10 --kmer-size 25`.
      */
     @Advanced
-    @Argument(fullName="kmerSize", shortName="kmerSize", doc="Kmer size to use in the read threading assembler", optional = true)
+    @Argument(fullName="kmer-size", doc="Kmer size to use in the read threading assembler", optional = true)
     public List<Integer> kmerSizes = Lists.newArrayList(10,25);
 
     /**
@@ -30,7 +33,7 @@ public final class ReadThreadingAssemblerArgumentCollection implements Serializa
      * resolved. Disabling this behavior may cause the program to give up on assembling the ActiveRegion.
      */
     @Advanced
-    @Argument(fullName="dontIncreaseKmerSizesForCycles", shortName="dontIncreaseKmerSizesForCycles", doc="Disable iterating over kmer sizes when graph cycles are detected", optional = true)
+    @Argument(fullName="dont-increase-kmer-sizes-for-cycles", doc="Disable iterating over kmer sizes when graph cycles are detected", optional = true)
     public boolean dontIncreaseKmerSizesForCycles = false;
 
     /**
@@ -38,29 +41,15 @@ public final class ReadThreadingAssemblerArgumentCollection implements Serializa
      * this check may cause problems in the assembly graph.
      */
     @Advanced
-    @Argument(fullName="allowNonUniqueKmersInRef", shortName="allowNonUniqueKmersInRef", doc="Allow graphs that have non-unique kmers in the reference", optional = true)
+    @Argument(fullName="allow-non-unique-kmers-in-ref", doc="Allow graphs that have non-unique kmers in the reference", optional = true)
     public boolean allowNonUniqueKmersInRef = false;
 
     /**
      * If fewer samples than the specified number pass the minPruning threshold for a given path, that path will be eliminated from the graph.
      */
     @Advanced
-    @Argument(fullName="numPruningSamples", shortName="numPruningSamples", doc="Number of samples that must pass the minPruning threshold", optional = true)
+    @Argument(fullName="num-pruning-samples", doc="Number of samples that must pass the minPruning threshold", optional = true)
     public int numPruningSamples = 1;
-
-    /**
-     * As of version 3.3, this argument is no longer needed because dangling end recovery is now the default behavior. See GATK 3.3 release notes for more details.
-     */
-    @Deprecated
-    @Argument(fullName="recoverDanglingHeads", shortName="recoverDanglingHeads", doc="This argument is deprecated since version 3.3", optional = true)
-    public boolean DEPRECATED_RecoverDanglingHeads = false;
-
-    /**
-     * By default, the read threading assembler will attempt to recover dangling heads and tails. See the `minDanglingBranchLength` argument documentation for more details.
-     */
-    @Hidden
-    @Argument(fullName="doNotRecoverDanglingBranches", shortName="doNotRecoverDanglingBranches", doc="Disable dangling head and tail recovery", optional = true)
-    public boolean doNotRecoverDanglingBranches = false;
 
     /**
      * When constructing the assembly graph we are often left with "dangling" branches.  The assembly engine attempts to rescue these branches
@@ -68,16 +57,10 @@ public final class ReadThreadingAssemblerArgumentCollection implements Serializa
      * try to rescue it.  A smaller number here will lead to higher sensitivity to real variation but also to a higher number of false positives.
      */
     @Advanced
-    @Argument(fullName="minDanglingBranchLength", shortName="minDanglingBranchLength", doc="Minimum length of a dangling branch to attempt recovery", optional = true)
+    @Argument(fullName="min-dangling-branch-length", doc="Minimum length of a dangling branch to attempt recovery", optional = true)
     public int minDanglingBranchLength = 4;
 
-    /**
-     * This argument is specifically intended for 1000G consensus analysis mode. Setting this flag will inject all
-     * provided alleles to the assembly graph but will not forcibly genotype all of them.
-     */
-    @Advanced
-    @Argument(fullName="consensus", shortName="consensus", doc="1000G consensus mode", optional = true)
-    public boolean consensusMode = false;
+
 
     /**
      * The assembly graph can be quite complex, and could imply a very large number of possible haplotypes.  Each haplotype
@@ -88,15 +71,8 @@ public final class ReadThreadingAssemblerArgumentCollection implements Serializa
      * You can consider increasing this number when calling organisms with high heterozygosity.
      */
     @Advanced
-    @Argument(fullName="maxNumHaplotypesInPopulation", shortName="maxNumHaplotypesInPopulation", doc="Maximum number of haplotypes to consider for your population", optional = true)
+    @Argument(fullName="max-num-haplotypes-in-population", doc="Maximum number of haplotypes to consider for your population", optional = true)
     public int maxNumHaplotypesInPopulation = 128;
-
-    /**
-     * Enabling this argument may cause fundamental problems with the assembly graph itself.
-     */
-    @Hidden
-    @Argument(fullName="errorCorrectKmers", shortName="errorCorrectKmers", doc = "Use an exploratory algorithm to error correct the kmers used during assembly", optional = true)
-    public boolean errorCorrectKmers = false;
 
     /**
      * Paths with fewer supporting kmers than the specified threshold will be pruned from the graph.
@@ -108,17 +84,39 @@ public final class ReadThreadingAssemblerArgumentCollection implements Serializa
      * depth to produce calls).
      */
     @Advanced
-    @Argument(fullName="minPruning", shortName="minPruning", doc = "Minimum support to not prune paths in the graph", optional = true)
+    @Argument(fullName="min-pruning", doc = "Minimum support to not prune paths in the graph", optional = true)
     public int minPruneFactor = 2;
 
+    /**
+     * Initial base error rate guess for the probabilistic adaptive pruning model.  Results are not very sensitive to this
+     * parameter because it is only a starting point from which the algorithm discovers the true error rate.
+     */
+    @Advanced
+    @Argument(fullName="adaptive-pruning-initial-error-rate", doc = "Initial base error rate estimate for adaptive pruning", optional = true)
+    public double initialErrorRateForPruning = 0.001;
+
+    /**
+     * Log-10 likelihood ratio threshold for adaptive pruning algorithm.
+     */
+    @Advanced
+    @Argument(fullName="pruning-lod-threshold", doc = "Log-10 likelihood ratio threshold for adaptive pruning algorithm", optional = true)
+    public double pruningLog10OddsThreshold = DEFAULT_PRUNING_LOG_ODDS_THRESHOLD;
+
+    /**
+     * The maximum number of variants in graph the adaptive pruner will allow
+     */
+    @Advanced
+    @Argument(fullName="max-unpruned-variants", doc = "Maximum number of variants in graph the adaptive pruner will allow", optional = true)
+    public int maxUnprunedVariants = 100;
+
     @Hidden
-    @Argument(fullName="debugGraphTransformations", shortName="debugGraphTransformations", doc="Write DOT formatted graph files out of the assembler for only this graph size", optional = true)
+    @Argument(fullName="debug-graph-transformations", doc="Write DOT formatted graph files out of the assembler for only this graph size", optional = true)
     public boolean debugGraphTransformations = false;
 
     /**
      * This argument is meant for debugging and is not immediately useful for normal analysis use.
      */
-    @Argument(fullName="graphOutput", shortName="graph", doc="Write debug assembly graph information to this file", optional = true)
+    @Argument(fullName="graph-output", shortName="graph", doc="Write debug assembly graph information to this file", optional = true)
     public String graphOutput = null;
 
     //---------------------------------------------------------------------------------------------------------------
@@ -131,10 +129,14 @@ public final class ReadThreadingAssemblerArgumentCollection implements Serializa
      * Enabling this argument may cause fundamental problems with the assembly graph itself.
      */
     @Hidden
-    @Argument(fullName="kmerLengthForReadErrorCorrection", shortName="kmerLengthForReadErrorCorrection", doc = "Use an exploratory algorithm to error correct the kmers used during assembly", optional = true)
+    @Argument(fullName="kmer-length-for-read-error-correction", doc = "Use an exploratory algorithm to error correct the kmers used during assembly", optional = true)
     public int kmerLengthForReadErrorCorrection = 25;
 
     @Hidden
-    @Argument(fullName="minObservationsForKmerToBeSolid", shortName="minObservationsForKmerToBeSolid", doc = "A k-mer must be seen at least these times for it considered to be solid", optional = true)
+    @Argument(fullName="min-observations-for-kmer-to-be-solid", doc = "A k-mer must be seen at least these times for it considered to be solid", optional = true)
     public int minObservationsForKmerToBeSolid = 20;
+
+    public abstract ReadThreadingAssembler makeReadThreadingAssembler();
+
+    public boolean consensusMode() { return false; }
 }

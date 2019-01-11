@@ -1,14 +1,17 @@
 package org.broadinstitute.hellbender.utils;
 
+import org.apache.commons.math3.distribution.IntegerDistribution;
 import org.broadinstitute.hellbender.tools.spark.utils.IntHistogram;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.util.Arrays;
 import java.util.Random;
 
 public class IntHistogramTest extends GATKBaseTest {
-    private static final int MAX_TRACKED_VALUE = 1000;
+    private static final int MAX_TRACKED_VALUE = 2000;
     private static final float SIGNIFICANCE = .05f;
 
     @Test
@@ -77,6 +80,40 @@ public class IntHistogramTest extends GATKBaseTest {
         final IntHistogram sample2 = genNormalSample(500, 25, 50);
         sample1.addObservations(sample2);
         Assert.assertTrue(cdf.isDifferentByKSStatistic(sample1, SIGNIFICANCE));
+    }
+
+    @Test
+    public void testEmpiricalDistributionWithoutSmoothingSampling() {
+        final IntHistogram largeSample = genNormalSample(480, 25, 10000);
+        final IntegerDistribution dist = largeSample.empiricalDistribution(0);
+        final IntHistogram distSample = new IntHistogram(MAX_TRACKED_VALUE);
+        Arrays.stream(dist.sample(1000)).forEach(distSample::addObservation);
+        Assert.assertFalse(largeSample.getCDF().isDifferentByKSStatistic(distSample, SIGNIFICANCE));
+    }
+
+    @Test(dataProvider = "smoothingValues")
+    public void testEmpiricalDistributionSmoothing(final int smoothing) {
+        final IntHistogram largeSample = genNormalSample(480, 25, 10000);
+        final IntegerDistribution dist = largeSample.empiricalDistribution(smoothing);
+        final long smoothedNumberOfObservations = largeSample.getMaximumTrackedValue() * smoothing + largeSample.getTotalObservations();
+        double cumulative = 0;
+        double expectation = 0;
+        double sqExpectation = 0;
+        for (int i = 0; i <= largeSample.getMaximumTrackedValue(); i++) {
+            final double distProb = dist.probability(i);
+            Assert.assertEquals(distProb, (largeSample.getNObservations(i) + smoothing) / (double) smoothedNumberOfObservations, 0.0001);
+            cumulative += distProb;
+            Assert.assertEquals(dist.cumulativeProbability(i), cumulative, 0.00001);
+            expectation += distProb * i;
+            sqExpectation += i * distProb * i;
+        }
+        Assert.assertEquals(dist.getNumericalMean(), expectation, 0.00001);
+        Assert.assertEquals(dist.getNumericalVariance(), sqExpectation - expectation * expectation, 0.00001);
+    }
+
+    @DataProvider
+    public Object[][] smoothingValues() {
+        return new Object[][] { { 0 }, { 1 }, { 2 }, { 13 }, {100 }};
     }
 
     public static IntHistogram genNormalSample( final int mean, final int stdDev, final int nSamples ) {

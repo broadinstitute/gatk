@@ -5,20 +5,17 @@ import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.TextCigarCodec;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanJavaAligner;
-import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.PrintWriter;
 import java.util.*;
+import java.util.stream.IntStream;
 
 public final class KBestHaplotypeFinderUnitTest extends GATKBaseTest {
 
@@ -42,10 +39,9 @@ public final class KBestHaplotypeFinderUnitTest extends GATKBaseTest {
         final KBestHaplotypeFinder finder = new KBestHaplotypeFinder(g);
         Assert.assertEquals(finder.sources.size(), 1);
         Assert.assertEquals(finder.sinks.size(), 3);
-        final double score = finder.score("ACG".getBytes());
-        Assert.assertEquals(score, -0.47712125471966244);
-        final double scoreH = finder.score(new Haplotype("ACG".getBytes()));
-        Assert.assertEquals(scoreH, -0.47712125471966244);
+        final List<KBestHaplotype> haplotypes = finder.findBestHaplotypes();
+        final KBestHaplotype ACG = haplotypes.stream().filter(h -> h.haplotype().basesMatch("ACG".getBytes())).findFirst().get();
+        Assert.assertEquals(ACG.score(), -0.47712125471966244);
     }
 
     @Test
@@ -69,32 +65,6 @@ public final class KBestHaplotypeFinderUnitTest extends GATKBaseTest {
     }
 
     @Test
-    public void testCyclePrint() throws FileNotFoundException {
-        final SeqGraph g = new SeqGraph(3);
-        final SeqVertex v1 = new SeqVertex("a");
-        final SeqVertex v2 = new SeqVertex("b");
-        final SeqVertex v3 = new SeqVertex("c");
-        final SeqVertex v4 = new SeqVertex("d");
-        g.addVertex(v1);   //source
-        g.addVertex(v2);
-        g.addVertex(v3);
-        g.addVertex(v4);  //sink
-        g.addEdge(v1, v2);
-        g.addEdge(v2, v3);
-        g.addEdge(v3, v2); //cycle
-        g.addEdge(v3, v4);
-        final KBestHaplotypeFinder finder = new KBestHaplotypeFinder(g);
-        finder.printDOT(new PrintWriter(System.out));     //check not blowing up
-        final File tmp = createTempFile("foo", ".dot");
-        finder.printDOT(tmp);
-        final String fname="fred.dot" ;
-        finder.printDOTFile(fname);
-        Assert.assertTrue(tmp.exists());
-        Assert.assertTrue(new File(fname).exists());
-        new File(fname).deleteOnExit();
-    }
-
-    @Test
     public void testNoSourceOrSink(){
         final SeqGraph g = new SeqGraph(3);
         final SeqVertex v1 = new SeqVertex("a");
@@ -113,7 +83,7 @@ public final class KBestHaplotypeFinderUnitTest extends GATKBaseTest {
         final KBestHaplotypeFinder finder3 = new KBestHaplotypeFinder(g, Collections.singleton(v1), Collections.emptySet());
         Assert.assertEquals(finder3.sources.size(), 1);
         Assert.assertEquals(finder3.sinks.size(), 0);
-        Assert.assertEquals(finder3.size(), 0);
+        Assert.assertTrue(finder3.findBestHaplotypes().isEmpty());
     }
 
     @Test
@@ -182,35 +152,10 @@ public final class KBestHaplotypeFinderUnitTest extends GATKBaseTest {
         final Set<SeqVertex> bubbles = createVertices(graph, nBranchesPerBubble, middleTop, middleBottom);
         final Set<SeqVertex> ends = createVertices(graph, nEndNodes, middleBottom, null);
 
-        // enumerate all possible paths
-        final KBestHaplotypeFinder paths = new KBestHaplotypeFinder(graph, starts, ends);
-
         final int expectedNumOfPaths = nStartNodes * nBranchesPerBubble * nEndNodes;
-        Assert.assertEquals(paths.size(), expectedNumOfPaths, "Didn't find the expected number of paths");
-
-        double lastScore = 0;
-        for ( final KBestHaplotype kbh : paths ) {
-            final Path<SeqVertex,BaseEdge> path = kbh.path();
-            Assert.assertTrue(kbh.score() <= lastScore, "Paths out of order.   Path " + path + " has score " + path.getScore() + " above previous " + lastScore);
-            lastScore = kbh.score();
-        }
-
-
-        double lastScoreIter = 0;
-        final Iterator<KBestHaplotype> iter = paths.iterator(paths.size());
-        while ( iter.hasNext() ) {
-            final KBestHaplotype kbh = iter.next();
-            final Path<SeqVertex,BaseEdge> path = kbh.path();
-            Assert.assertTrue(kbh.score() <= lastScoreIter, "Paths out of order.   Path " + path + " has score " + path.getScore() + " above previous " + lastScore);
-            lastScoreIter = kbh.score();
-        }
-
-        // get the best path, and make sure it's the same as our optimal path overall
-        final Path<SeqVertex,BaseEdge> best = paths.get(0).path();
-        final List<KBestHaplotype> justOne = new KBestHaplotypeFinder(graph,starts, ends).subList(0,1);
-        Assert.assertEquals(justOne.size(), 1);
-
-        Assert.assertTrue(justOne.get(0).path().pathsAreTheSame(best), "Best path from complete enumerate " + best + " not the same as from k = 1 search " + justOne.get(0));
+        final List<KBestHaplotype> haplotypes = new KBestHaplotypeFinder(graph, starts, ends).findBestHaplotypes();
+        Assert.assertEquals(haplotypes.size(), expectedNumOfPaths);
+        IntStream.range(1, haplotypes.size()).forEach(n -> Assert.assertTrue(haplotypes.get(n-1).score() >= haplotypes.get(n).score()));
     }
 
 
@@ -298,10 +243,9 @@ public final class KBestHaplotypeFinderUnitTest extends GATKBaseTest {
         }
 
         // enumerate all possible paths
-        final List<KBestHaplotype> paths = new KBestHaplotypeFinder(graph);
+        final List<KBestHaplotype> paths = new KBestHaplotypeFinder(graph).findBestHaplotypes();
         Assert.assertEquals(paths.size(), 1);
-        final Path<SeqVertex,BaseEdge> path = paths.get(0).path();
-        Assert.assertEquals(new String(path.getBases()), Utils.join("", frags), "Path doesn't have the expected sequence");
+        Assert.assertEquals(new String(paths.get(0).getBases()), Utils.join("", frags), "Path doesn't have the expected sequence");
     }
 
     @DataProvider(name = "TripleBubbleDataProvider")
@@ -439,12 +383,10 @@ public final class KBestHaplotypeFinderUnitTest extends GATKBaseTest {
         graph.addEdges(() -> new BaseEdge(false, 1), top, alt, bot);
 
         @SuppressWarnings("all")
-        final KBestHaplotypeFinder bestPathFinder = new KBestHaplotypeFinder(graph,top,bot);
-
-        Assert.assertEquals(bestPathFinder.size(), 2);
-
-        final Path<SeqVertex,BaseEdge> refPath = bestPathFinder.get(0).path();
-        final Path<SeqVertex,BaseEdge> altPath = bestPathFinder.get(1).path();
+        final List<KBestHaplotype> bestPaths = new KBestHaplotypeFinder(graph,top,bot).findBestHaplotypes();
+        Assert.assertEquals(bestPaths.size(), 2);
+        final Path<SeqVertex,BaseEdge> refPath = bestPaths.get(0);
+        final Path<SeqVertex,BaseEdge> altPath = bestPaths.get(1);
 
         final String refString = top.getSequenceString() + ref.getSequenceString() + bot.getSequenceString();
         Assert.assertEquals(refPath.calculateCigar(refString.getBytes(), SmithWatermanJavaAligner.getInstance()).toString(), "10M");
@@ -464,12 +406,12 @@ public final class KBestHaplotypeFinderUnitTest extends GATKBaseTest {
         graph.addEdges(() -> new BaseEdge(false, 1), top, alt, bot);
 
         @SuppressWarnings("all")
-        final List<KBestHaplotype> paths = new KBestHaplotypeFinder(graph, top, bot);
+        final List<KBestHaplotype> paths = new KBestHaplotypeFinder(graph, top, bot).findBestHaplotypes();
 
         Assert.assertEquals(paths.size(), 2);
 
-        final Path<SeqVertex,BaseEdge> refPath = paths.get(0).path();
-        final Path<SeqVertex,BaseEdge> altPath = paths.get(1).path();
+        final Path<SeqVertex,BaseEdge> refPath = paths.get(0);
+        final Path<SeqVertex,BaseEdge> altPath = paths.get(1);
 
         final String refString = top.getSequenceString() + ref.getSequenceString() + bot.getSequenceString();
 

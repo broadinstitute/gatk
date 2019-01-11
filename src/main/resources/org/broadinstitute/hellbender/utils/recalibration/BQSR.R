@@ -1,6 +1,5 @@
 library("ggplot2")
 library(gplots)
-library("reshape")
 library("grid")
 library("tools") #For compactPDF in R 2.13+
 library(gsalib)

@@ -50,6 +50,18 @@ public class GATKProtectedVariantContextUtils {
     }
 
     /**
+     * Composes the double array from a genotype annotation. Provides default and missing values.
+     *
+     * @param variantContext the target variant-context.
+     * @param attribute the name of the attribute containing the double array.
+     * @return never {@code null}.
+     * @throws IllegalArgumentException if {@code variantContext} is {@code null} or {@code key} is {@code null}.
+     */
+    public static double[] getAttributeAsDoubleArray(final VariantContext variantContext, final String attribute) {
+        return getAttributeAsDoubleArray(variantContext, attribute, () -> null, -1);
+    }
+
+    /**
      * Composes the double array from a genotype annotation.
      *
      * @param genotype the target variant-context.
@@ -79,6 +91,48 @@ public class GATKProtectedVariantContextUtils {
                                                      final Supplier<int[]> defaultValue, final int missingValue) {
         Utils.nonNull(genotype);
         return attributeValueToIntArray(genotype.getExtendedAttribute(key), key, defaultValue, missingValue);
+    }
+
+
+    /**
+     * Get Long attribute from a variant context.
+     *
+     * @param variantContext the target variant-context.
+     * @param attribute the name of the attribute containing the Long value.
+     * @return never {@code null}.
+     * @throws IllegalArgumentException if {@code variantContext} is {@code null} or {@code key} is {@code null}.
+     */
+    public static Long getAttributeAsLong(final VariantContext variantContext, final String attribute, final Long defaultValue) {
+        Utils.nonNull(variantContext);
+        Utils.nonNull(attribute);
+        Object x = variantContext.getAttribute(attribute);
+        if ( x == null || x.equals(VCFConstants.MISSING_VALUE_v4) ) return defaultValue;
+        if ( x instanceof Number ) return ((Number) x).longValue();
+        return Long.valueOf((String)x); // throws an exception if this isn't a string
+    }
+
+    /**
+     * Composes the Long List from a variant context.
+     *
+     * @param variantContext the target variant-context.
+     * @param attribute the name of the attribute containing the Long list.
+     * @return never {@code null}.
+     * @throws IllegalArgumentException if {@code variantContext} is {@code null} or {@code key} is {@code null}.
+     */
+    public static List<Long> getAttributeAsLongList(final VariantContext variantContext, final String attribute, final Long defaultValue) {
+        Utils.nonNull(variantContext);
+        Utils.nonNull(attribute);
+        return variantContext.getAttributeAsList(attribute).stream().map(
+                x -> {
+                    if (x == null || x.equals(VCFConstants.MISSING_VALUE_v4)) {
+                        return defaultValue;
+                    } else if (x instanceof Number) {
+                        return ((Number) x).longValue();
+                    } else {
+                        return Long.valueOf((String)x); // throws an exception if this isn't a string
+                    }
+                }
+        ).collect(Collectors.toList());
     }
 
     private static double[] attributeValueToDoubleArray(final Object value, final String key, final Supplier<double[]> defaultResult, final double missingValue) {
@@ -154,6 +208,7 @@ public class GATKProtectedVariantContextUtils {
                     .mapToInt(intConverter).toArray();
         }
     }
+
 
     /**
      * Returns an attribute as a string.
@@ -235,7 +290,7 @@ public class GATKProtectedVariantContextUtils {
         if (!genotype.hasPL()) {
             return Double.NaN;
         } else {
-            final int GQ = GATKProtectedMathUtils.secondSmallestMinusSmallest(genotype.getPL(), -1);
+            final int GQ = MathUtils.secondSmallestMinusSmallest(genotype.getPL(), -1);
             return GQ < 0 ? Double.NaN : (double) GQ;
         }
     }
@@ -408,7 +463,7 @@ public class GATKProtectedVariantContextUtils {
 
     /**
      * Given a set of alleles (reference and alternate), choose the allele that is the best match for the given read (and offset)
-     *
+     * TODO: This method cannot recognize equivalent alleles (See https://github.com/broadinstitute/gatk/issues/5061)
      * @param pileupElement read and offset.  Never {@code null}
      * @param referenceAllele Reference allele.  Never {@code null}
      * @param altAlleles List of candidate alternate alleles.  Never {@code null}

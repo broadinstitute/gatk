@@ -1,49 +1,35 @@
 package org.broadinstitute.hellbender.utils.read;
 
-import com.google.api.services.genomics.model.LinearAlignment;
-import com.google.api.services.genomics.model.Position;
-import com.google.api.services.genomics.model.Read;
 import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
-import htsjdk.samtools.Cigar;
-import htsjdk.samtools.CigarElement;
-import htsjdk.samtools.CigarOperator;
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMFileWriter;
-import htsjdk.samtools.SAMReadGroupRecord;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMTag;
-import htsjdk.samtools.SamFiles;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.TextCigarCodec;
-import htsjdk.samtools.reference.IndexedFastaSequenceFile;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.nio.file.FileSystem;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Random;
-import java.util.Set;
-import java.util.stream.Stream;
+import htsjdk.samtools.*;
+import htsjdk.samtools.reference.ReferenceSequenceFile;
+import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
+import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.engine.ReadsContext;
+import org.broadinstitute.hellbender.engine.ReadsDataSource;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.RandomDNA;
-import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.RandomDNA;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.nio.file.FileSystem;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 
 public final class ReadUtilsUnitTest extends GATKBaseTest {
@@ -225,9 +211,10 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
 
     @Test
     public void testReadWithNsRefIndexInDeletion() throws FileNotFoundException {
-
-        final IndexedFastaSequenceFile seq = new CachingIndexedFastaSequenceFile(new File(exampleReference));
-        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(seq.getSequenceDictionary());
+        final SAMFileHeader header;
+        try(final CachingIndexedFastaSequenceFile seq = new CachingIndexedFastaSequenceFile(IOUtils.getPath(exampleReference))) {
+             header = ArtificialReadUtils.createArtificialSamHeader(seq.getSequenceDictionary());
+        }
         final int readLength = 76;
 
         final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "myRead", 0, 8975, readLength);
@@ -240,19 +227,20 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
     }
 
     @Test
-    public void testReadWithNsRefAfterDeletion() throws FileNotFoundException {
+    public void testReadWithNsRefAfterDeletion() throws IOException {
+        try(final ReferenceSequenceFile seq = new CachingIndexedFastaSequenceFile(IOUtils.getPath(exampleReference))) {
+            final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(seq.getSequenceDictionary());
+            final int readLength = 76;
 
-        final IndexedFastaSequenceFile seq = new CachingIndexedFastaSequenceFile(new File(exampleReference));
-        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(seq.getSequenceDictionary());
-        final int readLength = 76;
+            final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "myRead", 0, 8975, readLength);
+            read.setBases(Utils.dupBytes((byte) 'A', readLength));
+            read.setBaseQualities(Utils.dupBytes((byte) 30, readLength));
+            read.setCigar("3M414N1D73M");
 
-        final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "myRead", 0, 8975, readLength);
-        read.setBases(Utils.dupBytes((byte) 'A', readLength));
-        read.setBaseQualities(Utils.dupBytes((byte)30, readLength));
-        read.setCigar("3M414N1D73M");
-
-        final int result = ReadUtils.getReadCoordinateForReferenceCoordinateUpToEndOfRead(read, 9393, ReadUtils.ClippingTail.LEFT_TAIL);
-        Assert.assertEquals(result, 3);
+            final int result = ReadUtils.getReadCoordinateForReferenceCoordinateUpToEndOfRead(read, 9393,
+                                                                                              ReadUtils.ClippingTail.LEFT_TAIL);
+            Assert.assertEquals(result, 3);
+        }
     }
 
     @DataProvider(name = "HasWellDefinedFragmentSizeData")
@@ -350,14 +338,10 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
         readGroup.setSample("FOOSAMPLE");
         header.addReadGroup(readGroup);
 
-        final GATKRead googleBackedRead = new GoogleGenomicsReadToGATKReadAdapter(ArtificialReadUtils.createArtificialGoogleGenomicsRead("google", "1", 5, new byte[]{'A', 'C', 'G', 'T'}, new byte[]{1, 2, 3, 4}, "4M"));
-        googleBackedRead.setReadGroup("FOO");
-
         final GATKRead samBackedRead = new SAMRecordToGATKReadAdapter(ArtificialReadUtils.createArtificialSAMRecord(header, "sam", header.getSequenceIndex("1"), 5, new byte[]{'A', 'C', 'G', 'T'}, new byte[]{1, 2, 3, 4}, "4M"));
         samBackedRead.setReadGroup("FOO");
 
         return new Object[][] {
-                { googleBackedRead, header, "FOO" },
                 { samBackedRead, header, "FOO" }
         };
     }
@@ -388,24 +372,15 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
     public Object[][] referenceIndexTestData() {
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(2, 1, 1000000);
 
-        final GATKRead googleBackedRead = new GoogleGenomicsReadToGATKReadAdapter(ArtificialReadUtils.createArtificialGoogleGenomicsRead("google", "2", 5, new byte[]{'A', 'C', 'G', 'T'}, new byte[]{1, 2, 3, 4}, "4M"));
-        googleBackedRead.setMatePosition("1", 1);
-
         final GATKRead samBackedRead = new SAMRecordToGATKReadAdapter(ArtificialReadUtils.createArtificialSAMRecord(header, "sam", header.getSequenceIndex("2"), 5, new byte[]{'A', 'C', 'G', 'T'}, new byte[]{1, 2, 3, 4}, "4M"));
         samBackedRead.setMatePosition("1", 5);
-
-        final GATKRead unmappedGoogleBackedRead = new GoogleGenomicsReadToGATKReadAdapter(ArtificialReadUtils.createArtificialGoogleGenomicsRead("google", "1", 5, new byte[]{'A', 'C', 'G', 'T'}, new byte[]{1, 2, 3, 4}, "4M"));
-        unmappedGoogleBackedRead.setIsUnmapped();
-        unmappedGoogleBackedRead.setMateIsUnmapped();
 
         final GATKRead unmappedSamBackedRead = new SAMRecordToGATKReadAdapter(ArtificialReadUtils.createArtificialSAMRecord(header, "sam", header.getSequenceIndex("1"), 5, new byte[]{'A', 'C', 'G', 'T'}, new byte[]{1, 2, 3, 4}, "4M"));
         unmappedSamBackedRead.setIsUnmapped();
         unmappedSamBackedRead.setMateIsUnmapped();
 
         return new Object[][] {
-                { googleBackedRead, header, 1, 0 },
                 { samBackedRead, header, 1, 0 },
-                { unmappedGoogleBackedRead, header, -1, -1 },
                 { unmappedSamBackedRead, header, -1, -1 }
         };
     }
@@ -432,21 +407,6 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
     public Object[][] readHasNoAssignedPositionTestData() {
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
 
-        // To test the "null contig" cases, we need to use a Google Genomics Read, since SAMRecord doesn't allow it
-        final Read unmappedGoogleReadWithNullContigSetStart = new Read();
-        unmappedGoogleReadWithNullContigSetStart.setAlignment(new LinearAlignment());
-        unmappedGoogleReadWithNullContigSetStart.getAlignment().setPosition(new Position());
-        unmappedGoogleReadWithNullContigSetStart.getAlignment().getPosition().setReferenceName(null);
-        unmappedGoogleReadWithNullContigSetStart.getAlignment().getPosition().setPosition(10l);
-        final GATKRead unmappedReadWithNullContigSetStart = new GoogleGenomicsReadToGATKReadAdapter(unmappedGoogleReadWithNullContigSetStart);
-
-        final Read unmappedGoogleReadWithNullContigUnsetStart = new Read();
-        unmappedGoogleReadWithNullContigUnsetStart.setAlignment(new LinearAlignment());
-        unmappedGoogleReadWithNullContigUnsetStart.getAlignment().setPosition(new Position());
-        unmappedGoogleReadWithNullContigUnsetStart.getAlignment().getPosition().setReferenceName(null);
-        unmappedGoogleReadWithNullContigUnsetStart.getAlignment().getPosition().setPosition(Long.valueOf(ReadConstants.UNSET_POSITION));
-        final GATKRead unmappedReadWithNullContigUnsetStart = new GoogleGenomicsReadToGATKReadAdapter(unmappedGoogleReadWithNullContigUnsetStart);
-
         // We'll also test the improbable case of a SAMRecord marked as mapped, but with an unset contig/start
         final SAMRecord mappedSAMWithUnsetContigSetStart = new SAMRecord(header);
         mappedSAMWithUnsetContigSetStart.setReferenceName(ReadConstants.UNSET_CONTIG);
@@ -467,14 +427,10 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
                 { ArtificialReadUtils.createArtificialUnmappedRead(header, new byte[]{'A'}, new byte[]{30}), true },
                 // Unmapped read with set position (contig and start)
                 { ArtificialReadUtils.createArtificialUnmappedReadWithAssignedPosition(header, "1", 10, new byte[]{'A'}, new byte[]{30}), false },
-                // Unmapped read with null contig, set start
-                { unmappedReadWithNullContigSetStart, true },
                 // Unmapped read with "*" contig, set start
                 { ArtificialReadUtils.createArtificialUnmappedReadWithAssignedPosition(header, ReadConstants.UNSET_CONTIG, 10, new byte[]{'A'}, new byte[]{30}), true },
                 // Unmapped read with set contig, unset start
                 { ArtificialReadUtils.createArtificialUnmappedReadWithAssignedPosition(header, "1", ReadConstants.UNSET_POSITION, new byte[]{'A'}, new byte[]{30}), true },
-                // Unmapped read with null contig, unset start
-                { unmappedReadWithNullContigUnsetStart, true },
                 // Unmapped read with "*" contig, unset start
                 { ArtificialReadUtils.createArtificialUnmappedReadWithAssignedPosition(header, ReadConstants.UNSET_CONTIG, ReadConstants.UNSET_POSITION, new byte[]{'A'}, new byte[]{30}), true },
                 // "Mapped" read with unset contig, set start
@@ -559,8 +515,16 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
 
             final Path outputPath = jimfs.getPath("samWriterTest" + outputExtension);
             final Path md5Path = jimfs.getPath("samWriterTest" + outputExtension + ".md5");
+            final Path referencePath;
+            if( referenceFile == null) {
+                referencePath = null;
+            } else {
+                referencePath = Files.copy(referenceFile.toPath(), jimfs.getPath(referenceFile.getName()));
+                final Path fastaIndexLocal = ReferenceSequenceFileFactory.getFastaIndexFileName(referenceFile.toPath());
+                Files.copy(fastaIndexLocal, jimfs.getPath(fastaIndexLocal.getFileName().toString()));
+            }
 
-            try (final SamReader samReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(bamFile)) {
+            try (final SamReader samReader = SamReaderFactory.makeDefault().referenceSequence(referencePath).open(bamFile)) {
 
                 final SAMFileHeader header = samReader.getFileHeader();
                 if (expectIndex) { // ensure test condition
@@ -568,7 +532,7 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
                 }
 
                 try (final SAMFileWriter samWriter = ReadUtils.createCommonSAMWriter
-                    (outputPath, referenceFile, samReader.getFileHeader(), preSorted, createIndex, createMD5)) {
+                    (outputPath, referencePath, samReader.getFileHeader(), preSorted, createIndex, createMD5)) {
                     final Iterator<SAMRecord> samRecIt = samReader.iterator();
                     while (samRecIt.hasNext()) {
                         samWriter.addAlignment(samRecIt.next());
@@ -868,5 +832,30 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
         }
 
         return result.toArray(new Object[result.size()][]);
+    }
+
+    @Test
+    public void testGetReadToMateMap() {
+        final String bam = largeFileTestDir + "mutect/dream_synthetic_bams/tumor_1.bam";
+        final ReadsDataSource readsDataSource = new ReadsDataSource(IOUtils.getPath(bam));
+
+        // to keep this example small, we choose a place that only four reads overlap
+        final SimpleInterval interval = new SimpleInterval("20", 576_940, 577_000);
+        final ReadsContext readsContext = new ReadsContext(readsDataSource, interval, ReadFilterLibrary.ALLOW_ALL_READS);
+
+        final Map<GATKRead, GATKRead> smallFragmentResult = ReadUtils.getReadToMateMap(readsContext, 10);
+        Assert.assertEquals(smallFragmentResult.size(), 1);
+        final Map.Entry<GATKRead, GATKRead> readAndMate = smallFragmentResult.entrySet().iterator().next();
+        Assert.assertEquals(readAndMate.getKey().getName(), "0685fae6-eddc-4257-81f5-c7b9eab84f2f");
+        Assert.assertTrue(readAndMate.getKey().isReverseStrand());
+
+        final Map<GATKRead, GATKRead> mediumFragmentResult = ReadUtils.getReadToMateMap(readsContext, 200);
+        Assert.assertEquals(mediumFragmentResult.size(), 2);
+        final List<Map.Entry<GATKRead, GATKRead>> readsAndMates = Utils.stream(mediumFragmentResult.entrySet().iterator()).collect(Collectors.toList());
+        Assert.assertTrue(readsAndMates.stream().anyMatch(pair -> pair.getKey().getName().equals("0685fae6-eddc-4257-81f5-c7b9eab84f2f")));
+        Assert.assertTrue(readsAndMates.stream().anyMatch(pair -> pair.getKey().getName().equals("9eaf071f-6c59-4f10-8b77-467d359ac702")));
+
+        final Map<GATKRead, GATKRead> bigFragmentResult = ReadUtils.getReadToMateMap(readsContext, 1000);
+        Assert.assertEquals(bigFragmentResult.size(), 4);
     }
 }

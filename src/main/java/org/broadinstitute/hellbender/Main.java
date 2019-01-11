@@ -1,21 +1,24 @@
 package org.broadinstitute.hellbender;
 
-import org.broadinstitute.barclay.argparser.ClassFinder;
-import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgramExecutor;
 import com.google.cloud.storage.StorageException;
 import htsjdk.samtools.util.StringUtil;
-import org.broadinstitute.barclay.argparser.BetaFeature;
-import org.broadinstitute.barclay.argparser.CommandLineException;
-import org.broadinstitute.barclay.argparser.CommandLineProgramGroup;
-import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
+import org.broadinstitute.hellbender.cmdline.DeprecatedToolsRegistry;
+import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgramExecutor;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.exceptions.PicardNonZeroExitException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.ClassUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.config.ConfigFactory;
+import org.broadinstitute.hellbender.utils.runtime.RuntimeUtils;
 
 import java.io.PrintStream;
 import java.io.Serializable;
 import java.util.*;
+import java.util.jar.Attributes;
+import java.util.jar.Manifest;
 
 /**
  * This is the main class of Hellbender and is the way of executing individual command line programs.
@@ -29,6 +32,7 @@ import java.util.*;
  * - {@link #getCommandLineName()} for the name of the toolkit.
  * - {@link #handleResult(Object)} for handle the result of the tool.
  * - {@link #handleNonUserException(Exception)} for handle non {@link UserException}.
+ * - {@link #parseArgsForConfigSetup(String[])} for pulling command-line configuration options out and initializing the {@link org.broadinstitute.hellbender.utils.config.GATKConfig}
  *
  * Note: If any of the previous methods was overrided, {@link #main(String[])} should be implemented to instantiate your class
  * and call {@link #mainEntry(String[])} to make the changes effective.
@@ -64,9 +68,14 @@ public class Main {
     private static final int COMMANDLINE_EXCEPTION_EXIT_VALUE = 1;
 
     /**
-     * exit value when an unrecoverable {@link UserException} occurs
+     * Exit value when an unrecoverable {@link UserException} occurs.
      */
-    private static final int USER_EXCEPTION_EXIT_VALUE = 2;
+    public static final int USER_EXCEPTION_EXIT_VALUE = 2;
+
+    /**
+     * Exit value used when a Picard tool returns a non-zero exit code (the actual value is displayed on the command line)
+     */
+    public static final int PICARD_TOOL_EXCEPTION = 4;
 
     /**
      * exit value when any unrecoverable exception other than {@link UserException} occurs
@@ -97,6 +106,21 @@ public class Main {
         return packageList;
     }
 
+
+    /**
+     * Reads from the given command-line arguments, pulls out configuration options,
+     * and initializes the configuration for this instance of Main.
+     *
+     * Suggested use for this is to handle downstream project configuration options and overrides.
+     * For example this would allow:
+     *
+     *      Custom command-line arguments for use in tools
+     *      Custom config file loading and initialization
+     */
+    protected void parseArgsForConfigSetup(final String[] args) {
+        ConfigFactory.getInstance().initializeConfigurationsFromCommandLineArgs(args, "--" + StandardArgumentDefinitions.GATK_CONFIG_FILE_OPTION);
+    }
+
     /**
      * The single classes we wish to include in our command line.
      */
@@ -119,22 +143,43 @@ public class Main {
      *
      */
     public Object instanceMain(final String[] args, final List<String> packageList, final List<Class<? extends CommandLineProgram>> classList, final String commandLineName) {
-        final CommandLineProgram program = extractCommandLineProgram(args, packageList, classList, commandLineName);
+
+        final CommandLineProgram program = setupConfigAndExtractProgram(args, packageList, classList, commandLineName);
         return runCommandLineProgram(program, args);
     }
 
     /**
      * Run the given command line program with the raw arguments from the command line
-     * @param rawArgs thes are the raw arguments from the command line, the first will be stripped off
+     * @param rawArgs these are the raw arguments from the command line, the first will be stripped off
      * @return the result of running  {program} with the given args, possibly null
      */
-    protected static Object runCommandLineProgram(CommandLineProgram program, String[] rawArgs) {
+    protected static Object runCommandLineProgram(final CommandLineProgram program, final String[] rawArgs) {
 
         if (null == program) return null; // no program found!  This will happen if help was specified with no other arguments
         // we can lop off the first two arguments but it requires an array copy or alternatively we could update CLP to remove them
         // in the constructor do the former in this implementation.
         final String[] mainArgs = Arrays.copyOfRange(rawArgs, 1, rawArgs.length);
         return program.instanceMain(mainArgs);
+    }
+
+    /**
+     * Set up the configuration file store and create the {@link CommandLineProgram} to run.
+     * @param args Argument array passed into this invocation of {@link Main}.
+     * @param packageList List of packages to include in the command-line.
+     * @param classList List of single classes to include in the command-line.
+     * @param commandLineName The command-line name as it appears in the usage.
+     * @return The {@link CommandLineProgram} to run from this invocation of {@link Main}.
+     */
+    protected CommandLineProgram setupConfigAndExtractProgram(final String[] args,
+                                                              final List<String> packageList,
+                                                              final List<Class<? extends CommandLineProgram>> classList,
+                                                              final String commandLineName ){
+        // Parse our config file path from our arguments and initialize the configuration file.
+        // Note: this must be here because the command-line invocation inserts into here:
+        parseArgsForConfigSetup(args);
+
+        // Get our command-line program:
+        return extractCommandLineProgram(args, packageList, classList, commandLineName);
     }
 
     /**
@@ -153,15 +198,23 @@ public class Main {
      * Note: this is the only method that is allowed to call System.exit (because gatk tools may be run from test harness etc)
      */
     protected final void mainEntry(final String[] args) {
-        final CommandLineProgram program = extractCommandLineProgram(args, getPackageList(), getClassList(), getCommandLineName());
+
+        CommandLineProgram program = null;
         try {
+            program = setupConfigAndExtractProgram(args, getPackageList(), getClassList(), getCommandLineName());
             final Object result = runCommandLineProgram(program, args);
             handleResult(result);
             //no explicit System.exit(0) since that causes issues when running in Yarn containers
         } catch (final CommandLineException e){
-            System.err.println(program.getUsage());
+            if (program != null) {
+                System.err.println(program.getUsage());
+            }
             handleUserException(e);
             System.exit(COMMANDLINE_EXCEPTION_EXIT_VALUE);
+        } catch (final PicardNonZeroExitException e) {
+            // a Picard tool returned a non-zero exit code
+            handleResult(e.getToolReturnCode());
+            System.exit(PICARD_TOOL_EXCEPTION);
         } catch (final UserException e){
             handleUserException(e);
             System.exit(USER_EXCEPTION_EXIT_VALUE);
@@ -173,7 +226,6 @@ public class Main {
             System.exit(ANY_OTHER_EXCEPTION_EXIT_VALUE);
         }
     }
-
 
 
     /**
@@ -202,7 +254,7 @@ public class Main {
             e.printStackTrace();
         } else {
             System.err.println(String.format(
-                    "Set the system property %s (--javaOptions '-D%s=true') to print the stack trace.",
+                    "Set the system property %s (--java-options '-D%s=true') to print the stack trace.",
                     STACK_TRACE_ON_USER_EXCEPTION_PROPERTY,
                     STACK_TRACE_ON_USER_EXCEPTION_PROPERTY));
         }
@@ -246,8 +298,10 @@ public class Main {
     /**
      * Returns the command line program specified, or prints the usage and exits with exit code 1 *
      */
-    private static CommandLineProgram extractCommandLineProgram(final String[] args, final List<String> packageList, final List<Class<? extends CommandLineProgram>> classList, final String commandLineName) {
-
+    private CommandLineProgram extractCommandLineProgram( final String[] args,
+                                                          final List<String> packageList,
+                                                          final List<Class<? extends CommandLineProgram>> classList,
+                                                          final String commandLineName ) {
         /** Get the set of classes that are our command line programs **/
         final ClassFinder classFinder = new ClassFinder();
         for (final String pkg : packageList) {
@@ -286,6 +340,8 @@ public class Main {
 
         if (args.length < 1 || args[0].equals("-h") || args[0].equals("--help")) {
             printUsage(System.out, classes, commandLineName);
+        } else if ( args.length == 1 && (args[0].equals("-" + SpecialArgumentsCollection.VERSION_FULLNAME) || args[0].equals("--" + SpecialArgumentsCollection.VERSION_FULLNAME))) {
+            printVersionInfo(System.out);
         } else {
             if (simpleNameToClass.containsKey(args[0])) {
                 final Class<?> clazz = simpleNameToClass.get(args[0]);
@@ -314,11 +370,11 @@ public class Main {
 
         @Override
         public int compare(final Class<?> aClass, final Class<?> bClass) {
-            return aClass.getSimpleName().compareTo(bClass.getSimpleName());
+            return RuntimeUtils.toolDisplayName(aClass).compareTo(RuntimeUtils.toolDisplayName(bClass));
         }
     }
 
-    private static void printUsage(final PrintStream destinationStream, final Set<Class<?>> classes, final String commandLineName) {
+    private void printUsage(final PrintStream destinationStream, final Set<Class<?>> classes, final String commandLineName) {
         final StringBuilder builder = new StringBuilder();
         builder.append(BOLDRED + "USAGE: " + commandLineName + " " + GREEN + "<program name>" + BOLDRED + " [-h]\n\n" + KNRM)
                 .append(BOLDRED + "Available Programs:\n" + KNRM);
@@ -365,26 +421,74 @@ public class Main {
             Collections.sort(sortedClasses, new SimpleNameComparator());
 
             for (final Class<?> clazz : sortedClasses) {
-                final CommandLineProgramProperties property = programsToProperty.get(clazz);
-                if (null == property) {
+                final CommandLineProgramProperties clpProperties = programsToProperty.get(clazz);
+                if (null == clpProperties) {
                     throw new RuntimeException(String.format("Unexpected error: did not find the CommandLineProgramProperties annotation for '%s'", clazz.getSimpleName()));
                 }
-
-                final BetaFeature betaFeature = clazz.getAnnotation(BetaFeature.class);
-                final String summaryLine =
-                        betaFeature == null ?
-                                String.format("%s%s", CYAN, property.oneLineSummary()) :
-                                String.format("%s%s %s%s", RED, "(BETA Tool)", CYAN, property.oneLineSummary());
-                if (clazz.getSimpleName().length() >= 45) {
-                    builder.append(String.format("%s    %s    %s%s\n", GREEN, clazz.getSimpleName(), summaryLine, KNRM));
-                } else {
-                    builder.append(String.format("%s    %-45s%s%s\n", GREEN, clazz.getSimpleName(), summaryLine, KNRM));
-                }
+                builder.append(getDisplaySummaryForTool(clazz, clpProperties));
             }
             builder.append(String.format("\n"));
         }
         builder.append(WHITE + "--------------------------------------------------------------------------------------\n" + KNRM);
         destinationStream.println(builder.toString());
+    }
+
+    /**
+     * Return a summary string for a command line tool suitable for display.
+     * @param toolClass tool class
+     * @param clpProperties {@CommandLineProgramProperties} for the tool
+     * @return
+     */
+    protected String getDisplaySummaryForTool(final Class<?> toolClass, final CommandLineProgramProperties clpProperties) {
+        final BetaFeature betaFeature = toolClass.getAnnotation(BetaFeature.class);
+        final ExperimentalFeature experimentalFeature = toolClass.getAnnotation(ExperimentalFeature.class);
+
+        final StringBuilder builder = new StringBuilder();
+        final String summaryLine;
+
+        if (experimentalFeature != null) {
+            summaryLine = String.format("%s%s %s%s", RED, "(EXPERIMENTAL Tool)", CYAN, clpProperties.oneLineSummary());
+        } else if (betaFeature != null) {
+            summaryLine = String.format("%s%s %s%s", RED, "(BETA Tool)", CYAN, clpProperties.oneLineSummary());
+        } else {
+            summaryLine = String.format("%s%s", CYAN, clpProperties.oneLineSummary());
+        }
+        final String annotatedToolName = getDisplayNameForToolClass(toolClass);
+        if (toolClass.getSimpleName().length() >= 45) {
+            builder.append(String.format("%s    %s    %s%s\n", GREEN, annotatedToolName, summaryLine, KNRM));
+        } else {
+            builder.append(String.format("%s    %-45s%s%s\n", GREEN, annotatedToolName, summaryLine, KNRM));
+        }
+        return builder.toString();
+    }
+
+    /**
+     * @return A display name to be used for the tool who's class is {@code clazz}.
+     */
+    protected String getDisplayNameForToolClass(final Class<?> clazz) {
+        return RuntimeUtils.toolDisplayName(clazz);
+    }
+
+    /**
+     * Get deprecation message for a tool
+     * @param toolName command specified by the user
+     * @return deprecation message string, or null if none
+     */
+    public String getToolDeprecationMessage(final String toolName) {
+        return DeprecatedToolsRegistry.getToolDeprecationInfo(toolName);
+    }
+
+    /**
+     * When a command does not match any known command, searches for a deprecation message, if any, or for similar
+     * commands.
+     * @return returns an error message including the closes match if relevant.
+     */
+    public String getUnknownCommandMessage(final Set<Class<?>> classes, final String command) {
+        final String deprecationMessage = getToolDeprecationMessage(command);
+        if (deprecationMessage != null) {
+            return deprecationMessage;
+        }
+        return getSuggestedAlternateCommand(classes, command);
     }
 
     /**
@@ -397,7 +501,7 @@ public class Main {
      * When a command does not match any known command, searches for similar commands, using the same method as GIT *
      * @return returns an error message including the closes match if relevant.
      */
-    public static String getUnknownCommandMessage(final Set<Class<?>> classes, final String command) {
+    public String getSuggestedAlternateCommand(final Set<Class<?>> classes, final String command) {
         final Map<Class<?>, Integer> distances = new LinkedHashMap<>();
 
         int bestDistance = Integer.MAX_VALUE;
@@ -444,5 +548,24 @@ public class Main {
             }
         }
         return message.toString();
+    }
+
+    /**
+     * Prints version information for the toolkit, including versions of important libraries.
+     * Subclasses may override to change this behavior.
+     */
+    protected void printVersionInfo(PrintStream out){
+        final String toolkitName = RuntimeUtils.getToolkitName(this.getClass());
+        final String version = RuntimeUtils.getVersion(this.getClass());
+        System.out.println(String.format("%s v%s", toolkitName, version));
+        final Manifest manifest = RuntimeUtils.getManifest(this.getClass());
+        if( manifest != null){
+            final Attributes manifestAttributes = manifest.getMainAttributes();
+            final String htsjdkVersion = manifestAttributes.getValue("htsjdk-Version");
+            final String picardVersion = manifestAttributes.getValue("Picard-Version");
+            out.println("HTSJDK Version: " + (htsjdkVersion != null ? htsjdkVersion : "unknown"));
+            out.println("Picard Version: " + (picardVersion != null ? picardVersion : "unknown"));
+        }
+
     }
 }

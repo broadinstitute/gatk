@@ -36,30 +36,8 @@ import java.util.stream.Collectors;
  * between command/script/module execution. Using -i doesn't buy you anything (for this version of the executor, at
  * least) since the process is terminated after each command completes.
  */
-public class PythonScriptExecutor extends ScriptExecutor {
+public class PythonScriptExecutor extends PythonExecutorBase {
     private static final Logger logger = LogManager.getLogger(PythonScriptExecutor.class);
-
-    /**
-     * Enum of possible executables that can be launched by this executor.
-     */
-    public enum PythonExecutableName {
-
-        PYTHON("python"),
-        PYTHON3("python3");
-
-        private final String executableName;
-
-        PythonExecutableName (final String executableName) {
-            this.executableName = executableName;
-        }
-
-        public String getExecutableName() {
-            return executableName;
-        }
-    }
-
-    // File extension used for python scripts
-    public static final String PYTHON_EXTENSION = ".py";
 
     private final List<String> curatedCommandLineArgs = new ArrayList<>();
 
@@ -75,10 +53,7 @@ public class PythonScriptExecutor extends ScriptExecutor {
      * @param ensureExecutableExists throw if the python executable cannot be found
      */
     public PythonScriptExecutor(final PythonExecutableName pythonExecutableName, final boolean ensureExecutableExists) {
-        super(pythonExecutableName.getExecutableName());
-        if (ensureExecutableExists && !externalExecutableExists()) {
-            executableMissing();
-        }
+        super(pythonExecutableName, ensureExecutableExists);
     }
 
     /**
@@ -140,8 +115,8 @@ public class PythonScriptExecutor extends ScriptExecutor {
      */
     public boolean executeScript(final Resource scriptResource, final List<String> pythonProcessArgs, final List<String> scriptArgs) {
         Utils.nonNull(scriptResource, "script resource cannot be null");
+        // this File is automatically scheduled for deletion on exit
         final File tempResourceFile = IOUtils.writeTempResource(scriptResource);
-
         try {
             return executeScript(tempResourceFile.getAbsolutePath(), pythonProcessArgs, scriptArgs);
         } finally {
@@ -204,15 +179,6 @@ public class PythonScriptExecutor extends ScriptExecutor {
     }
 
     /**
-     * Return an exception specific to this executor type, to be thrown on error conditions.
-     * @param message
-     */
-    @Override
-    public ScriptExecutorException getScriptException(final String message) {
-        return new PythonScriptExecutorException(message.toString());
-    }
-
-    /**
      * Return a (not necessarily executable) string representing the current command line for this executor
      * for error reporting purposes.
      * @return Command line string.
@@ -221,4 +187,13 @@ public class PythonScriptExecutor extends ScriptExecutor {
         return curatedCommandLineArgs.stream().collect(Collectors.joining(" "));
     }
 
+    public static void checkPythonEnvironmentForPackage(final String packageName) {
+        final PythonScriptExecutor pythonExecutor = new PythonScriptExecutor(true);
+        if (!pythonExecutor.executeCommand(String.format("import %s", packageName) + System.lineSeparator(), null, null)) {
+            throw new RuntimeException(String.format("Importing \"%s\" in the python environment failed. Please " +
+                    "assert that the python environment is properly set and activated (if using a virtual " +
+                    "environment), and \"%s\" is installed along with its dependencies. Please refer to " +
+                    "GATK README.md file for instructions on setting up the python environment.", packageName, packageName));
+        }
+    }
 }

@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.annotator;
 import com.google.common.primitives.Ints;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.help.DocumentedFeature;
-import org.broadinstitute.hellbender.utils.GATKProtectedMathUtils;
+import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -12,9 +12,9 @@ import java.util.List;
 import java.util.OptionalInt;
 
 /**
- * Median mapping quality of reads supporting each allele.
+ * Median mapping quality of reads supporting each alt allele.
  *
- * Created by David Benjamin on 3/20/17.
+ * <p>The output is an array containing, for each alt allele, the median mapping quality over all reads that best match that allele.</p>
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Median mapping quality of reads supporting each allele (MMQ)")
 public class MappingQuality extends PerAlleleAnnotation implements StandardMutectAnnotation {
@@ -22,8 +22,11 @@ public class MappingQuality extends PerAlleleAnnotation implements StandardMutec
 
     @Override
     protected int aggregate(final List<Integer> values) {
-        return values.isEmpty() ? 0 : GATKProtectedMathUtils.median(Ints.toArray(values));
+        return values.isEmpty() ? 0 : MathUtils.median(Ints.toArray(values));
     }
+
+    @Override
+    protected boolean includeRefAllele() { return true; }
 
     @Override
     protected String getVcfKey() { return KEY; }

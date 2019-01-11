@@ -25,6 +25,9 @@ import java.util.Map;
  * system only in order to be recognized by the Feature management system. This is why the constructor is
  * marked as protected.
  *
+ * If you still want to instantiate this class directly, you will have to call {@link GATKTool#addFeatureInputsAfterInitialization(String, String, Class, int)}
+ *  in order to register the FeatureInput with the engine.
+ *
  * FeatureInputs can be assigned logical names on the command line using the syntax:
  *
  *     --argument_name logical_name:feature_file
@@ -116,7 +119,7 @@ public final class FeatureInput<T extends Feature> implements Serializable {
             } else if (tokens.length == 1) {
                 // No user-specified logical name for this FeatureInput, so use the absolute path to the File as its name
                 final String featurePath = tokens[0];
-                return new ParsedArgument(FeatureInput.makeIntoAbsolutePath(featurePath), featurePath);
+                return new ParsedArgument(getDefaultName(featurePath), featurePath);
             } else {
                 // User specified a logical name (and optional list of key-value pairs)
                 // for this FeatureInput using name(,key=value)*:File syntax.
@@ -140,6 +143,10 @@ public final class FeatureInput<T extends Feature> implements Serializable {
                 }
                 return pa;
             }
+        }
+
+        private static String getDefaultName(String featurePath) {
+            return FeatureInput.makeIntoAbsolutePath(featurePath);
         }
 
         private ParsedArgument(final String name, final String file) {
@@ -212,7 +219,7 @@ public final class FeatureInput<T extends Feature> implements Serializable {
     public FeatureInput(final String featureFile, final String name, final Map<String, String> keyValueMap) {
         Utils.nonNull(name, "name");
         Utils.nonNull(keyValueMap, "kevValueMap");
-        Utils.nonNull(featureFile, "featureFile");
+        Utils.nonNull(featureFile, "feature-file");
         this.name = name;
         this.keyValueMap = Collections.unmodifiableMap(new LinkedHashMap<>(keyValueMap));   //make a unmodifiable copy
         this.featureFile = featureFile;
@@ -237,8 +244,8 @@ public final class FeatureInput<T extends Feature> implements Serializable {
      * creates a name from the given filePath by finding the absolute path of the given input
      */
     private static String makeIntoAbsolutePath(final String filePath){
-        if(FeatureDataSource.isGenomicsDBPath(filePath)){
-            return FeatureDataSource.GENOMIC_DB_URI_SCHEME + new File(filePath.replace(FeatureDataSource.GENOMIC_DB_URI_SCHEME,"")).getAbsolutePath();
+        if(IOUtils.isGenomicsDBPath(filePath)){
+            return IOUtils.getAbsolutePathWithGenomicsDBURIScheme(filePath);
         } else if (URI.create(filePath).getScheme() != null) {
             return IOUtils.getPath(filePath).toAbsolutePath().toUri().toString();
         } else {
@@ -268,12 +275,27 @@ public final class FeatureInput<T extends Feature> implements Serializable {
     }
 
     /**
+     *
+     * @return true if the value for name does not match the default, indicating it was a user supplied name (i.e. foo:file.vcf)
+     */
+    public boolean hasUserSuppliedName() {
+        return !ParsedArgument.getDefaultName(getFeaturePath()).equals(name);
+    }
+
+    /**
      * Gets the file backing this source of Features
      *
      * @return file backing this source of Features
      */
     public String getFeaturePath() {
         return featureFile;
+    }
+
+    /**
+     * @return The key/value {@link Map<String,String>} as supplied to create the data in this {@link FeatureInput}.
+     */
+    public Map<String, String> getKeyValueMap() {
+        return keyValueMap;
     }
 
     /**

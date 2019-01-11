@@ -25,10 +25,18 @@ public class CalculateContaminationIntegrationTest extends CommandLineProgramTes
     public static final File NA12891_3_PCT_NA12892_97_PCT = new File(SPIKEIN_DATA_DIRECTORY, "NA12891_0.03_NA12892_0.97.table");
     public static final File NA12891_5_PCT_NA12892_95_PCT = new File(SPIKEIN_DATA_DIRECTORY, "NA12891_0.05_NA12892_0.95.table");
     public static final File NA12891_8_PCT_NA12892_92_PCT = new File(SPIKEIN_DATA_DIRECTORY, "NA12891_0.08_NA12892_0.92.table");
-    public static final double BASELINE_CONTAMINATION_OF_NA12892 = 0.01;
+    public static final double BASELINE_CONTAMINATION_OF_NA12892 = 0.001;
 
-    @Test
-    public void testArtificialData() {
+    @DataProvider(name = "includeHomAlts")
+    public Object[][] includeHomAlts() {
+        return new Object[][]{
+                {true},
+                {false}
+        };
+    }
+
+    @Test(dataProvider = "includeHomAlts")
+    public void testArtificialData(final boolean includeHomAlts) {
         final RandomGenerator randomGenerator = RandomGeneratorFactory.createRandomGenerator(new Random(111));
 
         final String contig = "chr1";
@@ -58,7 +66,7 @@ public class CalculateContaminationIntegrationTest extends CommandLineProgramTes
             int totalAltCount = contaminantAltCount;
 
             final double hetProbability = 2 * alleleFrequency * (1 - alleleFrequency);
-            final double homAltProbability = alleleFrequency * alleleFrequency;
+            final double homAltProbability = includeHomAlts ? alleleFrequency * alleleFrequency : 0;
             final double x = randomGenerator.nextDouble();
             if (x < hetProbability) {    // het
                 //draw alt allele fractions from mixture of binomials centered at maf and 1 - maf
@@ -75,17 +83,25 @@ public class CalculateContaminationIntegrationTest extends CommandLineProgramTes
         }
 
         final File psTable = createTempFile("pileups", ".table");
-        PileupSummary.writePileupSummaries(ps, psTable);
+        PileupSummary.writeToFile("SAMPLE", ps, psTable);
         final File contaminationTable = createTempFile("contamination", ".table");
+        final File segmentationsTable = createTempFile("segments", ".table");
 
         final String[] args = {
                 "-I", psTable.getAbsolutePath(),
                 "-O", contaminationTable.getAbsolutePath(),
+                "-" + CalculateContamination.TUMOR_SEGMENTATION_SHORT_NAME, segmentationsTable.getAbsolutePath()
         };
         runCommandLine(args);
 
-        final double calculatedContamination = ContaminationRecord.readContaminationTable(contaminationTable).get(0).getContamination();
+        final double calculatedContamination = ContaminationRecord.readFromFile(contaminationTable).get(0).getContamination();
+        final List<MinorAlleleFractionRecord> mafRecords = MinorAlleleFractionRecord.readFromFile(segmentationsTable).getRight();
+
         Assert.assertEquals(calculatedContamination, contamination, 0.01);
+        Assert.assertEquals(mafRecords.size(), 3);
+        Assert.assertEquals(mafRecords.get(0).getMinorAlleleFraction(), 0.5, 0.05);
+        Assert.assertEquals(mafRecords.get(1).getMinorAlleleFraction(), lohMinorAlleleFraction, 0.05);
+        Assert.assertEquals(mafRecords.get(2).getMinorAlleleFraction(), 0.5, 0.05);
     }
 
 
@@ -101,8 +117,8 @@ public class CalculateContaminationIntegrationTest extends CommandLineProgramTes
         };
         runCommandLine(args);
 
-        final double calculatedContamination = ContaminationRecord.readContaminationTable(contaminationTable).get(0).getContamination();
-        Assert.assertEquals(calculatedContamination, contamination, 0.01);
+        final double calculatedContamination = ContaminationRecord.readFromFile(contaminationTable).get(0).getContamination();
+        Assert.assertEquals(calculatedContamination, contamination, 0.015);
     }
 
     // pileup summary table, spikein fraction, baseline contamination before spike-in
@@ -128,13 +144,12 @@ public class CalculateContaminationIntegrationTest extends CommandLineProgramTes
 
         final String[] args = {
                 "-I", contaminated.getAbsolutePath(),
-                "-matched", normal.getAbsolutePath(),
+                "-" + CalculateContamination.MATCHED_NORMAL_SHORT_NAME, normal.getAbsolutePath(),
                 "-O", contaminationTable.getAbsolutePath(),
         };
         runCommandLine(args);
 
-        final double calculatedContamination = ContaminationRecord.readContaminationTable(contaminationTable).get(0).getContamination();
+        final double calculatedContamination = ContaminationRecord.readFromFile(contaminationTable).get(0).getContamination();
         Assert.assertEquals(calculatedContamination, contamination, 0.01);
     }
-
 }

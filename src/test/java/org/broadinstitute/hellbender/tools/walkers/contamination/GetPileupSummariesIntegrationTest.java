@@ -1,35 +1,39 @@
 package org.broadinstitute.hellbender.tools.walkers.contamination;
 
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.util.List;
 
-import static org.testng.Assert.*;
-
 /**
  * Created by David Benjamin on 2/16/17.
  */
 public class GetPileupSummariesIntegrationTest extends CommandLineProgramTest {
+    private static final File NA12878 = new File(largeFileTestDir, "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam");
 
     @Test
     public void test() {
-        final File NA12878 = new File(largeFileTestDir, "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam");
         final File thousandGenomes = new File(largeFileTestDir, "1000G.phase3.broad.withGenotypes.chr20.10100000.vcf");
 
         final File output = createTempFile("output", ".table");
         final String[] args = {
                 "-I", NA12878.getAbsolutePath(),
                 "-V", thousandGenomes.getAbsolutePath(),
+                "-L", thousandGenomes.getAbsolutePath(),
                 "-O", output.getAbsolutePath(),
-                "-maxAF", "0.9"
-                //"-L 20:10000107-10000586"
+                "-" + GetPileupSummaries.MAX_SITE_AF_SHORT_NAME, "0.9"
         };
         runCommandLine(args);
 
-        final List<PileupSummary> result = PileupSummary.readPileupSummaries(output);
+        final ImmutablePair<String, List<PileupSummary>> sampleAndResult = PileupSummary.readFromFile(output);
+
+        final List<PileupSummary> result = sampleAndResult.getRight();
+        final String sample = sampleAndResult.getLeft();
+        Assert.assertEquals(sample, "NA12878");
 
         // compare to IGV manual inspection
         final PileupSummary ps1 = result.get(0);
@@ -59,6 +63,19 @@ public class GetPileupSummariesIntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(ps4.getOtherAltCount(), 0);
         Assert.assertEquals(ps4.getAlleleFrequency(), 0.809);
 
+    }
+
+    @Test(expectedExceptions = UserException.BadInput.class)
+    public void testNoAFFieldInHeader() {
+        final File vcfWithoutAF = new File(publicTestDir, "empty.vcf");
+        final File output = createTempFile("output", ".table");
+        final String[] args = {
+                "-I", NA12878.getAbsolutePath(),
+                "-V", vcfWithoutAF.getAbsolutePath(),
+                "-L", vcfWithoutAF.getAbsolutePath(),
+                "-O", output.getAbsolutePath(),
+        };
+        runCommandLine(args);
     }
 
 }

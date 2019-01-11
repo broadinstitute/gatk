@@ -1,22 +1,23 @@
 package org.broadinstitute.hellbender.tools;
 
-import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.engine.AuthHolder;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerArgumentCollection;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.utils.test.SparkTestUtils;
+import org.broadinstitute.hellbender.testutils.SparkTestUtils;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -25,9 +26,90 @@ import java.util.Collections;
 
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerIntegrationTest;
 
+@Test(groups = {"variantcalling"})
+// Selected tests copied from HaplotypeCallerIntegrationTest
 public class HaplotypeCallerSparkIntegrationTest extends CommandLineProgramTest {
 
-    private  static final String TEST_FILES_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/haplotypecaller/";
+    // If true, update the expected outputs in tests that assert an exact match vs. prior output,
+    // instead of actually running the tests. Can be used with "./gradlew test -Dtest.single=HaplotypeCallerIntegrationTest"
+    // to update all of the exact-match tests at once. After you do this, you should look at the
+    // diffs in the new expected outputs in git to confirm that they are consistent with expectations.
+    public static final boolean UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS = false;
+
+    public static final String TEST_FILES_DIR = toolsTestDir + "haplotypecaller/";
+
+    /*
+     * Make sure that someone didn't leave the UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS toggle turned on
+     */
+    @Test
+    public void assertThatExpectedOutputUpdateToggleIsDisabled() {
+        Assert.assertFalse(UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS, "The toggle to update expected outputs should not be left enabled");
+    }
+
+    @DataProvider(name = "HaplotypeCallerTestInputs")
+    public Object[][] getHaplotypCallerTestInputs() {
+        return new Object[][]{
+                {NA12878_20_21_WGS_bam, b37_reference_20_21},
+                // Uncomment when bai indexed CRAM is supported in Disq
+                //{NA12878_20_21_WGS_cram, b37_reference_20_21}
+        };
+    }
+
+    /*
+     * Test that in VCF mode we're consistent with past GATK4 results
+     */
+    @Test(dataProvider = "HaplotypeCallerTestInputs")
+    public void testVCFModeIsConsistentWithPastResults(final String inputFileName, final String referenceFileName) throws Exception {
+        Utils.resetRandomGenerator();
+
+        final File output = createTempFile("testVCFModeIsConsistentWithPastResults", ".vcf");
+        final File expected = new File(TEST_FILES_DIR, "expected.testVCFMode.gatk4.vcf");
+
+        final String outputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : output.getAbsolutePath();
+
+        final String[] args = {
+                "-I", inputFileName,
+                "-R", referenceFileName,
+                "-L", "20:10000000-10100000",
+                "-O", outputPath,
+                "-pairHMM", "AVX_LOGLESS_CACHING",
+                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false",
+                "--strict" // to match walker version
+        };
+
+        runCommandLine(args);
+
+        // Test for an exact match against past results
+        if (!UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS) {
+            IntegrationTestSpec.assertEqualTextFiles(output, expected);
+        }
+    }
+
+    @Test(dataProvider = "HaplotypeCallerTestInputs")
+    public void testNonStrictVCFModeIsConsistentWithPastResults(final String inputFileName, final String referenceFileName) throws Exception {
+        Utils.resetRandomGenerator();
+
+        final File output = createTempFile("testVCFModeIsConsistentWithPastResults", ".vcf");
+        final File expected = new File(TEST_FILES_DIR, "expected.testVCFMode.gatk4.nonstrict.vcf");
+
+        final String outputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : output.getAbsolutePath();
+
+        final String[] args = {
+                "-I", inputFileName,
+                "-R", referenceFileName,
+                "-L", "20:10000000-10100000",
+                "-O", outputPath,
+                "-pairHMM", "AVX_LOGLESS_CACHING",
+                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
+        };
+
+        runCommandLine(args);
+
+        // Test for an exact match against past results
+        if (!UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS) {
+            IntegrationTestSpec.assertEqualTextFiles(output, expected);
+        }
+    }
 
     /*
     * Test that in VCF mode we're >= 99% concordant with GATK3.8 results
@@ -48,7 +130,7 @@ public class HaplotypeCallerSparkIntegrationTest extends CommandLineProgramTest 
 
         final String[] args = {
                 "-I", NA12878_20_21_WGS_bam,
-                "-R", b37_2bit_reference_20_21,
+                "-R", b37_reference_20_21,
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
                 "-pairHMM", "AVX_LOGLESS_CACHING"
@@ -83,7 +165,7 @@ public class HaplotypeCallerSparkIntegrationTest extends CommandLineProgramTest 
 
         final String[] args = {
                 "-I", NA12878_20_21_WGS_bam,
-                "-R", b37_2bit_reference_20_21,
+                "-R", b37_reference_20_21,
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
                 "-G", "StandardAnnotation",
@@ -100,7 +182,7 @@ public class HaplotypeCallerSparkIntegrationTest extends CommandLineProgramTest 
     /*
    * Test that in GVCF mode we're >= 99% concordant with GATK3 results
    */
-    @Test
+    @Test(enabled=false) //disabled after reference confidence change in #5172
     public void testGVCFModeIsConcordantWithGATK3_8Results() throws Exception {
         Utils.resetRandomGenerator();
 
@@ -116,7 +198,7 @@ public class HaplotypeCallerSparkIntegrationTest extends CommandLineProgramTest 
 
         final String[] args = {
                 "-I", NA12878_20_21_WGS_bam,
-                "-R", b37_2bit_reference_20_21,
+                "-R", b37_reference_20_21,
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
                 "-ERC", "GVCF",
@@ -129,11 +211,38 @@ public class HaplotypeCallerSparkIntegrationTest extends CommandLineProgramTest 
         Assert.assertTrue(concordance >= 0.99, "Concordance with GATK 3.8 in GVCF mode is < 99% (" +  concordance + ")");
     }
 
+    @DataProvider
+    public static Object[][] brokenGVCFCases() {
+        return new Object[][]{
+                {".g.bcf"},
+                {".g.bcf.gz"}
+        };
+    }
 
-    @Test
-    public void testGVCFModeIsConcordantWithGATK3_8AlelleSpecificResults() throws Exception {
+    @Test(dataProvider = "brokenGVCFCases", expectedExceptions = UserException.UnimplementedFeature.class)
+    public void testBrokenGVCFConfigurationsAreDisallowed(String extension) {
+        final String[] args = {
+                "-I", NA12878_20_21_WGS_bam,
+                "-R", b37_reference_20_21,
+                "-O", createTempFile("testGVCF_GZ_throw_exception", extension).getAbsolutePath(),
+                "-ERC", "GVCF",
+        };
+
+        runCommandLine(args);
+    }
+
+    @DataProvider
+    public static Object[][] gvcfCases() {
+        return new Object[][]{
+                {".g.vcf"},
+                {".g.vcf.gz"}
+        };
+    }
+
+    @Test(dataProvider = "gvcfCases", enabled=false) //disabled after reference confidence change in #5172
+    public void testGVCFModeIsConcordantWithGATK3_8AlelleSpecificResults(String extension) throws Exception {
         Utils.resetRandomGenerator();
-        final File output = createTempFile("testGVCFModeIsConcordantWithGATK3_8AlelleSpecificResults", ".g.vcf");
+        final File output = createTempFile("testGVCFModeIsConcordantWithGATK3_8AlelleSpecificResults", extension);
 
         //Created by running:
         // java -jar gatk.3.8-4-g7b0250253f.jar -T HaplotypeCaller \
@@ -146,7 +255,7 @@ public class HaplotypeCallerSparkIntegrationTest extends CommandLineProgramTest 
 
         final String[] args = {
                 "-I", NA12878_20_21_WGS_bam,
-                "-R", b37_2bit_reference_20_21,
+                "-R", b37_reference_20_21,
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
                 "-G", "StandardAnnotation",
@@ -159,16 +268,6 @@ public class HaplotypeCallerSparkIntegrationTest extends CommandLineProgramTest 
 
         final double concordance = HaplotypeCallerIntegrationTest.calculateConcordance(output, gatk3Output);
         Assert.assertTrue(concordance >= 0.99, "Concordance with GATK 3.8 in AS GVCF mode is < 99% (" +  concordance + ")");
-    }
-
-    @Test
-    public void testReferenceAdapterIsSerializable() throws IOException {
-        final AuthHolder auth = new AuthHolder("name", "somestring");
-        final ReferenceMultiSource referenceMultiSource = new ReferenceMultiSource(auth, b37_2bit_reference_20_21, ReferenceWindowFunctions.IDENTITY_FUNCTION);
-        SparkTestUtils.roundTripInKryo(referenceMultiSource, ReferenceMultiSource.class, SparkContextFactory.getTestSparkContext().getConf());
-        final HaplotypeCallerSpark.ReferenceMultiSourceAdapter adapter = new HaplotypeCallerSpark.ReferenceMultiSourceAdapter(referenceMultiSource, auth);
-        SparkTestUtils.roundTripInKryo(adapter, HaplotypeCallerSpark.ReferenceMultiSourceAdapter.class, SparkContextFactory.getTestSparkContext().getConf());
-
     }
 
     @Test
@@ -187,8 +286,8 @@ public class HaplotypeCallerSparkIntegrationTest extends CommandLineProgramTest 
 
     @Test
     public void testReferenceMultiSourceIsSerializable() {
-        final ReferenceMultiSource args = new ReferenceMultiSource((PipelineOptions) null, GATKBaseTest.b37_2bit_reference_20_21, ReferenceWindowFunctions.IDENTITY_FUNCTION);
-        SparkTestUtils.roundTripInKryo(args, ReferenceMultiSource.class, SparkContextFactory.getTestSparkContext().getConf());
+        final ReferenceMultiSparkSource args = new ReferenceMultiSparkSource(GATKBaseTest.b37_reference_20_21, ReferenceWindowFunctions.IDENTITY_FUNCTION);
+        SparkTestUtils.roundTripInKryo(args, ReferenceMultiSparkSource.class, SparkContextFactory.getTestSparkContext().getConf());
     }
 
 
