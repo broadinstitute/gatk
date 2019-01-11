@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers;
 
 import htsjdk.samtools.seekablestream.SeekablePathStream;
 import htsjdk.samtools.util.Locatable;
-import htsjdk.samtools.util.Log;
 import htsjdk.tribble.Tribble;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
@@ -266,17 +265,5 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         Assert.assertThrows(CommandLineException.MissingArgument.class, () -> runCommandLine(args));
         args.addArgument("L", "20:69512-69513");
         runCommandLine(args);
-    }
-
-    @Test
-    public void testMissingAlleleSpecificAnnotationGroupWarning() throws IOException {
-        final File output = createTempFile("test", ".g.vcf");
-        final ArgumentsBuilder args = new ArgumentsBuilder()
-                .addVCF(getTestFile("alleleSpecific.g.vcf"))
-                .addOutput(output)
-                .addReference(new File(b37_reference_20_21))
-                .addArgument(StandardArgumentDefinitions.VERBOSITY_NAME, Log.LogLevel.WARNING.name());
-        String actual = captureStderr(() -> runCommandLine(args));
-        assertContains(actual, "-G Standard -G AS_Standard");
     }
 }
