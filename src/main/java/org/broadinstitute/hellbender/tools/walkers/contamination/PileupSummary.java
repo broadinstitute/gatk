@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.contamination;
 
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
@@ -16,7 +17,9 @@ import org.broadinstitute.hellbender.utils.tsv.*;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Created by David Benjamin on 2/14/17.
@@ -100,12 +103,68 @@ public class PileupSummary implements Locatable {
         }
     }
 
+    // Takes a list of PileupSummaryTable files and write them all in one output file in order
+    public static void writeToFile(final List<File> inputFiles, final File output) {
+        boolean headerWritten = false;
+        String sample = "";
+        try ( PileupSummaryTableWriter writer = new PileupSummaryTableWriter(output.toPath()) ) {
+            for (final File inputFile : inputFiles){
+                try ( PileupSummaryTableReader reader = new PileupSummaryTableReader(inputFile.toPath())){
+                    if (! headerWritten){
+                        sample = reader.getMetadata().get(TableUtils.SAMPLE_METADATA_TAG);
+                        writer.writeMetadata(TableUtils.SAMPLE_METADATA_TAG, sample);
+                        headerWritten = true;
+                    }
+
+                    final String thisSample = reader.getMetadata().get(TableUtils.SAMPLE_METADATA_TAG);
+                    if (! thisSample.equals(sample)){
+                        throw new UserException.BadInput(String.format("Combining PileupSummaryTables from different samples is not supported. Got samples %s and %s",
+                                sample, thisSample));
+                    }
+
+                    final List<PileupSummary> pileupSummaries = reader.toList();
+                    writer.writeAllRecords(pileupSummaries);
+                } catch (IOException e){
+                    throw new UserException(String.format("Encountered an IO exception while reading from %s.", inputFile));
+                }
+            }
+
+        } catch (IOException e){
+            throw new UserException(String.format("Encountered an IO exception while writing to %s.", output));
+        }
+    }
+
     public static ImmutablePair<String, List<PileupSummary>> readFromFile(final File tableFile) {
         try( PileupSummaryTableReader reader = new PileupSummaryTableReader(IOUtils.fileToPath(tableFile)) ) {
             final List<PileupSummary> pileupSummaries = reader.toList();
             return ImmutablePair.of(reader.getMetadata().get(TableUtils.SAMPLE_METADATA_TAG), pileupSummaries);
         } catch (IOException e){
             throw new UserException(String.format("Encountered an IO exception while reading from %s.", tableFile));
+        }
+    }
+
+    public static class PileupSummaryComparator implements Comparator<PileupSummary> {
+        final SAMSequenceDictionary sequenceDictionary;
+        final List<String> contigsInOrder;
+
+        public PileupSummaryComparator(final SAMSequenceDictionary sequenceDictionary){
+            this.sequenceDictionary = sequenceDictionary;
+            contigsInOrder = sequenceDictionary.getSequences().stream()
+                    .map(ssr -> ssr.getSequenceName())
+                    .collect(Collectors.toList());
+        }
+
+        @Override
+        public int compare(PileupSummary ps1, PileupSummary ps2) {
+            // Use Contig Index in case the contig name is e.g. chr2
+            final int contigIndex1 = contigsInOrder.indexOf(ps1.getContig());
+            final int contigIndex2 = contigsInOrder.indexOf(ps2.getContig());
+
+            if (contigIndex1 != contigIndex2){
+                return Integer.compare(contigIndex1, contigIndex2);
+            } else {
+                return Integer.compare(ps1.getStart(), ps2.getStart());
+            }
         }
     }
 

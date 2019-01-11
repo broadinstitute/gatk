@@ -69,6 +69,7 @@ public abstract class GATKBaseTest extends BaseTest {
     // ~600,000 reads from chromosomes 20 and 21 of an NA12878 WGS bam aligned to b37, plus ~50,000 unmapped reads
     public static final String NA12878_20_21_WGS_bam = largeFileTestDir + "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam";
     public static final String NA12878_20_21_WGS_cram = largeFileTestDir + "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.cram";
+    public static final String NA12878_20_21_covered_regions = publicTestDir + "wgs_calling_regions.v1.chr20_chr21.interval_list";
 
     // Variants from a DBSNP 138 VCF overlapping the reads in NA12878_20_21_WGS_bam
     public static final String dbsnp_138_b37_20_21_vcf = largeFileTestDir + "dbsnp_138.b37.20.21.vcf";
@@ -100,6 +101,9 @@ public abstract class GATKBaseTest extends BaseTest {
     // Micro reference is the same as hg19mini, but contains only chromosomes 1 and 2
     public static final String hg19MicroReference = publicTestDir + "hg19micro.fasta";
 
+    public static final String FULL_HG19_DICT = publicTestDir + "Homo_sapiens_assembly19.dict";
+    public static final String FULL_HG38_DICT = publicTestDir + "large/Homo_sapiens_assembly38.dict";
+
     public static final String exampleFASTA = publicTestDir + "exampleFASTA.fasta";
     public static final String exampleReference = hg19MiniReference;
     public static final String hg19MiniIntervalFile = publicTestDir + "hg19mini.interval_list";
@@ -107,6 +111,8 @@ public abstract class GATKBaseTest extends BaseTest {
 
     public static final String DREAM_BAMS_DIR = publicTestDir + "large/mutect/dream_synthetic_bams";
     public static final String DREAM_VCFS_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/mutect/dream/vcfs";
+
+    public static final String thousandGenomes = largeFileTestDir + "1000G.phase3.broad.withGenotypes.chr20.10100000.vcf";
 
     public CachingIndexedFastaSequenceFile hg19ReferenceReader;
     public GenomeLocParser hg19GenomeLocParser;
