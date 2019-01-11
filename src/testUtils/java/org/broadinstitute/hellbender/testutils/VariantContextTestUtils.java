@@ -2,16 +2,14 @@ package org.broadinstitute.hellbender.testutils;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
-import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.variantcontext.Genotype;
-import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.*;
 import org.apache.commons.collections.IteratorUtils;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.io.output.NullOutputStream;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.CommandLineArgumentParser;
 import org.broadinstitute.barclay.argparser.CommandLineParser;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationPluginDescriptor;
@@ -21,18 +19,12 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.AlleleSubsettingUtils;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
+import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.testng.Assert;
-
-// This should be:
-//import org.apache.logging.log4j.LogManager;
-//import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 
 import java.io.File;
 import java.io.IOException;
@@ -43,6 +35,10 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import static org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils.attributeToList;
+
+// This should be:
+//import org.apache.logging.log4j.LogManager;
+//import org.apache.logging.log4j.Logger;
 
 public final class VariantContextTestUtils {
     private VariantContextTestUtils() {}
@@ -396,7 +392,6 @@ public final class VariantContextTestUtils {
         int numFailed = 0;
 
         for (int i = 0; i < v1.size(); i++) {
-            // assertVariantContextsAreEqual( v1.get(i), v2.get(i), Collections.emptyList() );
             if (! v1.get(i).toStringDecodeGenotypes().equals(v2.get(i).toStringDecodeGenotypes())){
                 logger.error("Variant Comparison Error: different element (compared by toStringDecodeGenotypes) " + i + ":\n" + v1.get(i) + "\n" + v2.get(i));
                 passed = false;
