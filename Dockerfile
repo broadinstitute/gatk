@@ -40,7 +40,7 @@ RUN echo "source activate gatk" > /root/run_unit_tests.sh && \
 WORKDIR /root
 RUN cp -r /root/run_unit_tests.sh /gatk
 RUN cp -r gatk.jar /gatk
-ENV CLASSPATH /gatk/gatk.jar
+ENV CLASSPATH /gatk/gatk.jar:$CLASSPATH
 RUN cp -r install_R_packages.R /gatk
 
 # Start GATK Python environment
