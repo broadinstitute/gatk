@@ -34,7 +34,7 @@ import java.util.stream.Stream;
  * NOTE: this class enforces that annotations with required arguments must see their arguments, yet this is not currently tested
  *       as no such annotations exist in the GATK.
  */
-public class GATKAnnotationPluginDescriptor  extends CommandLinePluginDescriptor<Annotation> {
+public class GATKAnnotationPluginDescriptor extends CommandLinePluginDescriptor<Annotation> {
     /**
      * At startup, set the plugin package name to the one(s) in the configuration file.
      */
@@ -43,10 +43,10 @@ public class GATKAnnotationPluginDescriptor  extends CommandLinePluginDescriptor
         // Get our configuration:
         final GATKConfig config = ConfigFactory.getInstance().getGATKConfig();
         // Exclude abstract classes and interfaces from the list of discovered codec classes
-        PLUGIN_PACKAGE_NAMES = Collections.unmodifiableList(config.codec_packages());
+        PLUGIN_PACKAGE_NAMES = Collections.unmodifiableList(config.annotation_packages());
     }
 
-    private static final Class<?> pluginBaseClass = org.broadinstitute.hellbender.tools.walkers.annotator.Annotation.class;
+    private static final Class<?> PLUGIN_BASE_CLASS = org.broadinstitute.hellbender.tools.walkers.annotator.Annotation.class;
 
     protected transient Logger logger = LogManager.getLogger(this.getClass());
 
@@ -85,7 +85,7 @@ public class GATKAnnotationPluginDescriptor  extends CommandLinePluginDescriptor
      */
     @Override
     public Class<?> getPluginBaseClass() {
-        return pluginBaseClass;
+        return PLUGIN_BASE_CLASS;
     }
 
     /**
@@ -230,7 +230,7 @@ public class GATKAnnotationPluginDescriptor  extends CommandLinePluginDescriptor
             // extend Annotation, groups are discovered by interrogating annotations for their interfaces and
             // associating the discovered annotations with their defined groups.
             // If a duplicate annotation is added, the group will opt to keep the old instantiation around
-            if ((inter != pluginBaseClass) && (pluginBaseClass.isAssignableFrom(inter))) {
+            if ((inter != PLUGIN_BASE_CLASS) && (PLUGIN_BASE_CLASS.isAssignableFrom(inter))) {
                 Map<String, Annotation> groupIdentity = (discoveredGroups.containsKey(inter.getSimpleName()) ? discoveredGroups.get(inter.getSimpleName()) : new HashMap<>());
                 groupIdentity.putIfAbsent(simpleName, annot);
                 discoveredGroups.put(inter.getSimpleName(), groupIdentity);

@@ -5,7 +5,6 @@ import htsjdk.samtools.SAMFileHeader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
-import org.broadinstitute.barclay.argparser.ClassFinder;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.ReadFilterArgumentDefinitions;
@@ -38,11 +37,10 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
      */
     private static final List<String> PLUGIN_PACKAGE_NAMES;
     static {
-
         // Get our configuration:
         final GATKConfig config = ConfigFactory.getInstance().getGATKConfig();
         // Exclude abstract classes and interfaces from the list of discovered codec classes
-        PLUGIN_PACKAGE_NAMES = Collections.unmodifiableList(config.codec_packages());
+        PLUGIN_PACKAGE_NAMES = Collections.unmodifiableList(config.read_filter_packages());
     }
 
     private static final Class<ReadFilter> pluginBaseClass = org.broadinstitute.hellbender.engine.filters.ReadFilter.class;

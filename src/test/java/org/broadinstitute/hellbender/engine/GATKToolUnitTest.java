@@ -13,18 +13,19 @@ import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFIDHeaderLine;
 import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationPluginDescriptor;
+import org.broadinstitute.hellbender.cmdline.GATKPlugin.testpluggables.TestAnnotation;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.ClippingRankSumTest;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Coverage;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StandardAnnotation;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.config.GATKConfig;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
-import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -631,7 +632,7 @@ public final class GATKToolUnitTest extends GATKBaseTest {
         Collection<Annotation> annots = tool.makeVariantAnnotations();
 
         ClassFinder finder = new ClassFinder();
-        finder.find(GATKAnnotationPluginDescriptor.pluginPackageName, Annotation.class);
+        finder.find(GATKConfig.DEFAULT_ANNOTATION_PACKAGES, Annotation.class);
 
         Set<Class<?>> classes = finder.getConcreteClasses();
         Assert.assertFalse(classes.isEmpty());
@@ -639,6 +640,16 @@ public final class GATKToolUnitTest extends GATKBaseTest {
         for(Class<?> found : classes) {
             Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass()==found));
         }
+    }
+
+    @Test
+    public void testConfigureAnnotationPackages(){
+        String[] args = {"--"+StandardArgumentDefinitions.ENABLE_ALL_ANNOTATIONS,
+                "--"+StandardArgumentDefinitions.GATK_CONFIG_FILE_OPTION, publicTestDir + "org/broadinstitute/hellbender/cmdline/GATKPlugin/changePluginPackages.properties"};
+
+        final TestGATKToolWithVariants tool = createTestVariantTool(args);
+        Collection<Annotation> annots = tool.makeVariantAnnotations();
+        Assert.assertEquals(annots.iterator().next().getClass(), TestAnnotation.class);
     }
 
     @Test
@@ -662,7 +673,7 @@ public final class GATKToolUnitTest extends GATKBaseTest {
 
         // Asserting that a standard annotation was included but not everything
         ClassFinder finder = new ClassFinder();
-        finder.find(GATKAnnotationPluginDescriptor.pluginPackageName, StandardAnnotation.class);
+        finder.find(GATKConfig.DEFAULT_ANNOTATION_PACKAGES, StandardAnnotation.class);
 
         Set<Class<?>> classes = finder.getConcreteClasses();
         Assert.assertFalse(classes.isEmpty());
@@ -682,7 +693,7 @@ public final class GATKToolUnitTest extends GATKBaseTest {
 
         // Asserting coverage was added
         Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass()==Coverage.class));
-        Assert.assertTrue(annots.size() == 1);
+        Assert.assertEquals(annots.size(), 1);
     }
 
     @Test
@@ -694,7 +705,7 @@ public final class GATKToolUnitTest extends GATKBaseTest {
 
         // Asserting coverage was added by default
         Assert.assertTrue(annots.stream().anyMatch(a -> a.getClass()==Coverage.class));
-        Assert.assertTrue(annots.size() == 1);
+        Assert.assertEquals(annots.size(), 1);
     }
 
     @Test
@@ -705,7 +716,7 @@ public final class GATKToolUnitTest extends GATKBaseTest {
         Collection<Annotation> annots = tool.makeVariantAnnotations();
 
         ClassFinder finder = new ClassFinder();
-        finder.find(GATKAnnotationPluginDescriptor.pluginPackageName, StandardAnnotation.class);
+        finder.find(GATKConfig.DEFAULT_ANNOTATION_PACKAGES, StandardAnnotation.class);
 
         Set<Class<?>> classes = finder.getConcreteClasses();
         Assert.assertFalse(classes.isEmpty());
@@ -752,7 +763,7 @@ public final class GATKToolUnitTest extends GATKBaseTest {
         new TestGATKToolWithVariants().instanceMain(args);
     }
 
-    private TestGATKToolWithVariants createTestVariantTool(final String args[]) {
+    public TestGATKToolWithVariants createTestVariantTool(final String args[]) {
        return createTestVariantTool(new TestGATKToolWithVariants(), args);
     }
 

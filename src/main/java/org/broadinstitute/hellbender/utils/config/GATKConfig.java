@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.config;
 
+import com.netflix.servo.util.VisibleForTesting;
 import org.aeonbits.owner.Accessible;
 import org.aeonbits.owner.Mutable;
 import org.aeonbits.owner.Config.LoadPolicy;
@@ -51,6 +52,9 @@ public interface GATKConfig extends Mutable, Accessible {
      * as a place to find the configuration file corresponding to this interface.
      */
     String CONFIG_FILE_VARIABLE_CLASS_PATH = "GATKConfig.classPathToGatkConfig";
+
+    @VisibleForTesting
+    public String DEFAULT_ANNOTATION_PACKAGES = "org.broadinstitute.hellbender.tools.walkers.annotator";
 
     // =================================================================================================================
     // =================================================================================================================
@@ -147,7 +151,7 @@ public interface GATKConfig extends Mutable, Accessible {
     @DefaultValue("org.broadinstitute.hellbender.engine.filters")
     List<String> read_filter_packages();
 
-    @DefaultValue("org.broadinstitute.hellbender.tools.walkers.annotator")
+    @DefaultValue(DEFAULT_ANNOTATION_PACKAGES)
     List<String> annotation_packages();
 
     // ----------------------------------------------------------
