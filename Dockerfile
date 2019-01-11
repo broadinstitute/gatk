@@ -25,7 +25,7 @@ RUN echo "cd /gatk/ && ./gradlew jacocoTestReport" >/root/run_unit_tests.sh
 WORKDIR /root
 RUN cp -r /root/run_unit_tests.sh /gatk
 RUN cp -r gatk.jar /gatk
-ENV JAVAPATH /gatk
+ENV CLASSPATH /gatk/gatk.jar
 RUN cp -r install_R_packages.R /gatk
 
 WORKDIR /gatk
