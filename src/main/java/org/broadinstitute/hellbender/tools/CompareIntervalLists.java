@@ -7,16 +7,16 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.ReferenceInputArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredReferenceInputArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.programgroups.IntervalProgramGroup;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.*;
+import picard.cmdline.programgroups.IntervalsManipulationProgramGroup;
 
 import java.util.List;
 
 @CommandLineProgramProperties(summary="Compare two interval lists to see if they are equal",
         oneLineSummary = "Compare two interval lists for equality",
-        programGroup = IntervalProgramGroup.class)
+        programGroup = IntervalsManipulationProgramGroup.class)
 public class CompareIntervalLists extends CommandLineProgram {
 
     @Argument(fullName ="L")
@@ -31,7 +31,7 @@ public class CompareIntervalLists extends CommandLineProgram {
     @Override
     public Object doWork() {
         final SAMSequenceDictionary samSequenceDictionary;
-        try(final ReferenceDataSource ref = ReferenceDataSource.of(reference.getReferenceFile())) {
+        try(final ReferenceDataSource ref = ReferenceDataSource.of(reference.getReferencePath())) {
             samSequenceDictionary = ref.getSequenceDictionary();
         }
 
