@@ -5,7 +5,6 @@ import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.Histogram;
-import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.SequenceUtil;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -25,7 +24,6 @@ import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignment;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanJavaAligner;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -103,17 +101,28 @@ public class ExamineChimericReads extends ReadPairWalker {
         maxMatchLength.increment(Math.max(matches, revCompMatches));
     }
 
-
-
-    private int countEquals(final Cigar cigar){
-        return countMaxOps(cigar,CigarOperator.EQ);
+    private int countEquals(final Cigar cigar) {
+        return countMaxOps(cigar, CigarOperator.EQ);
     }
 
     private int countMaxOps(final Cigar cigar, final CigarOperator op) {
-        return cigar.getCigarElements().stream()
-                .filter(e->e.getOperator()== op)
-                .mapToInt(CigarElement::getLength)
-                .max().orElse(0);
+        final List<CigarElement> elements = cigar.getCigarElements();
+        int maxOps = 0;
+        for (int i = 0; i < elements.size(); i++) {
+            int current = 0;
+            if (elements.get(i).getOperator() != op) {
+                continue;
+            }
+            current = elements.get(i).getLength();
+
+            if (i + 1 < elements.size() && elements.get(i + 1).getLength() == 1 &&
+                    i + 2 < elements.size() && elements.get(i + 2).getOperator() == op) {
+                current += elements.get(i + 2).getLength();
+            }
+            maxOps = Math.max(maxOps, current);
+
+        }
+        return maxOps;
     }
 
     @Override
