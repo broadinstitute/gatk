@@ -164,6 +164,7 @@ public class ExamineChimericReads extends ReadPairWalker {
         metricsFile.addHistogram(maxMatchLength);
 
         metricsFile.write(new File(outputMetrics));
+        outputWriter.close();
 
         return null;
     }
