@@ -87,12 +87,8 @@ public class ExamineChimericReads extends ReadPairWalker {
     @Override
     public void apply(final Set<GATKRead> reads) {
 
-        final Map<Boolean, List<GATKRead>> firstOrSecond = reads.stream()
-                .limit(2)
-                .collect(Collectors.partitioningBy(GATKRead::isFirstOfPair));
-
-        final GATKRead readOne = firstOrSecond.get(true).get(0);
-        final GATKRead readTwo = firstOrSecond.get(false).get(0);
+        final GATKRead readOne = reads.stream().filter(GATKRead::isFirstOfPair).findFirst().orElse(null);
+        final GATKRead readTwo = reads.stream().filter(gatkRead -> !gatkRead.isFirstOfPair()).findFirst().orElse(null);
 
         if (readOne == null || readTwo == null ||
                 !readOne.hasAttribute(tagName) ||
