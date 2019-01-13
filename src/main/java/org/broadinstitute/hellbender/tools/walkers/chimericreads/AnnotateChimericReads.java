@@ -23,7 +23,7 @@ import java.util.Set;
  * in an auxililary tag.
  */
 @CommandLineProgramProperties(
-        summary = "Prints reads from the provided file(s) with corresponding reference bases (if a reference is provided) to the specified output file (or STDOUT if none specified)",
+        summary = "Prints reads from the provided file(s) with corresponding reference bases to the specified output file (or STDOUT if none specified)",
         oneLineSummary = "Print reads with reference context",
         programGroup = OtherProgramGroup.class,
         omitFromCommandLine = true
@@ -45,10 +45,18 @@ public final class AnnotateChimericReads extends ReadWalker {
     @Argument(fullName = "max_read_pairs", doc = "Stop after this many chimeric read-pairs (mates of chimeras will be looked for and emitted). Set to 0 to process all the reads.")
     private Integer MAX_READ_PAIRS = 1_000_000;
 
+    @Argument(fullName = "reference-bases-tag-name", shortName = "tn")
+    String tagName = "RB";
+
     private SAMFileGATKReadWriter outputWriter;
     private final ReadFilter chimericReadFilter = new ChimericReadFilter();
     private final Set<String> readPairs = new HashSet<>(MAX_READ_PAIRS / 10);
     private int processedReads = 0;
+
+    @Override
+    public boolean requiresReference() {
+        return true;
+    }
 
     @Override
     public List<ReadFilter> getDefaultReadFilters() {
@@ -94,7 +102,7 @@ public final class AnnotateChimericReads extends ReadWalker {
             // useful to reverse-complement the reference to a standard form.
             final boolean orientedCorrectly = read.isFirstOfPair() ^ read.isReverseStrand();
 
-            read.setAttribute("RB", maybeRevComp(new String(referenceContext.getBases()), !orientedCorrectly));
+            read.setAttribute(tagName, maybeRevComp(new String(referenceContext.getBases()), !orientedCorrectly));
         }
         outputWriter.addRead(read);
     }
@@ -120,7 +128,8 @@ public final class AnnotateChimericReads extends ReadWalker {
                     !read.isSupplementaryAlignment() &&
                     read.isPaired() &&
                     !read.isProperlyPaired() &&
-                    read.getContig() != null &&
+                    !read.isUnmapped() &&
+                    !read.mateIsUnmapped() &&
                     !read.getContig().equals(read.getMateContig());
         }
     }
