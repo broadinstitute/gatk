@@ -11,7 +11,6 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.ExampleProgramGroup;
 import org.broadinstitute.hellbender.engine.ReadPairWalker;
 import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
@@ -22,6 +21,7 @@ import org.broadinstitute.hellbender.utils.read.GATKReadWriter;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignment;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanJavaAligner;
+import picard.cmdline.programgroups.OtherProgramGroup;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -31,7 +31,7 @@ import java.util.Set;
 @CommandLineProgramProperties(
         summary = "Prints reads from the provided file(s) with corresponding reference bases (if a reference is provided) to the specified output file (or STDOUT if none specified)",
         oneLineSummary = "Print reads with reference context",
-        programGroup = ExampleProgramGroup.class,
+        programGroup = OtherProgramGroup.class,
         omitFromCommandLine = true
 )
 public class ExamineChimericReads extends ReadPairWalker {
@@ -54,13 +54,10 @@ public class ExamineChimericReads extends ReadPairWalker {
             doc="Write output to this file")
     public String output;
 
-    private GATKReadWriter outputWriter;
-
     @Override
     public void onTraversalStart() {
         super.onTraversalStart();
         swParameters = new SWParameters(MATCH_VALUE, MISMATCH_PENALTY_VALUE, GAP_OPEN_VALUE, GAP_EXTEND_VALUE);
-            outputWriter = createSAMWriter(IOUtils.getPath(output), true);
     }
 
     final private Histogram<Integer> minMatchLength=new Histogram<>();
