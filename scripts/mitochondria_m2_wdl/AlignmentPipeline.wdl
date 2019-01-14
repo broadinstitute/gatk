@@ -1,6 +1,11 @@
 workflow AlignmentPipeline {
+
   meta {
-    description: "Uses BWA to align unmapped bam and marks duplicates. Input is an unaligned subset bam of NuMT and chrM reads and their mates. All reads must be paired. Output is aligned duplicate marked coordinate sorted bam."
+    description: "Uses BWA to align unmapped bam and marks duplicates."
+  }
+  parameter_meta {
+    input_bam: "Input is an unaligned subset bam of NuMT and chrM reads and their mates. All reads must be paired."
+    mt_aligned_bam: "Output is aligned duplicate marked coordinate sorted bam."
   }
   File input_bam
   String basename = basename(input_bam, ".bam")
