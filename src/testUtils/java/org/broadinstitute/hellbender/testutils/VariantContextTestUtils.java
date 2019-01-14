@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.testutils;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
+import htsjdk.tribble.util.ParsingUtils;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.*;
 import org.apache.commons.collections4.CollectionUtils;
@@ -319,6 +320,42 @@ public final class VariantContextTestUtils {
         Assert.assertEquals(actual.getPloidy(), expected.getPloidy(), "Genotype getPloidy");
     }
 
+    public static boolean checkGenotypesAreEqual(final Genotype actual, final Genotype expected, final List<String> extendedAttributesToIgnore) {
+
+        boolean passed = true;
+
+        passed = checkFieldEqualsWithLogMessage(actual.getSampleName(), expected.getSampleName(), "Genotype names") && passed;
+        passed = checkFieldEqualsWithLogMessage(actual.getAlleles(), expected.getAlleles(), "Genotype alleles") && passed;
+        passed = checkFieldEqualsWithLogMessage(actual.getGenotypeString(false), expected.getGenotypeString(false), "Genotype string") && passed;
+        passed = checkFieldEqualsWithLogMessage(actual.getType(), expected.getType(), "Genotype type") && passed;
+
+        // filters are the same
+        passed = checkFieldEqualsWithLogMessage(actual.getFilters(), expected.getFilters(), "Genotype fields") && passed;
+        passed = checkFieldEqualsWithLogMessage(actual.isFiltered(), expected.isFiltered(), "Genotype isFiltered") && passed;
+
+        // inline attributes
+        passed = checkFieldEqualsWithLogMessage(actual.hasDP(), expected.hasDP(), "Genotype hasDP") && passed;
+        passed = checkFieldEqualsWithLogMessage(actual.getDP(), expected.getDP(), "Genotype dp") && passed;
+        passed = checkFieldEqualsWithLogMessage(actual.hasAD(), expected.hasAD(), "Genotype hasAD") && passed;
+        passed = checkFieldEqualsWithLogMessage(actual.getAD(), expected.getAD(), "Genotype AD") && passed;
+        passed = checkFieldEqualsWithLogMessage(actual.hasGQ(), expected.hasGQ(), "Genotype hasGQ") && passed;
+        passed = checkFieldEqualsWithLogMessage(actual.getGQ(), expected.getGQ(), "Genotype gq") && passed;
+        passed = checkFieldEqualsWithLogMessage(actual.hasPL(), expected.hasPL(), "Genotype hasPL: " + actual.toString()) && passed;
+        passed = checkFieldEqualsWithLogMessage(actual.getPL(), expected.getPL(), "Genotype PL") && passed;
+
+        passed = checkFieldEqualsWithLogMessage(actual.hasLikelihoods(), expected.hasLikelihoods(), "Genotype haslikelihoods") && passed;
+        passed = checkFieldEqualsWithLogMessage(actual.getLikelihoodsString(), expected.getLikelihoodsString(), "Genotype getlikelihoodsString") && passed;
+        passed = checkFieldEqualsWithLogMessage(actual.getLikelihoods(), expected.getLikelihoods(), "Genotype getLikelihoods") && passed;
+
+        passed = checkFieldEqualsWithLogMessage(actual.getGQ(), expected.getGQ(), "Genotype phredScaledQual") && passed;
+        passed = checkFieldEqualsWithLogMessage(actual.isPhased(), expected.isPhased(), "Genotype isPhased") && passed;
+        passed = checkFieldEqualsWithLogMessage(actual.getPloidy(), expected.getPloidy(), "Genotype getPloidy") && passed;
+
+        assertAttributesEquals(filterIgnoredAttributes(actual.getExtendedAttributes(), extendedAttributesToIgnore), filterIgnoredAttributes(expected.getExtendedAttributes(), extendedAttributesToIgnore));
+
+        return passed;
+    }
+
     @SuppressWarnings("unchecked")
     private static void assertAttributesEquals(final Map<String, Object> actual, final Map<String, Object> expected) {
         final Set<String> expectedKeys = new LinkedHashSet<>(expected.keySet());
@@ -396,7 +433,7 @@ public final class VariantContextTestUtils {
         int numFailed = 0;
 
         for (int i = 0; i < v1.size(); i++) {
-            if (! v1.get(i).toStringDecodeGenotypes().equals(v2.get(i).toStringDecodeGenotypes())){
+            if (! getNoSourceRepresentativeString(v1.get(i)).equals(getNoSourceRepresentativeString(v2.get(i)))) {
                 logger.error("Variant Comparison Error: different element (compared by toStringDecodeGenotypes) " + i + ":\n" + v1.get(i) + "\n" + v2.get(i));
                 passed = false;
                 ++numFailed;
@@ -405,6 +442,17 @@ public final class VariantContextTestUtils {
         if (!passed) {
             throw new AssertionError("Variant comparison failed!  Num non-matching variant pairs: " + numFailed);
         }
+    }
+
+    private static String getNoSourceRepresentativeString( final VariantContext vc ) {
+        return String.format("[VC @ %s Q%s of type=%s alleles=%s attr=%s GT=%s filters=%s",
+                vc.getContig() + ":" + (vc.getStart() - vc.getEnd() == 0 ? vc.getStart() : vc.getStart() + "-" + vc.getEnd()),
+                vc.hasLog10PError() ? String.format("%.2f", vc.getPhredScaledQual()) : ".",
+                vc.getType(),
+                ParsingUtils.sortList(vc.getAlleles()),
+                ParsingUtils.sortedString(vc.getAttributes()),
+                vc.getGenotypes(),
+                String.join(",", vc.getCommonInfo().getFilters()));
     }
 
     public static void assertVariantContextsAreEqual(final VariantContext actual, final VariantContext expected, final List<String> attributesToIgnore) {
@@ -429,7 +477,8 @@ public final class VariantContextTestUtils {
 
         assertAttributesEquals(filterIgnoredAttributes(actual.getAttributes(), attributesToIgnore),
                 filterIgnoredAttributes(expected.getAttributes(), attributesToIgnore));
-        assertVariantContextsHaveSameGenotypes(actual, expected, attributesToIgnore);
+
+        comp = checkVariantContextsHaveSameGenotypes(actual, expected, attributesToIgnore) && comp;
 
         if (!comp) {
             throw new AssertionError("Variant comparison failed!");
@@ -458,10 +507,24 @@ public final class VariantContextTestUtils {
 
         comp = expected.equals(actual);
         if ( !comp ) {
-            logger.error( "Different values for field " + fieldName + (position.length() > 0 ? " " + position + ":" : ":") + "\n  actual:   " + actual.toString() + "\n  expected: " + expected.toString() );
+            logger.error( "Different values for field " + fieldName + (position.length() > 0 ? " " + position + ":" : ":") + "\n" +
+                    "  Actual:   " + getObjectString(actual) + "\n" +
+                    "  Expected: " + getObjectString(expected) );
         }
 
         return comp;
+    }
+
+    private static String getObjectString(final Object o) {
+        if (o instanceof Collection) {
+            @SuppressWarnings("unchecked")
+            final String s = ((Collection<Object>) o).stream()
+                    .map(Object::toString)
+                    .collect(Collectors.joining(",", "[ ", " ]"));
+            return s;
+        }
+
+        return o.toString();
     }
 
     private static Map<String, Object> filterIgnoredAttributes(final Map<String,Object> attributes, final List<String> attributesToIgnore) {
@@ -512,6 +575,41 @@ public final class VariantContextTestUtils {
                 assertGenotypesAreEqual(actual.getGenotype(sample), expected.getGenotype(sample), attributesToIgnore);
             }
         }
+    }
+    public static boolean checkVariantContextsHaveSameGenotypes(final VariantContext actual, final VariantContext expected, final List<String> attributesToIgnore) {
+
+        boolean comp = (!actual.hasGenotypes()) && (!expected.hasGenotypes());
+        if ( comp ) {
+            return true;
+        }
+        else {
+            if ( !actual.hasGenotypes() ) {
+                logger.error("Actual VariantContext has no genotypes, but expected does!" );
+                return false;
+            }
+            else if ( !expected.hasGenotypes() ) {
+                logger.error("Expected VariantContext has no genotypes, but actual does!" );
+                return false;
+            }
+        }
+
+        comp = checkFieldEqualsWithLogMessage(actual.getSampleNames(), expected.getSampleNames(), "sample name set");
+        comp = checkFieldEqualsWithLogMessage(actual.getSampleNamesOrderedByName(), expected.getSampleNamesOrderedByName(), "sample names") && comp;
+
+        final Set<String> samples = expected.getSampleNames();
+        for ( final String sample : samples ) {
+            final boolean gtPassed = checkGenotypesAreEqual(actual.getGenotype(sample), expected.getGenotype(sample), attributesToIgnore);
+            if ( !gtPassed ) {
+                logger.error( "Genotypes differ for sample " + sample + "\n" +
+                    "(Ignoring attributes: " + attributesToIgnore.stream().collect(Collectors.joining(",")) + ")" + "\n" +
+                    "  Actual:   " + actual.getGenotype(sample).toString() + "\n" +
+                    "  Expected: " + expected.getGenotype(sample).toString() + "\n"
+                );
+            }
+            comp = comp && gtPassed;
+        }
+
+        return comp;
     }
 
     /**
