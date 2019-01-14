@@ -24,6 +24,8 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import de.undercouch.gradle.tasks.download.Download
 
 import javax.tools.ToolProvider
+import java.time.format.DateTimeFormatter
+import java.time.ZonedDateTime
 
 mainClassName = "org.broadinstitute.hellbender.Main"
 
@@ -650,7 +652,7 @@ task gatkDoc(type: Javadoc, dependsOn: classes) {
         options.addStringOption("index-file-extension", phpExtension)
     }
     options.addStringOption("absolute-version", getVersion())
-    options.addStringOption("build-timestamp", new Date().format("dd-mm-yyyy hh:mm:ss"))
+    options.addStringOption("build-timestamp", ZonedDateTime.now().format(DateTimeFormatter.RFC_1123_DATE_TIME))
 }
 
 // Generate GATK Bash Tab Completion File
@@ -685,7 +687,7 @@ task gatkTabComplete(type: Javadoc, dependsOn: classes) {
     options.addStringOption("output-file-extension", "sh")
     options.addStringOption("index-file-extension", "sh")
     options.addStringOption("absolute-version", getVersion())
-    options.addStringOption("build-timestamp", new Date().format("dd-mm-yyyy hh:mm:ss"))
+    options.addStringOption("build-timestamp", ZonedDateTime.now().format(DateTimeFormatter.RFC_1123_DATE_TIME))
 
     options.addStringOption("caller-script-name", "gatk")
 
