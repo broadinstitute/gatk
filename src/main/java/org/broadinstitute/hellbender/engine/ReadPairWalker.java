@@ -90,12 +90,12 @@ public abstract class ReadPairWalker extends GATKTool {
         // Supply reference bases spanning each read, if a reference is available.
         final CountingReadFilter countedFilter = makeReadFilter();
         final Set<GATKRead> readSet = new HashSet<>();
-        String[] currentReadname = {null};
+        final String[] currentReadname = {null};
         getTransformedReadStream(countedFilter)
                 .forEachOrdered(read -> {
                     if (!read.getName().equals(currentReadname[0])){
                         apply(readSet);
-                        readSet.removeIf((A)->true);
+                        readSet.clear();
                         currentReadname[0] = read.getName();
                     }
                     readSet.add(read);
