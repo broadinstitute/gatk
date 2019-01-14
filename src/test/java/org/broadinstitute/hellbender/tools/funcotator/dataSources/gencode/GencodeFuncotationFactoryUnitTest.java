@@ -2467,7 +2467,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         final FeatureInput<GencodeGtfFeature> gencodeFeatureInput = new FeatureInput<>(transcriptGtfFile, GencodeFuncotationFactory.DEFAULT_NAME, Collections.emptyMap());
         final Map<FeatureInput<? extends Feature>, Class<? extends Feature>> featureInputMap = new HashMap<>();
         featureInputMap.put(gencodeFeatureInput, GencodeGtfFeature.class);
-        final FeatureContext featureContext = FeatureContext.createFeatureContextForTesting(featureInputMap, "dummyName", variantInterval, VariantWalker.FEATURE_CACHE_LOOKAHEAD, 0, 0, null);
+        final FeatureContext featureContext = FeatureContext.createFeatureContextForTesting(featureInputMap, "dummyName", variantInterval, VariantWalker.DEFAULT_DRIVING_VARIANTS_LOOKAHEAD_BASES, 0, 0, null);
 
         // Create a factory for our funcotations:
         try (final GencodeFuncotationFactory funcotationFactory = new GencodeFuncotationFactory(
