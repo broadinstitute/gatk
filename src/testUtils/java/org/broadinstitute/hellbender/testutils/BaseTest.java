@@ -362,6 +362,60 @@ public abstract class BaseTest {
         }
     }
 
+    public static boolean equalsDoubleSmart(final double actual, final double expected) {
+        return equalsDoubleSmart(actual, expected, DEFAULT_FLOAT_TOLERANCE);
+    }
+
+    public static boolean equalsDoubleSmart(final double actual, final double expected, final double tolerance) {
+        return equalsDoubleSmart(actual, expected, tolerance, null);
+    }
+
+    public static boolean equalsDoubleSmart(final double actual, final double expected, final double tolerance, final String message) {
+
+        // Check for NaN:
+        if ( Double.isNaN(expected) && Double.isNaN(actual) ) {
+            return true;
+        }
+        else {
+            if ( Double.isNaN(actual) ) {
+                logger.error( "Actual value is NaN and expected is not!" );
+                return false;
+            }
+            else if ( Double.isNaN(expected) ) {
+                logger.error( "Expected value is NaN and actual is not!" );
+                return false;
+            }
+        }
+
+        // Check for Infinity:
+        if ( Double.isInfinite(expected) && Double.isInfinite(actual) ) {
+            return true;
+        }
+        else {
+            if ( Double.isInfinite(actual) ) {
+                logger.error( "Actual value is infinite and expected is not!" );
+                return false;
+            }
+            else if ( Double.isInfinite(expected) ) {
+                logger.error( "Expected value is infinite and actual is not!" );
+                return false;
+            }
+        }
+
+        // Calculate copmparisons:
+        final double delta = Math.abs(actual - expected);
+        final double ratio = Math.abs(actual / expected - 1.0);
+
+        // Evaluate vs epsilon tolerance:
+        final boolean passed = delta < tolerance || ratio < tolerance;
+        if (!passed) {
+            logger.error("expected = " + expected + " actual = " + actual
+                    + " not within tolerance " + tolerance
+                    + (message == null ? "" : "message: " + message));
+        }
+        return passed;
+    }
+
 
     /**
      * captures {@link System#out} while runnable is executing

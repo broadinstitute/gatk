@@ -408,22 +408,60 @@ public final class VariantContextTestUtils {
     }
 
     public static void assertVariantContextsAreEqual(final VariantContext actual, final VariantContext expected, final List<String> attributesToIgnore) {
-        Assert.assertNotNull(actual, "VariantContext expected not null");
-        Assert.assertEquals(actual.getContig(), expected.getContig(), "chr");
-        Assert.assertEquals(actual.getStart(), expected.getStart(), "start");
-        Assert.assertEquals(actual.getEnd(), expected.getEnd(), "end");
-        Assert.assertEquals(actual.getID(), expected.getID(), "id");
-        Assert.assertEquals(actual.getAlleles(), expected.getAlleles(), "alleles for " + expected + " vs " + actual);
+
+        boolean comp = true;
+
+        Assert.assertNotNull(actual, "Actual VariantContext expected to not be null.");
+        Assert.assertNotNull(expected, "Expected VariantContext expected to not be null.");
+
+        comp = checkFieldEqualsWithLogMessage(actual.getContig(), expected.getContig(), "chr") && comp;
+        comp = checkFieldEqualsWithLogMessage(actual.getStart(), expected.getStart(), "start") && comp;
+        comp = checkFieldEqualsWithLogMessage(actual.getEnd(), expected.getEnd(), "end") && comp;
+        comp = checkFieldEqualsWithLogMessage(actual.getID(), expected.getID(), "id") && comp;
+        comp = checkFieldEqualsWithLogMessage(actual.getAlleles(), expected.getAlleles(), "alleles for " + expected + " vs " + actual) && comp;
+
+        comp = checkFieldEqualsWithLogMessage(actual.filtersWereApplied(), expected.filtersWereApplied(), "filtersWereApplied") && comp;
+        comp = checkFieldEqualsWithLogMessage(actual.isFiltered(), expected.isFiltered(), "isFiltered") && comp;
+        comp = checkFieldEqualsWithLogMessage(actual.getFilters(), expected.getFilters(), "filters") && comp;
+        comp = checkFieldEqualsWithLogMessage(actual.getType(), expected.getType(), "type") && comp;
+
+        comp = BaseTest.equalsDoubleSmart(actual.getPhredScaledQual(), expected.getPhredScaledQual()) && comp;
+
         assertAttributesEquals(filterIgnoredAttributes(actual.getAttributes(), attributesToIgnore),
-                               filterIgnoredAttributes(expected.getAttributes(), attributesToIgnore));
-
-        Assert.assertEquals(actual.filtersWereApplied(), expected.filtersWereApplied(), "filtersWereApplied");
-        Assert.assertEquals(actual.isFiltered(), expected.isFiltered(), "isFiltered");
-        Assert.assertEquals(actual.getFilters(), expected.getFilters(), "filters");
-        BaseTest.assertEqualsDoubleSmart(actual.getPhredScaledQual(), expected.getPhredScaledQual());
-
+                filterIgnoredAttributes(expected.getAttributes(), attributesToIgnore));
         assertVariantContextsHaveSameGenotypes(actual, expected, attributesToIgnore);
-        Assert.assertEquals(actual.getType(), expected.getType(), "type");
+
+        if (!comp) {
+            throw new AssertionError("Variant comparison failed!");
+        }
+    }
+
+    private static boolean checkFieldEqualsWithLogMessage( final Object actual, final Object expected, final String fieldName ) {
+        return checkFieldEqualsWithLogMessage(actual, expected, fieldName, "");
+    }
+
+    private static boolean checkFieldEqualsWithLogMessage( final Object actual, final Object expected, final String fieldName, final String position ) {
+        boolean comp = (actual == null) && (expected == null);
+        if ( comp ) {
+            return true;
+        }
+        else {
+            if ( actual == null ) {
+                logger.error( fieldName + " actual value (" + expected.getClass().getTypeName() + ")" + (position.length() > 0 ? " " + position + ": " : " ") + "is null and expected is not!" );
+                return false;
+            }
+            else if ( expected == null ) {
+                logger.error( fieldName + " expected value (" + actual.getClass().getTypeName() + ")" + (position.length() > 0 ? " " + position + ": " : " ") + "is null and actual is not!" );
+                return false;
+            }
+        }
+
+        comp = expected.equals(actual);
+        if ( !comp ) {
+            logger.error( "Different values for field " + fieldName + (position.length() > 0 ? " " + position + ":" : ":") + "\n  actual:   " + actual.toString() + "\n  expected: " + expected.toString() );
+        }
+
+        return comp;
     }
 
     private static Map<String, Object> filterIgnoredAttributes(final Map<String,Object> attributes, final List<String> attributesToIgnore) {
