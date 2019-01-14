@@ -130,6 +130,11 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
             doc = "If true, create a BAM splitting index (SBI) when writing a coordinate-sorted BAM file.", optional = true, common = true)
     public boolean createOutputBamSplittingIndex = ConfigFactory.getInstance().getGATKConfig().createOutputBamIndex();
 
+    @Argument(fullName = StandardArgumentDefinitions.CREATE_OUTPUT_VARIANT_INDEX_LONG_NAME,
+            shortName = StandardArgumentDefinitions.CREATE_OUTPUT_VARIANT_INDEX_SHORT_NAME,
+            doc = "If true, create a VCF index when writing a coordinate-sorted VCF file.", optional = true, common = true)
+    public boolean createOutputVariantIndex = true;
+
     private ReadsSparkSource readsSource;
     private SAMFileHeader readsHeader;
     private LinkedHashMap<String, SAMFileHeader> readInputs;

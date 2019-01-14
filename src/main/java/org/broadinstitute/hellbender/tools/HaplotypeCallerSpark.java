@@ -167,7 +167,7 @@ public final class HaplotypeCallerSpark extends AssemblyRegionWalkerSpark {
 
     @Override
     protected void processAssemblyRegions(JavaRDD<AssemblyRegionWalkerContext> rdd, JavaSparkContext ctx) {
-        processAssemblyRegions(rdd, ctx, getHeaderForReads(), referenceArguments.getReferenceFileName(), hcArgs, output, makeVariantAnnotations(), logger);
+        processAssemblyRegions(rdd, ctx, getHeaderForReads(), referenceArguments.getReferenceFileName(), hcArgs, output, makeVariantAnnotations(), logger, createOutputVariantIndex);
     }
 
     private static void processAssemblyRegions(
@@ -178,7 +178,8 @@ public final class HaplotypeCallerSpark extends AssemblyRegionWalkerSpark {
             final HaplotypeCallerArgumentCollection hcArgs,
             final String output,
             final Collection<Annotation> annotations,
-            final Logger logger) {
+            final Logger logger,
+            final boolean createOutputVariantIndex) {
 
         final VariantAnnotatorEngine variantannotatorEngine = new VariantAnnotatorEngine(annotations,  hcArgs.dbsnp.dbsnp, hcArgs.comps, hcArgs.emitReferenceConfidence != ReferenceConfidenceMode.NONE);
 
@@ -194,7 +195,8 @@ public final class HaplotypeCallerSpark extends AssemblyRegionWalkerSpark {
         variants.cache(); // without caching, computations are run twice as a side effect of finding partition boundaries for sorting
         try {
             VariantsSparkSink.writeVariants(ctx, output, variants, hcEngine.makeVCFHeader(header.getSequenceDictionary(), new HashSet<>()),
-                    hcArgs.emitReferenceConfidence == ReferenceConfidenceMode.GVCF, new ArrayList<Number>(hcArgs.GVCFGQBands), hcArgs.genotypeArgs.samplePloidy);
+                    hcArgs.emitReferenceConfidence == ReferenceConfidenceMode.GVCF, new ArrayList<Number>(hcArgs.GVCFGQBands), hcArgs.genotypeArgs.samplePloidy,
+                    0, createOutputVariantIndex);
         } catch (IOException e) {
             throw new UserException.CouldNotCreateOutputFile(output, "writing failed", e);
         }
@@ -286,6 +288,7 @@ public final class HaplotypeCallerSpark extends AssemblyRegionWalkerSpark {
      * @param output the output path for the VCF
      * @param logger
      * @param strict whether to use the strict implementation (slower) for finding assembly regions to match walker version
+     * @param createOutputVariantIndex create a variant index (tabix for bgzipped VCF only)
      */
     public static void callVariantsWithHaplotypeCallerAndWriteOutput(
             final JavaSparkContext ctx,
@@ -301,7 +304,8 @@ public final class HaplotypeCallerSpark extends AssemblyRegionWalkerSpark {
             final String output,
             final Collection<Annotation> annotations,
             final Logger logger,
-            final boolean strict) {
+            final boolean strict,
+            final boolean createOutputVariantIndex) {
 
         final Path referencePath = IOUtils.getPath(reference);
         final String referenceFileName = referencePath.getFileName().toString();
@@ -309,6 +313,6 @@ public final class HaplotypeCallerSpark extends AssemblyRegionWalkerSpark {
         JavaRDD<AssemblyRegionWalkerContext> assemblyRegions = strict ?
                 FindAssemblyRegionsSpark.getAssemblyRegionsStrict(ctx, reads, header, sequenceDictionary, referenceFileName, null, intervalShards, assemblyRegionEvaluatorSupplierBroadcast, shardingArgs, assemblyRegionArgs, includeReadsWithDeletionsInIsActivePileups, false) :
                 FindAssemblyRegionsSpark.getAssemblyRegionsFast(ctx, reads, header, sequenceDictionary, referenceFileName, null, intervalShards, assemblyRegionEvaluatorSupplierBroadcast, shardingArgs, assemblyRegionArgs, includeReadsWithDeletionsInIsActivePileups, false);
-        processAssemblyRegions(assemblyRegions, ctx, header, reference, hcArgs, output, annotations, logger);
+        processAssemblyRegions(assemblyRegions, ctx, header, reference, hcArgs, output, annotations, logger, createOutputVariantIndex);
     }
 }
