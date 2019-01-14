@@ -33,7 +33,7 @@ import java.util.*;
 
 
 public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
-    private final SAMFileHeader samHeader = ArtificialReadUtils.createArtificialSamHeader(20, 1, 1000);
+    private final SAMFileHeader samHeader = ArtificialReadUtils.createArtificialSamHeaderWithPrograms(20, 1, 1000, 3);
     private final String expectedFilePath = getToolTestDataDir() + "/expected/";
 
     @DataProvider(name="ReadsLikelikhoodData")

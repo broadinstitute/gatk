@@ -1,33 +1,20 @@
 package org.broadinstitute.hellbender.testutils;
 
 import com.google.common.collect.Sets;
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMFlag;
-import htsjdk.samtools.SAMReadGroupRecord;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMRecordIterator;
-import htsjdk.samtools.SAMValidationError;
-import htsjdk.samtools.SamFileValidator;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.ValidationStringency;
-import java.io.File;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import htsjdk.samtools.*;
 import org.apache.commons.io.FilenameUtils;
-import picard.sam.SortSam;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SamComparison;
 import org.testng.Assert;
+import picard.sam.SortSam;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.nio.file.Path;
+import java.util.*;
 
 /**
  * Collection of utilities for making common assertions about SAM files for unit testing purposes.
@@ -98,7 +85,7 @@ public final class SamAssertionUtils {
             final SamFileValidator validator = new SamFileValidator(new PrintWriter(System.out), 8000);
             validator.setIgnoreWarnings(true);
             validator.setVerbose(true, 1000);
-            validator.setErrorsToIgnore(Arrays.asList(SAMValidationError.Type.MISSING_READ_GROUP));
+            validator.setErrorsToIgnore(Collections.singletonList(SAMValidationError.Type.MISSING_READ_GROUP));
             final boolean validated = validator.validateSamFileVerbose(samReader, null);
             Assert.assertTrue(validated, "SAM file validation failed");
         }
@@ -196,14 +183,6 @@ public final class SamAssertionUtils {
         final String fileMD5_1 = Utils.calculatePathMD5(actualSam);
         final String fileMD5_2 = Utils.calculatePathMD5(expectedSam);
         return fileMD5_1.equals(fileMD5_2);
-    }
-
-    private static String compareReads(final File actualSam, final File expectedSam, final ValidationStringency validation, final File reference) throws IOException {
-        return compareReads(
-                actualSam.toPath(),
-                expectedSam.toPath(),
-                validation,
-                (null==reference?null:reference.toPath()));
     }
 
     private static String compareReads(final Path actualSam, final Path expectedSam, final ValidationStringency validation, final Path reference) throws IOException {
@@ -330,10 +309,10 @@ public final class SamAssertionUtils {
         if (!Arrays.equals(actualRead.getBaseQualities(), expectedRead.getBaseQualities())){
             return "getBaseQualities different actualRead:" + actualName + " expectedRead:" + expectedName + " (" + Arrays.toString(actualRead.getBaseQualities()) + " vs " + Arrays.toString(expectedRead.getBaseQualities()) + ")";
         }
-        return compareReadAttibutes(actualRead, expectedRead);
+        return compareReadAttributes(actualRead, expectedRead);
     }
 
-    private static String compareReadAttibutes(final SAMRecord actualRead, final SAMRecord expectedRead) {
+    private static String compareReadAttributes(final SAMRecord actualRead, final SAMRecord expectedRead) {
         final String actualName = actualRead.getReadName();
         final String expectedName = expectedRead.getReadName();
         final String readNames = "actualName:" + actualName + " expectedName:" + expectedName;
@@ -453,9 +432,34 @@ public final class SamAssertionUtils {
             args.add(reference.getAbsolutePath());
         }
 
-        int returnCode  = sort.instanceMain(args.toArray(new String[args.size()]));
+        int returnCode  = sort.instanceMain(args.toArray(new String[0]));
         if (returnCode != 0) {
             throw new RuntimeException("Failure running SortSam on inputs");
         }
     }
+
+    /**
+     * Get the program records (@PG) in the BAM file header
+     *
+     * @param bamFile   the BAM file
+     * @return  program records from the BAN file header
+     * @throws IOException if it cannot close the BAM file
+     */
+    private static List<SAMProgramRecord> getProgramRecords(final File bamFile) throws IOException {
+        try(final SamReader bamInReader = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.SILENT).open(bamFile)) {
+            return bamInReader.getFileHeader().getProgramRecords();
+        }
+    }
+
+    /**
+     * Assert the output BAM file header contains the input BAM file header Program Records (@PG)
+     * @param inputBam  input BAM file
+     * @param outputBam output BAM file
+     */
+    public static void assertOutBamContainsInBamProgramRecords(final File inputBam, final File outputBam) throws IOException {
+        final List<SAMProgramRecord> bamInProgramRecords = getProgramRecords(inputBam);
+        final List<SAMProgramRecord> bamOutProgramRecords = getProgramRecords(outputBam);
+        Assert.assertTrue(bamOutProgramRecords.containsAll(bamInProgramRecords));
+    }
+
 }
