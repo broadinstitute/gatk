@@ -92,10 +92,10 @@ public abstract class ReadPairWalker extends GATKTool {
         final Set<GATKRead> readSet = new HashSet<>();
         String[] currentReadname = {null};
         getTransformedReadStream(countedFilter)
-                .forEach(read -> {
+                .forEachOrdered(read -> {
                     if (!read.getName().equals(currentReadname[0])){
                         apply(readSet);
-                        readSet.clear();
+                        readSet.removeIf((A)->true);
                         currentReadname[0] = read.getName();
                     }
                     readSet.add(read);
