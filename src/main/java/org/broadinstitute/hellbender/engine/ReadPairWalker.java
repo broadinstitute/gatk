@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.engine;
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.filter.SecondaryOrSupplementaryFilter;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
@@ -60,7 +59,7 @@ public abstract class ReadPairWalker extends GATKTool {
     /**
      * Initialize traversal bounds if intervals are specified
      */
-    void setReadTraversalBounds() {
+    private void setReadTraversalBounds() {
         if ( hasUserSuppliedIntervals() ) {
             reads.setTraversalBounds(intervalArgumentCollection.getTraversalParameters(getHeaderForReads().getSequenceDictionary()));
         }
@@ -91,17 +90,16 @@ public abstract class ReadPairWalker extends GATKTool {
         // Supply reference bases spanning each read, if a reference is available.
         final CountingReadFilter countedFilter = makeReadFilter();
         final Set<GATKRead> readSet = new HashSet<>();
-        final String[] currentReadname = {null};
+        String[] currentReadname = {null};
         getTransformedReadStream(countedFilter)
                 .forEach(read -> {
                     if (!read.getName().equals(currentReadname[0])){
                         apply(readSet);
-                        readSet.removeIf((a)->true);
+                        readSet.clear();
                         currentReadname[0] = read.getName();
                     }
                     readSet.add(read);
-                    final SimpleInterval readInterval = getReadInterval(read);
-                    progressMeter.update(readInterval);
+                    progressMeter.update(getReadInterval(read));
                 });
         if(!readSet.isEmpty()) {
             apply(readSet);
@@ -114,7 +112,7 @@ public abstract class ReadPairWalker extends GATKTool {
      * Note: some walkers must be able to work on any read, including those whose coordinates do not form a valid SimpleInterval.
      * So here we check this condition and create null intervals for such reads.
      */
-    SimpleInterval getReadInterval(final GATKRead read) {
+    private SimpleInterval getReadInterval(final GATKRead read) {
         return !read.isUnmapped() && SimpleInterval.isValid(read.getContig(), read.getStart(), read.getEnd()) ? new SimpleInterval(read) : null;
     }
 

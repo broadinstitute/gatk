@@ -27,9 +27,7 @@ import picard.cmdline.programgroups.OtherProgramGroup;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @CommandLineProgramProperties(
         summary = "Prints reads from the provided file(s) with corresponding reference bases (if a reference is provided) to the specified output file (or STDOUT if none specified)",
@@ -86,7 +84,7 @@ public class ExamineChimericReads extends ReadPairWalker {
 
     @Override
     public void apply(final Set<GATKRead> reads) {
-
+        
         final GATKRead readOne = reads.stream().filter(GATKRead::isFirstOfPair).findFirst().orElse(null);
         final GATKRead readTwo = reads.stream().filter(gatkRead -> !gatkRead.isFirstOfPair()).findFirst().orElse(null);
 
@@ -106,8 +104,8 @@ public class ExamineChimericReads extends ReadPairWalker {
             final SmithWatermanAlignment alignmentMis = smithWatermanAligner.alignWithMismatches(seq1, seq2, swParameters, swOverhangStrategy);
 
             matches = countEquals(alignmentMis.getCigar());
-            readOne.setAttribute("c1",alignmentMis.getCigar().toString());
-            readTwo.setAttribute("c1",alignmentMis.getCigar().toString());
+            readOne.setAttribute("c1", alignmentMis.getCigar().toString());
+            readTwo.setAttribute("c1", alignmentMis.getCigar().toString());
         }
         {
             final byte[] seq1 = refOne.getBytes();
@@ -129,7 +127,6 @@ public class ExamineChimericReads extends ReadPairWalker {
 
         outputWriter.addRead(readOne);
         outputWriter.addRead(readTwo);
-
     }
 
     private int countEquals(final Cigar cigar) {
