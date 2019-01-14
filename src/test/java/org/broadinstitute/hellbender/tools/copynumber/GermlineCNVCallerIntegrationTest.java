@@ -3,9 +3,9 @@ package org.broadinstitute.hellbender.tools.copynumber;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStandardArgument;
 import org.broadinstitute.hellbender.utils.IntervalMergingRule;
-import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.testng.annotations.Test;
 
 import java.io.File;

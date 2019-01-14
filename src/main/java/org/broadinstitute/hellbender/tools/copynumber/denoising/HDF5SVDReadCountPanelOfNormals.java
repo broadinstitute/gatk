@@ -22,7 +22,6 @@ import org.broadinstitute.hellbender.tools.copynumber.utils.HDF5Utils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.spark.SparkConverter;
 
 import java.io.File;

@@ -15,7 +15,9 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.LocusWalkerContext;
 import org.broadinstitute.hellbender.engine.spark.LocusWalkerSpark;
 import org.broadinstitute.hellbender.tools.copynumber.datacollection.AllelicCountCollector;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.*;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.Metadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.MetadataUtils;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
 import org.broadinstitute.hellbender.utils.Nucleotide;
 
 import java.io.File;

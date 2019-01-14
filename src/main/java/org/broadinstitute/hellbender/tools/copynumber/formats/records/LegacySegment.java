@@ -5,8 +5,6 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
-import java.util.List;
-
 public class LegacySegment implements Locatable {
     private final String sampleName;
     private final SimpleInterval interval;

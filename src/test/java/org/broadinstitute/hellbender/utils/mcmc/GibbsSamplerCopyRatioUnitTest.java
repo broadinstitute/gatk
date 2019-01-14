@@ -4,8 +4,8 @@ import com.google.common.primitives.Doubles;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.math3.stat.descriptive.moment.Mean;
 import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 

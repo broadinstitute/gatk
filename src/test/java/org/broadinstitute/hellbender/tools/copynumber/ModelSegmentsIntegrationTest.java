@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.copynumber;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStandardArgument;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.*;
@@ -11,7 +12,6 @@ import org.broadinstitute.hellbender.tools.copynumber.models.AlleleFractionParam
 import org.broadinstitute.hellbender.tools.copynumber.models.CopyRatioParameter;
 import org.broadinstitute.hellbender.tools.copynumber.models.MultidimensionalModellerUnitTest;
 import org.broadinstitute.hellbender.tools.copynumber.segmentation.MultidimensionalKernelSegmenterUnitTest;
-import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
