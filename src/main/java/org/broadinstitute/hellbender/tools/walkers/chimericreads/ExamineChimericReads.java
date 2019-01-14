@@ -106,6 +106,8 @@ public class ExamineChimericReads extends ReadPairWalker {
             final SmithWatermanAlignment alignmentMis = smithWatermanAligner.alignWithMismatches(seq1, seq2, swParameters, swOverhangStrategy);
 
             matches = countEquals(alignmentMis.getCigar());
+            readOne.setAttribute("c1",alignmentMis.getCigar().toString());
+            readTwo.setAttribute("c1",alignmentMis.getCigar().toString());
         }
         {
             final byte[] seq1 = refOne.getBytes();
@@ -113,7 +115,10 @@ public class ExamineChimericReads extends ReadPairWalker {
             final SmithWatermanAlignment alignmentMis = smithWatermanAligner.alignWithMismatches(seq1, seq2, swParameters, swOverhangStrategy);
 
             revCompMatches = countEquals(alignmentMis.getCigar());
+            readOne.setAttribute("c2",alignmentMis.getCigar().toString());
+            readTwo.setAttribute("c2",alignmentMis.getCigar().toString());
         }
+
         minMatchLength.increment(Math.min(matches, revCompMatches));
         maxMatchLength.increment(Math.max(matches, revCompMatches));
 
