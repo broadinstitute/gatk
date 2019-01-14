@@ -11,6 +11,7 @@ import java.io.IOException;
 
 public class PrintBGZFBlockInformationIntegrationTest extends CommandLineProgramTest {
 
+    /* Well-formed large BGZF file */
     @Test
     public void testNormalLargeInput() throws IOException {
         final File input = new File(largeFileTestDir, "gvcfs/HG00096.g.vcf.gz");
@@ -26,6 +27,7 @@ public class PrintBGZFBlockInformationIntegrationTest extends CommandLineProgram
         IntegrationTestSpec.assertEqualTextFiles(actualOutput, expectedOutput);
     }
 
+    /* Well-formed small BGZF file */
     @Test
     public void testNormalSmallInput() throws IOException {
         final File input = new File(toolsTestDir, "PrintBGZFBlockInformation/4featuresHG38Header.vcf.gz");
@@ -41,6 +43,7 @@ public class PrintBGZFBlockInformationIntegrationTest extends CommandLineProgram
         IntegrationTestSpec.assertEqualTextFiles(actualOutput, expectedOutput);
     }
 
+    /* Malformed BGZF file missing the final 0-byte terminator block */
     @Test
     public void testMissingBGZFTerminatorBlock() throws IOException {
         final File input = new File(toolsTestDir, "PrintBGZFBlockInformation/4featuresHG38Header.NO_BGZF_TERMINATOR_BLOCK.vcf.gz");
@@ -56,6 +59,7 @@ public class PrintBGZFBlockInformationIntegrationTest extends CommandLineProgram
         IntegrationTestSpec.assertEqualTextFiles(actualOutput, expectedOutput);
     }
 
+    /* Malformed BGZF file with an incomplete (truncated) final block */
     @Test(expectedExceptions= UserException.CouldNotReadInputFile.class)
     public void testTruncatedFinalBlock() throws IOException {
         final File input = new File(toolsTestDir, "PrintBGZFBlockInformation/4featuresHG38Header.TRUNCATED_FINAL_BLOCK.vcf.gz");
@@ -68,6 +72,7 @@ public class PrintBGZFBlockInformationIntegrationTest extends CommandLineProgram
         runCommandLine(args);
     }
 
+    /* Malformed BGZF file with an extra 0-byte terminator block in the middle */
     @Test
     public void testExtraTerminatorBlockInMiddle() throws IOException {
         final File input = new File(toolsTestDir, "PrintBGZFBlockInformation/4featuresHG38Header.EXTRA_TERMINATOR_BLOCK_IN_MIDDLE.vcf.gz");
@@ -83,6 +88,7 @@ public class PrintBGZFBlockInformationIntegrationTest extends CommandLineProgram
         IntegrationTestSpec.assertEqualTextFiles(actualOutput, expectedOutput);
     }
 
+    /* Regular GZIP file masquerading as a BGZF file */
     @Test(expectedExceptions= UserException.CouldNotReadInputFile.class)
     public void testRegularGzipFile() throws IOException {
         final File input = new File(toolsTestDir, "PrintBGZFBlockInformation/4featuresHG38Header.REGULAR_GZIP.vcf.gz");

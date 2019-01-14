@@ -17,10 +17,14 @@ import picard.cmdline.programgroups.OtherProgramGroup;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * A diagnostic tool that prints information about the compressed blocks in a BGZF format file,
- * such as a .vcf.gz file.
+ * such as a .vcf.gz file. This tool can detect various kinds of BGZF file corruption such as
+ * premature BGZF terminator blocks, truncated files, and files that were regular-GZIPPED by
+ * accident.
  * <p>
  * The output looks like this:
  * </p>
@@ -98,7 +102,8 @@ public class PrintBGZFBlockInformation extends CommandLineProgram {
     @Override
     protected Object doWork() {
         BGZFBlockMetadata previousBlockInfo = null;
-        boolean sawNonFinalTerminatorBlock = false;
+        int blockNumber = 0;
+        final List<Integer> nonFinalTerminatorBlockIndices = new ArrayList<>();
 
         try ( InputStream bgzfInputStream = Files.newInputStream(bgzfPath) ) {
             outStream.printf("BGZF block information for file: %s\n\n", bgzfPath.getFileName());
@@ -106,19 +111,21 @@ public class PrintBGZFBlockInformation extends CommandLineProgram {
             BGZFBlockMetadata blockInfo;
 
             while ( (blockInfo = processNextBlock(bgzfInputStream, bgzfPathString)) != null ) {
+                ++blockNumber;
 
                 // If we saw a 0-byte terminator block that was not the final block in the file,
-                // emit a warning
+                // emit an error message
                 if ( previousBlockInfo != null && previousBlockInfo.uncompressedSize == 0 ) {
-                    sawNonFinalTerminatorBlock = true;
+                    nonFinalTerminatorBlockIndices.add(blockNumber - 1);
 
-                    outStream.println("*************************************************************************");
-                    outStream.println("WARNING: Premature BGZF 0-byte terminator block found before final block!");
-                    outStream.println("*************************************************************************");
+                    outStream.println("*******************************************************");
+                    outStream.println("ERROR: Premature BGZF 0-byte terminator block was found");
+                    outStream.println("at block number: " + (blockNumber - 1));
+                    outStream.println("*******************************************************");
                     outStream.println();
                 }
 
-                outStream.printf("Block at file offset %d\n", blockInfo.blockOffset);
+                outStream.printf("Block #%d at file offset %d\n", blockNumber, blockInfo.blockOffset);
                 outStream.printf("\t- compressed size: %d\n", blockInfo.compressedSize);
                 outStream.printf("\t- uncompressed size: %d\n", blockInfo.uncompressedSize);
                 outStream.println();
@@ -131,22 +138,23 @@ public class PrintBGZFBlockInformation extends CommandLineProgram {
 
         // Check whether the last block in the file was a 0-byte BGZF terminator block
         if ( previousBlockInfo == null || previousBlockInfo.uncompressedSize != 0 ) {
-            outStream.println("********************************************************");
-            outStream.println("WARNING: Final BGZF 0-byte terminator block was MISSING!");
-            outStream.println("********************************************************");
+            outStream.println("******************************************************");
+            outStream.println("ERROR: Final BGZF 0-byte terminator block was MISSING!");
+            outStream.println("******************************************************");
             outStream.println();
         } else {
-            outStream.println("*****************************************");
-            outStream.println("Final BGZF 0-byte terminator block FOUND!");
-            outStream.println("*****************************************");
+            outStream.println("***************************************************************************");
+            outStream.println("Final BGZF 0-byte terminator block FOUND as expected at block number " + blockNumber);
+            outStream.println("***************************************************************************");
             outStream.println();
         }
 
-        // Emit a warning at the end if we encountered any terminator blocks before the final block:
-        if ( sawNonFinalTerminatorBlock ) {
-            outStream.println("*************************************************************************");
-            outStream.println("WARNING: Premature BGZF 0-byte terminator block found before final block!");
-            outStream.println("*************************************************************************");
+        // Emit an error message at the end if we encountered any terminator blocks before the final block:
+        if ( ! nonFinalTerminatorBlockIndices.isEmpty() ) {
+            outStream.println("***********************************************************");
+            outStream.println("ERROR: Premature BGZF 0-byte terminator block(s) were found");
+            outStream.println("at block number(s): " + StringUtils.join(nonFinalTerminatorBlockIndices, ","));
+            outStream.println("***********************************************************");
             outStream.println();
         }
 
