@@ -149,7 +149,11 @@ public class GATKAnnotationPluginDescriptor  extends CommandLinePluginDescriptor
      * @return A short user-friendly name for this plugin.
      */
     @Override
-    public String getDisplayName() {
+    public String getDisplayName()
+    {
+        // The value returned by this method is placed into the freemarker property map by the docgen system,
+        // and must be a valid variable name in the freemarker template language (it cannot be a kebabified
+        // string with an embedded "-").
         return StandardArgumentDefinitions.ANNOTATION_LONG_NAME;
     }
 
