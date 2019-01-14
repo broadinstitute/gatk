@@ -1,0 +1,3 @@
+FOO	OUTPUT
+rg1	my_rg_1.ubam
+rg2	my_rg_2.ubam

@@ -188,11 +188,6 @@ import java.util.*;
 public class Funcotator extends VariantWalker {
     private static final Logger logger = LogManager.getLogger(Funcotator.class);
 
-    /**
-     * The current version of {@link Funcotator}.
-     */
-    public static final String VERSION = "0.0.5";
-
     //==================================================================================================================
     // Arguments:
 
@@ -212,11 +207,6 @@ public class Funcotator extends VariantWalker {
      */
     public FuncotatorArgumentCollection getArguments() {
         return funcotatorArgs;
-    }
-
-    @Override
-    protected String getVersion() {
-        return super.getVersion() + "-" + VERSION;
     }
 
     @Override

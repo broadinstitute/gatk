@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.variant;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.CollectionUtil;
 import htsjdk.samtools.util.IOUtil;
@@ -22,6 +23,7 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
@@ -288,6 +290,25 @@ public final class GATKVariantContextUtils {
                                         final double[] genotypeLikelihoods,
                                         final List<Allele> allelesToUse){
         makeGenotypeCall(ploidy,gb,assignmentMethod,genotypeLikelihoods,allelesToUse,null);
+    }
+
+    /**
+     * Return the rightmost variant context in maybeOverlapping that overlaps curPos
+     *
+     * @param curPos non-null genome loc
+     * @param maybeOverlapping a collection of variant contexts that might overlap curPos
+     * @return the rightmost VariantContext, or null if none overlaps
+     */
+    public static VariantContext getOverlappingVariantContext(final Locatable curPos, final Collection<VariantContext> maybeOverlapping) {
+        VariantContext overlaps = null;
+        for ( final VariantContext vc : maybeOverlapping ) {
+            if ( curPos.overlaps(vc) ) {
+                if ( overlaps == null || vc.getStart() > overlaps.getStart() ) {
+                    overlaps = vc;
+                }
+            }
+        }
+        return overlaps;
     }
 
     public enum GenotypeMergeType {

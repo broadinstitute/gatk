@@ -47,8 +47,9 @@ public class Mutect2FilteringEngine {
         final int[] ADs = tumorGenotype.getAD();
         final int altCount = ADs[maxFractionIndex + 1];   // AD is all alleles, while AF is alts only, hence the +1 offset
         final int depth = (int) MathUtils.sum(ADs);
-        final double alleleFrequency = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc,
-                GATKVCFConstants.POPULATION_AF_VCF_ATTRIBUTE, () -> new double[] {0.0, 0.0}, 0)[maxFractionIndex];
+        final double[] negativeLog10AlleleFrequencies = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc,
+                GATKVCFConstants.POPULATION_AF_VCF_ATTRIBUTE, () -> new double[]{Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY}, Double.POSITIVE_INFINITY);
+        final double alleleFrequency = MathUtils.applyToArray(negativeLog10AlleleFrequencies, x -> Math.pow(10,-x))[maxFractionIndex];
 
         final double somaticLikelihood = 1.0 / (depth + 1);
 
@@ -58,7 +59,7 @@ public class Mutect2FilteringEngine {
         final double contaminantLikelihood = Math.max(singleContaminantLikelihood, manyContaminantLikelihood);
         final double posteriorProbOfContamination = (1 - somaticPriorProb) * contaminantLikelihood / ((1 - somaticPriorProb) * contaminantLikelihood + somaticPriorProb * somaticLikelihood);
 
-        filterResult.addAttribute(GATKVCFConstants.POSTERIOR_PROB_OF_CONTAMINATION_ATTRIBUTE, posteriorProbOfContamination);
+        filterResult.addAttribute(GATKVCFConstants.CONTAMINATION_QUAL_ATTRIBUTE, QualityUtils.errorProbToQual(posteriorProbOfContamination));
         if (posteriorProbOfContamination > MTFAC.maxContaminationProbability) {
             filterResult.addFilter(GATKVCFConstants.CONTAMINATION_FILTER_NAME);
         }
@@ -108,35 +109,58 @@ public class Mutect2FilteringEngine {
     }
 
     private void applyBaseQualityFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final FilterResult filterResult) {
-        final int[] baseQualityByAllele = getIntArrayTumorField(vc, BaseQuality.KEY);
+        if (!vc.hasAttribute(BaseQuality.KEY)) {
+            return;
+        }
+
+        final List<Integer> baseQualityByAllele = vc.getAttributeAsIntList(BaseQuality.KEY, 0);
         final double[] tumorLods = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.TUMOR_LOD_KEY);
         final int indexOfMaxTumorLod = MathUtils.maxElementIndex(tumorLods);
 
-        if (baseQualityByAllele != null && baseQualityByAllele[indexOfMaxTumorLod + 1] < MTFAC.minMedianBaseQuality) {
+        if (baseQualityByAllele.get(indexOfMaxTumorLod + 1) < MTFAC.minMedianBaseQuality) {
             filterResult.addFilter(GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME);
         }
     }
 
     private void applyMappingQualityFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final FilterResult filterResult) {
-        final int[] mappingQualityByAllele = getIntArrayTumorField(vc, MappingQuality.KEY);
-        if (mappingQualityByAllele != null && mappingQualityByAllele[0] < MTFAC.minMedianMappingQuality) {
+        if (!vc.hasAttribute(MappingQuality.KEY)) {
+            return;
+        }
+
+        final List<Integer> indelLengths = vc.getIndelLengths();
+        final int indelLength = indelLengths == null ? 0 : indelLengths.stream().mapToInt(Math::abs).max().orElseGet(() -> 0);
+        final List<Integer> mappingQualityByAllele = vc.getAttributeAsIntList(MappingQuality.KEY, 0);
+
+        // we use the mapping quality annotation of the alt allele in most cases, but for long indels we use the reference
+        // annotation.  We have to do this because the indel, even if it maps uniquely, gets a poor mapping quality
+        // by virtue of its mismatch.  The reference mapping quality is a decent proxy for the region's mappability.
+        if (mappingQualityByAllele.get(indelLength < MTFAC.longIndelLength ? 1 : 0) < MTFAC.minMedianMappingQuality) {
             filterResult.addFilter(GATKVCFConstants.MEDIAN_MAPPING_QUALITY_FILTER_NAME);
         }
     }
 
     private void applyMedianFragmentLengthDifferenceFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final FilterResult filterResult) {
-        final int[] fragmentLengthByAllele = getIntArrayTumorField(vc, FragmentLength.KEY);
-        if (fragmentLengthByAllele != null && Math.abs(fragmentLengthByAllele[1] - fragmentLengthByAllele[0]) > MTFAC.maxMedianFragmentLengthDifference) {
+        if (!vc.hasAttribute(FragmentLength.KEY)) {
+            return;
+        }
+
+        final List<Integer> fragmentLengthByAllele = vc.getAttributeAsIntList(FragmentLength.KEY, 0);
+
+        if (Math.abs(fragmentLengthByAllele.get(1) - fragmentLengthByAllele.get(0)) > MTFAC.maxMedianFragmentLengthDifference) {
             filterResult.addFilter(GATKVCFConstants.MEDIAN_FRAGMENT_LENGTH_DIFFERENCE_FILTER_NAME);
         }
     }
 
     private void applyReadPositionFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final FilterResult filterResult) {
-        final int[] readPositionByAllele = getIntArrayTumorField(vc, ReadPosition.KEY);
-        if (readPositionByAllele != null) {
-            if (readPositionByAllele[0] < MTFAC.minMedianReadPosition) {
-                filterResult.addFilter(GATKVCFConstants.READ_POSITION_FILTER_NAME);
-            }
+        if (!vc.hasAttribute(ReadPosition.KEY)) {
+            return;
+        }
+
+        final List<Integer> readPositionByAllele = vc.getAttributeAsIntList(ReadPosition.KEY, 0);
+
+        // a negative value is possible due to a bug: https://github.com/broadinstitute/gatk/issues/5492
+        if (readPositionByAllele.get(0) > -1 && readPositionByAllele.get(0) < MTFAC.minMedianReadPosition) {
+            filterResult.addFilter(GATKVCFConstants.READ_POSITION_FILTER_NAME);
         }
     }
 
@@ -145,7 +169,8 @@ public class Mutect2FilteringEngine {
             final double[] tumorLog10OddsIfSomatic = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.TUMOR_LOD_KEY);
             final Optional<double[]> normalLods = vc.hasAttribute(GATKVCFConstants.NORMAL_LOD_KEY) ?
                     Optional.of(GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.NORMAL_LOD_KEY)) : Optional.empty();
-            final double[] populationAlleleFrequencies = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.POPULATION_AF_VCF_ATTRIBUTE);
+            final double[] negativeLog10AlleleFrequencies = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.POPULATION_AF_VCF_ATTRIBUTE);
+            final double[] populationAlleleFrequencies = MathUtils.applyToArray(negativeLog10AlleleFrequencies, x -> Math.pow(10,-x));
 
             final List<MinorAlleleFractionRecord> segments = tumorSegments.getOverlaps(vc).stream().collect(Collectors.toList());
 
@@ -179,7 +204,7 @@ public class Mutect2FilteringEngine {
             final double[] log10GermlinePosteriors = GermlineProbabilityCalculator.calculateGermlineProbabilities(
                     populationAlleleFrequencies, log10OddsOfGermlineHetVsSomatic, log10OddsOfGermlineHomAltVsSomatic, normalLods, MTFAC.log10PriorProbOfSomaticEvent);
 
-            filterResult.addAttribute(GATKVCFConstants.GERMLINE_POSTERIORS_VCF_ATTRIBUTE, log10GermlinePosteriors);
+            filterResult.addAttribute(GATKVCFConstants.GERMLINE_QUAL_VCF_ATTRIBUTE, Arrays.stream(log10GermlinePosteriors).mapToInt(p -> (int) QualityUtils.phredScaleLog10ErrorRate(p)).toArray());
             final int indexOfMaxTumorLod = MathUtils.maxElementIndex(tumorLog10OddsIfSomatic);
             if (log10GermlinePosteriors[indexOfMaxTumorLod] > Math.log10(MTFAC.maxGermlinePosterior)) {
                 filterResult.addFilter(GATKVCFConstants.GERMLINE_RISK_FILTER_NAME);
@@ -226,8 +251,9 @@ public class Mutect2FilteringEngine {
             return;
         }
 
+        // negative because vcf shows log odds of not artifact / artifact (in order to have bigger positive --> good)
         final double[] normalArtifactLods = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.NORMAL_ARTIFACT_LOD_ATTRIBUTE);
-        if (normalArtifactLods[indexOfMaxTumorLod] > MTFAC.NORMAL_ARTIFACT_LOD_THRESHOLD) {
+        if (-normalArtifactLods[indexOfMaxTumorLod] > MTFAC.NORMAL_ARTIFACT_LOD_THRESHOLD) {
             filterResult.addFilter(GATKVCFConstants.ARTIFACT_IN_NORMAL_FILTER_NAME);
             return;
         }

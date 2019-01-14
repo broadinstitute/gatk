@@ -1,11 +1,10 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerArgumentCollection;
 
 import java.io.File;
 
-public class M2FiltersArgumentCollection extends AssemblyBasedCallerArgumentCollection {
+public class M2FiltersArgumentCollection {
     private static final long serialVersionUID = 9345L;
     public static final String LOG_SOMATIC_PRIOR_LONG_NAME = "log-somatic-prior";
     public static final String TUMOR_LOD_LONG_NAME = "tumor-lod";
@@ -34,6 +33,7 @@ public class M2FiltersArgumentCollection extends AssemblyBasedCallerArgumentColl
     public static final String STRICT_STRAND_BIAS_LONG_NAME = "strict-strand-bias";
     public static final String LOD_BY_DEPTH = "lod-divided-by-depth";
     public static final String NON_MT_ALT_READS_BY_ALT_READS = "non-mt-alts-divided-by-alts";
+    public static final String LONG_INDEL_LENGTH_LONG_NAME = "long-indel-length";
 
     public static final String FILTERING_STATS_LONG_NAME = "stats";
 
@@ -142,11 +142,14 @@ public class M2FiltersArgumentCollection extends AssemblyBasedCallerArgumentColl
     @Argument(fullName = MAX_DISTANCE_TO_FILTERED_CALL_ON_SAME_HAPLOTYPE_LONG_NAME, optional = true, doc = "On second filtering pass, variants with same PGT and PID tags as a filtered variant within this distance are filtered.")
     public int maxDistanceToFilteredCallOnSameHaplotype = 100;
 
+    @Argument(fullName = LONG_INDEL_LENGTH_LONG_NAME, optional = true, doc = "Indels of this length or greater are treated specially by the mapping quality filter.")
+    public int longIndelLength = 5;
+
     /**
      * Only variants with LOD divided by depth exceeding this threshold can pass filtering.
      */
     @Argument(fullName = LOD_BY_DEPTH, doc="LOD by depth threshold for filtering variant", optional = true)
-    public double lodByDepth = 0.005;
+    public double lodByDepth = 0.0035;
 
     /**
      * Only variants with alt reads originally aligned outside of the mitochondria (known NuMTs) divided by total alt
@@ -167,7 +170,7 @@ public class M2FiltersArgumentCollection extends AssemblyBasedCallerArgumentColl
      * LOD by depth Filter
      * Contamination Filter
      */
-    @Argument(fullName = M2ArgumentCollection.MITOCHONDIRA_MODE_LONG_NAME, optional = true, doc = "Set filters to mitochondrial defaults")
+    @Argument(fullName = M2ArgumentCollection.MITOCHONDRIA_MODE_LONG_NAME, optional = true, doc = "Set filters to mitochondrial defaults")
     public boolean mitochondria = false;
 
 }

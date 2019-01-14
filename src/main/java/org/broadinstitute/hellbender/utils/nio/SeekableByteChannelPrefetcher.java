@@ -4,6 +4,8 @@ import com.google.common.base.Stopwatch;
 import java.util.concurrent.ThreadFactory;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -30,6 +32,8 @@ import shaded.cloud_nio.com.google.common.util.concurrent.ThreadFactoryBuilder;
  * implement prefetching).
  */
 public final class SeekableByteChannelPrefetcher implements SeekableByteChannel {
+
+    private static final Logger logger = LogManager.getLogger(SeekableByteChannelPrefetcher.class);
 
     // Only one thread at a time should use chan.
     // To ensure this is the case, only the prefetching thread uses it.
@@ -231,7 +235,11 @@ public final class SeekableByteChannelPrefetcher implements SeekableByteChannel 
     // Return a buffer at this position, blocking if necessary.
     // Start a background read of the buffer after this one (if there isn't one already).
     public ByteBuffer fetch(long position) throws InterruptedException, ExecutionException {
+
         long blockIndex = position / bufSize;
+
+//        logger.debug("Fetch requested.  Internal Position: " + this.position + " Fetch Position: " + position + " Block Index: " + blockIndex);
+
         boolean goingBack = false;
         for (WorkUnit w : full) {
             if (w.blockIndex == blockIndex) {
@@ -246,6 +254,7 @@ public final class SeekableByteChannelPrefetcher implements SeekableByteChannel 
             // user is asking for a block with a lower index than we've already fetched -
             // in other words they are not following the expected pattern of increasing indexes.
             nbGoingBack++;
+//            logger.debug("Fetch is going back at least 1 block (unexpected behavior).");
         }
         if (null == fetching) {
             ensureFetching(blockIndex);
@@ -375,6 +384,7 @@ public final class SeekableByteChannelPrefetcher implements SeekableByteChannel 
     @Override
     public long position() throws IOException {
         if (!open) throw new ClosedChannelException();
+//        logger.debug("Get Position: " + position);
         return position;
     }
 
@@ -404,6 +414,7 @@ public final class SeekableByteChannelPrefetcher implements SeekableByteChannel 
     @Override
     public SeekableByteChannel position(long newPosition) throws IOException {
         if (!open) throw new ClosedChannelException();
+//        logger.debug("Set Position: " + newPosition);
         position = newPosition;
         return this;
     }

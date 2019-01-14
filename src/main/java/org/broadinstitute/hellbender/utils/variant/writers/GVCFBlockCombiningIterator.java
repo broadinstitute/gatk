@@ -10,7 +10,7 @@ import java.util.*;
  */
 public class GVCFBlockCombiningIterator extends PushToPullIterator<VariantContext> {
 
-    public GVCFBlockCombiningIterator(Iterator<VariantContext> variants, final List<Integer> gqPartitions, final int defaultPloidy){
+    public GVCFBlockCombiningIterator(Iterator<VariantContext> variants, final List<Number> gqPartitions, final int defaultPloidy){
        super(variants, new GVCFBlockCombiner(gqPartitions, defaultPloidy));
     }
 

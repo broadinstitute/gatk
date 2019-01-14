@@ -5,6 +5,7 @@ import htsjdk.samtools.SamFiles;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
@@ -15,12 +16,17 @@ import org.broadinstitute.hellbender.engine.AssemblyRegionWalker;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
+import org.broadinstitute.hellbender.testutils.CommandLineProgramTester;
 import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.OrientationBiasUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StrandBiasBySample;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReadThreadingAssemblerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceSummaryRecord;
+import org.broadinstitute.hellbender.tools.walkers.variantutils.ValidateVariants;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -29,11 +35,13 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+import scala.tools.nsc.transform.patmat.ScalaLogic;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -59,6 +67,9 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     private static final String DEEP_MITO_SAMPLE_NAME = "mixture";
 
     private static final File GNOMAD_WITHOUT_AF_SNIPPET = new File(toolsTestDir, "mutect/gnomad-without-af.vcf");
+
+    private static final double TLOD_MATCH_EPSILON = 0.05;
+    private static final double VARIANT_TLOD_MATCH_PCT = 0.01;
 
     /**
      * Several DREAM challenge bams with synthetic truth data.  In order to keep file sizes manageable, bams are restricted
@@ -545,24 +556,24 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "-R", MITO_REF.getAbsolutePath(),
                 "-L", "chrM:1-1000",
                 "--" + M2ArgumentCollection.MEDIAN_AUTOSOMAL_COVERAGE_LONG_NAME, "1556", //arbitrary "autosomal" mean coverage used only for testing
-                "--" + M2ArgumentCollection.MITOCHONDIRA_MODE_LONG_NAME,
+                "--" + M2ArgumentCollection.MITOCHONDRIA_MODE_LONG_NAME,
                 "-O", unfilteredVcf.getAbsolutePath());
         runCommandLine(args);
 
 
         final List<VariantContext> variants = VariantContextTestUtils.streamVcf(unfilteredVcf).collect(Collectors.toList());
-        final Set<String> variantKeys = variants.stream().map(vc -> keyForVariant(vc)).collect(Collectors.toSet());
+        final List<String> variantKeys = variants.stream().map(vc -> keyForVariant(vc)).collect(Collectors.toList());
 
         final List<String> expectedKeys = Arrays.asList(
-                "chrM:152-152 [T*, C]",
-                "chrM:263-263 [A*, G]",
-                "chrM:301-301 [A*, AC]",
-                "chrM:302-302 [A*, AC, C, ACC]",
-                "chrM:310-310 [T*, TC]",
-                "chrM:750-750 [A*, G]");
+                "chrM:152-152 T*, [C]",
+                "chrM:263-263 A*, [G]",
+                "chrM:301-301 A*, [AC]",
+                "chrM:302-302 A*, [AC, ACC, C]",
+                "chrM:310-310 T*, [TC]",
+                "chrM:750-750 A*, [G]");
         Assert.assertTrue(expectedKeys.stream().allMatch(variantKeys::contains));
 
-        Assert.assertEquals(variants.get(0).getGenotype("NA12878").getAnyAttribute(GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY), "1513");
+        Assert.assertEquals(Integer.parseInt(variants.get(0).getGenotype("NA12878").getAnyAttribute(GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY).toString()), 1514, 5);
         Assert.assertEquals(variants.get(0).getGenotype("NA12878").getAnyAttribute(GATKVCFConstants.POTENTIAL_POLYMORPHIC_NUMT_KEY), "true");
     }
 
@@ -571,7 +582,8 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final File filteredVcf = createTempFile("filtered", ".vcf");
 
         new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-V", NA12878_MITO_VCF.getPath(),
-                "-O", filteredVcf.getPath(), "--" + M2ArgumentCollection.MITOCHONDIRA_MODE_LONG_NAME), FilterMutectCalls.class.getSimpleName()));
+                "-O", filteredVcf.getPath(), "--" + M2ArgumentCollection.MITOCHONDRIA_MODE_LONG_NAME,
+                "--lod-divided-by-depth", ".005"), FilterMutectCalls.class.getSimpleName()));
 
         final List<VariantContext> variants = VariantContextTestUtils.streamVcf(filteredVcf).collect(Collectors.toList());
         final Iterator<String> expectedFilters = Arrays.asList(
@@ -587,9 +599,149 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         }
     }
 
+    @Test
+    public void testMitochondrialRefConf() throws Exception {
+        Utils.resetRandomGenerator();
+        final File standardVcf = createTempFile("standard", ".vcf");
+        final File unthresholded = createTempFile("unthresholded", ".vcf");
+
+
+        final List<String> args = Arrays.asList("-I", NA12878_MITO_BAM.getAbsolutePath(),
+                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, "NA12878",
+                "-R", MITO_REF.getAbsolutePath(),
+                "-L", "chrM:1-1000",
+                "--" + M2ArgumentCollection.MEDIAN_AUTOSOMAL_COVERAGE_LONG_NAME, "1556", //arbitrary "autosomal" mean coverage used only for testing
+                "--" + M2ArgumentCollection.MITOCHONDRIA_MODE_LONG_NAME,
+                "-O", standardVcf.getAbsolutePath(),
+                "-ERC", "GVCF",
+                "-LODB", "-2.0",
+                "-LODB", "0.0");
+        runCommandLine(args);
+
+        //check ref conf-specific headers are output
+        final Pair<VCFHeader, List<VariantContext>> result = VariantContextTestUtils.readEntireVCFIntoMemory(standardVcf.getAbsolutePath());
+        Assert.assertTrue(result.getLeft().hasFormatLine(GATKVCFConstants.TUMOR_LOD_KEY));
+        Assert.assertTrue(result.getLeft().getMetaDataLine(GATKVCFConstants.SYMBOLIC_ALLELE_DEFINITION_HEADER_TAG) != null);
+
+        final List<VariantContext> variants = result.getRight();
+        final Map<String, VariantContext> variantMap = variants.stream().collect(Collectors.toMap(vc -> keyForVariant(vc), Function.identity()));
+        final List<String> variantKeys = new ArrayList<>(variantMap.keySet());
+
+        final List<String> expectedKeys = Arrays.asList(
+                "chrM:152-152 T*, [<NON_REF>, C]",
+                "chrM:263-263 A*, [<NON_REF>, G]",
+                "chrM:297-297 A*, [<NON_REF>, AC, C]",  //alt alleles get sorted when converted to keys
+                //"chrM:301-301 A*, [<NON_REF>, AC, ACC]",
+                //"chrM:302-302 A*, [<NON_REF>, AC, ACC, C]",  //one of these commented out variants has an allele that only appears in debug mode
+                "chrM:310-310 T*, [<NON_REF>, C, TC]",
+                "chrM:750-750 A*, [<NON_REF>, G]");
+        Assert.assertTrue(expectedKeys.stream().allMatch(variantKeys::contains));
+        //First entry should be a homRef block
+        Assert.assertTrue(variantKeys.get(0).contains("*, [<NON_REF>]"));
+
+        final CommandLineProgramTester validator = ValidateVariants.class::getSimpleName;
+        final ArgumentsBuilder args2 = new ArgumentsBuilder();
+        args2.addArgument("R", MITO_REF.getAbsolutePath());
+        args2.addArgument("V", standardVcf.getAbsolutePath());
+        args2.addArgument("L", IntervalUtils.locatableToString(new SimpleInterval("chrM:1-1000")));
+        args2.add("-gvcf");
+        validator.runCommandLine(args2);  //will throw a UserException if GVCF isn't contiguous
+
+        final List<String> args3 = Arrays.asList("-I", NA12878_MITO_BAM.getAbsolutePath(),
+                "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, "NA12878",
+                "-R", MITO_REF.getAbsolutePath(),
+                "-L", "chrM:1-1000",
+                "--" + M2ArgumentCollection.MEDIAN_AUTOSOMAL_COVERAGE_LONG_NAME, "1556", //arbitrary "autosomal" mean coverage used only for testing
+                "--" + M2ArgumentCollection.MITOCHONDRIA_MODE_LONG_NAME,
+                "-O", unthresholded.getAbsolutePath(),
+                "-ERC", "GVCF",
+                "-LODB", "-2.0",
+                "-LODB", "0.0",
+                "-min-AF", "0.0");
+        runCommandLine(args3);
+        final Pair<VCFHeader, List<VariantContext>> result_noThreshold = VariantContextTestUtils.readEntireVCFIntoMemory(unthresholded.getAbsolutePath());
+
+        final Map<String, VariantContext> variantMap2 = result_noThreshold.getRight().stream().collect(Collectors.toMap(vc -> keyForVariant(vc), Function.identity()));
+
+        //TLODs for variants should change too much for variant allele, should change significantly for non-ref
+        for (final String key : expectedKeys) {
+            Assert.assertTrue(onlyNonRefTlodsChange(variantMap.get(key), variantMap2.get(key)));
+        }
+
+        final List<String> expectedRefKeys = Arrays.asList(
+                //ref blocks will be dependent on TLOD band values
+                "chrM:218-218 A*, [<NON_REF>]",
+                "chrM:264-266 C*, [<NON_REF>]",
+                "chrM:479-483 A*, [<NON_REF>]",
+                "chrM:488-492 T*, [<NON_REF>]");
+
+        //ref block boundaries aren't particularly stable, so try a few and make sure we check at least one
+        boolean checkedAtLeastOneRefBlock = false;
+        for (final String key : expectedRefKeys) {
+            final VariantContext v1 = variantMap.get(key);
+            final VariantContext v2 = variantMap2.get(key);
+            if (v1 == null || v2 == null) {
+                continue;
+            }
+            Assert.assertTrue(onlyNonRefTlodsChange(v1, v2));
+            checkedAtLeastOneRefBlock = true;
+        }
+        Assert.assertTrue(checkedAtLeastOneRefBlock);
+    }
+
+    private boolean onlyNonRefTlodsChange(final VariantContext v1, final VariantContext v2) {
+        if (v1 == null) {
+            return false;
+        }
+        if (v2 == null) {
+            return false;
+        }
+        if (!v1.getReference().equals(v2.getReference())) {
+            return false;
+        }
+        if (!(v1.getAlternateAlleles().size() == v2.getAlternateAlleles().size())) {
+            return false;
+        }
+
+        final double[] tlods1;
+        final double[] tlods2;
+        //ref blocks have TLOD in format field
+        if (v1.getGenotype(0).isHomRef()) {
+            tlods1 = new double[]{GATKProtectedVariantContextUtils.getAttributeAsDouble(v1.getGenotype(0), GATKVCFConstants.TUMOR_LOD_KEY, 0)};
+            tlods2 = new double[]{GATKProtectedVariantContextUtils.getAttributeAsDouble(v2.getGenotype(0), GATKVCFConstants.TUMOR_LOD_KEY, 0)};
+        }
+        else {
+            tlods1 = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(v1, GATKVCFConstants.TUMOR_LOD_KEY);
+            tlods2 = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(v2, GATKVCFConstants.TUMOR_LOD_KEY);
+
+        }
+        for (int i = 0; i < v1.getAlternateAlleles().size(); i++) {
+            if (!v1.getAlternateAllele(i).equals(v2.getAlternateAllele(i))) {
+                return false;
+            }
+            //we expect the AF threshold to have a significant effect on the NON_REF TLOD, but only for that allele
+            if (!v1.getAlternateAllele(i).equals(Allele.NON_REF_ALLELE)) {
+                if (tlods1[i] > 0) {
+                    if (Math.abs(tlods1[i]-tlods2[i])/tlods1[i] > VARIANT_TLOD_MATCH_PCT) {
+                        return false;
+                    }
+                }
+                else if (Math.abs(tlods1[i]-tlods2[i]) > TLOD_MATCH_EPSILON) {
+                    return false;
+                }
+            }
+            else {
+                if (Math.abs(tlods1[i]-tlods2[i]) < TLOD_MATCH_EPSILON) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
    @Test
    @SuppressWarnings("deprecation")
-   public void testAFfromADoverHighDP() throws Exception {
+   public void testAFAtHighDP() throws Exception {
         Utils.resetRandomGenerator();
         final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
 
@@ -598,8 +750,6 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "-R", MITO_REF.getAbsolutePath(),
                 "-L", "chrM:1-1018",
                 "-ip", "300",
-                "-min-pruning", "4",
-                "--" + M2ArgumentCollection.GET_AF_FROM_AD_LONG_NAME,
                 "-O", unfilteredVcf.getAbsolutePath());
         runCommandLine(args);
 
@@ -612,7 +762,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
             final int[] ADs = g.getAD();
             Assert.assertTrue(g.hasExtendedAttribute(GATKVCFConstants.ALLELE_FRACTION_KEY));
             //Assert.assertEquals(Double.parseDouble(String.valueOf(vc.getGenotype(DEEP_MITO_SAMPLE_NAME).getExtendedAttribute(GATKVCFConstants.ALLELE_FRACTION_KEY,"0"))), (double)ADs[1]/(ADs[0]+ADs[1]), 1e-6);
-            Assert.assertEquals(Double.parseDouble(String.valueOf(vc.getGenotype(DEEP_MITO_SAMPLE_NAME).getAttributeAsString(GATKVCFConstants.ALLELE_FRACTION_KEY,"0"))), (double)ADs[1]/(ADs[0]+ADs[1]), 1e-6);
+            Assert.assertEquals(Double.parseDouble(String.valueOf(vc.getGenotype(DEEP_MITO_SAMPLE_NAME).getAttributeAsString(GATKVCFConstants.ALLELE_FRACTION_KEY,"0"))), (double)ADs[1]/(ADs[0]+ADs[1]), 2e-3);
         }
     }
 
@@ -901,6 +1051,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     }
 
     private static String keyForVariant( final VariantContext variant ) {
-        return String.format("%s:%d-%d %s", variant.getContig(), variant.getStart(), variant.getEnd(), variant.getAlleles());
+        return String.format("%s:%d-%d %s, %s", variant.getContig(), variant.getStart(), variant.getEnd(), variant.getReference(),
+                variant.getAlternateAlleles().stream().map(Allele::getDisplayString).sorted().collect(Collectors.toList()));
     }
 }

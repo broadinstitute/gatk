@@ -33,7 +33,7 @@ import java.util.List;
  *
  */
 @DocumentedFeature(groupName= HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Number of alt reads with an OA tag that doesn't match the current alignment contig.")
-public class OriginalAlignment extends GenotypeAnnotation implements StandardMutectAnnotation {
+public class OriginalAlignment extends GenotypeAnnotation {
     protected final OneShotLogger warning = new OneShotLogger(this.getClass());
     public static final String KEY = GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY;
 

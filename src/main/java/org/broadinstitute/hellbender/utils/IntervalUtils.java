@@ -1262,6 +1262,20 @@ public final class IntervalUtils {
     // (end of shard-related code)
 
     /**
+     * Get a single interval per contig that includes all of the specified intervals
+     * (This is used to improve GenomicsDB performance for exomes)
+     * @param locations the intervals to be merged/spanned
+     * @param sequenceDictionary for contig sorting
+     * @return a sorted list intervals containing the input intervals, one per contig
+     */
+    public static List<SimpleInterval> getSpanningIntervals(final List<? extends Locatable> locations, final SAMSequenceDictionary sequenceDictionary){
+        return locations.stream()
+                .collect(Collectors.groupingBy(Locatable::getContig))
+                .values().stream().map(IntervalUtils::getSpanningInterval).sorted((i1,i2)->compareLocatables(i1,i2,sequenceDictionary))
+                .collect(Collectors.toList());
+    }
+
+    /**
      * Combine the breakpoints of multiple intervals and return a list of locatables based on the updated breakpoints.
      *
      * Suppose we have two lists of locatables:

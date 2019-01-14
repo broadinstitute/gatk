@@ -55,7 +55,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     // Whether to do debug output (i.e. leave output around).
     // This should always be false when checked in.
     // These tests would take ~30 minutes to complete each.
-    private static final boolean enableFullScaleValidationTest = true;
+    private static final boolean enableFullScaleValidationTest = false;
     private static final String  LARGE_DATASOURCES_FOLDER      = "funcotator_dataSources_latest";
     private static final String  GERMLINE_DATASOURCES_FOLDER   = "funcotator_dataSources_germline_latest";
 
@@ -462,7 +462,9 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 
     // This test is to make sure we don't create a bunch of temp files anywhere.
     // It will force anyone who changes the outputToTmpDir flag to make it true when they check in this test file.
-    @Test(groups = {"funcotatorValidation"})
+    //
+    // DO NOT ADD THIS TO ANY TEST GROUPS!
+    @Test
     public void metaTestEnsureTempDirs() {
         Assert.assertEquals(enableFullScaleValidationTest, false);
     }
@@ -1316,7 +1318,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         // Needs to get aliases from the MAF, since AF (and maybe more) has its name changed.  So create a dummy
         //  MafOutputRenderer that mimics the one that is used in the command line invocation above and get the aliases.
         final File dummyOutputFile = getOutputFile(FuncotatorArgumentDefinitions.OutputFormatType.MAF);
-        final MafOutputRenderer dummyMafOutputRenderer = new MafOutputRenderer(dummyOutputFile.toPath(), Collections.emptyList(), new VCFHeader(), new LinkedHashMap<>(), new LinkedHashMap<>(), new HashSet<>(), "b37", new HashSet<String>());
+        final MafOutputRenderer dummyMafOutputRenderer = new MafOutputRenderer(dummyOutputFile.toPath(), Collections.emptyList(), new VCFHeader(), new LinkedHashMap<>(), new LinkedHashMap<>(), new HashSet<>(), "b37", new HashSet<String>(), "Unknown");
         final Map<String, Set<String>> mafAliasMap = dummyMafOutputRenderer.getReverseOutputFieldNameMap();
 
         // Get all of the alias lists

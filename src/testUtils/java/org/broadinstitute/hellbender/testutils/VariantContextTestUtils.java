@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.testutils;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableList;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -18,9 +19,11 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.AlleleSubsettingUtils;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
+import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.testng.Assert;
 
 // This should be:
@@ -288,6 +291,10 @@ public final class VariantContextTestUtils {
     }
 
     public static void assertGenotypesAreEqual(final Genotype actual, final Genotype expected) {
+        assertGenotypesAreEqual(actual, expected, Collections.emptyList());
+    }
+
+    public static void assertGenotypesAreEqual(final Genotype actual, final Genotype expected, final List<String> extendedAttributesToIgnore) {
         Assert.assertEquals(actual.getSampleName(), expected.getSampleName(), "Genotype names");
         Assert.assertTrue(CollectionUtils.isEqualCollection(actual.getAlleles(), expected.getAlleles()), "Genotype alleles");
         Assert.assertEquals(actual.getGenotypeString(false), expected.getGenotypeString(false), "Genotype string");
@@ -304,7 +311,7 @@ public final class VariantContextTestUtils {
         Assert.assertEquals(actual.getAD(), expected.getAD(), "Genotype AD");
         Assert.assertEquals(actual.hasGQ(), expected.hasGQ(), "Genotype hasGQ");
         Assert.assertEquals(actual.getGQ(), expected.getGQ(), "Genotype gq");
-        Assert.assertEquals(actual.hasPL(), expected.hasPL(), "Genotype hasPL");
+        Assert.assertEquals(actual.hasPL(), expected.hasPL(), "Genotype hasPL: " + actual.toString());
         Assert.assertEquals(actual.getPL(), expected.getPL(), "Genotype PL");
 
         Assert.assertEquals(actual.hasLikelihoods(), expected.hasLikelihoods(), "Genotype haslikelihoods");
@@ -312,7 +319,7 @@ public final class VariantContextTestUtils {
         Assert.assertEquals(actual.getLikelihoods(), expected.getLikelihoods(), "Genotype getLikelihoods");
 
         Assert.assertEquals(actual.getGQ(), expected.getGQ(), "Genotype phredScaledQual");
-        assertAttributesEquals(actual.getExtendedAttributes(), expected.getExtendedAttributes());
+        assertAttributesEquals(filterIgnoredAttributes(actual.getExtendedAttributes(), extendedAttributesToIgnore), filterIgnoredAttributes(expected.getExtendedAttributes(), extendedAttributesToIgnore));
         Assert.assertEquals(actual.isPhased(), expected.isPhased(), "Genotype isPhased");
         Assert.assertEquals(actual.getPloidy(), expected.getPloidy(), "Genotype getPloidy");
     }
@@ -405,7 +412,7 @@ public final class VariantContextTestUtils {
         }
     }
 
-    public static void assertVariantContextsAreEqual(final VariantContext actual, final VariantContext expected, final List<String> attributesToIgnore ) {
+    public static void assertVariantContextsAreEqual(final VariantContext actual, final VariantContext expected, final List<String> attributesToIgnore) {
         Assert.assertNotNull(actual, "VariantContext expected not null");
         Assert.assertEquals(actual.getContig(), expected.getContig(), "chr");
         Assert.assertEquals(actual.getStart(), expected.getStart(), "start");
@@ -420,12 +427,12 @@ public final class VariantContextTestUtils {
         Assert.assertEquals(actual.getFilters(), expected.getFilters(), "filters");
         BaseTest.assertEqualsDoubleSmart(actual.getPhredScaledQual(), expected.getPhredScaledQual());
 
-        assertVariantContextsHaveSameGenotypes(actual, expected);
+        assertVariantContextsHaveSameGenotypes(actual, expected, attributesToIgnore);
     }
 
-    private static Map<String, Object> filterIgnoredAttributes(final Map<String,Object> attributes, final List<String> attributesToIgnore){
+    private static Map<String, Object> filterIgnoredAttributes(final Map<String,Object> attributes, final List<String> attributesToIgnore) {
         return attributes.entrySet().stream()
-                .filter(p -> !attributesToIgnore.contains(p.getKey()))
+                .filter(p -> !attributesToIgnore.contains(p.getKey()) && p.getValue() != null)
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
@@ -458,13 +465,17 @@ public final class VariantContextTestUtils {
     }
 
     public static void assertVariantContextsHaveSameGenotypes(final VariantContext actual, final VariantContext expected) {
+        assertVariantContextsHaveSameGenotypes(actual, expected, Collections.emptyList());
+    }
+
+    public static void assertVariantContextsHaveSameGenotypes(final VariantContext actual, final VariantContext expected, final List<String> attributesToIgnore) {
         Assert.assertEquals(actual.hasGenotypes(), expected.hasGenotypes(), "hasGenotypes");
         if ( expected.hasGenotypes() ) {
             BaseTest.assertEqualsSet(actual.getSampleNames(), expected.getSampleNames(), "sample names set");
             Assert.assertEquals(actual.getSampleNamesOrderedByName(), expected.getSampleNamesOrderedByName(), "sample names");
             final Set<String> samples = expected.getSampleNames();
             for ( final String sample : samples ) {
-                assertGenotypesAreEqual(actual.getGenotype(sample), expected.getGenotype(sample));
+                assertGenotypesAreEqual(actual.getGenotype(sample), expected.getGenotype(sample), attributesToIgnore);
             }
         }
     }
@@ -538,5 +549,89 @@ public final class VariantContextTestUtils {
     public static Stream<VariantContext> streamVcf(final File vcf) {
         final FeatureDataSource<VariantContext> featureDataSource = new FeatureDataSource<>(vcf);
         return StreamSupport.stream(featureDataSource.spliterator(), false).onClose(() -> featureDataSource.close());
+    }
+
+    //methods for creating VariantContexts and Genotypes
+    private static final String CHR1 = "1";
+    private static final String CHR2 = "2";
+    private static final Allele REF = Allele.create("G", true);
+    private static final Allele ALT = Allele.create("A");
+    private static final List<Allele> ALLELES = ImmutableList.of(REF, Allele.NON_REF_ALLELE);
+    private static final String SAMPLE_NAME = "XXYYZZ";
+
+
+    public static VariantContext makeHomRef(int start) {
+        return makeHomRef(start, 0);
+    }
+
+    public static VariantContext makeHomRef(int start, int GQ) {
+        return makeHomRef(CHR1, start, GQ);
+    }
+
+    public static VariantContext makeHomRef(final String contig, final int start, final int GQ) {
+        final VariantContextBuilder vcb = new VariantContextBuilder("test", contig, start, start, ALLELES);
+        return makeVariantContext(vcb, Arrays.asList(REF, REF), GQ);
+    }
+
+    public static VariantContext makeHomRef(final String contig, final int start, final int GQ, final int end) {
+        final VariantContextBuilder vcb = new VariantContextBuilder("test", contig, start, end, ALLELES);
+        final GenotypeBuilder gb = new GenotypeBuilder(SAMPLE_NAME, Arrays.asList(REF, REF));
+        gb.GQ(GQ);
+        gb.DP(10);
+        gb.AD(new int[]{1, 2});
+        gb.PL(new int[]{0, 10, 100});
+        vcb.attribute(VCFConstants.END_KEY, end);
+        return vcb.genotypes(gb.make()).make();
+    }
+
+    public static VariantContext makeSomaticRef(final String contig, final int start, final double lod, final int end) {
+        final VariantContextBuilder vcb = new VariantContextBuilder("test", contig, start, end, ALLELES);
+        vcb.attribute(VCFConstants.END_KEY, end).genotypes(makeSomaticRefGenotype(lod));
+        return vcb.genotypes(makeSomaticRefGenotype(lod)).make();
+    }
+
+    public static Genotype makeSomaticRefGenotype(final double lod) {
+        final GenotypeBuilder gb = new GenotypeBuilder(SAMPLE_NAME, Arrays.asList(REF, REF));
+        gb.DP(10);
+        gb.AD(new int[]{1, 2});
+        gb.attribute(GATKVCFConstants.TUMOR_LOD_KEY, lod);
+        return gb.make();
+    }
+
+    public static VariantContext makeHomRefAlt(final int start) {
+        final VariantContextBuilder vcb = new VariantContextBuilder("test", CHR1, start, start, Arrays.asList(REF, ALT));
+        return makeVariantContext(vcb, Arrays.asList(REF, REF), 0);
+    }
+
+    public static VariantContext makeNonRef(final String contig, final int start) {
+        final VariantContextBuilder vcb = new VariantContextBuilder("test", contig, start, start, Arrays.asList(REF, ALT));
+        return makeVariantContext(vcb, Arrays.asList(REF, ALT), 30);
+    }
+
+    public static VariantContext makeDeletion(final int start, final int size) {
+        final String del = Utils.dupChar('A', size);
+        final String alt = del.substring(0, 1);
+        final VariantContext vc = GATKVariantContextUtils.makeFromAlleles("test", CHR1, start, Arrays.asList(del, alt));
+        final VariantContextBuilder vcb = new VariantContextBuilder(vc);
+        return makeVariantContext(vcb, Arrays.asList(vc.getReference(), vc.getAlternateAllele(0)), 50);
+    }
+
+    public static VariantContext makeVariantContext(VariantContextBuilder vcb, List<Allele> alleles, int gq) {
+        final GenotypeBuilder gb = new GenotypeBuilder(SAMPLE_NAME, alleles);
+        gb.GQ(gq);
+        gb.DP(10);
+        gb.AD(new int[]{1, 2});
+        gb.PL(new int[]{0, gq, 20+gq});
+        return vcb.genotypes(gb.make()).id(VCFConstants.EMPTY_ID_FIELD).make();
+    }
+
+    public static VariantContext makeVariantContext(VariantContextBuilder vcb, List<Allele> alleles, int gq, int[] PPs) {
+        final GenotypeBuilder gb = new GenotypeBuilder(SAMPLE_NAME, alleles);
+        gb.DP(10);
+        gb.AD(new int[]{1, 2});
+        gb.PL(new int[]{0, gq, 20+gq});
+        gb.attribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY, Utils.listFromPrimitives(PPs));
+        gb.GQ(MathUtils.secondSmallestMinusSmallest(PPs, gq));
+        return vcb.genotypes(gb.make()).id(VCFConstants.EMPTY_ID_FIELD).make();
     }
 }

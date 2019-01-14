@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.mutect;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -11,12 +12,15 @@ import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConfidenceMode;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.downsampling.MutectDownsampler;
 import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsampler;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.variant.writers.SomaticGVCFWriter;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.*;
 
 /**
@@ -202,6 +206,16 @@ public final class Mutect2 extends AssemblyRegionWalker {
         VariantAnnotatorEngine annotatorEngine = new VariantAnnotatorEngine(makeVariantAnnotations(), null, Collections.emptyList(), false);
         m2Engine = new Mutect2Engine(MTAC, createOutputBamIndex, createOutputBamMD5, getHeaderForReads(), referenceArguments.getReferenceFileName(), annotatorEngine);
         vcfWriter = createVCFWriter(outputVCF);
+        if (m2Engine.emitReferenceConfidence()) {
+            logger.warn("Note that the Mutect2 reference confidence mode is in BETA -- the likelihoods model and output format are subject to change in subsequent versions.");
+            if ( MTAC.emitReferenceConfidence == ReferenceConfidenceMode.GVCF ) {
+                try {
+                    vcfWriter = new SomaticGVCFWriter(vcfWriter, new ArrayList<Number>(MTAC.GVCFGQBands));
+                } catch ( IllegalArgumentException e ) {
+                    throw new CommandLineException.BadArgumentValue("GQBands", "are malformed: " + e.getMessage());
+                }
+            }
+        }
         m2Engine.writeHeader(vcfWriter, getDefaultToolVCFHeaderLines());
     }
 
@@ -216,6 +230,9 @@ public final class Mutect2 extends AssemblyRegionWalker {
         }
         if (MTAC.autosomalCoverage > 0) {
             annotations.add(new PolymorphicNuMT(MTAC.autosomalCoverage));
+        }
+        if (MTAC.mitochondria) {
+            annotations.add(new OriginalAlignment());
         }
         return annotations;
     }

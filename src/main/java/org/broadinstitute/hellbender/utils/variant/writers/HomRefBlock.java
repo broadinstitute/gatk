@@ -27,17 +27,12 @@ import java.util.List;
  *
  * Genotypes within the HomRefBlock are restricted to hom-ref genotypes within a band of GQ scores
  */
-final class HomRefBlock implements Locatable {
+final class HomRefBlock extends GVCFBlock {
 
     private static final int HOM_REF_PL_POSITION = 0;  //the first value in the minPL[] is always the HomRef
 
-    private final VariantContext startingVC;
-    private final int minGQ, maxGQ;
-    private final List<Integer> DPs = new ArrayList<>();
-    private final Allele ref;
     private final int ploidy;
 
-    private int end;
     private int[] minPLs = null;
     private int[] minPPs = null;
 
@@ -49,38 +44,19 @@ final class HomRefBlock implements Locatable {
      * @param upperGQBound the upperGQBound (exclusive) to use in this band
      */
     public HomRefBlock(final VariantContext startingVC, final int lowerGQBound, final int upperGQBound, final int defaultPloidy) {
+        super(startingVC, lowerGQBound, upperGQBound);
         Utils.nonNull(startingVC, "startingVC cannot be null");
         Utils.validateArg(upperGQBound <= VCFConstants.MAX_GENOTYPE_QUAL + 1, "upperGQBound must be <= " + (VCFConstants.MAX_GENOTYPE_QUAL + 1));
         if ( lowerGQBound > upperGQBound ) { throw new IllegalArgumentException("bad lowerGQBound " + lowerGQBound + " as it's >= upperGQBound " + upperGQBound); }
 
-        this.startingVC = startingVC;
-        this.end = getStart() - 1;
-        this.ref = startingVC.getReference();
-        this.minGQ = lowerGQBound;
-        this.maxGQ = upperGQBound;
         this.ploidy = startingVC.getMaxPloidy(defaultPloidy);
     }
 
-    /**
-     * Convert a HomRefBlock into a VariantContext
-     *
-     * @param sampleName sample name to give this variant context
-     * @return a VariantContext representing the gVCF encoding for this block.
-     * It will return {@code null} if input {@code block} is {@code null}, indicating that there
-     * is no variant-context to be output into the VCF.
-     */
-    public VariantContext toVariantContext(String sampleName) {
-        final VariantContextBuilder vcb = new VariantContextBuilder(getStartingVC());
-        vcb.attributes(new LinkedHashMap<>(2)); // clear the attributes
-        vcb.stop(getEnd());
-        vcb.attribute(VCFConstants.END_KEY, getEnd());
-        final Genotype genotype = createHomRefGenotype(sampleName);
 
-        return vcb.genotypes(genotype).make();
-    }
 
     // create a single Genotype with GQ and DP annotations
-    private Genotype createHomRefGenotype(String sampleName) {
+    @Override
+    Genotype createHomRefGenotype(final String sampleName) {
         final GenotypeBuilder gb = new GenotypeBuilder(sampleName, Collections.nCopies(getPloidy(), getRef()));
         gb.noAD().noPL().noAttributes(); // clear all attributes
 
@@ -98,24 +74,13 @@ final class HomRefBlock implements Locatable {
     }
 
     /**
-     * Add information from this Genotype to this band.
-     *
-     * Treats GQ values > 99 as 99.
-     *
-     * @param pos Current genomic position. Must be 1 base after the previous position
-     * @param genotype A non-null Genotype with GQ and DP attributes
-     */
-    public void add(final int pos, final Genotype genotype) {
-        add(pos, pos, genotype);
-    }
-
-    /**
      * Add a homRef block to the current block
      *
      * @param pos current genomic position
      * @param newEnd new calculated block end position
      * @param genotype A non-null Genotype with GQ and DP attributes
      */
+    @Override
     public void add(final int pos, final int newEnd, final Genotype genotype) {
         Utils.nonNull(genotype, "genotype cannot be null");
         if ( ! genotype.hasPL() ) { throw new IllegalArgumentException("genotype must have PL field");}
@@ -159,26 +124,6 @@ final class HomRefBlock implements Locatable {
         DPs.add(Math.max(genotype.getDP(), 0)); // DP must be >= 0
     }
 
-    /**
-     * Is the GQ value within the bounds of this GQ (GQ >= minGQ && GQ < maxGQ)
-     * @param GQ the GQ value to test
-     * @return true if within bounds, false otherwise
-     */
-    public boolean withinBounds(final int GQ) {
-        return GQ >= minGQ && GQ < maxGQ;
-    }
-
-    /** Get the min DP observed within this band */
-    public int getMinDP() {
-        return Collections.min(DPs);
-    }
-
-    /** Get the median DP observed within this band
-     * If there are an even number of DPs recorded in this band the median is the mean of the two middle values */
-    public int getMedianDP() {
-        return (int) Math.round(MathUtils.median(DPs));
-    }
-
     /** Get the min PLs observed within this band, can be null if no PLs have yet been observed */
     public int[] getMinPLs() {
         return minPLs;
@@ -187,52 +132,6 @@ final class HomRefBlock implements Locatable {
     /** Get the min PPs observed within this band, can be null if no PPs have yet been observed */
     public int[] getMinPPs() {
         return minPPs;
-    }
-
-    int getGQUpperBound() {
-        return maxGQ;
-    }
-    int getGQLowerBound() {
-        return minGQ;
-    }
-
-    public boolean isContiguous(final VariantContext vc) {
-        return (vc.getStart() == getEnd() + 1) && startingVC.getContig().equals(vc.getContig());
-    }
-
-    public VariantContext getStartingVC() {
-        return startingVC;
-    }
-
-    @Override
-    public String getContig() {
-        return startingVC.getContig();
-    }
-
-    @Override
-    public int getStart() {
-        return startingVC.getStart();
-    }
-
-    @Override
-    public int getEnd() {
-        return end;
-    }
-
-    public Allele getRef() {
-        return ref;
-    }
-
-    public int getSize() {
-        return getEnd() - getStart() + 1;
-    }
-
-    @Override
-    public String toString() {
-        return "HomRefBlock{" +
-                "minGQ=" + minGQ +
-                ", maxGQ=" + maxGQ +
-                '}';
     }
 
     /**

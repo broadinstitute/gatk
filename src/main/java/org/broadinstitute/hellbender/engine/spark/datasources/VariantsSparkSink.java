@@ -40,7 +40,7 @@ public final class VariantsSparkSink {
 
     public static void writeVariants(
             final JavaSparkContext ctx, final String outputFile, final JavaRDD<VariantContext> variants,
-            final VCFHeader header, final boolean writeGvcf, final List<Integer> gqPartitions, final int defaultPloidy) throws IOException {
+            final VCFHeader header, final boolean writeGvcf, final List<Number> gqPartitions, final int defaultPloidy) throws IOException {
         writeVariants(ctx, outputFile, variants, header, writeGvcf, gqPartitions, defaultPloidy, 0);
     }
 
@@ -56,7 +56,7 @@ public final class VariantsSparkSink {
      */
     public static void writeVariants(
             final JavaSparkContext ctx, final String outputFile, final JavaRDD<VariantContext> variants,
-            final VCFHeader header, final boolean writeGvcf, final List<Integer> gqPartitions, final int defaultPloidy,
+            final VCFHeader header, final boolean writeGvcf, final List<Number> gqPartitions, final int defaultPloidy,
             final int numReducers) throws IOException {
         String absoluteOutputFile = BucketUtils.makeFilePathAbsolute(outputFile);
         writeVariantsSingle(ctx, absoluteOutputFile, variants, header, writeGvcf, gqPartitions, defaultPloidy, numReducers);
@@ -64,7 +64,7 @@ public final class VariantsSparkSink {
 
     private static void writeVariantsSingle(
             final JavaSparkContext ctx, final String outputFile, final JavaRDD<VariantContext> variants,
-            final VCFHeader header, final boolean writeGvcf, final List<Integer> gqPartitions, final int defaultPloidy, final int numReducers) throws IOException {
+            final VCFHeader header, final boolean writeGvcf, final List<Number> gqPartitions, final int defaultPloidy, final int numReducers) throws IOException {
 
         //TODO remove me when https://github.com/broadinstitute/gatk/issues/4303 is fixed
         if (outputFile.endsWith(IOUtil.BCF_FILE_EXTENSION) || outputFile.endsWith(IOUtil.BCF_FILE_EXTENSION + ".gz")) {

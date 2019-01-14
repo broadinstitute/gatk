@@ -30,7 +30,6 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileState;
 import org.broadinstitute.hellbender.utils.downsampling.AlleleBiasedDownsamplingUtils;
-import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
@@ -211,7 +210,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         }
 
         haplotypeBAMWriter = AssemblyBasedCallerUtils.createBamWriter(hcArgs, createBamOutIndex, createBamOutMD5, readsHeader);
-        assemblyEngine = AssemblyBasedCallerUtils.createReadThreadingAssembler(hcArgs);
+        assemblyEngine = hcArgs.createReadThreadingAssembler();
         likelihoodCalculationEngine = AssemblyBasedCallerUtils.createLikelihoodCalculationEngine(hcArgs.likelihoodArgs);
 
         trimmer.initialize(hcArgs.assemblyRegionTrimmerArgs, readsHeader.getSequenceDictionary(), hcArgs.debug,
@@ -357,7 +356,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         if ( hcArgs.emitReferenceConfidence == ReferenceConfidenceMode.GVCF ) {
             try {
-                writer = new GVCFWriter(writer, hcArgs.GVCFGQBands, hcArgs.genotypeArgs.samplePloidy);
+                writer = new GVCFWriter(writer, new ArrayList<Number>(hcArgs.GVCFGQBands), hcArgs.genotypeArgs.samplePloidy);
             } catch ( IllegalArgumentException e ) {
                 throw new CommandLineException.BadArgumentValue("GQBands", "are malformed: " + e.getMessage());
             }
@@ -401,6 +400,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         if ( ! hcArgs.doNotRunPhysicalPhasing ) {
             headerInfo.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY));
             headerInfo.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY));
+            headerInfo.add(VCFStandardHeaderLines.getFormatLine(VCFConstants.PHASE_SET_KEY));
         }
 
         // FILTER fields are added unconditionally as it's not always 100% certain the circumstances
@@ -476,7 +476,11 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         for( final Map.Entry<String, AlignmentContext> sample : splitContexts.entrySet() ) {
             // The ploidy here is not dictated by the sample but by the simple genotyping-engine used to determine whether regions are active or not.
             final int activeRegionDetectionHackishSamplePloidy = activeRegionEvaluationGenotyperEngine.getConfiguration().genotypeArgs.samplePloidy;
-            final double[] genotypeLikelihoods = referenceConfidenceModel.calcGenotypeLikelihoodsOfRefVsAny(activeRegionDetectionHackishSamplePloidy,sample.getValue().getBasePileup(), ref.getBase(), hcArgs.minBaseQualityScore, averageHQSoftClips, false).genotypeLikelihoods;
+            final double[] genotypeLikelihoods = ((RefVsAnyResult)referenceConfidenceModel.calcGenotypeLikelihoodsOfRefVsAny(
+                    activeRegionDetectionHackishSamplePloidy,
+                    sample.getValue().getBasePileup(), ref.getBase(),
+                    hcArgs.minBaseQualityScore,
+                    averageHQSoftClips, false)).genotypeLikelihoods;
             genotypes.add( new GenotypeBuilder(sample.getKey()).alleles(noCall).PL(genotypeLikelihoods).make() );
         }
 
@@ -552,6 +556,9 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                 trimmingResult.needsTrimming() ? untrimmedAssemblyResult.trimTo(trimmingResult.getCallableRegion()) : untrimmedAssemblyResult;
 
         final AssemblyRegion regionForGenotyping = assemblyResult.getRegionForGenotyping();
+        final List<GATKRead> readStubs = regionForGenotyping.getReads().stream()
+                .filter(r -> r.getLength() < AssemblyBasedCallerUtils.MINIMUM_READ_LENGTH_AFTER_TRIMMING).collect(Collectors.toList());
+        regionForGenotyping.removeAll(readStubs);
 
         // filter out reads from genotyping which fail mapping quality based criteria
         //TODO - why don't do this before any assembly is done? Why not just once at the beginning of this method
@@ -559,7 +566,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         //TODO - if you move this up you might have to consider to change referenceModelForNoVariation
         //TODO - that does also filter reads.
         final Collection<GATKRead> filteredReads = filterNonPassingReads(regionForGenotyping);
-        final Map<String, List<GATKRead>> perSampleFilteredReadList = splitReadsBySample(filteredReads);
+        final Map<String, List<GATKRead>> perSampleFilteredReadList = AssemblyBasedCallerUtils.splitReadsBySample(samplesList, readsHeader, filteredReads);
 
         // abort early if something is out of the acceptable range
         // TODO is this ever true at this point??? perhaps GGA. Need to check.
@@ -580,7 +587,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         // evaluate each sample's reads against all haplotypes
         final List<Haplotype> haplotypes = assemblyResult.getHaplotypeList();
-        final Map<String,List<GATKRead>> reads = splitReadsBySample(regionForGenotyping.getReads());
+        final Map<String,List<GATKRead>> reads = AssemblyBasedCallerUtils.splitReadsBySample(samplesList, readsHeader, regionForGenotyping.getReads());
 
         // Calculate the likelihoods: CPU intensive part.
         final ReadLikelihoods<Haplotype> readLikelihoods =
@@ -682,26 +689,12 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             final Haplotype refHaplotype = AssemblyBasedCallerUtils.createReferenceHaplotype(region, paddedLoc, referenceReader);
             final List<Haplotype> haplotypes = Collections.singletonList(refHaplotype);
             return referenceConfidenceModel.calculateRefConfidence(refHaplotype, haplotypes,
-                    paddedLoc, region, createDummyStratifiedReadMap(refHaplotype, samplesList, region),
+                    paddedLoc, region, AssemblyBasedCallerUtils.createDummyStratifiedReadMap(refHaplotype, samplesList, readsHeader, region),
                     genotypingEngine.getPloidyModel(), Collections.emptyList(), hcArgs.genotypeArgs.supportVariants != null, VCpriors);
         }
         else {
             return NO_CALLS;
         }
-    }
-
-    /**
-     * Create a context that maps each read to the reference haplotype with log10 L of 0
-     * @param refHaplotype a non-null reference haplotype
-     * @param samples a list of all samples
-     * @param region the assembly region containing reads
-     * @return a map from sample -> PerReadAlleleLikelihoodMap that maps each read to ref
-     */
-    public ReadLikelihoods<Haplotype> createDummyStratifiedReadMap(final Haplotype refHaplotype,
-                                                                   final SampleList samples,
-                                                                   final AssemblyRegion region) {
-        return new ReadLikelihoods<>(samples, new IndexedAlleleList<>(refHaplotype),
-                                     splitReadsBySample(samples, region.getReads()));
     }
 
     /**
@@ -735,14 +728,6 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         }
         activeRegion.removeAll(readsToRemove);
         return readsToRemove;
-    }
-
-    private Map<String, List<GATKRead>> splitReadsBySample( final Collection<GATKRead> reads ) {
-        return splitReadsBySample(samplesList, reads);
-    }
-
-    private Map<String, List<GATKRead>> splitReadsBySample( final SampleList samplesList, final Collection<GATKRead> reads ) {
-        return AssemblyBasedCallerUtils.splitReadsBySample(samplesList, readsHeader, reads);
     }
 
     /**

@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.utils.functional.IntToDoubleBiFunction;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.IntConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -18,18 +19,26 @@ import java.util.stream.IntStream;
  *
  * <p>Alleles are represented herein by their indices running from <b>0</b> to <b>N-1</b> where <i>N</i> is the number of alleles.</p>
  *
+ * <p>Genotypes are represented as a single array of alternating alleles and counts, where only alleles with non-zero counts are included:
+ * [allele 1, count1, allele 2, count2. . .]</p>
+ *
  * <p>Each allele present in a genotype (count != 0) has a <i>rank</i>, that is the 0-based ordinal of
  * that allele amongst the ones present in the genotype as sorted by their index.</p>
  *
  * <p>For example:</p>
  *
- * <p><b>0/0/2/2</b> has two alleles with indices <b>0</b> and <b>2</b>, both with count 2.
+ * <p><b>[0,1,2,1]</b> has two alleles with indices <b>0</b> and <b>2</b>, both with count 1, corresponding to diploid genotype 0/2.
  * The rank of <b>0</b> is <i>0</i> whereas the rank of <b>2</b> is <i>1</i>.</p>
  *
- * <p><b>2/4/4/7</b> has three alleles with indices <b>2</b>, <b>4</b> and <b>7</b>. <b>2</b> and <b>7</b> have count 1 whereas <b>4</b> has count 2.
+ * <p><b>[2,1,4,2,7,1]</b> has three alleles with indices <b>2</b>, <b>4</b> and <b>7</b>. <b>2</b> and <b>7</b> have count 1 whereas <b>4</b> has count 2.
+ * It corresponds to tetraploid genotype 2/4/4/7
  * The rank of <b>2</b> is <i>0</i>, the rank of <b>4</b> is <i>1</i>. and the rank of <b>7</b> is <i>2</i>.</p>
  *
  * <p>In contrast, in both examples above both <b>3</b> and <b>10</b> (and many others) are absent thus they have no rank (represented by <i>-1</i> whenever applies).</p>
+ *
+ * <p><b>[0,0,1,2]</b> is not valid because allele 0 has a count of 0 and should be absent from the array.</p>
+ *
+ * <p><b>[1,1,0,1]</b> is not valid because allele 1 comes before allele 0.</p>
  *
  * <p>{@link GenotypeAlleleCounts} instances have themselves their own index (returned by {@link #index() index()}, that indicate their 0-based ordinal within the possible genotype combinations with the same ploidy.</p>
  *
@@ -152,7 +161,7 @@ public final class GenotypeAlleleCounts implements Comparable<GenotypeAlleleCoun
     }
 
     /**
-     * Updates the genotype counts to match the next genotype.
+     * Updates the genotype counts to match the next genotype according to the canonical ordering of PLs.
      *
      * <p>
      *     This method must not be invoked on cached genotype-allele-counts that are meant to remain constant,
@@ -653,6 +662,31 @@ public final class GenotypeAlleleCounts implements Comparable<GenotypeAlleleCoun
 
     public void forEachAlleleIndexAndCount(final IntBiConsumer action) {
         new IndexRange(0, distinctAlleleCount).forEach(n -> action.accept(sortedAlleleCounts[2*n], sortedAlleleCounts[2*n+1]));
+    }
+
+    /**
+     * Perform an action for every allele index not represented in this genotype.  For example if the total allele count
+     * is 4 and {@code sortedAlleleCounts} is [0,1,2,1] then alleles 0 and 2 are present, each with a count of 1, while
+     * alleles 1 and 3 are absent, so we perform {@code action} on 1 and 3.
+     */
+    public void forEachAbsentAlleleIndex(final IntConsumer action, final int alleleCount) {
+        int presentAlleleIndex = 0;
+        int presentAllele = sortedAlleleCounts[0];
+
+        for (int n = 0; n < alleleCount; n++) {
+            // if we find n in sortedAlleleCounts, it is present, so we move presentAllele to the next
+            // index in sortedAlleleCounts and skip the allele; otherwise the allele is absent and we perform the action on it.
+            if (n == presentAllele) {
+                // if we haven't exhausted all the present alleles, move to the next one.
+                // Note that distinctAlleleCount == sortedAlleleCounts.length/2
+                if (++presentAlleleIndex < distinctAlleleCount) {
+                    // every other entry in sortedAlleleCounts is an allele index; hence we multiply by 2
+                    presentAllele = sortedAlleleCounts[2 * presentAlleleIndex];
+                }
+                continue;
+            }
+            action.accept(n);
+        }
     }
 
     public double sumOverAlleleIndicesAndCounts(final IntToDoubleBiFunction func) {

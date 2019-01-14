@@ -25,12 +25,14 @@ public class RealignmentEngine {
     private final BwaMemAligner aligner;
     private final int maxReasonableFragmentLength;
     private final int minAlignerScoreDifference;
+    private final double minMismatchRatio;
     private final int numberOfRegularContigs;
 
     public RealignmentEngine(final RealignmentArgumentCollection rfac) {
         final BwaMemIndex index = new BwaMemIndex(rfac.bwaMemIndexImage);
         maxReasonableFragmentLength = rfac.maxReasonableFragmentLength;
         minAlignerScoreDifference = rfac.minAlignerScoreDifference;
+        minMismatchRatio = rfac.minMismatchRatio;
         numberOfRegularContigs = rfac.numRegularContigs;
         aligner = new BwaMemAligner(index);
         aligner.setMinSeedLengthOption(rfac.minSeedLength);
@@ -86,11 +88,11 @@ public class RealignmentEngine {
 
         final List<BwaMemAlignment> nonAltAlignments = alignments.size() == 1 ? alignments :
                 alignments.stream().filter(a -> a.getRefId() < numberOfRegularContigs).collect(Collectors.toList());
-        return checkAlignments(nonAltAlignments, minAlignerScoreDifference);
+        return checkAlignments(nonAltAlignments, minAlignerScoreDifference, minMismatchRatio);
     }
 
     @VisibleForTesting
-    static RealignmentResult checkAlignments(final List<BwaMemAlignment> alignments, int minAlignerScoreDifference) {
+    static RealignmentResult checkAlignments(final List<BwaMemAlignment> alignments, final int minAlignerScoreDifference, final double minMismatchRatio) {
         if (alignments.isEmpty()) {
             return new RealignmentResult(false, Collections.emptyList());
         } else if (alignments.get(0).getRefId() < 0) {
@@ -99,7 +101,8 @@ public class RealignmentEngine {
             return new RealignmentResult(true, alignments);
         } else {
             final int scoreDifference = alignments.get(0).getAlignerScore() - alignments.get(1).getAlignerScore();
-            return new RealignmentResult(scoreDifference >= minAlignerScoreDifference, alignments);
+            final double mismatchRatio = (double) alignments.get(1).getNMismatches() / (Math.max(alignments.get(0).getNMismatches(),0.0001));
+            return new RealignmentResult(scoreDifference >= minAlignerScoreDifference && mismatchRatio > minMismatchRatio, alignments);
         }
 
         // TODO: we need to check that contig is the same or equivalent up to hg38 alt contig

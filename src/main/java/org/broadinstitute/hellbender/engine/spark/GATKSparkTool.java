@@ -1,8 +1,9 @@
 package org.broadinstitute.hellbender.engine.spark;
 
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMSequenceDictionary;
+import com.google.common.annotations.VisibleForTesting;
+import htsjdk.samtools.*;
 import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
+import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.GZIIndex;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.variant.vcf.VCFHeaderLine;
@@ -25,6 +26,7 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
@@ -121,7 +123,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
 
     private ReadsSparkSource readsSource;
     private SAMFileHeader readsHeader;
-    private String readInput;
+    private LinkedHashMap<String, SAMFileHeader> readInputs;
     private ReferenceMultiSparkSource referenceSource;
     private SAMSequenceDictionary referenceDictionary;
     private List<SimpleInterval> userIntervals;
@@ -156,6 +158,20 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      */
     public boolean requiresReads() {
         return false;
+    }
+
+    /**
+     * Does this tool support multiple inputs? Tools that do should override this method with the desired {@link ReadInputMergingPolicy}.
+     *
+     * @return doNotMerge by default
+     */
+    public ReadInputMergingPolicy getReadInputMergingPolicy() {
+        return ReadInputMergingPolicy.doNotMerge;
+    }
+
+    public static enum ReadInputMergingPolicy {
+        doNotMerge,
+        concatMerge
     }
 
     /**
@@ -274,15 +290,29 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
             }
             traversalParameters = new TraversalParameters(getIntervals(), traverseUnmapped);
         } else {
-            traversalParameters = null; // no intervals were specified so return all reads (mapped and unmapped)
+            traversalParameters = null;
         }
 
-        // TODO: This if statement is a temporary hack until #959 gets resolved.
-        if (readInput.endsWith(".adam")) {
+        JavaRDD<GATKRead> output = null;
+        ReadsSparkSource source = readsSource;
+        for (String input : readInputs.keySet()) {
+            if (output == null) {
+                output = getGatkReadJavaRDD(traversalParameters, source, input);
+            } else {
+                output = output.union(getGatkReadJavaRDD(traversalParameters, source, input));
+            }
+        }
+        return output;
+    }
+
+    protected JavaRDD<GATKRead> getGatkReadJavaRDD(TraversalParameters traversalParameters, ReadsSparkSource source, String input) {
+        JavaRDD<GATKRead> output;
+        // TODO: This if statement is a temporary hack until #959 gets resolve
+        if (input.endsWith(".adam")) {
             try {
-                return readsSource.getADAMReads(readInput, traversalParameters, getHeaderForReads());
+                output = source.getADAMReads(input, traversalParameters, getHeaderForReads());
             } catch (IOException e) {
-                throw new UserException("Failed to read ADAM file " + readInput, e);
+                throw new UserException("Failed to read ADAM file " + input, e);
             }
 
         } else {
@@ -290,8 +320,9 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
                 throw new UserException.MissingReference("A reference file is required when using CRAM files.");
             }
             final String refPath = hasReference() ?  referenceArguments.getReferenceFileName() : null;
-            return readsSource.getParallelReads(readInput, refPath, traversalParameters, bamPartitionSplitSize);
+            output = source.getParallelReads(input, refPath, traversalParameters, bamPartitionSplitSize);
         }
+        return output;
     }
 
     /**
@@ -334,7 +365,8 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
         if (numReducers != 0) {
             return numReducers;
         }
-        return 1 + (int) (BucketUtils.dirSize(getReadSourceName()) / getTargetPartitionSize());
+        int size = readInputs.keySet().stream().mapToInt(k -> (int) BucketUtils.dirSize(k)).sum();
+        return 1 + (size / getTargetPartitionSize());
     }
 
     /**
@@ -445,8 +477,18 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     /**
      * Returns the name of the source of reads data. It can be a file name or URL.
      */
-    protected String getReadSourceName(){
-        return readInput;
+    protected List<String> getReadSourceName(){
+        if (readInputs.size() > 1) {
+            throw new GATKException("Multiple ReadsDataSources specificed but a single source requested by the tool");
+        }
+        return new ArrayList<>(readInputs.keySet());
+    }
+
+    /**
+     * Returns a map of read input to header.
+     */
+    protected LinkedHashMap<String, SAMFileHeader> getReadSouceHeaderMap(){
+        return readInputs;
     }
 
     /**
@@ -489,15 +531,37 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
             return;
         }
 
-        if ( readArguments.getReadFilesNames().size() != 1 ) {
-            throw new UserException("Sorry, we only support a single reads input for spark tools for now.");
+        if (getReadInputMergingPolicy() == ReadInputMergingPolicy.doNotMerge && readArguments.getReadFilesNames().size() != 1 ) {
+            throw new UserException("Sorry, we only support a single reads input for for this spark tool.");
         }
 
-        readInput = readArguments.getReadFilesNames().get(0);
+        readInputs = new LinkedHashMap<>();
         readsSource = new ReadsSparkSource(sparkContext, readArguments.getReadValidationStringency());
-        readsHeader = readsSource.getHeader(
-                readInput,
-                hasReference() ?  referenceArguments.getReferenceFileName() : null);
+        for (String input : readArguments.getReadFilesNames()) {
+            readInputs.put(input, readsSource.getHeader(
+                    input, hasReference() ?  referenceArguments.getReferenceFileName() : null));
+        }
+        readsHeader = createHeaderMerger().getMergedHeader();
+    }
+
+    /**
+     * Create a header merger from the individual SAM/BAM headers in our readers
+     *
+     * @return a header merger containing all individual headers in this data source
+     */
+    private SamFileHeaderMerger createHeaderMerger() {
+        return new SamFileHeaderMerger(identifySortOrder(readInputs.values()), readInputs.values(), true);
+    }
+    @VisibleForTesting
+    static SAMFileHeader.SortOrder identifySortOrder(final Collection<SAMFileHeader> headers){
+        final Set<SAMFileHeader.SortOrder> sortOrders = headers.stream().map(SAMFileHeader::getSortOrder).collect(Collectors.toSet());
+        final SAMFileHeader.SortOrder order;
+        if (sortOrders.size() == 1) {
+            order = sortOrders.iterator().next();
+        } else {
+            order = SAMFileHeader.SortOrder.unsorted;
+        }
+        return order;
     }
 
     /**

@@ -25,6 +25,11 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     public static final String GQ_BAND_LONG_NAME = "gvcf-gq-bands";
     public static final String GQ_BAND_SHORT_NAME = "GQB";
 
+    @Override
+    protected ReadThreadingAssemblerArgumentCollection getReadThreadingAssemblerArgumentCollection() {
+        return new HaplotypeCallerReadThreadingAssemblerArgumentCollection();
+    }
+
     /**
      * You can use this argument to specify that HC should process a single sample out of a multisample BAM file. This
      * is especially useful if your samples are all in the same file but you need to run them individually through HC
@@ -52,14 +57,6 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     @Advanced
     @Argument(fullName = "comp", shortName = "comp", doc = "Comparison VCF file(s)", optional = true)
     public List<FeatureInput<VariantContext>> comps = new ArrayList<>();
-
-    /**
-     * The reference confidence mode makes it possible to emit a per-bp or summarized confidence estimate for a site being strictly homozygous-reference.
-     * See https://software.broadinstitute.org/gatk/documentation/article.php?id=4017 for more details of how this works.
-     */
-    @Advanced
-    @Argument(fullName="emit-ref-confidence", shortName="ERC", doc="Mode for emitting reference confidence scores", optional = true)
-    public ReferenceConfidenceMode emitReferenceConfidence = ReferenceConfidenceMode.NONE;
 
     /**
      * When HC is run in reference confidence mode with banding compression enabled (-ERC GVCF), homozygous-reference

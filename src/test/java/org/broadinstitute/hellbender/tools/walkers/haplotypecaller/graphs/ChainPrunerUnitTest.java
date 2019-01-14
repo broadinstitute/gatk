@@ -168,8 +168,7 @@ public final class ChainPrunerUnitTest extends GATKBaseTest {
         seqGraph.removePathsNotConnectedToRef();
         seqGraph.simplifyGraph();
 
-        final List<KBestHaplotype> bestPaths = Utils.stream(new KBestHaplotypeFinder(seqGraph).iterator(10))
-                .collect(Collectors.toList());
+        final List<KBestHaplotype> bestPaths = new KBestHaplotypeFinder(seqGraph).findBestHaplotypes(10);
 
         final OptionalInt altIndex = IntStream.range(0, bestPaths.size()).filter(n -> bestPaths.get(n).haplotype().basesMatch(alt)).findFirst();
         Assert.assertTrue(altIndex.isPresent());

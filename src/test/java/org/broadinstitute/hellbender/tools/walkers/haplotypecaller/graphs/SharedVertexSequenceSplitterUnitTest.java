@@ -1,16 +1,17 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 
 import org.apache.commons.lang3.tuple.Pair;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
-import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class SharedVertexSequenceSplitterUnitTest extends GATKBaseTest {
     private static final boolean PRINT_GRAPHS = false;
@@ -181,10 +182,9 @@ public class SharedVertexSequenceSplitterUnitTest extends GATKBaseTest {
                 graph.addEdge(vi, bot, new BaseEdge(vi == first, edgeWeight++));
         }
 
-        final Set<String> haplotypes = new HashSet<>();
-        final KBestHaplotypeFinder originalPaths = new KBestHaplotypeFinder(graph.clone(),graph.getSources(),graph.getSinks());
-        for ( final KBestHaplotype path : originalPaths )
-            haplotypes.add(new String(path.bases()));
+        final List<KBestHaplotype> originalPaths = new KBestHaplotypeFinder(graph.clone()).findBestHaplotypes();
+        final Set<Haplotype> haplotypes = originalPaths.stream()
+                .map(KBestHaplotype::haplotype).collect(Collectors.toSet());
 
         final SharedVertexSequenceSplitter splitter = new SharedVertexSequenceSplitter(graph, v);
         splitter.split();
@@ -193,29 +193,12 @@ public class SharedVertexSequenceSplitterUnitTest extends GATKBaseTest {
         splitter.updateGraph(top, bot);
         if ( PRINT_GRAPHS ) graph.printGraph(new File(Utils.join("_", strings) + "_" + hasTop + "_" + hasBot + ".updated.dot"), 0);
 
-        final KBestHaplotypeFinder splitPaths = new KBestHaplotypeFinder(graph,graph.getSources(),graph.getSinks());
-        for ( final KBestHaplotype path : splitPaths ) {
-            final String h = new String(path.bases());
-            Assert.assertTrue(haplotypes.contains(h), "Failed to find haplotype " + h);
-        }
+        final List<KBestHaplotype> splitPaths = new KBestHaplotypeFinder(graph).findBestHaplotypes();
+        splitPaths.forEach(p -> Assert.assertTrue(haplotypes.contains(p.haplotype())));
 
-
-        final List<byte[]> sortedOriginalPaths = new ArrayList<>(originalPaths.size());
-        for (final KBestHaplotype kbh : unique(originalPaths))
-            sortedOriginalPaths.add(kbh.bases());
-        Collections.sort(sortedOriginalPaths, BaseUtils.BASES_COMPARATOR);
-        final List<byte[]> sortedSplitPaths = new ArrayList<>(splitPaths.size());
-        for (final KBestHaplotype kbh : unique(splitPaths))
-            sortedSplitPaths.add(kbh.bases());
-        Collections.sort(sortedSplitPaths, BaseUtils.BASES_COMPARATOR);
-
-        Assert.assertEquals(sortedSplitPaths.size(), sortedOriginalPaths.size());
-        for (int i=0; i < sortedSplitPaths.size(); i++) {
-            Assert.assertEquals(
-                    sortedSplitPaths.get(i),
-                    sortedOriginalPaths.get(i),
-                    Utils.join("_", strings) + "_" + hasTop + "_" + hasBot);
-        }
+        final List<String> sortedOriginalPaths = originalPaths.stream().map(p -> p.haplotype().getBaseString()).distinct().sorted().collect(Collectors.toList());
+        final List<String> sortedSplitPaths = splitPaths.stream().map(p -> p.haplotype().getBaseString()).distinct().sorted().collect(Collectors.toList());
+        Assert.assertEquals(sortedSplitPaths, sortedOriginalPaths);
     }
 
     /**
@@ -233,12 +216,11 @@ public class SharedVertexSequenceSplitterUnitTest extends GATKBaseTest {
      *
      * @return never {@code null}, perhaps an empty list.
      */
-    public static List<KBestHaplotype> unique(final KBestHaplotypeFinder kbhf) {
-        final int requiredCapacity = kbhf.size();
-        final Set<Haplotype> haplotypes = new HashSet<>(requiredCapacity);
-        final List<KBestHaplotype> result = new ArrayList<>(requiredCapacity);
-        for (final KBestHaplotype kbh : kbhf) {
-            if (haplotypes.add(kbh.haplotype())) {
+    private static List<KBestHaplotype> unique(final List<KBestHaplotype> haplotpyes) {
+        final Set<String> haplotypes = new HashSet<>();
+        final List<KBestHaplotype> result = new ArrayList<>();
+        for (final KBestHaplotype kbh : haplotpyes) {
+            if (haplotypes.add(new String(kbh.getBases()))) {
                 result.add(kbh);
             }
         }

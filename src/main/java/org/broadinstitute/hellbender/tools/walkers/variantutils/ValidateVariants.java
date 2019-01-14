@@ -196,6 +196,7 @@ public final class ValidateVariants extends VariantWalker {
 
     // information to keep track of when validating a GVCF
     private SimpleInterval previousInterval;
+    private int previousStart = -1;
 
     @Override
     public void onTraversalStart() {
@@ -226,6 +227,15 @@ public final class ValidateVariants extends VariantWalker {
         if (VALIDATE_GVCF) {
             final SimpleInterval refInterval = ref.getInterval();
 
+            //if next VC refers to a previous genomic position, throw an error
+            //Note that HaplotypeCaller can emit variants that start inside of a deletion on another haplotype,
+            // making v2's start less than the deletion's end
+            if (previousStart > -1 && vc.getStart() < previousStart) {
+                final UserException e = new UserException(String.format("In a GVCF all records must ordered. Record: %s covers a position previously traversed.",
+                        vc.toStringWithoutGenotypes()));
+                throwOrWarn(e);
+            }
+
             // GenomeLocSortedSet will automatically merge intervals that are overlapping when setting `mergeIfIntervalOverlaps`
             // to true.  In a GVCF most blocks are adjacent to each other so they wouldn't normally get merged.  We check
             // if the current record is adjacent to the previous record and "overlap" them if they are so our set is as
@@ -238,6 +248,7 @@ public final class ValidateVariants extends VariantWalker {
             genomeLocSortedSet.add(possiblyMergedGenomeLoc, true);
 
             previousInterval = new SimpleInterval(possiblyMergedGenomeLoc);
+            previousStart = vc.getStart();
             validateGVCFVariant(vc);
         }
 

@@ -1237,6 +1237,17 @@ public final class MathUtils {
         return min;
     }
 
+    public static double arrayMin(final double[] array) {
+        Utils.nonNull(array);
+        double min=array[0];
+        for(int i=0; i<array.length; i++) {
+            if(array[i] < min) {
+                min = array[i];
+            }
+        }
+        return min;
+    }
+
     /**
      * Checks that the result is a well-formed log10 probability
      *

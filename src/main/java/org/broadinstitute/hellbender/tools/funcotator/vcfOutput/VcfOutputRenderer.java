@@ -76,39 +76,36 @@ public class VcfOutputRenderer extends OutputRenderer {
     private final List<String> finalFuncotationFieldNames;
 
     //==================================================================================================================
-
-    public VcfOutputRenderer(final VariantContextWriter vcfWriter,
-                             final VCFHeader existingHeader,
-                             final List<DataSourceFuncotationFactory> dataSources) {
-        this(vcfWriter, dataSources, existingHeader, new LinkedHashMap<>(), new LinkedHashMap<>());
-    }
-
-    public VcfOutputRenderer(final VariantContextWriter vcfWriter,
-                             final List<DataSourceFuncotationFactory> dataSources,
-                             final VCFHeader existingHeader,
-                             final LinkedHashMap<String, String> unaccountedForDefaultAnnotations,
-                             final LinkedHashMap<String, String> unaccountedForOverrideAnnotations) {
-        this(vcfWriter, dataSources, existingHeader, unaccountedForDefaultAnnotations, unaccountedForOverrideAnnotations,
-                new LinkedHashSet<>(), new LinkedHashSet<>());
-    }
-
-    @VisibleForTesting
+    
+    /**
+     * Create a {@link VcfOutputRenderer}.
+     *
+     * @param vcfWriter a pre-initialized {@link VariantContextWriter} used for writing the output (must not be null).
+     * @param dataSources {@link List} of {@link DataSourceFuncotationFactory} to back our annotations (must not be null).
+     * @param existingHeader {@link VCFHeader} of input VCF file to preserve (must not be null).
+     * @param unaccountedForDefaultAnnotations {@link LinkedHashMap} of default annotations that must be added (must not be null).
+     * @param unaccountedForOverrideAnnotations {@link LinkedHashMap} of override annotations that must be added (must not be null).
+     * @param defaultToolVcfHeaderLines Lines to add to the header with information about the tool (must not be null).
+     * @param excludedOutputFields Fields that should not be rendered in the final output. Only exact name matches will be excluded (must not be null).
+     * @param toolVersion The version number of the tool used to produce the VCF file (must not be null).
+     */
     public VcfOutputRenderer(final VariantContextWriter vcfWriter,
                              final List<DataSourceFuncotationFactory> dataSources,
                              final VCFHeader existingHeader,
                              final LinkedHashMap<String, String> unaccountedForDefaultAnnotations,
                              final LinkedHashMap<String, String> unaccountedForOverrideAnnotations,
-                             final Set<VCFHeaderLine> defaultToolVcfHeaderLines) {
-        this(vcfWriter, dataSources, existingHeader, unaccountedForDefaultAnnotations, unaccountedForOverrideAnnotations,
-               defaultToolVcfHeaderLines, new HashSet<>());
-    }
+                             final Set<VCFHeaderLine> defaultToolVcfHeaderLines,
+                             final Set<String> excludedOutputFields,
+                             final String toolVersion) {
+        super(toolVersion);
 
-    public VcfOutputRenderer(final VariantContextWriter vcfWriter,
-                             final List<DataSourceFuncotationFactory> dataSources,
-                             final VCFHeader existingHeader,
-                             final LinkedHashMap<String, String> unaccountedForDefaultAnnotations,
-                             final LinkedHashMap<String, String> unaccountedForOverrideAnnotations,
-                             final Set<VCFHeaderLine> defaultToolVcfHeaderLines, final Set<String> excludedOutputFields) {
+        Utils.nonNull(vcfWriter);
+        Utils.nonNull(dataSources);
+        Utils.nonNull(existingHeader);
+        Utils.nonNull(unaccountedForDefaultAnnotations);
+        Utils.nonNull(unaccountedForOverrideAnnotations);
+        Utils.nonNull(defaultToolVcfHeaderLines);
+        Utils.nonNull(excludedOutputFields);
 
         this.vcfWriter = vcfWriter;
         this.existingHeader = existingHeader;
@@ -286,7 +283,7 @@ public class VcfOutputRenderer extends OutputRenderer {
 
         // Add in the lines about Funcotations:
         headerLines.addAll(defaultToolVcfHeaderLines);
-        headerLines.add(new VCFHeaderLine("Funcotator Version", Funcotator.VERSION + " | " + getDataSourceInfoString()));
+        headerLines.add(new VCFHeaderLine("Funcotator Version", toolVersion + " | " + getDataSourceInfoString()));
         headerLines.add(new VCFInfoHeaderLine(FUNCOTATOR_VCF_FIELD_NAME, VCFHeaderLineCount.A,
                 VCFHeaderLineType.String, "Functional annotation from the Funcotator tool.  Funcotation fields are"
                 + DESCRIPTION_PREAMBLE_DELIMITER +

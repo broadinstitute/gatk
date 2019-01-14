@@ -18,15 +18,17 @@ import java.util.stream.IntStream;
  * Created by David Benjamin on 5/4/17.
  */
 public class GermlineProbabilityCalculator {
+    // numerical precision safeguard in case of bad JVMs inverting the negative log-10 population allele frequency
+    private static final double EPSILON = 1.0e-20;
 
-    public static Map<String, Object> getPopulationAFAnnotation(List<VariantContext> germlineResourceVariants,
-                                                                final List<Allele> altAlleles,
-                                                                final double afOfAllelesNotInGermlineResource) {
+    public static Map<String, Object> getNegativeLog10PopulationAFAnnotation(List<VariantContext> germlineResourceVariants,
+                                                                             final List<Allele> altAlleles,
+                                                                             final double afOfAllelesNotInGermlineResource) {
         final Optional<VariantContext> germlineVC = germlineResourceVariants.isEmpty() ? Optional.empty()
                 : Optional.of(germlineResourceVariants.get(0));  // assume only one VC per site
         final double[] populationAlleleFrequencies = getGermlineAltAlleleFrequencies(altAlleles, germlineVC, afOfAllelesNotInGermlineResource);
 
-        return ImmutableMap.of(GATKVCFConstants.POPULATION_AF_VCF_ATTRIBUTE, populationAlleleFrequencies);
+        return ImmutableMap.of(GATKVCFConstants.POPULATION_AF_VCF_ATTRIBUTE, MathUtils.applyToArray(populationAlleleFrequencies, x -> - Math.log10(x)));
     }
 
     public static double[] calculateGermlineProbabilities(final double[] populationAlleleFrequencies,
@@ -85,6 +87,12 @@ public class GermlineProbabilityCalculator {
                                                                     final double log10OddsOfGermlineHomAltVsSomatic,
                                                                     final double populationAlleleFrequency,
                                                                     final double log10PriorProbOfSomaticEvent) {
+        if (populationAlleleFrequency < EPSILON) {
+            return Double.NEGATIVE_INFINITY;
+        } else if (populationAlleleFrequency > 1 - EPSILON) {
+            return 0;
+        }
+        
         final double log10OneMinusPriorProbSomatic = MathUtils.log10OneMinusPow10(log10PriorProbOfSomaticEvent);
 
         final double log10PriorGermlineHet = Math.log10(2*populationAlleleFrequency*(1-populationAlleleFrequency));

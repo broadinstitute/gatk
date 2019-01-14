@@ -120,7 +120,9 @@ final public class DataSourceUtils {
 
             logger.info("Initializing data sources from directory: " + pathString);
 
-            final Path pathToDatasources = IOUtils.getPath(pathString);
+            // Make sure we're cloud-safe:
+            final Path pathToDatasources = getCloudSafePathToDirectory(pathString);
+
             if ( !isValidDirectory(pathToDatasources) ) {
                 throw new UserException("ERROR: Given data source path is not a valid directory: " + pathToDatasources.toUri());
             }
@@ -137,7 +139,8 @@ final public class DataSourceUtils {
                 for ( final Path dataSourceTopDir : Files.list(pathToDatasources).filter(DataSourceUtils::isValidDirectory).collect(Collectors.toSet()) ) {
 
                     // Get the path that corresponds to our reference version:
-                    final Path dataSourceDir = dataSourceTopDir.resolve(refVersion);
+                    // Make sure we're cloud-safe:
+                    final Path dataSourceDir = getCloudSafePathToDirectory(dataSourceTopDir.resolve(refVersion).toUri().toString());
 
                     // Make sure that we have a good data source directory:
                     if ( isValidDirectory(dataSourceDir) ) {
@@ -389,6 +392,25 @@ final public class DataSourceUtils {
     }
 
     /**
+     * Create a path indicated by the given {@code dirPathString} that resolves to a directory even on Google Cloud.
+     * This assumes that the given {@code dirPathString}  already points to a directory and must simply be reformatted for the cloud, if
+     * it is a cloud path string.
+     * @param dirPathString A {@link String} containing the path to a directory.
+     * @return A {@link Path} pointing to the directory given by {@code dirPathString}, which will be interpreted as a directory even if it is a Google Cloud path.
+     */
+    private static Path getCloudSafePathToDirectory( final String dirPathString ) {
+
+        // If this is a google bucket path, make sure that it ends in '/'
+        // This is required for a google cloud path to count as a directory.
+        if ( dirPathString.startsWith("gs://") && !dirPathString.endsWith("/") ) {
+            return IOUtils.getPath(dirPathString + '/');
+        }
+        else {
+            return IOUtils.getPath(dirPathString);
+        }
+    }
+
+    /**
      * Create a {@link SimpleKeyXsvFuncotationFactory} from filesystem resources and field overrides.
      * @param dataSourceFile {@link Path} to the data source file.  Must not be {@code null}.
      * @param dataSourceProperties {@link Properties} consisting of the contents of the config file for the data source.  Must not be {@code null}.
@@ -563,7 +585,7 @@ final public class DataSourceUtils {
 
         boolean dataSourcesPathIsAcceptable = true;
 
-        final Path manifestPath = dataSourcesPath.resolve(IOUtils.getPath(MANIFEST_FILE_NAME));
+        final Path manifestPath = dataSourcesPath.resolve( MANIFEST_FILE_NAME );
 
         String version = null;
 
@@ -802,7 +824,7 @@ final public class DataSourceUtils {
         else {
             // If the path is not absolute, assume we must resolve it with our config file path:
             absoluteFilePath = knownPath.resolveSibling(filePathString);
-            logger.info("Resolved local data source file path: " + rawFilePath.toUri().toString() + " -> " + absoluteFilePath.toUri().toString());
+            logger.info("Resolved data source file path: " + rawFilePath.toUri().toString() + " -> " + absoluteFilePath.toUri().toString());
         }
         return absoluteFilePath;
     }

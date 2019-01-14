@@ -136,7 +136,7 @@ workflow ToolComparisonWdl {
 #                truth_vcf = truthVcf,
 #                truth_vcf_idx = truthIndex,
 #                intervals = interval_list_final,
-#a
+#
 #                gatk_docker = gatk_docker,
 #                gatk_override = gatk4_jar_override,
 #                mem_gb = mem_gb,

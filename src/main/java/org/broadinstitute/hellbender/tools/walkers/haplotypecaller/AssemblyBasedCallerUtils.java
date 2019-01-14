@@ -8,20 +8,25 @@ import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.engine.AlignmentContext;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.fragments.FragmentCollection;
 import org.broadinstitute.hellbender.utils.fragments.FragmentUtils;
+import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.locusiterator.LocusIteratorByState;
+import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
@@ -49,6 +54,11 @@ public final class AssemblyBasedCallerUtils {
         final int cigarTerm = cigar == null ? 0 : (1 - cigar.numCigarElements());
         return (double) referenceTerm + cigarTerm;
     };
+
+    // After trimming to fit the assembly window, throw away read stubs shorter than this length
+    // if we don't, the several bases left of reads that end just within the assembly window can
+    // get realigned incorrectly.  See https://github.com/broadinstitute/gatk/issues/5060
+    public static final int MINIMUM_READ_LENGTH_AFTER_TRIMMING = 10;
 
     /**
      * Returns a map with the original read as a key and the realigned read as the value.
@@ -187,15 +197,6 @@ public final class AssemblyBasedCallerUtils {
         }
     }
 
-    public static ReadThreadingAssembler createReadThreadingAssembler(final AssemblyBasedCallerArgumentCollection args) {
-        final ReadThreadingAssemblerArgumentCollection rtaac = args.assemblerArgs;
-        final ReadThreadingAssembler assemblyEngine = rtaac.makeReadThreadingAssembler();
-        assemblyEngine.setDebug(args.debug);
-        assemblyEngine.setMinBaseQualityToUseInAssembly(args.minBaseQualityScore);
-
-        return assemblyEngine;
-    }
-
     public static Optional<HaplotypeBAMWriter> createBamWriter(final AssemblyBasedCallerArgumentCollection args,
                                                                final boolean createBamOutIndex,
                                                                final boolean createBamOutMD5,
@@ -327,5 +328,50 @@ public final class AssemblyBasedCallerUtils {
             final String newAllelesString = vc.getContig() + ":" + vc.getStart() + "=" + vc.getAlleleIndex(allele);
             read.setAttribute(SUPPORTED_ALLELES_TAG, prevAllelesString + newAllelesString);
         }
+    }
+
+    /*
+     * Create a context that maps each read to the reference haplotype with log10 L of 0
+     * @param refHaplotype a non-null reference haplotype
+     * @param samples a list of all samples
+     * @param readsHeader SAM header to use for querying sample name from read
+     * @param region the assembly region containing reads
+     * @return a placeholder ReadLikelihoods data structure with likelihoods all set to zero
+     */
+    public static ReadLikelihoods<Haplotype> createDummyStratifiedReadMap(final Haplotype refHaplotype,
+                                                                          final SampleList samples,
+                                                                          final SAMFileHeader readsHeader,
+                                                                          final AssemblyRegion region) {
+        return new ReadLikelihoods<>(samples, new IndexedAlleleList<>(refHaplotype),
+                splitReadsBySample(samples, readsHeader, region.getReads()));
+    }
+
+    /**
+     * Get a list of pileups that span the entire active region span, in order, one for each position
+     */
+    public static List<ReadPileup> getPileupsOverReference(final SAMFileHeader readsHeader,
+                                                     final SimpleInterval activeRegionSpan,
+                                                     final ReadLikelihoods<Haplotype> readLikelihoods,
+                                                     final SampleList samples) {
+        final List<GATKRead> reads = new ArrayList<>(readLikelihoods.sampleReads(0));
+        reads.sort(new ReadCoordinateComparator(readsHeader));  //because we updated the reads based on the local realignments we have to re-sort or the pileups will be... unpredictable
+
+        final LocusIteratorByState libs = new LocusIteratorByState(reads.iterator(), LocusIteratorByState.NO_DOWNSAMPLING,
+                false, samples.asSetOfSamples(), readsHeader, true);
+
+        final int startPos = activeRegionSpan.getStart();
+        final List<ReadPileup> pileups = new ArrayList<>(activeRegionSpan.getEnd() - startPos);
+        AlignmentContext next = libs.advanceToLocus(startPos, true);
+        for ( int curPos = startPos; curPos <= activeRegionSpan.getEnd(); curPos++ ) {
+            if ( next != null && next.getLocation().getStart() == curPos ) {
+                pileups.add(next.getBasePileup());
+                next = libs.hasNext() ? libs.next() : null;
+            } else {
+                // no data, so we create empty pileups
+                pileups.add(new ReadPileup(new SimpleInterval(activeRegionSpan.getContig(), curPos, curPos)));
+            }
+        }
+
+        return pileups;
     }
 }

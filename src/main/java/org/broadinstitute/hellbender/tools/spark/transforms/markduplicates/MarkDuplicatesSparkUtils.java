@@ -21,6 +21,7 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.read.markduplicates.*;
 import org.broadinstitute.hellbender.utils.read.markduplicates.sparkrecords.*;
+import org.broadinstitute.hellbender.utils.spark.SparkUtils;
 import picard.sam.markduplicates.util.OpticalDuplicateFinder;
 import picard.sam.markduplicates.util.ReadEnds;
 import scala.Tuple2;
@@ -114,7 +115,7 @@ public class MarkDuplicatesSparkUtils {
      *       highest scoring as duplicates.
      *   (b) Determine which duplicates are optical duplicates and increase the overall count.
      */
-    static JavaPairRDD<IndexPair<String>, Integer> transformToDuplicateNames(final SAMFileHeader header, final MarkDuplicatesScoringStrategy scoringStrategy, final OpticalDuplicateFinder finder, final JavaRDD<GATKRead>  reads, final int numReducers) {
+    static JavaPairRDD<IndexPair<String>, Integer> transformToDuplicateNames(final SAMFileHeader header, final MarkDuplicatesScoringStrategy scoringStrategy, final OpticalDuplicateFinder finder, final JavaRDD<GATKRead>  reads, final int numReducers, final boolean markOpticalDups) {
         // we treat these specially and don't mark them as duplicates
         final JavaRDD<GATKRead> mappedReads = reads.filter(ReadFilterLibrary.MAPPED::test);
 
@@ -194,7 +195,7 @@ public class MarkDuplicatesSparkUtils {
 
         final JavaPairRDD<ReadsKey, Iterable<MarkDuplicatesSparkRecord>> keyedPairs = pairedEnds.groupByKey(); //TODO evaluate replacing this with a smart aggregate by key.
 
-        return markDuplicateRecords(keyedPairs, finder);
+        return markDuplicateRecords(keyedPairs, finder, markOpticalDups);
     }
 
     /**
@@ -259,7 +260,7 @@ public class MarkDuplicatesSparkUtils {
      */
     private static JavaPairRDD<String, Iterable<IndexPair<GATKRead>>> spanReadsByKey(final JavaRDD<IndexPair<GATKRead>> reads) {
         JavaPairRDD<String, IndexPair<GATKRead>> nameReadPairs = reads.mapToPair(read -> new Tuple2<>(read.getValue().getName(), read));
-        return spanByKey(nameReadPairs).flatMapToPair(namedRead -> {
+        return SparkUtils.spanByKey(nameReadPairs).flatMapToPair(namedRead -> {
             // for each name, separate reads by key (group name)
             List<Tuple2<String, Iterable<IndexPair<GATKRead>>>> out = Lists.newArrayList();
             ListMultimap<String, IndexPair<GATKRead>> multi = LinkedListMultimap.create();
@@ -274,54 +275,6 @@ public class MarkDuplicatesSparkUtils {
         });
     }
 
-    /**
-     * Like <code>groupByKey</code>, but assumes that values are already sorted by key, so no shuffle is needed,
-     * which is much faster.
-     * @param rdd the input RDD
-     * @param <K> type of keys
-     * @param <V> type of values
-     * @return an RDD where each the values for each key are grouped into an iterable collection
-     */
-    private static <K, V> JavaPairRDD<K, Iterable<V>> spanByKey(JavaPairRDD<K, V> rdd) {
-        return rdd.mapPartitionsToPair(MarkDuplicatesSparkUtils::spanningIterator);
-    }
-
-    /**
-     * An iterator that groups values having the same key into iterable collections.
-     * @param iterator an iterator over key-value pairs
-     * @param <K> type of keys
-     * @param <V> type of values
-     * @return an iterator over pairs of keys and grouped values
-     */
-    static <K, V> Iterator<Tuple2<K, Iterable<V>>> spanningIterator(Iterator<Tuple2<K, V>> iterator) {
-        final PeekingIterator<Tuple2<K, V>> iter = Iterators.peekingIterator(iterator);
-        return new AbstractIterator<Tuple2<K, Iterable<V>>>() {
-            @Override
-            protected Tuple2<K, Iterable<V>> computeNext() {
-                K key = null;
-                List<V> group = Lists.newArrayList();
-                while (iter.hasNext()) {
-                    if (key == null) {
-                        Tuple2<K, V> next = iter.next();
-                        key = next._1();
-                        V value = next._2();
-                        group.add(value);
-                        continue;
-                    }
-                    K nextKey = iter.peek()._1(); // don't advance...
-                    if (nextKey.equals(key)) {
-                        group.add(iter.next()._2()); // .. unless the keys match
-                    } else {
-                        return new Tuple2<>(key, group);
-                    }
-                }
-                if (key != null) {
-                    return new Tuple2<>(key, group);
-                }
-                return endOfData();
-            }
-        };
-    }
 
     /**
      * Primary landing point for MarkDuplicateSparkRecords:
@@ -332,7 +285,7 @@ public class MarkDuplicatesSparkUtils {
      */
     @SuppressWarnings("unchecked")
     private static JavaPairRDD<IndexPair<String>, Integer> markDuplicateRecords(final JavaPairRDD<ReadsKey, Iterable<MarkDuplicatesSparkRecord>> keyedPairs,
-                                                                                final OpticalDuplicateFinder finder) {
+                                                                                final OpticalDuplicateFinder finder, final boolean markOpticalDups) {
         return keyedPairs.flatMapToPair(keyedPair -> {
             Iterable<MarkDuplicatesSparkRecord> pairGroups = keyedPair._2();
 
@@ -353,7 +306,7 @@ public class MarkDuplicatesSparkUtils {
             }
 
             if (Utils.isNonEmpty(pairs)) {
-                nonDuplicates.add(handlePairs(pairs, finder));
+                nonDuplicates.addAll(handlePairs(pairs, finder, markOpticalDups));
             }
 
             if (Utils.isNonEmpty(passthroughs)) {
@@ -387,15 +340,17 @@ public class MarkDuplicatesSparkUtils {
     private static List<Tuple2<IndexPair<String>,Integer>> handlePassthroughs(List<MarkDuplicatesSparkRecord> passthroughs) {
         // Emit the passthrough reads as non-duplicates.
         return passthroughs.stream()
-                .map(pair -> new Tuple2<>(new IndexPair<>(pair.getName(), pair.getPartitionIndex()), -1))
+                .map(pair -> new Tuple2<>(new IndexPair<>(pair.getName(), pair.getPartitionIndex()), MarkDuplicatesSpark.NO_OPTICAL_MARKER))
                 .collect(Collectors.toList());
     }
 
-    private static Tuple2<IndexPair<String>, Integer> handlePairs(List<Pair> pairs, OpticalDuplicateFinder finder) {
+    private static List<Tuple2<IndexPair<String>, Integer>> handlePairs(final List<Pair> pairs, final OpticalDuplicateFinder finder, final boolean markOpticalDups) {
         // save ourselves the trouble when there are no optical duplicates to worry about
         if (pairs.size() == 1) {
-            return (new Tuple2<>(new IndexPair<>(pairs.get(0).getName(), pairs.get(0).getPartitionIndex()), 0));
+            return Collections.singletonList(new Tuple2<>(new IndexPair<>(pairs.get(0).getName(), pairs.get(0).getPartitionIndex()), 0));
         }
+
+        List<Tuple2<IndexPair<String>, Integer>> output = new ArrayList<>();
 
         final Pair bestPair = pairs.stream()
                 .peek(pair -> finder.addLocationInformation(pair.getName(), pair))
@@ -406,23 +361,26 @@ public class MarkDuplicatesSparkUtils {
         final Map<Byte, List<Pair>> groupByOrientation = pairs.stream()
                 .collect(Collectors.groupingBy(Pair::getOrientationForOpticalDuplicates));
         final int numOpticalDuplicates;
-        //todo do we not have to split the reporting of these by orientation?
         if (groupByOrientation.containsKey(ReadEnds.FR) && groupByOrientation.containsKey(ReadEnds.RF)) {
             final List<Pair> peFR = new ArrayList<>(groupByOrientation.get(ReadEnds.FR));
             final List<Pair> peRF = new ArrayList<>(groupByOrientation.get(ReadEnds.RF));
-            numOpticalDuplicates = countOpticalDuplicates(finder, peFR, bestPair) + countOpticalDuplicates(finder, peRF, bestPair);
+            numOpticalDuplicates = countOpticalDuplicates(finder, peFR, bestPair, markOpticalDups? output : null) + countOpticalDuplicates(finder, peRF, bestPair, markOpticalDups? output : null);
         } else {
-            numOpticalDuplicates = countOpticalDuplicates(finder, pairs, bestPair);
+            numOpticalDuplicates = countOpticalDuplicates(finder, pairs, bestPair, markOpticalDups? output : null);
         }
-        return (new Tuple2<>(new IndexPair<>(bestPair.getName(), bestPair.getPartitionIndex()), numOpticalDuplicates));
+        output.add(new Tuple2<>(new IndexPair<>(bestPair.getName(), bestPair.getPartitionIndex()), numOpticalDuplicates));
+        return output;
     }
 
-    private static int countOpticalDuplicates(OpticalDuplicateFinder finder, List<Pair> scored, Pair best) {
+    private static int countOpticalDuplicates(OpticalDuplicateFinder finder, List<Pair> scored, Pair best, List<Tuple2<IndexPair<String>,Integer>> opticalDuplicateList) {
         final boolean[] opticalDuplicateFlags = finder.findOpticalDuplicates(scored, best);
         int numOpticalDuplicates = 0;
-        for (final boolean b : opticalDuplicateFlags) {
-            if (b) {
+        for (int i = 0; i < opticalDuplicateFlags.length; i++) {
+            if (opticalDuplicateFlags[i]) {
                 numOpticalDuplicates++;
+                if (opticalDuplicateList != null) {
+                    opticalDuplicateList.add(new Tuple2<>(new IndexPair<>(scored.get(i).getName(), scored.get(i).getPartitionIndex()), MarkDuplicatesSpark.OPTICAL_DUPLICATE_MARKER));
+                }
             }
         }
         return numOpticalDuplicates;

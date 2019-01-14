@@ -53,7 +53,7 @@ public final class GATKDuplicationMetrics extends DuplicationMetrics implements 
             ++this.READ_PAIRS_EXAMINED; // will need to be divided by 2 at the end
         }
         // Update the duplication metrics
-        if (isDuplicate && !secondaryOrSupplementary) {
+        if (isDuplicate && !secondaryOrSupplementary && !readUnmappedFlag) {
             if (!mappedMate) {
                 ++this.UNPAIRED_READ_DUPLICATES;
             } else {
