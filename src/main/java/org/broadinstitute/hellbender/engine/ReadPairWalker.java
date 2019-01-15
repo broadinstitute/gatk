@@ -8,7 +8,10 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * A ReadPairWalker is a tool that processes a two reads  (with the same read name) at a time from one or multiple
@@ -96,6 +99,7 @@ public abstract class ReadPairWalker extends GATKTool {
                     if (!read.getName().equals(currentReadname[0])){
                         apply(readSet);
                         readSet.clear();
+                        if (!readSet.isEmpty()) throw new RuntimeException("WAAT!");
                         currentReadname[0] = read.getName();
                     }
                     readSet.add(read);
