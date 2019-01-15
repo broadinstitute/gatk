@@ -33,7 +33,7 @@ shopt -s expand_aliases
 
 ################################################################################
 
-HG19_HG38_CHAIN_FILE_URL='http://hgdownload.cse.ucsc.edu/goldenPath/hg38/liftOver/hg38ToHg19.over.chain.gz'
+HG38_HG19_CHAIN_FILE_URL='http://hgdownload.cse.ucsc.edu/goldenPath/hg38/liftOver/hg38ToHg19.over.chain.gz'
 outChainFile=Hg38Tob37.over.chain
 
 ################################################################################
@@ -41,7 +41,7 @@ outChainFile=Hg38Tob37.over.chain
 function simpleUsage()
 {
   echo -e "Usage: $SCRIPTNAME" 
-  echo -e "Create a liftover chain file for b37->hg38"
+  echo -e "Create a liftover chain file for hg38->b37"
 }
 
 #Define a usage function:
@@ -49,7 +49,7 @@ function usage()
 {
   simpleUsage
   echo -e ""
-  echo -e "Pulls a chain file for hg19->hg38 and modifies it to use"
+  echo -e "Pulls a chain file for hg38->hg19 and modifies it to use"
   echo -e "b37 contig names.  The chain file is read from:"
   echo -e ""
   echo -e "${HG19_HG38_CHAIN_FILE_URL}"
@@ -338,9 +338,9 @@ if ${ISCALLEDBYUSER} ; then
   #----------------------------------
   # Do real work here.
 
-  error "Retrieving baseline hg19->hg38 chain file..."
+  error "Retrieving baseline hg38->hg19 chain file..."
   hg19LiftoverFile=$( makeTemp )
-  curl "${HG19_HG38_CHAIN_FILE_URL}" 2>/dev/null | gunzip > ${hg19LiftoverFile}
+  curl "${HG38_HG19_CHAIN_FILE_URL}" 2>/dev/null | gunzip > ${hg19LiftoverFile}
 
 	error "Modifying contig names and creating chain file..."
   # Do the appropriate change here:
@@ -560,7 +560,7 @@ if ${ISCALLEDBYUSER} ; then
     ; print                               \
   }' ${hg19LiftoverFile} > ${outChainFile}
 
-	error "Created a b37 -> hg38 chain file: ${outChainFile}"
+	error "Created a hg38 -> b37 chain file: ${outChainFile}"
 
   exit 0
 fi
