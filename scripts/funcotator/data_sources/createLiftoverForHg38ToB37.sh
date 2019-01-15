@@ -52,7 +52,7 @@ function usage()
   echo -e "Pulls a chain file for hg38->hg19 and modifies it to use"
   echo -e "b37 contig names.  The chain file is read from:"
   echo -e ""
-  echo -e "${HG19_HG38_CHAIN_FILE_URL}"
+  echo -e "${HG38_HG19_CHAIN_FILE_URL}"
   echo -e ""
   echo -e "This is OK because b37 is roughly equivalent to hg19 aside"
   echo -e "from these contig name differences."
