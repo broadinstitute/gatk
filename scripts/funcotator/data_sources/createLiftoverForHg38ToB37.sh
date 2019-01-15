@@ -12,7 +12,7 @@
 # EXAMPLE:
 #   ./createLiftoverChainFileForHg38ToB37.sh
 #
-# AUTHOR: Jonn Smith
+# AUTHOR: Chris Kachulis (based on createLiftoverChainFileForB37ToHg38.sh)
 #
 ###############################################################################
 
@@ -339,8 +339,8 @@ if ${ISCALLEDBYUSER} ; then
   # Do real work here.
 
   error "Retrieving baseline hg38->hg19 chain file..."
-  hg19LiftoverFile=$( makeTemp )
-  curl "${HG38_HG19_CHAIN_FILE_URL}" 2>/dev/null | gunzip > ${hg19LiftoverFile}
+  hg38LiftoverFile=$( makeTemp )
+  curl "${HG38_HG19_CHAIN_FILE_URL}" 2>/dev/null | gunzip > ${hg38LiftoverFile}
 
 	error "Modifying contig names and creating chain file..."
   # Do the appropriate change here:
@@ -558,7 +558,7 @@ if ${ISCALLEDBYUSER} ; then
 			}                                   \
     }                                     \
     ; print                               \
-  }' ${hg19LiftoverFile} > ${outChainFile}
+  }' ${hg38LiftoverFile} > ${outChainFile}
 
 	error "Created a hg38 -> b37 chain file: ${outChainFile}"
 
