@@ -394,7 +394,7 @@ public abstract class BaseTest {
     }
 
     public static void assertContains(String actual, String expectedSubstring){
-        Assert.assertTrue(actual.contains(expectedSubstring),  expectedSubstring +" was not found in " + actual+ ".");
+        Assert.assertTrue(actual.contains(expectedSubstring),  expectedSubstring +" was not found in " + actual + ".");
     }
 
     public static <T> void assertCondition(Iterable<T> actual, Iterable<T> expected, BiConsumer<T,T> assertion){

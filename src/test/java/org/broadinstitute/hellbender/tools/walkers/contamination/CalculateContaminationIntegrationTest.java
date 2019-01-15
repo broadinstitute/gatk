@@ -83,7 +83,7 @@ public class CalculateContaminationIntegrationTest extends CommandLineProgramTes
         }
 
         final File psTable = createTempFile("pileups", ".table");
-        PileupSummary.writeToFile(ps, psTable);
+        PileupSummary.writeToFile("SAMPLE", ps, psTable);
         final File contaminationTable = createTempFile("contamination", ".table");
         final File segmentationsTable = createTempFile("segments", ".table");
 
@@ -95,7 +95,7 @@ public class CalculateContaminationIntegrationTest extends CommandLineProgramTes
         runCommandLine(args);
 
         final double calculatedContamination = ContaminationRecord.readFromFile(contaminationTable).get(0).getContamination();
-        final List<MinorAlleleFractionRecord> mafRecords = MinorAlleleFractionRecord.readFromFile(segmentationsTable);
+        final List<MinorAlleleFractionRecord> mafRecords = MinorAlleleFractionRecord.readFromFile(segmentationsTable).getRight();
 
         Assert.assertEquals(calculatedContamination, contamination, 0.01);
         Assert.assertEquals(mafRecords.size(), 3);

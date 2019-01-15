@@ -96,14 +96,10 @@ public class StrandArtifactUnitTest extends GATKBaseTest {
         }
 
         final StrandArtifact strandArtifactAnnotation = new StrandArtifact();
-        final GenotypeBuilder genotypeBuilder = new GenotypeBuilder(sampleName);
-        strandArtifactAnnotation.annotate(null, vc, genotypeBuilder.make(), genotypeBuilder, likelihoods);
-
-        final Genotype genotype = genotypeBuilder.make();
-        final double[] posteriorProbabilities =
-                GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(genotype, GATKVCFConstants.STRAND_ARTIFACT_POSTERIOR_KEY, () -> null, -1);
-        final double[] mapAlleleFractionEstimates =
-                GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(genotype, GATKVCFConstants.STRAND_ARTIFACT_AF_KEY, () -> null, -1);
+        final VariantContext vcToAnnotate = new VariantContextBuilder(vc).genotypes(Collections.singletonList(new GenotypeBuilder(sampleName, alleles).make())).make();
+        final Map<String, Object> annotations = strandArtifactAnnotation.annotate(null, vcToAnnotate, likelihoods);
+        final double[] posteriorProbabilities = (double[]) annotations.get(GATKVCFConstants.STRAND_ARTIFACT_POSTERIOR_KEY);
+        final double[] mapAlleleFractionEstimates = (double[]) annotations.get(GATKVCFConstants.STRAND_ARTIFACT_AF_KEY);
 
         final double epsilon = 1e-3;
         // Check that we correctly detect the artifact in reverse strands
@@ -181,15 +177,10 @@ public class StrandArtifactUnitTest extends GATKBaseTest {
         }
 
         final StrandArtifact strandArtifactAnnotation = new StrandArtifact();
-        final GenotypeBuilder genotypeBuilder = new GenotypeBuilder(sampleName);
-        strandArtifactAnnotation.annotate(null, vc, genotypeBuilder.make(), genotypeBuilder, likelihoods);
-
-        final Genotype genotype = genotypeBuilder.make();
-        final double[] posteriorProbabilities =
-                GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(genotype, GATKVCFConstants.STRAND_ARTIFACT_POSTERIOR_KEY, () -> null, -1);
-        final double[] mapAlleleFractionEstimates =
-                GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(genotype, GATKVCFConstants.STRAND_ARTIFACT_AF_KEY, () -> null, -1);
-
+        final VariantContext vcToAnnotate = new VariantContextBuilder(vc).genotypes(Collections.singletonList(new GenotypeBuilder(sampleName, alleles).make())).make();
+        final Map<String, Object> annotations = strandArtifactAnnotation.annotate(null, vcToAnnotate, likelihoods);
+        final double[] posteriorProbabilities = (double[]) annotations.get(GATKVCFConstants.STRAND_ARTIFACT_POSTERIOR_KEY);
+        final double[] mapAlleleFractionEstimates = (double[]) annotations.get(GATKVCFConstants.STRAND_ARTIFACT_AF_KEY);
         final double epsilon = 0.1;
         // Check that, having taken strand artifact into consideration, we estimate that the true allele fraction is 0.2
         Assert.assertEquals(mapAlleleFractionEstimates[ArtifactState.ART_FWD.ordinal()], 0.2, epsilon);
@@ -204,14 +195,9 @@ public class StrandArtifactUnitTest extends GATKBaseTest {
         VariantContext variantContextNoTLOD = new VariantContextBuilder(vc).rmAttribute(GATKVCFConstants.TUMOR_LOD_KEY).make();
 
         final StrandArtifact strandArtifactAnnotation = new StrandArtifact();
-        final GenotypeBuilder genotypeBuilder = new GenotypeBuilder(sampleName);
-        strandArtifactAnnotation.annotate(null, variantContextNoTLOD, genotypeBuilder.make(), genotypeBuilder, likelihoods);
-
-        final Genotype genotype = genotypeBuilder.make();
-        final double[] posteriorProbabilities =
-                GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(genotype, StrandArtifact.POSTERIOR_PROBABILITIES_KEY, () -> null, -1);
-        final double[] mapAlleleFractionEstimates =
-                GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(genotype, StrandArtifact.MAP_ALLELE_FRACTIONS_KEY, () -> null, -1);
+        final Map<String, Object> annotations = strandArtifactAnnotation.annotate(null, variantContextNoTLOD, likelihoods);
+        final double[] posteriorProbabilities = (double[]) annotations.get(GATKVCFConstants.STRAND_ARTIFACT_POSTERIOR_KEY);
+        final double[] mapAlleleFractionEstimates = (double[]) annotations.get(GATKVCFConstants.STRAND_ARTIFACT_AF_KEY);
 
         // Asserting that the tool passed through without annotating
         Assert.assertNull(posteriorProbabilities);

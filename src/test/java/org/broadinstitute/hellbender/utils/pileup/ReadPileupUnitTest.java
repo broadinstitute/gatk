@@ -348,7 +348,7 @@ public final class ReadPileupUnitTest extends GATKBaseTest {
         Assert.assertEquals(pu.getNumberOfElements(p -> p.isBeforeInsertion()), 0);
         Assert.assertEquals(pu.getNumberOfElements(p -> p.getRead().getMappingQuality() == 0), 2);
         Assert.assertEquals(pu.getOffsets(), Arrays.asList(1, 1), "getOffsets");
-        Assert.assertEquals(pu.getReadGroupIDs(), Arrays.asList(new SAMReadGroupRecord[]{null}), "getReadGroups");
+        Assert.assertEquals(pu.getReadGroupIDs(), new HashSet<String>(Arrays.asList(ArtificialReadUtils.READ_GROUP_ID)), "getReadGroups");
         Assert.assertEquals(pu.getReads(), Arrays.asList(read1, read2), "getReads");
         Assert.assertEquals(pu.getSamples(header), Arrays.asList(new String[]{null}), "getSamples");
         Assert.assertTrue(pu.getPileupForLane("fred").isEmpty());
@@ -406,7 +406,7 @@ public final class ReadPileupUnitTest extends GATKBaseTest {
         Assert.assertEquals(pu.getNumberOfElements(p -> p.isBeforeInsertion()), 1);
         Assert.assertEquals(pu.getNumberOfElements(p -> p.getRead().getMappingQuality() == 0), 2);
         Assert.assertEquals(pu.getOffsets(), Arrays.asList(offset, offset), "getOffsets");
-        Assert.assertEquals(pu.getReadGroupIDs(), Arrays.asList(new SAMReadGroupRecord[]{null}), "getReadGroups");
+        Assert.assertEquals(pu.getReadGroupIDs(), new HashSet<String>(Arrays.asList(ArtificialReadUtils.READ_GROUP_ID)), "getReadGroups");
         Assert.assertEquals(pu.getReads(), Arrays.asList(read1, read2), "getReads");
         Assert.assertEquals(pu.getSamples(header), Arrays.asList(new String[]{null}), "getSamples");
         Assert.assertTrue(pu.getPileupForLane("fred").isEmpty());
@@ -458,7 +458,7 @@ public final class ReadPileupUnitTest extends GATKBaseTest {
         Assert.assertEquals(pu.getNumberOfElements(p -> p.isBeforeInsertion()), 0);
         Assert.assertEquals(pu.getNumberOfElements(p -> p.getRead().getMappingQuality() == 0), 2);
         Assert.assertEquals(pu.getOffsets(), Arrays.asList(off, off), "getOffsets");
-        Assert.assertEquals(pu.getReadGroupIDs(), Arrays.asList(new SAMReadGroupRecord[]{null}), "getReadGroups");
+        Assert.assertEquals(pu.getReadGroupIDs(), new HashSet<String>(Arrays.asList(ArtificialReadUtils.READ_GROUP_ID)), "getReadGroups");
         Assert.assertEquals(pu.getReads(), Arrays.asList(read1, read2), "getReads");
         Assert.assertEquals(pu.getSamples(header), Arrays.asList(new String[]{null}), "getSamples");
         Assert.assertTrue(pu.getPileupForLane("fred").isEmpty());

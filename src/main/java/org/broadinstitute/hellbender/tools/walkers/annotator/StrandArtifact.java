@@ -1,11 +1,13 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
+import com.google.common.collect.ImmutableMap;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFFormatHeaderLine;
 import htsjdk.variant.vcf.VCFHeaderLineType;
+import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.commons.math3.distribution.BetaDistribution;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -15,6 +17,7 @@ import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -31,7 +34,7 @@ import static org.broadinstitute.hellbender.tools.walkers.annotator.StrandArtifa
  * variant its allele fraction is most likely 0.2.</p>
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Annotations for strand artifact filter (SA_POST_PROB, SA_MAP_AF)")
-public class StrandArtifact extends GenotypeAnnotation implements StandardMutectAnnotation {
+public class StrandArtifact extends InfoFieldAnnotation implements StandardMutectAnnotation {
     protected final OneShotLogger warning = new OneShotLogger(this.getClass());
 
     public static final String POSTERIOR_PROBABILITIES_KEY = GATKVCFConstants.STRAND_ARTIFACT_POSTERIOR_KEY;
@@ -64,19 +67,11 @@ public class StrandArtifact extends GenotypeAnnotation implements StandardMutect
     }
 
     @Override
-    public void annotate(final ReferenceContext ref,
+    public Map<String, Object> annotate(final ReferenceContext ref,
                          final VariantContext vc,
-                         final Genotype g,
-                         final GenotypeBuilder gb,
                          final ReadLikelihoods<Allele> likelihoods) {
-        Utils.nonNull(gb);
         Utils.nonNull(vc);
         Utils.nonNull(likelihoods);
-
-        // do not annotate the genotype of the normal sample
-        if (g.isHomRef()){
-            return;
-        }
 
         pi.put(NO_ARTIFACT, PRIOR_PROBABILITY_OF_NO_ARTIFACT);
         pi.put(ART_FWD, PRIOR_PROBABILITY_OF_ARTIFACT);
@@ -87,13 +82,14 @@ public class StrandArtifact extends GenotypeAnnotation implements StandardMutect
 
         if (tumorLods==null) {
             warning.warn("One or more variant contexts is missing the 'TLOD' annotation, StrandArtifact will not be computed for these VariantContexts");
-            return;
+            return Collections.emptyMap();
         }
         final int indexOfMaxTumorLod = MathUtils.maxElementIndex(tumorLods);
         final Allele altAllele = vc.getAlternateAllele(indexOfMaxTumorLod);
 
-        final Collection<ReadLikelihoods<Allele>.BestAllele> informativeBestAlleles = likelihoods.bestAllelesBreakingTies(g.getSampleName()).stream().
-                filter(ba -> ba.isInformative()).collect(Collectors.toList());
+        final Collection<ReadLikelihoods<Allele>.BestAllele> informativeBestAlleles = vc.getGenotypes().stream()
+                .filter(g -> !g.isHomRef()).flatMap(g -> likelihoods.bestAllelesBreakingTies(g.getSampleName()).stream())
+                .filter(ba -> ba.isInformative()).collect(Collectors.toList());
         final Map<Strand, List<ReadLikelihoods<Allele>.BestAllele>> altReads = informativeBestAlleles.stream().filter(ba -> ba.allele.equals(altAllele))
                 .collect(Collectors.groupingBy(ba -> ba.read.isReverseStrand() ? Strand.REV : Strand.FWD));
         final Map<Strand, List<ReadLikelihoods<Allele>.BestAllele>> refReads = informativeBestAlleles.stream().filter(ba -> ba.allele.equals(vc.getReference()))
@@ -169,8 +165,7 @@ public class StrandArtifact extends GenotypeAnnotation implements StandardMutect
         // In the absence of strand artifact, MAP estimate for f reduces to the sample alt allele fraction
         estimatedAlleleFractions.put(NO_ARTIFACT,  (double) numAltReads/numReads);
 
-        gb.attribute(POSTERIOR_PROBABILITIES_KEY, posteriorProbabilities);
-        gb.attribute(MAP_ALLELE_FRACTIONS_KEY, estimatedAlleleFractions.values().stream().mapToDouble(Double::doubleValue).toArray());
+        return ImmutableMap.of(POSTERIOR_PROBABILITIES_KEY, posteriorProbabilities, MAP_ALLELE_FRACTIONS_KEY, estimatedAlleleFractions.values().stream().mapToDouble(Double::doubleValue).toArray());
     }
 
     private enum Strand {
@@ -178,9 +173,9 @@ public class StrandArtifact extends GenotypeAnnotation implements StandardMutect
     }
 
     @Override
-    public List<VCFFormatHeaderLine> getDescriptions() {
-        return Arrays.asList(new VCFFormatHeaderLine(POSTERIOR_PROBABILITIES_KEY, 3, VCFHeaderLineType.Float, "posterior probabilities of the presence of strand artifact"),
-                new VCFFormatHeaderLine(MAP_ALLELE_FRACTIONS_KEY, 3, VCFHeaderLineType.Float, "MAP estimates of allele fraction given z"));
+    public List<VCFInfoHeaderLine> getDescriptions() {
+        return Arrays.asList(GATKVCFHeaderLines.getInfoLine(POSTERIOR_PROBABILITIES_KEY),
+                GATKVCFHeaderLines.getInfoLine(MAP_ALLELE_FRACTIONS_KEY));
     }
 
     private double getIntegrandGivenNoArtifact(final double f, final int nPlus, final int nMinus, final int xPlus, final int xMinus){

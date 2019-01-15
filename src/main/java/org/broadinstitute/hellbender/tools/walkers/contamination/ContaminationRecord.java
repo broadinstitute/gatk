@@ -15,13 +15,17 @@ import java.util.List;
  * Created by David Benjamin on 2/13/17.
  */
 public class ContaminationRecord {
+    private String sample;
     private double contamination;
     private double error;
 
-    public ContaminationRecord(final double contamination, final double error) {
+    public ContaminationRecord(final String sample, final double contamination, final double error) {
+        this.sample = sample;
         this.contamination = contamination;
         this.error = error;
     }
+
+    public String getSample() { return sample; }
 
     public double getContamination() {
         return contamination;
@@ -56,7 +60,8 @@ public class ContaminationRecord {
 
         @Override
         protected void composeLine(final ContaminationRecord record, final DataLine dataLine) {
-            dataLine.set(ContaminationTableColumn.CONTAMINATION.toString(), record.getContamination())
+            dataLine.set(ContaminationTableColumn.SAMPLE.toString(), record.getSample())
+                .set(ContaminationTableColumn.CONTAMINATION.toString(), record.getContamination())
                     .set(ContaminationTableColumn.ERROR.toString(), record.getError());
         }
     }
@@ -68,13 +73,15 @@ public class ContaminationRecord {
 
         @Override
         protected ContaminationRecord createRecord(final DataLine dataLine) {
+            final String sample = dataLine.get(ContaminationTableColumn.SAMPLE);
             final double contamination = dataLine.getDouble(ContaminationTableColumn.CONTAMINATION);
             final double error = dataLine.getDouble(ContaminationTableColumn.ERROR);
-            return new ContaminationRecord(contamination, error);
+            return new ContaminationRecord(sample, contamination, error);
         }
     }
 
     private enum ContaminationTableColumn {
+        SAMPLE("sample"),
         CONTAMINATION("contamination"),
         ERROR("error");
 
@@ -89,6 +96,6 @@ public class ContaminationRecord {
             return columnName;
         }
 
-        public static final TableColumnCollection COLUMNS = new TableColumnCollection(CONTAMINATION, ERROR);
+        public static final TableColumnCollection COLUMNS = new TableColumnCollection(SAMPLE, CONTAMINATION, ERROR);
     }
 }

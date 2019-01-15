@@ -112,6 +112,8 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
      */
     private TableColumnCollection columns;
 
+    private Map<String, String> metadata = new HashMap<>();
+
     /**
      * Holds a reference to the csvReader object use to read and parse the input
      * into {@link String} arrays.
@@ -383,7 +385,11 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
      * @param lineNumber the source line number that contains the comment line.
      */
     protected void processCommentLine(final String commentText, final long lineNumber) {
-        // do nothing by default.
+        if (commentText.startsWith(TableWriter.METADATA_TAG)) {
+            final String[] keyAndValue = commentText.substring(TableWriter.METADATA_TAG.length()).split("=");
+            metadata.put(keyAndValue[0], keyAndValue[1]);
+        }
+        // do nothing with non-metadata lines by default
     }
 
     /**
@@ -404,7 +410,8 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
     /**
      * Skip comment lines from the output.
      * <p>
-     * It returns the contents of the first non comment line found.
+     * It returns the contents of the first non comment line found.  As a side effect, it builds a metadata map
+     * of key-value pairs from comment lines with the <METADATA> tag from TableWriter
      * </p>
      *
      * @return {@code null} if we reached the end of the source, the next non-comment line content otherwise.
@@ -516,6 +523,10 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
      */
     public List<R> toList() {
         return stream().collect(Collectors.toList());
+    }
+
+    public Map<String, String> getMetadata() {
+        return metadata;
     }
 
     /**

@@ -51,7 +51,7 @@ public class CollectF1R2CountsIntegrationTest extends CommandLineProgramTest {
         CloserUtil.close(in);
 
         List<Histogram<Integer>> histograms = referenceSiteMetrics.getAllHistograms();
-        List<AltSiteRecord> altDesignMatrix = AltSiteRecord.readAltSiteRecords(altTable);
+        List<AltSiteRecord> altDesignMatrix = AltSiteRecord.readAltSiteRecords(altTable).getRight();
 
         /** Expected result
          *

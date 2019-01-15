@@ -154,6 +154,42 @@ public final class TableWriterUnitTest extends GATKBaseTest {
     }
 
     @Test
+    public void testMetadata() throws IOException {
+        final File testFile = createTempFile("test", ".tab");
+        final TableColumnCollection columnNames = new TableColumnCollection("col1", "col2", "col3");
+        final TableWriter<String[]> writer = new TableWriter<String[]>(testFile, columnNames) {
+            @Override
+            protected void composeLine(final String[] record, final DataLine dataLine) {
+                dataLine.setAll(record);
+            }
+        };
+
+        final String key1 = "key1";
+        final String value1 = "val1";
+        final String key2 = "key2";
+        final String value2 = "val2";
+
+        writer.writeMetadata(key1, value1);
+        writer.writeComment("commentLine1");
+        writer.writeMetadata(key2, value2);
+        writer.writeRecord(new String[]{"1", "2", "3"});
+        writer.writeComment("commentLine2");
+        writer.writeRecord(new String[]{"4", "5", "6"});
+        writer.writeComment("commentLine3");
+        writer.writeRecord(new String[]{"-1", "-2", "-3"});
+        writer.writeComment("commentLine4");
+        writer.close();
+
+        final List<String> outLines = outputLines(testFile);
+        Assert.assertEquals(outLines.get(0), TableUtils.COMMENT_PREFIX + TableWriter.METADATA_TAG + key1 + "=" + value1);
+        Assert.assertEquals(outLines.get(1), TableUtils.COMMENT_PREFIX + "commentLine1");
+        Assert.assertEquals(outLines.get(2), TableUtils.COMMENT_PREFIX + TableWriter.METADATA_TAG + key2 + "=" + value2);
+        Assert.assertEquals(outLines.get(3), String.join("" + TableUtils.COLUMN_SEPARATOR, "col1", "col2", "col3"));
+        Assert.assertEquals(outLines.get(4), String.join("" + TableUtils.COLUMN_SEPARATOR, "1", "2", "3"));
+
+    }
+
+    @Test
     public void testWriteRecordFromIterable() throws IOException {
         final File testFile = createTempFile("test", ".tab");
         final TableColumnCollection columnNames = new TableColumnCollection("col1", "col2", "col3");

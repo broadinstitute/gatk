@@ -106,7 +106,8 @@ public class CollectF1R2Counts extends LocusWalker {
         depthOneAltHistograms = new DepthOneHistograms(maxDepth);
         // Intentionally not use try-with-resources so that the writer stays open outside of the try block
         try {
-            altTableWriter = new AltSiteRecordTableWriter(altDataTable);
+            final String sample = getHeaderForReads().getReadGroups().stream().map(rg -> rg.getSample()).findFirst().get();
+            altTableWriter = new AltSiteRecordTableWriter(altDataTable, sample);
         } catch (IOException e) {
             throw new UserException(String.format("Encountered an IO exception creating a writer for %s", altDataTable), e);
         }
