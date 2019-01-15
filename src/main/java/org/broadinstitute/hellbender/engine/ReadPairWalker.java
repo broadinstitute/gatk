@@ -96,6 +96,7 @@ public abstract class ReadPairWalker extends GATKTool {
         final String[] currentReadname = {null};
         getTransformedReadStream(countedFilter)
                 .forEachOrdered(read -> {
+                    logger.debug(read.getName());
                     if (!read.getName().equals(currentReadname[0])){
                         apply(readSet);
                         readSet.clear();
@@ -103,6 +104,7 @@ public abstract class ReadPairWalker extends GATKTool {
                         currentReadname[0] = read.getName();
                     }
                     readSet.add(read);
+                    logger.debug(readSet.size());
                     progressMeter.update(getReadInterval(read));
                 });
         if(!readSet.isEmpty()) {
