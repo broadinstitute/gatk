@@ -1,0 +1,36 @@
+BGZF block information for file: 4featuresHG38Header.EXTRA_TERMINATOR_BLOCK_IN_MIDDLE.vcf.gz
+
+Block #1 at file offset 0
+	- compressed size: 12409
+	- uncompressed size: 65498
+
+Block #2 at file offset 12409
+	- compressed size: 28
+	- uncompressed size: 0
+
+*******************************************************
+ERROR: Premature BGZF 0-byte terminator block was found
+at block number: 2
+*******************************************************
+
+Block #3 at file offset 12437
+	- compressed size: 6497
+	- uncompressed size: 65498
+
+Block #4 at file offset 18934
+	- compressed size: 6229
+	- uncompressed size: 46819
+
+Block #5 at file offset 25163
+	- compressed size: 28
+	- uncompressed size: 0
+
+***************************************************************************
+Final BGZF 0-byte terminator block FOUND as expected at block number 5
+***************************************************************************
+
+***********************************************************
+ERROR: Premature BGZF 0-byte terminator block(s) were found
+at block number(s): 2
+***********************************************************
+
