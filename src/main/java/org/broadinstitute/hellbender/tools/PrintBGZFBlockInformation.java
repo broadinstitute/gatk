@@ -27,15 +27,15 @@ import java.util.List;
  * The output looks like this:
  * </p>
  * <pre>
- *     Block at file offset 0
- *         - compressed size: 12932
- *         - uncompressed size: 65280
+ *        Block #1 at file offset 0
+ *            - compressed size: 12409
+ *            - uncompressed size: 65498
  *
- *     Block at file offset 12932
- *         - compressed size: 9978
- *         - uncompressed size: 65280
- *     ...
- *     etc.
+ *        Block #2 at file offset 12409
+ *            - compressed size: 6497
+ *            - uncompressed size: 65498
+ *        ...
+ *        etc.
  * </pre>
  * <p>
  * The output can be redirected to a file using the -O option.
