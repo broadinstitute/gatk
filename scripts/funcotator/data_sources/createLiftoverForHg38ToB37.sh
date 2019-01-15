@@ -7,10 +7,10 @@
 #
 # DESCRIPTION:
 #
-# This script will create a liftover chain file that goes from b37 -> hg38
+# This script will create a liftover chain file that goes from hg38 -> b37
 #
 # EXAMPLE:
-#   ./createLiftoverChainFileForB37ToHg38.sh
+#   ./createLiftoverChainFileForHg38ToB37.sh
 #
 # AUTHOR: Jonn Smith
 #
