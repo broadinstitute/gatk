@@ -6,6 +6,7 @@ import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.Histogram;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.SequenceUtil;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
@@ -69,8 +70,6 @@ public class LearnReadOrientationModel extends CommandLineProgram {
 
     List<Histogram<Integer>> altHistograms;
 
-    final ArtifactPriorCollection artifactPriorCollection = new ArtifactPriorCollection();;
-
     @Override
     protected void onStartup(){
         final MetricsFile<?, Integer> referenceSiteMetrics = readMetricsFile(refHistogramTable);
@@ -88,9 +87,13 @@ public class LearnReadOrientationModel extends CommandLineProgram {
     public Object doWork(){
         final int defaultInitialListSize = 1_000_000;
 
-        final Map<String, List<AltSiteRecord>> altDesignMatrixByContext =
-                AltSiteRecord.readAltSiteRecords(altDataTable, defaultInitialListSize).stream()
-                        .collect(Collectors.groupingBy(AltSiteRecord::getReferenceContext));
+        final Pair<String, List<AltSiteRecord>> sampleAndRecords = AltSiteRecord.readAltSiteRecords(altDataTable, defaultInitialListSize);
+
+        final String sample = sampleAndRecords.getLeft();
+        final Map<String, List<AltSiteRecord>> altDesignMatrixByContext = sampleAndRecords.getRight().stream()
+                .collect(Collectors.groupingBy(AltSiteRecord::getReferenceContext));
+
+        final ArtifactPriorCollection artifactPriorCollection = new ArtifactPriorCollection(sample);
 
         // Since e.g. G->T under AGT F1R2 is equivalent to C->A under ACT F2R1, combine the data
         for (final String refContext : F1R2FilterConstants.CANONICAL_KMERS){

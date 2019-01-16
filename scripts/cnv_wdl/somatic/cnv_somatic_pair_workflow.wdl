@@ -90,6 +90,7 @@ workflow CNVSomaticPairWorkflow {
     ##############################################
     Int? max_num_segments_per_chromosome
     Int? min_total_allele_count
+    Int? min_total_allele_count_normal
     Float? genotyping_homozygous_log_ratio_threshold
     Float? genotyping_base_error_rate
     Float? kernel_variance_copy_ratio
@@ -218,6 +219,7 @@ workflow CNVSomaticPairWorkflow {
             normal_allelic_counts = CollectAllelicCountsNormal.allelic_counts,
             max_num_segments_per_chromosome = max_num_segments_per_chromosome,
             min_total_allele_count = min_total_allele_count,
+            min_total_allele_count_normal = min_total_allele_count_normal,
             genotyping_homozygous_log_ratio_threshold = genotyping_homozygous_log_ratio_threshold,
             genotyping_base_error_rate = genotyping_base_error_rate,
             kernel_variance_copy_ratio = kernel_variance_copy_ratio,
@@ -345,7 +347,7 @@ workflow CNVSomaticPairWorkflow {
                 denoised_copy_ratios = DenoiseReadCountsNormal.denoised_copy_ratios,
                 allelic_counts = CollectAllelicCountsNormal.allelic_counts,
                 max_num_segments_per_chromosome = max_num_segments_per_chromosome,
-                min_total_allele_count = min_total_allele_count,
+                min_total_allele_count = min_total_allele_count_normal,
                 genotyping_homozygous_log_ratio_threshold = genotyping_homozygous_log_ratio_threshold,
                 genotyping_base_error_rate = genotyping_base_error_rate,
                 kernel_variance_copy_ratio = kernel_variance_copy_ratio,
@@ -542,6 +544,7 @@ task ModelSegments {
     File? normal_allelic_counts
     Int? max_num_segments_per_chromosome
     Int? min_total_allele_count
+    Int? min_total_allele_count_normal
     Float? genotyping_homozygous_log_ratio_threshold
     Float? genotyping_base_error_rate
     Float? kernel_variance_copy_ratio
@@ -577,6 +580,11 @@ task ModelSegments {
     # If optional output_dir not specified, use "out"
     String output_dir_ = select_first([output_dir, "out"])
 
+    # default values are min_total_allele_count_ = 0 in matched-normal mode
+    #                                            = 30 in case-only mode
+    Int default_min_total_allele_count = if defined(normal_allelic_counts) then 0 else 30
+    Int min_total_allele_count_ = select_first([min_total_allele_count, default_min_total_allele_count])
+
     command <<<
         set -e
         mkdir ${output_dir_}
@@ -586,7 +594,8 @@ task ModelSegments {
             --denoised-copy-ratios ${denoised_copy_ratios} \
             --allelic-counts ${allelic_counts} \
             ${"--normal-allelic-counts " + normal_allelic_counts} \
-            --minimum-total-allele-count ${default="30" min_total_allele_count} \
+            --minimum-total-allele-count-case ${min_total_allele_count_} \
+            --minimum-total-allele-count-normal ${default="30" min_total_allele_count_normal} \
             --genotyping-homozygous-log-ratio-threshold ${default="-10.0" genotyping_homozygous_log_ratio_threshold} \
             --genotyping-base-error-rate ${default="0.05" genotyping_base_error_rate} \
             --maximum-number-of-segments-per-chromosome ${default="1000" max_num_segments_per_chromosome} \
@@ -597,14 +606,14 @@ task ModelSegments {
             --window-size ${sep=" --window-size " window_sizes} \
             --number-of-changepoints-penalty-factor ${default="1.0" num_changepoints_penalty_factor} \
             --minor-allele-fraction-prior-alpha ${default="25.0" minor_allele_fraction_prior_alpha} \
-            --number-of-samples-copy-ratio ${default=100 num_samples_copy_ratio} \
-            --number-of-burn-in-samples-copy-ratio ${default=50 num_burn_in_copy_ratio} \
-            --number-of-samples-allele-fraction ${default=100 num_samples_allele_fraction} \
-            --number-of-burn-in-samples-allele-fraction ${default=50 num_burn_in_allele_fraction} \
+            --number-of-samples-copy-ratio ${default="100" num_samples_copy_ratio} \
+            --number-of-burn-in-samples-copy-ratio ${default="50" num_burn_in_copy_ratio} \
+            --number-of-samples-allele-fraction ${default="100" num_samples_allele_fraction} \
+            --number-of-burn-in-samples-allele-fraction ${default="50" num_burn_in_allele_fraction} \
             --smoothing-credible-interval-threshold-copy-ratio ${default="2.0" smoothing_threshold_copy_ratio} \
             --smoothing-credible-interval-threshold-allele-fraction ${default="2.0" smoothing_threshold_allele_fraction} \
-            --maximum-number-of-smoothing-iterations ${default=10 max_num_smoothing_iterations} \
-            --number-of-smoothing-iterations-per-fit ${default=0 num_smoothing_iterations_per_fit} \
+            --maximum-number-of-smoothing-iterations ${default="10" max_num_smoothing_iterations} \
+            --number-of-smoothing-iterations-per-fit ${default="0" num_smoothing_iterations_per_fit} \
             --output ${output_dir_} \
             --output-prefix ${entity_id}
 

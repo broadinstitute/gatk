@@ -74,7 +74,6 @@ public class ReadOrientationModelIntegrationTest extends CommandLineProgramTest 
         new Main().instanceMain(makeCommandLineArgs(
                 Arrays.asList(
                     "-I", hapmapBamSnippet,
-                    "-" + M2ArgumentCollection.TUMOR_SAMPLE_SHORT_NAME, "SM-CEMAH",
                     "-R", b37_reference_20_21,
                     "--" + M2ArgumentCollection.ARTIFACT_PRIOR_TABLE_NAME, priorTable.getAbsolutePath(),
                     "-O", unfilteredVcf.getAbsolutePath(),

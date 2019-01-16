@@ -8,6 +8,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.IOException;
 
 public final class SamAssertionUtilsUnitTest extends GATKBaseTest {
 
@@ -94,5 +95,11 @@ public final class SamAssertionUtilsUnitTest extends GATKBaseTest {
     @Test(dataProvider = "testCRAMContentsIfCRAMFail", expectedExceptions = AssertionError.class)
     public void testAssertCRAMContentsIfCRAM(File putativeCRAMFile) {
         SamAssertionUtils.assertCRAMContentsIfCRAM(putativeCRAMFile);
+    }
+
+    @Test
+    public void testAssertOutBamContainsInBamProgramRecords() throws IOException{
+        File testFile = new File(TEST_DATA_DIR, "file1.bam");
+        SamAssertionUtils.assertOutBamContainsInBamProgramRecords(testFile, testFile);
     }
 }

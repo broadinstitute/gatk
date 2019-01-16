@@ -76,7 +76,6 @@ public final class GATKVCFConstants {
     public static final String NON_DIPLOID_RATIO_KEY =              "OND";
     public static final String ORIGINAL_CONTIG_KEY =                "OriginalChr"; //LiftoverVariants
     public static final String ORIGINAL_START_KEY =                 "OriginalStart"; //LiftoverVariants
-    public static final String N_COUNT_KEY =                        "NCount";
     public static final String RBP_INCONSISTENT_KEY =               "PhasingInconsistent"; //ReadBackedPhasing
     public static final String GENOTYPE_PRIOR_KEY =                 "PG";
     public static final String POSITIVE_LABEL_KEY =                 "POSITIVE_TRAIN_SITE";
@@ -112,8 +111,12 @@ public final class GATKVCFConstants {
     public static final String GERMLINE_QUAL_VCF_ATTRIBUTE =  "GERMQ";
     public static final String REALIGNMENT_COUNTS_VCF_ATTRIBUTE =   "RCNTS";
     public static final String CONTAMINATION_QUAL_ATTRIBUTE =  "CONTQ";
-    public static final List<String> STANDARD_MUTECT_INFO_FIELDS = Arrays.asList(NORMAL_LOD_KEY, TUMOR_LOD_KEY, NORMAL_ARTIFACT_LOD_ATTRIBUTE,
-            EVENT_COUNT_IN_HAPLOTYPE_KEY, IN_PON_VCF_ATTRIBUTE, POPULATION_AF_VCF_ATTRIBUTE, GERMLINE_QUAL_VCF_ATTRIBUTE, CONTAMINATION_QUAL_ATTRIBUTE);
+    public static final String ORIGINAL_CONTIG_MISMATCH_KEY =       "OCM";
+    public static final String N_COUNT_KEY =                        "NCount";
+    public static final String UNIQUE_ALT_READ_SET_COUNT_KEY = "UNIQ_ALT_READ_COUNT";
+    public static final String STRAND_ARTIFACT_POSTERIOR_KEY =      "SAPP"; // Strand Artifact Filter
+    public static final String STRAND_ARTIFACT_AF_KEY =             "SAAF"; // Strand Artifact Filter
+    public static final String MEDIAN_BASE_QUALITY_KEY = "MBQ";
 
     // FORMAT keys
     public static final String ALLELE_BALANCE_KEY =                 "AB";
@@ -136,12 +139,9 @@ public final class GATKVCFConstants {
 
     // M2-specific FORMAT keys
     public static final String ALLELE_FRACTION_KEY =                "AF";
-    public static final String STRAND_ARTIFACT_POSTERIOR_KEY =      "SAPP"; // Strand Artifact Filter
-    public static final String STRAND_ARTIFACT_AF_KEY =             "SAAF"; // Strand Artifact Filter
     public static final String ROF_POSTERIOR_KEY =                  "P_RO"; // For read orientation filter
     public static final String ROF_PRIOR_KEY =                      "P_PRIOR_RO";
     public static final String ROF_TYPE_KEY =                       "ROF_TYPE";
-    public static final String ORIGINAL_CONTIG_MISMATCH_KEY =       "OCM";
     public static final String POTENTIAL_POLYMORPHIC_NUMT_KEY =     "NUMT";
 
     //FILTERS
@@ -185,6 +185,7 @@ public final class GATKVCFConstants {
     public final static String NON_REF_SYMBOLIC_ALLELE_NAME = "NON_REF";
     public final static String SPANNING_DELETION_SYMBOLIC_ALLELE_NAME_DEPRECATED = "*:DEL";
     public final static Allele SPANNING_DELETION_SYMBOLIC_ALLELE_DEPRECATED = Allele.create("<" + SPANNING_DELETION_SYMBOLIC_ALLELE_NAME_DEPRECATED + ">", false); // represents any possible spanning deletion allele at this si
+    public static final String ALLELE_SPECIFIC_ANNOTATION_PREFIX = "AS";
 
 
     public static boolean isSpanningDeletion(final Allele allele){

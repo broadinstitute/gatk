@@ -72,16 +72,17 @@ public abstract class VariantLocusWalker extends VariantWalkerBase {
     protected void initializeDrivingVariants() {
         drivingVariantsFeatureInput = new FeatureInput<>(drivingVariantFile, "drivingVariantFile");
 
-        //This is the data source for the driving source of variants, which uses a cache lookahead of FEATURE_CACHE_LOOKAHEAD
-        drivingVariants = new FeatureDataSource<>(drivingVariantsFeatureInput, FEATURE_CACHE_LOOKAHEAD, VariantContext.class, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
+        // This is the data source for the driving source of variants,
+        // which uses a cache lookahead of getDrivingVariantCacheLookAheadBases()
+        drivingVariants = new FeatureDataSource<>(drivingVariantsFeatureInput, getDrivingVariantCacheLookAheadBases(), VariantContext.class, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
                 referenceArguments.getReferencePath());
 
-        //Add the driving datasource to the feature manager too so that it can be queried. Setting lookahead to 0 to avoid caching.
-        //Note: we are disabling lookahead here because of windowed queries that need to "look behind" as well.
+        // Also add the driving datasource to the feature manager so that it can be queried. Setting cache lookahead
+        // to 0 to avoid caching. Note: we are disabling lookahead here because of windowed queries that need to "look behind" as well.
         features.addToFeatureSources(0, drivingVariantsFeatureInput, VariantContext.class, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
                 referenceArguments.getReferencePath());
 
-        //Note: the intervals for the driving variants are set in onStartup
+        // Note: the intervals for the driving variants are set in onStartup()
     }
 
     /**
@@ -139,7 +140,7 @@ public abstract class VariantLocusWalker extends VariantWalkerBase {
             // Traverse loci in shards. For any shard with overlapping variants, drop down to per-locus iteration,
             // calling apply for a single locus, only if there are overlapping variants, passing all such variants
             // as a group.
-            Utils.stream(new ShardedIntervalIterator(getTraversalIntervals().iterator(), FEATURE_CACHE_LOOKAHEAD))
+            Utils.stream(new ShardedIntervalIterator(getTraversalIntervals().iterator(), getDrivingVariantCacheLookAheadBases()))
                     .forEachOrdered (shard -> {
                         if (drivingVariants.query(shard).hasNext()) {
                             getLocusStream(Collections.singletonList(new SimpleInterval(shard.getContig(), shard.getStart(), shard.getEnd())))

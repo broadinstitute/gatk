@@ -187,7 +187,7 @@ workflow CNVGermlineCaseScatteredWorkflow {
         Array[Array[File]] read_counts_entity_id = CNVGermlineCaseWorkflow.read_counts_entity_id
         Array[Array[File]] read_counts = CNVGermlineCaseWorkflow.read_counts
         Array[File] contig_ploidy_calls_tars = CNVGermlineCaseWorkflow.contig_ploidy_calls_tar
-        Array[Array[File]] gcnv_calls_tars = CNVGermlineCaseWorkflow.gcnv_calls_tars
+        Array[Array[Array[File]]] gcnv_calls_tars = CNVGermlineCaseWorkflow.gcnv_calls_tars
         Array[Array[File]] gcnv_tracking_tars = CNVGermlineCaseWorkflow.gcnv_tracking_tars
         Array[Array[File]] genotyped_intervals_vcf = CNVGermlineCaseWorkflow.genotyped_intervals_vcf
         Array[Array[File]] genotyped_segments_vcf = CNVGermlineCaseWorkflow.genotyped_segments_vcf

@@ -9,10 +9,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -363,6 +360,43 @@ public class TableReaderUnitTest extends GATKBaseTest {
                 return dataLine.toArray();
             }
         };
+
+        Assert.assertEquals(reader.readRecord(), new String[] { "1", "2", "3" });
+        Assert.assertTrue(tested[0], "the readDataLine code did not get executed");
+    }
+
+    @Test
+    public void testMetadata() throws IOException {
+        final String key1 = "key1";
+        final String value1 = "val1";
+        final String key2 = "key2";
+        final String value2 = "val2";
+
+        final File testFile = createTestInput(
+                TableUtils.COMMENT_PREFIX + TableWriter.METADATA_TAG + key1 + "=" + value1,
+                TableUtils.COMMENT_PREFIX + TableWriter.METADATA_TAG + key2 + "=" + value2,
+                String.join("" + TableUtils.COLUMN_SEPARATOR, "col1", "col2", "col3"),
+                String.join("" + TableUtils.COLUMN_SEPARATOR, "1", "2", "3")
+        );
+
+        final boolean[] tested = new boolean[1];
+
+        final TableReader<String[]> reader = new TableReader<String[]>(testFile) {
+            @Override
+            protected String[] createRecord(final DataLine dataLine) {
+                Assert.assertNotNull(columns());
+                Assert.assertTrue(columns().matchesAll(0, "col1", "col2", "col3"));
+                Assert.assertEquals(columns().indexOf("no-col"), -1);
+                tested[0] = true;
+                return dataLine.toArray();
+            }
+        };
+
+        final Map<String, String> metadata = reader.getMetadata();
+        Assert.assertEquals(metadata.size(), 2);
+        Assert.assertEquals(metadata.get(key1), value1);
+        Assert.assertEquals(metadata.get(key2), value2);
+
 
         Assert.assertEquals(reader.readRecord(), new String[] { "1", "2", "3" });
         Assert.assertTrue(tested[0], "the readDataLine code did not get executed");

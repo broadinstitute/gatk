@@ -124,6 +124,8 @@ public abstract class TableWriter<R> implements Closeable {
      */
     private boolean headerWritten = false;
 
+    public static final String METADATA_TAG = "<METADATA>";
+
     /**
      * Creates a new table writer given the file and column names.
      *
@@ -168,6 +170,14 @@ public abstract class TableWriter<R> implements Closeable {
         Utils.nonNull(comment, "The comment cannot be null.");
         writer.writeNext(new String[]{TableUtils.COMMENT_PREFIX + comment}, false);
         lineNumber++;
+    }
+
+    // write a comment line of the form #<METADATA>key=value
+    public final void writeMetadata(final String key, final String value) throws IOException {
+        Utils.nonNull(key);
+        Utils.nonNull(value);
+        Utils.validateArg(!headerWritten, "Metadata must precede the header.");
+        writeComment(METADATA_TAG + key + "=" + value);
     }
 
     /**

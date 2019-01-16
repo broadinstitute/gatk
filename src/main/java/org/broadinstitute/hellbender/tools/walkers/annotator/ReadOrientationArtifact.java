@@ -29,14 +29,17 @@ import static org.broadinstitute.hellbender.tools.walkers.readorientation.F1R2Fi
  * {@link LearnReadOrientationModel}
  */
 public class ReadOrientationArtifact extends GenotypeAnnotation implements OrientationBiasMixtureModelAnnotation {
-    private ArtifactPriorCollection artifactPriorCollection;
+    private Map<String, ArtifactPriorCollection> artifactPriorCollections = new HashMap<>();
     private int minimumBaseQuality = 20;
 
     // Barclay requires that each annotation define a constructor that takes an argument
     public ReadOrientationArtifact(){ }
 
-    public ReadOrientationArtifact(final File artifactPriorTable){
-        artifactPriorCollection = ArtifactPriorCollection.readArtifactPriors(artifactPriorTable);
+    public ReadOrientationArtifact(final Collection<File> artifactPriorTables){
+        for (final File file : artifactPriorTables) {
+            final ArtifactPriorCollection artifactPriorCollection = ArtifactPriorCollection.readArtifactPriors(file);
+            artifactPriorCollections.put(artifactPriorCollection.getSample(), artifactPriorCollection);
+        }
     }
 
     @Override
@@ -63,12 +66,14 @@ public class ReadOrientationArtifact extends GenotypeAnnotation implements Orien
         Utils.nonNull(likelihoods);
 
         /** This case may happen when for instance {@link StandardArgumentDefinitions.ENABLE_ALL_ANNOTATIONS} is turned on **/
-        if (artifactPriorCollection == null){
+        if (artifactPriorCollections == null){
             return;
         }
 
         // As of June 2018, genotype is hom ref iff we have the normal sample, but this may change in the future
         if (g.isHomRef() || !vc.isSNP() ){
+            return;
+        } else if (!artifactPriorCollections.containsKey(g.getSampleName())) {
             return;
         }
 
@@ -127,7 +132,7 @@ public class ReadOrientationArtifact extends GenotypeAnnotation implements Orien
             }
         }
 
-        final Optional<ArtifactPrior> artifactPrior = artifactPriorCollection.get(refContext);
+        final Optional<ArtifactPrior> artifactPrior = artifactPriorCollections.get(g.getSampleName()).get(refContext);
 
         if (! artifactPrior.isPresent()){
             return;

@@ -18,6 +18,7 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.collections.Simple
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.LocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CoveragePerContig;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.SimpleCount;
+import org.broadinstitute.hellbender.tools.copynumber.utils.CopyNumberUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -385,20 +386,20 @@ public final class DetermineGermlineContigPloidy extends CommandLineProgram {
                 : outputDir + File.separator;    //add trailing slash if necessary
         //note that the samples x coverage-by-contig table is referred to as "metadata" by gcnvkernel
         final List<String> arguments = new ArrayList<>(Arrays.asList(
-                "--sample_coverage_metadata=" + samplesByCoveragePerContigFile.getAbsolutePath(),
-                "--output_calls_path=" + outputDirArg + outputPrefix + CALLS_PATH_SUFFIX));
+                "--sample_coverage_metadata=" + CopyNumberUtils.getCanonicalPath(samplesByCoveragePerContigFile),
+                "--output_calls_path=" + CopyNumberUtils.getCanonicalPath(outputDirArg + outputPrefix + CALLS_PATH_SUFFIX)));
         arguments.addAll(germlineContigPloidyModelArgumentCollection.generatePythonArguments(runMode));
         arguments.addAll(germlineContigPloidyHybridADVIArgumentCollection.generatePythonArguments());
 
         final String script;
         if (runMode == RunMode.COHORT) {
             script = COHORT_DETERMINE_PLOIDY_AND_DEPTH_PYTHON_SCRIPT;
-            arguments.add("--interval_list=" + intervalsFile.getAbsolutePath());
-            arguments.add("--contig_ploidy_prior_table=" + inputContigPloidyPriorsFile.getAbsolutePath());
-            arguments.add("--output_model_path=" + outputDirArg + outputPrefix + MODEL_PATH_SUFFIX);
+            arguments.add("--interval_list=" + CopyNumberUtils.getCanonicalPath(intervalsFile));
+            arguments.add("--contig_ploidy_prior_table=" + CopyNumberUtils.getCanonicalPath(inputContigPloidyPriorsFile));
+            arguments.add("--output_model_path=" + CopyNumberUtils.getCanonicalPath(outputDirArg + outputPrefix + MODEL_PATH_SUFFIX));
         } else {
             script = CASE_DETERMINE_PLOIDY_AND_DEPTH_PYTHON_SCRIPT;
-            arguments.add("--input_model_path=" + inputModelDir);
+            arguments.add("--input_model_path=" + CopyNumberUtils.getCanonicalPath(inputModelDir));
         }
         return executor.executeScript(
                 new Resource(script, GermlineCNVCaller.class),

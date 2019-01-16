@@ -25,8 +25,8 @@ public class PileupSummaryUnitTest {
         final List<PileupSummary> ps = Arrays.asList(new PileupSummary(contig, position, refCount, altCount, otherAltCount, alleleFrequency));
 
         final File file = File.createTempFile("pileup_sumary", ".table");
-        PileupSummary.writeToFile(ps, file);
-        final List<PileupSummary> psCopy = PileupSummary.readFromFile(file);
+        PileupSummary.writeToFile("sample", ps, file);
+        final List<PileupSummary> psCopy = PileupSummary.readFromFile(file).getRight();
 
         Assert.assertEquals(psCopy.size(), 1);
         Assert.assertEquals(psCopy.get(0).getContig(), contig);

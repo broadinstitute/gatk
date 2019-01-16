@@ -27,7 +27,7 @@ public abstract class VariantWalker extends VariantWalkerBase {
     public String drivingVariantFile;
 
     // NOTE: keeping the driving source of variants separate from other, supplementary FeatureInputs in our FeatureManager in GATKTool
-    //we do add the driving source to the Feature manager but we do need to treat it differently and thus this field.
+    // we do add the driving source to the Feature manager but we do need to treat it differently and thus this field.
     private FeatureDataSource<VariantContext> drivingVariants;
     private FeatureInput<VariantContext> drivingVariantsFeatureInput;
 
@@ -52,16 +52,17 @@ public abstract class VariantWalker extends VariantWalkerBase {
     protected void initializeDrivingVariants() {
         drivingVariantsFeatureInput = new FeatureInput<>(drivingVariantFile, "drivingVariantFile");
 
-        //This is the data source for the driving source of variants, which uses a cache lookahead of FEATURE_CACHE_LOOKAHEAD
-        drivingVariants = new FeatureDataSource<>(drivingVariantsFeatureInput, FEATURE_CACHE_LOOKAHEAD, VariantContext.class, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
+        // Create a FeatureDataSource for the driving variants FeatureInput, using the
+        // cache lookahead value from getDrivingVariantCacheLookAheadBases()
+        drivingVariants = new FeatureDataSource<>(drivingVariantsFeatureInput, getDrivingVariantCacheLookAheadBases(), VariantContext.class, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
                                                   referenceArguments.getReferencePath());
 
-        //Add the driving datasource to the feature manager too so that it can be queried. Setting lookahead to 0 to avoid caching.
-        //Note: we are disabling lookahead here because of windowed queries that need to "look behind" as well.
+        // Also add the driving variants FeatureInput to FeatureManager as well so that it can be queried,
+        // but use a lookahead value of 0 to avoid caching because of windowed queries that need to "look behind" as well.
         features.addToFeatureSources(0, drivingVariantsFeatureInput, VariantContext.class, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
                                      referenceArguments.getReferencePath());
 
-        //Note: the intervals for the driving variants are set in onStartup
+        // Note: the intervals for the driving variants are set in onStartup()
     }
 
     /**
