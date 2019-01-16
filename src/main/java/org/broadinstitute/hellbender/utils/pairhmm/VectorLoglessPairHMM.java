@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Class for performing the pair HMM for local alignment using AVX instructions contained in a native shared library.
+ * Class for performing the pair HMM for global alignment using AVX instructions contained in a native shared library.
  */
 public final class VectorLoglessPairHMM extends LoglessPairHMM {
 

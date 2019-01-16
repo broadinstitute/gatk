@@ -8,7 +8,7 @@ import java.util.Arrays;
 import static org.broadinstitute.hellbender.utils.pairhmm.PairHMMModel.*;
 
 /**
- * Util class for performing the pair HMM for local alignment. Figure 4.3 in Durbin 1998 book.
+ * Util class for performing the pair HMM for global alignment. Figure 4.1 in Durbin 1998 book.
  */
 public final class Log10PairHMM extends N2MemoryPairHMM {
     /**

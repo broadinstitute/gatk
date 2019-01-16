@@ -20,7 +20,7 @@ import java.util.Map;
 import java.util.function.Function;
 
 /**
- * Class for performing the pair HMM for local alignment. Figure 4.3 in Durbin 1998 book.
+ * Class for performing the pair HMM for global alignment. Figure 4.1 in Durbin 1998 book.
  */
 public abstract class PairHMM implements Closeable{
     protected static final Logger logger = LogManager.getLogger(PairHMM.class);
