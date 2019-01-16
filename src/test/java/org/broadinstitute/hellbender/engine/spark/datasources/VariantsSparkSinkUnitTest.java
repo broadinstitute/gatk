@@ -7,6 +7,7 @@ import htsjdk.samtools.SamStreams;
 import htsjdk.samtools.seekablestream.SeekablePathStream;
 import htsjdk.samtools.seekablestream.SeekableStream;
 import htsjdk.samtools.util.BlockCompressedInputStream;
+import htsjdk.samtools.util.IOUtil;
 import htsjdk.variant.utils.VCFHeaderReader;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
@@ -236,7 +237,7 @@ public final class VariantsSparkSinkUnitTest extends GATKBaseTest {
     private static String getVcfFormat(String outputFile) throws IOException {
         try (InputStream in = openFile(outputFile)) {
             BufferedInputStream bis = new BufferedInputStream(in); // so mark/reset is supported
-            return inferFromUncompressedData(SamStreams.isGzippedSAMFile(bis) ? new GZIPInputStream(bis) : bis);
+            return inferFromUncompressedData(IOUtil.isGZIPInputStream(bis) ? new GZIPInputStream(bis) : bis);
         }
     }
 
