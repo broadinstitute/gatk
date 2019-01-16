@@ -32,6 +32,7 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
 
     private static final String pluginPackageName = "org.broadinstitute.hellbender.engine.filters";
     private static final Class<ReadFilter> pluginBaseClass = org.broadinstitute.hellbender.engine.filters.ReadFilter.class;
+    private static final String READ_PLUGIN_DISPLAY_NAME = "readFilter";
 
     // the purpose of this argument collection is to allow the caller to control the exposure of the command line arguments
     @VisibleForTesting
@@ -90,7 +91,14 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
      * @return A short user-friendly name for this plugin.
      */
     @Override
-    public String getDisplayName() { return ReadFilterArgumentDefinitions.READ_FILTER_LONG_NAME; }
+    public String getDisplayName() {
+        // The value returned by this method is placed into the freemarker property map by the docgen system,
+        // and becomes a variable in the freemarker template language. We can't use the actual argument name
+        // here because the kebabified version ("read-filter") isn't a valid freemarker variable (and is
+        // parsed as an expression with an embedded '-'). So use the pre-kebabified version, which matches
+        // what is used in the template).
+        return READ_PLUGIN_DISPLAY_NAME;
+    }
 
     /**
      * @return the class object for the base class of all plugins managed by this descriptor
