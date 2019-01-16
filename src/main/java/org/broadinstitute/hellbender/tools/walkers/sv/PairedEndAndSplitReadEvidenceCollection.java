@@ -43,7 +43,7 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
     private OutputStreamWriter srWriter;
 
     HashMap<SplitPos, Integer> splitCounts;
-    PriorityQueue<DiscordantRead> discordantPairs;
+    List<DiscordantRead> discordantPairs;
 
     @Override
     public boolean requiresReads() {
@@ -59,14 +59,7 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
 
         splitCounts = new HashMap<>(maxSplitDist * 3);
 
-        final Comparator<DiscordantRead> discReadComparator =
-                Comparator.comparing((DiscordantRead r) -> getBestAvailableSequenceDictionary().getSequenceIndex(r.getContig()))
-                        .thenComparing(DiscordantRead::getStart)
-                        .thenComparing((DiscordantRead r) -> getBestAvailableSequenceDictionary().getSequenceIndex(r.getMateContig()))
-                        .thenComparing(DiscordantRead::getMateStart)
-                        .thenComparing(DiscordantRead::getName);
-
-        discordantPairs = new PriorityQueue<>(discReadComparator);
+        discordantPairs = new ArrayList<>();
 
     }
 
@@ -246,6 +239,14 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
     }
 
     private void flushDiscordantReadPairs() {
+        final Comparator<DiscordantRead> discReadComparator =
+                Comparator.comparing((DiscordantRead r) -> getBestAvailableSequenceDictionary().getSequenceIndex(r.getContig()))
+                        .thenComparing(DiscordantRead::getStart)
+                        .thenComparing((DiscordantRead r) -> getBestAvailableSequenceDictionary().getSequenceIndex(r.getMateContig()))
+                        .thenComparing(DiscordantRead::getMateStart)
+                        .thenComparing(DiscordantRead::getName);
+
+        discordantPairs.sort(discReadComparator);
         discordantPairs.forEach(this::writeDiscordantPair);
         discordantPairs.clear();
     }
