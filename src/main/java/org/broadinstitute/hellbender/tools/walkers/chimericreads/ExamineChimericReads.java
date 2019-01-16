@@ -52,12 +52,12 @@ public class ExamineChimericReads extends ReadPairWalker {
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-            doc="Write output to this file")
+            doc = "Write output to this file")
     public String outputBam;
 
     @Argument(fullName = StandardArgumentDefinitions.METRICS_FILE_LONG_NAME,
             shortName = StandardArgumentDefinitions.METRICS_FILE_SHORT_NAME,
-            doc="Write output to this file")
+            doc = "Write output to this file")
     public String outputMetrics;
 
     @Argument(fullName = "reference-bases-tag-name", shortName = "tn")
@@ -70,8 +70,8 @@ public class ExamineChimericReads extends ReadPairWalker {
         outputWriter = createSAMWriter(IOUtils.getPath(outputBam), false);
     }
 
-    final private Histogram<Integer> minMatchLength = new Histogram<>();
-    final private Histogram<Integer> maxMatchLength = new Histogram<>();
+    final private Histogram<Integer> cisMatchLength = new Histogram<>();
+    final private Histogram<Integer> transMatchLength = new Histogram<>();
     private SAMFileGATKReadWriter outputWriter;
 
     @Override
@@ -84,7 +84,7 @@ public class ExamineChimericReads extends ReadPairWalker {
 
     @Override
     public void apply(final Set<GATKRead> reads) {
-        
+
         final GATKRead readOne = reads.stream().filter(GATKRead::isFirstOfPair).findFirst().orElse(null);
         final GATKRead readTwo = reads.stream().filter(gatkRead -> !gatkRead.isFirstOfPair()).findFirst().orElse(null);
 
@@ -97,33 +97,29 @@ public class ExamineChimericReads extends ReadPairWalker {
         final String refOne = readOne.getAttributeAsString(tagName);
         final String refTwo = readTwo.getAttributeAsString(tagName);
 
-        final int matches, revCompMatches;
+        final byte[] seq1 = refOne.getBytes();
         {
-            final byte[] seq1 = refOne.getBytes();
             final byte[] seq2 = refTwo.getBytes();
             final SmithWatermanAlignment alignmentMis = smithWatermanAligner.alignWithMismatches(seq1, seq2, swParameters, swOverhangStrategy);
 
-            matches = countEquals(alignmentMis.getCigar());
+            final int matches = countEquals(alignmentMis.getCigar());
+            cisMatchLength.increment(matches);
             readOne.setAttribute("c1", alignmentMis.getCigar().toString());
             readTwo.setAttribute("c1", alignmentMis.getCigar().toString());
+            readOne.setAttribute("m1", matches);
+            readTwo.setAttribute("m1", matches);
         }
         {
-            final byte[] seq1 = refOne.getBytes();
             final byte[] seq2 = SequenceUtil.reverseComplement(refTwo).getBytes();
             final SmithWatermanAlignment alignmentMis = smithWatermanAligner.alignWithMismatches(seq1, seq2, swParameters, swOverhangStrategy);
+            readOne.setAttribute("c2", alignmentMis.getCigar().toString());
+            readTwo.setAttribute("c2", alignmentMis.getCigar().toString());
 
-            revCompMatches = countEquals(alignmentMis.getCigar());
-            readOne.setAttribute("c2",alignmentMis.getCigar().toString());
-            readTwo.setAttribute("c2",alignmentMis.getCigar().toString());
+            final int revCompMatches = countEquals(alignmentMis.getCigar());
+            readOne.setAttribute("m2", revCompMatches);
+            readTwo.setAttribute("m2", revCompMatches);
+            transMatchLength.increment(revCompMatches);
         }
-
-        minMatchLength.increment(Math.min(matches, revCompMatches));
-        maxMatchLength.increment(Math.max(matches, revCompMatches));
-
-        readOne.setAttribute("mi", Math.min(matches, revCompMatches));
-        readTwo.setAttribute("mi", Math.min(matches, revCompMatches));
-        readOne.setAttribute("ma", Math.max(matches, revCompMatches));
-        readTwo.setAttribute("ma", Math.max(matches, revCompMatches));
 
         outputWriter.addRead(readOne);
         outputWriter.addRead(readTwo);
@@ -161,9 +157,13 @@ public class ExamineChimericReads extends ReadPairWalker {
     public Object onTraversalSuccess() {
         super.onTraversalSuccess();
 
-        MetricsFile<?,Integer> metricsFile = getMetricsFile();
-        metricsFile.addHistogram(minMatchLength);
-        metricsFile.addHistogram(maxMatchLength);
+        MetricsFile<?, Integer> metricsFile = getMetricsFile();
+        cisMatchLength.setBinLabel("match_length");
+        cisMatchLength.setValueLabel("cis_count");
+        metricsFile.addHistogram(cisMatchLength);
+        transMatchLength.setBinLabel("match_length");
+        transMatchLength.setValueLabel("trans_count");
+        metricsFile.addHistogram(transMatchLength);
 
         metricsFile.write(new File(outputMetrics));
         outputWriter.close();
