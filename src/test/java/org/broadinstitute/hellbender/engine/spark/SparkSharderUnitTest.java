@@ -74,10 +74,11 @@ public class SparkSharderUnitTest extends GATKBaseTest implements Serializable {
         //     [-----]
         //                 [---------]
         //                       [-----------------------]
+        //                                                               [-----------------------]
         //
-        //                      1                   2
-        // ---------------------------------------------------------
-        //    1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7
+        //                      1                   2                   3
+        // ----------------------------------------------------------------
+        //    1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 
         List<TestRead> reads = ImmutableList.of(
                 new TestRead(1, 3), new TestRead(5, 7), new TestRead(7, 9),
@@ -112,6 +113,8 @@ public class SparkSharderUnitTest extends GATKBaseTest implements Serializable {
         next = it.next();
         assertEquals(next._1(), intervals.get(3));
         assertEquals(next._2(), ImmutableList.of());
+
+        assertFalse(it.hasNext());
     }
 
     @Test
