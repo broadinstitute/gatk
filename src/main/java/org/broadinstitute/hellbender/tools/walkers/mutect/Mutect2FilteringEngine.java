@@ -268,6 +268,9 @@ public class Mutect2FilteringEngine {
             // this is \chi in the docs, the correction factor for tumor likelihoods if forced to have maf or 1 - maf
             // as the allele fraction
             final double[] log10OddsOfGermlineHetVsSomatic = new IndexRange(0, altAlleleFractions.length).mapToDouble(n -> {
+                if (altCounts[n] + refCount == 0) {
+                    return 0;
+                }
                 final double log10GermlineAltMinorLikelihood = refCount * Math.log10(1 - maf) + altCounts[n] * Math.log10(maf);
                 final double log10GermlineAltMajorLikelihood = refCount * Math.log10(maf) + altCounts[n] * Math.log10(1 - maf);
                 final double log10GermlineLikelihood = MathUtils.LOG10_ONE_HALF + MathUtils.log10SumLog10(log10GermlineAltMinorLikelihood, log10GermlineAltMajorLikelihood);
