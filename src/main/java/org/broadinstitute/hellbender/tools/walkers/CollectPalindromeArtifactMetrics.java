@@ -25,9 +25,9 @@ import java.io.PrintStream;
 @CommandLineProgramProperties(
         summary = "Prints reads from the provided file(s) with corresponding reference bases (if a reference is provided) to the specified output file (or STDOUT if none specified)",
         oneLineSummary = "Print reads with reference context",
-        programGroup = DiagnosticsAndQCProgramGroup.class,
-        omitFromCommandLine = true
+        programGroup = DiagnosticsAndQCProgramGroup.class
 )
+
 public class CollectPalindromeArtifactMetrics extends ReadWalker {
 
     private PalindromicArtifactMetric metric = new PalindromicArtifactMetric();
@@ -41,7 +41,6 @@ public class CollectPalindromeArtifactMetrics extends ReadWalker {
     private File METRICS_FILE = null;
 
     private PrintStream outputStream = null;
-    private String sample;
 
     @Override
     public void onTraversalStart() {
@@ -59,7 +58,7 @@ public class CollectPalindromeArtifactMetrics extends ReadWalker {
 
     @Override
     public void apply(GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext) {
-        if(read.failsVendorQualityCheck()){
+        if (read.failsVendorQualityCheck()) {
             return;
         }
         if (metric.SAMPLE == null) {
