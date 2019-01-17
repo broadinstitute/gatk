@@ -23,8 +23,8 @@ public final class SliceSampler extends AbstractSliceSampler {
      * Creates a new sampler for a bounded univariate random variable, given a random number generator,
      * a continuous, univariate, unimodal, unnormalized log probability density function,
      * hard limits on the random variable, and a step width.
-     * @param rng      random number generator
-     * @param logPDF   continuous, univariate, unimodal log probability density function (up to additive constant)
+     * @param rng      random number generator, never {@code null}
+     * @param logPDF   continuous, univariate, unimodal log probability density function (up to additive constant), never {@code null}
      * @param xMin     minimum allowed value of the random variable
      * @param xMax     maximum allowed value of the random variable
      * @param width    step width for slice expansion
@@ -43,8 +43,8 @@ public final class SliceSampler extends AbstractSliceSampler {
      * Creates a new sampler for an unbounded univariate random variable, given a random number generator,
      * a continuous, univariate, unimodal, unnormalized log probability density function,
      * and a step width.
-     * @param rng      random number generator
-     * @param logPDF   continuous, univariate, unimodal log probability density function (up to additive constant)
+     * @param rng      random number generator, never {@code null}
+     * @param logPDF   continuous, univariate, unimodal log probability density function (up to additive constant), never {@code null}
      * @param width    step width for slice expansion
      */
     public SliceSampler(final RandomGenerator rng,

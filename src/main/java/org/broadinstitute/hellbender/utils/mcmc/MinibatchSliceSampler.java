@@ -44,10 +44,10 @@ public final class MinibatchSliceSampler<DATA> extends AbstractSliceSampler {
      * a continuous, univariate, unimodal, unnormalized log probability density function
      * (assumed to be a posterior and specified by a prior and a likelihood),
      * hard limits on the random variable, a step width, a minibatch size, and a minibatch approximation threshold.
-     * @param rng                       random number generator
-     * @param data                      list of data
-     * @param logPrior                  log prior component of continuous, univariate, unimodal log posterior (up to additive constant)
-     * @param logLikelihood             log likelihood component of continuous, univariate, unimodal log posterior (up to additive constant)
+     * @param rng                       random number generator, never {@code null}
+     * @param data                      list of data, never {@code null}
+     * @param logPrior                  log prior component of continuous, univariate, unimodal log posterior (up to additive constant), never {@code null}
+     * @param logLikelihood             log likelihood component of continuous, univariate, unimodal log posterior (up to additive constant), never {@code null}
      * @param xMin                      minimum allowed value of the random variable
      * @param xMax                      maximum allowed value of the random variable
      * @param width                     step width for slice expansion
@@ -83,10 +83,10 @@ public final class MinibatchSliceSampler<DATA> extends AbstractSliceSampler {
      * a continuous, univariate, unimodal, unnormalized log probability density function
      * (assumed to be a posterior and specified by a prior and a likelihood),
      * a step width, a minibatch size, and a minibatch approximation threshold.
-     * @param rng                       random number generator
-     * @param data                      list of data
-     * @param logPrior                  log prior component of continuous, univariate, unimodal log posterior (up to additive constant)
-     * @param logLikelihood             log likelihood component of continuous, univariate, unimodal log posterior (up to additive constant)
+     * @param rng                       random number generator, never {@code null}
+     * @param data                      list of data, never {@code null}
+     * @param logPrior                  log prior component of continuous, univariate, unimodal log posterior (up to additive constant), never {@code null}
+     * @param logLikelihood             log likelihood component of continuous, univariate, unimodal log posterior (up to additive constant), never {@code null}
      * @param width                     step width for slice expansion
      * @param minibatchSize             minibatch size
      * @param approxThreshold           threshold for approximation used in {@link MinibatchSliceSampler#isGreaterThanSliceHeight};

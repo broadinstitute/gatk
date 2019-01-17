@@ -38,7 +38,7 @@ abstract class AbstractSliceSampler {
     /**
      * Creates a new sampler for a bounded univariate random variable, given a random number generator, hard limits
      * on the random variable, and a step width.
-     * @param rng      random number generator
+     * @param rng      random number generator, never {@code null}
      * @param xMin     minimum allowed value of the random variable
      * @param xMax     maximum allowed value of the random variable
      * @param width    step width for slice expansion
