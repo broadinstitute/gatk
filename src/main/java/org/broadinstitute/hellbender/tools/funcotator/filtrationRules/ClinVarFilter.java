@@ -39,7 +39,7 @@ public class ClinVarFilter extends FuncotationFilter {
     /**
      * Clinically-significant values to check for within the {@value CLINVAR_SIGNIFICANCE_FUNCOTATION} Funcotation.
      */
-    private static final List<String> CLINVAR_SIGNIFICANCE_MATCHING_VALUES = Arrays.asList("Pathogenic", "Likely_pathogenic");
+    private static final List<String> CLINVAR_SIGNIFICANCE_MATCHING_VALUES = Arrays.asList("Pathogenic", "Likely_pathogenic", "Pathogenic/Likely_pathogenic");
 
     /**
      * Maximum MAF a variant can have in ExAC to pass this rule.

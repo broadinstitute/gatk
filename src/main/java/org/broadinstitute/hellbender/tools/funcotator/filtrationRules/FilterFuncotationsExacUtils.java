@@ -52,13 +52,13 @@ public class FilterFuncotationsExacUtils {
                     final String exacAlleleCount = EXAC_ALLELE_COUNT_PREFIX + subpop.name();
                     final String exacAlleleNumber = EXAC_ALLELE_NUMBER_PREFIX + subpop.name();
                     final List<String> keys = Arrays.asList(exacAlleleCount, exacAlleleNumber);
-                    final Stream<Map.Entry<String, String>> matchingFuncotations = funcotations.stream().filter(entry -> keys.contains(entry.getKey()));
-                    final Double ac = matchingFuncotations
+                    final Set<Map.Entry<String, String>> matchingFuncotations = funcotations.stream().filter(entry -> keys.contains(entry.getKey())).collect(Collectors.toSet());
+                    final Double ac = matchingFuncotations.stream()
                             .filter(entry1 -> entry1.getKey().equals(exacAlleleCount))
                             .findFirst()
                             .map(entry -> Double.valueOf(entry.getValue()))
                             .orElse(0d);
-                    final Integer an = matchingFuncotations
+                    final Integer an = matchingFuncotations.stream()
                             .filter(entry1 -> entry1.getKey().equals(exacAlleleNumber))
                             .findFirst()
                             .map(entry -> Integer.valueOf(entry.getValue()))
