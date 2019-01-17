@@ -43,6 +43,11 @@ public class CollectPalindromeArtifactMetrics extends ReadWalker {
     private PrintStream outputStream = null;
 
     @Override
+    public boolean requiresReference() {
+        return true;
+    }
+
+    @Override
     public void onTraversalStart() {
         try {
             outputStream = OUTPUT_FILE != null ? new PrintStream(OUTPUT_FILE) : System.out;
