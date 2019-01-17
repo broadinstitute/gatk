@@ -367,7 +367,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
             return numReducers;
         }
         long size = readInputs.keySet().stream().mapToLong(k -> BucketUtils.dirSize(k)).sum();
-        return 1 + (int)(size / getTargetPartitionSize());
+        return 1 + Math.toIntExact(size / getTargetPartitionSize());
     }
 
     /**
