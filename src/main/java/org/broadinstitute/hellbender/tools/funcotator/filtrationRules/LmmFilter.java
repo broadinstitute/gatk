@@ -28,6 +28,11 @@ public class LmmFilter extends FuncotationFilter {
 
     @Override
     List<FuncotationFiltrationRule> getRules() {
-        return Collections.singletonList(funcotations -> Boolean.valueOf(funcotations.getOrDefault(LMM_FLAGGED, "false")));
+        return Collections.singletonList(funcotations ->
+                getMatchesOrDefault(funcotations, entry -> entry.getKey().equals(LMM_FLAGGED), "false")
+                        .map(Boolean::valueOf)
+                        .reduce(Boolean::logicalOr)
+                        .orElse(false) // Even though we've provided a default value, the Java type system complains without an orElse call.
+        );
     }
 }

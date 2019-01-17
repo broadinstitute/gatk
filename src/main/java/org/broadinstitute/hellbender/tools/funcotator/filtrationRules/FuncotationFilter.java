@@ -2,8 +2,13 @@ package org.broadinstitute.hellbender.tools.funcotator.filtrationRules;
 
 import org.broadinstitute.hellbender.utils.Utils;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * A filter to apply to Funcotations in {@link org.broadinstitute.hellbender.tools.funcotator.FilterFuncotations}.
@@ -33,7 +38,7 @@ public abstract class FuncotationFilter {
      *                                     been "pruned" to remove null / empty values. Never {@code null}
      * @return true if the Funcotations match all of this filter's rules, and false otherwise
      */
-    public Boolean checkFilter(final Map<String, String> prunedTranscriptFuncotations) {
+    public Boolean checkFilter(final Set<Map.Entry<String, String>> prunedTranscriptFuncotations) {
         Utils.nonNull(prunedTranscriptFuncotations);
 
         return getRules().stream()
@@ -46,4 +51,22 @@ public abstract class FuncotationFilter {
      * Build the collection of rules which must match to pass this filter.
      */
     abstract List<FuncotationFiltrationRule> getRules();
+
+    protected Stream<String> matchOnKeyOrDefault(Set<Map.Entry<String, String>> funcotations, String key, String defaultValue) {
+        return getMatchesOrDefault(funcotations, entry -> entry.getKey().equals(key), defaultValue);
+    }
+
+    protected Stream<String> getMatchesOrDefault(Set<Map.Entry<String, String>> funcotations, Predicate<Map.Entry<String, String>> matcher, String defaultValue) {
+        Set<String> matched = funcotations.stream().filter(matcher).map(Map.Entry::getValue).collect(Collectors.toSet());
+        if (matched.isEmpty()) {
+            return Stream.of(defaultValue);
+        } else {
+            return matched.stream();
+        }
+    }
+
+    protected Boolean containsKey(Set<Map.Entry<String, String>> funcotations, String key) {
+        return funcotations.stream().anyMatch(entry -> entry.getKey().equals(key));
+    }
+
 }

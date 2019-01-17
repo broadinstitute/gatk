@@ -2,6 +2,9 @@ package org.broadinstitute.hellbender.tools.funcotator.filtrationRules;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * {@link FuncotationFilter} matching variants which:
@@ -50,9 +53,11 @@ public class ClinVarFilter extends FuncotationFilter {
     @Override
     List<FuncotationFiltrationRule> getRules() {
         return Arrays.asList(
-                funcotations -> funcotations.containsKey(ACMG_DISEASE_FUNCOTATION),
+                funcotations -> containsKey(funcotations, ACMG_DISEASE_FUNCOTATION),
                 funcotations -> {
-                    final String significance = funcotations.getOrDefault(CLINVAR_SIGNIFICANCE_FUNCOTATION, "");
+                    final Set<String> significance = matchOnKeyOrDefault(funcotations, CLINVAR_SIGNIFICANCE_FUNCOTATION, "")
+                            .filter(value -> !value.isEmpty())
+                            .collect(Collectors.toSet());
                     return CLINVAR_SIGNIFICANCE_MATCHING_VALUES.stream().anyMatch(significance::contains);
                 },
                 FilterFuncotationsExacUtils.buildExacMaxMafRule(CLINVAR_MAX_MAF));
