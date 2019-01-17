@@ -1,9 +1,5 @@
 package org.broadinstitute.hellbender.tools.genomicsdb;
 
-import com.intel.genomicsdb.GenomicsDBUtils;
-import com.intel.genomicsdb.model.GenomicsDBExportConfiguration;
-import com.intel.genomicsdb.model.GenomicsDBVidMapProto;
-import com.intel.genomicsdb.reader.GenomicsDBFeatureReader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.tribble.AbstractFeatureReader;
@@ -30,6 +26,10 @@ import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+import org.genomicsdb.GenomicsDBUtils;
+import org.genomicsdb.model.GenomicsDBExportConfiguration;
+import org.genomicsdb.model.GenomicsDBVidMapProto;
+import org.genomicsdb.reader.GenomicsDBFeatureReader;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
