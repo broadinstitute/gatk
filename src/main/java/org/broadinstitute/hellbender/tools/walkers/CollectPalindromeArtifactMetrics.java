@@ -68,7 +68,7 @@ public class CollectPalindromeArtifactMetrics extends ReadWalker {
         }
         if (metric.SAMPLE == null) {
             metric.SAMPLE = ReadUtils.getSampleName(read, getHeaderForReads());
-            logger.info("got sample name from first read: ", metric.SAMPLE);
+            logger.info("got sample name from first read: " + metric.SAMPLE);
         }
 
         final boolean isArtifact = read.hasAttribute(CLIPPED_KEY);
@@ -77,13 +77,13 @@ public class CollectPalindromeArtifactMetrics extends ReadWalker {
             metric.CLIPPED_BASES += read.getAttributeAsInteger(CLIPPED_KEY);
         }
         metric.TOTAL_READS++;
-        if (read.hasAttribute(UMI_KEY)){
+        if (read.hasAttribute(UMI_KEY)) {
             String[] umi = read.getAttributeAsString(UMI_KEY).split("-");
-            if (isArtifact){
+            if (isArtifact) {
                 metric.COUNT_ARTIFACT_UMIS++;
             }
             metric.TOTAL_UMIS++;
-            if(umi[0].equals(umi[1])) {
+            if (umi[0].equals(umi[1])) {
                 if (isArtifact) {
                     metric.ARTIFACT_UMIS_EQUAL++;
                 }
@@ -122,55 +122,55 @@ public class CollectPalindromeArtifactMetrics extends ReadWalker {
     static public class PalindromicArtifactMetric extends MergeableMetricBase {
 
         @MergeByAssertEquals
-        String SAMPLE;
+        public String SAMPLE;
 
         @MergeByAdding
-        Integer TOTAL_READS=0;
+        public Integer TOTAL_READS = 0;
 
         @MergeByAdding
-        Integer ARTIFACT_READS=0;
+        public Integer ARTIFACT_READS = 0;
 
         @NoMergingIsDerived
-        Double ARTIFACT_RATE=0D;
+        public Double ARTIFACT_RATE = 0D;
 
         @MergeByAdding
-        Integer CLIPPED_BASES=0;
+        public Integer CLIPPED_BASES = 0;
 
         @MergeByAdding
-        Integer TOTAL_BASES=0;
+        public Integer TOTAL_BASES = 0;
 
         @NoMergingIsDerived
-        Double CLIPPING_RATE=0D;
+        public Double CLIPPING_RATE = 0D;
 
         @MergeByAdding
-        Integer TOTAL_UMIS_EQUAL=0;
+        public Integer TOTAL_UMIS_EQUAL = 0;
 
         @MergeByAdding
-        Integer TOTAL_UMIS=0;
+        public Integer TOTAL_UMIS = 0;
 
         @MergeByAdding
-        Integer COUNT_ARTIFACT_UMIS=0;
+        public Integer COUNT_ARTIFACT_UMIS = 0;
 
         @MergeByAdding
-        Integer ARTIFACT_UMIS_EQUAL=0;
+        public Integer ARTIFACT_UMIS_EQUAL = 0;
 
         @MergeByAdding
-        Double ARTIFACT_UMIS_EQUAL_RATE=0D;
+        public Double ARTIFACT_UMIS_EQUAL_RATE = 0D;
 
         @MergeByAdding
-        Double UMIS_EQUAL_RATE=0D;
+        public Double UMIS_EQUAL_RATE = 0D;
 
         @MergeByAdding
-        Integer TOTAL_UMIS_OFF_BY_ONE=0;
+        public Integer TOTAL_UMIS_OFF_BY_ONE = 0;
 
         @MergeByAdding
-        Integer ARTIFACT_UMIS_OFF_BY_ONE=0;
+        public Integer ARTIFACT_UMIS_OFF_BY_ONE = 0;
 
         @MergeByAdding
-        Double UMIS_OFF_BY_ONE_RATE=0D;
+        public Double UMIS_OFF_BY_ONE_RATE = 0D;
 
         @MergeByAdding
-        Double ARTIFACT_UMIS_OFF_BY_ONE_RATE=0D;
+        public Double ARTIFACT_UMIS_OFF_BY_ONE_RATE = 0D;
 
         @Override
         public void calculateDerivedFields() {
@@ -180,12 +180,12 @@ public class CollectPalindromeArtifactMetrics extends ReadWalker {
 
             ARTIFACT_UMIS_EQUAL_RATE = ARTIFACT_UMIS_EQUAL / (double) COUNT_ARTIFACT_UMIS;
             UMIS_EQUAL_RATE = TOTAL_UMIS_EQUAL / (double) TOTAL_UMIS;
-            UMIS_OFF_BY_ONE_RATE = TOTAL_UMIS_OFF_BY_ONE / (double)TOTAL_UMIS ;
+            UMIS_OFF_BY_ONE_RATE = TOTAL_UMIS_OFF_BY_ONE / (double) TOTAL_UMIS;
 
             ARTIFACT_UMIS_EQUAL_RATE = ARTIFACT_UMIS_EQUAL / (double) COUNT_ARTIFACT_UMIS;
             ARTIFACT_UMIS_OFF_BY_ONE_RATE = ARTIFACT_UMIS_OFF_BY_ONE / (double) COUNT_ARTIFACT_UMIS;
 
-            CLIPPING_RATE =  CLIPPED_BASES / (double) TOTAL_BASES;
+            CLIPPING_RATE = CLIPPED_BASES / (double) TOTAL_BASES;
         }
     }
 }
