@@ -30,7 +30,7 @@ import java.io.PrintStream;
 
 public class CollectPalindromeArtifactMetrics extends ReadWalker {
 
-    private PalindromicArtifactMetric metric = new PalindromicArtifactMetric();
+    private final PalindromicArtifactMetric metric = new PalindromicArtifactMetric();
     public static final String CLIPPED_KEY = "XC";
     private static final String UMI_KEY = "RX";
 
@@ -100,11 +100,10 @@ public class CollectPalindromeArtifactMetrics extends ReadWalker {
     @Override
     public void closeTool() {
 
-        final PalindromicArtifactMetric metric = new PalindromicArtifactMetric();
         metric.calculateDerivedFields();
-
         final MetricsFile<PalindromicArtifactMetric, ?> metricsFile = getMetricsFile();
         metricsFile.addMetric(metric);
+
         metricsFile.write(METRICS_FILE);
 
         outputStream.println("Transformed Reads: " + metric.ARTIFACT_READS);
