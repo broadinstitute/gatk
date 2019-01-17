@@ -17,6 +17,7 @@ import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import picard.analysis.MergeableMetricBase;
+import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -25,7 +26,7 @@ import java.io.PrintStream;
 @CommandLineProgramProperties(
         summary = "Prints reads from the provided file(s) with corresponding reference bases (if a reference is provided) to the specified output file (or STDOUT if none specified)",
         oneLineSummary = "Print reads with reference context",
-        programGroup = ExampleProgramGroup.class,
+        programGroup = DiagnosticsAndQCProgramGroup.class,
         omitFromCommandLine = true
 )
 public class CollectPalindromeArtifactMetrics extends ReadWalker {
