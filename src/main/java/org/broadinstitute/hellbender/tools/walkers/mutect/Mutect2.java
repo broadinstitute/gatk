@@ -195,7 +195,7 @@ public final class Mutect2 extends AssemblyRegionWalker {
             logger.warn("Note that the Mutect2 reference confidence mode is in BETA -- the likelihoods model and output format are subject to change in subsequent versions.");
             if ( MTAC.emitReferenceConfidence == ReferenceConfidenceMode.GVCF ) {
                 try {
-                    vcfWriter = new SomaticGVCFWriter(vcfWriter, new ArrayList<Number>(MTAC.GVCFGQBands));
+                    vcfWriter = new SomaticGVCFWriter(vcfWriter, null);//new ArrayList<Integer>(MTAC.GVCFGQBands));
                 } catch ( IllegalArgumentException e ) {
                     throw new CommandLineException.BadArgumentValue("GQBands", "are malformed: " + e.getMessage());
                 }

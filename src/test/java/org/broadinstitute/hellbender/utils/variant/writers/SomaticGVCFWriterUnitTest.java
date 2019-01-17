@@ -22,29 +22,29 @@ public class SomaticGVCFWriterUnitTest {
     private static final String SAMPLE_NAME = "XXYYZZ";
 
 
-    @Test
-    public void testValueBinning() {
-        final GVCFWriterUnitTest.MockWriter mockWriter = new GVCFWriterUnitTest.MockWriter();
-        SomaticGVCFWriter writer = new SomaticGVCFWriter(mockWriter, standardPartition);
-        //derives partitionPrecision 1 from standardPartition values
-        Assert.assertTrue(writer.convertLODtoInt(2.3) == 23);
-        Assert.assertTrue(writer.convertLODtoInt(-2.3) == -23);
-        Assert.assertTrue(writer.convertLODtoInt(2.0) == 20);
-
-        writer = new SomaticGVCFWriter(mockWriter, standardPartition, 2);
-        Assert.assertTrue(writer.convertLODtoInt(2.3) == 230);
-        Assert.assertTrue(writer.convertLODtoInt(-2.3) == -230);
-        Assert.assertTrue(writer.convertLODtoInt(2.0) == 200);
-
-        writer = new SomaticGVCFWriter(mockWriter, standardPartition, 3);
-        Assert.assertTrue(writer.convertLODtoInt(2.3) == 2300);
-        Assert.assertTrue(writer.convertLODtoInt(2.33) == 2330);
-        Assert.assertTrue(writer.convertLODtoInt(2.333) == 2333);
-        Assert.assertTrue(writer.convertLODtoInt(2.3333) == 2333);
-        Assert.assertTrue(writer.convertLODtoInt(2.3337) == 2334);
-        Assert.assertTrue(writer.convertLODtoInt(-2.3) == -2300);
-        Assert.assertTrue(writer.convertLODtoInt(2.0) == 2000);
-    }
+//    @Test
+//    public void testValueBinning() {
+//        final GVCFWriterUnitTest.MockWriter mockWriter = new GVCFWriterUnitTest.MockWriter();
+//        SomaticGVCFWriter writer = new SomaticGVCFWriter(mockWriter, standardPartition);
+//        //derives partitionPrecision 1 from standardPartition values
+//        Assert.assertTrue(writer.convertLODtoInt(2.3) == 23);
+//        Assert.assertTrue(writer.convertLODtoInt(-2.3) == -23);
+//        Assert.assertTrue(writer.convertLODtoInt(2.0) == 20);
+//
+//        writer = new SomaticGVCFWriter(mockWriter, standardPartition, 2);
+//        Assert.assertTrue(writer.convertLODtoInt(2.3) == 230);
+//        Assert.assertTrue(writer.convertLODtoInt(-2.3) == -230);
+//        Assert.assertTrue(writer.convertLODtoInt(2.0) == 200);
+//
+//        writer = new SomaticGVCFWriter(mockWriter, standardPartition, 3);
+//        Assert.assertTrue(writer.convertLODtoInt(2.3) == 2300);
+//        Assert.assertTrue(writer.convertLODtoInt(2.33) == 2330);
+//        Assert.assertTrue(writer.convertLODtoInt(2.333) == 2333);
+//        Assert.assertTrue(writer.convertLODtoInt(2.3333) == 2333);
+//        Assert.assertTrue(writer.convertLODtoInt(2.3337) == 2334);
+//        Assert.assertTrue(writer.convertLODtoInt(-2.3) == -2300);
+//        Assert.assertTrue(writer.convertLODtoInt(2.0) == 2000);
+//    }
 
     @Test
     public void testAddingAndMerging() {

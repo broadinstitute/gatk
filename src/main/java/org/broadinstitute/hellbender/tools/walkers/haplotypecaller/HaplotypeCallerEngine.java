@@ -356,7 +356,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         if ( hcArgs.emitReferenceConfidence == ReferenceConfidenceMode.GVCF ) {
             try {
-                writer = new GVCFWriter(writer, new ArrayList<Number>(hcArgs.GVCFGQBands), hcArgs.genotypeArgs.samplePloidy);
+                writer = new GVCFWriter(writer, new ArrayList<Integer>(hcArgs.GVCFGQBands), hcArgs.genotypeArgs.samplePloidy);
             } catch ( IllegalArgumentException e ) {
                 throw new CommandLineException.BadArgumentValue("GQBands", "are malformed: " + e.getMessage());
             }

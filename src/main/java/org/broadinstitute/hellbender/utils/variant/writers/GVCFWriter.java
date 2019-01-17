@@ -37,7 +37,7 @@ public class GVCFWriter implements VariantContextWriter {
      * @param gqPartitions     a list of GQ partitions, this list must be non-empty and every element must be larger than previous element
      * @param defaultPloidy    the assumed ploidy for input variant context without one.
      */
-    public GVCFWriter(final VariantContextWriter underlyingWriter, final List<Number> gqPartitions, final int defaultPloidy) {
+    public GVCFWriter(final VariantContextWriter underlyingWriter, final List<Integer> gqPartitions, final int defaultPloidy) {
         this.underlyingWriter = Utils.nonNull(underlyingWriter);
         this.gvcfBlockCombiner = new GVCFBlockCombiner(gqPartitions, defaultPloidy);
     }

@@ -135,7 +135,7 @@ public final class ApplyBQSRSparkIntegrationTest extends CommandLineProgramTest 
         String args = " -I " + hiSeqBam +
                 " --" + StandardArgumentDefinitions.BQSR_TABLE_LONG_NAME + " " + resourceDir + "HiSeq.1mb.1RG.highMaxCycle.table.gz" +
                 "" +
-                " -O " + createTempFile("ignore",".bam");
+                " -O " + createTempFile("ignore",".me");
         ArgumentsBuilder ab = new ArgumentsBuilder().add(args);
         IntegrationTestSpec spec = new IntegrationTestSpec(
                 ab.getString() ,

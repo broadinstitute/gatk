@@ -42,7 +42,7 @@ public class GVCFBlockCombiner implements PushPullTransformer<VariantContext> {
 
     GVCFBlock currentBlock = null;
 
-    public GVCFBlockCombiner(List<Number> gqPartitions, int defaultPloidy) {
+    public GVCFBlockCombiner(List<Integer> gqPartitions, int defaultPloidy) {
         this.gqPartitions = parsePartitions(gqPartitions);
         this.defaultPloidy = defaultPloidy;
     }
@@ -59,7 +59,7 @@ public class GVCFBlockCombiner implements PushPullTransformer<VariantContext> {
      * @return a list of HomRefBlocks accepting bands of genotypes qualities split at the points specified in gqPartitions
      */
     @VisibleForTesting
-    RangeMap<Integer,Range<Integer>> parsePartitions(final List<Number> gqPartitions) {
+    RangeMap<Integer,Range<Integer>> parsePartitions(final List<Integer> gqPartitions) {
         Utils.nonEmpty(gqPartitions);
         Utils.containsNoNull(gqPartitions, "The list of GQ partitions contains a null integer");
         final RangeMap<Integer, Range<Integer>> result = TreeRangeMap.create();
