@@ -121,52 +121,52 @@ public class CollectPalindromeArtifactMetrics extends ReadWalker {
         String SAMPLE;
 
         @MergeByAdding
-        Integer TOTAL_READS;
+        Integer TOTAL_READS=0;
 
         @MergeByAdding
-        Integer ARTIFACT_READS;
+        Integer ARTIFACT_READS=0;
 
         @NoMergingIsDerived
-        Double ARTIFACT_RATE;
+        Double ARTIFACT_RATE=0D;
 
         @MergeByAdding
-        Integer CLIPPED_BASES;
+        Integer CLIPPED_BASES=0;
 
         @MergeByAdding
-        Integer TOTAL_BASES;
+        Integer TOTAL_BASES=0;
 
         @NoMergingIsDerived
-        Double CLIPPING_RATE;
+        Double CLIPPING_RATE=0D;
 
         @MergeByAdding
-        Integer TOTAL_UMIS_EQUAL;
+        Integer TOTAL_UMIS_EQUAL=0;
 
         @MergeByAdding
-        Integer TOTAL_UMIS;
+        Integer TOTAL_UMIS=0;
 
         @MergeByAdding
-        Integer COUNT_ARTIFACT_UMIS;
+        Integer COUNT_ARTIFACT_UMIS=0;
 
         @MergeByAdding
-        Integer ARTIFACT_UMIS_EQUAL;
+        Integer ARTIFACT_UMIS_EQUAL=0;
 
         @MergeByAdding
-        Double ARTIFACT_UMIS_EQUAL_RATE;
+        Double ARTIFACT_UMIS_EQUAL_RATE=0D;
 
         @MergeByAdding
-        Double UMIS_EQUAL_RATE;
+        Double UMIS_EQUAL_RATE=0D;
 
         @MergeByAdding
-        Integer TOTAL_UMIS_OFF_BY_ONE;
+        Integer TOTAL_UMIS_OFF_BY_ONE=0;
 
         @MergeByAdding
-        Integer ARTIFACT_UMIS_OFF_BY_ONE;
+        Integer ARTIFACT_UMIS_OFF_BY_ONE=0;
 
         @MergeByAdding
-        Double UMIS_OFF_BY_ONE_RATE;
+        Double UMIS_OFF_BY_ONE_RATE=0D;
 
         @MergeByAdding
-        Double ARTIFACT_UMIS_OFF_BY_ONE_RATE;
+        Double ARTIFACT_UMIS_OFF_BY_ONE_RATE=0D;
 
         @Override
         public void calculateDerivedFields() {
