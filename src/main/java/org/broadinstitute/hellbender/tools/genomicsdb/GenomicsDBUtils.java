@@ -1,12 +1,12 @@
 package org.broadinstitute.hellbender.tools.genomicsdb;
 
 import com.googlecode.protobuf.format.JsonFormat;
-import com.intel.genomicsdb.model.GenomicsDBExportConfiguration;
-import com.intel.genomicsdb.model.GenomicsDBVidMapProto;
 import htsjdk.variant.variantcontext.GenotypeLikelihoods;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.genomicsdb.model.GenomicsDBExportConfiguration;
+import org.genomicsdb.model.GenomicsDBVidMapProto;
 
 import java.io.File;
 import java.io.IOException;

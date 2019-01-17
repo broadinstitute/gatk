@@ -1,11 +1,11 @@
 package org.broadinstitute.hellbender.tools.genomicsdb;
 
-import com.intel.genomicsdb.importer.GenomicsDBImporter;
 import htsjdk.tribble.FeatureReader;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.genomicsdb.importer.GenomicsDBImporter;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;

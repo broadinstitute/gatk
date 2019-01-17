@@ -1,15 +1,6 @@
 package org.broadinstitute.hellbender.tools.genomicsdb;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.intel.genomicsdb.GenomicsDBUtils;
-import com.intel.genomicsdb.importer.GenomicsDBImporter;
-import com.intel.genomicsdb.importer.model.ChromosomeInterval;
-import com.intel.genomicsdb.model.Coordinates;
-import com.intel.genomicsdb.model.GenomicsDBCallsetsMapProto;
-import com.intel.genomicsdb.model.GenomicsDBImportConfiguration;
-import com.intel.genomicsdb.GenomicsDBUtils;
-import com.intel.genomicsdb.model.ImportConfig;
-import com.intel.genomicsdb.model.BatchCompletionCallbackFunctionArgument;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.AbstractFeatureReader;
@@ -39,6 +30,14 @@ import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.nio.SeekableByteChannelPrefetcher;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+import org.genomicsdb.GenomicsDBUtils;
+import org.genomicsdb.importer.GenomicsDBImporter;
+import org.genomicsdb.model.Coordinates;
+import org.genomicsdb.model.GenomicsDBCallsetsMapProto;
+import org.genomicsdb.model.GenomicsDBImportConfiguration;
+import org.genomicsdb.GenomicsDBUtils;
+import org.genomicsdb.model.ImportConfig;
+import org.genomicsdb.model.BatchCompletionCallbackFunctionArgument;
 
 import java.io.IOException;
 import java.nio.channels.SeekableByteChannel;
@@ -129,7 +128,7 @@ import java.net.URISyntaxException;
  * </ul>
  *
  * <h3>Developer Note</h3>
- * To read data from GenomicsDB, use the query interface {@link com.intel.genomicsdb.reader.GenomicsDBFeatureReader}
+ * To read data from GenomicsDB, use the query interface {@link org.genomicsdb.reader.GenomicsDBFeatureReader}
  */
 @DocumentedFeature
 @CommandLineProgramProperties(

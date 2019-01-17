@@ -1,7 +1,5 @@
 package org.broadinstitute.hellbender.engine;
 
-import com.intel.genomicsdb.model.GenomicsDBExportConfiguration;
-import com.intel.genomicsdb.reader.GenomicsDBFeatureReader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.tribble.*;
@@ -20,6 +18,8 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.nio.SeekableByteChannelPrefetcher;
+import org.genomicsdb.model.GenomicsDBExportConfiguration;
+import org.genomicsdb.reader.GenomicsDBFeatureReader;
 
 import java.io.File;
 import java.io.IOException;
