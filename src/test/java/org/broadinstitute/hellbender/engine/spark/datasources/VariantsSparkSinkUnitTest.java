@@ -3,16 +3,19 @@ package org.broadinstitute.hellbender.engine.spark.datasources;
 import com.google.common.io.Files;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
-import htsjdk.samtools.SamStreams;
 import htsjdk.samtools.seekablestream.SeekablePathStream;
 import htsjdk.samtools.seekablestream.SeekableStream;
 import htsjdk.samtools.util.BlockCompressedInputStream;
+import htsjdk.samtools.util.IOUtil;
 import htsjdk.variant.utils.VCFHeaderReader;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
-import htsjdk.variant.vcf.*;
+import htsjdk.variant.vcf.VCFConstants;
+import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFHeaderLine;
+import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -20,15 +23,15 @@ import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.testutils.MiniClusterUtils;
+import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.IndexFeatureFile;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.testutils.MiniClusterUtils;
-import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -236,7 +239,7 @@ public final class VariantsSparkSinkUnitTest extends GATKBaseTest {
     private static String getVcfFormat(String outputFile) throws IOException {
         try (InputStream in = openFile(outputFile)) {
             BufferedInputStream bis = new BufferedInputStream(in); // so mark/reset is supported
-            return inferFromUncompressedData(SamStreams.isGzippedSAMFile(bis) ? new GZIPInputStream(bis) : bis);
+            return inferFromUncompressedData(IOUtil.isGZIPInputStream(bis) ? new GZIPInputStream(bis) : bis);
         }
     }
 
