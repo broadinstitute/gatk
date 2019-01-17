@@ -5,7 +5,6 @@ import htsjdk.samtools.util.StringUtil;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.ExampleProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -32,7 +31,7 @@ import java.io.PrintStream;
 public class CollectPalindromeArtifactMetrics extends ReadWalker {
 
     private PalindromicArtifactMetric metric = new PalindromicArtifactMetric();
-    private static final String CLIPPED_KEY = "XC";
+    public static final String CLIPPED_KEY = "XC";
     private static final String UMI_KEY = "RX";
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output file (if not provided, defaults to STDOUT)", common = false, optional = true)

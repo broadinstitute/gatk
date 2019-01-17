@@ -5,7 +5,7 @@ import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
-import org.broadinstitute.hellbender.tools.walkers.PalindromeArtifactReadWalker;
+import org.broadinstitute.hellbender.tools.walkers.CollectPalindromeArtifactMetrics;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.clipping.ClippingOp;
@@ -125,7 +125,7 @@ public final class PalindromeArtifactClipReadTransformer implements ReadTransfor
             final ClippingOp clippingOp = readIsUpstreamOfMate ? new ClippingOp(0, potentialArtifactBaseCount - 1) :
                     new ClippingOp(read.getLength() - potentialArtifactBaseCount, read.getLength());
             readClipper.addOp(clippingOp);
-            read.setAttribute(PalindromeArtifactReadWalker.CLIPPED_KEY, clippingOp.getLength());
+            read.setAttribute(CollectPalindromeArtifactMetrics.CLIPPED_KEY, clippingOp.getLength());
             return readClipper.clipRead(ClippingRepresentation.HARDCLIP_BASES);
         } else {
             return read;
