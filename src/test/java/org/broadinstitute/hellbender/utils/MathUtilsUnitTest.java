@@ -1432,7 +1432,7 @@ public final class MathUtilsUnitTest extends GATKBaseTest {
         };
     }
 
-    @Test(dataProvider = "getGoodCases", expectedExceptions = GATKException.class)
+    @Test(dataProvider = "getGoodCases")
     public void testToIntExactOrThrowGoodCases(long value){
         Assert.assertEquals(MathUtils.toIntExactOrThrow(value,() -> new GATKException("")), (int)value);
     }
