@@ -1545,4 +1545,16 @@ public final class MathUtils {
     public static boolean isAProbability(final double p){
         return p >= 0 && p <= 1;
     }
+
+    /**
+     * Convert a long to the exact same int value. If it can't be represented exactly as an int, then throw an exception
+     * produced by the given supplier.
+     */
+    public static int toIntExactOrThrow(long toConvert, Supplier<RuntimeException> exceptionSupplier){
+        if( toConvert == (int)toConvert ){
+            return (int)toConvert;
+        } else {
+            throw exceptionSupplier.get();
+        }
+    }
 }

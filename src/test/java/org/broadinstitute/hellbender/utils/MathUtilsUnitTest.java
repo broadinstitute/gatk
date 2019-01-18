@@ -8,6 +8,7 @@ import org.apache.commons.math3.random.RandomGeneratorFactory;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -1402,5 +1403,37 @@ public final class MathUtilsUnitTest extends GATKBaseTest {
                                              final double expected){
         final double EPSILON = 1e-3;
         Assert.assertEquals(MathUtils.log10BetaBinomialProbability(k, n, alpha, beta), expected, EPSILON);
+    }
+
+    @DataProvider
+    public Object[][] getThrowingCases(){
+        return new Object[][]{
+                {(long)(Integer.MAX_VALUE) + 1L},
+                {(long)(Integer.MIN_VALUE) - 1L},
+                {(long)(Integer.MAX_VALUE) * 100L},
+        };
+
+    }
+
+    @Test(dataProvider = "getThrowingCases", expectedExceptions = GATKException.class)
+    public void testToIntExactOrThrowThrowingCases(long value){
+        MathUtils.toIntExactOrThrow(value, () -> new GATKException("can't convert"));
+    }
+
+    @DataProvider
+    public Object[][] getGoodCases(){
+        return new Object[][]{
+                {(long)Integer.MAX_VALUE},
+                {10000L},
+                {10L},
+                {0L},
+                {-10000L},
+                {(long)Integer.MIN_VALUE}
+        };
+    }
+
+    @Test(dataProvider = "getGoodCases", expectedExceptions = GATKException.class)
+    public void testToIntExactOrThrowGoodCases(long value){
+        Assert.assertEquals(MathUtils.toIntExactOrThrow(value,() -> new GATKException("")), (int)value);
     }
 }
