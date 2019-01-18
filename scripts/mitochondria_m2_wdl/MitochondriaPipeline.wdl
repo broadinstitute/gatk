@@ -429,7 +429,7 @@ CODE
     preemptible: select_first([preemptible_tries, 5])
     memory: "3 GB"
     disks: "local-disk " + disk_size + " HDD"
-    docker: "jsotobroad/mtdnaserver:latest"
+    docker: "gatkworkflows/mtdnaserver:1.0"
   }
   output {
     File contamination_file = "haplochecker_out/${basename}.contamination.txt"
