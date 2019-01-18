@@ -144,8 +144,8 @@ public final class CopyRatioModeller {
         }
         final int numSegments = segmentMeansSamples.get(0).size();
         final List<ModeledSegment.SimplePosteriorSummary> posteriorSummaries = new ArrayList<>(numSegments);
-        for (int segment = 0; segment < numSegments; segment++) {
-            final int j = segment;
+        for (int segmentIndex = 0; segmentIndex < numSegments; segmentIndex++) {
+            final int j = segmentIndex;
             final List<Double> meanSamples =
                     segmentMeansSamples.stream().map(s -> s.get(j)).collect(Collectors.toList());
             posteriorSummaries.add(new ModeledSegment.SimplePosteriorSummary(meanSamples));

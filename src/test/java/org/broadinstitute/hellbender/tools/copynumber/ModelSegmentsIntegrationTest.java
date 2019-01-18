@@ -1,7 +1,9 @@
 package org.broadinstitute.hellbender.tools.copynumber;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStandardArgument;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.*;
@@ -10,7 +12,6 @@ import org.broadinstitute.hellbender.tools.copynumber.models.AlleleFractionParam
 import org.broadinstitute.hellbender.tools.copynumber.models.CopyRatioParameter;
 import org.broadinstitute.hellbender.tools.copynumber.models.MultidimensionalModellerUnitTest;
 import org.broadinstitute.hellbender.tools.copynumber.segmentation.MultidimensionalKernelSegmenterUnitTest;
-import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -48,6 +49,7 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
                 .addArgument(CopyNumberStandardArgument.ALLELIC_COUNTS_FILE_LONG_NAME, TUMOR_ALLELIC_COUNTS_FILE.getAbsolutePath())
                 .addArgument(CopyNumberStandardArgument.NORMAL_ALLELIC_COUNTS_FILE_LONG_NAME, NORMAL_ALLELIC_COUNTS_FILE.getAbsolutePath())
                 .addOutput(outputDir)
+                .addArgument(StandardArgumentDefinitions.VERBOSITY_NAME, "INFO")
                 .addArgument(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix);
         runCommandLine(argsBuilder);
         assertOutputFiles(outputDir, outputPrefix, true, true);

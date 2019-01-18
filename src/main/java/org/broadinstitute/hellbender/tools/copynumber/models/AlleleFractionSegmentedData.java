@@ -34,8 +34,8 @@ final class AlleleFractionSegmentedData implements DataCollection {
         this.allelicCounts = Utils.nonNull(allelicCounts);
         this.segments = Utils.nonNull(segments);
 
-        indexedAllelicCounts = new ArrayList<>(allelicCounts.size());
-        indexRangesPerSegment = new ArrayList<>(segments.size());
+        final List<IndexedAllelicCount> indexedAllelicCounts = new ArrayList<>(allelicCounts.size());
+        final List<IndexRange> indexRangesPerSegment = new ArrayList<>(segments.size());
 
         final OverlapDetector<AllelicCount> allelicCountOverlapDetector = allelicCounts.getOverlapDetector();
         final Comparator<Locatable> comparator = allelicCounts.getComparator();
@@ -53,6 +53,9 @@ final class AlleleFractionSegmentedData implements DataCollection {
             indexRangesPerSegment.add(new IndexRange(segmentStartIndex, segmentStartIndex + allelicCountsInSegment.size()));
             startIndex += allelicCountsInSegment.size();
         }
+
+        this.indexedAllelicCounts = Collections.unmodifiableList(indexedAllelicCounts);
+        this.indexRangesPerSegment = Collections.unmodifiableList(indexRangesPerSegment);
     }
 
     AllelicCountCollection getAllelicCounts() {
@@ -72,12 +75,12 @@ final class AlleleFractionSegmentedData implements DataCollection {
     }
 
     List<IndexedAllelicCount> getIndexedAllelicCounts() {
-        return Collections.unmodifiableList(indexedAllelicCounts);
+        return indexedAllelicCounts;
     }
 
     List<IndexedAllelicCount> getIndexedAllelicCountsInSegment(final int segmentIndex) {
-        return Collections.unmodifiableList(indexedAllelicCounts.subList(
-                indexRangesPerSegment.get(segmentIndex).from, indexRangesPerSegment.get(segmentIndex).to));
+        return indexedAllelicCounts.subList(
+                indexRangesPerSegment.get(segmentIndex).from, indexRangesPerSegment.get(segmentIndex).to);
     }
 
     static final class IndexedAllelicCount extends AllelicCount {

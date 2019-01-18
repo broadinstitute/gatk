@@ -43,8 +43,8 @@ final class CopyRatioSegmentedData implements DataCollection {
         minLog2CopyRatioValue = log2CopyRatioValues.stream().min(Double::compareTo).orElse(Double.NaN);
         maxLog2CopyRatioValue = log2CopyRatioValues.stream().max(Double::compareTo).orElse(Double.NaN);
 
-        indexedCopyRatios = new ArrayList<>(copyRatios.size());
-        indexRangesPerSegment = new ArrayList<>(segments.size());
+        final List<IndexedCopyRatio> indexedCopyRatios = new ArrayList<>(copyRatios.size());
+        final List<IndexRange> indexRangesPerSegment = new ArrayList<>(segments.size());
 
         //construct list of lists of copy ratios with an index in order corresponding to that of segments;
         //segment assignment is based on midpoint of copy-ratio interval
@@ -64,6 +64,9 @@ final class CopyRatioSegmentedData implements DataCollection {
             indexRangesPerSegment.add(new IndexRange(segmentStartIndex, segmentStartIndex + copyRatiosInSegment.size()));
             index += copyRatiosInSegment.size();
         }
+
+        this.indexedCopyRatios = Collections.unmodifiableList(indexedCopyRatios);
+        this.indexRangesPerSegment = Collections.unmodifiableList(indexRangesPerSegment);
     }
 
     CopyRatioCollection getCopyRatios() {
@@ -91,12 +94,12 @@ final class CopyRatioSegmentedData implements DataCollection {
     }
 
     List<IndexedCopyRatio> getIndexedCopyRatios() {
-        return Collections.unmodifiableList(indexedCopyRatios);
+        return indexedCopyRatios;
     }
 
     List<IndexedCopyRatio> getIndexedCopyRatiosInSegment(final int segmentIndex) {
-        return Collections.unmodifiableList(indexedCopyRatios.subList(
-                indexRangesPerSegment.get(segmentIndex).from, indexRangesPerSegment.get(segmentIndex).to));
+        return indexedCopyRatios.subList(
+                indexRangesPerSegment.get(segmentIndex).from, indexRangesPerSegment.get(segmentIndex).to);
     }
 
     //estimate global variance empirically by taking average of all per-segment variances

@@ -11,8 +11,7 @@ public class CopyRatio implements Locatable {
     public CopyRatio(final SimpleInterval interval,
                      final double log2CopyRatioValue) {
         Utils.nonNull(interval);
-        Utils.validateArg(Double.isFinite(log2CopyRatioValue),
-                String.format("Non-finite log2 copy ratio at %s is not allowed.", interval));
+        Utils.validateArg(Double.isFinite(log2CopyRatioValue), "Non-finite log2 copy ratio is not allowed.");
         this.interval = interval;
         this.log2CopyRatioValue = log2CopyRatioValue;
     }

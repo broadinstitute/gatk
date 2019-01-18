@@ -4,8 +4,8 @@ import com.google.common.primitives.Doubles;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.math3.stat.descriptive.moment.Mean;
 import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -69,8 +69,8 @@ public final class GibbsSamplerCopyRatioUnitTest extends GATKBaseTest {
     private static final double MEAN_INITIAL = 5.;
     private static final double MEAN_POSTERIOR_STANDARD_DEVIATION_MEAN_TRUTH = 0.1;     //checked with emcee & analytic result
 
-    private static final int NUM_SAMPLES = 750;
-    private static final int NUM_BURN_IN = 250;
+    private static final int NUM_SAMPLES = 1000;
+    private static final int NUM_BURN_IN = 500;
 
     //test specifications
     private static final double RELATIVE_ERROR_THRESHOLD_FOR_CENTERS = 0.01;

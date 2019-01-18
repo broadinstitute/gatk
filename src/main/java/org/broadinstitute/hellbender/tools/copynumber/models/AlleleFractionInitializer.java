@@ -132,10 +132,10 @@ final class AlleleFractionInitializer {
     private AlleleFractionState.MinorFractions calculateInitialMinorFractions(final AlleleFractionSegmentedData data) {
         final int numSegments = data.getNumSegments();
         final AlleleFractionState.MinorFractions result = new AlleleFractionState.MinorFractions(numSegments);
-        for (int segment = 0; segment < numSegments; segment++) {
+        for (int segmentIndex = 0; segmentIndex < numSegments; segmentIndex++) {
             double responsibilityWeightedMinorAlleleReadCount = 0.0;
             double responsibilityWeightedTotalReadCount = 0.0;
-            for (final AllelicCount count : data.getIndexedAllelicCountsInSegment(segment)) {
+            for (final AllelicCount count : data.getIndexedAllelicCountsInSegment(segmentIndex)) {
                 final int a = count.getAltReadCount();
                 final int r = count.getRefReadCount();
                 double altMinorResponsibility;

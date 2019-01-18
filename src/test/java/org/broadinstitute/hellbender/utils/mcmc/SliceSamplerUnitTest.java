@@ -16,7 +16,8 @@ import java.util.function.Function;
 
 
 /**
- * Unit tests for {@link SliceSampler}.
+ * Unit tests for {@link SliceSampler}.  Note that {@link MinibatchSliceSamplerUnitTest} contains
+ * modified versions of these tests.
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
@@ -30,7 +31,7 @@ public final class SliceSamplerUnitTest {
     }
 
     /**
-     * Test slice sampling of a normal distribution.  Checks that input mean and standard deviation are recovered
+     * Tests slice sampling of a normal distribution.  Checks that input mean and standard deviation are recovered
      * by 10000 samples to a relative error of 0.5% and 2%, respectively.
      */
     @Test
@@ -57,7 +58,7 @@ public final class SliceSamplerUnitTest {
     }
 
     /**
-     * Test slice sampling of a monotonic beta distribution as an example of sampling of a bounded random variable.
+     * Tests slice sampling of a monotonic beta distribution as an example of sampling of a bounded random variable.
      * Checks that input mean and variance are recovered by 10000 samples to a relative error of 0.5% and 2%,
      * respectively.
      */
@@ -69,6 +70,8 @@ public final class SliceSamplerUnitTest {
         final double beta = 1.;
         final BetaDistribution betaDistribution = new BetaDistribution(alpha, beta);
         final Function<Double, Double> betaLogPDF = betaDistribution::logDensity;
+        final double mean = betaDistribution.getNumericalMean();
+        final double variance = betaDistribution.getNumericalVariance();
 
         final double xInitial = 0.5;
         final double xMin = 0.;
@@ -78,8 +81,6 @@ public final class SliceSamplerUnitTest {
         final SliceSampler betaSampler = new SliceSampler(rng, betaLogPDF, xMin, xMax, width);
         final double[] samples = Doubles.toArray(betaSampler.sample(xInitial, numSamples));
 
-        final double mean = betaDistribution.getNumericalMean();
-        final double variance = betaDistribution.getNumericalVariance();
         final double sampleMean = new Mean().evaluate(samples);
         final double sampleVariance = new Variance().evaluate(samples);
         Assert.assertEquals(relativeError(sampleMean, mean), 0., 0.005);
@@ -87,7 +88,7 @@ public final class SliceSamplerUnitTest {
     }
 
     /**
-     * Test slice sampling of a peaked beta distribution as an example of sampling of a bounded random variable.
+     * Tests slice sampling of a peaked beta distribution as an example of sampling of a bounded random variable.
      * Checks that input mean and variance are recovered by 10000 samples to a relative error of 0.5% and 2%,
      * respectively.
      */
@@ -99,6 +100,8 @@ public final class SliceSamplerUnitTest {
         final double beta = 4.;
         final BetaDistribution betaDistribution = new BetaDistribution(alpha, beta);
         final Function<Double, Double> betaLogPDF = betaDistribution::logDensity;
+        final double mean = betaDistribution.getNumericalMean();
+        final double variance = betaDistribution.getNumericalVariance();
 
         final double xInitial = 0.5;
         final double xMin = 0.;
@@ -108,8 +111,6 @@ public final class SliceSamplerUnitTest {
         final SliceSampler betaSampler = new SliceSampler(rng, betaLogPDF, xMin, xMax, width);
         final double[] samples = Doubles.toArray(betaSampler.sample(xInitial, numSamples));
 
-        final double mean = betaDistribution.getNumericalMean();
-        final double variance = betaDistribution.getNumericalVariance();
         final double sampleMean = new Mean().evaluate(samples);
         final double sampleVariance = new Variance().evaluate(samples);
         Assert.assertEquals(relativeError(sampleMean, mean), 0., 0.005);
