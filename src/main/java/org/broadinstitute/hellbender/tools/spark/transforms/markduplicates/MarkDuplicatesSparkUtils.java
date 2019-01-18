@@ -324,10 +324,11 @@ public class MarkDuplicatesSparkUtils {
         final EnumMap<MarkDuplicatesSparkRecord.Type, List<MarkDuplicatesSparkRecord>> byType = new EnumMap<>(MarkDuplicatesSparkRecord.Type.class);
         Set<String> readnames = new HashSet<>();
         for(MarkDuplicatesSparkRecord pair: duplicateGroup) {
-            if (!readnames.contains(pair.getName())) {
-                readnames.add(pair.getName());
-            } else {
+            if (readnames.contains(pair.getName())) {
                 throw new GATKException("Saw duplicate read pair '"+pair+"' at the duplicate marking stage, this could mean there was a problem partitioning read by readname");
+            }
+            if (!(pair instanceof EmptyFragment)) {
+                readnames.add(pair.getName());
             }
             byType.compute(pair.getType(), (key, value) -> {
                 if (value == null) {

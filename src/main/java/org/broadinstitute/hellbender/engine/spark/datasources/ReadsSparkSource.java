@@ -84,7 +84,10 @@ public final class ReadsSparkSource implements Serializable {
             JavaRDD<GATKRead> reads = htsjdkReadsRdd.getReads()
                     .map(read -> (GATKRead) SAMRecordToGATKReadAdapter.headerlessReadAdapter(read))
                     .filter(Objects::nonNull);
-            return fixPartitionsIfQueryGrouped(ctx, htsjdkReadsRdd.getHeader(), reads);
+            System.out.println("******************************************\nThere were "+reads.count()+" reads before edge fixing\n******************************************");
+            JavaRDD<GATKRead> fixed = fixPartitionsIfQueryGrouped(ctx, htsjdkReadsRdd.getHeader(), reads);
+            System.out.println("******************************************\nThere were "+fixed.count()+" reads after edge fixing\n******************************************");
+            return fixed;
         } catch (IOException | IllegalArgumentException e) {
             throw new UserException("Failed to load reads from " + readFileName + "\n Caused by:" + e.getMessage(), e);
         }
