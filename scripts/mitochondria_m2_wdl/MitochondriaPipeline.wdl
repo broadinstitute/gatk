@@ -2,8 +2,14 @@ import "AlignmentPipeline.wdl" as AlignAndMarkDuplicates
 import "MitochondriaCalling.wdl" as MutectAndFilter
 
 workflow MitochondriaPipeline {
+
   meta {
     description: "Takes in fully aligned hg38 bam and outputs VCF of SNP/Indel calls on the mitochondria."
+  }
+  parameter_meta {
+    wgs_aligned_inpu_bam: "Full WGS hg38 bam or cram"
+    autosomal_coverage: "Median coverage of full input bam"
+    out_vcf: "Final VCF of mitochondrial SNPs and INDELs"
   }
   File wgs_aligned_input_bam
   Int? autosomal_coverage
@@ -33,7 +39,7 @@ workflow MitochondriaPipeline {
   File blacklisted_sites_index
 
   #Shifted reference is used for calling the control region (edge of mitochondria reference).
-  #This solves the problem that the circular mitochondrial genome is linearized in hg38.
+  #This solves the problem that BWA doesn't support alignment to circular contigs.
   File mt_shifted_dict
   File mt_shifted_fasta
   File mt_shifted_fasta_index
@@ -166,16 +172,8 @@ workflow MitochondriaPipeline {
       preemptible_tries = preemptible_tries
   }
 
-  call SplitMultiallelics {
-    input:
-      input_vcf = LiftoverAndCombineVcfs.final_vcf,
-      input_vcf_index = LiftoverAndCombineVcfs.final_vcf_index,
-      ref_fasta = mt_fasta,
-      ref_fasta_index = mt_fasta_index,
-      ref_dict = mt_dict,
-      preemptible_tries = preemptible_tries
-  }
-
+  # This is a temporary task to handle "joint calling" until Mutect2 can produce a GVCF.
+  # This proivdes coverage at each base so low coverage sites can be considered ./. rather than 0/0.
   call CoverageAtEveryBase {
     input:
       input_bam_regular_ref = AlignToMt.mt_aligned_bam,
@@ -200,7 +198,6 @@ workflow MitochondriaPipeline {
     File mt_aligned_bai = AlignToMt.mt_aligned_bai
     File out_vcf = LiftoverAndCombineVcfs.final_vcf
     File out_vcf_index = LiftoverAndCombineVcfs.final_vcf_index
-    File split_multiallelics_vcf = SplitMultiallelics.output_vcf
     File duplicate_metrics = AlignToMt.duplicate_metrics
     File coverage_metrics = CallAndFilterMt.coverage_metrics
     File theoretical_sensitivity_metrics = CallAndFilterMt.theoretical_sensitivity_metrics
@@ -518,41 +515,4 @@ task CoverageAtEveryBase {
   output {
     File table = "per_base_coverage.tsv"
   }
-}
-
-task SplitMultiallelics {
-  File input_vcf
-  File input_vcf_index
-  Int? preemptible_tries
-
-  File ref_fasta
-  File ref_fasta_index
-  File ref_dict
-
-  command <<<
-python <<CODE
-from subprocess import Popen,PIPE,check_output
-
-#split variants
-cmd = """bcftools norm -m -any ${input_vcf} > pre1_split.vcf""".format(**locals())
-result, err = Popen([cmd], stdout=PIPE, stderr=PIPE, shell=True).communicate()
-
-#edit Number
-cmd = """cat pre1_split.vcf|sed s'/Number=R/Number=1/g' > pre2_split.vcf""".format(**locals())
-result, err = Popen([cmd], stdout=PIPE, stderr=PIPE, shell=True).communicate()
-
-#left align the variants
-cmd = """bcftools norm -f ${ref_fasta} pre2_split.vcf  > split.vcf""".format(**locals())
-result, err = Popen([cmd], stdout=PIPE, stderr=PIPE, shell=True).communicate()
-CODE
-  >>>
-  runtime {
-      disks: "local-disk 10 HDD"
-      memory: "1200 MB"
-      docker: "mshand/genomesinthecloud:bcftools"
-      preemptible: select_first([preemptible_tries, 5])
-    }
-    output {
-      File output_vcf = "split.vcf"
-    }
 }

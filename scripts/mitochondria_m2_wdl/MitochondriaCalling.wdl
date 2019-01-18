@@ -1,6 +1,12 @@
 workflow MitochondriaCalling {
+
   meta {
     description: "SNP/Indel calling for mitochondria using Mutect2. Takes aligned mitochondria bam and outputs filtered VCF plus coverage metrics."
+  }
+  parameter_meta {
+    input_bam: "Bam of reads realigned to the mitochondria"
+    blacklisted_sites: "List of sites that will always be filtered"
+    vcf: "VCF of SNPs and INDELs called and filtered by Mutect2"
   }
   File input_bam
   File input_bam_index
@@ -14,7 +20,7 @@ workflow MitochondriaCalling {
   File blacklisted_sites_index
   Float? autosomal_coverage
   Float contamination
-  #max_read_length is only used for an optimization. If it's too small CollectWgsMetrics might fail, but the results are not effected by this number.
+  #max_read_length is only used for an optimization. If it's too small CollectWgsMetrics might fail, but the results are not affected by this number.
   Int? max_read_length
 
   String bn = basename(input_bam, ".bam")
@@ -165,7 +171,7 @@ task M2AndFilter {
     input_bam: "Aligned Bam"
     gga_vcf: "VCF for genotype given alleles mode"
     prune: "Pruning factor should be approximately (mean coverage / 500)"
-    autosomal_coverage: "Median coverage of the autosome for annotating potential polymorphic NuMT variants"
+    autosomal_coverage: "Median coverage of the autosomes for annotating potential polymorphic NuMT variants"
   }
   command <<<
       set -e
