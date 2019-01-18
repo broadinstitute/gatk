@@ -107,7 +107,7 @@ def logsumexp_double_complement(a: np.ndarray, rel_tol: float = 1e-3) -> float:
         return x
 
 
-def calculate_mean_and_variance_online(values_generator: Generator) -> Tuple[float, float]:
+def calculate_mean_and_variance_online(values_generator: Generator) -> Tuple:
     """
     Implements Welford’s method for computing variance online using samples from a generator
 

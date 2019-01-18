@@ -12,7 +12,6 @@ import pymc3 as pm
 from . import io_consts
 from .._version import __version__ as gcnvkernel_version
 from ..models.fancy_model import GeneralizedContinuousModel
-from ..models.model_denoising_calling import DenoisingModel
 
 _logger = logging.getLogger(__name__)
 
