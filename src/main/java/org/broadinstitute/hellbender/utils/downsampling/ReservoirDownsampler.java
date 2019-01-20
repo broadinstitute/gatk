@@ -51,6 +51,13 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
      */
     private int totalReadsSeen;
 
+    /**
+     * In order to guarantee that all reads have equal probability of being discarded, we need to have consumed the
+     * entire input stream before any items can become finalized. All submitted items (that survive downsampling)
+     * remain pending until endOfInputStream is called, at which point they become finalized.
+     */
+    private boolean endOfInputStream;
+
 
     /**
      * Construct a ReservoirDownsampler
@@ -88,6 +95,9 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
     @Override
     public void submit ( final GATKRead newRead ) {
         Utils.nonNull(newRead, "newRead");
+        // Once the end of the input stream has been seen, consumeFinalizedItems must be called to reset the state
+        // of the ReservoirDownsampler before more items can be submitted
+        Utils.validate(endOfInputStream == false, "attempt to submit read after end of input stream has been seen");
 
         // Only count reads that are actually eligible for discarding for the purposes of the reservoir downsampling algorithm
         totalReadsSeen++;
@@ -110,11 +120,13 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
 
     @Override
     public boolean hasFinalizedItems() {
-        return ! reservoir.isEmpty();
+        // All items in the reservoir are pending until endOfInputStream is seen, at which point all items become finalized
+        return endOfInputStream && !reservoir.isEmpty();
     }
 
     @Override
     public List<GATKRead> consumeFinalizedItems() {
+        Utils.validate(endOfInputStream == true, "signalEndOfInput must be called before finalized items can be consumed");
         if (hasFinalizedItems()) {
             // pass reservoir by reference rather than make a copy, for speed
             final List<GATKRead> downsampledItems = reservoir;
@@ -122,23 +134,25 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
             return downsampledItems;
         } else {
             // if there's nothing here, don't bother allocating a new list
+            clearItems();
             return Collections.emptyList();
         }
     }
 
     @Override
     public boolean hasPendingItems() {
-        return false;
+        // All items in the reservoir are pending until endOfInputStream is seen, at which point all items become finalized
+        return !endOfInputStream && !reservoir.isEmpty();
     }
 
     @Override
     public GATKRead peekFinalized() {
-        return reservoir.isEmpty() ? null : reservoir.get(0);
+        return hasFinalizedItems() ? reservoir.get(0) : null;
     }
 
     @Override
     public GATKRead peekPending() {
-        return null;
+        return hasPendingItems() ? reservoir.get(0) : null;
     }
 
     @Override
@@ -148,7 +162,7 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
 
     @Override
     public void signalEndOfInput() {
-        // NO-OP
+        endOfInputStream = true;
     }
 
     /**
@@ -164,6 +178,8 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
 
         // an internal stat used by the downsampling process, so not cleared by resetStats() below
         totalReadsSeen = 0;
+
+        endOfInputStream = false;
     }
 
     @Override

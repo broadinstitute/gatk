@@ -9,6 +9,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.*;
+import java.util.stream.IntStream;
 
 public class ReadsDownsamplingIteratorUnitTest extends GATKBaseTest {
 
@@ -130,6 +131,22 @@ public class ReadsDownsamplingIteratorUnitTest extends GATKBaseTest {
     public void testRemoveThrows() {
         final ReadsDownsamplingIterator iter = new ReadsDownsamplingIterator(Collections.<GATKRead>emptyIterator(), new KeepReadsBAndCOnlyDownsampler());
         iter.remove();
+    }
+
+    @Test
+    public void testReadsDownsamplingIteratorWithReservoirDownsampler() {
+        final int TOTAL_READ_COUNT = 100;
+        final int TARGET_COVERAGE = 45;
+        final List<GATKRead> reads = new ArrayList<>(TOTAL_READ_COUNT);
+        IntStream.range(1, TOTAL_READ_COUNT).forEach(i -> reads.add(readWithName(Integer.toString(i))));
+
+        final List<GATKRead> downsampledReads = new ArrayList<>();
+        final ReadsDownsamplingIterator downsamplingIter = new ReadsDownsamplingIterator(reads.iterator(), new ReservoirDownsampler(TARGET_COVERAGE));
+        for ( final GATKRead read : downsamplingIter ) {
+            downsampledReads.add(read);
+        }
+
+        Assert.assertEquals(downsampledReads.size(), TARGET_COVERAGE);
     }
 
     private GATKRead readWithName( final String name ) {

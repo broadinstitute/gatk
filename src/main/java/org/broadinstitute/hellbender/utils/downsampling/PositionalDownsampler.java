@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.downsampling;
 
 import htsjdk.samtools.SAMFileHeader;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
@@ -8,6 +9,7 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 
 /**
@@ -71,16 +73,31 @@ public final class PositionalDownsampler extends ReadsDownsampler {
         // Use ReadCoordinateComparator to determine whether we've moved to a new start position.
         // ReadCoordinateComparator will correctly distinguish between purely unmapped reads and unmapped reads that
         // are assigned a nominal position.
-        if ( previousRead != null && ReadCoordinateComparator.compareCoordinates(previousRead, newRead, header) != 0 ) {
-            if ( reservoir.hasFinalizedItems() ) {
-                finalizeReservoir();
+        if ( previousRead != null) {
+            final int cmpDiff = ReadCoordinateComparator.compareCoordinates(previousRead, newRead, header);
+            if (cmpDiff == 1) {
+                throw new GATKException.ShouldNeverReachHereException(
+                        String.format("Reads must be coordinate sorted (earlier %s later %s)", previousRead, newRead));
+            }
+            if (cmpDiff != 0) {
+                reservoir.signalEndOfInput();
+                if ( reservoir.hasFinalizedItems() ) {
+                    finalizeReservoir();
+                }
             }
         }
     }
 
     private void finalizeReservoir() {
+        // We can't consume finalized reads from the reservoir unless we first signal EOI.
+        // Once signalEndOfInput has been called and propagated to the ReservoirDownsampler, consumeFinalizedItems
+        // must be called on the ReservoirDownsampler before any new items can be submitted to it, to reset it's
+        // state so it can be recycled/reused for the next downsampling position.
+        reservoir.signalEndOfInput();
         finalizedReads.addAll(reservoir.consumeFinalizedItems());
+        reservoir.clearItems();
         reservoir.resetStats();
+        previousRead = null;
     }
 
     @Override
@@ -97,9 +114,11 @@ public final class PositionalDownsampler extends ReadsDownsampler {
 
     @Override
     public boolean hasPendingItems() {
-        // The finalized items in the ReservoirDownsampler are pending items from the perspective of the
-        // enclosing PositionalDownsampler
-        return reservoir.hasFinalizedItems();
+        // The ReservoirDownsampler accumulates pending items until signalEndOfInput has been called, at which
+        // point all items that have survived downsampling become finalized. From the perspective of the enclosing
+        // PositionalDownsampler, both finalized items and pending items in the ReservoirDownsampler are considered
+        // pending.
+        return reservoir.hasFinalizedItems() || reservoir.hasPendingItems();
     }
 
     @Override
@@ -109,9 +128,11 @@ public final class PositionalDownsampler extends ReadsDownsampler {
 
     @Override
     public GATKRead peekPending() {
-        // The finalized items in the ReservoirDownsampler are pending items from the perspective of the
-        // enclosing PositionalDownsampler
-        return reservoir.peekFinalized();
+        // The ReservoirDownsampler accumulates pending items until signalEndOfInput has been called, at which
+        // point all items that have survived downsampling become finalized. From the perspective of the enclosing
+        // PositionalDownsampler, both finalized items and pending items in the ReservoirDownsampler are considered
+        // pending.
+        return Optional.ofNullable(reservoir.peekFinalized()).orElse(reservoir.peekPending());
     }
 
     @Override
@@ -139,6 +160,7 @@ public final class PositionalDownsampler extends ReadsDownsampler {
 
     @Override
     public void signalNoMoreReadsBefore( final GATKRead read ) {
+        Utils.nonNull(read, "Positional downsampler requires non-null reads");
         handlePositionalChange(read);
     }
 }

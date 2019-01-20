@@ -66,24 +66,26 @@ public final class ReservoirDownsamplerUnitTest extends GATKBaseTest {
 
         downsampler.submit(test.createReads());
 
+        // after submit, but before signalEndOfInput, all reads are pending, none are finalized
         if ( test.totalReads > 0 ) {
-            Assert.assertTrue(downsampler.hasFinalizedItems());
-            Assert.assertTrue(downsampler.peekFinalized() != null);
-            Assert.assertFalse(downsampler.hasPendingItems());
-            Assert.assertTrue(downsampler.peekPending() == null);
+            Assert.assertFalse(downsampler.hasFinalizedItems());
+            Assert.assertNull(downsampler.peekFinalized());
+            Assert.assertTrue(downsampler.hasPendingItems());
+            Assert.assertNotNull(downsampler.peekPending());
         }
         else {
             Assert.assertFalse(downsampler.hasFinalizedItems() || downsampler.hasPendingItems());
             Assert.assertTrue(downsampler.peekFinalized() == null && downsampler.peekPending() == null);
         }
 
+        // after signalEndOfInput, not reads are pending, all are finalized
         downsampler.signalEndOfInput();
 
         if ( test.totalReads > 0 ) {
             Assert.assertTrue(downsampler.hasFinalizedItems());
-            Assert.assertTrue(downsampler.peekFinalized() != null);
+            Assert.assertNotNull(downsampler.peekFinalized());
             Assert.assertFalse(downsampler.hasPendingItems());
-            Assert.assertTrue(downsampler.peekPending() == null);
+            Assert.assertNull(downsampler.peekPending());
         }
         else {
             Assert.assertFalse(downsampler.hasFinalizedItems() || downsampler.hasPendingItems());
