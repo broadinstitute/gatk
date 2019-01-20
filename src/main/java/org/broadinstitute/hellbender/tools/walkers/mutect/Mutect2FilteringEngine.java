@@ -252,8 +252,6 @@ public class Mutect2FilteringEngine {
                 weightedSumOfMafs.add(maf * MathUtils.sum(tumorGenotype.getAD()));
             }
 
-            final double[] altAlleleFractions = weightedAverageOfTumorAFs(vc);
-
             // note that this includes the ref
             final int[] alleleCounts = sumADsOverSamples(vc, true, false);
 
@@ -265,17 +263,22 @@ public class Mutect2FilteringEngine {
 
             final int refCount = alleleCounts[0];
 
+            final int totalCount = (int) MathUtils.sum(alleleCounts);
+
+            final double[] altAlleleFractions = Arrays.stream(altCounts)
+                    .mapToDouble(c -> c == 0 ? 0 : ((double) c) / totalCount).toArray();
+
             // this is \chi in the docs, the correction factor for tumor likelihoods if forced to have maf or 1 - maf
             // as the allele fraction
             final double[] log10OddsOfGermlineHetVsSomatic = new IndexRange(0, altAlleleFractions.length).mapToDouble(n -> {
                 if (altCounts[n] + refCount == 0) {
                     return 0;
                 }
-                final double log10GermlineAltMinorLikelihood = refCount * Math.log10(1 - maf) + altCounts[n] * Math.log10(maf);
-                final double log10GermlineAltMajorLikelihood = refCount * Math.log10(maf) + altCounts[n] * Math.log10(1 - maf);
+                final double log10GermlineAltMinorLikelihood = log10PowAB(1-maf, refCount) + log10PowAB(maf, altCounts[n]);
+                final double log10GermlineAltMajorLikelihood = log10PowAB(maf, refCount) + log10PowAB(1-maf, altCounts[n]);
                 final double log10GermlineLikelihood = MathUtils.LOG10_ONE_HALF + MathUtils.log10SumLog10(log10GermlineAltMinorLikelihood, log10GermlineAltMajorLikelihood);
 
-                final double log10SomaticLikelihood = refCount * Math.log10(1 - altAlleleFractions[n]) + altCounts[n] * Math.log10(altAlleleFractions[n]);
+                final double log10SomaticLikelihood = log10PowAB(1 - altAlleleFractions[n], refCount) + log10PowAB(altAlleleFractions[n], altCounts[n]);
                 return log10GermlineLikelihood - log10SomaticLikelihood;
             });
 
@@ -534,5 +537,11 @@ public class Mutect2FilteringEngine {
         }
 
         return filterResult;
+    }
+
+    // log10(a^b) = b * log10(a) AND if b = a = 0 the result should be 0, not NaN.  This applies when a is a binomial
+    // probability of success and b is the success count -- the likelihood is zero
+    private static double log10PowAB(final double a, final int b) {
+        return b == 0 ? 0 : b * Math.log10(a);
     }
 }
