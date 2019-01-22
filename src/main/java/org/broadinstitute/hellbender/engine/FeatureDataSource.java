@@ -338,14 +338,13 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         try {
             // Must get the path to the data file from the codec here:
             final String absoluteRawPath = IOUtils.getPath(featureInput.getFeaturePath()).toAbsolutePath().toUri().toString();
-            final String absoluteProcessedPath = IOUtils.getPath(codec.getPathToDataFile(featureInput.getFeaturePath())).toAbsolutePath().toUri().toString();
 
             // Instruct the reader factory to not require an index. We will require one ourselves as soon as
             // a query by interval is attempted.
             final boolean requireIndex = false;
 
             // Only apply the wrappers if the feature input is on Google Cloud Storage
-            if (BucketUtils.isCloudStorageUrl(absoluteProcessedPath)) {
+            if (BucketUtils.isCloudStorageUrl(absoluteRawPath)) {
                 return AbstractFeatureReader.getFeatureReader(absoluteRawPath, null, codec, requireIndex, cloudWrapper, cloudIndexWrapper);
             } else {
                 return AbstractFeatureReader.getFeatureReader(absoluteRawPath, null, codec, requireIndex, Function.identity(), Function.identity());

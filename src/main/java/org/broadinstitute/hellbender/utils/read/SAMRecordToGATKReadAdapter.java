@@ -376,7 +376,7 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
     @Override
     public String getReadGroup() {
         // May return null
-        return (String)samRecord.getAttribute(SAMTag.RG.getBinaryTag());
+        return (String)samRecord.getAttribute(SAMTagUtil.getSingleton().RG);
     }
 
     @Override

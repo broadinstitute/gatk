@@ -162,8 +162,7 @@ public final class XsvLocatableTableCodec extends AsciiFeatureCodec<XsvTableFeat
         //  this codec and the AnnotatedIntervalCodec.
         return path.endsWith(".config") && canDecodeFileChecks(path);
     }
-
-    @Override
+    
     public String getPathToDataFile( final String path ) {
         return backingDataFilePath.toUri().toString();
     }
