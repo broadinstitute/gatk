@@ -643,16 +643,6 @@ public final class GATKToolUnitTest extends GATKBaseTest {
     }
 
     @Test
-    public void testConfigureAnnotationPackages(){
-        String[] args = {"--"+StandardArgumentDefinitions.ENABLE_ALL_ANNOTATIONS,
-                "--"+StandardArgumentDefinitions.GATK_CONFIG_FILE_OPTION, publicTestDir + "org/broadinstitute/hellbender/cmdline/GATKPlugin/changePluginPackages.properties"};
-
-        final TestGATKToolWithVariants tool = createTestVariantTool(args);
-        Collection<Annotation> annots = tool.makeVariantAnnotations();
-        Assert.assertEquals(annots.iterator().next().getClass(), TestAnnotation.class);
-    }
-
-    @Test
     public void testExcludeAnnotation(){
         String[] args = {"--"+StandardArgumentDefinitions.ENABLE_ALL_ANNOTATIONS, "-AX", "Coverage"};
 
