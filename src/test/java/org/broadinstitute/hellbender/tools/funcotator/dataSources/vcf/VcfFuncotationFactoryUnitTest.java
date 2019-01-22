@@ -48,6 +48,8 @@ public class VcfFuncotationFactoryUnitTest extends GATKBaseTest {
     private static final String FACTORY_VERSION = "TEST_VERSION";
     private static final String EXAC_SNIPPET = toolsTestDir + "funcotator/test_exac.vcf";
 
+    private static final String DEFAULT_FILTER_STRING = "TODAY;A;Variant;Was;FILTERED";
+
     //==================================================================================================================
     // Private Members:
 
@@ -105,6 +107,7 @@ public class VcfFuncotationFactoryUnitTest extends GATKBaseTest {
         FIELD_DEFAULT_MAP.put("WTD", "false");
         FIELD_DEFAULT_MAP.put("dbSNPBuildID", "");
         FIELD_DEFAULT_MAP.put("ID", "");
+        FIELD_DEFAULT_MAP.put("FILTER", "");
     }
 
     //==================================================================================================================
@@ -152,18 +155,26 @@ public class VcfFuncotationFactoryUnitTest extends GATKBaseTest {
                                         Allele.create("C"), FACTORY_NAME, null)
                         )
                 ),
-                // One overlapping VCF feature:
+                // One overlapping VCF feature (non-null filter string):
                 helpProvideForTestCreateFuncotations("3", 61662, 61662, "T", "C",
                         Collections.singletonList(
                                 TableFuncotation.create(FIELD_DEFAULT_MAP.keySet().stream().map(s -> FACTORY_NAME + "_" + s).collect(Collectors.toList()),
-                                        Arrays.asList("true", "false", "0.9744,0.02556", "false", "false", "1", "false", "true", "false", "", "false", "true", "false", "true", "true", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "73009205", "61662", "false", "false", "0", "true", "0", "false", "0.954392,0.0456075", "false", "false", "false", "SNV", "true", "0x05010000000515043e000100", "1", "false", "130", "rs73009205"),
+                                        Arrays.asList("true", "false", "0.9744,0.02556", "false", "false", "1", "false", "true", "false", "", "false", "true", "false", "true", "true", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "73009205", "61662", "false", "false", "0", "true", "0", "false", "0.954392,0.0456075", "false", "false", "false", "SNV", "true", "0x05010000000515043e000100", "1", "false", "130", "rs73009205", ""),
+                                        Allele.create("C"), FACTORY_NAME, null)
+                        )
+                ),
+                // One overlapping VCF feature (null filter string):
+                helpProvideForTestCreateFuncotations("3", 61662, 61662, "T", "C",
+                        Collections.singletonList(
+                                TableFuncotation.create(FIELD_DEFAULT_MAP.keySet().stream().map(s -> FACTORY_NAME + "_" + s).collect(Collectors.toList()),
+                                        Arrays.asList("true", "false", "0.9744,0.02556", "false", "false", "1", "false", "true", "false", "", "false", "true", "false", "true", "true", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "73009205", "61662", "false", "false", "0", "true", "0", "false", "0.954392,0.0456075", "false", "false", "false", "SNV", "true", "0x05010000000515043e000100", "1", "false", "130", "rs73009205", ""),
                                         Allele.create("C"), FACTORY_NAME, null)
                         )
                 ),
                 // No matching VCF features (three overlap by position only), since there are no indels in dbSNP (the test datasource), so the ground truth should be a default entry, which was constructed here manually:
                 helpProvideForTestCreateFuncotations("3", 64157, 64166, "AGAAAGGTCA", "TCTTTCCAGT",
                         Collections.singletonList(TableFuncotation.create(FIELD_DEFAULT_MAP.keySet().stream().map(s -> FACTORY_NAME + "_" + s).collect(Collectors.toList()),
-                                Arrays.asList("false", "false", "", "false", "false", "", "false", "false", "false", "", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "", "", "false", "false", "", "false", "", "false", "", "false", "false", "false", "", "false", "", "", "false", "", ""),
+                                Arrays.asList("false", "false", "", "false", "false", "", "false", "false", "false", "", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "", "", "false", "false", "", "false", "", "false", "", "false", "false", "false", "", "false", "", "", "false", "", "", ""),
                                 Allele.create("TCTTTCCAGT"), FACTORY_NAME, null))
                 ),
         };

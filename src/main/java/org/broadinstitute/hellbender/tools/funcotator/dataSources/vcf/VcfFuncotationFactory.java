@@ -87,6 +87,12 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
      */
     private static final String ID_FIELD_NAME = "ID";
 
+    /**
+     * The name of the additional FILTER status field to add to VCF annotations to preserve the FILTER status of the original (data source)
+     * variant.
+     */
+    private static final String FILTER_FIELD_NAME = "FILTER";
+
     @VisibleForTesting
     int cacheHits = 0;
     @VisibleForTesting
@@ -185,6 +191,15 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
                 "ID of the variant from the data source creating this annotation."
                 );
         supportedVcfInfoHeaderLines.add( idHeaderLine );
+
+        // Add in the ID field to the meta data:
+        final VCFInfoHeaderLine filterHeaderLine = new VCFInfoHeaderLine(
+                createFinalFieldName(name, FILTER_FIELD_NAME),
+                1,
+                VCFHeaderLineType.String,
+                "FILTER status of the variant from the data source creating this annotation."
+        );
+        supportedVcfInfoHeaderLines.add( filterHeaderLine );
 
         // Make sure to rename the input VCF field names to the output funcotation field names for this funcotation factory.
         return supportedVcfInfoHeaderLines;
@@ -287,6 +302,9 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
 
                         // Add the ID of the variant:
                         annotations.put(createFinalFieldName(name, ID_FIELD_NAME), featureVariant.getID());
+
+                        // Add the FILTER status of the variant:
+                        annotations.put(createFinalFieldName(name, FILTER_FIELD_NAME), featureVariant.getFilters().stream().collect(Collectors.joining(";")));
 
                         final TableFuncotation newFuncotation = TableFuncotation.create(annotations, queryAltAllele, name, supportedFieldMetadata);
                         outputOrderedMap.merge(queryAltAllele, newFuncotation, VcfFuncotationFactory::mergeDuplicateFuncotationFactoryVariant);
@@ -481,6 +499,10 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
         // Add our ID to the supported fields:
         supportedFieldNamesAndDefaults.put(createFinalFieldName(name, ID_FIELD_NAME), "" );
         supportedFieldNames.add(createFinalFieldName(name, ID_FIELD_NAME));
+
+        // Add our FILTER status to the supported fields:
+        supportedFieldNamesAndDefaults.put(createFinalFieldName(name, FILTER_FIELD_NAME), "" );
+        supportedFieldNames.add(createFinalFieldName(name, FILTER_FIELD_NAME));
     }
 
     @VisibleForTesting
