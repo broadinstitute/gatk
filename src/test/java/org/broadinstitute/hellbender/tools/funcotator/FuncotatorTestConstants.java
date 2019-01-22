@@ -71,6 +71,7 @@ public class FuncotatorTestConstants {
     public static final String COSMIC_TEST_DB = FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER + "cosmic" + File.separator + "hg19" + File.separator + "CosmicTest.db";
 
     public static final String DBSNP_HG19_SNIPPET_FILE_PATH = FUNCOTATOR_TEST_DIR + "dbSNP_hg19_snippet.vcf";
+    public static final String DBSNP_HG19_SNIPPET_WITH_FILTERS_FILE_PATH = FUNCOTATOR_TEST_DIR + "dbSNP_hg19_snippet_with_filters.vcf";
 
     public static final String GENCODE_TRANSCRIPT_FASTA_FILE_NAME = FUNCOTATOR_LARGE_FILES_DIR + "gencode.v19.pc_transcripts.fasta";
 
