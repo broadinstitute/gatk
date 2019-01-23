@@ -41,6 +41,10 @@ public final class RefVsAnyResult extends ReferenceConfidenceResult {
      * The capping is done on the fly.
      */
     double[] getGenotypeLikelihoodsCappedByHomRefLikelihood() {
-        return DoubleStream.of(genotypeLikelihoods).map(d -> Math.min(d, genotypeLikelihoods[0])).toArray();
+        final double[] output = new double[genotypeLikelihoods.length];
+        for (int i = 0; i < genotypeLikelihoods.length; i++) {
+            output[i] = Math.min(genotypeLikelihoods[i], genotypeLikelihoods[0]);
+        }
+        return output;
     }
 }
