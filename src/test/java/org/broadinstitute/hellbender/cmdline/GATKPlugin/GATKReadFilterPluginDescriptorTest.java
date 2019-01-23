@@ -817,7 +817,7 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
     @Test
     public void testConfigFileControlsReadFiltersPackages() throws IOException {
         final File output = createTempFile("annotations", "txt");
-        final File configFile = new File("src/test/resources/org/broadinstitute/hellbender/cmdline/GATKPlugin/changePluginPackages.properties");
+        final File configFile = new File(packageRootTestDir + "cmdline/GATKPlugin/changePluginPackages.properties");
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.addArgument(ReadFilterArgumentDefinitions.READ_FILTER_LONG_NAME, TestReadFilter.class.getSimpleName())
                 .addFileArgument(StandardArgumentDefinitions.GATK_CONFIG_FILE_OPTION, configFile)

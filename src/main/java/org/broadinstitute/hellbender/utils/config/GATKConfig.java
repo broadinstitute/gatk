@@ -1,11 +1,11 @@
 package org.broadinstitute.hellbender.utils.config;
 
-import com.netflix.servo.util.VisibleForTesting;
+import com.google.common.annotations.VisibleForTesting;
 import org.aeonbits.owner.Accessible;
-import org.aeonbits.owner.Mutable;
 import org.aeonbits.owner.Config.LoadPolicy;
 import org.aeonbits.owner.Config.LoadType;
 import org.aeonbits.owner.Config.Sources;
+import org.aeonbits.owner.Mutable;
 
 import java.util.List;
 

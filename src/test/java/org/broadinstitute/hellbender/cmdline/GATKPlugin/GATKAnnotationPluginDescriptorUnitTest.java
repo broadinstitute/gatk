@@ -683,7 +683,7 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
     @Test
     public void testConfigFileControlsAnnotationPackages() throws IOException {
         final File output = createTempFile("annotations", "txt");
-        final File configFile = new File("src/test/resources/org/broadinstitute/hellbender/cmdline/GATKPlugin/changePluginPackages.properties");
+        final File configFile = new File(packageRootTestDir + "cmdline/GATKPlugin/changePluginPackages.properties");
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.addArgument(StandardArgumentDefinitions.ANNOTATION_LONG_NAME, TestAnnotation.class.getSimpleName())
                 .addFileArgument(StandardArgumentDefinitions.GATK_CONFIG_FILE_OPTION, configFile)
