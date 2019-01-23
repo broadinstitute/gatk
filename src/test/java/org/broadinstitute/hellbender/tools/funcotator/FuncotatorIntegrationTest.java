@@ -60,7 +60,10 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     private static final String  GERMLINE_DATASOURCES_FOLDER   = "funcotator_dataSources_germline_latest";
 
     private static final String XSV_CLINVAR_MULTIHIT_TEST_VCF = toolsTestDir + "funcotator" + File.separator + "clinvar_hg19_multihit_test.vcf";
+    private static final String FILTER_TEST_VCF               = toolsTestDir + "funcotator" + File.separator + "FILTER_test.vcf";
     private static final String DS_XSV_CLINVAR_TESTS          = largeFileTestDir + "funcotator" + File.separator + "small_ds_clinvar_hg19" + File.separator;
+    private static final String DS_FILTER_PARSE_TESTS         = largeFileTestDir + "funcotator" + File.separator + "small_ds_FILTER_test" + File.separator;
+
     private static final String NOT_M2_TEST_HG19 = toolsTestDir + "funcotator/NotM2_test_custom_maf_fields.vcf";
     private static final String M2_TEST_HG19 = toolsTestDir + "funcotator/M2_test_custom_maf_fields.vcf";
     private static final String NOT_M2_TEST_HG19_TUMOR_ONLY = toolsTestDir + "funcotator/NotM2_test_custom_maf_fields_tumor_only.vcf";
@@ -901,6 +904,41 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(variantContexts.stream()
                 .filter(vc -> StringUtils.contains(vc.getAttributeAsString("FUNCOTATION", ""), "MedGen"))
                 .count(), NUM_CLINVAR_HITS);
+    }
+
+    @Test
+    public void testFilterParsing() {
+
+        final File outputFile = createTempFile("tmpTestFilterParsing", "vcf");
+
+        final ArgumentsBuilder arguments = createBaselineArgumentsForFuncotator(
+                FILTER_TEST_VCF,
+                outputFile,
+                b37Reference,
+                DS_FILTER_PARSE_TESTS,
+                FuncotatorTestConstants.REFERENCE_VERSION_HG19,
+                FuncotatorArgumentDefinitions.OutputFormatType.VCF,
+                false);
+
+        arguments.addBooleanArgument(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
+
+        runCommandLine(arguments);
+
+        final Pair<VCFHeader, List<VariantContext>> tempVcf =  VariantContextTestUtils.readEntireVCFIntoMemory(outputFile.getAbsolutePath());
+        Assert.assertEquals( tempVcf.getRight().size(), 1 );
+
+        final String[] funcotatorKeys = FuncotatorUtils.extractFuncotatorKeysFromHeaderDescription(tempVcf.getLeft().getInfoHeaderLine(VcfOutputRenderer.FUNCOTATOR_VCF_FIELD_NAME).getDescription());
+
+        final VariantContext variantContext = tempVcf.getRight().get(0);
+        final Map<Allele, FuncotationMap> funcs = FuncotatorUtils.createAlleleToFuncotationMapFromFuncotationVcfAttribute(
+                funcotatorKeys, variantContext, "Gencode_19_annotationTranscript", "FAKE_SOURCE");
+
+        final String txId = funcs.get(variantContext.getAlternateAllele(0)).getTranscriptList().get(0);
+        Assert.assertEquals( funcs.get(variantContext.getAlternateAllele(0)).get(txId).size(), 1 );
+
+        final Funcotation funcotation = funcs.get(variantContext.getAlternateAllele(0)).get(txId).get(0);
+
+        Assert.assertEquals(funcotation.getField("dbSnp_FILTER"), "FILTER_8");
     }
 
     @Test
