@@ -1,28 +1,34 @@
 package org.broadinstitute.hellbender.cmdline.GATKPlugin;
 
-import org.broadinstitute.barclay.argparser.ClassFinder;
 import htsjdk.variant.variantcontext.*;
 import org.apache.commons.io.output.NullOutputStream;
-import org.broadinstitute.barclay.argparser.CommandLineArgumentParser;
-import org.broadinstitute.barclay.argparser.CommandLineException;
-import org.broadinstitute.barclay.argparser.CommandLineParser;
+import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.cmdline.GATKPlugin.testpluggables.TestAnnotation;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_RMSMappingQuality;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_StandardAnnotation;
+import org.broadinstitute.hellbender.utils.config.GATKConfig;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.mockito.internal.util.collections.Sets;
+import org.mockito.internal.util.io.IOUtil;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import org.testng.collections.Lists;
 
+import java.io.File;
+import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.file.Files;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -456,7 +462,7 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
         List<Annotation> annots = instantiateAnnotations(clp);
 
         ClassFinder finder = new ClassFinder();
-        finder.find(GATKAnnotationPluginDescriptor.pluginPackageName, Annotation.class);
+        finder.find(GATKConfig.DEFAULT_ANNOTATION_PACKAGES, Annotation.class);
 
         Set<Class<?>> classes = finder.getConcreteClasses();
         Assert.assertFalse(classes.isEmpty());
@@ -477,7 +483,7 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
         List<Annotation> annots = instantiateAnnotations(clp);
 
         ClassFinder finder = new ClassFinder();
-        finder.find(GATKAnnotationPluginDescriptor.pluginPackageName, Annotation.class);
+        finder.find(GATKConfig.DEFAULT_ANNOTATION_PACKAGES, Annotation.class);
 
         Set<Class<?>> classes = finder.getConcreteClasses();
         Assert.assertFalse(classes.isEmpty());
@@ -502,7 +508,7 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
         Assert.assertFalse(annots.stream().anyMatch(a -> a.getClass()==AS_StandardAnnotation.class));
 
         ClassFinder finder = new ClassFinder();
-        finder.find(GATKAnnotationPluginDescriptor.pluginPackageName, Annotation.class);
+        finder.find(GATKConfig.DEFAULT_ANNOTATION_PACKAGES, Annotation.class);
 
         Set<Class<?>> classes = finder.getConcreteClasses();
         classes.remove(Coverage.class);
@@ -628,6 +634,7 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
             return Collections.singletonList("Test");
         }
     }
+
     static class testParentAnnotation extends InfoFieldAnnotation implements ParentAnnotationGroup  {
         boolean dontAnnotate = false;
 
@@ -651,4 +658,37 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
         }
     }
 
+    @CommandLineProgramProperties(summary="test tool to check annotation loading",
+            oneLineSummary = "test tool to check annotation loading",
+            programGroup = TestProgramGroup.class,
+            omitFromCommandLine = true)
+    public static class TestAnnotationsTool extends GATKTool {
+        @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
+        String output;
+
+        @Override
+        public boolean useVariantAnnotations(){
+            return true;
+        }
+
+        @Override
+        public void traverse() {
+            String annotations = makeVariantAnnotations().stream()
+                    .map(a -> a.getClass().getSimpleName())
+                    .collect(Collectors.joining("\n"));
+            IOUtil.writeText(annotations, new File(output));
+        }
+    }
+
+    @Test
+    public void testConfigFileControlsAnnotationPackages() throws IOException {
+        final File output = createTempFile("annotations", "txt");
+        final File configFile = new File(packageRootTestDir + "cmdline/GATKPlugin/changePluginPackages.properties");
+        ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addArgument(StandardArgumentDefinitions.ANNOTATION_LONG_NAME, TestAnnotation.class.getSimpleName())
+                .addFileArgument(StandardArgumentDefinitions.GATK_CONFIG_FILE_OPTION, configFile)
+                .addOutput(output);
+        runToolInNewJVM("TestAnnotationsTool", args);
+        Assert.assertEquals(Files.readAllLines(output.toPath()), Collections.singletonList(TestAnnotation.class.getSimpleName()));
+    }
 }

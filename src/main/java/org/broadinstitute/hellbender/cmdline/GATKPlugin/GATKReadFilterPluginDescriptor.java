@@ -11,6 +11,8 @@ import org.broadinstitute.hellbender.cmdline.ReadFilterArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.config.ConfigFactory;
+import org.broadinstitute.hellbender.utils.config.GATKConfig;
 
 import java.io.IOException;
 import java.util.*;
@@ -30,7 +32,17 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
         logger = LogManager.getLogger(this.getClass()); // Logger is not serializable (even by Kryo)
     }
 
-    private static final String pluginPackageName = "org.broadinstitute.hellbender.engine.filters";
+    /**
+     * At startup, set the plugin package name to the one(s) in the configuration file.
+     */
+    private static final List<String> PLUGIN_PACKAGE_NAMES;
+    static {
+        // Get our configuration:
+        final GATKConfig config = ConfigFactory.getInstance().getGATKConfig();
+        // Exclude abstract classes and interfaces from the list of discovered codec classes
+        PLUGIN_PACKAGE_NAMES = Collections.unmodifiableList(config.read_filter_packages());
+    }
+
     private static final Class<ReadFilter> pluginBaseClass = org.broadinstitute.hellbender.engine.filters.ReadFilter.class;
     private static final String READ_PLUGIN_DISPLAY_NAME = "readFilter";
 
@@ -111,7 +123,7 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
      * @return
      */
     @Override
-    public List<String> getPackageNames() {return Collections.singletonList(pluginPackageName);}
+    public List<String> getPackageNames() {return PLUGIN_PACKAGE_NAMES;}
 
     @Override
     public boolean includePluginClass(Class<?> c) {

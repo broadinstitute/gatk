@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.testutils;
 import htsjdk.samtools.util.Log;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
@@ -74,6 +75,28 @@ public abstract class BaseTest {
         prs.setEnvironment(environment);
         final ProcessOutput output = processController.exec(prs);
         Assert.assertEquals(output.getExitValue(), 0, message);
+    }
+
+    /**
+     * Spawn a new jvm with the same classpath as this one and run a gatk CommandLineProgram
+     * This is useful for running tests that require changing static state that is not allowed to change during
+     * a tool run but which needs to be changed to test some condition.
+     *
+     * @param toolName CommandLineProgram to run
+     * @param arguments arguments to provide to the tool
+     */
+    public static void runToolInNewJVM(String toolName, ArgumentsBuilder arguments){
+        final String javaHome = System.getProperty("java.home");
+        final String javaBin = javaHome + File.separator + "bin" + File.separator + "java";
+        final String classpath = System.getProperty("java.class.path");;
+        final List<String> baseCommand = new ArrayList<>(Arrays.asList(
+                javaBin,
+                "-cp", classpath,
+                Main.class.getName(),
+                toolName));
+        baseCommand.addAll(arguments.getArgsList());
+
+        runProcess(ProcessController.getThreadLocal(), baseCommand.toArray(new String[0]));
     }
 
     @BeforeSuite

@@ -1,10 +1,11 @@
 package org.broadinstitute.hellbender.utils.config;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.aeonbits.owner.Accessible;
-import org.aeonbits.owner.Mutable;
 import org.aeonbits.owner.Config.LoadPolicy;
 import org.aeonbits.owner.Config.LoadType;
 import org.aeonbits.owner.Config.Sources;
+import org.aeonbits.owner.Mutable;
 
 import java.util.List;
 
@@ -51,6 +52,9 @@ public interface GATKConfig extends Mutable, Accessible {
      * as a place to find the configuration file corresponding to this interface.
      */
     String CONFIG_FILE_VARIABLE_CLASS_PATH = "GATKConfig.classPathToGatkConfig";
+
+    @VisibleForTesting
+    public String DEFAULT_ANNOTATION_PACKAGES = "org.broadinstitute.hellbender.tools.walkers.annotator";
 
     // =================================================================================================================
     // =================================================================================================================
@@ -143,6 +147,12 @@ public interface GATKConfig extends Mutable, Accessible {
 
     @DefaultValue("htsjdk.variant,htsjdk.tribble,org.broadinstitute.hellbender.utils.codecs")
     List<String> codec_packages();
+
+    @DefaultValue("org.broadinstitute.hellbender.engine.filters")
+    List<String> read_filter_packages();
+
+    @DefaultValue(DEFAULT_ANNOTATION_PACKAGES)
+    List<String> annotation_packages();
 
     // ----------------------------------------------------------
     // GATKTool Options:

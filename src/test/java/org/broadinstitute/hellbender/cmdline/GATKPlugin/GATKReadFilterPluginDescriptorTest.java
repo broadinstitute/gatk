@@ -4,19 +4,26 @@ import htsjdk.samtools.Cigar;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.TextCigarCodec;
 import org.apache.commons.io.output.NullOutputStream;
-import org.broadinstitute.barclay.argparser.CommandLineArgumentParser;
-import org.broadinstitute.barclay.argparser.CommandLineException;
-import org.broadinstitute.barclay.argparser.CommandLineParser;
+import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.cmdline.GATKPlugin.testpluggables.TestReadFilter;
 import org.broadinstitute.hellbender.cmdline.ReadFilterArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
+import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.engine.filters.*;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.mockito.internal.util.io.IOUtil;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.File;
+import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -785,6 +792,38 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
 
     private void setupSampleTest(SetupTest setup) {
         setup.hdr.getReadGroup(setup.read.getReadGroup()).setSample(setup.argValue);
+    }
+    
+    @CommandLineProgramProperties(summary="test tool to check ReadFilter loading",
+            oneLineSummary = "test tool to check ReadFilter loading",
+            programGroup = TestProgramGroup.class,
+            omitFromCommandLine = true)
+    public static class TestReadFiltersTool extends GATKTool {
+        @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
+        String output;
+
+        @Override
+        public void traverse() {
+            String readFilters = getCommandLineParser()
+                    .getPluginDescriptor(GATKReadFilterPluginDescriptor.class)
+                    .getResolvedInstances()
+                    .stream()
+                    .map(a -> a.getClass().getSimpleName())
+                    .collect(Collectors.joining("\n"));
+            IOUtil.writeText(readFilters, new File(output));
+        }
+    }
+
+    @Test
+    public void testConfigFileControlsReadFiltersPackages() throws IOException {
+        final File output = createTempFile("annotations", "txt");
+        final File configFile = new File(packageRootTestDir + "cmdline/GATKPlugin/changePluginPackages.properties");
+        ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addArgument(ReadFilterArgumentDefinitions.READ_FILTER_LONG_NAME, TestReadFilter.class.getSimpleName())
+                .addFileArgument(StandardArgumentDefinitions.GATK_CONFIG_FILE_OPTION, configFile)
+                .addOutput(output);
+        runToolInNewJVM("TestReadFiltersTool", args);
+        Assert.assertEquals(Files.readAllLines(output.toPath()), Arrays.asList(WellformedReadFilter.class.getSimpleName(), TestReadFilter.class.getSimpleName()));
     }
 
 }
