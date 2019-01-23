@@ -111,7 +111,6 @@ import java.util.stream.Collectors;
         programGroup = CopyNumberProgramGroup.class
 )
 @DocumentedFeature
-@BetaFeature
 public final class PlotModeledSegments extends CommandLineProgram {
     private static final String PLOT_MODELED_SEGMENTS_R_SCRIPT = "PlotModeledSegments.R";
 

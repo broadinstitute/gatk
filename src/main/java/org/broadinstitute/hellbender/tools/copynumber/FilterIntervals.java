@@ -113,7 +113,6 @@ import java.util.stream.IntStream;
         programGroup = CopyNumberProgramGroup.class
 )
 @DocumentedFeature
-@BetaFeature
 public final class FilterIntervals extends CommandLineProgram {
     public static final String MINIMUM_GC_CONTENT_LONG_NAME = "minimum-gc-content";
     public static final String MAXIMUM_GC_CONTENT_LONG_NAME = "maximum-gc-content";

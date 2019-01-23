@@ -78,7 +78,6 @@ import java.util.List;
         programGroup = CoverageAnalysisProgramGroup.class
 )
 @DocumentedFeature
-@BetaFeature
 public final class CollectAllelicCounts extends LocusWalker {
     private static final Logger logger = LogManager.getLogger(CollectAllelicCounts.class);
 

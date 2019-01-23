@@ -124,7 +124,6 @@ import java.io.File;
         programGroup = CopyNumberProgramGroup.class
 )
 @DocumentedFeature
-@BetaFeature
 public final class DenoiseReadCounts extends CommandLineProgram {
     @Argument(
             doc = "Input TSV or HDF5 file containing integer read counts in genomic intervals for a single case sample (output of CollectReadCounts).",

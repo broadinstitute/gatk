@@ -216,7 +216,6 @@ import java.util.stream.Stream;
         programGroup = CopyNumberProgramGroup.class
 )
 @DocumentedFeature
-@BetaFeature
 public final class ModelSegments extends CommandLineProgram {
     //filename tags for output
     public static final String HET_ALLELIC_COUNTS_FILE_SUFFIX = ".hets.tsv";
