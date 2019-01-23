@@ -66,6 +66,10 @@ public final class Utils {
         randomDataGenerator.reSeed(GATK_RANDOM_SEED);
     }
 
+    public static long getGatkDefaultRandomSeed() {
+        return GATK_RANDOM_SEED;
+    }
+
     private static final int TEXT_WARNING_WIDTH = 68;
     private static final String TEXT_WARNING_PREFIX = "* ";
     private static final String TEXT_WARNING_BORDER = StringUtils.repeat('*', TEXT_WARNING_PREFIX.length() + TEXT_WARNING_WIDTH);

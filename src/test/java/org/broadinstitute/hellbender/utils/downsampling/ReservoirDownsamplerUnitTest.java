@@ -124,6 +124,31 @@ public final class ReservoirDownsamplerUnitTest extends GATKBaseTest {
         rd.submit(r2);
     }
 
+    @Test
+    public void testRandomGeneratorResettingBehavior() throws Exception {
+        ReservoirDownsampler rd1 = new ReservoirDownsampler(1, true, true);
+        ReservoirDownsampler rd2 = new ReservoirDownsampler(1, true, true);
+
+        List<GATKRead> readsPos1 = new ArrayList<>();
+        List<GATKRead> readsPos2 = new ArrayList<>();
+        for (int i = 0; i < 100; i++) {
+            readsPos1.add(ArtificialReadUtils.createArtificialRead(ArtificialReadUtils.createArtificialSamHeader(), "ra"+i, 0, 100, 100));
+            readsPos2.add(ArtificialReadUtils.createArtificialRead(ArtificialReadUtils.createArtificialSamHeader(), "ra"+i, 0, 102, 100));
+        }
+
+        readsPos1.forEach(rd1::submit);
+
+        rd1.consumeFinalizedItems();
+        rd1.resetRandomSeed(PositionalDownsampler.getRandomSeed(readsPos2.get(0)));
+        rd2.consumeFinalizedItems();
+        rd2.resetRandomSeed(PositionalDownsampler.getRandomSeed(readsPos2.get(0)));
+
+        readsPos2.forEach(rd1::submit);
+        readsPos2.forEach(rd2::submit);
+
+        Assert.assertEquals(rd1.consumeFinalizedItems(), rd2.consumeFinalizedItems());
+    }
+
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testNoNullSignalNoMoreReadsBefore() throws Exception {
         ReadsDownsampler rd = new ReservoirDownsampler(1, true);

@@ -38,7 +38,7 @@ public final class PositionalDownsampler extends ReadsDownsampler {
         Utils.validateArg(targetCoverage > 0, "targetCoverage must be > 0");
         Utils.nonNull(header);
 
-        this.reservoir = new ReservoirDownsampler(targetCoverage);
+        this.reservoir = new ReservoirDownsampler(targetCoverage, false, true);
         this.finalizedReads = new ArrayList<>();
         this.header = header;
         clearItems();
@@ -71,11 +71,15 @@ public final class PositionalDownsampler extends ReadsDownsampler {
         // Use ReadCoordinateComparator to determine whether we've moved to a new start position.
         // ReadCoordinateComparator will correctly distinguish between purely unmapped reads and unmapped reads that
         // are assigned a nominal position.
-        if ( previousRead != null && ReadCoordinateComparator.compareCoordinates(previousRead, newRead, header) != 0 ) {
-            if ( reservoir.hasFinalizedItems() ) {
-                finalizeReservoir();
-            }
+        if ( previousRead == null || ReadCoordinateComparator.compareCoordinates(previousRead, newRead, header) != 0 ) {
+            finalizeReservoir(newRead);
         }
+    }
+
+    private void finalizeReservoir(final GATKRead newRead) {
+        finalizedReads.addAll(reservoir.consumeFinalizedItems());
+        reservoir.resetRandomSeed(getRandomSeed(newRead));
+        reservoir.resetStats();
     }
 
     private void finalizeReservoir() {
@@ -140,5 +144,15 @@ public final class PositionalDownsampler extends ReadsDownsampler {
     @Override
     public void signalNoMoreReadsBefore( final GATKRead read ) {
         handlePositionalChange(read);
+    }
+
+    /**
+     * Generates a random generator seed. The start position is added to the {@Link Utils#getGatkDefaultRandomSeed} to
+     * reset the random seed for the random generator. This is used to ensure that the ResivoirDownsampler is
+     * deterministic in its downsampling.
+     */
+    public static long getRandomSeed(final GATKRead read) {
+        return Utils.getGatkDefaultRandomSeed() +
+                (ReadUtils.readHasNoAssignedPosition(read) ? 0 : read.getContig().hashCode() << 32 + read.getStart());
     }
 }
