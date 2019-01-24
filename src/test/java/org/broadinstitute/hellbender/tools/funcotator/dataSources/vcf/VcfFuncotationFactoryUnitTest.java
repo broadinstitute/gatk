@@ -28,7 +28,6 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
@@ -48,11 +47,10 @@ public class VcfFuncotationFactoryUnitTest extends GATKBaseTest {
     private static final String FACTORY_VERSION = "TEST_VERSION";
     private static final String EXAC_SNIPPET = toolsTestDir + "funcotator/test_exac.vcf";
 
+    private static final String DEFAULT_FILTER_STRING = "TODAY;A;Variant;Was;FILTERED";
+
     //==================================================================================================================
     // Private Members:
-
-    private static final ReferenceDataSource CHR3_REF_DATA_SOURCE = ReferenceDataSource.of(new File(FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref()).toPath());
-
     private static final LinkedHashMap<String, Object> FIELD_DEFAULT_MAP = new LinkedHashMap<>();
 
     static {
@@ -105,6 +103,7 @@ public class VcfFuncotationFactoryUnitTest extends GATKBaseTest {
         FIELD_DEFAULT_MAP.put("WTD", "false");
         FIELD_DEFAULT_MAP.put("dbSNPBuildID", "");
         FIELD_DEFAULT_MAP.put("ID", "");
+        FIELD_DEFAULT_MAP.put("FILTER", "");
     }
 
     //==================================================================================================================
@@ -112,15 +111,17 @@ public class VcfFuncotationFactoryUnitTest extends GATKBaseTest {
 
 
 
-    private Object[] helpProvideForTestCreateFuncotations(final String contig,
+    private Object[] helpProvideForTestCreateFuncotations(final String variantFeatureFileName,
+                                                          final String contig,
                                                           final int start,
                                                           final int end,
                                                           final String refAlleleString,
                                                           final String altAlleleString,
                                                           final List<Funcotation> expected) {
         return new Object[]{
+                variantFeatureFileName,
                 FuncotatorTestUtils.createSimpleVariantContext(FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref(), contig, start, end, refAlleleString, altAlleleString),
-                new ReferenceContext(CHR3_REF_DATA_SOURCE, new SimpleInterval(contig, start, end)),
+                new ReferenceContext(ReferenceDataSource.of(IOUtils.getPath(b37Reference)), new SimpleInterval(contig, start, end)),
                 expected
         };
     }
@@ -145,7 +146,8 @@ public class VcfFuncotationFactoryUnitTest extends GATKBaseTest {
 
         return new Object[][]{
                 // Trivial Case: No overlapping features:
-                helpProvideForTestCreateFuncotations("3", 61650, 61650, "T", "C",
+                helpProvideForTestCreateFuncotations(FuncotatorTestConstants.DBSNP_HG19_SNIPPET_FILE_PATH,
+                        "3", 61650, 61650, "T", "C",
                         Collections.singletonList(
                                 TableFuncotation.create(FIELD_DEFAULT_MAP.keySet().stream().map(s -> FACTORY_NAME + "_" + s).collect(Collectors.toList()),
                                         FIELD_DEFAULT_MAP.values().stream().map(Object::toString).collect(Collectors.toList()),
@@ -153,18 +155,29 @@ public class VcfFuncotationFactoryUnitTest extends GATKBaseTest {
                         )
                 ),
                 // One overlapping VCF feature:
-                helpProvideForTestCreateFuncotations("3", 61662, 61662, "T", "C",
+                helpProvideForTestCreateFuncotations(FuncotatorTestConstants.DBSNP_HG19_SNIPPET_FILE_PATH,
+                        "3", 61662, 61662, "T", "C",
                         Collections.singletonList(
                                 TableFuncotation.create(FIELD_DEFAULT_MAP.keySet().stream().map(s -> FACTORY_NAME + "_" + s).collect(Collectors.toList()),
-                                        Arrays.asList("true", "false", "0.9744,0.02556", "false", "false", "1", "false", "true", "false", "", "false", "true", "false", "true", "true", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "73009205", "61662", "false", "false", "0", "true", "0", "false", "0.954392,0.0456075", "false", "false", "false", "SNV", "true", "0x05010000000515043e000100", "1", "false", "130", "rs73009205"),
+                                        Arrays.asList("true", "false", "0.9744,0.02556", "false", "false", "1", "false", "true", "false", "", "false", "true", "false", "true", "true", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "73009205", "61662", "false", "false", "0", "true", "0", "false", "0.954392,0.0456075", "false", "false", "false", "SNV", "true", "0x05010000000515043e000100", "1", "false", "130", "rs73009205", ""),
                                         Allele.create("C"), FACTORY_NAME, null)
                         )
                 ),
                 // No matching VCF features (three overlap by position only), since there are no indels in dbSNP (the test datasource), so the ground truth should be a default entry, which was constructed here manually:
-                helpProvideForTestCreateFuncotations("3", 64157, 64166, "AGAAAGGTCA", "TCTTTCCAGT",
+                helpProvideForTestCreateFuncotations(FuncotatorTestConstants.DBSNP_HG19_SNIPPET_FILE_PATH,
+                        "3", 64157, 64166, "AGAAAGGTCA", "TCTTTCCAGT",
                         Collections.singletonList(TableFuncotation.create(FIELD_DEFAULT_MAP.keySet().stream().map(s -> FACTORY_NAME + "_" + s).collect(Collectors.toList()),
-                                Arrays.asList("false", "false", "", "false", "false", "", "false", "false", "false", "", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "", "", "false", "false", "", "false", "", "false", "", "false", "false", "false", "", "false", "", "", "false", "", ""),
+                                Arrays.asList("false", "false", "", "false", "false", "", "false", "false", "false", "", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "", "", "false", "false", "", "false", "", "false", "", "false", "false", "false", "", "false", "", "", "false", "", "", ""),
                                 Allele.create("TCTTTCCAGT"), FACTORY_NAME, null))
+                ),
+                // One overlapping VCF feature, non-empty FILTER field:
+                helpProvideForTestCreateFuncotations(FuncotatorTestConstants.DBSNP_HG19_SNIPPET_WITH_FILTERS_FILE_PATH,
+                        "3", 61662, 61662, "T", "C",
+                        Collections.singletonList(
+                                TableFuncotation.create(FIELD_DEFAULT_MAP.keySet().stream().map(s -> FACTORY_NAME + "_" + s).collect(Collectors.toList()),
+                                        Arrays.asList("true", "false", "0.9744,0.02556", "false", "false", "1", "false", "true", "false", "", "false", "true", "false", "true", "true", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "false", "73009205", "61662", "false", "false", "0", "true", "0", "false", "0.954392,0.0456075", "false", "false", "false", "SNV", "true", "0x05010000000515043e000100", "1", "false", "130", "rs73009205", "FILTER_73"),
+                                        Allele.create("C"), FACTORY_NAME, null)
+                        )
                 ),
         };
     }
@@ -205,17 +218,17 @@ public class VcfFuncotationFactoryUnitTest extends GATKBaseTest {
     }
 
     @Test(dataProvider = "provideForTestCreateFuncotationsOnVariant")
-    public void testCreateFuncotationsOnVariant(final VariantContext variant,
+    public void testCreateFuncotationsOnVariant(final String variantFeatureDataFileName,
+                                                final VariantContext variant,
                                                 final ReferenceContext referenceContext,
                                                 final List<Funcotation> expected) {
-
         // Make our factory:
         final VcfFuncotationFactory vcfFuncotationFactory =
-                createVcfFuncotationFactory(FACTORY_NAME, FACTORY_VERSION, IOUtils.getPath(FuncotatorTestConstants.DBSNP_HG19_SNIPPET_FILE_PATH));
+                createVcfFuncotationFactory(FACTORY_NAME, FACTORY_VERSION, IOUtils.getPath(variantFeatureDataFileName));
 
         // Create features from the file:
         final List<Feature> vcfFeatures;
-        try (final VCFFileReader vcfReader = new VCFFileReader(IOUtils.getPath(FuncotatorTestConstants.DBSNP_HG19_SNIPPET_FILE_PATH))) {
+        try (final VCFFileReader vcfReader = new VCFFileReader(IOUtils.getPath(variantFeatureDataFileName))) {
             vcfFeatures = vcfReader.query(variant.getContig(), variant.getStart(), variant.getEnd()).stream().collect(Collectors.toList());
         }
 
@@ -238,21 +251,21 @@ public class VcfFuncotationFactoryUnitTest extends GATKBaseTest {
                 ),
                 expected
         );
-
     }
 
     @Test(dataProvider = "provideForTestCreateFuncotationsOnVariant")
-    public void testCreateFuncotationMetadata(final VariantContext variant,
+    public void testCreateFuncotationMetadata(final String variantFeatureDataFileName,
+                                              final VariantContext variant,
                                               final ReferenceContext referenceContext,
                                               final List<Funcotation> expected) {
         // Don't need the expected gt for this test, but useful to reuse the data provider.
         // Make our factory:
         final VcfFuncotationFactory vcfFuncotationFactory =
-                createVcfFuncotationFactory(FACTORY_NAME, FACTORY_VERSION, IOUtils.getPath(FuncotatorTestConstants.DBSNP_HG19_SNIPPET_FILE_PATH));
+                createVcfFuncotationFactory(FACTORY_NAME, FACTORY_VERSION, IOUtils.getPath(variantFeatureDataFileName));
 
         // Create features from the file:
         final List<Feature> vcfFeatures;
-        try (final VCFFileReader vcfReader = new VCFFileReader(IOUtils.getPath(FuncotatorTestConstants.DBSNP_HG19_SNIPPET_FILE_PATH))) {
+        try (final VCFFileReader vcfReader = new VCFFileReader(IOUtils.getPath(variantFeatureDataFileName))) {
             vcfFeatures = vcfReader.query(variant.getContig(), variant.getStart(), variant.getEnd()).stream().collect(Collectors.toList());
         }
 
@@ -265,7 +278,7 @@ public class VcfFuncotationFactoryUnitTest extends GATKBaseTest {
         );
 
         Assert.assertEquals(funcotations.stream().map(f -> f.getMetadata().retrieveAllHeaderInfo()).collect(Collectors.toSet()).size(), 1);
-        final Pair<VCFHeader, List<VariantContext>> vcfInfo = VariantContextTestUtils.readEntireVCFIntoMemory(FuncotatorTestConstants.DBSNP_HG19_SNIPPET_FILE_PATH);
+        final Pair<VCFHeader, List<VariantContext>> vcfInfo = VariantContextTestUtils.readEntireVCFIntoMemory(variantFeatureDataFileName);
         final List<VCFInfoHeaderLine> gtOutputVcfInfoHeaderLines = vcfFuncotationFactory.createFuncotationVcfInfoHeaderLines(vcfInfo.getLeft());
 
         // Get the info headers that are in the VCF and make sure that these are also present in the metadata

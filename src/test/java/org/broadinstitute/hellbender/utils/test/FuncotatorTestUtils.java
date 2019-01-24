@@ -177,6 +177,28 @@ public class FuncotatorTestUtils {
                                                             final int end,
                                                             final String refAlleleString,
                                                             final String altAlleleString) {
+        return createSimpleVariantContext(reference, contig, start, end, refAlleleString, altAlleleString, null);
+    }
+
+    /**
+     *  Create a variant context with the following fields.  Note that the genotype will be empty, as will
+     *  INFO annotations.
+     *
+     * @param reference E.g. {@link FuncotatorReferenceTestUtils#retrieveHg19Chr3Ref}
+     * @param contig Never {@code null}
+     * @param start Must be positive.
+     * @param end Must be positive.
+     * @param refAlleleString Valid {@link String} for an allele.  Do not include "*".  Never {@code null}
+     * @param altAlleleString Valid {@link String} for an allele.  Do not include "*".  Never {@code null}
+     * @param filterString Valid {@link String} for filters (See VCF 4.2 spec).  May be {@code null}.
+     * @return a simple, biallelic variant context
+     */
+    public static VariantContext createSimpleVariantContext(final String reference, final String contig,
+                                                            final int start,
+                                                            final int end,
+                                                            final String refAlleleString,
+                                                            final String altAlleleString,
+                                                            final String filterString) {
         Utils.nonNull(contig);
         Utils.nonNull(refAlleleString);
         Utils.nonNull(altAlleleString);
@@ -194,7 +216,16 @@ public class FuncotatorTestUtils {
                 Arrays.asList(refAllele, altAllele)
         );
 
-        return variantContextBuilder.make();
+        if ( filterString != null ) {
+            variantContextBuilder.filter(filterString);
+        }
+        else {
+            variantContextBuilder.passFilters();
+        }
+
+        final VariantContext vc = variantContextBuilder.make();
+
+        return vc;
     }
 
     /**
