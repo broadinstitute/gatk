@@ -70,6 +70,27 @@ public final class ReadsSparkSink {
     public static void writeReads(
             final JavaSparkContext ctx, final String outputFile, final String referenceFile, final JavaRDD<GATKRead> reads,
             final SAMFileHeader header, ReadsWriteFormat format, final int numReducers, final String outputPartsDir) throws IOException {
+        writeReads(ctx, outputFile, referenceFile, reads, header, format, numReducers, outputPartsDir, true, true);
+    }
+
+    /**
+     * writeReads writes rddReads to outputFile with header as the file header.
+     * @param ctx the JavaSparkContext to write.
+     * @param outputFile path to the output bam.
+     * @param referenceFile path to the reference. required for cram output, otherwise may be null.
+     * @param reads reads to write.
+     * @param header the header to put at the top of the files
+     * @param format should the output be a single file, sharded, ADAM, etc.
+     * @param numReducers the number of reducers to use when writing a single file. A value of zero indicates that the default
+     *                    should be used.
+     * @param outputPartsDir directory for temporary files for SINGLE output format, should be null for default value of filename + .output
+     * @param writeBai whether to write a BAI file (when writing BAM format)
+     * @param writeSbi whether to write an SBI file (when writing BAM format)
+     */
+    public static void writeReads(
+            final JavaSparkContext ctx, final String outputFile, final String referenceFile, final JavaRDD<GATKRead> reads,
+            final SAMFileHeader header, ReadsWriteFormat format, final int numReducers, final String outputPartsDir,
+            final boolean writeBai, final boolean writeSbi) throws IOException {
 
         String absoluteOutputFile = BucketUtils.makeFilePathAbsolute(outputFile);
         String absoluteReferenceFile = referenceFile != null ?
@@ -87,15 +108,19 @@ public final class ReadsSparkSink {
             FileCardinalityWriteOption fileCardinalityWriteOption = FileCardinalityWriteOption.SINGLE;
             final String outputPartsDirectory = (outputPartsDir == null)? getDefaultPartsDirectory(outputFile)  : outputPartsDir;
             TempPartsDirectoryWriteOption tempPartsDirectoryWriteOption = new TempPartsDirectoryWriteOption(outputPartsDirectory);
+            BaiWriteOption baiWriteOption = BaiWriteOption.fromBoolean(writeBai);
+            SbiWriteOption sbiWriteOption = SbiWriteOption.fromBoolean(writeSbi);
             if (absoluteOutputFile.endsWith(BamFileIoUtils.BAM_FILE_EXTENSION) ||
                     absoluteOutputFile.endsWith(CramIO.CRAM_FILE_EXTENSION) ||
                     absoluteOutputFile.endsWith(IOUtil.SAM_FILE_EXTENSION)) {
                 // don't specify a write option for format since it is inferred from the extension in the path
-                writeReads(ctx, absoluteOutputFile, absoluteReferenceFile, samReads, header, numReducers, fileCardinalityWriteOption, tempPartsDirectoryWriteOption);
+                writeReads(ctx, absoluteOutputFile, absoluteReferenceFile, samReads, header, numReducers,
+                        fileCardinalityWriteOption, tempPartsDirectoryWriteOption, baiWriteOption, sbiWriteOption);
             } else {
                 // default to BAM
                 ReadsFormatWriteOption formatWriteOption = ReadsFormatWriteOption.BAM;
-                writeReads(ctx, absoluteOutputFile, absoluteReferenceFile, samReads, header, numReducers, formatWriteOption, fileCardinalityWriteOption, tempPartsDirectoryWriteOption);
+                writeReads(ctx, absoluteOutputFile, absoluteReferenceFile, samReads, header, numReducers, formatWriteOption,
+                        fileCardinalityWriteOption, tempPartsDirectoryWriteOption, baiWriteOption, sbiWriteOption);
             }
         } else if (format == ReadsWriteFormat.SHARDED) {
             if (outputPartsDir!=null) {

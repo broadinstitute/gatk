@@ -31,6 +31,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.utils.*;
+import org.broadinstitute.hellbender.utils.config.ConfigFactory;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -78,6 +79,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     public static final String NUM_REDUCERS_LONG_NAME = "num-reducers";
     public static final String SHARDED_OUTPUT_LONG_NAME = "sharded-output";
     public static final String OUTPUT_SHARD_DIR_LONG_NAME = "output-shard-tmp-dir";
+    public static final String CREATE_OUTPUT_BAM_SPLITTING_INDEX_LONG_NAME = "create-output-bam-splitting-index";
 
     @ArgumentCollection
     public final ReferenceInputArgumentCollection referenceArguments = requiresReference() ? new RequiredReferenceInputArgumentCollection() :  new OptionalReferenceInputArgumentCollection();
@@ -118,6 +120,15 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
             fullName = NUM_REDUCERS_LONG_NAME,
             optional = true)
     protected int numReducers = 0;
+
+    @Argument(fullName = StandardArgumentDefinitions.CREATE_OUTPUT_BAM_INDEX_LONG_NAME,
+            shortName = StandardArgumentDefinitions.CREATE_OUTPUT_BAM_INDEX_SHORT_NAME,
+            doc = "If true, create a BAM index when writing a coordinate-sorted BAM file.", optional = true, common = true)
+    public boolean createOutputBamIndex = ConfigFactory.getInstance().getGATKConfig().createOutputBamIndex();
+
+    @Argument(fullName = CREATE_OUTPUT_BAM_SPLITTING_INDEX_LONG_NAME,
+            doc = "If true, create a BAM splitting index (SBI) when writing a coordinate-sorted BAM file.", optional = true, common = true)
+    public boolean createOutputBamSplittingIndex = ConfigFactory.getInstance().getGATKConfig().createOutputBamIndex();
 
     private ReadsSparkSource readsSource;
     private SAMFileHeader readsHeader;
@@ -345,7 +356,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
             ReadsSparkSink.writeReads(ctx, outputFile,
                     hasReference() ? referenceArguments.getReferencePath().toAbsolutePath().toUri().toString() : null,
                     reads, header, shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE,
-                    getRecommendedNumReducers(), shardedPartsDir);
+                    getRecommendedNumReducers(), shardedPartsDir, createOutputBamIndex, createOutputBamSplittingIndex);
         } catch (IOException e) {
             throw new UserException.CouldNotCreateOutputFile(outputFile,"writing failed", e);
         }
