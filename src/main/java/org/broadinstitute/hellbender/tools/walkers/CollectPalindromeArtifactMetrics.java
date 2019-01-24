@@ -4,6 +4,7 @@ import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.StringUtil;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
@@ -27,7 +28,7 @@ import java.io.PrintStream;
         oneLineSummary = "Print reads with reference context",
         programGroup = DiagnosticsAndQCProgramGroup.class
 )
-
+@ExperimentalFeature
 public class CollectPalindromeArtifactMetrics extends ReadWalker {
 
     private final PalindromicArtifactMetric metric = new PalindromicArtifactMetric();
