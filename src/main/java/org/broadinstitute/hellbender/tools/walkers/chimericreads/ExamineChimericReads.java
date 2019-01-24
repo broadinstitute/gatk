@@ -9,6 +9,7 @@ import htsjdk.samtools.util.Histogram;
 import htsjdk.samtools.util.SequenceUtil;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -30,11 +31,13 @@ import java.util.List;
 import java.util.Set;
 
 @CommandLineProgramProperties(
-        summary = "Prints reads from the provided file(s) with corresponding reference bases (if a reference is provided) to the specified output file (or STDOUT if none specified)",
-        oneLineSummary = "Print reads with reference context",
-        programGroup = OtherProgramGroup.class,
-        omitFromCommandLine = true
+        summary = "Examines Readpairs that have been annotated with AnnotateChimericReads, and alignes the embedded references to each other. " +
+                "Can be used to figure out if references located near read pairs have similar sub-sequences. Annotates reads with alignment," +
+                "and emits a metric with a summary of results. Expects queryname-sorted input, but emits coordinte-sorted file.",
+        oneLineSummary = "Examines pairs of chimeric reads and aligns embedded references to each other.",
+        programGroup = OtherProgramGroup.class
 )
+@ExperimentalFeature
 public class ExamineChimericReads extends ReadPairWalker {
     private final SmithWatermanAligner smithWatermanAligner = SmithWatermanJavaAligner.getInstance();
     private final SWOverhangStrategy swOverhangStrategy = SWOverhangStrategy.SOFTCLIP;
@@ -52,16 +55,16 @@ public class ExamineChimericReads extends ReadPairWalker {
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-            doc = "Write output to this file")
+            doc = "Write output Reads to this file")
     public String outputBam;
 
     @Argument(fullName = StandardArgumentDefinitions.METRICS_FILE_LONG_NAME,
             shortName = StandardArgumentDefinitions.METRICS_FILE_SHORT_NAME,
-            doc = "Write output to this file")
+            doc = "Write output metrics to this file")
     public String outputMetrics;
 
     @Argument(fullName = "reference-bases-tag-name", shortName = "tn")
-    String tagName = "RB";
+    String tagName = "rb";
 
     @Override
     public void onTraversalStart() {

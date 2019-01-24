@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.chimericreads;
 import htsjdk.samtools.util.SequenceUtil;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
@@ -25,9 +26,9 @@ import java.util.Set;
 @CommandLineProgramProperties(
         summary = "Prints reads from the provided file(s) with corresponding reference bases to the specified output file (or STDOUT if none specified)",
         oneLineSummary = "Print reads with reference context",
-        programGroup = OtherProgramGroup.class,
-        omitFromCommandLine = true
+        programGroup = OtherProgramGroup.class
 )
+@ExperimentalFeature
 public final class AnnotateChimericReads extends ReadWalker {
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output file (if not provided, defaults to STDOUT)", common = false, optional = true)
@@ -46,7 +47,7 @@ public final class AnnotateChimericReads extends ReadWalker {
     private Integer MAX_READ_PAIRS = 1_000_000;
 
     @Argument(fullName = "reference-bases-tag-name", shortName = "tn")
-    String tagName = "RB";
+    String tagName = "rb";
 
     private SAMFileGATKReadWriter outputWriter;
     private final ReadFilter chimericReadFilter = new ChimericReadFilter();
