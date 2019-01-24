@@ -318,8 +318,8 @@ public final class QualityUtils {
      * @return a phred-scaled version of the error rate
      */
     public static double phredScaleLog10ErrorRate(final double errorRateLog10) {
-        if ( ! MathUtils.goodLog10Probability(errorRateLog10) ) throw new
-                IllegalArgumentException("errorRateLog10 must be good probability but got " + errorRateLog10);
+        Utils.validateArg(MathUtils.goodLog10Probability(errorRateLog10), () -> "errorRateLog10 must be good probability but got " + errorRateLog10);
+        
         // abs is necessary for edge base with errorRateLog10 = 0 producing -0.0 doubles
         return Math.abs(-10.0 * Math.max(errorRateLog10, MIN_LOG10_SCALED_QUAL));
     }
