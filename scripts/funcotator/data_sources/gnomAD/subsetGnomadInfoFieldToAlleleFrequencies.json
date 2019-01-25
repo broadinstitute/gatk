@@ -1,0 +1,9 @@
+{
+  "SubsetGenomicInfoFieldToAlleleFrequencies.gatk_docker": "broadinstitute/gatk:4.0.11.0",
+  "SubsetGenomicInfoFieldToAlleleFrequencies.gnomad_vcf": "gs://gnomad-public/release/2.1/vcf/genomes/gnomad.genomes.r2.1.sites.vcf.bgz",
+  "SubsetGenomicInfoFieldToAlleleFrequencies.gnomad_version": "2.1",
+
+  "SubsetGenomicInfoFieldToAlleleFrequencies.mem_gb": "128",
+  "SubsetGenomicInfoFieldToAlleleFrequencies.disk_space_gb": "16384",
+  "SubsetGenomicInfoFieldToAlleleFrequencies.boot_disk_size_gb": "100"
+}

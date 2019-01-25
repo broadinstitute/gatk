@@ -1,0 +1,11 @@
+{
+  "MutectResources.gatk_docker": "broadinstitute/gatk:4.0.11.0",
+  "MutectResources.gnomad": "gs://gnomad-public/release/2.1/vcf/genomes/gnomad.genomes.r2.1.sites.vcf.bgz",
+  "MutectResources.gnomad_idx": "gs://gnomad-public/release/2.1/vcf/genomes/gnomad.genomes.r2.1.sites.vcf.bgz.tbi",
+  "MutectResources.gnomad_version": "2.1",
+  "MutectResources.minimum_allele_frequency": "0.0",
+
+  "MutectResources.mem_gb": "128",
+  "MutectResources.disk_space_gb": "16384",
+  "MutectResources.boot_disk_size_gb": "100"
+}
