@@ -109,7 +109,7 @@ def write_ndarray_to_tsv(output_file: str,
                          extra_comment_lines: Optional[List[str]] = None,
                          header: Optional[str] = None,
                          write_shape_info: bool = True) -> None:
-    """Write an vector or matrix ndarray to .tsv file.
+    """Write a vector or matrix ndarray to .tsv file.
 
     Note:
         Shape and dtype information are stored in the header.

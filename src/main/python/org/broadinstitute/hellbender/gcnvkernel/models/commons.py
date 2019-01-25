@@ -4,7 +4,7 @@ import theano.tensor as tt
 import pymc3 as pm
 import theano as th
 import pymc3.distributions.dist_math as pm_dist_math
-from typing import Tuple
+from typing import Tuple, Generator
 
 _logger = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ def get_normalized_prob_vector(prob_vector: np.ndarray, prob_sum_tol: float) -> 
 
     Returns:
         A new and normalized probability vector if it deviates from unity more than `prob_sum_tol`
-        Otherwise, `prov_vector` is return unchanged.
+        Otherwise, `prob_vector` is returned unchanged.
     """
     assert all(prob_vector >= 0), "Probabilities must be non-negative"
     prob_sum = np.sum(prob_vector)
@@ -224,3 +224,18 @@ def stochastic_node_mean_symbolic(approx: pm.MeanField, node, size=100,
                          n_steps=size)
 
     return outputs[-1] / size
+
+
+def get_sampling_generator_for_model_approximation(model_approx: pm.MeanField, model_var_name: str,
+                                                   num_samples: int = 250) -> Generator:
+    """Get a generator that returns samples of a precomputed model approximation for a specific variable in that model
+
+    Args:
+        model_approx: an instance of PyMC3 meanfield approximation
+        model_var_name: a stochastic node in the model
+        num_samples: number of samples to draw
+
+    Returns:
+        A generator that will yield `num_samples` samples from an approximation to a posterior
+    """
+    return (model_approx.sample()[model_var_name] for _ in range(num_samples))

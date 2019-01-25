@@ -32,6 +32,10 @@ quality_end_column_name = "QUALITY_END"
 # column name for baseline copy-number file
 baseline_copy_number_column_name = "BASELINE_COPY_NUMBER"
 
+# column name for denoised copy-number files
+denoised_copy_ratio_mean_column_name = "DENOISED_COPY_RATIO_MEAN"
+denoised_copy_ratio_std_column_name = "DENOISED_COPY_RATIO_STD"
+
 # regular expression for matching sample name from header comment line
 sample_name_header_regexp = "^@RG.*SM:(.*)[\t]*.*$"
 
@@ -50,6 +54,8 @@ default_copy_number_log_emission_tsv_filename = "log_c_emission_tc.tsv"
 default_class_log_posterior_tsv_filename = "log_q_tau_tk.tsv"
 default_baseline_copy_number_tsv_filename = "baseline_copy_number_t.tsv"
 default_copy_number_segments_tsv_filename = "copy_number_segments.tsv"
+default_denoised_copy_ratios_mean_tsv_filename = "denoised_copy_ratios_mu.tsv"
+default_denoised_copy_ratios_std_tsv_filename = "denoised_copy_ratios_std.tsv"
 
 default_denoising_config_json_filename = "denoising_config.json"
 default_calling_config_json_filename = "calling_config.json"
