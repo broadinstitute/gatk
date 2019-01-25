@@ -513,7 +513,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         final List<VariantContext> VCpriors = new ArrayList<>();
         if (hcArgs.genotypeArgs.supportVariants != null) {
-            features.getValues(hcArgs.genotypeArgs.supportVariants).stream().forEach(VCpriors::add);
+            VCpriors.addAll(features.getValues(hcArgs.genotypeArgs.supportVariants));
         }
 
         if ( hcArgs.sampleNameToUse != null ) {

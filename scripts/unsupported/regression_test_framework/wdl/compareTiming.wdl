@@ -73,6 +73,7 @@ task CompareTimingTask {
     File call_timing_file
 
     String? base_timing_output_name
+    String? bam_name
 
     ####################################################################################
     # Runtime Inputs:
@@ -87,6 +88,7 @@ task CompareTimingTask {
     ####################################################################################
     # Default values:
     String timing_diff_file_name = if defined(base_timing_output_name) then basename(base_timing_output_name) + ".timingDiff.txt" else "timingDiff.txt"
+    String timing_csv_file_name = if defined(base_timing_output_name) then basename(base_timing_output_name) + ".timingDiff.csv" else "timingDiff.csv"
 
     ####################################################################################
     # Define default values and set up values for running:
@@ -109,20 +111,29 @@ task CompareTimingTask {
         truthElapsed=$( grep "Elapsed" ${truth_timing_file} | sed 's#.*[ \t]##')
         callElapsed=$( grep "Elapsed" ${call_timing_file} | sed 's#.*[ \t]##')
 
+        echo "Control,${bam_name},$truthElapsed" >> ${timing_csv_file_name}
+        echo "Test,${bam_name},$truthElapsed" >> ${timing_csv_file_name}
+
         echo "truthElapsed = $truthElapsed"
         echo "callElapsed = $callElapsed"
 
         echo "truthElapsed = $truthElapsed" >> ${timing_diff_file_name}
         echo "callElapsed = $callElapsed" >> ${timing_diff_file_name}
 
-        timeDiff=$( python -c "print($truthElapsed - $callElapsed)" )
+        timeDiff=$( python -c "print($callElapsed - $truthElapsed)" )
         timeRatio=$( python -c "print($callElapsed/$truthElapsed)" )
 
+        echo "# timeDiff = callElapsed - truthElapsed"
         echo "timeDiff = $timeDiff"
+
+        echo "# timeRatio = callElapsed/truthElapsed"
         echo "timeRatio = $timeRatio"
 
-        echo "TimeDiff: $timeDiff" >> ${timing_diff_file_name}
-        echo "TimeRatio: $timeRatio" >> ${timing_diff_file_name}
+        echo "# timeDiff = callElapsed - truthElapsed" >> ${timing_diff_file_name}
+        echo "timeDiff: $timeDiff" >> ${timing_diff_file_name}
+
+        echo "# timeRatio = callElapsed/truthElapsed" >> ${timing_diff_file_name}
+        echo "timeRatio: $timeRatio" >> ${timing_diff_file_name}
     }
 
     ####################################################################################
@@ -139,6 +150,7 @@ task CompareTimingTask {
     ####################################################################################
     # Outputs:
     output {
+        File timing_csv          = timing_csv_file_name
         File timing_diff         = timing_diff_file_name
         String run_title         = call_timing_file
     }

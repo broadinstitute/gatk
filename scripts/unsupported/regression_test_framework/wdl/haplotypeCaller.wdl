@@ -5,8 +5,8 @@
 #   Required:
 #     String gatk_docker                                -  GATK Docker image in which to run
 #
-#     File input_bam                                    -  Input reads over which to call small variants with Haplotype Caller.
-#     File input_bam_index                              -  Index for the input BAM file.
+#     Array[File] input_bams                            -  Input reads over which to call small variants with Haplotype Caller.
+#
 #     File ref_fasta                                    -  Reference FASTA file.
 #     File ref_fasta_dict                               -  Reference FASTA file dictionary.
 #     File ref_fasta_index                              -  Reference FASTA file index.
@@ -34,13 +34,11 @@ workflow HaplotypeCaller {
     # Input args:
     String gatk_docker
 
-    File input_bam
-    File input_bam_index
+    Array[File] input_bams
+
     File ref_fasta
     File ref_fasta_dict
     File ref_fasta_index
-
-    String out_vcf_name
 
     File? interval_list
     Boolean? gvcf_mode
@@ -56,36 +54,49 @@ workflow HaplotypeCaller {
 
     # ------------------------------------------------
     # Call our tasks:
-    call HaplotypeCallerTask {
-        input:
-            input_bam                 = input_bam,
-            input_bam_index           = input_bam_index,
-            ref_fasta                 = ref_fasta,
-            ref_fasta_dict            = ref_fasta_dict,
-            ref_fasta_index           = ref_fasta_index,
 
-            interval_list             = interval_list,
-            gvcf_mode                 = gvcf_mode,
-            contamination             = contamination,
-            interval_padding          = interval_padding,
+    scatter (input_bam in input_bams) {
 
-            out_file_name             = out_vcf_name,
+        File input_base_name = basename(input_bam, ".bam")
+        File input_bam_index = sub(input_bam, ".bam$", ".bai")
+        String output_name = if (defined(gvcf_mode) && gvcf_mode) then input_base_name + ".HC.g.vcf" else input_base_name + ".HC.vcf"
 
-            gatk_docker               = gatk_docker,
-            gatk_override             = gatk4_jar_override,
-            mem                       = mem_gb,
-            preemptible_attempts      = preemptible_attempts,
-            disk_space_gb             = disk_space_gb,
-            cpu                       = cpu,
-            boot_disk_size_gb         = boot_disk_size_gb
+        Boolean isUsingIntervals = sub(input_base_name, "Pond.*", "") == "Nex"
+        File? garbageFile
+        File? interval_list_final = if !isUsingIntervals then interval_list else garbageFile
+
+        call HaplotypeCallerTask {
+            input:
+                input_bam                 = input_bam,
+                input_bam_index           = input_bam_index,
+
+                out_file_name             = output_name,
+
+                ref_fasta                 = ref_fasta,
+                ref_fasta_dict            = ref_fasta_dict,
+                ref_fasta_index           = ref_fasta_index,
+
+                interval_list             = interval_list_final,
+                gvcf_mode                 = gvcf_mode,
+                contamination             = contamination,
+                interval_padding          = interval_padding,
+
+                gatk_docker               = gatk_docker,
+                gatk_override             = gatk4_jar_override,
+                mem                       = mem_gb,
+                preemptible_attempts      = preemptible_attempts,
+                disk_space_gb             = disk_space_gb,
+                cpu                       = cpu,
+                boot_disk_size_gb         = boot_disk_size_gb
+        }
     }
 
     # ------------------------------------------------
     # Outputs:
     output {
-        File vcf_out     = HaplotypeCallerTask.output_vcf
-        File vcf_out_idx = HaplotypeCallerTask.output_vcf_index
-        File timingInfo  = HaplotypeCallerTask.timing_info
+        Array[File] vcf_out     = HaplotypeCallerTask.output_vcf
+        Array[File] vcf_out_idx = HaplotypeCallerTask.output_vcf_index
+        Array[File] timingInfo  = HaplotypeCallerTask.timing_info
     }
 }
 
@@ -101,6 +112,12 @@ task HaplotypeCallerTask {
     # Required:
     File input_bam
     File input_bam_index
+
+    # Output Names:
+    String out_file_name
+#    String out_file_dir
+#    String out_file_name = basename(out_file_dir)
+
     File ref_fasta
     File ref_fasta_dict
     File ref_fasta_index
@@ -109,11 +126,6 @@ task HaplotypeCallerTask {
     Boolean? gvcf_mode
     Float? contamination
     Int? interval_padding
-
-    # Output Names:
-    String out_file_name
-#    String out_file_dir
-#    String out_file_name = basename(out_file_dir)
 
     # Runtime Options:
     String gatk_docker

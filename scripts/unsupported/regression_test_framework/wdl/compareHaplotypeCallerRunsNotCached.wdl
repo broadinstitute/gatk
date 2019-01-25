@@ -36,13 +36,15 @@ workflow ToolComparisonWdl {
     # ------------------------------------------------
     # Input args:
     String gatk_docker
-    String baseline_docker = "jamesemery/gatk-nightly:masterBranchAfterDavidFix"
+    String baseline_docker = "jamesemery/gakt-nightly:je_HaplotypeCallerMicroOptimization3ControlMaster"
     # Default input files for HC and comparison:
     String truth_bucket_location = "gs://haplotypecallerspark-evaluation/groundTruth/"
     String input_bucket_location = "gs://haplotypecallerspark-evaluation/inputData/"
     #String input_bucket_location = "gs://haplotypecallerspark-evaluation/inputData/quick_sanity_check_data/"
-    Array[String] input_bams = [ "G94982.NA12878.bam", "G96830.NA12878.bam", "G96831.NA12878.bam", "G96832.NA12878.bam", "NexPond-359781.bam", "NexPond-412726.bam", "NexPond-445394.bam", "NexPond-472246.bam", "NexPond-506817.bam", "NexPond-538834.bam", "NexPond-572804.bam", "NexPond-603388.bam", "NexPond-633960.bam", "NexPond-656480.bam", "NexPond-679060.bam" ]
-        #Array[String] input_bams = ["G96830.NA12878.bam", "G96830.NA12878.bam", "G96830.NA12878.bam", "G96830.NA12878.bam", "G96830.NA12878.bam", "G96830.NA12878.bam", "G96830.NA12878.bam", "G96830.NA12878.bam", "G96830.NA12878.bam", "G96830.NA12878.bam", "G96830.NA12878.bam", "G96830.NA12878.bam", "G96830.NA12878.bam", "G96830.NA12878.bam", "G96830.NA12878.bam", "G96830.NA12878.bam", "G96830.NA12878.bam", "G96830.NA12878.bam", "G96830.NA12878.bam", "G96830.NA12878.bam" ]
+#    Array[String] input_bams = [ "G94982.NA12878.bam", "G96830.NA12878.bam", "G96831.NA12878.bam", "G96832.NA12878.bam", "NexPond-359781.bam", "NexPond-412726.bam", "NexPond-445394.bam", "NexPond-472246.bam", "NexPond-506817.bam", "NexPond-538834.bam", "NexPond-572804.bam", "NexPond-603388.bam", "NexPond-633960.bam", "NexPond-656480.bam", "NexPond-679060.bam" ]
+#        Array[String] input_bams = ["G96830.NA12878.bam", "G96830.NA12878.bam", "G96830.NA12878.bam", "G96830.NA12878.bam", "G96830.NA12878.bam", "G96830.NA12878.bam", "G96830.NA12878.bam", "G96830.NA12878.bam", "G96830.NA12878.bam", "G96830.NA12878.bam", "G96830.NA12878.bam", "G96830.NA12878.bam", "G96830.NA12878.bam", "G96830.NA12878.bam", "G96830.NA12878.bam", "G96830.NA12878.bam", "G96830.NA12878.bam", "G96830.NA12878.bam", "G96830.NA12878.bam", "G96830.NA12878.bam" ]
+
+        Array[String] input_bams = ["NexPond-538834.bam", "NexPond-538834.bam", "NexPond-538834.bam", "NexPond-538834.bam", "NexPond-538834.bam", "NexPond-538834.bam", "NexPond-538834.bam", "NexPond-538834.bam", "NexPond-538834.bam", "NexPond-538834.bam", "NexPond-538834.bam", "NexPond-538834.bam", "NexPond-538834.bam", "NexPond-538834.bam", "NexPond-538834.bam", "NexPond-538834.bam", "NexPond-538834.bam", "NexPond-538834.bam", "NexPond-538834.bam", "NexPond-538834.bam" ]
 
     #Array[String] input_bams = [ "NexPond-412726.chr15.copy.bam", "NexPond-412726.chr15.bam" ]
 
@@ -110,7 +112,7 @@ workflow ToolComparisonWdl {
         }
 
 
-        call tool_wdl.HaplotypeCallerTask {
+        call tool_wdl.HaplotypeCallerTask as testValue {
             input:
                 input_bam                 = input_bucket_location + input_bams[i],
                 input_bam_index           = input_bucket_location + indexFile,
@@ -177,7 +179,8 @@ workflow ToolComparisonWdl {
         call analysis_3_wdl.CompareTimingTask {
             input:
                 truth_timing_file = BaselineRun.timing_info,
-                call_timing_file = HaplotypeCallerTask.timing_info,
+                call_timing_file = testValue.timing_info,
+                bam_name = outputName,
                 base_timing_output_name = output_folder_base
         }
     }
@@ -185,8 +188,16 @@ workflow ToolComparisonWdl {
     call combine_timing_wdl.CombineTimingTask {
         input:
            timing_files = CompareTimingTask.timing_diff,
+           timing_csvs = CompareTimingTask.timing_csv,
            timing_names = CompareTimingTask.run_title
     }
+
+    call combine_timing_wdl.PlotRuntimeTimingResults {
+        input:
+           timing_csv = CombineTimingTask.combined_csv,
+           bam_name = "NexPond-538834.bam"
+    }
+
 
     # ------------------------------------------------
     # Outputs:
@@ -195,6 +206,7 @@ workflow ToolComparisonWdl {
 #        File vcf_out_idx = HaplotypeCallerTask.output_vcf_index
         Array[File] timingMetrics  = CompareTimingTask.timing_diff
         File timingResutls = CombineTimingTask.combined_file
+        File timingTable = CombineTimingTask.combined_csv
     }
 
 

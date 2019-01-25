@@ -1,0 +1,16 @@
+{
+  "HaplotypeCaller.gatk_docker": "broadinstitute/gatk:4.0.11.0",
+
+  "HaplotypeCaller.input_bams": ["gs://haplotypecallerspark-evaluation/inputData/G94982.NA12878.bam", "gs://haplotypecallerspark-evaluation/inputData/G96830.NA12878.bam", "gs://haplotypecallerspark-evaluation/inputData/G96831.NA12878.bam", "gs://haplotypecallerspark-evaluation/inputData/G96832.NA12878.bam", "gs://haplotypecallerspark-evaluation/inputData/NexPond-359781.bam", "gs://haplotypecallerspark-evaluation/inputData/NexPond-412726.bam", "gs://haplotypecallerspark-evaluation/inputData/NexPond-412726.chr15.bam", "gs://haplotypecallerspark-evaluation/inputData/NexPond-445394.bam", "gs://haplotypecallerspark-evaluation/inputData/NexPond-472246.bam", "gs://haplotypecallerspark-evaluation/inputData/NexPond-506817.bam", "gs://haplotypecallerspark-evaluation/inputData/NexPond-538834.bam", "gs://haplotypecallerspark-evaluation/inputData/NexPond-572804.bam", "gs://haplotypecallerspark-evaluation/inputData/NexPond-603388.bam", "gs://haplotypecallerspark-evaluation/inputData/NexPond-633960.bam", "gs://haplotypecallerspark-evaluation/inputData/NexPond-656480.bam", "gs://haplotypecallerspark-evaluation/inputData/NexPond-679060.bam"],
+  "HaplotypeCaller.interval_list": "gs://haplotypecallerspark-evaluation/inputData/whole_exome_illumina_coding_v1.Homo_sapiens_assembly19.targets.interval_list",
+
+  "HaplotypeCaller.ref_fasta": "gs://broad-references/hg19/v0/Homo_sapiens_assembly19.fasta",
+  "HaplotypeCaller.ref_fasta_index": "gs://broad-references/hg19/v0/Homo_sapiens_assembly19.fasta.fai",
+  "HaplotypeCaller.ref_fasta_dict": "gs://broad-references/hg19/v0/Homo_sapiens_assembly19.dict",
+
+  "HaplotypeCaller.gvcf_mode": "false",
+
+  "HaplotypeCaller.disk_space_gb": "512",
+  "HaplotypeCaller.boot_disk_size_gb": "64",
+  "HaplotypeCaller.mem_gb": "32"
+}

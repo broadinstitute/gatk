@@ -1,0 +1,5 @@
+{
+	"monitoring_script": "gs://broad-dsde-methods-tbrookin/cromwell_monitoring_script.sh",
+	"write_to_cache": true,
+	"read_from_cache": true
+}

@@ -1,5 +1,6 @@
 {
-  "ToolComparisonWdl.gatk_docker": "broadinstitute/gatk-nightly:2018-12-07-4.0.11.0-88-g2ae01efda-SNAPSHOT",
+  "ToolComparisonWdl.gatk_docker": "broadinstitute/gatk:4.1.0.0",
+  "ToolComparisonWdl.analysis_docker": "broadinstitute/gatk:4.1.0.0",
 
   "ToolComparisonWdl.input_bams": [ "NexPond-412726.chr15.bam" ],
 

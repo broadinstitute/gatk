@@ -422,7 +422,13 @@ public class ReferenceConfidenceModel {
      */
     List<VariantContext> getMatchingPriors(final Locatable curPos, final VariantContext call, final List<VariantContext> priorList) {
         final int position = call != null ? call.getStart() : curPos.getStart();
-        return priorList.stream().filter(vc -> position == vc.getStart()).collect(Collectors.toList());
+        List<VariantContext> list = new ArrayList<>(priorList.size());
+        for (int i = 0; i < priorList.size(); i++) {
+            if (position == priorList.get(i).getStart()) {
+                list.add(priorList.get(i));
+            }
+        }
+        return list;
     }
 
     /**

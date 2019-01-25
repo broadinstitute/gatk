@@ -5,8 +5,10 @@
 #   Required:
 #     String gatk_docker                                -  GATK Docker image in which to run, which contains the new HaplotypeCaller to be tested.
 #
-#
 #   Optional:
+#
+#      String? analysis_docker                          -  GATK Docker image containing analysis packages to be run.
+#                                                          If not provided, will default to gatk_docker
 #
 #     HaplotypeCaller:
 #       File? interval_list                             -  Interval list over which to call variants on the given BAM file.
@@ -54,6 +56,10 @@ workflow ToolComparisonWdl {
     # Output bucket name:
     String output_bucket_base_location = "https://console.cloud.google.com/storage/browser/haplotypecallerspark-evaluation/testSets/"
 
+    # Set the analysis docker:
+    String? analysis_docker
+    String analysis_docker_final = if (defined(analysis_docker)) then "" + analysis_docker else gatk_docker
+
     File? gatk4_jar_override
     Int? mem_gb
     Int? preemptible_attempts
@@ -66,25 +72,30 @@ workflow ToolComparisonWdl {
     scatter (i in range(length(input_bams))) {
 
         # Set up variables for this loop:
-        File inputBaseName = basename(input_bams[i], ".bam")
-        File indexFile = inputBaseName + ".bai"
+        File input_base_name = basename(input_bams[i], ".bam")
+        File input_bam_index = input_base_name + ".bai"
 
-        String outputName = if gvcf_mode then inputBaseName + ".HC.g.vcf" else inputBaseName + ".HC.vcf"
+        String outputName = if gvcf_mode then input_base_name + ".HC.g.vcf" else input_base_name + ".HC.vcf"
 
-        String truthBaseName = outputName
+        String truthBaseName = input_base_name + ".vcf.gz"
         File truthVcf = truth_bucket_location + truthBaseName
-        File truthIndex = truth_bucket_location + truthBaseName + ".idx"
+        File truthIndex = truth_bucket_location + truthBaseName + ".tbi"
 
         # This is kind of a total hack
-        Boolean isUsingIntervals = sub(inputBaseName, "Pond.*", "") == "Nex"
-        File? garbageFile
-        File? interval_list_final = if !isUsingIntervals then interval_list else garbageFile
+        Boolean isUsingIntervals = sub(input_base_name, "Pond.*", "") == "Nex"
+        File? emptyFileVariable
+        File? interval_list_final = if !isUsingIntervals then interval_list else emptyFileVariable
+
+        # ================================================================================================
+        # Run the tool itself:
+        # -------------------------------------------------
 
         # Only use intervals if we're running on an Exome:
         call tool_wdl.HaplotypeCallerTask {
             input:
-                input_bam                 = input_bucket_location + input_bams[i],
-                input_bam_index           = input_bucket_location + indexFile,
+                input_bam                = input_bucket_location + input_bams[i],
+                input_bam_index          = input_bucket_location + input_bam_index,
+
                 ref_fasta                 = ref_fasta,
                 ref_fasta_dict            = ref_fasta_dict,
                 ref_fasta_index           = ref_fasta_index,
@@ -105,60 +116,80 @@ workflow ToolComparisonWdl {
                 boot_disk_size_gb         = boot_disk_size_gb
         }
 
+        # ================================================================================================
+        # Run the metrics on tool output and the evaluation of the metrics between this run and
+        # the "truth"/baseline data:
+        # -------------------------------------------------
 
-#        call analysis_1_wdl.GenotypeConcordanceTask {
-#            input:
-#                call_vcf                  = HaplotypeCallerTask.output_vcf,
-#                call_index                = HaplotypeCallerTask.output_vcf_index,
-#                call_sample               = "NA12878",
-#
-#                truth_vcf                 = truthVcf,
-#                truth_index               = truthIndex,
-#                truth_sample              = "NA12878",
-#
-#                interval_list             = interval_list_final,
-#
-#                output_base_name          = outputName,
-#
-#                gatk_docker               = gatk_docker,
-#                gatk_override             = gatk4_jar_override,
-#                mem                       = mem_gb,
-#                preemptible_attempts      = preemptible_attempts,
-#                disk_space_gb             = disk_space_gb,
-#                cpu                       = cpu,
-#                boot_disk_size_gb         = boot_disk_size_gb
-#        }
-#
-#        call analysis_2_wdl.Concordance {
-#            input:
-#                eval_vcf = HaplotypeCallerTask.output_vcf,
-#                eval_vcf_idx = HaplotypeCallerTask.output_vcf_index,
-#                truth_vcf = truthVcf,
-#                truth_vcf_idx = truthIndex,
-#                intervals = interval_list_final,
-#
-#                gatk_docker = gatk_docker,
-#                gatk_override = gatk4_jar_override,
-#                mem_gb = mem_gb,
-#                disk_space_gb = disk_space_gb,
-#                cpu = cpu,
-#                boot_disk_size_gb = boot_disk_size_gb,
-#                preemptible_attempts = preemptible_attempts
-#        }
-
-        call analysis_3_wdl.CompareTimingTask {
+        call analysis_1_wdl.GenotypeConcordanceTask {
             input:
-                gatk_docker = gatk_docker,
-                truth_timing_file = truthVcf + ".timingInformation.txt",
-                call_timing_file = HaplotypeCallerTask.timing_info
+                call_vcf                  = HaplotypeCallerTask.output_vcf,
+                call_index                = HaplotypeCallerTask.output_vcf_index,
+                call_sample               = "NA12878",
+
+                truth_vcf                 = truthVcf,
+                truth_index               = truthIndex,
+                truth_sample              = "NA12878",
+
+                interval_list             = interval_list_final,
+
+                output_base_name          = outputName,
+
+                gatk_docker               = analysis_docker_final,
+                #gatk_override             = gatk4_jar_override,
+                mem                       = mem_gb,
+                preemptible_attempts      = preemptible_attempts,
+                disk_space_gb             = disk_space_gb,
+                cpu                       = cpu,
+                boot_disk_size_gb         = boot_disk_size_gb
         }
+
+        call analysis_2_wdl.Concordance {
+            input:
+                eval_vcf = HaplotypeCallerTask.output_vcf,
+                eval_vcf_idx = HaplotypeCallerTask.output_vcf_index,
+                truth_vcf = truthVcf,
+                truth_vcf_idx = truthIndex,
+                intervals = interval_list_final,
+
+                gatk_docker = analysis_docker_final,
+                #gatk_override = gatk4_jar_override,
+                mem_gb = mem_gb,
+                disk_space_gb = disk_space_gb,
+                cpu = cpu,
+                boot_disk_size_gb = boot_disk_size_gb,
+                preemptible_attempts = preemptible_attempts
+        }
+
+#        call analysis_3_wdl.CompareTimingTask {
+#            input:
+#                gatk_docker = analysis_docker_final,
+#                truth_timing_file = truthVcf + ".timingInformation.txt",
+#                call_timing_file = HaplotypeCallerTask.timing_info
+#        }
     }
 
     # ------------------------------------------------
     # Outputs:
     output {
-#        File vcf_out     = HaplotypeCallerTask.output_vcf
-#        File vcf_out_idx = HaplotypeCallerTask.output_vcf_index
-        Array[File] timingMetrics  = CompareTimingTask.timing_diff
+        Array[File] vcf_out                                 = HaplotypeCallerTask.output_vcf
+        Array[File] vcf_out_idx                             = HaplotypeCallerTask.output_vcf_index
+
+        Array[File] genotypeConcordance_summary_metrics     = GenotypeConcordanceTask.summary_metrics
+        Array[File] genotypeConcordance_detail_metrics      = GenotypeConcordanceTask.detail_metrics
+        Array[File] genotypeConcordance_contingency_metrics = GenotypeConcordanceTask.contingency_metrics
+
+        Array[File] variantCallerConcordance_fn              = Concordance.fn
+        Array[File] variantCallerConcordance_fn_idx          = Concordance.fn_idx
+        Array[File] variantCallerConcordance_fp              = Concordance.fp
+        Array[File] variantCallerConcordance_fp_idx          = Concordance.fp_idx
+        Array[File] variantCallerConcordance_tp              = Concordance.tp
+        Array[File] variantCallerConcordance_tp_idx          = Concordance.tp_idx
+        Array[File] variantCallerConcordance_ffn             = Concordance.ffn
+        Array[File] variantCallerConcordance_ffn_idx         = Concordance.ffn_idx
+        Array[File] variantCallerConcordance_summary         = Concordance.summary
+        Array[File] variantCallerConcordance_filter_analysis = Concordance.filter_analysis
+
+#        Array[File] timingMetrics                            = CompareTimingTask.timing_diff
     }
 }
