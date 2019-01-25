@@ -35,8 +35,11 @@ import scala.Tuple2;
 import java.util.*;
 
 /**
- * <p>This tool is a Spark implementation of the tool MarkDuplicates in Picard allowing for better utilization
- *    of available system resources to speed up duplicate marking.</p>
+ * <p>This is a Spark implementation of the MarkDuplicates tool from Picard that allows the tool to be run in
+ *    parallel on multiple cores on a local machine or multiple machines on a Spark cluster while still matching
+ *    the output of the single-core Picard version. Since the tool requires holding all of the readnames in memory
+ *    while it groups the paired-down read information, it is recommended running this tool on a machine/configuration
+ *    with at least 8 GB of memory for a typical 30x bam.</p>
  *
  * <p>This tool locates and tags duplicate reads in a BAM or SAM file, where duplicate reads are
  *    defined as originating from a single fragment of DNA.  Duplicates can arise during sample preparation e.g. library
@@ -46,7 +49,7 @@ import java.util.*;
  *    referred to as optical duplicates.</p>
  *
  * <p>The MarkDuplicates tool works by comparing sequences in the 5 prime positions of both reads and read-pairs in a SAM/BAM file.
- *    After duplicate reads arecollected, the tool differentiates the primary and duplicate reads using an algorithm that ranks
+ *    After duplicate reads are collected, the tool differentiates the primary and duplicate reads using an algorithm that ranks
  *    reads by the sums of their base-quality scores (default method).</p>
  *
  * <p>The tool's main output is a new SAM or BAM file, in which duplicates have been identified in the SAM flags field for each
@@ -78,6 +81,19 @@ import java.util.*;
  *            -I input.bam \\<br />
  *            -O marked_duplicates.bam \\<br />
  *            -M marked_dup_metrics.txt
+ *     </pre>
+ *
+ *  <h4>MarkDuplicates run on a spark cluster 5 machines</h4>
+ *     <pre>
+ *       gatk MarkDuplicatesSpark \\<br />
+ *            -I input.bam \\<br />
+ *            -O marked_duplicates.bam \\<br />
+ *            -M marked_dup_metrics.txt \\<br />
+ *            -- \\<br />
+ *            --spark-runner SPARK \\<br />
+ *            --spark-master <master_url> \\<br />
+ *            --num-executors 5 \\<br />
+ *            --executor-cores 8 <br />
  *     </pre>
  *
  *    Please see
