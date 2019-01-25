@@ -61,9 +61,7 @@ public final class ReservoirDownsamplerUnitTest extends GATKBaseTest {
         logger.warn("Running test: " + test);
 
         Utils.resetRandomGenerator();
-
         final ReadsDownsampler downsampler = new ReservoirDownsampler(test.reservoirSize);
-
         downsampler.submit(test.createReads());
 
         // after submit, but before signalEndOfInput, all reads are pending, none are finalized
@@ -78,7 +76,7 @@ public final class ReservoirDownsamplerUnitTest extends GATKBaseTest {
             Assert.assertTrue(downsampler.peekFinalized() == null && downsampler.peekPending() == null);
         }
 
-        // after signalEndOfInput, not reads are pending, all are finalized
+        // after signalEndOfInput, no reads are pending, all are finalized
         downsampler.signalEndOfInput();
 
         if ( test.totalReads > 0 ) {
@@ -104,6 +102,19 @@ public final class ReservoirDownsamplerUnitTest extends GATKBaseTest {
 
         downsampler.resetStats();
         Assert.assertEquals(downsampler.getNumberOfDiscardedItems(), 0);
+
+        // use the same downsampling parameters, but this time consume the reads through a
+        // ReadsDownsamplingIterator, and validate that we get the same results as using downsampler directly
+        Utils.resetRandomGenerator();
+        final ReadsDownsampler downsamplerForIterator = new ReservoirDownsampler(test.reservoirSize);
+        final ReadsDownsamplingIterator downsamplingIterator = new ReadsDownsamplingIterator(
+                test.createReads().iterator(),
+                downsamplerForIterator);
+        final List<GATKRead> downsampledReadsFromIterator = new ArrayList<>(test.reservoirSize);
+        downsamplingIterator.forEach(downsampledReadsFromIterator::add);
+
+        Assert.assertEquals(downsamplerForIterator.getNumberOfDiscardedItems(), test.expectedNumDiscardedItems);
+        Assert.assertEquals(downsampledReadsFromIterator, downsampledReads);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)

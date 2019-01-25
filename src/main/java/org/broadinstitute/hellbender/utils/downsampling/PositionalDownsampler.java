@@ -76,26 +76,24 @@ public final class PositionalDownsampler extends ReadsDownsampler {
         if ( previousRead != null) {
             final int cmpDiff = ReadCoordinateComparator.compareCoordinates(previousRead, newRead, header);
             if (cmpDiff == 1) {
-                throw new GATKException.ShouldNeverReachHereException(
+                throw new IllegalStateException(
                         String.format("Reads must be coordinate sorted (earlier %s later %s)", previousRead, newRead));
-            }
-            if (cmpDiff != 0) {
-                reservoir.signalEndOfInput();
-                if ( reservoir.hasFinalizedItems() ) {
-                    finalizeReservoir();
-                }
+            } else if (cmpDiff != 0) {
+                finalizeReservoir(true);
             }
         }
     }
 
-    private void finalizeReservoir() {
+    private void finalizeReservoir(final boolean expectFinalizedItems) {
         // We can't consume finalized reads from the reservoir unless we first signal EOI.
         // Once signalEndOfInput has been called and propagated to the ReservoirDownsampler, consumeFinalizedItems
-        // must be called on the ReservoirDownsampler before any new items can be submitted to it, to reset it's
+        // must be called on the ReservoirDownsampler before any new items can be submitted to it, to reset its
         // state so it can be recycled/reused for the next downsampling position.
         reservoir.signalEndOfInput();
+        if (expectFinalizedItems && ! reservoir.hasFinalizedItems() ) {
+            throw new GATKException.ShouldNeverReachHereException("Expected downsampled items to be present when none are");
+        }
         finalizedReads.addAll(reservoir.consumeFinalizedItems());
-        reservoir.clearItems();
         reservoir.resetStats();
         previousRead = null;
     }
@@ -142,7 +140,7 @@ public final class PositionalDownsampler extends ReadsDownsampler {
 
     @Override
     public void signalEndOfInput() {
-        finalizeReservoir();
+        finalizeReservoir(false);
     }
 
     @Override
