@@ -38,8 +38,8 @@ import java.util.*;
  * <p>This is a Spark implementation of the MarkDuplicates tool from Picard that allows the tool to be run in
  *    parallel on multiple cores on a local machine or multiple machines on a Spark cluster while still matching
  *    the output of the single-core Picard version. Since the tool requires holding all of the readnames in memory
- *    while it groups the paired-down read information, it is recommended running this tool on a machine/configuration
- *    with at least 8 GB of memory for a typical 30x bam.</p>
+ *    while it groups the read information, it is recommended running this tool on a machine/configuration
+ *    with at least 8 GB of memory overall for a typical 30x bam.</p>
  *
  * <p>This tool locates and tags duplicate reads in a BAM or SAM file, where duplicate reads are
  *    defined as originating from a single fragment of DNA.  Duplicates can arise during sample preparation e.g. library
@@ -81,6 +81,15 @@ import java.util.*;
  *            -I input.bam \\<br />
  *            -O marked_duplicates.bam \\<br />
  *            -M marked_dup_metrics.txt
+ *     </pre>
+ *
+ *  <h4>MarkDuplicates run locally specifying the core input (if 'spark.executor.cores' is unset spark will use all available cores on the machine)</h4>
+ *     <pre>
+ *       gatk MarkDuplicatesSpark \\<br />
+ *            -I input.bam \\<br />
+ *            -O marked_duplicates.bam \\<br />
+ *            -M marked_dup_metrics.txt \\<br />
+ *            --conf 'spark.executor.cores=5'
  *     </pre>
  *
  *  <h4>MarkDuplicates run on a spark cluster 5 machines</h4>
