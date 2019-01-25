@@ -4,6 +4,7 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFHeaderLineCount;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Advanced;
@@ -11,6 +12,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
@@ -26,6 +28,8 @@ import java.io.PrintStream;
 import java.lang.reflect.Array;
 import java.util.*;
 import java.util.function.Function;
+
+import static org.broadinstitute.hellbender.utils.Utils.split;
 
 /**
  * Extract fields from a VCF file to a tab-delimited table
@@ -55,11 +59,20 @@ import java.util.function.Function;
  *     <li> NCALLED (number of called samples) </li>
  *     <li> MULTI-ALLELIC (is this variant multi-allelic? true/false) </li>
  * </ul>
+ * <p>
+ *     Use the `-ASF` argument to extract allele-specific/per allele INFO fields and split them appropriately when
+ *     splitting multi-allelic variants.
+ * </p>
  *
  * <h4>FORMAT/sample-level fields</h4>
  * <p>
  *     Use the `-GF` argument to extract FORMAT/sample-level fields. The tool will create a new column per sample
  *     with the name "SAMPLE_NAME.FORMAT_FIELD_NAME" e.g. NA12877.GQ, NA12878.GQ.
+ * </p>
+ * <p>
+ *     Use the `-ASGF` argument to extract allele-specific/per allele FORMAT fields and split them appropriately
+ *     when splitting multi-allelic variants.  If AD is specified as an allele-specific genotype field the ref and alt
+ *     counts will be given for each alt.
  * </p>
  *
  * <h3>Inputs</h3>
@@ -93,6 +106,7 @@ import java.util.function.Function;
  *     <li> It is common for certain annotations to be absent for some variants. By default, this tool will emit an NA for a missing annotation. If you prefer that the tool fail upon encountering a missing annotation, use the --error-if-missing-data flag. </li>
  *     <li> If multiple samples are present in the VCF, the genotype fields will be ordered alphabetically by sample name. </li>
  *     <li> Filtered sites are ignored by default. To include them in the output, use the --show-filtered flag. </li>
+ *     <li> Allele-specific filtering is not yet supported.  For PASS sites, all alleles will be given, regardless of their AS_FilterStatus.</li>
  * </ul>
  */
 @CommandLineProgramProperties(
@@ -102,6 +116,8 @@ import java.util.function.Function;
 )
 @DocumentedFeature
 public final class VariantsToTable extends VariantWalker {
+    public final static String SPLIT_MULTI_ALLELIC_LONG_NAME = "split-multi-allelic";
+    public final static String SPLIT_MULTI_ALLELIC_SHORT_NAME = "SMA";
 
     static final Logger logger = LogManager.getLogger(VariantsToTable.class);
 
@@ -118,7 +134,7 @@ public final class VariantsToTable extends VariantWalker {
     @Argument(fullName="fields",
             shortName="F",
             doc="The name of a standard VCF field or an INFO field to include in the output table", optional=true)
-    private List<String> fieldsToTake = new ArrayList<>();
+    protected List<String> fieldsToTake = new ArrayList<>();
 
     /**
      * Any annotation name in the FORMAT field (e.g., GQ, PL) to include in the output table.
@@ -128,6 +144,12 @@ public final class VariantsToTable extends VariantWalker {
             shortName="GF",
             doc="The name of a genotype field to include in the output table", optional=true)
     private List<String> genotypeFieldsToTake = new ArrayList<>();
+
+    @Argument(shortName="ASF", doc="The name of an allele-specific INFO field to be split if present", optional=true)
+    private List<String> asFieldsToTake = new ArrayList<>();
+
+    @Argument(shortName="ASGF", doc="The name of an allele-specific FORMAT field to be split if present", optional=true)
+    private List<String> asGenotypeFieldsToTake = new ArrayList<>();
 
     /**
      * By default this tool only emits values for records where the FILTER field is either PASS or . (unfiltered).
@@ -144,10 +166,10 @@ public final class VariantsToTable extends VariantWalker {
      * (e.g. allele depth) separated by commas. This may cause difficulty when the table is loaded by an R script, for example.
      * Use this flag to write multi-allelic records on separate lines of output. Fields that are not allele-specific will be duplicated.
      */
-    @Argument(fullName="split-multi-allelic",
-            shortName="SMA",
+    @Argument(fullName=SPLIT_MULTI_ALLELIC_LONG_NAME,
+            shortName=SPLIT_MULTI_ALLELIC_SHORT_NAME,
             doc="Split multi-allelic records into multiple lines", optional=true)
-    private boolean splitMultiAllelic = false;
+    protected boolean splitMultiAllelic = false;
 
     /**
      * Use this flag to emit each field within a variant on a separate line. The resulting table will have
@@ -183,12 +205,14 @@ public final class VariantsToTable extends VariantWalker {
     private SortedSet<String> samples;
     private long nRecords = 0L;
     private PrintStream outputStream = null;
+    private VCFHeader inputHeader;
 
     @Override
     public void onTraversalStart() {
+        inputHeader = getHeaderForVariants();
         outputStream = createPrintStream();
 
-        if (genotypeFieldsToTake.isEmpty()) {
+        if (genotypeFieldsToTake.isEmpty() && asGenotypeFieldsToTake.isEmpty()) {
             samples = Collections.emptySortedSet();
         } else {
             final Map<String, VCFHeader> vcfHeaders = Collections.singletonMap(getDrivingVariantsFeatureInput().getName(), getHeaderForVariants());
@@ -197,21 +221,30 @@ public final class VariantsToTable extends VariantWalker {
             // if there are no samples, we don't have to worry about any genotype fields
             if (samples.isEmpty()) {
                 genotypeFieldsToTake.clear();
+                asGenotypeFieldsToTake.clear();
                 logger.warn("There are no samples - the genotype fields will be ignored");
-                if (fieldsToTake.isEmpty()){
+                if (fieldsToTake.isEmpty() && asFieldsToTake.isEmpty()){
                     throw new UserException("There are no samples and no fields - no output will be produced");
                 }
             }
+        }
+
+        if (asGenotypeFieldsToTake.isEmpty() && asFieldsToTake.isEmpty() && !splitMultiAllelic) {
+            logger.warn("Allele-specific fields will only be split if splitting multi-allelic variants is specified (`--" + SPLIT_MULTI_ALLELIC_LONG_NAME + "` or `-" + SPLIT_MULTI_ALLELIC_SHORT_NAME + "`");
         }
 
         // print out the header
         if ( moltenizeOutput ) {
             outputStream.println("RecordID\tSample\tVariable\tValue");
         } else {
-            final String baseHeader = Utils.join("\t", fieldsToTake);
-            final String genotypeHeader = createGenotypeHeader();
-            final String separator = (!baseHeader.isEmpty() && !genotypeHeader.isEmpty()) ? "\t" : "";
-            outputStream.println(baseHeader + separator + genotypeHeader);
+            final List<String> fields = new ArrayList<>();
+            fields.addAll(fieldsToTake);
+            fields.addAll(asFieldsToTake);
+            final String header = new StringBuilder(Utils.join("\t", fields))
+                    .append("\t")
+                    .append(createGenotypeHeader())
+                    .toString();
+            outputStream.println(header);
         }
     }
 
@@ -242,10 +275,12 @@ public final class VariantsToTable extends VariantWalker {
 
     private String createGenotypeHeader() {
         boolean firstEntry = true;
+        final List<String> allGenotypeFieldsToTake = new ArrayList<>(genotypeFieldsToTake);
+        allGenotypeFieldsToTake.addAll(asGenotypeFieldsToTake);
 
         final StringBuilder sb = new StringBuilder();
         for ( final String sample : samples ) {
-            for ( final String gf : genotypeFieldsToTake ) {
+            for ( final String gf : allGenotypeFieldsToTake ) {
                 if ( firstEntry ) {
                     firstEntry = false;
                 } else {
@@ -278,21 +313,13 @@ public final class VariantsToTable extends VariantWalker {
      * @param vc                the VariantContext whose field values we can to capture
      * @return List of lists of field values
      */
-    private List<List<String>> extractFields(final VariantContext vc) {
+    protected List<List<String>> extractFields(final VariantContext vc) {
 
         final int numRecordsToProduce = splitMultiAllelic ? vc.getAlternateAlleles().size() : 1;
         final List<List<String>> records = new ArrayList<>(numRecordsToProduce);
 
-        final int numFields;
-        final boolean addGenotypeFields = genotypeFieldsToTake != null && !genotypeFieldsToTake.isEmpty();
-        if ( addGenotypeFields ) {
-            numFields = fieldsToTake.size() + genotypeFieldsToTake.size() * samples.size();
-        } else {
-            numFields = fieldsToTake.size();
-        }
-
         for ( int i = 0; i < numRecordsToProduce; i++ ) {
-            records.add(new ArrayList<>(numFields));
+            records.add(new ArrayList<>());
         }
 
         for ( final String field : fieldsToTake ) {
@@ -318,7 +345,20 @@ public final class VariantsToTable extends VariantWalker {
             }
         }
 
-        if ( addGenotypeFields ) {
+        for ( final String field : asFieldsToTake) {
+            if (vc.hasAttribute(field)) {
+                if (splitMultiAllelic) {
+                    addAlleleSpecificFieldValue(Arrays.asList(vc.getAttributeAsString(field, ".").replace("[", "").replace("]", "").split(",")), records, inputHeader.getInfoHeaderLine(field).getCountType());
+
+                } else {
+                    addFieldValue(vc.getAttributeAsString(field, ".").replace("[","").replace("]",""), records);
+                }
+            } else {
+                handleMissingData(errorIfMissingData, field, records, vc);
+            }
+        }
+
+        if ( !genotypeFieldsToTake.isEmpty() || !asGenotypeFieldsToTake.isEmpty() ) {
             addGenotypeFieldsToRecords(vc, records, errorIfMissingData);
         }
 
@@ -344,6 +384,33 @@ public final class VariantsToTable extends VariantWalker {
                         }                    }
                 } else {
                     handleMissingData(errorIfMissingData, gf, records, vc);
+                }
+            }
+
+            for ( final String field : asGenotypeFieldsToTake) {
+                if ( vc.hasGenotype(sample) && vc.getGenotype(sample).hasAnyAttribute(field) ) {
+                    if (splitMultiAllelic) {
+                        if (VCFConstants.GENOTYPE_ALLELE_DEPTHS.equals(field)) {
+                            List<String> altDepths = new ArrayList<>();
+                            int[] allDepths = vc.getGenotype(sample).getAD();
+                            for (int i = 1; i < allDepths.length; i++) {
+                                altDepths.add(allDepths[0] + "," + allDepths[i]);
+                            }
+                            addFieldValue(altDepths, records);
+                        } else {
+                            addAlleleSpecificFieldValue(split(vc.getGenotype(sample).getExtendedAttribute(field).toString(), ','),
+                                    records, inputHeader.getFormatHeaderLine(field).getCountType());
+                        }
+                    } else {
+                        final String value = vc.getGenotype(sample).getAnyAttribute(field).toString();
+                        if (field.equals(VCFConstants.GENOTYPE_ALLELE_DEPTHS)) {
+                            addFieldValue(value.replace("[","").replace("]","").replaceAll("\\s",""),records);
+                        } else {
+                            addFieldValue(value, records);
+                        }
+                    }
+                } else {
+                    handleMissingData(errorIfMissingData, field, records, vc);
                 }
             }
         }
@@ -377,6 +444,22 @@ public final class VariantsToTable extends VariantWalker {
             for ( final List<String> record : result ) {
                 record.add(valStr);
             }
+        }
+    }
+
+    /**
+     * Handle per-allele/allele-specific annotations as described in the header
+     * @param val the annotation value
+     * @param result the cummulative output
+     * @param alleleCount scalar, R-type or A-type values
+     */
+    private static void addAlleleSpecificFieldValue(final Object val, final List<List<String>> result, final VCFHeaderLineCount alleleCount) {
+        if (val instanceof List && alleleCount.equals(VCFHeaderLineCount.R)) {
+            final List<?> myList = (List<?>) val;
+            addFieldValue(new ArrayList<>(myList.subList(1, myList.size())), result);
+        }
+        else {
+            addFieldValue(val, result);
         }
     }
 

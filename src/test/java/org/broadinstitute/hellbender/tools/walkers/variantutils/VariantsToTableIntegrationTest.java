@@ -146,6 +146,35 @@ public final class VariantsToTableIntegrationTest extends CommandLineProgramTest
     }
 
     @Test
+    public void testSplitMultiallelicFields() throws IOException {
+        //missing AS INFO and FORMAT fields are handled
+        //R-type FORMAT annotations work (MMQ)
+        //A-type FORMAT annotations wotk (TLOD)
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                " --variant " + getToolTestDataDir() + "../../GenotypeGVCFs/threeSamples.2alts.vcf" +
+                        " -SMA -F CHROM -F POS -F REF -F ALT -F FOO -ASF TLOD -ASGF TLOD -ASGF AD -ASGF MMQ -ASGF BAR -raw" +
+                        " -O %s",
+                Arrays.asList(getToolTestDataDir() + "expected.threeSamples.2alts.MT.txt"));
+        spec.executeTest("testGenotypeFieldsWithInline", this);
+
+        //asking for allele-specific fields without splitting produces reasonable output
+        final IntegrationTestSpec spec2 = new IntegrationTestSpec(
+                " --variant " + getToolTestDataDir() + "../../GenotypeGVCFs/threeSamples.2alts.vcf" +
+                        " -F CHROM -F POS -F REF -F ALT -ASGF TLOD -ASGF AD -ASGF MMQ -raw" +
+                        " -O %s",
+                Arrays.asList(getToolTestDataDir() + "expected.threeSamples.2alts.MT.noSplit.txt"));
+        spec2.executeTest("testGenotypeFieldsWithInline", this);
+
+        //A-type INFO annotations work
+        final IntegrationTestSpec spec4 = new IntegrationTestSpec(
+                " --variant " + getToolTestDataDir() + "../../../VQSR/expected/applyIndelAlleleSpecificResult.vcf" +
+                        " -SMA -F CHROM -F POS -F REF -F ALT -ASF AS_BaseQRankSum -ASGF AD -raw -ASF AS_FilterStatus" +
+                        " -O %s",
+                Arrays.asList(getToolTestDataDir() + "expected.ASindelVQSR.txt"));
+        spec4.executeTest("testGenotypeFieldsWithInline", this);
+    }
+
+    @Test
     public void testListFields() throws IOException {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
                         " --variant " + getToolTestDataDir() + "vcfexample.withMLE.vcf" +
