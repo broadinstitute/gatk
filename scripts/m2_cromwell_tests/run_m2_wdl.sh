@@ -48,3 +48,6 @@ sudo java -jar $CROMWELL_JAR run $WORKING_DIR/gatk/scripts/mutect2_wdl/mutect2_m
 
 echo "Running M2 WDL through cromwell (Tumor-only)"
 sudo java -jar $CROMWELL_JAR run $WORKING_DIR/gatk/scripts/mutect2_wdl/mutect2_multi_sample.wdl -i $WORKING_DIR/test_m2_wdl_multi_mod_to.json -m $WORKING_DIR/test_m2_wdl_to.metadata
+
+echo "Running Mitochondria M2 WDL through cromwell"
+sudo java -jar $CROMWELL_JAR run $WORKING_DIR/gatk/scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl -i $WORKING_DIR/gatk/scripts/m2_cromwell_tests/test_mitochondria_m2_wdl.json --imports $WORKING_DIR/gatk/scripts/mitochondria_m2_wdl/MitochondriaPipelineDependencies.zip -m $WORKING_DIR/test_mitochondria_m2_wdl.metadata
