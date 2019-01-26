@@ -95,9 +95,6 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
     @Override
     public void submit ( final GATKRead newRead ) {
         Utils.nonNull(newRead, "newRead");
-        // Once the end of the input stream has been seen, consumeFinalizedItems or clearItems must be called to
-        // reset the state of the ReservoirDownsampler before more items can be submitted
-        Utils.validate(! endOfInputStream, "attempt to submit read after end of input stream has been signaled");
 
         // Only count reads that are actually eligible for discarding for the purposes of the reservoir downsampling algorithm
         totalReadsSeen++;
