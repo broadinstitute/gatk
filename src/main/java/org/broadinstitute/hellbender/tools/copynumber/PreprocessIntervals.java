@@ -96,7 +96,6 @@ import java.util.stream.Collectors;
         programGroup = IntervalsManipulationProgramGroup.class
 )
 @DocumentedFeature
-@BetaFeature
 public final class PreprocessIntervals extends GATKTool {
     public static final String BIN_LENGTH_LONG_NAME = "bin-length";
     public static final String PADDING_LONG_NAME = "padding";

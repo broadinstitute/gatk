@@ -85,7 +85,6 @@ import java.util.stream.Collectors;
         programGroup = CopyNumberProgramGroup.class
 )
 @DocumentedFeature
-@BetaFeature
 public final class PlotDenoisedCopyRatios extends CommandLineProgram {
     private static final String PLOT_DENOISED_COPY_RATIOS_R_SCRIPT = "PlotDenoisedCopyRatios.R";
 

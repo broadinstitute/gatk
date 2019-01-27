@@ -75,7 +75,6 @@ import java.util.stream.Collectors;
         programGroup = CopyNumberProgramGroup.class
 )
 @DocumentedFeature
-@BetaFeature
 public final class CallCopyRatioSegments extends CommandLineProgram {
     public static final String NEUTRAL_SEGMENT_COPY_RATIO_LOWER_BOUND_LONG_NAME = "neutral-segment-copy-ratio-lower-bound";
     public static final String NEUTRAL_SEGMENT_COPY_RATIO_UPPER_BOUND_LONG_NAME = "neutral-segment-copy-ratio-upper-bound";

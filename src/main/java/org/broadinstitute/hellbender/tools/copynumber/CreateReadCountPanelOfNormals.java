@@ -118,7 +118,6 @@ import java.util.stream.Collectors;
         programGroup = CopyNumberProgramGroup.class
 )
 @DocumentedFeature
-@BetaFeature
 public final class CreateReadCountPanelOfNormals extends SparkCommandLineProgram {
     private static final long serialVersionUID = 1L;
 

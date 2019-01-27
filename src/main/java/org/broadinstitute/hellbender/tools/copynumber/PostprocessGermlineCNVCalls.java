@@ -96,7 +96,6 @@ import java.util.stream.IntStream;
         programGroup = CopyNumberProgramGroup.class
 )
 @DocumentedFeature
-@BetaFeature
 public final class PostprocessGermlineCNVCalls extends GATKTool {
     private static final Logger logger = LogManager.getLogger(PostprocessGermlineCNVCalls.class);
 

@@ -94,7 +94,6 @@ import java.util.stream.Collectors;
         programGroup = CoverageAnalysisProgramGroup.class
 )
 @DocumentedFeature
-@BetaFeature
 public final class CollectReadCounts extends ReadWalker {
     private static final Logger logger = LogManager.getLogger(CollectReadCounts.class);
 

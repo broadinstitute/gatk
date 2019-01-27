@@ -189,7 +189,6 @@ import java.util.stream.Collectors;
         programGroup = CopyNumberProgramGroup.class
 )
 @DocumentedFeature
-@BetaFeature
 public final class DetermineGermlineContigPloidy extends CommandLineProgram {
     public enum RunMode {
         COHORT, CASE

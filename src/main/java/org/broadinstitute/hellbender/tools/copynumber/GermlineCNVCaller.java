@@ -176,7 +176,6 @@ import java.util.stream.Collectors;
         programGroup = CopyNumberProgramGroup.class
 )
 @DocumentedFeature
-@BetaFeature
 public final class GermlineCNVCaller extends CommandLineProgram {
     public enum RunMode {
         COHORT, CASE
