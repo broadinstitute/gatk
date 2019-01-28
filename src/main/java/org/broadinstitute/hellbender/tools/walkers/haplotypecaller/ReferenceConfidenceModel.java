@@ -193,18 +193,18 @@ public class ReferenceConfidenceModel {
         final String sampleName = readLikelihoods.getSample(0);
 
         final int globalRefOffset = refSpan.getStart() - activeRegion.getExtendedSpan().getStart();
-        for ( final ReadPileup pileup : refPileups ) {
+        for (int i = 0, size = refPileups.size(); i < size; i++) {
+            ReadPileup pileup = refPileups.get(i);
             final Locatable curPos = pileup.getLocation();
             final int offset = curPos.getStart() - refSpan.getStart();
 
             final VariantContext overlappingSite = GATKVariantContextUtils.getOverlappingVariantContext(curPos, variantCalls);
             final List<VariantContext> currentPriors = getMatchingPriors(curPos, overlappingSite, VCpriors);
-            if ( overlappingSite != null && overlappingSite.getStart() == curPos.getStart() ) {
+            if (overlappingSite != null && overlappingSite.getStart() == curPos.getStart()) {
                 if (applyPriors) {
                     results.add(PosteriorProbabilitiesUtils.calculatePosteriorProbs(overlappingSite, currentPriors,
                             numRefSamplesForPrior, options));
-                }
-                else {
+                } else {
                     results.add(overlappingSite);
                 }
             } else {
@@ -420,9 +420,15 @@ public class ReferenceConfidenceModel {
      * @param priorList priors within the current ActiveRegion
      * @return prior VCs representing the same variant position as call
      */
-    List<VariantContext> getMatchingPriors(final Locatable curPos, final VariantContext call, final List<VariantContext> priorList) {
+    private List<VariantContext> getMatchingPriors(final Locatable curPos, final VariantContext call, final List<VariantContext> priorList) {
         final int position = call != null ? call.getStart() : curPos.getStart();
-        return priorList.stream().filter(vc -> position == vc.getStart()).collect(Collectors.toList());
+        List<VariantContext> list = new ArrayList<>(priorList.size());
+        for (int i = 0, size = priorList.size(); i < size; i++) {
+            if (position == priorList.get(i).getStart()) {
+                list.add(priorList.get(i));
+            }
+        }
+        return list;
     }
 
     /**
