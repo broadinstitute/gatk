@@ -55,19 +55,19 @@ import java.net.URISyntaxException;
  * Import single-sample GVCFs into GenomicsDB before joint genotyping.
  *
  * <p>The GATK4 Best Practice Workflow for SNP and Indel calling uses GenomicsDBImport to merge GVCFs from multiple samples.
- * GenomicsDBImport offers the same functionality as CombineGVCFs and comes from the <i>Intel-Broad Center for Genomics</i>.
+ * GenomicsDBImport offers the same functionality as CombineGVCFs and initially came from the <i>Intel-Broad Center for Genomics</i>.
  * The datastore transposes sample-centric variant information across genomic loci to make data more accessible to tools.
  * </p>
  *
  * <p>To query the contents of the GenomicsDB datastore, use
  * <a href='https://software.broadinstitute.org/gatk/documentation/tooldocs/current/org_broadinstitute_gatk_tools_walkers_variantutils_SelectVariants.php'>SelectVariants</a>.
- * See <a href='https://software.broadinstitute.org/gatk/documentation/article?id=10061'>Tutorial#10061</a> to get started. </p>
+ * See <a href='https://software.broadinstitute.org/gatk/documentation/article?id=11813'>Tutorial#11813</a> to get started. </p>
  *
  * <p>Details on GenomicsDB are at
- * <a href='https://github.com/Intel-HLS/GenomicsDB/wiki'>https://github.com/Intel-HLS/GenomicsDB/wiki</a>.
- * In brief, GenomicsDB is a utility built on top of TileDB. TileDB is a format for efficiently representing sparse data.
+ * <a href='https://github.com/GenomicsDB/GenomicsDB/wiki'>https://github.com/GenomicsDB/GenomicsDB/wiki</a>.
+ * In brief, GenomicsDB utilises a data storage system optimized for storing/querying sparse arrays.
  * Genomics data is typically sparse in that each sample has few variants with respect to the entire reference genome.
- * GenomicsDB contains code to specialize TileDB for genomics applications, such as VCF parsing and INFO field annotation
+ * GenomicsDB contains specialized code for genomics applications, such as VCF parsing and INFO field annotation
  * calculation.
  * </p>
  *
