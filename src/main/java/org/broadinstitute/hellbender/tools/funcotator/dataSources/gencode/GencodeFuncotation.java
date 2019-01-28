@@ -32,6 +32,9 @@ public class GencodeFuncotation implements Funcotation {
     //       The way the column headers get generated for VCFs is dependent on the order here.
     //       In turn, the order of the fields corresponds to this order.
 
+    /**
+     * The name of the Gene in which the associated variant occurs.
+     */
     private String                  hugoSymbol;                         // TRIVIAL (i.e. by the time we match to a transcript, we have this info regardless to where in the transcript the variant lies)
     private String                  ncbiBuild;                          // TRIVIAL
     private String                  chromosome;                         // TRIVIAL

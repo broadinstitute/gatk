@@ -27,9 +27,20 @@ import java.util.*;
  *
  * <p>
  *     This tool is a functional annotation tool that allows a user to add annotations to called variants based on a set of data sources, each with its own matching criteria.
+ * </p>
+ *
+ * <h3>Detailed Information and Tutorial</h3>
+ * <p>Detailed information and a tutorial can be found here:
+ *     <ul>
+ *         <li><a href="https://gatkforums.broadinstitute.org/dsde/discussion/11193/funcotator-information-and-tutorial">https://gatkforums.broadinstitute.org/dsde/discussion/11193/funcotator-information-and-tutorial</a></li>
+ *     </ul>
+ * </p>
+ *
+ * <h3>Data Sources</h3>
+ * <p>
  *     Data sources are expected to be in folders that are specified as input arguments.  While multiple data source folders can be specified, <b>no two data sources can have the same name</b>.
  * </p>
- * <h3>Data Source Folders</h3>
+ * <h4>Data Source Folders</h4>
  * <p>
  *     In each main data source folder, there should be sub-directories for each individual data source, with further sub-directories for a specific reference (i.e. <i>hg19</i> or <i>hg38</i>).
  *     In the reference-specific data source directory, there is a configuration file detailing information about the data source and how to match it to a variant.  This configuration file is required.
@@ -67,12 +78,70 @@ import java.util.*;
  *                      ...
  *               ...
  *     </pre>
- *     <b>Versioned gzip archives of data source files are provided here: <a href="ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/funcotator/">ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/funcotator/</a>.</b>
+ * </p>
+ * <h4>Pre-packaged Data Sources</h4>
+ * <p>
+ *     The GATK includes two sets of pre-packaged data sources, allowing for {@link Funcotator} use without (much) additional configuration.
+ *     These data source packages correspond to the <strong>germline</strong> and <strong>somatic</strong> use cases.
+ *     Broadly speaking, if you have a <strong>germline VCF</strong>, the <strong>germline data sources</strong> are what you want to use to start with.
+ *     Conversely, if you have a <strong>somatic VCF</strong>, the <strong>somatic data sources</strong> are what you want to use to start with.
+ *
+ *     <br /><b>Versioned gzip archives of data source files are provided here:</b>
+ *     <ul>
+ *         <li><a href="ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/funcotator/">ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/funcotator/</a></li>
+ *         <li><a href="https://console.cloud.google.com/storage/browser/broad-public-datasets/funcotator">gs://broad-public-datasets/funcotator/</a></li>
+ *     </ul>
+ * </p>
+ *
+ * <h5>gnomAD</h5>
+ * <p>
+ *     The pre-packaged data sources include gnomAD, a large database of known variants.  gnomAD is split into two parts - one based on exome data, one based on whole genome data.
+ *     Due to the size of gnomAD, it cannot be included in the data sources package directly.  Instead, the configuration data are present and point to a Google bucket in which
+ *     the gnomAD data reside.  This will cause <i>{@link Funcotator}</i> to actively connect to that bucket when it is run.  <br/>
+ *     For this reason, <strong>gnomAD is disabled by default</strong>.<br />
+ *     To enable gnomAD, simply change directories to your data sources directory and untar the gnomAD tar.gz files:
+ *     <pre>
+ *         cd DATA_SOURCES_DIR
+ *         tar -zxf gnomAD_exome.tar.gz
+ *         tar -zxf gnomAD_genome.tar.gz
+ *     </pre>
+ * </p>
+ * <p>
+ *     Because <i>{@link Funcotator}</i> will query the Internet when gnomAD is enabled, performance will be impacted by the machine's Internet connection speed.
+ *     If this degradation is significant, you can localize gnomAD to the machine running <i>{@link Funcotator}</i> to improve performance (however due to the size of gnomAD this may be impractical).
+ * </p>
+ *
+ * <h4>Data Source Downloader Tool</h4>
+ * <p>
+ *     To improve ease-of-use of <b><i>{@link Funcotator}</i></b>, there is a tool to download the pre-packaged data sources to the user's machine.
+ *     This tool is the <strong><i>{@link FuncotatorDataSourceDownloader}</i></strong> and can be run to retrieve the pre-packaged data sources from the google bucket and localize them to the machine on which it is run.
+ *     <br />Briefly:
+ *     <ul>
+ *         <li>For <strong>somatic</strong> data sources:<br /><pre>{@code ./gatk FuncotatorDataSourceDownloader --somatic --validate-integrity --extract-after-download}</pre></li>
+ *         <li>For <strong>germline</strong> data sources:<br /><pre>{@code ./gatk FuncotatorDataSourceDownloader --germline --validate-integrity --extract-after-download}</pre></li>
+ *     </ul>
+ * </p>
+ * <h4>Disabling Data Sources</h4>
+ * <p>
+ *     A data source can be disabled by removing the folder containing the configuration file for that source.  This can be done on a per-reference basis.  If the entire data source should be disabled, the entire top-level data source folder can be removed.
+ * </p>
+ * <p>
+ *     If it is possible that the data source will be re-enabled in the future, then we recommend zipping the data source folder and removing the folder itself, leaving only the zip file in its place.  When the time comes to enable data source again, simply unzip the file and the data source will be ready to go the next time <i>{@link Funcotator}</i> is run.
  * </p>
  * <h4>User-Defined Data Sources</h4>
  * <p>
  *     Users can define their own data sources by creating a new correctly-formatted data source sub-directory in the main data sources folder.  In this sub-directory, the user must create an additional folder for the reference for which the data source is valid.  If the data source is valid for multiple references, then multiple reference folders should be created.
  *     Inside each reference folder, the user should place the file(s) containing the data for the data source.  Additionally the user <b>must</b> create a configuration file containing metadata about the data source.
+ * </p>
+ * <p>
+ *     <i>{@link Funcotator}</i> allows for data sources with source files that live on the cloud, enabling users to annotate with data sources that are not physically present on the machines running <i>{@link Funcotator}</i>.<br />
+ *     To create a data source based on the cloud, create a configuration file for that data source and put the cloud URL in as the src_file property (see <i>Configuration File Format</i> for details).<br />
+ *     E.g.:
+ *     <pre>
+ *         ...
+ *         src_file = gs://broad-references/hg19/v0/1000G_phase1.snps.high_confidence.b37.vcf.gz
+ *         ...
+ *     </pre>
  * </p>
  * <p>
  *     There are several formats allowed for data sources, however the two most useful are arbitrarily separated value (XSV) files, such as comma-separated value (CSV), tab-separated value (TSV).  These files contain a table of data that can be matched to a variant by <i>gene name</i>, <i>transcript ID</i>, or <i>genome position</i>.
@@ -107,6 +176,10 @@ import java.util.*;
  *         # Required field for GENCODE files.
  *         # Path to the FASTA file from which to load the sequences for GENCODE transcripts:
  *         gencode_fasta_path =
+ *
+ *         # Required field for GENCODE files.
+ *         # NCBI build version (either hg19 or hg38):
+ *         ncbi_build_version =
  *
  *         # Required field for simpleXSV files.
  *         # Valid values:
@@ -143,7 +216,7 @@ import java.util.*;
  *     </pre>
  * </p>
  *
- * <h3>Inputs</h3>
+ * <h3>Required Inputs</h3>
  * <ul>
  *     <li>A reference genome sequence.</li>
  *     <li>The version of the reference genome sequence being used (e.g. <i>hg19</i>, <i>hg38</i>, etc.).</li>
@@ -153,10 +226,466 @@ import java.util.*;
  * </ul>
  *
  * <h3>Output</h3>
+ * <p>
+ *     The basic output of <i>{@link Funcotator}</i> is:
  * <ul>
- *     <li>A MAF or VCF file containing all variants from the input file with added annotations corresponding to annotations from each data source that matched a given variant according to that data source's matching criteria.</li>
+ *     <li>A VCF or MAF file containing all variants from the input file with added annotations corresponding to annotations from each data source that matched a given variant according to that data source's matching criteria.</li>
  * </ul>
+ * </p>
  *
+ * <h4>Annotations for Pre-Packaged Data Sources</h4>
+ * <p>
+ *     The pre-packaged data sources will create a set of baseline, or default annotations for an input data set.
+ *     Most of these data sources copy and paste values from their source files into the output of <i>{@link Funcotator}</i> to create annotations.  In this sense they are trivial data sources.
+ * </p>
+ * <h5>Gencode</h5>
+ * <p>
+ *     <i>{@link Funcotator}</i> performs some processing on the input data to create the Gencode annotations.  Gencode is currently required, so <i>{@link Funcotator}</i> will create these annotations for all input variants.
+ *     The order and a specification of the Gencode annotations that <i>{@link Funcotator}</i> creates is as follows:
+ *     <ol>
+ *         <li>
+ *             <b><i>hugoSymbol</i></b><br />
+ *             <i>Type: </i>{@link String}<br />
+ *             The name of the gene in which the annotated variant allele occurs.  If the variant allele occurs outside of any known gene boundaries, then this field is set to "Unknown".
+ *         </li>
+ *         <li>
+ *             <b><i>ncbiBuild</i></b><br />
+ *             <i>Type: </i>{@link String}<br />
+ *             The reference which was used to create this Gencode annotation.  Current valid values are: "<i>hg19</i>" or "<i>hg38</i>".
+ *         </li>
+ *         <li>
+ *             <b><i>chromosome</i></b><br />
+ *             <i>Type: </i>{@link String}<br />
+ *             The contig in which the variant occurs.  Will always correspond to the contig in the variant position.
+ *         </li>
+ *         <li>
+ *             <b><i>start</i></b><br />
+ *             <i>Type: </i>{@link Integer}<br />
+ *             The start position in genomic coordinates of the variant allele being annotated (1-based, inclusive).  Will always correspond to the start in the variant position.
+ *         </li>
+ *         <li>
+ *             <b><i>end</i></b><br />
+ *             <i>Type: </i>{@link Integer}<br />
+ *             The end position in genomic coordinates of the variant allele being annotated (1-based, inclusive).  Will always correspond to the position last base in the variant allele.
+ *         </li>
+ *         <li>
+ *             <b><i>variantClassification</i></b><br />
+ *             <i>Type: </i>{@link String}<br />
+ *             The classification of the variant being annotated.  Will always be one of the following:
+ *             <ul>
+ *
+ *                  <li><p><i>COULD_NOT_DETERMINE</i><br />
+ *                  Variant classification could not be determined.</p></li>
+ *
+ *                  <li><p><i>INTRON</i><br />
+ *                  Variant lies between exons within the bounds of the chosen transcript.
+ *                  Only valid for Introns.</p></li>
+ *
+ *                  <li><p><i>FIVE_PRIME_UTR</i><br />
+ *                  Variant is on the 5'UTR for the chosen transcript.
+ *                  Only valid for UTRs.</p></li>
+ *
+ *                  <li><p><i>THREE_PRIME_UTR</i><br />
+ *                  Variant is on the 3'UTR for the chosen transcript
+ *                  Only valid for UTRs.</p></li>
+ *
+ *                  <li><p><i>IGR</i><br />
+ *                  Intergenic region. Does not overlap any transcript.
+ *                  Only valid for IGRs.</p></li>
+ *
+ *                  <li><p><i>FIVE_PRIME_FLANK</i><br />
+ *                  The variant is upstream of the chosen transcript
+ *                  Only valid for IGRs.</p></li>
+ *
+ *                  <li><p><i>THREE_PRIME_FLANK</i><br />
+ *                  The variant is downstream of the chosen transcript
+ *                  Only valid for IGRs.</p></li>
+ *
+ *                  <li><p><i>MISSENSE</i><br />
+ *                  The point mutation alters the protein structure by one amino acid.
+ *                  Can occur in Coding regions or Introns.</p></li>
+ *
+ *                  <li><p><i>NONSENSE</i><br />
+ *                  A premature stop codon is created by the variant.
+ *                  Can occur in Coding regions or Introns.</p></li>
+ *
+ *                  <li><p><i>NONSTOP</i><br />
+ *                  Variant removes stop codon.
+ *                  Can occur in Coding regions or Introns.</p></li>
+ *
+ *                  <li><p><i>SILENT</i><br />
+ *                  Variant is in coding region of the chosen transcript, but protein structure is identical.
+ *                  Can occur in Coding regions or Introns.</p></li>
+ *
+ *                  <li><p><i>SPLICE_SITE</i><br />
+ *                  The variant is within a configurable number of bases  of a splice site. See the secondary classification to determine if it lies on the exon or intron side.
+ *                  Can occur in Coding regions or Introns.</p></li>
+ *
+ *                  <li><p><i>IN_FRAME_DEL</i><br />
+ *                  Deletion that keeps the sequence in frame.
+ *                  Can occur in Coding regions or Introns.</p></li>
+ *
+ *                  <li><p><i>IN_FRAME_INS</i><br />
+ *                  Insertion that keeps the sequence in frame.
+ *                  Can occur in Coding regions or Introns.</p></li>
+ *
+ *                  <li><p><i>FRAME_SHIFT_INS</i><br />
+ *                  Insertion that moves the coding sequence out of frame.
+ *                  Can occur in Coding regions or Introns.</p></li>
+ *
+ *                  <li><p><i>FRAME_SHIFT_DEL</i><br />
+ *                  Deletion that moves the sequence out of frame.
+ *                  Can occur in Coding regions or Introns.</p></li>
+ *
+ *                  <li><p><i>START_CODON_SNP</i><br />
+ *                  Point mutation that overlaps the start codon.
+ *                  Can occur in Coding regions or Introns.</p></li>
+ *
+ *                  <li><p><i>START_CODON_INS</i><br />
+ *                  Insertion that overlaps the start codon.
+ *                  Can occur in Coding regions or Introns.</p></li>
+ *
+ *                  <li><p><i>START_CODON_DEL</i><br />
+ *                  Deletion that overlaps the start codon.
+ *                  Can occur in Coding regions or Introns.</p></li>
+ *
+ *                  <li><p><i>DE_NOVO_START_IN_FRAME</i><br />
+ *                  New start codon is created by the given variant using the chosen transcript.
+ *                  However, it is in frame relative to the coded protein, meaning that if the coding sequence were extended
+ *                  then the new start codon would be in frame with the
+ *                  existing start and stop codons.
+ *
+ *                  This can only occur in a 5' UTR.</p></li>
+ *
+ *                  <li><p><i>DE_NOVO_START_OUT_FRAME</i><br />
+ *                  New start codon is created by the given variant using the chosen transcript.
+ *                  However, it is out of frame relative to the coded protein, meaning that if the coding sequence were extended
+ *                  then the new start codon would NOT be in frame with
+ *                  the existing start and stop codons.
+ *
+ *                  This can only occur in a 5' UTR.</p></li>
+ *
+ *                  <li><p><i>RNA</i><br />
+ *                  Variant lies on one of the RNA transcripts.
+ *                  (special catch-all case)</p></li>
+ *
+ *                  <li><p><i>LINCRNA</i><br />
+ *                  Variant lies on one of the lincRNAs.
+ *                  (special catch-all case)</p></li>
+ *             </ul>
+ *         </li>
+ *         <li>
+ *             <b><i>secondaryVariantClassification</i></b><br />
+ *             <i>Type: </i>{@link String}<br />
+ *             Additional variant classification information for variant alleles that have a {@code variantClassification} of {@code SPLICE_SITE}.
+ *             For a variant allele with the {@code variantClassification} of {@code SPLICE_SITE}, this will indicate the specific classification of the variant.
+ *             For all variants that do not have the {@code variantClassification} of {@code SPLICE_SITE}, this will be the empty string.
+ *         </li>
+ *         <li>
+ *             <b><i>variantType</i></b><br />
+ *             <i>Type: </i>{@link String}<br />
+ *             Basic information about the variant allele being annotated.  Can be one of:
+ *             <ul>
+ *                 <li><i>INS</i> - The variant allele is some kind of insertion.</li>
+ *                 <li><i>DEL</i> - The variant allele is some kind of deletion.</li>
+ *                 <li><i>SNP</i> - The variant allele is a single nucleotide polymorphism.</li>
+ *                 <li><i>DNP</i> - The variant allele is a di-nucleotide polymorphism.</li>
+ *                 <li><i>TNP</i> - The variant allele is a tri-nucleotide polymorphism.</li>
+ *                 <li><i>ONP</i> - The variant allele is an oligo-nucleotide polymorphism (Synonymous with MNP).</li>
+ *                 <li><i>MNP</i> - The variant allele is a multi-nucleotide polymorphism (Synonymous with ONP).</li>
+ *                 <li><i>NA</i> - The variant allele type cannot be determined.</li>
+ *             </ul>
+ *         </li>
+ *         <li>
+ *             <b><i>refAllele</i></b><br />
+ *             <i>Type: </i>{@link String}<br />
+ *             The reference allele for the position at which this this variant allele occurs.<br />
+ *             For insertions, this will be set to <i>"-"</i>.
+ *         </li>
+ *         <li>
+ *             <b><i>tumorSeqAllele1</i></b><br />
+ *             <i>Type: </i>{@link String}<br />
+ *             Always the same as the reference allele.  This field is a hold-over required for MAF annotations.<br />
+ *             For insertions, this will be set to <i>"-"</i>.
+ *         </li>
+ *         <li>
+ *             <b><i>tumorSeqAllele2</i></b><br />
+ *             <i>Type: </i>{@link String}<br />
+ *             The variant allele being annotated.  This field only includes the bases that are different from the reference.<br />
+ *             For the input VCF records, this field may slightly differ from the alternate allele reported in the base data for the {@link VariantContext}.<br />
+ *             For deletions, this will be set to <i>"-"</i>.
+ *         </li>
+ *         <li>
+ *             <b><i>genomeChange</i></b><br />
+ *             <i>Type: </i>{@link String}<br />
+ *             A {@link String} summarizing the change resulting from this variant allele within the context of the whole genome sequence.<br />
+ *             Generally the format of this field is:<br />
+ *             <pre>
+ *             g.[CONTIG]:[POSITION][BASES CHANGED]
+ *             </pre>
+ *
+ *             The format of this field slightly varies based on {@code VariantType}:
+ *             <ul>
+ *                 <li>
+ *                     <i><u>Insertion</u></i><br />
+ *                     <pre>g.[CONTIG]:[POSITION OF BASE PRIOR TO INSERTION];_[POSITION OF BASE AFTER INSERTION]ins[BASES INSERTED]</pre><br />
+ *                     E.g.:<br />
+ *                     <pre>g.chr19:2018023_2018024insAATCG</pre><br />
+ *                     This indicates that the bases AATCG were inserted between bases 2018023 and 2018024 on chromosome 19.
+ *                 </li>
+ *                 <li>
+ *                     <i><u>Deletion</u></i><br />
+ *                     <pre>g.[CONTIG]:[POSITION OF BASE DELETED]del[BASE DELETED]</pre><br />
+ *                     E.g.:<br />
+ *                     <pre>g.chr19:2018023delT</pre><br />
+ *                     This indicates that the base T was deleted at position 2018023 on chromosome 19.
+ *                     <i>OR</i>
+ *                     <pre>g.[CONTIG]:[POSITION OF FIRST BASE DELETED]_[POSITION OF LAST BASE DELETED]del[BASES DELETED]</pre><br />
+ *                     E.g.:<br />
+ *                     <pre>g.chr19:2018023_2018025delTTG</pre><br />
+ *                     This indicates that the bases TTG were deleted starting at position 2018023 and ending at position 2018025 on chromosome 19.
+ *                 </li>
+ *                 <li>
+ *                     <i><u>SNP</u></i><br />
+ *                     <pre>g.[CONTIG]:[POSITION OF BASE ALTERED][REFERENCE BASE]>[ALTERNATE BASE]</pre><br />
+ *                     E.g.:<br />
+ *                     <pre>g.chr19:2018023T>G</pre><br />
+ *                     This indicates that the base T was changed to G at position 2018023 on chromosome 19.
+ *                 </li>
+ *                 <li>
+ *                     <i><u>MNP (including DNPs, TNPs)</u></i><br />
+ *                     <pre>g.[CONTIG]:[POSITION OF FIRST BASE ALTERED]_[POSITION OF LAST BASE ALTERED][REFERENCE BASES>&gt;[ALTERNATE BASES]</pre><br />
+ *                     E.g.:<br />
+ *                     <pre>g.chr19:2018023_2018025TTG>GAT</pre><br />
+ *                     This indicates that the bases TTG were changed to GAT from position 2018023 to position 2018025 on chromosome 19.
+ *                 </li>
+ *             </ul>
+ *         </li>
+ *         <li>
+ *             <b><i>annotationTranscript</i></b><br />
+ *             <i>Type: </i>{@link String}<br />
+ *             The ID of the transcript chosen for the detailed Gencode annotation reporting.<br />E.g.: <i>ENST00000435064.1</i><br />
+ *             If the variant allele does not occur within the bounds of any transcript (e.g. is of type <i>IGR</i>), then this field is empty.
+ *         </li>
+ *         <li>
+ *             <b><i>transcriptStrand</i></b><br />
+ *             <i>Type: </i>{@link String}<br />
+ *             The strand direction associated with the transcript on which this variant allele occurs.<br />
+ *             Either "<i>+</i>" or "<i>-</i>".
+ *         </li>
+ *         <li>
+ *             <b><i>transcriptExon</i></b><br />
+ *             <i>Type: </i>{@link Integer} or Empty<br />
+ *             The exon number on the transcript in which this variant allele occurs (1-based).  Corresponds directly to the Gencode exon number.<br />
+ *             If the variant does not occur in the expressed transcript of the corresponding gene (e.g. is of type <i>INTRON</i> or <i>IGR</i>), then this field is empty.
+ *         </li>
+ *         <li>
+ *             <b><i>transcriptPos</i></b><br />
+ *             <i>Type: </i>{@link Integer} or Empty<br />
+ *             Position in the chosen transcript of the variant allele.<br />
+ *             For variant alleles that occur at a single base, the format is simply the position at which that variant occurs in the transcript (1-based, inclusive) (e.g. <i>1294</i>)<br />
+ *             For variant alleles spanning multiple bases, the format is:<br />
+ *             <pre>
+ *             [START]_[END]
+ *             </pre>
+ *             E.g.: <pre>1236_1237</pre><br />
+ *             If the variant does not occur in the expressed transcript of the corresponding gene (e.g. is of type <i>INTRON</i> or <i>IGR</i>), then this field is empty.
+ *         </li>
+ *         <li>
+ *             <b><i>cDnaChange</i></b><br />
+ *             <i>Type: </i>{@link String}<br />
+ *             A {@link String} that summarizes the change resulting from this variant allele in the coding sequence for the transcript in which it occurs.<br />
+ *             Positions in this field are <i>relative to the start of the transcript (1-based, inclusive)</i> unless otherwise noted.<br />
+ *             Generally the format of this field is:<br />
+ *             <pre>
+ *             c.[POSITION][BASES CHANGED]
+ *             </pre>
+ *
+ *             The format of this field slightly varies based on {@code VariantType}, the number of affected bases, and whether the variant allele is a <i>SPLICE_SITE</i>:
+ *             <ul>
+ *                 <li>
+ *                     <i><u>Insertions</u></i><br />
+ *                     <pre>c.[POSITION OF BASE PRIOR TO INSERTION]_[POSITION OF BASE AFTER INSERTION]ins[BASES INSERTED]</pre><br />
+ *                     E.g.:<br />
+ *                     <pre>c.2018_2019insAA</pre><br />
+ *                     This indicates that the bases AA were inserted between bases 2018 and 2019 in the transcript associated with this variant allele.
+ *                 </li>
+ *                 <li>
+ *                     <i><u>Deletions of One Base</u></i><br />
+ *                     <pre>c.[POSITION OF BASE DELETED]del[BASE DELETED]</pre><br />
+ *                     E.g.:<br />
+ *                     <pre>c2018delT</pre><br />
+ *                     This indicates that the base T was deleted at position 2018 in the transcript associated with this variant allele.
+ *                 </li>
+ *                 <li>
+ *                     <i><u>Deletions of Multiple Bases</u></i><br />
+ *                     <pre>c.[POSITION OF FIRST BASE DELETED]_[POSITION OF LAST BASE DELETED]del[BASES DELETED]</pre><br />
+ *                     E.g.:<br />
+ *                     <pre>c2018_2022delTTCAG</pre><br />
+ *                     This indicates that the bases TTCAG were deleted from position 2018 to position 2022 in the transcript associated with this variant allele.
+ *                 </li>
+ *                 <li>
+ *                     <i><u>SNPs</u></i><br />
+ *                     <pre>c.[POSITION OF BASE CHANGED]&gt;[NEW BASE]</pre><br />
+ *                     E.g.:<br />
+ *                     <pre>c.1507T>G</pre><br />
+ *                     This indicates that the base T was changed to G at position 1507 in the transcript associated with this variant allele.
+ *                 </li>
+ *                 <li>
+ *                     <i><u>MNPs (including DNPs, TNPs)</u></i><br />
+ *                     <pre>c.[POSITION OF FIRST BASE CHANGED]_[POSITION OF LAST BASE CHANGED]&gt;[NEW BASES]</pre><br />
+ *                     E.g.:<br />
+ *                     <pre>c.12899_12900AG>TA</pre><br />
+ *                     This indicates that the bases AG were changed to TA from position 12899 to position 12900 in the transcript associated with this variant allele.
+ *                 </li>
+ *                 <li>
+ *                     <i><u>INTRONIC Variants</u></i><br />
+ *                     For variants occuring in INTRONs, the cDNA string position indicates the offset from the exon boundary for the start of the variant.  The whole string takes the form:<br />
+ *                     <pre>c.e[EXON NUMBER][+|-][BASES FROM EXON][REF ALLELE]>[ALT ALLELE]</pre><br />
+ *                     E.g.:<br />
+ *                     <pre>c.e81-4TAA>A</pre><br />
+ *                     This indicates that the bases TAA were changed to A starting four bases before exon 81 in the transcript associated with this variant allele.
+ *                 </li>
+ *             </ul>
+ *             If the variant does not occur in the expressed transcript of the corresponding gene (e.g. is of type <i>IGR</i>), then this field is empty.
+ *         </li>
+ *         <li>
+ *             <b><i>codonChange</i></b><br />
+ *             <i>Type: </i>{@link String}<br />
+ *             A {@link String} that representing the <i>codon-aligned change</i> resulting from this variant allele in the coding sequence for the transcript in which it occurs.<br />
+ *             Positions in this field are <i>relative to the start of the transcript (1-based, inclusive) and aligned to the coding sequence</i>unless otherwise noted.<br />
+ *             Unlike the cDnaChange, the bases reported in the codonChange string will always have a length evenly divisble by 3 (except for frameshifts) and represent what the codons would be if the variant alternate allele were expressed in the reference sequence.<br />
+ *             Capitalized bases represent the bases changed by the variant alternate allele.  Lower-case bases represent reference bases.<br />
+ *             Generally the format of this field is:<br />
+ *             <pre>
+ *             c.[POSITION][BASES CHANGED]
+ *             </pre>
+ *             The format of this field slightly varies based on {@code VariantType}, the number of affected bases, and whether the variant allele occurs in an Intron:
+ *             <ul>
+ *                 <li>
+ *                     <i><u>In-Frame Insertions</u></i><br />
+ *                     <pre>c.([POSITION OF FIRST BASE IN FIRST CODON IN THE REFERENCE AFFECTED BY THIS VARIANT]-[POSITION OF LAST BASE IN LAST CODON IN THE REFERENCE AFFECTED BY THIS VARIANT][REFERENCE CODONS]&gt;[EXPRESSED CODONS]</pre><br />
+ *                     E.g.:<br />
+ *                     <pre>c.(19-21)ctt>ctCGTt</pre><br />
+ *                     This indicates that the bases <i>CGT</i> were inserted before the 6th codon (starting at base 19, ending at base 21) in the transcript associated with this variant allele, and the resulting expressed codons would be <i>ctCGTt</i>.
+ *                 </li>
+ *                 <li>
+ *                     <i><u>In-Frame Deletions of Complete Codons (codon-aligned deletions)</u></i><br />
+ *                     <pre>c.([POSITION OF FIRST BASE IN FIRST CODON DELETED]-[POSITION OF LAST BASE IN LAST CODON DELETED][REFERENCE CODONS]del</pre><br />
+ *                     E.g.:<br />
+ *                     <pre>c.(997-999)gcadel</pre><br />
+ *                     This indicates that the 332nd codon (starting at base 997, ending at base 999) was deleted in the transcript associated with this variant allele, and the deleted codon bases are <i>gca</i>.
+ *                 </li>
+ *                 <li>
+ *                     <i><u>In-Frame Deletions Spanning Multiple Codons</u></i><br />
+ *                     <pre>c.([POSITION OF FIRST BASE IN FIRST CODON DELETED]-[POSITION OF LAST BASE IN LAST CODON DELETED][REFERENCE CODONS]&gt;[EXPRESSED CODONS]</pre><br />
+ *                     E.g.:<br />
+ *                     <pre>c.(997-1002)gcactc>gtc</pre><br />
+ *                     This indicates that bases in the 332nd codon (starting at base 997) and 333rd codon (ending at base 1002) were deleted in the transcript associated with this variant allele, and the resulting expressed codon would be <i>gtc</i>.
+ *                 </li>
+ *                 <li>
+ *                     <i><u>Frame Shift Insertions and Deletions</u></i><br />
+ *                     <pre>c.([POSITION OF FIRST BASE IN LAST CORRECTLY EXPRESSED/REFERENCE CODON]-[POSITION OF LAST BASE IN LAST CORRECTLY EXPRESSED/REFERENCE CODON][REFERENCE CODONS]&gt;[EXPRESSED CODONS]</pre><br />
+ *                     E.g.:<br />
+ *                     <pre>c.(997-999)gcafs</pre><br />
+ *                     This indicates that bases just <u><i>AFTER</i></u> the 332nd codon (starting at base 997, ending at base 999) were inserted or deleted in the transcript associated with this variant allele resulting in a frame shift, and that the last correctly transcribed codon would be codon 332 (starting at base 997, ending at base 999), '<i>gca</i>'.
+ *                 </li>
+ *                 <i><u>SNPs / MNPs</u></i><br />
+ *                     <pre>c.([POSITION OF FIRST BASE IN FIRST CODON IN THE REFERENCE AFFECTED BY THIS VARIANT]-[POSITION OF LAST BASE IN LAST CODON IN THE REFERENCE AFFECTED BY THIS VARIANT][REFERENCE CODONS]&gt;[EXPRESSED CODONS]</pre><br />
+ *                     E.g. 1:<br />
+ *                     <pre>c.(39871-39873)cCC>cTT</pre><br />
+ *                     This indicates that the bases <i>CC</i> were changed to <i>TT</i> in the 13290th codon (starting at base 39871, ending at base 39873) in the transcript associated with this variant allele, and the resulting expressed codon would be <i>cTT</i>.<br />
+ *                     E.g. 2:<br />
+ *                     <pre>c.(4-9)ctAAgc>ctGCgc</pre><br />
+ *                     This indicates that the bases <i>AA</i> starting in the 2nd codon (starting at base 4) and ending in the 3rd codon (ending at base 9) were changed to <i>GC</i> in the transcript associated with this variant allele, and the resulting expressed codons would be <i>ctGCgc</i>.
+ *                 </li>
+ *             </ul>
+ *         </li>
+ *         <li>
+ *             <b><i>proteinChange</i></b><br />
+ *             <i>Type: </i>{@link String}<br />
+ *             A short string representing the predicted amino acid sequence change in the product of the gene transcript in which this variant alternate allele occurs.<br />
+ *             Positions in this field are <i>relative to the start of the amino acid sequence (1-based, inclusive) resulting from decoding the codons in the transcript in which this variant alternate allele occurs</i>unless otherwise noted.<br />
+ *             Amino acid abbreviations are the standard letters as can be found in <a href="https://en.wikipedia.org/wiki/DNA_codon_table"></a>this table</a> with the exception of the stop codon, which is represented by '<i><b>*</b></i>'.<br />
+ *             It is important to note that the positions and amino acids reported in this string may not directly align to the codons in which the variant alternate allele occurs.  This is most often due to the variant occuring in a set of tandem repeats which would cause the amino acid change to be "pushed" to the end of the tandem repeats.<br />
+ *             For protein change strings in the Mitochondrial contig, <a href="https://en.wikipedia.org/wiki/Vertebrate_mitochondrial_code">the mitochondrial genetic code</a> is used (rather than the standard code).
+ *             The format of this field takes two forms:<br />
+ *             <ul>
+ *                 <li>
+ *                     <i>Protein Changes with One Amino Acid Changed</i><br />
+ *                     <pre>p.[REFERENCE AMINO ACID][POSITION][PREDICTED EXPRESSED AMINO ACID]</pre><br />
+ *                     E.g. 1:<br />
+ *                     <pre>p.V5T</pre><br />
+ *                     The amino acid at protein position 5 was V (Valine) in the reference and would become T (Threonine) with the variant alternate allele expressed.<br />
+ *                     E.g. 2:<br />
+ *                     <pre>p.R2R</pre><br />
+ *                     The amino acid at protein position 2 was R (Argenine) in the reference and would become R (Argenine) with the variant alternate allele expressed (no change in amino acid sequence / silent variant classification).
+ *                 </li>
+ *                 <li>
+ *                     <i>Protein Changes with Multiple Amino Acids Changed</i><br />
+ *                     <pre>p.[FIRST AFFECTED AMINO ACID POSITION]_[LAST AFFECTED AMINO ACID POSITION][REFERENCE AMINO ACIDS]&gt;[PREDICTED EXPRESSED AMINO ACIDS]</pre><br />
+ *                     E.g.:<br />
+ *                     <pre>p.100_101Q*>FL</pre><br />
+ *                     The amino acid sequence starting at protein position 100 and ending at protein position 101 was Q* (Glutamine,STOP) in the reference and would become FL (Phenylalanine,Leucine) with the variant alternate allele expressed.
+ *                 </li>
+ *             </ul>
+ *             If the variant alternate allele does not occur in a coding region, this field will be empty.
+ *         </li>
+ *         <li>
+ *             <b><i>gcContent</i></b><br />
+ *             <i>Type: </i>{@link Double}<br />
+ *             Represents the fraction of Guanine and Cytosine bases in a window of a given size around a variant.  This window size does not include any bases in the variant alternate allele itself.  By default the window size is 200 bases.
+ *         </li>
+ *         <li>
+ *             <b><i>referenceContext</i></b><br />
+ *             <i>Type: </i>{@link String}<br />
+ *             The <u>strand-correct</u> reference coding sequence in a given window around the reference allele.  By default the window size is <i>10 bases</i>.<br />
+ *             E.g. For the reference context around a variant with the reference allele '<i>C</i>' on the '+' strand:
+ *
+ *             <pre>
+ *                      [REF ALLELE]
+ *                           |
+ *                           v
+ *                 GAACCCACGTCGGTGAGGGCC
+ *                 |________| |________|
+ *                     v           v
+ *                  10 bases      10 bases
+ *                (window size)  (window size)
+ *             </pre>
+ *             Strand-correct specifically means that if the strand of this transcript is determined to be '<i>-</i>' then the sequence is reverse complemented.  <br />
+ *             E.g. For the reference context around a variant with the reference allele '<i>C</i>' on the '-' strand:
+ *             <pre>
+ *                      [REF ALLELE]
+ *                           |
+ *                           v
+ *                 CACGAAAGTCTTGCGGATCT
+ *                 |________| |________|
+ *                     v           v
+ *                  10 bases      10 bases
+ *                (window size)  (window size)
+ *             </pre>
+ *         </li>
+ *         <li>
+ *             <b><i>otherTranscripts</i></b><br />
+ *             <i>Type: </i>{@link String}<br />
+ *             A summary of the other transcripts in which this variant occurs, which were not chosen for detailed reporting due to the transcript selection scheme.<br />
+ *             Each other transcript is represented by a condensed string that indicates how that transcript would be affected by this variant alternate allele.<br />
+ *             Each other transcript takes the form:<br />
+ *             <pre>[HUGO SYMBOL]_[TRANSCRIPT ID]_[VARIANT CLASSIFICATION]_[PROTEIN CHANGE STRING]</pre><br />
+ *             E.g.:
+ *             <pre>SDF4_ENST00000263741.7_MISSENSE_p.R243Q</pre>
+ *             If another transcript were to be an IGR, the other transcript field would be populated with '<i>IGR_ANNOTATON</i>'<br />
+ *             If the other transcript does not have a protein change string, then that part is not rendered.<br />
+ *             In the event that there are multiple other transcripts, these transcripts are separated by '<i>/</i>'.<br />
+ *             E.g.:
+ *             <pre>SDF4_ENST00000263741.7_MISSENSE_p.R243Q/TNFRSF4_ENST00000379236.3_FIVE_PRIME_FLANK</pre>
+ *             If this variant alternate allele occurs in only one transcript, this field will be empty.
+ *         </li>
+ *     </ol>
+ * </p>
+ * <p>
+ *     Other annotations will follow the Gencode annotations and will be based on the data sources included in the data sources directory.
+ * </p>
  * <h3>Usage example</h3>
  * <pre>
  *   ./gatk Funcotator \
@@ -170,8 +699,8 @@ import java.util.*;
  *
  * <h3>Notes</h3>
  * <ul>
- *     <li>This is a beta tool, and as such may generate errors or warnings.</li>
- *     <li>This tool is the successor to <a href="http://portals.broadinstitute.org/oncotator/">Oncotator</a>, with better support for germline data.</li>
+ *     <li>This tool is the spiritual successor to <a href="http://portals.broadinstitute.org/oncotator/">Oncotator</a>, with better support for germline data, numerous fixes for correctness, and many other features.</li>
+ *     <li>REMEMBER: <strong>Funcotator is NOT Oncotator.</strong></li>
  * </ul>
  *
  * <h3>Known Issues</h3>
