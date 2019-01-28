@@ -1,12 +1,14 @@
 package org.broadinstitute.hellbender.engine.spark.datasources;
 
 import com.google.common.io.Files;
+import htsjdk.samtools.BAMIndex;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.seekablestream.SeekablePathStream;
 import htsjdk.samtools.seekablestream.SeekableStream;
 import htsjdk.samtools.util.BlockCompressedInputStream;
 import htsjdk.samtools.util.IOUtil;
+import htsjdk.tribble.util.TabixUtils;
 import htsjdk.variant.utils.VCFHeaderReader;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
@@ -62,39 +64,41 @@ public final class VariantsSparkSinkUnitTest extends GATKBaseTest {
     @DataProvider(name = "loadVariants")
     public Object[][] loadVariants() {
         return new Object[][]{
-                {hg19_chr1_1M_dbSNP, ".vcf"},
-                {hg19_chr1_1M_dbSNP, ".vcf.bgz"},
-                {hg19_chr1_1M_dbSNP, ".vcf.gz"},
-                {hg19_chr1_1M_dbSNP_modified, ".vcf"},
+                {hg19_chr1_1M_dbSNP, ".vcf", true},
+                {hg19_chr1_1M_dbSNP, ".vcf.bgz", true},
+                {hg19_chr1_1M_dbSNP, ".vcf.bgz", false}, // disable writing tabix
+                {hg19_chr1_1M_dbSNP, ".vcf.gz", true},
+                {hg19_chr1_1M_dbSNP, ".vcf.gz", false}, // disable writing tabix
+                {hg19_chr1_1M_dbSNP_modified, ".vcf", true},
         };
     }
 
     @Test(dataProvider = "loadVariants", groups = "spark")
-    public void variantsSinkTest(String vcf, String outputFileExtension) throws IOException {
+    public void variantsSinkTest(String vcf, String outputFileExtension, boolean writeTabixIndex) throws IOException {
         final File outputFile = createTempFile(outputFileName, outputFileExtension);
-        assertSingleShardedWritingWorks(vcf, outputFile.getAbsolutePath());
+        assertSingleShardedWritingWorks(vcf, outputFile.getAbsolutePath(), writeTabixIndex);
     }
 
     @Test(dataProvider = "loadVariants", groups = "spark")
-    public void variantsSinkHDFSTest(String vcf, String outputFileExtension) throws IOException {
+    public void variantsSinkHDFSTest(String vcf, String outputFileExtension, boolean writeTabixIndex) throws IOException {
         final String outputHDFSPath = MiniClusterUtils.getTempPath(cluster, outputFileName, outputFileExtension).toString();
         Assert.assertTrue(BucketUtils.isHadoopUrl(outputHDFSPath));
-        assertSingleShardedWritingWorks(vcf, outputHDFSPath);
+        assertSingleShardedWritingWorks(vcf, outputHDFSPath, writeTabixIndex);
     }
 
     @Test(dataProvider = "loadVariants", groups = "spark")
-    public void testWritingToAnExistingFileHDFS(String vcf, String outputFileExtension) throws IOException {
+    public void testWritingToAnExistingFileHDFS(String vcf, String outputFileExtension, boolean writeTabixIndex) throws IOException {
         final Path outputPath = MiniClusterUtils.getTempPath(cluster, outputFileName, outputFileExtension);
         final FileSystem fs = outputPath.getFileSystem(new Configuration());
         Assert.assertTrue(fs.createNewFile(outputPath));
         Assert.assertTrue(fs.exists(outputPath));
-        assertSingleShardedWritingWorks(vcf, outputPath.toString());
+        assertSingleShardedWritingWorks(vcf, outputPath.toString(), writeTabixIndex);
     }
 
     @Test(dataProvider = "loadVariants", groups = "spark")
-    public void testWritingToFileURL(String vcf, String outputFileExtension) throws IOException {
+    public void testWritingToFileURL(String vcf, String outputFileExtension, boolean writeTabixIndex) throws IOException {
         String outputUrl = "file://" + createTempFile(outputFileName, outputFileExtension).getAbsolutePath();
-        assertSingleShardedWritingWorks(vcf, outputUrl);
+        assertSingleShardedWritingWorks(vcf, outputUrl, writeTabixIndex);
     }
 
     @DataProvider
@@ -111,7 +115,7 @@ public final class VariantsSparkSinkUnitTest extends GATKBaseTest {
     public void testBrokenGVCFCasesAreDisallowed(boolean writeGvcf, String extension) throws IOException {
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
         VariantsSparkSink.writeVariants(ctx, createTempFile("test", extension).toString(), null,
-                new VCFHeader(), writeGvcf, Arrays.asList(1, 2, 4, 5), 2, 1 );
+                new VCFHeader(), writeGvcf, Arrays.asList(1, 2, 4, 5), 2, 1, false);
     }
 
     @DataProvider
@@ -138,9 +142,9 @@ public final class VariantsSparkSinkUnitTest extends GATKBaseTest {
 
         final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
         final File output = createTempFile(outputFileName, extension);
-        VariantsSparkSink.writeVariants(ctx, output.toString(), ctx.parallelize(vcs), getHeader(), writeGvcf, Arrays.asList(100), 2, 1 );
+        VariantsSparkSink.writeVariants(ctx, output.toString(), ctx.parallelize(vcs), getHeader(), writeGvcf, Arrays.asList(100), 2, 1, true);
 
-        checkFileExtensionConsistentWithContents(output.toString());
+        checkFileExtensionConsistentWithContents(output.toString(), true);
 
         new CommandLineProgramTest(){
             @Override
@@ -170,7 +174,7 @@ public final class VariantsSparkSinkUnitTest extends GATKBaseTest {
         return header;
     }
 
-    private void assertSingleShardedWritingWorks(String vcf, String outputPath) throws IOException {
+    private void assertSingleShardedWritingWorks(String vcf, String outputPath, boolean writeTabixIndex) throws IOException {
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
         VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);
@@ -180,9 +184,9 @@ public final class VariantsSparkSinkUnitTest extends GATKBaseTest {
         }
         VCFHeader header = getHeader(vcf);
 
-        VariantsSparkSink.writeVariants(ctx, outputPath, variants, header);
+        VariantsSparkSink.writeVariants(ctx, outputPath, variants, header, writeTabixIndex);
 
-        checkFileExtensionConsistentWithContents(outputPath);
+        checkFileExtensionConsistentWithContents(outputPath, writeTabixIndex);
 
         JavaRDD<VariantContext> variants2 = variantsSparkSource.getParallelVariantContexts(outputPath, null);
         final List<VariantContext> writtenVariants = variants2.collect();
@@ -212,7 +216,7 @@ public final class VariantsSparkSinkUnitTest extends GATKBaseTest {
         return VariantsSparkSourceUnitTest.getSerialVariantContexts(actualVcf.getAbsolutePath());
     }
 
-    private void checkFileExtensionConsistentWithContents(String outputPath) throws IOException {
+    private void checkFileExtensionConsistentWithContents(String outputPath, boolean writeTabixIndex) throws IOException {
         String outputFile;
         if (BucketUtils.isFileUrl(outputPath)) {
             outputFile = new File(URI.create(outputPath)).getAbsolutePath();
@@ -227,6 +231,9 @@ public final class VariantsSparkSinkUnitTest extends GATKBaseTest {
         } else if (outputFile.endsWith(".vcf.gz") || outputFile.endsWith(".vcf.bgz")) {
             Assert.assertEquals("VCF", vcfFormat);
             Assert.assertTrue(blockCompressed);
+            // check that a tabix index file is created or not
+            boolean tabixExists = java.nio.file.Files.exists(IOUtils.getPath(outputPath + TabixUtils.STANDARD_INDEX_EXTENSION));
+            Assert.assertEquals(tabixExists, writeTabixIndex);
         } else if (outputFile.endsWith(".bcf")) {
             Assert.assertEquals("BCF", vcfFormat);
             Assert.assertFalse(blockCompressed);
