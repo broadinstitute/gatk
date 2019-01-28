@@ -250,8 +250,8 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         }
 
 
-        final AFCalculator afCalculator = configuration.genotypeArgs.USE_NEW_AF_CALCULATOR ? newAFCalculator
-                : afCalculatorProvider.getInstance(vc,defaultPloidy,maxAltAlleles);
+        final AFCalculator afCalculator = configuration.genotypeArgs.useOldAFCalculator ?
+                afCalculatorProvider.getInstance(vc,defaultPloidy,maxAltAlleles) : newAFCalculator;
         final AFCalculationResult AFresult = afCalculator.getLog10PNonRef(reducedVC, defaultPloidy, maxAltAlleles, getAlleleFrequencyPriors(vc,defaultPloidy,model));
         final OutputAlleleSubset outputAlternativeAlleles = calculateOutputAlleleSubset(AFresult, vc);
 

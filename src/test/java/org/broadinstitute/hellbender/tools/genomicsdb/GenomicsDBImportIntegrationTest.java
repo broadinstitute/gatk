@@ -115,7 +115,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     private static final String ANOTHER_ATTRIBUTE_KEY = "AA";
 
     private static final List<String> GVCFS_WITH_NEW_MQ = Arrays.asList(NA12878_HG37, getTestDataDir() + "/walkers/CombineGVCFs/YRIoffspring.chr20snippet.g.vcf");
-    private static final String COMBINED_WITH_NEW_MQ = toolsTestDir + "/walkers/CombineGVCFs/newMQcalc.combined.g.vcf";
+    private static final String COMBINED_WITH_NEW_MQ = toolsTestDir + "/walkers/GenomicsDBImport/newMQcalc.combined.g.vcf";
     private static final List<SimpleInterval> INTERVAL2 = Arrays.asList(new SimpleInterval("20", 1, 11_000_000));
     private static final List<String> ATTRIBUTES_TO_IGNORE = Arrays.asList("RAW_MQ","RAW_MQandDP");  //CombineGVCFs doesn't support the old RAW_MQ anymore
 
