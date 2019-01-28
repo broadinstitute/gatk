@@ -251,12 +251,12 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
             "(must be specified in increasing order)", optional = true)
     public List<Double> GVCFGQBands = new ArrayList<>(70);
     {
-        for (double i = -4.0; i <= 1; i = i + 0.5) {
+        for (double i = -2.5; i <= 1; i = i + 0.5) {
             GVCFGQBands.add(i);
         }
     }
 
     @Advanced
     @Argument(fullName = "minimum-allele-fraction", shortName = "min-AF", doc = "Lower bound of variant allele fractions to consider when calculating variant LOD", optional = true)
-    public double minAF = 0.01;
+    public double minAF = 0.00;
 }
