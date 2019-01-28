@@ -59,13 +59,13 @@ final public class DataSourceUtils {
     @VisibleForTesting
     static final int MIN_MAJOR_VERSION_NUMBER = 1;
     @VisibleForTesting
-    static final int MIN_MINOR_VERSION_NUMBER = 4;
+    static final int MIN_MINOR_VERSION_NUMBER = 6;
     @VisibleForTesting
-    static final int MIN_YEAR_RELEASED        = 2018;
+    static final int MIN_YEAR_RELEASED        = 2019;
     @VisibleForTesting
-    static final int MIN_MONTH_RELEASED       = 8;
+    static final int MIN_MONTH_RELEASED       = 1;
     @VisibleForTesting
-    static final int MIN_DAY_RELEASED         = 29;
+    static final int MIN_DAY_RELEASED         = 24;
 
     //==================================================================================================================
     // Public Static Members:
