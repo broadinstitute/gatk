@@ -94,6 +94,7 @@ public final class MutectDownsampler extends ReadsDownsampler {
                 // the desired coverage, but if the region is decently mappable the shortfall will be minor.
                 final ReservoirDownsampler wellMappedDownsampler = new ReservoirDownsampler(maxCoverage, false);
                 pendingReads.stream().filter(read -> read.getMappingQuality() > SUSPICIOUS_MAPPING_QUALITY).forEach(wellMappedDownsampler::submit);
+                wellMappedDownsampler.signalEndOfInput();
                 final List<GATKRead> readsToFinalize = wellMappedDownsampler.consumeFinalizedItems();
                 if (stride > 1) {
                     Collections.sort(readsToFinalize, Comparator.comparingInt(GATKRead::getAssignedStart));

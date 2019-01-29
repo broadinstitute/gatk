@@ -145,7 +145,7 @@ public class HaplotypeCallerSparkIntegrationTest extends CommandLineProgramTest 
      * Test that in VCF mode we're >= 99% concordant with GATK3.8 results
      * THIS TEST explodes with an exception because Allele-Specific annotations are not supported in vcf mode yet.
      * It's included to parallel the matching (also exploding) test for the non-spark HaplotypeCaller
-     * {@link org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerIntegrationTest#testVCFModeIsConcordantWithGATK3_8ResultsAlleleSpecificAnnotations()}
+     * {@link org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerIntegrationTest#testVCFModeIsConcordantWithGATK3_8ResultsAlleleSpecificAnnotations(String, String)}}
      */
     @Test(expectedExceptions = UserException.class)
     public void testVCFModeIsConcordantWithGATK3_8ResultsAlleleSpecificAnnotations() throws Exception {

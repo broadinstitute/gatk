@@ -51,6 +51,13 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
      */
     private int totalReadsSeen;
 
+    /**
+     * In order to guarantee that all reads have equal probability of being discarded, we need to have consumed the
+     * entire input stream before any items can become finalized. All submitted items (that survive downsampling)
+     * remain pending until endOfInputStream is called, at which point they become finalized.
+     */
+    private boolean endOfInputStream;
+
 
     /**
      * Construct a ReservoirDownsampler
@@ -88,6 +95,9 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
     @Override
     public void submit ( final GATKRead newRead ) {
         Utils.nonNull(newRead, "newRead");
+        // Once the end of the input stream has been seen, consumeFinalizedItems or clearItems must be called to
+        // reset the state of the ReservoirDownsampler before more items can be submitted
+        Utils.validate(! endOfInputStream, "attempt to submit read after end of input stream has been signaled");
 
         // Only count reads that are actually eligible for discarding for the purposes of the reservoir downsampling algorithm
         totalReadsSeen++;
@@ -110,35 +120,50 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
 
     @Override
     public boolean hasFinalizedItems() {
-        return ! reservoir.isEmpty();
+        // All items in the reservoir are pending until endOfInputStream is seen, at which point all items become finalized
+        return endOfInputStream && !reservoir.isEmpty();
     }
 
     @Override
     public List<GATKRead> consumeFinalizedItems() {
+        // This method clears state (including the end of input stream flag) when called after
+        // end of input stream has been signaled, but has no side effects when called
+        // before end of input stream has been signaled (since in that case, the downsampling
+        // process is still ongoing and we shouldn't clear pending items).
+
         if (hasFinalizedItems()) {
             // pass reservoir by reference rather than make a copy, for speed
             final List<GATKRead> downsampledItems = reservoir;
             clearItems();
             return downsampledItems;
+        } else if ( ! endOfInputStream ) {
+            // Don't call clearItems() here, since endOfInputStream is false and therefore the
+            // downsampling process is still ongoing. We want to preserve existing pending items,
+            // and return an empty List without side effects.
+            return Collections.emptyList();
         } else {
-            // if there's nothing here, don't bother allocating a new list
+            // This is the case where endOfInputStream == true and our reservoir is empty. We return an empty
+            // list, but we also call clearItems() here for consistency with the case above where we have
+            // finalized items, so that in both cases we reset the endOfInputStream flag.
+            clearItems();
             return Collections.emptyList();
         }
     }
 
     @Override
     public boolean hasPendingItems() {
-        return false;
+        // All items in the reservoir are pending until endOfInputStream is seen, at which point all items become finalized
+        return !endOfInputStream && !reservoir.isEmpty();
     }
 
     @Override
     public GATKRead peekFinalized() {
-        return reservoir.isEmpty() ? null : reservoir.get(0);
+        return hasFinalizedItems() ? reservoir.get(0) : null;
     }
 
     @Override
     public GATKRead peekPending() {
-        return null;
+        return hasPendingItems() ? reservoir.get(0) : null;
     }
 
     @Override
@@ -148,7 +173,7 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
 
     @Override
     public void signalEndOfInput() {
-        // NO-OP
+        endOfInputStream = true;
     }
 
     /**
@@ -164,6 +189,8 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
 
         // an internal stat used by the downsampling process, so not cleared by resetStats() below
         totalReadsSeen = 0;
+
+        endOfInputStream = false;
     }
 
     @Override
