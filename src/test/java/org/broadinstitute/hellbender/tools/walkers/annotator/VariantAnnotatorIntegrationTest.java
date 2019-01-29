@@ -214,7 +214,7 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
     public void testDBTagWithHapMap() throws IOException {
         assertVariantContextsMatch(getTestFile("vcfexample3empty.vcf"),
                 getTestFile("expected/testDBTagWithHapMap.vcf"),
-                Arrays.asList("-G", "Standard", "-L", getToolTestDataDir() + "vcfexample3empty.vcf", "--comp", "H3:" + getToolTestDataDir() + "fakeHM3.vcf"),
+                Arrays.asList("-G", "Standard", "-L", getToolTestDataDir() + "vcfexample3empty.vcf", "--comp:H3", getToolTestDataDir() + "fakeHM3.vcf"),
                 b37_reference_20_21, Collections.emptyList());
     }
 
@@ -232,7 +232,7 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
     public void testDBTagWithTwoComps() throws IOException {
         assertVariantContextsMatch(getTestFile("vcfexample3empty.vcf"),
                 getTestFile("expected/testDBTagWithTwoComps.vcf"),
-                Arrays.asList("-G", "Standard", "-L", getToolTestDataDir() + "vcfexample3empty.vcf", "--comp", "H3:" + getToolTestDataDir() + "fakeHM3.vcf", "--comp", "foo:" + getToolTestDataDir() + "fakeHM3.vcf"),
+                Arrays.asList("-G", "Standard", "-L", getToolTestDataDir() + "vcfexample3empty.vcf", "--comp:H3", getToolTestDataDir() + "fakeHM3.vcf", "--comp:foo", getToolTestDataDir() + "fakeHM3.vcf"),
                 b37_reference_20_21, Collections.emptyList());
     }
 
@@ -249,7 +249,7 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
     public void testUsingExpression() throws IOException {
         assertVariantContextsMatch(getTestFile("vcfexample3empty.vcf"),
                 new File(getToolTestDataDir() + "expected/testUsingExpression.vcf"),
-                Arrays.asList("--resource-allele-concordance",  "--resource",  "foo:" + getToolTestDataDir() + "targetAnnotations.vcf",
+                Arrays.asList("--resource-allele-concordance",  "--resource:foo", getToolTestDataDir() + "targetAnnotations.vcf",
                         "-G", "Standard", "-E", "foo.AF", "-L", getToolTestDataDir()+"vcfexample3empty.vcf"), b37_reference_20_21);
     }
 
@@ -257,7 +257,7 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
     public void testUsingExpressionAlleleMisMatch() throws IOException {
         assertVariantContextsMatch(getTestFile("vcfexample3empty-mod.vcf"),
                 new File(getToolTestDataDir() + "expected/testUsingExpressionAlleleMisMatch.vcf"),
-                Arrays.asList("--resource-allele-concordance",  "--resource",  "foo:" + getToolTestDataDir() + "targetAnnotations.vcf",
+                Arrays.asList("--resource-allele-concordance",  "--resource:foo",  getToolTestDataDir() + "targetAnnotations.vcf",
                         "-G", "Standard", "-E", "foo.AF", "-L", getToolTestDataDir()+"vcfexample3empty-mod.vcf"), b37_reference_20_21);
     }
 
@@ -265,7 +265,7 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
     public void testUsingExpressionMultiAllele() throws IOException {
         assertVariantContextsMatch(getTestFile("vcfexample3empty-multiAllele.vcf"),
                 getTestFile("expected/testUsingExpressionMultiAllele.vcf"),
-                Arrays.asList("-G", "Standard", "-L", getToolTestDataDir() + "vcfexample3empty-multiAllele.vcf", "--resource", "foo:" + getToolTestDataDir() + "targetAnnotations-multiAllele.vcf", "-E", "foo.AF", "-E", "foo.AC"),
+                Arrays.asList("-G", "Standard", "-L", getToolTestDataDir() + "vcfexample3empty-multiAllele.vcf", "--resource:foo", getToolTestDataDir() + "targetAnnotations-multiAllele.vcf", "-E", "foo.AF", "-E", "foo.AC"),
                 b37_reference_20_21, Collections.emptyList());
     }
 
@@ -274,7 +274,7 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
         /* The order of filters in the output seems platform-dependent. May need to change htsjdk to make the order consistent across platforms. [Sato] */
         assertVariantContextsMatch(getTestFile("vcfexample3empty-multiAllele.vcf"),
                 getTestFile("expected/testFilterInExpression.vcf"),
-                Arrays.asList("-G", "Standard", "-L", getToolTestDataDir() + "vcfexample3empty-multiAllele.vcf", "--resource", "foo:" + getToolTestDataDir() + "annotationResourceWithFilter.vcf", "-E", "foo.FILTER"),
+                Arrays.asList("-G", "Standard", "-L", getToolTestDataDir() + "vcfexample3empty-multiAllele.vcf", "--resource:foo", getToolTestDataDir() + "annotationResourceWithFilter.vcf", "-E", "foo.FILTER"),
                 b37_reference_20_21, Collections.emptyList());
     }
 
@@ -282,7 +282,7 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
     public void testUsingExpressionWithID() throws IOException {
         assertVariantContextsMatch(getTestFile("vcfexample3empty.vcf"),
                 getTestFile("expected/testUsingExpressionWithID.vcf"),
-                Arrays.asList("-G", "Standard", "-L", getToolTestDataDir() + "vcfexample3empty.vcf", "--resource", "foo:" + getToolTestDataDir() + "targetAnnotations.vcf", "-E", "foo.ID"),
+                Arrays.asList("-G", "Standard", "-L", getToolTestDataDir() + "vcfexample3empty.vcf", "--resource:foo", getToolTestDataDir() + "targetAnnotations.vcf", "-E", "foo.ID"),
                 b37_reference_20_21, Collections.emptyList());
     }
 
@@ -292,7 +292,7 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
         // This test makes sure that the expression code works in a complex case with many overlapping variant contexts
         assertVariantContextsMatch(getTestFile("AlleleTrim.vcf"),
                 getTestFile("expected/testAlleleTrimming.vcf"),
-                Arrays.asList( "--resource", "exac:" + getToolTestDataDir() + "exacAlleleTrim.vcf", "-E", "exac.AC_Adj", "-A", "InbreedingCoeff"),
+                Arrays.asList( "--resource:exac", getToolTestDataDir() + "exacAlleleTrim.vcf", "-E", "exac.AC_Adj", "-A", "InbreedingCoeff"),
                 null, Collections.emptyList());
     }
 

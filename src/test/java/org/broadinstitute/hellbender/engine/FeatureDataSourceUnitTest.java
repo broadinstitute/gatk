@@ -64,7 +64,8 @@ public final class FeatureDataSourceUnitTest extends GATKBaseTest {
     }
 
     @Test
-    public void testGetSequenceDictionary() {
+    public void testGetSequenceDictionaryFromIndex() {
+        // this vcf has no sequence dictionary, but it has an index....
         try (FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF, "CustomName")) {
             final SAMSequenceDictionary dict = featureSource.getSequenceDictionary();
             Assert.assertEquals(dict.size(), 4);

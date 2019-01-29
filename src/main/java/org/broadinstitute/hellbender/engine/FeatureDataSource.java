@@ -255,7 +255,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         // a query by interval is attempted.
         this.featureReader = getFeatureReader(featureInput, targetFeatureType, cloudWrapper, cloudIndexWrapper, reference);
 
-        if (IOUtils.isGenomicsDBPath(featureInput.getFeaturePath())) {
+        if (IOUtils.isGenomicsDBPath(featureInput)) {
             //genomics db uri's have no associated index file to read from, but they do support random access
             this.hasIndex = false;
             this.supportsRandomAccess = true;
@@ -286,14 +286,14 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
                                                                          final Function<SeekableByteChannel, SeekableByteChannel> cloudWrapper,
                                                                          final Function<SeekableByteChannel, SeekableByteChannel> cloudIndexWrapper,
                                                                          final Path reference) {
-        if (IOUtils.isGenomicsDBPath(featureInput.getFeaturePath())) {
+        if (IOUtils.isGenomicsDBPath(featureInput)) {
             try {
                 if (reference == null) {
                     throw new UserException.MissingReference("You must provide a reference if you want to load from GenomicsDB");
                 }
                 try {
                     final File referenceAsFile = reference.toFile();
-                    return (FeatureReader<T>) getGenomicsDBFeatureReader(featureInput.getFeaturePath(), referenceAsFile);
+                    return (FeatureReader<T>) getGenomicsDBFeatureReader(featureInput, referenceAsFile);
                 } catch (final UnsupportedOperationException e) {
                     throw new UserException.BadInput("GenomicsDB requires that the reference be a local file.", e);
                 }
@@ -319,7 +319,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         final FeatureCodec<T, ?> codec;
         final Class<FeatureCodec<T, ?>> codecClass = featureInput.getFeatureCodecClass();
         if (codecClass == null) {
-            final Path featurePath = IOUtils.getPath(featureInput.getFeaturePath());
+            final Path featurePath = featureInput.toPath();
             IOUtils.assertFileIsReadable(featurePath);
             codec = (FeatureCodec<T, ?>) FeatureManager.getCodecForFile(featurePath, targetFeatureType);
             featureInput.setFeatureCodecClass((Class<FeatureCodec<T, ?>>) codec.getClass());
@@ -337,15 +337,14 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         Utils.nonNull(codec);
         try {
             // Must get the path to the data file from the codec here:
-            final String absoluteRawPath = IOUtils.getPath(featureInput.getFeaturePath()).toAbsolutePath().toUri().toString();
-            final String absoluteProcessedPath = IOUtils.getPath(codec.getPathToDataFile(featureInput.getFeaturePath())).toAbsolutePath().toUri().toString();
+            final String absoluteRawPath = featureInput.getRawInputString();
 
             // Instruct the reader factory to not require an index. We will require one ourselves as soon as
             // a query by interval is attempted.
             final boolean requireIndex = false;
 
             // Only apply the wrappers if the feature input is on Google Cloud Storage
-            if (BucketUtils.isCloudStorageUrl(absoluteProcessedPath)) {
+            if (BucketUtils.isCloudStorageUrl(featureInput)) {
                 return AbstractFeatureReader.getFeatureReader(absoluteRawPath, null, codec, requireIndex, cloudWrapper, cloudIndexWrapper);
             } else {
                 return AbstractFeatureReader.getFeatureReader(absoluteRawPath, null, codec, requireIndex, Function.identity(), Function.identity());
@@ -355,9 +354,9 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         }
     }
 
-    protected static FeatureReader<VariantContext> getGenomicsDBFeatureReader(final String path, final File reference) {
+    protected static FeatureReader<VariantContext> getGenomicsDBFeatureReader(final GATKPathSpecifier path, final File reference) {
         final String workspace = IOUtils.getGenomicsDBAbsolutePath(path) ;
-        if (workspace == null) {   
+        if (workspace == null) {
             throw new IllegalArgumentException("Trying to create a GenomicsDBReader from  non-GenomicsDB inputpath " + path);
         } else if (Files.notExists(IOUtils.getPath(workspace))) {
             throw new UserException("GenomicsDB workspace " + path + " does not exist");

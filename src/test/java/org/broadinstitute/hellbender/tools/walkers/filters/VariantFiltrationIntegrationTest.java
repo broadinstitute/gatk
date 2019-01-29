@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 
@@ -14,7 +15,7 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
 
     public String baseTestString(final String vcf, final String options) {
         final String file = getToolTestDataDir() + vcf;
-        return "--variant " + file + " " + options + " -O %s" + " -R" + hg19_chr1_1M_Reference + " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE + " false";
+        return "--variant " + file + " " + options + " -O %s" + " -R " + hg19_chr1_1M_Reference + " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE + " false";
     }
 
     @Test
@@ -41,8 +42,8 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
     public Object[][] masks() {
         return new String[][]{
                 {"foo", "--mask " + getToolTestDataDir() + "vcfexample2.vcf", "testVariantFiltration_testMask1.vcf"},
-                {"foo", "--mask VCF:" + getToolTestDataDir() + "vcfMask.vcf", "testVariantFiltration_testMask2.vcf"},
-                {"foo", "--" + VariantFiltration.MASK_EXTENSION_LONG_NAME + " 10 --mask VCF:" + getToolTestDataDir() + "vcfMask.vcf", "testVariantFiltration_testMask3.vcf"},
+                {"foo", "--mask " + new File(getToolTestDataDir() + "vcfMask.vcf").getAbsolutePath(), "testVariantFiltration_testMask2.vcf"},
+                {"foo", "--" + VariantFiltration.MASK_EXTENSION_LONG_NAME + " 10 --mask:VCF " + getToolTestDataDir() + "vcfMask.vcf", "testVariantFiltration_testMask3.vcf"},
         };
     }
 
@@ -59,7 +60,7 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
     @Test
     public void testMaskReversed() throws IOException {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString("vcfexample2.vcf", " -mask-name outsideGoodSites -filter-not-in-mask --mask BED:" + getToolTestDataDir() + "goodMask.bed"),
+                baseTestString("vcfexample2.vcf", " -mask-name outsideGoodSites -filter-not-in-mask --mask:BED " + getToolTestDataDir() + "goodMask.bed"),
                 Arrays.asList(getToolTestDataDir() + "expected/" + "testVariantFiltration_testMaskReversed.vcf")
         );
 

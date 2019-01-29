@@ -268,7 +268,7 @@ public class VariantEvalIntegrationTest extends CommandLineProgramTest {
         String tests = " -R " + b37Reference +
                 " --dbsnp " + dbsnp_138_b37_1_65M_vcf +
                 " --eval " + vcf1 +
-                " --comp comp_genotypes:" + vcf2;
+                " --comp:comp_genotypes " + vcf2;
         IntegrationTestSpec spec = new IntegrationTestSpec(withSelect(tests, "DP < 50", "DP50") + " " + " -ST CpG -O %s", Arrays.asList(getExpectedFile(name)));
         spec.executeTest(name, this);
     }
@@ -307,7 +307,7 @@ public class VariantEvalIntegrationTest extends CommandLineProgramTest {
         String comp = largeFileTestDir + "genotypes_r27_nr.b37_fwd.subset.vcf";
 
         String name = "testCompOverlap";
-        String extraArgs = " -R " + b37_reference_20_21 + " -L " + getTestFilePath("pacbio.hg19.intervals") + " --comp comphapmap:" + comp + " --eval " + eval + " -no-ev -EV CompOverlap -sn NA12878 -no-st -ST Novelty -O %s";
+        String extraArgs = " -R " + b37_reference_20_21 + " -L " + getTestFilePath("pacbio.hg19.intervals") + " --comp:comphapmap " + comp + " --eval " + eval + " -no-ev -EV CompOverlap -sn NA12878 -no-st -ST Novelty -O %s";
         IntegrationTestSpec spec = new IntegrationTestSpec(extraArgs,Arrays.asList(getExpectedFile(name)));
         spec.executeTest(name,this);
     }
@@ -319,7 +319,7 @@ public class VariantEvalIntegrationTest extends CommandLineProgramTest {
         String extraArgs = " -R " + b37_reference_20_21 +
                            " -L 20" +
                            " --dbsnp " + dbsnp_138_b37_20_21_vcf +
-                           " --eval evalBI:" + vcf +
+                           " --eval:evalBI " + vcf +
                            " -no-st -ST Novelty -O %s";
         IntegrationTestSpec spec = new IntegrationTestSpec(extraArgs,Arrays.asList(getExpectedFile(name)));
         spec.executeTest(name,this);
@@ -349,8 +349,8 @@ public class VariantEvalIntegrationTest extends CommandLineProgramTest {
                 " -R " + b37_reference_20_21 +
                 " -L 20" +
                 " --dbsnp " + dbsnp_138_b37_20_21_vcf +
-                " --eval evalBI:" + vcf1 +
-                " --eval evalBC:" + vcf2 +
+                " --eval:evalBI " + vcf1 +
+                " --eval:evalBC " + vcf2 +
                 " -no-st -ST Novelty -O %s";
         IntegrationTestSpec spec = new IntegrationTestSpec(extraArgs,Arrays.asList(getExpectedFile(name)));
         spec.executeTest(name,this);

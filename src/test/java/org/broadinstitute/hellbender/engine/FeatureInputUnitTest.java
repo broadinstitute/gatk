@@ -4,7 +4,10 @@ import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureCodec;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFCodec;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineArgumentParser;
 import org.broadinstitute.barclay.argparser.CommandLineException;
+import org.broadinstitute.barclay.argparser.CommandLineParser;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.testutils.SparkTestUtils;
 import org.testng.Assert;
@@ -16,10 +19,23 @@ import java.io.*;
 public final class FeatureInputUnitTest extends GATKBaseTest {
     private static final String FEATURE_INPUT_TEST_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/";
 
-    @DataProvider(name = "InvalidFeatureArgumentValuesDataProvider")
-    public Object[][] getInvalidFeatureArgumentValues() {
+    static class ArgumentContainer {
+        @Argument(shortName="argName")
+        public FeatureInput<Feature> fi;
+    }
+
+    private FeatureInput<Feature> runCommandLineWithTaggedFeatureInput(final String taggedFeatureArgument, final String argumentValue) {
+        ArgumentContainer ac = new ArgumentContainer();
+        CommandLineArgumentParser clp = new CommandLineArgumentParser(ac);
+        final String[] args = {"--" + taggedFeatureArgument, argumentValue};
+        clp.parseArguments(System.out, args);
+        return ac.fi;
+    }
+
+    @DataProvider(name = "InvalidFeatureTagsDataProvider")
+    public Object[][] getInvalidFeatureTags() {
         return new Object[][] {
-                { "name:file:file2" },
+                //{ "name:file:file2" },            //this is legal (argument has tag name "file:file2")
                 { "name:" },
                 { ":file" },
                 { ",:file" },
@@ -36,13 +52,13 @@ public final class FeatureInputUnitTest extends GATKBaseTest {
                 { "" },
                 { "name,key=value1,key=value2:file" },   //duplicate key
                 { "name,key=value,key=value:file" },      //duplicate key
-                { "name:name:gendb://mydb" }
+                //{ "name:name:gendb://mydb" }            //this is legal (argument has tag name "name:gendb://mydb")
         };
     }
 
-    @Test(dataProvider = "InvalidFeatureArgumentValuesDataProvider", expectedExceptions = CommandLineException.BadArgumentValue.class)
-    public void testInvalidFeatureArgumentValue( final String invalidFeatureArgumentValue ) {
-        FeatureInput<Feature> featureInput = new FeatureInput<>(invalidFeatureArgumentValue);
+    @Test(dataProvider = "InvalidFeatureTagsDataProvider", expectedExceptions = CommandLineException.class)
+    public void testInvalidFeatureTags( final String invalidFeatureArgument ) {
+        runCommandLineWithTaggedFeatureInput(invalidFeatureArgument, "value");
     }
 
     @DataProvider(name = "ValidFileOnlyFeatureArgumentValuesDataProvider")
@@ -59,7 +75,7 @@ public final class FeatureInputUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "ValidFileOnlyFeatureArgumentValuesDataProvider")
     public void testNoFeatureNameSpecified(final String validFileOnlyFeatureArgumentValue) {
-        FeatureInput<Feature> featureInput = new FeatureInput<>(validFileOnlyFeatureArgumentValue);   //"myName,key1=value,myFile"
+        FeatureInput<Feature> featureInput = runCommandLineWithTaggedFeatureInput("argName", validFileOnlyFeatureArgumentValue);
 
         Assert.assertEquals(featureInput.getFeaturePath(), validFileOnlyFeatureArgumentValue, "Wrong File in FeatureInput");
         // Name should default to the absolute path of the File when no name is specified
@@ -69,68 +85,68 @@ public final class FeatureInputUnitTest extends GATKBaseTest {
     @DataProvider(name = "GenDbPathAndNameData")
     public Object[][] genDbPathAndNameData() {
         return new Object[][] {
-                // input String, expected Feature path, expected logical name
-                {"gendb://myJsons", "gendb://myJsons", "gendb://" + new File("myJsons").getAbsolutePath()},
-                {"myname:gendb://myJsons", "gendb://myJsons", "myname"},
-                {"myname,key1=value1:gendb://myJsons", "gendb://myJsons", "myname"},
-                {"myname//:gendb://myJsons", "gendb://myJsons", "myname//"},
-                {"myname:gendb://", "gendb://", "myname"},
+                // input arg name, input value, expected Feature path, expected logical name
+                {"argName", "gendb://myJsons", "gendb://myJsons", "gendb://" + new File("myJsons").getAbsolutePath()},
+                {"argName:myname", "gendb://myJsons", "gendb://myJsons", "myname"},
+                {"argName:myname,key1=value1", "gendb://myJsons", "gendb://myJsons", "myname"},
+                {"argName:myname//", "gendb://myJsons", "gendb://myJsons", "myname//"},
+                {"argName:myname", "gendb://", "gendb://", "myname"},
 
-                {"gendb.gs://myBucket/myJsons", "gendb.gs://myBucket/myJsons", "gendb.gs://myBucket/myJsons"},
-                {"myname:gendb.gs://myJsons", "gendb.gs://myJsons", "myname"},
-                {"myname,key1=value1:gendb.gs://myJsons", "gendb.gs://myJsons", "myname"},
-                {"myname//:gendb.gs://myJsons", "gendb.gs://myJsons", "myname//"},
-                {"myname:gendb.gs://", "gendb.gs://", "myname"},
+                {"argName", "gendb.gs://myBucket/myJsons", "gendb.gs://myBucket/myJsons", "gendb.gs://myBucket/myJsons"},
+                {"argName:myname", "gendb.gs://myJsons", "gendb.gs://myJsons", "myname"},
+                {"argName:myname,key1=value1", "gendb.gs://myJsons", "gendb.gs://myJsons", "myname"},
+                {"argName:myname//", "gendb.gs://myJsons", "gendb.gs://myJsons", "myname//"},
+                {"argName:myname", "gendb.gs://", "gendb.gs://", "myname"},
 
-                {"gendb.hdfs://localhost/myJsons", "gendb.hdfs://localhost/myJsons", "gendb.hdfs://localhost/myJsons"},
-                {"myname:gendb.hdfs://myJsons", "gendb.hdfs://myJsons", "myname"},
-                {"myname,key1=value1:gendb.hdfs://myJsons", "gendb.hdfs://myJsons", "myname"},
-                {"myname//:gendb.hdfs://myJsons", "gendb.hdfs://myJsons", "myname//"},
-                {"myname:gendb.hdfs://", "gendb.hdfs://", "myname"}
+                {"argName", "gendb.hdfs://localhost/myJsons", "gendb.hdfs://localhost/myJsons", "gendb.hdfs://localhost/myJsons"},
+                {"argName:myname", "gendb.hdfs://myJsons", "gendb.hdfs://myJsons", "myname"},
+                {"argName:myname,key1=value1", "gendb.hdfs://myJsons", "gendb.hdfs://myJsons", "myname"},
+                {"argName:myname//", "gendb.hdfs://myJsons", "gendb.hdfs://myJsons", "myname//"},
+                {"argName:myname", "gendb.hdfs://", "gendb.hdfs://", "myname"}
         };
     }
     
     @DataProvider(name = "GcsPathAndNameData")
     public Object[][] gcsPathAndNameData() {
         return new Object[][] {
-                // input String, expected Feature path, expected logical name
-                {"gs://bucket/user/my.vcf", "gs://bucket/user/my.vcf", "gs://bucket/user/my.vcf"},
-                {"myname:gs://bucket/user/my.vcf", "gs://bucket/user/my.vcf", "myname"},
-                {"myname,key1=value1:gs://bucket/user/my.vcf", "gs://bucket/user/my.vcf", "myname"},
-                {"myname//:gs://bucket/user/my.vcf", "gs://bucket/user/my.vcf", "myname//"}
+                // input arg name, input value, expected Feature path, expected logical name
+                {"argName", "gs://bucket/user/my.vcf", "gs://bucket/user/my.vcf", "gs://bucket/user/my.vcf"},
+                {"argName:myname", "gs://bucket/user/my.vcf", "gs://bucket/user/my.vcf", "myname"},
+                {"argName:myname,key1=value1", "gs://bucket/user/my.vcf", "gs://bucket/user/my.vcf", "myname"},
+                {"argName:myname//", "gs://bucket/user/my.vcf", "gs://bucket/user/my.vcf", "myname//"}
         };
     }
     
     @DataProvider(name = "HdfsPathAndNameData")
     public Object[][] hdfsPathAndNameData() {
         return new Object[][] {
-                // input String, expected Feature path, expected logical name
-                {"hdfs://localhost/user/my.vcf", "hdfs://localhost/user/my.vcf", "hdfs://localhost:8020/user/my.vcf"},
-                {"myname:hdfs://localhost/user/my.vcf", "hdfs://localhost/user/my.vcf", "myname"},
-                {"myname,key1=value1:hdfs://localhost/user/my.vcf", "hdfs://localhost/user/my.vcf", "myname"},
-                {"myname//:hdfs://localhost/user/my.vcf", "hdfs://localhost/user/my.vcf", "myname//"}
+                // input arg name, input value, expected Feature path, expected logical name
+                {"argName", "hdfs://localhost/user/my.vcf", "hdfs://localhost/user/my.vcf", "hdfs://localhost:8020/user/my.vcf"},
+                {"argName:myname", "hdfs://localhost/user/my.vcf", "hdfs://localhost/user/my.vcf", "myname"},
+                {"argName:myname,key1=value1", "hdfs://localhost/user/my.vcf", "hdfs://localhost/user/my.vcf", "myname"},
+                {"argName:myname//", "hdfs://localhost/user/my.vcf", "hdfs://localhost/user/my.vcf", "myname//"}
         };
     }
 
     @Test(dataProvider = "GenDbPathAndNameData")
-    public void testGenDbPathAndName( final String inputString, final String expectedFeaturePath, final String expectedLogicalName ) {
-        final FeatureInput<VariantContext> gendbInput = new FeatureInput<>(inputString);
+    public void testGenDbPathAndName( final String argWithTags, final String inputValue, final String expectedFeaturePath, final String expectedLogicalName ) {
+        FeatureInput<Feature> gendbInput = runCommandLineWithTaggedFeatureInput(argWithTags, inputValue);
 
         Assert.assertEquals(gendbInput.getFeaturePath(), expectedFeaturePath, "wrong featurePath");
         Assert.assertEquals(gendbInput.getName(), expectedLogicalName, "wrong logical name");
     }
 
     @Test(dataProvider = "GcsPathAndNameData", groups={"bucket"})
-    public void testGcsPathAndName( final String inputString, final String expectedFeaturePath, final String expectedLogicalName ) {
-        final FeatureInput<VariantContext> gcsInput = new FeatureInput<>(inputString);
+    public void testGcsPathAndName( final String argWithTags, final String inputValue, final String expectedFeaturePath, final String expectedLogicalName ) {
+        final FeatureInput<Feature> gcsInput = runCommandLineWithTaggedFeatureInput(argWithTags, inputValue);
 
         Assert.assertEquals(gcsInput.getFeaturePath(), expectedFeaturePath, "wrong featurePath");
         Assert.assertEquals(gcsInput.getName(), expectedLogicalName, "wrong logical name");
     }
 
     @Test(dataProvider = "HdfsPathAndNameData")
-    public void testHdfsPathAndName( final String inputString, final String expectedFeaturePath, final String expectedLogicalName ) {
-        final FeatureInput<VariantContext> hdfsInput = new FeatureInput<>(inputString);
+    public void testHdfsPathAndName( final String argWithTags, final String inputValue, final String expectedFeaturePath, final String expectedLogicalName ) {
+        final FeatureInput<Feature> hdfsInput = runCommandLineWithTaggedFeatureInput(argWithTags, inputValue);
 
         Assert.assertEquals(hdfsInput.getFeaturePath(), expectedFeaturePath, "wrong featurePath");
         Assert.assertEquals(hdfsInput.getName(), expectedLogicalName, "wrong logical name");
@@ -138,7 +154,7 @@ public final class FeatureInputUnitTest extends GATKBaseTest {
 
     @Test
     public void testFeatureNameSpecified() {
-        FeatureInput<Feature> featureInput = new FeatureInput<>("myName:myFile");
+        final FeatureInput<Feature> featureInput = runCommandLineWithTaggedFeatureInput("argName:myName", "myFile");
 
         Assert.assertEquals(featureInput.getFeaturePath(), "myFile", "Wrong File in FeatureInput");
         Assert.assertEquals(featureInput.getName(), "myName", "Wrong name in FeatureInput");
@@ -146,7 +162,7 @@ public final class FeatureInputUnitTest extends GATKBaseTest {
 
     @Test
     public void testNullOKAsFeatureName() {
-        FeatureInput<Feature> featureInput = new FeatureInput<>("null:myFile");
+        final FeatureInput<Feature> featureInput = runCommandLineWithTaggedFeatureInput("argName:null", "myFile");
 
         Assert.assertEquals(featureInput.getFeaturePath(), "myFile", "Wrong File in FeatureInput");
         Assert.assertEquals(featureInput.getName(), "null", "Wrong name in FeatureInput");
@@ -154,7 +170,7 @@ public final class FeatureInputUnitTest extends GATKBaseTest {
 
     @Test
     public void testNullOKAsFileName() {
-        FeatureInput<Feature> featureInput = new FeatureInput<>("myName:null");
+        final FeatureInput<Feature> featureInput = runCommandLineWithTaggedFeatureInput("argName:myName", "null");
 
         Assert.assertEquals(featureInput.getFeaturePath(), "null", "Wrong File in FeatureInput");
         Assert.assertEquals(featureInput.getName(), "myName", "Wrong name in FeatureInput");
@@ -163,7 +179,7 @@ public final class FeatureInputUnitTest extends GATKBaseTest {
 
     @Test
     public void testFeatureKeyValuePairsSpecified() {
-        FeatureInput<Feature> featureInput = new FeatureInput<>("myName,key1=value1,key2=value2,null=null:myFile");
+        final FeatureInput<Feature> featureInput = runCommandLineWithTaggedFeatureInput("argName:myName,key1=value1,key2=value2,null=null", "myFile");
 
         Assert.assertEquals(featureInput.getAttribute("key1"), "value1", "wrong attribute value for key1");
         Assert.assertEquals(featureInput.getAttribute("key2"), "value2", "wrong attribute value for key2");
@@ -176,7 +192,7 @@ public final class FeatureInputUnitTest extends GATKBaseTest {
 
     @Test
     public void testFeatureKeyValuePairSpecified() {
-        FeatureInput<Feature> featureInput = new FeatureInput<>("myName,key1=value1:myFile");
+        final FeatureInput<Feature> featureInput = runCommandLineWithTaggedFeatureInput("argName:myName,key1=value1", "myFile");
 
         Assert.assertEquals(featureInput.getAttribute("key1"), "value1", "wrong attribute value for key1");
         Assert.assertEquals(featureInput.getAttribute("key2"), null, "wrong attribute value for key2 (not present)");
@@ -187,7 +203,7 @@ public final class FeatureInputUnitTest extends GATKBaseTest {
 
     @Test
     public void testFeatureKeyValuePairsSpecifiedSameValue() {
-        FeatureInput<Feature> featureInput = new FeatureInput<>("myName,key1=value,key2=value:myFile");
+        final FeatureInput<Feature> featureInput = runCommandLineWithTaggedFeatureInput("argName:myName,key1=value,key2=value", "myFile");
 
         Assert.assertEquals(featureInput.getAttribute("key1"), "value", "wrong attribute value for key1");
         Assert.assertEquals(featureInput.getAttribute("key2"), "value", "wrong attribute value for key2");
@@ -199,19 +215,19 @@ public final class FeatureInputUnitTest extends GATKBaseTest {
     @DataProvider(name = "KeyValuesDataProviderForTestingNull")
     public Object[][] getKeyValuesDataProviderForTestingNull() {
         return new Object[][] {
-                { "myName,key1=value1,key2=value2:myFile" },
-                { "myName,null=value:myFile"},
-                { "myName:myFile" },
-                { "myFile" },
-                { "null" },
-                { "null:myFile" },
-                { "null:null" },
+                { "argName:myName,key1=value1,key2=value2", "myFile" },
+                { "argName:myName,null=value", "myFile"},
+                { "argName:myName", "myFile" },
+                { "argName", "myFile" },
+                //{ "argName", "null" }, // "null" has special meaning to the CLP
+                { "argName:null", "myFile" },
+                { "argName:null", "null" },
         };
     }
 
     @Test(dataProvider = "KeyValuesDataProviderForTestingNull", expectedExceptions = IllegalArgumentException.class)
-    public void testFeatureValuesForNullKey(final String featureInputArgument ) {
-        FeatureInput<Feature> featureInput = new FeatureInput<>(featureInputArgument);
+    public void testFeatureValuesForNullKey(final String argWithTags, final String inputValue ) {
+        final FeatureInput<Feature> featureInput = runCommandLineWithTaggedFeatureInput(argWithTags, inputValue);
         featureInput.getAttribute(null);
     }
 
@@ -247,10 +263,10 @@ public final class FeatureInputUnitTest extends GATKBaseTest {
 
     @Test
     public void testToString() {
-        final FeatureInput<Feature> namelessFeatureInput = new FeatureInput<>("file1");
-        final FeatureInput<Feature> namedFeatureInput = new FeatureInput<>("name:file1");
-        final FeatureInput<Feature> namelessGenomicsDB = new FeatureInput<>("gendb://file1");
-        final FeatureInput<Feature> namedGenomicsDB = new FeatureInput<>("name:gendb://file1");
+        final FeatureInput<Feature> namelessFeatureInput = runCommandLineWithTaggedFeatureInput("argName","file1");
+        final FeatureInput<Feature> namedFeatureInput = runCommandLineWithTaggedFeatureInput("argName:name", "file1");
+        final FeatureInput<Feature> namelessGenomicsDB = runCommandLineWithTaggedFeatureInput("argName", "gendb://file1");
+        final FeatureInput<Feature> namedGenomicsDB = runCommandLineWithTaggedFeatureInput("argName:name", "gendb://file1");
 
         Assert.assertEquals(namelessFeatureInput.toString(), new File("file1").getAbsolutePath(), "String representation of nameless FeatureInput incorrect");
         Assert.assertEquals(namedFeatureInput.toString(), "name:" + new File("file1").getAbsolutePath(), "String representation of named FeatureInput incorrect");
@@ -261,18 +277,18 @@ public final class FeatureInputUnitTest extends GATKBaseTest {
     @DataProvider(name = "HasUserSuppliedNameData")
     public Object[][] hasUserSuppliedNameData() {
         return new Object[][] {
-                {"hdfs://localhost/user/my.vcf", false},
-                {"myname:hdfs://localhost/user/my.vcf", true},
-                {"myname,key1=value1:hdfs://localhost/user/my.vcf", true},
-                {"myname//:hdfs://localhost/user/my.vcf", true},
-                {"myname//:/user/my.vcf", true},
-                {"/user/my.vcf", false},
+                {"argName", "hdfs://localhost/user/my.vcf", false},
+                {"argName:myname", "hdfs://localhost/user/my.vcf", true},
+                {"argName:myname,key1=value1", "hdfs://localhost/user/my.vcf", true},
+                {"argName:myname//", "hdfs://localhost/user/my.vcf", true},
+                {"argName:myname//", "/user/my.vcf", true},
+                {"argName", "/user/my.vcf", false},
         };
     }
 
     @Test(dataProvider = "HasUserSuppliedNameData")
-    public void testHasUserSuppliedName(final String inputString, final boolean isUserSupplied) {
-        final FeatureInput<VariantContext> input = new FeatureInput<>(inputString);
+    public void testHasUserSuppliedName(final String argWithTags, final String inputValue, final boolean isUserSupplied) {
+        final FeatureInput<Feature> input = runCommandLineWithTaggedFeatureInput(argWithTags, inputValue);
         Assert.assertEquals(input.hasUserSuppliedName(), isUserSupplied);
     }
 

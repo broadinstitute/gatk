@@ -15,6 +15,7 @@ import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.GetSampleName;
@@ -750,6 +751,8 @@ public final class IOUtils {
             if (CloudStorageFileSystem.URI_SCHEME.equals(uri.getScheme())) {
                 return BucketUtils.getPathOnGcs(uriString);
             }
+            // Paths.get(String) assumes the default file system
+            // Paths.get(URI) uses the scheme
             return uri.getScheme() == null ? Paths.get(uriString) : Paths.get(uri);
         } catch (FileSystemNotFoundException e) {
             try {
@@ -760,6 +763,9 @@ public final class IOUtils {
                 return FileSystems.newFileSystem(uri, new HashMap<>(), cl).provider().getPath(uri);
             }
             catch (ProviderNotFoundException x) {
+                // TODO: this creates bogus Path on the current file system for schemes such as gendb, nonexistent, gcs
+                // TODO: we depend on this code path to allow IntervalUtils to all getPath on a string that may be either
+                // a literal interval or a feature file containing intervals
                 // not a valid URI. Caller probably just gave us a file name or "chr1:1-2".
                 return Paths.get(uriString);
             }
@@ -890,6 +896,16 @@ public final class IOUtils {
     }
 
     /**
+     * Check if a given GATKPathSpecifier represents a GenomicsDB URI.
+     *
+     * @param pathSpec {@code GATKPathSpecifier} containing the path to test
+     * @return true if path represents a GenomicsDB URI, otherwise false
+     */
+    public static boolean isGenomicsDBPath(final GATKPathSpecifier pathSpec) {
+        return getGenomicsDBPath(pathSpec) != null;
+    }
+
+    /**
      * Check if a given path represents GenomicsDB URI.
      *
      * @param path String containing the path to test
@@ -905,7 +921,7 @@ public final class IOUtils {
      * @param genomicsDBPath String representing legal gendb URI
      * @return absolute gendb URI to the path
      */
-    public static String getAbsolutePathWithGenomicsDBURIScheme(final String genomicsDBPath) {
+    public static String getAbsolutePathWithGenomicsDBURIScheme(final GATKPathSpecifier genomicsDBPath) {
         String path = getGenomicsDBAbsolutePath(genomicsDBPath);
         if (path == null) {
             return null;
@@ -923,7 +939,7 @@ public final class IOUtils {
      * @return absolute name to the given GenomicsDB path
      * @see #getGenomicsDBPath(String)
      */
-    public static String getGenomicsDBAbsolutePath(final String gendbPath) {
+    public static String getGenomicsDBAbsolutePath(final GATKPathSpecifier gendbPath) {
         String path = getGenomicsDBPath(gendbPath);
         if (path == null) {
             return null;
@@ -932,6 +948,26 @@ public final class IOUtils {
         } else {
             return new File(path).getAbsolutePath();
         }
+    }
+
+    /**
+     * If path is prefaced with <em>gendb://</em> or <em>gendb.CloudURIScheme://</em>, this method returns an absolute path acceptable
+     * by GenomicsDB by stripping off <em>gendb://</em> for files or <em>gendb.</em> for Cloud URIs respectively .
+     * Otherwise, returns null.
+     *
+     * @param path GenomicsDB paths that start with <em>gendb://</em> or <em>gendb.CloudURIScheme://</em><br>
+     *             Following are valid gendb URI examples
+     *             <ul>
+     *             <li>gendb://my_folder
+     *             <li>gendb:///my_abs_folder
+     *             <li>gendb.hdfs://name_node/my_folder
+     *             <li>gendb.gs://my_bucket/my_folder
+     *             <li>gendb.s3://my_bucket/my_folder
+     *             </ul>
+     * @return Valid GenomicsDB path or null
+     */
+    public static String getGenomicsDBPath(final GATKPathSpecifier path) {
+        return getGenomicsDBPath(path.getRawInputString());
     }
 
     /**
