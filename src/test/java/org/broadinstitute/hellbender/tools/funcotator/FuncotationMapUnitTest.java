@@ -428,7 +428,7 @@ public class FuncotationMapUnitTest extends GATKBaseTest {
         final String gencode_test = "GENCODE_TEST";
         final GencodeFuncotationFactory gencodeFactory = new GencodeFuncotationFactory(Paths.get(transcriptFastaFile),
         "TEST", gencode_test, transcriptSelectionMode, new HashSet<>(), new LinkedHashMap<>(),
-                new FeatureInput<>(transcriptGtfFile, gencode_test, Collections.emptyMap()));
+                new FeatureInput<>(transcriptGtfFile, gencode_test, Collections.emptyMap()), "TEST");
 
         final FeatureContext featureContext = FuncotatorTestUtils.createFeatureContext(Collections.singletonList(gencodeFactory), "FuncotationMapUnitTest",
                 variantInterval, 0, 0, 0, null);

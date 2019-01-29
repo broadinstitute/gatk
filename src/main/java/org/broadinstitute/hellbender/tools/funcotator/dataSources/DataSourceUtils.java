@@ -91,6 +91,7 @@ final public class DataSourceUtils {
     public static final String CONFIG_FILE_FIELD_NAME_CONTIG_COLUMN        = "contig_column";
     public static final String CONFIG_FILE_FIELD_NAME_START_COLUMN         = "start_column";
     public static final String CONFIG_FILE_FIELD_NAME_END_COLUMN           = "end_column";
+    public static final String CONFIG_FILE_FIELD_NAME_NCBI_BUILD_VERSION   = "ncbi_build_version";
 
     // Optional config options:
     public static final String CONFIG_FILE_FIELD_NAME_IS_B37_DATA_SOURCE   = "isB37DataSource";
@@ -497,6 +498,8 @@ final public class DataSourceUtils {
         final String fastaPath = dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_GENCODE_FASTA_PATH);
         final String version   = dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_VERSION);
         final String name      = dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_NAME);
+        final String ncbiBuildVersion = dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_NCBI_BUILD_VERSION);
+
         final boolean isB37    = getIsB37PropertyValue(dataSourceProperties);
 
         // Create our gencode factory:
@@ -509,7 +512,8 @@ final public class DataSourceUtils {
                 annotationOverridesMap,
                 featureInput,
                 flankSettings,
-                isB37
+                isB37,
+                ncbiBuildVersion
             );
     }
 
