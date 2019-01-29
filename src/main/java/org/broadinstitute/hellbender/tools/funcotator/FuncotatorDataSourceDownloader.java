@@ -29,7 +29,6 @@ import java.nio.file.Path;
         programGroup = VariantEvaluationProgramGroup.class
 )
 @DocumentedFeature
-@BetaFeature
 public class FuncotatorDataSourceDownloader extends CommandLineProgram {
 
     private static final Logger logger = LogManager.getLogger(FuncotatorDataSourceDownloader.class);
