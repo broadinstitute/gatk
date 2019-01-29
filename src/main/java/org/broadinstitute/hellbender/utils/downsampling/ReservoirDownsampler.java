@@ -133,7 +133,8 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
             clearItems();
             return downsampledItems;
         } else {
-            // if there's nothing here, don't bother allocating a new list
+            // We need to call clearItems() here for consistency with the case above where we have finalized items,
+            // so that in both cases we reset the endOfInputStream flag.
             clearItems();
             return Collections.emptyList();
         }
