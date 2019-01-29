@@ -3,9 +3,7 @@ package org.broadinstitute.hellbender.utils.help;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
 public final class HelpConstants {
 

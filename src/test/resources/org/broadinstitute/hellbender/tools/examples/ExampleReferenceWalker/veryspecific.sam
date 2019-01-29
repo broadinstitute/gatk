@@ -1,0 +1,5 @@
+@HD	VN:1.5	SO:queryname
+@SQ	SN:1	LN:400
+@RG	ID:0	SM:Hi,Mom!	PL:ILLUMINA
+@PG	ID:1	VN:2.0	PN:Hey!
+read1	0	1	80	255	10M	*	0	10	AAACAAAAAA	))))))))))	RG:Z:0

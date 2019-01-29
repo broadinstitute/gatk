@@ -1,0 +1,3 @@
+@HD	VN:1.5
+@SQ	SN:1	LN:101	M5:8c41aecb370a27de4a5eea543bb5b5a3	UR:file:/Users/louisb/Workspace/gatk/test_reference_only_contiguous_diff_contigs.fasta
+@SQ	SN:2	LN:101	M5:151f2cbc5ef6bcf8dd21284da7f812cf	UR:file:/Users/louisb/Workspace/gatk/test_reference_only_contiguous_diff_contigs.fasta

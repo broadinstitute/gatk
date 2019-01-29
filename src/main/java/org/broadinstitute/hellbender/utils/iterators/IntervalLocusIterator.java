@@ -1,11 +1,12 @@
 package org.broadinstitute.hellbender.utils.iterators;
 
-import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
-
-import java.util.*;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.NoSuchElementException;
 
 /**
  * Returns a SimpleInterval for each locus in a set of intervals.  I.e. returns each genomic point location in an interval list.

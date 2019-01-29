@@ -1,7 +1,9 @@
 package org.broadinstitute.hellbender.testutils;
 
+import htsjdk.samtools.util.Locatable;
 import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
@@ -130,6 +132,13 @@ public final class ArgumentsBuilder {
     public ArgumentsBuilder addArgument(final String argumentName) {
         Utils.nonNull(argumentName);
         add("--" + argumentName);
+        return this;
+    }
+
+    public ArgumentsBuilder addInterval(Locatable interval){
+        Utils.nonNull(interval);
+        add("-L");
+        add(IntervalUtils.locatableToString(interval));
         return this;
     }
 
