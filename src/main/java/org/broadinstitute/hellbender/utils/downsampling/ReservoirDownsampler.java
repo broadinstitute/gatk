@@ -126,15 +126,25 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
 
     @Override
     public List<GATKRead> consumeFinalizedItems() {
-        Utils.validate(endOfInputStream == true, "signalEndOfInput must be called before finalized items can be consumed");
+        // This method clears state (including the end of input stream flag) when called after
+        // end of input stream has been signaled, but has no side effects when called
+        // before end of input stream has been signaled (since in that case, the downsampling
+        // process is still ongoing and we shouldn't clear pending items).
+
         if (hasFinalizedItems()) {
             // pass reservoir by reference rather than make a copy, for speed
             final List<GATKRead> downsampledItems = reservoir;
             clearItems();
             return downsampledItems;
+        } else if ( ! endOfInputStream ) {
+            // Don't call clearItems() here, since endOfInputStream is false and therefore the
+            // downsampling process is still ongoing. We want to preserve existing pending items,
+            // and return an empty List without side effects.
+            return Collections.emptyList();
         } else {
-            // We need to call clearItems() here for consistency with the case above where we have finalized items,
-            // so that in both cases we reset the endOfInputStream flag.
+            // This is the case where endOfInputStream == true and our reservoir is empty. We return an empty
+            // list, but we also call clearItems() here for consistency with the case above where we have
+            // finalized items, so that in both cases we reset the endOfInputStream flag.
             clearItems();
             return Collections.emptyList();
         }

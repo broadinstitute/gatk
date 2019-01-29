@@ -142,4 +142,61 @@ public final class ReservoirDownsamplerUnitTest extends GATKBaseTest {
         ReadsDownsampler rd = new ReservoirDownsampler(1, true);
         rd.signalNoMoreReadsBefore(null);
     }
+
+    // Calling consumeFinalizeItems() before end of input on a non-empty downsampler should
+    // return an empty List and not change the state of the downsampler:
+    @Test
+    public void testConsumeFinalizedItemsBeforeEndOfInput() {
+        final ReservoirDownsampler downsampler = new ReservoirDownsampler(10, true);
+        final GATKRead read = ArtificialReadUtils.createArtificialRead("100M");
+        downsampler.submit(read);
+
+        Assert.assertFalse(downsampler.hasFinalizedItems());
+        Assert.assertTrue(downsampler.hasPendingItems());
+
+        final List<GATKRead> returnedReads = downsampler.consumeFinalizedItems();
+        Assert.assertTrue(returnedReads.isEmpty());
+
+        // The downsampler should still have pending reads after the call to consumeFinalizedItems()
+        // (ie., the downsampling process should still be ongoing, and the state of the downsampler
+        // should have been preserved):
+        Assert.assertFalse(downsampler.hasFinalizedItems());
+        Assert.assertTrue(downsampler.hasPendingItems());
+    }
+
+    // Calling consumeFinalizedItems() after end of input on an empty downsampler should
+    // return an empty List and reset the end of input flag in the downsampler:
+    @Test
+    public void testConsumeFinalizedItemsAfterEndOfInputOnEmptyDownsampler() {
+        final ReservoirDownsampler downsampler = new ReservoirDownsampler(10, true);
+
+        Assert.assertFalse(downsampler.hasFinalizedItems());
+        Assert.assertFalse(downsampler.hasPendingItems());
+
+        downsampler.signalEndOfInput();
+
+        final List<GATKRead> returnedReads = downsampler.consumeFinalizedItems();
+        Assert.assertTrue(returnedReads.isEmpty());
+
+        Assert.assertFalse(downsampler.hasFinalizedItems());
+        Assert.assertFalse(downsampler.hasPendingItems());
+
+        // Submitting an additional read after both signalEndOfInput() and consumeFinalizedItems()
+        // should succeed (not throw), since the call to consumeFinalizedItems() should reset the
+        // end of input flag:
+        final GATKRead read = ArtificialReadUtils.createArtificialRead("100M");
+        downsampler.submit(read);
+
+        Assert.assertFalse(downsampler.hasFinalizedItems());
+        Assert.assertTrue(downsampler.hasPendingItems());
+    }
+
+    // Calling submit() directly after signalEndOfInput() should throw:
+    @Test(expectedExceptions = IllegalStateException.class)
+    public void testSubmitAfterEndOfInputThrows() {
+        final ReservoirDownsampler downsampler = new ReservoirDownsampler(10, true);
+        downsampler.signalEndOfInput();
+        final GATKRead read = ArtificialReadUtils.createArtificialRead("100M");
+        downsampler.submit(read);
+    }
 }
