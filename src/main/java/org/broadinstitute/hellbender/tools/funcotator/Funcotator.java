@@ -482,8 +482,8 @@ import java.util.*;
  *         <li>
  *             <b><i>transcriptPos</i></b><br />
  *             <i>Type: </i>{@link Integer} or Empty<br />
- *             Position in the chosen transcript of the variant allele.<br />
- *             For variant alleles that occur at a single base, the format is simply the position at which that variant occurs in the transcript (1-based, inclusive) (e.g. <i>1294</i>)<br />
+ *             Position in the chosen transcript of the variant allele.  All positions listed are 1-based and inclusive (meaning that the first base in the transcript starts at and ends at position 1).<br />
+ *             For variant alleles that occur at a single base, the format is simply the position at which that variant occurs in the transcript (e.g. <i>1294</i>)<br />
  *             For variant alleles spanning multiple bases, the format is:<br />
  *             <pre>
  *             [START]_[END]
