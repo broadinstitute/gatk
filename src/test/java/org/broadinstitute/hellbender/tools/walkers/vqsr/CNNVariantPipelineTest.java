@@ -39,7 +39,7 @@ public class CNNVariantPipelineTest extends GATKBaseTest {
 
     @Test(groups = {"python"}, dependsOnMethods = {"makeTempDirectories"})
     public void testGenerateReadTensors() {
-        final String bamFile = largeFileTestDir + "VQSR/g94982_chr20_1m_10m_bamout.bam";
+        final String bamFile = largeFileTestDir + "VQSR/g94982_b37_chr20_1m_8m_bamout.bam";
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.add("CNNVariantWriteTensors")
                 .addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVCF)

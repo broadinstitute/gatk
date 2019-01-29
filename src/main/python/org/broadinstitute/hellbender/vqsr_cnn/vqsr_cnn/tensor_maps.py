@@ -4,6 +4,7 @@
 import keras.backend as K
 from . import defines
 
+
 def get_tensor_channel_map_from_args(args):
     '''Return tensor mapping dict given args.tensor_name'''
     if args.tensor_name is None:
@@ -15,6 +16,16 @@ def get_tensor_channel_map_from_args(args):
         return get_tensor_channel_map_1d_dna()
     else:
         raise ValueError('Unknown tensor mapping mode:', args.tensor_name)
+
+
+def get_tensor_channel_map_from_tensor_type(tensor_type: str):
+    """Return tensor mapping dict given args.tensor_name"""
+    if 'read_tensor' == tensor_type:
+        return get_read_tensor_channel_map()
+    elif 'reference' == tensor_type:
+        return get_tensor_channel_map_1d_dna()
+    else:
+        raise ValueError('Unknown tensor mapping mode:', tensor_type)
 
 
 def get_tensor_channel_map_1d_dna():
@@ -63,6 +74,16 @@ def tensor_shape_from_args(args):
     else:
         tensor_shape = (in_channels, args.read_limit, args.window_size)
     return tensor_shape
+
+
+def tensor_shape_from_tensor_type(tensor_type: str, window_size: int, read_limit: int):
+    in_channels = len(get_tensor_channel_map_from_tensor_type(tensor_type))
+    if K.image_data_format() == 'channels_last':
+        tensor_shape = (read_limit, window_size, in_channels)
+    else:
+        tensor_shape = (in_channels, read_limit, window_size)
+    return tensor_shape
+
 
 def total_input_channels_from_args(args):
     '''Get the number of channels in the tensor map'''

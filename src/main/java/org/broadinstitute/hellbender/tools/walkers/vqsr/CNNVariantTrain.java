@@ -155,6 +155,7 @@ public class CNNVariantTrain extends CommandLineProgram {
                 "--epochs", Integer.toString(epochs),
                 "--training_steps", Integer.toString(trainingSteps),
                 "--validation_steps", Integer.toString(validationSteps),
+                "--gatk_version", this.getVersion(),
                 "--id", modelName));
 
         // Add boolean arguments

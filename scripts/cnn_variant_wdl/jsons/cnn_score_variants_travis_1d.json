@@ -1,6 +1,6 @@
 {
-  "CNNScoreVariantsWorkflow.bam_file": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/VQSR/g94982_chr20_1m_10m_bamout.bam",
-  "CNNScoreVariantsWorkflow.bam_file_index": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/VQSR/g94982_chr20_1m_10m_bamout.bai",
+  "CNNScoreVariantsWorkflow.bam_file": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/VQSR/g94982_b37_chr20_1m_895_bamout.bam",
+  "CNNScoreVariantsWorkflow.bam_file_index": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/VQSR/g94982_b37_chr20_1m_895_bamout.bai",
   "CNNScoreVariantsWorkflow.calling_intervals": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/VQSR/contig20_1m_10m.interval_list",
   "CNNScoreVariantsWorkflow.gatk_docker": "__GATK_DOCKER__",
   "CNNScoreVariantsWorkflow.input_vcf": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/VQSR/g94982_b37_chr20_1m_895.vcf.gz",
