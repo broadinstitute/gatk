@@ -46,7 +46,6 @@ public final class PositionalDownsampler extends ReadsDownsampler {
     public PositionalDownsampler( final int targetCoverage, final SAMFileHeader header ) {
         Utils.validateArg(targetCoverage > 0, "targetCoverage must be > 0");
         Utils.nonNull(header);
-        Utils.validate(! endOfInputStream, "attempt to submit read after end of input stream has been signaled");
 
         this.reservoir = new ReservoirDownsampler(targetCoverage);
         this.finalizedReads = new ArrayList<>();

@@ -126,6 +126,7 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
 
     @Override
     public List<GATKRead> consumeFinalizedItems() {
+        Utils.validate(endOfInputStream == true, "signalEndOfInput must be called before finalized items can be consumed");
         if (hasFinalizedItems()) {
             // pass reservoir by reference rather than make a copy, for speed
             final List<GATKRead> downsampledItems = reservoir;
@@ -133,6 +134,7 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
             return downsampledItems;
         } else {
             // if there's nothing here, don't bother allocating a new list
+            clearItems();
             return Collections.emptyList();
         }
     }
