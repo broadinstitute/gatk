@@ -10,6 +10,8 @@ import htsjdk.samtools.util.Tuple;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFSimpleHeaderLine;
+import javafx.util.Pair;
+import org.broadinstitute.hellbender.engine.AlignmentContext;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.PloidyModel;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.PosteriorProbabilitiesUtils;
@@ -486,20 +488,19 @@ public class ReferenceConfidenceModel {
         // We are safe to use the faster no-copy versions of getBases and getBaseQualities here,
         // since we're not modifying the returned arrays in any way. This makes a small difference
         // in the HaplotypeCaller profile, since this method is a major hotspot.
-        final Tuple<byte[], byte[]> readBasesAndBaseQualities = AlignmentUtils.getBasesAndBaseQualitiesAlignedOneToOne(read);  //calls getBasesNoCopy if CIGAR is all match
+        final Pair<byte[], byte[]> readBasesAndBaseQualities = AlignmentUtils.getBasesAndBaseQualitiesAlignedOneToOne(read);  //calls getBasesNoCopy if CIGAR is all match
 
-
-        final int baselineMMSum = sumMismatchingQualities(readBasesAndBaseQualities.a, readBasesAndBaseQualities.b, readStart, refBases, refStart, Integer.MAX_VALUE);
+        final int baselineMMSum = sumMismatchingQualities(readBasesAndBaseQualities.getKey(), readBasesAndBaseQualities.getValue(), readStart, refBases, refStart, Integer.MAX_VALUE);
 
         // consider each indel size up to max in term, checking if an indel that deletes either the ref bases (deletion
         // or read bases (insertion) would fit as well as the origin baseline sum of mismatching quality scores
         for ( int indelSize = 1; indelSize <= maxIndelSize; indelSize++ ) {
             // check insertions:
-            if (sumMismatchingQualities(readBasesAndBaseQualities.a, readBasesAndBaseQualities.b, readStart + indelSize, refBases, refStart, baselineMMSum) <= baselineMMSum) {
+            if (sumMismatchingQualities(readBasesAndBaseQualities.getKey(), readBasesAndBaseQualities.getValue(), readStart + indelSize, refBases, refStart, baselineMMSum) <= baselineMMSum) {
                 return false;
             }
             // check deletions:
-            if (sumMismatchingQualities(readBasesAndBaseQualities.a, readBasesAndBaseQualities.b, readStart, refBases, refStart + indelSize, baselineMMSum) <= baselineMMSum) {
+            if (sumMismatchingQualities(readBasesAndBaseQualities.getKey(), readBasesAndBaseQualities.getValue(), readStart, refBases, refStart + indelSize, baselineMMSum) <= baselineMMSum) {
                 return false;
             }
         }

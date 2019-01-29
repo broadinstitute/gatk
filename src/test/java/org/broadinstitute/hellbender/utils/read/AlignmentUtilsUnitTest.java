@@ -1,11 +1,14 @@
 package org.broadinstitute.hellbender.utils.read;
 
 import htsjdk.samtools.*;
+import javafx.util.Pair;
 import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
+import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanJavaAligner;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignment;
@@ -774,6 +777,50 @@ public final class AlignmentUtilsUnitTest {
                 expectedBase = (byte)'A';
             Assert.assertEquals(alignment[i], expectedBase, "Wrong base detected at position " + i);
         }
+    }
+
+    ///////////////////////////////////////////////////////////////////
+    // Test AlignmentUtils.getBasesAndBaseQualitiesAlignedOneToOne() //
+    ///////////////////////////////////////////////////////////////////
+
+    @DataProvider
+    public Object[][] makeGetBasesAndBaseQualitiesAlignedOneToOneTest() {
+        final String readBases = "ATCGATCG";
+        List<Object[]> tests = new ArrayList<>();
+
+        { // very basic testing
+            final String cigar1 = "8M";
+            final String cigar2 = "4M4D4M";
+            final String cigar3 = "2M3I3M";
+            final String cigar4 = "2I6M";
+            final String cigar5 = "6M2I";
+            final String cigar6 = "1D8M1D";
+            final String cigar7 = "2M1I1D2M2I1M2D";
+
+            tests.add(new Object[]{readBases, cigar1, "ATCGATCG", new byte[]{10, 10, 10, 10, 10, 10, 10, 10}});
+            tests.add(new Object[]{readBases, cigar2, "ATCG----ATCG", new byte[]{10, 10, 10, 10,0,0,0,0, 10, 10, 10, 10}});
+            tests.add(new Object[]{readBases, cigar3, "ATTCG", new byte[]{10, 10, 10, 10, 10}});
+            tests.add(new Object[]{readBases, cigar4, "CGATCG", new byte[]{10, 10, 10, 10, 10, 10}});
+            tests.add(new Object[]{readBases, cigar5, "ATCGAT", new byte[]{10, 10, 10, 10, 10, 10}});
+            tests.add(new Object[]{readBases, cigar6, "-ATCGATCG-", new byte[]{0, 10, 10, 10, 10, 10, 10, 10, 10, 0}});
+            tests.add(new Object[]{readBases, cigar7, "AT-GAG--", new byte[]{10, 10, 0, 10, 10, 10, 0, 0}});
+        }
+
+        return tests.toArray(new Object[][]{});
+    }
+
+
+    @Test(dataProvider = "makeGetBasesAndBaseQualitiesAlignedOneToOneTest")
+    public void testCalcNIndelInformativeReads(final String readBases, final String cigar, final String expectedBases, final byte[] expectedQuals ) {
+        final byte qual = (byte)10;
+        final byte[] quals = Utils.dupBytes(qual, readBases.length());
+
+        final GATKRead read = ArtificialReadUtils.createArtificialRead(readBases.getBytes(), quals, cigar);
+
+        Pair<byte[], byte[]> actual = AlignmentUtils.getBasesAndBaseQualitiesAlignedOneToOne(read);
+
+        Assert.assertEquals(new String(actual.getKey()), expectedBases);
+        Assert.assertEquals(actual.getValue(), expectedQuals);
     }
 
     //////////////////////////////////////////

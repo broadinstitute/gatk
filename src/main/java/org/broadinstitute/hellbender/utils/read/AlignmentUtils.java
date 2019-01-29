@@ -4,6 +4,7 @@ import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.util.Tuple;
+import javafx.util.Pair;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
@@ -199,11 +200,23 @@ public final class AlignmentUtils {
         return Arrays.copyOfRange(bases, basesStart, basesStop + 1);
     }
 
-    public static Tuple<byte[], byte[]> getBasesAndBaseQualitiesAlignedOneToOne(final GATKRead read) {
+    /**
+     * Returns the "IGV View" of all the bases and base qualities in a read aligned to the reference according to the cigar, dropping any bases
+     * that might be in the read but don't aren't in the reference. Any bases that appear in the reference but not the read
+     * will be filled in with GAP_CHARACTER values for the read bases and 0's for base qualities to indicate that they don't exist.
+     *
+     * If the cigar for input read is all matches to the reference then this method will return references to the original
+     * read base/base quality byte arrays in the underlying SamRecord in order to save on array allocation/copying performance effects.
+     *
+     * @param read a read to return aligned to the reference
+     * @return A tuple of byte arrays where the first array corresponds to the bases aligned to the reference and second
+     *         array corresponds to the baseQualities aligned to the reference.
+     */
+    public static Pair<byte[], byte[]> getBasesAndBaseQualitiesAlignedOneToOne(final GATKRead read) {
         return getBasesAndBaseQualitiesAlignedOneToOne(read, GAP_CHARACTER, (byte)0);
     }
 
-    public static Tuple<byte[], byte[]> getBasesAndBaseQualitiesAlignedOneToOne(final GATKRead read, final byte gapCharacter, final byte qualityPadCharacter) {
+    private static Pair<byte[], byte[]> getBasesAndBaseQualitiesAlignedOneToOne(final GATKRead read, final byte gapCharacter, final byte qualityPadCharacter) {
         Utils.nonNull(read);
         final byte[] bases = read.getBasesNoCopy();
         final byte[] baseQualities = read.getBaseQualitiesNoCopy();
@@ -219,7 +232,7 @@ public final class AlignmentUtils {
             }
         }
         if (!sawIndel) {
-            return new Tuple<>(bases, baseQualities);
+            return new Pair<>(bases, baseQualities);
         }
         else {
             int numberRefBasesIncludingSoftclips = CigarUtils.countRefBasesIncludingSoftClips(read, 0, numCigarElements);
@@ -249,7 +262,7 @@ public final class AlignmentUtils {
                     }
                 }
             }
-            return new Tuple<>(paddedBases, paddedBaseQualities);
+            return new Pair<>(paddedBases, paddedBaseQualities);
         }
     }
 
