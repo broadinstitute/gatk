@@ -303,7 +303,7 @@ public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
         Assert.assertTrue(altSink != null, "We did not find a non-reference sink");
 
         // confirm that the SW alignment agrees with our expectations
-        final ReadThreadingGraph.DanglingChainMergeHelper result = rtgraph.generateCigarAgainstDownwardsReferencePath(altSink, 0, 4, SmithWatermanJavaAligner
+        final ReadThreadingGraph.DanglingChainMergeHelper result = rtgraph.generateCigarAgainstDownwardsReferencePath(altSink, 0, 4, false, SmithWatermanJavaAligner
                 .getInstance());
 
         if ( result == null ) {
@@ -410,7 +410,7 @@ public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
         Assert.assertTrue(altSource != null, "We did not find a non-reference source");
 
         // confirm that the SW alignment agrees with our expectations
-        final ReadThreadingGraph.DanglingChainMergeHelper result = rtgraph.generateCigarAgainstUpwardsReferencePath(altSource, 0, 1, SmithWatermanJavaAligner
+        final ReadThreadingGraph.DanglingChainMergeHelper result = rtgraph.generateCigarAgainstUpwardsReferencePath(altSource, 0, 1, false, SmithWatermanJavaAligner
                 .getInstance());
 
         if ( result == null ) {

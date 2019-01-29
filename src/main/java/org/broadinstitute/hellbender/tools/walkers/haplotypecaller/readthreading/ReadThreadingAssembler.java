@@ -56,6 +56,7 @@ public final class ReadThreadingAssembler {
     private boolean debug = false;
     private boolean debugGraphTransformations = false;
     private boolean recoverDanglingBranches = true;
+    private boolean recoverAllDanglingBranches = false;
     private int minDanglingBranchLength = 0;
     
     protected byte minBaseQualityToUseInAssembly = DEFAULT_MIN_BASE_QUALITY_TO_USE;
@@ -479,16 +480,14 @@ public final class ReadThreadingAssembler {
     private AssemblyResult getAssemblyResult(final Haplotype refHaplotype, final int kmerSize, final ReadThreadingGraph rtgraph, final SmithWatermanAligner aligner) {
         printDebugGraphTransform(rtgraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.0.raw_readthreading_graph.dot");
 
-        // prune all of the chains where all edges have multiplicity < pruneFactor.  This must occur
-        // before recoverDanglingTails in the graph, so that we don't spend a ton of time recovering
-        // tails that we'll ultimately just trim away anyway, as the dangling tail edges have weight of 1
+        // Prune before recovering dangling ends because the latter is expensive
         chainPruner.pruneLowWeightChains(rtgraph);
 
         // look at all chains in the graph that terminate in a non-ref node (dangling sources and sinks) and see if
         // we can recover them by merging some N bases from the chain back into the reference
         if ( recoverDanglingBranches ) {
-            rtgraph.recoverDanglingTails(pruneFactor, minDanglingBranchLength, aligner);
-            rtgraph.recoverDanglingHeads(pruneFactor, minDanglingBranchLength, aligner);
+            rtgraph.recoverDanglingTails(pruneFactor, minDanglingBranchLength, recoverAllDanglingBranches, aligner);
+            rtgraph.recoverDanglingHeads(pruneFactor, minDanglingBranchLength, recoverAllDanglingBranches, aligner);
         }
 
         // remove all heading and trailing paths
@@ -597,6 +596,11 @@ public final class ReadThreadingAssembler {
 
     public void setRecoverDanglingBranches(final boolean recoverDanglingBranches) {
         this.recoverDanglingBranches = recoverDanglingBranches;
+    }
+
+    public void setRecoverAllDanglingBranches(final boolean recoverAllDanglingBranches) {
+        this.recoverAllDanglingBranches = recoverAllDanglingBranches;
+        recoverDanglingBranches = true;
     }
 
     public void setMinDanglingBranchLength( final int minDanglingBranchLength ) {

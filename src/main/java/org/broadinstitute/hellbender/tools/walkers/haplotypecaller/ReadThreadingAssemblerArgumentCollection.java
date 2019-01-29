@@ -60,6 +60,14 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     @Argument(fullName="min-dangling-branch-length", doc="Minimum length of a dangling branch to attempt recovery", optional = true)
     public int minDanglingBranchLength = 4;
 
+    /**
+     * By default, the read threading assembler does not recover dangling branches that fork after splitting from the reference.  This argument
+     * tells the assembly engine to recover all dangling branches.
+     */
+    @Advanced
+    @Argument(fullName="recover-all-dangling-branches", doc="Recover all dangling branches", optional = true)
+    public boolean recoverAllDanglingBranches = false;
+
 
 
     /**
