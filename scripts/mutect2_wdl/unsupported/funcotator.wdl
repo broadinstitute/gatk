@@ -8,9 +8,10 @@
 #     ref_fasta_index                -  Reference FASTA file index.
 #     ref_fasta_dict                 -  Reference FASTA file sequence dictionary.
 #     variant_vcf_to_funcotate       -  Variant Context File (VCF) containing the variants to annotate.
-#     variant_vcf_to_funcotate_index -  Index for the Variant Context File (VCF) containing the variants to annotate.
 #     reference_version              -  Version of the reference being used.  Either `hg19` or `hg38`.
 #     output_file_name               -  Path to desired output file.
+#			compress										   -  Whether to compress the resulting output file.
+#     Boolean use_gnomad             -  If true, will enable the gnomAD data sources in the data source tar.gz, if they exist.
 #
 #   Optional:
 #     interval_list                  -  Intervals to be used for traversal.  If specified will only traverse the given intervals.
@@ -34,10 +35,10 @@ workflow Funcotator {
     File ref_fasta_index
     File ref_dict
     File variant_vcf_to_funcotate
-    File variant_vcf_to_funcotate_index
     String reference_version
     String output_file_base_name
-#    String output_format
+		Boolean compress
+		Boolean use_gnomad
 
     File? interval_list
     File? data_sources_tar_gz
@@ -55,10 +56,10 @@ workflow Funcotator {
             ref_fasta_index           = ref_fasta_index,
             ref_dict                  = ref_dict,
             input_vcf                 = variant_vcf_to_funcotate,
-            input_vcf_idx             = variant_vcf_to_funcotate_index,
             reference_version         = reference_version,
             interval_list             = interval_list,
             output_file_base_name     = output_file_base_name,
+						compress                  = compress,
             output_format             = "VCF",
             data_sources_tar_gz       = data_sources_tar_gz,
             transcript_selection_mode = transcript_selection_mode,
@@ -67,6 +68,7 @@ workflow Funcotator {
             annotation_overrides      = annotation_overrides,
             gatk_override             = gatk4_jar_override,
             gatk_docker               = gatk_docker,
+						use_gnomad                = use_gnomad,
             extra_args                = funcotator_extra_args
     }
 
@@ -83,7 +85,6 @@ task Funcotate {
      File ref_fasta_index
      File ref_dict
      File input_vcf
-     File input_vcf_idx
      String reference_version
      String output_file_base_name
      String output_format
@@ -91,12 +92,13 @@ task Funcotate {
      String output_vcf = output_file_base_name + if compress then ".vcf.gz" else ".vcf"
      String output_vcf_index = output_vcf +  if compress then ".tbi" else ".idx"
 
+		 Boolean use_gnomad
      File? data_sources_tar_gz
      String? transcript_selection_mode
      Array[String]? transcript_selection_list
      Array[String]? annotation_defaults
      Array[String]? annotation_overrides
-     Boolean filter_funcotations
+     Boolean? filter_funcotations
      File? interval_list
 
      String? extra_args
@@ -106,7 +108,7 @@ task Funcotate {
      String transcript_selection_arg = if defined(transcript_selection_list) then " --transcript-list " else ""
      String annotation_def_arg = if defined(annotation_defaults) then " --annotation-default " else ""
      String annotation_over_arg = if defined(annotation_overrides) then " --annotation-override " else ""
-     String filter_funcotations_args = if (filter_funcotations) then " --remove-filtered-variants " else ""
+     String filter_funcotations_args = if defined(filter_funcotations) && (filter_funcotations) then " --remove-filtered-variants " else ""
      String interval_list_arg = if defined(interval_list) then " -L " else ""
      String extra_args_arg = select_first([extra_args, ""])
      # ==============
@@ -124,7 +126,7 @@ task Funcotate {
 
      # This should be updated when a new version of the data sources is released
      # TODO: Make this dynamically chosen in the command.
-     String default_datasources_version = "funcotator_dataSources.v1.3.20180531"
+     String default_datasources_version = "funcotator_dataSources.v1.6.20190124s"
 
      # You may have to change the following two parameter values depending on the task requirements
      Int default_ram_mb = 3000
@@ -134,6 +136,8 @@ task Funcotate {
      # Mem is in units of GB but our command and memory runtime values are in MB
      Int machine_mem = if defined(mem) then mem *1000 else default_ram_mb
      Int command_mem = machine_mem - 1000
+
+		 String dollar = "$"
 
      command <<<
          set -e
@@ -153,6 +157,19 @@ task Funcotate {
              tar zxvf ${data_sources_tar_gz} -C datasources_dir --strip-components 1
              DATA_SOURCES_FOLDER="$PWD/datasources_dir"
          fi
+
+				 if ${use_gnomad} ; then
+						for potential_gnomad_gz in gnomAD_exome.tar.gz gnomAD_genome.tar.gz ; do
+				         if [[ -f ${dollar}{DATA_SOURCES_FOLDER}/${dollar}{potential_gnomad_gz} ]] ; then
+						         cd ${dollar}{DATA_SOURCES_FOLDER}
+				 		         tar -zvxf ${dollar}{potential_gnomad_gz}
+										 cd -
+								 else 
+									 echo "ERROR: Cannot find gnomAD folder: ${dollar}{potential_gnomad_gz}" 1>&2
+									 false 
+						     fi
+					  done
+				 fi
 
          gatk --java-options "-Xmx${command_mem}m" Funcotator \
              --data-sources-path $DATA_SOURCES_FOLDER \

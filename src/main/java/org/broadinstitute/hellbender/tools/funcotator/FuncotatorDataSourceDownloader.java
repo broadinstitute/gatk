@@ -20,8 +20,29 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
- * Tool to download the latest data sources for {@link Funcotator}.
- * Created by jonn on 8/23/18.
+ * {@link FuncotatorDataSourceDownloader} is a tool to download the latest data sources for <b><i>{@link Funcotator}</i></b>.
+ *
+ * <h3>General Information</h3>
+ * <p>
+ * This tool can download pre-packaged data sources for both the <strong>somatic</strong> and <strong>germline</strong> use cases.
+ * The data sources downloaded by this tool correspond to the current minimum of the data sources supported as defined in <b><i>{@link org.broadinstitute.hellbender.tools.funcotator.dataSources.DataSourceUtils#CURRENT_MINIMUM_DATA_SOURCE_VERSION}</i></b>.
+ * </p>
+ *
+ * <p>
+ * To download and extract the data sources, you can invoke {@link FuncotatorDataSourceDownloader} in the following ways:
+ *     <ul>
+ *         <li>For <strong>somatic</strong> data sources:<br /><pre>{@code ./gatk FuncotatorDataSourceDownloader --somatic --validate-integrity --extract-after-download}</pre></li>
+ *         <li>For <strong>germline</strong> data sources:<br /><pre>{@code ./gatk FuncotatorDataSourceDownloader --germline --validate-integrity --extract-after-download}</pre></li>
+ *     </ul>
+ * </p>
+ *
+ * <h3>Notes</h3>
+ * <ul>
+ *     <li>By default {@link FuncotatorDataSourceDownloader} will not overwrite data sources if they already exist locally.</li>
+ *     <li>It is recommended to run the validation step after downloading the data sources to ensure download integrity.</li>
+ *     <li>Using this tool will result in longer download times for data sources than if {@code gsutil} were invoked directly to copy down the data sources.
+ *     <br />This is a known issue and is due to the tool printing the progress of the download.</li>
+ * </ul>
  */
 @CommandLineProgramProperties(
         summary = "Download the Broad Institute pre-packaged data sources for the somatic or germline use case for Funcotator.",
