@@ -31,13 +31,6 @@ public final class PositionalDownsampler extends ReadsDownsampler {
     private List<GATKRead> finalizedReads;
 
     /**
-     * Reads may be submitted until signalEndOfInput is called, after which no more reads may be submitted unless
-     * one of {@link #consumeFinalizedItems()} or {@link #clearItems()} is called to reset the internal state of
-     * the downsampler.
-     */
-    private boolean endOfInputStream;
-
-    /**
      * Construct a PositionalDownsampler
      *
      * @param targetCoverage Maximum number of reads that may share any given alignment start position. Must be > 0
@@ -147,7 +140,6 @@ public final class PositionalDownsampler extends ReadsDownsampler {
 
     @Override
     public void signalEndOfInput() {
-        endOfInputStream = true;
         finalizeReservoir(false);
     }
 
@@ -156,7 +148,6 @@ public final class PositionalDownsampler extends ReadsDownsampler {
         reservoir.clearItems();
         reservoir.resetStats();
         finalizedReads.clear();
-        endOfInputStream = false;
         previousRead = null;
     }
 
