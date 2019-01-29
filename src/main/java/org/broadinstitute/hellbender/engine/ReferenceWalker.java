@@ -1,14 +1,22 @@
 package org.broadinstitute.hellbender.engine;
 
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
+import org.broadinstitute.hellbender.tools.examples.ExampleReferenceWalker;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.iterators.IntervalLocusIterator;
 
 /**
- * A reference walker is a tool which process each position in a given reference.
+ * A reference walker is a tool which processes each base in a given reference.  Each base can be processed individually
+ * or in a context of multiple bases in a window.  Reads and Feature tracks can optionally be included as well. The
+ * reference bases to process can be subset to a given set of intervals.
  *
  *  ReferenceWalker authors must implement the apply() method to process each position, and may optionally implement
- *  {@link #onTraversalStart()} and/or {@link #onTraversalSuccess()}. See the {@link ExampleReferenceWalker} walker for an example.
+ *  {@link #onTraversalStart()} and/or {@link #onTraversalSuccess()}.
+ *
+ *  Tool authors may also implement {@link #getReferenceWindow(SimpleInterval)} to provide additional bases of context
+ *  around each position.
+ *
+ *  See the {@link ExampleReferenceWalker} walker for an example.
  */
 public abstract class ReferenceWalker extends GATKTool {
 
@@ -36,8 +44,8 @@ public abstract class ReferenceWalker extends GATKTool {
     public void traverse() {
         final CountingReadFilter readFilter = makeReadFilter();
 
-        for(SimpleInterval locus : getIntervalIterator()){
-            SimpleInterval referenceWindow = getReferenceWindow(locus);
+        for(final SimpleInterval locus : getIntervalIterator()){
+            final SimpleInterval referenceWindow = getReferenceWindow(locus);
             final ReferenceContext referenceContext = new ReferenceContext(reference, locus, referenceWindow);
             apply(referenceContext,
                   new ReadsContext(reads, referenceContext.getWindow(), readFilter), // Will create an empty ReadsContext if reads == null
@@ -50,7 +58,7 @@ public abstract class ReferenceWalker extends GATKTool {
 
     /**
      * Determine the window to use when creating the ReferenceContext in apply.  This determines which reference bases are
-     * see at each position, as well as which reads / features are considered to overlap the reference site.
+     * seen at each position, as well as which reads / features are considered to overlap the reference site.
      *
      * The default implementation returns the single reference locus passed that is passed in, but subclasses may override
      * this method in order to change the window size.

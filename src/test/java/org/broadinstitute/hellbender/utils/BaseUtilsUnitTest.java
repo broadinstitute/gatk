@@ -174,13 +174,24 @@ public final class BaseUtilsUnitTest extends GATKBaseTest {
             }
         }
 
-        Assert.assertEquals(BaseUtils.basesToIUPAC((byte)'A', (byte)'X'), 'N', "testing non-standard base");
-        Assert.assertEquals(BaseUtils.basesToIUPAC((byte)'X', (byte)'A'), 'N', "testing non-standard base");
         Assert.assertEquals(BaseUtils.basesToIUPAC((byte)'X', (byte)'X'), 'N', "testing non-standard base");
+        testIUPACBaseBothDirections('A', 'X' , 'N');
 
-        Assert.assertEquals(BaseUtils.basesToIUPAC((byte)'A', (byte)'T'), 'W', "testing A/T=W");
-        Assert.assertEquals(BaseUtils.basesToIUPAC((byte)'T', (byte)'A'), 'W', "testing T/A=W");
-        Assert.assertEquals(BaseUtils.basesToIUPAC((byte) 'G', (byte) 'T'), 'K', "testing G/T=K");
-        Assert.assertEquals(BaseUtils.basesToIUPAC((byte) 'T', (byte) 'G'), 'K', "testing T/G=K");
+        Assert.assertEquals(BaseUtils.basesToIUPAC((byte) 'T', (byte) 'T'), 'T', "testing same base");
+
+        testIUPACBaseBothDirections('A', 'C', 'M');
+        testIUPACBaseBothDirections('A', 'T', 'W');
+        testIUPACBaseBothDirections('A', 'G', 'R');
+        testIUPACBaseBothDirections('C', 'G', 'S');
+        testIUPACBaseBothDirections('C', 'T', 'Y');
+        testIUPACBaseBothDirections('G', 'T', 'K');
+
+    }
+
+    protected void testIUPACBaseBothDirections(char base1, char base2, char expected) {
+        byte base1Byte = (byte) base1;
+        byte base2Byte = (byte) base2;
+        Assert.assertEquals(BaseUtils.basesToIUPAC(base1Byte, base2Byte), expected, "testing " + base1 + "/" + base2 + "==" + expected);
+        Assert.assertEquals(BaseUtils.basesToIUPAC(base2Byte, base1Byte), expected, "testing " + base2 + "/" + base1 + "==" + expected);
     }
 }

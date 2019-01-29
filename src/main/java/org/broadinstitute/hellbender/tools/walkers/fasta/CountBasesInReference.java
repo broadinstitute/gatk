@@ -11,9 +11,9 @@ import picard.cmdline.programgroups.ReferenceProgramGroup;
 
 @DocumentedFeature
 @CommandLineProgramProperties(
-  summary = "Count the numbers of each base in a reference file",
-  oneLineSummary = "Count the number of each individual base which occurs in a reference file.",
-  programGroup = ReferenceProgramGroup.class
+        oneLineSummary = "Count the numbers of each base in a reference file",
+        summary = "Count the number of times each individual base occurs in a reference file.",
+        programGroup = ReferenceProgramGroup.class
 )
 public class CountBasesInReference extends ReferenceWalker {
     @VisibleForTesting
@@ -26,7 +26,7 @@ public class CountBasesInReference extends ReferenceWalker {
 
     @Override
     public Object onTraversalSuccess(){
-        for (int i = 0; i < 256; i++) {
+        for (int i = 0; i < baseCounts.length; i++) {
             final long count = baseCounts[i];
             if (count > 0){
                 System.out.println((char)i + " : " + count );

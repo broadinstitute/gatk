@@ -10,7 +10,7 @@ import java.io.File;
 public class CountBasesInReferenceIntegrationTest extends CommandLineProgramTest {
 
     @Test
-    public void testExampleReferenceWalker(){
+    public void testCountBasesInReferenceWithInterval(){
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addReference(new File(hg19MiniReference))
                 .addArgument("L", "1:5000-6000");
@@ -22,7 +22,7 @@ public class CountBasesInReferenceIntegrationTest extends CommandLineProgramTest
     }
 
     @Test
-    public void testExampleReferenceWalkerFull(){
+    public void testCountBasesInReferenceFull(){
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addReference(new File(hg19MiniReference));
         final CountBasesInReference walker = new CountBasesInReference();

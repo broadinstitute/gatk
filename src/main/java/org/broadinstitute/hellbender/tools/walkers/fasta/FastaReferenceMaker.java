@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.fasta;
 
 import com.google.common.primitives.Bytes;
+import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -17,8 +18,6 @@ import picard.cmdline.programgroups.ReferenceProgramGroup;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Create a subset of a FASTA reference sequence
@@ -67,7 +66,7 @@ public class FastaReferenceMaker extends ReferenceWalker {
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc = "Path to write the output fasta to")
-    public String output;
+    protected String output;
 
     public static final String LINE_WIDTH_LONG_NAME = "line-width";
     @Argument(fullName= LINE_WIDTH_LONG_NAME, doc="Maximum length of sequence to write per line", optional=true)
@@ -77,7 +76,7 @@ public class FastaReferenceMaker extends ReferenceWalker {
     private int contigCount = 0;
     private int currentSequenceStartPosition = 0;
     private SimpleInterval lastPosition = null;
-    private List<Byte> sequence = new ArrayList<>(10000);
+    private ByteArrayList sequence = new ByteArrayList(10000);
 
     @Override
     public void onTraversalStart() {
@@ -90,38 +89,23 @@ public class FastaReferenceMaker extends ReferenceWalker {
     }
 
     @Override
-    public void closeTool() {
-        super.closeTool();
-        try{
-            writer.close();
-        } catch (IllegalStateException e){
-            //sink this
-        } catch (IOException e) {
-            throw new UserException("Failed to write fasta due to " + e.getMessage(), e);
-        }
-    }
-
-    @Override
     public void apply(ReferenceContext referenceContext, ReadsContext read, FeatureContext featureContext) {
         addToReference(referenceContext.getInterval(), referenceContext.getBase());
     }
 
-    protected void addToReference(SimpleInterval interval, Byte base) {
+    protected void addToReference(SimpleInterval interval, byte base) {
+        advancePosition(interval);
+        sequence.add(base);
+    }
+
+    protected void advancePosition(SimpleInterval interval) {
         if(lastPosition == null ){
             initializeNewSequence(interval);
         } else if ( !lastPosition.withinDistanceOf(interval, 1)) {
             finalizeSequence();
             initializeNewSequence(interval);
         }
-        addToSequence(interval, base);
-    }
-
-    private void addToSequence(SimpleInterval interval, Byte base) {
-        if (base != null) {
-            sequence.add(base);
-        }
         lastPosition = interval;
-
     }
 
     private void finalizeSequence() {
@@ -144,5 +128,17 @@ public class FastaReferenceMaker extends ReferenceWalker {
     public Object onTraversalSuccess(){
         finalizeSequence();
         return null;
+    }
+
+    @Override
+    public void closeTool() {
+        super.closeTool();
+        try{
+            writer.close();
+        } catch (IllegalStateException e){
+            //sink this
+        } catch (IOException e) {
+            throw new UserException("Failed to write fasta due to " + e.getMessage(), e);
+        }
     }
 }

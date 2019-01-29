@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.examples;
 
-import com.netflix.servo.util.VisibleForTesting;
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -17,6 +17,8 @@ import java.util.Map.Entry;
 /**
  * Counts the number of times each reference context is seen as well as how many times it's overlapped by reads and variants.
  * Why you would want to do this is a mystery.
+ *
+ * This is a toy example to illustrate how to implement a ReferenceWalker.
  */
 @CommandLineProgramProperties(
         summary = "Example of how to implement a ReferenceWalker that uses reads and features as well as a custom window",
@@ -28,13 +30,14 @@ public class ExampleReferenceWalker extends ReferenceWalker {
     @Argument(fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME,
             shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME,
             doc="variants to count overlaps of")
-    FeatureInput<VariantContext> variants;
+    private FeatureInput<VariantContext> variants;
 
     @VisibleForTesting
     final Map<String, OverlapCounts> contextCounts = new HashMap<>();
 
     @Override
     protected SimpleInterval getReferenceWindow(SimpleInterval locus) {
+        // add one base of padding to each side of each reference locus.
         return new SimpleInterval(locus.getContig(), Math.max(locus.getStart() -1, 1), locus.getStart()+1);
     }
 

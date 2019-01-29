@@ -293,7 +293,7 @@ public final class BaseUtils {
      * @param base2  2nd base
      * @return byte
      */
-    static public byte basesToIUPAC(final byte base1, final byte base2) {
+    public static byte basesToIUPAC(final byte base1, final byte base2) {
         // ensure that the bases come in order
         if (base2 < base1) {
             return basesToIUPAC(base2, base1);

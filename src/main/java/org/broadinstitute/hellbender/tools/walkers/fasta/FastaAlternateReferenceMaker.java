@@ -72,24 +72,26 @@ import java.util.Optional;
 public class FastaAlternateReferenceMaker extends FastaReferenceMaker {
 
     //Pre-allocated as a lame optimization
-    private static final byte[] NO_BASES = new byte[0];
+    private static final byte[] NO_BASES = {};
     private static final byte[] N_BYTES = {'N'};
     private static final byte[] n_BYTES = {'n'};
-    private static final byte[] A_BYTES = new byte[]{'A'};
-    private static final byte[] a_BYTES = new byte[]{'a'};
-    private static final byte[] G_BYTES = new byte[]{'G'};
-    private static final byte[] g_BYTES = new byte[]{'g'};
-    private static final byte[] C_BYTES = new byte[]{'C'};
-    private static final byte[] c_BYTES = new byte[]{'c'};
-    private static final byte[] T_BYTES = new byte[]{'T'};
-    private static final byte[] t_BYTES = new byte[]{'t'};
+    private static final byte[] A_BYTES = {'A'};
+    private static final byte[] a_BYTES = {'a'};
+    private static final byte[] G_BYTES = {'G'};
+    private static final byte[] g_BYTES = {'g'};
+    private static final byte[] C_BYTES = {'C'};
+    private static final byte[] c_BYTES = {'c'};
+    private static final byte[] T_BYTES = {'T'};
+    private static final byte[] t_BYTES = {'t'};
+
+    private static final String EMPTY_BASE = " ";
 
     /**
      * Variants from this input file are used by this tool to construct an alternate reference.
      */
     @Argument(fullName= StandardArgumentDefinitions.VARIANT_LONG_NAME,
             shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME,
-            doc="VCF to merge with the reference sequence.")
+            doc="A source of variants to merge with the reference sequence.")
     protected FeatureInput<VariantContext> variants;
 
     public static final String SNP_MASK_LONG_NAME = "snp-mask";
@@ -117,8 +119,6 @@ public class FastaAlternateReferenceMaker extends FastaReferenceMaker {
 
     private int deletionBasesRemaining = 0;
 
-    private static final String EMPTY_BASE = " ";
-
     @Override
     public void onTraversalStart() {
         super.onTraversalStart();
@@ -141,7 +141,7 @@ public class FastaAlternateReferenceMaker extends FastaReferenceMaker {
         final byte[] bases = handlePosition(ref.getInterval(), ref.getBase(), features);
         final SimpleInterval interval = ref.getInterval();
         if( bases.length == 0){
-            addToReference(interval, null);
+            advancePosition(interval);
         } else {
             for( byte base : bases) {
                 addToReference(interval, base);
@@ -154,8 +154,6 @@ public class FastaAlternateReferenceMaker extends FastaReferenceMaker {
             deletionBasesRemaining--;
             return NO_BASES;
         }
-
-        final String refBase = String.valueOf((char) base);
 
         // If we have a mask at this site, use it
         if ( snpmaskPriority ){
@@ -174,12 +172,12 @@ public class FastaAlternateReferenceMaker extends FastaReferenceMaker {
                 return baseToByteArray(base);
             } else if ( vc.isSimpleInsertion() || vc.isSNP() ) {
                 // Get the first alt allele that is not a spanning deletion. If none present, use the empty allele
-                final Optional<Allele> optionalAllele = getFirstNonSpanDelAltAllele(vc.getAlternateAlleles());
+                final Optional<Allele> optionalAllele = getFirstConcreteAltAllele(vc.getAlternateAlleles());
                 final Allele allele = optionalAllele.orElseGet(() -> Allele.create(EMPTY_BASE, false));
                 if ( vc.isSimpleInsertion() ) {
                     return allele.getBases();
                 } else {
-                    final String iupacBase = (iupacSample != null) ? getIUPACBase(vc.getGenotype(iupacSample), refBase) : allele.toString();
+                    final String iupacBase = (iupacSample != null) ? getIUPACBase(vc.getGenotype(iupacSample)) : allele.toString();
                     return iupacBase.getBytes();
                 }
             }
@@ -212,13 +210,15 @@ public class FastaAlternateReferenceMaker extends FastaReferenceMaker {
     }
 
     /**
-     * Get the first non spanning deletion (* or <*:DEL>) alt allele
+     * Get the first non-symbolic, non-spanning deletion, called allele
      * @param altAlleles the alternate alleles
      * @return the first non spanning deletion allele or null
      */
-    private Optional<Allele> getFirstNonSpanDelAltAllele( final List<Allele> altAlleles ) {
+    private Optional<Allele> getFirstConcreteAltAllele(final List<Allele> altAlleles ) {
         return altAlleles.stream()
+                .filter(allele -> !allele.isSymbolic())
                 .filter(allele -> !GATKVCFConstants.isSpanningDeletion(allele))
+                .filter(Allele::isCalled)
                 .findFirst();
     }
 
@@ -236,13 +236,12 @@ public class FastaAlternateReferenceMaker extends FastaReferenceMaker {
      * Returns the IUPAC encoding for the given genotype or the reference base if not possible
      *
      * @param genotype  the genotype to encode
-     * @param ref       the reference base
      * @return non-null, non-empty String of bases
      */
-    private String getIUPACBase(final Genotype genotype, final String ref) {
+    private String getIUPACBase(final Genotype genotype) {
         Utils.nonNull(genotype, () -> "The genotype is null for sample " + iupacSample);
 
-        // If have a spanning deletion, if both alleles are spanning deletions, use the empty allele. Otherwise, use the allele is not a
+        // If we have a spanning deletion, if both alleles are spanning deletions, use the empty allele. Otherwise, use the allele that is not a
         // spanning deletion.
         if ( genotype.getAlleles().contains(Allele.SPAN_DEL) ) {
             if ( genotype.isHomVar() ) {
@@ -252,8 +251,9 @@ public class FastaAlternateReferenceMaker extends FastaReferenceMaker {
             }
         }
 
-        if ( !genotype.isHet() )
-            return genotype.isHom() ? genotype.getAllele(0).getBaseString() : ref;
+        if ( !genotype.isHet() ) {
+            return genotype.getAllele(0).getBaseString();
+        }
 
         final byte allele1 = genotype.getAllele(0).getBases()[0];
         final byte allele2 = genotype.getAllele(1).getBases()[0];
