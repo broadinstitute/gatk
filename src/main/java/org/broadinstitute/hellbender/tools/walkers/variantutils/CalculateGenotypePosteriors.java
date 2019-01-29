@@ -31,8 +31,8 @@ import java.util.stream.Collectors;
  * source that provides unbiased genotype likelihoods.</p>
  *
  * <p>
- * The tool uses priors from three different data sources: (i) one or more supporting germline population callsets
- * with specific annotation(s) if supplied, (ii) the pedigree for a trio if supplied and if the trio is represented
+ * The tool can use priors from three different data sources: (i) one or more supporting germline population callsets
+ * with specific annotation(s) if supplied , (ii) the pedigree for a trio if supplied and if the trio is represented
  * in the callset under refinement, and/or (iii) the allele counts of the callset samples themselves given at least
  * ten samples. It is possible to deactivate the contribution of the callset samples with the --ignore-input-samples
  * flag.
@@ -48,9 +48,11 @@ import java.util.stream.Collectors;
  * <h3>Inputs</h3>
  * <p>
  *     <ul>
- *         <li>A VCF with genotype likelihoods, and optionally genotypes, AC/AN fields, or MLEAC/AN fields.</li>
- *         <li>(Optional) A PED pedigree file containing the description of the relationships between individuals. Only
- *         trio groups are considered in the calculations.</li>
+ *         <li>A VCF with genotype likelihoods, and optionally genotypes, AC/AN fields, or MLEAC/AN fields.
+ *         The tool will use MLEAC if available or AC if MLEAC is not provided. AN is also required unless genotypes are
+ *         provided for all samples.</li>
+ *         <li>(Optional) A PED pedigree file containing the description of the relationships between individuals. The
+ *         tool considers only trio groups. A trio consists of mother-father-child.</li>
  *     </ul>
  * </p>
  *
@@ -87,7 +89,7 @@ import java.util.stream.Collectors;
  * </p>
  *
  * <p>
- * For the latest versions of the tool in which this message appears, the tool appropriately applies priors to indels.
+ * For versions of the tool 4.0.5.0+, the tool appropriately applies priors to indels.
  * </p>
  *
  * <p>
