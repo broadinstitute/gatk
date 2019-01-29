@@ -18,6 +18,10 @@ import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.hellbender.engine.filters.*;
+import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsamplingIterator;
+import org.broadinstitute.hellbender.utils.downsampling.ReservoirDownsampler;
+import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -420,7 +424,7 @@ public class CNNScoreVariants extends TwoPassVariantWalker {
         } catch (UnsupportedEncodingException e) {
             throw new GATKException("Trying to make string from reference, but unsupported encoding UTF-8.", e);
         }
-        Iterator<GATKRead> readIt = readsContext.iterator();
+        Iterator<GATKRead> readIt = new ReadsDownsamplingIterator(readsContext.iterator(), new ReservoirDownsampler(readLimit));
         if (!readIt.hasNext()) {
             logger.warn("No reads at contig:" + variant.getContig() + " site:" + String.valueOf(variant.getStart()));
         }
