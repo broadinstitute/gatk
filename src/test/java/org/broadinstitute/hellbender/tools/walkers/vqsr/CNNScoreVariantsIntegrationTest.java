@@ -4,6 +4,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
@@ -155,6 +156,9 @@ public class CNNScoreVariantsIntegrationTest extends CommandLineProgramTest {
      */
     @Test(groups = {"python"})
     public void testInference2dResourceModel() throws IOException {
+        // We reset the random number generator at the beginning of each test so that the random down-sampling of reads
+        // by the reservoir down-sampler does not cause slightly different scores.
+        Utils.resetRandomGenerator();
         TensorType tt = TensorType.read_tensor;
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
         argsBuilder.addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVCF)
@@ -177,6 +181,7 @@ public class CNNScoreVariantsIntegrationTest extends CommandLineProgramTest {
      */
     @Test(groups = {"python"})
     public void testInferenceArchitecture2d() throws IOException {
+        Utils.resetRandomGenerator();
         final boolean newExpectations = false;
         TensorType tt = TensorType.read_tensor;
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
@@ -202,6 +207,7 @@ public class CNNScoreVariantsIntegrationTest extends CommandLineProgramTest {
 
     @Test(groups = {"python"})
     public void testInferenceWeights2d() throws IOException {
+        Utils.resetRandomGenerator();
         TensorType tt = TensorType.read_tensor;
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
         argsBuilder.addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVCF)
@@ -222,6 +228,7 @@ public class CNNScoreVariantsIntegrationTest extends CommandLineProgramTest {
 
     @Test(groups = {"python"})
     public void testInferenceArchitectureAndWeights2d() throws IOException {
+        Utils.resetRandomGenerator();
         TensorType tt = TensorType.read_tensor;
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
         argsBuilder.addArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVCF)
