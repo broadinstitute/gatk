@@ -8,13 +8,13 @@ This directory contains scripts for testing GATK pipelines on Spark - either on 
 export GCS_CLUSTER=...
 
 # Sanity check on small data (a few mins)
-./run_gcs_cluster.sh small_reads-pipeline_gcs.sh
+./run_gcs_cluster.sh ./small_reads-pipeline_gcs.sh
 
 # Run on exome (<1hr)
-nohup ./run_gcs_cluster.sh exome_reads-pipeline_gcs.sh &
+nohup ./run_gcs_cluster.sh ./exome_reads-pipeline_gcs.sh &
 
 # Run on genome (<2hrs)
-NUM_WORKERS=20 nohup ./run_gcs_cluster.sh copy_genome_to_hdfs_on_gcs.sh genome_reads-pipeline_hdfs.sh &
+NUM_WORKERS=20 nohup ./run_gcs_cluster.sh ./copy_genome_to_hdfs_on_gcs.sh ./genome_reads-pipeline_hdfs.sh &
 
 # Check results
 cat results/*
@@ -89,29 +89,32 @@ This will take a few hours.
 The following starts a GCS cluster, runs the given pipeline, then deletes the cluster.
 
 ```bash
-nohup ./run_gcs_cluster.sh small_reads-pipeline_gcs.sh &
+nohup ./run_gcs_cluster.sh ./small_reads-pipeline_gcs.sh &
 ```
 
 To copy the dataset to HDFS use a copy script first:
 
 ```bash
-nohup ./run_gcs_cluster.sh copy_small_to_hdfs_on_gcs.sh small_reads-pipeline_hdfs.sh &
+nohup ./run_gcs_cluster.sh ./copy_small_to_hdfs_on_gcs.sh ./small_reads-pipeline_hdfs.sh &
 ```
 
 ### More examples
 
 ```bash
 # Exome Mark Duplicates, BQSR, Haplotype Caller on HDFS
-nohup ./run_gcs_cluster.sh copy_exome_to_hdfs_on_gcs.sh exome_md-bqsr-hc_hdfs.sh &
+nohup ./run_gcs_cluster.sh ./copy_exome_to_hdfs_on_gcs.sh ./exome_md-bqsr-hc_hdfs.sh &
 
 # Exome ReadsSparkPipeline on HDFS
-nohup ./run_gcs_cluster.sh copy_exome_to_hdfs_on_gcs.sh exome_reads-pipeline_hdfs.sh &
+nohup ./run_gcs_cluster.sh ./copy_exome_to_hdfs_on_gcs.sh ./exome_reads-pipeline_hdfs.sh &
 
 # Genome Mark Duplicates, BQSR, Haplotype Caller on HDFS using 20 workers
-NUM_WORKERS=20 nohup ./run_gcs_cluster.sh copy_genome_to_hdfs_on_gcs.sh genome_md-bqsr-hc_hdfs.sh &
+NUM_WORKERS=20 nohup ./run_gcs_cluster.sh ./copy_genome_to_hdfs_on_gcs.sh ./genome_md-bqsr-hc_hdfs.sh &
 
 # Genome ReadsSparkPipeline on HDFS using 20 workers
-NUM_WORKERS=20 nohup ./run_gcs_cluster.sh copy_genome_to_hdfs_on_gcs.sh genome_reads-pipeline_hdfs.sh &
+NUM_WORKERS=20 nohup ./run_gcs_cluster.sh ./copy_genome_to_hdfs_on_gcs.sh ./genome_reads-pipeline_hdfs.sh &
+
+# Genome ReadsSparkPipeline on GCS using 20 workers
+NUM_WORKERS=20 nohup ./run_gcs_cluster.sh ./genome_reads-pipeline_gcs.sh &
 ```
 
 ## Running test cases
