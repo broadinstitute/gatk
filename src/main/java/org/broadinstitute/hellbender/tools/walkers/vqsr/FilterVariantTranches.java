@@ -57,7 +57,6 @@ import picard.cmdline.programgroups.VariantFilteringProgramGroup;
  *
  */
 @DocumentedFeature
-@ExperimentalFeature
 @CommandLineProgramProperties(
         summary = "Apply tranche filtering based on a truth VCF of known common sites of variation and a score from VCF INFO field",
         oneLineSummary = "Apply tranche filtering",
