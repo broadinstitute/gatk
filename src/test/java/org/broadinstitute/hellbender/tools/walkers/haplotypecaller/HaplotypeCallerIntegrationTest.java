@@ -14,6 +14,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.AssemblyRegionWalker;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -467,7 +468,6 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         }
     }
 
-
     @Test
     public void testSitesOnlyMode() {
         Utils.resetRandomGenerator();
@@ -491,6 +491,28 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         for (VariantContext v: results.getRight()) {
             Assert.assertFalse(v.hasGenotypes());
         }
+    }
+
+    @Test
+    public void testForceActiveOption() throws Exception {
+        Utils.resetRandomGenerator();
+        final File out = createTempFile("GTStrippedOutput", "vcf");
+        final File assemblyRegionOut = createTempFile("assemblyregions", ".igv");
+        final File expectedAssemblyRegionOut = new File(TEST_FILES_DIR, "expected.testAssemblyRegionWithForceActiveRegions_assemblyregions.igv");
+
+        final String[] args = {
+                "-I", NA12878_20_21_WGS_bam,
+                "-R", b37_reference_20_21,
+                "-L", "20:1-5000",
+                "-O", out.getAbsolutePath(),
+                "-pairHMM", "AVX_LOGLESS_CACHING",
+                "--" + AssemblyRegionWalker.FORCE_ACTIVE_REGIONS_LONG_NAME, "true",
+                "--" + HaplotypeCaller.ASSEMBLY_REGION_OUT_LONG_NAME, assemblyRegionOut.getAbsolutePath(),
+                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
+        };
+        runCommandLine(args);
+
+        IntegrationTestSpec.assertEqualTextFiles(assemblyRegionOut, expectedAssemblyRegionOut);
     }
 
     @DataProvider(name="outputFileVariations")
