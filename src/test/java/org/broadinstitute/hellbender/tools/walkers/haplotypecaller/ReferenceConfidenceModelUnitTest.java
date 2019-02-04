@@ -114,6 +114,52 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
             tests.add(new Object[]{read5, cigar5, null, ref, 1, 0, Arrays.asList(1, 1, 0, 0, 0, 0, 0, 0)});
         }
 
+        { // testing that the behavior for references within the indel span behave properly
+            final String repeatingread = "ATCATC";
+            final String repeatingref1 = "AT";
+            final String repeatingref2 = "ATC";
+            final String repeatingref3 = "ATCA";
+            final String repeatingref4 = "ATCAT";
+            final String repeatingref5 = "ATCATC";
+            final String repeatingref6 = "ATCATCA";
+            final String repeatingref7 = "ATCATCAT";
+            final String repeatingref8 = "ATCATCATC";
+            final String repeatingref9 = "ATCATCATCA";
+            final String nonRepeatingread = "ATCGAT";
+            final String nonRepeatingref1 = "AT";
+            final String nonRepeatingref2 = "ATC";
+            final String nonRepeatingref3 = "ATCG";
+            final String nonRepeatingref4 = "ATCGA";
+            final String nonRepeatingref5 = "ATCGAT";
+            final String nonRepeatingref6 = "ATCGATA";
+            final String nonRepeatingref7 = "ATCGATAT";
+            final String nonRepeatingref8 = "ATCGATATC";
+            final String nonRepeatingref9 = "ATCGATATCG";
+
+            final String cigar = repeatingread.length() + "M";
+
+            tests.add(new Object[]{repeatingread, cigar, null, repeatingref1, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{repeatingread, cigar, null, repeatingref2, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{repeatingread, cigar, null, repeatingref3, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{repeatingread, cigar, null, repeatingref4, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{repeatingread, cigar, null, repeatingref5, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{repeatingread, cigar, null, repeatingref6, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{repeatingread, cigar, null, repeatingref7, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{repeatingread, cigar, null, repeatingref8, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{repeatingread, cigar, null, repeatingref9, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
+
+            tests.add(new Object[]{nonRepeatingread, cigar, null, nonRepeatingref1, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{nonRepeatingread, cigar, null, nonRepeatingref2, 3, 0, Arrays.asList(0, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{nonRepeatingread, cigar, null, nonRepeatingref3, 3, 0, Arrays.asList(1, 0, 0, 0, 0, 0)});
+            tests.add(new Object[]{nonRepeatingread, cigar, null, nonRepeatingref4, 3, 0, Arrays.asList(1, 1, 0, 0, 0, 0)});
+            tests.add(new Object[]{nonRepeatingread, cigar, null, nonRepeatingref5, 3, 0, Arrays.asList(1, 1, 1, 0, 0, 0)});
+            tests.add(new Object[]{nonRepeatingread, cigar, null, nonRepeatingref6, 3, 0, Arrays.asList(1, 1, 1, 0, 0, 0)});
+            tests.add(new Object[]{nonRepeatingread, cigar, null, nonRepeatingref7, 3, 0, Arrays.asList(1, 1, 1, 0, 0, 0)});
+            tests.add(new Object[]{nonRepeatingread, cigar, null, nonRepeatingref8, 3, 0, Arrays.asList(1, 1, 1, 0, 0, 0)});
+            tests.add(new Object[]{nonRepeatingread, cigar, null, nonRepeatingref9, 3, 0, Arrays.asList(1, 1, 1, 0, 0, 0)});
+        }
+
+
 
         { // testing that behavior is consistent when the read starts offset into the reference bases into the reference
             final String ref   = "GGGGGGGGGGTTAAAATT";
@@ -227,6 +273,17 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
             }
         }
 
+        {//test that the behavior is still confusing and wrong in the case where read.length() disagrees with the realigned read length due to indels or possibly wizard magic
+            final String read = "ACTGCGTGGTCATATGAAATCAAGGCAATGTTATGAGTATTACTGGAAAGCTGGACAGAGTAACGGGAAAAGTGACTAAAACTATGCAAAACTAAGCAGAT";
+            final String ref = "TTGTTTATAAAAGGAAATCTTCACTGTTTTGAACATCAGTTATTTTAAACTTTTAAGTTGTTAGCACAGCAAAAGCAACAAAATTCTAAGTG"+
+                    "CAGTAATCACTTTACTGCGTGGTCATATGAAATCAAGGCAATGTTATGAGTATTACTGGAAAGCTGGACAGAGTAACGGGAAAAGTGACTAAAACTATGCAAAACTATGCAAAACTAAGCAGAT"+
+                    "TGTGTCTCTAGAGTATTTCCCATCTCAAGTTTAGTTATTTACTAATTTGGCAACATCTGACCTATCTTTAATTGTGAGAAAATAAACAAACACATAAGCCAACTCTCAGAATATGGTTATACAT";
+            final String cigar = "77M10D24M";
+
+            tests.add(new Object[]{read, cigar, null, ref, 10, 105, Arrays.asList(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)});
+
+        }
+
         {//test for proper behavior when comparison starts in the read after an insertion
             final String ref = "TACCACAGTTTTGTTTACTACAGCTTTGTAGTAAATTTTG";
             final String read =  "CCACACTGTTTTGTTTACTACAGCTT";
@@ -264,7 +321,7 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
                 final ReadPileup pileupNoCache = new ReadPileup(loc, Collections.singletonList(readNoCache), ReadUtils.getReadCoordinateForReferenceCoordinate(readNoCache, readNoCache.getStart() + i).getKey());
                 final int actualCache = model.calcNIndelInformativeReads(pileupCache, i + readStartIntoRef, ref.getBytes(), maxIndelSize);
                 final int actualNoCache = model.calcNIndelInformativeReads(pileupNoCache, i + readStartIntoRef, ref.getBytes(), maxIndelSize);
-//                Assert.assertEquals(actualCache, (int)expected.get(i), "cached result failed at position " + i);
+                Assert.assertEquals(actualCache, (int)expected.get(i), "cached result failed at position " + i);
                 Assert.assertEquals(actualNoCache, (int)expected.get(i), "non-cached result failed at position " + i);
             }
         }

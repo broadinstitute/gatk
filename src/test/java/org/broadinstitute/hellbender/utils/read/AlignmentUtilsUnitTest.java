@@ -70,11 +70,6 @@ public final class AlignmentUtilsUnitTest {
         return combinations;
     }
 
-    /******************************************************
-     * Tests for AlignmentUtils.createReadAlignedToRef()
-     ******************************************************/
-
-
 
     /******************************************************
      * Tests for AlignmentUtils.createReadAlignedToRef()

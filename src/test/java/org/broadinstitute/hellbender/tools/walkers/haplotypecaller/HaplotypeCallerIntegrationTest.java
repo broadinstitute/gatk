@@ -972,7 +972,6 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         final String[] contaminationArgs = {
                 "-I", NA12878_20_21_WGS_bam,
                 "-R", b37_reference_20_21,
-                "-L", "20:10000000-10010000",
                 "-O", output.getAbsolutePath(),
                 "-contamination", "1.0",
                 "-ERC", "GVCF"

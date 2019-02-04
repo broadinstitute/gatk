@@ -528,6 +528,8 @@ public class ReferenceConfidenceModel {
 
             // Check that we aren't so close to the end of the end of the read that we don't have to compute anything more
             if ( !(read.getLength() - readStart < maxIndelSize) && !(refBases.length - refStart < maxIndelSize) ) {
+                //TODO this value is stored for the purpose of replicating the potentially incorrect behavior of the old codepath...
+                final int secondaryReadBreakPosition = read.getLength() - maxIndelSize;
 
                 // We are safe to use the faster no-copy versions of getBases and getBaseQualities here,
                 // since we're not modifying the returned arrays in any way. This makes a small difference
@@ -540,9 +542,9 @@ public class ReferenceConfidenceModel {
                     // Compute the last base for which we will make a comparison based on the length of the readbases
                     int lastReferenceBaseToCheckMismatchesTo;
                     if ((readBases.length - readStart) <= (refBases.length - refStart)) {
-                        lastReferenceBaseToCheckMismatchesTo = refStart + (readBases.length - readStart) - 1;
+                       lastReferenceBaseToCheckMismatchesTo = refStart + (readBases.length - readStart) - 1;
                     } else {
-                        lastReferenceBaseToCheckMismatchesTo = refBases.length - 1;
+                        lastReferenceBaseToCheckMismatchesTo = refBases.length;
                     }
 
                     // Compute the absolute baseline sum against which to test
@@ -550,13 +552,28 @@ public class ReferenceConfidenceModel {
 
                     for (int indelSize = 1; indelSize <= maxIndelSize; indelSize++) {
                         // Computing mismatches corresponding to a deletion
-                        traverseEndOfReadForIndelMismatches(readStart, refBases, refStart, maxIndelSize, informativeBases, readBases, readQuals, lastReferenceBaseToCheckMismatchesTo, baselineMMSums, indelSize, false);
+                        traverseEndOfReadForIndelMismatches(readStart, refBases, refStart, maxIndelSize, informativeBases, readBases, readQuals, lastReferenceBaseToCheckMismatchesTo, secondaryReadBreakPosition, baselineMMSums, indelSize, false);
 
                         // Computing mismatches corresponding to an insertion
-                        traverseEndOfReadForIndelMismatches(readStart, refBases, refStart, maxIndelSize, informativeBases, readBases, readQuals, lastReferenceBaseToCheckMismatchesTo, baselineMMSums, indelSize, true);
+                        traverseEndOfReadForIndelMismatches(readStart, refBases, refStart, maxIndelSize, informativeBases, readBases, readQuals, lastReferenceBaseToCheckMismatchesTo, secondaryReadBreakPosition, baselineMMSums, indelSize, true);
                     }
                     // Flip the bases at the front of the read (the ones not within maxIndelSize of the end as those are never informative)
-                    informativeBases.flip(0, readBases.length - maxIndelSize + 1); // Add 1 because flip is inclusive-exclusive
+                    int endOfReferenceOnReadIndex = refBases.length - refStart + readStart;
+                    if (readBases.length - maxIndelSize < endOfReferenceOnReadIndex - maxIndelSize + 1) {
+                        if ( readBases.length - maxIndelSize <= secondaryReadBreakPosition) {
+                            informativeBases.flip(0, readBases.length - maxIndelSize); // Add 1 because flip is inclusive-exclusive
+                        } else {
+                            informativeBases.flip(0, secondaryReadBreakPosition + 1);
+                        }
+                    } else {
+                        if ( endOfReferenceOnReadIndex - maxIndelSize + 1 <= secondaryReadBreakPosition) {
+                            // Self explanatory really...
+                            informativeBases.set(endOfReferenceOnReadIndex - maxIndelSize, true);
+                            informativeBases.flip(0, endOfReferenceOnReadIndex - maxIndelSize + 1); // Add 1 because flip is inclusive-exclusive
+                        } else {
+                            informativeBases.flip(0, secondaryReadBreakPosition + 1);
+                        }
+                    }
                 }
             }
             cachedResult = informativeBases;
@@ -573,11 +590,8 @@ public class ReferenceConfidenceModel {
      * based on the principal that indel mismatches of a particular size at the back of the read will preclude indels at the
      * front of the read from looking appealing.
      */
-    private void traverseEndOfReadForIndelMismatches(final int readStart, final byte[] refBases, final int refStart, final int maxIndelSize, final BitSet informativeBases, final byte[] readBases, final byte[] readQuals, final int backOfBaseContext, final int[] baselineMMSums, final int indelSize, final boolean insertion) {
+    private void traverseEndOfReadForIndelMismatches(final int readStart, final byte[] refBases, final int refStart, final int maxIndelSize, final BitSet informativeBases, final byte[] readBases, final byte[] readQuals, final int backOfBaseContext, final int secondaryReadBreakPosition, final int[] baselineMMSums, final int indelSize, final boolean insertion) {
         int sum = 0;
-
-        //AlignmentUtils.CigarElementContextPosition thisContextSlider = contextForBackOfRead.copy();
-        //thisContextSlider.decrementReferenceBases(Math.abs(indelSize));
 
         // Compute how many bases forward we should compare taking into account reference/read overhang
         int n = Math.min(readBases.length - readStart - ((!insertion) ? 0 : indelSize ),
@@ -603,8 +617,11 @@ public class ReferenceConfidenceModel {
             // If its a real character and the cost isn't greater than the non-indel cost, label it is uninformative
             if (readBases[readStart + siteOfRealComparisonPoint] != AlignmentUtils.GAP_CHARACTER) {
                 if (Math.max((backOfBaseContext - i - refStart), (backOfBaseContext - j - refStart)) >= maxIndelSize) {
-                    if (baselineMMSums[siteOfRealComparisonPoint] >= sum) {
-                        informativeBases.set(readStart + siteOfRealComparisonPoint, true); // Label with true here because we flip these results later
+                    // Resolving the edge case involving read.Length() disagreeing with the realigned indel length
+                    if (readStart + siteOfRealComparisonPoint <= secondaryReadBreakPosition) {
+                        if (baselineMMSums[siteOfRealComparisonPoint] >= sum) {
+                            informativeBases.set(readStart + siteOfRealComparisonPoint, true); // Label with true here because we flip these results later
+                        }
                     }
                 }
             }
