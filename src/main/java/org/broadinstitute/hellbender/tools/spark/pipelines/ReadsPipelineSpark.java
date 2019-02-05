@@ -214,9 +214,9 @@ public class ReadsPipelineSpark extends GATKSparkTool {
         // Run Haplotype Caller
         final ReadFilter hcReadFilter = ReadFilter.fromList(HaplotypeCallerEngine.makeStandardHCReadFilters(), header);
         final JavaRDD<GATKRead> filteredReadsForHC = finalReads.filter(hcReadFilter::test);
-        final List<SimpleInterval> intervals = hasUserSuppliedIntervals() ? getIntervals() : IntervalUtils.getAllIntervalsForReference(header.getSequenceDictionary());
-
         SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
+        final List<SimpleInterval> intervals = hasUserSuppliedIntervals() ? getIntervals() : IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
+
         List<ShardBoundary> intervalShards = intervals.stream()
                 .flatMap(interval -> Shard.divideIntervalIntoShards(interval, shardingArgs.readShardSize, shardingArgs.readShardPadding, sequenceDictionary).stream())
                 .collect(Collectors.toList());
