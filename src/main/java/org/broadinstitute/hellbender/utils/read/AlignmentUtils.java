@@ -263,7 +263,7 @@ public final class AlignmentUtils {
                     }
                 }
             }
-            return new Pair<>(paddedBases, paddedBaseQualities);
+            return new ImmutablePair<>(paddedBases, paddedBaseQualities);
         }
     }
 
