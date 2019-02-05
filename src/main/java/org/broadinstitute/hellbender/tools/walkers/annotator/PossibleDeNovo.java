@@ -41,7 +41,7 @@ import java.util.*;
 public final class PossibleDeNovo extends PedigreeAnnotation {
 
     public PossibleDeNovo(final Set<Trio> trios, final double minGenotypeQualityP) {
-        super();
+        super();//TODO these need tests
         this.trios = Collections.unmodifiableSet(new LinkedHashSet<>(trios));
         mendelianViolation = new MendelianViolation(minGenotypeQualityP);
     }
