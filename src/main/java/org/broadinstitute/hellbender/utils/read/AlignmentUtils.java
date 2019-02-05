@@ -4,7 +4,8 @@ import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.util.Tuple;
-import javafx.util.Pair;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
@@ -232,7 +233,7 @@ public final class AlignmentUtils {
             }
         }
         if (!sawIndel) {
-            return new Pair<>(bases, baseQualities);
+            return new ImmutablePair<>(bases, baseQualities);
         }
         else {
             int numberRefBasesIncludingSoftclips = CigarUtils.countRefBasesIncludingSoftClips(read, 0, numCigarElements);
