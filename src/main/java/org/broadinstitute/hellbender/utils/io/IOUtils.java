@@ -701,7 +701,7 @@ public final class IOUtils {
             final String filename = path.getFileName().toString();
             IOUtils.deleteOnExit(path.resolveSibling(filename + Tribble.STANDARD_INDEX_EXTENSION));
             IOUtils.deleteOnExit(path.resolveSibling(filename + TabixUtils.STANDARD_INDEX_EXTENSION));
-            IOUtils.deleteOnExit(path.resolveSibling(filename + BAMIndex.BAMIndexSuffix));
+            IOUtils.deleteOnExit(path.resolveSibling(filename + BAMIndex.BAI_INDEX_SUFFIX));
             IOUtils.deleteOnExit(path.resolveSibling(filename.replaceAll(extension + "$", ".bai")));
             IOUtils.deleteOnExit(path.resolveSibling(filename + ".md5"));
 

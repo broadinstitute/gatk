@@ -231,8 +231,9 @@ public class ReferenceConfidenceModel {
         final ReferenceConfidenceResult homRefCalc = calcGenotypeLikelihoodsOfRefVsAny(ploidy, pileup, refBase, BASE_QUAL_THRESHOLD, null, true);
 
         final Allele refAllele = Allele.create(refBase, true);
-        final List<Allele> refSiteAlleles = Arrays.asList(refAllele, Allele.NON_REF_ALLELE);
-        final VariantContextBuilder vcb = new VariantContextBuilder("HC", curPos.getContig(), curPos.getStart(), curPos.getStart(), refSiteAlleles);
+        final Allele[] refSiteAlleles = new Allele[]{refAllele, Allele.NON_REF_ALLELE};
+        final VariantContextBuilder vcb = new VariantContextBuilder("HC", curPos.getContig(), curPos.getStart(), curPos.getStart(), null);
+        vcb.alleles(refSiteAlleles);
         final GenotypeBuilder gb = new GenotypeBuilder(sampleName, GATKVariantContextUtils.homozygousAlleleList(refAllele, ploidy));
         gb.AD(homRefCalc.getAD());
         gb.DP(homRefCalc.getDP());
