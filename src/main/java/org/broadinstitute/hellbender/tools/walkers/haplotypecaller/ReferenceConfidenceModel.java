@@ -193,13 +193,14 @@ public class ReferenceConfidenceModel {
         final String sampleName = readLikelihoods.getSample(0);
 
         final int globalRefOffset = refSpan.getStart() - activeRegion.getExtendedSpan().getStart();
-        for (int i = 0, size = refPileups.size(); i < size; i++) {
-            ReadPileup pileup = refPileups.get(i);
+        final int refPileupsSize = refPileups.size();
+        for (int i = 0; i < refPileupsSize; i++) {
+            final ReadPileup pileup = refPileups.get(i);
             final Locatable curPos = pileup.getLocation();
             final int offset = curPos.getStart() - refSpan.getStart();
 
             final VariantContext overlappingSite = GATKVariantContextUtils.getOverlappingVariantContext(curPos, variantCalls);
-            final List<VariantContext> currentPriors = getMatchingPriors(curPos, overlappingSite, VCpriors);
+            final List<VariantContext> currentPriors = VCpriors.isEmpty() ? Collections.emptyList() : getMatchingPriors(curPos, overlappingSite, VCpriors);
             if (overlappingSite != null && overlappingSite.getStart() == curPos.getStart()) {
                 if (applyPriors) {
                     results.add(PosteriorProbabilitiesUtils.calculatePosteriorProbs(overlappingSite, currentPriors,
@@ -422,13 +423,15 @@ public class ReferenceConfidenceModel {
      */
     private List<VariantContext> getMatchingPriors(final Locatable curPos, final VariantContext call, final List<VariantContext> priorList) {
         final int position = call != null ? call.getStart() : curPos.getStart();
-        List<VariantContext> list = new ArrayList<>(priorList.size());
-        for (int i = 0, size = priorList.size(); i < size; i++) {
+        final List<VariantContext> matchedPriors = new ArrayList<>(priorList.size());
+        // NOTE: a for loop is used here because this method ends up being called per-pileup, per-read and thus using faster alternates saves runtime
+        final int priorsListSize = priorList.size()
+        for (int i = 0; i < priorsListSize; i++) {
             if (position == priorList.get(i).getStart()) {
-                list.add(priorList.get(i));
+                matchedPriors.add(priorList.get(i));
             }
         }
-        return list;
+        return matchedPriors;
     }
 
     /**
