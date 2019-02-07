@@ -38,6 +38,7 @@ import java.util.stream.Collectors;
  */
 public class ReferenceConfidenceModel {
 
+    public static final String INDEL_INFORMATIVE_BASES_CACHE_ATTRIBUTE_NAME = "IDL";
     private final SampleList samples;
     private final int indelInformativeDepthIndelSize;
     private final int numRefSamplesForPrior;
@@ -446,46 +447,9 @@ public class ReferenceConfidenceModel {
      * @param readStart the starting position of the read (i.e., that aligns it to a position in the reference)
      * @param refBases the reference bases
      * @param refStart the offset into refBases that aligns to the readStart position in readBases
-     * @param maxSum if the sum goes over this value, return immediately
-     * @return the sum of quality scores for readBases that mismatch their corresponding ref bases
-     */
-    @VisibleForTesting
-    int sumMismatchingQualities(final byte[] readBases,
-                                final byte[] readQuals,
-                                final int readStart,
-                                final byte[] refBases,
-                                final int refStart,
-                                final int maxSum) {
-        final int n = Math.min(readBases.length - readStart, refBases.length - refStart);
-        int sum = 0;
-
-        for ( int i = 0; i < n; i++ ) {
-            final byte readBase = readBases[readStart + i];
-            final byte refBase  = refBases[refStart + i];
-            if ( !Nucleotide.intersect(readBase, refBase) && !(readBase == AlignmentUtils.GAP_CHARACTER)) {
-                sum += readQuals[readStart + i];
-                if ( sum > maxSum ) { // abort early
-                    return sum;
-                }
-            }
-        }
-
-        return sum;
-    }
-
-    /**
-     * Compute the sum of mismatching base qualities for readBases aligned to refBases at readStart / refStart
-     * assuming no insertions or deletions in the read w.r.t. the reference
-     *
-     * @param readBases non-null bases of the read
-     * @param readQuals non-null quals of the read
-     * @param readStart the starting position of the read (i.e., that aligns it to a position in the reference)
-     * @param refBases the reference bases
-     * @param refStart the offset into refBases that aligns to the readStart position in readBases
      * @return an array containing the sum of quality scores for readBases that mismatch following this base and their corresponding ref base for each read base in readBases
      */
-    @VisibleForTesting
-    int[] calculateBaselineMMQualities(final byte[] readBases,
+    private static int[] calculateBaselineMMQualities(final byte[] readBases,
                                 final byte[] readQuals,
                                 final int readStart,
                                 final byte[] refBases,
@@ -525,14 +489,13 @@ public class ReferenceConfidenceModel {
      * @param useCachedResults if false, ignore cached results for informative indel sizes (useful for debugging)
      * @return true if read can eliminate the possibility that there's an indel of size <= maxIndelSize segregating at refStart
      */
-    @VisibleForTesting
-    boolean isReadInformativeAboutIndelsOfSize(final GATKRead read,
+    private static boolean isReadInformativeAboutIndelsOfSize(final GATKRead read,
                                                final int readStart,
                                                final byte[] refBases,
                                                final int refStart,
                                                final int maxIndelSize,
                                                final boolean useCachedResults) {
-        BitSet cachedResult = (BitSet) ((SAMRecordToGATKReadAdapter)read).getTransientAttribute("IDL");
+        BitSet cachedResult = (BitSet) ((SAMRecordToGATKReadAdapter)read).getTransientAttribute(INDEL_INFORMATIVE_BASES_CACHE_ATTRIBUTE_NAME);
         if (cachedResult == null || !useCachedResults) {
             BitSet informativeBases = new BitSet(read.getLength());
 
@@ -587,7 +550,7 @@ public class ReferenceConfidenceModel {
                 }
             }
             cachedResult = informativeBases;
-            ((SAMRecordToGATKReadAdapter)read).setTransientAttribute("IDL", informativeBases);
+            ((SAMRecordToGATKReadAdapter)read).setTransientAttribute(INDEL_INFORMATIVE_BASES_CACHE_ATTRIBUTE_NAME, informativeBases);
         }
         return cachedResult.get(readStart);
     }
@@ -600,7 +563,7 @@ public class ReferenceConfidenceModel {
      * based on the principal that indel mismatches of a particular size at the back of the read will preclude indels at the
      * front of the read from looking appealing.
      */
-    private void traverseEndOfReadForIndelMismatches(final int readStart, final byte[] refBases, final int refStart, final int maxIndelSize, final BitSet informativeBases, final byte[] readBases, final byte[] readQuals, final int backOfBaseContext, final int secondaryReadBreakPosition, final int[] baselineMMSums, final int indelSize, final boolean insertion) {
+    private static void traverseEndOfReadForIndelMismatches(final int readStart, final byte[] refBases, final int refStart, final int maxIndelSize, final BitSet informativeBases, final byte[] readBases, final byte[] readQuals, final int backOfBaseContext, final int secondaryReadBreakPosition, final int[] baselineMMSums, final int indelSize, final boolean insertion) {
         int sum = 0;
 
         // Compute how many bases forward we should compare taking into account reference/read overhang

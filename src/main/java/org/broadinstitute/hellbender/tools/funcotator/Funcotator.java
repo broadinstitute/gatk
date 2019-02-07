@@ -670,7 +670,7 @@ import java.util.*;
  *             A summary of the other transcripts in which this variant occurs, which were not chosen for detailed reporting due to the transcript selection scheme.<br />
  *             Each other transcript is represented by a condensed string that indicates how that transcript would be affected by this variant alternate allele.<br />
  *             Each other transcript takes the form:<br />
- *             <pre>[HUGO SYMBOL]_[TRANSCRIPT ID]_[VARIANT CLASSIFICATION]_[PROTEIN CHANGE STRING]</pre><br />
+ *             <pre>[HUGO SYMBOL]_[TRANSCRIPT ID]_[VARIANT CLASSIFICATION]_[PROTEIN CHANGE INDEL_INFORMATIVE_BASES_CACHE_ATTRIBUTE_NAME]</pre><br />
  *             E.g.:
  *             <pre>SDF4_ENST00000263741.7_MISSENSE_p.R243Q</pre>
  *             If another transcript were to be an IGR, the other transcript field would be populated with '<i>IGR_ANNOTATON</i>'<br />

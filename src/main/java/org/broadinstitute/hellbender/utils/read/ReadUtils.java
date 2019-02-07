@@ -717,10 +717,46 @@ public final class ReadUtils {
         return getReadCoordinateForReferenceCoordinate(read.getSoftStart(), read.getCigar(), refCoord, false);
     }
 
+    /**
+     * Returns the read coordinate corresponding to the requested reference coordinate.
+     *
+     * WARNING: if the requested reference coordinate happens to fall inside or just before a deletion (or skipped region) in the read, this function
+     * will return the last read base before the deletion (or skipped region). This function returns a
+     * Pair(int readCoord, boolean fallsInsideOrJustBeforeDeletionOrSkippedRegion) so you can choose which readCoordinate to use when faced with
+     * a deletion (or skipped region).
+     *
+     * SUGGESTION: Use getReadCoordinateForReferenceCoordinate(GATKSAMRecord, int, ClippingTail) instead to get a
+     * pre-processed result according to normal clipping needs. Or you can use this function and tailor the
+     * behavior to your needs.
+     *
+     * @param read
+     * @param refCoord the requested reference coordinate
+     * @param allowGoalNotReached if true, will return a pair of CLIPPING_GOAL_NOT_REACHED and false a refCoord that doesn't exist on the read is requested, otherwise an exception will be thrown
+     * @return the read coordinate corresponding to the requested reference coordinate. (see warning!)
+     */
     public static Pair<Integer, Boolean> getReadCoordinateForReferenceCoordinate(GATKRead read, int refCoord, boolean allowGoalNotReached) {
         return getReadCoordinateForReferenceCoordinate(read.getSoftStart(), read.getCigar(), refCoord, allowGoalNotReached);
     }
 
+    /**
+     * Returns the read coordinate corresponding to the requested reference coordinate for a given alignmentStart/Cigar combination.
+     *
+     * WARNING: if the requested reference coordinate happens to fall inside or just before a deletion (or skipped region) in the read, this function
+     * will return the last read base before the deletion (or skipped region). This function returns a
+     * Pair(int readCoord, boolean fallsInsideOrJustBeforeDeletionOrSkippedRegion) so you can choose which readCoordinate to use when faced with
+     * a deletion (or skipped region).
+     *
+     * SUGGESTION: Use getReadCoordinateForReferenceCoordinate(GATKSAMRecord, int, ClippingTail) instead to get a
+     * pre-processed result according to normal clipping needs. Or you can use this function and tailor the
+     * behavior to your needs.
+     *
+     * @param alignmentStart alignment start of the cigar to the reference
+     * @param cigar cigar with which to compute the offset
+     * @param refCoord the requested reference coordinate
+     * @param tail controls whether the the preceding or following base of a deletion/insertion is returned
+     * @param allowGoalNotReached if true, will return a pair of CLIPPING_GOAL_NOT_REACHED and false a refCoord that doesn't exist on the read is requested, otherwise an exception will be thrown
+     * @return the read coordinate corresponding to the requested reference coordinate. (see warning!)
+     */
     public static int getReadCoordinateForReferenceCoordinate(final int alignmentStart, final Cigar cigar, final int refCoord, final ClippingTail tail, final boolean allowGoalNotReached) {
         final Pair<Integer, Boolean> result = getReadCoordinateForReferenceCoordinate(alignmentStart, cigar, refCoord, allowGoalNotReached);
         int readCoord = result.getLeft();
