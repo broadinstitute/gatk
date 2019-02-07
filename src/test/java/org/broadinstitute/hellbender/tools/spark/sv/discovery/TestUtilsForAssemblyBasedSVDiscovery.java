@@ -72,7 +72,7 @@ public final class TestUtilsForAssemblyBasedSVDiscovery {
         return StringUtils.repeat(base, length);
     }
 
-    // WARNING: THIS SHOULD BE USED ONLY FOR CONSTRUCTING ALIGNMENT INTERVAL FOR SV TESTS FROM WELL FORMATTED SAM STRING
+    // WARNING: THIS SHOULD BE USED ONLY FOR CONSTRUCTING ALIGNMENT INTERVAL FOR SV TESTS FROM WELL FORMATTED SAM INDEL_INFORMATIVE_BASES_CACHE_ATTRIBUTE_NAME
     public static AlignmentInterval fromSAMRecordString(final String samRecordStringWithExplicitTabEscapeSequenceAndNoXAField, final boolean hasSATag) {
         final String[] fields = samRecordStringWithExplicitTabEscapeSequenceAndNoXAField.split("\t");
         final int samFlag = Integer.valueOf( fields[1] ) ;
@@ -98,7 +98,7 @@ public final class TestUtilsForAssemblyBasedSVDiscovery {
                 ContigAlignmentsModifier.AlnModType.NONE);
     }
 
-    // WARNING: THIS SHOULD BE USED ONLY FOR CONSTRUCTING ALIGNMENT INTERVAL FOR SV TESTS FROM WELL FORMATTED SAM STRING OF A PRIMARY RECORD THAT HAS NO XA TAG
+    // WARNING: THIS SHOULD BE USED ONLY FOR CONSTRUCTING ALIGNMENT INTERVAL FOR SV TESTS FROM WELL FORMATTED SAM INDEL_INFORMATIVE_BASES_CACHE_ATTRIBUTE_NAME OF A PRIMARY RECORD THAT HAS NO XA TAG
     public static AlignedContig fromPrimarySAMRecordString(final String samRecordStringWithExplicitTabEscapeSequenceAndNoXAField,
                                                            final boolean hasSATag) {
         final AlignmentInterval primaryAlignment = fromSAMRecordString(samRecordStringWithExplicitTabEscapeSequenceAndNoXAField, hasSATag);
