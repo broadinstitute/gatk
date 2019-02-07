@@ -548,7 +548,8 @@ public class ReferenceConfidenceModel {
     protected int getCigarModifiedOffset (final PileupElement p){
         final GATKRead read = p.getRead();
         int offset = (p.getCurrentCigarElement().getOperator().consumesReferenceBases() || p.getCurrentCigarElement().getOperator() == CigarOperator.S)? p.getOffsetInCurrentCigar() : 0;
-        for (final CigarElement elem : read.getCigar().getCigarElements().subList(0, p.getCurrentCigarOffset())) {
+        for (int i = 0; i < p.getCurrentCigarOffset(); i++ ) {
+            CigarElement elem = read.getCigarElement(i);
             if (elem.getOperator().consumesReferenceBases() || elem.getOperator() == CigarOperator.S) {
                 offset += elem.getLength();
             }
