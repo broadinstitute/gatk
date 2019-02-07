@@ -1,8 +1,8 @@
 package org.broadinstitute.hellbender.utils.read;
 
 import htsjdk.samtools.*;
-import javafx.util.Pair;
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -811,7 +811,7 @@ public final class AlignmentUtilsUnitTest {
 
 
     @Test(dataProvider = "makeGetBasesAndBaseQualitiesAlignedOneToOneTest")
-    public void testCalcNIndelInformativeReads(final String readBases, final String cigar, final String expectedBases, final byte[] expectedQuals ) {
+    public void testGetBasesAndBaseQualitiesAlignedOneToOne(final String readBases, final String cigar, final String expectedBases, final byte[] expectedQuals ) {
         final byte qual = (byte)10;
         final byte[] quals = Utils.dupBytes(qual, readBases.length());
 
@@ -819,8 +819,8 @@ public final class AlignmentUtilsUnitTest {
 
         Pair<byte[], byte[]> actual = AlignmentUtils.getBasesAndBaseQualitiesAlignedOneToOne(read);
 
-        Assert.assertEquals(new String(actual.getKey()), expectedBases);
-        Assert.assertEquals(actual.getValue(), expectedQuals);
+        Assert.assertEquals(new String(actual.getLeft()), expectedBases);
+        Assert.assertEquals(actual.getRight(), expectedQuals);
     }
 
     //////////////////////////////////////////

@@ -490,22 +490,22 @@ public class ReferenceConfidenceModel {
         // in the HaplotypeCaller profile, since this method is a major hotspot.
         final Pair<byte[], byte[]> readBasesAndBaseQualities = AlignmentUtils.getBasesAndBaseQualitiesAlignedOneToOne(read);  //calls getBasesNoCopy if CIGAR is all match
 
-        final int baselineMMSum = sumMismatchingQualities(readBasesAndBaseQualities.getKey(), readBasesAndBaseQualities.getValue(), readStart, refBases, refStart, Integer.MAX_VALUE);
+        final int baselineMMSum = sumMismatchingQualities(readBasesAndBaseQualities.getLeft(), readBasesAndBaseQualities.getRight(), readStart, refBases, refStart, Integer.MAX_VALUE);
 
         // consider each indel size up to max in term, checking if an indel that deletes either the ref bases (deletion
         // or read bases (insertion) would fit as well as the origin baseline sum of mismatching quality scores
         for ( int indelSize = 1; indelSize <= maxIndelSize; indelSize++ ) {
             // check insertions:
-            if (sumMismatchingQualities(readBasesAndBaseQualities.getKey(), readBasesAndBaseQualities.getValue(), readStart + indelSize, refBases, refStart, baselineMMSum) <= baselineMMSum) {
+            if (sumMismatchingQualities(readBasesAndBaseQualities.getLeft(), readBasesAndBaseQualities.getRight(), readStart + indelSize, refBases, refStart, baselineMMSum) <= baselineMMSum) {
                 return false;
             }
             // check deletions:
-            if (sumMismatchingQualities(readBasesAndBaseQualities.getKey(), readBasesAndBaseQualities.getValue(), readStart, refBases, refStart + indelSize, baselineMMSum) <= baselineMMSum) {
+            if (sumMismatchingQualities(readBasesAndBaseQualities.getLeft(), readBasesAndBaseQualities.getRight(), readStart, refBases, refStart + indelSize, baselineMMSum) <= baselineMMSum) {
                 return false;
             }
         }
 
-        return true;
+        return true;x
     }
 
     /**
