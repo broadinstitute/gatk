@@ -505,7 +505,7 @@ public class ReferenceConfidenceModel {
             }
         }
 
-        return true;x
+        return true;
     }
 
     /**
