@@ -73,7 +73,7 @@ public final class ReadsSparkSink {
     public static void writeReads(
             final JavaSparkContext ctx, final String outputFile, final String referenceFile, final JavaRDD<GATKRead> reads,
             final SAMFileHeader header, ReadsWriteFormat format, final int numReducers, final String outputPartsDir, final boolean sortReadsToHeader) throws IOException {
-        writeReads(ctx, outputFile, referenceFile, reads, header, format, numReducers, outputPartsDir, true, true);
+        writeReads(ctx, outputFile, referenceFile, reads, header, format, numReducers, outputPartsDir, true, true, true);
     }
 
     /**
@@ -89,11 +89,12 @@ public final class ReadsSparkSink {
      * @param outputPartsDir directory for temporary files for SINGLE output format, should be null for default value of filename + .output
      * @param writeBai whether to write a BAI file (when writing BAM format)
      * @param writeSbi whether to write an SBI file (when writing BAM format)
+     * @param sortReadsToHeader whether to sort the reads in the underlying RDD to match the header sort order option before writing
      */
     public static void writeReads(
             final JavaSparkContext ctx, final String outputFile, final String referenceFile, final JavaRDD<GATKRead> reads,
             final SAMFileHeader header, ReadsWriteFormat format, final int numReducers, final String outputPartsDir,
-            final boolean writeBai, final boolean writeSbi) throws IOException {
+            final boolean writeBai, final boolean writeSbi, final boolean sortReadsToHeader) throws IOException {
 
         String absoluteOutputFile = BucketUtils.makeFilePathAbsolute(outputFile);
         String absoluteReferenceFile = referenceFile != null ?
@@ -118,12 +119,12 @@ public final class ReadsSparkSink {
                     absoluteOutputFile.endsWith(CramIO.CRAM_FILE_EXTENSION) ||
                     absoluteOutputFile.endsWith(IOUtil.SAM_FILE_EXTENSION)) {
                 // don't specify a write option for format since it is inferred from the extension in the path
-                writeReads(ctx, absoluteOutputFile, absoluteReferenceFile, samReads, header, numReducers,
+                writeReads(ctx, absoluteOutputFile, absoluteReferenceFile, readsToOutput, header, numReducers,
                         fileCardinalityWriteOption, tempPartsDirectoryWriteOption, baiWriteOption, sbiWriteOption);
             } else {
                 // default to BAM
                 ReadsFormatWriteOption formatWriteOption = ReadsFormatWriteOption.BAM;
-                writeReads(ctx, absoluteOutputFile, absoluteReferenceFile, samReads, header, numReducers, formatWriteOption,
+                writeReads(ctx, absoluteOutputFile, absoluteReferenceFile, readsToOutput, header, numReducers, formatWriteOption,
                         fileCardinalityWriteOption, tempPartsDirectoryWriteOption, baiWriteOption, sbiWriteOption);
             }
         } else if (format == ReadsWriteFormat.SHARDED) {
@@ -132,7 +133,7 @@ public final class ReadsSparkSink {
             }
             ReadsFormatWriteOption formatWriteOption = ReadsFormatWriteOption.BAM; // use BAM if output file is a directory
             FileCardinalityWriteOption fileCardinalityWriteOption = FileCardinalityWriteOption.MULTIPLE;
-            writeReads(ctx, absoluteOutputFile, absoluteReferenceFile, samReads, header, numReducers, formatWriteOption, fileCardinalityWriteOption);
+            writeReads(ctx, absoluteOutputFile, absoluteReferenceFile, readsToOutput, header, numReducers, formatWriteOption, fileCardinalityWriteOption);
         } else if (format == ReadsWriteFormat.ADAM) {
             if (outputPartsDir!=null) {
                 throw new  GATKException(String.format("You specified the bam output parts directory %s, but requested an ADAM output format which does not use this option",outputPartsDir));
@@ -145,9 +146,8 @@ public final class ReadsSparkSink {
             final JavaSparkContext ctx, final String outputFile, final String referenceFile, final JavaRDD<SAMRecord> reads,
             final SAMFileHeader header, final int numReducers, final WriteOption... writeOptions) throws IOException {
 
-        final JavaRDD<SAMRecord> sortedReads = sortSamRecordsToMatchHeader(reads, header, numReducers);
         Broadcast<SAMFileHeader> headerBroadcast = ctx.broadcast(header);
-        final JavaRDD<SAMRecord> sortedReadsWithHeader = sortedReads.map(read -> {
+        final JavaRDD<SAMRecord> sortedReadsWithHeader = reads.map(read -> {
             read.setHeaderStrict(headerBroadcast.getValue());
             return read;
         });
