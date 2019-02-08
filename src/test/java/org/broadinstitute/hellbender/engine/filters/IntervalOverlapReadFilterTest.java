@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.engine.filters;
 
 import htsjdk.samtools.SAMFileHeader;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -9,6 +10,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -64,6 +66,18 @@ public final class IntervalOverlapReadFilterTest {
 
     @Test(dataProvider = "filteredReadsData")
     public void testFilterOutRead(final IntervalOverlapReadFilter filter, final GATKRead read) {
+        Assert.assertFalse(filter.test(read));
+    }
+
+    @Test(dataProvider = "filteredReadsData", expectedExceptions = UserException.class)
+    public void testFilterErrorsWhenProvidedNoIntervals(final IntervalOverlapReadFilter f, final GATKRead read) {
+        final IntervalOverlapReadFilter filter = createReadFilter(Collections.emptyList());
+        Assert.assertFalse(filter.test(read));
+    }
+
+    @Test(dataProvider = "filteredReadsData", expectedExceptions = UserException.class)
+    public void testFilterErrorsWhenProvidedBadIntervals(final IntervalOverlapReadFilter f, final GATKRead read) {
+        final IntervalOverlapReadFilter filter = createReadFilter(Arrays.asList("1:-100-1000000000000", "2:1-300", "3:1-10"));
         Assert.assertFalse(filter.test(read));
     }
 }
