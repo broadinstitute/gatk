@@ -425,7 +425,7 @@ public class ReferenceConfidenceModel {
         final int position = call != null ? call.getStart() : curPos.getStart();
         final List<VariantContext> matchedPriors = new ArrayList<>(priorList.size());
         // NOTE: a for loop is used here because this method ends up being called per-pileup, per-read and thus using faster alternates saves runtime
-        final int priorsListSize = priorList.size()
+        final int priorsListSize = priorList.size();
         for (int i = 0; i < priorsListSize; i++) {
             if (position == priorList.get(i).getStart()) {
                 matchedPriors.add(priorList.get(i));
