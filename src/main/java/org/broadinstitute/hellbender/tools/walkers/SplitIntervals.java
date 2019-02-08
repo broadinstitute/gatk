@@ -20,6 +20,7 @@ import picard.util.IntervalList.IntervalListScatterer;
 import java.io.File;
 import java.text.DecimalFormat;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
@@ -64,6 +65,8 @@ public class SplitIntervals extends GATKTool {
     public static final String SUBDIVISION_MODE_SHORT_NAME = "mode";
     public static final String SUBDIVISION_MODE_lONG_NAME = "subdivision-mode";
 
+    public static final String MIN_CONTIG_SIZE_LONG_NAME = "min-contig-size";
+
     public static final String INTERVAL_FILE_EXTENSION_FULL_NAME = "extension";
 
     public static final String PICARD_INTERVAL_FILE_EXTENSION = "interval_list";
@@ -72,6 +75,9 @@ public class SplitIntervals extends GATKTool {
     @Argument(fullName = SCATTER_COUNT_LONG_NAME, shortName = SCATTER_COUNT_SHORT_NAME,
             doc = "scatter count: number of output interval files to split into", optional = true)
     private int scatterCount = 1;
+
+    @Argument(fullName = MIN_CONTIG_SIZE_LONG_NAME, doc = "Minimum contig size to keep if getting intervals from the reference", optional = true)
+    private int minContigSize = 0;
 
     @Argument(fullName = SUBDIVISION_MODE_lONG_NAME, shortName = SUBDIVISION_MODE_SHORT_NAME, doc = "How to divide intervals.")
     private IntervalListScatterMode subdivisionMode = IntervalListScatterMode.INTERVAL_SUBDIVISION;
@@ -97,7 +103,9 @@ public class SplitIntervals extends GATKTool {
         final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
 
         final List<SimpleInterval> intervals = hasUserSuppliedIntervals() ? intervalArgumentCollection.getIntervals(sequenceDictionary)
-                : IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
+                : IntervalUtils.getAllIntervalsForReference(sequenceDictionary).stream()
+                .filter(contig -> contig.getLengthOnReference() >= minContigSize)
+                .collect(Collectors.toList());
 
         final IntervalList intervalList = new IntervalList(sequenceDictionary);
         intervals.stream().map(si -> new Interval(si.getContig(), si.getStart(), si.getEnd())).forEach(intervalList::add);

@@ -4,8 +4,8 @@
 ##INFO=<ID=TLOD,Number=A,Type=Float,Description="Log odds ratio score for variant">
 ##contig=<ID=20,length=63025520,assembly=GRCh37>
 ##contig=<ID=21,length=48129895,assembly=GRCh37>
-##tumor_sample=sample2
-#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	sample2
-20	577114	.	G	A	.	PASS	TLOD=26.06	GT:AD	0/1:100,1
-20	577180	.	G	GAAAACA	.	PASS	TLOD=28.87	GT:AD	0/1:10,30
-20	577548	.	C	G	.	PASS	TLOD=25.47	GT:AD	0/1:1000,10
+##tumor_sample=sample4
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	sample4
+20	577114	.	G	A	.	PASS	TLOD=26.06	GT:AD	0/1:100,3
+20	577180	.	G	GAAAACA	.	PASS	TLOD=28.87	GT:AD	0/1:30,10
+20	577548	.	C	G	.	PASS	TLOD=25.47	GT:AD	0/1:10000,100
