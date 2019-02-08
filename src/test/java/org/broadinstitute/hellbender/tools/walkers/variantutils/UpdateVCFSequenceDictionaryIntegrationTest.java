@@ -37,7 +37,7 @@ public class UpdateVCFSequenceDictionaryIntegrationTest extends CommandLineProgr
                 // already has a dictionary - but force a replace
                 new Object[]{ new File(testDir, "variantsWithDict.vcf"), new File(testDir, "exampleFASTA.dict"), null, null, true},
                 // already has a dictionary - but force a replace
-                new Object[]{ new File(testDir, "variantsWithDict.vcf"), new File(testDir, "exampleFASTA.dict"), null, true},
+                new Object[]{ new File(testDir, "variantsWithDict.vcf"), new File(testDir, "exampleFASTA.dict"), null, null, true},
         };
     }
 
