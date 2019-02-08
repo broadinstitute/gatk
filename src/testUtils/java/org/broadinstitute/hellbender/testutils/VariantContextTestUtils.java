@@ -36,7 +36,9 @@ import java.util.stream.StreamSupport;
 
 import static org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils.attributeToList;
 
-// This should be:
+// Occasionally Intellij borks the logger import statements
+// to point to logging libraries that do not actually work in GATK.
+// The Logger import statements should be:
 //import org.apache.logging.log4j.LogManager;
 //import org.apache.logging.log4j.Logger;
 
