@@ -383,6 +383,10 @@ public final class BucketUtils {
             // enable requester pays and indicate who pays
             builder = builder.autoDetectRequesterPays(true).userProject(requesterProject);
         }
+
+        //this causes the gcs filesystem to treat files that end in a / as a directory
+        //true is the default but this protects against future changes in behavior
+        builder.usePseudoDirectories(true);
         return builder.build();
     }
 
