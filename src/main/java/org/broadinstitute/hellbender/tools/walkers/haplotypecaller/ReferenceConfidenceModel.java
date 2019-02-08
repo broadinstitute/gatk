@@ -193,6 +193,7 @@ public class ReferenceConfidenceModel {
         final String sampleName = readLikelihoods.getSample(0);
 
         final int globalRefOffset = refSpan.getStart() - activeRegion.getExtendedSpan().getStart();
+        // Note, we use an indexed for-loop here because this method has a large impact on the profile of HaplotypeCaller runtime in GVCF mode
         final int refPileupsSize = refPileups.size();
         for (int i = 0; i < refPileupsSize; i++) {
             final ReadPileup pileup = refPileups.get(i);
@@ -424,7 +425,7 @@ public class ReferenceConfidenceModel {
     private List<VariantContext> getMatchingPriors(final Locatable curPos, final VariantContext call, final List<VariantContext> priorList) {
         final int position = call != null ? call.getStart() : curPos.getStart();
         final List<VariantContext> matchedPriors = new ArrayList<>(priorList.size());
-        // NOTE: a for loop is used here because this method ends up being called per-pileup, per-read and thus using faster alternates saves runtime
+        // NOTE: a for loop is used here because this method ends up being called per-pileup, per-read and using a loop instead of streaming saves runtime
         final int priorsListSize = priorList.size();
         for (int i = 0; i < priorsListSize; i++) {
             if (position == priorList.get(i).getStart()) {
