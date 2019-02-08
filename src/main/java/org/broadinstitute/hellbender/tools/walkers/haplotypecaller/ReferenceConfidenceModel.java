@@ -193,18 +193,20 @@ public class ReferenceConfidenceModel {
         final String sampleName = readLikelihoods.getSample(0);
 
         final int globalRefOffset = refSpan.getStart() - activeRegion.getExtendedSpan().getStart();
-        for ( final ReadPileup pileup : refPileups ) {
+        // Note, we use an indexed for-loop here because this method has a large impact on the profile of HaplotypeCaller runtime in GVCF mode
+        final int refPileupsSize = refPileups.size();
+        for (int i = 0; i < refPileupsSize; i++) {
+            final ReadPileup pileup = refPileups.get(i);
             final Locatable curPos = pileup.getLocation();
             final int offset = curPos.getStart() - refSpan.getStart();
 
             final VariantContext overlappingSite = GATKVariantContextUtils.getOverlappingVariantContext(curPos, variantCalls);
-            final List<VariantContext> currentPriors = getMatchingPriors(curPos, overlappingSite, VCpriors);
-            if ( overlappingSite != null && overlappingSite.getStart() == curPos.getStart() ) {
+            final List<VariantContext> currentPriors = VCpriors.isEmpty() ? Collections.emptyList() : getMatchingPriors(curPos, overlappingSite, VCpriors);
+            if (overlappingSite != null && overlappingSite.getStart() == curPos.getStart()) {
                 if (applyPriors) {
                     results.add(PosteriorProbabilitiesUtils.calculatePosteriorProbs(overlappingSite, currentPriors,
                             numRefSamplesForPrior, options));
-                }
-                else {
+                } else {
                     results.add(overlappingSite);
                 }
             } else {
@@ -420,9 +422,17 @@ public class ReferenceConfidenceModel {
      * @param priorList priors within the current ActiveRegion
      * @return prior VCs representing the same variant position as call
      */
-    List<VariantContext> getMatchingPriors(final Locatable curPos, final VariantContext call, final List<VariantContext> priorList) {
+    private List<VariantContext> getMatchingPriors(final Locatable curPos, final VariantContext call, final List<VariantContext> priorList) {
         final int position = call != null ? call.getStart() : curPos.getStart();
-        return priorList.stream().filter(vc -> position == vc.getStart()).collect(Collectors.toList());
+        final List<VariantContext> matchedPriors = new ArrayList<>(priorList.size());
+        // NOTE: a for loop is used here because this method ends up being called per-pileup, per-read and using a loop instead of streaming saves runtime
+        final int priorsListSize = priorList.size();
+        for (int i = 0; i < priorsListSize; i++) {
+            if (position == priorList.get(i).getStart()) {
+                matchedPriors.add(priorList.get(i));
+            }
+        }
+        return matchedPriors;
     }
 
     /**
