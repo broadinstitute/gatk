@@ -83,10 +83,10 @@ workflow Mutect2 {
     File ref_fasta
     File ref_fai
     File ref_dict
-    File tumor_bam
-    File tumor_bai
-    File? normal_bam
-    File? normal_bai
+    File tumor_reads
+    File tumor_reads_index
+    File? normal_reads
+    File? normal_reads_index
     File? pon
     Int scatter_count
     File? gnomad
@@ -151,9 +151,9 @@ workflow Mutect2 {
 
     # Disk sizes used for dynamic sizing
     Int ref_size = ceil(size(ref_fasta, "GB") + size(ref_dict, "GB") + size(ref_fai, "GB"))
-    Int tumor_bam_size = ceil(size(tumor_bam, "GB") + size(tumor_bai, "GB"))
+    Int tumor_reads_size = ceil(size(tumor_reads, "GB") + size(tumor_reads_index, "GB"))
     Int gnomad_vcf_size = if defined(gnomad) then ceil(size(gnomad, "GB")) else 0
-    Int normal_bam_size = if defined(normal_bam) then ceil(size(normal_bam, "GB") + size(normal_bai, "GB")) else 0
+    Int normal_reads_size = if defined(normal_reads) then ceil(size(normal_reads, "GB") + size(normal_reads_index, "GB")) else 0
 
     # If no tar is provided, the task downloads one from broads ftp server
     Int onco_tar_size = if defined(onco_ds_tar_gz) then ceil(size(onco_ds_tar_gz, "GB") * 3) else 100
@@ -168,16 +168,56 @@ workflow Mutect2 {
     # Small is for metrics/other vcfs
     Float large_input_to_output_multiplier = 2.25
     Float small_input_to_output_multiplier = 2.0
+    Float cram_to_bam_multiplier = 6.0
 
     # logic about output file names -- these are the names *without* .vcf extensions
-    String output_basename = basename(tumor_bam, ".bam")
+    String output_basename = basename(basename(tumor_reads, ".bam"),".cram")  #hacky way to strip either .bam or .cram
     String unfiltered_name = output_basename + "-unfiltered"
     String filtered_name = output_basename + "-filtered"
     String funcotated_name = output_basename + "-funcotated"
 
-    String output_vcf_name = basename(tumor_bam, ".bam") + ".vcf"
+    String output_vcf_name = output_basename + ".vcf"
 
     # Size M2 differently based on if we are using NIO or not
+    Int tumor_cram_to_bam_disk = ceil(tumor_reads_size * cram_to_bam_multiplier)
+    Int normal_cram_to_bam_disk = ceil(normal_reads_size * cram_to_bam_multiplier)
+
+    if (basename(tumor_reads) != basename(tumor_reads, ".cram")) {
+        call CramToBam as TumorCramToBam {
+            input:
+                ref_fasta = ref_fasta,
+                ref_fai = ref_fai,
+                ref_dict = ref_dict,
+                cram = tumor_reads,
+                crai = tumor_reads_index,
+                name = output_basename,
+                disk_size = tumor_cram_to_bam_disk
+        }
+    }
+
+    String normal_or_empty = select_first([normal_reads, ""])
+    if (basename(normal_or_empty) != basename(normal_or_empty, ".cram")) {
+        String normal_basename = basename(basename(normal_or_empty, ".bam"),".cram")
+        call CramToBam as NormalCramToBam {
+            input:
+                ref_fasta = ref_fasta,
+                ref_fai = ref_fai,
+                ref_dict = ref_dict,
+                cram = normal_reads,
+                crai = normal_reads_index,
+                name = normal_basename,
+                disk_size = normal_cram_to_bam_disk
+        }
+    }
+
+    File tumor_bam = select_first([TumorCramToBam.output_bam, tumor_reads])
+    File tumor_bai = select_first([TumorCramToBam.output_bai, tumor_reads_index])
+    File? normal_bam = if defined(normal_reads) then select_first([NormalCramToBam.output_bam, normal_reads]) else normal_reads
+    File? normal_bai = if defined(normal_reads) then select_first([NormalCramToBam.output_bai, normal_reads_index]) else normal_reads_index
+
+    Int tumor_bam_size = ceil(size(tumor_bam, "GB") + size(tumor_bai, "GB"))
+    Int normal_bam_size = if defined(normal_bam) then ceil(size(normal_bam, "GB") + size(normal_bai, "GB")) else 0
+
     Int m2_output_size = tumor_bam_size / scatter_count
     Int m2_per_scatter_size = ((tumor_bam_size + normal_bam_size) / scatter_count) + ref_size + (gnomad_vcf_size / scatter_count) + m2_output_size + disk_pad
 
@@ -434,6 +474,43 @@ workflow Mutect2 {
         File? bamout = MergeBamOuts.merged_bam_out
         File? bamout_index = MergeBamOuts.merged_bam_out_index
         File? maf_segments = CalculateContamination.maf_segments
+    }
+}
+
+task CramToBam {
+
+    File ref_fasta
+    File ref_fai
+    File ref_dict
+    File cram
+    File crai
+    String name
+    Int disk_size
+    Int? mem
+
+    Int machine_mem = if defined(mem) then mem * 1000 else 6000
+
+    #Calls samtools view to do the conversion
+    command {
+        #Set -e and -o says if any command I run fails in this script, make sure to return a failure
+        set -e
+        set -o pipefail
+
+        samtools view -h -T ${ref_fasta} ${cram} |
+            samtools view -b -o ${name}.bam -
+        samtools index -b ${name}.bam
+        mv ${name}.bam.bai ${name}.bai
+    }
+
+    runtime {
+        docker: "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.3.3-1513176735"
+        memory: machine_mem + " MB"
+        disks: "local-disk " + disk_size + " HDD"
+    }
+
+    output {
+        File output_bam = "${name}.bam"
+        File output_bai = "${name}.bai"
     }
 }
 
