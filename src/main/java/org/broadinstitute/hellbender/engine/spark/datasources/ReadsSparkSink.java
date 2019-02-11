@@ -52,8 +52,6 @@ public final class ReadsSparkSink {
     public static void writeReads(
             final JavaSparkContext ctx, final String outputFile, final String referenceFile, final JavaRDD<GATKRead> reads,
             final SAMFileHeader header, ReadsWriteFormat format) throws IOException {
-        // NOTE, we must include 'format==ReadsWriteFormat.SINGLE' to preserve the old default behavior for writing spark output
-        // which would not sort the bam if outputting to ReadsWriteFormat.SINGLE. Please use the overload for different sorting behavior.
         writeReads(ctx, outputFile, referenceFile, reads, header, format, 0, null, true);
     }
 
