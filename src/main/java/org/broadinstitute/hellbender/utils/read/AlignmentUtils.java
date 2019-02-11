@@ -3,10 +3,12 @@ package org.broadinstitute.hellbender.utils.read;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
+import htsjdk.samtools.util.Tuple;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
-import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
@@ -14,7 +16,6 @@ import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignment;
 
 import java.util.*;
-import java.util.function.Function;
 
 
 public final class AlignmentUtils {
@@ -200,48 +201,72 @@ public final class AlignmentUtils {
         return Arrays.copyOfRange(bases, basesStart, basesStop + 1);
     }
 
-    public static byte[] getBasesAlignedOneToOne(final GATKRead read) {
-        return getSequenceAlignedOneToOne(read, r -> r.getBasesNoCopy(), GAP_CHARACTER);
+    /**
+     * Returns the "IGV View" of all the bases and base qualities in a read aligned to the reference according to the cigar, dropping any bases
+     * that might be in the read but aren't in the reference. Any bases that appear in the reference but not the read
+     * will be filled in with GAP_CHARACTER values for the read bases and 0's for base qualities to indicate that they don't exist.
+     *
+     * If the cigar for input read is all matches to the reference then this method will return references to the original
+     * read base/base quality byte arrays in the underlying SamRecord in order to save on array allocation/copying performance effects.
+     *
+     * @param read a read to return aligned to the reference
+     * @return A Pair of byte arrays where the left array corresponds to the bases aligned to the reference and right
+     *         array corresponds to the baseQualities aligned to the reference.
+     */
+    public static Pair<byte[], byte[]> getBasesAndBaseQualitiesAlignedOneToOne(final GATKRead read) {
+        return getBasesAndBaseQualitiesAlignedOneToOne(read, GAP_CHARACTER, (byte)0);
     }
 
-    public static byte[] getBaseQualsAlignedOneToOne(final GATKRead read) {
-        return getSequenceAlignedOneToOne(read, r -> r.getBaseQualitiesNoCopy(), (byte)0);
-    }
-
-    public static byte[] getSequenceAlignedOneToOne(final GATKRead read, final Function<GATKRead, byte[]> bytesProvider, final byte padWith) {
+    private static Pair<byte[], byte[]> getBasesAndBaseQualitiesAlignedOneToOne(final GATKRead read, final byte basePadCharacter, final byte qualityPadCharacter) {
         Utils.nonNull(read);
-        Utils.nonNull(bytesProvider);
-        final Cigar cigar = read.getCigar();
-        final byte[] sequence = bytesProvider.apply(read);
+        // As this code is performance sensitive in the HaplotypeCaller, we elect to use the noCopy versions of these getters.
+        // We can do this because we don't mutate base or quality arrays in this method or in its accessors
+        final byte[] bases = read.getBasesNoCopy();
+        final byte[] baseQualities = read.getBaseQualitiesNoCopy();
+        final int numCigarElements = read.numCigarElements();
+        boolean sawIndel = false;
 
-        if (!cigar.containsOperator(CigarOperator.DELETION) && !cigar.containsOperator(CigarOperator.INSERTION)) {
-            return sequence;
+        // Check if the cigar contains indels
+        // Note that we don't call ContainsOperator() here twice to avoid the performance hit of building stream iterators twice
+        for (int i = 0; i < numCigarElements; i++) {
+            final CigarOperator e = read.getCigarElement(i).getOperator();
+            if (e == CigarOperator.INSERTION || e == CigarOperator.DELETION) {
+                sawIndel = true;
+                break;
+            }
+        }
+        if (!sawIndel) {
+            return new ImmutablePair<>(bases, baseQualities);
         }
         else {
-            final byte[] paddedBases = new byte[CigarUtils.countRefBasesIncludingSoftClips(read, 0, cigar.numCigarElements())];
+            final int numberRefBasesIncludingSoftclips = CigarUtils.countRefBasesIncludingSoftClips(read, 0, numCigarElements);
+            final byte[] paddedBases = new byte[numberRefBasesIncludingSoftclips];
+            final byte[] paddedBaseQualities = new byte[numberRefBasesIncludingSoftclips];
             int literalPos = 0;
             int paddedPos = 0;
-            for ( int i = 0; i < cigar.numCigarElements(); i++ ) {
-                final CigarElement ce = cigar.getCigarElement(i);
+            for ( int i = 0; i < numCigarElements; i++ ) {
+                final CigarElement ce = read.getCigarElement(i);
                 final CigarOperator co = ce.getOperator();
                 if (co.consumesReadBases()) {
                     if (!co.consumesReferenceBases()) {
                         literalPos += ce.getLength();  //skip inserted bases
                     }
                     else {
-                        System.arraycopy(sequence, literalPos, paddedBases, paddedPos, ce.getLength());
+                        System.arraycopy(bases, literalPos, paddedBases, paddedPos, ce.getLength());
+                        System.arraycopy(baseQualities, literalPos, paddedBaseQualities, paddedPos, ce.getLength());
                         literalPos += ce.getLength();
                         paddedPos += ce.getLength();
                     }
                 }
                 else if (co.consumesReferenceBases()) {
                     for ( int j = 0; j < ce.getLength(); j++ ) {  //pad deleted bases
-                        paddedBases[paddedPos] = padWith;
+                        paddedBases[paddedPos] = basePadCharacter;
+                        paddedBaseQualities[paddedPos] = qualityPadCharacter;
                         paddedPos++;
                     }
                 }
             }
-            return paddedBases;
+            return new ImmutablePair<>(paddedBases, paddedBaseQualities);
         }
     }
 
