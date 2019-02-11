@@ -39,8 +39,7 @@ public final class IntervalOverlapReadFilter extends ReadFilter {
     protected final List<String> intervalStrings;
 
     private OverlapDetector<?> detector;
-    private boolean includeUnmapped;
-
+    
     protected final OneShotLogger warning = new OneShotLogger(this.getClass());
 
     /**
