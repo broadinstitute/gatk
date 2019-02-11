@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
+import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -40,7 +41,7 @@ import java.util.stream.Collectors;
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Depth of informative coverage for each sample (DP)")
 public final class DepthPerSampleHC extends GenotypeAnnotation implements StandardHCAnnotation, StandardMutectAnnotation {
-    private final static Logger logger = LogManager.getLogger(DepthPerSampleHC.class);
+    protected final OneShotLogger logger = new OneShotLogger(this.getClass());
 
     @Override
     public void annotate( final ReferenceContext ref,
@@ -53,7 +54,7 @@ public final class DepthPerSampleHC extends GenotypeAnnotation implements Standa
         Utils.nonNull(gb);
 
         if ( likelihoods == null || !g.isCalled() ) {
-            logger.warn("Annotation will not be calculated, genotype is not called or alleleLikelihoodMap is null");
+            logger.warn("Annotation will not be calculated for at least one sample at one variant position -- genotype is not called or alleleLikelihoodMap is null");
             return;
         }
 

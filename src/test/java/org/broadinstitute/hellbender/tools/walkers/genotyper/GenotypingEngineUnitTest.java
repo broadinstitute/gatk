@@ -82,8 +82,8 @@ public class GenotypingEngineUnitTest extends GATKBaseTest {
 
          // Remove deletion
         final List<Genotype> genotypes = Arrays.asList(
-                new GenotypeBuilder("sample1").alleles(gtAlleles).PL(new double[]{0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}).make(),  // first alt
-                new GenotypeBuilder("sample2").alleles(gtAlleles).PL(new double[]{0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0}).make()); // second alt
+                new GenotypeBuilder("sample1").alleles(gtAlleles).PL(new double[]{0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}).make(),  // homVar for first alt -- note that these are doubles, so they get renormalized
+                new GenotypeBuilder("sample2").alleles(gtAlleles).PL(new double[]{0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0}).make()); // homVar for second alt
         final VariantContext vc = new VariantContextBuilder("test", "1",1, refAllele.length(), allelesDel).genotypes(genotypes).make();
         final VariantContext vcOut = genotypingEngine.calculateGenotypes(vc, GenotypeLikelihoodsCalculationModel.INDEL, null);
         Assert.assertFalse(vcOut.getAlleles().contains(altT));
@@ -98,7 +98,7 @@ public class GenotypingEngineUnitTest extends GATKBaseTest {
         final VariantContext vcSpanDel = new VariantContextBuilder("test1", "1",2, 2 + refAlleleSpanDel.length() - 1, vcAllelesSpanDel).
                 genotypes(genotypesSpanDel).make();
         final VariantContext vcOut1 = genotypingEngine.calculateGenotypes(vcSpanDel, GenotypeLikelihoodsCalculationModel.INDEL, null);
-        Assert.assertFalse(vcOut1.getAlleles().contains(Allele.SPAN_DEL));
+        Assert.assertTrue(vcOut1 == null || !vcOut1.getAlleles().contains(Allele.SPAN_DEL));
 
         final List<Allele> mutliAllelicWithSpanDel = new ArrayList<>(Arrays.asList(refAlleleSpanDel, Allele.SPAN_DEL,
                 Allele.create("T")));
@@ -125,7 +125,7 @@ public class GenotypingEngineUnitTest extends GATKBaseTest {
         final VariantContext vcMultiWithSpanDel = new VariantContextBuilder("test2", "1",2, 2 + refAlleleSpanDel.length() - 1, mutliAllelicWithSpanDel).
                 genotypes(regressionGenotypes).make();
         final VariantContext vcOut2 = genotypingEngine.calculateGenotypes(vcMultiWithSpanDel, GenotypeLikelihoodsCalculationModel.SNP, null);
-        Assert.assertFalse(vcOut2 == null || vcOut2.isMonomorphicInSamples());
+        Assert.assertTrue(vcOut2 == null || vcOut2.isMonomorphicInSamples());
     }
 
     @Test //test for https://github.com/broadinstitute/gatk/issues/2530
