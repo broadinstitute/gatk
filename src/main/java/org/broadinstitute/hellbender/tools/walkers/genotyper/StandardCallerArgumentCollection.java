@@ -52,14 +52,14 @@ public class StandardCallerArgumentCollection implements Serializable {
     /**
      * When the caller is put into GENOTYPE_GIVEN_ALLELES mode it will genotype the samples using only the alleles provide in this rod binding
      */
-    @Argument(fullName="alleles", doc="The set of alleles at which to genotype when --genotyping_mode is GENOTYPE_GIVEN_ALLELES", optional=true)
+    @Argument(fullName="alleles", doc="The set of alleles at which to genotype when --genotyping-mode is GENOTYPE_GIVEN_ALLELES", optional=true)
     public FeatureInput<VariantContext> alleles;
 
     /**
      * When set to true an when in GENOTYPE_GIVEN_ALLELES mode all given alleles, even filtered ones, are genotyped
      */
     @Advanced
-    @Argument(fullName = "genotype-filtered-alleles", doc = "Whether to genotype all given alleles, even filtered ones, --genotyping_mode is GENOTYPE_GIVEN_ALLELES", optional = true)
+    @Argument(fullName = "genotype-filtered-alleles", doc = "Whether to genotype all given alleles, even filtered ones, --genotyping-mode is GENOTYPE_GIVEN_ALLELES", optional = true)
     public boolean genotypeFilteredAlleles = false;
 
     /**
