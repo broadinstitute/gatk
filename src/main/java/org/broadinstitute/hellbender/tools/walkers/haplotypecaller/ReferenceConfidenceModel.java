@@ -508,16 +508,18 @@ public class ReferenceConfidenceModel {
                 // since we're not modifying the returned arrays in any way. This makes a small difference
                 // in the HaplotypeCaller profile, since this method is a major hotspot.
                 final Pair<byte[], byte[]> readBasesAndBaseQualities = AlignmentUtils.getBasesAndBaseQualitiesAlignedOneToOne(read);  //calls getBasesNoCopy if CIGAR is all match
+                final byte[] readBases = readBasesAndBaseQualities.getLeft();
+                final byte[] readQualities = readBasesAndBaseQualities.getRight();
 
                 // Don't do any work if we are too close to the back of a read
-                if (readBasesAndBaseQualities.getLeft().length - readStart > maxIndelSize) {
+                if (readBases.length - readStart > maxIndelSize) {
 
                     // Compute where the end of marking would have been given the above two break conditions so we can stop marking there for our cached results
                     final int lastReadBaseToMarkAsIndelRelevant;
                     final boolean referenceWasShorter;
-                    if (readBasesAndBaseQualities.getLeft().length - maxIndelSize < refBases.length - refStart + readStart - maxIndelSize + 1) {
+                    if (readBases.length < refBases.length - refStart + readStart + 1) {
                         // If the read ends first, then we don't mark the last maxIndelSize bases from it as relevant
-                        lastReadBaseToMarkAsIndelRelevant = readBasesAndBaseQualities.getLeft().length - maxIndelSize;
+                        lastReadBaseToMarkAsIndelRelevant = readBases.length - maxIndelSize;
                         referenceWasShorter = false;
                     } else {
                         // If the reference ends first, then we don't mark the last maxIndelSize bases from it as relevant
@@ -527,14 +529,14 @@ public class ReferenceConfidenceModel {
 
 
                     // Compute the absolute baseline sum against which to test
-                    final int[] baselineMMSums = calculateBaselineMMQualities(readBasesAndBaseQualities.getLeft(), readBasesAndBaseQualities.getRight(), readStart, refBases, refStart);
+                    final int[] baselineMMSums = calculateBaselineMMQualities(readBases, readQualities, readStart, refBases, refStart);
 
                     for (int indelSize = 1; indelSize <= maxIndelSize; indelSize++) {
                         // Computing mismatches corresponding to a deletion
                         traverseEndOfReadForIndelMismatches(informativeBases,
                                 readStart,
-                                readBasesAndBaseQualities.getLeft(),
-                                readBasesAndBaseQualities.getRight(),
+                                readBases,
+                                readQualities,
                                 lastReadBaseToMarkAsIndelRelevant,
                                 secondaryReadBreakPosition,
                                 refStart,
@@ -546,8 +548,8 @@ public class ReferenceConfidenceModel {
                         // Computing mismatches corresponding to an insertion
                         traverseEndOfReadForIndelMismatches(informativeBases,
                                 readStart,
-                                readBasesAndBaseQualities.getLeft(),
-                                readBasesAndBaseQualities.getRight(),
+                                readBases,
+                                readQualities,
                                 lastReadBaseToMarkAsIndelRelevant,
                                 secondaryReadBreakPosition,
                                 refStart,
@@ -593,7 +595,7 @@ public class ReferenceConfidenceModel {
      * by this method if they are ambiguous about an indel of the given size. We then flip these values later in the process because
      * an ambiguous indel positions in the read actually return false in isReadInformativeAboutIndelsOfSize.
      *
-     * NOTE: This method examines overhaning bases to the reference/read if they do not end at the same position.
+     * NOTE: This method examines overhanging bases to the reference/read if they do not end at the same position.
      *       (eg. if the reference ends 20 bases after the read does and you are looking at a deletion of size 5, the first
      *       base compared will be the last base of the read and the 15th from last base on the reference)
      */
@@ -602,14 +604,14 @@ public class ReferenceConfidenceModel {
         int sum = 0;
 
         // Compute how many bases forward we should compare taking into account reference/read overhang
-        final int deletionLength = (!insertion) ? 0 : indelSize;
-        final int insertionLength = (insertion) ? 0 : indelSize;
+        final int deletionLength = !insertion ? 0 : indelSize;
+        final int insertionLength = insertion ? 0 : indelSize;
 
-        final int n = Math.min(readBases.length - readStart - deletionLength,
+        final int numberOfBasesToDirectlyCompare = Math.min(readBases.length - readStart - deletionLength,
                 refBases.length - refStart - insertionLength);
 
-        for (int readOffset = n + deletionLength - 1,
-             refOffset = n + insertionLength - 1;
+        for (int readOffset = numberOfBasesToDirectlyCompare + deletionLength - 1,
+             refOffset = numberOfBasesToDirectlyCompare + insertionLength - 1;
              readOffset >= 0 && refOffset >= 0;
              readOffset--, refOffset--) {
 
