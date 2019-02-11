@@ -73,6 +73,8 @@ public final class BwaSpark extends GATKSparkTool {
                 reads = bwaEngine.alignPaired(getUnfilteredReads()).filter(filter::test);
             }
             try {
+                // NOTE, we must include 'shardedOutput' as the input to `sortReadsToMatchHeader` to preserve the old default behavior for writing BwaSpark output
+                // where we would not sort the bam if outputting to a sharded output.
                 ReadsSparkSink.writeReads(ctx, output, null, reads, bwaEngine.getHeader(),
                                             shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE, getRecommendedNumReducers(), shardedPartsDir, shardedOutput);
             } catch (final IOException e) {
