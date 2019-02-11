@@ -140,7 +140,7 @@ public class FilterFuncotations extends VariantWalker {
 
 
         final Map<Allele, FuncotationMap> funcs = FuncotatorUtils.createAlleleToFuncotationMapFromFuncotationVcfAttribute(
-                funcotationKeys, variant, "Gencode_" + reference.gencodeVersion + "_annotationTranscript", "FAKE_SOURCE");
+                funcotationKeys, variant, "gnomAD_genome_ID", "FAKE_SOURCE");
 
         funcs.values().forEach(funcotationMap -> {
             final Stream<Map<String, String>> transcriptFuncotations = funcotationMap.getTranscriptList().stream()
