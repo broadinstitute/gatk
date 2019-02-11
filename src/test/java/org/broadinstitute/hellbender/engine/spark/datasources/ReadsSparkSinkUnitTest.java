@@ -87,6 +87,7 @@ public class ReadsSparkSinkUnitTest extends GATKBaseTest {
     }
 
     // This bam was samtools sorted queryname bam, we expect if this were sorted to match the header that this would no longer match read-for-read due to differences in queryname-sort definitions compared to htsjdk
+    @Test
     public void testReadsSparkSinkNotSortingReadsToHeader() throws IOException {
         final String inputBam = testDataDir + "engine/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.10000000-10000020.with.unmapped.queryname.samtools.sam";
         final File outputFile = createTempFile("ReadsSparkSinkNotSorting", ".bam");
