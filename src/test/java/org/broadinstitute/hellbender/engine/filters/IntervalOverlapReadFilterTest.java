@@ -37,8 +37,9 @@ public final class IntervalOverlapReadFilterTest {
 
     @DataProvider
     public Object[][] keepReadsData() {
-        final IntervalOverlapReadFilter filter = createReadFilter(Arrays.asList("1:100-10000", "2:1-300", "3:1-10"));
+        final IntervalOverlapReadFilter filter = createReadFilter(Arrays.asList("1:100-10000", "2:1-300", "3:1-10", "UNMAPPED"));
         return new Object[][] {
+                {filter, ArtificialReadUtils.createArtificialUnmappedRead(HEADER, new byte[10], new byte[10])},
                 {filter, createRead("1:1-150")},
                 {filter, createRead("1:200-400")},
                 {filter, createRead("2:100-300")},
@@ -60,18 +61,12 @@ public final class IntervalOverlapReadFilterTest {
                 {filter, createRead("1:1-10")},
                 {filter, createRead("1:10001-10010")},
                 {filter, createRead("2:500-600")},
-                {filter, createRead("10:1-100000")}
+                {filter, createRead("10:1-100000")},
         };
     }
 
     @Test(dataProvider = "filteredReadsData")
     public void testFilterOutRead(final IntervalOverlapReadFilter filter, final GATKRead read) {
-        Assert.assertFalse(filter.test(read));
-    }
-
-    @Test(dataProvider = "filteredReadsData", expectedExceptions = UserException.class)
-    public void testFilterErrorsWhenProvidedNoIntervals(final IntervalOverlapReadFilter f, final GATKRead read) {
-        final IntervalOverlapReadFilter filter = createReadFilter(Collections.emptyList());
         Assert.assertFalse(filter.test(read));
     }
 
