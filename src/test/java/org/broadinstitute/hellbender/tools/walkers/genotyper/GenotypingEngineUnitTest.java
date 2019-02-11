@@ -53,6 +53,13 @@ public class GenotypingEngineUnitTest extends GATKBaseTest {
         return new MinimalGenotypingEngine(uac, SAMPLES, new GeneralPloidyFailOverAFCalculatorProvider(genotypeArgs));
     }
 
+    private static GenotypingEngine<?> getNewQualGenotypingEngine() {
+        final GenotypeCalculationArgumentCollection genotypeArgs = new GenotypeCalculationArgumentCollection();
+        final UnifiedArgumentCollection uac = new UnifiedArgumentCollection();
+        uac.genotypeArgs = new GenotypeCalculationArgumentCollection(genotypeArgs);
+        return new MinimalGenotypingEngine(uac, SAMPLES, new GeneralPloidyFailOverAFCalculatorProvider(genotypeArgs));
+    }
+
     @DataProvider(name="testCoveredByDeletionData")
     public Object[][] testCoveredByDeletionData() {
         return new Object[][] {
@@ -92,6 +99,33 @@ public class GenotypingEngineUnitTest extends GATKBaseTest {
                 genotypes(genotypesSpanDel).make();
         final VariantContext vcOut1 = genotypingEngine.calculateGenotypes(vcSpanDel, GenotypeLikelihoodsCalculationModel.INDEL, null);
         Assert.assertFalse(vcOut1.getAlleles().contains(Allele.SPAN_DEL));
+
+        final List<Allele> mutliAllelicWithSpanDel = new ArrayList<>(Arrays.asList(refAlleleSpanDel, Allele.SPAN_DEL,
+                Allele.create("T")));
+        final List<Genotype> regressionGenotypes = Arrays.asList(
+                new GenotypeBuilder("s1564").alleles(gtAlleles).PL(new int[]{ 42,43,45,3,3,0}).make(),
+                new GenotypeBuilder("s1741").alleles(gtAlleles).PL(new int[]{0,0,0,0,0,0}).make(),
+                new GenotypeBuilder("s1851").alleles(gtAlleles).PL(new int[]{0,15,250,15,250,250}).make(),
+                new GenotypeBuilder("s1852").alleles(gtAlleles).PL(new int[]{0,9,184,9,184,184}).make(),
+                new GenotypeBuilder("s1862").alleles(gtAlleles).PL(new int[]{43,0,78,53,84,152}).make(),
+                new GenotypeBuilder("s1901").alleles(gtAlleles).PL(new int[]{210,15,0,216,15,225}).make(),
+                new GenotypeBuilder("s1912").alleles(gtAlleles).PL(new int[]{55,6,0,59,6,74}).make(),
+                new GenotypeBuilder("s1971").alleles(gtAlleles).PL(new int[]{0,3,45,3,45,45}).make(),
+                new GenotypeBuilder("s2017").alleles(gtAlleles).PL(new int[]{55,6,0,59,6,74}).make(),
+                new GenotypeBuilder("s2021").alleles(gtAlleles).PL(new int[]{30,0,123,40,126,168}).make(),
+                new GenotypeBuilder("s2026").alleles(gtAlleles).PL(new int[]{27,0,165,40,168,210}).make(),
+                new GenotypeBuilder("s2056").alleles(gtAlleles).PL(new int[]{0,6,131,9,132,135}).make(),
+                new GenotypeBuilder("s2100").alleles(gtAlleles).PL(new int[]{0,18,311,21,312,315}).make(),
+                new GenotypeBuilder("s2102").alleles(gtAlleles).PL(new int[]{0,12,180,12,180,180}).make(),
+                new GenotypeBuilder("s2104").alleles(gtAlleles).PL(new int[]{0,6,90,6,90,90}).make(),
+                new GenotypeBuilder("s2122").alleles(gtAlleles).PL(new int[]{0,6,90,6,90,90}).make(),
+                new GenotypeBuilder("s2124").alleles(gtAlleles).PL(new int[]{0,0,0,0,0,0}).make(),
+                new GenotypeBuilder("s2151").alleles(gtAlleles).PL(new int[]{52,0,246,74,252,336}).make(),
+                new GenotypeBuilder("s2157").alleles(gtAlleles).PL(new int[]{0,21,315,21,315,315}).make());
+        final VariantContext vcMultiWithSpanDel = new VariantContextBuilder("test2", "1",2, 2 + refAlleleSpanDel.length() - 1, mutliAllelicWithSpanDel).
+                genotypes(regressionGenotypes).make();
+        final VariantContext vcOut2 = genotypingEngine.calculateGenotypes(vcMultiWithSpanDel, GenotypeLikelihoodsCalculationModel.SNP, null);
+        Assert.assertFalse(vcOut2 == null || vcOut2.isMonomorphicInSamples());
     }
 
     @Test //test for https://github.com/broadinstitute/gatk/issues/2530
