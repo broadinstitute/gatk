@@ -74,7 +74,7 @@ public final class BwaSpark extends GATKSparkTool {
             }
             try {
                 ReadsSparkSink.writeReads(ctx, output, null, reads, bwaEngine.getHeader(),
-                                            shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE);
+                                            shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE, getRecommendedNumReducers(), shardedPartsDir, shardedOutput);
             } catch (final IOException e) {
                 throw new GATKException("Unable to write aligned reads", e);
             }
