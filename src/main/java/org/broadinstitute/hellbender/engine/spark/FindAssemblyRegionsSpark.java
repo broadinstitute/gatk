@@ -159,6 +159,8 @@ public class FindAssemblyRegionsSpark {
         // at which points the reads can be filled in. (See next step.)
         JavaRDD<ReadlessAssemblyRegion> readlessAssemblyRegions = contigToGroupedStates
                 .flatMap(getReadlessAssemblyRegionsFunction(header, assemblyRegionArgs));
+        // repartition to distribute the data evenly across the cluster again
+        readlessAssemblyRegions = readlessAssemblyRegions.repartition(readlessAssemblyRegions.getNumPartitions());
 
         // 4. Fill in the reads. Each shard is an assembly region, with its overlapping reads.
         JavaRDD<Shard<GATKRead>> assemblyRegionShardedReads = SparkSharder.shard(ctx, reads, GATKRead.class, header.getSequenceDictionary(), readlessAssemblyRegions, shardingArgs.readShardSize);
