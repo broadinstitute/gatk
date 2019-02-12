@@ -3,7 +3,12 @@ package org.broadinstitute.hellbender.tools.funcotator.filtrationRules;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class FilterFuncotationsExacUtils {
     /**
@@ -23,6 +28,8 @@ public class FilterFuncotationsExacUtils {
      */
     private static String EXAC_ALLELE_NUMBER_PREFIX = "ExAC_AN_";
 
+    private static final Logger logger = LogManager.getLogger(FilterFuncotationsExacUtils.class);
+
     /**
      * Build a {@link FuncotationFiltrationRule} matching Funcotations from variants with a
      * maximum MAF less than some threshold.
@@ -41,19 +48,36 @@ public class FilterFuncotationsExacUtils {
      *
      * If a sub-population has an allele number of zero, it will be assigned a MAF of zero.
      */
-    private static double getMaxMinorAlleleFreq(final Map<String, String> funcotations) {
+    private static double getMaxMinorAlleleFreq(final Set<Map.Entry<String, String>> funcotations) {
         return Arrays.stream(ExacSubPopulation.values())
-                .filter(subpop -> funcotations.containsKey(EXAC_ALLELE_COUNT_PREFIX + subpop.name()))
+                .filter(subpop -> funcotations.stream().anyMatch(entry -> entry.getKey().equals(EXAC_ALLELE_COUNT_PREFIX + subpop.name())))
                 .map(subpop -> {
-                    final Double ac = Double.valueOf(funcotations.get(EXAC_ALLELE_COUNT_PREFIX + subpop.name()));
-                    final Integer an = Integer.valueOf(funcotations.get(EXAC_ALLELE_NUMBER_PREFIX + subpop.name()));
-
-                    if (an == 0) {
-                        // If a variant has never been seen in ExAC, report it as 0% MAF.
+                    final String exacAlleleCount = EXAC_ALLELE_COUNT_PREFIX + subpop.name();
+                    final String exacAlleleNumber = EXAC_ALLELE_NUMBER_PREFIX + subpop.name();
+                    final List<String> keys = Arrays.asList(exacAlleleCount, exacAlleleNumber);
+                    final Set<Map.Entry<String, String>> matchingFuncotations = funcotations.stream().filter(entry -> keys.contains(entry.getKey())).collect(Collectors.toSet());
+                    try {
+                        final Double ac = matchingFuncotations.stream()
+                                .filter(entry1 -> entry1.getKey().equals(exacAlleleCount))
+                                .findFirst()
+                                .map(entry -> Double.valueOf(entry.getValue()))
+                                .orElse(0d);
+                        final Integer an = matchingFuncotations.stream()
+                                .filter(entry1 -> entry1.getKey().equals(exacAlleleNumber))
+                                .findFirst()
+                                .map(entry -> Integer.valueOf(entry.getValue()))
+                                .orElse(0);
+                        if (an == 0) {
+                            // If a variant has never been seen in ExAC, report it as 0% MAF.
+                            return 0d;
+                        } else {
+                            return ac / an;
+                        }
+                    } catch (java.lang.NumberFormatException e) {
+                        logger.warn("Found an inconsistency in the funcotation annotations: " + e.getMessage());
                         return 0d;
-                    } else {
-                        return ac / an;
                     }
+
                 })
                 .max(Double::compareTo)
                 .orElse(0d);
