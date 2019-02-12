@@ -19,7 +19,7 @@ public class ActivityProfileStateRange {
     private final SimpleInterval interval;
     private final double[] activeProb;
     private final ActivityProfileState.Type[] resultState;
-    private final Number[] resultValue;
+    private final double[] resultValue; // don't store as a Number since it uses more memory
 
     public ActivityProfileStateRange(MultiIntervalShard<?> shard, Iterator<ActivityProfileState> activityProfileStateIterator) {
         List<SimpleInterval> intervals = shard.getIntervals();
@@ -27,7 +27,7 @@ public class ActivityProfileStateRange {
         int size = interval.size();
         this.activeProb = new double[size];
         this.resultState = new ActivityProfileState.Type[size];
-        this.resultValue = new Number[size];
+        this.resultValue = new double[size];
 
         int i = 0;
         ActivityProfileState prev = null;
@@ -39,7 +39,8 @@ public class ActivityProfileStateRange {
             }
             activeProb[i] = next.isActiveProb();
             resultState[i] = next.getResultState();
-            resultValue[i] = next.getResultValue();
+            // store null result value as a negative number, since negative numbers are illegal in ActivityProfileState
+            resultValue[i] = next.getResultValue() == null ? Double.NEGATIVE_INFINITY : next.getResultValue().doubleValue();
             i++;
             prev = next;
         }
@@ -59,7 +60,8 @@ public class ActivityProfileStateRange {
                     return endOfData();
                 }
                 int pos = interval.getStart() + i;
-                ActivityProfileState state = new ActivityProfileState(new SimpleInterval(interval.getContig(), pos, pos), activeProb[i], resultState[i], resultValue[i]);
+                double v = resultValue[i];
+                ActivityProfileState state = new ActivityProfileState(new SimpleInterval(interval.getContig(), pos, pos), activeProb[i], resultState[i], v == Double.NEGATIVE_INFINITY ? null : v);
                 i++;
                 return state;
             }
