@@ -299,7 +299,7 @@ public class RevertSamSpark extends GATKSparkTool {
             final String key = rmap.getKey();
             JavaRDD<GATKRead> filteredreads = rmap.getKey()==null? readsReverted :
                                                                     readsReverted.filter(r -> r.getReadGroup().equals(key));
-            writeReads(ctx, rmap.getValue().toString(), filteredreads, headerMap.get(rmap.getKey())); //TODO proper header map
+            writeReads(ctx, rmap.getValue().toString(), filteredreads, headerMap.get(rmap.getKey()), false); //TODO proper header map
         }
     }
 

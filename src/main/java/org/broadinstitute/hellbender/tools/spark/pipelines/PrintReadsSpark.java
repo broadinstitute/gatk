@@ -32,6 +32,6 @@ public final class PrintReadsSpark extends GATKSparkTool {
     protected void runTool(final JavaSparkContext ctx) {
 
         final JavaRDD<GATKRead> reads = getReads();
-        writeReads(ctx, output, reads);
+        writeReads(ctx, output, reads, getHeaderForReads(), false);
     }
 }

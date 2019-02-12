@@ -221,7 +221,7 @@ public class PathSeqScoreSpark extends GATKSparkTool {
         if (outputPath != null) {
             try {
                 ReadsSparkSink.writeReads(ctx, outputPath, null, readsFinal, header,
-                        shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE, recommendedNumReducers, shardedPartsDir);
+                        shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE, recommendedNumReducers, shardedPartsDir, true);
             } catch (final IOException e) {
                 throw new UserException.CouldNotCreateOutputFile(outputPath, "writing failed", e);
             }

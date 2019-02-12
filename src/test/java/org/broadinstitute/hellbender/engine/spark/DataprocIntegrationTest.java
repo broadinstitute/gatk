@@ -58,8 +58,7 @@ public class DataprocIntegrationTest extends CommandLineProgramTest{
         DataprocTestUtils.launchGatkTool(PrintReadsSpark.class.getSimpleName(), argBuilder.getArgsList(), clusterName);
         final File expected = copyLocally(gcsInputPath, "expected");
         final File actual = copyLocally(outputPath, "actual");
-        IntegrationTestSpec.assertMatchingFiles(Collections.singletonList(actual), Collections.singletonList(expected.toString()), true, ValidationStringency.LENIENT);
-        assertReadsAreInCoordinatishOrder(actual);
+        IntegrationTestSpec.assertMatchingFiles(Collections.singletonList(actual), Collections.singletonList(expected.toString()), false, ValidationStringency.LENIENT);
     }
 
     private static void assertReadsAreInCoordinatishOrder(final File bam) {
@@ -117,7 +116,6 @@ public class DataprocIntegrationTest extends CommandLineProgramTest{
         final File actual = copyLocally(bamOut, "actual");
 
         //assert that the output has the right number of reads and they're ordered correctly
-        assertReadsAreInCoordinatishOrder(actual);
         try( ReadsDataSource reader = new ReadsDataSource(actual.toPath())){
             Assert.assertEquals(Iterators.size(reader.iterator()), 1838);
         }

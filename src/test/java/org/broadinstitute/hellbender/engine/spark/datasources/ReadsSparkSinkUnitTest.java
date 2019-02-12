@@ -86,6 +86,31 @@ public class ReadsSparkSinkUnitTest extends GATKBaseTest {
         };
     }
 
+    // This bam was samtools sorted queryname bam, we expect if this were sorted to match the header that this would no longer match read-for-read due to differences in queryname-sort definitions compared to htsjdk
+    @Test
+    public void testReadsSparkSinkNotSortingReadsToHeader() throws IOException {
+        final String inputBam = testDataDir + "engine/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.10000000-10000020.with.unmapped.queryname.samtools.sam";
+        final File outputFile = createTempFile("ReadsSparkSinkNotSorting", ".bam");
+        JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
+
+        ReadsSparkSource readSource = new ReadsSparkSource(ctx);
+        JavaRDD<GATKRead> rddParallelReads = readSource.getParallelReads(inputBam, null);
+        SAMFileHeader header = readSource.getHeader(inputBam, null);
+
+        ReadsSparkSink.writeReads(ctx, outputFile.getPath(), null, rddParallelReads, header, ReadsWriteFormat.SINGLE, 0, null, true, true, false);
+
+        JavaRDD<GATKRead> rddParallelReads2 = readSource.getParallelReads(outputFile.getPath(), null);
+        final List<GATKRead> writtenReads = rddParallelReads2.collect();
+
+        JavaRDD<GATKRead> rddParallelReads3 = readSource.getParallelReads(inputBam, null);
+        final List<GATKRead> inputReads = rddParallelReads3.collect();
+
+        Assert.assertEquals(writtenReads.size(), inputReads.size());
+        for (int i = 0; i < writtenReads.size(); i++) {
+            Assert.assertEquals(writtenReads.get(i), inputReads.get(i), "These bams were likely out of order to eachother, which may have been caused by automatic sorting of the output bam");
+        }
+    }
+
     @Test(dataProvider = "loadReadsBAM", groups = "spark")
     public void readsSinkTest(String inputBam, String outputFileName, String referenceFile, String outputFileExtension, boolean writeBai, boolean writeSbi) throws IOException {
         final File outputFile = createTempFile(outputFileName, outputFileExtension);
@@ -149,7 +174,7 @@ public class ReadsSparkSinkUnitTest extends GATKBaseTest {
         JavaRDD<GATKRead> rddParallelReads = readSource.getParallelReads(inputBam, referenceFile);
         SAMFileHeader header = readSource.getHeader(inputBam, referenceFile);
 
-        ReadsSparkSink.writeReads(ctx, outputPath, referenceFile, rddParallelReads, header, ReadsWriteFormat.SINGLE, 0, outputPartsPath, writeBai, writeSbi);
+        ReadsSparkSink.writeReads(ctx, outputPath, referenceFile, rddParallelReads, header, ReadsWriteFormat.SINGLE, 0, outputPartsPath, writeBai, writeSbi, true);
 
         // check that a bai file is created
         if (IOUtils.isBamFileName(outputPath) && writeBai) {
@@ -189,7 +214,7 @@ public class ReadsSparkSinkUnitTest extends GATKBaseTest {
         rddParallelReads = rddParallelReads.repartition(2); // ensure that the output is in two shards
         SAMFileHeader header = readSource.getHeader(inputBam, referenceFile);
 
-        ReadsSparkSink.writeReads(ctx, outputFile.getAbsolutePath(), referenceFile, rddParallelReads, header, ReadsWriteFormat.SHARDED);
+        ReadsSparkSink.writeReads(ctx, outputFile.getAbsolutePath(), referenceFile, rddParallelReads, header, ReadsWriteFormat.SHARDED, 0, null, false);
         int shards = outputFile.listFiles((dir, name) -> !name.startsWith(".") && !name.startsWith("_")).length;
         Assert.assertEquals(shards, 2);
         // check that no local .crc files are created
@@ -216,7 +241,7 @@ public class ReadsSparkSinkUnitTest extends GATKBaseTest {
                 .filter(r -> !r.isUnmapped()); // filter out unmapped reads (see comment below)
         SAMFileHeader header = readSource.getHeader(inputBam, null);
 
-        ReadsSparkSink.writeReads(ctx, outputDirectory.getAbsolutePath(), null, rddParallelReads, header, ReadsWriteFormat.ADAM);
+        ReadsSparkSink.writeReads(ctx, outputDirectory.getAbsolutePath(), null, rddParallelReads, header, ReadsWriteFormat.ADAM, 0, null, true);
 
         JavaRDD<GATKRead> rddParallelReads2 = readSource.getADAMReads(outputDirectory.getAbsolutePath(), null, header);
         Assert.assertEquals(rddParallelReads.count(), rddParallelReads2.count());

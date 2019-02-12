@@ -180,7 +180,7 @@ public final class PathSeqBwaSpark extends GATKSparkTool {
         try {
             ReadsSparkSink.writeReads(ctx, outputPath, bwaArgs.referencePath, reads, header,
                     shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE,
-                    PSUtils.pathseqGetRecommendedNumReducers(inputBamPath, numReducers, getTargetPartitionSize()), shardedPartsDir);
+                    PSUtils.pathseqGetRecommendedNumReducers(inputBamPath, numReducers, getTargetPartitionSize()), shardedPartsDir, true);
         } catch (final IOException e) {
             throw new UserException.CouldNotCreateOutputFile(outputPath, "Writing failed", e);
         }
