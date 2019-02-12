@@ -409,7 +409,7 @@ public class MarkDuplicatesSparkUtils {
                     if (read.getTransientAttribute(OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME)!=null) {
                         // NOTE: there is a safety check above in getReadsGroupedByName()
                         metrics.READ_PAIR_OPTICAL_DUPLICATES +=
-                                (int)(read.getTransientAttribute(OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME);
+                                (int)(read.getTransientAttribute(OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME));
                     }
                     return new Tuple2<>(library, metrics);
                 })
