@@ -406,10 +406,10 @@ public class MarkDuplicatesSparkUtils {
                     metrics.updateMetrics(read);
                     // NOTE: we use the SAMRecord transientAttribute field here specifically to prevent the already
                     // serialized read from being parsed again here for performance reasons.
-                    if (((SAMRecordToGATKReadAdapter) read).getTransientAttribute(OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME)!=null) {
+                    if (read.getTransientAttribute(OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME)!=null) {
                         // NOTE: there is a safety check above in getReadsGroupedByName()
                         metrics.READ_PAIR_OPTICAL_DUPLICATES +=
-                                (int)((SAMRecordToGATKReadAdapter) read).getTransientAttribute(OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME);
+                                (int)(read.getTransientAttribute(OPTICAL_DUPLICATE_TOTAL_ATTRIBUTE_NAME);
                     }
                     return new Tuple2<>(library, metrics);
                 })

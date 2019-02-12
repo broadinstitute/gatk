@@ -505,7 +505,7 @@ public class ReferenceConfidenceModel {
                                                           final int refStart,
                                                           final int maxIndelSize,
                                                           final boolean useCachedResults) {
-        BitSet cachedResult = (BitSet) ((SAMRecordToGATKReadAdapter)read).getTransientAttribute(INDEL_INFORMATIVE_BASES_CACHE_ATTRIBUTE_NAME);
+        BitSet cachedResult = (BitSet) read.getTransientAttribute(INDEL_INFORMATIVE_BASES_CACHE_ATTRIBUTE_NAME);
         if (cachedResult == null || !useCachedResults) {
             Utils.validate(readStart >= 0, "readStart must >= 0");
             Utils.validate(refStart >= 0, "refStart must >= 0");
@@ -595,7 +595,7 @@ public class ReferenceConfidenceModel {
                 }
             }
             cachedResult = informativeBases;
-            ((SAMRecordToGATKReadAdapter)read).setTransientAttribute(INDEL_INFORMATIVE_BASES_CACHE_ATTRIBUTE_NAME, informativeBases);
+            read.setTransientAttribute(INDEL_INFORMATIVE_BASES_CACHE_ATTRIBUTE_NAME, informativeBases);
         }
         return cachedResult.get(readStart);
     }
