@@ -16,6 +16,9 @@ import java.util.*;
  * In order to use the the behavior, simply extend Pedigree annotation and access its constructors, then call
  * getFounderGenotypes() to extract only the genotypes corresponding to requested founder samples or that appear as founders
  * in the provided pedigree file. If no founderIDs or pedigreeFiles are present, then it defaults to returning all genotypes.
+ *
+ * Alternatively, if a pedigree file has been supplied (not founderIDs) then extending classes can call getTrios() to
+ * return a set of Trio objects corresponding to a parsing of pedigree file.
  */
 public abstract class PedigreeAnnotation extends InfoFieldAnnotation {
     private Collection<String> founderIds;

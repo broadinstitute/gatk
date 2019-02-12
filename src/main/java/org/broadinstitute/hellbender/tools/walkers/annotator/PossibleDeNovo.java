@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
@@ -14,6 +15,7 @@ import org.broadinstitute.hellbender.utils.samples.MendelianViolation;
 import org.broadinstitute.hellbender.utils.samples.Trio;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
+import java.io.File;
 import java.util.*;
 
 /**
@@ -39,48 +41,66 @@ import java.util.*;
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Existence of a de novo mutation in at least one of the given families (hiConfDeNovo, loConfDeNovo)")
 public final class PossibleDeNovo extends PedigreeAnnotation {
+    private final MendelianViolation mendelianViolation;
+    private Set<Trio> trios;
 
+    @VisibleForTesting
     public PossibleDeNovo(final Set<Trio> trios, final double minGenotypeQualityP) {
-        super();//TODO these need tests
+        super((Set<String>) null);
         this.trios = Collections.unmodifiableSet(new LinkedHashSet<>(trios));
         mendelianViolation = new MendelianViolation(minGenotypeQualityP);
     }
 
-    /**
-     * This is dummy constructor that will do nothing until https://github.com/broadinstitute/gatk/issues/1880 is addressed
-     */
+    public PossibleDeNovo(final Set<String> founderIds){
+        super(founderIds);
+        mendelianViolation = new MendelianViolation(DEFAULT_MIN_GENOTYPE_QUALITY_P);
+    }
+
+    public PossibleDeNovo(final File pedigreeFile){
+        super(pedigreeFile);
+        mendelianViolation = new MendelianViolation(DEFAULT_MIN_GENOTYPE_QUALITY_P);
+    }
+
     public PossibleDeNovo(){
-        this(Collections.emptySet(), 0);
+        this((Set<String>) null);
     }
 
     protected final OneShotLogger warning = new OneShotLogger(this.getClass());
 
-
+    // Static thresholds for the denovo calculation
+    public final static double DEFAULT_MIN_GENOTYPE_QUALITY_P = 0; // TODO should this be exposed as a command line argument?
     private static final int hi_GQ_threshold = 20; //WARNING - If you change this value, update the description in GATKVCFHeaderLines
     private static final int lo_GQ_threshold = 10; //WARNING - If you change this value, update the description in GATKVCFHeaderLines
     private static final double percentOfSamplesCutoff = 0.001; //for many, many samples use 0.1% of samples as allele frequency threshold for de novos
     private static final int flatNumberOfSamplesCutoff = 4;
 
-    private final MendelianViolation mendelianViolation;
-    private final Set<Trio> trios;
+    private Set<Trio> initializeAndGetTrios() {
+        if (trios == null) {
+            trios = getTrios();
+        }
+        return trios;
+    }
 
     @Override
-    public List<String> getKeyNames() { return Arrays.asList(
+    public List<String> getKeyNames() {
+        return Arrays.asList(
             GATKVCFConstants.HI_CONF_DENOVO_KEY,
-            GATKVCFConstants.LO_CONF_DENOVO_KEY); }
+            GATKVCFConstants.LO_CONF_DENOVO_KEY);
+    }
 
     @Override
     public Map<String, Object> annotate(final ReferenceContext ref,
                                         final VariantContext vc,
                                         final ReadLikelihoods<Allele> likelihoods) {
         Utils.nonNull(vc);
-        if (trios.isEmpty()){
-            warning.warn("Annotation will not be calculated, must provide a valid PED file (-ped) from the command line.");
+        Set<Trio> trioSet = initializeAndGetTrios();
+        if (trioSet.isEmpty()){
+            warning.warn("PossibleDenovo Annotation will not be calculated, must provide a valid PED file (-ped) from the command line.");
             return Collections.emptyMap();
         }
         final List<String> highConfDeNovoChildren = new ArrayList<>();
         final List<String> lowConfDeNovoChildren = new ArrayList<>();
-        for (final Trio trio : trios) {
+        for (final Trio trio : trioSet) {
             if (vc.isBiallelic() &&
                 PossibleDeNovo.contextHasTrioLikelihoods(vc, trio) &&
                 mendelianViolation.isViolation(trio.getMother(), trio.getFather(), trio.getChild(), vc) &&

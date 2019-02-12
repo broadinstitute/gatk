@@ -262,6 +262,13 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
+    public void testPossibleDenovoAnnotation() throws IOException {
+        assertVariantContextsMatch(getTestFile("trioGGVCF.vcf.gz"),
+                new File(getToolTestDataDir() + "trioVA.denovo.vcf"),
+                Arrays.asList("-A", "PossibleDeNovo", "--" + StandardArgumentDefinitions.PEDIGREE_FILE_LONG_NAME, getToolTestDataDir() + "trio.ped"), b37_reference_20_21);
+    }
+
+    @Test
     public void testUsingExpressionMultiAllele() throws IOException {
         assertVariantContextsMatch(getTestFile("vcfexample3empty-multiAllele.vcf"),
                 getTestFile("expected/testUsingExpressionMultiAllele.vcf"),
