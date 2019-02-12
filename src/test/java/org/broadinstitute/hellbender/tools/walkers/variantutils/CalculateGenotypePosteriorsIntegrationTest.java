@@ -57,6 +57,7 @@ public final class CalculateGenotypePosteriorsIntegrationTest extends CommandLin
 
     @Test
     //use the first 20 variants to save time; they have a nice range of AC from 4 to over 4000
+    //three variants have GTs with zero depth and PLs=[1,0,0], which should get PPs
     public void testUsingDiscoveredAF() throws IOException {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
                         " -O %s" +

@@ -187,7 +187,26 @@ public final class PosteriorProbabilitiesUtils {
 
     // return the double[] of likelihoods if available, otherwise null
     private static double[] getLikelihoodsVector(Genotype genotype) {
-        return genotype.hasLikelihoods() ? genotype.getLikelihoods().getAsVector() : null;
+        return hasRealLikelihoods(genotype) ? genotype.getLikelihoods().getAsVector() : null;
+    }
+
+    /**
+     * return true if the genotype contains real data for likelihoods, not just zero placeholder
+     */
+    private static boolean hasRealLikelihoods(Genotype genotype) {
+        if (!genotype.hasLikelihoods()) {
+            return false;
+        }
+        if (genotype.hasDP() && genotype.getDP() == 0) {
+            int[] pls = genotype.getPL();
+            for (int i = 0; i < pls.length; i++) {
+                if (pls[i] > 0) {
+                    return true;
+                }
+            }
+            return false;  //if there's no depth and the PLs are all zero, then there's really no data here; don't rely on no-call
+        }
+        return true;
     }
 
     /**
