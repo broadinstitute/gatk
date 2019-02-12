@@ -18,6 +18,7 @@ workflow MitochondriaCalling {
   String? m2_extra_args
   File blacklisted_sites
   File blacklisted_sites_index
+  Int mean_coverage
   Float? autosomal_coverage
   Float contamination
   #max_read_length is only used for an optimization. If it's too small CollectWgsMetrics might fail, but the results are not affected by this number.
@@ -28,18 +29,7 @@ workflow MitochondriaCalling {
   #Optional runtime arguments
   Int? preemptible_tries
 
-  call CollectWgsMetrics {
-    input:
-      input_bam = input_bam,
-      input_bam_index = input_bam_index,
-      ref_fasta = ref_fasta,
-      ref_fasta_index = ref_fasta_index,
-      read_length = max_read_length,
-      coverage_cap = 100000,
-      preemptible_tries = preemptible_tries
-  }
-
-  Int? M2_mem = if CollectWgsMetrics.mean_coverage > 25000 then 14 else 7
+  Int? M2_mem = if mean_coverage > 25000 then 14 else 7
 
   call M2AndFilter {
     input:
@@ -49,10 +39,6 @@ workflow MitochondriaCalling {
       input_bam = input_bam,
       input_bai = input_bam_index,
       compress = false,
-      # The minimum pruning value for the assembly graph in M2 defaults to 1. This only makes sense at low depths so we
-      # need this number to scale with mean coverage. Ideally this knob should be removed once dynamic pruning has been
-      # added to M2.
-      prune = (CollectWgsMetrics.mean_coverage / 500) + 1,
       max_alt_allele_count = 4,
       lod = lod_cutoff,
       contamination = contamination,
@@ -66,64 +52,8 @@ workflow MitochondriaCalling {
   }
 
   output {
-    File coverage_metrics = CollectWgsMetrics.metrics
-    File theoretical_sensitivity_metrics = CollectWgsMetrics.theoretical_sensitivity
-    Int mean_coverage = CollectWgsMetrics.mean_coverage
     File vcf = M2AndFilter.filtered_vcf
     File vcf_index = M2AndFilter.filtered_vcf_idx
-  }
-}
-
-task CollectWgsMetrics {
-  File input_bam
-  File input_bam_index
-  File ref_fasta
-  File ref_fasta_index
-  Int? read_length
-  Int read_length_for_optimization = select_first([read_length, 151])
-  Int? coverage_cap
-
-  Int? preemptible_tries
-  Float ref_size = size(ref_fasta, "GB") + size(ref_fasta_index, "GB")
-  Int disk_size = ceil(size(input_bam, "GB") + ref_size) + 20
-
-  meta {
-    description: "Collect coverage metrics"
-  }
-  parameter_meta {
-    read_length: "Read length used for optimization only. If this is too small CollectWgsMetrics might fail. Default is 151."
-  }
-
-  command <<<
-    set -e
-
-    java -Xms2000m -jar /usr/gitc/picard.jar \
-      CollectWgsMetrics \
-      INPUT=${input_bam} \
-      VALIDATION_STRINGENCY=SILENT \
-      REFERENCE_SEQUENCE=${ref_fasta} \
-      OUTPUT=metrics.txt \
-      USE_FAST_ALGORITHM=true \
-      READ_LENGTH=${read_length_for_optimization} \
-      ${"COVERAGE_CAP=" + coverage_cap} \
-      INCLUDE_BQ_HISTOGRAM=true \
-      THEORETICAL_SENSITIVITY_OUTPUT=theoretical_sensitivity.txt
-
-    R --vanilla <<CODE
-      df = read.table("metrics.txt",skip=6,header=TRUE,stringsAsFactors=FALSE,sep='\t',nrows=1)
-      write.table(floor(df[,"MEAN_COVERAGE"]), "mean_coverage.txt", quote=F, col.names=F, row.names=F)
-    CODE
-  >>>
-  runtime {
-    preemptible: select_first([preemptible_tries, 5])
-    memory: "3 GB"
-    disks: "local-disk " + disk_size + " HDD"
-    docker: "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.1-1540490856"
-  }
-  output {
-    File metrics = "metrics.txt"
-    File theoretical_sensitivity = "theoretical_sensitivity.txt"
-    Int mean_coverage = read_int("mean_coverage.txt")
   }
 }
 
@@ -138,7 +68,6 @@ task M2AndFilter {
   Boolean compress
   File? gga_vcf
   File? gga_vcf_idx
-  Int prune
   Float? autosomal_coverage
 
   String output_vcf = "output" + if compress then ".vcf.gz" else ".vcf"
@@ -188,7 +117,6 @@ task M2AndFilter {
         -O raw.vcf \
         ${true='--bam-output bamout.bam' false='' make_bamout} \
         ${m2_extra_args} \
-        --min-pruning ${prune} \
         ${"--median-autosomal-coverage " + autosomal_coverage} \
         --annotation StrandBiasBySample \
         --mitochondria-mode \
@@ -209,7 +137,7 @@ task M2AndFilter {
         --mask-name "blacklisted_site"
   >>>
   runtime {
-      docker: "us.gcr.io/broad-gatk/gatk:4.0.11.0"
+      docker: "us.gcr.io/broad-gatk/gatk:4.1.0.0"
       memory: machine_mem + " MB"
       disks: "local-disk " + disk_size + " HDD"
       preemptible: select_first([preemptible_tries, 5])
