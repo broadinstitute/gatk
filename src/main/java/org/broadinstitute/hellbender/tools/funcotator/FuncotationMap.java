@@ -213,9 +213,10 @@ public class FuncotationMap {
                 values[values.length - 1] = values[values.length - 1].replace(VcfOutputRenderer.END_TRANSCRIPT_DELIMITER, "");
             }
             if (values.length != funcotationKeys.length) {
-                logger.error("Keys:  " + StringUtils.join(funcotationKeys, ", "));
-                logger.error("Values:  " + StringUtils.join(values, ", "));
-                throw new GATKException.ShouldNeverReachHereException("Cannot parse the funcotation attribute.  Num values: " + values.length + "   Num keys: " + funcotationKeys.length);
+                logger.warn("Keys:  " + StringUtils.join(funcotationKeys, ", "));
+                logger.warn("Values:  " + StringUtils.join(values, ", "));
+                logger.warn("Cannot parse the funcotation attribute.  Num values: " + values.length + "   Num keys: " + funcotationKeys.length + ". Skipping variant");
+                continue;
             }
             final Map<String, String> simpleNameValuePairs = IntStream.range(0, values.length).boxed().collect(Collectors
                     .toMap(i -> funcotationKeys[i], i-> values[i]));
