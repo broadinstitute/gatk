@@ -500,9 +500,7 @@ public class ReferenceConfidenceModel {
             BitSet informativeBases = new BitSet(read.getLength());
 
             // Check that we aren't so close to the end of the end of the read that we don't have to compute anything more
-            if ( !(read.getLength() - readStart < maxIndelSize) && !(refBases.length - refStart < maxIndelSize) ) {
-                //TODO this should be removed, see https://github.com/broadinstitute/gatk/issues/5646 to track its progress
-                final int secondaryReadBreakPosition = read.getLength() - maxIndelSize;
+            if ( !(refBases.length - refStart < maxIndelSize) ) {
 
                 // We are safe to use the faster no-copy versions of getBases and getBaseQualities here,
                 // since we're not modifying the returned arrays in any way. This makes a small difference
@@ -538,7 +536,6 @@ public class ReferenceConfidenceModel {
                                 readBases,
                                 readQualities,
                                 lastReadBaseToMarkAsIndelRelevant,
-                                secondaryReadBreakPosition,
                                 refStart,
                                 refBases,
                                 baselineMMSums,
@@ -551,7 +548,6 @@ public class ReferenceConfidenceModel {
                                 readBases,
                                 readQualities,
                                 lastReadBaseToMarkAsIndelRelevant,
-                                secondaryReadBreakPosition,
                                 refStart,
                                 refBases,
                                 baselineMMSums,
@@ -559,18 +555,13 @@ public class ReferenceConfidenceModel {
                                 true);
                     }
 
-
-                    // Flip the bases at the front of the read (the ones not within maxIndelSize of the end as those are never informative)
-                    if ( lastReadBaseToMarkAsIndelRelevant <= secondaryReadBreakPosition) {
-                        // Resolve the fact that the old approach would always mark the last base examined as being indel uninformative when the reference
-                        // ends first despite it corresponding to a comparison of zero bases against the read
-                        if (referenceWasShorter) {
-                            informativeBases.set(lastReadBaseToMarkAsIndelRelevant - 1, true);
-                        }
-                        informativeBases.flip(0, lastReadBaseToMarkAsIndelRelevant);
-                    } else {
-                        informativeBases.flip(0, secondaryReadBreakPosition + 1);
+                    // Resolve the fact that the old approach would always mark the last base examined as being indel uninformative when the reference
+                    // ends first despite it corresponding to a comparison of zero bases against the read
+                    if (referenceWasShorter) {
+                        informativeBases.set(lastReadBaseToMarkAsIndelRelevant - 1, true);
                     }
+                    // Flip the bases at the front of the read (the ones not within maxIndelSize of the end as those are never informative)
+                    informativeBases.flip(0, lastReadBaseToMarkAsIndelRelevant);
 
                 }
             }
@@ -599,7 +590,7 @@ public class ReferenceConfidenceModel {
      *       (eg. if the reference ends 20 bases after the read does and you are looking at a deletion of size 5, the first
      *       base compared will be the last base of the read and the 15th from last base on the reference)
      */
-    private static void traverseEndOfReadForIndelMismatches(final BitSet informativeBases, final int readStart, final byte[] readBases, final byte[] readQuals, final int lastReadBaseToMarkAsIndelRelevant,  final int secondaryReadBreakPosition, final int refStart, final byte[] refBases,  final int[] baselineMMSums, final int indelSize, final boolean insertion) {
+    private static void traverseEndOfReadForIndelMismatches(final BitSet informativeBases, final int readStart, final byte[] readBases, final byte[] readQuals, final int lastReadBaseToMarkAsIndelRelevant, final int refStart, final byte[] refBases,  final int[] baselineMMSums, final int indelSize, final boolean insertion) {
         final int globalMismatchCostForReadAlignedToReference = baselineMMSums[0];
         int sum = 0;
 
@@ -630,12 +621,10 @@ public class ReferenceConfidenceModel {
             // If it's a real character and the cost isn't greater than the non-indel cost, label it as uninformative
             if (readBases[readStart + siteOfRealComparisonPoint] != AlignmentUtils.GAP_CHARACTER) {
                 if (readStart + siteOfRealComparisonPoint < lastReadBaseToMarkAsIndelRelevant) {
-                    // Resolving the edge case involving read.getLength() disagreeing with the realigned indel length
-                    if (readStart + siteOfRealComparisonPoint <= secondaryReadBreakPosition) {
-                        if (baselineMMSums[siteOfRealComparisonPoint] >= sum) {
-                            informativeBases.set(readStart + siteOfRealComparisonPoint, true); // Label with true here because we flip these results later
-                        }
+                    if (baselineMMSums[siteOfRealComparisonPoint] >= sum) {
+                        informativeBases.set(readStart + siteOfRealComparisonPoint, true); // Label with true here because we flip these results later
                     }
+
                 }
             }
         }
