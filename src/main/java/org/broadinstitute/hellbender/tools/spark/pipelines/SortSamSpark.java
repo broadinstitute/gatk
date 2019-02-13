@@ -18,6 +18,17 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import java.util.Collections;
 import java.util.List;
 
+
+/**
+ * <h3>Additional Notes</h3>
+ * <ul>
+ *     <li>Running Spark tools such as SortSamSpark require a significant amount of disk operations, it is recommended that
+ *     this tool be run with both the input data and outputs on high throughput SSDs wherever possible. For example, when running
+ *     SortSamSpark on Google Compute Engine it is recommended requisitioning machines with LOCAL SSDs for for best performance.</li>
+ *     <li>It is also recommended that this the spark temp directory be explicitly set to an available SSD when running this
+ *     tool on a single machine by adding the argument --conf 'spark.local.dir=/PATH/TO/TEMP/DIR'</li>
+ * </ul>
+ */
 @DocumentedFeature
 @CommandLineProgramProperties(summary = "Sorts the input SAM/BAM/CRAM",
         oneLineSummary = "SortSam on Spark (works on SAM/BAM/CRAM)",

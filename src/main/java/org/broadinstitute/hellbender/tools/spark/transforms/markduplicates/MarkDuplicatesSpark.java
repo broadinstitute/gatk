@@ -69,9 +69,9 @@ import java.util.*;
  *
  * <p>MarkDuplicates also produces a metrics file indicating the numbers of duplicates for both single- and paired-end reads.</p>
  *
- * <p>The program can take either coordinate-sorted or query-sorted inputs, however it is recommended that the input be
+ * <p>The tool can take either coordinate-sorted or query-sorted inputs, however it is recommended that the input be
  *    query-sorted or query-grouped as the tool will have to perform an extra sort operation on the data in order to associate
- *    reads from the input bam with their mates.</p>
+ *    reads from the input bam with their mates. This can result in the tool being up to 2x slower under some circumstances.</p>
  *
  * <p>If desired, duplicates can be removed using the 'remove-all-duplicates' and 'remove-sequencing-duplicates' options.</p>
  *
@@ -109,6 +109,15 @@ import java.util.*;
  *    <a href='http://broadinstitute.github.io/picard/picard-metric-definitions.html#DuplicationMetrics'>MarkDuplicates</a>
  *    for detailed explanations of the output metrics.
  *    <hr />
+ *
+ * <h3>Additional Notes</h3>
+ * <ul>
+ *     <li>Running Spark tools such as MarkDuplicatesSpark require a significant amount of disk operations, it is recommended that
+ *     this tool be run with both the input data and outputs on high throughput SSDs wherever possible. For example, when running
+ *     MarkDuplicatesSpark on Google Compute Engine it is recommended requisitioning machines with LOCAL SSDs for for best performance.</li>
+ *     <li>It is also recommended that this the spark temp directory be explicitly set to an available SSD when running this
+ *     tool on a single machine by adding the argument --conf 'spark.local.dir=/PATH/TO/TEMP/DIR'</li>
+ * </ul>
  */
 @DocumentedFeature
 @CommandLineProgramProperties(
