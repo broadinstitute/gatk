@@ -658,7 +658,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         for(VariantContext v : variants){
             Assert.assertEquals((Boolean)v.filtersWereApplied(), expectedStatus.next());  //toString below can't distinguish between PASS and unfiltered
-            final List<String> sortedFilters = new ArrayList(v.getFilters());
+            final List<String> sortedFilters = new ArrayList<>(v.getFilters());
             Collections.sort(sortedFilters);
             Assert.assertEquals(sortedFilters.toString(), expectedFilters.next(), "filters don't match expected");
         }

@@ -344,7 +344,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
 
     @Test
     public void testGenotypingForSomaticGVCFs() throws IOException{
-        final List<Integer> starPositions = new ArrayList();
+        final List<Integer> starPositions = new ArrayList<>();
         starPositions.add(319);
         starPositions.add(321);
         starPositions.add(322);
