@@ -166,6 +166,14 @@ public final class AssemblyRegion implements Locatable {
         return isActive;
     }
 
+    /**
+     * Override activity state of the region
+     *
+     * Note: Changing the isActive state after construction is a debug-level operation that only engine classes
+     * like AssemblyRegionWalker should be able to do
+     *
+     * @param value new activity state of this region
+     */
     void setIsActive(final boolean value) {
         isActive = value;
     }

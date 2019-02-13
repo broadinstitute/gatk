@@ -76,7 +76,7 @@ public abstract class AssemblyRegionWalker extends GATKTool {
     protected int maxProbPropagationDistance = defaultMaxProbPropagationDistance();
 
     @Advanced
-    @Argument(fullName = FORCE_ACTIVE_REGIONS_LONG_NAME, doc = "If provided, all bases will be tagged as active", optional = true)
+    @Argument(fullName = FORCE_ACTIVE_REGIONS_LONG_NAME, doc = "If provided, all regions will be marked as active", optional = true)
     protected boolean forceActive = false;
 
     /**
