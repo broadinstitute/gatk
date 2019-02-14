@@ -391,6 +391,18 @@ public final class PosteriorProbabilitiesUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(arraysEq(expectedPPs, _mleparse((List<Integer>)test1result.getGenotype(0).getAnyAttribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY))), "");
     }
 
+    @Test
+    public void testGenotypesWithNoDataDoNotChange() {
+        final GenotypeBuilder gb = new GenotypeBuilder("s1").
+                alleles(Arrays.asList(Allele.NO_CALL, Allele.NO_CALL)).DP(0).AD(new int[]{0,0}).GQ(0).PL(new int[]{0,0,0});
+        final VariantContext vc = makeVC("noCall", Arrays.asList(Aref, Allele.create("T")), gb.make());
+        final List<VariantContext> resources = new ArrayList<>();
+        resources.add(new VariantContextBuilder(makeVC("2", Arrays.asList(Aref,T))).attribute(GATKVCFConstants.MLE_ALLELE_COUNT_KEY,500).attribute(VCFConstants.ALLELE_NUMBER_KEY,1000).make());
+        final VariantContext result = PosteriorProbabilitiesUtils.calculatePosteriorProbs(vc, resources, 0, defaultOptions);
+        Assert.assertTrue(result.getGenotype("s1").isNoCall());
+        Assert.assertFalse(result.getGenotype("s1").hasExtendedAttribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY));
+    }
+
     private double[] pl2gl(final int[] pl) {
         final double[] gl = new double[pl.length];
         for ( int idx = 0; idx < gl.length; idx++ ) {

@@ -1221,6 +1221,11 @@ public final class MathUtils {
         return maxElementIndex(Utils.nonNull(array), 0, endIndex);
     }
 
+    public static int arrayMax(final int[] array) {
+        Utils.nonNull(array);
+        return array[maxElementIndex(array)];
+    }
+
     public static double arrayMax(final double[] array) {
         Utils.nonNull(array);
         return array[maxElementIndex(array)];

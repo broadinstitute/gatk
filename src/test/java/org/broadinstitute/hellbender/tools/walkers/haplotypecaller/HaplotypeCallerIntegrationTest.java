@@ -358,7 +358,9 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
 
         for (final VariantContext vc : results.getRight()) {
             final Genotype g = vc.getGenotype(0);
-            Assert.assertTrue(g.hasExtendedAttribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY));
+            if (g.hasDP() && g.getDP() > 0 && g.hasGQ() && g.getGQ() > 0) {
+                Assert.assertTrue(g.hasExtendedAttribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY));
+            }
             if (isGVCFReferenceBlock(vc) ) {
                 Assert.assertTrue(!vc.hasAttribute(GATKVCFConstants.GENOTYPE_PRIOR_KEY));
             }
