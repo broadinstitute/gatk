@@ -7,6 +7,7 @@ import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AlleleSpecificAnnotationData;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotationData;
@@ -441,7 +442,7 @@ public final class ReferenceConfidenceVariantContextMerger {
                         values.add(parseNumericInfoAttributeValue(vcfInputHeader, key, value.toString()));
                     }
                     else {
-                        String[] valueArray = value.toString().split("\\[|, |\\]");
+                        String[] valueArray = value.toString().split("\\[|" + AnnotationUtils.LIST_DELIMITER +  "|\\]");
                         for (final Object val : valueArray) {
                             if (!val.equals("")) {
                                 values.add(parseNumericInfoAttributeValue(vcfInputHeader, key, val.toString()));

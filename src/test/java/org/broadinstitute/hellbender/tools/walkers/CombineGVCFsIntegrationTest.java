@@ -468,7 +468,7 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
             if (vc.getStart() == 14872) {
                 Assert.assertTrue(!vc.isFiltered());
                 Assert.assertTrue(!vc.getGenotype(0).isFiltered());
-                Assert.assertTrue(vc.getGenotype(1).getFilters().contains("t_lod"));
+                Assert.assertTrue(vc.getGenotype(1).getFilters().contains(GATKVCFConstants.TUMOR_LOD_FILTER_NAME));
             }
         }
 

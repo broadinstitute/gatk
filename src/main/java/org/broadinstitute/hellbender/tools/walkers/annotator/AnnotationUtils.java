@@ -15,6 +15,8 @@ import java.util.List;
 public final class AnnotationUtils {
     private AnnotationUtils(){}
 
+    public static final String LIST_DELIMITER = ",";
+
     /**
      * Helper function to parse the list into the annotation string
      * @param valueList the ArrayList returned from StrandBiasBySample.annotate()
@@ -25,7 +27,7 @@ public final class AnnotationUtils {
         for (Double d : valueList) {
             outputList.add(String.format(precisionFormat, d));
         }
-        return StringUtils.join(outputList, ",");
+        return StringUtils.join(outputList, LIST_DELIMITER);
     }
 
     /**

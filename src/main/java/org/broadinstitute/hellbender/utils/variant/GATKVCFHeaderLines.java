@@ -62,7 +62,11 @@ public class GATKVCFHeaderLines {
 
     public static VCFFormatHeaderLine getEquivalentFormatHeaderLine(final String infoFieldKey) {
         final VCFInfoHeaderLine infoLine = getInfoLine(infoFieldKey);
-        return new VCFFormatHeaderLine(infoLine.getID(), infoLine.getCountType(), infoLine.getType(), infoLine.getDescription());
+        if (infoLine.isFixedCount()) {
+            return new VCFFormatHeaderLine(infoLine.getID(), infoLine.getCount(), infoLine.getType(), infoLine.getDescription());
+        } else {
+            return new VCFFormatHeaderLine(infoLine.getID(), infoLine.getCountType(), infoLine.getType(), infoLine.getDescription());
+        }
     }
 
     static {
