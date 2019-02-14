@@ -306,7 +306,6 @@ public class VariantEval extends MultiVariantWalker {
     @Override
     public void onTraversalStart() {
         Utils.nonNull(outFile);
-        IOUtils.assertFileIsReadable(outFile.toPath());
 
         // Just list the modules, and exit quickly.
         if (LIST) { variantEvalUtils.listModulesAndExit(); }
