@@ -11,7 +11,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.gcs.GoogleStorageUtils;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.testutils.SamAssertionUtils;
 import org.testng.Assert;
@@ -152,8 +152,8 @@ public final class ApplyBQSRIntegrationTest extends CommandLineProgramTest {
     @Test(dataProvider = "ApplyBQSRTest", groups={"bucket"})
     public void testApplyBQSRCloud(ABQSRTest params) throws IOException {
         // getTempFilePath also deletes the file on exit.
-        final String outString = BucketUtils.getTempFilePath(getGCPTestStaging() + "tmp/testApplyBQSRCloud",  params.outputExtension);
-        final Path outPath = BucketUtils.getPathOnGcs(outString);
+        final String outString = GoogleStorageUtils.getTempFilePath(getGCPTestStaging() + "tmp/testApplyBQSRCloud", params.outputExtension);
+        final Path outPath = GoogleStorageUtils.getPathOnGcs(outString);
         final ArrayList<String> args = new ArrayList<>();
         Path refPath = null;
 

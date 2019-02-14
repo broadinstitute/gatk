@@ -16,7 +16,7 @@ import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.TraversalParameters;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.gcs.GoogleStorageUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.*;
 import org.broadinstitute.hellbender.utils.spark.SparkUtils;
@@ -154,7 +154,7 @@ public final class ReadsSparkSource implements Serializable {
      */
     public SAMFileHeader getHeader(final String filePath, final String referencePath) {
         // GCS case
-        if (BucketUtils.isCloudStorageUrl(filePath)) {
+        if (GoogleStorageUtils.isCloudStorageUrl(filePath)) {
             try (ReadsDataSource readsDataSource = new ReadsDataSource(IOUtils.getPath(filePath))) {
                 return readsDataSource.getHeader();
             }

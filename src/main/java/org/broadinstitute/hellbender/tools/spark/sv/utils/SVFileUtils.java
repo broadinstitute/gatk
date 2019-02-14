@@ -4,10 +4,10 @@ import htsjdk.samtools.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.utils.HopscotchSet;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.*;
+import java.nio.file.Files;
 import java.util.*;
 
 public final class SVFileUtils {
@@ -46,8 +46,8 @@ public final class SVFileUtils {
         final Set<SVKmer> kmers;
 
         try ( final BufferedReader rdr =
-                      new BufferedReader(new InputStreamReader(BucketUtils.openFile(kmersFilePath))) ) {
-            final long fileLength = BucketUtils.fileSize(kmersFilePath);
+                      new BufferedReader(new InputStreamReader(IOUtils.openInputStream(IOUtils.getPath(kmersFilePath)))) ) {
+            final long fileLength = Files.size(IOUtils.getPath(kmersFilePath));
             kmers = new HopscotchSet<>((int)(fileLength/(kSize+1)));
             String line;
             while ( (line = rdr.readLine()) != null ) {
@@ -75,7 +75,7 @@ public final class SVFileUtils {
     public static <KType extends SVKmer> void writeKmersFile(final String kmersFilePath, final int kSize,
                                                              final Collection<KType> kmers) {
         try ( final Writer writer =
-                      new BufferedWriter(new OutputStreamWriter(BucketUtils.createFile(kmersFilePath))) ) {
+                      new BufferedWriter(new OutputStreamWriter(IOUtils.openOutputStream(IOUtils.getPath(kmersFilePath)))) ) {
             for ( final KType kmer : kmers ) {
                 writer.write(kmer.toString(kSize));
                 writer.write('\n');
@@ -94,8 +94,8 @@ public final class SVFileUtils {
 
         final List<SVInterval> intervals;
         try ( final BufferedReader rdr =
-                      new BufferedReader(new InputStreamReader(BucketUtils.openFile(intervalsFilePath))) ) {
-            final long sizeGuess = BucketUtils.fileSize(intervalsFilePath)/25; // 25 is a guess on file line length
+                      new BufferedReader(new InputStreamReader(IOUtils.openInputStream(IOUtils.getPath(intervalsFilePath)))) ) {
+            final long sizeGuess = Files.size(IOUtils.getPath(intervalsFilePath)) /25; // 25 is a guess on file line length
             intervals = new ArrayList<>((int)sizeGuess);
             String line;
             int lineNo = 0;
@@ -131,7 +131,7 @@ public final class SVFileUtils {
     public static void writeIntervalsFile( final String intervalsFilePath,
                                            final Collection<SVInterval> intervals, final List<String> contigNames ) {
         try (final OutputStreamWriter writer = new OutputStreamWriter(new BufferedOutputStream(
-                BucketUtils.createFile(intervalsFilePath)))) {
+                IOUtils.openOutputStream(IOUtils.getPath(intervalsFilePath))))) {
             for (final SVInterval interval : intervals) {
                 final String seqName = contigNames.get(interval.getContig());
                 writer.write(seqName + "\t" + interval.getStart() + "\t" + interval.getEnd() + "\n");

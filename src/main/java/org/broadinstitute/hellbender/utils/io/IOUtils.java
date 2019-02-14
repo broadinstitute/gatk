@@ -5,6 +5,8 @@ import htsjdk.samtools.BAMIndex;
 import htsjdk.samtools.BamFileIoUtils;
 import htsjdk.samtools.cram.build.CramIO;
 import htsjdk.samtools.util.BlockCompressedInputStream;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.RuntimeIOException;
 import htsjdk.tribble.Tribble;
 import htsjdk.tribble.util.TabixUtils;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
@@ -20,7 +22,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.GetSampleName;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.gcs.GoogleStorageUtils;
 import org.broadinstitute.hellbender.utils.runtime.ProcessController;
 import org.broadinstitute.hellbender.utils.runtime.ProcessOutput;
 import org.broadinstitute.hellbender.utils.runtime.ProcessSettings;
@@ -43,6 +45,9 @@ import java.util.zip.GZIPOutputStream;
 import java.util.zip.ZipException;
 
 public final class IOUtils {
+    public static final String HDFS_PREFIX = "hdfs://";
+    // slashes omitted since hdfs paths seem to only have 1 slash which would be weirder to include than no slashes
+    public static final String FILE_PREFIX = "file:";
     private static final Logger logger = LogManager.getLogger(IOUtils.class);
     private static final File DEV_DIR = new File("/dev");
 
@@ -749,7 +754,7 @@ public final class IOUtils {
         try {
             // special case GCS, in case the filesystem provider wasn't installed properly but is available.
             if (CloudStorageFileSystem.URI_SCHEME.equals(uri.getScheme())) {
-                return BucketUtils.getPathOnGcs(uriString);
+                return GoogleStorageUtils.getPathOnGcs(uriString);
             }
             // Paths.get(String) assumes the default file system
             // Paths.get(URI) uses the scheme
@@ -785,7 +790,7 @@ public final class IOUtils {
         if (path.startsWith("/")) { // Already an absolute path
             return path;
         }
-        if (BucketUtils.isRemoteStorageUrl(dir) || BucketUtils.isFileUrl(dir)) {
+        if (GoogleStorageUtils.isCloudStorageUrl(dir) || isHadoopUrl(dir) || hasFileScheme(dir)) {
             Path dirPath = getPath(dir);
             return dirPath.resolve(path).toUri().toString();
         } else {
@@ -1028,5 +1033,93 @@ public final class IOUtils {
         for (Path path : pathsToDelete) {
             Files.deleteIfExists(path);
         }
+    }
+
+    /**
+     * Open a path for writing, will overwrite an existing file.
+     *
+     * @param path location to write to
+     * @return an OutputStream that writes to the specified path.
+     */
+    public static OutputStream openOutputStream(Path path) {
+        Utils.nonNull(path);
+        try {
+           return Files.newOutputStream(path);
+        } catch (final IOException x) {
+            throw new UserException.CouldNotCreateOutputFile("Could not create file at path: " + path.toUri().toString() + " due to " + x.getMessage(), x);
+        }
+    }
+
+    /**
+     * Open an InputStream reading from a file.
+     *
+     * If the file ends with .gz will attempt to wrap it in an appropriate unzipping stream
+     *
+     * @param path to open a stream from.
+     * @return an InputStream that reads from the specified file.
+     */
+    public static InputStream openInputStream(Path path) {
+        try {
+            final InputStream inputStream = Files.newInputStream(path);
+            if(IOUtil.hasBlockCompressedExtension(path)){
+                return IOUtils.makeZippedInputStream(new BufferedInputStream(inputStream));
+            } else {
+                return inputStream;
+            }
+        } catch (IOException x) {
+            throw new UserException.CouldNotReadInputFile(path, x);
+        }
+    }
+
+    /**
+     * Returns the total file size of all files in a directory, or the file size if the path specifies a file.
+     * Note that sub-directories are ignored - they are not recursed into.
+     *
+     * @param path The URL to the file or directory whose size to return
+     * @return the total size of all files in bytes
+     */
+    public static long getDirSize(String path) {
+        try {
+            Path p = getPath(path);
+            if (Files.isRegularFile(p)) {
+                return Files.size(p);
+            } else {
+                return Files.list(p).mapToLong(
+                        q -> {
+                            try {
+                                return (Files.isRegularFile(q) ? Files.size(q) : 0);
+                            } catch (IOException e) {
+                                throw new RuntimeIOException(e);
+                            }
+                        }
+                ).sum();
+            }
+        } catch (RuntimeException | IOException e) {
+            throw new UserException("Failed to determine total input size of " + path + "\n Caused by:" + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Returns true if the given path is a HDFS (Hadoop filesystem) URL.
+     */
+    public static boolean isHadoopUrl(String path) {
+        return path.startsWith(HDFS_PREFIX);
+    }
+
+    /**
+     * Changes relative local file paths to be absolute file paths. Paths with a scheme are left unchanged.
+     * @param path the path
+     * @return an absolute file path if the original path was a relative file path, otherwise the original path
+     */
+    public static String makeFilePathAbsolute(String path){
+        if (GoogleStorageUtils.isCloudStorageUrl(path) || isHadoopUrl(path) || hasFileScheme(path)){
+            return path;
+        } else {
+            return new File(path).getAbsolutePath();
+        }
+    }
+    
+    private static boolean hasFileScheme(String path) {
+        return path.startsWith(FILE_PREFIX);
     }
 }

@@ -32,7 +32,6 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.config.ConfigFactory;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
@@ -379,7 +378,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
         if (numReducers != 0) {
             return numReducers;
         }
-        long size = readInputs.keySet().stream().mapToLong(k -> BucketUtils.dirSize(k)).sum();
+        long size = readInputs.keySet().stream().mapToLong(IOUtils::getDirSize).sum();
         final int targetPartitionSize = getTargetPartitionSize();
         return 1 + MathUtils.toIntExactOrThrow(size / targetPartitionSize,
                                                () -> new GATKException("getRecommendedNumReducers overflowed, size=" + size + " targetPartitionSize=" + targetPartitionSize));

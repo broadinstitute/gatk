@@ -1,12 +1,10 @@
 package org.broadinstitute.hellbender.engine.spark.datasources;
 
-import com.google.common.io.Files;
-import htsjdk.samtools.BAMIndex;
+
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.seekablestream.SeekablePathStream;
 import htsjdk.samtools.seekablestream.SeekableStream;
-import htsjdk.samtools.util.BlockCompressedInputStream;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.tribble.util.TabixUtils;
 import htsjdk.variant.utils.VCFHeaderReader;
@@ -28,11 +26,10 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.broadinstitute.hellbender.testutils.MiniClusterUtils;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.IndexFeatureFile;
-import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
@@ -40,8 +37,11 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.*;
-import java.net.URI;
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
 import java.util.*;
 import java.util.zip.GZIPInputStream;
 
@@ -82,7 +82,7 @@ public final class VariantsSparkSinkUnitTest extends GATKBaseTest {
     @Test(dataProvider = "loadVariants", groups = "spark")
     public void variantsSinkHDFSTest(String vcf, String outputFileExtension, boolean writeTabixIndex) throws IOException {
         final String outputHDFSPath = MiniClusterUtils.getTempPath(cluster, outputFileName, outputFileExtension).toString();
-        Assert.assertTrue(BucketUtils.isHadoopUrl(outputHDFSPath));
+        Assert.assertTrue(IOUtils.isHadoopUrl(outputHDFSPath));
         assertSingleShardedWritingWorks(vcf, outputHDFSPath, writeTabixIndex);
     }
 
@@ -207,9 +207,8 @@ public final class VariantsSparkSinkUnitTest extends GATKBaseTest {
         File actualVcf;
         // work around TribbleIndexedFeatureReader not reading header from .bgz files
         if (vcf.endsWith(".bgz")) {
-            actualVcf = File.createTempFile(vcf, ".gz");
-            actualVcf.deleteOnExit();
-            Files.copy(new File(vcf), actualVcf);
+            actualVcf = BaseTest.createTempFile(vcf, ".gz");
+            Files.copy(IOUtils.getPath(vcf), actualVcf.toPath());
         } else {
             actualVcf = new File(vcf);
         }
@@ -217,13 +216,8 @@ public final class VariantsSparkSinkUnitTest extends GATKBaseTest {
     }
 
     private void checkFileExtensionConsistentWithContents(String outputPath, boolean writeTabixIndex) throws IOException {
-        String outputFile;
-        if (BucketUtils.isFileUrl(outputPath)) {
-            outputFile = new File(URI.create(outputPath)).getAbsolutePath();
-        } else {
-            outputFile = outputPath;
-        }
-        boolean blockCompressed = isBlockCompressed(outputFile);
+        final String outputFile = IOUtils.makeFilePathAbsolute(outputPath);
+        boolean blockCompressed = IOUtil.isBlockCompressed(IOUtils.getPath(outputFile));
         String vcfFormat = getVcfFormat(outputFile);
         if (outputFile.endsWith(".vcf")) {
             Assert.assertEquals("VCF", vcfFormat);
@@ -232,7 +226,7 @@ public final class VariantsSparkSinkUnitTest extends GATKBaseTest {
             Assert.assertEquals("VCF", vcfFormat);
             Assert.assertTrue(blockCompressed);
             // check that a tabix index file is created or not
-            boolean tabixExists = java.nio.file.Files.exists(IOUtils.getPath(outputPath + TabixUtils.STANDARD_INDEX_EXTENSION));
+            boolean tabixExists = Files.exists(IOUtils.getPath(outputPath + TabixUtils.STANDARD_INDEX_EXTENSION));
             Assert.assertEquals(tabixExists, writeTabixIndex);
         } else if (outputFile.endsWith(".bcf")) {
             Assert.assertEquals("BCF", vcfFormat);
@@ -244,7 +238,7 @@ public final class VariantsSparkSinkUnitTest extends GATKBaseTest {
     }
 
     private static String getVcfFormat(String outputFile) throws IOException {
-        try (InputStream in = openFile(outputFile)) {
+        try (InputStream in = Files.newInputStream(IOUtils.getPath(outputFile))) {
             BufferedInputStream bis = new BufferedInputStream(in); // so mark/reset is supported
             return inferFromUncompressedData(IOUtil.isGZIPInputStream(bis) ? new GZIPInputStream(bis) : bis);
         }
@@ -260,26 +254,4 @@ public final class VariantsSparkSinkUnitTest extends GATKBaseTest {
         return null;
     }
 
-    private static boolean isBlockCompressed(String outputFile) throws IOException {
-        try (InputStream in = new BufferedInputStream(openFile(outputFile))) {
-            return BlockCompressedInputStream.isValidFile(in);
-        }
-    }
-
-    // Like BucketUtils.openFile, but doesn't unzip
-    private static InputStream openFile(String path) throws IOException {
-        Utils.nonNull(path);
-        InputStream inputStream;
-        if (BucketUtils.isCloudStorageUrl(path)) {
-            java.nio.file.Path p = BucketUtils.getPathOnGcs(path);
-            inputStream = java.nio.file.Files.newInputStream(p);
-        } else if (BucketUtils.isHadoopUrl(path)) {
-            Path file = new org.apache.hadoop.fs.Path(path);
-            FileSystem fs = file.getFileSystem(new Configuration());
-            inputStream = fs.open(file);
-        } else {
-            inputStream = new FileInputStream(path);
-        }
-        return inputStream;
-    }
 }

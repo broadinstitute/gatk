@@ -14,12 +14,13 @@ import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 import scala.Tuple2;
 
 import java.io.IOException;
+import java.nio.file.Files;
 
 /**
  * Align reads to a microbe reference using BWA-MEM and Spark. Second step in the PathSeq pipeline.
@@ -151,7 +152,7 @@ public final class PathSeqBwaSpark extends GATKSparkTool {
     private Tuple2<SAMFileHeader, JavaRDD<GATKRead>> loadBam(final String path,
                                                              final ReadsSparkSource readsSource) {
         if (path == null) return null;
-        if (BucketUtils.fileExists(path)) {
+        if (Files.exists(IOUtils.getPath(path))) {
             final SAMFileHeader header = readsSource.getHeader(path, null);
             if (header.getSequenceDictionary() != null && !header.getSequenceDictionary().isEmpty()) {
                 throw new UserException.BadInput("Input BAM should be unaligned, but found one or more sequences in the header.");

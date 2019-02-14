@@ -3,9 +3,10 @@ package org.broadinstitute.hellbender.metrics;
 import htsjdk.samtools.metrics.MetricBase;
 import htsjdk.samtools.metrics.MetricsFile;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.gcs.GoogleStorageUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.testutils.MiniClusterUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -14,6 +15,8 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 
 public class MetricsUtilsTest extends GATKBaseTest {
     private MiniDFSCluster cluster;
@@ -46,7 +49,7 @@ public class MetricsUtilsTest extends GATKBaseTest {
 
     @Test(dataProvider = "metricsPaths", groups = "bucket")
     public void testSaveMetrics(String destinationPrefix) throws IOException {
-        final String outputPath = BucketUtils.getTempFilePath(destinationPrefix, ".txt");
+        final String outputPath = GoogleStorageUtils.getTempFilePath(destinationPrefix, ".txt");
         TestMetric testMetric = new TestMetric();
         testMetric.value1 = 10;
         testMetric.value2 = 5;
@@ -54,7 +57,7 @@ public class MetricsUtilsTest extends GATKBaseTest {
         final MetricsFile<TestMetric, ?> metrics = new MetricsFile<>();
         metrics.addMetric(testMetric);
         MetricsUtils.saveMetrics(metrics, outputPath);
-        Assert.assertTrue(BucketUtils.fileExists(outputPath));
+        Assert.assertTrue(Files.exists(IOUtils.getPath(outputPath)));
         File localCopy = copyFileToLocalTmpFile(outputPath);
 
         final File expectedMetrics = createTempFile("expectedMetrics", ".txt");
@@ -65,7 +68,7 @@ public class MetricsUtilsTest extends GATKBaseTest {
 
     private File copyFileToLocalTmpFile(String outputPath) throws IOException {
         File localCopy = createTempFile("local_metrics_copy",".txt");
-        BucketUtils.copyFile(outputPath, localCopy.getAbsolutePath());
+        Files.copy(IOUtils.getPath(outputPath), IOUtils.getPath(localCopy.getAbsolutePath()), StandardCopyOption.REPLACE_EXISTING);
         return localCopy;
     }
 }

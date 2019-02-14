@@ -7,7 +7,6 @@ import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.CloseableTribbleIterator;
 import htsjdk.tribble.FeatureReader;
 import htsjdk.tribble.TribbleException;
-import htsjdk.tribble.readers.LineIterator;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFCodec;
 import htsjdk.variant.vcf.VCFHeader;
@@ -26,20 +25,16 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.nio.SeekableByteChannelPrefetcher;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.genomicsdb.GenomicsDBUtils;
 import org.genomicsdb.importer.GenomicsDBImporter;
-import org.genomicsdb.model.Coordinates;
-import org.genomicsdb.model.GenomicsDBCallsetsMapProto;
-import org.genomicsdb.model.GenomicsDBImportConfiguration;
-import org.genomicsdb.GenomicsDBUtils;
-import org.genomicsdb.model.ImportConfig;
-import org.genomicsdb.model.BatchCompletionCallbackFunctionArgument;
+import org.genomicsdb.model.*;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -47,8 +42,6 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.net.URI;
-import java.net.URISyntaxException;
 
 
 /**
@@ -483,7 +476,7 @@ public final class GenomicsDBImport extends GATKTool {
      */
     @Override
     public void onTraversalStart() {
-        String workspaceDir = BucketUtils.makeFilePathAbsolute(overwriteOrCreateWorkspace());
+        String workspaceDir = IOUtils.makeFilePathAbsolute(overwriteOrCreateWorkspace());
         vidMapJSONFile = IOUtils.appendPathToDir(workspaceDir, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME);
         callsetMapJSONFile = IOUtils.appendPathToDir(workspaceDir, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME);
         vcfHeaderFile = IOUtils.appendPathToDir(workspaceDir, GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME);
@@ -726,7 +719,7 @@ public final class GenomicsDBImport extends GATKTool {
      * @return  The workspace directory
      */
     private String overwriteOrCreateWorkspace() {
-        String workspaceDir = BucketUtils.makeFilePathAbsolute(workspace);
+        String workspaceDir = IOUtils.makeFilePathAbsolute(workspace);
         // From JavaDoc for GenomicsDBUtils.createTileDBWorkspace
         //   returnCode = 0 : OK. If overwriteExistingWorkspace is true and the workspace exists, it is deleted first.
         //   returnCode = -1 : path was not a directory

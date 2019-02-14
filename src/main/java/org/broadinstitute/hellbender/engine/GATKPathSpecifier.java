@@ -5,7 +5,7 @@ import org.broadinstitute.barclay.argparser.TaggedArgument;
 import org.broadinstitute.barclay.argparser.TaggedArgumentParser;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.gcs.GoogleStorageUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -42,7 +42,7 @@ public class GATKPathSpecifier extends PathSpecifier implements TaggedArgument, 
     public Path toPath() {
         // special case GCS, in case the filesystem provider wasn't installed properly but is available.
         if (CloudStorageFileSystem.URI_SCHEME.equals(getURI().getScheme())) {
-            final Path tempPath = BucketUtils.getPathOnGcs(getURIString());
+            final Path tempPath = GoogleStorageUtils.getPathOnGcs(getURIString());
             setCachedPath(tempPath);
             return tempPath;
         } else {

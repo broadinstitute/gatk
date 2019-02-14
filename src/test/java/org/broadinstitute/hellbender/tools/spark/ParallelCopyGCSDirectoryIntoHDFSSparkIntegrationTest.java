@@ -5,7 +5,6 @@ import org.apache.hadoop.fs.*;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
@@ -16,6 +15,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -61,12 +61,12 @@ public class ParallelCopyGCSDirectoryIntoHDFSSparkIntegrationTest extends Comman
                 Assert.assertTrue(fileSizeOnGCS > chunkSize);
             }
 
-            Assert.assertEquals(BucketUtils.fileSize(hdfsPath),
-                    fileSizeOnGCS);
+            Assert.assertEquals(Files.size(IOUtils.getPath(hdfsPath)),
+                                fileSizeOnGCS);
 
             final File tempDir = createTempDir("ParallelCopy");
 
-            BucketUtils.copyFile(hdfsPath, tempDir + "fileFromHDFS.bam.bai");
+            Files.copy(IOUtils.getPath(hdfsPath), IOUtils.getPath(tempDir + "fileFromHDFS.bam.bai"), StandardCopyOption.REPLACE_EXISTING);
             Assert.assertEquals(Utils.calculateFileMD5(new File(tempDir + "fileFromHDFS.bam.bai")), "1a6baa5332e98ef1358ac0fb36f46aaf");
         } finally {
             MiniClusterUtils.stopCluster(cluster);
@@ -120,7 +120,7 @@ public class ParallelCopyGCSDirectoryIntoHDFSSparkIntegrationTest extends Comman
                 while (hdfsCopies.hasNext()) {
                     final FileStatus next =  hdfsCopies.next();
                     final Path path = next.getPath();
-                    BucketUtils.copyFile(path.toString(), tempDir + "/" + path.getName());
+                    Files.copy(IOUtils.getPath(path.toString()), IOUtils.getPath(tempDir + "/" + path.getName()));
                     filesFound ++;
                 }
             }

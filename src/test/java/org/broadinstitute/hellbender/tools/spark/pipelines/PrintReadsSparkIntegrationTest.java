@@ -13,7 +13,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.gcs.GoogleStorageUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.GATKBaseTest;
@@ -70,7 +70,7 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
         final boolean outputToGCS, final File expectedOutput) {
         final String gcsInputPath = getGCPTestInputPath() + gcsInput;
         final String outputPrefix = outputToGCS ? getGCPTestStaging() : "testGCSInputsAndOutputs";
-        final String outputPath = BucketUtils.getTempFilePath(outputPrefix, outputExtension);
+        final String outputPath = GoogleStorageUtils.getTempFilePath(outputPrefix, outputExtension);
 
         final ArgumentsBuilder argBuilder = new ArgumentsBuilder();
         argBuilder.addArgument("input", gcsInputPath)

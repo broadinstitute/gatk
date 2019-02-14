@@ -7,7 +7,6 @@ import org.apache.hadoop.fs.Path;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.BaseTest;
@@ -21,6 +20,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -227,7 +227,7 @@ public class StructuralVariationDiscoveryPipelineSparkIntegrationTest extends Co
         if (onHDFS) {
             appropriateVCF = GATKBaseTest.createTempFile("variants", "vcf");
             appropriateVCF.deleteOnExit();
-            BucketUtils.copyFile(generatedVCFPath, appropriateVCF.getAbsolutePath());
+            Files.copy(IOUtils.getPath(generatedVCFPath), IOUtils.getPath(appropriateVCF.getAbsolutePath()), StandardCopyOption.REPLACE_EXISTING);
         } else {
             appropriateVCF = new File(generatedVCFPath);
         }

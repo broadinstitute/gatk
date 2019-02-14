@@ -12,7 +12,7 @@ import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
 
@@ -150,7 +150,7 @@ public final class PSScorer {
                     .map(SAMSequenceRecord::getSequenceName)
                     .filter(name -> !taxDB.accessionToTaxId.containsKey(name))
                     .collect(Collectors.toSet());
-            try (final PrintStream file = new PrintStream(BucketUtils.createFile(path))) {
+            try (final PrintStream file = new PrintStream(IOUtils.openOutputStream(IOUtils.getPath(path)))) {
                 unknownSequences.stream().forEach(file::print);
                 if (file.checkError()) {
                     logger.warn("Error writing to header warnings file");
@@ -422,7 +422,7 @@ public final class PSScorer {
     public static PSTaxonomyDatabase readTaxonomyDatabase(final String filePath) {
         final Kryo kryo = new Kryo();
         kryo.setReferences(false);
-        final Input input = new Input(BucketUtils.openFile(filePath));
+        final Input input = new Input(IOUtils.openInputStream(IOUtils.getPath(filePath)));
         final PSTaxonomyDatabase taxonomyDatabase = kryo.readObject(input, PSTaxonomyDatabase.class);
         input.close();
         return taxonomyDatabase;
@@ -434,7 +434,7 @@ public final class PSScorer {
     public static void writeScoresFile(final Map<Integer, PSPathogenTaxonScore> scores,
                                        final PSTree tree, final String filePath) {
         final String header = "tax_id\ttaxonomy\ttype\tname\t" + PSPathogenTaxonScore.outputHeader;
-        try (final PrintStream printStream = new PrintStream(BucketUtils.createFile(filePath))) {
+        try (final PrintStream printStream = new PrintStream(IOUtils.openOutputStream(IOUtils.getPath(filePath)))) {
             printStream.println(header);
             for (final int key : scores.keySet()) {
                 final String name = tree.getNameOf(key);

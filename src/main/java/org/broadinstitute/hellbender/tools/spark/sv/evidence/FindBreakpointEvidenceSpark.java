@@ -30,7 +30,7 @@ import org.broadinstitute.hellbender.tools.spark.utils.FlatMapGluer;
 import org.broadinstitute.hellbender.tools.spark.utils.HopscotchUniqueMultiMap;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemIndexCache;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.spark.SparkUtils;
@@ -391,7 +391,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         final Set<Integer> ignoreSet = new HashSet<>();
         try ( final BufferedReader rdr =
                       new BufferedReader(
-                              new InputStreamReader(BucketUtils.openFile(crossContigsToIgnoreFile))) ) {
+                              new InputStreamReader(IOUtils.openInputStream(IOUtils.getPath(crossContigsToIgnoreFile)))) ) {
             String line;
             while ( (line = rdr.readLine()) != null ) {
                 final int tigId = dictionary.getSequenceIndex(line);
@@ -776,7 +776,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         // record the kmers with their interval IDs
         if ( params.kmerFile != null ) {
             try (final OutputStreamWriter writer = new OutputStreamWriter(new BufferedOutputStream(
-                    BucketUtils.createFile(params.kmerFile)))) {
+                    IOUtils.openOutputStream(IOUtils.getPath(params.kmerFile))))) {
                 for (final KmerAndInterval kmerAndInterval : filteredKmerIntervals) {
                     writer.write(kmerAndInterval.toString(kSize) + " " + kmerAndInterval.getIntervalId() + "\n");
                 }
@@ -851,7 +851,8 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         final String intervalFile = params.highCoverageIntervalsFile;
         if (intervalFile != null) {
             try (final OutputStreamWriter writer =
-                         new OutputStreamWriter(new BufferedOutputStream(BucketUtils.createFile(intervalFile)))) {
+                         new OutputStreamWriter(new BufferedOutputStream(IOUtils.openOutputStream(
+                                 IOUtils.getPath(intervalFile))))) {
                 for (final SVInterval svInterval : result) {
                     final String bedLine = shortReadMetadata.getContigName(svInterval.getContig()) + "\t" + (svInterval.getStart() - 1) + "\t" + svInterval.getEnd() + "\n";
                     writer.write(bedLine);
@@ -1075,7 +1076,8 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         if ( params.evidenceDir != null ) {
             final String crossPartitionFile = params.evidenceDir+"/part-xxxxx";
             try ( final OutputStreamWriter writer =
-                      new OutputStreamWriter(new BufferedOutputStream(BucketUtils.createFile(crossPartitionFile))) ) {
+                      new OutputStreamWriter(new BufferedOutputStream(IOUtils.openOutputStream(
+                              IOUtils.getPath(crossPartitionFile)))) ) {
                 for ( final BreakpointEvidence ev : allEvidence ) {
                     // Only tell 'em about the ReadEvidence that was validated in the driver's pass over the stream.
                     // (The validated ReadEvidence instances well away from the partition boundaries that have already
@@ -1130,7 +1132,8 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                                          final List<EvidenceTargetLink> targetLinks, final String targetLinkFile) {
         if ( targetLinkFile != null ) {
             try (final OutputStreamWriter writer =
-                         new OutputStreamWriter(new BufferedOutputStream(BucketUtils.createFile(targetLinkFile)))) {
+                         new OutputStreamWriter(new BufferedOutputStream(IOUtils.openOutputStream(
+                                 IOUtils.getPath(targetLinkFile))))) {
                 targetLinks.iterator().forEachRemaining(entry -> {
                     final String bedpeRecord = entry.toBedpeString(broadcastMetadata.getValue());
                     try {

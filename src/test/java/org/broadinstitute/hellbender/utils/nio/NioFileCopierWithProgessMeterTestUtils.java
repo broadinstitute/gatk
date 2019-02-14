@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.utils.nio;
 
 import org.apache.commons.io.FilenameUtils;
 import org.broadinstitute.hellbender.testutils.BaseTest;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.gcs.GoogleStorageUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.nio.file.Path;
@@ -34,7 +34,8 @@ public class NioFileCopierWithProgessMeterTestUtils {
         if (dest.startsWith("GS:")) {
             final String destBaseName = FilenameUtils.getBaseName(dest.substring(3));
             final String destExtension = FilenameUtils.getExtension(dest.substring(3));
-            destPath = BucketUtils.getPathOnGcs(BucketUtils.getTempFilePath(BaseTest.getGCPTestStaging() + destBaseName, destExtension));
+            destPath = GoogleStorageUtils.getPathOnGcs(
+                    GoogleStorageUtils.getTempFilePath(BaseTest.getGCPTestStaging() + destBaseName, destExtension));
         }
         else {
             destPath = BaseTest.getSafeNonExistentPath(dest);

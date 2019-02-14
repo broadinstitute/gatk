@@ -11,6 +11,7 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import picard.cmdline.programgroups.ReferenceProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
@@ -19,12 +20,12 @@ import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscovery
 import org.broadinstitute.hellbender.tools.spark.sv.utils.*;
 import org.broadinstitute.hellbender.tools.spark.utils.HopscotchMap;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import scala.Tuple2;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -181,8 +182,9 @@ public final class FindBadGenomicKmersSpark extends GATKSparkTool {
     @VisibleForTesting static List<SVKmer> processFasta( final int kSize,
                                                          final int maxDUSTScore,
                                                          final String fastaFilename) {
-        try ( BufferedReader rdr = new BufferedReader(new InputStreamReader(BucketUtils.openFile(fastaFilename))) ) {
-            final List<SVKmer> kmers = new ArrayList<>((int) BucketUtils.fileSize(fastaFilename));
+        try ( BufferedReader rdr = new BufferedReader(new InputStreamReader(IOUtils.openInputStream(
+                IOUtils.getPath(fastaFilename)))) ) {
+            final List<SVKmer> kmers = new ArrayList<>((int) Files.size(IOUtils.getPath(fastaFilename)));
             String line;
             final StringBuilder sb = new StringBuilder();
             final SVKmer kmerSeed = new SVKmerLong();

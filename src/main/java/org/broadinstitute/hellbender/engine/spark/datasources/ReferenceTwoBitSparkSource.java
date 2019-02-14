@@ -9,7 +9,7 @@ import org.bdgenomics.adam.util.TwoBitRecord;
 import org.bdgenomics.utils.io.ByteAccess;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import scala.collection.JavaConversions;
 
@@ -36,7 +36,7 @@ public class ReferenceTwoBitSparkSource implements ReferenceSparkSource, Seriali
     public ReferenceTwoBitSparkSource( String referenceURL) throws IOException {
         this.referenceURL = referenceURL;
         Utils.validateArg(isTwoBit(this.referenceURL), "ReferenceTwoBitSource can only take .2bit files");
-        byte[] bytes = ByteStreams.toByteArray(BucketUtils.openFile(this.referenceURL));
+        byte[] bytes = ByteStreams.toByteArray(IOUtils.openInputStream(IOUtils.getPath(this.referenceURL)));
         ByteAccess byteAccess = new DirectFullByteArrayByteAccess(bytes);
         this.twoBitFile = new TwoBitFile(byteAccess);
         this.twoBitSeqEntries = JavaConversions.mapAsJavaMap(twoBitFile.seqRecords());

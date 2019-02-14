@@ -14,7 +14,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.Alignmen
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.TemplateFragmentOrdinal;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.fermi.FermiLiteAssembler;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.*;
@@ -313,7 +313,8 @@ public class SVFastqUtils {
 
     public static List<FastqRead> readFastqFile( final String fileName ) {
         final List<FastqRead> reads;
-        try ( final BufferedReader reader = new BufferedReader(new InputStreamReader(BucketUtils.openFile(fileName))) ) {
+        try ( final BufferedReader reader = new BufferedReader(new InputStreamReader(IOUtils.openInputStream(
+                IOUtils.getPath(fileName)))) ) {
             reads = readFastqStream(reader, fileName);
         }
         catch ( final IOException ioe ) {
@@ -378,7 +379,7 @@ public class SVFastqUtils {
     /** Write a list of FASTQ records into a file. */
     public static void writeFastqFile(final String fileName, final Iterator<FastqRead> fastqReadItr ) {
         try ( final OutputStream writer =
-                      new BufferedOutputStream(BucketUtils.createFile(fileName)) ) {
+                      new BufferedOutputStream(IOUtils.openOutputStream(IOUtils.getPath(fileName))) ) {
             writeFastqStream(writer, fastqReadItr);
         } catch ( final IOException ioe ) {
             throw new GATKException("Can't write "+fileName, ioe);

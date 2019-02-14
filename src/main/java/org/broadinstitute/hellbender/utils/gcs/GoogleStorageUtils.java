@@ -7,44 +7,34 @@ import com.google.cloud.storage.contrib.nio.CloudStorageConfiguration.Builder;
 import com.google.cloud.storage.contrib.nio.CloudStorageFileSystem;
 import com.google.cloud.storage.contrib.nio.CloudStorageFileSystemProvider;
 import com.google.common.base.Strings;
-import com.google.common.io.ByteStreams;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.RuntimeIOException;
 import htsjdk.tribble.Tribble;
 import htsjdk.tribble.util.TabixUtils;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import shaded.cloud_nio.com.google.api.gax.retrying.RetrySettings;
 import shaded.cloud_nio.com.google.auth.oauth2.GoogleCredentials;
 import shaded.cloud_nio.org.threeten.bp.Duration;
 
-import java.io.*;
-import java.nio.file.Files;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.nio.file.FileSystem;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.UUID;
 
 /**
  * Utilities for dealing with google buckets.
  */
-public final class BucketUtils {
+public final class GoogleStorageUtils {
     public static final String GCS_SCHEME = "gs";
     public static final String GCS_PREFIX = GCS_SCHEME + "://";
-    public static final String HDFS_PREFIX = "hdfs://";
-
-    // slashes omitted since hdfs paths seem to only have 1 slash which would be weirder to include than no slashes
-    public static final String FILE_PREFIX = "file:";
 
     public static final Logger logger = LogManager.getLogger("org.broadinstitute.hellbender.utils.gcs");
 
-    private BucketUtils(){} //private so that no one will instantiate this class
+    private GoogleStorageUtils(){} //private so that no one will instantiate this class
 
     public static boolean isCloudStorageUrl(final String path) {
         Utils.nonNull(path);
@@ -61,128 +51,9 @@ public final class BucketUtils {
         return pathSpec.getScheme().equals(GCS_SCHEME);
     }
 
-    public static boolean isCloudStorageUrl(final java.nio.file.Path path) {
+    public static boolean isCloudStorageUrl(final Path path) {
         // the initial "" protects us against a null scheme
         return ("" + path.toUri().getScheme() + "://").equals(GCS_PREFIX);
-    }
-
-    /**
-     * Returns true if the given path is a HDFS (Hadoop filesystem) URL.
-     */
-    public static boolean isHadoopUrl(String path) {
-        return path.startsWith(HDFS_PREFIX);
-    }
-
-    /**
-     * Returns true if the given path is a GCS or HDFS (Hadoop filesystem) URL.
-     */
-    public static boolean isRemoteStorageUrl(String path) {
-        return isCloudStorageUrl(path) || isHadoopUrl(path);
-    }
-
-    /**
-     * Changes relative local file paths to be absolute file paths. Paths with a scheme are left unchanged.
-     * @param path the path
-     * @return an absolute file path if the original path was a relative file path, otherwise the original path
-     */
-    public static String makeFilePathAbsolute(String path){
-        if (isCloudStorageUrl(path) || isHadoopUrl(path) || isFileUrl(path)){
-            return path;
-        } else {
-            return new File(path).getAbsolutePath();
-        }
-    }
-
-    /**
-     * Open a file for reading regardless of whether it's on GCS, HDFS or local disk.
-     *
-     * If the file ends with .gz will attempt to wrap it in an appropriate unzipping stream
-     *
-     * @param path the GCS, HDFS or local path to read from. If GCS, it must start with "gs://", or "hdfs://" for HDFS.
-     * @return an InputStream that reads from the specified file.
-     */
-    public static InputStream openFile(String path) {
-        try {
-            Utils.nonNull(path);
-            InputStream inputStream;
-            if (isCloudStorageUrl(path)) {
-                java.nio.file.Path p = getPathOnGcs(path);
-                inputStream = Files.newInputStream(p);
-            } else if (isHadoopUrl(path)) {
-                Path file = new org.apache.hadoop.fs.Path(path);
-                FileSystem fs = file.getFileSystem(new Configuration());
-                inputStream = fs.open(file);
-            } else {
-                 inputStream = new FileInputStream(path);
-            }
-
-            if(IOUtil.hasBlockCompressedExtension(path)){
-                return IOUtils.makeZippedInputStream(new BufferedInputStream(inputStream));
-            } else {
-                return inputStream;
-            }
-        } catch (IOException x) {
-            throw new UserException.CouldNotReadInputFile(path, x);
-        }
-    }
-
-    /**
-     * Open a binary file for writing regardless of whether it's on GCS, HDFS or local disk.
-     * For writing to GCS it'll use the application/octet-stream MIME type.
-     *
-     * @param path the GCS or local path to write to. If GCS, it must start with "gs://", or "hdfs://" for HDFS.
-     * @return an OutputStream that writes to the specified file.
-     */
-    public static OutputStream createFile(String path) {
-        Utils.nonNull(path);
-        try {
-            if (isCloudStorageUrl(path)) {
-                java.nio.file.Path p = getPathOnGcs(path);
-                return Files.newOutputStream(p);
-            } else if (isHadoopUrl(path)) {
-                Path file = new Path(path);
-                FileSystem fs = file.getFileSystem(new Configuration());
-                return fs.create(file);
-            } else {
-                return new FileOutputStream(path);
-            }
-        } catch (IOException x) {
-            throw new UserException.CouldNotCreateOutputFile("Could not create file at path:" + path + " due to " + x.getMessage(), x);
-        }
-    }
-
-    /**
-     * Copies a file. Can be used to copy e.g. from GCS to local.
-     *
-     * @param sourcePath the path to read from. If GCS, it must start with "gs://", or "hdfs://" for HDFS.
-     * @param destPath the path to copy to. If GCS, it must start with "gs://", or "hdfs://" for HDFS.
-     * @throws IOException
-     */
-    public static void copyFile(String sourcePath, String destPath) throws IOException {
-        try (
-            InputStream in = openFile(sourcePath);
-            OutputStream fout = createFile(destPath)) {
-            ByteStreams.copy(in, fout);
-        }
-    }
-
-    /**
-     * Deletes a file: local, GCS or HDFS.
-     *  @param pathToDelete the path to delete. If GCS, it must start with "gs://", or "hdfs://" for HDFS.
-     *
-     */
-    public static void deleteFile(String pathToDelete) throws IOException {
-        if (isCloudStorageUrl(pathToDelete)) {
-            java.nio.file.Path p = getPathOnGcs(pathToDelete);
-            Files.delete(p);
-        } else if (isHadoopUrl(pathToDelete)) {
-            Path file = new Path(pathToDelete);
-            FileSystem fs = file.getFileSystem(new Configuration());
-            fs.delete(file, false);
-        } else {
-            boolean ok = new File(pathToDelete).delete();
-            if (!ok) throw new IOException("Unable to delete '"+pathToDelete+"'");
-        }
     }
 
     /**
@@ -197,7 +68,7 @@ public final class BucketUtils {
      *
      */
     public static String getTempFilePath(String prefix, String extension){
-        if (isCloudStorageUrl(prefix) || (isHadoopUrl(prefix))){
+        if (isCloudStorageUrl(prefix) || (IOUtils.isHadoopUrl(prefix))){
             final String path = randomRemotePath(prefix, "", extension);
             IOUtils.deleteOnExit(IOUtils.getPath(path));
             IOUtils.deleteOnExit(IOUtils.getPath(path + Tribble.STANDARD_INDEX_EXTENSION));
@@ -222,106 +93,11 @@ public final class BucketUtils {
         if (isCloudStorageUrl(stagingLocation)) {
             // Go through URI because Path.toString isn't guaranteed to include the "gs://" prefix.
             return getPathOnGcs(stagingLocation).resolve(prefix + UUID.randomUUID().toString() + suffix).toUri().toString();
-        } else if (isHadoopUrl(stagingLocation)) {
-            return new Path(stagingLocation, prefix + UUID.randomUUID().toString() + suffix).toString();
+        } else if (IOUtils.isHadoopUrl(stagingLocation)) {
+            return new org.apache.hadoop.fs.Path(stagingLocation, prefix + UUID.randomUUID().toString() + suffix).toString();
         } else {
             throw new IllegalArgumentException("Staging location is not remote: " + stagingLocation);
         }
-    }
-
-    /**
-     * Returns true if we can read the first byte of the file.
-     *  @param path The folder where you want the file to be (local, GCS or HDFS).
-     *
-     */
-    public static boolean fileExists(String path) {
-        final boolean MAYBE = false;
-        try (InputStream inputStream = openFile(path)) {
-            int ignored = inputStream.read();
-        } catch (UserException.CouldNotReadInputFile notthere) {
-            // file isn't there
-            return false;
-        } catch (FileNotFoundException x) {
-            // file isn't there
-            return false;
-        } catch (IOException x) {
-            // unexpected problem while reading the file. The file may exist, but it's not accessible.
-            return MAYBE;
-        }
-        return true;
-    }
-
-    /**
-     * Returns the file size of a file pointed to by a GCS/HDFS/local path
-     *
-     * @param path The URL to the file whose size to return
-     * @return the file size in bytes
-     * @throws IOException
-     */
-    public static long fileSize(String path) throws IOException {
-        if (isCloudStorageUrl(path)) {
-            java.nio.file.Path p = getPathOnGcs(path);
-            return Files.size(p);
-        } else if (isHadoopUrl(path)) {
-            Path hadoopPath = new Path(path);
-            FileSystem fs = hadoopPath.getFileSystem(new Configuration());
-            return fs.getFileStatus(hadoopPath).getLen();
-        } else {
-            return new File(path).length();
-        }
-    }
-
-    /**
-     * Returns the total file size of all files in a directory, or the file size if the path specifies a file.
-     * Note that sub-directories are ignored - they are not recursed into.
-     * Only supports HDFS and local paths.
-     *
-     * @param path The URL to the file or directory whose size to return
-     * @return the total size of all files in bytes
-     */
-    public static long dirSize(String path) {
-        try {
-            // GCS case (would work with local too)
-            if (isCloudStorageUrl(path)) {
-                java.nio.file.Path p = getPathOnGcs(path);
-                if (Files.isRegularFile(p)) {
-                    return Files.size(p);
-                }
-                return Files.list(p).mapToLong(
-                    q -> {
-                        try {
-                            return (Files.isRegularFile(q) ? Files.size(q) : 0);
-                        } catch (IOException e) {
-                            throw new RuntimeIOException(e);
-                        }
-                    }
-                ).sum();
-            }
-            // local file or HDFS case
-            Path hadoopPath = new Path(path);
-            FileSystem fs = new Path(path).getFileSystem(new Configuration());
-            FileStatus status = fs.getFileStatus(hadoopPath);
-            if (status == null) {
-                throw new UserException.CouldNotReadInputFile(path, "File not found.");
-            }
-            long size = 0;
-            if (status.isDirectory()) {
-                for (FileStatus st : fs.listStatus(status.getPath())) {
-                    if (st.isFile()) {
-                        size += st.getLen();
-                    }
-                }
-            } else {
-                size += status.getLen();
-            }
-            return size;
-        } catch (RuntimeIOException | IOException e) {
-            throw new UserException("Failed to determine total input size of " + path + "\n Caused by:" + e.getMessage(), e);
-        }
-    }
-
-    public static boolean isFileUrl(String path) {
-        return path.startsWith(FILE_PREFIX);
     }
 
     /**
@@ -358,7 +134,7 @@ public final class BucketUtils {
      * on Spark because using the fat, shaded jar breaks the registration of the GCS FilesystemProvider.
      * To transform other types of string URLs into Paths, use IOUtils.getPath instead.
      */
-    public static java.nio.file.Path getPathOnGcs(String gcsUrl) {
+    public static Path getPathOnGcs(String gcsUrl) {
         // use a split limit of -1 to preserve empty split tokens, especially trailing slashes on directory names
         final String[] split = gcsUrl.split("/", -1);
         final String BUCKET = split[2];
@@ -418,7 +194,7 @@ public final class BucketUtils {
      * Note that most of the time it's enough to just open a file via
      * Files.newInputStream(Paths.get(URI.create( path ))).
      **/
-    public static java.nio.file.FileSystem getAuthenticatedGcs(String projectId, String bucket, byte[] credentials) throws IOException {
+    public static FileSystem getAuthenticatedGcs(String projectId, String bucket, byte[] credentials) throws IOException {
         StorageOptions.Builder builder = StorageOptions.newBuilder()
                 .setProjectId(projectId);
         if (null != credentials) {

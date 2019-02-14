@@ -9,28 +9,21 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
-import htsjdk.samtools.util.BlockCompressedOutputStream;
 import htsjdk.samtools.util.IOUtil;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaRDD;
-import org.broadinstitute.hellbender.engine.spark.GATKRegistrator;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.tools.spark.utils.IntHistogram;
-import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
@@ -355,7 +348,7 @@ public class ReadMetadata {
     public static void writeMetadata(final ReadMetadata readMetadata,
                                      final String filename ) {
         try ( final Writer writer =
-                      new BufferedWriter(new OutputStreamWriter(BucketUtils.createFile(filename))) ) {
+                      new BufferedWriter(new OutputStreamWriter(IOUtils.openOutputStream(IOUtils.getPath(filename)))) ) {
             writer.write("#reads:\t" + readMetadata.getNReads() + "\n");
             writer.write("#partitions:\t" + readMetadata.getNPartitions() + "\n");
             writer.write("max reads/partition:\t" + readMetadata.getMaxReadsInPartition() + "\n");
@@ -449,7 +442,7 @@ public class ReadMetadata {
          */
         public static void writeStandalone(final ReadMetadata meta, final String whereTo) {
             try {
-                final OutputStream outputStream = BucketUtils.createFile(whereTo);
+                final OutputStream outputStream = IOUtils.openOutputStream(IOUtils.getPath(whereTo));
                 final OutputStream actualStream = IOUtil.hasBlockCompressedExtension(whereTo)
                         ? new GzipCompressorOutputStream(outputStream) : outputStream;
                 final Output output = new Output(actualStream);
@@ -472,7 +465,7 @@ public class ReadMetadata {
          * @return never {@code null}.
          */
         public static ReadMetadata readStandalone(final String whereFrom) {
-            try (final InputStream inputStream = BucketUtils.openFile(whereFrom);
+            try (final InputStream inputStream = IOUtils.openInputStream(IOUtils.getPath(whereFrom));
                  final Input input = new Input(inputStream)) {
                 final Kryo kryo = new Kryo();
                 final Serializer serializer = new Serializer();

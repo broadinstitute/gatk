@@ -12,8 +12,8 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Random;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+
+import org.broadinstitute.hellbender.utils.gcs.GoogleStorageUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.annotations.Test;
 
@@ -47,9 +47,9 @@ public final class GcsNioIntegrationTest extends GATKBaseTest {
     @Test(groups={"bucket"})
     public void writePrivateFile() throws IOException {
         try {
-            final String dest = BucketUtils.getTempFilePath(
+            final String dest = GoogleStorageUtils.getTempFilePath(
                     getGCPTestStaging() +"GcsNioIntegrationTest-writePrivateFile-test", ".txt");
-            final Path outputPath = BucketUtils.getPathOnGcs(dest);
+            final Path outputPath = GoogleStorageUtils.getPathOnGcs(dest);
             System.out.println("Writing to " + dest);
             try (OutputStream os = Files.newOutputStream(outputPath)) {
                 os.write(42);
@@ -92,8 +92,8 @@ public final class GcsNioIntegrationTest extends GATKBaseTest {
     public void openPrivateFileWithExplicitCredentials() throws IOException {
         // this file, potentially unlike the others in the set, is not marked as "Public link".
         final String privateFile = getGCPTestInputPath() + privateFilePath;
-        final String BUCKET = BucketUtils.getBucket(privateFile);
-        final String pathWithoutBucket = BucketUtils.getPathWithoutBucket(privateFile);
+        final String BUCKET = GoogleStorageUtils.getBucket(privateFile);
+        final String pathWithoutBucket = GoogleStorageUtils.getPathWithoutBucket(privateFile);
 
         try {
             FileSystem fs = getAuthenticatedGcs(BUCKET);
@@ -118,8 +118,8 @@ public final class GcsNioIntegrationTest extends GATKBaseTest {
         // this file, potentially unlike the others in the set, is not marked as "Public link".
         final String privateFile = getGCPTestInputPath() + privateFilePath;
         final String privateFile2 = getGCPTestInputPath() + privateFilePath2;
-        final String BUCKET = BucketUtils.getBucket(privateFile);
-        final String pathWithoutBucket = BucketUtils.getPathWithoutBucket(privateFile);
+        final String BUCKET = GoogleStorageUtils.getBucket(privateFile);
+        final String pathWithoutBucket = GoogleStorageUtils.getPathWithoutBucket(privateFile);
 
         FileSystem fs = getAuthenticatedGcs(BUCKET);
         Path path = fs.getPath(pathWithoutBucket);

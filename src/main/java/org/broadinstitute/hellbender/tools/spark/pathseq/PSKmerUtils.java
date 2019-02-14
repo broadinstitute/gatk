@@ -12,7 +12,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmerShort;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmerizer;
 import org.broadinstitute.hellbender.tools.spark.utils.LargeLongHopscotchSet;
 import org.broadinstitute.hellbender.tools.spark.utils.LongBloomFilter;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 
 import java.io.IOException;
@@ -105,7 +105,7 @@ public class PSKmerUtils {
      * Writes an object to a URI using Kryo serialization.
      */
     public static void writeKryoObject(final Object obj, String uri) {
-        final Output output = new Output(BucketUtils.createFile(uri));
+        final Output output = new Output(IOUtils.openOutputStream(IOUtils.getPath(uri)));
         final Kryo kryo = new Kryo();
         kryo.writeObject(output, obj);
         output.close();
@@ -128,7 +128,7 @@ public class PSKmerUtils {
     }
 
     public static PSKmerCollection readKmerFilter(final String uri) {
-        final Input input = new Input(BucketUtils.openFile(uri));
+        final Input input = new Input(IOUtils.openInputStream(IOUtils.getPath(uri)));
         final Kryo kryo = new Kryo();
         if (uri.endsWith(HOPSCOTCH_SET_EXTENSION)) {
             return kryo.readObject(input, PSKmerSet.class);

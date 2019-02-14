@@ -7,12 +7,11 @@ import htsjdk.samtools.SamFiles;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Iterator;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.gcs.GoogleStorageUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -48,9 +47,9 @@ public class ReadUtilsIntegrationTest extends GATKBaseTest {
       final boolean createMD5,
       final boolean expectIndex) throws Exception {
 
-    final String outputPathName = BucketUtils.getTempFilePath(getGCPTestStaging() + "samWriterTest", outputExtension);
-    final Path outputPath = BucketUtils.getPathOnGcs(outputPathName);
-    final Path md5Path = BucketUtils.getPathOnGcs(outputPathName + ".md5");
+    final String outputPathName = GoogleStorageUtils.getTempFilePath(getGCPTestStaging() + "samWriterTest", outputExtension);
+    final Path outputPath = GoogleStorageUtils.getPathOnGcs(outputPathName);
+    final Path md5Path = GoogleStorageUtils.getPathOnGcs(outputPathName + ".md5");
 
     try (final SamReader samReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(bamFile)) {
 

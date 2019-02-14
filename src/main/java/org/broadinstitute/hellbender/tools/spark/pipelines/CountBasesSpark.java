@@ -9,7 +9,7 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CoverageAnalysisProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.PrintStream;
@@ -72,7 +72,7 @@ public final class CountBasesSpark extends GATKSparkTool {
         System.out.println(count);
 
         if( out != null) {
-            try ( final PrintStream ps = new PrintStream(BucketUtils.createFile(out)) ) {
+            try ( final PrintStream ps = new PrintStream(IOUtils.openOutputStream(IOUtils.getPath(out))) ) {
                 ps.print(count);
             }
         }

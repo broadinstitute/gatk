@@ -12,7 +12,7 @@ import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.broadinstitute.hellbender.testutils.MiniClusterUtils;
 import org.broadinstitute.hellbender.tools.funcotator.FuncotatorTestConstants;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.gcs.GoogleStorageUtils;
 import org.testng.Assert;
 import org.testng.SkipException;
 import org.testng.annotations.AfterClass;
@@ -21,12 +21,12 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.*;
-import java.nio.file.FileSystem;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.*;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Random;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 public final class IOUtilsUnitTest extends GATKBaseTest {
@@ -676,7 +676,7 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
 
     @Test(groups={"bucket"})
     public void testDeleteRecursivelyGCS() throws IOException {
-        final String gcsFolder = BucketUtils.randomRemotePath(getGCPTestStaging(), "test-dir", "");
+        final String gcsFolder = GoogleStorageUtils.randomRemotePath(getGCPTestStaging(), "test-dir", "");
         final Path gcsFolderPath = IOUtils.getPath(gcsFolder+"/");
         Files.createDirectory(gcsFolderPath);
         Assert.assertTrue(Files.exists(gcsFolderPath));
@@ -686,5 +686,54 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
         IOUtils.deleteRecursively(gcsFolderPath);
         Assert.assertFalse(Files.exists(gcsFilePath));
         Assert.assertFalse(Files.exists(IOUtils.getPath(gcsFolder)));
+    }
+
+    @Test
+    public void testDirSize() throws IOException {
+        File dir = createTempDir("dir");
+        File file1 = new File(dir, "file1.txt");
+        File file2 = new File(dir, "file2.txt");
+        File subdir = new File(dir, "sub");
+        subdir.mkdir();
+        File file3 = new File(subdir, "file3.txt");
+
+        for (File file : new File[] { file1, file2, file3 }) {
+            try (FileWriter fw = new FileWriter(file)){
+                fw.write("Hello!");
+            }
+        }
+
+        long fileSize = Files.size(IOUtils.getPath(file1.getAbsolutePath()));
+        Assert.assertTrue(fileSize > 0);
+        long dirSize = IOUtils.getDirSize(dir.getAbsolutePath());
+        Assert.assertEquals(dirSize, fileSize * 2);
+    }
+
+    @Test(groups={"bucket"})
+    public void testDirSizeGCS() throws IOException {
+        final String src = publicTestDir + "empty.vcf";
+        final String gcsSubDir = GoogleStorageUtils.randomRemotePath(getGCPTestStaging(), "dir-", "/");
+        final String intermediate = GoogleStorageUtils.randomRemotePath(gcsSubDir, "test-copy-empty", ".vcf");
+        Files.copy(IOUtils.getPath(src), IOUtils.getPath(intermediate), StandardCopyOption.REPLACE_EXISTING);
+        Assert.assertTrue(Files.exists(IOUtils.getPath(intermediate)));
+
+        long srcFileSize = Files.size(IOUtils.getPath(src));
+        Assert.assertTrue(srcFileSize > 0);
+        long intermediateFileSize = Files.size(IOUtils.getPath(intermediate));
+        Assert.assertEquals(intermediateFileSize, srcFileSize);
+        long intermediateDirSize = IOUtils.getDirSize(intermediate);
+        Assert.assertEquals(intermediateDirSize, srcFileSize);
+        long intermediateParentDirSize = IOUtils.getDirSize(gcsSubDir);
+        Assert.assertEquals(intermediateParentDirSize, srcFileSize);
+
+        Files.delete(IOUtils.getPath(intermediate));
+        Assert.assertFalse(Files.exists(IOUtils.getPath(intermediate)));
+    }
+
+    @Test
+    public void testIsHadoopURL(){
+        Assert.assertFalse(IOUtils.isHadoopUrl("gs://abucket/bucket"));
+        Assert.assertTrue(IOUtils.isHadoopUrl("hdfs://namenode/path/to/file"));
+        Assert.assertFalse(IOUtils.isHadoopUrl("localFile"));
     }
 }
