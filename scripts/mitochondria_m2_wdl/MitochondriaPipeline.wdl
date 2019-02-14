@@ -19,7 +19,8 @@ workflow MitochondriaPipeline {
   # Using an older version of the default Mutect LOD cutoff. This value can be changed and is only useful at low depths
   # to catch sites that would not get caught by the LOD divided by depth filter.
   Float lod_cutoff = 6.3
-  # Read length used for optimization only. If this is too small CollectWgsMetrics might fail. Default is 151.
+  # Read length used for optimization only. If this is too small CollectWgsMetrics might fail, but the results are not
+  # affected by this number. Default is 151.
   Int? max_read_length
 
   # Full reference is only requred if starting with a CRAM (BAM doesn't need these files)
@@ -114,6 +115,17 @@ workflow MitochondriaPipeline {
       preemptible_tries = preemptible_tries
   }
 
+  call CollectWgsMetrics {
+    input:
+      input_bam = AlignToMt.mt_aligned_bam,
+      input_bam_index = AlignToMt.mt_aligned_bam,
+      ref_fasta = mt_fasta,
+      ref_fasta_index = mt_fasta_index,
+      read_length = max_read_length,
+      coverage_cap = 100000,
+      preemptible_tries = preemptible_tries
+  }
+
   call GetContamination {
     input:
       input_bam = AlignToMt.mt_aligned_bam,
@@ -136,6 +148,7 @@ workflow MitochondriaPipeline {
       m2_extra_args = select_first([m2_extra_args, ""]) + " -L chrM:576-16024 ",
       blacklisted_sites = blacklisted_sites,
       blacklisted_sites_index = blacklisted_sites_index,
+      mean_coverage = CollectWgsMetrics.mean_coverage,
       autosomal_coverage = autosomal_coverage,
       contamination = GetContamination.minor_level,
       max_read_length = max_read_length,
@@ -155,6 +168,7 @@ workflow MitochondriaPipeline {
       m2_extra_args = select_first([m2_extra_args, ""]) + " -L chrM:8025-9144 ",
       blacklisted_sites = blacklisted_sites_shifted,
       blacklisted_sites_index = blacklisted_sites_shifted_index,
+      mean_coverage = CollectWgsMetrics.mean_coverage,
       autosomal_coverage = autosomal_coverage,
       contamination = GetContamination.minor_level,
       max_read_length = max_read_length,
@@ -199,11 +213,11 @@ workflow MitochondriaPipeline {
     File out_vcf = LiftoverAndCombineVcfs.final_vcf
     File out_vcf_index = LiftoverAndCombineVcfs.final_vcf_index
     File duplicate_metrics = AlignToMt.duplicate_metrics
-    File coverage_metrics = CallAndFilterMt.coverage_metrics
-    File theoretical_sensitivity_metrics = CallAndFilterMt.theoretical_sensitivity_metrics
+    File coverage_metrics = CollectWgsMetrics.metrics
+    File theoretical_sensitivity_metrics = CollectWgsMetrics.theoretical_sensitivity
     File contamination_metrics = GetContamination.contamination_file
     File base_level_coverage_metrics = CoverageAtEveryBase.table
-    Int mean_coverage = CallAndFilterMt.mean_coverage
+    Int mean_coverage = CollectWgsMetrics.mean_coverage
     String major_haplogroup = GetContamination.major_hg
     Float contamination = GetContamination.minor_level
   }
@@ -278,7 +292,7 @@ task AddOriginalAlignmentTags {
   runtime {
       memory: "3 GB"
       disks: "local-disk " + disk_size + " HDD"
-      docker: "us.gcr.io/broad-gatk/gatk:4.0.11.0"
+      docker: "us.gcr.io/broad-gatk/gatk:4.1.0.0"
       preemptible: select_first([preemptible_tries, 5])
   }
   output {
@@ -437,6 +451,59 @@ CODE
     Float major_level = read_float("major_level.txt")
     String minor_hg = read_string("minor_hg.txt")
     Float minor_level = read_float("minor_level.txt")
+  }
+}
+
+task CollectWgsMetrics {
+  File input_bam
+  File input_bam_index
+  File ref_fasta
+  File ref_fasta_index
+  Int? read_length
+  Int read_length_for_optimization = select_first([read_length, 151])
+  Int? coverage_cap
+
+  Int? preemptible_tries
+  Float ref_size = size(ref_fasta, "GB") + size(ref_fasta_index, "GB")
+  Int disk_size = ceil(size(input_bam, "GB") + ref_size) + 20
+
+  meta {
+    description: "Collect coverage metrics"
+  }
+  parameter_meta {
+    read_length: "Read length used for optimization only. If this is too small CollectWgsMetrics might fail. Default is 151."
+  }
+
+  command <<<
+    set -e
+
+    java -Xms2000m -jar /usr/gitc/picard.jar \
+      CollectWgsMetrics \
+      INPUT=${input_bam} \
+      VALIDATION_STRINGENCY=SILENT \
+      REFERENCE_SEQUENCE=${ref_fasta} \
+      OUTPUT=metrics.txt \
+      USE_FAST_ALGORITHM=true \
+      READ_LENGTH=${read_length_for_optimization} \
+      ${"COVERAGE_CAP=" + coverage_cap} \
+      INCLUDE_BQ_HISTOGRAM=true \
+      THEORETICAL_SENSITIVITY_OUTPUT=theoretical_sensitivity.txt
+
+    R --vanilla <<CODE
+      df = read.table("metrics.txt",skip=6,header=TRUE,stringsAsFactors=FALSE,sep='\t',nrows=1)
+      write.table(floor(df[,"MEAN_COVERAGE"]), "mean_coverage.txt", quote=F, col.names=F, row.names=F)
+    CODE
+  >>>
+  runtime {
+    preemptible: select_first([preemptible_tries, 5])
+    memory: "3 GB"
+    disks: "local-disk " + disk_size + " HDD"
+    docker: "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.1-1540490856"
+  }
+  output {
+    File metrics = "metrics.txt"
+    File theoretical_sensitivity = "theoretical_sensitivity.txt"
+    Int mean_coverage = read_int("mean_coverage.txt")
   }
 }
 
