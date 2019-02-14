@@ -393,9 +393,9 @@ public final class PosteriorProbabilitiesUtilsUnitTest extends GATKBaseTest {
 
     @Test
     public void testGenotypesWithNoDataDoNotChange() {
-        final GenotypeBuilder gb = new GenotypeBuilder("s1");
-        gb.alleles(Arrays.asList(Allele.NO_CALL, Allele.NO_CALL)).DP(0).AD(new int[]{0,0}).GQ(0).PL(new int[]{0,0,0});
-        final VariantContext vc = makeVC("noCall", Arrays.asList(Allele.create("A",true), Allele.create("T")), gb.make());
+        final GenotypeBuilder gb = new GenotypeBuilder("s1").
+                alleles(Arrays.asList(Allele.NO_CALL, Allele.NO_CALL)).DP(0).AD(new int[]{0,0}).GQ(0).PL(new int[]{0,0,0});
+        final VariantContext vc = makeVC("noCall", Arrays.asList(Aref, Allele.create("T")), gb.make());
         final List<VariantContext> resources = new ArrayList<>();
         resources.add(new VariantContextBuilder(makeVC("2", Arrays.asList(Aref,T))).attribute(GATKVCFConstants.MLE_ALLELE_COUNT_KEY,500).attribute(VCFConstants.ALLELE_NUMBER_KEY,1000).make());
         final VariantContext result = PosteriorProbabilitiesUtils.calculatePosteriorProbs(vc, resources, 0, defaultOptions);

@@ -198,13 +198,8 @@ public final class PosteriorProbabilitiesUtils {
             return false;
         }
         if (genotype.hasDP() && genotype.getDP() == 0) {
-            int[] pls = genotype.getPL();
-            for (int i = 0; i < pls.length; i++) {
-                if (pls[i] > 0) {
-                    return true;
-                }
-            }
-            return false;  //if there's no depth and the PLs are all zero, then there's really no data here; don't rely on no-call
+            //if there's no depth and the PLs are all zero, then there's really no data here; don't rely on no-call
+            return MathUtils.arrayMax(genotype.getPL()) > 0;
         }
         return true;
     }
