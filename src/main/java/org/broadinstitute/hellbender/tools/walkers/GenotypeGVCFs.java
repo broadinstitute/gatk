@@ -15,7 +15,6 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_RMSMappingQuality;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.GeneralPloidyFailOverAFCalculatorProvider;
-import org.broadinstitute.hellbender.tools.walkers.mutect.FilterMutectCalls;
 import org.broadinstitute.hellbender.tools.walkers.mutect.M2ArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.mutect.M2FiltersArgumentCollection;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
@@ -26,14 +25,10 @@ import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
-import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 
 import java.io.File;
 import java.util.*;
 import java.util.stream.Collectors;
-
-import static org.broadinstitute.hellbender.tools.walkers.CombineGVCFs.ALLELE_FRACTION_DELTA_LONG_NAME;
-import static org.broadinstitute.hellbender.tools.walkers.CombineGVCFs.USE_SOMATIC_LONG_NAME;
 
 /**
  * Perform joint genotyping on one or more samples pre-called with HaplotypeCaller
@@ -114,7 +109,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
      * "Genotype" somatic GVCFs, outputting genotypes according to confidently called alt alleles, which may lead to inconsistent ploidy
      * Note that the Mutect2 reference confidence mode is in BETA -- the likelihoods model and output format are subject to change in subsequent versions.
      */
-    @Argument(fullName=USE_SOMATIC_LONG_NAME, doc = "Finalize input GVCF according to somatic (i.e. Mutect2) TLODs (BETA feature)")
+    @Argument(fullName= CombineGVCFs.SOMATIC_INPUT_LONG_NAME, doc = "Finalize input GVCF according to somatic (i.e. Mutect2) TLODs (BETA feature)")
     protected boolean somaticInput = false;
 
     /**
@@ -129,7 +124,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
     /**
      * Margin of error in allele fraction to consider a somatic variant homoplasmic, i.e. if there is less than a 0.1% reference allele fraction, those reads are likely errors
      */
-    @Argument(fullName=ALLELE_FRACTION_DELTA_LONG_NAME, doc = "Margin of error in allele fraction to consider a somatic variant homoplasmic")
+    @Argument(fullName=CombineGVCFs.ALLELE_FRACTION_DELTA_LONG_NAME, doc = "Margin of error in allele fraction to consider a somatic variant homoplasmic")
     protected double afTolerance = 1e-3;  //based on Q30 as a "good" base quality score
 
     @ArgumentCollection
@@ -274,12 +269,8 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
 
         ref.setWindow(10, 10); //TODO this matches the gatk3 behavior but may be unnecessary
         final VariantContext mergedVC = merger.merge(variantsToProcess, loc, includeNonVariants ? ref.getBase() : null, !includeNonVariants, false);
-        final VariantContext regenotypedVC;
-        if (somaticInput) {
-            regenotypedVC = regenotypeSomaticVC(mergedVC, ref, features, includeNonVariants);
-        } else {
-            regenotypedVC = regenotypeVC(mergedVC, ref, features, includeNonVariants);
-        }
+        final VariantContext regenotypedVC = somaticInput ? regenotypeSomaticVC(mergedVC, ref, features, includeNonVariants) :
+                regenotypeVC(mergedVC, ref, features, includeNonVariants);
         if (regenotypedVC != null) {
             final SimpleInterval variantStart = new SimpleInterval(regenotypedVC.getContig(), regenotypedVC.getStart(), regenotypedVC.getStart());
             if (!GATKVariantContextUtils.isSpanningDeletionOnly(regenotypedVC) &&
@@ -416,8 +407,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
             result = callSomaticGenotypes(originalVC);
         } else if (includeNonVariants) {
             result = originalVC;
-        }
-        else {
+        } else {
             result = null;
         }
         return result;
@@ -432,14 +422,12 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
      * @return a VC with called genotypes and low quality alleles removed, may be null
      */
     private VariantContext callSomaticGenotypes(final VariantContext vc) {
-        final VariantContextBuilder builder = new VariantContextBuilder(vc);
-        GenotypeBuilder gb;
         final List<Genotype> newGenotypes = new ArrayList<>();
         final GenotypesContext genotypes = vc.getGenotypes();
         final double[] perAlleleLikelihoodSums = new double[vc.getAlleles().size()];  //needs the ref for the subsetting utils
 
         for(final Genotype g : genotypes) {
-            gb = new GenotypeBuilder(g);
+            GenotypeBuilder gb = new GenotypeBuilder(g);
             final double[] tlodArray = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(g, GATKVCFConstants.TUMOR_LOD_KEY, () -> null, 0.0);
             final double[] variantAFArray = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(g, GATKVCFConstants.ALLELE_FRACTION_KEY, () -> null, 0.0);
             double variantAFtotal = 0;
@@ -452,7 +440,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
                 }
             }
             //hack for weird Mutect2 ploidy -- if the variant is non-homoplasmic, call the reference allele too
-            if(variantAFtotal < 1-afTolerance && (g.hasAD() ? g.getAD()[0] > 0 : true)) {
+            if(variantAFtotal < 1-afTolerance && !(g.hasAD() && g.getAD()[0] > 0 )) {
                 calledAlleles.add(0, vc.getReference());
             }
             //"ploidy" gets set according to the size of the alleles List in the Genotype
@@ -460,6 +448,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
             newGenotypes.add(gb.make());
         }
 
+        final VariantContextBuilder builder = new VariantContextBuilder(vc);
         final VariantContext regenotypedVC = builder.genotypes(newGenotypes).make();
 
         final int maxAltAlleles = ((UnifiedArgumentCollection)genotypingEngine.getConfiguration()).genotypeArgs.MAX_ALTERNATE_ALLELES;
@@ -487,10 +476,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
             return regenotypedVC;
         }
 
-        final int[] relevantIndices = new int[allelesToKeep.size()];
-        for (int i = 0; i < allelesToKeep.size(); i++) {
-            relevantIndices[i] = regenotypedVC.getAlleles().indexOf(allelesToKeep.get(i));
-        }
+        final int[] relevantIndices = allelesToKeep.stream().mapToInt(a -> regenotypedVC.getAlleles().indexOf(a)).toArray();
 
         //do another pass over genotypes to drop the alleles that aren't called
         final GenotypesContext reducedGenotypes = AlleleSubsettingUtils.subsetSomaticAlleles(outputHeader, regenotypedVC.getGenotypes(), allelesToKeep, relevantIndices);

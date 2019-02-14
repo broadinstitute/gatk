@@ -4,7 +4,6 @@ import htsjdk.samtools.seekablestream.SeekablePathStream;
 import htsjdk.variant.utils.VCFHeaderReader;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
-import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.codec.digest.DigestUtils;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -12,10 +11,6 @@ import org.apache.commons.collections.IteratorUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.walkers.mutect.M2ArgumentCollection;
-import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
-import org.broadinstitute.hellbender.utils.MathUtils;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.runtime.ProcessController;
 import org.broadinstitute.hellbender.utils.runtime.ProcessOutput;
@@ -37,16 +32,12 @@ import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
-import static org.broadinstitute.hellbender.utils.variant.GATKVCFConstants.MEDIAN_MAPPING_QUALITY_KEY;
-
 public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
     private static final List<String> NO_EXTRA_ARGS = Collections.emptyList();
     private static final List<String> ATTRIBUTES_TO_IGNORE = Arrays.asList(
             "RAW_MQ", //MQ data format and key have changed since GATK3
             "PS"); //PS format field was added in GATK4
     private static final File NA12878_HG37 = new File(toolsTestDir + "haplotypecaller/expected.testGVCFMode.gatk4.g.vcf");
-    private static final File MITO_REF = new File(toolsTestDir, "mutect/mito/Homo_sapiens_assembly38.mt_only.fasta");
-
 
     private static <T> void assertForEachElementInLists(final List<T> actual, final List<T> expected, final BiConsumer<T, T> assertion) {
         Assert.assertEquals(actual.size(), expected.size(), "different number of elements in lists:\n"
@@ -62,7 +53,7 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
     public Object[][] gvcfsToCombine() {
         return new Object[][]{
                 // Simple Test, spanning deletions
-               /* {new File[]{getTestFile("spanningDel.1.g.vcf"),getTestFile("spanningDel.2.g.vcf")}, getTestFile("spanningDeletionRestrictToStartExpected.vcf"), NO_EXTRA_ARGS, b37_reference_20_21},
+                {new File[]{getTestFile("spanningDel.1.g.vcf"),getTestFile("spanningDel.2.g.vcf")}, getTestFile("spanningDeletionRestrictToStartExpected.vcf"), NO_EXTRA_ARGS, b37_reference_20_21},
                 // Simple Test, multiple spanning deletions for one file
                 {new File[]{getTestFile("spanningDel.many.g.vcf")}, getTestFile("testMultipleSpanningDeletionsForOneSample.vcf"), NO_EXTRA_ARGS, b37_reference_20_21},
                 // Simple Test, spanning deletions for haploid data
@@ -83,7 +74,7 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
                 // Testing mismatched reference bases
                 {new File[]{getTestFile("combine-gvcf-wrong-ref-input1.vcf"),getTestFile("combine-gvcf-wrong-ref-input2.vcf"),}, getTestFile("testWrongReferenceBaseBugFix.vcf"), Arrays.asList("-A", "ClippingRankSumTest"), b37_reference_20_21},
                 //Testing allele-specific annotations
-                */{new File[]{getTestFile("NA12878.AS.chr20snippet.g.vcf"), getTestFile("NA12892.AS.chr20snippet.g.vcf")}, getTestFile("testAlleleSpecificAnnotations.vcf"), Arrays.asList("-G", "Standard", "-G", "AS_Standard"), b37_reference_20_21},
+                {new File[]{getTestFile("NA12878.AS.chr20snippet.g.vcf"), getTestFile("NA12892.AS.chr20snippet.g.vcf")}, getTestFile("testAlleleSpecificAnnotations.vcf"), Arrays.asList("-G", "Standard", "-G", "AS_Standard"), b37_reference_20_21},
                 //Testing allele-specific annotations missing AS_Standard Group
                 {new File[]{getTestFile("NA12878.AS.chr20snippet.g.vcf"), getTestFile("NA12892.AS.chr20snippet.g.vcf")}, getTestFile("testAlleleSpecificAnnotationsNoGroup.vcf"), Arrays.asList("-G", "Standard", "-G", "AS_Standard"), b37_reference_20_21},
                 //Test that trailing reference blocks are emitted with correct intervals
@@ -440,11 +431,10 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
     public void testCombineSomaticGvcfs() throws Exception {
         final File output = createTempFile("combinegvcfs", ".vcf");
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addReference(new File(b37Reference));
-        args.addOutput(output);
-        args.addVCF(getTestFile("NA12878.MT.filtered.g.vcf"));
-        args.addVCF(getTestFile("NA19240.MT.filtered.g.vcf"));
-        args.addBooleanArgument(CombineGVCFs.USE_SOMATIC_LONG_NAME, true);
+        args.addReference(new File(b37Reference)).addOutput(output)
+                .addVCF(getTestFile("NA12878.MT.filtered.g.vcf"))
+                .addVCF(getTestFile("NA19240.MT.filtered.g.vcf"))
+                .addBooleanArgument(CombineGVCFs.SOMATIC_INPUT_LONG_NAME, true);
         runCommandLine(args);
 
         final List<VariantContext> actualVC = getVariantContexts(output);
@@ -497,7 +487,7 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
         args.addOutput(output);
         args.addVCF(getTestFile("twoSamples.MT.g.vcf"));
         args.addVCF(getTestFile("NA12891.MT.filtered.g.vcf"));
-        args.addBooleanArgument(CombineGVCFs.USE_SOMATIC_LONG_NAME, true);
+        args.addBooleanArgument(CombineGVCFs.SOMATIC_INPUT_LONG_NAME, true);
         runCommandLine(args);
 
         final File output2 = createTempFile("expected", ".vcf");
@@ -507,7 +497,7 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
         args2.addVCF(getTestFile("NA12878.MT.filtered.g.vcf"));
         args2.addVCF(getTestFile("NA19240.MT.filtered.g.vcf"));
         args2.addVCF(getTestFile("NA12891.MT.filtered.g.vcf"));
-        args2.addBooleanArgument(CombineGVCFs.USE_SOMATIC_LONG_NAME, true);
+        args2.addBooleanArgument(CombineGVCFs.SOMATIC_INPUT_LONG_NAME, true);
         runCommandLine(args2);
 
         final List<VariantContext> expectedVC = getVariantContexts(output2);
@@ -525,7 +515,7 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
         args.addVCF(getTestFile("NA12878.MT.filtered.g.vcf"));
         args.addVCF(getTestFile("NA19240.MT.filtered.g.vcf"));
         args.addVCF(getTestFile("NA12891.MT.filtered.g.vcf"));
-        args.addBooleanArgument(CombineGVCFs.USE_SOMATIC_LONG_NAME, true);
+        args.addBooleanArgument(CombineGVCFs.SOMATIC_INPUT_LONG_NAME, true);
         args.addBooleanArgument(CombineGVCFs.DROP_SOMATIC_FILTERING_ANNOTATIONS_LONG_NAME, true);
         runCommandLine(args);
 

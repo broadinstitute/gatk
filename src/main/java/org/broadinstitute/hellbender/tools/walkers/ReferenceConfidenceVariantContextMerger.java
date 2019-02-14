@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.tools.walkers;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.primitives.Doubles;
+import com.google.common.primitives.Ints;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.*;
@@ -529,7 +531,6 @@ public final class ReferenceConfidenceVariantContextMerger {
         // we need to get a map done (lazily inside the loop) for each ploidy, up to the maximum possible.
         final int[][] genotypeIndexMapsByPloidy = new int[maximumPloidy + 1][];
         final int maximumAlleleCount = Math.max(remappedAlleles.size(),targetAlleles.size());
-        int[] perSampleIndexesOfRelevantAlleles;
 
         for ( final Genotype g : vc.getGenotypes() ) {
             final String name;
@@ -543,7 +544,7 @@ public final class ReferenceConfidenceVariantContextMerger {
             if (!doSomaticMerge) {
                 if (g.hasPL()) {
                     // lazy initialization of the genotype index map by ploidy.
-                    perSampleIndexesOfRelevantAlleles = getIndexesOfRelevantAlleles(remappedAlleles, targetAlleles, vc.getStart(), g);
+                    int[]  perSampleIndexesOfRelevantAlleles = getIndexesOfRelevantAlleles(remappedAlleles, targetAlleles, vc.getStart(), g);
                     final int[] genotypeIndexMapByPloidy = genotypeIndexMapsByPloidy[ploidy] == null
                             ? calculators.getInstance(ploidy, maximumAlleleCount).genotypeIndexMap(perSampleIndexesOfRelevantAlleles, calculators) //probably horribly slow
                             : genotypeIndexMapsByPloidy[ploidy];
@@ -565,7 +566,7 @@ public final class ReferenceConfidenceVariantContextMerger {
                 }
 
                 // lazy initialization of the genotype index map by ploidy.
-                perSampleIndexesOfRelevantAlleles = getIndexesOfRelevantAlleles(remappedAlleles, targetAlleles, vc.getStart(), g);
+                int[] perSampleIndexesOfRelevantAlleles = getIndexesOfRelevantAlleles(remappedAlleles, targetAlleles, vc.getStart(), g);
                 final int nonRefIndex = remappedAlleles.indexOf(Allele.NON_REF_ALLELE);
                 final int[] AD;
                 if (g.hasAD()) {
@@ -595,10 +596,9 @@ public final class ReferenceConfidenceVariantContextMerger {
                 }
                 //only copy filter status for single-sample VCs -- multi-sample VCs should already have GF updated
                 if (vc.filtersWereApplied() && vc.getSampleNames().size() == 1 && !g.isHomRef()) {
-                    final List<String> infoFilters = new ArrayList<>();
-                    infoFilters.addAll(vc.getFilters());
-                    if (infoFilters.size() > 0) { //PASS has to have null filters, so we can't add an empty list
-                        genotypeBuilder.filters(infoFilters);
+                    //PASS has to have null filters, so we can't add an empty list
+                    if (!vc.getFilters().isEmpty()) {
+                        genotypeBuilder.filters(new ArrayList(vc.getFilters()));
                     }
                 }
             }
@@ -691,14 +691,11 @@ public final class ReferenceConfidenceVariantContextMerger {
         // create the index mapping, using the <NON-REF> allele whenever such a mapping doesn't exist
         for ( int i = 1; i < targetAlleles.size(); i++ ) {
             // if there's more than 1 DEL allele then we need to use the best one
-            if (targetAlleles.get(i) == Allele.SPAN_DEL) {
-                if (!doSomaticMerge && g.hasPL()) {
-                    final int occurrences = Collections.frequency(remappedAlleles, Allele.SPAN_DEL);
-                    if (occurrences > 1) {
-                        final int indexOfBestDel = indexOfBestDel(remappedAlleles, g.getPL(), g.getPloidy());
-                        indexMapping[i] = (indexOfBestDel == -1 ? indexOfNonRef : indexOfBestDel);
-                        continue;
-                    }
+            if (targetAlleles.get(i) == Allele.SPAN_DEL && !doSomaticMerge && g.hasPL()) {
+                final int occurrences = Collections.frequency(remappedAlleles, Allele.SPAN_DEL);
+                if (occurrences > 1) {
+                    final int indexOfBestDel = indexOfBestDel(remappedAlleles, g.getPL(), g.getPloidy());
+                    indexMapping[i] = (indexOfBestDel == -1 ? indexOfNonRef : indexOfBestDel);
                 }
             }
 
@@ -766,11 +763,7 @@ public final class ReferenceConfidenceVariantContextMerger {
      */
     public static int[] generateAD(final int[] originalAD, final int[] indexesOfRelevantAlleles) {
         final List<Integer> adList = (List<Integer>)remapRLengthList(Arrays.stream(originalAD).boxed().collect(Collectors.toList()), indexesOfRelevantAlleles);
-        final int[] ads = new int[adList.size()];
-        for (int i = 0; i < ads.length; i++) {
-            ads[i] = adList.get(i);
-        }
-        return ads;
+        return Ints.toArray(adList);
     }
 
     /**
@@ -781,11 +774,7 @@ public final class ReferenceConfidenceVariantContextMerger {
      */
     public static double[] generateAF(final double[] originalAF, final int[] indexesOfRelevantAlleles) {
         final List<Double> afList = (List<Double>)remapALengthList(Arrays.stream(originalAF).boxed().collect(Collectors.toList()), indexesOfRelevantAlleles);
-        final double[] afs = new double[afList.size()];
-        for (int i = 0; i < afs.length; i++) {
-            afs[i] = afList.get(i);
-        }
-        return afs;
+        return Doubles.toArray(afList);
     }
 
     /**

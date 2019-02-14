@@ -347,14 +347,6 @@ public final class AlleleSubsettingUtils {
         return likelihoodSums;
     }
 
-    static double[] calculateSomaticLikelihoodSums(final VariantContext vc) {
-        final double[] likelihoodSums = new double[vc.getNAlleles()];
-        for (final Genotype genotype : vc.getGenotypes().iterateInSampleNameOrder()) {
-
-        }
-        return likelihoodSums;
-    }
-
     /**
      * Given a list of original alleles and a subset of new alleles to retain, find the array of old PL indices that correspond
      * to new PL indices i.e. result[7] = old PL index of genotype containing same alleles as the new genotype with PL index 7.

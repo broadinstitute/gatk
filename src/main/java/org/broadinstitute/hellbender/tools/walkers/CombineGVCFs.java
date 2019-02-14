@@ -78,7 +78,7 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
 
     public static final String BP_RES_LONG_NAME = "convert-to-base-pair-resolution";
     public static final String BREAK_BANDS_LONG_NAME = "break-bands-at-multiples-of";
-    public static final String USE_SOMATIC_LONG_NAME = "input-is-somatic";
+    public static final String SOMATIC_INPUT_LONG_NAME = "input-is-somatic";
     public static final String DROP_SOMATIC_FILTERING_ANNOTATIONS_LONG_NAME = "drop-somatic-filtering-annotations";
     public static final String ALLELE_FRACTION_DELTA_LONG_NAME = "allele-fraction-error";
 
@@ -104,7 +104,7 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
      * Merge somatic GVCFs, retaining LOD and haplotype event count information in FORMAT field
      * Note that the Mutect2 reference confidence mode is in BETA -- the likelihoods model and output format are subject to change in subsequent versions.
      */
-    @Argument(fullName=USE_SOMATIC_LONG_NAME, doc = "Merge input GVCFs according to somatic (i.e. Mutect2) annotations (BETA)")
+    @Argument(fullName= SOMATIC_INPUT_LONG_NAME, doc = "Merge input GVCFs according to somatic (i.e. Mutect2) annotations (BETA)")
     protected boolean somaticInput = false;
 
     /**

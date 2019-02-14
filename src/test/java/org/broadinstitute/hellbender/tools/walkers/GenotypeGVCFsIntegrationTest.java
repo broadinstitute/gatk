@@ -7,7 +7,6 @@ import htsjdk.variant.utils.VCFHeaderReader;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.collections.IteratorUtils;
@@ -50,8 +49,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
      private static final String BASE_PAIR_EXPECTED = "gvcf.basepairResolution.gatk3.7_30_ga4f720357.output.vcf";
     private static final String b38_reference_20_21 = largeFileTestDir + "Homo_sapiens_assembly38.20.21.fasta";
     private static final String BASE_PAIR_GVCF = "gvcf.basepairResolution.gvcf";
-    private static final File MITO_REF = new File(toolsTestDir, "mutect/mito/Homo_sapiens_assembly38.mt_only.fasta");
-    private static final double tlodThreshold = 0.8 * M2FiltersArgumentCollection.DEFAULT_TLOD_FILTER_THRESHOLD;
+    private static final double TLOD_THRESHOLD = 0.8 * M2FiltersArgumentCollection.DEFAULT_TLOD_FILTER_THRESHOLD;
 
     private static final File CEUTRIO_20_21_GATK3_4_G_VCF = new File(largeFileTestDir, "gvcfs/CEUTrio.20.21.gatk3.4.g.vcf");
     private static final String CEUTRIO_20_21_EXPECTED_VCF = "CEUTrio.20.21.gatk3.7_30_ga4f720357.expected.vcf";
@@ -355,10 +353,10 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
                 .addVCF(getTestFile("threeSamples.MT.g.vcf"))
                 .addReference(new File(b37Reference))
                 .addOutput(output)
-                .addBooleanArgument(CombineGVCFs.USE_SOMATIC_LONG_NAME, true);
+                .addBooleanArgument(CombineGVCFs.SOMATIC_INPUT_LONG_NAME, true);
         runCommandLine(args);
 
-        //compared with the combined GVCF, this output should have called GTs and no alts with LODs less than tlodThreshold
+        //compared with the combined GVCF, this output should have called GTs and no alts with LODs less than TLOD_THRESHOLD
         //uncalled alleles should be removed
 
         final List<VariantContext> results = getVariantContexts(output);
@@ -382,7 +380,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
                 double[] sample1LODs = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc.getGenotype(1), GATKVCFConstants.TUMOR_LOD_KEY, () -> null, 0.0);
                 double[] sample2LODs = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc.getGenotype(2), GATKVCFConstants.TUMOR_LOD_KEY, () -> null, 0.0);
                 for (int i = 0; i < vc.getNAlleles() - 1; i++) {
-                    Assert.assertTrue(sample0LODs[i] > tlodThreshold || sample1LODs[i] > tlodThreshold || sample2LODs[i] > tlodThreshold);
+                    Assert.assertTrue(sample0LODs[i] > TLOD_THRESHOLD || sample1LODs[i] > TLOD_THRESHOLD || sample2LODs[i] > TLOD_THRESHOLD);
                 }
             }
 
@@ -422,7 +420,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
                 .addVCF(new File(getToolTestDataDir() + "../CombineGVCFs/twoSamples.MT.g.vcf"))
                 .addReference(new File(b37Reference))
                 .addOutput(output)
-                .addBooleanArgument(CombineGVCFs.USE_SOMATIC_LONG_NAME, true)
+                .addBooleanArgument(CombineGVCFs.SOMATIC_INPUT_LONG_NAME, true)
                 .addArgument("max-alternate-alleles", "2");
         runCommandLine(args);
 
