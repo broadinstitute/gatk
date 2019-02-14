@@ -16,13 +16,14 @@ import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscovery
 import org.broadinstitute.hellbender.engine.MultiVariantWalkerGroupedOnStart;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
-import org.broadinstitute.hellbender.tools.walkers.annotator.StandardAnnotation;
-import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
+import org.broadinstitute.hellbender.tools.walkers.annotator.*;
+import org.broadinstitute.hellbender.tools.walkers.mutect.M2FiltersArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2FilteringEngine;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.File;
@@ -291,14 +292,9 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
 
             if (!dropSomaticFilteringAnnotations) {
                 //standard M2 INFO annotations for filtering will get moved to FORMAT field
-                //TODO: I don't have a great solution for using the same descriptions other than copying
-                headerLines.add(new VCFFormatHeaderLine(GATKVCFConstants.MEDIAN_BASE_QUALITY_KEY, VCFHeaderLineCount.R, VCFHeaderLineType.Integer, "median base quality"));
-                headerLines.add(new VCFFormatHeaderLine(GATKVCFConstants.MEDIAN_MAPPING_QUALITY_KEY, VCFHeaderLineCount.R, VCFHeaderLineType.Integer, "median mapping quality"));
-                headerLines.add(new VCFFormatHeaderLine(GATKVCFConstants.MEDIAN_READ_POSITON_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Integer, "median distance from end of read"));
-                headerLines.add(new VCFFormatHeaderLine(GATKVCFConstants.MEDIAN_FRAGMENT_LENGTH_KEY, VCFHeaderLineCount.R, VCFHeaderLineType.Integer, "median fragment length"));
-                headerLines.add(new VCFFormatHeaderLine(GATKVCFConstants.EVENT_COUNT_IN_HAPLOTYPE_KEY, 1, VCFHeaderLineType.Integer, "Number of events in this haplotype"));
-                headerLines.add(new VCFFormatHeaderLine(GATKVCFConstants.STRAND_ARTIFACT_AF_KEY, 3, VCFHeaderLineType.Float, "MAP estimates of allele fraction given z"));
-                headerLines.add(new VCFFormatHeaderLine(GATKVCFConstants.STRAND_ARTIFACT_POSTERIOR_KEY, 3, VCFHeaderLineType.Float, "posterior probabilities of the presence of strand artifact"));
+                for (final String key : Mutect2FilteringEngine.STANDARD_MUTECT_INFO_FIELDS_FOR_FILTERING) {
+                    headerLines.add(GATKVCFHeaderLines.getEquivalentFormatHeaderLine(key));
+                }
             }
         }
 

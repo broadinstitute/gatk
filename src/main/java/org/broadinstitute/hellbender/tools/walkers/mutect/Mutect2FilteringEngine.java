@@ -32,6 +32,14 @@ public class Mutect2FilteringEngine {
     private final Set<String> normalSamples;
     final Map<String, OverlapDetector<MinorAlleleFractionRecord>> tumorSegments;
     public static final String FILTERING_STATUS_VCF_KEY = "filtering_status";
+    public static final List<String> STANDARD_MUTECT_INFO_FIELDS_FOR_FILTERING = Arrays.asList(
+            GATKVCFConstants.MEDIAN_MAPPING_QUALITY_KEY,
+            GATKVCFConstants.MEDIAN_BASE_QUALITY_KEY,
+            GATKVCFConstants.MEDIAN_READ_POSITON_KEY,
+            GATKVCFConstants.MEDIAN_FRAGMENT_LENGTH_KEY,
+            GATKVCFConstants.STRAND_ARTIFACT_POSTERIOR_KEY,
+            GATKVCFConstants.STRAND_ARTIFACT_AF_KEY
+    );
 
     public Mutect2FilteringEngine(final M2FiltersArgumentCollection MTFAC, final Set<String> normalSamples, final Map<String, Double> contaminationBySample) {
         this.MTFAC = MTFAC;

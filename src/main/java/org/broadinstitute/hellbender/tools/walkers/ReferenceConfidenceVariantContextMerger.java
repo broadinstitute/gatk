@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.Alle
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotationData;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculator;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculators;
+import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2FilteringEngine;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
@@ -38,14 +39,6 @@ public final class ReferenceConfidenceVariantContextMerger {
     protected final OneShotLogger oneShotAnnotationLogger = new OneShotLogger(this.getClass());
     protected final OneShotLogger oneShotHeaderLineLogger = new OneShotLogger(this.getClass());
     protected final OneShotLogger AS_Warning = new OneShotLogger(this.getClass());
-    private static final List<String> SOMATIC_FILTERING_ANNOTATIONS = Arrays.asList(
-            GATKVCFConstants.MEDIAN_MAPPING_QUALITY_KEY,
-            GATKVCFConstants.MEDIAN_BASE_QUALITY_KEY,
-            GATKVCFConstants.MEDIAN_READ_POSITON_KEY,
-            GATKVCFConstants.MEDIAN_FRAGMENT_LENGTH_KEY,
-            GATKVCFConstants.STRAND_ARTIFACT_POSTERIOR_KEY,
-            GATKVCFConstants.STRAND_ARTIFACT_AF_KEY
-    );
     List<String> SOMATIC_INFO_ANNOTATIONS_TO_MOVE = Arrays.asList(GATKVCFConstants.TUMOR_LOD_KEY);
 
     private static final List<String> SOMATIC_FORMAT_ANNOTATIONS_TO_KEEP = Arrays.asList(
@@ -417,7 +410,7 @@ public final class ReferenceConfidenceVariantContextMerger {
         for ( final Map.Entry<String, Object> p : vcPair.getVc().getAttributes().entrySet() ) {
             final String key = p.getKey();
             if (SOMATIC_INFO_ANNOTATIONS_TO_MOVE.contains(key) ||
-                    SOMATIC_INFO_ANNOTATIONS_TO_DROP.contains(key) || SOMATIC_FILTERING_ANNOTATIONS.contains(key)) {
+                    SOMATIC_INFO_ANNOTATIONS_TO_DROP.contains(key) || Mutect2FilteringEngine.STANDARD_MUTECT_INFO_FIELDS_FOR_FILTERING.contains(key)) {
                 continue;
             }
 
@@ -590,7 +583,7 @@ public final class ReferenceConfidenceVariantContextMerger {
                 }
 
                 if (!dropSomaticFilteringAnnotations) {
-                    for (final String key : SOMATIC_FILTERING_ANNOTATIONS) {
+                    for (final String key : Mutect2FilteringEngine.STANDARD_MUTECT_INFO_FIELDS_FOR_FILTERING) {
                         setPerSampleSomaticAttributes(vc, perSampleIndexesOfRelevantAlleles, g, genotypeBuilder, key);
                     }
                 }
