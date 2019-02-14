@@ -52,10 +52,25 @@ public abstract class FuncotationFilter {
      */
     abstract List<FuncotationFiltrationRule> getRules();
 
+
+    /**
+     * Given a set of extracted funcotations of a variant, return a Stream of values that belong to the key.
+     * @param funcotations A Set of Map.Entry key-value pairs of funcotations
+     * @param key The funcotations to get
+     * @param defaultValue A default value to get if there are no matches
+     * @return A Stream of matched values
+     */
     protected Stream<String> matchOnKeyOrDefault(Set<Map.Entry<String, String>> funcotations, String key, String defaultValue) {
         return getMatchesOrDefault(funcotations, entry -> entry.getKey().equals(key), defaultValue);
     }
 
+    /**
+     * Given a set of extracted funcotations, return a Stream of values whose entry matches the supplied predicate
+     * @param funcotations A Set of Map.Entry key-value pairs of funcotations
+     * @param matcher A predicate taking a Map.Entry to filter on
+     * @param defaultValue A default value to get if there are no matches
+     * @return A Stream of matched values
+     */
     protected Stream<String> getMatchesOrDefault(Set<Map.Entry<String, String>> funcotations, Predicate<Map.Entry<String, String>> matcher, String defaultValue) {
         Set<String> matched = funcotations.stream().filter(matcher).map(Map.Entry::getValue).collect(Collectors.toSet());
         if (matched.isEmpty()) {
@@ -65,6 +80,12 @@ public abstract class FuncotationFilter {
         }
     }
 
+    /**
+     * Does the set of funcotations contain the key supplied
+     * @param funcotations A Set of Map.Entry key-value pairs of funcotations
+     * @param key The key to look for
+     * @return Whether or not the key exists in the funcotations
+     */
     protected Boolean containsKey(Set<Map.Entry<String, String>> funcotations, String key) {
         return funcotations.stream().anyMatch(entry -> entry.getKey().equals(key));
     }
