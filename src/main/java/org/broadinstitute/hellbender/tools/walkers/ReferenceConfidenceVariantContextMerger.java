@@ -156,14 +156,11 @@ public final class ReferenceConfidenceVariantContextMerger {
                 .genotypes(genotypes).unfiltered()
                 .attributes(new TreeMap<>(attributes)).log10PError(CommonInfo.NO_LOG10_PERROR);  // we will need to re-genotype later
         if (doSomaticMerge) {
-            if (aggregatedFilters.isEmpty()) {
+            //if all samples are filtered, this will apply all those filters to the VCF
+            if (aggregatedFilters.isEmpty() || sawPassSample) {
                     builder.passFilters();
             } else {
-                if (!sawPassSample) {
-                    builder.filters(aggregatedFilters);  //if all samples are filtered, this will apply all those filters to the VCF
-                } else {
-                    builder.passFilters();
-                }
+                builder.filters(aggregatedFilters);
             }
         }
         return builder.make();
