@@ -55,7 +55,7 @@ public final class AssemblyRegion implements Locatable {
      * Does this region represent an active region (all isActiveProbs above threshold) or
      * an inactive region (all isActiveProbs below threshold)?
      */
-    private final boolean isActive;
+    private boolean isActive;
 
     /**
      * The span of this assembly region, including the bp covered by all reads in this
@@ -164,6 +164,18 @@ public final class AssemblyRegion implements Locatable {
      */
     public boolean isActive() {
         return isActive;
+    }
+
+    /**
+     * Override activity state of the region
+     *
+     * Note: Changing the isActive state after construction is a debug-level operation that only engine classes
+     * like AssemblyRegionWalker should be able to do
+     *
+     * @param value new activity state of this region
+     */
+    void setIsActive(final boolean value) {
+        isActive = value;
     }
 
     /**

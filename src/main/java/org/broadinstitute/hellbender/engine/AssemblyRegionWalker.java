@@ -50,6 +50,7 @@ public abstract class AssemblyRegionWalker extends GATKTool {
     public static final String PROPAGATION_LONG_NAME = "max-prob-propagation-distance";
     public static final String PROFILE_OUT_LONG_NAME = "activity-profile-out";
     public static final String ASSEMBLY_REGION_OUT_LONG_NAME = "assembly-region-out";
+    public static final String FORCE_ACTIVE_REGIONS_LONG_NAME = "force-active";
 
     @Advanced
     @Argument(fullName = MIN_ASSEMBLY_LONG_NAME, doc = "Minimum size of an assembly region", optional = true)
@@ -73,6 +74,10 @@ public abstract class AssemblyRegionWalker extends GATKTool {
     @Advanced
     @Argument(fullName = PROPAGATION_LONG_NAME, doc="Upper limit on how many bases away probability mass can be moved around when calculating the boundaries between active and inactive assembly regions", optional = true)
     protected int maxProbPropagationDistance = defaultMaxProbPropagationDistance();
+
+    @Advanced
+    @Argument(fullName = FORCE_ACTIVE_REGIONS_LONG_NAME, doc = "If provided, all regions will be marked as active", optional = true)
+    protected boolean forceActive = false;
 
     /**
      * If provided, this walker will write out its activity profile (per bp probabilities of being active)
@@ -284,7 +289,10 @@ public abstract class AssemblyRegionWalker extends GATKTool {
         // Call into the tool implementation to process each assembly region from this shard.
         while ( assemblyRegionIter.hasNext() ) {
             final AssemblyRegion assemblyRegion = assemblyRegionIter.next();
-            
+            if ( forceActive ) {
+                assemblyRegion.setIsActive(true);
+            }
+
             logger.debug("Processing assembly region at " + assemblyRegion.getSpan() + " isActive: " + assemblyRegion.isActive() + " numReads: " + assemblyRegion.getReads().size());
             writeAssemblyRegion(assemblyRegion);
 
