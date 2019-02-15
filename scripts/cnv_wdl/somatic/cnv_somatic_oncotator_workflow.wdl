@@ -11,6 +11,7 @@ workflow CNVOncotatorWorkflow {
     String? additional_args
     String? oncotator_docker
     Int? mem_gb_for_oncotator
+    Int? boot_disk_space_gb_for_oncotator
     Int? preemptible_attempts
 
     call OncotateSegments {
@@ -19,6 +20,7 @@ workflow CNVOncotatorWorkflow {
             additional_args = additional_args,
             oncotator_docker = oncotator_docker,
             mem_gb = mem_gb_for_oncotator,
+            boot_disk_space_gb = boot_disk_space_gb_for_oncotator,
             preemptible_attempts = preemptible_attempts
     }
 
@@ -36,6 +38,7 @@ task OncotateSegments {
     String? oncotator_docker
     Int? mem_gb
     Int? disk_space_gb
+    Int? boot_disk_space_gb
     Boolean use_ssd = false
     Int? cpu
     Int? preemptible_attempts
@@ -69,7 +72,7 @@ task OncotateSegments {
         disks: "local-disk " + select_first([disk_space_gb, 50]) + if use_ssd then " SSD" else " HDD"
         cpu: select_first([cpu, 1])
         preemptible: select_first([preemptible_attempts, 2])
-        bootDiskSizeGb: 50
+        bootDiskSizeGb: select_first([boot_disk_space_gb, 20])
     }
 
     output {

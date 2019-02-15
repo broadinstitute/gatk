@@ -131,6 +131,7 @@ workflow CNVSomaticPairWorkflow {
     String? additional_args_for_oncotator
     String? oncotator_docker
     Int? mem_gb_for_oncotator
+    Int? boot_disk_space_gb_for_oncotator
 
     Int ref_size = ceil(size(ref_fasta, "GB") + size(ref_fasta_dict, "GB") + size(ref_fasta_fai, "GB"))
     Int read_count_pon_size = ceil(size(read_count_pon, "GB"))
@@ -427,6 +428,7 @@ workflow CNVSomaticPairWorkflow {
                  additional_args = additional_args_for_oncotator,
                  oncotator_docker = oncotator_docker,
                  mem_gb_for_oncotator = mem_gb_for_oncotator,
+                 boot_disk_space_gb_for_oncotator = boot_disk_space_gb_for_oncotator,
                  preemptible_attempts = preemptible_attempts
         }
     }
