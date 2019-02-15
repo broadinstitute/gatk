@@ -1,22 +1,16 @@
 package org.broadinstitute.hellbender.tools.walkers.variantutils;
 
-import org.apache.log4j.WriterAppender;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-import org.testng.Assert;
 
 import java.io.IOException;
-import java.io.ByteArrayOutputStream;
-import java.nio.file.*;
-import java.util.*;
-
-import org.apache.log4j.*;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Collections;
 
 
 public class LeftAlignAndTrimVariantsIntegrationTest extends CommandLineProgramTest {

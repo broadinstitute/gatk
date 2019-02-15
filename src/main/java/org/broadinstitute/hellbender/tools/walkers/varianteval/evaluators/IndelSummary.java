@@ -3,7 +3,8 @@ package org.broadinstitute.hellbender.tools.walkers.varianteval.evaluators;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -18,7 +19,7 @@ import java.util.Collections;
 
 @Analysis(description = "Evaluation summary for indels")
 public class IndelSummary extends VariantEvaluator implements StandardEval {
-    final protected static Logger logger = Logger.getLogger(IndelSummary.class);
+    final protected static Logger logger = LogManager.getLogger(IndelSummary.class);
 
     //
     // counts of snps and indels

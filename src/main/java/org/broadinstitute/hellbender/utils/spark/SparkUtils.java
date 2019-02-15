@@ -11,7 +11,8 @@ import htsjdk.samtools.util.RuntimeIOException;
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -34,7 +35,7 @@ import java.util.List;
  * Miscellaneous Spark-related utilities
  */
 public final class SparkUtils {
-    private static final Logger logger = Logger.getLogger(SparkUtils.class);
+    private static final Logger logger = LogManager.getLogger(SparkUtils.class);
 
     /** Sometimes Spark has trouble destroying a broadcast variable, but we'd like the app to continue anyway. */
     public static <T> void destroyBroadcast(final Broadcast<T> broadcast, final String whatBroadcast ) {

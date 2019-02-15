@@ -3,7 +3,8 @@ package org.broadinstitute.hellbender.utils;
 import htsjdk.samtools.util.Histogram;
 import org.apache.commons.math3.distribution.NormalDistribution;
 import org.apache.commons.math3.util.FastMath;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 
 import java.util.*;
@@ -16,7 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class MannWhitneyU {
 
-    protected static Logger logger = Logger.getLogger(MannWhitneyU.class);
+    protected static Logger logger = LogManager.getLogger(MannWhitneyU.class);
 
     private static final class Rank implements Comparable<Rank> {
         final double value;

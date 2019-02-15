@@ -3,7 +3,8 @@ package org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StrandBiasTest;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
@@ -17,7 +18,7 @@ import java.util.*;
  * Allele-specific implementation of strand bias annotations
  */
 public abstract class AS_StrandBiasTest extends StrandBiasTest implements ReducibleAnnotation {
-    private final static Logger logger = Logger.getLogger(AS_StrandBiasTest.class);
+    private final static Logger logger = LogManager.getLogger(AS_StrandBiasTest.class);
     public static final String SPLIT_DELIM = "\\|"; //String.split takes a regex, so we need to escape the pipe
     public static final String PRINT_DELIM = "|";
     public static final String REDUCED_DELIM = ",";
