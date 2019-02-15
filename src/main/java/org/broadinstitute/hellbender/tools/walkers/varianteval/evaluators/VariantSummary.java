@@ -4,7 +4,8 @@ import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.ReadsContext;
@@ -14,7 +15,6 @@ import org.broadinstitute.hellbender.tools.walkers.varianteval.util.Analysis;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.DataPoint;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
@@ -22,7 +22,7 @@ import java.util.*;
 
 @Analysis(description = "1000 Genomes Phase I summary of variants table")
 public class VariantSummary extends VariantEvaluator implements StandardEval {
-    final protected static Logger logger = Logger.getLogger(VariantSummary.class);
+    final protected static Logger logger = LogManager.getLogger(VariantSummary.class);
 
     /** Indels with size greater than this value are tallied in the CNV column */
     private final static int MAX_INDEL_LENGTH = 50;

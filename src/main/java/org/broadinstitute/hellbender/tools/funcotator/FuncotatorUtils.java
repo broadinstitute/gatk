@@ -10,7 +10,8 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -36,7 +37,7 @@ import java.util.stream.IntStream;
 
 public final class FuncotatorUtils {
 
-    private final static Logger logger = Logger.getLogger(FuncotatorUtils.class);
+    private final static Logger logger = LogManager.getLogger(FuncotatorUtils.class);
 
     /**
      * PRIVATE CONSTRUCTOR

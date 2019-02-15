@@ -5,7 +5,8 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang.ArrayUtils;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.utils.CompressedDataList;
@@ -21,7 +22,7 @@ import java.util.*;
  * Allele-specific implementation of rank sum test annotations
  */
 public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnnotation {
-    private static final Logger logger = Logger.getLogger(AS_RankSumTest.class);
+    private static final Logger logger = LogManager.getLogger(AS_RankSumTest.class);
     public static final String SPLIT_DELIM = "\\|"; //String.split takes a regex, so we need to escape the pipe
     public static final String PRINT_DELIM = "|";
     public static final String RAW_DELIM = ",";

@@ -2,7 +2,8 @@ package org.broadinstitute.hellbender.tools.walkers.varianteval.evaluators;
 
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -13,7 +14,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 
 @Analysis(description = "Evaluation summary for multi-allelic variants")
 public class MultiallelicSummary extends VariantEvaluator implements StandardEval {
-    final protected static Logger logger = Logger.getLogger(MultiallelicSummary.class);
+    final protected static Logger logger = LogManager.getLogger(MultiallelicSummary.class);
 
     public enum Type {
         SNP, INDEL

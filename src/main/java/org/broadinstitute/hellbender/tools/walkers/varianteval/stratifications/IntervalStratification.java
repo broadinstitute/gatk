@@ -1,19 +1,17 @@
 package org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications;
 
-import htsjdk.samtools.util.IntervalTree;
 import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.VariantContext;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.utils.GenomeLoc;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Stratifies the variants by whether they overlap an interval in the set provided on the command line.
@@ -29,7 +27,7 @@ import java.util.Map;
  * overlap, as opposed to using -L which will not properly work with symbolic variants.
  */
 public class IntervalStratification extends VariantStratifier {
-    final protected static Logger logger = Logger.getLogger(IntervalStratification.class);
+    final protected static Logger logger = LogManager.getLogger(IntervalStratification.class);
 
     final List<Object> OVERLAPPING = Arrays.asList((Object)"all", (Object)"overlaps.intervals");
     final List<Object> NOT_OVERLAPPING = Arrays.asList((Object)"all", (Object)"outside.intervals");

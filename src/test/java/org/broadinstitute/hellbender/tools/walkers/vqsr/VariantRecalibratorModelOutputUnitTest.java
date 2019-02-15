@@ -1,7 +1,8 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr;
 
 import com.google.common.collect.Lists;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.utils.report.GATKReport;
@@ -19,7 +20,7 @@ import java.util.List;
 import java.util.Random;
 
 public class VariantRecalibratorModelOutputUnitTest extends GATKBaseTest {
-    protected final static Logger logger = Logger.getLogger(VariantRecalibratorModelOutputUnitTest.class);
+    protected final static Logger logger = LogManager.getLogger(VariantRecalibratorModelOutputUnitTest.class);
     private final boolean printTables = false;
     private final int numAnnotations = 6;
     private final double shrinkage = 1.0;
