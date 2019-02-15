@@ -421,7 +421,8 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
                 .addReference(new File(b37Reference))
                 .addOutput(output)
                 .addBooleanArgument(CombineGVCFs.SOMATIC_INPUT_LONG_NAME, true)
-                .addArgument("max-alternate-alleles", "2");
+                .addArgument("max-alternate-alleles", "2")
+                .addInterval(new SimpleInterval("MT:73"));
         runCommandLine(args);
 
         List<VariantContext> results = getVariantContexts(output);

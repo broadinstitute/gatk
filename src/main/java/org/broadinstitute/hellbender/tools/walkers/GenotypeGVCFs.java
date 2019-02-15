@@ -440,7 +440,8 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
                 }
             }
             //hack for weird Mutect2 ploidy -- if the variant is non-homoplasmic, call the reference allele too
-            if(variantAFtotal < 1-afTolerance && !(g.hasAD() && g.getAD()[0] > 0 )) {
+            if(variantAFtotal < 1-afTolerance && (!g.hasAD() || g.getAD()[0] > 0)) {
+
                 calledAlleles.add(0, vc.getReference());
             }
             //"ploidy" gets set according to the size of the alleles List in the Genotype
