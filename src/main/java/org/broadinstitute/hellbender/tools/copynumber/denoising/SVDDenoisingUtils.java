@@ -332,6 +332,8 @@ public final class SVDDenoisingUtils {
         if (extremeOutlierTruncationPercentile == 0.) {
             logger.info(String.format("A value of 0 was provided for argument %s, so the corresponding truncation step will be skipped...",
                     CreateReadCountPanelOfNormals.EXTREME_OUTLIER_TRUNCATION_PERCENTILE_LONG_NAME));
+        } else if ((long) preprocessedReadCounts.getRowDimension() * preprocessedReadCounts.getColumnDimension() > Integer.MAX_VALUE) {
+            logger.warn("The number of matrix elements exceeds Integer.MAX_VALUE, so outlier truncation will be skipped...");
         } else {
             final double[] values = Doubles.concat(preprocessedReadCounts.getData());
             final double minimumOutlierTruncationThreshold = new Percentile(extremeOutlierTruncationPercentile).evaluate(values);
