@@ -66,8 +66,9 @@ import java.util.stream.Collectors;
  *     the COHORT mode. In this mode, ploidy model parameters (e.g. coverage bias and variance for each contig) are
  *     inferred, along with baseline contig ploidy states of each sample. It is possible to run the tool over a subset
  *     of all intervals present in the input count files, which can be specified by -L; this can be used to pass a
- *     filtered interval list produced by {@link FilterIntervals} to mask intervals from modeling. The specified
- *     intervals must be present in all of the input count files.
+ *     filtered interval list produced by {@link FilterIntervals} to mask intervals from modeling. Intervals may also be
+ *     blacklisted using -XL. The specified intervals that result from resolving -L/-XL inputs must be exactly present
+ *     in all of the input count files.
  *
  *     <p>A TSV file specifying prior probabilities for each integer ploidy state and for each contig is required in this
  *     mode and must be specified via the {@code contig-ploidy-priors} argument. The following shows an example of
@@ -161,6 +162,7 @@ import java.util.stream.Collectors;
  * gatk DetermineGermlineContigPloidy \
  *   -L intervals.interval_list \
  *   -XL blacklist_intervals.interval_list \
+ *   --interval-merging-rule OVERLAPPING_ONLY \
  *   --input normal_1.counts.hdf5 \
  *   --input normal_2.counts.hdf5 \
  *   ... \
