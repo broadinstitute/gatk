@@ -687,6 +687,7 @@ public final class ReferenceConfidenceVariantContextMerger {
                 if (occurrences > 1) {
                     final int indexOfBestDel = indexOfBestDel(remappedAlleles, g.getPL(), g.getPloidy());
                     indexMapping[i] = (indexOfBestDel == -1 ? indexOfNonRef : indexOfBestDel);
+                    continue;
                 }
             }
 
