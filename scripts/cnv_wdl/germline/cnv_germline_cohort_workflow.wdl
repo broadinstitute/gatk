@@ -487,14 +487,14 @@ task GermlineCNVCallerCohortMode {
         export MKL_NUM_THREADS=${default=8 cpu}
         export OMP_NUM_THREADS=${default=8 cpu}
 
-        mkdir contig-ploidy-calls-dir
-        tar xzf ${contig_ploidy_calls_tar} -C contig-ploidy-calls-dir
+        mkdir contig-ploidy-calls
+        tar xzf ${contig_ploidy_calls_tar} -C contig-ploidy-calls
 
         gatk --java-options "-Xmx${command_mem_mb}m"  GermlineCNVCaller \
             --run-mode COHORT \
             -L ${intervals} \
             --input ${sep=" --input " read_count_files} \
-            --contig-ploidy-calls contig-ploidy-calls-dir \
+            --contig-ploidy-calls contig-ploidy-calls \
             ${"--annotated-intervals " + annotated_intervals} \
             --interval-merging-rule OVERLAPPING_ONLY \
             --output ${output_dir_} \
@@ -549,6 +549,8 @@ task GermlineCNVCallerCohortMode {
             tar czf ${cohort_entity_id}-gcnv-calls-shard-${scatter_index}-sample-$CURRENT_SAMPLE_WITH_LEADING_ZEROS.tar.gz -C ${output_dir_}/${cohort_entity_id}-calls/SAMPLE_$CURRENT_SAMPLE .
             let CURRENT_SAMPLE=CURRENT_SAMPLE+1
         done
+
+        rm -rf contig-ploidy-calls
     >>>
 
     runtime {

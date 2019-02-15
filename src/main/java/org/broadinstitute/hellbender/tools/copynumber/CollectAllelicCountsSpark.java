@@ -30,8 +30,8 @@ import java.util.List;
  * See {@link CollectAllelicCounts}.  This behaves the same, except that it supports spark.
  */
 @CommandLineProgramProperties(
-        summary = "Collects ref/alt counts at sites.",
-        oneLineSummary = "Collects ref/alt counts at sites.",
+        summary = "Collects ref/alt counts at sites",
+        oneLineSummary = "Collects ref/alt counts at sites",
         programGroup = CopyNumberProgramGroup.class
 )
 public class CollectAllelicCountsSpark extends LocusWalkerSpark {
