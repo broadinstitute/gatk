@@ -456,9 +456,13 @@ workflow CNVSomaticPairWorkflow {
         File denoised_copy_ratios_plot_tumor = PlotDenoisedCopyRatiosTumor.denoised_copy_ratios_plot
         File denoised_copy_ratios_lim_4_plot_tumor = PlotDenoisedCopyRatiosTumor.denoised_copy_ratios_lim_4_plot
         File standardized_MAD_tumor = PlotDenoisedCopyRatiosTumor.standardized_MAD
+        Float standardized_MAD_value_tumor = PlotDenoisedCopyRatiosTumor.standardized_MAD_value
         File denoised_MAD_tumor = PlotDenoisedCopyRatiosTumor.denoised_MAD
+        Float denoised_MAD_value_tumor = PlotDenoisedCopyRatiosTumor.denoised_MAD_value
         File delta_MAD_tumor = PlotDenoisedCopyRatiosTumor.delta_MAD
+        Float delta_MAD_value_tumor = PlotDenoisedCopyRatiosTumor.delta_MAD_value
         File scaled_delta_MAD_tumor = PlotDenoisedCopyRatiosTumor.scaled_delta_MAD
+        Float scaled_delta_MAD_value_tumor = PlotDenoisedCopyRatiosTumor.scaled_delta_MAD_value
         File modeled_segments_plot_tumor = PlotModeledSegmentsTumor.modeled_segments_plot
 
         File? read_counts_entity_id_normal = CollectCountsNormal.entity_id
@@ -483,9 +487,13 @@ workflow CNVSomaticPairWorkflow {
         File? denoised_copy_ratios_plot_normal = PlotDenoisedCopyRatiosNormal.denoised_copy_ratios_plot
         File? denoised_copy_ratios_lim_4_plot_normal = PlotDenoisedCopyRatiosNormal.denoised_copy_ratios_lim_4_plot
         File? standardized_MAD_normal = PlotDenoisedCopyRatiosNormal.standardized_MAD
+        Float? standardized_MAD_value_normal = PlotDenoisedCopyRatiosNormal.standardized_MAD_value
         File? denoised_MAD_normal = PlotDenoisedCopyRatiosNormal.denoised_MAD
+        Float? denoised_MAD_value_normal = PlotDenoisedCopyRatiosNormal.denoised_MAD_value
         File? delta_MAD_normal = PlotDenoisedCopyRatiosNormal.delta_MAD
+        Float? delta_MAD_value_normal = PlotDenoisedCopyRatiosNormal.delta_MAD_value
         File? scaled_delta_MAD_normal = PlotDenoisedCopyRatiosNormal.scaled_delta_MAD
+        Float? scaled_delta_MAD_value_normal = PlotDenoisedCopyRatiosNormal.scaled_delta_MAD_value
         File? modeled_segments_plot_normal = PlotModeledSegmentsNormal.modeled_segments_plot
 
         File oncotated_called_file_tumor = select_first([CNVOncotatorWorkflow.oncotated_called_file, "null"])
@@ -741,9 +749,13 @@ task PlotDenoisedCopyRatios {
         File denoised_copy_ratios_plot = "${output_dir_}/${entity_id}.denoised.png"
         File denoised_copy_ratios_lim_4_plot = "${output_dir_}/${entity_id}.denoisedLimit4.png"
         File standardized_MAD = "${output_dir_}/${entity_id}.standardizedMAD.txt"
+        Float standardized_MAD_value = read_float(standardized_MAD)
         File denoised_MAD = "${output_dir_}/${entity_id}.denoisedMAD.txt"
+        Float denoised_MAD_value = read_float(denoised_MAD)
         File delta_MAD = "${output_dir_}/${entity_id}.deltaMAD.txt"
+        Float delta_MAD_value = read_float(delta_MAD)
         File scaled_delta_MAD = "${output_dir_}/${entity_id}.scaledDeltaMAD.txt"
+        Float scaled_delta_MAD_value = read_float(scaled_delta_MAD)
     }
 }
 
