@@ -1,0 +1,312 @@
+##fileformat=VCFv4.2
+##ALT=<ID=NON_REF,Description="Represents any possible alternative allele at this location">
+##FILTER=<ID=artifact_in_normal,Description="artifact_in_normal">
+##FILTER=<ID=bad_haplotype,Description="Variant near filtered variant on same haplotype.">
+##FILTER=<ID=base_quality,Description="alt median base quality">
+##FILTER=<ID=chimeric_original_alignment,Description="NuMT variant with too many ALT reads originally from autosome">
+##FILTER=<ID=clustered_events,Description="Clustered events observed in the tumor">
+##FILTER=<ID=contamination,Description="contamination">
+##FILTER=<ID=duplicate_evidence,Description="evidence for alt allele is overrepresented by apparent duplicates">
+##FILTER=<ID=fragment_length,Description="abs(ref - alt) median fragment length">
+##FILTER=<ID=germline_risk,Description="Evidence indicates this site is germline, not somatic">
+##FILTER=<ID=low_avg_alt_quality,Description="Low average alt quality">
+##FILTER=<ID=mapping_quality,Description="ref - alt median mapping quality">
+##FILTER=<ID=multiallelic,Description="Site filtered because too many alt alleles pass tumor LOD">
+##FILTER=<ID=n_ratio,Description="Ratio of N to alt exceeds specified ratio">
+##FILTER=<ID=panel_of_normals,Description="Blacklisted site in panel of normals">
+##FILTER=<ID=read_orientation_artifact,Description="orientation bias detected by the orientation bias mixture model">
+##FILTER=<ID=read_position,Description="median distance of alt variants from end of reads">
+##FILTER=<ID=str_contraction,Description="Site filtered due to contraction of short tandem repeat region">
+##FILTER=<ID=strand_artifact,Description="Evidence for alt allele comes from one read direction only">
+##FILTER=<ID=strict_strand_bias,Description="Evidence for alt allele is not represented in both directions">
+##FILTER=<ID=t_lod,Description="Mutation does not meet likelihood threshold">
+##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+##FORMAT=<ID=AF,Number=A,Type=Float,Description="Allele fractions of alternate alleles in the tumor">
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+##FORMAT=<ID=F1R2,Number=R,Type=Integer,Description="Count of reads in F1R2 pair orientation supporting each allele">
+##FORMAT=<ID=F2R1,Number=R,Type=Integer,Description="Count of reads in F2R1 pair orientation supporting each allele">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=MIN_DP,Number=1,Type=Integer,Description="Minimum DP observed within the GVCF block">
+##FORMAT=<ID=PGT,Number=1,Type=String,Description="Physical phasing haplotype information, describing how the alternate alleles are phased in relation to one another">
+##FORMAT=<ID=PID,Number=1,Type=String,Description="Physical phasing ID information, where each unique ID within a given sample (but not across samples) connects records within a phasing group">
+##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
+##FORMAT=<ID=PS,Number=1,Type=Integer,Description="Phasing set (typically the position of the first variant in the set)">
+##FORMAT=<ID=TLOD,Number=A,Type=Float,Description="Log odds ratio score for variant">
+##GATKCommandLine=<ID=FilterMutectCalls,CommandLine="FilterMutectCalls  --output NA12878.MT.filtered.g.vcf --tumor-lod 6.3 --contamination-estimate 0.0 --mitochondria-mode true --variant ../gatk/src/test/resources/org/broadinstitute/hellbender/tools/walkers/CombineGVCFs/NA12878.MT.g.vcf  --log-somatic-prior -6.0 --normal-artifact-lod 0.0 --normal-p-value-threshold 0.001 --max-germline-posterior 0.1 --max-alt-allele-count 1 --min-pcr-slippage-size 8 --pcr-slippage-rate 0.1 --pcr-slippage-p-value 0.001 --min-median-mapping-quality 30 --min-median-base-quality 20 --max-median-fragment-length-difference 10000 --min-median-read-position 1 --max-events-in-region 2 --max-strand-artifact-probability 0.99 --min-strand-artifact-allele-fraction 0.01 --max-contamination-probability 0.1 --unique-alt-read-count 0 --n-ratio Infinity --strict-strand-bias false --orientation-bias-fdr 0.05 --stats Mutect2FilteringStats.tsv --distance-on-haplotype 100 --long-indel-length 5 --lod-divided-by-depth 0.0035 --non-mt-alts-divided-by-alts 0.85 --interval-set-rule UNION --interval-padding 0 --interval-exclusion-padding 0 --interval-merging-rule ALL --read-validation-stringency SILENT --seconds-between-progress-updates 10.0 --disable-sequence-dictionary-validation false --create-output-bam-index true --create-output-bam-md5 false --create-output-variant-index true --create-output-variant-md5 false --lenient false --add-output-sam-program-record true --add-output-vcf-command-line true --cloud-prefetch-buffer 40 --cloud-index-prefetch-buffer -1 --disable-bam-index-caching false --sites-only-vcf-output false --help false --version false --showHidden false --verbosity INFO --QUIET false --use-jdk-deflater false --use-jdk-inflater false --gcs-max-retries 20 --gcs-project-for-requester-pays  --disable-tool-default-read-filters false",Version=4.1.0.0-3-g7362584-SNAPSHOT,Date="February 8, 2019 1:08:02 PM EST">
+##GATKCommandLine=<ID=Mutect2,CommandLine="Mutect2  --tumor-sample NA12878 --max-mnp-distance 0 --min-pruning 5 --emit-ref-confidence GVCF --output NA12878.MT.g.vcf --intervals MT --input /seq/picard_aggregation/G96830/NA12878/current/NA12878.bam --reference /seq/references/Homo_sapiens_assembly19/v1/Homo_sapiens_assembly19.fasta  --genotype-pon-sites false --genotype-germline-sites false --af-of-alleles-not-in-resource -1.0 --mitochondria-mode false --tumor-lod-to-emit 3.0 --initial-tumor-lod 2.0 --initial-pcr-qual 40 --max-population-af 0.01 --downsampling-stride 1 --max-suspicious-reads-per-alignment-start 0 --normal-lod 2.2 --ignore-itr-artifacts false --count-reads false --median-autosomal-coverage 0.0 --gvcf-lod-band -3.5 --gvcf-lod-band -3.0 --gvcf-lod-band -2.5 --gvcf-lod-band -2.0 --gvcf-lod-band -1.5 --gvcf-lod-band -1.0 --gvcf-lod-band -0.5 --gvcf-lod-band 0.0 --gvcf-lod-band 0.5 --gvcf-lod-band 1.0 --minimum-allele-fraction 0.0 --dont-trim-active-regions false --max-disc-ar-extension 25 --max-gga-ar-extension 300 --padding-around-indels 150 --padding-around-snps 20 --disable-adaptive-pruning false --kmer-size 10 --kmer-size 25 --dont-increase-kmer-sizes-for-cycles false --allow-non-unique-kmers-in-ref false --num-pruning-samples 1 --min-dangling-branch-length 4 --max-num-haplotypes-in-population 128 --adaptive-pruning-initial-error-rate 0.001 --pruning-lod-threshold 1.0 --max-unpruned-variants 100 --debug-graph-transformations false --kmer-length-for-read-error-correction 25 --min-observations-for-kmer-to-be-solid 20 --likelihood-calculation-engine PairHMM --base-quality-score-threshold 18 --pair-hmm-gap-continuation-penalty 10 --pair-hmm-implementation FASTEST_AVAILABLE --pcr-indel-model CONSERVATIVE --phred-scaled-global-read-mismapping-rate 45 --native-pair-hmm-threads 4 --native-pair-hmm-use-double-precision false --debug false --use-filtered-reads-for-annotations false --bam-writer-type CALLED_HAPLOTYPES --dont-use-soft-clipped-bases false --capture-assembly-failure-bam false --error-correct-reads false --do-not-run-physical-phasing false --min-base-quality-score 10 --smith-waterman JAVA --correct-overlapping-quality false --use-new-qual-calculator false --annotate-with-num-discovered-alleles false --heterozygosity 0.001 --indel-heterozygosity 1.25E-4 --heterozygosity-stdev 0.01 --standard-min-confidence-threshold-for-calling 10.0 --max-alternate-alleles 6 --max-genotype-count 1024 --sample-ploidy 2 --num-reference-samples-if-no-call 0 --genotyping-mode DISCOVERY --genotype-filtered-alleles false --contamination-fraction-to-filter 0.0 --output-mode EMIT_VARIANTS_ONLY --all-site-pls false --min-assembly-region-size 50 --max-assembly-region-size 300 --assembly-region-padding 100 --max-reads-per-alignment-start 50 --active-probability-threshold 0.002 --max-prob-propagation-distance 50 --interval-set-rule UNION --interval-padding 0 --interval-exclusion-padding 0 --interval-merging-rule ALL --read-validation-stringency SILENT --seconds-between-progress-updates 10.0 --disable-sequence-dictionary-validation false --create-output-bam-index true --create-output-bam-md5 false --create-output-variant-index true --create-output-variant-md5 false --lenient false --add-output-sam-program-record true --add-output-vcf-command-line true --cloud-prefetch-buffer 40 --cloud-index-prefetch-buffer -1 --disable-bam-index-caching false --sites-only-vcf-output false --help false --version false --showHidden false --verbosity INFO --QUIET false --use-jdk-deflater false --use-jdk-inflater false --gcs-max-retries 20 --gcs-project-for-requester-pays  --disable-tool-default-read-filters false --max-read-length 2147483647 --min-read-length 30 --minimum-mapping-quality 20 --disable-tool-default-annotations false --enable-all-annotations false",Version=4.0.12.0-21-gc3e9818-SNAPSHOT,Date="January 24, 2019 2:21:15 PM EST">
+##GVCFBlock-10--5=minGQ=-10(inclusive),maxGQ=-5(exclusive)
+##GVCFBlock-15--10=minGQ=-15(inclusive),maxGQ=-10(exclusive)
+##GVCFBlock-20--15=minGQ=-20(inclusive),maxGQ=-15(exclusive)
+##GVCFBlock-2147483648--35=minGQ=-2147483648(inclusive),maxGQ=-35(exclusive)
+##GVCFBlock-25--20=minGQ=-25(inclusive),maxGQ=-20(exclusive)
+##GVCFBlock-30--25=minGQ=-30(inclusive),maxGQ=-25(exclusive)
+##GVCFBlock-35--30=minGQ=-35(inclusive),maxGQ=-30(exclusive)
+##GVCFBlock-5-0=minGQ=-5(inclusive),maxGQ=0(exclusive)
+##GVCFBlock0-5=minGQ=0(inclusive),maxGQ=5(exclusive)
+##GVCFBlock10-2147483647=minGQ=10(inclusive),maxGQ=2147483647(exclusive)
+##GVCFBlock5-10=minGQ=5(inclusive),maxGQ=10(exclusive)
+##INFO=<ID=CONTQ,Number=1,Type=Float,Description="Phred-scaled qualities that alt allele are not due to contamination">
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
+##INFO=<ID=ECNT,Number=1,Type=Integer,Description="Number of events in this haplotype">
+##INFO=<ID=END,Number=1,Type=Integer,Description="Stop position of the interval">
+##INFO=<ID=GERMQ,Number=A,Type=Integer,Description="Phred-scaled qualities that alt allele are not germline variants">
+##INFO=<ID=MBQ,Number=R,Type=Integer,Description="median base quality">
+##INFO=<ID=MFRL,Number=R,Type=Integer,Description="median fragment length">
+##INFO=<ID=MMQ,Number=R,Type=Integer,Description="median mapping quality">
+##INFO=<ID=MPOS,Number=A,Type=Integer,Description="median distance from end of read">
+##INFO=<ID=NALOD,Number=A,Type=Float,Description="log odds of artifact in normal with same allele fraction as tumor">
+##INFO=<ID=NCount,Number=1,Type=Integer,Description="Count of N bases in the pileup">
+##INFO=<ID=NLOD,Number=A,Type=Float,Description="Normal LOD score">
+##INFO=<ID=OCM,Number=1,Type=Integer,Description="Number of alt reads whose original alignment doesn't match the current contig.">
+##INFO=<ID=PON,Number=0,Type=Flag,Description="site found in panel of normals">
+##INFO=<ID=POPAF,Number=A,Type=Float,Description="negative-log-10 population allele frequencies of alt alleles">
+##INFO=<ID=RPA,Number=.,Type=Integer,Description="Number of times tandem repeat unit is repeated, for each allele (including reference)">
+##INFO=<ID=RU,Number=1,Type=String,Description="Tandem repeat unit (bases)">
+##INFO=<ID=SAAF,Number=3,Type=Float,Description="MAP estimates of allele fraction given z">
+##INFO=<ID=SAPP,Number=3,Type=Float,Description="posterior probabilities of the presence of strand artifact">
+##INFO=<ID=STR,Number=0,Type=Flag,Description="Variant is a short tandem repeat">
+##INFO=<ID=TLOD,Number=A,Type=Float,Description="Log odds ratio score for variant">
+##INFO=<ID=UNIQ_ALT_READ_COUNT,Number=1,Type=Integer,Description="Number of ALT reads with unique start and mate end positions at a variant site">
+##MutectVersion=2.1
+##contig=<ID=1,length=249250621,assembly=GRCh37>
+##contig=<ID=2,length=243199373,assembly=GRCh37>
+##contig=<ID=3,length=198022430,assembly=GRCh37>
+##contig=<ID=4,length=191154276,assembly=GRCh37>
+##contig=<ID=5,length=180915260,assembly=GRCh37>
+##contig=<ID=6,length=171115067,assembly=GRCh37>
+##contig=<ID=7,length=159138663,assembly=GRCh37>
+##contig=<ID=8,length=146364022,assembly=GRCh37>
+##contig=<ID=9,length=141213431,assembly=GRCh37>
+##contig=<ID=10,length=135534747,assembly=GRCh37>
+##contig=<ID=11,length=135006516,assembly=GRCh37>
+##contig=<ID=12,length=133851895,assembly=GRCh37>
+##contig=<ID=13,length=115169878,assembly=GRCh37>
+##contig=<ID=14,length=107349540,assembly=GRCh37>
+##contig=<ID=15,length=102531392,assembly=GRCh37>
+##contig=<ID=16,length=90354753,assembly=GRCh37>
+##contig=<ID=17,length=81195210,assembly=GRCh37>
+##contig=<ID=18,length=78077248,assembly=GRCh37>
+##contig=<ID=19,length=59128983,assembly=GRCh37>
+##contig=<ID=20,length=63025520,assembly=GRCh37>
+##contig=<ID=21,length=48129895,assembly=GRCh37>
+##contig=<ID=22,length=51304566,assembly=GRCh37>
+##contig=<ID=X,length=155270560,assembly=GRCh37>
+##contig=<ID=Y,length=59373566,assembly=GRCh37>
+##contig=<ID=MT,length=16569,assembly=GRCh37>
+##contig=<ID=GL000207.1,length=4262,assembly=GRCh37>
+##contig=<ID=GL000226.1,length=15008,assembly=GRCh37>
+##contig=<ID=GL000229.1,length=19913,assembly=GRCh37>
+##contig=<ID=GL000231.1,length=27386,assembly=GRCh37>
+##contig=<ID=GL000210.1,length=27682,assembly=GRCh37>
+##contig=<ID=GL000239.1,length=33824,assembly=GRCh37>
+##contig=<ID=GL000235.1,length=34474,assembly=GRCh37>
+##contig=<ID=GL000201.1,length=36148,assembly=GRCh37>
+##contig=<ID=GL000247.1,length=36422,assembly=GRCh37>
+##contig=<ID=GL000245.1,length=36651,assembly=GRCh37>
+##contig=<ID=GL000197.1,length=37175,assembly=GRCh37>
+##contig=<ID=GL000203.1,length=37498,assembly=GRCh37>
+##contig=<ID=GL000246.1,length=38154,assembly=GRCh37>
+##contig=<ID=GL000249.1,length=38502,assembly=GRCh37>
+##contig=<ID=GL000196.1,length=38914,assembly=GRCh37>
+##contig=<ID=GL000248.1,length=39786,assembly=GRCh37>
+##contig=<ID=GL000244.1,length=39929,assembly=GRCh37>
+##contig=<ID=GL000238.1,length=39939,assembly=GRCh37>
+##contig=<ID=GL000202.1,length=40103,assembly=GRCh37>
+##contig=<ID=GL000234.1,length=40531,assembly=GRCh37>
+##contig=<ID=GL000232.1,length=40652,assembly=GRCh37>
+##contig=<ID=GL000206.1,length=41001,assembly=GRCh37>
+##contig=<ID=GL000240.1,length=41933,assembly=GRCh37>
+##contig=<ID=GL000236.1,length=41934,assembly=GRCh37>
+##contig=<ID=GL000241.1,length=42152,assembly=GRCh37>
+##contig=<ID=GL000243.1,length=43341,assembly=GRCh37>
+##contig=<ID=GL000242.1,length=43523,assembly=GRCh37>
+##contig=<ID=GL000230.1,length=43691,assembly=GRCh37>
+##contig=<ID=GL000237.1,length=45867,assembly=GRCh37>
+##contig=<ID=GL000233.1,length=45941,assembly=GRCh37>
+##contig=<ID=GL000204.1,length=81310,assembly=GRCh37>
+##contig=<ID=GL000198.1,length=90085,assembly=GRCh37>
+##contig=<ID=GL000208.1,length=92689,assembly=GRCh37>
+##contig=<ID=GL000191.1,length=106433,assembly=GRCh37>
+##contig=<ID=GL000227.1,length=128374,assembly=GRCh37>
+##contig=<ID=GL000228.1,length=129120,assembly=GRCh37>
+##contig=<ID=GL000214.1,length=137718,assembly=GRCh37>
+##contig=<ID=GL000221.1,length=155397,assembly=GRCh37>
+##contig=<ID=GL000209.1,length=159169,assembly=GRCh37>
+##contig=<ID=GL000218.1,length=161147,assembly=GRCh37>
+##contig=<ID=GL000220.1,length=161802,assembly=GRCh37>
+##contig=<ID=GL000213.1,length=164239,assembly=GRCh37>
+##contig=<ID=GL000211.1,length=166566,assembly=GRCh37>
+##contig=<ID=GL000199.1,length=169874,assembly=GRCh37>
+##contig=<ID=GL000217.1,length=172149,assembly=GRCh37>
+##contig=<ID=GL000216.1,length=172294,assembly=GRCh37>
+##contig=<ID=GL000215.1,length=172545,assembly=GRCh37>
+##contig=<ID=GL000205.1,length=174588,assembly=GRCh37>
+##contig=<ID=GL000219.1,length=179198,assembly=GRCh37>
+##contig=<ID=GL000224.1,length=179693,assembly=GRCh37>
+##contig=<ID=GL000223.1,length=180455,assembly=GRCh37>
+##contig=<ID=GL000195.1,length=182896,assembly=GRCh37>
+##contig=<ID=GL000212.1,length=186858,assembly=GRCh37>
+##contig=<ID=GL000222.1,length=186861,assembly=GRCh37>
+##contig=<ID=GL000200.1,length=187035,assembly=GRCh37>
+##contig=<ID=GL000193.1,length=189789,assembly=GRCh37>
+##contig=<ID=GL000194.1,length=191469,assembly=GRCh37>
+##contig=<ID=GL000225.1,length=211173,assembly=GRCh37>
+##contig=<ID=GL000192.1,length=547496,assembly=GRCh37>
+##contig=<ID=NC_007605,length=171823,assembly=NC_007605.1>
+##filtering_status=These calls have been filtered by FilterMutectCalls to label false positives with a list of failed filters and true positives with PASS.
+##source=FilterMutectCalls
+##source=Mutect2
+##tumor_sample=NA12878
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA12878
+MT	1	.	G	<NON_REF>	.	.	END=3	GT:DP:MIN_DP:TLOD	0/0:81:47:-1.979e+00
+MT	4	.	C	<NON_REF>	.	.	END=7	GT:DP:MIN_DP:TLOD	0/0:223:164:-2.384e+00
+MT	8	.	G	<NON_REF>	.	.	END=15	GT:DP:MIN_DP:TLOD	0/0:467:324:-2.794e+00
+MT	16	.	A	<NON_REF>	.	.	END=16	GT:DP:MIN_DP:TLOD	0/0:660:660:-1.953e+00
+MT	17	.	C	<NON_REF>	.	.	END=17	GT:DP:MIN_DP:TLOD	0/0:724:724:-2.801e+00
+MT	18	.	C	<NON_REF>	.	.	END=18	GT:DP:MIN_DP:TLOD	0/0:769:769:-2.013e+00
+MT	19	.	C	<NON_REF>	.	.	END=24	GT:DP:MIN_DP:TLOD	0/0:893:814:-2.931e+00
+MT	25	.	A	<NON_REF>	.	.	END=25	GT:DP:MIN_DP:TLOD	0/0:1018:1018:-2.366e+00
+MT	26	.	C	<NON_REF>	.	.	END=27	GT:DP:MIN_DP:TLOD	0/0:1116:1091:-2.971e+00
+MT	28	.	A	<NON_REF>	.	.	END=28	GT:DP:MIN_DP:TLOD	0/0:1170:1170:1.86
+MT	29	.	C	<NON_REF>	.	.	END=29	GT:DP:MIN_DP:TLOD	0/0:1241:1241:-3.088e+00
+MT	30	.	T	<NON_REF>	.	.	END=30	GT:DP:MIN_DP:TLOD	0/0:1266:1266:-2.926e+00
+MT	31	.	C	<NON_REF>	.	.	END=31	GT:DP:MIN_DP:TLOD	0/0:1338:1338:-3.107e+00
+MT	32	.	A	<NON_REF>	.	.	END=34	GT:DP:MIN_DP:TLOD	0/0:1435:1360:-2.827e+00
+MT	35	.	G	<NON_REF>	.	.	END=35	GT:DP:MIN_DP:TLOD	0/0:1576:1576:-1.333e+00
+MT	36	.	G	<NON_REF>	.	.	END=36	GT:DP:MIN_DP:TLOD	0/0:1614:1614:-2.286e+00
+MT	37	.	A	G,<NON_REF>	.	base_quality;t_lod	CONTQ=93;DP=1594;ECNT=4;MBQ=27,6,0;MFRL=575,15999,0;MMQ=60,60,0;MPOS=7,0;POPAF=7.30,7.30;SAAF=0.010,0.010,7.242e-03;SAPP=3.734e-04,4.515e-03,0.995;TLOD=-2.556e+00,-2.886e+00	GT:AD:AF:DP:F1R2:F2R1	0/1/2:1508,11,0:1.092e-03,6.494e-04:1519:674,7,0:834,4,0
+MT	38	.	G	<NON_REF>	.	.	END=39	GT:DP:MIN_DP:TLOD	0/0:1554:1534:-3.194e+00
+MT	40	.	T	G,<NON_REF>	.	t_lod	CONTQ=93;DP=1709;ECNT=4;MBQ=28,21,0;MFRL=562,16148,0;MMQ=60,60,0;MPOS=27,0;POPAF=7.30,7.30;SAAF=0.010,0.00,5.851e-04;SAPP=1.826e-04,5.519e-04,0.999;TLOD=-1.650e+00,-2.932e+00	GT:AD:AF:DP:F1R2:F2R1:PGT:PID:PS	0|1|2:1708,1,0:1.148e-03,5.841e-04:1709:766,1,0:942,0,0:0|1:40_T_G:40
+MT	41	.	C	<NON_REF>	.	.	END=42	GT:DP:MIN_DP:TLOD	0/0:1678:1657:-3.231e+00
+MT	43	.	C	A,<NON_REF>	.	t_lod	CONTQ=93;DP=1833;ECNT=4;MBQ=27,27,0;MFRL=532,16148,0;MMQ=60,60,0;MPOS=30,0;POPAF=7.30,7.30;SAAF=0.010,0.00,5.456e-04;SAPP=1.650e-04,5.440e-04,0.999;TLOD=-1.710e+00,-2.963e+00	GT:AD:AF:DP:F1R2:F2R1:PGT:PID:PS	0|1|2:1832,1,0:1.069e-03,5.447e-04:1833:819,1,0:1013,0,0:0|1:40_T_G:40
+MT	44	.	C	<NON_REF>	.	.	END=50	GT:DP:MIN_DP:TLOD	0/0:1904:1779:-3.311e+00
+MT	51	.	T	A,<NON_REF>	.	base_quality;t_lod	CONTQ=93;DP=2169;ECNT=4;MBQ=28,13,0;MFRL=487,16148,0;MMQ=60,60,0;MPOS=38,0;POPAF=7.30,7.30;SAAF=0.010,0.00,4.610e-04;SAPP=1.363e-04,4.818e-04,0.999;TLOD=-1.853e+00,-3.036e+00	GT:AD:AF:DP:F1R2:F2R1:PGT:PID:PS	0|1|2:2168,1,0:9.005e-04,4.604e-04:2169:955,1,0:1213,0,0:0|1:40_T_G:40
+MT	52	.	T	<NON_REF>	.	.	END=52	GT:DP:MIN_DP:TLOD	0/0:2432:2432:-2.970e+00
+MT	53	.	G	<NON_REF>	.	.	END=53	GT:DP:MIN_DP:TLOD	0/0:2486:2486:-2.052e+00
+MT	54	.	G	<NON_REF>	.	.	END=55	GT:DP:MIN_DP:TLOD	0/0:2528:2487:-3.372e+00
+MT	56	.	A	<NON_REF>	.	.	END=56	GT:DP:MIN_DP:TLOD	0/0:2595:2595:-4.200e-01
+MT	57	.	T	<NON_REF>	.	.	END=57	GT:DP:MIN_DP:TLOD	0/0:2654:2654:-2.807e+00
+MT	58	.	T	<NON_REF>	.	.	END=58	GT:DP:MIN_DP:TLOD	0/0:2699:2699:-3.203e+00
+MT	59	.	T	<NON_REF>	.	.	END=59	GT:DP:MIN_DP:TLOD	0/0:2739:2739:-1.937e+00
+MT	60	.	T	<NON_REF>	.	.	END=68	GT:DP:MIN_DP:TLOD	0/0:3007:2795:-3.433e+00
+MT	69	.	G	<NON_REF>	.	.	END=69	GT:DP:MIN_DP:TLOD	0/0:3259:3259:-2.751e+00
+MT	70	.	G	<NON_REF>	.	.	END=72	GT:DP:MIN_DP:TLOD	0/0:3304:3294:-3.264e+00
+MT	73	.	A	<NON_REF>	.	.	END=73	GT:DP:MIN_DP:TLOD	0/0:3492:3492:-2.632e+00
+MT	74	.	T	<NON_REF>	.	.	END=74	GT:DP:MIN_DP:TLOD	0/0:3525:3525:-3.294e+00
+MT	75	.	G	<NON_REF>	.	.	END=75	GT:DP:MIN_DP:TLOD	0/0:3527:3527:-3.539e+00
+MT	76	.	C	<NON_REF>	.	.	END=77	GT:DP:MIN_DP:TLOD	0/0:3652:3631:-3.461e+00
+MT	78	.	C	<NON_REF>	.	.	END=79	GT:DP:MIN_DP:TLOD	0/0:3728:3708:-3.557e+00
+MT	80	.	C	<NON_REF>	.	.	END=80	GT:DP:MIN_DP:TLOD	0/0:3792:3792:-3.369e+00
+MT	81	.	G	<NON_REF>	.	.	END=86	GT:DP:MIN_DP:TLOD	0/0:4007:3867:-3.600e+00
+MT	87	.	A	<NON_REF>	.	.	END=87	GT:DP:MIN_DP:TLOD	0/0:4165:4165:-2.175e+00
+MT	88	.	T	<NON_REF>	.	.	END=88	GT:DP:MIN_DP:TLOD	0/0:4202:4202:-3.364e+00
+MT	89	.	T	<NON_REF>	.	.	END=90	GT:DP:MIN_DP:TLOD	0/0:4287:4274:-3.613e+00
+MT	91	.	C	<NON_REF>	.	.	END=91	GT:DP:MIN_DP:TLOD	0/0:4291:4291:-3.269e+00
+MT	92	.	G	<NON_REF>	.	.	END=96	GT:DP:MIN_DP:TLOD	0/0:4481:4384:-3.632e+00
+MT	97	.	G	<NON_REF>	.	.	END=97	GT:DP:MIN_DP:TLOD	0/0:4543:4543:-2.938e+00
+MT	98	.	C	<NON_REF>	.	.	END=105	GT:DP:MIN_DP:TLOD	0/0:4740:4662:-3.673e+00
+MT	106	.	G	<NON_REF>	.	.	END=106	GT:DP:MIN_DP:TLOD	0/0:4959:4959:-3.170e+00
+MT	107	.	G	<NON_REF>	.	.	END=107	GT:DP:MIN_DP:TLOD	0/0:5010:5010:-2.929e+00
+MT	108	.	A	<NON_REF>	.	.	END=108	GT:DP:MIN_DP:TLOD	0/0:5097:5097:-3.594e+00
+MT	109	.	G	<NON_REF>	.	.	END=109	GT:DP:MIN_DP:TLOD	0/0:4994:4994:-3.385e+00
+MT	110	.	C	<NON_REF>	.	.	END=110	GT:DP:MIN_DP:TLOD	0/0:5161:5161:-3.686e+00
+MT	111	.	A	<NON_REF>	.	.	END=111	GT:DP:MIN_DP:TLOD	0/0:5253:5253:-2.898e+00
+MT	112	.	C	<NON_REF>	.	.	END=112	GT:DP:MIN_DP:TLOD	0/0:5272:5272:-3.660e+00
+MT	113	.	C	<NON_REF>	.	.	END=113	GT:DP:MIN_DP:TLOD	0/0:5358:5358:-3.460e+00
+MT	114	.	C	<NON_REF>	.	.	END=115	GT:DP:MIN_DP:TLOD	0/0:5434:5393:-3.582e+00
+MT	116	.	A	<NON_REF>	.	.	END=116	GT:DP:MIN_DP:TLOD	0/0:5506:5506:-3.342e+00
+MT	117	.	T	<NON_REF>	.	.	END=117	GT:DP:MIN_DP:TLOD	0/0:5563:5563:-3.718e+00
+MT	118	.	G	<NON_REF>	.	.	END=118	GT:DP:MIN_DP:TLOD	0/0:5524:5524:-3.444e+00
+MT	119	.	T	<NON_REF>	.	.	END=119	GT:DP:MIN_DP:TLOD	0/0:5640:5640:-3.692e+00
+MT	120	.	C	A,<NON_REF>	.	base_quality;t_lod	CONTQ=93;DP=5246;ECNT=17;MBQ=25,14,0;MFRL=506,16261,0;MMQ=60,60,0;MPOS=44,0;POPAF=7.30,7.30;SAAF=0.010,0.00,3.881e-04;SAPP=6.554e-05,3.820e-04,1.000;TLOD=-3.412e+00,-3.413e+00	GT:AD:AF:DP:F1R2:F2R1	0/1/2:5151,2,0:1.936e-04,1.932e-04:5153:2469,1,0:2682,1,0
+MT	121	.	G	<NON_REF>	.	.	END=121	GT:DP:MIN_DP:TLOD	0/0:5147:5147:-3.707e+00
+MT	122	.	C	A,<NON_REF>	.	base_quality;t_lod	CONTQ=93;DP=5324;ECNT=17;MBQ=29,11,0;MFRL=498,16096,0;MMQ=60,60,0;MPOS=28,0;POPAF=7.30,7.30;SAAF=0.010,0.00,7.647e-04;SAPP=6.420e-05,1.379e-03,0.999;TLOD=-3.419e+00,-3.420e+00	GT:AD:AF:DP:F1R2:F2R1	0/1/2:5227,4,0:1.907e-04,1.901e-04:5231:2508,2,0:2719,2,0
+MT	123	.	A	<NON_REF>	.	.	END=123	GT:DP:MIN_DP:TLOD	0/0:5268:5268:-3.685e+00
+MT	124	.	G	T,<NON_REF>	.	base_quality;t_lod	CONTQ=93;DP=5406;ECNT=17;MBQ=28,12,0;MFRL=500,411,0;MMQ=60,60,0;MPOS=64,0;POPAF=7.30,7.30;SAAF=0.00,0.010,1.883e-04;SAPP=1.955e-04,5.554e-05,1.000;TLOD=-3.424e+00,-3.427e+00	GT:AD:AF:DP:F1R2:F2R1	0/1/2:5310,1,0:1.885e-04,1.870e-04:5311:2550,0,0:2760,1,0
+MT	125	.	T	<NON_REF>	.	.	END=130	GT:DP:MIN_DP:TLOD	0/0:5487:5376:-3.739e+00
+MT	131	.	T	G,<NON_REF>	.	base_quality;t_lod	CONTQ=93;DP=5695;ECNT=17;MBQ=28,6,0;MFRL=481,15926,0;MMQ=60,60,0;MPOS=38,0;POPAF=7.30,7.30;SAAF=0.010,0.010,1.251e-03;SAPP=1.098e-04,5.076e-04,0.999;TLOD=-3.426e+00,-3.449e+00	GT:AD:AF:DP:F1R2:F2R1	0/1/2:5588,7,0:1.874e-04,1.777e-04:5595:2654,5,0:2934,2,0
+MT	132	.	C	<NON_REF>	.	.	END=142	GT:DP:MIN_DP:TLOD	0/0:5872:5676:-3.776e+00
+MT	143	.	G	A,C,<NON_REF>	.	t_lod	CONTQ=93;DP=6192;ECNT=17;MBQ=29,29,2,0;MFRL=456,8242,543,0;MMQ=60,60,60,0;MPOS=37,12,0;POPAF=7.30,7.30,7.30;SAAF=0.010,0.010,9.870e-04;SAPP=1.829e-04,1.642e-04,1.000;TLOD=-2.341e+00,-3.195e+00,-3.309e+00	GT:AD:AF:DP:F1R2:F2R1	0/1/2/3:6073,6,7,0:6.092e-04,2.090e-04,1.635e-04:6086:2878,2,3,0:3195,4,4,0
+MT	144	.	C	<NON_REF>	.	.	END=150	GT:DP:MIN_DP:TLOD	0/0:6275:6144:-3.763e+00
+MT	151	.	C	A,<NON_REF>	.	base_quality;t_lod	CONTQ=93;DP=6495;ECNT=17;MBQ=28,13,0;MFRL=440,8341,0;MMQ=60,60,0;MPOS=14,0;POPAF=7.30,7.30;SAAF=0.010,0.010,6.260e-04;SAPP=1.238e-04,1.191e-04,1.000;TLOD=-3.505e+00,-3.507e+00	GT:AD:AF:DP:F1R2:F2R1	0/1/2:6386,4,0:1.561e-04,1.557e-04:6390:2990,2,0:3396,2,0
+MT	152	.	T	C,A,<NON_REF>	.	PASS	CONTQ=93;DP=6523;ECNT=17;MBQ=29,29,13,0;MFRL=291,438,16046,0;MMQ=60,60,60,0;MPOS=37,23,0;POPAF=7.30,7.30,7.30;SAAF=0.990,0.990,0.999;SAPP=0.028,0.024,0.948;TLOD=20915.39,-3.329e+00,-3.333e+00	GT:AD:AF:DP:F1R2:F2R1	0/1/2/3:7,6417,8,0:0.999,1.562e-04,1.549e-04:6432:4,3002,2,0:3,3415,6,0
+MT	153	.	A	<NON_REF>	.	.	END=156	GT:DP:MIN_DP:TLOD	0/0:6486:6477:-3.814e+00
+MT	157	.	T	A,<NON_REF>	.	base_quality;contamination;mapping_quality;t_lod	CONTQ=1;DP=6625;ECNT=17;MBQ=29,0,0;MFRL=429,0,0;MMQ=60,0,0;MPOS=0,0;POPAF=7.30,7.30;SAAF=0.00,0.00,0.00;SAPP=4.826e-05,4.803e-05,1.000;TLOD=-3.517e+00,-3.517e+00	GT:AD:AF:DP:F1R2:F2R1:PGT:PID:PS	0|1|2:6546,0,0:1.519e-04,1.519e-04:6546:3057,0,0:3489,0,0:0|1:157_T_A:157
+MT	158	.	T	<NON_REF>	.	.	END=162	GT:DP:MIN_DP:TLOD	0/0:6523:6483:-3.765e+00
+MT	163	.	G	GCA,<NON_REF>	.	base_quality;contamination;mapping_quality;t_lod	CONTQ=1;DP=6669;ECNT=17;MBQ=25,0,0;MFRL=419,0,0;MMQ=60,0,0;MPOS=0,0;POPAF=7.30,7.30;SAAF=0.00,0.00,0.00;SAPP=4.745e-05,4.832e-05,1.000;TLOD=-3.520e+00,-3.520e+00	GT:AD:AF:DP:F1R2:F2R1:PGT:PID:PS	0|1|2:6582,0,0:1.510e-04,1.510e-04:6582:3078,0,0:3504,0,0:0|1:157_T_A:157
+MT	164	.	C	<NON_REF>	.	.	END=165	GT:DP:MIN_DP:TLOD	0/0:6517:6510:-3.807e+00
+MT	166	.	C	T,<NON_REF>	.	base_quality;t_lod	CONTQ=93;DP=6652;ECNT=17;MBQ=28,12,0;MFRL=410,16006,0;MMQ=60,60,0;MPOS=7,0;POPAF=7.30,7.30;SAAF=0.010,0.010,4.571e-04;SAPP=7.570e-05,1.932e-04,1.000;TLOD=-3.457e+00,-3.518e+00	GT:AD:AF:DP:F1R2:F2R1	0/1/2:6560,3,0:1.739e-04,1.515e-04:6563:3067,1,0:3493,2,0
+MT	167	.	C	A,<NON_REF>	.	base_quality;t_lod	CONTQ=93;DP=6646;ECNT=17;MBQ=28,13,0;MFRL=410,450,0;MMQ=60,60,0;MPOS=19,0;POPAF=7.30,7.30;SAAF=0.010,0.010,1.390e-03;SAPP=2.332e-04,1.572e-04,1.000;TLOD=-3.471e+00,-3.514e+00	GT:AD:AF:DP:F1R2:F2R1	0/1/2:6464,9,0:1.690e-04,1.532e-04:6473:3030,3,0:3434,6,0
+MT	168	.	T	<NON_REF>	.	.	END=169	GT:DP:MIN_DP:TLOD	0/0:6504:6503:-3.809e+00
+MT	170	.	C	<NON_REF>	.	.	END=170	GT:DP:MIN_DP:TLOD	0/0:6441:6441:-3.334e+00
+MT	171	.	G	A,<NON_REF>	.	base_quality;t_lod	CONTQ=93;DP=6617;ECNT=17;MBQ=25,12,0;MFRL=404,394,0;MMQ=60,60,0;MPOS=21,0;POPAF=7.30,7.30;SAAF=0.010,0.010,7.769e-04;SAPP=9.761e-05,2.124e-04,1.000;TLOD=-3.501e+00,-3.511e+00	GT:AD:AF:DP:F1R2:F2R1	0/1/2:6431,5,0:1.579e-04,1.542e-04:6436:2989,3,0:3442,2,0
+MT	172	.	T	<NON_REF>	.	.	END=174	GT:DP:MIN_DP:TLOD	0/0:6479:6477:-3.781e+00
+MT	175	.	A	C,<NON_REF>	.	base_quality;t_lod	CONTQ=93;DP=6592;ECNT=17;MBQ=29,8,0;MFRL=395,385,0;MMQ=60,60,0;MPOS=23,0;POPAF=7.30,7.30;SAAF=0.010,0.010,1.559e-03;SAPP=6.347e-03,6.172e-05,0.994;TLOD=-3.488e+00,-3.510e+00	GT:AD:AF:DP:F1R2:F2R1	0/1/2:6405,10,0:1.625e-04,1.544e-04:6415:2980,1,0:3425,9,0
+MT	176	.	A	<NON_REF>	.	.	END=180	GT:DP:MIN_DP:TLOD	0/0:6463:6457:-3.811e+00
+MT	181	.	A	C,<NON_REF>	.	base_quality;t_lod	CONTQ=93;DP=6564;ECNT=17;MBQ=29,14,0;MFRL=386,375,0;MMQ=60,60,0;MPOS=36,0;POPAF=7.30,7.30;SAAF=0.010,0.010,1.253e-03;SAPP=2.979e-04,1.349e-04,1.000;TLOD=-3.382e+00,-3.508e+00	GT:AD:AF:DP:F1R2:F2R1	0/1/2:6375,8,0:2.074e-04,1.550e-04:6383:2952,2,0:3423,6,0
+MT	182	.	C	<NON_REF>	.	.	END=182	GT:DP:MIN_DP:TLOD	0/0:6426:6426:-3.808e+00
+MT	183	.	A	T,<NON_REF>	.	base_quality;t_lod	CONTQ=93;DP=6554;ECNT=17;MBQ=29,13,0;MFRL=383,419,0;MMQ=60,60,0;MPOS=70,0;POPAF=7.30,7.30;SAAF=0.00,0.010,1.570e-04;SAPP=1.259e-04,5.312e-05,1.000;TLOD=-3.507e+00,-3.508e+00	GT:AD:AF:DP:F1R2:F2R1	0/1/2:6368,1,0:1.554e-04,1.553e-04:6369:2948,1,0:3420,0,0
+MT	184	.	G	<NON_REF>	.	.	END=184	GT:DP:MIN_DP:TLOD	0/0:6436:6436:-3.797e+00
+MT	185	.	G	T,A,<NON_REF>	.	base_quality;t_lod	CONTQ=93;DP=6536;ECNT=17;MBQ=28,13,11,0;MFRL=380,314,615,0;MMQ=60,60,60,0;MPOS=17,33,0;POPAF=7.30,7.30,7.30;SAAF=0.010,0.010,4.715e-04;SAPP=1.606e-04,8.936e-05,1.000;TLOD=-3.292e+00,-3.283e+00,-3.330e+00	GT:AD:AF:DP:F1R2:F2R1	0/1/2/3:6359,5,3,0:1.701e-04,1.735e-04,1.557e-04:6367:2929,3,0,0:3430,2,3,0
+MT	186	.	C	T,A,<NON_REF>	.	base_quality;t_lod	CONTQ=93;DP=6539;ECNT=17;MBQ=25,13,14,0;MFRL=378,8160,16006,0;MMQ=60,60,60,0;MPOS=20,22,0;POPAF=7.30,7.30,7.30;SAAF=0.010,0.010,6.285e-04;SAPP=6.522e-05,3.740e-04,1.000;TLOD=-3.233e+00,-3.332e+00,-3.335e+00	GT:AD:AF:DP:F1R2:F2R1	0/1/2/3:6360,4,1,0:1.921e-04,1.553e-04,1.541e-04:6365:2930,3,0,0:3430,1,1,0
+MT	187	.	G	<NON_REF>	.	.	END=191	GT:DP:MIN_DP:TLOD	0/0:7093:6958:-3.819e+00
+MT	192	.	T	<NON_REF>	.	.	END=192	GT:DP:MIN_DP:TLOD	0/0:7092:7092:-3.491e+00
+MT	193	.	A	<NON_REF>	.	.	END=194	GT:DP:MIN_DP:TLOD	0/0:7085:7069:-3.727e+00
+MT	195	.	T	<NON_REF>	.	.	END=195	GT:DP:MIN_DP:TLOD	0/0:7101:7101:-1.060e+00
+MT	196	.	T	<NON_REF>	.	.	END=200	GT:DP:MIN_DP:TLOD	0/0:7107:7058:-3.824e+00
+MT	201	.	A	<NON_REF>	.	.	END=201	GT:DP:MIN_DP:TLOD	0/0:7097:7097:-2.985e+00
+MT	202	.	A	<NON_REF>	.	.	END=205	GT:DP:MIN_DP:TLOD	0/0:7077:7053:-3.721e+00
+MT	206	.	T	<NON_REF>	.	.	END=207	GT:DP:MIN_DP:TLOD	0/0:7087:7051:-3.492e+00
+MT	208	.	T	<NON_REF>	.	.	END=215	GT:DP:MIN_DP:TLOD	0/0:7118:7094:-3.802e+00
+MT	216	.	T	<NON_REF>	.	.	END=217	GT:DP:MIN_DP:TLOD	0/0:7114:7111:-3.414e+00
+MT	218	.	A	<NON_REF>	.	.	END=218	GT:DP:MIN_DP:TLOD	0/0:7117:7117:-3.575e+00
+MT	219	.	A	<NON_REF>	.	.	END=219	GT:DP:MIN_DP:TLOD	0/0:7110:7110:-3.417e+00
+MT	220	.	T	<NON_REF>	.	.	END=228	GT:DP:MIN_DP:TLOD	0/0:7109:7046:-3.831e+00
+MT	229	.	G	A,C,T,<NON_REF>	.	base_quality;t_lod	CONTQ=93;DP=4867;ECNT=23;MBQ=28,13,7,13,0;MFRL=343,323,708,403,0;MMQ=60,60,60,60,0;MPOS=8,20,41,0;POPAF=7.30,7.30,7.30,7.30;SAAF=0.00,0.010,1.905e-03;SAPP=0.416,3.171e-05,0.584;TLOD=-3.076e+00,-3.074e+00,-2.794e+00,-3.077e+00	GT:AD:AF:DP:F1R2:F2R1	0/1/2/3/4:4715,4,8,9,0:2.102e-04,2.111e-04,3.666e-04,2.094e-04:4736:2183,3,2,4,0:2532,1,6,5,0
+MT	230	.	A	<NON_REF>	.	.	END=230	GT:DP:MIN_DP:TLOD	0/0:4764:4764:-3.605e+00
+MT	231	.	C	A,<NON_REF>	.	base_quality;t_lod	CONTQ=93;DP=4801;ECNT=23;MBQ=28,7,0;MFRL=342,266,0;MMQ=60,60,0;MPOS=12,0;POPAF=7.30,7.30;SAAF=0.010,0.010,8.538e-04;SAPP=2.971e-04,1.208e-04,1.000;TLOD=-3.210e+00,-3.373e+00	GT:AD:AF:DP:F1R2:F2R1	0/1/2:4681,4,0:2.911e-04,2.116e-04:4685:2149,3,0:2532,1,0
+MT	232	.	A	<NON_REF>	.	.	END=232	GT:DP:MIN_DP:TLOD	0/0:4710:4710:-3.667e+00
+MT	233	.	T	<NON_REF>	.	.	END=233	GT:DP:MIN_DP:TLOD	0/0:4661:4661:-3.425e+00
+MT	234	.	A	C,<NON_REF>	.	base_quality;t_lod	CONTQ=93;DP=4721;ECNT=23;MBQ=29,15,0;MFRL=339,382,0;MMQ=60,60,0;MPOS=12,0;POPAF=7.30,7.30;SAAF=0.010,0.010,1.305e-03;SAPP=1.157e-03,9.456e-05,0.999;TLOD=-3.285e+00,-3.366e+00	GT:AD:AF:DP:F1R2:F2R1	0/1/2:4590,6,0:2.596e-04,2.155e-04:4596:2099,2,0:2491,4,0
+MT	235	.	A	<NON_REF>	.	.	END=244	GT:DP:MIN_DP:TLOD	0/0:4496:4359:-3.659e+00
+MT	245	.	T	<NON_REF>	.	.	END=245	GT:DP:MIN_DP:TLOD	0/0:4313:4313:-3.430e+00
+MT	246	.	T	<NON_REF>	.	.	END=246	GT:DP:MIN_DP:TLOD	0/0:4267:4267:-3.540e+00
+MT	247	.	G	T,<NON_REF>	.	base_quality;t_lod	CONTQ=93;DP=4357;ECNT=23;MBQ=28,12,0;MFRL=329,411,0;MMQ=60,60,0;MPOS=10,0;POPAF=7.30,7.30;SAAF=0.00,0.010,1.658e-03;SAPP=0.179,4.755e-05,0.821;TLOD=-3.325e+00,-3.329e+00	GT:AD:AF:DP:F1R2:F2R1	0/1/2:4216,7,0:2.364e-04,2.346e-04:4223:1898,3,0:2318,4,0
+MT	248	.	A	<NON_REF>	.	.	END=248	GT:DP:MIN_DP:TLOD	0/0:4202:4202:-3.612e+00
+MT	249	.	A	<NON_REF>	.	.	END=249	GT:DP:MIN_DP:TLOD	0/0:4177:4177:-3.198e+00
+MT	250	.	T	G,<NON_REF>	.	base_quality;t_lod	CONTQ=93;DP=4263;ECNT=23;MBQ=29,7,0;MFRL=328,462,0;MMQ=60,60,0;MPOS=14,0;POPAF=7.30,7.30;SAAF=0.010,0.010,2.413e-03;SAPP=4.759e-04,2.347e-04,0.999;TLOD=-3.316e+00,-3.320e+00	GT:AD:AF:DP:F1R2:F2R1	0/1/2:4135,10,0:2.418e-04,2.391e-04:4145:1842,4,0:2293,6,0
+MT	251	.	G	T,<NON_REF>	.	base_quality;t_lod	CONTQ=93;DP=4236;ECNT=23;MBQ=28,2,0;MFRL=328,311,0;MMQ=60,60,0;MPOS=0,0;POPAF=7.30,7.30;SAAF=0.010,0.010,1.207e-03;SAPP=3.524e-03,7.597e-05,0.996;TLOD=-3.318e+00,-3.320e+00	GT:AD:AF:DP:F1R2:F2R1:PGT:PID:PS	0|1|2:4138,5,0:2.406e-04,2.393e-04:4143:1839,3,0:2299,2,0:0|1:251_G_T:251
+MT	252	.	T	<NON_REF>	.	.	END=252	GT:DP:MIN_DP:TLOD	0/0:4097:4097:-3.485e+00
+MT	253	.	C	A,<NON_REF>	.	base_quality;t_lod	CONTQ=93;DP=4180;ECNT=23;MBQ=28,12,0;MFRL=325,279,0;MMQ=60,60,0;MPOS=37,0;POPAF=7.30,7.30;SAAF=0.010,0.010,9.852e-04;SAPP=1.533e-03,8.159e-05,0.998;TLOD=-3.302e+00,-3.312e+00	GT:AD:AF:DP:F1R2:F2R1	0/1/2:4056,4,0:2.493e-04,2.438e-04:4060:1795,0,0:2261,4,0
+MT	254	.	T	<NON_REF>	.	.	END=254	GT:DP:MIN_DP:TLOD	0/0:4058:4058:-3.481e+00
+MT	255	.	G	<NON_REF>	.	.	END=261	GT:DP:MIN_DP:TLOD	0/0:3906:3829:-3.601e+00
+MT	262	.	C	<NON_REF>	.	.	END=262	GT:DP:MIN_DP:TLOD	0/0:3875:3875:-3.494e+00
+MT	263	.	A	G,<NON_REF>	.	PASS	CONTQ=93;DP=3952;ECNT=23;MBQ=14,28,0;MFRL=162,323,0;MMQ=60,60,0;MPOS=32,0;POPAF=7.30,7.30;SAAF=0.990,0.990,0.999;SAPP=0.022,0.033,0.945;TLOD=11637.51,-3.285e+00	GT:AD:AF:DP:F1R2:F2R1	0/1/2:3,3826,0:0.999,2.591e-04:3829:0,1663,0:3,2163,0
+MT	264	.	C	<NON_REF>	.	.	END=264	GT:DP:MIN_DP:TLOD	0/0:3809:3809:-3.581e+00
+MT	265	.	T	<NON_REF>	.	.	END=265	GT:DP:MIN_DP:TLOD	0/0:3785:3785:-3.492e+00
+MT	266	.	T	<NON_REF>	.	.	END=266	GT:DP:MIN_DP:TLOD	0/0:3756:3756:-3.565e+00
+MT	267	.	T	<NON_REF>	.	.	END=267	GT:DP:MIN_DP:TLOD	0/0:3717:3717:-3.301e+00
+MT	268	.	C	<NON_REF>	.	.	END=268	GT:DP:MIN_DP:TLOD	0/0:3732:3732:-3.526e+00
+MT	269	.	C	<NON_REF>	.	.	END=269	GT:DP:MIN_DP:TLOD	0/0:3715:3715:-3.031e+00
+MT	270	.	A	<NON_REF>	.	.	END=271	GT:DP:MIN_DP:TLOD	0/0:3671:3662:-3.562e+00
+MT	272	.	A	C,<NON_REF>	.	base_quality;t_lod	CONTQ=93;DP=3733;ECNT=23;MBQ=28,8,0;MFRL=322,318,0;MMQ=60,60,0;MPOS=8,0;POPAF=7.30,7.30;SAAF=0.010,0.00,1.350e-03;SAPP=1.517e-04,9.365e-04,0.999;TLOD=-3.252e+00,-3.269e+00	GT:AD:AF:DP:F1R2:F2R1:PGT:PID:PS	0|1|2:3699,5,0:2.803e-04,2.694e-04:3704:1573,5,0:2126,0,0:0|1:251_G_T:251
+MT	273	.	C	<NON_REF>	.	.	END=273	GT:DP:MIN_DP:TLOD	0/0:3620:3620:-3.557e+00
+MT	274	.	A	<NON_REF>	.	.	END=274	GT:DP:MIN_DP:TLOD	0/0:3589:3589:-3.492e+00
+MT	275	.	G	<NON_REF>	.	.	END=275	GT:DP:MIN_DP:TLOD	0/0:3538:3538:-3.526e+00
+MT	276	.	A	C,<NON_REF>	.	base_quality;t_lod	CONTQ=93;DP=3643;ECNT=23;MBQ=28,7,0;MFRL=319,348,0;MMQ=60,60,0;MPOS=27,0;POPAF=7.30,7.30;SAAF=0.010,0.010,7.082e-03;SAPP=3.999e-03,2.415e-04,0.996;TLOD=-3.208e+00,-3.249e+00	GT:AD:AF:DP:F1R2:F2R1	0/1/2:3505,25,0:3.105e-04,2.815e-04:3530:1469,13,0:2036,12,0
+MT	277	.	C	<NON_REF>	.	.	END=279	GT:DP:MIN_DP:TLOD	0/0:3463:3411:-3.528e+00
+MT	280	.	C	<NON_REF>	.	.	END=280	GT:DP:MIN_DP:TLOD	0/0:3416:3416:-3.256e+00
+MT	281	.	A	<NON_REF>	.	.	END=281	GT:DP:MIN_DP:TLOD	0/0:3396:3396:-3.534e+00
+MT	282	.	T	<NON_REF>	.	.	END=283	GT:DP:MIN_DP:TLOD	0/0:3356:3352:-3.496e+00
+MT	284	.	A	<NON_REF>	.	.	END=284	GT:DP:MIN_DP:TLOD	0/0:3328:3328:-3.517e+00
+MT	285	.	C	<NON_REF>	.	.	END=291	GT:DP:MIN_DP:TLOD	0/0:3252:3152:-3.497e+00
+MT	292	.	T	A,<NON_REF>	.	base_quality;t_lod	CONTQ=93;DP=3434;ECNT=23;MBQ=28,12,0;MFRL=318,269,0;MMQ=60,60,0;MPOS=7,0;POPAF=7.30,7.30;SAAF=0.010,0.010,2.153e-03;SAPP=0.622,2.623e-05,0.378;TLOD=-3.214e+00,-3.218e+00	GT:AD:AF:DP:F1R2:F2R1	0/1/2:3245,7,0:3.055e-04,3.028e-04:3252:1294,4,0:1951,3,0
+MT	293	.	T	A,<NON_REF>	.	base_quality;t_lod	CONTQ=93;DP=3426;ECNT=23;MBQ=28,12,0;MFRL=317,394,0;MMQ=60,60,0;MPOS=13,0;POPAF=7.30,7.30;SAAF=0.010,0.010,2.450e-03;SAPP=0.915,5.722e-06,0.085;TLOD=-3.213e+00,-3.218e+00	GT:AD:AF:DP:F1R2:F2R1	0/1/2:3257,8,0:3.061e-04,3.026e-04:3265:1280,2,0:1977,6,0
+MT	294	.	T	<NON_REF>	.	.	END=294	GT:DP:MIN_DP:TLOD	0/0:3056:3056:-3.475e+00
+MT	295	.	C	A,<NON_REF>	.	base_quality;t_lod	CONTQ=93;DP=3399;ECNT=23;MBQ=28,11,0;MFRL=317,319,0;MMQ=60,60,0;MPOS=10,0;POPAF=7.30,7.30;SAAF=0.00,0.010,1.809e-03;SAPP=0.958,2.393e-06,0.042;TLOD=-3.218e+00,-3.223e+00	GT:AD:AF:DP:F1R2:F2R1	0/1/2:3311,6,0:3.026e-04,2.990e-04:3317:1281,4,0:2030,2,0
+MT	296	.	C	A,<NON_REF>	.	base_quality;t_lod	CONTQ=93;DP=3398;ECNT=23;MBQ=28,2,0;MFRL=317,539,0;MMQ=60,60,0;MPOS=7,0;POPAF=7.30,7.30;SAAF=0.00,0.010,9.183e-04;SAPP=0.086,5.219e-05,0.914;TLOD=-3.217e+00,-3.219e+00	GT:AD:AF:DP:F1R2:F2R1	0/1/2:3264,3,0:3.032e-04,3.020e-04:3267:1263,2,0:2001,1,0
+MT	297	.	A	C,T,<NON_REF>	.	base_quality;t_lod	CONTQ=93;DP=3378;ECNT=23;MBQ=27,7,12,0;MFRL=317,341,285,0;MMQ=60,60,60,0;MPOS=10,46,0;POPAF=7.30,7.30,7.30;SAAF=0.010,0.010,0.014;SAPP=9.976e-04,1.344e-03,0.998;TLOD=-2.914e+00,-3.041e+00,-3.042e+00	GT:AD:AF:DP:F1R2:F2R1	0/1/2/3:3177,46,2,0:4.144e-04,3.032e-04,3.029e-04:3225:1223,20,1,0:1954,26,1,0
+MT	298	.	C	<NON_REF>	.	.	END=298	GT:DP:MIN_DP:TLOD	0/0:3131:3131:-3.489e+00
+MT	299	.	C	CA,<NON_REF>	.	base_quality;contamination;mapping_quality;t_lod	CONTQ=1;DP=3349;ECNT=23;MBQ=27,0,0;MFRL=317,0,0;MMQ=60,0,0;MPOS=0,0;POPAF=7.30,7.30;SAAF=0.00,0.00,0.00;SAPP=4.265e-04,5.766e-05,1.000;TLOD=-3.204e+00,-3.204e+00	GT:AD:AF:DP:F1R2:F2R1	0/1/2:3095,0,0:3.130e-04,3.130e-04:3095:1164,0,0:1931,0,0
+MT	300	.	A	<NON_REF>	.	.	END=300	GT:DP:MIN_DP:TLOD	0/0:3042:3042:-2.739e+00 

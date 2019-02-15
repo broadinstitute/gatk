@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.List;
 import java.util.OptionalDouble;
@@ -32,7 +33,6 @@ import java.util.OptionalInt;
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Median distance of variant starts from ends of reads supporting each allele (MPOS)")
 public class ReadPosition extends PerAlleleAnnotation implements StandardMutectAnnotation {
-    public static final String KEY = "MPOS";
 
     @Override
     protected int aggregate(final List<Integer> values) {
@@ -40,7 +40,7 @@ public class ReadPosition extends PerAlleleAnnotation implements StandardMutectA
     }
 
     @Override
-    protected String getVcfKey() { return KEY; }
+    protected String getVcfKey() { return GATKVCFConstants.MEDIAN_READ_POSITON_KEY; }
 
     @Override
     protected String getDescription() { return "median distance from end of read"; }

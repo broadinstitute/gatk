@@ -1,0 +1,160 @@
+##fileformat=VCFv4.2
+##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+##FORMAT=<ID=AF,Number=A,Type=Float,Description="Allele fractions of alternate alleles in the tumor">
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+##FORMAT=<ID=F1R2,Number=R,Type=Integer,Description="Count of reads in F1R2 pair orientation supporting each allele">
+##FORMAT=<ID=F2R1,Number=R,Type=Integer,Description="Count of reads in F2R1 pair orientation supporting each allele">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=MBQ,Number=R,Type=Integer,Description="median base quality">
+##FORMAT=<ID=MFRL,Number=R,Type=Integer,Description="median fragment length">
+##FORMAT=<ID=MIN_DP,Number=1,Type=Integer,Description="Minimum DP observed within the GVCF block">
+##FORMAT=<ID=MMQ,Number=A,Type=Integer,Description="median mapping quality">
+##FORMAT=<ID=MPOS,Number=A,Type=Integer,Description="median distance from end of read">
+##FORMAT=<ID=PGT,Number=1,Type=String,Description="Physical phasing haplotype information, describing how the alternate alleles are phased in relation to one another">
+##FORMAT=<ID=PID,Number=1,Type=String,Description="Physical phasing ID information, where each unique ID within a given sample (but not across samples) connects records within a phasing group">
+##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
+##FORMAT=<ID=SA_MAP_AF,Number=3,Type=Float,Description="MAP estimates of allele fraction given z">
+##FORMAT=<ID=SA_POST_PROB,Number=3,Type=Float,Description="posterior probabilities of the presence of strand artifact">
+##FORMAT=<ID=TLOD,Number=A,Type=Float,Description="Tumor LOD score">
+##GATKCommandLine=<ID=Mutect2,CommandLine="Mutect2  --tumor-sample NA12878 --min-pruning 5 --emit-ref-confidence GVCF --output /var/folders/v5/gbkn5lv95c51kj3xpx5pzncscnxf_m/T/unfiltered2439720586893085510.vcf --intervals chrM:1-1000 --input /Users/gauthier/workspaces/gatk/src/test/resources/org/broadinstitute/hellbender/tools/mutect/mito/NA12878.bam --reference /Users/gauthier/workspaces/gatk/src/test/resources/org/broadinstitute/hellbender/tools/mutect/mito/Homo_sapiens_assembly38.mt_only.fasta --verbosity ERROR  --genotype-pon-sites false --genotype-germline-sites false --af-of-alleles-not-in-resource -1.0 --tumor-lod-to-emit 3.0 --initial-tumor-lod 2.0 --initial-pcr-qual 40 --max-population-af 0.01 --downsampling-stride 1 --max-suspicious-reads-per-alignment-start 0 --normal-lod 2.2 --max-mnp-distance 1 --ignore-itr-artifacts false --get-af-from-ad false --gvcf-lod-band 500 --gvcf-lod-band 1000 --gvcf-lod-band 1700 --gvcf-lod-band 1800 --gvcf-lod-band 1900 --gvcf-lod-band 2000 --dont-trim-active-regions false --max-disc-ar-extension 25 --max-gga-ar-extension 300 --padding-around-indels 150 --padding-around-snps 20 --kmer-size 10 --kmer-size 25 --dont-increase-kmer-sizes-for-cycles false --allow-non-unique-kmers-in-ref false --num-pruning-samples 1 --recover-dangling-heads false --do-not-recover-dangling-branches false --min-dangling-branch-length 4 --consensus false --max-num-haplotypes-in-population 128 --error-correct-kmers false --debug-graph-transformations false --kmer-length-for-read-error-correction 25 --min-observations-for-kmer-to-be-solid 20 --likelihood-calculation-engine PairHMM --base-quality-score-threshold 18 --pair-hmm-gap-continuation-penalty 10 --pair-hmm-implementation FASTEST_AVAILABLE --pcr-indel-model CONSERVATIVE --phred-scaled-global-read-mismapping-rate 45 --native-pair-hmm-threads 4 --native-pair-hmm-use-double-precision false --debug false --use-filtered-reads-for-annotations false --bam-writer-type CALLED_HAPLOTYPES --dont-use-soft-clipped-bases false --capture-assembly-failure-bam false --error-correct-reads false --do-not-run-physical-phasing false --min-base-quality-score 10 --smith-waterman JAVA --use-new-qual-calculator false --annotate-with-num-discovered-alleles false --heterozygosity 0.001 --indel-heterozygosity 1.25E-4 --heterozygosity-stdev 0.01 --standard-min-confidence-threshold-for-calling 10.0 --max-alternate-alleles 6 --max-genotype-count 1024 --sample-ploidy 2 --num-reference-samples-if-no-call 0 --genotyping-mode DISCOVERY --genotype-filtered-alleles false --contamination-fraction-to-filter 0.0 --output-mode EMIT_VARIANTS_ONLY --all-site-pls false --min-assembly-region-size 50 --max-assembly-region-size 300 --assembly-region-padding 100 --max-reads-per-alignment-start 50 --active-probability-threshold 0.002 --max-prob-propagation-distance 50 --interval-set-rule UNION --interval-padding 0 --interval-exclusion-padding 0 --interval-merging-rule ALL --read-validation-stringency SILENT --seconds-between-progress-updates 10.0 --disable-sequence-dictionary-validation false --create-output-bam-index true --create-output-bam-md5 false --create-output-variant-index true --create-output-variant-md5 false --lenient false --add-output-sam-program-record true --add-output-vcf-command-line true --cloud-prefetch-buffer 40 --cloud-index-prefetch-buffer -1 --disable-bam-index-caching false --sites-only-vcf-output false --help false --version false --showHidden false --QUIET false --use-jdk-deflater false --use-jdk-inflater false --gcs-max-retries 20 --gcs-project-for-requester-pays  --disable-tool-default-read-filters false --max-read-length 2147483647 --min-read-length 30 --minimum-mapping-quality 20 --disable-tool-default-annotations false --enable-all-annotations false",Version=Unavailable,Date="October 16, 2018 3:35:29 PM EDT">
+##GVCFBlock0-500=minGQ=0(inclusive),maxGQ=500(exclusive)
+##GVCFBlock1000-1700=minGQ=1000(inclusive),maxGQ=1700(exclusive)
+##GVCFBlock1700-1800=minGQ=1700(inclusive),maxGQ=1800(exclusive)
+##GVCFBlock1800-1900=minGQ=1800(inclusive),maxGQ=1900(exclusive)
+##GVCFBlock1900-2000=minGQ=1900(inclusive),maxGQ=2000(exclusive)
+##GVCFBlock2000-2147483647=minGQ=2000(inclusive),maxGQ=2147483647(exclusive)
+##GVCFBlock500-1000=minGQ=500(inclusive),maxGQ=1000(exclusive)
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
+##INFO=<ID=ECNT,Number=1,Type=Integer,Description="Number of events in this haplotype">
+##INFO=<ID=END,Number=1,Type=Integer,Description="Stop position of the interval">
+##INFO=<ID=IN_PON,Number=0,Type=Flag,Description="site found in panel of normals">
+##INFO=<ID=NLOD,Number=A,Type=Float,Description="Normal LOD score">
+##INFO=<ID=N_ART_LOD,Number=A,Type=Float,Description="log odds of artifact in normal with same allele fraction as tumor">
+##INFO=<ID=POP_AF,Number=A,Type=Float,Description="population allele frequencies of alt alleles">
+##INFO=<ID=P_CONTAM,Number=1,Type=Float,Description="Posterior probability for alt allele to be due to contamination">
+##INFO=<ID=P_GERMLINE,Number=A,Type=Float,Description="Posterior probability for alt allele to be germline variants">
+##INFO=<ID=RPA,Number=.,Type=Integer,Description="Number of times tandem repeat unit is repeated, for each allele (including reference)">
+##INFO=<ID=RU,Number=1,Type=String,Description="Tandem repeat unit (bases)">
+##INFO=<ID=STR,Number=0,Type=Flag,Description="Variant is a short tandem repeat">
+##INFO=<ID=TLOD,Number=A,Type=Float,Description="Tumor LOD score">
+##MutectVersion=2.1
+##contig=<ID=chrM,length=16569>
+##filtering_status=Warning: unfiltered Mutect 2 calls.  Please run FilterMutectCalls to remove false positives.
+##source=Mutect2
+##tumor_sample=NA12878
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA12878
+chrM	1	.	G	<NON_REF>	.	.	END=34	GT:DP:MIN_DP:TLOD	0/0:261:50:52.17
+chrM	35	.	G	<NON_REF>	.	.	END=61	GT:DP:MIN_DP:TLOD	0/0:695:483:512.83
+chrM	62	.	G	<NON_REF>	.	.	END=120	GT:DP:MIN_DP:TLOD	0/0:1308:940:1003.83
+chrM	121	.	G	<NON_REF>	.	.	END=130	GT:DP:MIN_DP:TLOD	0/0:1639:1588:1702.53
+chrM	131	.	T	<NON_REF>	.	.	END=141	GT:DP:MIN_DP:TLOD	0/0:1743:1690:1808.57
+chrM	142	.	T	<NON_REF>	.	.	END=151	GT:DP:MIN_DP:TLOD	0/0:1816:1782:1904.78
+chrM	152	.	T	C,<NON_REF>	.	.	DP=1586;ECNT=2;POP_AF=5.000e-08,5.000e-08;TLOD=5273.97,-2.896e+00	GT:AD:AF:DP:F1R2:F2R1:MBQ:MFRL:MMQ:MPOS:PGT:PID:SA_MAP_AF:SA_POST_PROB	0/1/2:3,1560,0:0.997,6.356e-04:1563:2,781,0:1,779,0:30,30,0:16270,369,0:60,0:42,0:0|1:152_T_C:0.990,0.990,0.998:0.036,0.021,0.943
+chrM	153	.	A	<NON_REF>	.	.	END=171	GT:DP:MIN_DP:TLOD	0/0:1718:1703:1814.38
+chrM	172	.	T	G,<NON_REF>	.	.	DP=1573;ECNT=2;POP_AF=5.000e-08,5.000e-08;TLOD=-2.764e+00,-2.888e+00	GT:AD:AF:DP:F1R2:F2R1:MBQ:MFRL:MMQ:MPOS:PGT:PID:SA_MAP_AF:SA_POST_PROB	0/1/2:1525,11,0:8.647e-04,6.472e-04:1536:765,7,0:760,4,0:30,10,0:344,482,0:60,0:35,0:0|1:152_T_C:0.010,0.010,7.161e-03:3.655e-03,3.940e-04,0.996
+chrM	173	.	T	<NON_REF>	.	.	END=194	GT:DP:MIN_DP:TLOD	0/0:1834:1781:1909.59
+chrM	195	.	T	<NON_REF>	.	.	END=195	GT:DP:MIN_DP:TLOD	0/0:1782:1782:1898.12
+chrM	196	.	T	<NON_REF>	.	.	END=196	GT:DP:MIN_DP:TLOD	0/0:1779:1779:1901.55
+chrM	197	.	A	<NON_REF>	.	.	END=211	GT:DP:MIN_DP:TLOD	0/0:1728:1693:1806.09
+chrM	212	.	T	<NON_REF>	.	.	END=212	GT:DP:MIN_DP:TLOD	0/0:1687:1687:1794.87
+chrM	213	.	T	<NON_REF>	.	.	END=213	GT:DP:MIN_DP:TLOD	0/0:1685:1685:1800.33
+chrM	214	.	A	<NON_REF>	.	.	END=262	GT:DP:MIN_DP:TLOD	0/0:1648:1638:1735.82
+chrM	263	.	A	G,<NON_REF>	.	.	DP=845;ECNT=8;POP_AF=5.000e-08,5.000e-08;TLOD=2595.99,-2.617e+00	GT:AD:AF:DP:F1R2:F2R1:MBQ:MFRL:MMQ:MPOS:SA_MAP_AF:SA_POST_PROB	0/1/2:1,818,0:0.998,1.207e-03:819:0,393,0:1,425,0:10,30,0:292,305,0:60,0:31,0:0.990,0.990,0.999:0.027,0.027,0.946
+chrM	264	.	C	<NON_REF>	.	.	END=266	GT:DP:MIN_DP:TLOD	0/0:876:875:933.85
+chrM	267	.	T	C,<NON_REF>	.	.	DP=823;ECNT=8;POP_AF=5.000e-08,5.000e-08;TLOD=-1.778e+00,-2.603e+00	GT:AD:AF:DP:F1R2:F2R1:MBQ:MFRL:MMQ:MPOS:SA_MAP_AF:SA_POST_PROB	0/1/2:783,15,0:4.502e-03,1.247e-03:798:369,8,0:414,7,0:30,10,0:304,322,0:60,0:16,0:0.020,0.00,0.019:8.247e-04,0.043,0.956
+chrM	268	.	C	<NON_REF>	.	.	END=293	GT:DP:MIN_DP:TLOD	0/0:796:725:766.66
+chrM	294	.	T	TC,<NON_REF>	.	.	DP=709;ECNT=8;POP_AF=5.000e-08,5.000e-08;TLOD=-2.527e+00,-2.533e+00	GT:AD:AF:DP:F1R2:F2R1:MBQ:MFRL:MMQ:MPOS:SA_MAP_AF:SA_POST_PROB	0/1/2:661,2,0:1.483e-03,1.463e-03:663:282,1,0:379,1,0:30,25,0:309,350,0:60,0:29,0:0.010,0.00,3.017e-03:2.156e-03,8.696e-04,0.997
+chrM	295	.	C	<NON_REF>	.	.	END=296	GT:DP:MIN_DP:TLOD	0/0:719:716:764.58
+chrM	297	.	A	C,AC,<NON_REF>	.	.	DP=688;ECNT=8;POP_AF=5.000e-08,5.000e-08,5.000e-08;TLOD=-8.845e-01,-2.310e+00,-2.351e+00	GT:AD:AF:DP:F1R2:F2R1:MBQ:MFRL:MMQ:MPOS:SA_MAP_AF:SA_POST_PROB	0/1/2/3:609,26,6,0:8.550e-03,1.639e-03,1.484e-03:641:262,8,3,0:347,18,3,0:30,6,20,0:307,320,401,0:60,60,0:20,28,0:0.040,0.030,0.041:5.150e-03,4.548e-03,0.990
+chrM	298	.	C	<NON_REF>	.	.	END=300	GT:DP:MIN_DP:TLOD	0/0:698:693:739.82
+chrM	301	.	A	AC,<NON_REF>	.	.	DP=668;ECNT=8;POP_AF=5.000e-08,5.000e-08;TLOD=3.74,-2.487e+00	GT:AD:AF:DP:F1R2:F2R1:MBQ:MFRL:MMQ:MPOS:SA_MAP_AF:SA_POST_PROB	0/1/2:568,53,0:0.027,1.629e-03:621:234,27,0:334,26,0:30,20,0:309,324,0:60,0:34,0:0.081,0.00,0.085:2.493e-03,0.161,0.837
+chrM	302	.	A	AC,C,ACC,<NON_REF>	.	.	DP=647;ECNT=8;POP_AF=5.000e-08,5.000e-08,5.000e-08,5.000e-08;TLOD=876.82,10.86,66.47,-2.160e+00	GT:AD:AF:DP:F1R2:F2R1:MBQ:MFRL:MMQ:MPOS:SA_MAP_AF:SA_POST_PROB	0/1/2/3/4:4,394,66,48,0:0.839,0.057,0.097,1.737e-03:512:1,157,34,20,0:3,237,32,28,0:20,20,30,20,0:8228,316,338,280,0:60,60,60,0:41,33,38,0:0.768,0.747,0.770:0.016,0.052,0.932
+chrM	303	.	C	<NON_REF>	.	.	END=308	GT:DP:MIN_DP:TLOD	0/0:679:674:722.22
+chrM	309	.	C	CCA,<NON_REF>	.	.	DP=702;ECNT=8;POP_AF=5.000e-08,5.000e-08;TLOD=-2.178e+00,-2.514e+00	GT:AD:AF:DP:F1R2:F2R1:MBQ:MFRL:MMQ:MPOS:SA_MAP_AF:SA_POST_PROB	0/1/2:618,4,0:2.991e-03,1.532e-03:622:248,1,0:370,3,0:30,20,0:313,8228,0:60,0:39,0:0.010,0.010,6.431e-03:0.013,7.112e-04,0.986
+chrM	310	.	T	C,TC,<NON_REF>	.	.	DP=695;ECNT=8;POP_AF=5.000e-08,5.000e-08,5.000e-08;TLOD=-1.994e+00,1948.85,-2.350e+00	GT:AD:AF:DP:F1R2:F2R1:MBQ:MFRL:MMQ:MPOS:SA_MAP_AF:SA_POST_PROB	0/1/2/3:0,4,610,0:3.029e-03,0.994,1.487e-03:614:0,1,246,0:0,3,364,0:0,30,30,0:0,8228,314,0:60,60,0:40,35,0:0.990,0.990,0.993:0.022,0.034,0.944
+chrM	311	.	C	<NON_REF>	.	.	END=315	GT:DP:MIN_DP:TLOD	0/0:1393:1389:1492.05
+chrM	316	.	G	<NON_REF>	.	.	END=319	GT:DP:MIN_DP:TLOD	0/0:932:923:971.26
+chrM	320	.	C	<NON_REF>	.	.	END=465	GT:DP:MIN_DP:TLOD	0/0:1270:944:1012.90
+chrM	466	.	T	C,<NON_REF>	.	.	DP=793;ECNT=10;POP_AF=5.000e-08,5.000e-08;TLOD=-2.118e+00,-2.586e+00	GT:AD:AF:DP:F1R2:F2R1:MBQ:MFRL:MMQ:MPOS:SA_MAP_AF:SA_POST_PROB	0/1/2:754,10,0:3.145e-03,1.295e-03:764:286,3,0:468,7,0:30,6,0:322,325,0:60,0:44,0:0.010,0.010,0.013:1.348e-03,2.578e-03,0.996
+chrM	467	.	C	<NON_REF>	.	.	END=469	GT:DP:MIN_DP:TLOD	0/0:812:811:870.66
+chrM	470	.	A	C,<NON_REF>	.	.	DP=802;ECNT=10;POP_AF=5.000e-08,5.000e-08;TLOD=-2.476e+00,-2.592e+00	GT:AD:AF:DP:F1R2:F2R1:MBQ:MFRL:MMQ:MPOS:SA_MAP_AF:SA_POST_PROB	0/1/2:766,10,0:1.662e-03,1.278e-03:776:281,6,0:485,4,0:30,5,0:317,354,0:60,0:2,0:0.010,0.010,0.013:0.100,4.042e-04,0.900
+chrM	471	.	T	<NON_REF>	.	.	END=474	GT:DP:MIN_DP:TLOD	0/0:820:815:867.35
+chrM	475	.	A	C,<NON_REF>	.	.	DP=819;ECNT=10;POP_AF=5.000e-08,5.000e-08;TLOD=-2.575e+00,-2.598e+00	GT:AD:AF:DP:F1R2:F2R1:MBQ:MFRL:MMQ:MPOS:SA_MAP_AF:SA_POST_PROB	0/1/2:776,9,0:1.333e-03,1.261e-03:785:286,5,0:490,4,0:30,6,0:318,383,0:60,0:34,0:0.010,0.010,0.011:4.106e-03,8.406e-04,0.995
+chrM	476	.	C	<NON_REF>	.	.	END=477	GT:DP:MIN_DP:TLOD	0/0:836:833:894.34
+chrM	478	.	A	C,<NON_REF>	.	.	DP=828;ECNT=10;POP_AF=5.000e-08,5.000e-08;TLOD=-2.597e+00,-2.607e+00	GT:AD:AF:DP:F1R2:F2R1:MBQ:MFRL:MMQ:MPOS:SA_MAP_AF:SA_POST_PROB	0/1/2:797,4,0:1.265e-03,1.235e-03:801:291,4,0:506,0,0:30,8,0:317,364,0:60,0:57,0:0.010,0.010,4.994e-03:1.099e-03,1.096e-03,0.998
+chrM	479	.	A	<NON_REF>	.	.	END=483	GT:DP:MIN_DP:TLOD	0/0:857:843:891.79
+chrM	484	.	A	C,<NON_REF>	.	.	DP=852;ECNT=10;POP_AF=5.000e-08,5.000e-08;TLOD=-2.606e+00,-2.619e+00	GT:AD:AF:DP:F1R2:F2R1:MBQ:MFRL:MMQ:MPOS:SA_MAP_AF:SA_POST_PROB	0/1/2:816,5,0:1.237e-03,1.202e-03:821:295,3,0:521,2,0:30,10,0:318,282,0:60,0:34,0:0.010,0.010,6.090e-03:1.715e-03,8.231e-04,0.997
+chrM	485	.	T	<NON_REF>	.	.	END=486	GT:DP:MIN_DP:TLOD	0/0:864:862:919.86
+chrM	487	.	A	C,<NON_REF>	.	.	DP=848;ECNT=10;POP_AF=5.000e-08,5.000e-08;TLOD=-2.608e+00,-2.620e+00	GT:AD:AF:DP:F1R2:F2R1:MBQ:MFRL:MMQ:MPOS:SA_MAP_AF:SA_POST_PROB	0/1/2:822,5,0:1.233e-03,1.199e-03:827:303,1,0:519,4,0:30,10,0:317,412,0:60,0:18,0:0.010,0.010,6.046e-03:8.624e-04,1.704e-03,0.997
+chrM	488	.	A	<NON_REF>	.	.	END=492	GT:DP:MIN_DP:TLOD	0/0:878:871:924.79
+chrM	493	.	A	C,<NON_REF>	.	.	DP=887;ECNT=10;POP_AF=5.000e-08,5.000e-08;TLOD=0.518,-2.620e+00	GT:AD:AF:DP:F1R2:F2R1:MBQ:MFRL:MMQ:MPOS:SA_MAP_AF:SA_POST_PROB	0/1/2:793,45,0:0.011,1.199e-03:838:288,21,0:505,24,0:30,5,0:317,317,0:60,0:23,0:0.051,0.00,0.054:5.192e-10,1.000,1.033e-06
+chrM	494	.	C	<NON_REF>	.	.	END=498	GT:DP:MIN_DP:TLOD	0/0:914:901:966.60
+chrM	499	.	G	C,<NON_REF>	.	.	DP=901;ECNT=10;POP_AF=5.000e-08,5.000e-08;TLOD=-2.020e+00,-2.637e+00	GT:AD:AF:DP:F1R2:F2R1:MBQ:MFRL:MMQ:MPOS:SA_MAP_AF:SA_POST_PROB	0/1/2:842,21,0:2.878e-03,1.154e-03:863:313,8,0:529,13,0:30,5,0:317,337,0:60,0:12,0:0.010,0.020,0.024:0.877,5.114e-05,0.122
+chrM	500	.	C	<NON_REF>	.	.	END=501	GT:DP:MIN_DP:TLOD	0/0:927:923:991.24
+chrM	502	.	C	<NON_REF>	.	.	END=502	GT:DP:MIN_DP:TLOD	0/0:935:935:1004.16
+chrM	503	.	A	<NON_REF>	.	.	END=504	GT:DP:MIN_DP:TLOD	0/0:941:940:992.42
+chrM	505	.	C	<NON_REF>	.	.	END=507	GT:DP:MIN_DP:TLOD	0/0:943:940:1009.54
+chrM	508	.	A	<NON_REF>	.	.	END=508	GT:DP:MIN_DP:TLOD	0/0:953:953:997.85
+chrM	509	.	C	<NON_REF>	.	.	END=549	GT:DP:MIN_DP:TLOD	0/0:1068:952:1020.99
+chrM	550	.	A	C,<NON_REF>	.	.	DP=1122;ECNT=10;POP_AF=5.000e-08,5.000e-08;TLOD=-2.552e+00,-2.743e+00	GT:AD:AF:DP:F1R2:F2R1:MBQ:MFRL:MMQ:MPOS:SA_MAP_AF:SA_POST_PROB	0/1/2:1095,13,0:1.392e-03,9.033e-04:1108:426,5,0:669,8,0:30,10,0:317,321,0:60,0:56,0:0.010,0.010,0.012:0.041,3.813e-04,0.958
+chrM	551	.	A	<NON_REF>	.	.	END=566	GT:DP:MIN_DP:TLOD	0/0:1185:1163:1237.28
+chrM	567	.	A	C,<NON_REF>	.	.	DP=1191;ECNT=10;POP_AF=5.000e-08,5.000e-08;TLOD=-2.662e+00,-2.764e+00	GT:AD:AF:DP:F1R2:F2R1:MBQ:MFRL:MMQ:MPOS:SA_MAP_AF:SA_POST_PROB	0/1/2:1145,14,0:1.091e-03,8.610e-04:1159:464,4,0:681,10,0:30,5,0:319,381,0:60,0:30,0:0.010,0.010,0.012:3.370e-04,0.065,0.935
+chrM	568	.	C	<NON_REF>	.	.	END=573	GT:DP:MIN_DP:TLOD	0/0:1659:1652:1767.64
+chrM	574	.	A	<NON_REF>	.	.	END=574	GT:DP:MIN_DP:TLOD	0/0:1642:1642:1692.18
+chrM	575	.	C	<NON_REF>	.	.	END=575	GT:DP:MIN_DP:TLOD	0/0:1638:1638:1756.37
+chrM	576	.	A	<NON_REF>	.	.	END=576	GT:DP:MIN_DP:TLOD	0/0:1627:1627:1687.45
+chrM	577	.	G	<NON_REF>	.	.	END=577	GT:DP:MIN_DP:TLOD	0/0:1628:1628:1726.58
+chrM	578	.	T	<NON_REF>	.	.	END=579	GT:DP:MIN_DP:TLOD	0/0:1620:1618:1652.07
+chrM	580	.	T	<NON_REF>	.	.	END=608	GT:DP:MIN_DP:TLOD	0/0:1655:1627:1718.55
+chrM	609	.	C	<NON_REF>	.	.	END=609	GT:DP:MIN_DP:TLOD	0/0:1693:1693:1812.75
+chrM	610	.	T	<NON_REF>	.	.	END=610	GT:DP:MIN_DP:TLOD	0/0:1693:1693:1777.55
+chrM	611	.	G	<NON_REF>	.	.	END=615	GT:DP:MIN_DP:TLOD	0/0:1700:1699:1806.01
+chrM	616	.	T	<NON_REF>	.	.	END=616	GT:DP:MIN_DP:TLOD	0/0:1699:1699:1773.54
+chrM	617	.	G	<NON_REF>	.	.	END=628	GT:DP:MIN_DP:TLOD	0/0:1719:1696:1809.32
+chrM	629	.	T	<NON_REF>	.	.	END=629	GT:DP:MIN_DP:TLOD	0/0:1706:1706:1796.30
+chrM	630	.	C	<NON_REF>	.	.	END=632	GT:DP:MIN_DP:TLOD	0/0:1701:1700:1818.51
+chrM	633	.	A	<NON_REF>	.	.	END=634	GT:DP:MIN_DP:TLOD	0/0:1692:1688:1774.06
+chrM	635	.	C	<NON_REF>	.	.	END=635	GT:DP:MIN_DP:TLOD	0/0:1690:1690:1808.57
+chrM	636	.	A	<NON_REF>	.	.	END=636	GT:DP:MIN_DP:TLOD	0/0:1694:1694:1771.01
+chrM	637	.	C	<NON_REF>	.	.	END=644	GT:DP:MIN_DP:TLOD	0/0:1698:1691:1802.78
+chrM	645	.	A	<NON_REF>	.	.	END=645	GT:DP:MIN_DP:TLOD	0/0:1692:1692:1797.40
+chrM	646	.	C	<NON_REF>	.	.	END=653	GT:DP:MIN_DP:TLOD	0/0:1695:1686:1802.36
+chrM	654	.	T	<NON_REF>	.	.	END=659	GT:DP:MIN_DP:TLOD	0/0:1685:1679:1762.97
+chrM	660	.	C	<NON_REF>	.	.	END=663	GT:DP:MIN_DP:TLOD	0/0:1697:1696:1801.83
+chrM	664	.	G	<NON_REF>	.	.	END=664	GT:DP:MIN_DP:TLOD	0/0:1686:1686:1798.55
+chrM	665	.	C	<NON_REF>	.	.	END=666	GT:DP:MIN_DP:TLOD	0/0:1688:1686:1806.16
+chrM	667	.	T	<NON_REF>	.	.	END=669	GT:DP:MIN_DP:TLOD	0/0:1682:1678:1783.28
+chrM	670	.	C	<NON_REF>	.	.	END=701	GT:DP:MIN_DP:TLOD	0/0:1716:1682:1804.71
+chrM	702	.	C	<NON_REF>	.	.	END=725	GT:DP:MIN_DP:TLOD	0/0:1852:1776:1901.91
+chrM	726	.	C	<NON_REF>	.	.	END=726	GT:DP:MIN_DP:TLOD	0/0:1868:1868:2003.10
+chrM	727	.	T	<NON_REF>	.	.	END=735	GT:DP:MIN_DP:TLOD	0/0:1863:1858:1969.88
+chrM	736	.	C	<NON_REF>	.	.	END=736	GT:DP:MIN_DP:TLOD	0/0:1866:1866:2000.95
+chrM	737	.	C	<NON_REF>	.	.	END=741	GT:DP:MIN_DP:TLOD	0/0:1856:1839:1960.46
+chrM	742	.	T	G,<NON_REF>	.	.	DP=1589;ECNT=4;POP_AF=5.000e-08,5.000e-08;TLOD=-2.209e+00,-2.892e+00	GT:AD:AF:DP:F1R2:F2R1:MBQ:MFRL:MMQ:MPOS:SA_MAP_AF:SA_POST_PROB	0/1/2:1536,11,0:1.562e-03,6.414e-04:1547:749,5,0:787,6,0:30,10,0:337,482,0:60,0:15,0:0.010,0.010,7.111e-03:6.138e-04,1.276e-03,0.998
+chrM	743	.	C	<NON_REF>	.	.	END=744	GT:DP:MIN_DP:TLOD	0/0:1691:1690:1813.32
+chrM	745	.	A	<NON_REF>	.	.	END=746	GT:DP:MIN_DP:TLOD	0/0:1677:1674:1791.34
+chrM	747	.	A	<NON_REF>	.	.	END=749	GT:DP:MIN_DP:TLOD	0/0:1688:1682:1802.80
+chrM	750	.	A	G,<NON_REF>	.	.	DP=1576;ECNT=4;POP_AF=5.000e-08,5.000e-08;TLOD=5126.27,-2.890e+00	GT:AD:AF:DP:F1R2:F2R1:MBQ:MFRL:MMQ:MPOS:SA_MAP_AF:SA_POST_PROB	0/1/2:0,1534,0:0.999,6.444e-04:1534:0,733,0:0,801,0:0,30,0:0,337,0:60,0:41,0:0.990,0.990,1.00:0.027,0.027,0.946
+chrM	751	.	A	<NON_REF>	.	.	END=751	GT:DP:MIN_DP:TLOD	0/0:1681:1681:1799.83
+chrM	752	.	C	<NON_REF>	.	.	END=752	GT:DP:MIN_DP:TLOD	0/0:1677:1677:1801.23
+chrM	753	.	A	<NON_REF>	.	.	END=753	GT:DP:MIN_DP:TLOD	0/0:1679:1679:1796.72
+chrM	754	.	A	<NON_REF>	.	.	END=754	GT:DP:MIN_DP:TLOD	0/0:1680:1680:1800.65
+chrM	755	.	G	<NON_REF>	.	.	END=755	GT:DP:MIN_DP:TLOD	0/0:1675:1675:1793.36
+chrM	756	.	C	<NON_REF>	.	.	END=768	GT:DP:MIN_DP:TLOD	0/0:1682:1679:1800.53
+chrM	769	.	G	<NON_REF>	.	.	END=781	GT:DP:MIN_DP:TLOD	0/0:1657:1650:1760.73
+chrM	782	.	A	C,<NON_REF>	.	.	DP=1586;ECNT=4;POP_AF=5.000e-08,5.000e-08;TLOD=-1.997e+00,-2.888e+00	GT:AD:AF:DP:F1R2:F2R1:MBQ:MFRL:MMQ:MPOS:SA_MAP_AF:SA_POST_PROB	0/1/2:1516,21,0:2.010e-03,6.471e-04:1537:713,4,0:803,17,0:30,10,0:338,394,0:60,0:26,0:0.010,0.010,0.014:3.123e-04,0.060,0.939
+chrM	783	.	A	C,<NON_REF>	.	.	DP=1584;ECNT=4;POP_AF=5.000e-08,5.000e-08;TLOD=-7.913e-01,-2.892e+00	GT:AD:AF:DP:F1R2:F2R1:MBQ:MFRL:MMQ:MPOS:SA_MAP_AF:SA_POST_PROB	0/1/2:1537,10,0:2.696e-03,6.417e-04:1547:716,3,0:821,7,0:30,10,0:338,343,0:60,0:38,0:0.010,0.010,6.464e-03:3.651e-04,3.612e-03,0.996
+chrM	784	.	A	<NON_REF>	.	.	END=854	GT:DP:MIN_DP:TLOD	0/0:1828:1792:1902.14
+chrM	855	.	A	<NON_REF>	.	.	END=855	GT:DP:MIN_DP:TLOD	0/0:1781:1781:1898.00
+chrM	856	.	A	<NON_REF>	.	.	END=858	GT:DP:MIN_DP:TLOD	0/0:1780:1778:1900.28
+chrM	859	.	T	<NON_REF>	.	.	END=871	GT:DP:MIN_DP:TLOD	0/0:1760:1749:1855.15
+chrM	872	.	G	<NON_REF>	.	.	END=874	GT:DP:MIN_DP:TLOD	0/0:1785:1784:1901.23
+chrM	875	.	T	<NON_REF>	.	.	END=883	GT:DP:MIN_DP:TLOD	0/0:1772:1768:1876.06
+chrM	884	.	T	<NON_REF>	.	.	END=884	GT:DP:MIN_DP:TLOD	0/0:1786:1786:1904.33
+chrM	885	.	T	<NON_REF>	.	.	END=885	GT:DP:MIN_DP:TLOD	0/0:1790:1790:1891.52
+chrM	886	.	C	<NON_REF>	.	.	END=972	GT:DP:MIN_DP:TLOD	0/0:1843:1786:1902.93
+chrM	973	.	C	<NON_REF>	.	.	END=973	GT:DP:MIN_DP:TLOD	0/0:1867:1867:2004.88
+chrM	974	.	T	<NON_REF>	.	.	END=974	GT:DP:MIN_DP:TLOD	0/0:1874:1874:1986.73
+chrM	975	.	A	<NON_REF>	.	.	END=975	GT:DP:MIN_DP:TLOD	0/0:1879:1879:2009.24
+chrM	976	.	A	<NON_REF>	.	.	END=1000	GT:DP:MIN_DP:TLOD	0/0:1848:1825:1922.55

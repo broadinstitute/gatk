@@ -128,7 +128,9 @@ public final class FilterMutectCalls extends TwoPassVariantWalker {
     @Override
     public void firstPassApply(final VariantContext vc, final ReadsContext readsContext, final ReferenceContext refContext, final FeatureContext fc) {
         final FilterResult filterResult = filteringEngine.calculateFilters(MTFAC, vc, Optional.empty());
-        filteringFirstPass.add(filterResult, vc);
+        if (filterResult != null) {
+            filteringFirstPass.add(filterResult, vc);
+        }
     }
 
     @Override
@@ -142,8 +144,10 @@ public final class FilterMutectCalls extends TwoPassVariantWalker {
         final FilterResult filterResult = filteringEngine.calculateFilters(MTFAC, vc, Optional.of(filteringFirstPass));
         final VariantContextBuilder vcb = new VariantContextBuilder(vc);
 
-        vcb.filters(filterResult.getFilters());
-        filterResult.getAttributes().entrySet().forEach(e -> vcb.attribute(e.getKey(), e.getValue()));
+        if (filterResult != null) {
+            vcb.filters(filterResult.getFilters());
+            filterResult.getAttributes().entrySet().forEach(e -> vcb.attribute(e.getKey(), e.getValue()));
+        }
 
         vcfWriter.add(vcb.make());
     }

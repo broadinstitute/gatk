@@ -2,13 +2,16 @@ package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.variantcontext.*;
-import htsjdk.variant.vcf.VCFConstants;
+import htsjdk.variant.vcf.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
+import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.collections.Permutation;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.*;
@@ -106,6 +109,44 @@ public final class AlleleSubsettingUtils {
             }
             newGTs.add(gb.make());
         }
+        return newGTs;
+    }
+
+
+    /**
+     *  Remove alternate alleles from a set of genotypes turning removed alleles to no-call and dropping other per-allele attributes
+     *
+     * @param outputHeader  header for the final output VCF, used to validate annotation counts and types
+     * @param originalGs    genotypes with full set of alleles
+     * @param allelesToKeep contains the reference allele and may contain the NON_REF
+     * @param relevantIndices   indices of allelesToKeep w.r.t. the original VC (including ref and possibly NON_REF)
+     * @return
+     */
+    public static GenotypesContext subsetSomaticAlleles(final VCFHeader outputHeader, final GenotypesContext originalGs,
+                                                        final List<Allele> allelesToKeep, final int[] relevantIndices) {
+        final GenotypesContext newGTs = GenotypesContext.create(originalGs.size());
+        GenotypeBuilder gb;
+        for (final Genotype g : originalGs) {
+            gb = new GenotypeBuilder(g);
+            gb.noAttributes();
+            List<Allele> keepGTAlleles = new ArrayList<>(g.getAlleles());
+            //keep the "ploidy", (i.e. number of different called alleles) the same, but no-call the ones we drop
+            for (Allele a : keepGTAlleles) {
+                if (!allelesToKeep.contains(a)) {
+                    keepGTAlleles.set(keepGTAlleles.indexOf(a), Allele.NO_CALL);
+                }
+            }
+            gb.alleles(keepGTAlleles);
+            gb.AD(ReferenceConfidenceVariantContextMerger.generateAD(g.getAD(), relevantIndices));
+            Set<String> keys = g.getExtendedAttributes().keySet();
+            for (final String key : keys) {
+                final VCFFormatHeaderLine headerLine = outputHeader.getFormatHeaderLine(key);
+                final int nonRefIndex = allelesToKeep.contains(Allele.NON_REF_ALLELE) ? allelesToKeep.indexOf(Allele.NON_REF_ALLELE) : -1;
+                gb.attribute(key, ReferenceConfidenceVariantContextMerger.generateAnnotationValueVector(headerLine.getCountType(),
+                            GATKProtectedVariantContextUtils.attributeToList(g.getAnyAttribute(key)), relevantIndices));
+            }
+            newGTs.add(gb.make());
+            }
         return newGTs;
     }
 
@@ -255,12 +296,12 @@ public final class AlleleSubsettingUtils {
 
 
     /**
+     * @param alleles a list of alleles including the reference and possible the NON_REF
      * @return a list of the best proper alt alleles based on the likelihood sums, keeping the reference allele and {@link Allele#NON_REF_ALLELE}
      * the list will include no more than {@code numAltAllelesToKeep + 2} alleles and will maintain the order of the original alleles in {@code vc}
      *
      */
-    @VisibleForTesting
-    static List<Allele> filterToMaxNumberOfAltAllelesBasedOnScores(int numAltAllelesToKeep, List<Allele> alleles, double[] likelihoodSums) {
+    public static List<Allele> filterToMaxNumberOfAltAllelesBasedOnScores(int numAltAllelesToKeep, List<Allele> alleles, double[] likelihoodSums) {
         final int nonRefAltAlleleIndex = alleles.indexOf(Allele.NON_REF_ALLELE);
         final int numAlleles = alleles.size();
         final Set<Integer> properAltIndexesToKeep = IntStream.range(1, numAlleles).filter(n -> n != nonRefAltAlleleIndex).boxed()

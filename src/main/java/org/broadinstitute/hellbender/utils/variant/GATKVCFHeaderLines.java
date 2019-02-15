@@ -1,6 +1,10 @@
 package org.broadinstitute.hellbender.utils.variant;
 
 import htsjdk.variant.vcf.*;
+import org.broadinstitute.hellbender.tools.walkers.annotator.BaseQuality;
+import org.broadinstitute.hellbender.tools.walkers.annotator.FragmentLength;
+import org.broadinstitute.hellbender.tools.walkers.annotator.MappingQuality;
+import org.broadinstitute.hellbender.tools.walkers.annotator.ReadPosition;
 import org.broadinstitute.hellbender.tools.walkers.annotator.RMSMappingQuality;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -54,6 +58,15 @@ public class GATKVCFHeaderLines {
     private static void addFilterLine(final VCFFilterHeaderLine line) {
         Utils.nonNull(line);
         filterLines.put(line.getID(), line);
+    }
+
+    public static VCFFormatHeaderLine getEquivalentFormatHeaderLine(final String infoFieldKey) {
+        final VCFInfoHeaderLine infoLine = getInfoLine(infoFieldKey);
+        if (infoLine.isFixedCount()) {
+            return new VCFFormatHeaderLine(infoLine.getID(), infoLine.getCount(), infoLine.getType(), infoLine.getDescription());
+        } else {
+            return new VCFFormatHeaderLine(infoLine.getID(), infoLine.getCountType(), infoLine.getType(), infoLine.getDescription());
+        }
     }
 
     static {
@@ -213,6 +226,9 @@ public class GATKVCFHeaderLines {
         addInfoLine(new VCFInfoHeaderLine(UNIQUE_ALT_READ_SET_COUNT_KEY, 1, VCFHeaderLineType.Integer, "Number of ALT reads with unique start and mate end positions at a variant site"));
         addInfoLine(new VCFInfoHeaderLine(STRAND_ARTIFACT_AF_KEY, 3, VCFHeaderLineType.Float, "MAP estimates of allele fraction given z"));
         addInfoLine(new VCFInfoHeaderLine(STRAND_ARTIFACT_POSTERIOR_KEY, 3, VCFHeaderLineType.Float, "posterior probabilities of the presence of strand artifact"));
-
+        addInfoLine(new BaseQuality().getDescriptions().get(0));
+        addInfoLine(new FragmentLength().getDescriptions().get(0));
+        addInfoLine(new MappingQuality().getDescriptions().get(0));
+        addInfoLine(new ReadPosition().getDescriptions().get(0));
     }
 }

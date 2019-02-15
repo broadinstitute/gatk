@@ -1,0 +1,184 @@
+##fileformat=VCFv4.2
+##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+##FORMAT=<ID=AF,Number=A,Type=Float,Description="Allele fractions of alternate alleles in the tumor">
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+##FORMAT=<ID=F1R2,Number=R,Type=Integer,Description="Count of reads in F1R2 pair orientation supporting each allele">
+##FORMAT=<ID=F2R1,Number=R,Type=Integer,Description="Count of reads in F2R1 pair orientation supporting each allele">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=MBQ,Number=R,Type=Integer,Description="median base quality">
+##FORMAT=<ID=MFRL,Number=R,Type=Integer,Description="median fragment length">
+##FORMAT=<ID=MIN_DP,Number=1,Type=Integer,Description="Minimum DP observed within the GVCF block">
+##FORMAT=<ID=MMQ,Number=A,Type=Integer,Description="median mapping quality">
+##FORMAT=<ID=MPOS,Number=A,Type=Integer,Description="median distance from end of read">
+##FORMAT=<ID=PGT,Number=1,Type=String,Description="Physical phasing haplotype information, describing how the alternate alleles are phased in relation to one another">
+##FORMAT=<ID=PID,Number=1,Type=String,Description="Physical phasing ID information, where each unique ID within a given sample (but not across samples) connects records within a phasing group">
+##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
+##FORMAT=<ID=SA_MAP_AF,Number=3,Type=Float,Description="MAP estimates of allele fraction given z">
+##FORMAT=<ID=SA_POST_PROB,Number=3,Type=Float,Description="posterior probabilities of the presence of strand artifact">
+##FORMAT=<ID=TLOD,Number=A,Type=Float,Description="Tumor LOD score">
+##GATKCommandLine=<ID=CombineGVCFs,CommandLine="CombineGVCFs  --output /var/folders/v5/gbkn5lv95c51kj3xpx5pzncscnxf_m/T/combinegvcfs8154240428189561827.vcf --input-is-somatic true --variant /Users/gauthier/workspaces/gatk/src/test/resources/org/broadinstitute/hellbender/tools/walkers/CombineGVCFs/sample1.MT.g.vcf --variant /Users/gauthier/workspaces/gatk/src/test/resources/org/broadinstitute/hellbender/tools/walkers/CombineGVCFs/sample2.MT.g.vcf --reference /Users/gauthier/workspaces/gatk/src/test/resources/org/broadinstitute/hellbender/tools/mutect/mito/Homo_sapiens_assembly38.mt_only.fasta --verbosity ERROR  --convert-to-base-pair-resolution false --break-bands-at-multiples-of 0 --ignore-variants-starting-outside-interval false --interval-set-rule UNION --interval-padding 0 --interval-exclusion-padding 0 --interval-merging-rule ALL --read-validation-stringency SILENT --seconds-between-progress-updates 10.0 --disable-sequence-dictionary-validation false --create-output-bam-index true --create-output-bam-md5 false --create-output-variant-index true --create-output-variant-md5 false --lenient false --add-output-sam-program-record true --add-output-vcf-command-line true --cloud-prefetch-buffer 40 --cloud-index-prefetch-buffer -1 --disable-bam-index-caching false --sites-only-vcf-output false --help false --version false --showHidden false --QUIET false --use-jdk-deflater false --use-jdk-inflater false --gcs-max-retries 20 --gcs-project-for-requester-pays  --disable-tool-default-read-filters false --disable-tool-default-annotations false --enable-all-annotations false",Version=Unavailable,Date="October 18, 2018 3:35:41 PM EDT">
+##GATKCommandLine=<ID=Mutect2,CommandLine="Mutect2  --tumor-sample NA12878 --min-pruning 5 --emit-ref-confidence GVCF --output /var/folders/v5/gbkn5lv95c51kj3xpx5pzncscnxf_m/T/unfiltered2439720586893085510.vcf --intervals chrM:1-1000 --input /Users/gauthier/workspaces/gatk/src/test/resources/org/broadinstitute/hellbender/tools/mutect/mito/NA12878.bam --reference /Users/gauthier/workspaces/gatk/src/test/resources/org/broadinstitute/hellbender/tools/mutect/mito/Homo_sapiens_assembly38.mt_only.fasta --verbosity ERROR  --genotype-pon-sites false --genotype-germline-sites false --af-of-alleles-not-in-resource -1.0 --tumor-lod-to-emit 3.0 --initial-tumor-lod 2.0 --initial-pcr-qual 40 --max-population-af 0.01 --downsampling-stride 1 --max-suspicious-reads-per-alignment-start 0 --normal-lod 2.2 --max-mnp-distance 1 --ignore-itr-artifacts false --get-af-from-ad false --gvcf-lod-band 500 --gvcf-lod-band 1000 --gvcf-lod-band 1700 --gvcf-lod-band 1800 --gvcf-lod-band 1900 --gvcf-lod-band 2000 --dont-trim-active-regions false --max-disc-ar-extension 25 --max-gga-ar-extension 300 --padding-around-indels 150 --padding-around-snps 20 --kmer-size 10 --kmer-size 25 --dont-increase-kmer-sizes-for-cycles false --allow-non-unique-kmers-in-ref false --num-pruning-samples 1 --recover-dangling-heads false --do-not-recover-dangling-branches false --min-dangling-branch-length 4 --consensus false --max-num-haplotypes-in-population 128 --error-correct-kmers false --debug-graph-transformations false --kmer-length-for-read-error-correction 25 --min-observations-for-kmer-to-be-solid 20 --likelihood-calculation-engine PairHMM --base-quality-score-threshold 18 --pair-hmm-gap-continuation-penalty 10 --pair-hmm-implementation FASTEST_AVAILABLE --pcr-indel-model CONSERVATIVE --phred-scaled-global-read-mismapping-rate 45 --native-pair-hmm-threads 4 --native-pair-hmm-use-double-precision false --debug false --use-filtered-reads-for-annotations false --bam-writer-type CALLED_HAPLOTYPES --dont-use-soft-clipped-bases false --capture-assembly-failure-bam false --error-correct-reads false --do-not-run-physical-phasing false --min-base-quality-score 10 --smith-waterman JAVA --use-new-qual-calculator false --annotate-with-num-discovered-alleles false --heterozygosity 0.001 --indel-heterozygosity 1.25E-4 --heterozygosity-stdev 0.01 --standard-min-confidence-threshold-for-calling 10.0 --max-alternate-alleles 6 --max-genotype-count 1024 --sample-ploidy 2 --num-reference-samples-if-no-call 0 --genotyping-mode DISCOVERY --genotype-filtered-alleles false --contamination-fraction-to-filter 0.0 --output-mode EMIT_VARIANTS_ONLY --all-site-pls false --min-assembly-region-size 50 --max-assembly-region-size 300 --assembly-region-padding 100 --max-reads-per-alignment-start 50 --active-probability-threshold 0.002 --max-prob-propagation-distance 50 --interval-set-rule UNION --interval-padding 0 --interval-exclusion-padding 0 --interval-merging-rule ALL --read-validation-stringency SILENT --seconds-between-progress-updates 10.0 --disable-sequence-dictionary-validation false --create-output-bam-index true --create-output-bam-md5 false --create-output-variant-index true --create-output-variant-md5 false --lenient false --add-output-sam-program-record true --add-output-vcf-command-line true --cloud-prefetch-buffer 40 --cloud-index-prefetch-buffer -1 --disable-bam-index-caching false --sites-only-vcf-output false --help false --version false --showHidden false --QUIET false --use-jdk-deflater false --use-jdk-inflater false --gcs-max-retries 20 --gcs-project-for-requester-pays  --disable-tool-default-read-filters false --max-read-length 2147483647 --min-read-length 30 --minimum-mapping-quality 20 --disable-tool-default-annotations false --enable-all-annotations false",Version=Unavailable,Date="October 16, 2018 3:35:29 PM EDT">
+##GVCFBlock0-500=minGQ=0(inclusive),maxGQ=500(exclusive)
+##GVCFBlock1000-1700=minGQ=1000(inclusive),maxGQ=1700(exclusive)
+##GVCFBlock1700-1800=minGQ=1700(inclusive),maxGQ=1800(exclusive)
+##GVCFBlock1800-1900=minGQ=1800(inclusive),maxGQ=1900(exclusive)
+##GVCFBlock1900-2000=minGQ=1900(inclusive),maxGQ=2000(exclusive)
+##GVCFBlock2000-2147483647=minGQ=2000(inclusive),maxGQ=2147483647(exclusive)
+##GVCFBlock500-1000=minGQ=500(inclusive),maxGQ=1000(exclusive)
+##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
+##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">
+##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">
+##INFO=<ID=BaseQRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt Vs. Ref base qualities">
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
+##INFO=<ID=ECNT,Number=1,Type=Integer,Description="Number of events in this haplotype">
+##INFO=<ID=END,Number=1,Type=Integer,Description="Stop position of the interval">
+##INFO=<ID=ExcessHet,Number=1,Type=Float,Description="Phred-scaled p-value for exact test of excess heterozygosity">
+##INFO=<ID=FS,Number=1,Type=Float,Description="Phred-scaled p-value using Fisher's exact test to detect strand bias">
+##INFO=<ID=IN_PON,Number=0,Type=Flag,Description="site found in panel of normals">
+##INFO=<ID=InbreedingCoeff,Number=1,Type=Float,Description="Inbreeding coefficient as estimated from the genotype likelihoods per-sample when compared against the Hardy-Weinberg expectation">
+##INFO=<ID=MQ,Number=1,Type=Float,Description="RMS Mapping Quality">
+##INFO=<ID=MQRankSum,Number=1,Type=Float,Description="Z-score From Wilcoxon rank sum test of Alt vs. Ref read mapping qualities">
+##INFO=<ID=NLOD,Number=A,Type=Float,Description="Normal LOD score">
+##INFO=<ID=N_ART_LOD,Number=A,Type=Float,Description="log odds of artifact in normal with same allele fraction as tumor">
+##INFO=<ID=POP_AF,Number=A,Type=Float,Description="population allele frequencies of alt alleles">
+##INFO=<ID=P_CONTAM,Number=1,Type=Float,Description="Posterior probability for alt allele to be due to contamination">
+##INFO=<ID=P_GERMLINE,Number=A,Type=Float,Description="Posterior probability for alt allele to be germline variants">
+##INFO=<ID=QD,Number=1,Type=Float,Description="Variant Confidence/Quality by Depth">
+##INFO=<ID=RPA,Number=.,Type=Integer,Description="Number of times tandem repeat unit is repeated, for each allele (including reference)">
+##INFO=<ID=RU,Number=1,Type=String,Description="Tandem repeat unit (bases)">
+##INFO=<ID=ReadPosRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt vs. Ref read position bias">
+##INFO=<ID=SOR,Number=1,Type=Float,Description="Symmetric Odds Ratio of 2x2 contingency table to detect strand bias">
+##INFO=<ID=STR,Number=0,Type=Flag,Description="Variant is a short tandem repeat">
+##INFO=<ID=TLOD,Number=A,Type=Float,Description="Tumor LOD score">
+##MutectVersion=2.1
+##contig=<ID=chrM,length=16569>
+##filtering_status=Warning: unfiltered Mutect 2 calls.  Please run FilterMutectCalls to remove false positives.
+##source=CombineGVCFs
+##source=Mutect2
+##tumor_sample=NA12878
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA12878	NA12878_2
+chrM	1	.	G	<NON_REF>	.	.	END=34	GT:DP:MIN_DP:TLOD	./.:261:50:52.17	./.:261:50:492.51
+chrM	35	.	G	<NON_REF>	.	.	END=61	GT:DP:MIN_DP:TLOD	./.:695:483:512.83	./.:695:483:986.23
+chrM	62	.	G	<NON_REF>	.	.	END=120	GT:DP:MIN_DP:TLOD	./.:1308:940:1003.83	./.:1308:940:1692.27
+chrM	121	.	G	<NON_REF>	.	.	END=130	GT:DP:MIN_DP:TLOD	./.:1639:1588:1702.53	./.:1639:1588:1792.54
+chrM	131	.	T	<NON_REF>	.	.	END=141	GT:DP:MIN_DP:TLOD	./.:1743:1690:1808.57	./.:1743:1690:1896.99
+chrM	142	.	T	<NON_REF>	.	.	END=151	GT:DP:MIN_DP:TLOD	./.:1816:1782:1904.78	./.:1816:1782:1971.30
+chrM	152	.	T	C,<NON_REF>	.	.	DP=3368;ECNT=2;POP_AF=5.000e-08	GT:AD:AF:DP:TLOD	././.:3,1560,0:0.997,6.356e-04:1563:5273.97,-2.90	./.:1816,0,0:0,0:1816:-1971.30,-1971.30
+chrM	153	.	A	<NON_REF>	.	.	END=171	GT:DP:MIN_DP:TLOD	./.:1718:1703:1814.38	./.:1816:1782:1971.30
+chrM	172	.	T	G,<NON_REF>	.	.	DP=3143;ECNT=2;POP_AF=5.000e-08	GT:AD:AF:DP:TLOD	././.:1525,11,0:8.647e-04,6.472e-04:1536:-2.76,-2.89	././.:1522,11,0:8.668e-04,6.484e-04:1533:-2.76,-2.89
+chrM	173	.	T	<NON_REF>	.	.	END=183	GT:DP:MIN_DP:TLOD	./.:1834:1781:1909.59	./.:1691:1685:1819.28
+chrM	184	.	G	<NON_REF>	.	.	END=188	GT:DP:MIN_DP:TLOD	./.:1834:1781:1909.59	./.:1634:1600:1798.50
+chrM	189	.	A	<NON_REF>	.	.	END=194	GT:DP:MIN_DP:TLOD	./.:1834:1781:1909.59	./.:1834:1781:1977.19
+chrM	195	.	T	<NON_REF>	.	.	.	GT:DP:MIN_DP:TLOD	./.:1782:1782:1898.12	./.:1782:1782:1898.12
+chrM	196	.	T	<NON_REF>	.	.	.	GT:DP:MIN_DP:TLOD	./.:1779:1779:1901.55	./.:1779:1779:1901.55
+chrM	197	.	A	<NON_REF>	.	.	END=211	GT:DP:MIN_DP:TLOD	./.:1728:1693:1806.09	./.:1728:1693:1880.19
+chrM	212	.	T	<NON_REF>	.	.	.	GT:DP:MIN_DP:TLOD	./.:1687:1687:1794.87	./.:1687:1687:1794.87
+chrM	213	.	T	<NON_REF>	.	.	.	GT:DP:MIN_DP:TLOD	./.:1685:1685:1800.33	./.:1685:1685:1800.33
+chrM	214	.	A	<NON_REF>	.	.	END=225	GT:DP:MIN_DP:TLOD	./.:1648:1638:1735.82	./.:1648:1638:1788.28
+chrM	226	.	T	<NON_REF>	.	.	END=251	GT:DP:MIN_DP:TLOD	./.:1648:1638:1735.82	./.:1012:940:1180.99
+chrM	252	.	T	<NON_REF>	.	.	.	GT:DP:MIN_DP:TLOD	./.:1648:1638:1735.82	./.:934:934:996.42
+chrM	253	.	C	<NON_REF>	.	.	.	GT:DP:MIN_DP:TLOD	./.:1648:1638:1735.82	./.:933:933:1001.05
+chrM	254	.	T	<NON_REF>	.	.	END=262	GT:DP:MIN_DP:TLOD	./.:1648:1638:1735.82	./.:911:907:994.14
+chrM	263	.	A	G,<NON_REF>	.	.	DP=1703;ECNT=8;POP_AF=5.000e-08	GT:AD:AF:DP:TLOD	././.:1,818,0:0.998,1.207e-03:819:2595.99,-2.62	././.:1,831,0:0.998,1.188e-03:832:2640.64,-2.62
+chrM	264	.	C	<NON_REF>	.	.	END=266	GT:DP:MIN_DP:TLOD	./.:876:875:933.85	./.:889:888:955.96
+chrM	267	.	T	C,<NON_REF>	.	.	DP=1659;ECNT=8;POP_AF=5.000e-08	GT:AD:AF:DP:TLOD	././.:783,15,0:4.502e-03,1.247e-03:798:-1.78,-2.60	././.:795,16,0:4.454e-03,1.228e-03:811:-1.79,-2.61
+chrM	268	.	C	<NON_REF>	.	.	END=293	GT:DP:MIN_DP:TLOD	./.:796:725:766.66	./.:809:737:941.71
+chrM	294	.	T	TC,<NON_REF>	.	.	DP=1430;ECNT=8;POP_AF=5.000e-08	GT:AD:AF:DP:TLOD	././.:661,2,0:1.483e-03,1.463e-03:663:-2.53,-2.53	././.:674,2,0:1.456e-03,1.436e-03:676:-2.54,-2.54
+chrM	295	.	C	<NON_REF>	.	.	END=296	GT:DP:MIN_DP:TLOD	./.:719:716:764.58	./.:731:728:785.86
+chrM	297	.	A	AAC,C,AC,<NON_REF>	.	.	DP=1388;ECNT=8;POP_AF=5.000e-08	GT:AD:AF:DP:TLOD	./././.:609,0,26,6,0:1.484e-03,8.550e-03,1.639e-03,1.484e-03:641:-2.35,-0.88,-2.31,-2.35	././.:619,27,0,0,0:5.555e-03,1.458e-03,1.458e-03,1.458e-03:653:-0.78,-2.36,-2.36,-2.36
+chrM	298	.	C	<NON_REF>	.	.	END=300	GT:DP:MIN_DP:TLOD	./.:698:693:739.82	./.:710:705:768.38
+chrM	301	.	A	AC,<NON_REF>	.	.	DP=1348;ECNT=8;POP_AF=5.000e-08	GT:AD:AF:DP:TLOD	././.:568,53,0:0.027,1.629e-03:621:3.74,-2.49	././.:579,53,0:0.026,1.600e-03:632:3.62,-2.50
+chrM	302	.	A	G,ACCC,AC,C,ACC,<NON_REF>	.	.	DP=1306;ECNT=8;POP_AF=5.000e-08	GT:AD:AF:DP:TLOD	././././.:4,0,0,394,66,48,0:1.737e-03,1.737e-03,0.839,0.057,0.097,1.737e-03:512:-2.16,-2.16,876.82,10.86,66.47,-2.16	./././.:5,401,67,0,0,0,0:0.838,0.056,1.706e-03,1.706e-03,1.706e-03,1.706e-03:522:900.00,90.00,9.00,9.00,9.00,9.00
+chrM	303	.	C	<NON_REF>	.	.	END=308	GT:DP:MIN_DP:TLOD	./.:679:674:722.22	./.:690:685:741.60
+chrM	309	.	C	CCA,<NON_REF>	.	.	DP=1415;ECNT=8;POP_AF=5.000e-08	GT:AD:AF:DP:TLOD	././.:618,4,0:2.991e-03,1.532e-03:622:-2.18,-2.51	././.:628,5,0:4.123e-03,1.508e-03:633:-1.93,-2.52
+chrM	310	.	T	C,TC,<NON_REF>	.	.	DP=1400;ECNT=8;POP_AF=5.000e-08	GT:AD:AF:DP:TLOD	./././.:0,4,610,0:3.029e-03,0.994,1.487e-03:614:-1.99,1948.85,-2.35	./././.:0,5,619,0:4.185e-03,0.993,1.466e-03:624:-1.74,1974.93,-2.36
+chrM	311	.	C	<NON_REF>	.	.	END=315	GT:DP:MIN_DP:TLOD	./.:1393:1389:1492.05	./.:759:677:894.97
+chrM	316	.	G	<NON_REF>	.	.	END=319	GT:DP:MIN_DP:TLOD	./.:932:923:971.26	./.:759:677:894.97
+chrM	320	.	C	<NON_REF>	.	.	END=358	GT:DP:MIN_DP:TLOD	./.:1270:944:1012.90	./.:759:677:894.97
+chrM	359	.	A	<NON_REF>	.	.	END=455	GT:DP:MIN_DP:TLOD	./.:1270:944:1012.90	./.:1270:944:1655.40
+chrM	456	.	C	<NON_REF>	.	.	END=465	GT:DP:MIN_DP:TLOD	./.:1270:944:1012.90	./.:797:791:859.89
+chrM	466	.	T	C,<NON_REF>	.	.	DP=1571;ECNT=10;POP_AF=5.000e-08	GT:AD:AF:DP:TLOD	././.:754,10,0:3.145e-03,1.295e-03:764:-2.12,-2.59	././.:741,10,0:3.238e-03,1.319e-03:751:-2.10,-2.58
+chrM	467	.	C	<NON_REF>	.	.	END=469	GT:DP:MIN_DP:TLOD	./.:812:811:870.66	./.:798:797:859.89
+chrM	470	.	A	C,<NON_REF>	.	.	DP=1590;ECNT=10;POP_AF=5.000e-08	GT:AD:AF:DP:TLOD	././.:766,10,0:1.662e-03,1.278e-03:776:-2.48,-2.59	././.:752,10,0:1.701e-03,1.301e-03:762:-2.47,-2.58
+chrM	471	.	T	<NON_REF>	.	.	END=474	GT:DP:MIN_DP:TLOD	./.:820:815:867.35	./.:805:800:864.20
+chrM	475	.	A	C,<NON_REF>	.	.	DP=1624;ECNT=10;POP_AF=5.000e-08	GT:AD:AF:DP:TLOD	././.:776,9,0:1.333e-03,1.261e-03:785:-2.58,-2.60	././.:762,9,0:1.359e-03,1.283e-03:771:-2.57,-2.59
+chrM	476	.	C	<NON_REF>	.	.	END=477	GT:DP:MIN_DP:TLOD	./.:836:833:894.34	./.:821:818:878.94
+chrM	478	.	A	C,<NON_REF>	.	.	DP=1642;ECNT=10;POP_AF=5.000e-08	GT:AD:AF:DP:TLOD	././.:797,4,0:1.265e-03,1.235e-03:801:-2.60,-2.61	././.:783,4,0:1.287e-03,1.257e-03:787:-2.59,-2.60
+chrM	479	.	A	<NON_REF>	.	.	END=483	GT:DP:MIN_DP:TLOD	./.:857:843:891.79	./.:842:828:905.11
+chrM	484	.	A	C,<NON_REF>	.	.	DP=1690;ECNT=10;POP_AF=5.000e-08	GT:AD:AF:DP:TLOD	././.:816,5,0:1.237e-03,1.202e-03:821:-2.61,-2.62	././.:802,5,0:1.259e-03,1.223e-03:807:-2.60,-2.61
+chrM	485	.	T	<NON_REF>	.	.	END=486	GT:DP:MIN_DP:TLOD	./.:864:862:919.86	./.:849:847:912.64
+chrM	487	.	A	C,<NON_REF>	.	.	DP=1682;ECNT=10;POP_AF=5.000e-08	GT:AD:AF:DP:TLOD	././.:822,5,0:1.233e-03,1.199e-03:827:-2.61,-2.62	././.:808,5,0:1.255e-03,1.220e-03:813:-2.60,-2.61
+chrM	488	.	A	<NON_REF>	.	.	END=492	GT:DP:MIN_DP:TLOD	./.:878:871:924.79	./.:863:856:930.95
+chrM	493	.	A	C,<NON_REF>	.	.	DP=1760;ECNT=10;POP_AF=5.000e-08	GT:AD:AF:DP:TLOD	././.:793,45,0:0.011,1.199e-03:838:0.52,-2.62	././.:779,45,0:0.011,1.219e-03:824:0.59,-2.61
+chrM	494	.	C	<NON_REF>	.	.	END=498	GT:DP:MIN_DP:TLOD	./.:914:901:966.60	./.:899:886:972.94
+chrM	499	.	G	C,<NON_REF>	.	.	DP=1789;ECNT=10;POP_AF=5.000e-08	GT:AD:AF:DP:TLOD	././.:842,21,0:2.878e-03,1.154e-03:863:-2.02,-2.64	././.:829,21,0:2.945e-03,1.171e-03:850:-2.00,-2.63
+chrM	500	.	C	<NON_REF>	.	.	END=501	GT:DP:MIN_DP:TLOD	./.:927:923:991.24	./.:925:908:999.78
+chrM	502	.	C	<NON_REF>	.	.	.	GT:DP:MIN_DP:TLOD	./.:935:935:1004.16	./.:925:908:999.78
+chrM	503	.	A	<NON_REF>	.	.	END=504	GT:DP:MIN_DP:TLOD	./.:941:940:992.42	./.:925:908:999.78
+chrM	505	.	C	<NON_REF>	.	.	END=507	GT:DP:MIN_DP:TLOD	./.:943:940:1009.54	./.:925:908:999.78
+chrM	508	.	A	<NON_REF>	.	.	.	GT:DP:MIN_DP:TLOD	./.:953:953:997.85	./.:925:908:999.78
+chrM	509	.	C	<NON_REF>	.	.	END=549	GT:DP:MIN_DP:TLOD	./.:1068:952:1020.99	./.:1051:937:1227.41
+chrM	550	.	A	C,<NON_REF>	.	.	DP=2234;ECNT=10;POP_AF=5.000e-08	GT:AD:AF:DP:TLOD	././.:1095,13,0:1.392e-03,9.033e-04:1108:-2.55,-2.74	././.:1085,13,0:1.411e-03,9.116e-04:1098:-2.55,-2.74
+chrM	551	.	A	<NON_REF>	.	.	END=566	GT:DP:MIN_DP:TLOD	./.:1185:1163:1237.28	./.:1173:1152:1299.55
+chrM	567	.	A	C,<NON_REF>	.	.	DP=2370;ECNT=10;POP_AF=5.000e-08	GT:AD:AF:DP:TLOD	././.:1145,14,0:1.091e-03,8.610e-04:1159:-2.66,-2.76	././.:1135,13,0:1.097e-03,8.690e-04:1148:-2.66,-2.76
+chrM	568	.	C	<NON_REF>	.	.	END=573	GT:DP:MIN_DP:TLOD	./.:1659:1652:1767.64	./.:1248:1235:1373.28
+chrM	574	.	A	<NON_REF>	.	.	.	GT:DP:MIN_DP:TLOD	./.:1642:1642:1692.18	./.:1248:1235:1373.28
+chrM	575	.	C	<NON_REF>	.	.	.	GT:DP:MIN_DP:TLOD	./.:1638:1638:1756.37	./.:1248:1235:1373.28
+chrM	576	.	A	<NON_REF>	.	.	.	GT:DP:MIN_DP:TLOD	./.:1627:1627:1687.45	./.:1248:1235:1373.28
+chrM	577	.	G	<NON_REF>	.	.	.	GT:DP:MIN_DP:TLOD	./.:1628:1628:1726.58	./.:1248:1235:1373.28
+chrM	578	.	T	<NON_REF>	.	.	END=579	GT:DP:MIN_DP:TLOD	./.:1620:1618:1652.07	./.:1248:1235:1373.28
+chrM	580	.	T	<NON_REF>	.	.	END=582	GT:DP:MIN_DP:TLOD	./.:1655:1627:1718.55	./.:1248:1235:1373.28
+chrM	583	.	G	<NON_REF>	.	.	END=608	GT:DP:MIN_DP:TLOD	./.:1655:1627:1718.55	./.:1655:1627:1796.85
+chrM	609	.	C	<NON_REF>	.	.	.	GT:DP:MIN_DP:TLOD	./.:1693:1693:1812.75	./.:1693:1693:1812.75
+chrM	610	.	T	<NON_REF>	.	.	.	GT:DP:MIN_DP:TLOD	./.:1693:1693:1777.55	./.:1693:1693:1777.55
+chrM	611	.	G	<NON_REF>	.	.	END=615	GT:DP:MIN_DP:TLOD	./.:1700:1699:1806.01	./.:1700:1699:1814.70
+chrM	616	.	T	<NON_REF>	.	.	.	GT:DP:MIN_DP:TLOD	./.:1699:1699:1773.54	./.:1699:1699:1773.54
+chrM	617	.	G	<NON_REF>	.	.	END=628	GT:DP:MIN_DP:TLOD	./.:1719:1696:1809.32	./.:1719:1696:1843.65
+chrM	629	.	T	<NON_REF>	.	.	.	GT:DP:MIN_DP:TLOD	./.:1706:1706:1796.30	./.:1706:1706:1796.30
+chrM	630	.	C	<NON_REF>	.	.	END=632	GT:DP:MIN_DP:TLOD	./.:1701:1700:1818.51	./.:1701:1700:1830.93
+chrM	633	.	A	<NON_REF>	.	.	END=634	GT:DP:MIN_DP:TLOD	./.:1692:1688:1774.06	./.:1692:1688:1797.90
+chrM	635	.	C	<NON_REF>	.	.	.	GT:DP:MIN_DP:TLOD	./.:1690:1690:1808.57	./.:1690:1690:1808.57
+chrM	636	.	A	<NON_REF>	.	.	.	GT:DP:MIN_DP:TLOD	./.:1694:1694:1771.01	./.:1694:1694:1771.01
+chrM	637	.	C	<NON_REF>	.	.	END=644	GT:DP:MIN_DP:TLOD	./.:1698:1691:1802.78	./.:1698:1691:1830.80
+chrM	645	.	A	<NON_REF>	.	.	.	GT:DP:MIN_DP:TLOD	./.:1692:1692:1797.40	./.:1692:1692:1797.40
+chrM	646	.	C	<NON_REF>	.	.	END=653	GT:DP:MIN_DP:TLOD	./.:1695:1686:1802.36	./.:1695:1686:1824.72
+chrM	654	.	T	<NON_REF>	.	.	END=659	GT:DP:MIN_DP:TLOD	./.:1685:1679:1762.97	./.:1685:1679:1797.97
+chrM	660	.	C	<NON_REF>	.	.	END=663	GT:DP:MIN_DP:TLOD	./.:1697:1696:1801.83	./.:1697:1696:1815.98
+chrM	664	.	G	<NON_REF>	.	.	.	GT:DP:MIN_DP:TLOD	./.:1686:1686:1798.55	./.:1686:1686:1798.55
+chrM	665	.	C	<NON_REF>	.	.	END=666	GT:DP:MIN_DP:TLOD	./.:1688:1686:1806.16	./.:1688:1686:1811.42
+chrM	667	.	T	<NON_REF>	.	.	END=669	GT:DP:MIN_DP:TLOD	./.:1682:1678:1783.28	./.:1682:1678:1788.53
+chrM	670	.	C	<NON_REF>	.	.	END=701	GT:DP:MIN_DP:TLOD	./.:1716:1682:1804.71	./.:1716:1682:1882.67
+chrM	702	.	C	<NON_REF>	.	.	END=725	GT:DP:MIN_DP:TLOD	./.:1852:1776:1901.91	./.:1852:1776:1997.72
+chrM	726	.	C	<NON_REF>	.	.	.	GT:DP:MIN_DP:TLOD	./.:1868:1868:2003.10	./.:1868:1868:2003.10
+chrM	727	.	T	<NON_REF>	.	.	END=735	GT:DP:MIN_DP:TLOD	./.:1863:1858:1969.88	./.:1863:1858:1994.04
+chrM	736	.	C	<NON_REF>	.	.	.	GT:DP:MIN_DP:TLOD	./.:1866:1866:2000.95	./.:1866:1866:2000.95
+chrM	737	.	C	<NON_REF>	.	.	END=741	GT:DP:MIN_DP:TLOD	./.:1856:1839:1960.46	./.:1856:1839:1991.44
+chrM	742	.	T	G,<NON_REF>	.	.	DP=3167;ECNT=4;POP_AF=5.000e-08	GT:AD:AF:DP:TLOD	././.:1536,11,0:1.562e-03,6.414e-04:1547:-2.21,-2.89	././.:1525,11,0:1.578e-03,6.459e-04:1536:-2.20,-2.89
+chrM	743	.	C	<NON_REF>	.	.	END=744	GT:DP:MIN_DP:TLOD	./.:1691:1690:1813.32	./.:1676:1661:1798.50
+chrM	745	.	A	<NON_REF>	.	.	END=746	GT:DP:MIN_DP:TLOD	./.:1677:1674:1791.34	./.:1676:1661:1798.50
+chrM	747	.	A	<NON_REF>	.	.	END=749	GT:DP:MIN_DP:TLOD	./.:1688:1682:1802.80	./.:1676:1661:1798.50
+chrM	750	.	A	G,<NON_REF>	.	.	DP=3144;ECNT=4;POP_AF=5.000e-08	GT:AD:AF:DP:TLOD	././.:0,1534,0:0.999,6.444e-04:1534:5126.27,-2.89	././.:1,1524,0:0.999,6.482e-04:1525:5096.69,-2.89
+chrM	751	.	A	<NON_REF>	.	.	.	GT:DP:MIN_DP:TLOD	./.:1681:1681:1799.83	./.:1660:1625:1799.90
+chrM	752	.	C	<NON_REF>	.	.	.	GT:DP:MIN_DP:TLOD	./.:1677:1677:1801.23	./.:1660:1625:1799.90
+chrM	753	.	A	<NON_REF>	.	.	.	GT:DP:MIN_DP:TLOD	./.:1679:1679:1796.72	./.:1660:1625:1799.90
+chrM	754	.	A	<NON_REF>	.	.	.	GT:DP:MIN_DP:TLOD	./.:1680:1680:1800.65	./.:1660:1625:1799.90
+chrM	755	.	G	<NON_REF>	.	.	.	GT:DP:MIN_DP:TLOD	./.:1675:1675:1793.36	./.:1660:1625:1799.90
+chrM	756	.	C	<NON_REF>	.	.	END=768	GT:DP:MIN_DP:TLOD	./.:1682:1679:1800.53	./.:1660:1625:1799.90
+chrM	769	.	G	<NON_REF>	.	.	END=781	GT:DP:MIN_DP:TLOD	./.:1657:1650:1760.73	./.:1660:1625:1799.90
+chrM	782	.	A	C,<NON_REF>	.	.	DP=3151;ECNT=4;POP_AF=5.000e-08	GT:AD:AF:DP:TLOD	././.:1516,21,0:2.010e-03,6.471e-04:1537:-2.00,-2.89	././.:1495,21,0:2.053e-03,6.559e-04:1516:-1.98,-2.88
+chrM	783	.	A	C,<NON_REF>	.	.	DP=3147;ECNT=4;POP_AF=5.000e-08	GT:AD:AF:DP:TLOD	././.:1537,10,0:2.696e-03,6.417e-04:1547:-0.79,-2.89	././.:1516,10,0:2.740e-03,6.504e-04:1526:-0.77,-2.89
+chrM	784	.	A	<NON_REF>	.	.	END=787	GT:DP:MIN_DP:TLOD	./.:1828:1792:1902.14	./.:1649:1647:1772.03
+chrM	788	.	T	<NON_REF>	.	.	END=854	GT:DP:MIN_DP:TLOD	./.:1828:1792:1902.14	./.:1828:1792:1992.21
+chrM	855	.	A	<NON_REF>	.	.	.	GT:DP:MIN_DP:TLOD	./.:1781:1781:1898.00	./.:1781:1781:1898.00
+chrM	856	.	A	<NON_REF>	.	.	END=858	GT:DP:MIN_DP:TLOD	./.:1780:1778:1900.28	./.:1780:1778:1909.99
+chrM	859	.	T	<NON_REF>	.	.	END=871	GT:DP:MIN_DP:TLOD	./.:1760:1749:1855.15	./.:1760:1749:1897.69
+chrM	872	.	G	<NON_REF>	.	.	END=874	GT:DP:MIN_DP:TLOD	./.:1785:1784:1901.23	./.:1785:1784:1905.16
+chrM	875	.	T	<NON_REF>	.	.	END=883	GT:DP:MIN_DP:TLOD	./.:1772:1768:1876.06	./.:1772:1768:1898.77
+chrM	884	.	T	<NON_REF>	.	.	.	GT:DP:MIN_DP:TLOD	./.:1786:1786:1904.33	./.:1786:1786:1904.33
+chrM	885	.	T	<NON_REF>	.	.	.	GT:DP:MIN_DP:TLOD	./.:1790:1790:1891.52	./.:1790:1790:1891.52
+chrM	886	.	C	<NON_REF>	.	.	END=972	GT:DP:MIN_DP:TLOD	./.:1843:1786:1902.93	./.:1843:1786:1992.84
+chrM	973	.	C	<NON_REF>	.	.	.	GT:DP:MIN_DP:TLOD	./.:1867:1867:2004.88	./.:1867:1867:2004.88
+chrM	974	.	T	<NON_REF>	.	.	.	GT:DP:MIN_DP:TLOD	./.:1874:1874:1986.73	./.:1874:1874:1986.73
+chrM	975	.	A	<NON_REF>	.	.	.	GT:DP:MIN_DP:TLOD	./.:1879:1879:2009.24	./.:1879:1879:2009.24
+chrM	976	.	A	<NON_REF>	.	.	END=1000	GT:DP:MIN_DP:TLOD	./.:1848:1825:1922.55	./.:1848:1825:1996.89

@@ -40,6 +40,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import static org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils.attributeToList;
+
 public final class VariantContextTestUtils {
 
     private VariantContextTestUtils() {}
@@ -190,10 +192,17 @@ public final class VariantContextTestUtils {
 
         // The above will have built new genotype for PL,AD, and SAC fields excluding the GT and GQ field, thus we must re-add them for comparison.
         for (int i = 0; i < newGT.size(); i++) {
+            final HashMap<String, Object> newGTAttributes = new HashMap<>(newGT.get(i).getExtendedAttributes());
+            for (Map.Entry<String, Object> entry : newGTAttributes.entrySet()) {
+                VCFHeaderLineCount type = header.hasInfoLine(entry.getKey())?header.getFormatHeaderLine(entry.getKey()).getCountType():VCFHeaderLineCount.UNBOUNDED;
+                int ploidy = vc.getGenotypes().getMaxPloidy(2);
+                newGTAttributes.replace(entry.getKey(), updateAttribute(entry.getKey(), entry.getValue(), vc.getAlleles(), sortedAlleles, type, ploidy));
+            }
             Genotype replacementGenotype = new GenotypeBuilder(newGT.get(i))
                     .GQ(vc.getGenotype(i).getGQ())
                     .phased(vc.getGenotype(i).isPhased())
-                    .alleles(vc.getGenotype(i).getAlleles()).make();
+                    .alleles(vc.getGenotype(i).getAlleles())
+                    .attributes(newGTAttributes).make();
             newGT.replace(replacementGenotype);
         }
 
@@ -271,23 +280,6 @@ public final class VariantContextTestUtils {
 
     static List<Object> remapASValues(String oldValue, List<Integer> mapping) {
         return remapListValues(Arrays.asList(oldValue.split("\\|")), mapping, 0);
-    }
-
-    //copied from htsjdk.variant.variantcontext.CommonInfo.getAttributeAsList for simplicity
-    //maybe we should expose this as a static method in htsjdk?
-    @SuppressWarnings("unchecked")
-    private static List<Object> attributeToList(final Object attribute){
-        if ( attribute == null ) return Collections.emptyList();
-        if ( attribute instanceof List) return (List<Object>)attribute;
-        if ( attribute.getClass().isArray() ) {
-            if (attribute instanceof int[]) {
-                return Arrays.stream((int[])attribute).boxed().collect(Collectors.toList());
-            } else if (attribute instanceof double[]) {
-                return Arrays.stream((double[])attribute).boxed().collect(Collectors.toList());
-            }
-            return Arrays.asList((Object[])attribute);
-        }
-        return Collections.singletonList(attribute);
     }
 
     public static void assertGenotypesAreEqual(final Genotype actual, final Genotype expected) {
@@ -462,6 +454,13 @@ public final class VariantContextTestUtils {
         for (final Genotype g : actual.getGenotypes()) {
             Assert.assertFalse(g.hasExtendedAttribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY));
         }
+    }
+
+    public static void assertGenotypeIsPhasedWithAttributes(final Genotype g) {
+        Assert.assertTrue(g.isPhased());
+        Assert.assertTrue(g.hasExtendedAttribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY));
+        Assert.assertTrue(g.hasExtendedAttribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY));
+        Assert.assertTrue(g.hasExtendedAttribute(VCFConstants.PHASE_SET_KEY));
     }
 
     public static void assertVariantContextsHaveSameGenotypes(final VariantContext actual, final VariantContext expected) {

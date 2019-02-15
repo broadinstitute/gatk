@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.List;
 import java.util.OptionalInt;
@@ -18,7 +19,6 @@ import java.util.OptionalInt;
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Median mapping quality of reads supporting each allele (MMQ)")
 public class MappingQuality extends PerAlleleAnnotation implements StandardMutectAnnotation {
-    public static final String KEY = "MMQ";
 
     @Override
     protected int aggregate(final List<Integer> values) {
@@ -29,7 +29,7 @@ public class MappingQuality extends PerAlleleAnnotation implements StandardMutec
     protected boolean includeRefAllele() { return true; }
 
     @Override
-    protected String getVcfKey() { return KEY; }
+    protected String getVcfKey() { return GATKVCFConstants.MEDIAN_MAPPING_QUALITY_KEY; }
 
     @Override
     protected String getDescription() { return "median mapping quality"; }

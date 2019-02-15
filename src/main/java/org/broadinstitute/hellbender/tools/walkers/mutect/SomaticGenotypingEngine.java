@@ -75,7 +75,7 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
      * @param log10ReadLikelihoods                       Map from reads->(haplotypes,likelihoods)
      * @param activeRegionWindow                     Active window
      * @param withBamOut                            whether to annotate reads in readLikelihoods for future writing to bamout
-     *
+     * @param emitRefConf                           generate reference confidence (GVCF) data?
      * @return                                       A CalledHaplotypes object containing a list of VC's with genotyped events and called haplotypes
      */
     public CalledHaplotypes callMutations(

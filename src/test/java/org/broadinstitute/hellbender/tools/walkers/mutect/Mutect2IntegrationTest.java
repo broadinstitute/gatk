@@ -81,6 +81,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
     private static final File NA12878_MITO_BAM = new File(toolsTestDir, "mutect/mito/NA12878.bam");
     private static final File NA12878_MITO_VCF = new File(toolsTestDir, "mutect/mito/unfiltered.vcf");
+    private static final File NA12878_MITO_GVCF = new File(toolsTestDir, "mitochondria/NA12878.MT.g.vcf");
     private static final File MITO_REF = new File(toolsTestDir, "mutect/mito/Homo_sapiens_assembly38.mt_only.fasta");
     private static final File DEEP_MITO_BAM = new File(largeFileTestDir, "mutect/highDPMTsnippet.bam");
     private static final String DEEP_MITO_SAMPLE_NAME = "mixture";
@@ -638,25 +639,28 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(variants.get(0).getGenotype("NA12878").getAnyAttribute(GATKVCFConstants.POTENTIAL_POLYMORPHIC_NUMT_KEY), "true");
     }
 
-    @Test
-    public void testFilterMitochondria() throws Exception {
+    @Test (dataProvider="vcfsForFiltering")
+    public void testFilterMitochondria(String unfiltered, List<String> filterList, List<Boolean> filtersWereApplied, String[] extraArgs) throws Exception {
         final File filteredVcf = createTempFile("filtered", ".vcf");
 
-        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-V", NA12878_MITO_VCF.getPath(),
-                "-O", filteredVcf.getPath(), "--" + M2ArgumentCollection.MITOCHONDRIA_MODE_LONG_NAME,
-                "--lod-divided-by-depth", ".005"), FilterMutectCalls.class.getSimpleName()));
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addArgument("V", unfiltered);
+        args.addArgument("O", filteredVcf.getPath());
+        args.addBooleanArgument(M2ArgumentCollection.MITOCHONDRIA_MODE_LONG_NAME, true);
+        args.addArgument("lod-divided-by-depth", ".005");
+        Arrays.stream(extraArgs).forEach(args::add);
+
+        new Main().instanceMain(makeCommandLineArgs(args.getArgsList(), FilterMutectCalls.class.getSimpleName()));
 
         final List<VariantContext> variants = VariantContextTestUtils.streamVcf(filteredVcf).collect(Collectors.toList());
-        final Iterator<String> expectedFilters = Arrays.asList(
-                "[]",
-                "[chimeric_original_alignment]",
-                "[low_avg_alt_quality, t_lod]",
-                "[]",
-                "[]",
-                "[]").iterator();
+        final Iterator<String> expectedFilters = filterList.iterator();
+        final Iterator<Boolean> expectedStatus = filtersWereApplied.iterator();
 
         for(VariantContext v : variants){
-            Assert.assertEquals(v.getFilters().toString(), expectedFilters.next(), "filters don't match expected");
+            Assert.assertEquals((Boolean)v.filtersWereApplied(), expectedStatus.next());  //toString below can't distinguish between PASS and unfiltered
+            final List<String> sortedFilters = new ArrayList<>(v.getFilters());
+            Collections.sort(sortedFilters);
+            Assert.assertEquals(sortedFilters.toString(), expectedFilters.next(), "filters don't match expected");
         }
     }
 
@@ -1094,6 +1098,29 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         return new Object[][]{
                 {DREAM_1_TUMOR, DREAM_2_TUMOR, Optional.of(DREAM_1_NORMAL), DREAM_1_TRUTH, DREAM_1_MASK, 0.97},
                 {DREAM_3_TUMOR, DREAM_4_TUMOR, Optional.of(DREAM_3_NORMAL), DREAM_3_TRUTH, DREAM_3_MASK, 0.90}
+        };
+    }
+
+    @DataProvider(name = "vcfsForFiltering")
+    public Object[][] vcfsForFiltering() {
+        return new Object[][] {
+                {NA12878_MITO_VCF.getPath(), Arrays.asList(
+                        "[]",
+                        "[chimeric_original_alignment]",
+                        "[low_avg_alt_quality, t_lod]",
+                        "[]",
+                        "[]",
+                        "[]"),
+                        Arrays.asList(true, true, true, true, true, true),
+                        new String[0]},
+                {NA12878_MITO_GVCF.getPath(), Arrays.asList(
+                    "[]",
+                        "[base_quality, t_lod]",
+                        "[t_lod]",
+                        "[]",
+                        "[base_quality, contamination, mapping_quality, t_lod]"),
+                        Arrays.asList(false, true, true, true, true),
+                 new String[]{"-L MT:1 -L MT:37 -L MT:40 -L MT:152 -L MT:157"}}
         };
     }
 

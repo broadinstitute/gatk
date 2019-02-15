@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -67,7 +68,7 @@ public class ReadPositionUnitTest extends GATKBaseTest {
 
         final Map<String, Object> annotation = rp.annotate(null, vc, likelihoods);
 
-        final int[] medianAltPositions = (int[]) annotation.get(ReadPosition.KEY);
+        final int[] medianAltPositions = (int[]) annotation.get(GATKVCFConstants.MEDIAN_READ_POSITON_KEY);
 
         Assert.assertEquals(medianAltPositions[0], 1);
     }

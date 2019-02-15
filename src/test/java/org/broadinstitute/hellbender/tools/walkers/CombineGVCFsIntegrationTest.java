@@ -2,6 +2,8 @@ package org.broadinstitute.hellbender.tools.walkers;
 
 import htsjdk.samtools.seekablestream.SeekablePathStream;
 import htsjdk.variant.utils.VCFHeaderReader;
+import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.codec.digest.DigestUtils;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -15,6 +17,7 @@ import org.broadinstitute.hellbender.utils.runtime.ProcessOutput;
 import org.broadinstitute.hellbender.utils.runtime.ProcessSettings;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -35,7 +38,6 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
             "RAW_MQ", //MQ data format and key have changed since GATK3
             "PS"); //PS format field was added in GATK4
     private static final File NA12878_HG37 = new File(toolsTestDir + "haplotypecaller/expected.testGVCFMode.gatk4.g.vcf");
-
 
     private static <T> void assertForEachElementInLists(final List<T> actual, final List<T> expected, final BiConsumer<T, T> assertion) {
         Assert.assertEquals(actual.size(), expected.size(), "different number of elements in lists:\n"
@@ -424,4 +426,116 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
         args.addVCF(getTestFile("mnp.g.vcf"));
         runCommandLine(args);
     }
+
+    @Test
+    public void testCombineSomaticGvcfs() throws Exception {
+        final File output = createTempFile("combinegvcfs", ".vcf");
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addReference(new File(b37Reference)).addOutput(output)
+                .addVCF(getTestFile("NA12878.MT.filtered.g.vcf"))
+                .addVCF(getTestFile("NA19240.MT.filtered.g.vcf"))
+                .addBooleanArgument(CombineGVCFs.SOMATIC_INPUT_LONG_NAME, true);
+        runCommandLine(args);
+
+        final List<VariantContext> actualVC = getVariantContexts(output);
+        for (final VariantContext vc : actualVC) {
+            if (vc.getAlternateAlleles().size() > 1) {  //if there's a real ALT
+                Assert.assertTrue(vc.filtersWereApplied());  //filtering should happen during combine
+            }
+            else {
+                Assert.assertFalse(vc.filtersWereApplied());
+            }
+
+            //MT:302 has an alphabet soup of alleles in the GVCF
+            if (vc.getStart() == 302) {
+                Assert.assertEquals(vc.getNAlleles(), 9);
+            }
+
+            //make sure phasing is retained
+            if (vc.getStart() == 317 || vc.getStart() == 320) {
+               VariantContextTestUtils.assertGenotypeIsPhasedWithAttributes(vc.getGenotype(1));
+            }
+
+            //MT:4769 in combined GVCF has uncalled alleles, but we should keep them around
+            if (vc.getStart() == 4769) {
+                Assert.assertEquals(vc.getNAlleles(), 4);
+                Assert.assertTrue(vc.getAlternateAlleles().contains(Allele.create("G", false)));
+                Assert.assertTrue(vc.getAlternateAlleles().contains(Allele.create("T", false)));
+                Assert.assertTrue(vc.getAlternateAlleles().contains(Allele.NON_REF_ALLELE));
+            }
+
+            //check genotype filtering
+            if (vc.getStart() == 14872) {
+                Assert.assertTrue(!vc.isFiltered());
+                Assert.assertTrue(!vc.getGenotype(0).isFiltered());
+                Assert.assertTrue(vc.getGenotype(1).getFilters().contains(GATKVCFConstants.TUMOR_LOD_FILTER_NAME));
+            }
+        }
+
+        final List<VariantContext> expectedVC = getVariantContexts(getTestFile("twoSamples.MT.g.vcf"));
+        final VCFHeader header = getHeaderFromFile(output);
+        assertForEachElementInLists(actualVC, expectedVC, (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, Arrays.asList(), header));
+    }
+
+    //test for combining with a multi-sample input GVCF because we'll need to do a hierarchical merge in the absence of GenomicsDB support for somatic GVCFs
+    //MT:45 has a good test for multi-sample INFO filters
+    @Test
+    public void testAddToCombinedSomaticGvcf() throws Exception {
+        final File output = createTempFile("combinegvcfs", ".vcf");
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addReference(new File(b37Reference));
+        args.addOutput(output);
+        args.addVCF(getTestFile("twoSamples.MT.g.vcf"));
+        args.addVCF(getTestFile("NA12891.MT.filtered.g.vcf"));
+        args.addBooleanArgument(CombineGVCFs.SOMATIC_INPUT_LONG_NAME, true);
+        runCommandLine(args);
+
+        final File output2 = createTempFile("expected", ".vcf");
+        final ArgumentsBuilder args2 = new ArgumentsBuilder();
+        args2.addReference(new File(b37Reference));
+        args2.addOutput(output2);
+        args2.addVCF(getTestFile("NA12878.MT.filtered.g.vcf"));
+        args2.addVCF(getTestFile("NA19240.MT.filtered.g.vcf"));
+        args2.addVCF(getTestFile("NA12891.MT.filtered.g.vcf"));
+        args2.addBooleanArgument(CombineGVCFs.SOMATIC_INPUT_LONG_NAME, true);
+        runCommandLine(args2);
+
+        final List<VariantContext> expectedVC = getVariantContexts(output2);
+        final List<VariantContext> actualVC = getVariantContexts(output);
+        final VCFHeader header = getHeaderFromFile(output);
+        assertForEachElementInLists(actualVC, expectedVC, (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, Arrays.asList(), header));
+    }
+
+    @Test
+    public void testDropSomaticFilteringAnnotations() throws IOException {
+        final File output = createTempFile("combinegvcfs", ".vcf");
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addReference(new File(b37Reference));
+        args.addOutput(output);
+        args.addVCF(getTestFile("NA12878.MT.filtered.g.vcf"));
+        args.addVCF(getTestFile("NA19240.MT.filtered.g.vcf"));
+        args.addVCF(getTestFile("NA12891.MT.filtered.g.vcf"));
+        args.addBooleanArgument(CombineGVCFs.SOMATIC_INPUT_LONG_NAME, true);
+        args.addBooleanArgument(CombineGVCFs.DROP_SOMATIC_FILTERING_ANNOTATIONS_LONG_NAME, true);
+        runCommandLine(args);
+
+        final List<VariantContext> actualVCs = getVariantContexts(output);
+        for (final VariantContext vc : actualVCs) {
+            Assert.assertFalse(vc.hasAttribute(GATKVCFConstants.POPULATION_AF_VCF_ATTRIBUTE));
+            Assert.assertFalse(vc.hasAttribute(GATKVCFConstants.TUMOR_LOD_KEY));
+            Assert.assertFalse(vc.hasAttribute(GATKVCFConstants.MEDIAN_MAPPING_QUALITY_KEY));
+            Assert.assertFalse(vc.hasAttribute(GATKVCFConstants.MEDIAN_BASE_QUALITY_KEY));
+            Assert.assertFalse(vc.hasAttribute(GATKVCFConstants.MEDIAN_READ_POSITON_KEY));
+            Assert.assertFalse(vc.hasAttribute(GATKVCFConstants.MEDIAN_FRAGMENT_LENGTH_KEY));
+            for (final Genotype g : vc.getGenotypes()) {
+                Assert.assertFalse(g.hasExtendedAttribute(GATKVCFConstants.MEDIAN_MAPPING_QUALITY_KEY));
+                Assert.assertFalse(g.hasExtendedAttribute(GATKVCFConstants.MEDIAN_BASE_QUALITY_KEY));
+                Assert.assertFalse(g.hasExtendedAttribute(GATKVCFConstants.MEDIAN_READ_POSITON_KEY));
+                Assert.assertFalse(g.hasExtendedAttribute(GATKVCFConstants.MEDIAN_FRAGMENT_LENGTH_KEY));
+                Assert.assertTrue(g.hasExtendedAttribute(GATKVCFConstants.TUMOR_LOD_KEY));
+            }
+
+        }
+    }
+
 }
