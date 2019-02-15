@@ -55,12 +55,9 @@ import java.util.stream.IntStream;
  * </pre>
  *
  * <h4>Step 2. Create a GenomicsDB from the normal Mutect2 calls.</h4>
- * Note that GenomicsDBImport is currently (as of February 2019) inefficient when processing multiple intervals.  Therefore,
- * we recommend creating a separate GenomicsDB and panel of normals for each chromosome, then merging the panels.  This is
- * done automatically in mutect2_pon.wdl.  Here we show the process for chromosome 20.
  *
  *  <pre>
- *    gatk GenomicsDBImport -R reference.fasta -L 20\
+ *    gatk GenomicsDBImport -R reference.fasta -L intervals.interval_list \
  *       --genomicsdb-workspace-path pon_db \
  *       -V normal1.vcf.gz \
  *       -V normal2.vcf.gz \
@@ -70,7 +67,7 @@ import java.util.stream.IntStream;
  * <h4>Step 3. Combine the normal calls using CreateSomaticPanelOfNormals.</h4>
  *
  * <pre>
- * gatk CreateSomaticPanelOfNormals -R reference.fasta -V gendb:///pon_db -O pon.vcf.gz
+ * gatk CreateSomaticPanelOfNormals -R reference.fasta -V gendb://pon_db -O pon.vcf.gz
  * </pre>
  */
 @CommandLineProgramProperties(
