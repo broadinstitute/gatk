@@ -91,8 +91,8 @@ import java.util.stream.IntStream;
  * @author Andrey Smirnov &lt;asmirnov@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        summary = "Postprocesses the output of GermlineCNVCaller and generates VCF files.",
-        oneLineSummary = "Postprocesses the output of GermlineCNVCaller and generates VCF files.",
+        summary = "Postprocesses the output of GermlineCNVCaller and generates VCF files",
+        oneLineSummary = "Postprocesses the output of GermlineCNVCaller and generates VCF files",
         programGroup = CopyNumberProgramGroup.class
 )
 @DocumentedFeature
