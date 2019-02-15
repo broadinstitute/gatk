@@ -143,12 +143,12 @@ public class FilterFuncotations extends VariantWalker {
                 funcotationKeys, variant, "Gencode_" + reference.gencodeVersion + "_annotationTranscript", "FAKE_SOURCE");
 
         funcs.values().forEach(funcotationMap -> {
-            final Stream<Map<String, String>> transcriptFuncotations = funcotationMap.getTranscriptList().stream()
+            final Stream<Set<Map.Entry<String, String>>> transcriptFuncotations = funcotationMap.getTranscriptList().stream()
                     .map(funcotationMap::get)
                     .map(funcotations -> funcotations.stream()
                             .flatMap(this::extractFuncotationFields)
                             .filter(entry -> entry.getValue() != null && !entry.getValue().isEmpty())
-                            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
+                            .collect(Collectors.toSet()));
 
             transcriptFuncotations.forEach(funcotations -> {
                 final Set<String> matches = funcotationFilters.stream()
