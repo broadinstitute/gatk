@@ -1,5 +1,5 @@
 {
-  "MitochondriaPipeline.wgs_aligned_input_bam": "input_bam_here",
+  "MitochondriaPipeline.wgs_aligned_input_bam_or_cram": "input_bam_here",
   "MitochondriaPipeline.autosomal_coverage": autosomal_median_coverage_here,
   "MitochondriaPipeline.MT_with_numts_intervals": "gs://broad-references/hg38/v0/chrM/chrMWithFinalNuMTs.hg38.interval_list",
   "MitochondriaPipeline.mt_dict": "gs://broad-references/hg38/v0/chrM/Homo_sapiens_assembly38.chrM.dict",
