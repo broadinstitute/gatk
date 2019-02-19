@@ -3,10 +3,14 @@ package org.broadinstitute.hellbender.tools.walkers.varianteval;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -636,4 +640,29 @@ public class VariantEvalIntegrationTest extends CommandLineProgramTest {
         spec.executeTest(name, this);
 
     }
+
+    @Test
+    public void testOutputFileCreation() throws IOException {
+        // duplicate of "testPrintMissingComp", this time without using IntegrationTestSpec in order to force the
+        // tool to create the output file directly (tests fix for https://github.com/broadinstitute/gatk/issues/5674)
+
+        final String testName = "testOutputFileCreation";
+        final File tmpDir = createTempDir(testName);
+        final File outputFile = new File(tmpDir, testName + ".txt");
+
+        ArgumentsBuilder argBuilder= new ArgumentsBuilder();
+        argBuilder.addReference(new File(b37_reference_20_21));
+        argBuilder.addArgument("eval", getTestFilePath("validationReportEval.noGenotypes.vcf"));
+        argBuilder.addArgument("comp", getTestFilePath("validationReportComp.noGenotypes.vcf"));
+        argBuilder.addInterval(new SimpleInterval("20"));
+        argBuilder.addArgument("EV", "PrintMissingComp");
+        argBuilder.addOutput(outputFile);
+
+        runCommandLine(argBuilder);
+
+        IntegrationTestSpec.assertEqualTextFiles(
+                outputFile,
+                new File(getToolTestDataDir() + "expected/" + "testPrintMissingComp" + ".expected.txt"));
+    }
+
 }
