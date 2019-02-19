@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-public class FilterFuncotationsExacUtils {
+public class AlleleFrequencyExacUtils extends AlleleFrequencyUtils {
     /**
      * Sub-population suffixes used within ExAC. Used for calculating max MAF.
      */
@@ -28,27 +28,14 @@ public class FilterFuncotationsExacUtils {
      */
     private static String EXAC_ALLELE_NUMBER_PREFIX = "ExAC_AN_";
 
-    private static final Logger logger = LogManager.getLogger(FilterFuncotationsExacUtils.class);
-
-    /**
-     * Build a {@link FuncotationFiltrationRule} matching Funcotations from variants with a
-     * maximum MAF less than some threshold.
-     *
-     * @param maxMaf the MAF threshold to check in the rule. Must be in the range [0, 1]
-     * @return a {@link FuncotationFiltrationRule} matching Funcotations with a MAF (AC/AN)
-     *         less than {@code maxMaf} across all sub-populations of ExAC
-     */
-    public static FuncotationFiltrationRule buildExacMaxMafRule(final double maxMaf) {
-        ParamUtils.inRange(maxMaf, 0, 1, "MAF must be between 0 and 1");
-        return funcotations -> getMaxMinorAlleleFreq(funcotations) <= maxMaf;
-    }
+    private static final Logger logger = LogManager.getLogger(AlleleFrequencyExacUtils.class);
 
     /**
      * Calculate the max MAF across all ExAC sub-populations from the given Funcotations.
      *
      * If a sub-population has an allele number of zero, it will be assigned a MAF of zero.
      */
-    private static double getMaxMinorAlleleFreq(final Set<Map.Entry<String, String>> funcotations) {
+    protected static double getMaxMinorAlleleFreq(final Set<Map.Entry<String, String>> funcotations) {
         return Arrays.stream(ExacSubPopulation.values())
                 .filter(subpop -> funcotations.stream().anyMatch(entry -> entry.getKey().equals(EXAC_ALLELE_COUNT_PREFIX + subpop.name())))
                 .map(subpop -> {

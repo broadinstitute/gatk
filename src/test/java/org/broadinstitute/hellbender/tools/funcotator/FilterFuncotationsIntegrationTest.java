@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.funcotator.filtrationRules.ClinVarFilter;
 import org.broadinstitute.hellbender.tools.funcotator.filtrationRules.LmmFilter;
 import org.broadinstitute.hellbender.tools.funcotator.filtrationRules.LofFilter;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications.Filter;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -30,13 +31,15 @@ public class FilterFuncotationsIntegrationTest extends CommandLineProgramTest {
     @DataProvider(name = "uniformVcfProvider")
     public Object[][] uniformVcfProvider() {
         return new Object[][]{
-                {"clinvar.vcf", FilterFuncotations.Reference.hg19, Collections.emptySet(), Collections.singleton(ClinVarFilter.CLINSIG_INFO_VALUE)},
-                {"lmm.vcf", FilterFuncotations.Reference.hg38, Collections.emptySet(), Collections.singleton(LmmFilter.CLINSIG_INFO_VALUE)},
-                {"lof.vcf", FilterFuncotations.Reference.b37, Collections.emptySet(), Collections.singleton(LofFilter.CLINSIG_INFO_VALUE)},
-                {"all.vcf", FilterFuncotations.Reference.hg38, Collections.emptySet(), ALL_FILTERS},
-                {"multi-transcript.vcf", FilterFuncotations.Reference.hg38, Collections.emptySet(), ALL_FILTERS},
-                {"multi-allelic.vcf", FilterFuncotations.Reference.hg38, Collections.emptySet(), ALL_FILTERS},
-                {"none.vcf", FilterFuncotations.Reference.hg38, Collections.singleton(FilterFuncotationsConstants.NOT_CLINSIG_FILTER),
+                {"clinvar.vcf", FilterFuncotations.Reference.hg19, FilterFuncotations.AlleleFrequencyDataSource.exac, Collections.emptySet(), Collections.singleton(ClinVarFilter.CLINSIG_INFO_VALUE)},
+                {"lmm.vcf", FilterFuncotations.Reference.hg38, FilterFuncotations.AlleleFrequencyDataSource.exac, Collections.emptySet(), Collections.singleton(LmmFilter.CLINSIG_INFO_VALUE)},
+                {"lof.vcf", FilterFuncotations.Reference.b37, FilterFuncotations.AlleleFrequencyDataSource.exac, Collections.emptySet(), Collections.singleton(LofFilter.CLINSIG_INFO_VALUE)},
+                {"all.vcf", FilterFuncotations.Reference.hg38, FilterFuncotations.AlleleFrequencyDataSource.exac, Collections.emptySet(), ALL_FILTERS},
+                {"multi-transcript.vcf", FilterFuncotations.Reference.hg38, FilterFuncotations.AlleleFrequencyDataSource.exac, Collections.emptySet(), ALL_FILTERS},
+                {"multi-allelic.vcf", FilterFuncotations.Reference.hg38, FilterFuncotations.AlleleFrequencyDataSource.exac, Collections.emptySet(), ALL_FILTERS},
+                {"none.vcf", FilterFuncotations.Reference.hg38, FilterFuncotations.AlleleFrequencyDataSource.exac, Collections.singleton(FilterFuncotationsConstants.NOT_CLINSIG_FILTER),
+                        Collections.singleton(FilterFuncotationsConstants.CLINSIG_INFO_NOT_SIGNIFICANT)},
+                {"none_gnomad.vcf", FilterFuncotations.Reference.hg38, FilterFuncotations.AlleleFrequencyDataSource.gnomad, Collections.singleton(FilterFuncotationsConstants.NOT_CLINSIG_FILTER),
                         Collections.singleton(FilterFuncotationsConstants.CLINSIG_INFO_NOT_SIGNIFICANT)}
         };
     }
@@ -44,6 +47,7 @@ public class FilterFuncotationsIntegrationTest extends CommandLineProgramTest {
     @Test(dataProvider = "uniformVcfProvider")
     public void testFilterUniform(final String vcfName,
                                   final FilterFuncotations.Reference ref,
+                                  final FilterFuncotations.AlleleFrequencyDataSource afDataSource,
                                   final Set<String> expectedFilters,
                                   final Set<String> expectedAnnotations) {
 
@@ -52,7 +56,8 @@ public class FilterFuncotationsIntegrationTest extends CommandLineProgramTest {
         final List<String> args = Arrays.asList(
                 "-V", TEST_DATA_DIR.resolve(vcfName).toString(),
                 "-O", tmpOut.toString(),
-                "--ref-version", ref.name()
+                "--ref-version", ref.name(),
+                "--allele-frequency-data-source", afDataSource.name()
         );
         runCommandLine(args);
 

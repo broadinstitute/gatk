@@ -21,6 +21,8 @@ public class FuncotatorArgumentDefinitions {
 
     public static final String REFERENCE_VERSION_LONG_NAME = "ref-version";
 
+    public static final String ALLELE_FREQUENCY_DATA_SOURCE_NAME = "allele-frequency-data-source";
+
     public static final String DATA_SOURCES_PATH_LONG_NAME = "data-sources-path";
 
     public static final String OUTPUT_FORMAT_LONG_NAME = "output-file-format";

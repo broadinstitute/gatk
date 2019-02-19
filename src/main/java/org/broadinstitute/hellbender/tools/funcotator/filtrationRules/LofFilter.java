@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.funcotator.filtrationRules;
 
 import org.broadinstitute.hellbender.tools.funcotator.FilterFuncotations;
+import org.broadinstitute.hellbender.tools.funcotator.FilterFuncotations.AlleleFrequencyDataSource;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 
 import java.util.Arrays;
@@ -14,7 +15,7 @@ import java.util.stream.Stream;
  * <ul>
  *     <li>Are classified as FRAME_SHIFT_*, NONSENSE, START_CODON_DEL, or SPLICE_SITE</li>
  *     <li>Occur on a gene where loss of function is a disease mechanism</li>
- *     <li>Have a max MAF of 1% across sub-populations of ExAC</li>
+ *     <li>Have a max MAF of 1% across sub-populations of gnomAD</li>
  * </ul>
  */
 public class LofFilter extends FuncotationFilter {
@@ -53,9 +54,15 @@ public class LofFilter extends FuncotationFilter {
      */
     private final String classificationFuncotation;
 
-    public LofFilter(final FilterFuncotations.Reference ref) {
+    /**
+     * The allele frequency data source (ExAC or gnomAD) that was used to Funcotate the input VCF.
+     */
+    private final AlleleFrequencyDataSource afDataSource;
+
+    public LofFilter(final FilterFuncotations.Reference ref, final AlleleFrequencyDataSource afDataSource) {
         super(CLINSIG_INFO_VALUE);
         this.classificationFuncotation = "Gencode_" + ref.getGencodeVersion() + "_variantClassification";
+        this.afDataSource = afDataSource;
     }
 
     @Override
@@ -63,6 +70,6 @@ public class LofFilter extends FuncotationFilter {
         return Arrays.asList(
                 funcotations -> matchOnKeyOrDefault(funcotations, classificationFuncotation, "").anyMatch(CONSTANT_LOF_CLASSIFICATIONS::contains),
                 funcotations -> matchOnKeyOrDefault(funcotations, LOF_GENE_FUNCOTATION, "").anyMatch("YES"::equals),
-                FilterFuncotationsExacUtils.buildExacMaxMafRule(LOF_MAX_MAF));
+                AlleleFrequencyUtils.buildMaxMafRule(LOF_MAX_MAF, afDataSource));
     }
 }

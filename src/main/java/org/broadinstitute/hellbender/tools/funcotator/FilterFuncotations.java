@@ -42,7 +42,7 @@ import java.util.stream.Stream;
  * It's currently hard-coded to look for specific {@link Funcotation}s from:
  * <ul>
  *     <li><a href="http://www.clinvar.com/">ClinVar</a></li>
- *     <li><a href="http://exac.broadinstitute.org/">Exome Aggregation Consortium (ExAC)</a></li>
+ *     <li><a href="http://gnomad.broadinstitute.org/">Genome Aggregation Database (gnomAD)</a></li>
  *     <li><a href="http://personalizedmedicine.partners.org/laboratory-for-molecular-medicine/">Laboratory for Molecular Medicine (LMM)</a></li>
  * </ul>
  */
@@ -60,7 +60,7 @@ public class FilterFuncotations extends VariantWalker {
             "\nThis proof-of-concept tool is an example for how to parse and use the VCF output of Funcotator." +
             "\nCurrently hard-coded to look for specific Funcotations from:" +
             "\n  * ClinVar (http://www.clinvar.com/)" +
-            "\n  * Exome Aggregation Consortium (ExAC) (http://exac.broadinstitute.org/)" +
+            "\n  * Genome Aggregation Database (gnomAD) (http://gnomad.broadinstitute.org/)" +
             "\n  * Laboratory for Molecular Medicine (LMM) (http://personalizedmedicine.partners.org/laboratory-for-molecular-medicine/)";
 
     /**
@@ -82,6 +82,13 @@ public class FilterFuncotations extends VariantWalker {
         }
     }
 
+    /**
+     * The allele frequency data source that was used when Funcotating the input VCF.
+     */
+    public enum AlleleFrequencyDataSource {
+        exac, gnomad
+    }
+
     @Argument(
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
@@ -93,6 +100,12 @@ public class FilterFuncotations extends VariantWalker {
             doc = "The version of the Human Genome reference which was used to Funcotate the input VCF."
     )
     protected Reference reference;
+
+    @Argument(
+            fullName = FuncotatorArgumentDefinitions.ALLELE_FREQUENCY_DATA_SOURCE_NAME,
+            doc = "The allele frequency data source (ExAC or gnomAD) that was used to Funcotate the input VCF."
+    )
+    protected AlleleFrequencyDataSource afDataSource;
 
     private VariantContextWriter outputVcfWriter;
     private String[] funcotationKeys;
@@ -119,8 +132,8 @@ public class FilterFuncotations extends VariantWalker {
     }
 
     private void registerFilters() {
-        funcotationFilters.add(new ClinVarFilter());
-        funcotationFilters.add(new LofFilter(reference));
+        funcotationFilters.add(new ClinVarFilter(afDataSource));
+        funcotationFilters.add(new LofFilter(reference, afDataSource));
         funcotationFilters.add(new LmmFilter());
     }
 
