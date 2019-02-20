@@ -3,6 +3,9 @@ package org.broadinstitute.hellbender.tools.funcotator.filtrationRules;
 import org.broadinstitute.hellbender.tools.funcotator.FilterFuncotations.AlleleFrequencyDataSource;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
+import java.util.Map;
+import java.util.stream.Collectors;
+
 public abstract class AlleleFrequencyUtils {
 
     /**
@@ -10,7 +13,7 @@ public abstract class AlleleFrequencyUtils {
      * maximum MAF less than some threshold.
      *
      * @param maxMaf the MAF threshold to check in the rule. Must be in the range [0, 1]
-     * @param afDataSource the allele frequency data source (ExAC or gnomAD) with which the original VCF was Funcotated
+     * @param afDataSource the allele frequency data source (ExAC or gnomAD) with which the original VCF was Funcotated.
      * @return a {@link FuncotationFiltrationRule} matching Funcotations with a MAF (AC/AN)
      *         less than {@code maxMaf} across all sub-populations.
      */
@@ -20,7 +23,11 @@ public abstract class AlleleFrequencyUtils {
             return funcotations -> AlleleFrequencyExacUtils.getMaxMinorAlleleFreq(funcotations) <= maxMaf;
         }
         else {
-            return funcotations -> AlleleFrequencyGnomadUtils.getMaxMinorAlleleFreq(funcotations) <= maxMaf;
+            return funcotations -> {
+                Map<String, String> condensedFuncotations = funcotations.stream().collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                return (!AlleleFrequencyGnomadUtils.allFrequenciesFiltered(condensedFuncotations)
+                        && AlleleFrequencyGnomadUtils.getMaxMinorAlleleFreq(condensedFuncotations) <= maxMaf);
+            };
         }
     }
 }
