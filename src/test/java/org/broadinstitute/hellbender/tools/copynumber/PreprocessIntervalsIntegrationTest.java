@@ -8,14 +8,18 @@ import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumen
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.IntervalMergingRule;
 import org.broadinstitute.hellbender.utils.IntervalSetRule;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public final class PreprocessIntervalsIntegrationTest extends CommandLineProgramTest {
     private static final File TEST_SUB_DIR = new File(toolsTestDir, "copynumber");
@@ -169,6 +173,81 @@ public final class PreprocessIntervalsIntegrationTest extends CommandLineProgram
         binsExpected.add(new Interval("20", 115_001, 125_000));
 
         Assert.assertEquals(binsResult, binsExpected);
+    }
+
+    @Test(dataProvider = "gridTestData")
+    public void gridTest(final int binLength, final int minBinLength, final String[] includeInterval, final String[] excludeIntervals, final String[] expectedIntervals) {
+
+        final File outputFile = createTempFile("preprocess-intervals-test", ".interval_list");
+        final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
+                .addReference(REFERENCE_FILE)
+                .addArgument(PreprocessIntervals.GRID_LONG_NAME)
+                .addArgument(PreprocessIntervals.BIN_LENGTH_LONG_NAME, Integer.toString(binLength))
+                .addArgument(PreprocessIntervals.MINIMUM_BIN_LENGTH_LONG_NAME, Integer.toString(minBinLength))
+                .addArgument(PreprocessIntervals.PADDING_LONG_NAME, "0");
+        for (final String include : includeInterval) {
+            argsBuilder.addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, include);
+        }
+        for (final String exclude : excludeIntervals) {
+            argsBuilder.addArgument(IntervalArgumentCollection.EXCLUDE_INTERVALS_LONG_NAME, exclude);
+        }
+        argsBuilder.addArgument(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString())
+                .addOutput(outputFile);
+        runCommandLine(argsBuilder);
+        final IntervalList binsResult = IntervalList.fromFile(outputFile);
+        final IntervalList binsExpected = new IntervalList(binsResult.getHeader().getSequenceDictionary());
+        final List<Interval> binsResultList = Utils.stream(binsResult).collect(Collectors.toList());
+        for (final String expected : expectedIntervals) {
+            final SimpleInterval simpleInterval = new SimpleInterval(expected);
+            binsExpected.add(new Interval(simpleInterval.getContig(), simpleInterval.getStart(), simpleInterval.getEnd()));
+        }
+        final List<Interval> binsExpectedList = Utils.stream(binsExpected).collect(Collectors.toList());
+        Assert.assertEquals(binsResultList, binsExpectedList, Utils.join(";", binsExpectedList.toArray()) + " vs " +
+                Utils.join(";", binsResultList.toArray()) );
+    }
+
+    @DataProvider
+    public Object[][] gridTestData() {
+        final List<Object[]> result = new ArrayList<>();
+        result.add(new Object[] { (int) 23, (int) 1,
+                new String[] {"20:230000-230100"}, new String[] {},
+                new String[] {"20:230000-230000",
+                              "20:230001-230023",
+                              "20:230024-230046",
+                              "20:230047-230069",
+                              "20:230070-230092",
+                              "20:230093-230100"}});
+        result.add(new Object[] { (int) 23, (int) 1,
+                new String[] {"20:230000-230100", "20:460005-460105"}, new String[] {},
+                new String[] {"20:230000-230000",
+                        "20:230001-230023",
+                        "20:230024-230046",
+                        "20:230047-230069",
+                        "20:230070-230092",
+                        "20:230093-230100",
+                        "20:460005-460023",
+                        "20:460024-460046",
+                        "20:460047-460069",
+                        "20:460070-460092",
+                        "20:460093-460105"}});
+        result.add(new Object[] { (int) 23, (int) 23,
+                new String[] {"20:229985-230105"}, new String[] {},
+                new String[] {"20:230001-230023",
+                        "20:230024-230046",
+                        "20:230047-230069",
+                        "20:230070-230092"}});
+        result.add(new Object[] { (int) 23, (int) 9,
+                new String[] {"20:230020-230100"}, new String[] {},
+                new String[] {
+                        "20:230024-230046",
+                        "20:230047-230069",
+                        "20:230070-230092"}});
+        result.add(new Object[] { (int) 23, (int) 9,
+                new String[] {"20:230020-230100"}, new String[] {"20:230040-230063"},
+                new String[] {
+                        "20:230024-230039",
+                        "20:230070-230092"}});
+        return result.toArray(new Object[result.size()][]);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)

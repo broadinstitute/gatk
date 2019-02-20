@@ -1,9 +1,13 @@
 package org.broadinstitute.hellbender.utils;
 
 import htsjdk.samtools.QueryInterval;
+import htsjdk.samtools.SAMException;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.SAMTextHeaderCodec;
+import htsjdk.samtools.util.FormatUtil;
+import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
 import htsjdk.samtools.util.Locatable;
@@ -20,16 +24,22 @@ import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.nio.PathLineIterator;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Parse text representations of interval strings that
@@ -1550,5 +1560,66 @@ public final class IntervalUtils {
         return interval1.overlaps(interval2) &&
                 (interval1.intersect(interval2).size() >= (interval2.size() * reciprocalOverlapThreshold)) &&
                 (interval2.intersect(interval1).size() >= (interval1.size() * reciprocalOverlapThreshold));
+    }
+
+    /**
+     * Writes into a file an interval iterable optionally providing a header.
+     * @param header the header for the output interval file.
+     * @param intervals the intervals to write in order.
+     * @param whereTo location of the file or resource to write to.
+     * @param <T> interval type-parameter.
+     * @throws IllegalArgumentException if either {@code whereTo} or {@code intervals} are {@code null}.
+     * @throws SAMException if there some interval validation issue or simply and IO exception.
+     */
+    public static <T extends Interval> void write(final SAMFileHeader header, final Iterable<T> intervals, final String whereTo) {
+        write(header, Utils.stream(intervals), whereTo);
+    }
+
+    /**
+     * Writes into a file a stream of intervals optionally providing a header.
+     * @param header the header for the output interval file.
+     * @param intervals the intervals to write in order.
+     * @param whereTo location of the file or resource to write to.
+     * @param <T> interval type-parameter.
+     * @throws IllegalArgumentException if either {@code whereTo} or {@code intervals} are {@code null}.
+     * @throws SAMException if there some interval validation issue or simply and IO exception.
+     */
+    public static <T extends Interval> void write(final SAMFileHeader header, final Stream<T> intervals, final String whereTo) {
+        Utils.nonNull(whereTo);
+        Utils.nonNull(intervals);
+
+        try (final BufferedWriter out = new BufferedWriter(new OutputStreamWriter((BucketUtils.createFile(whereTo))))) {
+            final FormatUtil format = new FormatUtil();
+            // Write out the header
+            if (header != null) {
+                final SAMTextHeaderCodec codec = new SAMTextHeaderCodec();
+                codec.encode(out, header);
+            }
+
+            // Write out the intervals
+            intervals.forEach(interval -> {
+                try {
+                    out.write(interval.getContig());
+                    out.write('\t');
+                    out.write(format.format(interval.getStart()));
+                    out.write('\t');
+                    out.write(format.format(interval.getEnd()));
+                    out.write('\t');
+                    out.write(interval.isPositiveStrand() ? '+' : '-');
+                    out.write('\t');
+                    if (interval.getName() != null) {
+                        out.write(interval.getName());
+                    } else {
+                        out.write(".");
+                    }
+                    out.newLine();
+                } catch (final IOException ex) {
+                    throw new UncheckedIOException(ex);
+                }
+            });
+            out.flush();
+        } catch (final IOException | UncheckedIOException ioe) {
+            throw new SAMException("Error writing out interval list to file: " + whereTo, ioe);
+        }
     }
 }

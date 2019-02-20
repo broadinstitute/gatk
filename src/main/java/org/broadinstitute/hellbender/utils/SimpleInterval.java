@@ -3,6 +3,7 @@
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -338,5 +339,13 @@ public final class SimpleInterval implements Locatable, Serializable {
          Utils.nonNull( contigRecord, () -> "Contig " + contig + " not found in provided dictionary");
 
          return expandWithinContig(padding, contigRecord.getSequenceLength());
+     }
+
+     public static SimpleInterval valueOf(final Interval interval) {
+         if (interval == null) {
+             throw new IllegalArgumentException();
+         } else {
+             return new SimpleInterval(interval.getContig(), interval.getStart(), interval.getEnd());
+         }
      }
  }

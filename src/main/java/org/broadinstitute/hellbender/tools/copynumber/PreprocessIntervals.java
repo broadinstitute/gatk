@@ -1,23 +1,29 @@
 package org.broadinstitute.hellbender.tools.copynumber;
 
+import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
 import org.apache.commons.math3.util.FastMath;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils;
 import org.broadinstitute.hellbender.utils.*;
 import picard.cmdline.programgroups.IntervalsManipulationProgramGroup;
 
 import java.io.File;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Spliterator;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 /**
  * Prepares bins for coverage collection.
@@ -99,6 +105,8 @@ import java.util.stream.Collectors;
 public final class PreprocessIntervals extends GATKTool {
     public static final String BIN_LENGTH_LONG_NAME = "bin-length";
     public static final String PADDING_LONG_NAME = "padding";
+    public static final String GRID_LONG_NAME = "grid";
+    public static final String MINIMUM_BIN_LENGTH_LONG_NAME = "min-bin-length";
 
     @Argument(
             doc = "Length (in bp) of the bins.  If zero, no binning will be performed.",
@@ -123,6 +131,24 @@ public final class PreprocessIntervals extends GATKTool {
     )
     private File outputFile;
 
+    @Argument(
+            doc = "Intervals are layout in a grid so that bin start at fixed positions (grid points) 1 + n * bin_length. When intervals " +
+                    "do not exactly align with a grid starting position, the first bin in that interval will be smaller or simply skipped (see min-bin-length) " +
+                    "so that the rest of the  bins will start at a grid point",
+            fullName = GRID_LONG_NAME,
+            optional = true
+    )
+    private boolean grid = false;
+
+    @Argument(
+            doc = "The minimum bin length. Any truncated bin that are smaller than this length will be excluded, " +
+                    "when set to 1 means that no  bin will be excluded",
+            fullName = MINIMUM_BIN_LENGTH_LONG_NAME,
+            minValue = 1,
+            optional = true
+    )
+    private int minimumBinLength = 1;
+
     @Override
     public boolean requiresReference() {
         return true;
@@ -131,6 +157,14 @@ public final class PreprocessIntervals extends GATKTool {
     @Override
     public void onTraversalStart() {
         final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
+
+        if (binLength > 0 && minimumBinLength > binLength) {
+            throw new UserException.BadInput(
+                    String.format("%s (%s) must be less or equal than %s (%s)", MINIMUM_BIN_LENGTH_LONG_NAME,
+                            minimumBinLength, BIN_LENGTH_LONG_NAME, binLength));
+        } else if (grid && binLength <= 0) {
+            throw new UserException.BadInput("when requested gridded bin you must speficy a bin-length larger than 0");
+        }
 
         final List<SimpleInterval> inputIntervals;
         if (hasUserSuppliedIntervals()) {
@@ -145,14 +179,15 @@ public final class PreprocessIntervals extends GATKTool {
         final IntervalList paddedIntervalList = padIntervals(inputIntervals, padding, sequenceDictionary);
 
         logger.info("Generating bins...");
-        final IntervalList unfilteredBins = generateBins(paddedIntervalList, binLength, sequenceDictionary);
+        final SAMFileHeader header = paddedIntervalList.getHeader();
+        final Stream<Interval> unfilteredBins = generateBinStream(paddedIntervalList, binLength, grid, minimumBinLength);
 
         logger.info("Filtering bins containing only Ns...");
         final ReferenceDataSource reference = ReferenceDataSource.of(referenceArguments.getReferencePath());
-        final IntervalList bins = filterBinsContainingOnlyNs(unfilteredBins, reference);
+        final Stream<Interval> bins = filterBinsContainingOnlyNs(unfilteredBins, reference);
 
         logger.info(String.format("Writing bins to %s...", outputFile));
-        bins.write(outputFile);
+        IntervalUtils.write(header, bins, outputFile.toString());
     }
 
     private static IntervalList padIntervals(final List<SimpleInterval> inputIntervals, final int padding, final SAMSequenceDictionary sequenceDictionary) {
@@ -184,30 +219,109 @@ public final class PreprocessIntervals extends GATKTool {
         return paddedIntervalList;
     }
 
-    private static IntervalList generateBins(final IntervalList preparedIntervalList, final int binLength, final SAMSequenceDictionary sequenceDictionary) {
+    private static Stream<Interval> generateBinStream(final IntervalList preparedIntervalList, final int binLength, final boolean grid,
+                                             final int minimumBinLength) {
         if (binLength == 0) {
-            return IntervalList.copyOf(preparedIntervalList);
+            return Utils.stream(preparedIntervalList);
         }
-        final IntervalList bins = new IntervalList(sequenceDictionary);
-        for (final Interval interval : preparedIntervalList) {
-            for (int binStart = interval.getStart(); binStart <= interval.getEnd(); binStart += binLength) {
-                final int binEnd = FastMath.min(binStart + binLength - 1, interval.getEnd());
-                bins.add(new Interval(interval.getContig(), binStart, binEnd));
-            }
-        }
-        return bins;
+        return Utils.stream(preparedIntervalList)
+                .flatMap(interval ->
+                        StreamSupport.stream(
+                                new IntervalSpliterator(interval, binLength, minimumBinLength, grid), false));
     }
 
-    private static IntervalList filterBinsContainingOnlyNs(final IntervalList unfilteredBins, final ReferenceDataSource reference) {
-        final IntervalList bins = new IntervalList(reference.getSequenceDictionary());
-        for (final Interval unfilteredBin : unfilteredBins) {
-            if (!Utils.stream(reference.query(new SimpleInterval(unfilteredBin))).allMatch(b -> Nucleotide.decode(b) == Nucleotide.N)) {
-                bins.add(unfilteredBin);
+    private static Stream<Interval> filterBinsContainingOnlyNs(final Stream<Interval> unfilteredBins, final ReferenceDataSource reference) {
+        return unfilteredBins.filter(interval -> {
+            final byte[] bases = reference.queryAndPrefetch(interval).getBases();
+            for (byte b : bases) {
+                if (Nucleotide.decode(b) != Nucleotide.N) {
+                    return true;
+                }
             }
-        }
-        return bins;
+            return false;
+        });
     }
 
     @Override
     public void traverse() {}  // no traversal for this tool
+
+    private static class IntervalSpliterator implements Spliterator<Interval> {
+
+        private int binStart;
+        private final Interval interval;
+        private final int binLength;
+        private final boolean grid;
+        private final int minBinLength;
+
+        IntervalSpliterator(final Interval interval,
+                            final int binLength,
+                            final int minBinLength,
+                            final boolean grid) {
+            this.binStart = interval.getStart();
+            this.interval = interval;
+            this.binLength = binLength;
+            this.minBinLength = minBinLength;
+            this.grid = grid;
+        }
+
+        @Override
+        public boolean tryAdvance(final Consumer<? super Interval> action) {
+             while (true) {
+                 int gridOffset;
+                 // no enough bases left for a minimum bin?
+                 if (binStart > interval.getEnd() - minBinLength + 1) {
+                    return false;
+                    // no gridded bins
+                 } else if (!grid || (gridOffset = binStart % binLength) == 1) {
+                    int binEnd = FastMath.min(binStart + binLength - 1, interval.getEnd());
+                    action.accept(new Interval(interval.getContig(), binStart, binEnd));
+                    binStart = binEnd + 1;
+                    return true;
+                    // gridded bins:
+                 } else { // grid == true && not on grid.
+                    // just 1bp before the next grid start!
+                    if (gridOffset == 0) {
+                        if (minBinLength <= 1) {
+                            action.accept(new Interval(interval.getContig(), binStart, binStart++));
+                            return true;
+                        } else {
+                            binStart++;
+                            // continue:
+                        }
+                    } else {
+                        int binEnd = FastMath.min(binStart + binLength - gridOffset, interval.getEnd());
+                        if (minBinLength <= binEnd - binStart + 1) { // gridOffset > 1
+                            action.accept(new Interval(interval.getContig(), binStart, binEnd));
+                            binStart = binEnd + 1;
+                            return true;
+                        } else { // we skip to next grid start and we try again:
+                            binStart = binEnd + 1;
+                            // continue;
+                        }
+                    }
+                }
+            }
+        }
+
+        @Override
+        public Spliterator<Interval> trySplit() {
+            return null;
+        }
+
+        @Override
+        public long estimateSize() {
+            return (interval.getLengthOnReference() / binLength) + 1;
+        }
+
+        @Override
+        public int characteristics() {
+            return Spliterator.NONNULL | Spliterator.DISTINCT | Spliterator.SORTED;
+        }
+
+        @Override
+        public Comparator<Interval> getComparator() {
+            return Comparator.comparingInt(Interval::getStart).thenComparing(Interval::getEnd);
+        }
+
+    }
 }
