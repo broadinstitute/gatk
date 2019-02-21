@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.pipelines;
 
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMRecord;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -20,13 +21,40 @@ import java.util.List;
 
 
 /**
- * <h3>Additional Notes</h3>
+ * SortSam on Spark (works on SAM/BAM/CRAM)
+ *
+ * <h4>Overview</h4>
+ * <p>A <a href='https://software.broadinstitute.org/gatk/blog?id=23420'>Spark</a> implementation of <a href='https://software.broadinstitute.org/gatk/documentation/tooldocs/current/picard_sam_SortSam.php'>Picard SortSam</a>. The Spark version can run in parallel on multiple cores on a local machine or multiple machines on a Spark cluster while still matching the output of the single-core Picard version.</p>
+ *
+ * <p>The tool sorts reads by coordinate order by default or by the read name, or QNAME field, if asked with the '-SO queryname' option. The contig ordering in the reference dictionary defines coordinate order, and the tool uses the sequence dictionary represented by the @SQ header lines or that of the optionally provided reference to sort reads by the RNAME field. For those reads mapping to a contig, coordinate sorting further orders reads by the POS field of the SAM record, which contains the leftmost mapping position.</p>
+ *
+ *  <p>Queryname sorted alignments are grouped first by readname and then are deterministically ordered among equal readnames by read flags including orientation, secondary, and supplemntary record flags (See {@link htsjdk.samtools.SAMRecordQueryNameComparator#compare(SAMRecord, SAMRecord)}} for details).  For paired-end reads, reads in the pair share the same queryname. Because aligners can generate secondary and supplementary alignments, queryname groups can consists of, e.g. more than two records for a paired-end pair.</p>
+ *
+ * <h4>Usage examples</h4>
+ * Coordinate-sort aligned reads using all cores available on local Spark cluster
+ * <pre>
+ * gatk SortSamSpark \<br />
+ * -I aligned.bam \<br />
+ * -O coordinatesorted.bam
+ * </pre>
+ *
+ * Queryname-sort reads using four cores on local Spark cluster
+ * <pre>
+ * gatk SortSamSpark \<br />
+ * -I coordinatesorted.bam \<br />
+ * -SO queryname \<br />
+ * -O querygroupsorted.bam \
+ * --
+ *  --spark-runner SPARK \<br />
+ *  --spark-master <SPARK-CLUSTER>\<br />
+ *  --num-executors 5 \<br />
+ *  --executor-cores 4
+ * </pre>
+ *
+ * <h3>Notes</h3>
  * <ul>
- *     <li>Running Spark tools such as SortSamSpark require a significant amount of disk operations, it is recommended that
- *     this tool be run with both the input data and outputs on high throughput SSDs wherever possible. For example, when running
- *     SortSamSpark on Google Compute Engine it is recommended requisitioning machines with LOCAL SSDs for for best performance.</li>
- *     <li>It is also recommended that this the spark temp directory be explicitly set to an available SSD when running this
- *     tool on a single machine by adding the argument --conf 'spark.local.dir=/PATH/TO/TEMP/DIR'</li>
+ *     <li>This Spark tool requires a significant amount of disk operations. Run with both the input data and outputs on high throughput SSDs when possible. For example, when pipelining this tool on Google Compute Engine instances, for best performance requisition machines with LOCAL SSDs. </li>
+ *     <li>Furthermore, we recommend explicitly setting the Spark temp directory to an available SSD when running this in local mode by adding the argument --conf 'spark.local.dir=/PATH/TO/TEMP/DIR'. See the discussion at https://gatkforums.broadinstitute.org/gatk/discussion/comment/56337 for details.</li>
  * </ul>
  */
 @DocumentedFeature

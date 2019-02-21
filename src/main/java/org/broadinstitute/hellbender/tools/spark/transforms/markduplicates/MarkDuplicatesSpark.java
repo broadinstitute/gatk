@@ -35,73 +35,64 @@ import scala.Tuple2;
 import java.util.*;
 
 /**
- * <p>This is a Spark implementation of the MarkDuplicates tool from Picard that allows the tool to be run in
- *    parallel on multiple cores on a local machine or multiple machines on a Spark cluster while still matching
- *    the output of the single-core Picard version. Since the tool requires holding all of the readnames in memory
- *    while it groups the read information, it is recommended running this tool on a machine/configuration
- *    with at least 8 GB of memory overall for a typical 30x bam.</p>
+ * MarkDuplicates on Spark
  *
- * <p>This tool locates and tags duplicate reads in a BAM or SAM file, where duplicate reads are
- *    defined as originating from a single fragment of DNA.  Duplicates can arise during sample preparation e.g. library
- *    construction using PCR.  See also "<a href='https://broadinstitute.github.io/picard/command-line-overview.html#EstimateLibraryComplexity'>EstimateLibraryComplexity</a>" +
- *    for additional notes on PCR duplication artifacts.  Duplicate reads can also result from a single amplification cluster,
- *    incorrectly detected as multiple clusters by the optical sensor of the sequencing instrument.  These duplication artifacts are
- *    referred to as optical duplicates.</p>
+ * <h4>Overview</h4>
+ * <p>This is a Spark implementation of <a href='https://software.broadinstitute.org/gatk/documentation/tooldocs/current/picard_sam_markduplicates_MarkDuplicates.php'>Picard MarkDuplicates</a>MarkDuplicates tool from Picard that allows the tool to be run in parallel on multiple cores on a local machine or multiple machines on a Spark cluster while still matching the output of the single-core Picard version. Since the tool requires holding all of the readnames in memory while it groups read information, machine configuration and starting sort-order impact tool performance. </p>
  *
- * <p>The MarkDuplicates tool works by comparing sequences in the 5 prime positions of both reads and read-pairs in a SAM/BAM file.
- *    After duplicate reads are collected, the tool differentiates the primary and duplicate reads using an algorithm that ranks
- *    reads by the sums of their base-quality scores (default method).</p>
+ * <ul>
+ *  <li>For a typical 30x coverage WGS BAM, we recommend running on a machine with at least 8 GB of memory overall. See the Notes section below for additional details.</li>
+ *  <li>The tool is optimized to run on queryname-grouped alignments. If provided coordinate-sorted alignments, the tool will spend additional time first queryname sorting the reads. This can result in the tool being up to 2x slower under some circumstances.</li>
+ *  <li>Collecting duplicate metrics slows down performance and thus the metrics collection is optional for the Spark version of the tool. It is possible to collect the metrics with the standalone Picard tool, <a href='https://software.broadinstitute.org/gatk/documentation/tooldocs/current/picard_sam_markduplicates_EstimateLibraryComplexity.php'>EstimateLibraryComplexity</a>.</li>
+ * </ul>
+ *
+ * <p>This tool locates and tags duplicate reads in a BAM or SAM file, where duplicate reads are defined as originating from a single fragment of DNA. Duplicates can arise during sample preparation e.g. library construction using PCR. See also <a href='https://broadinstitute.github.io/picard/command-line-overview.html#EstimateLibraryComplexity'>EstimateLibraryComplexity</a> for additional notes on PCR duplication artifacts. Duplicate reads can also result from a single amplification cluster, incorrectly detected as multiple clusters by the optical sensor of the sequencing instrument. These duplication artifacts are referred to as optical duplicates.</p>
+ *
+ * <p>The MarkDuplicates tool works by comparing sequences in the 5 prime positions of both reads and read-pairs in a SAM/BAM file. After duplicate reads are collected, the tool differentiates the primary and duplicate reads using an algorithm that ranks reads by the sums of their base-quality scores (default method).</p>
  *
  * <p>The tool's main output is a new SAM or BAM file, in which duplicates have been identified in the SAM flags field for each
- *    read.  Duplicates are marked with the hexadecimal value of 0x0400, which corresponds to a decimal value of 1024.
- *    If you are not familiar with this type of annotation, please see the following <a href='https://www.broadinstitute.org/gatk/blog?id=7019'>blog post</a> for additional information.</p>" +
+ *    read. Duplicates are marked with the hexadecimal value of 0x0400, which corresponds to a decimal value of 1024.
+ *    If you are not familiar with this type of annotation, please see the following <a href='https://www.broadinstitute.org/gatk/blog?id=7019'>blog post</a> for additional information.</p>
  *
- * <p>Although the bitwise flag annotation indicates whether a read was marked as a duplicate, it does not identify the type of
- *    duplicate.  To do this, a new tag called the duplicate type (DT) tag was recently added as an optional output in
- *    the 'optional field' section of a SAM/BAM file.  Invoking the 'duplicate-tagging-policy' option,
- *    you can instruct the program to mark all the duplicates (All), only the optical duplicates (OpticalOnly), or no
- *    duplicates (DontTag).  The records within the output of a SAM/BAM file will have values for the 'DT' tag (depending on the invoked
- *    'duplicate-tagging-policy'), as either library/PCR-generated duplicates (LB), or sequencing-platform artifact duplicates (SQ).
- *    This tool uses the 'read-name-regex' and the 'optical-duplicate-pixel-distance' options as the primary methods to identify
- *    and differentiate duplicate types.  Set read-name-regex' to null to skip optical duplicate detection, e.g. for RNA-seq
- *    or other data where duplicate sets are extremely large and estimating library complexity is not an aim.
- *    Note that without optical duplicate counts, library size estimation will be inaccurate.</p>
- *
- * <p>MarkDuplicates also produces a metrics file indicating the numbers of duplicates for both single- and paired-end reads.</p>
- *
- * <p>The tool can take either coordinate-sorted or query-sorted inputs, however it is recommended that the input be
- *    query-sorted or query-grouped as the tool will have to perform an extra sort operation on the data in order to associate
- *    reads from the input bam with their mates. This can result in the tool being up to 2x slower under some circumstances.</p>
- *
- * <p>If desired, duplicates can be removed using the 'remove-all-duplicates' and 'remove-sequencing-duplicates' options.</p>
+ * <p>Although the bitwise flag annotation indicates whether a read was marked as a duplicate, it does not identify the type of duplicate. To do this, a new tag called the duplicate type (DT) tag was recently added as an optional output in the 'optional field' section of a SAM/BAM file. Invoking the 'duplicate-tagging-policy' option, you can instruct the program to mark all the duplicates (All), only the optical duplicates (OpticalOnly), or no duplicates (DontTag). The records within the output of a SAM/BAM file will have values for the 'DT' tag (depending on the invoked 'duplicate-tagging-policy'), as either library/PCR-generated duplicates (LB), or sequencing-platform artifact duplicates (SQ). This tool uses the 'read-name-regex' and the 'optical-duplicate-pixel-distance' options as the primary methods to identify and differentiate duplicate types. Set read-name-regex' to null to skip optical duplicate detection, e.g. for RNA-seq or other data where duplicate sets are extremely large and estimating library complexity is not an aim. Note that without optical duplicate counts, library size estimation will be inaccurate.
+ * MarkDuplicates also produces a metrics file indicating the numbers of duplicates for both single- and paired-end reads.</p>
  *
  * <h4>Usage example:</h4>
  *     <pre>
- *      gatk MarkDuplicatesSpark \\<br />
- *            -I input.bam \\<br />
- *            -O marked_duplicates.bam \\<br />
+ *      gatk MarkDuplicatesSpark \<br />
+ *            -I input.bam \<br />
+ *            -O marked_duplicates.bam \<br />
  *            -M marked_dup_metrics.txt
+ *     </pre>
+ *
+ *  <h4>MarkDuplicates run locally specifying the removal of sequencing duplicates and tagging OpticalDuplicates</h4>
+ *     <pre>
+ *       gatk MarkDuplicatesSpark \<br />
+ *            -I input.bam \<br />
+ *            -O marked_duplicates.bam \<br />
+ *            --remove-sequencing-duplicates \<br />
+ *            --duplicate-tagging-policy OpticalOnly
  *     </pre>
  *
  *  <h4>MarkDuplicates run locally specifying the core input (if 'spark.executor.cores' is unset spark will use all available cores on the machine)</h4>
  *     <pre>
- *       gatk MarkDuplicatesSpark \\<br />
- *            -I input.bam \\<br />
- *            -O marked_duplicates.bam \\<br />
- *            -M marked_dup_metrics.txt \\<br />
+ *       gatk MarkDuplicatesSpark \<br />
+ *            -I input.bam \<br />
+ *            -O marked_duplicates.bam \<br />
+ *            -M marked_dup_metrics.txt \<br />
  *            --conf 'spark.executor.cores=5'
  *     </pre>
  *
  *  <h4>MarkDuplicates run on a spark cluster 5 machines</h4>
  *     <pre>
- *       gatk MarkDuplicatesSpark \\<br />
- *            -I input.bam \\<br />
- *            -O marked_duplicates.bam \\<br />
- *            -M marked_dup_metrics.txt \\<br />
- *            -- \\<br />
- *            --spark-runner SPARK \\<br />
- *            --spark-master <master_url> \\<br />
- *            --num-executors 5 \\<br />
+ *       gatk MarkDuplicatesSpark \<br />
+ *            -I input.bam \<br />
+ *            -O marked_duplicates.bam \<br />
+ *            -M marked_dup_metrics.txt \<br />
+ *            -- \<br />
+ *            --spark-runner SPARK \<br />
+ *            --spark-master MASTER_URL \<br />
+ *            --num-executors 5 \<br />
  *            --executor-cores 8 <br />
  *     </pre>
  *
@@ -112,11 +103,8 @@ import java.util.*;
  *
  * <h3>Additional Notes</h3>
  * <ul>
- *     <li>Running Spark tools such as MarkDuplicatesSpark require a significant amount of disk operations, it is recommended that
- *     this tool be run with both the input data and outputs on high throughput SSDs wherever possible. For example, when running
- *     MarkDuplicatesSpark on Google Compute Engine it is recommended requisitioning machines with LOCAL SSDs for for best performance.</li>
- *     <li>It is also recommended that this the spark temp directory be explicitly set to an available SSD when running this
- *     tool on a single machine by adding the argument --conf 'spark.local.dir=/PATH/TO/TEMP/DIR'</li>
+ *     <li>This Spark tool requires a significant amount of disk operations. Run with both the input data and outputs on high throughput SSDs when possible. For example, when pipelining this tool on Google Compute Engine instances, for best performance requisition machines with LOCAL SSDs. </li>
+ *     <li>Furthermore, we recommend  explicitly setting the Spark temp directory to an available SSD when running this in local mode by adding the argument --conf 'spark.local.dir=/PATH/TO/TEMP/DIR'. See the discussion at https://gatkforums.broadinstitute.org/gatk/discussion/comment/56337 for details.</li>
  * </ul>
  */
 @DocumentedFeature
