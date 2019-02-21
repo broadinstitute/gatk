@@ -116,6 +116,8 @@ public abstract class TableWriter<R> implements Closeable {
      */
     private final CSVWriter writer;
 
+    private final Writer underlyingWriter;
+
     /**
      * The table column names.
      */
@@ -152,9 +154,9 @@ public abstract class TableWriter<R> implements Closeable {
      * @throws IOException              if one was raised when opening the the destination file for writing.
      */
     public TableWriter(final Writer writer, final TableColumnCollection columns) throws IOException {
-
+        this.underlyingWriter = Utils.nonNull(writer, "the input writer cannot be null");
         this.columns = Utils.nonNull(columns, "The columns cannot be null.");
-        this.writer = new CSVWriter(Utils.nonNull(writer, "the input writer cannot be null"),
+        this.writer = new CSVWriter(underlyingWriter,
                 TableUtils.COLUMN_SEPARATOR, TableUtils.QUOTE_CHARACTER, TableUtils.ESCAPE_CHARACTER);
     }
 
@@ -183,6 +185,10 @@ public abstract class TableWriter<R> implements Closeable {
         Utils.nonNull(value);
         Utils.validateArg(!headerWritten, "Metadata must precede the header.");
         writeComment(METADATA_TAG + key + "=" + value);
+    }
+
+    protected final void writeLineBypassingCSVWriter(final String comment) throws IOException {
+        underlyingWriter.write(comment + "\n");
     }
 
     /**

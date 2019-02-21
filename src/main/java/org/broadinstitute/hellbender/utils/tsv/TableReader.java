@@ -372,8 +372,7 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
     }
 
     private void processCommentLine(final String[] line, final long lineNumber) {
-        final StringBuilder builder = new StringBuilder();
-        builder.append(line[0].substring(TableUtils.COMMENT_PREFIX.length()));
+        final StringBuilder builder = new StringBuilder(line[0]);
         for (int i = 1; i < line.length; i++)
             builder.append(TableUtils.COLUMN_SEPARATOR_STRING).append(line[i]);
         processCommentLine(builder.toString(), lineNumber);

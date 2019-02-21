@@ -50,7 +50,7 @@ public final class SimpleCountCollection extends AbstractSampleLocatableCollecti
         public static final TableColumnCollection COLUMNS = new TableColumnCollection((Object[]) values());
     }
     
-    private static final Function<DataLine, SimpleCount> SIMPLE_COUNT_RECORD_FROM_DATA_LINE_DECODER = dataLine -> {
+    public static final Function<DataLine, SimpleCount> SIMPLE_COUNT_RECORD_FROM_DATA_LINE_DECODER = dataLine -> {
         final String contig = dataLine.get(SimpleCountTableColumn.CONTIG);
         final int start = dataLine.getInt(SimpleCountTableColumn.START);
         final int end = dataLine.getInt(SimpleCountTableColumn.END);
@@ -59,7 +59,7 @@ public final class SimpleCountCollection extends AbstractSampleLocatableCollecti
         return new SimpleCount(interval, count);
     };
 
-    private static final BiConsumer<SimpleCount, DataLine> SIMPLE_COUNT_RECORD_TO_DATA_LINE_ENCODER = (simpleCount, dataLine) ->
+    public static final BiConsumer<SimpleCount, DataLine> SIMPLE_COUNT_RECORD_TO_DATA_LINE_ENCODER = (simpleCount, dataLine) ->
             dataLine.append(simpleCount.getInterval().getContig())
                     .append(simpleCount.getInterval().getStart())
                     .append(simpleCount.getInterval().getEnd())
