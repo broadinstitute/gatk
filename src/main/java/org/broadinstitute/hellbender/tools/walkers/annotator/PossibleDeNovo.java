@@ -41,6 +41,7 @@ import java.util.*;
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Existence of a de novo mutation in at least one of the given families (hiConfDeNovo, loConfDeNovo)")
 public final class PossibleDeNovo extends PedigreeAnnotation {
+    protected final OneShotLogger warning = new OneShotLogger(this.getClass());
     private final MendelianViolation mendelianViolation;
     private Set<Trio> trios;
 
@@ -65,7 +66,20 @@ public final class PossibleDeNovo extends PedigreeAnnotation {
         this((Set<String>) null);
     }
 
-    protected final OneShotLogger warning = new OneShotLogger(this.getClass());
+    @Override
+    void validateArguments(Collection<String> founderIds, File pedigreeFile) {
+        if (pedigreeFile == null) {
+            if ((founderIds != null && !founderIds.isEmpty())) {
+                warning.warn("PossibleDenovo annotation will not be calculated, must provide a valid PED file (-ped). Founder-id arguments cannot be used for this annotation");
+            } else {
+                warning.warn("PossibleDenovo Annotation will not be calculated, must provide a valid PED file (-ped) from the command line.");
+            }
+        } else {
+            if ((founderIds != null && !founderIds.isEmpty())) {
+                warning.warn("PossibleDenovo annotation does not take founder-id arguments, trio information will be extracted only from the provided PED file");
+            }
+        }
+    }
 
     // Static thresholds for the denovo calculation
     public final static double DEFAULT_MIN_GENOTYPE_QUALITY_P = 0; // TODO should this be exposed as a command line argument?
@@ -95,7 +109,6 @@ public final class PossibleDeNovo extends PedigreeAnnotation {
         Utils.nonNull(vc);
         Set<Trio> trioSet = initializeAndGetTrios();
         if (trioSet.isEmpty()){
-            warning.warn("PossibleDenovo Annotation will not be calculated, must provide a valid PED file (-ped) from the command line.");
             return Collections.emptyMap();
         }
         final List<String> highConfDeNovoChildren = new ArrayList<>();

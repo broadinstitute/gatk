@@ -16,6 +16,7 @@ import org.broadinstitute.hellbender.utils.GenotypeUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
+import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.samples.PedigreeValidationType;
 import org.broadinstitute.hellbender.utils.samples.SampleDBBuilder;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -44,6 +45,8 @@ import java.util.*;
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Phred-scaled p-value for exact test of excess heterozygosity (ExcessHet)")
 public final class ExcessHet extends PedigreeAnnotation implements StandardAnnotation {
+    protected final OneShotLogger warning = new OneShotLogger(this.getClass());
+
     private static final double MIN_NEEDED_VALUE = 1.0E-16;
     private static final boolean ROUND_GENOTYPE_COUNTS = true;
     
@@ -55,6 +58,13 @@ public final class ExcessHet extends PedigreeAnnotation implements StandardAnnot
 
     public ExcessHet(final File pedigreeFile){
         super(pedigreeFile);
+    }
+
+    @Override
+    void validateArguments(Collection<String> founderIds, File pedigreeFile) {
+        if ((founderIds == null || founderIds.isEmpty()) && pedigreeFile == null) {
+            warning.warn("ExcessHet annotation will not be calculated, no 'founder-id' or 'pedigree' arguments provided");
+        }
     }
 
     public ExcessHet() {

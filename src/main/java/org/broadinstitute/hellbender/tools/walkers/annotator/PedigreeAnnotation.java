@@ -83,4 +83,15 @@ public abstract class PedigreeAnnotation extends InfoFieldAnnotation {
         this.founderIds = founderIds;
         hasAddedPedigreeFounders = false;
     }
+
+    /**
+     * Provide input arguments so as to warn the user if they are providing an incorrect subset of pedigree inputs.
+     *
+     * This is expected to be called immediately after calling setPedigreeFile() and setFounderIDs() during argument
+     * propagation in the {@link org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationPluginDescriptor}.
+     */
+    public void validateArguments() {
+        validateArguments(founderIds, pedigreeFile);
+    }
+    abstract void validateArguments(final Collection<String> founderIds, final File pedigreeFile);
 }

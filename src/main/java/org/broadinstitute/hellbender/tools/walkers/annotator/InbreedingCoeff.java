@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.utils.GenotypeUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
+import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.samples.PedigreeValidationType;
 import org.broadinstitute.hellbender.utils.samples.SampleDBBuilder;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -48,6 +49,7 @@ import java.util.*;
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Likelihood-based test for the consanguinity among samples (InbreedingCoeff)")
 public final class InbreedingCoeff extends PedigreeAnnotation implements StandardAnnotation {
+    protected final OneShotLogger warning = new OneShotLogger(this.getClass());
 
     private static final Logger logger = LogManager.getLogger(InbreedingCoeff.class);
     private static final int MIN_SAMPLES = 10;
@@ -63,6 +65,13 @@ public final class InbreedingCoeff extends PedigreeAnnotation implements Standar
 
     public InbreedingCoeff(final File pedigreeFile){
         super(pedigreeFile);
+    }
+
+    @Override
+    void validateArguments(Collection<String> founderIds, File pedigreeFile) {
+        if ((founderIds == null || founderIds.isEmpty()) && pedigreeFile == null) {
+            warning.warn("InbreedingCoeff annotation will not be calculated, no 'founder-id' or 'pedigree' arguments provided");
+        }
     }
 
     @Override
