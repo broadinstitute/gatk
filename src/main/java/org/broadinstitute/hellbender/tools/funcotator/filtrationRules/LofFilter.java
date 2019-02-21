@@ -15,7 +15,7 @@ import java.util.stream.Stream;
  * <ul>
  *     <li>Are classified as FRAME_SHIFT_*, NONSENSE, START_CODON_DEL, or SPLICE_SITE</li>
  *     <li>Occur on a gene where loss of function is a disease mechanism</li>
- *     <li>Have a max MAF of 1% across sub-populations of gnomAD</li>
+ *     <li>Have a max MAF of 1% across sub-populations of ExAC or gnomAD</li>
  * </ul>
  */
 public class LofFilter extends FuncotationFilter {
@@ -43,7 +43,7 @@ public class LofFilter extends FuncotationFilter {
     ).map(GencodeFuncotation.VariantClassification::toString).collect(Collectors.toSet());
 
     /**
-     * Maximum MAF a variant can have in ExAC to pass this rule.
+     * Maximum MAF a variant can have in ExAC or gnomAD to pass this rule.
      */
     private static final double LOF_MAX_MAF = 0.01;
 

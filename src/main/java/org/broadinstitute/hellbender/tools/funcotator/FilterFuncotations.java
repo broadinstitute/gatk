@@ -42,8 +42,12 @@ import java.util.stream.Stream;
  * It's currently hard-coded to look for specific {@link Funcotation}s from:
  * <ul>
  *     <li><a href="http://www.clinvar.com/">ClinVar</a></li>
- *     <li><a href="http://gnomad.broadinstitute.org/">Genome Aggregation Database (gnomAD)</a></li>
  *     <li><a href="http://personalizedmedicine.partners.org/laboratory-for-molecular-medicine/">Laboratory for Molecular Medicine (LMM)</a></li>
+ * </ul>
+ * It also looks for Funcotations from whichever of the following data sets is specified by the user:
+ * <ul>
+ *     <li><a href="http://exac.broadinstitute.org/">Exome Aggregation Consortium (ExAC)</a></li>
+ *     <li><a href="http://gnomad.broadinstitute.org/">Genome Aggregation Database (gnomAD)</a></li>
  * </ul>
  */
 @CommandLineProgramProperties(
@@ -60,8 +64,10 @@ public class FilterFuncotations extends VariantWalker {
             "\nThis proof-of-concept tool is an example for how to parse and use the VCF output of Funcotator." +
             "\nCurrently hard-coded to look for specific Funcotations from:" +
             "\n  * ClinVar (http://www.clinvar.com/)" +
-            "\n  * Genome Aggregation Database (gnomAD) (http://gnomad.broadinstitute.org/)" +
-            "\n  * Laboratory for Molecular Medicine (LMM) (http://personalizedmedicine.partners.org/laboratory-for-molecular-medicine/)";
+            "\n  * Laboratory for Molecular Medicine (LMM) (http://personalizedmedicine.partners.org/laboratory-for-molecular-medicine/)" +
+            "\nAlso looks for Funcotations from whichever of the following is specified by the user:" +
+            "\n  * Exome Aggregation Consortium (ExAC) (http://exac.broadinstitute.org/)" +
+            "\n  * Genome Aggregation Database (gnomAD) (http://gnomad.broadinstitute.org/)";
 
     /**
      * The version of the Human Genome reference which was used when Funcotating the input VCF.
