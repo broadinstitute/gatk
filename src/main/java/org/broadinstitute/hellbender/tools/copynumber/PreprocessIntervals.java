@@ -60,6 +60,20 @@ import java.util.stream.StreamSupport;
  *         different length than the others in that interval.  If zero is specified, then no binning will be performed;
  *         this is generally appropriate for targeted analyses.
  *     </li>
+ *     <li>
+ *         Minimum bin length (in bp).
+ *         With {@code min-bin-length} you can specify the minimum size for any given bin in case that these need to be
+ *         truncated to accommodate the size of the enclosing interval or contig. Bin shorter than that will be excluded
+ *         from the output.
+ *         By default this argument is set to 1, so that any non-empty bin will be emitted.
+ *     </li>
+ *     <li>
+ *         Gridded output bins.
+ *         Using the {@code grid} flag you can request that the bins start at specific position with in the interval regardless
+ *         of the start of the interval itself. These "grid points" position would be {@code n * bin-length + 1} where {@code n}
+ *         is any integer equal or greater than 0. As a consequence the first and last bin would be truncated or
+ *         skipped (see {@code min-bin-length}). By default bins are not gridded.
+ *     </li>
  * </ul>
  *
  * <h3>Output</h3>
