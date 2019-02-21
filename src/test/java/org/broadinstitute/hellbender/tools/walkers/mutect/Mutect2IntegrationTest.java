@@ -724,7 +724,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         final Map<String, VariantContext> variantMap2 = result_noThreshold.getRight().stream().collect(Collectors.toMap(vc -> keyForVariant(vc), Function.identity()));
 
-        //TLODs for variants should change too much for variant allele, should change significantly for non-ref
+        //TLODs for variants should not change too much for variant allele, should change significantly for non-ref
         // however, there are edge cases where this need not be true (this might indicate the need to fix our
         // LOD calculation for the NON-REF allele), so we allow one anomalous site
         final long changedRegularAlleleLodCount = expectedKeys.stream()
