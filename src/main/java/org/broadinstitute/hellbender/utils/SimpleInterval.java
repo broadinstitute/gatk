@@ -340,12 +340,4 @@ public final class SimpleInterval implements Locatable, Serializable {
 
          return expandWithinContig(padding, contigRecord.getSequenceLength());
      }
-
-     public static SimpleInterval valueOf(final Interval interval) {
-         if (interval == null) {
-             throw new IllegalArgumentException();
-         } else {
-             return new SimpleInterval(interval.getContig(), interval.getStart(), interval.getEnd());
-         }
-     }
  }

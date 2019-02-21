@@ -246,7 +246,7 @@ public final class PreprocessIntervals extends GATKTool {
 
     private static Stream<Interval> filterBinsContainingOnlyNs(final Stream<Interval> unfilteredBins, final ReferenceDataSource reference) {
         return unfilteredBins.filter(interval -> {
-            final byte[] bases = reference.queryAndPrefetch(interval).getBases();
+            final byte[] bases = reference.queryAndPrefetch(interval.getContig(), interval.getStart(), interval.getEnd()).getBases();
             for (byte b : bases) {
                 if (Nucleotide.decode(b) != Nucleotide.N) {
                     return true;
