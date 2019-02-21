@@ -209,7 +209,7 @@ public final class PreprocessIntervalsIntegrationTest extends CommandLineProgram
     @DataProvider
     public Object[][] gridTestData() {
         final List<Object[]> result = new ArrayList<>();
-        result.add(new Object[] { (int) 23, (int) 1,
+        result.add(new Object[] { 23, 1,
                 new String[] {"20:230000-230100"}, new String[] {},
                 new String[] {"20:230000-230000",
                               "20:230001-230023",
@@ -217,7 +217,7 @@ public final class PreprocessIntervalsIntegrationTest extends CommandLineProgram
                               "20:230047-230069",
                               "20:230070-230092",
                               "20:230093-230100"}});
-        result.add(new Object[] { (int) 23, (int) 1,
+        result.add(new Object[] { 23, 1,
                 new String[] {"20:230000-230100", "20:460005-460105"}, new String[] {},
                 new String[] {"20:230000-230000",
                         "20:230001-230023",
@@ -230,19 +230,19 @@ public final class PreprocessIntervalsIntegrationTest extends CommandLineProgram
                         "20:460047-460069",
                         "20:460070-460092",
                         "20:460093-460105"}});
-        result.add(new Object[] { (int) 23, (int) 23,
+        result.add(new Object[] { 23, 23,
                 new String[] {"20:229985-230105"}, new String[] {},
                 new String[] {"20:230001-230023",
                         "20:230024-230046",
                         "20:230047-230069",
                         "20:230070-230092"}});
-        result.add(new Object[] { (int) 23, (int) 9,
+        result.add(new Object[] { 23, 9,
                 new String[] {"20:230020-230100"}, new String[] {},
                 new String[] {
                         "20:230024-230046",
                         "20:230047-230069",
                         "20:230070-230092"}});
-        result.add(new Object[] { (int) 23, (int) 9,
+        result.add(new Object[] { 23, 9,
                 new String[] {"20:230020-230100"}, new String[] {"20:230040-230063"},
                 new String[] {
                         "20:230024-230039",
