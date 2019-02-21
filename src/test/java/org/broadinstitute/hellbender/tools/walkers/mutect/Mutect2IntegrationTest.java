@@ -676,7 +676,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "-ERC", "GVCF",
                 "-LODB", "-2.0",
                 "-LODB", "0.0",
-                "-min-AF", "0.01","-bamout","/Users/davidben/Desktop/bamout-0.01.bam");
+                "-min-AF", "0.01");
         runCommandLine(args);
 
         //check ref conf-specific headers are output
@@ -718,7 +718,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "-ERC", "GVCF",
                 "-LODB", "-2.0",
                 "-LODB", "0.0",
-                "-min-AF", "0.00","-bamout", "/Users/davidben/Desktop/bamout-0.00.bam");
+                "-min-AF", "0.00");
         runCommandLine(args3);
         final Pair<VCFHeader, List<VariantContext>> result_noThreshold = VariantContextTestUtils.readEntireVCFIntoMemory(unthresholded.getAbsolutePath());
 
