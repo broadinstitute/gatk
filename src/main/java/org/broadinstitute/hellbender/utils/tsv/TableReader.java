@@ -391,8 +391,9 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
      * @param lineNumber the source line number that contains the comment line.
      */
     protected void processCommentLine(final String commentText, final long lineNumber) {
-        if (commentText.startsWith(TableWriter.METADATA_TAG)) {
-            final String[] keyAndValue = commentText.substring(TableWriter.METADATA_TAG.length()).split("=");
+        final String prefix = TableUtils.COMMENT_PREFIX + TableWriter.METADATA_TAG;
+        if (commentText.startsWith(prefix)) {
+            final String[] keyAndValue = commentText.substring(prefix.length()).split("=");
             metadata.put(keyAndValue[0], keyAndValue[1]);
         }
         // do nothing with non-metadata lines by default
