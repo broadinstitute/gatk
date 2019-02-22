@@ -12,6 +12,8 @@ This page explains what **Funcotator** is and how to run it.
         2. [1.1.2 Pre-Packaged Data Sources](#1.1.2)
             1. [1.1.2.1 Downloading Pre-Packaged Data Sources](#1.1.2.1)
             2. [1.1.2.2 gnomAD](#1.1.2.2)
+                1. [1.1.2.2.1 Enabling gnomAD](#1.1.2.2.1)
+                2. [1.1.2.2.2 Included gnomAD Fields](#1.1.2.2.2)
         3. [1.1.3 Data Source Downloader Tool](#1.1.3)
         4. [1.1.4 Disabling Data Sourcesl](#1.1.4)
         5. [1.1.5 User-Defined Data Sources](#1.1.5)
@@ -112,10 +114,16 @@ Versioned gzip archives of data source files are provided here:
 
 <a name="1.1.2.2"></a>
 ### 1.1.2.2 - gnomAD
-The pre-packaged data sources include gnomAD, a large database of known variants.  gnomAD is split into two parts - one based on exome data, one based on whole genome data.
+The pre-packaged data sources include a subset gnomAD, a large database of known variants.  This subset contains a set of INFO fields, primarily containing allele frequency data.  gnomAD is split into two parts - one based on exome data, one based on whole genome data.  These two data sources are not equivalent and for complete coverage using gnomAD, we recommend annotating with both.
 Due to the size of gnomAD, it cannot be included in the data sources package directly.  Instead, the configuration data are present and point to a Google bucket in which
 the gnomAD data reside.  This will cause [Funcotator](https://software.broadinstitute.org/gatk/documentation/tooldocs/current/org_broadinstitute_hellbender_tools_funcotator_Funcotator.php "Funcotator") to actively connect to that bucket when it is run.  
 For this reason, **gnomAD is disabled by default**.
+
+Because [Funcotator](https://software.broadinstitute.org/gatk/documentation/tooldocs/current/org_broadinstitute_hellbender_tools_funcotator_Funcotator.php "Funcotator") will query the Internet **when gnomAD is enabled, performance will be impacted** by the machine's Internet connection speed.
+If this degradation is significant, you can localize gnomAD to the machine running [Funcotator](https://software.broadinstitute.org/gatk/documentation/tooldocs/current/org_broadinstitute_hellbender_tools_funcotator_Funcotator.php "Funcotator") to improve performance (however due to the size of gnomAD this may be impractical).
+
+<a name="1.1.2.2.1"></a>
+### 1.1.2.2.1 - Enabling gnomAD
 To enable gnomAD, simply change directories to your data sources directory and untar the gnomAD tar.gz files:
 ```
 cd DATA_SOURCES_DIR
@@ -123,8 +131,56 @@ tar -zxf gnomAD_exome.tar.gz
 tar -zxf gnomAD_genome.tar.gz
 ```
 
-Because [Funcotator](https://software.broadinstitute.org/gatk/documentation/tooldocs/current/org_broadinstitute_hellbender_tools_funcotator_Funcotator.php "Funcotator") will query the Internet when gnomAD is enabled, performance will be impacted by the machine's Internet connection speed.
-If this degradation is significant, you can localize gnomAD to the machine running [Funcotator](https://software.broadinstitute.org/gatk/documentation/tooldocs/current/org_broadinstitute_hellbender_tools_funcotator_Funcotator.php "Funcotator") to improve performance (however due to the size of gnomAD this may be impractical).
+<a name="1.1.2.2.2"></a>
+### 1.1.2.2.2 - Included gnomAD Fields
+The fields included in the pre-packaged gnomAD subset are the following:
+<table>
+<tr><th>Field Name</th><th>Field Description</th></tr>
+<tr><td>AF</td><td>Allele Frequency, for each ALT allele, in the same order as listed</td></tr>
+<tr><td>AF_afr</td><td>Alternate allele frequency in samples of African-American ancestry</td></tr>
+<tr><td>AF_afr_female</td><td>Alternate allele frequency in female samples of African-American ancestry</td></tr>
+<tr><td>AF_afr_male</td><td>Alternate allele frequency in male samples of African-American ancestry</td></tr>
+<tr><td>AF_amr</td><td>Alternate allele frequency in samples of Latino ancestry</td></tr>
+<tr><td>AF_amr_female</td><td>Alternate allele frequency in female samples of Latino ancestry</td></tr>
+<tr><td>AF_amr_male</td><td>Alternate allele frequency in male samples of Latino ancestry</td></tr>
+<tr><td>AF_asj</td><td>Alternate allele frequency in samples of Ashkenazi Jewish ancestry</td></tr>
+<tr><td>AF_asj_female</td><td>Alternate allele frequency in female samples of Ashkenazi Jewish ancestry</td></tr>
+<tr><td>AF_asj_male</td><td>Alternate allele frequency in male samples of Ashkenazi Jewish ancestry</td></tr>
+<tr><td>AF_eas</td><td>Alternate allele frequency in samples of East Asian ancestry</td></tr>
+<tr><td>AF_eas_female</td><td>Alternate allele frequency in female samples of East Asian ancestry</td></tr>
+<tr><td>AF_eas_jpn</td><td>Alternate allele frequency in samples of Japanese ancestry</td></tr>
+<tr><td>AF_eas_kor</td><td>Alternate allele frequency in samples of Korean ancestry</td></tr>
+<tr><td>AF_eas_male</td><td>Alternate allele frequency in male samples of East Asian ancestry</td></tr>
+<tr><td>AF_eas_oea</td><td>Alternate allele frequency in samples of non-Korean, non-Japanese East Asian ancestry</td></tr>
+<tr><td>AF_female</td><td>Alternate allele frequency in female samples</td></tr>
+<tr><td>AF_fin</td><td>Alternate allele frequency in samples of Finnish ancestry</td></tr>
+<tr><td>AF_fin_female</td><td>Alternate allele frequency in female samples of Finnish ancestry</td></tr>
+<tr><td>AF_fin_male</td><td>Alternate allele frequency in male samples of Finnish ancestry</td></tr>
+<tr><td>AF_male</td><td>Alternate allele frequency in male samples</td></tr>
+<tr><td>AF_nfe</td><td>Alternate allele frequency in samples of non-Finnish European ancestry</td></tr>
+<tr><td>AF_nfe_bgr</td><td>Alternate allele frequency in samples of Bulgarian ancestry</td></tr>
+<tr><td>AF_nfe_est</td><td>Alternate allele frequency in samples of Estonian ancestry</td></tr>
+<tr><td>AF_nfe_female</td><td>Alternate allele frequency in female samples of non-Finnish European ancestry</td></tr>
+<tr><td>AF_nfe_male</td><td>Alternate allele frequency in male samples of non-Finnish European ancestry</td></tr>
+<tr><td>AF_nfe_nwe</td><td>Alternate allele frequency in samples of North-Western European ancestry</td></tr>
+<tr><td>AF_nfe_onf</td><td>Alternate allele frequency in samples of non-Finnish but otherwise indeterminate European ancestry</td></tr>
+<tr><td>AF_nfe_seu</td><td>Alternate allele frequency in samples of Southern European ancestry</td></tr>
+<tr><td>AF_nfe_swe</td><td>Alternate allele frequency in samples of Swedish ancestry</td></tr>
+<tr><td>AF_oth</td><td>Alternate allele frequency in samples of uncertain ancestry</td></tr>
+<tr><td>AF_oth_female</td><td>Alternate allele frequency in female samples of uncertain ancestry</td></tr>
+<tr><td>AF_oth_male</td><td>Alternate allele frequency in male samples of uncertain ancestry</td></tr>
+<tr><td>AF_popmax</td><td>Maximum allele frequency across populations (excluding samples of Ashkenazi, Finnish, and indeterminate ancestry)</td></tr>
+<tr><td>AF_raw</td><td>Alternate allele frequency in samples, before removing low-confidence genotypes</td></tr>
+<tr><td>AF_sas</td><td>Alternate allele frequency in samples of South Asian ancestry</td></tr>
+<tr><td>AF_sas_female</td><td>Alternate allele frequency in female samples of South Asian ancestry</td></tr>
+<tr><td>AF_sas_male</td><td>Alternate allele frequency in male samples of South Asian ancestry</td></tr>
+<tr><td>OriginalAlleles*</td><td>A list of the original alleles (including REF) of the variant prior to liftover.  If the alleles were not changed during liftover, this attribute will be omitted.</td></tr>
+<tr><td>OriginalContig*</td><td>The name of the source contig/chromosome prior to liftover.</td></tr>
+<tr><td>OriginalStart*</td><td>The position of the variant on the source contig prior to liftover.</td></tr>
+<tr><td>ReverseComplementedAlleles*</td><td>The REF and the ALT alleles have been reverse complemented in liftover since the mapping from the previous reference to the current one was on the negative strand.</td></tr>
+<tr><td>SwappedAlleles*</td><td>The REF and the ALT alleles have been swapped in liftover due to changes in the reference. It is possible that not all INFO annotations reflect this swap, and in the genotypes, only the GT, PL, and AD fields have been modified. You should check the TAGS_TO_REVERSE parameter that was used during the LiftOver to be sure.</td></tr>
+</table>
+\* - only available in *hg38*
 
 <a name="1.1.3"></a>
 ### 1.1.3 - Data Source Downloader Tool
@@ -406,7 +462,9 @@ This effect has not yet been quantified, but in most cases should not be appreci
 
 <a name="1.5"></a>
 #### 1.5 - Comparisons with Oncotator
-Oncotator is an older functional annotation tool developed by The Broad Institute.  Funcotator and Oncotator are fundamentally different tools with some similarities.  Some comparison highlights between Oncotator and Funcotator are in the following two tables:
+Oncotator is an older functional annotation tool developed by The Broad Institute.  Funcotator and Oncotator are fundamentally different tools with some similarities.  
+
+While I maintain that a direct comparison should not be made, to address some inevitable questions some comparison highlights between Oncotator and Funcotator are in the following two tables:
 
 <a name="1.5.1"></a>
 #### 1.5.1 - Funcotator / Oncotator Feature Comparison
@@ -428,7 +486,7 @@ Oncotator is an older functional annotation tool developed by The Broad Institut
 <tr><td>Default config speed germline (muts/min) (hg19)</td><td></td><td bgcolor="#FF0000">A very long time....</td><td></td></tr>
 <tr><td>Default config speed somatic (muts/min) (hg38)</td><td></td><td bgcolor="#FF0000">N/A</td><td></td></tr>
 <tr><td>Default config speed germline (muts/min) (hg38)</td><td></td><td bgcolor="#FF0000">N/A</td><td></td></tr>
-<tr><td>Documentation</td><td bgcolor="#00FF00">Tutorial; Specifications forum post; inclusion in workshop materials</td><td>Minimal support in forum</td><td></td></tr>
+<tr><td>Documentation</td><td bgcolor="#00FF00">Tutorial; Specifications forum post; inclusion in workshop materials</td><td bgcolor="#FFFF00">Minimal support in forum</td><td></td></tr>
 <tr><td>Manuscript</td><td bgcolor="#FFFF00">Planned</td><td bgcolor="#00FF00">Yes</td><td></td></tr>
 <tr><td>HGVS support</td><td bgcolor="#FF0000">No</td><td bgcolor="#00FF00">Yes</td><td></td></tr>
 <tr><td>BigWig datasource support</td><td bgcolor="#FF0000">No</td><td bgcolor="#FFFF00">Linux only</td><td></td></tr>
@@ -462,8 +520,8 @@ Oncotator is an older functional annotation tool developed by The Broad Institut
 <a name="1.5.2"></a>
 #### 1.5.2 - Oncotator Bugs Compared With Funcotator
 <table>
-<tr><th></th><th>Fixed in Funcotator</th><th>Fixed in Oncotator</th><th>Notes</th></tr>
-<tr><td>Collapsing ONP counts into one number</td><td>N/A</td><td bgcolor="#FF0000">No</td><td></td></tr>
+<tr><th></th><th style=>Fixed in Funcotator</th><th>Fixed in Oncotator</th><th>Notes</th></tr>
+<tr><td>Collapsing ONP counts into one number</td><td bgcolor="#AAAAAA">N/A</td><td bgcolor="#FF0000">No</td><td></td></tr>
 <tr><td>Variants resulting in protein changes that do not overlap the variant codon itself are not rendered properly</td><td bgcolor="#00FF00">Yes</td><td bgcolor="#FF0000">No</td><td></td></tr>
 <tr><td>Appris ranking not properly sorted</td><td bgcolor="#00FF00">Yes</td><td bgcolor="#FF0000">No</td><td></td></tr>
 <tr><td>Using protein-coding status of gene for sorting (instead of transcript)</td><td bgcolor="#00FF00">Yes</td><td bgcolor="#FF0000">No</td><td></td></tr>
