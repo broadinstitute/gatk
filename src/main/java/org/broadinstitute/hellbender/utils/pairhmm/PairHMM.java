@@ -146,10 +146,9 @@ public abstract class PairHMM implements Closeable{
      *
      * @param haplotypeMaxLength the max length of haplotypes we want to use with this PairHMM
      * @param readMaxLength the max length of reads we want to use with this PairHMM
-     * @throws IllegalArgumentException if readMaxLength or haplotypeMaxLength is less than or equal to zero
+     * @throws IllegalArgumentException if haplotypeMaxLength is less than or equal to zero
      */
     public void initialize( final int readMaxLength, final int haplotypeMaxLength ) throws IllegalArgumentException {
-        Utils.validateArg(readMaxLength > 0, () -> "readMaxLength must be > 0 but got " + readMaxLength);
         Utils.validateArg(haplotypeMaxLength > 0, () -> "haplotypeMaxLength must be > 0 but got " + haplotypeMaxLength);
 
         maxHaplotypeLength = haplotypeMaxLength;
