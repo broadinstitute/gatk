@@ -5,11 +5,12 @@ FROM ubuntu:16.04
 #### Basic image utilities
 RUN apt-get update && \
     apt-get upgrade -y && \
-    apt-get install -y python && \
+#    apt-get install -y python && \
     apt-get install -y wget \
     curl \
     bc \
     unzip \
+    bzip2 \
     less \
     bedtools \
     samtools \
@@ -43,17 +44,17 @@ ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64/
 
 RUN java -version
 
-RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E084DAB9 && \
-    add-apt-repository "deb http://cran.rstudio.com/bin/linux/ubuntu xenial/" && \
-    apt-get update && \
-    apt-get install -y --force-yes \
-        r-base-dev=3.2.5-1xenial \
-        r-base-core=3.2.5-1xenial && \
-    apt-get -y clean && \
-    apt-get -y autoremove && \
-    apt-get  -y autoclean
-
-COPY install_R_packages.R install_R_packages.R
-RUN Rscript install_R_packages.R
+#RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E084DAB9 && \
+#    add-apt-repository "deb http://cran.rstudio.com/bin/linux/ubuntu xenial/" && \
+#    apt-get update && \
+#    apt-get install -y --force-yes \
+#        r-base-dev=3.2.5-1xenial \
+#        r-base-core=3.2.5-1xenial && \
+#    apt-get -y clean && \
+#    apt-get -y autoremove && \
+#    apt-get  -y autoclean
+#
+#COPY install_R_packages.R install_R_packages.R
+#RUN Rscript install_R_packages.R
 # Deleting unneeded caches
 RUN rm -rf /var/lib/apt/lists/*

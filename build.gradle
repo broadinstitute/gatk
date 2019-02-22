@@ -456,7 +456,7 @@ task shadowTestJar(type: ShadowJar){
 }
 
 task collectBundleIntoDir(type: Copy) {
-    dependsOn shadowJar, sparkJar, 'condaEnvironmentDefinition', 'gatkTabComplete', 'gatkDoc'
+    dependsOn shadowJar, sparkJar, 'pythonPackageArchive', 'gatkTabComplete', 'gatkDoc'
 
     doFirst {
         assert file("gatk").exists()
@@ -477,7 +477,6 @@ task collectBundleIntoDir(type: Copy) {
     }
 
     from("$buildDir/$pythonPackageArchiveName")
-    from("$buildDir/$gatkCondaYML")
     from("scripts/sv", { into("scripts/sv") })
     from("scripts/cnv_wdl/", { into("scripts/cnv_wdl") })
     from("scripts/mutect2_wdl/", { into("scripts/mutect2_wdl") })
@@ -485,8 +484,15 @@ task collectBundleIntoDir(type: Copy) {
     into "$buildDir/bundle-files-collected"
 }
 
+task collectCondaBundleFilesIntoDir(type: Copy) {
+    dependsOn 'condaEnvironmentDefinition'
+
+    from("$buildDir/$gatkCondaYML")
+    into "$buildDir/bundle-files-collected"
+}
+
 task bundle(type: Zip) {
-    dependsOn collectBundleIntoDir
+    dependsOn collectBundleIntoDir, collectCondaBundleFilesIntoDir
 
     baseName = project.name + "-" + project.version
     destinationDir file("$buildDir")

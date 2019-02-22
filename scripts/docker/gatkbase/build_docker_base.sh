@@ -3,12 +3,18 @@
 # Have script stop if there is an error
 set -e
 
+# Gatk Base features
+BASE_REPO=jamesemery
+BASE_PROJECT=gatknightly
+BASE_VERSION=2.0.3
 
-REPO=broadinstitute
-PROJECT=gatk
-VERSION=2.0.3
-FULL_PATH=${REPO}/${PROJECT}:gatkbase-${VERSION}
+# Gatk Python and R image features
+INTERMEDIATE_REPO=jamesemery
+INTERMEDIATE_PROJECT=gatknightly
+INTERMEDIATE_VERSION=0.0.1
 
+BASE_FULL_PATH=${BASE_REPO}/${BASE_PROJECT}:gatkbase-${BASE_VERSION}
+INTERMEDIATE_FULL_PATH=${INTERMEDIATE_REPO}/${INTERMEDIATE_PROJECT}:gatkbase-${INTERMEDIATE_VERSION}
 #################################################
 # Parsing arguments
 #################################################
@@ -41,12 +47,18 @@ if [ -n "${IS_PUSH}" ]; then
 fi
 
 # Build
-echo "Building image to tag ${FULL_PATH}..."
-docker build --squash -t ${FULL_PATH} .
+echo "Building image to tag ${BASE_FULL_PATH}..."
+docker build -f scripts/docker/gatkbase/Dockerfile --squash -t ${BASE_FULL_PATH} .
+
+
+gradle condaEnvironmentDefinition
+echo "Building image to tag ${INTERMEDIATE_FULL_PATH}..."
+docker build -f scripts/docker/gatkPythonR/Dockerfile -t ${INTERMEDIATE_FULL_PATH} --build-arg ZIPPATH=./unzippedJar --build-arg BASEIMAGE=${BASE_FULL_PATH} .
 
 ## Push
 if [ -n "${IS_PUSH}" ]; then
-	docker push ${FULL_PATH}
+	docker push ${BASE_FULL_PATH}
+	docker push ${INTERMEDIATE_FULL_PATH}
 else
 	echo "Not pushing to dockerhub"
 fi
