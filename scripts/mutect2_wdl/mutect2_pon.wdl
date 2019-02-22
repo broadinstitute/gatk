@@ -6,6 +6,8 @@
 #  normal_bams: arrays of normal bams
 #  scatter_count: number of parallel jobs when scattering over intervals
 #  pon_name: the resulting panel of normals is {pon_name}.vcf
+#  m2_extra_args: additional comman dline parameters for Mutect2.  This should not involve --max-mnp-distance,
+#  which the wdl hard-codes to 0 because GenpmicsDBImport can't handle MNPs
 
 import "mutect2_nio.wdl" as m2
 workflow Mutect2_Panel {
@@ -44,7 +46,7 @@ workflow Mutect2_Panel {
                 tumor_bam = normal_bam.left,
                 tumor_bai = normal_bam.right,
                 scatter_count = scatter_count,
-                m2_extra_args = m2_extra_args,
+                m2_extra_args = select_first([m2_extra_args, ""]) + "--max-mnp-distance 0",
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
                 preemptible_attempts = preemptible_attempts,
