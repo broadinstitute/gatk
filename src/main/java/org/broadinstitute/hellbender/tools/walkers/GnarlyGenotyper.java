@@ -79,6 +79,9 @@ public final class GnarlyGenotyper extends VariantWalker {
 
     public static final int PIPELINE_MAX_ALT_COUNT = 6;
 
+    private double INDEL_QUAL_THRESHOLD;
+    private double SNP_QUAL_THRESHOLD;
+
     private static final int ASSUMED_PLOIDY = GATKVariantContextUtils.DEFAULT_PLOIDY;
 
     private final RMSMappingQuality mqCalculator = RMSMappingQuality.getInstance();
@@ -145,6 +148,10 @@ public final class GnarlyGenotyper extends VariantWalker {
 
         setupVCFWriter(inputVCFHeader, samples);
 
+        //we don't apply the prior to the QUAL approx in ReblockGVCF, so do it here
+        INDEL_QUAL_THRESHOLD = genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING - 10*Math.log10(genotypeArgs.indelHeterozygosity);
+        SNP_QUAL_THRESHOLD = genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING - 10*Math.log10(genotypeArgs.snpHeterozygosity);
+
         if (!SUMMARIZE_PLs) {
             GenotypeLikelihoodCalculators GLCprovider = new GenotypeLikelihoodCalculators();
 
@@ -163,6 +170,10 @@ public final class GnarlyGenotyper extends VariantWalker {
 
         // Remove GCVFBlocks
         headerLines.removeIf(vcfHeaderLine -> vcfHeaderLine.getKey().startsWith(GVCFWriter.GVCF_BLOCK));
+
+        //add header for new filter
+        headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.MONOMORPHIC_FILTER_NAME));
+        headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.LOW_QUAL_FILTER_NAME));
 
         // add headers for annotations added by this tool
         headerLines.add(VCFStandardHeaderLines.getInfoLine(VCFConstants.ALLELE_COUNT_KEY));
@@ -200,8 +211,14 @@ public final class GnarlyGenotyper extends VariantWalker {
 
     @Override
     public void apply(VariantContext variant, ReadsContext reads, ReferenceContext ref, FeatureContext features) {
+        //GenomicsDB merged all the annotations, but we still need to finalize MQ and QD annotations
+        //builder gets the finalized annotations and dbBuilder gets the raw annotations for the database
+        VariantContextBuilder builder = new VariantContextBuilder(mqCalculator.finalizeRawMQ(variant));
+
         //return early if there's no non-symbolic ALT since GDB already did the merging
         if ( !variant.isVariant() || !GenotypeGVCFs.isProperlyPolymorphic(variant) || variant.getAttributeAsInt(VCFConstants.DEPTH_KEY,0) == 0) {
+            builder.filter(GATKVCFConstants.MONOMORPHIC_FILTER_NAME);
+            vcfWriter.add(builder.make());
             return;
         }
 
@@ -210,14 +227,14 @@ public final class GnarlyGenotyper extends VariantWalker {
             warning.warn("Variant will not be output because it is missing the " + GATKVCFConstants.RAW_QUAL_APPROX_KEY + "key assigned by the ReblockGVCFs tool -- if the input did come from ReblockGVCFs, check the GenomicsDB vidmap.json annotation info");
         }
         final double QUALapprox = variant.getAttributeAsDouble(GATKVCFConstants.RAW_QUAL_APPROX_KEY, 0.0);
-        if(QUALapprox < genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING - 10*Math.log10(genotypeArgs.snpHeterozygosity)) { //we don't apply the prior to the QUAL approx in ReblockGVCF, so do it here
+        final boolean isIndel = variant.getReference().length() > 1 || variant.getAlternateAlleles().stream().anyMatch(allele -> allele.length() > 1);
+        if((isIndel && QUALapprox < INDEL_QUAL_THRESHOLD) || (!isIndel && QUALapprox < SNP_QUAL_THRESHOLD)) {
+            builder.filter(GATKVCFConstants.LOW_QUAL_FILTER_NAME);
+            vcfWriter.add(builder.make());
             return;
         }
 
-        //GenomicsDB merged all the annotations, but we still need to finalize MQ and QD annotations
-        //builder gets the finalized annotations and builder2 gets the raw annotations for the database
-        VariantContextBuilder builder = new VariantContextBuilder(mqCalculator.finalizeRawMQ(variant));
-        VariantContextBuilder builder2 = new VariantContextBuilder(variant);
+        VariantContextBuilder dbBuilder = new VariantContextBuilder(variant);
 
         final int variantDP = variant.getAttributeAsInt(GATKVCFConstants.VARIANT_DEPTH_KEY, 0);
         double QD = QUALapprox / (double)variantDP;
@@ -263,31 +280,31 @@ public final class GnarlyGenotyper extends VariantWalker {
             builder.attribute(VCFConstants.ALLELE_FREQUENCY_KEY, targetAlleleFreqs.size() == 1 ? targetAlleleFreqs.get(0) : targetAlleleFreqs);
             builder.attribute(VCFConstants.ALLELE_NUMBER_KEY, numCalledAlleles);
 
-            builder2.attribute(VCFConstants.ALLELE_COUNT_KEY, targetAlleleCounts.size() == 1 ? targetAlleleCounts.get(0) : targetAlleleCounts);
-            builder2.attribute(VCFConstants.ALLELE_FREQUENCY_KEY, targetAlleleFreqs.size() == 1 ? targetAlleleFreqs.get(0) : targetAlleleFreqs);
-            builder2.attribute(VCFConstants.ALLELE_NUMBER_KEY, numCalledAlleles);
+            dbBuilder.attribute(VCFConstants.ALLELE_COUNT_KEY, targetAlleleCounts.size() == 1 ? targetAlleleCounts.get(0) : targetAlleleCounts);
+            dbBuilder.attribute(VCFConstants.ALLELE_FREQUENCY_KEY, targetAlleleFreqs.size() == 1 ? targetAlleleFreqs.get(0) : targetAlleleFreqs);
+            dbBuilder.attribute(VCFConstants.ALLELE_NUMBER_KEY, numCalledAlleles);
         } else {
             if (variant.hasAttribute(GATKVCFConstants.SB_TABLE_KEY)) {
                 SBsum = GATKProtectedVariantContextUtils.getAttributeAsIntArray(variant, GATKVCFConstants.SB_TABLE_KEY, () -> null, 0);
                 builder.attribute(GATKVCFConstants.FISHER_STRAND_KEY, FisherStrand.makeValueObjectForAnnotation(FisherStrand.pValueForContingencyTable(StrandBiasTest.decodeSBBS(SBsum))));
                 builder.attribute(GATKVCFConstants.STRAND_ODDS_RATIO_KEY, StrandOddsRatio.formattedValue(StrandOddsRatio.calculateSOR(StrandBiasTest.decodeSBBS(SBsum))));
-                builder2.attribute(GATKVCFConstants.SB_TABLE_KEY, SBsum);
+                dbBuilder.attribute(GATKVCFConstants.SB_TABLE_KEY, SBsum);
             }
-            builder2.attribute(VCFConstants.ALLELE_COUNT_KEY, variant.getAttribute(VCFConstants.ALLELE_COUNT_KEY));
-            builder2.attribute(VCFConstants.ALLELE_FREQUENCY_KEY, variant.getAttribute(VCFConstants.ALLELE_FREQUENCY_KEY));
-            builder2.attribute(VCFConstants.ALLELE_NUMBER_KEY, variant.getAttribute(VCFConstants.ALLELE_NUMBER_KEY));
+            dbBuilder.attribute(VCFConstants.ALLELE_COUNT_KEY, variant.getAttribute(VCFConstants.ALLELE_COUNT_KEY));
+            dbBuilder.attribute(VCFConstants.ALLELE_FREQUENCY_KEY, variant.getAttribute(VCFConstants.ALLELE_FREQUENCY_KEY));
+            dbBuilder.attribute(VCFConstants.ALLELE_NUMBER_KEY, variant.getAttribute(VCFConstants.ALLELE_NUMBER_KEY));
         }
 
         builder.genotypes(calledGenotypes);
-        builder2.noGenotypes();
+        dbBuilder.noGenotypes();
         builder.alleles(targetAlleles);
-        builder2.alleles(targetAlleles);
+        dbBuilder.alleles(targetAlleles);
 
 
 
         VariantContext result = builder.make();
         if (annotationDBwriter != null) {
-            annotationDBwriter.add(builder2.make());  //we don't seem to have a sites-only option anymore, so do it manually
+            annotationDBwriter.add(dbBuilder.make());  //we don't seem to have a sites-only option anymore, so do it manually
         }
 
         SimpleInterval variantStart = new SimpleInterval(result.getContig(), result.getStart(), result.getStart());
@@ -308,7 +325,7 @@ public final class GnarlyGenotyper extends VariantWalker {
                                                 final Map<Allele,Integer> targetAlleleCounts, final int[] SBsum,
                                                 final boolean nonRefReturned, final boolean summarizePLs) {
         final List<Allele> inputAllelesWithNonRef = vc.getAlleles();
-        if(!inputAllelesWithNonRef.get(inputAllelesWithNonRef.size()-1).equals(Allele.NON_REF_ALLELE)) {
+        if(nonRefReturned && !inputAllelesWithNonRef.get(inputAllelesWithNonRef.size()-1).equals(Allele.NON_REF_ALLELE)) {
             throw new IllegalStateException("This tool assumes that the NON_REF allele is listed last, as in HaplotypeCaller GVCF output,"
             + " but that was not the case at position " + vc.getContig() + ":" + vc.getStart() + ".");
         }
