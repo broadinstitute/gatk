@@ -26,15 +26,18 @@ public final class CalledSVGraphEvent {
     public static String END_COLUMN_STRING = "END";
     public static String TYPE_COLUMN_STRING = "TYPE";
     public static String SIZE_COLUMN_STRING = "SIZE";
+    public static String PROBABILITY_COLUMN_STRING = "P";
     
     private final int groupId;
     private final int pathId;
     private final Type type;
     private final SVInterval interval;
     private final boolean resolved; //False if solution not found
+    private final double probability;
 
     public CalledSVGraphEvent(final Type type, final SVInterval interval,
-                              final int groupId, final int pathId, final boolean resolved) {
+                              final int groupId, final int pathId,
+                              final boolean resolved, final double probability) {
         Utils.nonNull(type, "Type cannot be null");
         Utils.nonNull(interval, "Interval cannot be null");
         this.type = type;
@@ -42,6 +45,7 @@ public final class CalledSVGraphEvent {
         this.groupId = groupId;
         this.pathId = pathId;
         this.resolved = resolved;
+        this.probability = probability;
     }
 
     public boolean isResolved() {
@@ -64,14 +68,19 @@ public final class CalledSVGraphEvent {
         return interval;
     }
 
+    public double getProbability() {
+        return probability;
+    }
+
     public static String bedHeader() {
-        return String.join("\t", Arrays.asList(CONTIG_COLUMN_STRING, START_COLUMN_STRING, END_COLUMN_STRING, TYPE_COLUMN_STRING, SIZE_COLUMN_STRING, CalledSVGraphGenotype.GRAPH_ID_COLUMN, CalledSVGraphGenotype.GENOTYPE_ID_COLUMN));
+        return String.join("\t", Arrays.asList(CONTIG_COLUMN_STRING, START_COLUMN_STRING, END_COLUMN_STRING, TYPE_COLUMN_STRING, PROBABILITY_COLUMN_STRING, SIZE_COLUMN_STRING, CalledSVGraphGenotype.GRAPH_ID_COLUMN, CalledSVGraphGenotype.GENOTYPE_ID_COLUMN));
     }
 
     public String bedString(final SAMSequenceDictionary dictionary) {
         Utils.nonNull(dictionary, "Dictionary cannot be null");
         final SimpleInterval simpleInterval = SVIntervalUtils.convertToSimpleInterval(interval, dictionary);
         return simpleInterval.getContig() + "\t" + simpleInterval.getStart() + "\t" + simpleInterval.getEnd() + "\t" +
-                getType().toString() + "\t" + getInterval().getLength() + "\t" + getGroupId() + "\t" + getPathId();
+                getType().toString() + "\t" + getProbability() + "\t" + getInterval().getLength() + "\t" +
+                getGroupId() + "\t" + getPathId();
     }
 }

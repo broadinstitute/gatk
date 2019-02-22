@@ -98,7 +98,7 @@ public final class SVEvidenceIntegrator {
     /**
      * Gets list of breakpoint edges from structural variant calls and adds them to the provided tree
      */
-    private Collection<CoordinateSVGraphEdge> getStructuralVariantCallEdges(final SVIntervalTree<CoordinateSVGraphEdge> edgeTree) {
+    private Collection<CoordinateSVGraphEdge> getStructuralVariantCallEdges(final SVIntervalTree<CoordinateSVGraphEdge> edgeTree, final int treeOverlapPadding) {
         final Collection<CoordinateSVGraphEdge> edges = new ArrayList<>();
         for (final VariantContext variantContext : structuralVariantCalls) {
             if (variantContext.getStructuralVariantType() == StructuralVariantType.DEL) { //Only using DEL calls
@@ -106,9 +106,11 @@ public final class SVEvidenceIntegrator {
                 final int start = variantContext.getStart();
                 final int end = variantContext.getEnd();
                 final CoordinateSVGraphEdge edge = new CoordinateSVGraphEdge(contig, start, true, contig, end, false, false, new SVGraphEdgeEvidence(variantContext), dictionary);
-                edges.add(edge);
-                edgeTree.put(edge.getIntervalA(), edge);
-                edgeTree.put(edge.getIntervalB(), edge);
+                if (!hasEdgeOverlap(edgeTree, edge, treeOverlapPadding)) {
+                    edges.add(edge);
+                    edgeTree.put(edge.getIntervalA(), edge);
+                    edgeTree.put(edge.getIntervalB(), edge);
+                }
             }
         }
         return edges;
@@ -145,12 +147,25 @@ public final class SVEvidenceIntegrator {
                 final SVInterval leftInterval = link.getPairedStrandedIntervals().getLeft().getInterval();
                 final SVInterval rightInterval = link.getPairedStrandedIntervals().getRight().getInterval();
                 if (leftInterval.getContig() == rightInterval.getContig()) {    //Only intrachromosomal events
+
                     final int leftPosition = leftStrand ? leftInterval.getStart() : leftInterval.getEnd();
                     final int rightPosition = rightStrand ? rightInterval.getStart() : rightInterval.getEnd();
                     final CoordinateSVGraphEdge edge = new CoordinateSVGraphEdge(leftInterval.getContig(), leftPosition, leftStrand, rightInterval.getContig(), rightPosition, rightStrand, false, new SVGraphEdgeEvidence(link), dictionary);
                     if (!hasEdgeOverlap(edgeTree, edge, treeOverlapPadding)) {
+                        edgeTree.put(edge.getIntervalA(), edge);
+                        edgeTree.put(edge.getIntervalB(), edge);
                         edges.add(edge);
                     }
+                    /*
+                    for (int i = leftInterval.getStart(); i <= leftInterval.getEnd(); i += leftInterval.getLength()) {
+                        for (int j = rightInterval.getStart(); j <= rightInterval.getEnd(); j += rightInterval.getLength()) {
+                            final CoordinateSVGraphEdge edge = new CoordinateSVGraphEdge(leftInterval.getContig(), i, leftStrand, rightInterval.getContig(), j, rightStrand, false, new SVGraphEdgeEvidence(link), dictionary);
+                            edgeTree.put(edge.getIntervalA(), edge);
+                            edgeTree.put(edge.getIntervalB(), edge);
+                            edges.add(edge);
+                        }
+                    }
+                    */
                 }
             }
         }
@@ -184,8 +199,8 @@ public final class SVEvidenceIntegrator {
         final Collection<CoordinateSVGraphEdge> edges = new ArrayList<>();
         final SVIntervalTree<CoordinateSVGraphEdge> edgeTree = new SVIntervalTree<>();
 
-        edges.addAll(getStructuralVariantCallEdges(edgeTree));
         edges.addAll(getBreakpointPairEdges(edgeTree, arguments.insertSize));
+        edges.addAll(getStructuralVariantCallEdges(edgeTree, arguments.insertSize));
         edges.addAll(getEvidenceTargetLinkEdges(edgeTree, arguments.insertSize));
 
         final List<CoordinateSVGraphEdge> filteredEdges = filterEdges(edges, arguments.insertSize);

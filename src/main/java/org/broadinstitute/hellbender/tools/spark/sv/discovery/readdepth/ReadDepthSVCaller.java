@@ -11,6 +11,8 @@ import scala.Tuple2;
 import java.util.*;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * Uses an SV graph and copy number posteriors to call SVs
@@ -45,13 +47,17 @@ public final class ReadDepthSVCaller {
                                                                                                            final SVIntervalTree<SVCopyNumberInterval> copyNumberPosteriorsTree,
                                                                                                            final int maxQueueSize, final int ploidy, final int minSize, final double minHaplotypeProb) {
         final SVGraphGenotyper searcher = new SVGraphGenotyper(graph);
-        final Collection<SVGraphGenotype> paths = searcher.enumerate(copyNumberPosteriorsTree, groupId, ploidy, maxPathLengthFactor, maxEdgeVisits, maxQueueSize);
+        final Collection<IndexedSVGraphPath> paths = searcher.enumerate(maxPathLengthFactor, maxEdgeVisits, maxQueueSize);
         if (paths == null) return null;
-        final Collection<Tuple2<CalledSVGraphEvent, Double>> integratedEvents = integrateEdgeEvents(paths, graph);
+        final Collection<SVGraphGenotype> genotypes = enumerateGenotypes(paths, graph, copyNumberPosteriorsTree, groupId);
+        setDepthProbabilities(genotypes);
+        setGenotypeEvidenceProbabilities(genotypes, graph);
+        setProbabilities(genotypes);
+        final Collection<Tuple2<CalledSVGraphEvent, Double>> integratedEvents = integrateEdgeEvents(genotypes, graph);
         final Collection<CalledSVGraphEvent> probabilityFilteredEvents = filterEventsByProbability(integratedEvents, minEventProb);
-        final Collection<CalledSVGraphEvent> mergedEvents = mergeAdjacentEvents(probabilityFilteredEvents);
+        final Collection<CalledSVGraphEvent> mergedEvents = probabilityFilteredEvents; //TODO mergeAdjacentEvents(probabilityFilteredEvents);
         final Collection<CalledSVGraphEvent> sizeFilteredEvents = filterEventsBySize(mergedEvents, minSize);
-        final Collection<CalledSVGraphGenotype> haplotypes = convertToCalledHaplotypes(filterHaplotypesByProbability(paths, minHaplotypeProb), graph);
+        final Collection<CalledSVGraphGenotype> haplotypes = convertToCalledHaplotypes(filterHaplotypesByProbability(genotypes, minHaplotypeProb), graph);
         return new Tuple2<>(haplotypes, sizeFilteredEvents);
     }
 
@@ -60,7 +66,7 @@ public final class ReadDepthSVCaller {
     }
 
     private static Collection<SVGraphGenotype> filterHaplotypesByProbability(final Collection<SVGraphGenotype> haplotypes, final double minProb) {
-        return haplotypes.stream().filter(h -> h.getProbability() >= minProb).collect(Collectors.toList());
+        return haplotypes.stream().filter(h -> h.getDepthProbability() >= minProb).collect(Collectors.toList());
     }
 
     private static Collection<CalledSVGraphEvent> filterEventsByProbability(final Collection<Tuple2<CalledSVGraphEvent, Double>> calledSVGraphEvents, final double minProb) {
@@ -69,6 +75,133 @@ public final class ReadDepthSVCaller {
 
     private static Collection<CalledSVGraphEvent> filterEventsBySize(final Collection<CalledSVGraphEvent> calledSVGraphEvents, final int minSize) {
         return calledSVGraphEvents.stream().filter(sv -> sv.getInterval().getLength() >= minSize).collect(Collectors.toList());
+    }
+
+    private static Collection<SVGraphGenotype> enumerateGenotypes(final Collection<IndexedSVGraphPath> paths,
+                                                                  final SVGraph graph,
+                                                                  final SVIntervalTree<SVCopyNumberInterval> copyNumberPosteriorsTree,
+                                                                  final int groupId) {
+        final int numEdges = graph.getEdges().size();
+        final List<EdgeCopyNumberPosterior> copyNumberPosteriors = getEdgeCopyNumberPosteriors(copyNumberPosteriorsTree, graph);
+        //TODO: assumes diploid
+        int genotypeId = 0;
+        if (paths.size() > 30000) return Collections.emptyList(); //Genotypes wouldn't fit into an array
+        final List<IndexedSVGraphPath> pathsList = new ArrayList<>(paths);
+        final Collection<SVGraphGenotype> genotypes = new ArrayList<>(paths.size() * paths.size());
+        final List<int[]> edgeCopyNumberStates = pathsList.stream().map(path -> getEdgeCopyNumberStates(path, numEdges)).collect(Collectors.toList());
+        for (int i = 0; i < pathsList.size(); i++) {
+            final IndexedSVGraphPath pathA = pathsList.get(i);
+            final int[] statesA = edgeCopyNumberStates.get(i);
+            for (int j = i; j < pathsList.size(); j++) {
+                final IndexedSVGraphPath pathB = pathsList.get(j);
+                final int[] statesB = edgeCopyNumberStates.get(j);
+
+                final Collection<IndexedSVGraphPath> genotypePaths = new ArrayList<>(2);
+                genotypePaths.add(pathA);
+                genotypePaths.add(pathB);
+
+                final int[] genotypeStates = new int[numEdges];
+                for (int k = 0; k < numEdges; k++) {
+                    genotypeStates[k] = statesA[k] + statesB[k];
+                }
+                final double logLikelihood = IntStream.range(0, copyNumberPosteriors.size()).mapToDouble(k -> copyNumberPosteriors.get(k).getLogPosterior(genotypeStates[k])).sum();
+
+                final SVGraphGenotype genotype = new SVGraphGenotype(groupId, genotypeId, genotypePaths);
+                genotype.setDepthLikelihood(logLikelihood);
+                genotypes.add(genotype);
+                genotypeId++;
+            }
+        }
+        return genotypes;
+    }
+
+    private static int[] getEdgeCopyNumberStates(final IndexedSVGraphPath path, final int numEdges) {
+        final int[] states = new int[numEdges];
+        for (final IndexedSVGraphEdge edge : path.getEdges()) {
+            states[edge.getIndex()]++;
+        }
+        return states;
+    }
+
+
+
+    /**
+     * Gets copy number posteriors for all edges
+     */
+    private static List<EdgeCopyNumberPosterior> getEdgeCopyNumberPosteriors(final SVIntervalTree<SVCopyNumberInterval> copyNumberPosteriorsTree,
+                                                                             final SVGraph graph) {
+
+        final List<IndexedSVGraphEdge> edges = graph.getEdges();
+        final List<IndexedSVGraphEdge> referenceEdges = graph.getReferenceEdges();
+        final List<SVCopyNumberInterval> copyNumberIntervals = getSortedOverlappingCopyNumberIntervals(referenceEdges, copyNumberPosteriorsTree);
+        if (copyNumberIntervals.isEmpty()) return Collections.emptyList();
+
+        final SVIntervalTree<SVCopyNumberInterval> copyNumberIntervalTree = SVIntervalUtils.buildCopyNumberIntervalTree(copyNumberIntervals);
+        final List<EdgeCopyNumberPosterior> edgeCopyNumberPosteriors = new ArrayList<>(edges.size());
+
+        final int numCopyNumberStates = copyNumberIntervals.get(0).getCopyNumberLogPosteriorsArray().length;
+        for (final SVCopyNumberInterval copyNumberInterval : copyNumberIntervals) {
+            Utils.validate(copyNumberInterval.getCopyNumberLogPosteriorsArray().length == numCopyNumberStates, "Dimension of copy number interval posteriors is not consistent");
+        }
+
+        for (final IndexedSVGraphEdge edge : edges) {
+            final double[] edgePosterior = computeEdgePosteriors(edge, copyNumberIntervalTree, numCopyNumberStates);
+            edgeCopyNumberPosteriors.add(new EdgeCopyNumberPosterior(edgePosterior));
+        }
+
+        return edgeCopyNumberPosteriors;
+    }
+
+    /**
+     * Calculates (approximate) copy number posterior likelihoods for the given edge
+     */
+    private static final double[] computeEdgePosteriors(final IndexedSVGraphEdge edge, final SVIntervalTree<SVCopyNumberInterval> copyNumberIntervalTree, final int numCopyNumberStates) {
+        final double[] copyNumberPosterior = new double[numCopyNumberStates];
+        if (edge.isReference()) {
+            final SVInterval edgeInterval = edge.getInterval();
+            final List<Tuple2<double[], SVInterval>> posteriorsAndIntervalsList = Utils.stream(copyNumberIntervalTree.overlappers(edgeInterval))
+                    .map(entry -> new Tuple2<>(entry.getValue().getCopyNumberLogPosteriorsArray(), entry.getInterval()))
+                    .collect(Collectors.toList());
+            for (final Tuple2<double[], SVInterval> posteriorAndInterval : posteriorsAndIntervalsList) {
+                final double[] intervalPosterior = posteriorAndInterval._1;
+                final SVInterval interval = posteriorAndInterval._2;
+                //Down-weights partially-overlapping intervals
+                final double weight = interval.overlapLen(edgeInterval) / (double) interval.getLength();
+                for (int i = 0; i < numCopyNumberStates; i++) {
+                    copyNumberPosterior[i] += intervalPosterior[i] * weight;
+                }
+            }
+        }
+        return copyNumberPosterior;
+    }
+
+    private static List<SVCopyNumberInterval> getSortedOverlappingCopyNumberIntervals(final Collection<IndexedSVGraphEdge> edges, final SVIntervalTree<SVCopyNumberInterval> copyNumberPosteriorsTree) {
+        return edges.stream()
+                .flatMap(edge -> Utils.stream(copyNumberPosteriorsTree.overlappers(edge.getInterval())))
+                .map(SVIntervalTree.Entry::getValue)
+                .distinct()
+                .sorted(SVIntervalUtils.getCopyNumberIntervalDictionaryOrderComparator())
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Normalizes genotype likelihoods
+     */
+    private static final void setDepthProbabilities(final Collection<SVGraphGenotype> genotypes) {
+        final double logDenom = Math.log(genotypes.stream().mapToDouble(SVGraphGenotype::getDepthLikelihood)
+                .map(Math::exp)
+                .map(val -> Math.max(val, Double.MIN_NORMAL))
+                .sum());
+        for (final SVGraphGenotype genotype : genotypes) {
+            genotype.setDepthProbability(Math.exp(genotype.getDepthLikelihood() - logDenom));
+        }
+    }
+
+    private static final void setProbabilities(final Collection<SVGraphGenotype> genotypes) {
+        final double denom = genotypes.stream().mapToDouble(g -> g.getEvidenceProbability() * g.getDepthProbability()).sum();
+        for (final SVGraphGenotype genotype : genotypes) {
+            genotype.setProbability(genotype.getEvidenceProbability() * genotype.getDepthProbability() / denom);
+        }
     }
 
     /**
@@ -104,6 +237,7 @@ public final class ReadDepthSVCaller {
                                                           final int groupId,
                                                           final int pathId,
                                                           final double probability,
+                                                          final double evidenceProbability,
                                                           final List<int[]> referenceEdgeCountsList,
                                                           final List<boolean[]> referenceEdgeInversionsList,
                                                           final List<SVGraphNode> nodes) {
@@ -120,16 +254,16 @@ public final class ReadDepthSVCaller {
             final int end = nodeB.getPosition();
             final SVInterval interval = new SVInterval(nodeA.getContig(), start, end);
             if (deletion) {
-                events.add(new SVGraphEvent(CalledSVGraphEvent.Type.DEL, interval, groupId, pathId, probability, true));
+                events.add(new SVGraphEvent(CalledSVGraphEvent.Type.DEL, interval, groupId, pathId, probability, evidenceProbability, true));
             }
             if (duplication && inversion) {
-                events.add(new SVGraphEvent(CalledSVGraphEvent.Type.DUP_INV, interval, groupId, pathId, probability, true));
+                events.add(new SVGraphEvent(CalledSVGraphEvent.Type.DUP_INV, interval, groupId, pathId, probability, evidenceProbability, true));
             } else {
                 if (duplication) {
-                    events.add(new SVGraphEvent(CalledSVGraphEvent.Type.DUP, interval, groupId, pathId, probability, true));
+                    events.add(new SVGraphEvent(CalledSVGraphEvent.Type.DUP, interval, groupId, pathId, probability, evidenceProbability, true));
                 }
                 if (inversion) {
-                    events.add(new SVGraphEvent(CalledSVGraphEvent.Type.INV, interval, groupId, pathId, probability, true));
+                    events.add(new SVGraphEvent(CalledSVGraphEvent.Type.INV, interval, groupId, pathId, probability, evidenceProbability, true));
                 }
             }
         }
@@ -149,9 +283,10 @@ public final class ReadDepthSVCaller {
         final Map<Integer, List<SVGraphEvent>> events = new HashMap<>(SVUtils.hashMapCapacity((edges).size()));
         final int groupId = haplotypes.getGroupId();
         final int pathId = haplotypes.getGenotypeId();
-        final double probability = haplotypes.getProbability();
+        final double probability = haplotypes.getDepthProbability();
+        final double evidenceProbability = haplotypes.getEvidenceProbability();
         for (final IndexedSVGraphEdge edge : referencePath.getEdges()) {
-            events.put(edge.getIndex(), getEdgeEvents(edge, groupId, pathId, probability, referenceEdgeCountsList, referenceEdgeInversionsList, nodes));
+            events.put(edge.getIndex(), getEdgeEvents(edge, groupId, pathId, probability, evidenceProbability, referenceEdgeCountsList, referenceEdgeInversionsList, nodes));
         }
         return events;
     }
@@ -171,6 +306,28 @@ public final class ReadDepthSVCaller {
         return flattenedMap;
     }
 
+    private static void setGenotypeEvidenceProbabilities(final Collection<SVGraphGenotype> paths, final SVGraph graph) {
+        final Collection<IndexedSVGraphEdge> breakpointEdges = graph.getEdges().stream().filter(e -> !e.isReference()).collect(Collectors.toList());
+        for (final SVGraphGenotype genotype : paths) {
+            final Map<Integer, Long> nonZeroEdgeVisits = genotype.getHaplotypes().stream()
+                    .flatMap(h -> h.getEdges().stream())
+                    .filter(e -> !e.isReference())
+                    .collect(Collectors.groupingBy(edge -> edge.getIndex(), Collectors.counting()));
+            final Set<Integer> zeroEdgeVisits = breakpointEdges.stream()
+                    .map(IndexedSVGraphEdge::getIndex)
+                    .filter(e -> !nonZeroEdgeVisits.containsKey(e))
+                    .collect(Collectors.toSet());
+            final Map<Integer, Long> edgeVisits = Stream.concat(nonZeroEdgeVisits.entrySet().stream().map(entry -> new Tuple2<>(entry.getKey(), entry.getValue())),
+                zeroEdgeVisits.stream().map(e -> new Tuple2<>(e, Long.valueOf(0)))).collect(Collectors.toMap(pair -> pair._1, pair -> pair._2));
+            final double logP = edgeVisits.entrySet().stream().mapToDouble(entry -> graph.getEdges().get(entry.getKey()).getPrior().getLogPrior((entry.getValue().intValue()))).sum();
+            genotype.setEvidenceProbability(Math.exp(logP));
+        }
+        final double totalP = paths.stream().mapToDouble(SVGraphGenotype::getEvidenceProbability).sum();
+        for (final SVGraphGenotype genotype : paths) {
+            genotype.setEvidenceProbability(genotype.getEvidenceProbability() / totalP);
+        }
+    }
+
     /**
      * Integrates event probabilities over all haplotypes on each reference edge interval. Returns tuples of events and their probabilities.
      */
@@ -187,7 +344,7 @@ public final class ReadDepthSVCaller {
                 final SVGraphEvent firstEvent = typedEvents.iterator().next();
                 final int groupId = firstEvent.getGroupId();
                 final int pathId = firstEvent.getPathId();
-                final CalledSVGraphEvent newEvent = new CalledSVGraphEvent(type, firstEvent.getInterval(), groupId, pathId, true);
+                final CalledSVGraphEvent newEvent = new CalledSVGraphEvent(type, firstEvent.getInterval(), groupId, pathId, true, totalProbability);
                 events.add(new Tuple2<>(newEvent, totalProbability));
             }
         }
@@ -205,7 +362,7 @@ public final class ReadDepthSVCaller {
         final CalledSVGraphEvent lastEvent = eventsToMerge.get(eventsToMerge.size() - 1);
         final SVInterval firstInterval = firstEvent.getInterval();
         final SVInterval interval = new SVInterval(firstInterval.getContig(), firstInterval.getStart(), lastEvent.getInterval().getEnd());
-        final CalledSVGraphEvent mergedEvent = new CalledSVGraphEvent(firstEvent.getType(), interval, firstEvent.getGroupId(), firstEvent.getPathId(), true);
+        final CalledSVGraphEvent mergedEvent = new CalledSVGraphEvent(firstEvent.getType(), interval, firstEvent.getGroupId(), firstEvent.getPathId(), true, -1); //TODO set probability
         return mergedEvent;
     }
 
@@ -249,7 +406,7 @@ public final class ReadDepthSVCaller {
      * Creates event that could not be successfully resolved
      */
     private CalledSVGraphEvent getUnresolvedEvent(final SVInterval interval, final int groupId) {
-        return new CalledSVGraphEvent(CalledSVGraphEvent.Type.UR, interval, groupId, 0, false);
+        return new CalledSVGraphEvent(CalledSVGraphEvent.Type.UR, interval, groupId, 0, false, 0);
     }
 
     /**
@@ -265,6 +422,7 @@ public final class ReadDepthSVCaller {
         final Collection<CalledSVGraphGenotype> haplotypes = new ArrayList<>();
         int partitionId = 0;
         for (final SVGraph partition : graphPartitions) {
+            System.out.println("partition = " + partitionId + " / " + graphPartitions.size());
             final Tuple2<Collection<CalledSVGraphGenotype>, Collection<CalledSVGraphEvent>> result = generateEvents(partition, partitionId, arguments.minEventProb,
                     arguments.maxPathLengthFactor, arguments.maxEdgeVisits, copyNumberPosteriorsTree,
                     arguments.maxBranches, arguments.ploidy, arguments.minEventSize, arguments.minHaplotypeProb);
@@ -288,12 +446,14 @@ public final class ReadDepthSVCaller {
         private final int groupId;
         private final int pathId;
         private final double probability;
+        private final double evidenceProbability;
         private final CalledSVGraphEvent.Type type;
         private final SVInterval interval;
         private final boolean resolved; //False if solution not found
 
         public SVGraphEvent(final CalledSVGraphEvent.Type type, final SVInterval interval,
-                            final int groupId, final int pathId, final double probability, final boolean resolved) {
+                            final int groupId, final int pathId, final double probability,
+                            final double evidenceProbability, final boolean resolved) {
             Utils.nonNull(type, "Type cannot be null");
             Utils.nonNull(interval, "Interval cannot be null");
             this.type = type;
@@ -301,11 +461,16 @@ public final class ReadDepthSVCaller {
             this.groupId = groupId;
             this.pathId = pathId;
             this.probability = probability;
+            this.evidenceProbability = evidenceProbability;
             this.resolved = resolved;
         }
 
         public double getProbability() {
             return probability;
+        }
+
+        public double getEvidenceProbability() {
+            return evidenceProbability;
         }
 
         public boolean isResolved() {
@@ -326,6 +491,27 @@ public final class ReadDepthSVCaller {
 
         public SVInterval getInterval() {
             return interval;
+        }
+    }
+
+
+    /**
+     * Container for copy number posterior likelihoods
+     */
+    private final static class EdgeCopyNumberPosterior {
+        private final double[] logPosteriors;
+
+        public EdgeCopyNumberPosterior(final double[] logPosteriors) {
+            this.logPosteriors = logPosteriors;
+        }
+
+        public double getLogPosterior(final int i) {
+            if (i >= logPosteriors.length || i < 0) return Double.NEGATIVE_INFINITY;
+            return logPosteriors[i];
+        }
+
+        public int numCopyNumberStates() {
+            return logPosteriors.length;
         }
     }
 

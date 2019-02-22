@@ -7,20 +7,24 @@ public class SVGraphGenotype {
     protected final List<IndexedSVGraphPath> haplotypes;
     protected final int groupId;
     protected final int genotypeId;
-    protected final double likelihood;
+    protected double depthLikelihood;
+    protected double depthProbability;
+    protected double evidenceProbability;
     protected double probability;
     private static final int DEFAULT_PLOIDY = 2;
 
-    public SVGraphGenotype(final int groupId, final int genotypeId, final double likelihood) {
+    public SVGraphGenotype(final int groupId, final int genotypeId) {
         this.haplotypes = new ArrayList<>(DEFAULT_PLOIDY);
         this.groupId = groupId;
         this.genotypeId = genotypeId;
-        this.likelihood = likelihood;
+        this.depthLikelihood = Double.NaN;
+        this.depthProbability = Double.NaN;
+        this.evidenceProbability = Double.NaN;
         this.probability = Double.NaN;
     }
 
-    public SVGraphGenotype(final int groupId, final int genotypeId, final double likelihood, final Collection<IndexedSVGraphPath> pathList) {
-        this(groupId, genotypeId, likelihood);
+    public SVGraphGenotype(final int groupId, final int genotypeId, final Collection<IndexedSVGraphPath> pathList) {
+        this(groupId, genotypeId);
         for (final IndexedSVGraphPath path : pathList) {
             addPath(path);
         }
@@ -29,6 +33,22 @@ public class SVGraphGenotype {
     public void addPath(final IndexedSVGraphPath path) {
         haplotypes.add(path);
         Collections.sort(haplotypes); //Maintain sorted haplotypes so genotypes can be easily deduplicated with a hash set
+    }
+
+    public double getDepthProbability() {
+        return depthProbability;
+    }
+
+    public void setDepthProbability(double depthProbability) {
+        this.depthProbability = depthProbability;
+    }
+
+    public double getEvidenceProbability() {
+        return evidenceProbability;
+    }
+
+    public void setEvidenceProbability(double probability) {
+        this.evidenceProbability = probability;
     }
 
     public double getProbability() {
@@ -51,8 +71,10 @@ public class SVGraphGenotype {
         return genotypeId;
     }
 
-    public double getLikelihood() {
-        return likelihood;
+    public void setDepthLikelihood(double depthLikelihood) { this.depthLikelihood = depthLikelihood; }
+
+    public double getDepthLikelihood() {
+        return depthLikelihood;
     }
 
     /**
@@ -64,7 +86,9 @@ public class SVGraphGenotype {
         if (!(o instanceof SVGraphGenotype)) return false;
         SVGraphGenotype that = (SVGraphGenotype) o;
         return groupId == that.groupId &&
-                Double.compare(that.likelihood, likelihood) == 0 &&
+                Double.compare(that.depthLikelihood, depthLikelihood) == 0 &&
+                Double.compare(that.depthProbability, depthProbability) == 0 &&
+                Double.compare(that.evidenceProbability, evidenceProbability) == 0 &&
                 Double.compare(that.probability, probability) == 0 &&
                 Objects.equals(haplotypes, that.haplotypes);
     }
@@ -72,6 +96,6 @@ public class SVGraphGenotype {
     @Override
     public int hashCode() {
 
-        return Objects.hash(haplotypes, groupId, likelihood, probability);
+        return Objects.hash(haplotypes, groupId, depthLikelihood, depthProbability);
     }
 }

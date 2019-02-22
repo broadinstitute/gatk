@@ -28,10 +28,12 @@ public final class IndexedSVGraphEdge implements Comparable<IndexedSVGraphEdge> 
     private final int upstreamNodeIndex;
     private final SVInterval interval;
     private final SVGraphEdgeEvidence evidence;
+    private final SVGraphEdgePrior prior;
 
     private IndexedSVGraphEdge(final int index, final int nodeAIndex, final int nodeBIndex, final boolean strandA, final boolean strandB,
                                final boolean isReference, final boolean inverted, final int upstreamNodeIndex, final SVGraphEdgeEvidence evidence,
-                               final SVInterval interval, final SVGraph graph, final SAMSequenceDictionary dictionary, final boolean isCopy) {
+                               final SVGraphEdgePrior prior, final SVInterval interval, final SVGraph graph, final SAMSequenceDictionary dictionary,
+                               final boolean isCopy) {
         Utils.nonNull(evidence, "Evidence cannot be null");
         if (!isCopy) {
             //Validate node indices
@@ -60,11 +62,13 @@ public final class IndexedSVGraphEdge implements Comparable<IndexedSVGraphEdge> 
         this.inverted = inverted;
         this.upstreamNodeIndex = upstreamNodeIndex;
         this.evidence = evidence;
+        this.prior = prior;
     }
 
     public IndexedSVGraphEdge(final int index, final int nodeAIndex, final int nodeBIndex, final boolean strandA, final boolean strandB,
                               final boolean isReference, final SVGraphEdgeEvidence evidence, final SVGraph graph, final SAMSequenceDictionary dictionary) {
-        this(index, nodeAIndex, nodeBIndex, strandA, strandB, isReference, false, defaultUpstreamNode(false, nodeAIndex, nodeBIndex, strandA, strandB), evidence, null, graph, dictionary, false);
+        //TODO prior parameters
+        this(index, nodeAIndex, nodeBIndex, strandA, strandB, isReference, false, defaultUpstreamNode(false, nodeAIndex, nodeBIndex, strandA, strandB), evidence, new SVGraphEdgePrior(evidence, 15, 6), null, graph, dictionary, false);
     }
 
     private static int defaultUpstreamNode(final boolean inverted, final int nodeAIndex, final int nodeBIndex, final boolean strandA, final boolean strandB) {
@@ -89,14 +93,14 @@ public final class IndexedSVGraphEdge implements Comparable<IndexedSVGraphEdge> 
      * Creates a copy in the non-inverted state
      */
     public IndexedSVGraphEdge nonInvertedCopy() {
-        return new IndexedSVGraphEdge(index, nodeAIndex, nodeBIndex, strandA, strandB, isReference, false, getUpstreamNodeIndex(), evidence, interval, null, null, true);
+        return new IndexedSVGraphEdge(index, nodeAIndex, nodeBIndex, strandA, strandB, isReference, false, getUpstreamNodeIndex(), evidence, prior, interval, null, null, true);
     }
 
     /**
      * Creates a copy in the inverted state
      */
     public IndexedSVGraphEdge invertedCopy() {
-        return new IndexedSVGraphEdge(index, nodeAIndex, nodeBIndex, strandA, strandB, isReference, true, getDownstreamNodeIndex(), evidence, interval, null, null, true);
+        return new IndexedSVGraphEdge(index, nodeAIndex, nodeBIndex, strandA, strandB, isReference, true, getDownstreamNodeIndex(), evidence, prior, interval, null, null, true);
     }
 
     /**
@@ -104,7 +108,7 @@ public final class IndexedSVGraphEdge implements Comparable<IndexedSVGraphEdge> 
      */
     public IndexedSVGraphEdge copyWithUpstreamNodeAs(final int upstreamNodeIndex) {
         Utils.validate(causesStrandSwitch(), "Cannot define source node for non-strand switch edge");
-        return new IndexedSVGraphEdge(index, nodeAIndex, nodeBIndex, strandA, strandB, isReference, inverted, upstreamNodeIndex, evidence, interval, null, null, true);
+        return new IndexedSVGraphEdge(index, nodeAIndex, nodeBIndex, strandA, strandB, isReference, inverted, upstreamNodeIndex, evidence, prior, interval, null, null, true);
     }
 
     public SVInterval getInterval() {
@@ -114,6 +118,8 @@ public final class IndexedSVGraphEdge implements Comparable<IndexedSVGraphEdge> 
     public SVGraphEdgeEvidence getEvidence() {
         return evidence;
     }
+
+    public SVGraphEdgePrior getPrior() { return prior; }
 
     public boolean causesStrandSwitch() {
         return strandA == strandB;

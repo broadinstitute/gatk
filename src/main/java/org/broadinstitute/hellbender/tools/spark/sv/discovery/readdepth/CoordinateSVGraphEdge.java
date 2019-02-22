@@ -22,6 +22,7 @@ public final class CoordinateSVGraphEdge {
     private final boolean inverted;
     private final boolean isReference;
     private final SVGraphEdgeEvidence evidence;
+    private final SVGraphEdgePrior prior;
 
     public CoordinateSVGraphEdge(final int contig1, final int position1, final boolean strand1,
                                  final int contig2, final int position2, final boolean strand2,
@@ -50,6 +51,7 @@ public final class CoordinateSVGraphEdge {
         this.isReference = isReference;
         this.inverted = false;
         this.evidence = evidence;
+        this.prior = new SVGraphEdgePrior(evidence, 15, 6); //TODO
     }
 
     public CoordinateSVGraphEdge(final IndexedSVGraphEdge indexedEdge, final List<SVGraphNode> nodes) {
@@ -68,6 +70,7 @@ public final class CoordinateSVGraphEdge {
         strandB = indexedEdge.isStrandB();
         inverted = indexedEdge.isInverted();
         evidence = indexedEdge.getEvidence();
+        prior = indexedEdge.getPrior();
     }
 
     public SVGraphEdgeEvidence getEvidence() {
@@ -86,6 +89,10 @@ public final class CoordinateSVGraphEdge {
 
     public SVInterval getIntervalB() {
         return new SVInterval(getContigB(), getNodeBPosition(), getNodeBPosition() + 1);
+    }
+
+    public double getEdgeVisitPrior(int numVisits) {
+        return prior.getLogPrior(numVisits);
     }
 
     public boolean isIntrachromosomal() { return contigA == contigB; }
@@ -120,5 +127,9 @@ public final class CoordinateSVGraphEdge {
 
     public boolean isInverted() {
         return inverted;
+    }
+
+    public SVGraphEdgePrior getPrior() {
+        return prior;
     }
 }

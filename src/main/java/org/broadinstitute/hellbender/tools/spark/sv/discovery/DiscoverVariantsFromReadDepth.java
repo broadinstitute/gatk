@@ -5,6 +5,7 @@ import htsjdk.samtools.util.IOUtil;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFFileReader;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
@@ -120,6 +121,7 @@ public final class DiscoverVariantsFromReadDepth extends CommandLineProgram {
     public static final String HAPLOTYPES_FILE_NAME = "haplotypes";
     public static final String GRAPH_FILE_NAME = "graph";
 
+    @ArgumentCollection
     private final DiscoverVariantsFromReadDepthArgumentCollection arguments = new DiscoverVariantsFromReadDepthArgumentCollection();
 
     @Argument(doc = "Sequence dictionary", fullName = "sequence-dictionary")
