@@ -25,6 +25,7 @@ public class MutectReadThreadingAssemblerArgumentCollection extends ReadThreadin
                 !disableAdaptivePruning, initialErrorRateForPruning, pruningLog10OddsThreshold, maxUnprunedVariants);
         assemblyEngine.setDebugGraphTransformations(debugGraphTransformations);
         assemblyEngine.setRecoverDanglingBranches(true);
+        assemblyEngine.setRecoverAllDanglingBranches(recoverAllDanglingBranches);
         assemblyEngine.setMinDanglingBranchLength(minDanglingBranchLength);
 
         if ( graphOutput != null ) {

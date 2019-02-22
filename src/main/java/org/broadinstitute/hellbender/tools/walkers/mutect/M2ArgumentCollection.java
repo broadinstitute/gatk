@@ -64,9 +64,13 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
 
     @Override
     public ReadThreadingAssembler createReadThreadingAssembler(){
-        if(mitochondria && assemblerArgs.pruningLog10OddsThreshold == ReadThreadingAssemblerArgumentCollection.DEFAULT_PRUNING_LOG_ODDS_THRESHOLD) {
-            assemblerArgs.pruningLog10OddsThreshold = DEFAULT_MITO_PRUNING_LOG_ODDS_THRESHOLD;
+        if(mitochondria ) {
+            assemblerArgs.recoverAllDanglingBranches = true;
+            if (assemblerArgs.pruningLog10OddsThreshold == ReadThreadingAssemblerArgumentCollection.DEFAULT_PRUNING_LOG_ODDS_THRESHOLD) {
+                assemblerArgs.pruningLog10OddsThreshold = DEFAULT_MITO_PRUNING_LOG_ODDS_THRESHOLD;
+            }
         }
+
         return super.createReadThreadingAssembler();
     }
 

@@ -156,8 +156,8 @@ public final class ChainPrunerUnitTest extends GATKBaseTest {
         pruner.pruneLowWeightChains(graph);
 
         final SmithWatermanAligner aligner = SmithWatermanJavaAligner.getInstance();
-        graph.recoverDanglingTails(1, 3, aligner);
-        graph.recoverDanglingHeads(1, 3, aligner);
+        graph.recoverDanglingTails(1, 3, false, aligner);
+        graph.recoverDanglingHeads(1, 3, false, aligner);
         graph.removePathsNotConnectedToRef();
 
         final SeqGraph seqGraph = graph.toSequenceGraph();

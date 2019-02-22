@@ -47,6 +47,7 @@ public class HaplotypeCallerReadThreadingAssemblerArgumentCollection extends Rea
                 useAdaptivePruning, initialErrorRateForPruning, pruningLog10OddsThreshold, maxUnprunedVariants);
         assemblyEngine.setDebugGraphTransformations(debugGraphTransformations);
         assemblyEngine.setRecoverDanglingBranches(!doNotRecoverDanglingBranches);
+        assemblyEngine.setRecoverAllDanglingBranches(recoverAllDanglingBranches);
         assemblyEngine.setMinDanglingBranchLength(minDanglingBranchLength);
 
         if ( graphOutput != null ) {

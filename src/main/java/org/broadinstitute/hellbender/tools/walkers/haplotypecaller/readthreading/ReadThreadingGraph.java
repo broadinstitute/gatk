@@ -472,9 +472,10 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
      *
      * @param pruneFactor  the prune factor to use in ignoring chain pieces
      * @param minDanglingBranchLength the minimum length of a dangling branch for us to try to merge it
+     * @param recoverAll recover even branches with forks
      * @param aligner
      */
-    public void recoverDanglingTails(final int pruneFactor, final int minDanglingBranchLength, final SmithWatermanAligner aligner) {
+    public void recoverDanglingTails(final int pruneFactor, final int minDanglingBranchLength, final boolean recoverAll, final SmithWatermanAligner aligner) {
         Utils.validateArg(pruneFactor >= 0, () -> "pruneFactor must be non-negative but was " + pruneFactor);
         Utils.validateArg(minDanglingBranchLength >= 0, () -> "minDanglingBranchLength must be non-negative but was " + minDanglingBranchLength);
 
@@ -487,7 +488,7 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
         for ( final MultiDeBruijnVertex v : vertexSet() ) {
             if ( outDegreeOf(v) == 0 && ! isRefSink(v) ) {
                 attempted++;
-                nRecovered += recoverDanglingTail(v, pruneFactor, minDanglingBranchLength, aligner);
+                nRecovered += recoverDanglingTail(v, pruneFactor, minDanglingBranchLength, recoverAll, aligner);
             }
         }
 
@@ -500,9 +501,10 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
      *
      * @param pruneFactor  the prune factor to use in ignoring chain pieces
      * @param minDanglingBranchLength the minimum length of a dangling branch for us to try to merge it
+     * @param recoverAll recover even branches with forks
      * @param aligner
      */
-    public void recoverDanglingHeads(final int pruneFactor, final int minDanglingBranchLength, final SmithWatermanAligner aligner) {
+    public void recoverDanglingHeads(final int pruneFactor, final int minDanglingBranchLength, final boolean recoverAll, final SmithWatermanAligner aligner) {
         Utils.validateArg(pruneFactor >= 0, () -> "pruneFactor must be non-negative but was " + pruneFactor);
         Utils.validateArg(minDanglingBranchLength >= 0, () -> "minDanglingBranchLength must be non-negative but was " + minDanglingBranchLength);
         if ( ! alreadyBuilt ) {
@@ -520,7 +522,7 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
         int nRecovered = 0;
         for ( final MultiDeBruijnVertex v : danglingHeads ) {
             attempted++;
-            nRecovered += recoverDanglingHead(v, pruneFactor, minDanglingBranchLength, aligner);
+            nRecovered += recoverDanglingHead(v, pruneFactor, minDanglingBranchLength, recoverAll, aligner);
         }
 
         logger.debug(String.format("Recovered %d of %d dangling heads", nRecovered, attempted));
@@ -535,13 +537,13 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
      * @param aligner
      * @return 1 if we successfully recovered the vertex and 0 otherwise
      */
-    private int recoverDanglingTail(final MultiDeBruijnVertex vertex, final int pruneFactor, final int minDanglingBranchLength, final SmithWatermanAligner aligner) {
+    private int recoverDanglingTail(final MultiDeBruijnVertex vertex, final int pruneFactor, final int minDanglingBranchLength, final boolean recoverAll, final SmithWatermanAligner aligner) {
         if ( outDegreeOf(vertex) != 0 ) {
             throw new IllegalStateException("Attempting to recover a dangling tail for " + vertex + " but it has out-degree > 0");
         }
 
         // generate the CIGAR string from Smith-Waterman between the dangling tail and reference paths
-        final DanglingChainMergeHelper danglingTailMergeResult = generateCigarAgainstDownwardsReferencePath(vertex, pruneFactor, minDanglingBranchLength, aligner);
+        final DanglingChainMergeHelper danglingTailMergeResult = generateCigarAgainstDownwardsReferencePath(vertex, pruneFactor, minDanglingBranchLength, recoverAll, aligner);
 
         // if the CIGAR is too complex (or couldn't be computed) then we do not allow the merge into the reference path
         if ( danglingTailMergeResult == null || ! cigarIsOkayToMerge(danglingTailMergeResult.cigar, false, true) ) {
@@ -558,16 +560,17 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
      * @param vertex the vertex to recover
      * @param pruneFactor  the prune factor to use in ignoring chain pieces
      * @param minDanglingBranchLength the minimum length of a dangling branch for us to try to merge it
+     * @param recoverAll recover even branches with forks
      * @param aligner
      * @return 1 if we successfully recovered a vertex and 0 otherwise
      */
-    private int recoverDanglingHead(final MultiDeBruijnVertex vertex, final int pruneFactor, final int minDanglingBranchLength, final SmithWatermanAligner aligner) {
+    private int recoverDanglingHead(final MultiDeBruijnVertex vertex, final int pruneFactor, final int minDanglingBranchLength, final boolean recoverAll, final SmithWatermanAligner aligner) {
         if ( inDegreeOf(vertex) != 0 ) {
             throw new IllegalStateException("Attempting to recover a dangling head for " + vertex + " but it has in-degree > 0");
         }
 
         // generate the CIGAR string from Smith-Waterman between the dangling tail and reference paths
-        final DanglingChainMergeHelper danglingHeadMergeResult = generateCigarAgainstUpwardsReferencePath(vertex, pruneFactor, minDanglingBranchLength, aligner);
+        final DanglingChainMergeHelper danglingHeadMergeResult = generateCigarAgainstUpwardsReferencePath(vertex, pruneFactor, minDanglingBranchLength, recoverAll, aligner);
 
         // if the CIGAR is too complex (or couldn't be computed) then we do not allow the merge into the reference path
         if ( danglingHeadMergeResult == null || ! cigarIsOkayToMerge(danglingHeadMergeResult.cigar, true, false) ) {
@@ -714,21 +717,22 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
      * @param aligner
      * @param vertex   the sink of the dangling chain
      * @param pruneFactor  the prune factor to use in ignoring chain pieces
+     * @param recoverAll recover even branches with forks
      * @return a SmithWaterman object which can be null if no proper alignment could be generated
      */
     @VisibleForTesting
-    final DanglingChainMergeHelper generateCigarAgainstDownwardsReferencePath(final MultiDeBruijnVertex vertex, final int pruneFactor, final int minDanglingBranchLength, SmithWatermanAligner aligner) {
+    final DanglingChainMergeHelper generateCigarAgainstDownwardsReferencePath(final MultiDeBruijnVertex vertex, final int pruneFactor, final int minDanglingBranchLength, final boolean recoverAll, SmithWatermanAligner aligner) {
         final int minTailPathLength = Math.max(1, minDanglingBranchLength); // while heads can be 0, tails absolutely cannot
 
         // find the lowest common ancestor path between this vertex and the diverging master path if available
-        final List<MultiDeBruijnVertex> altPath = findPathUpwardsToLowestCommonAncestor(vertex, pruneFactor);
+        final List<MultiDeBruijnVertex> altPath = findPathUpwardsToLowestCommonAncestor(vertex, pruneFactor, !recoverAll);
         if ( altPath == null || isRefSource(altPath.get(0)) || altPath.size() < minTailPathLength + 1 ) // add 1 to include the LCA
         {
             return null;
         }
 
         // now get the reference path from the LCA
-        final List<MultiDeBruijnVertex> refPath = getReferencePath(altPath.get(0), TraversalDirection.downwards, Optional.ofNullable(incomingEdgeOf(altPath.get(1))));
+        final List<MultiDeBruijnVertex> refPath = getReferencePath(altPath.get(0), TraversalDirection.downwards, Optional.ofNullable(getHeaviestIncomingEdge(altPath.get(1))));
 
         // create the Smith-Waterman strings to use
         final byte[] refBases = getBasesForPath(refPath, false);
@@ -746,13 +750,14 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
      * @param aligner
      * @param vertex   the source of the dangling head
      * @param pruneFactor  the prune factor to use in ignoring chain pieces
+     * @param recoverAll recover even branches with forks
      * @return a SmithWaterman object which can be null if no proper alignment could be generated
      */
     @VisibleForTesting
-    final DanglingChainMergeHelper generateCigarAgainstUpwardsReferencePath(final MultiDeBruijnVertex vertex, final int pruneFactor, final int minDanglingBranchLength, SmithWatermanAligner aligner) {
+    final DanglingChainMergeHelper generateCigarAgainstUpwardsReferencePath(final MultiDeBruijnVertex vertex, final int pruneFactor, final int minDanglingBranchLength, final boolean recoverAll, SmithWatermanAligner aligner) {
 
         // find the highest common descendant path between vertex and the reference source if available
-        final List<MultiDeBruijnVertex> altPath = findPathDownwardsToHighestCommonDescendantOfReference(vertex, pruneFactor);
+        final List<MultiDeBruijnVertex> altPath = findPathDownwardsToHighestCommonDescendantOfReference(vertex, pruneFactor, !recoverAll);
         if ( altPath == null || isRefSink(altPath.get(0)) || altPath.size() < minDanglingBranchLength + 1 ) // add 1 to include the LCA
         {
             return null;
@@ -776,11 +781,28 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
      *
      * @param vertex   the original vertex
      * @param pruneFactor  the prune factor to use in ignoring chain pieces
+     * @param giveUpAtBranch stop trying to find a path if a vertex with multiple incoming or outgoing edge is found
      * @return the path if it can be determined or null if this vertex either doesn't merge onto another path or
      *  has an ancestor with multiple incoming edges before hitting the reference path
      */
-    private List<MultiDeBruijnVertex> findPathUpwardsToLowestCommonAncestor(final MultiDeBruijnVertex vertex, final int pruneFactor) {
-        return findPath(vertex, pruneFactor, v -> inDegreeOf(v) != 1 || outDegreeOf(v) >= 2, v -> outDegreeOf(v) > 1, v -> incomingEdgeOf(v), e -> getEdgeSource(e));
+    private List<MultiDeBruijnVertex> findPathUpwardsToLowestCommonAncestor(final MultiDeBruijnVertex vertex, final int pruneFactor, final boolean giveUpAtBranch) {
+        return giveUpAtBranch ? findPath(vertex, pruneFactor, v -> inDegreeOf(v) != 1 || outDegreeOf(v) >= 2, v -> outDegreeOf(v) > 1, v -> incomingEdgeOf(v), e -> getEdgeSource(e))
+                :findPath(vertex, pruneFactor, v -> hasIncidentRefEdge(v) || inDegreeOf(v) == 0, v -> outDegreeOf(v) > 1 && hasIncidentRefEdge(v), this::getHeaviestIncomingEdge, e -> getEdgeSource(e));
+    }
+
+    private boolean hasIncidentRefEdge(final MultiDeBruijnVertex v) {
+        for (final MultiSampleEdge edge : incomingEdgesOf(v)) {
+            if (edge.isRef()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private MultiSampleEdge getHeaviestIncomingEdge(final MultiDeBruijnVertex v) {
+        final Set<MultiSampleEdge> incomingEdges = incomingEdgesOf(v);
+        return incomingEdges.size() == 1 ? incomingEdges.iterator().next() :
+                incomingEdges.stream().max(Comparator.comparingInt(MultiSampleEdge::getMultiplicity)).get();
     }
 
     /**
@@ -790,11 +812,19 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
      *
      * @param vertex   the original vertex
      * @param pruneFactor  the prune factor to use in ignoring chain pieces
+     * @param giveUpAtBranch stop trying to find a path if a vertex with multiple incoming or outgoing edge is found
      * @return the path if it can be determined or null if this vertex either doesn't merge onto the reference path or
      *  has a descendant with multiple outgoing edges before hitting the reference path
      */
-    private List<MultiDeBruijnVertex> findPathDownwardsToHighestCommonDescendantOfReference(final MultiDeBruijnVertex vertex, final int pruneFactor) {
-        return findPath(vertex, pruneFactor, v -> isReferenceNode(v) || outDegreeOf(v) != 1, v -> isReferenceNode(v), v -> outgoingEdgeOf(v), e -> getEdgeTarget(e));
+    private List<MultiDeBruijnVertex> findPathDownwardsToHighestCommonDescendantOfReference(final MultiDeBruijnVertex vertex, final int pruneFactor, final boolean giveUpAtBranch) {
+        return giveUpAtBranch ? findPath(vertex, pruneFactor, v -> isReferenceNode(v) || outDegreeOf(v) != 1, v -> isReferenceNode(v), v -> outgoingEdgeOf(v), e -> getEdgeTarget(e))
+                : findPath(vertex, pruneFactor, v -> isReferenceNode(v) || outDegreeOf(v) == 0, v -> isReferenceNode(v), this::getHeaviestOutgoingEdge, e -> getEdgeTarget(e));
+    }
+
+    private MultiSampleEdge getHeaviestOutgoingEdge(final MultiDeBruijnVertex v) {
+        final Set<MultiSampleEdge> outgoing = outgoingEdgesOf(v);
+        return outgoing.size() == 1 ? outgoing.iterator().next() :
+                outgoing.stream().max(Comparator.comparingInt(MultiSampleEdge::getMultiplicity)).get();
     }
 
     /**
@@ -940,7 +970,7 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
         final byte[] sequenceToExtend = sb.toString().getBytes();
 
         // clean up the source and edge
-        final MultiSampleEdge sourceEdge = outgoingEdgeOf(danglingSource);
+        final MultiSampleEdge sourceEdge = getHeaviestOutgoingEdge(danglingSource);
         MultiDeBruijnVertex prevV = getEdgeTarget(sourceEdge);
         removeEdge(danglingSource, prevV);
 
