@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.KBestH
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.MultiSampleEdge;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.SeqGraph;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
@@ -19,6 +20,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
     private static final boolean DEBUG = false;
@@ -332,6 +334,61 @@ public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
                 Assert.assertTrue(rtgraph.outDegreeOf(v) > 1);
             }
         }
+    }
+
+    @Test
+    public void testForkedDanglingEnds() {
+
+        final int kmerSize = 15;
+
+        // construct the haplotypes
+        final String commonPrefix = "AAAAAAAAAACCCCCCCCCCGGGGGGGGGGTTTTTTTTTT";
+        final String refEnd = "GCTAGCTAATCG";
+        final String altEnd1 = "ACTAGCTAATCG";
+        final String altEnd2 = "ACTAGATAATCG";
+        final String ref = commonPrefix + refEnd;
+        final String alt1 = commonPrefix + altEnd1;
+        final String alt2 = commonPrefix + altEnd2;
+
+        // create the graph and populate it
+        final ReadThreadingGraph rtgraph = new ReadThreadingGraph(kmerSize);
+        rtgraph.addSequence("ref", ref.getBytes(), true);
+        final GATKRead read1 = ArtificialReadUtils.createArtificialRead(alt1.getBytes(), Utils.dupBytes((byte) 30, alt1.length()), alt1.length() + "M");
+        final GATKRead read2 = ArtificialReadUtils.createArtificialRead(alt2.getBytes(), Utils.dupBytes((byte) 30, alt2.length()), alt2.length() + "M");
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
+        rtgraph.addRead(read1, header);
+        rtgraph.addRead(read2, header);
+        rtgraph.buildGraphIfNecessary();
+
+       Assert.assertEquals(rtgraph.getSinks().size(), 3);
+
+        for (final MultiDeBruijnVertex altSink : rtgraph.getSinks()) {
+            if (rtgraph.isReferenceNode(altSink)) {
+                continue;
+            }
+
+            // confirm that the SW alignment agrees with our expectations
+            final ReadThreadingGraph.DanglingChainMergeHelper result = rtgraph.generateCigarAgainstDownwardsReferencePath(altSink,
+                    0, 4, true, SmithWatermanJavaAligner.getInstance());
+            Assert.assertNotNull(result);
+            Assert.assertTrue(ReadThreadingGraph.cigarIsOkayToMerge(result.cigar, false, true));
+
+            // confirm that the tail merging works as expected
+            final int mergeResult = rtgraph.mergeDanglingTail(result);
+            Assert.assertTrue(mergeResult == 1);
+        }
+
+        final SeqGraph seqGraph = rtgraph.toSequenceGraph();
+        seqGraph.simplifyGraph();
+
+        final List<String> paths = new KBestHaplotypeFinder(seqGraph).findBestHaplotypes().stream()
+                .map(kBestHaplotype -> new String(kBestHaplotype.getBases()))
+                .distinct()
+                .sorted()
+                .collect(Collectors.toList());
+
+        Assert.assertEquals(paths.size(), 3);
+        Assert.assertEquals(paths, Arrays.asList(ref, alt1, alt2).stream().sorted().collect(Collectors.toList()));
     }
 
     @Test
