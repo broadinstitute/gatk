@@ -461,7 +461,7 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
         final List<Number> gqPartitions = Arrays.asList(1, 10, 30);
         final File outputFile =  createTempFile("generated", ".g.vcf");
 
-        try (VariantContextWriter writer = GATKVariantContextUtils.createVCFWriter(outputFile, null, false);
+        try (VariantContextWriter writer = GATKVariantContextUtils.createVCFWriter(outputFile.toPath(), null, false);
              GVCFWriter gvcfWriter = new GVCFWriter(writer, gqPartitions, HomoSapiensConstants.DEFAULT_PLOIDY))
         {
             gvcfWriter.writeHeader(getMinimalVCFHeader());
@@ -579,7 +579,7 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
                                                                                                               Allele.NON_REF_ALLELE))
                 .genotypes(block3genotypeBuilder.make());
 
-        try (VariantContextWriter writer = GATKVariantContextUtils.createVCFWriter(outputFile, null, false);
+        try (VariantContextWriter writer = GATKVariantContextUtils.createVCFWriter(outputFile.toPath(), null, false);
              GVCFWriter gvcfWriter = new GVCFWriter(writer, gqPartitions, HomoSapiensConstants.DEFAULT_PLOIDY))
         {
             gvcfWriter.writeHeader(getMinimalVCFHeader());
@@ -601,7 +601,6 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
         }
 
         IntegrationTestSpec.assertEqualTextFiles(outputFile, comparisonFile);
-
     }
 
     @Test

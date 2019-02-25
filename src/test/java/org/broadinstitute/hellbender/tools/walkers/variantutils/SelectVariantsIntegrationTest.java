@@ -1,8 +1,12 @@
 package org.broadinstitute.hellbender.tools.walkers.variantutils;
 
+import java.util.List;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -899,5 +903,28 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
                 Collections.singletonList(getToolTestDataDir() + "expected/" + expectedFile)
         );
         spec.executeTest("testDropAnnotations--" + testName, this);
+    }
+
+    @Test(groups = "bucket")
+    public void testSampleSelectionOnNio() throws IOException {
+        final String testFile = getToolTestDataDir() + "vcfexample2.vcf";
+
+        final String out = BucketUtils.getTempFilePath(
+            getGCPTestStaging() +"testSelectVariants_SimpleSelection", ".vcf");
+
+        final String[] args = new String[]{
+            "SelectVariants",
+            "-R", hg19MiniReference
+            , "--variant", testFile
+            , "-sn", "NA11918"
+            , "--suppress-reference-path" // suppress reference file path in output for test differencing
+            , "-O", out
+            , "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"};
+
+        final String expectedFile = getToolTestDataDir() + "expected/" + "testSelectVariants_SimpleSelection.vcf";
+
+        new Main().instanceMain(args);
+
+        IntegrationTestSpec.assertEqualTextFiles(IOUtils.getPath(out), IOUtils.getPath(expectedFile), null);
     }
 }

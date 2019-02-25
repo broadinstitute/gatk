@@ -719,7 +719,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         headerLines.add(VCFStandardHeaderLines.getFormatLine("GT"));
 
         final File out = createTempFile(sampleName +"_", ".vcf");
-        try (final VariantContextWriter writer = GATKVariantContextUtils.createVCFWriter(out, dict, false,
+        try (final VariantContextWriter writer = GATKVariantContextUtils.createVCFWriter(out.toPath(), dict, false,
                                                                                          Options.INDEX_ON_THE_FLY)) {
             final VCFHeader vcfHeader = new VCFHeader(headerLines, Collections.singleton(sampleName));
             vcfHeader.setSequenceDictionary(dict);

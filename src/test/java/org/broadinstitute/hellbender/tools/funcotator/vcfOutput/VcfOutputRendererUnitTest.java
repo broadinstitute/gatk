@@ -39,7 +39,7 @@ public class VcfOutputRendererUnitTest extends GATKBaseTest {
     public void testExclusionListOverridesManualDefaultAnnotations() {
         final Pair<VCFHeader, List<VariantContext>> entireInputVcf =  VariantContextTestUtils.readEntireVCFIntoMemory(TEST_VCF);
         final File outFile = createTempFile("vcf_output_renderer_exclusion", ".vcf");
-        final VariantContextWriter vcfWriter = GATKVariantContextUtils.createVCFWriter(outFile,null, false);
+        final VariantContextWriter vcfWriter = GATKVariantContextUtils.createVCFWriter(outFile.toPath(),null, false);
 
         final LinkedHashMap<String, String> dummyDefaults = new LinkedHashMap<>();
         dummyDefaults.put("FOO", "BAR");

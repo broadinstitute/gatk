@@ -1,5 +1,9 @@
 package org.broadinstitute.hellbender.utils.nio;
 
+import htsjdk.samtools.util.IOUtil;
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -11,6 +15,7 @@ import java.util.Iterator;
 import java.util.Spliterator;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 /**
  * Iterate through the lines of a Path. Works for anything you can point
@@ -29,11 +34,20 @@ public class PathLineIterator implements AutoCloseable, Iterable<String> {
      * It's also closeable so you can close it when done, or use it in a try-with-resources
      * to close it automatically.
      *
+     * If the file name ends in ".gz", this will decompress it automatically.
+     *
+     * Consider also using XReadLines if you need trimming or skipping comments.
+     *
      * @param path path to a text file.
      */
     public PathLineIterator(final Path path) {
         try {
-            lines = Files.lines(Utils.nonNull(path, "path shouldn't be null"));
+            InputStream is = Files.newInputStream(Utils.nonNull(path, "path shouldn't be null"));
+            if (IOUtil.hasBlockCompressedExtension(path)) {
+                is = IOUtils.makeZippedInputStream(is);
+            }
+            BufferedReader br = new BufferedReader(new InputStreamReader(is, "UTF-8"));
+            lines = br.lines();
         }
         catch (final CharacterCodingException ex ) {
             throw new UserException("Error detected in file character encoding.  Possible inconsistent character encodings within the file: " + path.toUri().toString(), ex);
@@ -62,4 +76,5 @@ public class PathLineIterator implements AutoCloseable, Iterable<String> {
     public Spliterator<String> spliterator() {
         return lines.spliterator();
     }
+
 }

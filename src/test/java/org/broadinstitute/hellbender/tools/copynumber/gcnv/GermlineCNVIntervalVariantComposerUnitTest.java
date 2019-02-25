@@ -72,7 +72,7 @@ public final class GermlineCNVIntervalVariantComposerUnitTest extends CommandLin
                                         final int baselineCopyNumber,
                                         final Allele expectedAllele) {
         final File outputFile = createTempFile("test", ".vcf");
-        final VariantContextWriter outputWriter = GATKVariantContextUtils.createVCFWriter(outputFile, null, false);
+        final VariantContextWriter outputWriter = GATKVariantContextUtils.createVCFWriter(outputFile.toPath(), null, false);
         final GermlineCNVIntervalVariantComposer variantComposer = new GermlineCNVIntervalVariantComposer(
                 outputWriter, "TEST_SAMPLE_NAME", new IntegerCopyNumberState(refAutosomalCopyNumber), allosomalContigs);
         final VariantContext var = variantComposer.composeVariantContext(

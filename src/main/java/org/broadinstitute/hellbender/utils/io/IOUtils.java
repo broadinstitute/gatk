@@ -392,9 +392,10 @@ public final class IOUtils {
     /**
      * Makes a reader for a file, unzipping if the file's name ends with '.gz'.
      */
-    public static Reader makeReaderMaybeGzipped(File file) throws IOException {
-        final InputStream in = new BufferedInputStream( new FileInputStream(file));
-        return makeReaderMaybeGzipped(in, file.getPath().endsWith(".gz"));
+    public static Reader makeReaderMaybeGzipped(Path path) throws IOException {
+        final InputStream in = new BufferedInputStream(Files.newInputStream(path));
+        // toString because path.endsWith only checks whole path components, not substrings.
+        return makeReaderMaybeGzipped(in, path.toString().endsWith(".gz"));
     }
 
     /**

@@ -1,5 +1,8 @@
 package org.broadinstitute.hellbender.utils.text;
 
+import java.nio.file.Path;
+import java.util.ArrayList;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.*;
@@ -39,15 +42,35 @@ public final class XReadLines implements Iterator<String>, Iterable<String>, Aut
      * By default, it will trim whitespaces.
      */
     public XReadLines(final File filename) throws IOException {
-        this(filename, true);
+        this(Utils.nonNull(filename).toPath(), true);
+    }
+
+    /**
+     * Opens the given file for reading lines.
+     * The file may be a text file or a gzipped text file (the distinction is made by the file extension).
+     * By default, it will trim whitespaces.
+     */
+    public XReadLines(final Path path) throws IOException {
+        this(path, true);
     }
 
     /**
      * Opens the given file for reading lines and optionally trim whitespaces.
      * The file may be a text file or a gzipped text file (the distinction is made by the file extension).
      */
-    public XReadLines(final File filename, final boolean trimWhitespace) throws IOException {
-        this(IOUtils.makeReaderMaybeGzipped(filename), trimWhitespace, null);
+    public XReadLines(final Path path, final boolean trimWhitespace) throws IOException {
+        this(path, trimWhitespace, null);
+    }
+
+    /**
+     * Opens the given file for reading lines and optionally trim whitespaces.
+     * The file may be a text file or a gzipped text file (the distinction is made by the file extension).
+     *
+     * @param trimWhitespace trim whitespace
+     * @param commentPrefix prefix for comments or null if no prefix is set
+     */
+    public XReadLines(final Path path, final boolean trimWhitespace, final String commentPrefix) throws IOException {
+        this(IOUtils.makeReaderMaybeGzipped(path), trimWhitespace, commentPrefix);
     }
 
     /**
@@ -74,7 +97,9 @@ public final class XReadLines implements Iterator<String>, Iterable<String>, Aut
      * @return all of the lines in the file.
      */
     public List<String> readLines() {
-        List<String> lines = new LinkedList<>();
+        // Using an ArrayList instead of LinkedList because it has the same add performance
+        // (asymptotically), but faster random access.
+        List<String> lines = new ArrayList<>();
         for ( String line : this ) {
             lines.add(line);
         }

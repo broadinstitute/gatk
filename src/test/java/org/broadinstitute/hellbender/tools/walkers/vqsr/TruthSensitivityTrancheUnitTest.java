@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.vqsr;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -21,7 +22,7 @@ public final class TruthSensitivityTrancheUnitTest extends GATKBaseTest {
 
     private ArrayList<VariantDatum> readData() throws IOException{
         ArrayList<VariantDatum> vd = new ArrayList<>();
-        try (XReadLines xrl = new XReadLines(QUAL_DATA, true)){
+        try (XReadLines xrl = new XReadLines(Utils.nonNull(QUAL_DATA).toPath(), true)){
             for ( String line : xrl ) {
                 String[] parts = line.split("\t");
                 // QUAL,TRANSITION,ID,LOD,FILTER

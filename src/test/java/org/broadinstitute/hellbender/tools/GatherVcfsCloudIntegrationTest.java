@@ -196,7 +196,7 @@ public class GatherVcfsCloudIntegrationTest extends CommandLineProgramTest{
 
     private static File writeShard(final List<VariantContext> variants, final VCFHeader header, final File dir, final int index){
         final File shard = new File( dir, + index + ".vcf.gz");
-        try(final VariantContextWriter writer = GATKVariantContextUtils.createVCFWriter(shard, header.getSequenceDictionary(), false)){
+        try(final VariantContextWriter writer = GATKVariantContextUtils.createVCFWriter(shard.toPath(), header.getSequenceDictionary(), false)){
             writer.writeHeader(header);
             variants.forEach(writer::add);
         }
