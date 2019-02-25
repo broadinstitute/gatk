@@ -56,7 +56,7 @@ public class CondenseReadCounts extends CommandLineProgram {
             shortName = FACTOR_SHORT_NAME,
             minValue = 1
     )
-    private int factor = 0;
+    private int factor = 1;
 
     @Argument(
             doc = "expected bin-length after condensation, those output bin that do not match this length will be excluded. " +
