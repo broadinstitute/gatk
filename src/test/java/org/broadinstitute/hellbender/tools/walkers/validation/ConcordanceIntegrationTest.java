@@ -3,12 +3,16 @@ package org.broadinstitute.hellbender.tools.walkers.validation;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.AbstractConcordanceWalker;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.util.*;
+import java.io.IOException;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 import java.util.stream.Collectors;
 
 /**
@@ -47,7 +51,6 @@ public class ConcordanceIntegrationTest extends CommandLineProgramTest{
         Assert.assertEquals(indelRecord.getFalseNegatives(), 2);
         Assert.assertEquals(snpRecord.getSensitivity(), 1.0/4, epsilon);
         Assert.assertEquals(snpRecord.getPrecision(), 1.0, epsilon);
-
     }
 
     // Test going from an integer chromosome (22) to a character chromosome (X)
@@ -208,5 +211,36 @@ public class ConcordanceIntegrationTest extends CommandLineProgramTest{
         // grep -v ^# dream3-truth-minus-MSK-chr21.vcf | grep -v SVTYPE | awk 'length($4) == length($5) {print $0 }' | wc -l
         // 78
         Assert.assertEquals(snpRecord.getTruePositives() + snpRecord.getFalseNegatives(), 78);
+    }
+
+    @Test
+    public void testDoesNotCrashWithNO_VARIATIONAlleles() {
+        final String testDir = toolsTestDir + "concordance/";
+        final File evalVcf = new File(testDir, "noVariationAlleles.vcf");
+        final File truthVcf = new File(testDir, "noVariationAlleles.vcf");
+        final File summary = createTempFile("summary", ".txt");
+
+        final String[] args = {
+                "--" + AbstractConcordanceWalker.EVAL_VARIANTS_LONG_NAME, evalVcf.toString(),
+                "--" + AbstractConcordanceWalker.TRUTH_VARIANTS_LONG_NAME, truthVcf.toString(),
+                "--" + Concordance.SUMMARY_LONG_NAME, summary.toString(),
+        };
+
+        runCommandLine(args);
+
+        try {
+            final ConcordanceSummaryRecord.Reader reader             = new ConcordanceSummaryRecord.Reader(summary);
+            final ConcordanceSummaryRecord        snpRecord = reader.readRecord();
+            final ConcordanceSummaryRecord        indelRecord = reader.readRecord();
+
+            // Some token validation:
+            Assert.assertEquals(snpRecord.getSensitivity(), 1, 0.005);
+            Assert.assertEquals(indelRecord.getSensitivity(), 0, 0.005);
+            Assert.assertEquals(snpRecord.getTruePositives() + snpRecord.getFalseNegatives(), 1);
+            Assert.assertEquals(indelRecord.getTruePositives() + indelRecord.getFalseNegatives(), 2);
+        }
+        catch (final IOException | java.lang.NullPointerException ex) {
+            throw new GATKException("Could not get summary file! ", ex);
+        }
     }
 }
