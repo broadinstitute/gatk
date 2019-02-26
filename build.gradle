@@ -64,7 +64,6 @@ final barclayVersion = System.getProperty('barclay.version','2.1.0')
 final sparkVersion = System.getProperty('spark.version', '2.2.0')
 final hadoopVersion = System.getProperty('hadoop.version', '2.8.2')
 final disqVersion = System.getProperty('disq.version','0.2.0')
-final tensorflowVersion = System.getProperty('tensorflow.version','1.9.0')
 final genomicsdbVersion = System.getProperty('genomicsdb.version','1.0.0-rc2')
 final testNGVersion = '6.11'
 // Using the shaded version to avoid conflicts between its protobuf dependency
@@ -519,8 +518,7 @@ task condaStandardEnvironmentDefinition(type: Copy) {
     include gatkCondaTemplate
     rename { file -> gatkCondaYML }
     expand(["condaEnvName":"gatk",
-            "condaEnvDescription" : "Conda environment for GATK Python Tools",
-            "tensorFlowDependency" : "tensorflow==$tensorflowVersion"])
+            "condaEnvDescription" : "Conda environment for GATK Python Tools"])
     doLast {
         logger.lifecycle("Created standard Conda environment yml file: $gatkCondaYML")
     }
