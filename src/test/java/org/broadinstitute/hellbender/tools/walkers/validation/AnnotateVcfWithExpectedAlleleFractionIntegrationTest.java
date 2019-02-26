@@ -59,9 +59,9 @@ public class AnnotateVcfWithExpectedAlleleFractionIntegrationTest extends Comman
         final List<Double> firstSeveralAlleleFractionsByHand = Arrays.asList(0.2, 0.2, 0.3, 0.2, 0.3, 0.5, 0.3, 0.2, 0.3, 0.3);
         Assert.assertEquals(alleleFractions.subList(0, firstSeveralAlleleFractionsByHand.size()), firstSeveralAlleleFractionsByHand);
 
-        Assert.assertEquals(alleleFractions.get(16), 0.7);  // hom var + het
-        Assert.assertEquals(alleleFractions.get(18), 0.8);  // het + hom var
-        Assert.assertEquals(alleleFractions.get(26), 0.0);  //both hom ref
+        Assert.assertEquals((double) alleleFractions.get(16), 0.7);  // hom var + het
+        Assert.assertEquals((double) alleleFractions.get(18), 0.8);  // het + hom var
+        Assert.assertEquals((double) alleleFractions.get(26), 0.0);  //both hom ref
 
     }
 

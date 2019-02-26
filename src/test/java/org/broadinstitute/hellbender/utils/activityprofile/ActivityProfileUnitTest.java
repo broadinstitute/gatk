@@ -124,7 +124,7 @@ public class ActivityProfileUnitTest extends GATKBaseTest {
     private void assertProbsAreEqual(List<ActivityProfileState> actual, List<Double> expected) {
         Assert.assertEquals(actual.size(), expected.size());
         for ( int i = 0; i < actual.size(); i++ ) {
-            Assert.assertEquals(actual.get(i).isActiveProb(), expected.get(i));
+            Assert.assertEquals(actual.get(i).isActiveProb(), (double) expected.get(i));
         }
     }
 

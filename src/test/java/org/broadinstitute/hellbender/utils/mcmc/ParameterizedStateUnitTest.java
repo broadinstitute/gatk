@@ -58,7 +58,7 @@ public final class ParameterizedStateUnitTest {
         final ParameterizedState<TestParameter> testState =
                 new ParameterizedState<>(Arrays.asList(new Parameter<>(TestParameter.PARAMETER_1, 1.), new Parameter<>(TestParameter.PARAMETER_2, 1.)));
         testState.update(TestParameter.PARAMETER_1, 10.);
-        Assert.assertEquals(testState.get(TestParameter.PARAMETER_1, Double.class), 10.);
+        Assert.assertEquals((double) testState.get(TestParameter.PARAMETER_1, Double.class), 10.);
     }
 
     @Test
