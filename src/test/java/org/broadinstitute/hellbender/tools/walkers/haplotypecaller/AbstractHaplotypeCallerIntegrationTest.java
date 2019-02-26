@@ -2,6 +2,8 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import com.google.common.collect.ImmutableMap;
 import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.Genotype;
+import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
@@ -89,15 +91,19 @@ public abstract class AbstractHaplotypeCallerIntegrationTest extends CommandLine
         return (double)concordant / (double)(concordant + discordant);
     }
 
-    private static String keyForVariant(final VariantContext variant ) {
+    private static String keyForVariant( final VariantContext variant ) {
+        Genotype genotype = variant.getGenotype(0);
+        if (genotype.isPhased()) { // unphase it for comparisons, since we rely on comparing the genotype string below
+            genotype = new GenotypeBuilder(genotype).phased(false).make();
+        }
         return String.format("%s:%d-%d %s %s", variant.getContig(), variant.getStart(), variant.getEnd(),
-                variant.getAlleles(), variant.getGenotype(0).getGenotypeString(false));
+                variant.getAlleles(), genotype.getGenotypeString(false));
     }
 
-    protected static boolean isGVCFReferenceBlock(final VariantContext vc) {
+    public static boolean isGVCFReferenceBlock( final VariantContext vc ) {
         return vc.hasAttribute(VCFConstants.END_KEY) &&
-               vc.getAlternateAlleles().size() == 1 &&
-               vc.getAlternateAllele(0).equals(Allele.NON_REF_ALLELE);
+                vc.getAlternateAlleles().size() == 1 &&
+                vc.getAlternateAllele(0).equals(Allele.NON_REF_ALLELE);
     }
 
     @DataProvider(name="HaplotypeCallerTestInputs")
