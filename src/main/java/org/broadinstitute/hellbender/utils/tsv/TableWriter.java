@@ -119,7 +119,7 @@ public abstract class TableWriter<R> implements Closeable {
     /**
      * The table column names.
      */
-    private final TableColumnCollection columns;
+    protected final TableColumnCollection columns;
 
     /**
      * Whether the header column name line has been written or not.
@@ -250,10 +250,14 @@ public abstract class TableWriter<R> implements Closeable {
      */
     public void writeHeaderIfApplies() throws IOException {
         if (!headerWritten) {
-            writer.writeNext(columns.names().toArray(new String[columns.columnCount()]), false);
-            lineNumber++;
+            writeHeader();
         }
         headerWritten = true;
+    }
+
+    protected void writeHeader() throws IOException {
+        writer.writeNext(columns.names().toArray(new String[columns.columnCount()]), false);
+        lineNumber++;
     }
 
     /**

@@ -23,7 +23,7 @@ import java.util.function.Function;
 public final class TableUtils {
 
     /**
-     * Column separator {@value #COLUMN_SEPARATOR_STRING}.
+     * Column separator {@value #COLUMN_SEPARATOR}.
      */
     public static final char COLUMN_SEPARATOR = '\t';
 
@@ -104,9 +104,10 @@ public final class TableUtils {
             private Function<DataLine,R> recordExtractor;
 
             @Override
-            protected void processColumns(final TableColumnCollection columns) {
+            protected TableColumnCollection processColumns(final TableColumnCollection columns) {
                 recordExtractor = recordExtractorFactory.apply(columns,this::formatException);
                 Utils.validate(recordExtractor != null, "the record extractor function cannot be null");
+                return columns;
             }
 
             @Override
@@ -147,9 +148,10 @@ public final class TableUtils {
             private Function<DataLine,R> recordExtractor;
 
             @Override
-            protected void processColumns(final TableColumnCollection columns) {
+            protected TableColumnCollection processColumns(final TableColumnCollection columns) {
                 recordExtractor = recordExtractorFactory.apply(columns,this::formatException);
                 Utils.validate(recordExtractor != null, "the record extractor function cannot be null");
+                return columns;
             }
 
             @Override
@@ -192,9 +194,10 @@ public final class TableUtils {
             private Function<DataLine,R> recordExtractor;
 
             @Override
-            protected void processColumns(final TableColumnCollection columns) {
+            protected TableColumnCollection processColumns(final TableColumnCollection columns) {
                 recordExtractor = recordExtractorFactory.apply(columns,this::formatException);
                 Utils.validate(recordExtractor != null, "the record extractor function cannot be null");
+                return columns;
             }
 
             @Override
@@ -245,6 +248,22 @@ public final class TableUtils {
             final Set<String> missingColumns = Sets.difference(new HashSet<>(mandatoryColumns.names()), new HashSet<>(columns.names()));
             throw formatExceptionFactory.apply("Bad header in file.  Not all mandatory columns are present.  Missing: " + StringUtils.join(missingColumns, ", "));
         }
+    }
+
+    /**
+     *  Enumerates different option when it comes to
+     *  whether the input table file has a column name line or it is
+     *  implicit.
+     */
+    public enum ColumnNameInFirstLine {
+        /** The table must have the column header line */
+        MANDATORY,
+        /** It might be or might not be present */
+        OPTIONAL,
+        /** It's never present */
+        ABSENT;
+
+        public static ColumnNameInFirstLine DEFAULT = MANDATORY;
     }
 
     private static final class DataLineComposerBasedTableWriter<R> extends TableWriter<R> {

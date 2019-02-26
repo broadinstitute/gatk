@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.tsv;
 
 import org.broadinstitute.hellbender.utils.Utils;
 
+import java.util.Arrays;
 import java.util.function.Function;
 
 /**
@@ -787,5 +788,15 @@ public final class DataLine {
      */
     public long getLineNumber() {
         return lineNumber;
+    }
+
+    /**
+     * Returns a subarray of the value starting at a particular index until the end.
+     * @param from the first index to return.
+     * @return never {@code null}.
+     * @throws IndexOutOfBoundsException if {@code from} does not make reference to a valid index.
+     */
+    public String[] toArray(final int  from) {
+        return Arrays.copyOfRange(values, from, values.length);
     }
 }
