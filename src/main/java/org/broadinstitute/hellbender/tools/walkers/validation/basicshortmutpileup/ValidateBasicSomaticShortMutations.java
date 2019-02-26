@@ -24,6 +24,7 @@ import org.broadinstitute.hellbender.tools.walkers.validation.Concordance;
 import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceSummaryRecord;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
@@ -71,7 +72,7 @@ public class ValidateBasicSomaticShortMutations extends VariantWalker {
     @Argument(fullName = ANNOTATED_VCF_LONG_NAME,
             doc = "Optional output vcf containing original variants annotated with validation info.",
             optional = true)
-    protected File annotatedVcf;
+    protected String annotatedVcf;
 
     @Argument(doc = "A table of summary statistics (true positives, sensitivity, etc.)",
             fullName = Concordance.SUMMARY_LONG_NAME,
@@ -176,7 +177,7 @@ public class ValidateBasicSomaticShortMutations extends VariantWalker {
             headerLines.addAll(Arrays.asList(POWER_HEADER_LINE, VALIDATION_AD_HEADER_LINE, JUDGMENT_HEADER_LINE));
             headerLines.addAll(getDefaultToolVCFHeaderLines());
             final VCFHeader vcfHeader = new VCFHeader(headerLines, inputHeader.getGenotypeSamples());
-            vcfWriter = createVCFWriter(annotatedVcf);
+            vcfWriter = createVCFWriter(IOUtils.getPath(annotatedVcf));
             vcfWriter.writeHeader(vcfHeader);
         }
     }

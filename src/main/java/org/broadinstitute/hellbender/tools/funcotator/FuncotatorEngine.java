@@ -202,7 +202,7 @@ public final class FuncotatorEngine implements AutoCloseable {
         switch (funcotatorArgs.outputFormatType) {
             case MAF:
                 outputRenderer = new MafOutputRenderer(
-                        funcotatorArgs.outputFile.toPath(),
+                        IOUtils.getPath(funcotatorArgs.outputVcf),
                         getFuncotationFactories(),
                         headerForVariants,
                         unaccountedForDefaultAnnotations,
@@ -216,7 +216,7 @@ public final class FuncotatorEngine implements AutoCloseable {
 
             case VCF:
                 outputRenderer = new VcfOutputRenderer(
-                        gatkToolInstance.createVCFWriter(funcotatorArgs.outputFile),
+                        gatkToolInstance.createVCFWriter(IOUtils.getPath(funcotatorArgs.outputVcf)),
                         getFuncotationFactories(),
                         headerForVariants,
                         unaccountedForDefaultAnnotations,

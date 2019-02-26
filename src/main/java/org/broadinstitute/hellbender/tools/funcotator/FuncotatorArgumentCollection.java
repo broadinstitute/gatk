@@ -27,7 +27,7 @@ public class FuncotatorArgumentCollection implements Serializable {
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName  = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             doc = "Output VCF file to which annotated variants should be written.")
-    public File outputFile;
+    public String outputVcf;
 
     @Argument(
             fullName =  FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME,

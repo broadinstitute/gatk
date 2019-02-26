@@ -22,6 +22,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
@@ -100,7 +101,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc="File to which variants should be written", optional=false)
-    private File outputFile;
+    private String outputVcf;
 
     @Argument(fullName=ALL_SITES_LONG_NAME, shortName=ALL_SITES_SHORT_NAME, doc="Include loci found to be non-variant after genotyping", optional=true)
     private boolean includeNonVariants = false;
@@ -255,7 +256,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
             VCFStandardHeaderLines.addStandardInfoLines(headerLines, true, VCFConstants.DBSNP_KEY);
         }
 
-        vcfWriter = createVCFWriter(outputFile);
+        vcfWriter = createVCFWriter(IOUtils.getPath(outputVcf));
 
         final Set<String> sampleNameSet = samples.asSetOfSamples();
         outputHeader = new VCFHeader(headerLines, new TreeSet<>(sampleNameSet));

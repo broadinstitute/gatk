@@ -21,6 +21,7 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2Engine;
 import org.broadinstitute.hellbender.utils.Trilean;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -131,7 +132,7 @@ public class FilterAlignmentArtifacts extends VariantWalker {
     @Override
     public void onTraversalStart() {
         realignmentEngine = new RealignmentEngine(realignmentArgumentCollection);
-        vcfWriter = createVCFWriter(new File(outputVcf));
+        vcfWriter = createVCFWriter(IOUtils.getPath(outputVcf));
 
         final VCFHeader inputHeader = getHeaderForVariants();
         final Set<VCFHeaderLine> headerLines = new HashSet<>(inputHeader.getMetaDataInSortedOrder());

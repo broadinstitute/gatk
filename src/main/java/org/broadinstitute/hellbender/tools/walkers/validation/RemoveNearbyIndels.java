@@ -7,6 +7,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import picard.cmdline.programgroups.VariantManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
@@ -68,7 +69,7 @@ public class RemoveNearbyIndels extends VariantWalker {
         final VCFHeader inputHeader = getHeaderForVariants();
         final VCFHeader vcfHeader = new VCFHeader(inputHeader.getMetaDataInSortedOrder(), inputHeader.getGenotypeSamples());
         getDefaultToolVCFHeaderLines().forEach(vcfHeader::addMetaDataLine);
-        vcfWriter = createVCFWriter(new File(outputVcf));
+        vcfWriter = createVCFWriter(IOUtils.getPath(outputVcf));
         vcfWriter.writeHeader(vcfHeader);
     }
 

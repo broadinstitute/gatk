@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.contamination.ContaminationRecord;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
@@ -101,7 +102,7 @@ public final class FilterMutectCalls extends TwoPassVariantWalker {
         headerLines.addAll(getDefaultToolVCFHeaderLines());
 
         final VCFHeader vcfHeader = new VCFHeader(headerLines, inputHeader.getGenotypeSamples());
-        vcfWriter = createVCFWriter(new File(outputVcf));
+        vcfWriter = createVCFWriter(IOUtils.getPath(outputVcf));
         vcfWriter.writeHeader(vcfHeader);
 
         final Set<String> normalSamples = getNormalSampleNames();

@@ -11,6 +11,7 @@ import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -266,7 +267,7 @@ public final class VariantFiltration extends VariantWalker {
     }
 
     private void initializeVcfWriter() {
-        writer = createVCFWriter(new File(out));
+        writer = createVCFWriter(IOUtils.getPath(out));
 
         // setup the header fields
         final Set<VCFHeaderLine> hInfo = new LinkedHashSet<>();

@@ -605,7 +605,7 @@ public final class GATKToolUnitTest extends GATKBaseTest {
         final File tmpDir = createTempDir("createVCFTest");
         final File outputFile = new File(tmpDir.getAbsolutePath(), "createVCFTest" + outputExtension);
 
-        final VariantContextWriter writer = tool.createVCFWriter(outputFile);
+        final VariantContextWriter writer = tool.createVCFWriter(outputFile.toPath());
         writer.close();
 
         final File outFileIndex = new File(outputFile.getAbsolutePath() + indexExtension);
@@ -778,7 +778,7 @@ public final class GATKToolUnitTest extends GATKBaseTest {
 
         final File outputFile = setupVCFWriter(inputFile, outputExtension, tool, createIndex, createMD5, false);
 
-        final VariantContextWriter writer = tool.createVCFWriter(outputFile);
+        final VariantContextWriter writer = tool.createVCFWriter(outputFile.toPath());
         writer.close();
 
         final File outFileIndex = new File(outputFile.getAbsolutePath() + indexExtension);
@@ -810,7 +810,7 @@ public final class GATKToolUnitTest extends GATKBaseTest {
         // verify lenient==true is honored by writing a bad attribute
         final File outputFile = setupVCFWriter(inputFile, outputExtension, tool, createIndex, createMD5, true);
 
-        try (VariantContextWriter writer = tool.createVCFWriter(outputFile)) {
+        try (VariantContextWriter writer = tool.createVCFWriter(outputFile.toPath())) {
             writeHeaderAndBadVariant(writer); // write bad attribute succeed with lenient set
         }
 
@@ -834,7 +834,7 @@ public final class GATKToolUnitTest extends GATKBaseTest {
         final TestGATKToolWithVariants tool = new TestGATKToolWithVariants();
         final File outputFile = setupVCFWriter(inputFile, outputExtension, tool, createIndex, createMD5, false);
 
-        try (VariantContextWriter writer = tool.createVCFWriter(outputFile)) {
+        try (VariantContextWriter writer = tool.createVCFWriter(outputFile.toPath())) {
             writeHeaderAndBadVariant(writer); // throws due to bad attribute
         }
     }
@@ -870,7 +870,7 @@ public final class GATKToolUnitTest extends GATKBaseTest {
         final TestGATKVariantToolWithNoSequenceDictionary tool = new TestGATKVariantToolWithNoSequenceDictionary();
         final File outputFile = setupVCFWriter(inputFile, outputExtension, tool, createIndex, createMD5, false);
 
-        final VariantContextWriter writer = tool.createVCFWriter(outputFile);
+        final VariantContextWriter writer = tool.createVCFWriter(outputFile.toPath());
         writer.close();
 
         final File outFileIndex = new File(outputFile.getAbsolutePath() + indexExtension);

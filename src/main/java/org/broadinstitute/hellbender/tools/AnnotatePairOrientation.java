@@ -12,6 +12,7 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
@@ -47,7 +48,7 @@ public class AnnotatePairOrientation extends VariantWalker {
             doc = "Output Somatic SNP/Indel VCF file with additional annotations.",
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
-    protected File outputFile;
+    protected String outputVCF;
 
     public final static String CUTOFF_SHORT_NAME = "cutoff";
     public final static String CUTOFF_LONG_NAME = "min-base-quality-cutoff";
@@ -63,7 +64,7 @@ public class AnnotatePairOrientation extends VariantWalker {
 
     @Override
     public void onTraversalStart() {
-        vcfWriter = createVCFWriter(outputFile);
+        vcfWriter = createVCFWriter(IOUtils.getPath(outputVCF));
         vcfWriter.writeHeader(createVCFHeader(getHeaderForVariants(), getCommandLine()));
     }
 

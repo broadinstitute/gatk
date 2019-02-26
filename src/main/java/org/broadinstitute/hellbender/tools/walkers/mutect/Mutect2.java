@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConf
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.downsampling.MutectDownsampler;
 import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsampler;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.variant.writers.SomaticGVCFWriter;
 
 import java.io.File;
@@ -133,7 +134,7 @@ public final class Mutect2 extends AssemblyRegionWalker {
     protected M2ArgumentCollection MTAC = new M2ArgumentCollection();
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "File to which variants should be written")
-    public File outputVCF;
+    public String outputVCF;
 
     private VariantContextWriter vcfWriter;
 
@@ -190,7 +191,7 @@ public final class Mutect2 extends AssemblyRegionWalker {
     public void onTraversalStart() {
         VariantAnnotatorEngine annotatorEngine = new VariantAnnotatorEngine(makeVariantAnnotations(), null, Collections.emptyList(), false);
         m2Engine = new Mutect2Engine(MTAC, createOutputBamIndex, createOutputBamMD5, getHeaderForReads(), referenceArguments.getReferenceFileName(), annotatorEngine);
-        vcfWriter = createVCFWriter(outputVCF);
+        vcfWriter = createVCFWriter(IOUtils.getPath(outputVCF));
         if (m2Engine.emitReferenceConfidence()) {
             logger.warn("Note that the Mutect2 reference confidence mode is in BETA -- the likelihoods model and output format are subject to change in subsequent versions.");
             if ( MTAC.emitReferenceConfidence == ReferenceConfidenceMode.GVCF ) {

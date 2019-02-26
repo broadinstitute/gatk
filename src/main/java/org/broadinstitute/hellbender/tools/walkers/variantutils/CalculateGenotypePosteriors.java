@@ -12,6 +12,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -172,7 +173,7 @@ public final class CalculateGenotypePosteriors extends VariantWalker {
     public List<FeatureInput<VariantContext>> supportVariants = new ArrayList<>();
 
     @Argument(doc="File to which variants should be written", fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, optional = false)
-    public File out = null;
+    public String out = null;
 
     /**
      * Prior SNP pseudocounts for Dirichlet distribution of allele frequencies. The posterior distribution is a
@@ -265,7 +266,7 @@ public final class CalculateGenotypePosteriors extends VariantWalker {
 
     @Override
     public void onTraversalStart() {
-        vcfWriter = createVCFWriter(out);
+        vcfWriter = createVCFWriter(IOUtils.getPath(out));
 
         SampleDB sampleDB = initializeSampleDB();
 

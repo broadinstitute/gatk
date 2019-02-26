@@ -18,6 +18,7 @@ import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import picard.cmdline.programgroups.VariantManipulationProgramGroup;
 
@@ -132,7 +133,7 @@ public class VariantAnnotator extends VariantWalker {
     @Argument(fullName= StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName=StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc="The file to whcih variants should be written", optional=false)
-    protected File outputFile;
+    protected String outputVcf;
 
     /**
      * This option enables you to add annotations from one VCF to another.
@@ -190,7 +191,7 @@ public class VariantAnnotator extends VariantWalker {
 
         // TODO ask reviewer, VCFUtils.withUpdatedContigs is what GATK3 calls into, it isn't used anywhere in 4 though so should it be used here?
         VCFHeader vcfHeader = new VCFHeader(hInfo, samples);
-        vcfWriter = createVCFWriter(outputFile);
+        vcfWriter = createVCFWriter(IOUtils.getPath(outputVcf));
         vcfWriter.writeHeader(VCFUtils.withUpdatedContigs(vcfHeader, hasReference()? new File(referenceArguments.getReferenceFileName()): null, referenceArguments.getReferencePath()==null ? getBestAvailableSequenceDictionary(): getReferenceDictionary()));
     }
 

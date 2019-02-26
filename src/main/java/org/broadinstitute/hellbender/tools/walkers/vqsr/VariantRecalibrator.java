@@ -17,6 +17,7 @@ import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.Hidden;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureInput;
@@ -475,7 +476,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
             hInfo = VcfUtils.updateHeaderContigLines(hInfo, null, sequenceDictionary, true);
         }
 
-        recalWriter = createVCFWriter(new File(output));
+        recalWriter = createVCFWriter(IOUtils.getPath(output));
         recalWriter.writeHeader( new VCFHeader(hInfo) );
 
         for ( int iii = 0; iii < REPLICATE * 2; iii++ ) {

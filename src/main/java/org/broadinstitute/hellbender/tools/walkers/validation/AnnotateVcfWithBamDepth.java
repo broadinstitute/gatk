@@ -9,6 +9,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
@@ -70,7 +71,7 @@ public class AnnotateVcfWithBamDepth extends VariantWalker {
         headerLines.add(new VCFInfoHeaderLine(POOLED_BAM_DEPTH_ANNOTATION_NAME, 1, VCFHeaderLineType.Integer, "pooled bam depth"));
         headerLines.addAll(getDefaultToolVCFHeaderLines());
         final VCFHeader vcfHeader = new VCFHeader(headerLines, inputHeader.getGenotypeSamples());
-        vcfWriter = createVCFWriter(new File(outputVcf));
+        vcfWriter = createVCFWriter(IOUtils.getPath(outputVcf));
         vcfWriter.writeHeader(vcfHeader);
     }
 

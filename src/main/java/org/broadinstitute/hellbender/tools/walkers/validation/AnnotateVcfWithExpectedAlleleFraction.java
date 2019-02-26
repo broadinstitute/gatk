@@ -13,6 +13,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
@@ -64,7 +65,7 @@ public class AnnotateVcfWithExpectedAlleleFraction extends VariantWalker {
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc = "The output annotated VCF file",
             optional = false)
-    private final File outputVcf = null;
+    private final String outputVcf = null;
 
     @Argument(fullName = MIXING_FRACTIONS_TABLE_NAME,
             shortName = MIXING_FRACTIONS_TABLE_NAME,
@@ -85,7 +86,7 @@ public class AnnotateVcfWithExpectedAlleleFraction extends VariantWalker {
         headerLines.add(new VCFInfoHeaderLine(EXPECTED_ALLELE_FRACTION_NAME, 1, VCFHeaderLineType.Float, "expected allele fraction in pooled bam"));
         final VCFHeader vcfHeader = new VCFHeader(headerLines, inputHeader.getGenotypeSamples());
         headerLines.addAll(getDefaultToolVCFHeaderLines());
-        vcfWriter = createVCFWriter(outputVcf);
+        vcfWriter = createVCFWriter(IOUtils.getPath(outputVcf));
         vcfWriter.writeHeader(vcfHeader);
 
         final List<MixingFraction> mixingFractionsList = MixingFraction.readMixingFractions(inputMixingFractions);

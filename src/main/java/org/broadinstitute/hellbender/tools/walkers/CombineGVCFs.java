@@ -22,6 +22,7 @@ import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2FilteringEngine
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
@@ -86,7 +87,7 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
     @Argument(fullName= StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName=StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc="The combined GVCF output file", optional=false)
-    private File outputFile;
+    private String outputVcf;
 
     @Argument(fullName=BP_RES_LONG_NAME, doc = "If specified, convert banded gVCFs to all-sites gVCFs", optional=true)
     protected boolean useBpResolution = false;
@@ -298,7 +299,7 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
             }
         }
 
-        VariantContextWriter writer = createVCFWriter(outputFile);
+        VariantContextWriter writer = createVCFWriter(IOUtils.getPath(outputVcf));
 
         final Set<String> sampleNameSet = new IndexedSampleList(samples).asSetOfSamples();
         final VCFHeader vcfHeader = new VCFHeader(headerLines, new TreeSet<>(sampleNameSet));

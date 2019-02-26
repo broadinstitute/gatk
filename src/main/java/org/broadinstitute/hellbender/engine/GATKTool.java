@@ -772,20 +772,6 @@ public abstract class GATKTool extends CommandLineProgram {
 
     /**
      * Creates a VariantContextWriter whose outputFile type is determined by
-     * the outPathName's extension, using the best available sequence dictionary for
-     * this tool, and default index, leniency and md5 generation settings.
-     *
-     * Deprecated, use {@link #createVCFWriter(Path)} instead.
-     *
-     * @param outFile output File for this writer. May not be null.
-     * @returns VariantContextWriter must be closed by the caller
-     */
-    public VariantContextWriter createVCFWriter(final File outFile) {
-        return createVCFWriter(outFile == null ? null : outFile.toPath());
-    }
-
-    /**
-     * Creates a VariantContextWriter whose outputFile type is determined by
      * outPath's extension, using the best available sequence dictionary for
      * this tool, and default index, leniency and md5 generation settings.
      *

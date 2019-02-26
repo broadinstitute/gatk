@@ -71,7 +71,7 @@ public final class FixCallSetSampleOrdering extends VariantWalker {
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc="where to write a reheadered version of the input VCF with the sample names in the correct order",
             optional = false)
-    public File output;
+    public String output;
 
     @Argument(fullName = SKIP_PROMPT_LONG_NAME,
             shortName = "Y",
@@ -119,7 +119,7 @@ public final class FixCallSetSampleOrdering extends VariantWalker {
 
         final VCFHeader remappedHeader = new VCFHeader(newHeaderLines, batchSortedSampleNames);
         logger.info("Writing the new header with corrected sample names");
-        writer = createVCFWriter(output);
+        writer = createVCFWriter(IOUtils.getPath(output));
         writer.writeHeader(remappedHeader);
         logger.info("Copying the rest of the VCF");
     }

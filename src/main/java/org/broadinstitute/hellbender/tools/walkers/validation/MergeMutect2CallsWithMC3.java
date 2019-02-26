@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.mutect.FilterMutectCalls;
 import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2Engine;
 import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2FilteringEngine;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
@@ -34,7 +35,7 @@ public class MergeMutect2CallsWithMC3 extends AbstractConcordanceWalker {
     @Argument(doc = "Merged vcf.",
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME)
-    protected File outputVcf;
+    protected String outputVcf;
 
     public static final String CENTERS_KEY = "CENTERS";
     public static final String M2_CENTER_NAME = "M2";
@@ -77,7 +78,7 @@ public class MergeMutect2CallsWithMC3 extends AbstractConcordanceWalker {
         headerLines.add(M2_FILTERS_HEADER_LINE);
         tumorSample = getEvalHeader().getMetaDataLine(Mutect2Engine.TUMOR_SAMPLE_KEY_IN_VCF_HEADER).getValue();
         final VCFHeader mergedHeader = new VCFHeader(headerLines, Collections.singletonList(tumorSample));
-        vcfWriter = createVCFWriter(outputVcf);
+        vcfWriter = createVCFWriter(IOUtils.getPath(outputVcf));
         vcfWriter.writeHeader(mergedHeader);
     }
 

@@ -17,6 +17,7 @@ import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantWalker;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
@@ -135,7 +136,7 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc = "File to which variants should be written")
-    public File outFile = null;
+    public String outVcf = null;
     /**
      * If this argument is set, bases common to all alleles will not be removed and will not leave their minimal representation.
      */
@@ -209,7 +210,7 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
         sequenceDictionary = this.getReferenceDictionary();
         actualLines = VcfUtils.updateHeaderContigLines(headerLines, refPath, sequenceDictionary, suppressReferencePath);
 
-        vcfWriter = createVCFWriter(outFile);
+        vcfWriter = createVCFWriter(IOUtils.getPath(outVcf));
         vcfWriter.writeHeader(new VCFHeader(actualLines, vcfSamples));
     }
 

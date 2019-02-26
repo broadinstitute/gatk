@@ -793,7 +793,7 @@ public class Funcotator extends VariantWalker {
         );
 
         // Create our output renderer:
-        logger.info("Creating a " + funcotatorArgs.outputFormatType + " file for output: " + funcotatorArgs.outputFile.toURI());
+        logger.info("Creating a " + funcotatorArgs.outputFormatType + " file for output: " + funcotatorArgs.outputVcf);
         outputRenderer = funcotatorEngine.createOutputRenderer(
                 annotationDefaultsMap,
                 annotationOverridesMap,

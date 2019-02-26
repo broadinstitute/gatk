@@ -23,6 +23,7 @@ import org.broadinstitute.hellbender.tools.funcotator.filtrationRules.Funcotatio
 import org.broadinstitute.hellbender.tools.funcotator.filtrationRules.LmmFilter;
 import org.broadinstitute.hellbender.tools.funcotator.filtrationRules.LofFilter;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
 import java.io.File;
@@ -86,7 +87,7 @@ public class FilterFuncotations extends VariantWalker {
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             doc = "Output VCF file to which filtered variants should be written.")
-    protected File outputFile;
+    protected String output;
 
     @Argument(
             fullName =  FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME,
@@ -106,7 +107,7 @@ public class FilterFuncotations extends VariantWalker {
         final VCFInfoHeaderLine funcotationHeaderLine = vcfHeader.getInfoHeaderLine(VcfOutputRenderer.FUNCOTATOR_VCF_FIELD_NAME);
         if (funcotationHeaderLine != null) {
             funcotationKeys = FuncotatorUtils.extractFuncotatorKeysFromHeaderDescription(funcotationHeaderLine.getDescription());
-            outputVcfWriter = createVCFWriter(outputFile);
+            outputVcfWriter = createVCFWriter(IOUtils.getPath(output));
             vcfHeader.addMetaDataLine(new VCFFilterHeaderLine(FilterFuncotationsConstants.NOT_CLINSIG_FILTER,
                     FilterFuncotationsConstants.NOT_CLINSIG_FILTER_DESCRIPTION));
             vcfHeader.addMetaDataLine(new VCFInfoHeaderLine(FilterFuncotationsConstants.CLINSIG_INFO_KEY, 1,

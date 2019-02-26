@@ -20,6 +20,7 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConf
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
@@ -75,7 +76,7 @@ public final class ReblockGVCF extends VariantWalker {
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc="File to which variants should be written")
-    private File outputFile;
+    private String outputVcf;
 
     @ArgumentCollection
     public GenotypeCalculationArgumentCollection genotypeArgs = new GenotypeCalculationArgumentCollection();
@@ -159,7 +160,7 @@ public final class ReblockGVCF extends VariantWalker {
             VCFStandardHeaderLines.addStandardInfoLines(headerLines, true, VCFConstants.DBSNP_KEY);
         }
 
-        VariantContextWriter writer = createVCFWriter(outputFile);
+        VariantContextWriter writer = createVCFWriter(IOUtils.getPath(outputVcf));
 
         try {
             vcfWriter = new GVCFWriter(writer, new ArrayList<Number>(GVCFGQBands), PLOIDY_TWO);

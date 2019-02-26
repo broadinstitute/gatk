@@ -341,7 +341,7 @@ public class CNNScoreVariants extends TwoPassVariantWalker {
 
         try {
             scoreScan = new Scanner(scoreFile);
-            vcfWriter = createVCFWriter(new File(outputFile));
+            vcfWriter = createVCFWriter(IOUtils.getPath(outputFile));
             scoreScan.useDelimiter("\\n");
             writeVCFHeader(vcfWriter);
         } catch (IOException e) {

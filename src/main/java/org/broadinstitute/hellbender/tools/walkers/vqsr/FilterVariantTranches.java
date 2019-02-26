@@ -19,6 +19,7 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -117,7 +118,7 @@ public class FilterVariantTranches extends TwoPassVariantWalker {
     public void onTraversalStart() {
         snpTranches = validateTranches(snpTranches);
         indelTranches = validateTranches(indelTranches);
-        vcfWriter = createVCFWriter(new File(outputVcf));
+        vcfWriter = createVCFWriter(IOUtils.getPath(outputVcf));
         writeVCFHeader(vcfWriter);
     }
 

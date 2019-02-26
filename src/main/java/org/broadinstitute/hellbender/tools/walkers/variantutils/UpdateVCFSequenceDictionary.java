@@ -125,7 +125,7 @@ public final class UpdateVCFSequenceDictionary extends VariantWalker {
         }
 
         outputHeader.setSequenceDictionary(sourceDictionary);
-        vcfWriter = createVCFWriter(new File(outFile));
+        vcfWriter = createVCFWriter(IOUtils.getPath(outFile));
         vcfWriter.writeHeader(outputHeader);
     }
 

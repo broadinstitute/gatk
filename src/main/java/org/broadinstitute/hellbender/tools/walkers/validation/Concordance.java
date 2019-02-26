@@ -16,6 +16,7 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.VariantsToTable;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
 import java.io.File;
@@ -102,19 +103,19 @@ public class Concordance extends AbstractConcordanceWalker {
             fullName = TRUE_POSITIVES_AND_FALSE_NEGATIVES_LONG_NAME,
             shortName = TRUE_POSITIVES_AND_FALSE_NEGATIVES_SHORT_NAME,
             optional = true)
-    protected File truePositivesAndFalseNegativesVcf = null;
+    protected String truePositivesAndFalseNegativesVcf = null;
 
     @Argument(doc = "A vcf to write true positives and false positives",
             fullName = TRUE_POSITIVES_AND_FALSE_POSITIVES_LONG_NAME,
             shortName = TRUE_POSITIVES_AND_FALSE_POSITIVES_SHORT_NAME,
             optional = true)
-    protected File truePositivesAndFalsePositivesVcf = null;
+    protected String truePositivesAndFalsePositivesVcf = null;
 
     @Argument(doc = "A vcf to write filtered true negatives and false negatives",
             fullName = FILTERED_TRUE_NEGATIVES_AND_FALSE_NEGATIVES_LONG_NAME,
             shortName = FILTERED_TRUE_NEGATIVES_AND_FALSE_NEGATIVES_SHORT_NAME,
             optional = true)
-    protected File filteredTrueNegativesAndFalseNegativesVcf = null;
+    protected String filteredTrueNegativesAndFalseNegativesVcf = null;
 
     // we count true positives, false positives, false negatives for snps and indels
     private final EnumMap<ConcordanceState, MutableLong> snpCounts = new EnumMap<>(ConcordanceState.class);
@@ -136,7 +137,7 @@ public class Concordance extends AbstractConcordanceWalker {
         final VCFHeader evalHeader = getEvalHeader();
 
         if (truePositivesAndFalseNegativesVcf != null) {
-            truePositivesAndFalseNegativesVcfWriter = createVCFWriter(truePositivesAndFalseNegativesVcf);
+            truePositivesAndFalseNegativesVcfWriter = createVCFWriter(IOUtils.getPath(truePositivesAndFalseNegativesVcf));
             final VCFHeader truthHeader = getTruthHeader();
             truthHeader.addMetaDataLine(TRUTH_STATUS_HEADER_LINE);
             defaultToolHeaderLines.forEach(truthHeader::addMetaDataLine);
@@ -144,7 +145,7 @@ public class Concordance extends AbstractConcordanceWalker {
         }
 
         if (truePositivesAndFalsePositivesVcf != null) {
-            truePositivesAndFalsePositivesVcfWriter = createVCFWriter(truePositivesAndFalsePositivesVcf);
+            truePositivesAndFalsePositivesVcfWriter = createVCFWriter(IOUtils.getPath(truePositivesAndFalsePositivesVcf));
 
             defaultToolHeaderLines.forEach(evalHeader::addMetaDataLine);
             evalHeader.addMetaDataLine(TRUTH_STATUS_HEADER_LINE);
@@ -152,7 +153,7 @@ public class Concordance extends AbstractConcordanceWalker {
         }
 
         if (filteredTrueNegativesAndFalseNegativesVcf != null) {
-            filteredTrueNegativesAndFalseNegativesVcfWriter = createVCFWriter(filteredTrueNegativesAndFalseNegativesVcf);
+            filteredTrueNegativesAndFalseNegativesVcfWriter = createVCFWriter(IOUtils.getPath(filteredTrueNegativesAndFalseNegativesVcf));
             evalHeader.addMetaDataLine(TRUTH_STATUS_HEADER_LINE);
             defaultToolHeaderLines.forEach(evalHeader::addMetaDataLine);
             filteredTrueNegativesAndFalseNegativesVcfWriter.writeHeader(evalHeader);

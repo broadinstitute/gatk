@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.TwoPassVariantWalker;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.io.File;
@@ -35,7 +36,7 @@ import java.util.List;
 public class ExampleTwoPassVariantWalker extends TwoPassVariantWalker {
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc = "Output vcf", optional = true)
-    private File outputVcf = null;
+    private String outputVcf = null;
 
     private final List<Double> qualByDepths = new ArrayList<>();
 
@@ -56,7 +57,7 @@ public class ExampleTwoPassVariantWalker extends TwoPassVariantWalker {
         final VCFHeader inputHeader = getHeaderForVariants();
         inputHeader.addMetaDataLine(new VCFInfoHeaderLine(QD_DISTANCE_FROM_MEAN, 1, VCFHeaderLineType.Float, "distance from the average QD value in the units of standard deviations"));
         inputHeader.addMetaDataLine(new VCFInfoHeaderLine(COPY_OF_QD_KEY_NAME, 1, VCFHeaderLineType.Float, "copy of the QD INFO field"));
-        vcfWriter = createVCFWriter(outputVcf);
+        vcfWriter = createVCFWriter(IOUtils.getPath(outputVcf));
         vcfWriter.writeHeader(inputHeader);
     }
 

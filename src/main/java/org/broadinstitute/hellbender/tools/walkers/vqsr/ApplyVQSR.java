@@ -11,6 +11,7 @@ import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureInput;
@@ -272,7 +273,7 @@ public class ApplyVQSR extends MultiVariantWalker {
 
         hInfo.addAll(getDefaultToolVCFHeaderLines());
         final VCFHeader vcfHeader = new VCFHeader(hInfo, samples);
-        vcfWriter = createVCFWriter(new File(output));
+        vcfWriter = createVCFWriter(IOUtils.getPath(output));
         vcfWriter.writeHeader(vcfHeader);
     }
 
