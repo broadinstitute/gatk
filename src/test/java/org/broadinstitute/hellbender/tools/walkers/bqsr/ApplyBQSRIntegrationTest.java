@@ -111,14 +111,14 @@ public final class ApplyBQSRIntegrationTest extends CommandLineProgramTest {
             refFile = new File(params.reference);
             args.add("-R");
             args.add(refFile.getAbsolutePath());
-            if (params.args != null) {
-                Stream.of(params.args).forEach(arg -> args.add(arg));
-            }
-
-            runCommandLine(args);
-
-            SamAssertionUtils.assertSamsEqual(outFile, new File(params.expectedFile), refFile);
         }
+        if (params.args != null) {
+            Stream.of(params.args).forEach(arg -> args.add(arg));
+        }
+
+        runCommandLine(args);
+
+        SamAssertionUtils.assertSamsEqual(outFile, new File(params.expectedFile), refFile);
     }
 
     @Test(dataProvider = "MiniApplyBQSRTest")
