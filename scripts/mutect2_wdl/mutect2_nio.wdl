@@ -124,6 +124,7 @@ workflow Mutect2 {
     Boolean run_funcotator_or_default = select_first([run_funcotator, false])
     String? funco_reference_version
     File? funco_data_sources_tar_gz
+    File funco_data_sources = select_first([funco_data_sources_tar_gz, "gs://broad-public-datasets/funcotator/funcotator_dataSources.v1.4.20180615.tar.gz"])
     String? funco_transcript_selection_mode
     File? funco_transcript_selection_list
     Array[String]? funco_annotation_defaults
@@ -157,7 +158,7 @@ workflow Mutect2 {
 
     # If no tar is provided, the task downloads one from broads ftp server
     Int onco_tar_size = if defined(onco_ds_tar_gz) then ceil(size(onco_ds_tar_gz, "GB") * 3) else 100
-    Int funco_tar_size = if defined(funco_data_sources_tar_gz) then ceil(size(funco_data_sources_tar_gz, "GB") * 3) else 100
+    Int funco_tar_size = if defined(funco_data_sources) then ceil(size(funco_data_sources, "GB") * 3) else 100
     Int gatk_override_size = if defined(gatk_override) then ceil(size(gatk_override, "GB")) else 0
 
     # This is added to every task as padding, should increase if systematically you need more disk for every call
@@ -444,7 +445,7 @@ workflow Mutect2 {
                 input_vcf_idx = funcotate_vcf_input_index,
                 ref_fasta = ref_fasta,
                 reference_version = select_first([funco_reference_version, "hg19"]),
-                data_sources_tar_gz = funco_data_sources_tar_gz,
+                data_sources = funco_data_sources,
                 case_id = M2.tumor_sample[0],
                 control_id = M2.normal_sample[0],
                 transcript_selection_mode = funco_transcript_selection_mode,
@@ -1240,7 +1241,7 @@ task FuncotateMaf {
      String case_id
      String? control_id
 
-     File? data_sources_tar_gz
+     File? data_sources
      String? transcript_selection_mode
      File? transcript_selection_list
      Array[String]? annotation_defaults
@@ -1288,7 +1289,7 @@ task FuncotateMaf {
          set -e
          export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
 
-         DATA_SOURCES_TAR_GZ=${data_sources_tar_gz}
+         DATA_SOURCES_TAR_GZ=${data_sources}
          if [[ ! -e $DATA_SOURCES_TAR_GZ ]] ; then
              # We have to download the data sources:
              echo "Data sources gzip does not exist: $DATA_SOURCES_TAR_GZ"
@@ -1299,7 +1300,7 @@ task FuncotateMaf {
          else
              # Extract the tar.gz:
              mkdir datasources_dir
-             tar zxvf ${data_sources_tar_gz} -C datasources_dir --strip-components 1
+             tar zxvf ${data_sources} -C datasources_dir --strip-components 1
              DATA_SOURCES_FOLDER="$PWD/datasources_dir"
          fi
 
