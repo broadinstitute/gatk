@@ -22,7 +22,7 @@ import java.util.Arrays;
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class CollectAllelicCountsIntegrationTest extends CommandLineProgramTest {
+public class CollectAllelicCountsIntegrationTest extends CommandLineProgramTest {
     private static final File TEST_SUB_DIR = new File(toolsTestDir, "copynumber");
     private static final File NORMAL_BAM_FILE = new File(TEST_SUB_DIR, "collect-allelic-counts-normal.bam");
     private static final File TUMOR_BAM_FILE = new File(TEST_SUB_DIR, "collect-allelic-counts-tumor.bam");
