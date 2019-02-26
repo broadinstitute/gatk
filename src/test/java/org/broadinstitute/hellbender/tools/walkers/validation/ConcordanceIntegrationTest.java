@@ -21,11 +21,12 @@ import java.util.stream.Collectors;
 public class ConcordanceIntegrationTest extends CommandLineProgramTest{
     final double epsilon = 1e-3;
 
+    private static final String CONCORDANCE_TEST_DIR = toolsTestDir + "concordance/";
+
     @Test
     public void testSimple() throws Exception {
-        final String testDir =  toolsTestDir + "concordance/";
-        final File evalVcf = new File(testDir, "gatk4-dream3-mini.vcf");
-        final File truthVcf = new File(testDir, "gatk3-dream3-mini.vcf");
+        final File evalVcf = new File(CONCORDANCE_TEST_DIR, "gatk4-dream3-mini.vcf");
+        final File truthVcf = new File(CONCORDANCE_TEST_DIR, "gatk3-dream3-mini.vcf");
         final File summary = createTempFile("summary", ".txt");
 
         final String[] args = {
@@ -56,9 +57,8 @@ public class ConcordanceIntegrationTest extends CommandLineProgramTest{
     // Test going from an integer chromosome (22) to a character chromosome (X)
     @Test
     public void testt22X() throws Exception {
-        final String testDir = toolsTestDir + "concordance/";
-        final File truthVcf = new File(testDir, "gatk3-dream3-x.vcf");
-        final File evalVcf = new File(testDir, "gatk4-dream3-x.vcf");
+        final File truthVcf = new File(CONCORDANCE_TEST_DIR, "gatk3-dream3-x.vcf");
+        final File evalVcf = new File(CONCORDANCE_TEST_DIR, "gatk4-dream3-x.vcf");
         final File tpfp = createTempFile("tpfp", ".vcf");
         final File tpfn = createTempFile("tpfn", ".vcf");
         final File ftnfn = createTempFile("ftnfn", ".vcf");
@@ -106,9 +106,8 @@ public class ConcordanceIntegrationTest extends CommandLineProgramTest{
     // The truth file only contains the PASS sites; should get 100% sensitivity and specificity.
     @Test
     public void testPerfectMatchVcf() throws Exception {
-        final String testDir = toolsTestDir + "concordance/";
-        final File truthVcf = new File(testDir, "same-truth.vcf");
-        final File evalVcf = new File(testDir, "same-eval.vcf");
+        final File truthVcf = new File(CONCORDANCE_TEST_DIR, "same-truth.vcf");
+        final File evalVcf = new File(CONCORDANCE_TEST_DIR, "same-eval.vcf");
         final File summary = createTempFile("summary", ".txt");
 
         final String[] args = {
@@ -135,9 +134,8 @@ public class ConcordanceIntegrationTest extends CommandLineProgramTest{
 
     @Test
     public void testFilterAnalysis() throws Exception {
-        final String testDir = toolsTestDir + "concordance/";
-        final File truthVcf = new File(testDir, "filter-analysis-truth.vcf");
-        final File evalVcf = new File(testDir, "filter-analysis-eval.vcf");
+        final File truthVcf = new File(CONCORDANCE_TEST_DIR, "filter-analysis-truth.vcf");
+        final File evalVcf = new File(CONCORDANCE_TEST_DIR, "filter-analysis-eval.vcf");
         final File summary = createTempFile("summary", ".txt");
         final File filterAnalysis = createTempFile("filter-analysis", ".txt");
 
@@ -179,9 +177,8 @@ public class ConcordanceIntegrationTest extends CommandLineProgramTest{
 
     @Test
     public void testDreamSensitivity() throws Exception {
-        final String testDir = toolsTestDir + "concordance/";
-        final File evalVcf = new File(testDir, "dream3-chr21.vcf");
-        final File truthVcf = new File(testDir, "dream3-truth-minus-SV-chr21.vcf");
+        final File evalVcf = new File(CONCORDANCE_TEST_DIR, "dream3-chr21.vcf");
+        final File truthVcf = new File(CONCORDANCE_TEST_DIR, "dream3-truth-minus-SV-chr21.vcf");
         final File summary = createTempFile("summary", ".txt");
 
         final String[] args = {
@@ -215,9 +212,8 @@ public class ConcordanceIntegrationTest extends CommandLineProgramTest{
 
     @Test
     public void testDoesNotCrashWithNO_VARIATIONAlleles() {
-        final String testDir = toolsTestDir + "concordance/";
-        final File evalVcf = new File(testDir, "noVariationAlleles.vcf");
-        final File truthVcf = new File(testDir, "noVariationAlleles.vcf");
+        final File evalVcf = new File(CONCORDANCE_TEST_DIR, "noVariationAlleles.vcf");
+        final File truthVcf = new File(CONCORDANCE_TEST_DIR, "noVariationAlleles.vcf");
         final File summary = createTempFile("summary", ".txt");
 
         final String[] args = {
@@ -229,8 +225,8 @@ public class ConcordanceIntegrationTest extends CommandLineProgramTest{
         runCommandLine(args);
 
         try {
-            final ConcordanceSummaryRecord.Reader reader             = new ConcordanceSummaryRecord.Reader(summary);
-            final ConcordanceSummaryRecord        snpRecord = reader.readRecord();
+            final ConcordanceSummaryRecord.Reader reader      = new ConcordanceSummaryRecord.Reader(summary);
+            final ConcordanceSummaryRecord        snpRecord   = reader.readRecord();
             final ConcordanceSummaryRecord        indelRecord = reader.readRecord();
 
             // Some token validation:

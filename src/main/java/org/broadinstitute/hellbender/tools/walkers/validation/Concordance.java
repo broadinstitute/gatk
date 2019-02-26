@@ -291,7 +291,8 @@ public class Concordance extends AbstractConcordanceWalker {
     protected boolean areVariantsAtSameLocusConcordant(final VariantContext truth, final VariantContext eval) {
         final boolean sameRefAllele = truth.getReference().equals(eval.getReference());
 
-        // we assume that the truth has a single alternate allele
+        // We make sure that the truth has at least one alt allele.
+        // If it does, we pick the first for comparison:
         final boolean containsAltAllele =
                 (truth.getAlternateAlleles().size() == eval.getAlternateAlleles().size()) &&
                 ((truth.getAlternateAlleles().size() > 0) &&
