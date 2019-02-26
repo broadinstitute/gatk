@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AbstractHaplotypeCallerIntegrationTest;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerArgumentCollection;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.GATKBaseTest;
@@ -22,12 +23,13 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.util.Collections;
+import java.util.List;
 
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerIntegrationTest;
 
-@Test(groups = {"variantcalling"})
+@Test(groups = {"variantcalling", "spark"})
 // Selected tests copied from HaplotypeCallerIntegrationTest
-public class HaplotypeCallerSparkIntegrationTest extends CommandLineProgramTest {
+public class HaplotypeCallerSparkIntegrationTest extends AbstractHaplotypeCallerIntegrationTest {
 
     // If true, update the expected outputs in tests that assert an exact match vs. prior output,
     // instead of actually running the tests. Can be used with "./gradlew test -Dtest.single=HaplotypeCallerIntegrationTest"
@@ -43,6 +45,11 @@ public class HaplotypeCallerSparkIntegrationTest extends CommandLineProgramTest 
     @Test
     public void assertThatExpectedOutputUpdateToggleIsDisabled() {
         Assert.assertFalse(UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS, "The toggle to update expected outputs should not be left enabled");
+    }
+
+    @Override
+    public List<String> getToolSpecificArguments() {
+        return Collections.singletonList("--strict");
     }
 
     @DataProvider(name = "HaplotypeCallerTestInputs")
