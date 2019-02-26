@@ -27,7 +27,7 @@ import java.util.List;
 
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerIntegrationTest;
 
-@Test(groups = {"variantcalling"})
+@Test(groups = {"variantcalling", "spark"})
 // Selected tests copied from HaplotypeCallerIntegrationTest
 public class HaplotypeCallerSparkIntegrationTest extends AbstractHaplotypeCallerIntegrationTest {
 

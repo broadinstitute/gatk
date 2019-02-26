@@ -29,7 +29,9 @@ import java.util.stream.StreamSupport;
 
 public abstract class AbstractHaplotypeCallerIntegrationTest extends CommandLineProgramTest {
 
-    public abstract List<String> getToolSpecificArguments();
+    public List<String> getToolSpecificArguments() {
+        return Collections.emptyList();
+    }
 
     // If true, update the expected outputs in tests that assert an exact match vs. prior output,
     // instead of actually running the tests. Can be used with "./gradlew test -Dtest.single=HaplotypeCallerIntegrationTest"

@@ -567,8 +567,4 @@ public class HaplotypeCallerIntegrationTest extends AbstractHaplotypeCallerInteg
         return numAltAllelesExcludingNonRef;
     }
 
-    @Override
-    public List<String> getToolSpecificArguments() {
-        return Collections.emptyList();
-    }
 }
