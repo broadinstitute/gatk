@@ -14,6 +14,7 @@ import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFSimpleHeaderLine;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
+import java.nio.file.Path;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.tuple.MutablePair;
@@ -81,30 +82,30 @@ public final class GATKVariantContextUtils {
      * The default options set by VariantContextWriter are cleared before applying ALLOW_MISSING_FIELDS_IN_HEADER (if
      * <code>lenientProcessing</code> is set), followed by the set of options specified by any <code>options</code> args.
      *
-     * @param outFile output File for this writer. May not be null.
+     * @param outPath output Path for this writer. May not be null.
      * @param referenceDictionary required if on the fly indexing is set, otherwise can be null
      * @param createMD5 true if an md5 file should be created
      * @param options variable length list of additional Options to be set for this writer
      * @returns VariantContextWriter must be closed by the caller
      */
     public static VariantContextWriter createVCFWriter(
-            final File outFile,
+            final Path outPath,
             final SAMSequenceDictionary referenceDictionary,
             final boolean createMD5,
             final Options... options)
     {
-        Utils.nonNull(outFile);
+        Utils.nonNull(outPath);
 
         VariantContextWriterBuilder vcWriterBuilder =
-                new VariantContextWriterBuilder().clearOptions().setOutputFile(outFile);
+                new VariantContextWriterBuilder().clearOptions().setOutputPath(outPath);
 
-        if (VariantContextWriterBuilder.OutputType.UNSPECIFIED == getVariantFileTypeFromExtension(outFile)) {
+        if (VariantContextWriterBuilder.OutputType.UNSPECIFIED == VariantContextWriterBuilder.determineOutputTypeFromFile(outPath)) {
             // the only way the user has to specify an output type is by file extension, and htsjdk
             // throws if it can't map the file extension to a known vcf type, so fallback to a default
             // of VCF
             logger.warn(String.format(
                     "Can't determine output variant file format from output file extension \"%s\". Defaulting to VCF.",
-                    FilenameUtils.getExtension(outFile.getPath())));
+                    FilenameUtils.getExtension(outPath.getFileName().toString())));
             vcWriterBuilder = vcWriterBuilder.setOutputFileType(VariantContextWriterBuilder.OutputType.VCF);
         }
 
@@ -121,22 +122,6 @@ public final class GATKVariantContextUtils {
         }
 
         return vcWriterBuilder.build();
-    }
-
-    // Determine the variant file type from the file extension. Htsjdk has similar code, when
-    // https://github.com/broadinstitute/gatk/issues/2128 is fixed we should eliminate this code
-    // and use the htsjdk method.
-    private static VariantContextWriterBuilder.OutputType getVariantFileTypeFromExtension(final File outputFile) {
-        final String extension = FilenameUtils.getExtension(outputFile.getPath()).toLowerCase();
-
-        if (extension.equals(VcfUtils.VCF_FILE_EXTENSION)) {
-            return VariantContextWriterBuilder.OutputType.VCF;
-        } else if (extension.equals(VcfUtils.BCF_FILE_EXTENSION)) {
-            return VariantContextWriterBuilder.OutputType.BCF;
-        } else if (IOUtil.hasBlockCompressedExtension(outputFile.getPath())) {
-            return VariantContextWriterBuilder.OutputType.BLOCK_COMPRESSED_VCF;
-        }
-        return VariantContextWriterBuilder.OutputType.UNSPECIFIED;
     }
 
     /**

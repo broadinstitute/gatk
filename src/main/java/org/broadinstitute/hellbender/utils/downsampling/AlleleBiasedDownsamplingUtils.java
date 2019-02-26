@@ -180,7 +180,7 @@ public final class AlleleBiasedDownsamplingUtils {
     public static DefaultedMap<String, Double> loadContaminationFile(final File file, final double defaultContaminationFraction, final Set<String> sampleIDs, final Logger logger) {
         final DefaultedMap<String, Double> sampleContamination = new DefaultedMap<>(defaultContaminationFraction);
         final Set<String> nonSamplesInContaminationFile = new LinkedHashSet<>(sampleContamination.keySet());
-        try ( final XReadLines reader = new XReadLines(file, true) ){
+        try ( final XReadLines reader = new XReadLines(Utils.nonNull(file).toPath(), true) ){
             for (final String line : reader) {
                 if (line.isEmpty()) {
                     continue;

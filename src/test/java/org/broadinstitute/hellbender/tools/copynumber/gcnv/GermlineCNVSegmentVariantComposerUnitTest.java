@@ -32,7 +32,7 @@ public final class GermlineCNVSegmentVariantComposerUnitTest extends GATKBaseTes
         final IntegerCopyNumberSegmentCollection collection = new IntegerCopyNumberSegmentCollection(
                 IntegerCopyNumberSegmentCollectionUnitTest.TEST_INTEGER_COPY_NUMBER_SEGMENTS_FILE);
         final File segmentsOutputVCF = createTempFile("test-write-segments", ".vcf");
-        final VariantContextWriter writer = GATKVariantContextUtils.createVCFWriter(segmentsOutputVCF,
+        final VariantContextWriter writer = GATKVariantContextUtils.createVCFWriter(segmentsOutputVCF.toPath(),
                 collection.getMetadata().getSequenceDictionary(), false);
         final GermlineCNVSegmentVariantComposer variantComposer = new GermlineCNVSegmentVariantComposer(
                 writer, IntegerCopyNumberSegmentCollectionUnitTest.EXPECTED_SAMPLE_NAME,

@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.testutils;
 
 import htsjdk.samtools.ValidationStringency;
+import java.nio.file.Path;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -18,8 +19,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 public final class IntegrationTestSpec {
 
@@ -196,47 +195,47 @@ public final class IntegrationTestSpec {
         assertEqualTextFiles(resultFile, expectedFile, null);
     }
 
+    public static void assertEqualTextFiles(final File resultFile, final File expectedFile, final String commentPrefix) throws IOException {
+        assertEqualTextFiles(resultFile.toPath(), expectedFile.toPath(), commentPrefix);
+    }
+
     /**
      * Compares two text files and ignores all lines that start with the comment prefix.
      */
-    public static void assertEqualTextFiles(final File resultFile, final File expectedFile, final String commentPrefix) throws IOException {
-        final Predicate<? super String> startsWithComment;
-        if (commentPrefix == null){
-            startsWithComment = s -> false;
-        } else {
-            startsWithComment = s -> s.startsWith(commentPrefix);
-        }
-        final List<String> actualLines = new XReadLines(resultFile).readLines().stream().filter(startsWithComment.negate()).collect(Collectors.toList());
-        final List<String> expectedLines = new XReadLines(expectedFile).readLines().stream().filter(startsWithComment.negate()).collect(Collectors.toList());
+    public static void assertEqualTextFiles(final Path resultFile, final Path expectedFile, final String commentPrefix) throws IOException {
 
-        //For ease of debugging, we look at the lines first and only then check their counts
+        XReadLines actual = new XReadLines(resultFile, true, commentPrefix);
+        XReadLines expected = new XReadLines(expectedFile, true, commentPrefix);
+
+        // For ease of debugging, we look at the lines first and only then check their counts.
+        // For performance, we stream the lines through instead of loading everything first.
         int numUnequalLines = 0;
-        final int minLen = Math.min(actualLines.size(), expectedLines.size());
-        for (int i = 0; i < minLen; i++) {
-
-            final String expectedLine = expectedLines.get(i);
-            final String actualLine = actualLines.get(i);
-
-            if ( !actualLine.equals(expectedLine) ) {
-                logger.error( "Line number " + i + " (not counting comments) expected " +
-                        expectedLine + " actual " + actualLine + '\n' +
-                        "Expected :" + expectedLine  + '\n' +
-                        "Actual   :" + actualLine  + '\n'
-                );
-                ++numUnequalLines;
-            }
+        int i = 0;
+        while (actual.hasNext() && expected.hasNext()) {
+          final String expectedLine = expected.next();
+          final String actualLine = actual.next();
+          if ( !actualLine.equals(expectedLine) ) {
+            logger.error( "Line number " + i + " (not counting comments) expected " +
+                expectedLine + " actual " + actualLine + '\n' +
+                "Expected :" + expectedLine  + '\n' +
+                "Actual   :" + actualLine  + '\n'
+            );
+            ++numUnequalLines;
+          }
+          i++;
         }
-        final boolean sizeMatches = actualLines.size() == expectedLines.size();
+
+        final boolean sizeMatches = (actual.hasNext() == expected.hasNext());
 
         // Check our error cases:
         if ( (numUnequalLines != 0) && (!sizeMatches) ) {
-            throw new AssertionError("File sizes are unequal - actual = " + actualLines.size() + ", expected = " + expectedLines.size() + " AND detected unequal lines: " + numUnequalLines);
+            throw new AssertionError("File sizes are unequal - actual = " + actual.readLines().size() + ", expected = " + expected.readLines().size() + " AND detected unequal lines: " + numUnequalLines);
         }
         else if ( numUnequalLines != 0 ) {
             throw new AssertionError("Detected unequal lines: " + numUnequalLines);
         }
         else if (!sizeMatches) {
-            throw new AssertionError("File sizes are unequal - actual = " + actualLines.size() + ", expected = " + expectedLines.size());
+            throw new AssertionError("File sizes are unequal - actual = " + actual.readLines().size() + ", expected = " + expected.readLines().size());
         }
     }
 

@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.utils.variant;
 
+import com.google.common.jimfs.Configuration;
+import com.google.common.jimfs.Jimfs;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.Locatable;
@@ -13,6 +15,9 @@ import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
+import java.nio.file.FileSystem;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.FeatureManager;
@@ -1699,7 +1704,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         final File tmpDir = createTempDir("createVCFTest");
         final File outFile = new File(tmpDir.getAbsolutePath(), "createVCFTest" + ".vcf");
 
-        final VariantContextWriter vcw = GATKVariantContextUtils.createVCFWriter(outFile, null, false);
+        final VariantContextWriter vcw = GATKVariantContextUtils.createVCFWriter(outFile.toPath(), null, false);
         vcw.close();
 
         final File outFileIndex = new File(outFile.getAbsolutePath() + ".idx");
@@ -1746,7 +1751,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
                 new Options[] {Options.INDEX_ON_THE_FLY} :
                 new Options[] {};
         try (final VariantContextWriter writer = GATKVariantContextUtils.createVCFWriter(
-                outputFile,
+                outputFile.toPath(),
                 makeSimpleSequenceDictionary(),
                 createMD5,
                 options)) {
@@ -1809,7 +1814,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
                 new Options[] {Options.ALLOW_MISSING_FIELDS_IN_HEADER, Options.INDEX_ON_THE_FLY} :
                 new Options[] {Options.ALLOW_MISSING_FIELDS_IN_HEADER};
         try (final VariantContextWriter vcw = GATKVariantContextUtils.createVCFWriter(
-                outputFile,
+                outputFile.toPath(),
                 makeSimpleSequenceDictionary(),
                 createMD5,
                 options)) {
@@ -1839,7 +1844,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
                 new Options[] {Options.INDEX_ON_THE_FLY} :
                 new Options[] {};
         try (final VariantContextWriter vcw = GATKVariantContextUtils.createVCFWriter(
-                outputFile,
+                outputFile.toPath(),
                 makeSimpleSequenceDictionary(),
                 createMD5,
                 options)) {
@@ -1854,7 +1859,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         final File outFile = createTempFile("testVCFWriter", ".vcf");
         final VariantContextWriter vcw =
                      GATKVariantContextUtils.createVCFWriter(
-                             outFile,
+                             outFile.toPath(),
                              null,
                              true,
                              Options.INDEX_ON_THE_FLY);
@@ -1872,7 +1877,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
 
         long recordCount = 0;
         try (final VariantContextWriter vcfWriter = GATKVariantContextUtils.createVCFWriter(
-                 outputGZIPFile,
+                 outputGZIPFile.toPath(),
                  null,
                  false,
                  Options.INDEX_ON_THE_FLY);
@@ -1902,6 +1907,49 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
             final long actualCount = outputFileReader.query(
                     queryInterval.getContig(), queryInterval.getStart(), queryInterval.getEnd()).stream().count();
             Assert.assertEquals(actualCount, recordCount);
+        }
+    }
+
+    @Test
+    public void testCreateVcfWriterOnNio() throws IOException {
+        final File inputGZIPFile = new File(
+            publicTestDir + "org/broadinstitute/hellbender/engine/8_mutect2_sorted.vcf.gz");
+        try (FileSystem jimfs = Jimfs.newFileSystem(Configuration.unix())) {
+            final Path outputGZIP = jimfs.getPath("testCreateVcfWriterOnNio.vcf.gz");
+            final Path tabixIndex = outputGZIP.resolveSibling(outputGZIP.getFileName().toString() + TabixUtils.STANDARD_INDEX_EXTENSION);
+            long recordCount = 0;
+
+            try (final VariantContextWriter vcfWriter = GATKVariantContextUtils.createVCFWriter(
+                outputGZIP,
+                null,
+                false,
+                Options.INDEX_ON_THE_FLY);
+                final FeatureReader<VariantContext> inputFileReader =
+                    AbstractFeatureReader
+                        .getFeatureReader(inputGZIPFile.getAbsolutePath(), new VCFCodec(), false)) {
+                vcfWriter.writeHeader((VCFHeader) inputFileReader.getHeader());
+                final Iterator<VariantContext> it = inputFileReader.iterator();
+                while (it.hasNext()) {
+                    vcfWriter.add(it.next());
+                    recordCount++;
+                }
+            }
+
+            // make sure we got an output and tabix index
+            Assert.assertTrue(Files.exists(outputGZIP));
+            Assert.assertTrue(Files.exists(tabixIndex));
+            Assert.assertTrue(Files.size(tabixIndex) > 0);
+
+            // make sure we got an output and queryable index
+            long roundTripRecordCount = 0;
+            try (final VCFFileReader outputFileReader = new VCFFileReader(outputGZIP, true)) {
+                final Iterator<VariantContext> it = outputFileReader.query(new SimpleInterval("chr6", 1, 999999999));
+                while (it.hasNext()) {
+                    it.next();
+                    roundTripRecordCount++;
+                }
+            }
+            Assert.assertEquals(roundTripRecordCount, recordCount);
         }
     }
 

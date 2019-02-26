@@ -9,28 +9,23 @@ import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLineType;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
-import org.apache.commons.math3.special.Gamma;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.*;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.readorientation.BetaDistributionShape;
 import org.broadinstitute.hellbender.tools.walkers.validation.basicshortmutpileup.BetaBinomialDistribution;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.OptimizationUtils;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileState;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import picard.cmdline.programgroups.VariantFilteringProgramGroup;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 
-import java.io.File;
 import java.util.List;
-import java.util.OptionalInt;
 import java.util.function.DoubleUnaryOperator;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 /**
  * Create a panel of normals (PoN) containing germline and artifactual sites for use with Mutect2.
@@ -124,7 +119,7 @@ public class CreateSomaticPanelOfNormals extends VariantWalker {
         outputHeader.addMetaDataLine(new VCFInfoHeaderLine(FRACTION_INFO_FIELD, 1, VCFHeaderLineType.Float, "Fraction of samples exhibiting artifact"));
         outputHeader.addMetaDataLine(new VCFInfoHeaderLine(BETA_SHAPE_INFO_FIELD, 2, VCFHeaderLineType.Float, "Beta distribution parameters to fit artifact allele fractions"));
 
-        vcfWriter = createVCFWriter(new File(outputVcf));
+        vcfWriter = createVCFWriter(IOUtils.getPath(outputVcf));
         vcfWriter.writeHeader(outputHeader);
 
         numSamples = getHeaderForVariants().getNGenotypeSamples();

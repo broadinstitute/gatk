@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.vqsr;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -23,7 +24,7 @@ public final class VariantGaussianMixtureModelUnitTest extends GATKBaseTest {
 
     private ArrayList<VariantDatum> readData() throws java.io.IOException{
         ArrayList<VariantDatum> vd = new ArrayList<VariantDatum>();
-        for ( String line : new XReadLines(QUAL_DATA, true) ) {
+        for ( String line : new XReadLines(Utils.nonNull(QUAL_DATA).toPath(), true) ) {
             String[] parts = line.split("\t");
             // QUAL,TRANSITION,ID,LOD,FILTER
             if ( ! parts[0].equals("QUAL") ) {

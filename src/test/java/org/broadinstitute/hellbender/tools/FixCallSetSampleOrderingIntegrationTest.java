@@ -46,7 +46,7 @@ public class FixCallSetSampleOrderingIntegrationTest extends CommandLineProgramT
         for( int i = 0; i < howMany ; i++) {
             final File out = File.createTempFile("tiny_", ".vcf");
 
-            try (final VariantContextWriter writer = GATKVariantContextUtils.createVCFWriter(out, dict, false, Options.INDEX_ON_THE_FLY)) {
+            try (final VariantContextWriter writer = GATKVariantContextUtils.createVCFWriter(out.toPath(), dict, false, Options.INDEX_ON_THE_FLY)) {
                 final String sampleName = "Sample_" + String.valueOf(i);
                 String sampleNameInHeader;
                 if ( samplesInHeaderCanMismatch && addDuplicateHeaderSamples && (i == 100 || i == 700) ) {

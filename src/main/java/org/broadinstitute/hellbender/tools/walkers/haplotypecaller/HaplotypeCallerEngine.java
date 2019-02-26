@@ -35,6 +35,7 @@ import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
@@ -44,7 +45,6 @@ import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 import org.broadinstitute.hellbender.utils.variant.writers.GVCFWriter;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -348,7 +348,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         if (sitesOnlyMode) {options.add(Options.DO_NOT_WRITE_GENOTYPES);}
 
         VariantContextWriter writer = GATKVariantContextUtils.createVCFWriter(
-                new File(outputVCF),
+                IOUtils.getPath(outputVCF),
                 readsDictionary,
                 createOutputVariantMD5,
                 options.toArray(new Options[options.size()])

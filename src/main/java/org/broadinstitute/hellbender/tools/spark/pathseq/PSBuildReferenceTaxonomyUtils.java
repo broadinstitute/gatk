@@ -297,7 +297,7 @@ public final class PSBuildReferenceTaxonomyUtils {
      */
     public static BufferedReader getBufferedReaderGz(final String path) {
         try {
-            return new BufferedReader(IOUtils.makeReaderMaybeGzipped(new File(path)));
+            return new BufferedReader(IOUtils.makeReaderMaybeGzipped(IOUtils.getPath(path)));
         } catch (final IOException e) {
             throw new UserException.BadInput("Could not open file " + path, e);
         }
