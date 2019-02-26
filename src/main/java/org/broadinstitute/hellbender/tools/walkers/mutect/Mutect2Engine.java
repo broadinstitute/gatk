@@ -10,6 +10,7 @@ import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.math3.special.Beta;
 import org.apache.commons.math3.special.Gamma;
 import org.apache.commons.math3.util.FastMath;
@@ -72,6 +73,8 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     public static final double MAX_ALT_FRACTION_IN_NORMAL = 0.3;
     public static final int MAX_NORMAL_QUAL_SUM = 100;
     public static final int MIN_PALINDROME_SIZE = 5;
+
+    public static final int HUGE_FRAGMENT_LENGTH = 1_000_000;
 
     private M2ArgumentCollection MTAC;
     private SAMFileHeader header;
@@ -198,6 +201,8 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
             return emitReferenceConfidence() ? referenceModelForNoVariation(originalAssemblyRegion) : NO_CALLS;  //TODD: does this need to be finalized?
         }
 
+        removeUnmarkedDuplicates(originalAssemblyRegion);
+
         final List<VariantContext> givenAlleles = MTAC.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES ?
                 featureContext.getValues(MTAC.alleles).stream().filter(vc -> MTAC.genotypeFilteredAlleles || vc.isNotFiltered()).collect(Collectors.toList()) :
                 Collections.emptyList();
@@ -220,9 +225,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         }
 
         final AssemblyRegion regionForGenotyping = assemblyResult.getRegionForGenotyping();
-        final List<GATKRead> readStubs = regionForGenotyping.getReads().stream()
-                .filter(r -> r.getLength() < AssemblyBasedCallerUtils.MINIMUM_READ_LENGTH_AFTER_TRIMMING).collect(Collectors.toList());
-        regionForGenotyping.removeAll(readStubs);
+        removeReadStubs(regionForGenotyping);
 
         final Map<String,List<GATKRead>> reads = splitReadsBySample( regionForGenotyping.getReads() );
 
@@ -258,6 +261,30 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         else {
             return calledHaplotypes.getCalls();
         }
+    }
+
+    private void removeReadStubs(final AssemblyRegion assemblyRegion) {
+        final List<GATKRead> readStubs = assemblyRegion.getReads().stream()
+                .filter(r -> r.getLength() < AssemblyBasedCallerUtils.MINIMUM_READ_LENGTH_AFTER_TRIMMING).collect(Collectors.toList());
+        assemblyRegion.removeAll(readStubs);
+    }
+
+    private void removeUnmarkedDuplicates(final AssemblyRegion assemblyRegion) {
+        // PCR duplicates whose mates have MQ = 0 won't necessarily be marked as duplicates because
+        // the mates map randomly to many different places
+        final Map<ImmutablePair<String, Integer>, List<GATKRead>> possibleDuplicates = assemblyRegion.getReads().stream()
+                .filter(read -> read.isPaired() && !read.mateIsUnmapped() &&
+                        (!read.getMateContig().equals(read.getContig()) || Math.abs(read.getFragmentLength()) > HUGE_FRAGMENT_LENGTH))
+                .collect(Collectors.groupingBy(
+                        read -> ImmutablePair.of(ReadUtils.getSampleName(read, header), (read.isFirstOfPair() ? 1 : -1) * read.getUnclippedStart())));
+
+        final List<GATKRead> duplicates = possibleDuplicates.values().stream().flatMap(list -> {
+            final Map<String, List<GATKRead>> readsByContig = list.stream().collect(Collectors.groupingBy(GATKRead::getMateContig));
+            // if no clear best contig, they're almost certainly all mapping errors (in addition to all but one being duplicates)
+            // so we toss them all.  Otherwise we toss all but one
+            return readsByContig.values().stream().flatMap(contigReads -> contigReads.stream().skip(contigReads.size() > list.size() / 2 ? 1 : 0));
+        }).collect(Collectors.toList());
+        assemblyRegion.removeAll(duplicates);
     }
 
     //TODO: refactor this
