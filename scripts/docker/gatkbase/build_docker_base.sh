@@ -14,7 +14,7 @@ INTERMEDIATE_PROJECT=gatknightly
 INTERMEDIATE_VERSION=0.0.1
 
 BASE_FULL_PATH=${BASE_REPO}/${BASE_PROJECT}:gatkbase-${BASE_VERSION}
-INTERMEDIATE_FULL_PATH=${INTERMEDIATE_REPO}/${INTERMEDIATE_PROJECT}:gatkbase-${INTERMEDIATE_VERSION}
+INTERMEDIATE_FULL_PATH=${INTERMEDIATE_REPO}/${INTERMEDIATE_PROJECT}:gatkbase-RPython-${INTERMEDIATE_VERSION}
 #################################################
 # Parsing arguments
 #################################################
@@ -48,10 +48,8 @@ fi
 
 # Build
 echo "Building image to tag ${BASE_FULL_PATH}..."
-docker build -f scripts/docker/gatkbase/Dockerfile --squash -t ${BASE_FULL_PATH} .
+# docker build -f scripts/docker/gatkbase/Dockerfile --squash -t ${BASE_FULL_PATH} scripts/docker/gatkbase/
 
-
-gradle condaEnvironmentDefinition
 echo "Building image to tag ${INTERMEDIATE_FULL_PATH}..."
 docker build -f scripts/docker/gatkPythonR/Dockerfile -t ${INTERMEDIATE_FULL_PATH} --build-arg ZIPPATH=./unzippedJar --build-arg BASEIMAGE=${BASE_FULL_PATH} .
 

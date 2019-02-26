@@ -49,4 +49,7 @@ RUN mv /condaenv/gatkcondaenv.yml /gatk/gatkcondaenv.yml && \
 
 CMD ["bash", "--init-file", "/gatk/gatkenv.rc"]
 
+RUN pip install gatkPythonPackageArchive.zip && \
+    rm -rf /root/.cache/pip
+
 ENV PATH /gatk:$PATH

@@ -1,15 +1,12 @@
 # Using OpenJDK 8
 # Location of the unzipped gatk bundle files
 ARG BASEIMAGE
-
 FROM $BASEIMAGE
 
 # Location of the unzipped conda files
-RUN mdkir /condaenv
+RUN mkdir /condaenv
 
-ARG ZIPPATH
-
-ADD $ZIPPATH /condaenv
+ADD scripts/gatkcondaenv.yml.template /condaenv/gatkcondaenv.yml.template
 
 RUN apt-get install -y python && \
     apt-get -y clean  && \
