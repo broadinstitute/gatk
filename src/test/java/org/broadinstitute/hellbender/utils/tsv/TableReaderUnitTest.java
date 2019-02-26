@@ -89,7 +89,7 @@ public class TableReaderUnitTest extends GATKBaseTest {
         }
 
         @Override
-        protected void processColumns(final TableColumnCollection columns) {
+        protected TableColumnCollection processColumns(final TableColumnCollection columns) {
             if (columns.columnCount() != 3)
                 throw formatException("bad header, must have 3 columns but has " + columns.columnCount() + " instead");
             if (!columns.nameAt(0).equals("col1.str"))
@@ -98,6 +98,7 @@ public class TableReaderUnitTest extends GATKBaseTest {
                 throw formatException("bad header, second column bad name: " + columns.nameAt(0));
             if (!columns.nameAt(2).equals("col3.dbl"))
                 throw formatException("bad header, second column bad name: " + columns.nameAt(0));
+            return columns;
         }
 
         @Override
@@ -602,9 +603,10 @@ public class TableReaderUnitTest extends GATKBaseTest {
         final TableReader<String> tableReader = new TableReader<String>(testFile) {
 
             @Override
-            protected void processColumns(final TableColumnCollection columns) {
+            protected TableColumnCollection processColumns(final TableColumnCollection columns) {
                 Assert.assertEquals(columns.columnCount(), 1);
                 Assert.assertEquals(columns.nameAt(0), "Column1");
+                return columns;
             }
 
             @Override
@@ -635,9 +637,10 @@ public class TableReaderUnitTest extends GATKBaseTest {
         final TableReader<String> tableReader = new TableReader<String>(testFile) {
 
             @Override
-            protected void processColumns(final TableColumnCollection columns) {
+            protected TableColumnCollection processColumns(final TableColumnCollection columns) {
                 Assert.assertEquals(columns.columnCount(), 1);
                 Assert.assertEquals(columns.nameAt(0), "Column1");
+                return columns;
             }
 
             @Override

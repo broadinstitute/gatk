@@ -117,6 +117,8 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
      */
     private TableColumnCollection columns;
 
+    protected boolean columnNamesArePresent;
+
     private Map<String, String> metadata = new HashMap<>();
 
     /**
@@ -160,6 +162,10 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
         this(
                 Utils.nonNull(path, "the input file cannot be null").toString(),
                 IOUtils.makeReaderMaybeGzipped(path));
+    }
+
+    public TableReader(final String path) throws IOException {
+        this(Utils.nonNull(path, "the input path cannot be null"), new InputStreamReader(BucketUtils.openFile(path)));
     }
 
     /**
@@ -207,10 +213,23 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
         final String[] line = skipCommentLines();
         if (line == null) {
             throw formatException("premature end of table: header line not found");
-        } else {
-            TableColumnCollection.checkNames(line, UserException.BadInput::new);
-            columns = new TableColumnCollection(line);
-            processColumns(columns);
+        } else if (columnNameInFirstLine() == TableUtils.ColumnNameInFirstLine.MANDATORY ||
+                (columnNameInFirstLine() == TableUtils.ColumnNameInFirstLine.OPTIONAL && looksLikeColumnNameLine(line))) {
+            columnNamesArePresent = true;
+            if (columns == null) {
+                TableColumnCollection.checkNames(line, this::formatException);
+                columnNamesArePresent = true;
+                columns = processColumns(new TableColumnCollection((line)));
+            } else if (!columns.matchesExactly(line)) {
+                throw formatException("bad column names do not match expected column names");
+            } else {
+                columns = processColumns(columns);
+            }
+        } else if (columnNameInFirstLine() == TableUtils.ColumnNameInFirstLine.ABSENT) {
+            columnNamesArePresent = false;
+            columns = processColumns(defaultColumns(line));
+            nextRecord = createRecord(new DataLine(reader.getLineNumber(), line, columns, this::formatException));
+            nextRecordFetched = true;
         }
     }
 
@@ -292,8 +311,8 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
      *                     a {@code null} and not to contain any {@code null} values.
      * @throws UserException.BadInput if there is a formatting issue.
      */
-    protected void processColumns(@SuppressWarnings("unused") final TableColumnCollection tableColumns) {
-        // nothing by default.
+    protected TableColumnCollection processColumns(@SuppressWarnings("unused") final TableColumnCollection tableColumns) {
+        return tableColumns;
     }
 
     /**
@@ -333,7 +352,7 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
     public final R readRecord(final String line) {
         try {
             final String[] fields = csvReader.getParser().parseLine(line);
-            if (isCommentLine(fields) || isHeaderLine(fields)) {
+            if (isCommentLine(fields) || isColumnNameLine(fields)) {
                 return null;
             } else if (fields.length != columns.columnCount()) {
                 throw formatExceptionWithoutLocation("invalid number of columns");
@@ -357,7 +376,7 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
         while ((line = csvReader.readNext()) != null) {
             if (isCommentLine(line)) {
                 processCommentLine(line, reader.getLineNumber());
-            } else if (!isHeaderLine(line)) {
+            } else if (!isColumnNameLine(line)) {
                 if (line.length != columns.columnCount()) {
                     throw formatException(String.format("mismatch between number of values in line (%d) and number of columns (%d)", line.length, columns.columnCount()));
                 } else {
@@ -400,18 +419,21 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
     }
 
     /**
-     * Determines whether a line is a repetition of the header.
+     * Determines whether a line contains the column name, either being the first or a
+     * repetition.
      *
      * <p>
-     *     By default, input lines that match the header exactly are ignored. By overriding this method
-     *     extending classes may change what is interpretated as a repetition of the header (e.g. just treat such
-     *     lines as regular data line)
+     *     By default, input lines that seemly contain column names are ignored when traversing data-lines. By overriding this method
+     *     extending classes may change what is interpretated as a column name containing line or a repetition of such line.
+     *     So when this method return false on a line, that line may end up bein interpreted as a data-line.
+     *
+     *
      * </p>
      * @param line the input line.
      * @return {@code true} if the input line is a header line and it should be ignored.
      */
-    protected boolean isHeaderLine(final String[] line) {
-        return columns.matchesExactly(line);
+    protected boolean isColumnNameLine(final String[] line) {
+        return columns != null && columns.matchesExactly(line);
     }
 
     /**
@@ -544,4 +566,64 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
     public String getSource() {
         return source;
     }
+
+    /**
+     * Provide a default columns collection when the input has none.
+     * <p>
+     *     The default implemetation provide will fail indicating that
+     *     the input table must contain a column header line.
+     * </p>
+     * @param firstDataLine the content of the first data line.
+     * @return never {@code} null.
+     * @throws UserException.BadInput if this reader require header to be explicitly provided,
+     *   or these cannot be deduced from the first data line content.
+     */
+    protected TableColumnCollection defaultColumns(@SuppressWarnings("unused") final String[] firstDataLine) {
+        throw formatException("missing header");
+    }
+
+    protected TableUtils.ColumnNameInFirstLine columnNameInFirstLine() {
+        return TableUtils.ColumnNameInFirstLine.DEFAULT;
+    }
+
+    /**
+     * Checks whether the content of a line (splitted by column separators) looks like
+     * it contains the column names.
+     * <p>By default this method check that the input array matches the current table columns if these are defined. Otherwise all elements (potential names) in the input array
+     * are not null nor empty, they are unique and start with an alphabetic character, underscore or
+     * dollar sign. If by this rules the input array does not look like a column containin name and this table
+     * has already defined columns then before returning false it will check whether it actually matches thos columns in which case</p>
+     * <p>Extending classes may change this behavior to accomodate for different rules about column naming</p>.
+     *
+     * <p>
+     *     Notice that in contrast with {@link #isColumnNameLine(String[])} this method may return true for names that
+     *     do not match the current column names if there are defined. This is important for table where the final set of
+     *     columns might be larger than the original (mandatory) set.
+     * </p>
+     * @param line
+     * @return
+     */
+    protected boolean looksLikeColumnNameLine(final String[] line) {
+        if (columns != null && columns.containsExactly(line)) {
+            return true;
+        } else if (line.length == 0) {
+            return false;
+        } else {
+            final List<String> names = Arrays.asList(line);
+            final Set<String> namesAsSet = new HashSet<>(names.size());
+            for (final String name : names) {
+                if (name == null || name.isEmpty())
+                    return false;
+                final char firstChar = name.charAt(0);
+                if (!Character.isAlphabetic(firstChar) && firstChar != '_' && firstChar != '$') {
+                    return false;
+                }
+                if (!namesAsSet.add(name)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
+
 }
