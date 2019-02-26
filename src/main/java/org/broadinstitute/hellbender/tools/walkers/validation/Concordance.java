@@ -5,7 +5,6 @@ import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
 import org.apache.commons.collections4.Predicate;
-import org.apache.commons.lang.mutable.MutableInt;
 import org.apache.commons.lang.mutable.MutableLong;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
@@ -291,8 +290,13 @@ public class Concordance extends AbstractConcordanceWalker {
     @Override
     protected boolean areVariantsAtSameLocusConcordant(final VariantContext truth, final VariantContext eval) {
         final boolean sameRefAllele = truth.getReference().equals(eval.getReference());
-        // we assume that the truth has a single alternate allele
-        final boolean containsAltAllele = eval.getAlternateAlleles().contains(truth.getAlternateAllele(0));
+
+        // We make sure that the truth has at least one alt allele.
+        // If it does, we pick the first for comparison:
+        final boolean containsAltAllele =
+                (truth.getAlternateAlleles().size() == eval.getAlternateAlleles().size()) &&
+                ((truth.getAlternateAlleles().size() > 0) &&
+                        eval.getAlternateAlleles().contains(truth.getAlternateAllele(0)));
 
         return sameRefAllele && containsAltAllele;
     }

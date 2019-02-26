@@ -3,12 +3,16 @@ package org.broadinstitute.hellbender.tools.walkers.validation;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.AbstractConcordanceWalker;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.util.*;
+import java.io.IOException;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 import java.util.stream.Collectors;
 
 /**
@@ -17,11 +21,12 @@ import java.util.stream.Collectors;
 public class ConcordanceIntegrationTest extends CommandLineProgramTest{
     final double epsilon = 1e-3;
 
+    private static final String CONCORDANCE_TEST_DIR = toolsTestDir + "concordance/";
+
     @Test
     public void testSimple() throws Exception {
-        final String testDir =  toolsTestDir + "concordance/";
-        final File evalVcf = new File(testDir, "gatk4-dream3-mini.vcf");
-        final File truthVcf = new File(testDir, "gatk3-dream3-mini.vcf");
+        final File evalVcf = new File(CONCORDANCE_TEST_DIR, "gatk4-dream3-mini.vcf");
+        final File truthVcf = new File(CONCORDANCE_TEST_DIR, "gatk3-dream3-mini.vcf");
         final File summary = createTempFile("summary", ".txt");
 
         final String[] args = {
@@ -47,15 +52,13 @@ public class ConcordanceIntegrationTest extends CommandLineProgramTest{
         Assert.assertEquals(indelRecord.getFalseNegatives(), 2);
         Assert.assertEquals(snpRecord.getSensitivity(), 1.0/4, epsilon);
         Assert.assertEquals(snpRecord.getPrecision(), 1.0, epsilon);
-
     }
 
     // Test going from an integer chromosome (22) to a character chromosome (X)
     @Test
     public void testt22X() throws Exception {
-        final String testDir = toolsTestDir + "concordance/";
-        final File truthVcf = new File(testDir, "gatk3-dream3-x.vcf");
-        final File evalVcf = new File(testDir, "gatk4-dream3-x.vcf");
+        final File truthVcf = new File(CONCORDANCE_TEST_DIR, "gatk3-dream3-x.vcf");
+        final File evalVcf = new File(CONCORDANCE_TEST_DIR, "gatk4-dream3-x.vcf");
         final File tpfp = createTempFile("tpfp", ".vcf");
         final File tpfn = createTempFile("tpfn", ".vcf");
         final File ftnfn = createTempFile("ftnfn", ".vcf");
@@ -103,9 +106,8 @@ public class ConcordanceIntegrationTest extends CommandLineProgramTest{
     // The truth file only contains the PASS sites; should get 100% sensitivity and specificity.
     @Test
     public void testPerfectMatchVcf() throws Exception {
-        final String testDir = toolsTestDir + "concordance/";
-        final File truthVcf = new File(testDir, "same-truth.vcf");
-        final File evalVcf = new File(testDir, "same-eval.vcf");
+        final File truthVcf = new File(CONCORDANCE_TEST_DIR, "same-truth.vcf");
+        final File evalVcf = new File(CONCORDANCE_TEST_DIR, "same-eval.vcf");
         final File summary = createTempFile("summary", ".txt");
 
         final String[] args = {
@@ -132,9 +134,8 @@ public class ConcordanceIntegrationTest extends CommandLineProgramTest{
 
     @Test
     public void testFilterAnalysis() throws Exception {
-        final String testDir = toolsTestDir + "concordance/";
-        final File truthVcf = new File(testDir, "filter-analysis-truth.vcf");
-        final File evalVcf = new File(testDir, "filter-analysis-eval.vcf");
+        final File truthVcf = new File(CONCORDANCE_TEST_DIR, "filter-analysis-truth.vcf");
+        final File evalVcf = new File(CONCORDANCE_TEST_DIR, "filter-analysis-eval.vcf");
         final File summary = createTempFile("summary", ".txt");
         final File filterAnalysis = createTempFile("filter-analysis", ".txt");
 
@@ -176,9 +177,8 @@ public class ConcordanceIntegrationTest extends CommandLineProgramTest{
 
     @Test
     public void testDreamSensitivity() throws Exception {
-        final String testDir = toolsTestDir + "concordance/";
-        final File evalVcf = new File(testDir, "dream3-chr21.vcf");
-        final File truthVcf = new File(testDir, "dream3-truth-minus-SV-chr21.vcf");
+        final File evalVcf = new File(CONCORDANCE_TEST_DIR, "dream3-chr21.vcf");
+        final File truthVcf = new File(CONCORDANCE_TEST_DIR, "dream3-truth-minus-SV-chr21.vcf");
         final File summary = createTempFile("summary", ".txt");
 
         final String[] args = {
@@ -208,5 +208,35 @@ public class ConcordanceIntegrationTest extends CommandLineProgramTest{
         // grep -v ^# dream3-truth-minus-MSK-chr21.vcf | grep -v SVTYPE | awk 'length($4) == length($5) {print $0 }' | wc -l
         // 78
         Assert.assertEquals(snpRecord.getTruePositives() + snpRecord.getFalseNegatives(), 78);
+    }
+
+    @Test
+    public void testDoesNotCrashWithNO_VARIATIONAlleles() {
+        final File evalVcf = new File(CONCORDANCE_TEST_DIR, "noVariationAlleles.vcf");
+        final File truthVcf = new File(CONCORDANCE_TEST_DIR, "noVariationAlleles.vcf");
+        final File summary = createTempFile("summary", ".txt");
+
+        final String[] args = {
+                "--" + AbstractConcordanceWalker.EVAL_VARIANTS_LONG_NAME, evalVcf.toString(),
+                "--" + AbstractConcordanceWalker.TRUTH_VARIANTS_LONG_NAME, truthVcf.toString(),
+                "--" + Concordance.SUMMARY_LONG_NAME, summary.toString(),
+        };
+
+        runCommandLine(args);
+
+        try {
+            final ConcordanceSummaryRecord.Reader reader      = new ConcordanceSummaryRecord.Reader(summary);
+            final ConcordanceSummaryRecord        snpRecord   = reader.readRecord();
+            final ConcordanceSummaryRecord        indelRecord = reader.readRecord();
+
+            // Some token validation:
+            Assert.assertEquals(snpRecord.getSensitivity(), 1, 0.005);
+            Assert.assertEquals(indelRecord.getSensitivity(), 0, 0.005);
+            Assert.assertEquals(snpRecord.getTruePositives() + snpRecord.getFalseNegatives(), 1);
+            Assert.assertEquals(indelRecord.getTruePositives() + indelRecord.getFalseNegatives(), 2);
+        }
+        catch (final IOException | java.lang.NullPointerException ex) {
+            throw new GATKException("Could not get summary file! ", ex);
+        }
     }
 }
