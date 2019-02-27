@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools.copynumber;
 import com.google.common.collect.HashMultiset;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Multiset;
-import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.OverlapDetector;
@@ -126,7 +125,6 @@ public final class CollectReadCounts extends ReadWalker {
     private List<SimpleInterval> intervals;
 
     private String currentContig = null;
-    private boolean isCoordinateSorted;
 
     /**
      * Overlap detector used to determine when read starts overlap with input intervals.
@@ -137,7 +135,7 @@ public final class CollectReadCounts extends ReadWalker {
 
     @Override
     public List<ReadFilter> getDefaultReadFilters() {
-        final List<ReadFilter> filters = new ArrayList<>();
+        final List<ReadFilter> filters = new ArrayList<>(super.getDefaultReadFilters());
         filters.add(ReadFilterLibrary.MAPPED);
         filters.add(ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT);
         filters.add(ReadFilterLibrary.NOT_DUPLICATE);
@@ -165,22 +163,13 @@ public final class CollectReadCounts extends ReadWalker {
         intervals = intervalArgumentCollection.getIntervals(sequenceDictionary);
         intervalMultiset = HashMultiset.create(intervals.size());
 
-        final SAMFileHeader.SortOrder sortOrder = getHeaderForReads().getSortOrder();
-        isCoordinateSorted = sortOrder == SAMFileHeader.SortOrder.coordinate;
-        if (!isCoordinateSorted) {
-            //if reads are not sorted, create an OverlapDetector covering all intervals;
-            //we currently require that reads are indexed (and hence sorted), so this is only to protect against future code changes
-            logger.warn("Reads are not coordinate sorted; sorting reads before running this tool may reduce memory requirements.");
-            intervalCachedOverlapDetector = new CachedOverlapDetector<>(intervals);
-        }
-
         logger.info("Collecting read counts...");
     }
 
     @Override
     public void apply(GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext) {
-        if (isCoordinateSorted && (currentContig == null || !read.getContig().equals(currentContig))) {
-            //if reads are sorted and we are on a new contig, create an OverlapDetector covering the contig
+        if (currentContig == null || !read.getContig().equals(currentContig)) {
+            //if we are on a new contig, create an OverlapDetector covering the contig
             currentContig = read.getContig();
             final List<SimpleInterval> intervalsOnCurrentContig = intervals.stream()
                     .filter(i -> i.getContig().equals(currentContig))
