@@ -16,7 +16,7 @@ import java.util.stream.IntStream;
  *      3.  log2 mean copy ratios for each segment <p>
  *      4.  outlier indicators for each copy-ratio interval <p>
  * <p>
- * See docs/CNVs/CNV-methods.pdf for details.
+ * See docs/CNV/archived/archived-CNV-methods.pdf for details.
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */

@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
- * The allele-fraction model (after marginalizing latent parameters as described in docs/CNVs/CNV-methods.pdf)
+ * The allele-fraction model (after marginalizing latent parameters as described in docs/CNV/archived/archived-CNV-methods.pdf)
  * contains the following parameters:
  *      1.  minor-allele fractions for each segment
  *      2.  a global outlier probability

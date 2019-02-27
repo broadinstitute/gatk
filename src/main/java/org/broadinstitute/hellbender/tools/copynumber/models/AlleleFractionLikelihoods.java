@@ -13,7 +13,7 @@ import static org.broadinstitute.hellbender.utils.MathUtils.log10ToLog;
 
 /**
  * Contains likelihood methods for the allele-fraction model.
- * See docs/CNVs/CNV-methods.pdf for a thorough description of the model.
+ * See docs/CNV/archived/archived-CNV-methods.pdf for a thorough description of the model.
  *
  * We can compute the log-likelihood of a alt reads and r ref reads given minor fraction f and gamma hyperparameters
  * (specifying the distribution on allelic biases) mu (mean) and beta (rate = mean/variance) and given
@@ -21,7 +21,7 @@ import static org.broadinstitute.hellbender.utils.MathUtils.log10ToLog;
  * latent variable corresponding to the allelic bias at this site has been marginalized out but the indicator
  * variable has not been marginalized out.
  * <p>
- * See docs/CNVs/CNV-methods.pdf for derivation.
+ * See docs/CNV/archived/archived-CNV-methods.pdf for derivation.
  * <p>
  * Finally, note that this is a static method and does not get mu, beta, and minorFraction from an AlleleFractionState object
  * We need such functionality because MCMC evaluates the likelihood under proposed parameter changes.
@@ -114,7 +114,7 @@ final class AlleleFractionLikelihoods {
     /**
      * Calculates the mode of the exact allelic-bias posterior at given values of the hyperparameters for the
      * * allelic-bias Gamma-distribution prior, the minor-allele fraction parameter, and the observed
-     * counts at a site.  See docs/CNVs/CNV-methods.pdf (where this quantity is referred to as lambda_0) for details.
+     * counts at a site.  See docs/CNV/archived/archived-CNV-methods.pdf (where this quantity is referred to as lambda_0) for details.
      * @param alpha alpha hyperparameter for allelic-bias Gamma-distribution prior
      * @param beta  beta hyperparameter for allelic-bias Gamma-distribution prior
      * @param f     minor-allele fraction
@@ -130,7 +130,7 @@ final class AlleleFractionLikelihoods {
      * Calculates the curvature (second derivative at the mode) of the exact allelic-bias log posterior
      * at given values of the hyperparameters for the allelic-bias Gamma-distribution prior,
      * the minor-allele fraction parameter, and the observed counts at a site.
-     * See docs/CNVs/CNV-methods.pdf (where this quantity is referred to as kappa) for details.
+     * See docs/CNV/archived/archived-CNV-methods.pdf (where this quantity is referred to as kappa) for details.
      * @param alpha     alpha hyperparameter for allelic-bias Gamma-distribution prior
      * @param f         minor-allele fraction
      * @param r         ref counts
@@ -144,7 +144,7 @@ final class AlleleFractionLikelihoods {
 
     /**
      * Calculates the effective alpha hyperparameter for the Gamma-distribution approximation of the exact allelic-bias posterior.
-     * See docs/CNVs/CNV-methods.pdf (where this quantity is referred to as rho) for details.
+     * See docs/CNV/archived/archived-CNV-methods.pdf (where this quantity is referred to as rho) for details.
      * @param lambda0   mode of allelic-bias posterior
      * @param kappa     curvature of allelic-bias posterior
      */
@@ -154,7 +154,7 @@ final class AlleleFractionLikelihoods {
 
     /**
      * Calculates the effective beta hyperparameter for the Gamma-distribution approximation of the exact allelic-bias posterior.
-     * See docs/CNVs/CNV-methods.pdf (where this quantity is referred to as tau) for details.
+     * See docs/CNV/archived/archived-CNV-methods.pdf (where this quantity is referred to as tau) for details.
      * @param lambda0   mode of allelic-bias posterior
      * @param kappa     curvature of allelic-bias posterior
      */
