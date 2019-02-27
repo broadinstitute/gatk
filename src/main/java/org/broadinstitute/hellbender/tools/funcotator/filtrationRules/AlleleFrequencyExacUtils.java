@@ -1,7 +1,5 @@
 package org.broadinstitute.hellbender.tools.funcotator.filtrationRules;
 
-import org.broadinstitute.hellbender.utils.param.ParamUtils;
-
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;

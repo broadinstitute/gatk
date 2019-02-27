@@ -32,7 +32,7 @@ public class LofFilter extends FuncotationFilter {
     private static final String LOF_GENE_FUNCOTATION = "ACMGLMMLof_LOF_Mechanism";
 
     /**
-     * Variant classifications which should be matched by this filter.
+     * Variant classifications which should be matched by this filterSuffix.
      */
     private static final Set<String> CONSTANT_LOF_CLASSIFICATIONS = Stream.of(
             GencodeFuncotation.VariantClassification.FRAME_SHIFT_DEL,
