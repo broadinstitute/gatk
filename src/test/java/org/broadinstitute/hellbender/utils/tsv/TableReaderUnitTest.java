@@ -664,7 +664,7 @@ public class TableReaderUnitTest extends GATKBaseTest {
         final List<Pair<String,Long>> expected = IntStream.range(0, lines.length)
                 .mapToObj(i -> new ImmutablePair<>(lines[i], (long) (i + 1)))
                 .filter(p -> p.getLeft().startsWith(TableUtils.COMMENT_PREFIX))
-                .map(p -> new ImmutablePair<>(p.getLeft().substring(TableUtils.COMMENT_PREFIX.length()), p.getRight()))
+                .map(p -> new ImmutablePair<>(p.getLeft(), p.getRight()))
                 .collect(Collectors.toList());
         final List<Pair<String, Long>> actual = new ArrayList<>(expected.size());
         try (final TableReader<Object> reader = new TableReader<Object>(testFile) {
