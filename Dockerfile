@@ -1,5 +1,5 @@
 # Using OpenJDK 8
-FROM broadinstitute/gatk:gatkbase-2.0.3
+FROM jamesemery/gatknightly:gatkbase-RPython-0.0.1
 
 # Location of the unzipped gatk bundle files
 ARG ZIPPATH

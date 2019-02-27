@@ -6,7 +6,9 @@ FROM $BASEIMAGE
 # Location of the unzipped conda files
 RUN mkdir /condaenv
 
-ADD scripts/gatkcondaenv.yml.template /condaenv/gatkcondaenv.yml.template
+ADD scripts/gatkcondaenv.yml.template /condaenv/gatkcondaenv.yml
+
+RUN ls -lath /condaenv
 
 RUN apt-get install -y python && \
     apt-get -y clean  && \
@@ -27,7 +29,8 @@ RUN mkdir $DOWNLOAD_DIR && \
 WORKDIR /gatk
 ENV PATH $CONDA_PATH/envs/gatk/bin:$CONDA_PATH/bin:$PATH
 RUN conda env create -n gatk -f /condaenv/gatkcondaenv.yml && \
+    echo "source activate gatk" >> /gatk/gatkenv.rc && \
+    echo "source /gatk/gatk-completion.sh" >> /gatk/gatkenv.rc && \
     conda clean -y -all && \
     rm -rf /root/.cache/pip
-
 # End GATK Python environment
