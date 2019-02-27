@@ -151,7 +151,7 @@ public class FilterFuncotations extends VariantWalker {
     /**
      * Collect the names of the {@link FuncotationFilter}s matching the Funcotations of the given variant.
      *
-     * The filter will be treated as a match if it matches Funcotations for any of the transcripts in the
+     * The filterSuffix will be treated as a match if it matches Funcotations for any of the transcripts in the
      * variant's Funcotation map.
      */
     private Set<String> getMatchingFilters(final VariantContext variant) {
@@ -202,7 +202,7 @@ public class FilterFuncotations extends VariantWalker {
                 FilterFuncotationsConstants.CLINSIG_INFO_NOT_SIGNIFICANT;
         variantContextBuilder.attribute(FilterFuncotationsConstants.CLINSIG_INFO_KEY, clinicalSignificance);
 
-        // Also set the filter field for insignificant variants, to make it easier for
+        // Also set the filterSuffix field for insignificant variants, to make it easier for
         // downstream tools to extract out the interesting data.
         if (isSignificant) {
             variantContextBuilder.passFilters();

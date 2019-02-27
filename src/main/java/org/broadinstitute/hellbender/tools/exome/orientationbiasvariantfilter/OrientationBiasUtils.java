@@ -124,7 +124,7 @@ public class OrientationBiasUtils {
     }
 
     /**
-     *  Write output file that is a summary file with orientation bias filter counts.
+     *  Write output file that is a summary file with orientation bias filterSuffix counts.
      *  The preAdapterQ score for the complement of relevant artifact modes will be reported where applicable.
      *
      * @param sampleTransitionsWithoutComplement List of pairs (sampleName, artifact mode).  The complements of the artifact mode are not included.  These are the artifact modes that were considered for the sample.  Never {@code null}
@@ -212,7 +212,7 @@ public class OrientationBiasUtils {
     }
 
 
-    /** Includes complements.  Excludes filtered variant contexts.  Excludes genotypes that were filtered by something other than the orientation bias filter. */
+    /** Includes complements.  Excludes filtered variant contexts.  Excludes genotypes that were filtered by something other than the orientation bias filterSuffix. */
     @VisibleForTesting
     static long calculateNumTransition(final String sampleName, final List<VariantContext> variantContexts, final Transition transition) {
         final Transition complement = transition.complement();
@@ -221,7 +221,7 @@ public class OrientationBiasUtils {
                 .count();
     }
 
-    /** Includes complements.  Excludes filtered variant contexts.  Excludes genotypes that were filtered by something other than the orientation bias filter. */
+    /** Includes complements.  Excludes filtered variant contexts.  Excludes genotypes that were filtered by something other than the orientation bias filterSuffix. */
     @VisibleForTesting
     static long calculateNumNotTransition(final String sampleName, final List<VariantContext> variantContexts, final Transition transition) {
         final Transition complement = transition.complement();
@@ -273,11 +273,11 @@ public class OrientationBiasUtils {
                 .count();
     }
 
-    /** Create an updated genotype string when trying to add a filter value.
+    /** Create an updated genotype string when trying to add a filterSuffix value.
      *
-     * @param existingFilterValue filter string (presumably) from a genotype
-     * @param newFilterToAdd new filter string to append.  Cannot be {@code null}.
-     * @return Properly formatted genotype filter string
+     * @param existingFilterValue filterSuffix string (presumably) from a genotype
+     * @param newFilterToAdd new filterSuffix string to append.  Cannot be {@code null}.
+     * @return Properly formatted genotype filterSuffix string
      */
     public static String addFilterToGenotype(final String existingFilterValue, final String newFilterToAdd) {
 
@@ -291,7 +291,7 @@ public class OrientationBiasUtils {
             return existingFilterValue + VCFConstants.FILTER_CODE_SEPARATOR + newFilterToAdd;
         } else {
             final String appendedFilterString = existingFilterValue + VCFConstants.FILTER_CODE_SEPARATOR + newFilterToAdd;
-            logger.warn("Existing genotype filter could be incorrect: " + existingFilterValue + " ... Proceeding with " + appendedFilterString + " ...");
+            logger.warn("Existing genotype filterSuffix could be incorrect: " + existingFilterValue + " ... Proceeding with " + appendedFilterString + " ...");
             return appendedFilterString;
         }
     }

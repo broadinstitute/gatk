@@ -18,9 +18,9 @@ public final class PSFilterArgumentCollection implements Serializable {
 
     public static final String KMER_FILE_PATH_LONG_NAME = "kmer-file";
     public static final String KMER_FILE_PATH_SHORT_NAME = "K";
-    public static final String FILTER_METRICS_FILE_LONG_NAME = "filter-metrics";
+    public static final String FILTER_METRICS_FILE_LONG_NAME = "filterSuffix-metrics";
     public static final String FILTER_METRICS_FILE_SHORT_NAME = "FM";
-    public static final String FILTER_BWA_IMAGE_LONG_NAME = "filter-bwa-image";
+    public static final String FILTER_BWA_IMAGE_LONG_NAME = "filterSuffix-bwa-image";
     public static final String FILTER_BWA_IMAGE_SHORT_NAME = "FI";
 
     public static final String IS_HOST_ALIGNED_LONG_NAME = "is-host-aligned";
@@ -47,11 +47,11 @@ public final class PSFilterArgumentCollection implements Serializable {
     public static final String HOST_MIN_IDENTITY_SHORT_NAME = HOST_MIN_IDENTITY_LONG_NAME;
     public static final String HOST_KMER_COUNT_THRESHOLD_LONG_NAME = "host-kmer-thresh";
     public static final String HOST_KMER_COUNT_THRESHOLD_SHORT_NAME = HOST_KMER_COUNT_THRESHOLD_LONG_NAME;
-    public static final String FILTER_BWA_SEED_LENGTH_LONG_NAME = "filter-bwa-seed-length";
+    public static final String FILTER_BWA_SEED_LENGTH_LONG_NAME = "filterSuffix-bwa-seed-length";
     public static final String FILTER_BWA_SEED_LENGTH_SHORT_NAME = FILTER_BWA_SEED_LENGTH_LONG_NAME;
-    public static final String FILTER_READS_PER_PARTITION_LONG_NAME = "filter-reads-per-partition";
+    public static final String FILTER_READS_PER_PARTITION_LONG_NAME = "filterSuffix-reads-per-partition";
     public static final String FILTER_READS_PER_PARTITION_SHORT_NAME = FILTER_READS_PER_PARTITION_LONG_NAME;
-    public static final String FILTER_DUPLICATES_LONG_NAME = "filter-duplicates";
+    public static final String FILTER_DUPLICATES_LONG_NAME = "filterSuffix-duplicates";
     public static final String FILTER_DUPLICATES_SHORT_NAME = FILTER_DUPLICATES_LONG_NAME;
     public static final String MAX_ADAPTER_MISMATCHES_LONG_NAME = "max-adapter-mismatches";
     public static final String MAX_ADAPTER_MISMATCHES_SHORT_NAME = MAX_ADAPTER_MISMATCHES_LONG_NAME;
@@ -59,7 +59,7 @@ public final class PSFilterArgumentCollection implements Serializable {
     public static final String MIN_ADAPTER_LENGTH_SHORT_NAME = MIN_ADAPTER_LENGTH_LONG_NAME;
 
     /**
-     * PathSeq will rapidly filter the reads if they are aligned to a host reference, thus reducing run time.
+     * PathSeq will rapidly filterSuffix the reads if they are aligned to a host reference, thus reducing run time.
      */
     @Argument(doc = "Set if the input BAM is aligned to the host",
             fullName = IS_HOST_ALIGNED_LONG_NAME,
@@ -85,7 +85,7 @@ public final class PSFilterArgumentCollection implements Serializable {
      *     reads that are not host-aligned/coordinate-sorted.
      * </p>
      * <p>
-         * In the filter tool, the input reads are initially divided up into smaller partitions (default size is usually
+         * In the filterSuffix tool, the input reads are initially divided up into smaller partitions (default size is usually
          * the size of one HDFS block, or ~64MB) that Spark works on in parallel. In samples with a low proportion of microbial
          * reads (e.g. < 1%), the steps leading up to the host BWA alignment will whittle these partitions down to a small
          * fraction of their original size. At that point, the distribution of reads across the partitions may be unbalanced.
@@ -126,7 +126,7 @@ public final class PSFilterArgumentCollection implements Serializable {
 
     /**
      * This is the threshold for filtering reads based on the number of 'N' values present in the sequence. Note that
-     * the low-complexity DUST filter and quality filter mask using 'N' bases. Therefore, this parameter is the threshold
+     * the low-complexity DUST filterSuffix and quality filterSuffix mask using 'N' bases. Therefore, this parameter is the threshold
      * for the sum of:
      * <ul>
      *     <li>The number of N's in the original input read</li>

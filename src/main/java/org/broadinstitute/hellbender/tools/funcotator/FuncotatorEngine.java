@@ -234,7 +234,7 @@ public final class FuncotatorEngine implements AutoCloseable {
     }
 
     /**
-     * @return A {@link VariantFilter} that will ignore any variants that have been filtered (if the user requested that the filter is turned on).  Otherwise returns a no-op filter.
+     * @return A {@link VariantFilter} that will ignore any variants that have been filtered (if the user requested that the filterSuffix is turned on).  Otherwise returns a no-op filterSuffix.
      */
     public VariantFilter makeVariantFilter() {
         // Ignore variants that have been filtered if the user requests it:

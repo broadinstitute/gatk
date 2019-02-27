@@ -40,7 +40,7 @@ public class ContigChimericAlignmentIterativeInterpreter {
         final Broadcast<SAMSequenceDictionary> referenceSequenceDictionaryBroadcast =
                 svDiscoveryInputMetaData.getReferenceData().getReferenceSequenceDictionaryBroadcast();
 
-        // step 1: filter alignments and extract chimera pair
+        // step 1: filterSuffix alignments and extract chimera pair
         final JavaPairRDD<byte[], List<SimpleChimera>> contigSeqAndChimeras =
                 alignedContigs
                         .filter(alignedContig -> alignedContig.getAlignments().size() > 1)
@@ -164,7 +164,7 @@ public class ContigChimericAlignmentIterativeInterpreter {
             final SimpleChimera simpleChimera = new SimpleChimera(current, next, insertionMappings,
                     alignedContig.getContigName(), AssemblyContigWithFineTunedAlignments.NO_GOOD_MAPPING_TO_NON_CANONICAL_CHROMOSOME,
                     referenceDictionary);
-            // the following check/filter is due to the fact that simple translocations are to be handled in a different code path
+            // the following check/filterSuffix is due to the fact that simple translocations are to be handled in a different code path
             if (simpleChimera.isNeitherIncompleteNorSimpleTranslocation())
                 results.add(simpleChimera);
 
@@ -175,7 +175,7 @@ public class ContigChimericAlignmentIterativeInterpreter {
     }
 
     // TODO: 11/22/16 it might also be suitable to consider the reference context this alignment region is mapped to
-    //       and not simply apply a hard filter (need to think about how to test)
+    //       and not simply apply a hard filterSuffix (need to think about how to test)
     private static boolean mapQualTooLow(final AlignmentInterval aln, final int mapQThresholdInclusive) {
         return aln.mapQual < mapQThresholdInclusive;
     }

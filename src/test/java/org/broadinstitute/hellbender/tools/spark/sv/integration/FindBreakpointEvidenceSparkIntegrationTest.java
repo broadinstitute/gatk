@@ -65,7 +65,7 @@ public class FindBreakpointEvidenceSparkIntegrationTest extends CommandLineProgr
                     " --target-link-file "      + outputDir + "/targetLinks.bedpe" +
                     " --min-evidence-coverage-ratio " + 15 / bamCoverage +
                     " --min-coherent-evidence-coverage-ratio " + 7 / bamCoverage +
-                    " --sv-evidence-filter-type " + svEvidenceFilterType +
+                    " --sv-evidence-filterSuffix-type " + svEvidenceFilterType +
                     (svGenomeGapsFile.isEmpty() ? "" : " --sv-genome-gaps-file " + svGenomeGapsFile) +
                     (svGenomeUmapS100File.isEmpty() ? "" : " --sv-genome-umap-s100-file " + svGenomeUmapS100File);
         }
@@ -78,7 +78,7 @@ public class FindBreakpointEvidenceSparkIntegrationTest extends CommandLineProgr
                     ", aligner-ref-index-img-loc='" + alignerRefIndexImgLoc + '\'' +
                     ", output-dir='" + outputDir + '\'' +
                     ", bam-coverage='" + bamCoverage + '\'' +
-                    ", sv-evidence-filter-type='" + svEvidenceFilterType + '\'' +
+                    ", sv-evidence-filterSuffix-type='" + svEvidenceFilterType + '\'' +
                     '}';
         }
     }
@@ -102,7 +102,7 @@ public class FindBreakpointEvidenceSparkIntegrationTest extends CommandLineProgr
                         )
                 }
         );
-        // Test pipeline using classifier filter
+        // Test pipeline using classifier filterSuffix
         tests.add(
                 new Object[]{
                         new FindBreakpointEvidenceSparkIntegrationTestArgs(

@@ -34,7 +34,7 @@ public class AssemblyContigAlignmentsConfigPicker {
 
     /**
      * <p>
-     *     A filter that is used to remove contigs upfront which don't meet the following criteria
+     *     A filterSuffix that is used to remove contigs upfront which don't meet the following criteria
      *     either:
      *      has only 1 mapping, with MQ strictly above this threshold
      *     or:
@@ -49,7 +49,7 @@ public class AssemblyContigAlignmentsConfigPicker {
     static final int ALIGNMENT_MQ_THRESHOLD = 20;
 
     /**
-     * A filter to boost configuration scoring implemented here:
+     * A filterSuffix to boost configuration scoring implemented here:
      * if the configuration has more than 10 mappings, then
      * any mappings in such configuration with MQ
      * not strictly above this threshold is classified as bad and filtered.
@@ -124,7 +124,7 @@ public class AssemblyContigAlignmentsConfigPicker {
                 .flatMap(AssemblyContigAlignmentsConfigPicker::reConstructContigFromPickedConfiguration);
     }
 
-    // step 1: parse and primitive filter ==============================================================================
+    // step 1: parse and primitive filterSuffix ==============================================================================
 
     /**
      * Parses input alignments into custom {@link AlignmentInterval} format, and

@@ -18,8 +18,8 @@ import java.util.NoSuchElementException;
  * are filtered out, as are alignments that don't seem to match any part of the reference.
  * If there are multiple hits for the same read, and the first and second ends need to be correlated,
  * then they are sorted by hit index. Supplemental alignments are discarded, with a logged message.
- * A set of hits for a single query may then be filtered with a caller-supplied filter, which will remove any
- * alignments that do not pass the filter.  If the primary alignment is removed, the best-mapping secondary alignment
+ * A set of hits for a single query may then be filtered with a caller-supplied filterSuffix, which will remove any
+ * alignments that do not pass the filterSuffix.  If the primary alignment is removed, the best-mapping secondary alignment
  * or alignment pair will be marked as primary.
  *
  */

@@ -69,7 +69,7 @@ public final class ExtractOriginalAlignmentRecordsByNameSpark extends GATKSparkT
     @Argument(doc = "file containing list of read names", shortName = "f", fullName = "read-name-file")
     private String readNameFile;
 
-    @Argument(doc = "invert the list, i.e. filter out reads whose name appear in the given file",
+    @Argument(doc = "invert the list, i.e. filterSuffix out reads whose name appear in the given file",
             shortName = "v", fullName = "invert-match", optional = true)
     private Boolean invertFilter = false;
 

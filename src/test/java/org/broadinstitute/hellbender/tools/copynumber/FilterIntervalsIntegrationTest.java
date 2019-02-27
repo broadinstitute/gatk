@@ -127,7 +127,7 @@ public final class FilterIntervalsIntegrationTest extends CommandLineProgramTest
                                            final double minimumSegmentalDuplicationContent,
                                            final double maximumSegmentalDuplicationContent,
                                            final List<Integer> expectedIndices) {
-        final File outputFile = createTempFile("filter-intervals-test", ".interval_list");
+        final File outputFile = createTempFile("filterSuffix-intervals-test", ".interval_list");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, intervalsFile.getAbsolutePath())
                 .addArgument(CopyNumberStandardArgument.ANNOTATED_INTERVALS_FILE_LONG_NAME, annotatedIntervalsFile.getAbsolutePath())
@@ -217,7 +217,7 @@ public final class FilterIntervalsIntegrationTest extends CommandLineProgramTest
                                       final double extremeCountFilterMaximumPercentile,
                                       final double extremeCountFilterPercentageOfSamples,
                                       final List<Integer> expectedIndices) {
-        final File outputFile = createTempFile("filter-intervals-test", ".interval_list");
+        final File outputFile = createTempFile("filterSuffix-intervals-test", ".interval_list");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, intervalsFile.getAbsolutePath())
                 .addArgument(FilterIntervals.LOW_COUNT_FILTER_COUNT_THRESHOLD_LONG_NAME, Integer.toString(lowCountFilterCountThreshold))
@@ -329,7 +329,7 @@ public final class FilterIntervalsIntegrationTest extends CommandLineProgramTest
                                final double extremeCountFilterMaximumPercentile,
                                final double extremeCountFilterPercentageOfSamples,
                                final List<Integer> expectedIndices) {
-        final File outputFile = createTempFile("filter-intervals-test", ".interval_list");
+        final File outputFile = createTempFile("filterSuffix-intervals-test", ".interval_list");
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addArgument(StandardArgumentDefinitions.INTERVALS_LONG_NAME, intervalsFile.getAbsolutePath())
                 .addArgument(CopyNumberStandardArgument.ANNOTATED_INTERVALS_FILE_LONG_NAME, annotatedIntervalsFile.getAbsolutePath())

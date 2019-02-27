@@ -23,7 +23,7 @@ public final class PlatformUnitReadFilter extends ReadFilter implements Serializ
     private static final long serialVersionUID = 1L;
 
     @Argument(fullName = ReadFilterArgumentDefinitions.BLACK_LISTED_LANES_LONG_NAME,
-            doc="Platform unit (PU) to filter out",
+            doc="Platform unit (PU) to filterSuffix out",
             optional=false)
     public Set<String> blackListedLanes = new LinkedHashSet<>();
 

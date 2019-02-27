@@ -67,8 +67,8 @@ import java.util.List;
  *
  */
 @CommandLineProgramProperties(
-        summary = "Write variant tensors for training a CNN to filter variants",
-        oneLineSummary = "Write variant tensors for training a CNN to filter variants",
+        summary = "Write variant tensors for training a CNN to filterSuffix variants",
+        oneLineSummary = "Write variant tensors for training a CNN to filterSuffix variants",
         programGroup = VariantFilteringProgramGroup.class
 )
 @DocumentedFeature

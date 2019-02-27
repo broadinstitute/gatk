@@ -36,18 +36,18 @@ import java.util.stream.Collectors;
  *     FilterMutectCalls encapsulates GATK3 MuTect2's filtering functionality and adds additional filters.
  *     Thresholds for filters are contained in {@link M2FiltersArgumentCollection} and described in
  *     <a href='https://github.com/broadinstitute/gatk/tree/master/docs/mutect/mutect.pdf' target='_blank'>https://github.com/broadinstitute/gatk/tree/master/docs/mutect/mutect.pdf</a>.
- *     To filter based on sequence context artifacts, see {@link FilterByOrientationBias}.
+ *     To filterSuffix based on sequence context artifacts, see {@link FilterByOrientationBias}.
  * </p>
  * <p>
  *     Filtering thresholds for both normal-artifact-lod (default threshold 0.0) and tumor-lod (default threshold 5.3) can be set in this tool.
- *     If the normal artifact log odds is larger than the threshold, then FilterMutectCalls applies the artifact-in-normal filter.
+ *     If the normal artifact log odds is larger than the threshold, then FilterMutectCalls applies the artifact-in-normal filterSuffix.
  *     For matched normal analyses with tumor contamination in the normal, consider increasing the normal-artifact-lod threshold.
  *     If the tumor log odds is smaller than the threshold, then FilterMutectCalls filters the variant.
  * </p>
  * <p>
  *     If given a --contamination-table file, e.g. results from
  *     {@link CalculateContamination}, the tool will additionally
- *     filter on contamination fractions. Alternatively, provide a numerical fraction to filter with the --contamination argument.
+ *     filterSuffix on contamination fractions. Alternatively, provide a numerical fraction to filterSuffix with the --contamination argument.
  * </p>
  * <p>
  *     This tool is featured in the Somatic Short Mutation calling Best Practice Workflow.

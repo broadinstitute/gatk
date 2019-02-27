@@ -28,16 +28,16 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Apply a score cutoff to filter variants based on a recalibration table
+ * Apply a score cutoff to filterSuffix variants based on a recalibration table
  *
  * <p>This tool performs the second pass in a two-stage process called Variant Quality Score Recalibration (VQSR).
  * Specifically, it applies filtering to the input variants based on the recalibration table produced in the first step
  * by VariantRecalibrator and a target sensitivity value, which the tool matches internally to a VQSLOD score cutoff
  * based on the model's estimated sensitivity to a set of true variants.</p>
  *
- * <p>The filter determination is not just a pass/fail process. The tool evaluates for each variant which "tranche",
+ * <p>The filterSuffix determination is not just a pass/fail process. The tool evaluates for each variant which "tranche",
  * or slice of the dataset, it falls into in terms of sensitivity to the truthset. Variants in tranches that fall below
- * the specified truth sensitivity filter level have their FILTER field annotated with the corresponding tranche level.
+ * the specified truth sensitivity filterSuffix level have their FILTER field annotated with the corresponding tranche level.
  * This results in a callset that is filtered to the desired level but retains the information necessary to increase
  * sensitivity if needed.</p>
  *
@@ -46,13 +46,13 @@ import java.util.regex.Pattern;
  *
  * <h4>Summary of the VQSR procedure</h4>
  * <p>The purpose of variant recalibration is to assign a well-calibrated probability to each variant call in a call set.
- * These probabilities can then be used to filter the variants with a greater level of accuracy and flexibility than
- * can typically be achieved by traditional hard-filter (filtering on individual annotation value thresholds). The first
+ * These probabilities can then be used to filterSuffix the variants with a greater level of accuracy and flexibility than
+ * can typically be achieved by traditional hard-filterSuffix (filtering on individual annotation value thresholds). The first
  * pass consists of building a model that describes how variant annotation values co-vary with the truthfulness of
  * variant calls in a training set, and then scoring all input variants according to the model. The second pass simply
  * consists of specifying a target sensitivity value (which corresponds to an empirical VQSLOD cutoff) and applying
  * filters to each variant call according to their ranking. The result is a VCF file in which variants have been
- * assigned a score and filter status.</p>
+ * assigned a score and filterSuffix status.</p>
  *
  * <p>VQSR is probably the hardest part of the Best Practices to get right, so be sure to read the
  * <a href='https://software.broadinstitute.org/gatk/guide/article?id=39'>method documentation</a>,
@@ -81,7 +81,7 @@ import java.util.regex.Pattern;
  *   -R Homo_sapiens_assembly38.fasta \
  *   -V input.vcf.gz \
  *   -O output.vcf.gz \
- *   --truth-sensitivity-filter-level 99.0 \
+ *   --truth-sensitivity-filterSuffix-level 99.0 \
  *   --tranches-file output.tranches \
  *   --recal-file output.recal \
  *   -mode SNP
@@ -94,7 +94,7 @@ import java.util.regex.Pattern;
  *   -V input.vcf.gz \
  *   -O output.vcf.gz \
  *   -AS \
- *   --truth-sensitivity-filter-level 99.0 \
+ *   --truth-sensitivity-filterSuffix-level 99.0 \
  *   --tranches-file output.AS.tranches \
  *   --recal-file output.AS.recal \
  *   -mode SNP 
@@ -106,9 +106,9 @@ import java.util.regex.Pattern;
  * culprit and FilterStatus will be NA.</p>
  * <p>Each allele will be annotated by its corresponding entry in the AS_FilterStatus INFO field annotation.
  * Allele-specific VQSLOD and culprit are also carried through from VariantRecalibrator, and stored in the AS_VQSLOD
- * and AS_culprit INFO fields, respectively. The site-level filter is set to the most lenient of any of
+ * and AS_culprit INFO fields, respectively. The site-level filterSuffix is set to the most lenient of any of
  * the allele filters. That is, if one allele passes, the whole site will be PASS. If no alleles pass, the site-level
- * filter will be set to the lowest sensitivity tranche among all the alleles.</p>
+ * filterSuffix will be set to the lowest sensitivity tranche among all the alleles.</p>
  *
  * <h3>Caveats</h3>
  *
@@ -122,8 +122,8 @@ import java.util.regex.Pattern;
  * </ul>
  */
 @CommandLineProgramProperties(
-        summary = "Apply a score cutoff to filter variants based on a recalibration table",
-        oneLineSummary = " Apply a score cutoff to filter variants based on a recalibration table",
+        summary = "Apply a score cutoff to filterSuffix variants based on a recalibration table",
+        oneLineSummary = " Apply a score cutoff to filterSuffix variants based on a recalibration table",
         programGroup = VariantFilteringProgramGroup.class
 )
 @DocumentedFeature
@@ -156,14 +156,14 @@ public class ApplyVQSR extends MultiVariantWalker {
     /////////////////////////////
     // Command Line Arguments
     /////////////////////////////
-    @Argument(fullName="truth-sensitivity-filter-level", shortName="ts-filter-level", doc="The truth sensitivity level at which to start filtering", optional=true)
+    @Argument(fullName="truth-sensitivity-filterSuffix-level", shortName="ts-filterSuffix-level", doc="The truth sensitivity level at which to start filtering", optional=true)
     private Double TS_FILTER_LEVEL = null;
 
     /**
      *  Filter the input file based on allele-specific recalibration data.  See tool docs for site-level and allele-level filtering details.
      *  Requires a .recal file produced using an allele-specific run of VariantRecalibrator.
      */
-    @Argument(fullName="use-allele-specific-annotations", shortName="AS", doc="If specified, the tool will attempt to apply a filter to each allele based on the input tranches and allele-specific .recal file.", optional=true)
+    @Argument(fullName="use-allele-specific-annotations", shortName="AS", doc="If specified, the tool will attempt to apply a filterSuffix to each allele based on the input tranches and allele-specific .recal file.", optional=true)
     private boolean useASannotations = false;
 
     @Advanced
@@ -171,9 +171,9 @@ public class ApplyVQSR extends MultiVariantWalker {
     protected Double VQSLOD_CUTOFF = null;
 
     /**
-     * For this to work properly, the --ignore-filter argument should also be applied to the VariantRecalibration command.
+     * For this to work properly, the --ignore-filterSuffix argument should also be applied to the VariantRecalibration command.
      */
-    @Argument(fullName="ignore-filter", doc="If specified, the recalibration will be applied to variants marked as filtered by the specified filter name in the input VCF file", optional=true)
+    @Argument(fullName="ignore-filterSuffix", doc="If specified, the recalibration will be applied to variants marked as filtered by the specified filterSuffix name in the input VCF file", optional=true)
     private List<String> IGNORE_INPUT_FILTERS = new ArrayList<>();
 
     @Argument(fullName="ignore-all-filters", doc="If specified, the variant recalibrator will ignore all input filters. Useful to rerun the VQSR from a filtered output file.", optional=true)
@@ -246,7 +246,7 @@ public class ApplyVQSR extends MultiVariantWalker {
         if( TS_FILTER_LEVEL != null ) {
             // if the user specifies both ts_filter_level and lodCutoff then throw a user error
             if( VQSLOD_CUTOFF != null ) {
-                throw new UserException("Arguments --truth-sensitivity-filter-level and --lod-score-cutoff are mutually exclusive. Please only specify one option.");
+                throw new UserException("Arguments --truth-sensitivity-filterSuffix-level and --lod-score-cutoff are mutually exclusive. Please only specify one option.");
             }
 
             if( tranches.size() >= 2 ) {
@@ -258,7 +258,7 @@ public class ApplyVQSR extends MultiVariantWalker {
             if( tranches.size() >= 1 ) {
                 hInfo.add(new VCFFilterHeaderLine(tranches.get(0).name + "+", String.format("Truth sensitivity tranche level for " + tranches.get(0).model.toString() + " model at VQS Lod < " + tranches.get(0).minVQSLod)));
             } else {
-                throw new UserException("No tranches were found in the file or were above the truth sensitivity filter level " + TS_FILTER_LEVEL);
+                throw new UserException("No tranches were found in the file or were above the truth sensitivity filterSuffix level " + TS_FILTER_LEVEL);
             }
 
             logger.info("Keeping all variants in tranche " + tranches.get(tranches.size()-1));
@@ -285,13 +285,13 @@ public class ApplyVQSR extends MultiVariantWalker {
             double upperLimit = Double.parseDouble(vals[1].replace("+",""));    //why does our last tranche end with 100+? Is there anything greater than 100 percent?  Really???
         }
         catch(NumberFormatException e) {
-            throw new UserException("Poorly formatted tranche filter name does not contain two sensitivity interval end points.");
+            throw new UserException("Poorly formatted tranche filterSuffix name does not contain two sensitivity interval end points.");
         }
         return true;
     }
 
     /**
-     * Check the filter declarations in the input VCF header to see if any ApplyRecalibration mode has been run
+     * Check the filterSuffix declarations in the input VCF header to see if any ApplyRecalibration mode has been run
      * Here we assume that the tranches are named with a specific format: VQSRTranche[SNP|INDEL][lowerLimit]to[upperLimit]
      * @param inputHeaders
      */
@@ -370,10 +370,10 @@ public class ApplyVQSR extends MultiVariantWalker {
     }
 
     /**
-     * Generate the VCF filter string for this record based on the ApplyRecalibration modes run so far
+     * Generate the VCF filterSuffix string for this record based on the ApplyRecalibration modes run so far
      * @param vc the input VariantContext (with at least one ApplyRecalibration mode already run)
      * @param bestLod best LOD from the alleles we've seen in this recalibration mode
-     * @return the String to use as the VCF filter field
+     * @return the String to use as the VCF filterSuffix field
      */
     protected String generateFilterStringFromAlleles(final VariantContext vc, final double bestLod) {
         String filterString = ".";
@@ -386,26 +386,26 @@ public class ApplyVQSR extends MultiVariantWalker {
             return VCFConstants.UNFILTERED;
         }
 
-        //if both SNP and INDEL modes have been run or the site is not mixed, generate a filter string for this site based on both models
-        //pull out the allele filter status from the info field (there may be more than one entry in the list if there were multiple snp/indel alleles assessed in the other mode)
+        //if both SNP and INDEL modes have been run or the site is not mixed, generate a filterSuffix string for this site based on both models
+        //pull out the allele filterSuffix status from the info field (there may be more than one entry in the list if there were multiple snp/indel alleles assessed in the other mode)
         final String prevFilterStatus = vc.getAttributeAsString(GATKVCFConstants.AS_FILTER_STATUS_KEY, null);
 
-        //if this site hasn't had a filter applied yet
+        //if this site hasn't had a filterSuffix applied yet
         if (prevFilterStatus != null && !prevFilterStatus.equals(VCFConstants.UNFILTERED)) {
             final String prevAllelesFilterStatusString = vc.getAttributeAsString(GATKVCFConstants.AS_FILTER_STATUS_KEY, null);
             final String[] prevAllelesFilterStatusList = prevAllelesFilterStatusString.split(listPrintSeparator);
-            //start with the current best allele filter as the most lenient filter across all modes and all alleles
+            //start with the current best allele filterSuffix as the most lenient filterSuffix across all modes and all alleles
             String mostLenientFilterName = generateFilterString(bestLod);
-            //if the current mode's best allele passes the tranche filter, then let the whole site pass
+            //if the current mode's best allele passes the tranche filterSuffix, then let the whole site pass
             if (mostLenientFilterName.equals(VCFConstants.PASSES_FILTERS_v4)) {
                 filterString = mostLenientFilterName;
             }
-            //if the current mode's best allele does not pass the tranche filter, compare the most lenient filter of this mode with those from the previous mode
+            //if the current mode's best allele does not pass the tranche filterSuffix, compare the most lenient filterSuffix of this mode with those from the previous mode
             else {
                 double mostLenientSensitivityLowerLimit = parseFilterLowerLimit(mostLenientFilterName);
                 for (int i = 0; i < prevAllelesFilterStatusList.length; i++) {
                     final String alleleFilterString = prevAllelesFilterStatusList[i].replaceAll(arrayParseRegex, "").trim();
-                    //if any allele from the previous mode passed the tranche filter, then let the whole site pass
+                    //if any allele from the previous mode passed the tranche filterSuffix, then let the whole site pass
                     if (alleleFilterString.equals(VCFConstants.PASSES_FILTERS_v4)) { //this allele is PASS
                         mostLenientFilterName = alleleFilterString;
                         break;
@@ -426,7 +426,7 @@ public class ApplyVQSR extends MultiVariantWalker {
             }
         }
 
-        //if both modes have been run, but the previous mode didn't apply a filter, use the current mode's best allele VQSLOD filter (shouldn't get run, but just in case)
+        //if both modes have been run, but the previous mode didn't apply a filterSuffix, use the current mode's best allele VQSLOD filterSuffix (shouldn't get run, but just in case)
         else {
             filterString = generateFilterString(bestLod);
         }
@@ -435,9 +435,9 @@ public class ApplyVQSR extends MultiVariantWalker {
     }
 
     /**
-     * Generate the VCF filter string for this record based on the provided lod score
+     * Generate the VCF filterSuffix string for this record based on the provided lod score
      * @param lod non-null double
-     * @return the String to use as the VCF filter field
+     * @return the String to use as the VCF filterSuffix field
      */
     protected String generateFilterString( final double lod ) {
         String filterString = null;
@@ -502,11 +502,11 @@ public class ApplyVQSR extends MultiVariantWalker {
     }
 
     /**
-     * Calculate the allele-specific filter status of vc
+     * Calculate the allele-specific filterSuffix status of vc
      * @param vc
      * @param recals
      * @param builder   is modified by adding attributes
-     * @return a String with the filter status for this site
+     * @return a String with the filterSuffix status for this site
      */
     private String doAlleleSpecificFiltering(final VariantContext vc, final List<VariantContext> recals, final VariantContextBuilder builder) {
         double bestLod = VariantRecalibratorEngine.MIN_ACCEPTABLE_LOD_SCORE;
@@ -587,11 +587,11 @@ public class ApplyVQSR extends MultiVariantWalker {
     }
 
     /**
-     * Calculate the filter status for a given VariantContext using the combined data from all alleles at a site
+     * Calculate the filterSuffix status for a given VariantContext using the combined data from all alleles at a site
      * @param vc
      * @param recals
      * @param builder   is modified by adding attributes
-     * @return a String with the filter status for this site
+     * @return a String with the filterSuffix status for this site
      */
     private String doSiteSpecificFiltering(final VariantContext vc, final List<VariantContext> recals, final VariantContextBuilder builder) {
         VariantContext recalDatum = getMatchingRecalVC(vc, recals, null);

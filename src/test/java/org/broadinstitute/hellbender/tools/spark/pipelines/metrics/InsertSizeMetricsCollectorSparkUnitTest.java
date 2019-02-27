@@ -81,8 +81,8 @@ public class InsertSizeMetricsCollectorSparkUnitTest extends CommandLineProgramT
         isSpark.initialize(isArgs, samHeader, null);
 
         // Since we're bypassing the framework in order to force this test to run on multiple partitions, we
-        // need to make the read filter manually since we don't have the plugin descriptor to do it for us; so
-        // remove the (default) FirstOfPairReadFilter filter and add in the SECOND_IN_PAIR manually since thats
+        // need to make the read filterSuffix manually since we don't have the plugin descriptor to do it for us; so
+        // remove the (default) FirstOfPairReadFilter filterSuffix and add in the SECOND_IN_PAIR manually since thats
         // required for our tests to pass
         List<ReadFilter> readFilters = isSpark.getDefaultReadFilters();
         readFilters.stream().filter(

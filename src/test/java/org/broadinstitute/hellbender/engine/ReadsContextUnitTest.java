@@ -47,7 +47,7 @@ public final class ReadsContextUnitTest extends GATKBaseTest {
         return new Object[][]{
                 {new ReadsContext(
                         new ReadsDataSource(IOUtils.getPath(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam")),
-                        new SimpleInterval("1", 200, 210), // query over small interval, with no read filter
+                        new SimpleInterval("1", 200, 210), // query over small interval, with no read filterSuffix
                         ReadFilterLibrary.ALLOW_ALL_READS), new String[] { "a", "b", "c" },
                 },
                 {new ReadsContext(

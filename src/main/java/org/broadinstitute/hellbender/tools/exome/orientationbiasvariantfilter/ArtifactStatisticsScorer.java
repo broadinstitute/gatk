@@ -36,7 +36,7 @@ public class ArtifactStatisticsScorer {
     /**
      * See {@link #calculateSuppressionFactorFromPreAdapterQ(double, double, double) calculateSuppressionFactorFromPreAdapterQ}
      *
-     *  Configured to behave exactly like the CGA Matlab OxoG filter in Firehose.  For those not internal to the Broad, this
+     *  Configured to behave exactly like the CGA Matlab OxoG filterSuffix in Firehose.  For those not internal to the Broad, this
      *   would be the configuration that is used in the vast majority of calls from the Broad, including TCGA.
      *
      * @param preAdapterQ See {@link #calculateSuppressionFactorFromPreAdapterQ(double, double, double) calculateSuppressionFactorFromPreAdapterQ}

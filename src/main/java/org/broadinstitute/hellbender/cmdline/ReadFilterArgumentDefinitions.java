@@ -8,16 +8,16 @@ public final class ReadFilterArgumentDefinitions {
 
     // GATKReadFilterPluginDescriptor arguments
 
-    public static final String READ_FILTER_LONG_NAME = "read-filter";
-    public static final String DISABLE_READ_FILTER_LONG_NAME = "disable-read-filter";
+    public static final String READ_FILTER_LONG_NAME = "read-filterSuffix";
+    public static final String DISABLE_READ_FILTER_LONG_NAME = "disable-read-filterSuffix";
     public static final String DISABLE_TOOL_DEFAULT_READ_FILTERS = "disable-tool-default-read-filters";
     public static final String READ_FILTER_SHORT_NAME = "RF";
     public static final String DISABLE_READ_FILTER_SHORT_NAME = "DF";
 
     // ReadFilter arguments
 
-    public static final String AMBIGUOUS_FILTER_FRACTION_NAME = "ambig-filter-frac";
-    public static final String AMBIGUOUS_FILTER_BASES_NAME = "ambig-filter-bases";
+    public static final String AMBIGUOUS_FILTER_FRACTION_NAME = "ambig-filterSuffix-frac";
+    public static final String AMBIGUOUS_FILTER_BASES_NAME = "ambig-filterSuffix-bases";
 
     public static final String MAX_FRAGMENT_LENGTH_NAME = "max-fragment-length";
 
@@ -26,10 +26,10 @@ public final class ReadFilterArgumentDefinitions {
     public static final String MINIMUM_MAPPING_QUALITY_NAME = "minimum-mapping-quality";
     public static final String MAXIMUM_MAPPING_QUALITY_NAME = "maximum-mapping-quality";
 
-    public static final String FILTER_TOO_SHORT_NAME = "filter-too-short";
+    public static final String FILTER_TOO_SHORT_NAME = "filterSuffix-too-short";
     public static final String DONT_REQUIRE_SOFT_CLIPS_BOTH_ENDS_NAME = "dont-require-soft-clips-both-ends";
 
-    public static final String PL_FILTER_NAME_LONG_NAME = "platform-filter-name";
+    public static final String PL_FILTER_NAME_LONG_NAME = "platform-filterSuffix-name";
 
     public static final String BLACK_LISTED_LANES_LONG_NAME = "black-listed-lanes";
 

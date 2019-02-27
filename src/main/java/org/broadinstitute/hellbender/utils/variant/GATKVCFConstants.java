@@ -142,7 +142,7 @@ public final class GATKVCFConstants {
 
     // M2-specific FORMAT keys
     public static final String ALLELE_FRACTION_KEY =                "AF";
-    public static final String ROF_POSTERIOR_KEY =                  "P_RO"; // For read orientation filter
+    public static final String ROF_POSTERIOR_KEY =                  "P_RO"; // For read orientation filterSuffix
     public static final String ROF_PRIOR_KEY =                      "P_PRIOR_RO";
     public static final String ROF_TYPE_KEY =                       "ROF_TYPE";
     public static final String POTENTIAL_POLYMORPHIC_NUMT_KEY =     "NUMT";

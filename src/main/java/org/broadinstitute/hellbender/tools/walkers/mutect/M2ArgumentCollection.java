@@ -90,7 +90,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     /***************************************/
 
     /**
-     * A panel of normals can be a useful (optional) input to help filter out commonly seen sequencing noise that may appear as low allele-fraction somatic variants.
+     * A panel of normals can be a useful (optional) input to help filterSuffix out commonly seen sequencing noise that may appear as low allele-fraction somatic variants.
      */
     @Argument(fullName= PANEL_OF_NORMALS_LONG_NAME, shortName = PANEL_OF_NORMALS_SHORT_NAME, doc="VCF file of sites observed in normal.", optional = true)
     public FeatureInput<VariantContext> pon;
@@ -138,10 +138,10 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public Boolean mitochondria = false;
 
     /**
-     * Only variants with tumor LODs exceeding this threshold will be written to the VCF, regardless of filter status.
+     * Only variants with tumor LODs exceeding this threshold will be written to the VCF, regardless of filterSuffix status.
      * Set to less than or equal to tumor_lod. Increase argument value to reduce false positives in the callset.
      * Default setting of 3 is permissive and will emit some amount of negative training data that 
-     * {@link FilterMutectCalls} should then filter.
+     * {@link FilterMutectCalls} should then filterSuffix.
      */
     @Argument(fullName = EMISSION_LOD_LONG_NAME, shortName = EMISSION_LOG_SHORT_NAME, optional = true, doc = "LOD threshold to emit variant to VCF.")
     private double emissionLodArg = DEFAULT_EMISSION_LOD;
@@ -200,7 +200,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     @Argument(fullName = NORMAL_LOD_LONG_NAME, optional = true, doc = "LOD threshold for calling normal variant non-germline.")
     public double normalLod = 2.2;
 
-    @Argument(fullName = ARTIFACT_PRIOR_TABLE_NAME, optional = true, doc = "tables of prior artifact probabilities for the read orientation filter model, one per tumor sample")
+    @Argument(fullName = ARTIFACT_PRIOR_TABLE_NAME, optional = true, doc = "tables of prior artifact probabilities for the read orientation filterSuffix model, one per tumor sample")
     public List<File> artifactPriorTables = new ArrayList<>();
 
     /**

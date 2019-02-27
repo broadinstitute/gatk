@@ -4,7 +4,7 @@ import org.apache.spark.api.java.JavaRDD;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 /**
- * Dummy filter metrics class that does nothing
+ * Dummy filterSuffix metrics class that does nothing
  */
 public final class PSFilterEmptyLogger implements PSFilterLogger {
 

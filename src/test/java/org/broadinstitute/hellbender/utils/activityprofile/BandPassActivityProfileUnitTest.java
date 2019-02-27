@@ -64,7 +64,7 @@ public class BandPassActivityProfileUnitTest extends GATKBaseTest {
         final BandPassActivityProfile profile = new BandPassActivityProfile(null, MAX_PROB_PROPAGATION_DISTANCE, ACTIVE_PROB_THRESHOLD, bandPassSize, sigma, false, header);
 
         final int expectedBandSize = bandPassSize * 2 + 1;
-        Assert.assertEquals(profile.getFilteredSize(), bandPassSize, "Wrong filter size");
+        Assert.assertEquals(profile.getFilteredSize(), bandPassSize, "Wrong filterSuffix size");
         Assert.assertEquals(profile.getSigma(), sigma, "Wrong sigma");
         Assert.assertEquals(profile.getBandSize(), expectedBandSize, "Wrong expected band size");
 
@@ -89,7 +89,7 @@ public class BandPassActivityProfileUnitTest extends GATKBaseTest {
     private double[] bandPassInOnePass(final BandPassActivityProfile profile, final double[] activeProbArray) {
         final double[] bandPassProbArray = new double[activeProbArray.length];
 
-        // apply the band pass filter for activeProbArray into filteredProbArray
+        // apply the band pass filterSuffix for activeProbArray into filteredProbArray
         final double[] GaussianKernel = profile.getKernel();
         for( int iii = 0; iii < activeProbArray.length; iii++ ) {
             final double[] kernel = ArrayUtils.subarray(GaussianKernel, Math.max(profile.getFilteredSize() - iii, 0), Math.min(GaussianKernel.length, profile.getFilteredSize() + activeProbArray.length - iii));

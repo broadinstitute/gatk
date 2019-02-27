@@ -393,7 +393,7 @@ public abstract class AbstractAlignmentMerger {
 
     /**
      * @return Next read's alignment(s) from aligned input or null, if there are no more.
-     * The alignments are run through ignoreAlignment() filter before being returned, which may result
+     * The alignments are run through ignoreAlignment() filterSuffix before being returned, which may result
      * in an entire read being skipped if all alignments for that read should be ignored.
      */
     private HitsForInsert nextAligned() {

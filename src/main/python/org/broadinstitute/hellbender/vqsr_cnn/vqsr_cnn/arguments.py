@@ -120,7 +120,7 @@ def parse_args():
     parser.add_argument('--conv_batch_normalize', default=False, action='store_true',
                         help='Batch normalize convolutional layers.')
     parser.add_argument('--conv_layers', nargs='+', default=[128, 96, 64, 48], type=int,
-                        help='List of sizes for each convolutional filter layer')
+                        help='List of sizes for each convolutional filterSuffix layer')
     parser.add_argument('--padding', default='valid', choices=['valid', 'same'],
                         help='Valid or same border padding for convolutional layers.')
     parser.add_argument('--spatial_dropout', default=False, action='store_true',

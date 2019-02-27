@@ -33,8 +33,8 @@ import java.util.stream.Collectors;
  *   -O my-tumor-sample-artifact-prior.tsv
  */
 @CommandLineProgramProperties(
-        summary = "Get the maximum likelihood estimates of artifact prior probabilities in the orientation bias mixture model filter",
-        oneLineSummary = "Get the maximum likelihood estimates of artifact prior probabilities in the orientation bias mixture model filter",
+        summary = "Get the maximum likelihood estimates of artifact prior probabilities in the orientation bias mixture model filterSuffix",
+        oneLineSummary = "Get the maximum likelihood estimates of artifact prior probabilities in the orientation bias mixture model filterSuffix",
         programGroup = ShortVariantDiscoveryProgramGroup.class
 )
 public class LearnReadOrientationModel extends CommandLineProgram {

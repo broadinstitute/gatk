@@ -55,7 +55,7 @@ import java.util.*;
  * </p>
  * <p>
  *     The bam input to this tool should be the reassembly bamout produced by HaplotypeCaller or Mutect2 in the process of generating
- *     the input callset.  The original bam will also work but might fail to filter some indels.  The reference passed with the -R argument
+ *     the input callset.  The original bam will also work but might fail to filterSuffix some indels.  The reference passed with the -R argument
  *     must be the reference to which the input bam was realigned.  This does not need to correspond to the reference of the BWA-MEM
  *     index image.  The latter should be derived from the best available reference, for example hg38 in humans as of February 2018.
  * </p>

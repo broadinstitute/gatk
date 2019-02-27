@@ -29,7 +29,7 @@ public final class QualityYieldMetrics extends MetricBase implements Serializabl
     /** The total number of reads in the input file */
     public int TOTAL_READS;
 
-    /** The number of reads that are PF - pass filter */
+    /** The number of reads that are PF - pass filterSuffix */
     public int PF_READS;
 
     /** The average read length of all the reads (will be fixed for a lane) */

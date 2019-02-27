@@ -649,7 +649,7 @@ public final class SelectVariants extends VariantWalker {
      *
      * @param vc the variant context
      * @param g the genotype
-     * @return list of genotype filter names
+     * @return list of genotype filterSuffix names
      */
     private List<String> getGenotypeFilters(final VariantContext vc, final Genotype g) {
         final List<String> filters = new ArrayList<>();
@@ -716,7 +716,7 @@ public final class SelectVariants extends VariantWalker {
     }
 
     /**
-     * Prepare the sample names to be included(/excluded) in the output by the names filter.
+     * Prepare the sample names to be included(/excluded) in the output by the names filterSuffix.
      */
     private SortedSet<String> createSampleNameInclusionList(Map<String, VCFHeader> vcfHeaders) {
         final SortedSet<String> vcfSamples = VcfUtils.getSortedSampleSet(vcfHeaders, GATKVariantContextUtils.GenotypeMergeType.REQUIRE_UNIQUE);
@@ -776,7 +776,7 @@ public final class SelectVariants extends VariantWalker {
     }
 
     /**
-     * Prepare the type inclusion list to be used by the type filter
+     * Prepare the type inclusion list to be used by the type filterSuffix
      */
     private Set<VariantContext.Type> createSampleTypeInclusionList() {
 
@@ -891,10 +891,10 @@ public final class SelectVariants extends VariantWalker {
     }
 
     /**
-     * Find the number of samples passing the given filter.
+     * Find the number of samples passing the given filterSuffix.
      *
      * @param vc the variant
-     * @param f predicate by which to filter genotypes
+     * @param f predicate by which to filterSuffix genotypes
      * @return number of filtered samples
      */
     private int numGenotypes(final VariantContext vc, final Predicate<Genotype> f)  {

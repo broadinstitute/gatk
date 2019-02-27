@@ -748,7 +748,7 @@ public final class GATKToolUnitTest extends GATKBaseTest {
     @Test
     public void testHelpWithAllPluginDescriptors() {
         // Smoke test to ensure that requesting help from plugin descriptors doesn't crash. Use a tool
-        // (TestGATKToolWithVariants) that has both the read filter and annotation plugin descriptors enabled.
+        // (TestGATKToolWithVariants) that has both the read filterSuffix and annotation plugin descriptors enabled.
         String[] args = {"-h"};
         new TestGATKToolWithVariants().instanceMain(args);
     }

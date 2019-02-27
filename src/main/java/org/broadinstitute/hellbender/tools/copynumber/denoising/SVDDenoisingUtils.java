@@ -58,7 +58,7 @@ public final class SVDDenoisingUtils {
     }
 
     /**
-     * Preprocess (i.e., transform to fractional coverage, correct GC bias, filter, impute, and truncate) 
+     * Preprocess (i.e., transform to fractional coverage, correct GC bias, filterSuffix, impute, and truncate)
      * and standardize read counts from a panel of normals.
      * All inputs are assumed to be valid.
      * The dimensions of {@code readCounts} should be samples x intervals.
@@ -75,7 +75,7 @@ public final class SVDDenoisingUtils {
                                                                         final double extremeSampleMedianPercentile,
                                                                         final boolean doImputeZeros,
                                                                         final double extremeOutlierTruncationPercentile) {
-        //preprocess (transform to fractional coverage, correct GC bias, filter, impute, truncate) and return copy of submatrix
+        //preprocess (transform to fractional coverage, correct GC bias, filterSuffix, impute, truncate) and return copy of submatrix
         logger.info("Preprocessing read counts...");
         final PreprocessedStandardizedResult preprocessedStandardizedResult = preprocessPanel(readCounts, intervalGCContent,
                 minimumIntervalMedianPercentile, maximumZerosInSamplePercentage, maximumZerosInIntervalPercentage,
@@ -202,7 +202,7 @@ public final class SVDDenoisingUtils {
         final boolean[] filterSamples = new boolean[numOriginalSamples];
         final boolean[] filterIntervals = new boolean[numOriginalIntervals];
 
-        //filter intervals by fractional median
+        //filterSuffix intervals by fractional median
         final double[] originalIntervalMedians = MatrixSummaryUtils.getColumnMedians(readCounts);
         if (minimumIntervalMedianPercentile == 0.) {
             logger.info(String.format("A value of 0 was provided for argument %s, so the corresponding filtering step will be skipped...",
@@ -211,7 +211,7 @@ public final class SVDDenoisingUtils {
             logger.info(String.format("Filtering intervals with median (across samples) less than or equal to the %.2f percentile...", minimumIntervalMedianPercentile));
             //calculate percentile
             final double minimumIntervalMedianThreshold = new Percentile(minimumIntervalMedianPercentile).evaluate(originalIntervalMedians);
-            //filter intervals
+            //filterSuffix intervals
             IntStream.range(0, numOriginalIntervals)
                     .filter(intervalIndex -> originalIntervalMedians[intervalIndex] <= minimumIntervalMedianThreshold)
                     .forEach(intervalIndex -> filterIntervals[intervalIndex] = true);
@@ -226,7 +226,7 @@ public final class SVDDenoisingUtils {
                     readCounts.setEntry(sampleIndex, intervalIndex,value / originalIntervalMedians[intervalIndex]);
                 }));
 
-        //filter samples by percentage of zero-coverage intervals not already filtered
+        //filterSuffix samples by percentage of zero-coverage intervals not already filtered
         if (maximumZerosInSamplePercentage == 100.) {
             logger.info(String.format("A value of 100 was provided for argument %s, so the corresponding filtering step will be skipped...",
                     CreateReadCountPanelOfNormals.MAXIMUM_ZEROS_IN_SAMPLE_PERCENTAGE_LONG_NAME));
@@ -246,7 +246,7 @@ public final class SVDDenoisingUtils {
             logger.info(String.format("After filtering, %d out of %d samples remain...", countNumberPassingFilter(filterSamples), numOriginalSamples));
         }
 
-        //filter intervals by percentage of zero-coverage samples not already filtered
+        //filterSuffix intervals by percentage of zero-coverage samples not already filtered
         if (maximumZerosInIntervalPercentage == 100.) {
             logger.info(String.format("A value of 100 was provided for argument %s, so the corresponding filtering step will be skipped...",
                     CreateReadCountPanelOfNormals.MAXIMUM_ZEROS_IN_INTERVAL_PERCENTAGE_LONG_NAME));
@@ -266,7 +266,7 @@ public final class SVDDenoisingUtils {
             logger.info(String.format("After filtering, %d out of %d intervals remain...", countNumberPassingFilter(filterIntervals), numOriginalIntervals));
         }
 
-        //filter samples with extreme medians
+        //filterSuffix samples with extreme medians
         if (extremeSampleMedianPercentile == 0.) {
             logger.info(String.format("A value of 0 was provided for argument %s, so the corresponding filtering step will be skipped...",
                     CreateReadCountPanelOfNormals.EXTREME_SAMPLE_MEDIAN_PERCENTILE_LONG_NAME));
@@ -283,7 +283,7 @@ public final class SVDDenoisingUtils {
             //calculate percentiles
             final double minimumSampleMedianThreshold = new Percentile(extremeSampleMedianPercentile).evaluate(sampleMedians);
             final double maximumSampleMedianThreshold = new Percentile(100. - extremeSampleMedianPercentile).evaluate(sampleMedians);
-            //filter samples
+            //filterSuffix samples
             IntStream.range(0, numOriginalSamples)
                     .filter(sampleIndex -> sampleMedians[sampleIndex] < minimumSampleMedianThreshold || sampleMedians[sampleIndex] > maximumSampleMedianThreshold)
                     .forEach(sampleIndex -> filterSamples[sampleIndex] = true);
@@ -382,7 +382,7 @@ public final class SVDDenoisingUtils {
         transformToFractionalCoverage(result);
         performOptionalGCBiasCorrection(result, panelOfNormals.getOriginalIntervalGCContent());
 
-        logger.info("Subsetting sample intervals to post-filter panel intervals...");
+        logger.info("Subsetting sample intervals to post-filterSuffix panel intervals...");
         final Set<SimpleInterval> panelIntervals = new HashSet<>(panelOfNormals.getPanelIntervals());
         final int[] subsetIntervalIndices = IntStream.range(0, panelOfNormals.getOriginalIntervals().size())
                 .filter(i -> panelIntervals.contains(panelOfNormals.getOriginalIntervals().get(i)))

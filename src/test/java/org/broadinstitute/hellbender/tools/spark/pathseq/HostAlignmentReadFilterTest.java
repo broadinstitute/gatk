@@ -82,6 +82,6 @@ public final class HostAlignmentReadFilterTest {
         read_in.setPosition("test_contig", 1);
         read_in.setPosition("pos", 1);
         final boolean test_i = filter.test(read_in);
-        Assert.assertEquals(true, test_i); //Don't filter out reads if there is no NM tag
+        Assert.assertEquals(true, test_i); //Don't filterSuffix out reads if there is no NM tag
     }
 }

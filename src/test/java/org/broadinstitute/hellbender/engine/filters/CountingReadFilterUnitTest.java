@@ -30,7 +30,7 @@ public final class CountingReadFilterUnitTest {
         @Override public boolean test(final GATKRead read){return read.getEnd() <= 10;}
     };
 
-    // Helper to verify post-filtering filter state
+    // Helper to verify post-filtering filterSuffix state
     private void verifyFilterState(CountingReadFilter rf, boolean expected) {
         long count = rf.getFilteredCount();
         String rfSummary = rf.getSummaryLine();
@@ -285,19 +285,19 @@ public final class CountingReadFilterUnitTest {
         filters.add(ReadFilterLibrary.GOOD_CIGAR);
 
         // Since we want to ensure that order of the input is honored, we need to test the
-        // structure of the filter rather than the result
+        // structure of the filterSuffix rather than the result
         CountingReadFilter rf = CountingReadFilter.fromList(filters, ArtificialReadUtils.createArtificialSamHeader(1, 1, 10));
 
         Assert.assertTrue(rf.getClass() == CountingReadFilter.CountingAndReadFilter.class);
         CountingReadFilter.CountingAndReadFilter andFilter = (CountingReadFilter.CountingAndReadFilter) rf;
 
-        // lhs is a Counting and filter; rhs is a counting filter that delegates to GOOD_CIGAR
+        // lhs is a Counting and filterSuffix; rhs is a counting filterSuffix that delegates to GOOD_CIGAR
         Assert.assertTrue(andFilter.lhs.getClass() == CountingReadFilter.CountingAndReadFilter.class);
         Assert.assertTrue(andFilter.rhs.delegateFilter.getClass() == ReadFilterLibrary.GOOD_CIGAR.getClass());
         andFilter = (CountingReadFilter.CountingAndReadFilter) andFilter.lhs;
 
-        // lhs is a Counting filter that delegates to MAPPING_QUALITY_AVAILABLE; rhs is a
-        // counting filter that delegates to MAPPED
+        // lhs is a Counting filterSuffix that delegates to MAPPING_QUALITY_AVAILABLE; rhs is a
+        // counting filterSuffix that delegates to MAPPED
         Assert.assertTrue(andFilter.lhs.getClass() == CountingReadFilter.class);
         Assert.assertTrue(andFilter.lhs.delegateFilter.getClass() == ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE.getClass());
         Assert.assertTrue(andFilter.rhs.getClass() == CountingReadFilter.class);

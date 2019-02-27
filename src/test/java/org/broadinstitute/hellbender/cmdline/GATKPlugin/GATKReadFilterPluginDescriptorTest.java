@@ -57,7 +57,7 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
 
         final GATKReadFilterPluginDescriptor pluginDescriptor = clp.getPluginDescriptor(GATKReadFilterPluginDescriptor.class);
 
-        // the help for disable-read-filter should point out to the default filters in the order provided
+        // the help for disable-read-filterSuffix should point out to the default filters in the order provided
         Assert.assertEquals(pluginDescriptor.getAllowedValuesForDescriptorHelp(ReadFilterArgumentDefinitions.DISABLE_READ_FILTER_LONG_NAME),
                 defaultFilters.stream().map(rf -> rf.getClass().getSimpleName()).collect(Collectors.toSet()));
 
@@ -66,7 +66,7 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
         Assert.assertFalse(pluginDescriptor.getAllowedValuesForDescriptorHelp(ReadFilterArgumentDefinitions.READ_FILTER_LONG_NAME).isEmpty());
     }
 
-    //Filters with arguments to verify filter test method actually filters
+    //Filters with arguments to verify filterSuffix test method actually filters
     @DataProvider(name="filtersWithFilteringArguments")
     public Object[][] filtersWithGoodArguments(){
         return new Object[][]{
@@ -109,8 +109,8 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
         clp.parseArguments(nullMessageStream, args);
         ReadFilter rf = instantiateFilter(clp, header);
 
-        // to ensure that the filter is actually working, verify that the test record
-        // we're using fails the filter test *before* we set it up to pass the filter
+        // to ensure that the filterSuffix is actually working, verify that the test record
+        // we're using fails the filterSuffix test *before* we set it up to pass the filterSuffix
         Assert.assertFalse(rf.test(read));
 
         // setup the header and read for the test
@@ -133,7 +133,7 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
         };
     }
 
-    // fail if a filter with required arguments is specified without corresponding arguments
+    // fail if a filterSuffix with required arguments is specified without corresponding arguments
     @Test(dataProvider = "filtersWithRequiredArguments", expectedExceptions = CommandLineException.MissingArgument.class)
     public void testDependentFilterArguments(
             final String filter,
@@ -152,7 +152,7 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
         clp.parseArguments(nullMessageStream, args);
     }
 
-    // fail if a filter's arguments are passed but the filter itself is not enabled
+    // fail if a filterSuffix's arguments are passed but the filterSuffix itself is not enabled
     @Test(dataProvider = "filtersWithRequiredArguments", expectedExceptions = CommandLineException.class)
     public void testDanglingFilterArguments(
             final String filter,
@@ -164,7 +164,7 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
                 Collections.singletonList(new GATKReadFilterPluginDescriptor(null)),
                 Collections.emptySet());
 
-        String[] args = { argName, argValue }; // no read filter set
+        String[] args = { argName, argValue }; // no read filterSuffix set
 
         // no need to instantiate the filters - dependency errors are caught by the command line parser
         clp.parseArguments(nullMessageStream, args);
@@ -205,14 +205,14 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
         clp.parseArguments(nullMessageStream, args);
         ReadFilter rf = instantiateFilter(clp, header);
 
-        // default read name is rejected by the readName filter
+        // default read name is rejected by the readName filterSuffix
         Assert.assertFalse(rf.test(read));
 
         String readName = read.getName();
         read.setName("fred");
         Assert.assertTrue(rf.test(read)); // accepted
 
-        // trigger the read length filter to reject
+        // trigger the read length filterSuffix to reject
         read.setBases(new byte[150]);
         Assert.assertFalse(rf.test(read));
     }
@@ -310,7 +310,7 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
         clp.parseArguments(nullMessageStream, new String[]{
                 "--" + ReadFilterArgumentDefinitions.DISABLE_READ_FILTER_LONG_NAME, filterName
         });
-        // Make sure mapped filter got disabled with no exception
+        // Make sure mapped filterSuffix got disabled with no exception
         Assert.assertTrue(rfDesc.userArgs.getUserDisabledReadFilterNames().contains(filterName));
         Assert.assertTrue(rfDesc.isDisabledFilter(filterName));
     }
@@ -411,7 +411,7 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
     // For now this will just generate a warning, but it should throw
     @Test(expectedExceptions = CommandLineException.class, enabled=false)
     public void testDisabledDefaultWithArgsProvided() {
-        // test for arguments provided for a default filter that is also disabled
+        // test for arguments provided for a default filterSuffix that is also disabled
         CommandLineParser clp = new CommandLineArgumentParser(
                 new Object(),
                 Collections.singletonList(new GATKReadFilterPluginDescriptor(
@@ -420,7 +420,7 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
                 Collections.emptySet());
         clp.parseArguments(nullMessageStream, new String[] {
                 "--sample", "fred",
-                "--disable-fead-filter", SampleReadFilter.class.getSimpleName()});
+                "--disable-fead-filterSuffix", SampleReadFilter.class.getSimpleName()});
 
         // get the command line read filters
         clp.getPluginDescriptor(GATKReadFilterPluginDescriptor.class);
@@ -428,7 +428,7 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
 
     @Test
     public void testDisabledDefaultWithArgsNotProvided() {
-        // test for disabling a default filter that has arguments, but they are not provided
+        // test for disabling a default filterSuffix that has arguments, but they are not provided
         GATKReadFilterPluginDescriptor rfDesc = new GATKReadFilterPluginDescriptor(
                 Collections.singletonList(new ReadLengthReadFilter(1, 10)));
         CommandLineParser clp = new CommandLineArgumentParser(
@@ -446,7 +446,7 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
 
     @Test(expectedExceptions = CommandLineException.class)
     public void testDisabledNonDefaultFilterWithArgsProvided() {
-        // test for arguments provided for a non-default filter that is also disabled
+        // test for arguments provided for a non-default filterSuffix that is also disabled
         CommandLineParser clp = new CommandLineArgumentParser(
                 new Object(),
                 Collections.singletonList(new GATKReadFilterPluginDescriptor(Collections.emptyList())),
@@ -515,7 +515,7 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
                 "--" + ReadFilterArgumentDefinitions.READ_FILTER_LONG_NAME, ReadLengthReadFilter.class.getSimpleName()}
         );
         List<ReadFilter> allFilters = rfDesc.getResolvedInstances();
-        // User filter is first according to the command line
+        // User filterSuffix is first according to the command line
         Assert.assertSame(allFilters.get(0).getClass(), ReadFilterLibrary.GOOD_CIGAR.getClass());
         // default filters are exactly the same object
         Assert.assertSame(allFilters.get(1), ReadFilterLibrary.MAPPED);
@@ -571,10 +571,10 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
         Assert.assertEquals(orderedFilters.get(5).getClass().getSimpleName(),
                 ReadFilterLibrary.GOOD_CIGAR.getClass().getSimpleName());
 
-        // Now get the final merged read filter and verify the execution order. We need to ensure that
-        // getMergedReadFilter creates a composite filter that honors the filter test execution
+        // Now get the final merged read filterSuffix and verify the execution order. We need to ensure that
+        // getMergedReadFilter creates a composite filterSuffix that honors the filterSuffix test execution
         // order rules (tool defaults first, in order, followed by command line-specified, in order
-        // listed), so validate by reaching inside the filter and navigating down the tree.
+        // listed), so validate by reaching inside the filterSuffix and navigating down the tree.
         ReadFilter rf = instantiateFilter(clp, createHeaderWithReadGroups());
         String expectedOrder[] = {
                 WellformedReadFilter.class.getSimpleName(),
@@ -614,10 +614,10 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
                 "-" + ReadFilterArgumentDefinitions.READ_FILTER_SHORT_NAME, ReadFilterLibrary.HAS_MATCHING_BASES_AND_QUALS.getClass().getSimpleName(),
                 "-" + ReadFilterArgumentDefinitions.READ_FILTER_SHORT_NAME, ReadFilterLibrary.GOOD_CIGAR.getClass().getSimpleName()});
 
-        // Now get the final merged read filter and verify the execution order. We need to ensure that
-        // getMergedReadFilter creates a composite filter that honors the filter test execution
+        // Now get the final merged read filterSuffix and verify the execution order. We need to ensure that
+        // getMergedReadFilter creates a composite filterSuffix that honors the filterSuffix test execution
         // order rules (tool defaults first, in order, followed by command line-specified, in order
-        // listed). So reach inside the filter and navigate down the tree.
+        // listed). So reach inside the filterSuffix and navigate down the tree.
         ReadFilter rf = instantiateFilter(clp, createHeaderWithReadGroups());
         String expectedOrder[] = {
                 WellformedReadFilter.class.getSimpleName(),
@@ -773,7 +773,7 @@ public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
         }
     }
 
-    // setup methods to initialize reads for individual filter tests
+    // setup methods to initialize reads for individual filterSuffix tests
     private void setupLibraryTest(SetupTest setup) {
         setup.hdr.getReadGroup(setup.read.getReadGroup()).setLibrary(setup.argValue);
     }

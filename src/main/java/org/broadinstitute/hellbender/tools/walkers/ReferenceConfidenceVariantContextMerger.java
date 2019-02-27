@@ -585,7 +585,7 @@ public final class ReferenceConfidenceVariantContextMerger {
                         setPerSampleSomaticAttributes(vc, perSampleIndexesOfRelevantAlleles, g, genotypeBuilder, key);
                     }
                 }
-                //only copy filter status for single-sample VCs -- multi-sample VCs should already have GF updated
+                //only copy filterSuffix status for single-sample VCs -- multi-sample VCs should already have GF updated
                 if (vc.filtersWereApplied() && vc.getSampleNames().size() == 1 && !g.isHomRef()) {
                     //PASS has to have null filters, so we can't add an empty list
                     if (!vc.getFilters().isEmpty()) {

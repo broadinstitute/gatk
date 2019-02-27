@@ -143,7 +143,7 @@ public final class ReadFilterUnitTest {
         filters.add(ReadFilterLibrary.FIRST_OF_PAIR);
 
         // Since we want to ensure that order of the input is honored, we need to test the
-        // structure of the filter rather than the result
+        // structure of the filterSuffix rather than the result
         ReadFilter rf = ReadFilter.fromList(filters, ArtificialReadUtils.createArtificialSamHeader(1, 1, 10));
 
         int count = verifyAndFilterOrder(

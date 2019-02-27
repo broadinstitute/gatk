@@ -1,12 +1,11 @@
 package org.broadinstitute.hellbender.tools.funcotator.filtrationRules;
 
-import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.Arrays;
+import java.util.Map;
 import java.util.stream.Stream;
 
-public class AlleleFrequencyGnomadUtils {
+class AlleleFrequencyGnomadUtils {
     /**
      * Sub-population suffixes used within gnomAD. Used for calculating max MAF.
      */
@@ -53,28 +52,24 @@ public class AlleleFrequencyGnomadUtils {
     /**
      * Prefix for gnomAD genome allele-frequency Funcotations.
      */
-    private static String GNOMAD_GENOME_PREFIX = "gnomAD_genome_AF_";
 
-    /**
-     * Prefix for gnomAD exome allele-frequency Funcotations.
-     */
-    private static String GNOMAD_EXOME_PREFIX = "gnomAD_exome_AF_";
+    private enum GnomadDataset {
+        gnomAD_genome, gnomAD_exome;
 
-    /**
-     * Names of annotations for whether gnomAD records for a particular data type were filtered out.
-     */
-    private static String GNOMAD_GENOME_FILTER = "gnomAD_genome_FILTER";
-    private static String GNOMAD_EXOME_FILTER = "gnomAD_exome_FILTER";
+        // Prefix for gnomAD allele-frequency Funcotations.
+        private String alleleFrequencyPrefix = name() + "_AF_";
+
+        // Name of annotations for whether gnomAD records for a particular data type were filtered out.
+        private String filterAnnotation = name() + "_FILTER";
+    }
 
     /**
      * Calculate the max MAF across all gnomAD sub-populations from the given Funcotations.
-     *
+     * <p>
      * If a sub-population has an allele number of zero, it will be assigned a MAF of zero.
      */
     static double getMaxMinorAlleleFreq(final Map<String, String> funcotations) {
-        ArrayList<String> prefixes = getPrefixes(funcotations);
-        return Arrays.stream(GnomadSubpopSuffixes.values())
-                .flatMap(suffix -> Arrays.stream(prefixes.toArray()).map(prefix -> prefix + suffix.name()))
+        return getSubpopAlleleFrequencies(funcotations)
                 .filter(funcotations::containsKey)
                 .map(subpop -> Double.valueOf(funcotations.get(subpop)))
                 .max(Double::compareTo)
@@ -82,22 +77,18 @@ public class AlleleFrequencyGnomadUtils {
     }
 
     static boolean allFrequenciesFiltered(final Map<String, String> funcotations) {
-        ArrayList<String> prefixes = getPrefixes(funcotations);
-        return prefixes.size() == 0;
+        return datasetsPresent(funcotations).count() == 0;
     }
 
-    private static ArrayList<String> getPrefixes(Map<String, String> funcotations) {
-        ArrayList<String> prefixes = new ArrayList<>();
-        prefixes.add(GNOMAD_EXOME_PREFIX);
-        prefixes.add(GNOMAD_GENOME_PREFIX);
+    private static Stream<String> getSubpopAlleleFrequencies(Map<String, String> funcotations) {
+        return datasetsPresent(funcotations)
+                .flatMap(dataset -> Arrays.stream(GnomadSubpopSuffixes.values()).map(suffix -> dataset.alleleFrequencyPrefix + suffix.name()));
+    }
 
-        if (funcotations.containsKey(GNOMAD_EXOME_FILTER) && !funcotations.get(GNOMAD_EXOME_FILTER).equals("PASS")) {
-            prefixes.remove(GNOMAD_EXOME_PREFIX);
-        }
-
-        if (funcotations.containsKey(GNOMAD_GENOME_FILTER) && !funcotations.get(GNOMAD_GENOME_FILTER).equals("PASS")) {
-            prefixes.remove(GNOMAD_GENOME_PREFIX);
-        }
-        return prefixes;
+    private static Stream<GnomadDataset> datasetsPresent(Map<String, String> funcotations) {
+        return Arrays.stream(GnomadDataset.values())
+                .filter(dataset ->
+                        !funcotations.containsKey(dataset.filterAnnotation) ||
+                                (funcotations.containsKey(dataset.filterAnnotation) && funcotations.get(dataset.filterAnnotation).equals("PASS")));
     }
 }

@@ -149,7 +149,7 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
         final VCFHeader header = getHeaderFromFile(expected);
         runVariantAnnotatorAndAssertSomething(getTestFile("vcfexamplemultisample.vcf"), new File(getToolTestDataDir() + "expected/testHsAnnotsNotAsking1.vcf"), Arrays.asList( "-I", largeFileTestDir + "CEUTrio.multisample.b37.1M-1M50k.bam"),
                 (a, e) -> {
-                    // We need to filter out sites where we saw a DP of 250 because we are comparing the results to GATK3, which downsamples to 250 reads per sample, which GATK4 does not currently support.
+                    // We need to filterSuffix out sites where we saw a DP of 250 because we are comparing the results to GATK3, which downsamples to 250 reads per sample, which GATK4 does not currently support.
                     if (!e.getGenotypes().stream().anyMatch(g -> g.hasDP() && g.getDP() >= 250)) {
                         VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, ATTRIBUTES_TO_IGNORE, header);
                     }
@@ -163,7 +163,7 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
         final VCFHeader header = getHeaderFromFile(expected);
         runVariantAnnotatorAndAssertSomething(getTestFile("vcfexamplemultisample.vcf"), new File(getToolTestDataDir() + "expected/testHasAnnotsAsking1.vcf"), Arrays.asList("-G", "Standard", "-I", largeFileTestDir + "CEUTrio.multisample.b37.1M-1M50k.bam"),
                 (a, e) -> {
-                    // We need to filter out sites where we saw a DP of 250 because we are comparing the results to GATK3, which downsamples to 250 reads per sample, which GATK4 does not currently support.
+                    // We need to filterSuffix out sites where we saw a DP of 250 because we are comparing the results to GATK3, which downsamples to 250 reads per sample, which GATK4 does not currently support.
                     if (e.getGenotypes().stream().noneMatch(g -> g.hasDP() && g.getDP() >= 250)) {
                         VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, ATTRIBUTES_TO_IGNORE, header);
                     }
@@ -177,7 +177,7 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
         final VCFHeader header = getHeaderFromFile(expected);
         runVariantAnnotatorAndAssertSomething(getTestFile("vcfexamplemultisampleempty.vcf"), new File(getToolTestDataDir() + "expected/testHasNoAnnotsNotAsking1.vcf"), Arrays.asList( "-I", largeFileTestDir + "CEUTrio.multisample.b37.1M-1M50k.bam"),
                 (a, e) -> {
-                    // We need to filter out sites where we saw a DP of 250 because we are comparing the results to GATK3, which downsamples to 250 reads per sample, which GATK4 does not currently support.
+                    // We need to filterSuffix out sites where we saw a DP of 250 because we are comparing the results to GATK3, which downsamples to 250 reads per sample, which GATK4 does not currently support.
                     if (e.getGenotypes().stream().noneMatch(g -> g.hasDP() && g.getDP() >= 250)) {
                         VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, ATTRIBUTES_TO_IGNORE, header);
                     }
@@ -191,7 +191,7 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
         final VCFHeader header = getHeaderFromFile(expected);
         runVariantAnnotatorAndAssertSomething(getTestFile("vcfexamplemultisampleempty.vcf"), new File(getToolTestDataDir() + "expected/testHasNoAnnotsAsking1.vcf"), Arrays.asList("-G", "Standard", "-I", largeFileTestDir + "CEUTrio.multisample.b37.1M-1M50k.bam"),
                 (a, e) -> {
-                    // We need to filter out sites where we saw a DP of 250 because we are comparing the results to GATK3, which downsamples to 250 reads per sample, which GATK4 does not currently support.
+                    // We need to filterSuffix out sites where we saw a DP of 250 because we are comparing the results to GATK3, which downsamples to 250 reads per sample, which GATK4 does not currently support.
                     if (e.getGenotypes().stream().noneMatch(g -> g.hasDP() && g.getDP() >= 250)) {
                         VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, ATTRIBUTES_TO_IGNORE, header);
                     }

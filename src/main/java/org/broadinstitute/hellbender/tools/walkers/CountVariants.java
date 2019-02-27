@@ -11,7 +11,7 @@ import org.broadinstitute.hellbender.engine.VariantWalker;
 
 /**
  *
- * Count variant records in a VCF file, regardless of filter status. The tool gives the count at end of the standard out.
+ * Count variant records in a VCF file, regardless of filterSuffix status. The tool gives the count at end of the standard out.
  *
  * <h3> Input </h3>
  * <ul>
@@ -33,8 +33,8 @@ import org.broadinstitute.hellbender.engine.VariantWalker;
 public final class CountVariants extends VariantWalker{
     private long count = 0;
 
-    static final String USAGE_ONE_LINE_SUMMARY = "Counts variant records in a VCF file, regardless of filter status.";
-    static final String USAGE_SUMMARY = "This tool counts the variant records in a VCF file, regardless of filter status. " +
+    static final String USAGE_ONE_LINE_SUMMARY = "Counts variant records in a VCF file, regardless of filterSuffix status.";
+    static final String USAGE_SUMMARY = "This tool counts the variant records in a VCF file, regardless of filterSuffix status. " +
             "Because it counts the number of rows in the VCF, it does not necessarily reflect the number of variant " +
             "alleles. The count is returned at the end of the standard out.";
 

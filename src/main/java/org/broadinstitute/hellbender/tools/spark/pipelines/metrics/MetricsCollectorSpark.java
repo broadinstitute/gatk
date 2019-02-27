@@ -73,13 +73,13 @@ import java.util.List;
  *
  *     // NOTE: getDefaultReadFilters is called before the collector's initialize
  *     // method is called, so the read filters cannot access argument values
- *     ReadFilter filter == collector.getDefaultReadFilters();
+ *     ReadFilter filterSuffix == collector.getDefaultReadFilters();
  *
  *     // pass the input arguments to the collector for initialization
  *     collector.initialize(args, defaultMetricsHeaders);
  *
  *     collector.collectMetrics(
- *         getReads().filter(filter),
+ *         getReads().filterSuffix(filterSuffix),
  *         samFileHeader
  *     );
  *     collector.saveMetrics(getReadSourceName());
@@ -108,8 +108,8 @@ public interface MetricsCollectorSpark<T extends MetricsArgumentCollection> exte
 
     /**
      * Return the read filters used for this collector. The default implementation
-     * returns a no-op read filter that allows all reads. Collectors that have more
-     * specific filter criteria should return a list of the required filters.
+     * returns a no-op read filterSuffix that allows all reads. Collectors that have more
+     * specific filterSuffix criteria should return a list of the required filters.
      *
      * Note that this method is called before the initialize method is called, and
      * thus before the collector has access to it's argument collection.
@@ -134,7 +134,7 @@ public interface MetricsCollectorSpark<T extends MetricsArgumentCollection> exte
     /**
      * Do the actual metrics collection on the provided RDD.
      * @param filteredReads The reads to be analyzed for this collector. The reads will have already
-     *                      been filtered by this collector's read filter.
+     *                      been filtered by this collector's read filterSuffix.
      * @param samHeader The SAMFileHeader associated with the reads in the input RDD.
      */
     void collectMetrics(JavaRDD<GATKRead> filteredReads, SAMFileHeader samHeader);

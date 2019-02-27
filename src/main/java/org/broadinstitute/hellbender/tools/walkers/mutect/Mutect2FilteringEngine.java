@@ -121,7 +121,7 @@ public class Mutect2FilteringEngine {
     }
 
     private void applySTRFilter(final VariantContext vc, final FilterResult filterResult) {
-        // STR contractions, such as ACTACTACT -> ACTACT, are overwhelmingly false positives so we hard filter by default
+        // STR contractions, such as ACTACTACT -> ACTACT, are overwhelmingly false positives so we hard filterSuffix by default
         if (vc.isIndel()) {
             final int[] rpa = vc.getAttributeAsList(GATKVCFConstants.REPEATS_PER_ALLELE_KEY).stream()
                     .mapToInt(o -> Integer.parseInt(String.valueOf(o))).toArray();
@@ -316,7 +316,7 @@ public class Mutect2FilteringEngine {
         }
     }
 
-    // filter out anything called in tumor that would also be called in the normal if it were treated as a tumor.
+    // filterSuffix out anything called in tumor that would also be called in the normal if it were treated as a tumor.
     // this handles shared artifacts, such as ones due to alignment and any shared aspects of sequencing
     private void applyArtifactInNormalFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final FilterResult filterResult) {
         if (!( vc.hasAttribute(GATKVCFConstants.NORMAL_ARTIFACT_LOD_ATTRIBUTE)
@@ -335,7 +335,7 @@ public class Mutect2FilteringEngine {
         final int normalDepth = (int) MathUtils.sum(normalAlleleDepths);
         final int normalAltDepth = normalAlleleDepths[indexOfMaxTumorLod + 1];
 
-        // if normal AF << tumor AF, don't filter regardless of LOD
+        // if normal AF << tumor AF, don't filterSuffix regardless of LOD
         final double tumorAlleleFraction = (double) tumorAltDepth / tumorDepth;
         final double normalAlleleFraction = normalDepth == 0 ? 0 : (double) normalAltDepth / normalDepth;
 
@@ -350,8 +350,8 @@ public class Mutect2FilteringEngine {
             return;
         }
 
-        // the above filter misses artifacts whose support in the normal consists entirely of low base quality reads
-        // Since a lot of low-BQ reads is itself evidence of an artifact, we filter these by hand via an estimated LOD
+        // the above filterSuffix misses artifacts whose support in the normal consists entirely of low base quality reads
+        // Since a lot of low-BQ reads is itself evidence of an artifact, we filterSuffix these by hand via an estimated LOD
         // that uses the average base quality of *ref* reads in the normal
         final int medianRefBaseQuality = vc.getAttributeAsIntList(GATKVCFConstants.MEDIAN_BASE_QUALITY_KEY, IMPUTED_NORMAL_BASE_QUALITY).get(0);
         final double normalPValue = 1 - new BinomialDistribution(null, normalDepth, QualityUtils.qualToErrorProb(medianRefBaseQuality))
@@ -393,7 +393,7 @@ public class Mutect2FilteringEngine {
         }
     }
 
-    // This filter checks for the case in which PCR-duplicates with unique UMIs (which we assume is caused by false adapter priming)
+    // This filterSuffix checks for the case in which PCR-duplicates with unique UMIs (which we assume is caused by false adapter priming)
     // amplify the erroneous signal for an alternate allele.
     private void applyDuplicatedAltReadFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final FilterResult filterResult) {
         if (!vc.hasAttribute(UniqueAltReadCount.KEY)) {
@@ -472,7 +472,7 @@ public class Mutect2FilteringEngine {
             }
         }
 
-        // filter if there is no alt evidence in the forward or reverse strand
+        // filterSuffix if there is no alt evidence in the forward or reverse strand
         if ( altForwardCount.getValue() == 0 || altReverseCount.getValue() == 0) {
             filterResult.addFilter(GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME);
         }
@@ -482,7 +482,7 @@ public class Mutect2FilteringEngine {
         final int[] ADs = sumADsOverSamples(vc, true, true);
         final int altCount = (int) MathUtils.sum(ADs) - ADs[0];
       
-        // if there is no NCount annotation or the altCount is 0, don't apply the filter
+        // if there is no NCount annotation or the altCount is 0, don't apply the filterSuffix
         if (altCount == 0 ) {
             return;
         }
@@ -539,7 +539,7 @@ public class Mutect2FilteringEngine {
             applySTRFilter(vc, filterResult);
             applyMedianFragmentLengthDifferenceFilter(MTFAC, vc, filterResult);
             applyReadPositionFilter(MTFAC, vc, filterResult);
-            // The ReadOrientation filter uses the information gathered during the first pass
+            // The ReadOrientation filterSuffix uses the information gathered during the first pass
             applyReadOrientationFilter(vc, filterResult, firstPass);
             applyStrictStrandFilter(MTFAC, vc, filterResult);
             applyNRatioFilter(MTFAC, vc, filterResult);

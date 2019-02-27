@@ -243,7 +243,7 @@ public class VariantEvalUtils {
             //TODO: limiting to only those w/ the same start is GATK3 behavior.
             for (VariantContext vc : featureContext.getValues(track, referenceContext.getInterval().getStart())) {
 
-                // First, filter the VariantContext to represent only the samples for evaluation
+                // First, filterSuffix the VariantContext to represent only the samples for evaluation
                 VariantContext vcsub = vc;
 
                 if ((subsetBySample) && vc.hasGenotypes())

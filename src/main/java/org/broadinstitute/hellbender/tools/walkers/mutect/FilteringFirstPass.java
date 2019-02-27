@@ -45,7 +45,7 @@ public class FilteringFirstPass {
     public boolean isReadyForSecondPass() { return readyForSecondPass; }
 
     public FilterStats getFilterStats(final String filterName){
-        Utils.validateArg(filterStats.containsKey(filterName), "invalid filter name: " + filterName);
+        Utils.validateArg(filterStats.containsKey(filterName), "invalid filterSuffix name: " + filterName);
         return filterStats.get(filterName);
     }
 

@@ -98,7 +98,7 @@ public class MarkDuplicatesSparkUtils {
     }
 
     /**
-     * (0) filter: remove unpaired reads and reads with an unmapped mate.
+     * (0) filterSuffix: remove unpaired reads and reads with an unmapped mate.
      * (1) keyReadsByName: label each read with its read group and read name.
      * (2) GroupByKey: group together reads with the same group and name.
      * (3) keyMarkDuplicatesSparkRecords with alignment info:

@@ -407,7 +407,7 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
 
     /**
      * Filters out variants by testing against provided
-     * filter key, threshold.
+     * filterSuffix key, threshold.
      *
      * Variants with value below specified threshold (or null value)
      * are filtered out citing given reason.
@@ -433,7 +433,7 @@ public final class SvDiscoverFromLocalAssemblyContigAlignmentsSpark extends GATK
     public interface StructuralVariantFilter extends VariantFilter {
 
         /**
-         * @return name of filter for use in filtered record
+         * @return name of filterSuffix for use in filtered record
          */
         String getName();
     }

@@ -244,7 +244,7 @@ public class OverhangFixingManager {
         if ( splitRead.unclippedLoc == null || !splice.loc.overlapsP(splitRead.unclippedLoc) ) {
             return;
         }
-        // if processSecondaryReads == false, filter out clipping of secondary alignments
+        // if processSecondaryReads == false, filterSuffix out clipping of secondary alignments
         if (!processSecondaryReads && splitRead.read.isSecondaryAlignment()) {
             return;
         }

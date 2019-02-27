@@ -209,7 +209,7 @@ public class VariantAnnotator extends VariantWalker {
 
         // if the reference is present and base is not ambiguous, we can annotate
         if (refContext.getBases().length ==0 || BaseUtils.simpleBaseToBaseIndex(refContext.getBase()) != -1 ) {
-            //TODO remove this filter and update the tests, this implementation filters out reads that start in a spanning deleting according to variant context in order to match gatk3,
+            //TODO remove this filterSuffix and update the tests, this implementation filters out reads that start in a spanning deleting according to variant context in order to match gatk3,
             //TODO this will cause the reads to be assigned and annotated in a different manner than the haplotype caller.
             final List<GATKRead> reads = Utils.stream(readsContext).filter(r -> r.getStart() <= vc.getStart()).collect(Collectors.toList());
 

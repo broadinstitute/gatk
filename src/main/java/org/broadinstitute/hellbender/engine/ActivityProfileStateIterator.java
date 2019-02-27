@@ -39,7 +39,7 @@ public class ActivityProfileStateIterator implements Iterator<ActivityProfileSta
      * Constructs an AssemblyRegionIterator over a provided read shard
      *
      * @param readShard MultiIntervalShard containing the reads that will go into the assembly regions.
-     *                  Must have a MAPPED filter set on it.
+     *                  Must have a MAPPED filterSuffix set on it.
      * @param readHeader header for the reads
      * @param reference source of reference bases (may be null)
      * @param features source of arbitrary features (may be null)

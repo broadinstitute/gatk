@@ -121,7 +121,7 @@ public final class OverhangFixingManagerUnitTest extends GATKBaseTest {
         tests.add(new Object[]{AAAAAA, 0, AACCAA, 4, 2, false});
         tests.add(new Object[]{AAAAAA, 3, AACCAA, 0, 2, false});
         tests.add(new Object[]{AAAAAA, 3, AACCAA, 0, 3, false});
-        tests.add(new Object[]{AAAAAA, 2, AACCAA, 0, 4, false}); //Testing the length filter
+        tests.add(new Object[]{AAAAAA, 2, AACCAA, 0, 4, false}); //Testing the length filterSuffix
 
         return tests.toArray(new Object[][]{});
     }

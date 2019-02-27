@@ -19,11 +19,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * A simple read filter that allows for the user to specify intervals at the filtering stage.
+ * A simple read filterSuffix that allows for the user to specify intervals at the filtering stage.
  *
  * NOTE: This class is intended to be a convenience method for the very specific case where a user might want to subset
  *       a bam file by intervals but they cannot for whatever reason index/resort the file to be sorted by position. As
- *       a consequence a file subsetted using this filter will involve reading over the entire bam input and will consequently
+ *       a consequence a file subsetted using this filterSuffix will involve reading over the entire bam input and will consequently
  *       be very slow. The preferred method for subsetting a bam file in this case is to use the -L command to subset using
  *       an index to avoid reading parts of the bam outside of the specified subset.
  *

@@ -36,7 +36,7 @@ import java.util.*;
         summary = "(Experimental) This adds fields normally emitted by M2 to a VCF.  There should never be a need to run this tool on a VCF that was produced by M2." +
                 "\n  The output of this tool should be usable with FilterByOrientationBias." +
                 "\n  The output of this tool only counts reads that fully overlap (and match) the variant or reference sequence (this is relevant for indels)." +
-                "\n  IMPORTANT:  This tool does not produce the exact same F1R2/F2R1 as M2, due to the nature of how M2 calls variants (using read likelihoods, whereas this tool uses a base quality filter).",
+                "\n  IMPORTANT:  This tool does not produce the exact same F1R2/F2R1 as M2, due to the nature of how M2 calls variants (using read likelihoods, whereas this tool uses a base quality filterSuffix).",
         oneLineSummary = "(EXPERIMENTAL) Annotate a non-M2 VCF (using the associated tumor bam) with pair orientation fields (e.g. " + GATKVCFConstants.F1R2_KEY + " ).",
         programGroup = VariantEvaluationProgramGroup.class
 )

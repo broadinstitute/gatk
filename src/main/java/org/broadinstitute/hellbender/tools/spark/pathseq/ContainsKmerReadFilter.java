@@ -25,7 +25,7 @@ public class ContainsKmerReadFilter extends ReadFilter {
             synchronized (ContainsKmerReadFilter.class) {
                 if (kmerLib == null) {
                     kmerLib = PSKmerUtils.readKmerFilter(kmerLibPath);
-                    logger.info("Loaded static kmer filter with false positive probability " + kmerLib.getFalsePositiveProbability());
+                    logger.info("Loaded static kmer filterSuffix with false positive probability " + kmerLib.getFalsePositiveProbability());
                 }
             }
         }

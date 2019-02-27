@@ -133,10 +133,10 @@ public class ConcordanceIntegrationTest extends CommandLineProgramTest{
     @Test
     public void testFilterAnalysis() throws Exception {
         final String testDir = toolsTestDir + "concordance/";
-        final File truthVcf = new File(testDir, "filter-analysis-truth.vcf");
-        final File evalVcf = new File(testDir, "filter-analysis-eval.vcf");
+        final File truthVcf = new File(testDir, "filterSuffix-analysis-truth.vcf");
+        final File evalVcf = new File(testDir, "filterSuffix-analysis-eval.vcf");
         final File summary = createTempFile("summary", ".txt");
-        final File filterAnalysis = createTempFile("filter-analysis", ".txt");
+        final File filterAnalysis = createTempFile("filterSuffix-analysis", ".txt");
 
         final String[] args = {
                 "--" + AbstractConcordanceWalker.EVAL_VARIANTS_LONG_NAME, evalVcf.getAbsolutePath(),

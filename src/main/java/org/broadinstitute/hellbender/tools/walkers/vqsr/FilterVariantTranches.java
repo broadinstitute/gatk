@@ -30,10 +30,10 @@ import picard.cmdline.programgroups.VariantFilteringProgramGroup;
  *
  * <h3>Inputs</h3>
  * <ul>
- *      <li>The input variants to tranche filter.</li>
+ *      <li>The input variants to tranche filterSuffix.</li>
  *      <li>resource A VCF containing known SNP and or INDEL sites. Can be supplied as many times as necessary </li>
- *      <li>info-key The key from the INFO field of the VCF which contains the values that will be used to filter.</li>
- *      <li>tranche List of percent sensitivities to the known sites at which we will filter.  Must be between 0 and 100.</li>
+ *      <li>info-key The key from the INFO field of the VCF which contains the values that will be used to filterSuffix.</li>
+ *      <li>tranche List of percent sensitivities to the known sites at which we will filterSuffix.  Must be between 0 and 100.</li>
  * </ul>
  *
  * <h3>Outputs</h3>
@@ -71,7 +71,7 @@ public class FilterVariantTranches extends TwoPassVariantWalker {
 
     @Argument(fullName="snp-tranche",
             shortName="snp-tranche",
-            doc="The level(s) of sensitivity to SNPs in the resource VCFs at which to filter SNPs. " +
+            doc="The level(s) of sensitivity to SNPs in the resource VCFs at which to filterSuffix SNPs. " +
                     "Higher numbers mean more desired sensitivity and thus less stringent filtering." +
                     "Specified in percents, i.e. 99.9 for 99.9 percent and 1.0 for 1 percent.",
             optional=true)
@@ -79,7 +79,7 @@ public class FilterVariantTranches extends TwoPassVariantWalker {
 
     @Argument(fullName="indel-tranche",
             shortName="indel-tranche",
-            doc="The level(s) of sensitivity to indels in the resource VCFs at which to filter indels. " +
+            doc="The level(s) of sensitivity to indels in the resource VCFs at which to filterSuffix indels. " +
                     "Higher numbers mean more desired sensitivity and thus less stringent filtering." +
                     "Specified in percents, i.e. 99.9 for 99.9 percent and 1.0 for 1 percent.",
             optional=true)
@@ -258,7 +258,7 @@ public class FilterVariantTranches extends TwoPassVariantWalker {
     private String filterStringFromScore(String type, double score, List<Double> tranches, List<Double> cutoffs){
         for (int i = 0; i < cutoffs.size(); i++){
             if (score > cutoffs.get(i) && i == 0){
-                throw new GATKException("Trying to add a filter to a passing variant.");
+                throw new GATKException("Trying to add a filterSuffix to a passing variant.");
             } else if (score > cutoffs.get(i)){
                 return filterKeyFromTranches(type, infoKey, tranches.get(i-1), tranches.get(i));
             }

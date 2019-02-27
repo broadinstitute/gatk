@@ -11,15 +11,15 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * A filter to apply to Funcotations in {@link org.broadinstitute.hellbender.tools.funcotator.FilterFuncotations}.
+ * A filterSuffix to apply to Funcotations in {@link org.broadinstitute.hellbender.tools.funcotator.FilterFuncotations}.
  *
  * Filters can define an arbitrary number of rules which must match on the Funcotations of a variant in order
- * for that variant to "pass". Passing variants will be annotated with the filter's name in the output VCF.
+ * for that variant to "pass". Passing variants will be annotated with the filterSuffix's name in the output VCF.
  */
 public abstract class FuncotationFilter {
 
     /**
-     * The INFO annotation value which should be added to all variants which pass this filter.
+     * The INFO annotation value which should be added to all variants which pass this filterSuffix.
      */
     private final String filterName;
 
@@ -32,11 +32,11 @@ public abstract class FuncotationFilter {
     }
 
     /**
-     * Check all of this filter's rules against a set of Funcotations.
+     * Check all of this filterSuffix's rules against a set of Funcotations.
      *
      * @param prunedTranscriptFuncotations Funcotation values of a single transcript. Assumed to have
      *                                     been "pruned" to remove null / empty values. Never {@code null}
-     * @return true if the Funcotations match all of this filter's rules, and false otherwise
+     * @return true if the Funcotations match all of this filterSuffix's rules, and false otherwise
      */
     public Boolean checkFilter(final Set<Map.Entry<String, String>> prunedTranscriptFuncotations) {
         Utils.nonNull(prunedTranscriptFuncotations);
@@ -48,7 +48,7 @@ public abstract class FuncotationFilter {
     }
 
     /**
-     * Build the collection of rules which must match to pass this filter.
+     * Build the collection of rules which must match to pass this filterSuffix.
      */
     abstract List<FuncotationFiltrationRule> getRules();
 
@@ -67,7 +67,7 @@ public abstract class FuncotationFilter {
     /**
      * Given a set of extracted funcotations, return a Stream of values whose entry matches the supplied predicate
      * @param funcotations A Set of Map.Entry key-value pairs of funcotations
-     * @param matcher A predicate taking a Map.Entry to filter on
+     * @param matcher A predicate taking a Map.Entry to filterSuffix on
      * @param defaultValue A default value to get if there are no matches
      * @return A Stream of matched values
      */

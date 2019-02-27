@@ -89,7 +89,7 @@ public class PSKmerUtils {
     }
 
     /**
-     * Converts a Collection of Lists of Longs's into a Bloom filter
+     * Converts a Collection of Lists of Longs's into a Bloom filterSuffix
      */
     protected static LongBloomFilter longArrayCollectionToBloomFilter(final Collection<long[]> longs, final long numLongs, final double bloomFpp) {
         final LongBloomFilter bloomFilter = new LongBloomFilter(numLongs, bloomFpp);

@@ -56,8 +56,8 @@ public class FilterByOrientationBiasIntegrationTest extends CommandLineProgramTe
 
         boolean is_variant_context_tested = false;
 
-        // Make sure that every entry has a orientation_bias filter in the genotype on the TUMOR sample if G/T or C/A.
-        //  Also, make sure that the variant context has the filter as well.  Not just the genotypes.
+        // Make sure that every entry has a orientation_bias filterSuffix in the genotype on the TUMOR sample if G/T or C/A.
+        //  Also, make sure that the variant context has the filterSuffix as well.  Not just the genotypes.
         for (final VariantContext vc: variantContexts) {
             final Genotype tumorGenotype = vc.getGenotype("TUMOR");
             Assert.assertTrue((tumorGenotype.getFilters() == null) || (tumorGenotype.getFilters().contains(OrientationBiasFilterConstants.IS_ORIENTATION_BIAS_CUT)) ||
@@ -75,7 +75,7 @@ public class FilterByOrientationBiasIntegrationTest extends CommandLineProgramTe
                     || normalGenotype.getFilters().equals(VCFConstants.PASSES_FILTERS_v4));
         }
 
-        Assert.assertTrue(is_variant_context_tested, "Unit test may be broken.  Should have tested that variant context contained filter as well as genotype fields.");
+        Assert.assertTrue(is_variant_context_tested, "Unit test may be broken.  Should have tested that variant context contained filterSuffix as well as genotype fields.");
 
         final List<OrientationSampleTransitionSummary> summaries = OrientationBiasUtils.readOrientationBiasSummaryTable(summaryFile);
         Assert.assertEquals(summaries.size(), 2);
@@ -208,10 +208,10 @@ public class FilterByOrientationBiasIntegrationTest extends CommandLineProgramTe
             variantContexts.add(vc);
         }
 
-        // It is important to remember that the filter only looks at the first alternate allele.
+        // It is important to remember that the filterSuffix only looks at the first alternate allele.
         Assert.assertEquals(variantContexts.size(), 5);
 
-        // The first variant should have a null in the been OB filter annotation.
+        // The first variant should have a null in the been OB filterSuffix annotation.
         Assert.assertTrue(variantContexts.get(0).getGenotype(0).getExtendedAttribute("OBAMRC").toString().equals("false"));
         Assert.assertTrue(variantContexts.get(0).getGenotype(0).getExtendedAttribute("OBQRC").toString().equals("100.00"));
 

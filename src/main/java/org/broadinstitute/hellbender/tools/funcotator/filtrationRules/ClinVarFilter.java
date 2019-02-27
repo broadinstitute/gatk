@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.funcotator.filtrationRules;
 
-import org.broadinstitute.hellbender.tools.funcotator.FilterFuncotations;
 import org.broadinstitute.hellbender.tools.funcotator.FilterFuncotations.AlleleFrequencyDataSource;
 
 import java.util.Arrays;

@@ -119,7 +119,7 @@ public abstract class VariantWalkerBase extends GATKTool {
     }
 
     /**
-     * Returns the pre-filter variant transformer (simple or composite) that will be applied to the variants before filtering.
+     * Returns the pre-filterSuffix variant transformer (simple or composite) that will be applied to the variants before filtering.
      * The default implementation uses the {@link VariantTransformer#identity()}.
      * Default implementation of {@link #traverse()} calls this method once before iterating over the variants and reuses
      * the transformer object to avoid object allocation.
@@ -132,7 +132,7 @@ public abstract class VariantWalkerBase extends GATKTool {
     }
 
     /**
-     * Returns the post-filter variant transformer (simple or composite) that will be applied to the variants after filtering.
+     * Returns the post-filterSuffix variant transformer (simple or composite) that will be applied to the variants after filtering.
      * The default implementation uses the {@link VariantTransformer#identity()}.
      * Default implementation of {@link #traverse()} calls this method once before iterating over the variants and reuses
      * the transformer object to avoid object allocation.
@@ -148,7 +148,7 @@ public abstract class VariantWalkerBase extends GATKTool {
      * Returns a stream over the variants, which are:
      *
      * 1. Transformed with {@link #makePreVariantFilterTransformer()}.
-     * 2. Filtered with {@code filter}.
+     * 2. Filtered with {@code filterSuffix}.
      * 3. Transformed with {@link #makePostVariantFilterTransformer()}.
      */
     protected Stream<VariantContext> getTransformedVariantStream(final CountingVariantFilter filter) {
@@ -164,7 +164,7 @@ public abstract class VariantWalkerBase extends GATKTool {
      * Returns a stream over the variants returned by source, which are:
      *
      * 1. Transformed with preTransformer.
-     * 2. Filtered with filter.
+     * 2. Filtered with filterSuffix.
      * 3. Transformed with postTransformer.
      */
     protected Stream<VariantContext> getTransformedVariantStream(
@@ -179,10 +179,10 @@ public abstract class VariantWalkerBase extends GATKTool {
     }
 
     /**
-     * Returns the variant filter (simple or composite) that will be applied to the variants before calling {@link #apply}.
+     * Returns the variant filterSuffix (simple or composite) that will be applied to the variants before calling {@link #apply}.
      * The default implementation filters nothing.
      * Default implementation of {@link #traverse()} calls this method once before iterating
-     * over the reads and reuses the filter object to avoid object allocation. Nevertheless, keeping state in filter objects is strongly discouraged.
+     * over the reads and reuses the filterSuffix object to avoid object allocation. Nevertheless, keeping state in filterSuffix objects is strongly discouraged.
      *
      * Subclasses can extend to provide own filters (ie override and call super).
      * Multiple filters can be composed by using {@link VariantFilter} composition methods.

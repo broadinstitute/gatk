@@ -53,8 +53,8 @@ public final class ExampleMultiMetricsCollector
     }
 
     /**
-     * Return the read filter for example metrics collector.
-     * @return List of read filters to be used to filter records
+     * Return the read filterSuffix for example metrics collector.
+     * @return List of read filters to be used to filterSuffix records
      */
     public List<ReadFilter> getDefaultReadFilters() {
         return Collections.singletonList(new ReadFilterLibrary.AllowAllReadsReadFilter());

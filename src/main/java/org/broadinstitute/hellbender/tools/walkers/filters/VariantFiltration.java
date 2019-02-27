@@ -34,14 +34,14 @@ import static java.util.Collections.singleton;
  *
  * <h3>Inputs</h3>
  * <ul>
- *     <li>A VCF of variant calls to filter.</li>
- *     <li>One or more filtering expressions and corresponding filter names.</li>
+ *     <li>A VCF of variant calls to filterSuffix.</li>
+ *     <li>One or more filtering expressions and corresponding filterSuffix names.</li>
  * </ul>
  *
  * <h3>Output</h3>
  * <p>
  * A filtered VCF in which passing variants are annotated as PASS and failing variants are annotated with the name(s) of
- * the filter(s) they failed.
+ * the filterSuffix(s) they failed.
  * </p>
  *
  * <h3>Usage example</h3>
@@ -50,10 +50,10 @@ import static java.util.Collections.singleton;
  *   -R reference.fasta \
  *   -V input.vcf.gz \
  *   -O output.vcf.gz \
- *   --filter-name "my_filter1" \
- *   --filter-expression "AB < 0.2" \
- *   --filter-name "my_filter2" \
- *   --filter-expression "MQ0 > 50"
+ *   --filterSuffix-name "my_filter1" \
+ *   --filterSuffix-expression "AB < 0.2" \
+ *   --filterSuffix-name "my_filter2" \
+ *   --filterSuffix-expression "MQ0 > 50"
  * </pre>
  *
  * <h3>Note</h3>
@@ -64,7 +64,7 @@ import static java.util.Collections.singleton;
  * Compound expressions (ones that specify multiple conditions connected by &&, AND, ||, or OR, and reference
  * multiple attributes) require special consideration. By default, variants that are missing one or more of the
  * attributes referenced in a compound expression are treated as PASS for the entire expression, even if the variant
- * would satisfy the filter criteria for another part of the expression. This can lead to unexpected results if any
+ * would satisfy the filterSuffix criteria for another part of the expression. This can lead to unexpected results if any
  * of the attributes referenced in a compound expression are present for some variants, but missing for others.
  * <p>
  * It is strongly recommended that such expressions be provided as individual arguments, each referencing a
@@ -77,10 +77,10 @@ import static java.util.Collections.singleton;
  *   -R reference.fasta \
  *   -V input.vcf.gz \
  *   -O output.vcf.gz \
- *   --filter-name "my_filter1" \
- *   --filter-expression "AB < 0.2" \
- *   --filter-name "my_filter2" \
- *   --filter-expression "MQ0 > 50"
+ *   --filterSuffix-name "my_filter1" \
+ *   --filterSuffix-expression "AB < 0.2" \
+ *   --filterSuffix-name "my_filter2" \
+ *   --filterSuffix-expression "MQ0 > 50"
  * </pre>
  *
  * are preferable to a single compound expression such as this:
@@ -90,8 +90,8 @@ import static java.util.Collections.singleton;
  *    -R reference.fasta \
  *    -V input.vcf.gz \
  *    -O output.vcf.gz \
- *    --filter-name "my_filter" \
- *    --filter-expression "AB < 0.2 || MQ0 > 50"
+ *    --filterSuffix-name "my_filter" \
+ *    --filterSuffix-expression "AB < 0.2 || MQ0 > 50"
  *  </pre>
  * See this <a href="https://www.broadinstitute.org/gatk/guide/article?id=1255">article about using JEXL expressions</a>
  * for more information.
@@ -104,25 +104,25 @@ import static java.util.Collections.singleton;
 @DocumentedFeature
 public final class VariantFiltration extends VariantWalker {
 
-    public static final String FILTER_EXPRESSION_LONG_NAME = "filter-expression";
-    public static final String FILTER_NAME_LONG_NAME = "filter-name";
-    public static final String GENOTYPE_FILTER_EXPRESSION_LONG_NAME = "genotype-filter-expression";
-    public static final String GENOTYPE_FILTER_NAME_LONG_NAME = "genotype-filter-name";
+    public static final String FILTER_EXPRESSION_LONG_NAME = "filterSuffix-expression";
+    public static final String FILTER_NAME_LONG_NAME = "filterSuffix-name";
+    public static final String GENOTYPE_FILTER_EXPRESSION_LONG_NAME = "genotype-filterSuffix-expression";
+    public static final String GENOTYPE_FILTER_NAME_LONG_NAME = "genotype-filterSuffix-name";
     public static final String CLUSTER_SIZE_LONG_NAME = "cluster-size";
     public static final String CLUSTER_WINDOW_SIZE_LONG_NAME = "cluster-window-size";
     public static final String MASK_EXTENSION_LONG_NAME = "mask-extension";
     public static final String MASK_NAME_LONG_NAME = "mask-name";
-    public static final String FILTER_NOT_IN_MASK_LONG_NAME = "filter-not-in-mask";
+    public static final String FILTER_NOT_IN_MASK_LONG_NAME = "filterSuffix-not-in-mask";
     public static final String MISSING_VAL_LONG_NAME = "missing-values-evaluate-as-failing";
-    public static final String INVERT_LONG_NAME = "invert-filter-expression";
-    public static final String INVERT_GT_LONG_NAME = "invert-genotype-filter-expression";
+    public static final String INVERT_LONG_NAME = "invert-filterSuffix-expression";
+    public static final String INVERT_GT_LONG_NAME = "invert-genotype-filterSuffix-expression";
     public static final String NO_CALL_GTS_LONG_NAME = "set-filtered-genotype-to-no-call";
 
     private static final String FILTER_DELIMITER = ";";
 
     /**
      * Any variant which overlaps entries from the provided mask file will be filtered. If the user wants logic to be reversed,
-     * i.e. filter variants that do not overlap with provided mask, then argument --filter-not-in-mask can be used.
+     * i.e. filterSuffix variants that do not overlap with provided mask, then argument --filterSuffix-not-in-mask can be used.
      * Note that it is up to the user to adapt the name of the mask to make it clear that the reverse logic was used
      * (e.g. if masking against Hapmap, use --mask-name=hapmap for the normal masking and --mask-name=not_hapmap for the reverse masking).
      */
@@ -134,16 +134,16 @@ public final class VariantFiltration extends VariantWalker {
 
     /**
      * VariantFiltration accepts any number of JEXL expressions (so you can have two named filters by using
-     * --filter-name One --filter-expression "X < 1" --filter-name Two --filter-expression "X > 2").
+     * --filterSuffix-name One --filterSuffix-expression "X < 1" --filterSuffix-name Two --filterSuffix-expression "X > 2").
      *
-     * It is preferable to use multiple expressions, each specifying an individual filter criteria, to a single
-     * compound expression that specifies multiple filter criteria.
+     * It is preferable to use multiple expressions, each specifying an individual filterSuffix criteria, to a single
+     * compound expression that specifies multiple filterSuffix criteria.
      */
-    @Argument(fullName=FILTER_EXPRESSION_LONG_NAME, shortName="filter", doc="One or more expressions used with INFO fields to filter", optional=true)
+    @Argument(fullName=FILTER_EXPRESSION_LONG_NAME, shortName="filterSuffix", doc="One or more expressions used with INFO fields to filterSuffix", optional=true)
     public List<String> filterExpressions = new ArrayList<>();
 
     /**
-     * This name is put in the FILTER field for variants that get filtered.  Note that there must be a 1-to-1 mapping between filter expressions and filter names.
+     * This name is put in the FILTER field for variants that get filtered.  Note that there must be a 1-to-1 mapping between filterSuffix expressions and filterSuffix names.
      */
     @Argument(fullName=FILTER_NAME_LONG_NAME, doc="Names to use for the list of filters", optional=true)
     public List<String> filterNames = new ArrayList<>();
@@ -151,20 +151,20 @@ public final class VariantFiltration extends VariantWalker {
     /**
      * Similar to the INFO field based expressions, but used on the FORMAT (genotype) fields instead.
      * VariantFiltration will add the sample-level FT tag to the FORMAT field of filtered samples (this does not affect the record's FILTER tag).
-     * One can filter normally based on most fields (e.g. "GQ < 5.0"), but the GT (genotype) field is an exception. We have put in convenience
-     * methods so that one can now filter out hets ("isHet == 1"), refs ("isHomRef == 1"), or homs ("isHomVar == 1"). Also available are
+     * One can filterSuffix normally based on most fields (e.g. "GQ < 5.0"), but the GT (genotype) field is an exception. We have put in convenience
+     * methods so that one can now filterSuffix out hets ("isHet == 1"), refs ("isHomRef == 1"), or homs ("isHomVar == 1"). Also available are
      * expressions isCalled, isNoCall, isMixed, and isAvailable, in accordance with the methods of the Genotype object.
      *
-     * It is preferable to use multiple expressions, each specifying an individual filter criteria, to a single compound expression
-     * that specifies multiple filter criteria.
+     * It is preferable to use multiple expressions, each specifying an individual filterSuffix criteria, to a single compound expression
+     * that specifies multiple filterSuffix criteria.
      */
-    @Argument(fullName=GENOTYPE_FILTER_EXPRESSION_LONG_NAME, shortName="G-filter", doc="One or more expressions used with FORMAT (sample/genotype-level) fields to filter (see documentation guide for more info)", optional=true)
+    @Argument(fullName=GENOTYPE_FILTER_EXPRESSION_LONG_NAME, shortName="G-filterSuffix", doc="One or more expressions used with FORMAT (sample/genotype-level) fields to filterSuffix (see documentation guide for more info)", optional=true)
     public List<String> genotypeFilterExpressions = new ArrayList<>();
 
     /**
      * Similar to the INFO field based expressions, but used on the FORMAT (genotype) fields instead.
      */
-    @Argument(fullName=GENOTYPE_FILTER_NAME_LONG_NAME, shortName="G-filter-name", doc="Names to use for the list of sample/genotype filters (must be a 1-to-1 mapping); this name is put in the FILTER field for variants that get filtered", optional=true)
+    @Argument(fullName=GENOTYPE_FILTER_NAME_LONG_NAME, shortName="G-filterSuffix-name", doc="Names to use for the list of sample/genotype filters (must be a 1-to-1 mapping); this name is put in the FILTER field for variants that get filtered", optional=true)
     public List<String> genotypeFilterNames = new ArrayList<>();
 
     /**
@@ -174,7 +174,7 @@ public final class VariantFiltration extends VariantWalker {
     public Integer clusterSize = 3;
 
     /**
-     * Works together with the --cluster-size argument.  To disable the clustered SNP filter, set this value to less than 1.
+     * Works together with the --cluster-size argument.  To disable the clustered SNP filterSuffix, set this value to less than 1.
      */
     @Argument(fullName=CLUSTER_WINDOW_SIZE_LONG_NAME, shortName="window", doc="The window size (in bases) in which to evaluate clustered SNPs", optional=true)
     public Integer clusterWindow = 0;
@@ -184,7 +184,7 @@ public final class VariantFiltration extends VariantWalker {
 
     /**
      * When using the --mask argument, the mask-name will be annotated in the variant record.
-     * Note that when using the --filter-not-in-mask argument to reverse the masking logic,
+     * Note that when using the --filterSuffix-not-in-mask argument to reverse the masking logic,
      * it is up to the user to adapt the name of the mask to make it clear that the reverse logic was used
      * (e.g. if masking against Hapmap, use --mask-name=hapmap for the normal masking and --mask-name=not_hapmap for the reverse masking).
      */
@@ -215,15 +215,15 @@ public final class VariantFiltration extends VariantWalker {
     boolean invalidatePreviousFilters = false;
 
     /**
-     * Invert the selection criteria for --filter-expression
+     * Invert the selection criteria for --filterSuffix-expression
      */
-    @Argument(fullName=INVERT_LONG_NAME, shortName="invfilter", doc="Invert the selection criteria for --filter-expression", optional=true)
+    @Argument(fullName=INVERT_LONG_NAME, shortName="invfilter", doc="Invert the selection criteria for --filterSuffix-expression", optional=true)
     public boolean invertFilterExpression = false;
 
     /**
-     * Invert the selection criteria for --genotype-filter-expression
+     * Invert the selection criteria for --genotype-filterSuffix-expression
      */
-    @Argument(fullName=INVERT_GT_LONG_NAME, shortName="invG-filter", doc="Invert the selection criteria for --genotype-filter-expression", optional=true)
+    @Argument(fullName=INVERT_GT_LONG_NAME, shortName="invG-filterSuffix", doc="Invert the selection criteria for --genotype-filterSuffix-expression", optional=true)
     public boolean invertGenotypeFilterExpression = false;
 
     /**
@@ -256,7 +256,7 @@ public final class VariantFiltration extends VariantWalker {
     }
 
     /**
-     * Prepend inverse phrase to description if --invert-filter-expression
+     * Prepend inverse phrase to description if --invert-filterSuffix-expression
      *
      * @param description the description
      * @return the description with inverse prepended if --invert_filter_expression
@@ -396,7 +396,7 @@ public final class VariantFiltration extends VariantWalker {
      *
      * @param vc the variant context
      * @param g the genotype
-     * @return list of genotype filter names
+     * @return list of genotype filterSuffix names
      */
     private List<String> getGenotypeFilters(final VariantContext vc, final Genotype g) {
         final List<String> filters = new ArrayList<>();
@@ -415,7 +415,7 @@ public final class VariantFiltration extends VariantWalker {
     }
 
     /**
-     * Return true if matches the filter expression
+     * Return true if matches the filterSuffix expression
      */
     private boolean matchesFilter(final VariantContext vc, final Genotype g, final VariantContextUtils.JexlVCMatchExp exp, final boolean invertVCfilterExpression) {
         return invertLogic(VariantContextUtils.match(vc, g, exp, howToTreatMissingValues), invertVCfilterExpression);

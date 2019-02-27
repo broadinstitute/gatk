@@ -54,7 +54,7 @@ import java.util.stream.IntStream;
  *         The argument {@code interval-merging-rule} must be set to {@link IntervalMergingRule#OVERLAPPING_ONLY}
  *         and all other common arguments for interval padding or merging must be set to their defaults.
  *         A blacklist of regions in which intervals should always be filtered (regardless of other annotation-based
- *         or count-based filters) may also be provided via -XL; this can be used to filter pseudoautosomal regions
+ *         or count-based filters) may also be provided via -XL; this can be used to filterSuffix pseudoautosomal regions
  *         (PARs), for example.  Partial bins created by interval exclusion may be dropped upon intersection with
  *         the intervals present in other optional inputs.
  *     </li>
@@ -120,11 +120,11 @@ public final class FilterIntervals extends CommandLineProgram {
     public static final String MAXIMUM_MAPPABILITY_LONG_NAME = "maximum-mappability";
     public static final String MINIMUM_SEGMENTAL_DUPLICATION_CONTENT_LONG_NAME = "minimum-segmental-duplication-content";
     public static final String MAXIMUM_SEGMENTAL_DUPLICATION_CONTENT_LONG_NAME = "maximum-segmental-duplication-content";
-    public static final String LOW_COUNT_FILTER_COUNT_THRESHOLD_LONG_NAME = "low-count-filter-count-threshold";
-    public static final String LOW_COUNT_FILTER_PERCENTAGE_OF_SAMPLES_LONG_NAME = "low-count-filter-percentage-of-samples";
-    public static final String EXTREME_COUNT_FILTER_MINIMUM_PERCENTILE_LONG_NAME = "extreme-count-filter-minimum-percentile";
-    public static final String EXTREME_COUNT_FILTER_MAXIMUM_PERCENTILE_LONG_NAME = "extreme-count-filter-maximum-percentile";
-    public static final String EXTREME_COUNT_FILTER_PERCENTAGE_OF_SAMPLES_LONG_NAME = "extreme-count-filter-percentage-of-samples";
+    public static final String LOW_COUNT_FILTER_COUNT_THRESHOLD_LONG_NAME = "low-count-filterSuffix-count-threshold";
+    public static final String LOW_COUNT_FILTER_PERCENTAGE_OF_SAMPLES_LONG_NAME = "low-count-filterSuffix-percentage-of-samples";
+    public static final String EXTREME_COUNT_FILTER_MINIMUM_PERCENTILE_LONG_NAME = "extreme-count-filterSuffix-minimum-percentile";
+    public static final String EXTREME_COUNT_FILTER_MAXIMUM_PERCENTILE_LONG_NAME = "extreme-count-filterSuffix-maximum-percentile";
+    public static final String EXTREME_COUNT_FILTER_PERCENTAGE_OF_SAMPLES_LONG_NAME = "extreme-count-filterSuffix-percentage-of-samples";
 
     @Argument(
             doc = "Input file containing annotations for genomic intervals (output of AnnotateIntervals).  " +
@@ -197,10 +197,10 @@ public final class FilterIntervals extends CommandLineProgram {
     private double maximumSegmentalDuplicationContent = 0.5;
 
     @Argument(
-            doc = "Count-threshold parameter for the low-count filter.  Intervals with a count " +
+            doc = "Count-threshold parameter for the low-count filterSuffix.  Intervals with a count " +
                     "strictly less than this threshold in a percentage of samples strictly greater than " +
                     LOW_COUNT_FILTER_PERCENTAGE_OF_SAMPLES_LONG_NAME + " will be filtered out.  " +
-                    "(This is the first count-based filter applied.)",
+                    "(This is the first count-based filterSuffix applied.)",
             fullName = LOW_COUNT_FILTER_COUNT_THRESHOLD_LONG_NAME,
             minValue = 0,
             optional = true
@@ -208,10 +208,10 @@ public final class FilterIntervals extends CommandLineProgram {
     private int lowCountFilterCountThreshold = 5;
 
     @Argument(
-            doc = "Percentage-of-samples parameter for the low-count filter.  Intervals with a count " +
+            doc = "Percentage-of-samples parameter for the low-count filterSuffix.  Intervals with a count " +
                     "strictly less than " + LOW_COUNT_FILTER_COUNT_THRESHOLD_LONG_NAME +
                     " in a percentage of samples strictly greater than this will be filtered out.  " +
-                    "(This is the first count-based filter applied.)",
+                    "(This is the first count-based filterSuffix applied.)",
             fullName = LOW_COUNT_FILTER_PERCENTAGE_OF_SAMPLES_LONG_NAME,
             minValue = 0.,
             maxValue = 100.,
@@ -220,10 +220,10 @@ public final class FilterIntervals extends CommandLineProgram {
     private double lowCountFilterPercentageOfSamples = 90.;
 
     @Argument(
-            doc = "Minimum-percentile parameter for the extreme-count filter.  Intervals with a count " +
+            doc = "Minimum-percentile parameter for the extreme-count filterSuffix.  Intervals with a count " +
                     "that has a percentile strictly less than this in a percentage of samples strictly greater than " +
                     EXTREME_COUNT_FILTER_PERCENTAGE_OF_SAMPLES_LONG_NAME + " will be filtered out.  " +
-                    "(This is the second count-based filter applied.)",
+                    "(This is the second count-based filterSuffix applied.)",
             fullName = EXTREME_COUNT_FILTER_MINIMUM_PERCENTILE_LONG_NAME,
             minValue = 0.,
             maxValue = 100.,
@@ -232,10 +232,10 @@ public final class FilterIntervals extends CommandLineProgram {
     private double extremeCountFilterMinimumPercentile = 1.;
 
     @Argument(
-            doc = "Maximum-percentile parameter for the extreme-count filter.  Intervals with a count " +
+            doc = "Maximum-percentile parameter for the extreme-count filterSuffix.  Intervals with a count " +
                     "that has a percentile strictly greater than this in a percentage of samples strictly greater than " +
                     EXTREME_COUNT_FILTER_PERCENTAGE_OF_SAMPLES_LONG_NAME + " will be filtered out.  " +
-                    "(This is the second count-based filter applied.)",
+                    "(This is the second count-based filterSuffix applied.)",
             fullName = EXTREME_COUNT_FILTER_MAXIMUM_PERCENTILE_LONG_NAME,
             minValue = 0.,
             maxValue = 100.,
@@ -244,10 +244,10 @@ public final class FilterIntervals extends CommandLineProgram {
     private double extremeCountFilterMaximumPercentile = 99.;
 
     @Argument(
-            doc = "Percentage-of-samples parameter for the extreme-count filter.  Intervals with a count " +
+            doc = "Percentage-of-samples parameter for the extreme-count filterSuffix.  Intervals with a count " +
                     "that has a percentile outside of [" + EXTREME_COUNT_FILTER_MINIMUM_PERCENTILE_LONG_NAME + ", " +
                     EXTREME_COUNT_FILTER_MAXIMUM_PERCENTILE_LONG_NAME + "] in a percentage of samples strictly greater than " +
-                    "this will be filtered out.  (This is the second count-based filter applied.)",
+                    "this will be filtered out.  (This is the second count-based filterSuffix applied.)",
             fullName = EXTREME_COUNT_FILTER_PERCENTAGE_OF_SAMPLES_LONG_NAME,
             minValue = 0.,
             maxValue = 100.,
@@ -328,7 +328,7 @@ public final class FilterIntervals extends CommandLineProgram {
 
     private SimpleIntervalCollection filterIntervals() {
         final int numIntersectedIntervals = intersectedIntervals.size();
-        final boolean[] mask = new boolean[numIntersectedIntervals];     //if true, filter out; each filter modifies this mask
+        final boolean[] mask = new boolean[numIntersectedIntervals];     //if true, filterSuffix out; each filterSuffix modifies this mask
 
         //apply annotation-based filters
         if (annotatedIntervals != null) {
@@ -359,7 +359,7 @@ public final class FilterIntervals extends CommandLineProgram {
             final int numSamples = readCountMatrix.getRowDimension();
             logger.info("Applying count-based filters...");
 
-            //low-count filter: filter out intervals with a count strictly less than lowCountFilterCountThreshold
+            //low-count filterSuffix: filterSuffix out intervals with a count strictly less than lowCountFilterCountThreshold
             //for strictly greater than lowCountFilterPercentageOfSamples
             IntStream.range(0, numIntersectedIntervals)
                     .filter(i -> !mask[i])
@@ -370,13 +370,13 @@ public final class FilterIntervals extends CommandLineProgram {
                             mask[i] = true;
                         }
                     });
-            logger.info(String.format("After applying low-count filter " +
+            logger.info(String.format("After applying low-count filterSuffix " +
                             "(intervals with a count < %d in > %s%% of samples fail), " +
                             "%d / %d intervals remain...",
                     lowCountFilterCountThreshold, lowCountFilterPercentageOfSamples,
                     countNumberPassing(mask), numIntersectedIntervals));
 
-            //extreme-count filter: filter out remaining intervals with counts that fall outside of the per-sample percentiles
+            //extreme-count filterSuffix: filterSuffix out remaining intervals with counts that fall outside of the per-sample percentiles
             //[extremeCountMinimumPercentile, extremeCountMaximumPercentile] for strictly greater than extremeCountFilterPercentageOfSamples
             final boolean[][] percentileMask = new boolean[numSamples][numIntersectedIntervals];
             for (int sampleIndex = 0; sampleIndex < numSamples; sampleIndex++) {
@@ -407,7 +407,7 @@ public final class FilterIntervals extends CommandLineProgram {
                             mask[i] = true;
                         }
                     });
-            logger.info(String.format("After applying extreme-count filter " +
+            logger.info(String.format("After applying extreme-count filterSuffix " +
                             "(intervals with a count percentile outside of [%s, %s] in > %s%% of samples fail), " +
                             "%d / %d intervals remain...",
                     extremeCountFilterMinimumPercentile, extremeCountFilterMaximumPercentile, extremeCountFilterPercentageOfSamples,
@@ -440,7 +440,7 @@ public final class FilterIntervals extends CommandLineProgram {
                     if (!(minValue <= value && value <= maxValue)) {
                         mask[i] = true;
                     }});
-        logger.info(String.format("After applying %s filter (intervals with values outside of [%s, %s] fail), %d / %d intervals remain...",
+        logger.info(String.format("After applying %s filterSuffix (intervals with values outside of [%s, %s] fail), %d / %d intervals remain...",
                 filterName, minValue, maxValue, countNumberPassing(mask), intersectedIntervals.size()));
     }
 

@@ -10,7 +10,7 @@ import org.broadinstitute.hellbender.tools.spark.utils.LongIterator;
 import org.broadinstitute.hellbender.utils.Utils;
 
 /**
- * Kmer Hopscotch set class that encapsulates the filter, kmer size, and kmer mask
+ * Kmer Hopscotch set class that encapsulates the filterSuffix, kmer size, and kmer mask
  */
 @DefaultSerializer(PSKmerSet.Serializer.class)
 public final class PSKmerSet extends PSKmerCollection {

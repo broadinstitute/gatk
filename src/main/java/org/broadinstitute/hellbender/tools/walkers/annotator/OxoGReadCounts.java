@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
  *  Count of read pairs in the F1R2 and F2R1 configurations supporting the reference and alternate alleles
  *
  *  <p>This is an annotation that gathers information about the read pair configuration for the reads supporting each
- *  allele. It can be used along with downstream filtering steps to identify and filter out erroneous variants that occur
+ *  allele. It can be used along with downstream filtering steps to identify and filterSuffix out erroneous variants that occur
  *  with higher frequency in one read pair orientation.</p>
  *
  *  <h3>References</h3>

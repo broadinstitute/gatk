@@ -85,7 +85,7 @@ public class LearnReadOrientationModelEngine {
     private final static double PSEUDOCOUNT_OF_HOM_UNLIKELY = 3.0;
 
     // To account for potential copy number variation we use a relatively broad allele fraction distribution.
-    // In the future we will use the segmentation info as done in the germline filter and the contamination model
+    // In the future we will use the segmentation info as done in the germline filterSuffix and the contamination model
     private final static double BALANCED_HET_PSEUDOCOUNT = 5.0;
 
     // Give a sharper beta prior than the allele fraction
@@ -93,7 +93,7 @@ public class LearnReadOrientationModelEngine {
 
     // These variables define the distribution of allele fraction in a somatic variant. It should be learned from
     // the data in the future. In the meantime, one should tweak this by hand when e.g. applying the read orientation
-    // filter on low allele fraction samples such as the blood biopsy
+    // filterSuffix on low allele fraction samples such as the blood biopsy
     private final static double PSEUDOCOUNT_OF_SOMATIC_ALT = 2.0;
 
     private final static double PSEUDOCOUNT_OF_SOMATIC_REF = 5.0;

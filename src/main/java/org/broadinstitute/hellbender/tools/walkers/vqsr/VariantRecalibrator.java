@@ -48,7 +48,7 @@ import java.util.*;
  * Build a recalibration model to score variant quality for filtering purposes
  *
  * <p>This tool performs the first pass in a two-stage process called Variant Quality Score Recalibration (VQSR).
- * Specifically, it builds the model that will be used in the second step to actually filter variants. This model
+ * Specifically, it builds the model that will be used in the second step to actually filterSuffix variants. This model
  * attempts to describe the relationship between variant annotations (such as QD, MQ and ReadPosRankSum, for example)
  * and the probability that a variant is a true genetic variant versus a sequencing or data processing artifact. It is
  * developed adaptively based on "true sites" provided as input, typically HapMap sites and those sites found to be
@@ -59,13 +59,13 @@ import java.util.*;
  *
  * <h4>Summary of the VQSR procedure</h4>
  * <p>The purpose of variant recalibration is to assign a well-calibrated probability to each variant call in a call set.
- * These probabilities can then be used to filter the variants with a greater level of accuracy and flexibility than
- * can typically be achieved by traditional hard-filter (filtering on individual annotation value thresholds). The first
+ * These probabilities can then be used to filterSuffix the variants with a greater level of accuracy and flexibility than
+ * can typically be achieved by traditional hard-filterSuffix (filtering on individual annotation value thresholds). The first
  * pass consists of building a model that describes how variant annotation values co-vary with the truthfulness of
  * variant calls in a training set, and then scoring all input variants according to the model. The second pass simply
  * consists of specifying a target sensitivity value (which corresponds to an empirical VQSLOD cutoff) and applying
  * filters to each variant call according to their ranking. The result is a VCF file in which variants have been
- * assigned a score and filter status.</p>
+ * assigned a score and filterSuffix status.</p>
  *
  * <p>VQSR is probably the hardest part of the Best Practices to get right, so be sure to read the
  * <a href='https://software.broadinstitute.org/gatk/guide/article?id=39'>method documentation</a>,
@@ -244,10 +244,10 @@ public class VariantRecalibrator extends MultiVariantWalker {
     private List<Double> TS_TRANCHES = new ArrayList<Double>(Arrays.asList(100.0, 99.9, 99.0, 90.0));
 
     /**
-     * For this to work properly, the --ignore-filter argument should also be applied to the ApplyRecalibration command.
+     * For this to work properly, the --ignore-filterSuffix argument should also be applied to the ApplyRecalibration command.
      */
-    @Argument(fullName="ignore-filter",
-            doc="If specified, the variant recalibrator will also use variants marked as filtered by the specified filter name in the input VCF file",
+    @Argument(fullName="ignore-filterSuffix",
+            doc="If specified, the variant recalibrator will also use variants marked as filtered by the specified filterSuffix name in the input VCF file",
             optional=true)
     private List<String> IGNORE_INPUT_FILTERS = new ArrayList<>();
 

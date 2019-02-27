@@ -73,8 +73,8 @@ import scala.Tuple2;
  *   --unpaired-output output_reads_unpaired.bam \
  *   --min-clipped-read-length 60 \
  *   --kmer-file host_kmers.bfi \
- *   --filter-bwa-image host_reference.img \
- *   --filter-metrics metrics.txt \
+ *   --filterSuffix-bwa-image host_reference.img \
+ *   --filterSuffix-metrics metrics.txt \
  *   --bam-partition-size 4000000
  * </pre>
  *
@@ -87,8 +87,8 @@ import scala.Tuple2;
  *   --unpaired-output gs://my-gcs-bucket/output_reads_unpaired.bam \
  *   --min-clipped-read-length 60 \
  *   --kmer-file hdfs://my-cluster-m:8020//references/host_kmers.bfi \
- *   --filter-bwa-image /references/host_reference.img \
- *   --filter-metrics gs://my-gcs-bucket/metrics.txt \
+ *   --filterSuffix-bwa-image /references/host_reference.img \
+ *   --filterSuffix-metrics gs://my-gcs-bucket/metrics.txt \
  *   --bam-partition-size 4000000 \
  *   -- \
  *   --sparkRunner GCS \

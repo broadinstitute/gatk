@@ -419,7 +419,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         // test set field
         Assert.assertEquals(merged.getAttribute("set"), cfg.setExpected);
 
-        // test filter field
+        // test filterSuffix field
         Assert.assertEquals(merged.getFilters(), cfg.expected.getFilters());
     }
 

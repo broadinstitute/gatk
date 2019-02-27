@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Wrapper for ContainsKmerReadFilter to avoid serializing the kmer filter in Spark
+ * Wrapper for ContainsKmerReadFilter to avoid serializing the kmer filterSuffix in Spark
  */
 public class ContainsKmerReadFilterSpark implements Function<GATKRead, Boolean> {
     private static final long serialVersionUID = 1L;

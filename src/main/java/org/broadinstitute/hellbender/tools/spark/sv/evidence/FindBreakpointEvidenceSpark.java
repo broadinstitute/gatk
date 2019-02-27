@@ -518,7 +518,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
 
     /**
      * Kmerize reads having template names in a given set,
-     * filter out low complexity kmers and kmers that appear too often in the genome to be helpful in localizing reads,
+     * filterSuffix out low complexity kmers and kmers that appear too often in the genome to be helpful in localizing reads,
      * kill intervals that have too few surviving kmers.
      * The return is a Tuple2 in which
      * _1 describes the intervals that have been killed for having too few kmers (as a map from intervalId onto an explanatory string),
@@ -982,14 +982,14 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             final JavaRDD<GATKRead> unfilteredReads,
             final SVReadFilter filter,
             final Logger logger, final Broadcast<SVIntervalTree<SVInterval>> highCoverageSubintervalTree) {
-        // find all breakpoint evidence, then filter for pile-ups
+        // find all breakpoint evidence, then filterSuffix for pile-ups
         final int nContigs = header.getSequenceDictionary().getSequences().size();
         final int allowedOverhang = params.allowedShortFragmentOverhang;
         final int minEvidenceMapQ = params.minEvidenceMapQ;
 
         // 1) identify well-mapped reads
         // 2) that look like they support a hypothesis of a breakpoint in the vicinity
-        // 3a) filter out those that lack supporting evidence from a sufficient number of other reads, except
+        // 3a) filterSuffix out those that lack supporting evidence from a sufficient number of other reads, except
         // 3b) pass through everything within a fragment length of partition boundaries
         final JavaRDD<BreakpointEvidence> evidenceRDD = unfilteredReads
                 .mapPartitions(readItr -> {
@@ -1063,7 +1063,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         filteredEvidenceRDD.unpersist();
         evidenceRDD.unpersist();
 
-        // reapply the density filter (all data collected -- no more worry about partition boundaries).
+        // reapply the density filterSuffix (all data collected -- no more worry about partition boundaries).
         final Iterator<BreakpointEvidence> evidenceIterator =
                 getFilter(collectedEvidence.iterator(), broadcastMetadata.value(), params, new PartitionCrossingChecker() );
         final List<BreakpointEvidence> allEvidence = new ArrayList<>(collectedEvidence.size());

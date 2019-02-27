@@ -28,7 +28,7 @@ public final class MetricsReadFilter extends ReadFilter {
   /**
    * @param alignedReadsOnly If set to true calculate mean quality over aligned
    * reads only.
-   * @param pfReadOnly If set to true calculate mean quality over passing filter
+   * @param pfReadOnly If set to true calculate mean quality over passing filterSuffix
    * reads only.
    */
   public MetricsReadFilter(final boolean pfReadOnly,

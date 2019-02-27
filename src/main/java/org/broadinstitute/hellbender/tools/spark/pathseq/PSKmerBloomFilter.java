@@ -9,7 +9,7 @@ import org.broadinstitute.hellbender.tools.spark.utils.LongBloomFilter;
 import org.broadinstitute.hellbender.utils.Utils;
 
 /**
- * Kmer Bloom Filter class that encapsulates the filter, kmer size, and kmer mask
+ * Kmer Bloom Filter class that encapsulates the filterSuffix, kmer size, and kmer mask
  */
 @DefaultSerializer(PSKmerBloomFilter.Serializer.class)
 public final class PSKmerBloomFilter extends PSKmerCollection {
@@ -20,7 +20,7 @@ public final class PSKmerBloomFilter extends PSKmerCollection {
     private final double falsePositiveProbability;
 
     /**
-     * Note values in the Bloom filter should have been run through PSKmerCollection's canonicalizeAndMask()
+     * Note values in the Bloom filterSuffix should have been run through PSKmerCollection's canonicalizeAndMask()
      */
     public PSKmerBloomFilter(final LongBloomFilter maskedKmerBloomFilter, final int kmerSize, final SVKmerShort kmerMask,
                              final long numElements) {

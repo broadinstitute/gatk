@@ -15,8 +15,8 @@ public final class ReadFilterLibrary {
 
     private ReadFilterLibrary(){ /*no instance*/ }
 
-    /** Do not filter out any read. */
-    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Do not filter out any read")
+    /** Do not filterSuffix out any read. */
+    @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Do not filterSuffix out any read")
     public static class AllowAllReadsReadFilter extends ReadFilter {
         private static final long serialVersionUID = 1L;
         @Override public boolean test(final GATKRead read){return true;}}
@@ -190,7 +190,7 @@ public final class ReadFilterLibrary {
      * NotSupplementaryAlignment filters, or in terms of SAM flag values, must have neither of the 0x100 or
      * 0x800 flags set).
      *
-     * <p>Note that this filter represents a stronger criteria for "primary alignment" than the
+     * <p>Note that this filterSuffix represents a stronger criteria for "primary alignment" than the
      * SAM flag 0x100 (representing ""not primary alignment" in some contexts).</p>
      *
      * <p>For example, a read that has only the supplementary flag (0x800) set, but not the secondary (0x100)
@@ -206,7 +206,7 @@ public final class ReadFilterLibrary {
     /**
      * Filter out reads where the read and CIGAR do not match in length.
      *
-     * <p>Note: unmapped reads pass this filter. See MappedReadFilter for criteria defining an unmapped read.</p>
+     * <p>Note: unmapped reads pass this filterSuffix. See MappedReadFilter for criteria defining an unmapped read.</p>
      */
     //Note: do not call getCigar to avoid creation of new Cigar objects
     @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Filter out reads  where the read and CIGAR do not match in length", extraDocs = MappedReadFilter.class)
@@ -265,7 +265,7 @@ public final class ReadFilterLibrary {
             return read.isUnmapped() || (read.getEnd() - read.getStart() + 1) >= 0;}}
 
     /**
-     * If original alignment and mate original alignment tags exist, filter reads that were originally chimeric (mates were on different contigs).
+     * If original alignment and mate original alignment tags exist, filterSuffix reads that were originally chimeric (mates were on different contigs).
      */
     @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary = HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Filters reads whose original alignment was chimeric.")
     public static class NonChimericOriginalAlignmentReadFilter extends ReadFilter {
@@ -279,7 +279,7 @@ public final class ReadFilterLibrary {
     }
 
     /**
-     * Static, stateless read filter instances
+     * Static, stateless read filterSuffix instances
      */
     public static final AllowAllReadsReadFilter ALLOW_ALL_READS = new AllowAllReadsReadFilter();
     public static final CigarContainsNoNOperator CIGAR_CONTAINS_NO_N_OPERATOR = new CigarContainsNoNOperator();

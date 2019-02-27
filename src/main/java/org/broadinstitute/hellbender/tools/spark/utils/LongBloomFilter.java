@@ -14,7 +14,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import java.util.Arrays;
 
 /**
- * Bloom filter for primitive longs. Useful for quickly querying whether a long is a part of a set when a
+ * Bloom filterSuffix for primitive longs. Useful for quickly querying whether a long is a part of a set when a
  * a finite false positive probability can be tolerated. Optimal index size and number of hashes are determined
  * for a given number of elements to be inserted and false prositive probability.
  */
@@ -23,8 +23,8 @@ public final class LongBloomFilter {
 
     private final transient Logger logger = LogManager.getLogger(this.getClass());
 
-    private final long totalBits; //Bloom filter bits
-    private final int numHashes; //Number of Bloom filter hash functions
+    private final long totalBits; //Bloom filterSuffix bits
+    private final int numHashes; //Number of Bloom filterSuffix hash functions
     private final long totalBuckets; //Number of 8-bit buckets
     private final int numBucketArrays; //Number of arrays of buckets
     private final int bucketArraySize; //Size of each bucket array (except the last one)
@@ -55,7 +55,7 @@ public final class LongBloomFilter {
             }
         }
         if (smallestLegalSize == -1) {
-            throw new GATKException("Could not create Bloom filter with " + optimalNumberOfBits + " bits");
+            throw new GATKException("Could not create Bloom filterSuffix with " + optimalNumberOfBits + " bits");
         }
         totalBits = smallestLegalSize;
 
@@ -179,7 +179,7 @@ public final class LongBloomFilter {
      * Computes ith hash. First, two hashes (h_, h_2) are computed using FNV1.
      * Hash i is then computed by double hashing: h_i = h_1 + i * h_2. See reference:
      * <p>
-     * Kirsch and Mitzenmacher. 2008. Less hashing, same performance: Building a better Bloom filter. Random
+     * Kirsch and Mitzenmacher. 2008. Less hashing, same performance: Building a better Bloom filterSuffix. Random
      * Structures & Algorithms. 33:2, 187-218.
      */
     private long applyHashFunction(final int i, final long fnvHash1, final long fnvHash2) {

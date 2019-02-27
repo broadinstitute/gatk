@@ -51,12 +51,12 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
                 "fragment size statistics.", fullName = "max-tracked-fragment-length")
         public int maxTrackedFragmentLength = 2000;
 
-        @Argument(doc = "We filter out contiguous regions of the genome that have coverage of at least high-depth-coverage-factor * avg-coverage and a " +
+        @Argument(doc = "We filterSuffix out contiguous regions of the genome that have coverage of at least high-depth-coverage-factor * avg-coverage and a " +
                 "peak coverage of high-depth-coverage-peak-factor * avg-coverage, because the reads mapped to those regions tend to be non-local and high depth prevents accurate assembly.",
                 fullName = "high-depth-coverage-peak-factor")
         public int highDepthCoveragePeakFactor = 7;
 
-        @Argument(doc = "We filter out contiguous regions of the genome that have coverage of at least high-depth-coverage-factor * avg-coverage and a " +
+        @Argument(doc = "We filterSuffix out contiguous regions of the genome that have coverage of at least high-depth-coverage-factor * avg-coverage and a " +
                 "peak coverage of high-depth-coverage-peak-factor * avg-coverage, because the reads mapped to those regions tend to be non-local and high depth prevents accurate assembly.",
                 fullName = "high-depth-coverage-factor")
         public int highDepthCoverageFactor = 3;
@@ -114,12 +114,12 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
         @Argument(doc = "Adapter sequence.", fullName = "adapter-sequence", optional = true)
         public String adapterSequence;
 
-        @Argument(doc = "Minimum classified probability for a piece of evidence to pass xgboost evidence filter",
-                fullName = "sv-evidence-filter-threshold-probability")
+        @Argument(doc = "Minimum classified probability for a piece of evidence to pass xgboost evidence filterSuffix",
+                fullName = "sv-evidence-filterSuffix-threshold-probability")
         public double svEvidenceFilterThresholdProbability = 0.92;
 
         @Argument(doc = "Filter method for selecting evidence to group into Assembly Intervals",
-                fullName = "sv-evidence-filter-type")
+                fullName = "sv-evidence-filterSuffix-type")
         public SvEvidenceFilterType svEvidenceFilterType = SvEvidenceFilterType.DENSITY;
 
         // ---------- options -----------
@@ -142,9 +142,9 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
         @Advanced @Argument(doc = "ZDropoff (see Bwa mem manual) for contig alignment.", fullName = "z-dropoff")
         public int zDropoff = 20;
 
-        @Argument(doc = "Allow evidence filter to run without gaps annotation (assume no gaps).", fullName = "run-without-gaps-annotation")
+        @Argument(doc = "Allow evidence filterSuffix to run without gaps annotation (assume no gaps).", fullName = "run-without-gaps-annotation")
         public boolean runWithoutGapsAnnotation = false;
-        @Argument(doc = "Allow evidence filter to run without annotation for single-read mappability of 100-mers (assume all mappable).",
+        @Argument(doc = "Allow evidence filterSuffix to run without annotation for single-read mappability of 100-mers (assume all mappable).",
                 fullName = "run-without-umap-s100-annotation")
         public boolean runWithoutUmapS100Annotation = false;
 
@@ -224,7 +224,7 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
         public SAMFileHeader.SortOrder assembliesSortOrder = SAMFileHeader.SortOrder.coordinate;
 
         @Argument(doc = "Path to xgboost classifier model file for evidence filtering",
-                fullName = "sv-evidence-filter-model-file", optional=true)
+                fullName = "sv-evidence-filterSuffix-model-file", optional=true)
         public String svEvidenceFilterModelFile = null;
 
         @Argument(doc = "Path to single read 100-mer mappability file in the reference genome, used by classifier to score evidence for filtering. "

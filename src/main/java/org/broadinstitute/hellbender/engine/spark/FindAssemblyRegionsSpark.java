@@ -144,7 +144,7 @@ public class FindAssemblyRegionsSpark {
         JavaRDD<ActivityProfileStateRange> activityProfileStates = shardedReads.mapPartitions(getActivityProfileStatesFunction(referenceFileName, bFeatureManager, header,
                 assemblyRegionEvaluatorSupplierBroadcast, assemblyRegionArgs, includeReadsWithDeletionsInIsActivePileups));
 
-        // 2. Group by contig. We need to do this so we can perform the band pass filter over the whole contig, so we
+        // 2. Group by contig. We need to do this so we can perform the band pass filterSuffix over the whole contig, so we
         // produce assembly regions that are identical to those produced by AssemblyRegionWalker.
         // This step requires a shuffle, but the amount of data in the ActivityProfileStateRange should be small, so it
         // should not be prohibitive.
@@ -152,7 +152,7 @@ public class FindAssemblyRegionsSpark {
                 .keyBy((Function<ActivityProfileStateRange, String>) range -> range.getContig())
                 .groupByKey();
 
-        // 3. Run the band pass filter to find AssemblyRegions. The filtering is fairly cheap, so should be fast
+        // 3. Run the band pass filterSuffix to find AssemblyRegions. The filtering is fairly cheap, so should be fast
         // even though it has to scan a whole contig. Note that we *don't* fill in reads here, since after we have found
         // the assembly regions we want to do assembly using the full resources of the cluster. So if we have
         // very small assembly region objects, then we can repartition them for redistribution across the cluster,

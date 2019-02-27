@@ -92,10 +92,10 @@ public final class MultiIntervalLocalReadShard implements MultiIntervalShard<GAT
     }
 
     /**
-     * Reads in this shard will be filtered using this filter before being returned.
+     * Reads in this shard will be filtered using this filterSuffix before being returned.
      * Read filtering will be performed before any requested downsampling.
      *
-     * @param filter filter to use (may be null, which signifies that no filtering is to be performed)
+     * @param filter filterSuffix to use (may be null, which signifies that no filtering is to be performed)
      */
     public void setReadFilter(final ReadFilter filter) {
         this.readFilter = filter;
@@ -121,7 +121,7 @@ public final class MultiIntervalLocalReadShard implements MultiIntervalShard<GAT
     }
 
     /**
-     * @return an iterator over reads in this shard, as filtered using the configured read filter
+     * @return an iterator over reads in this shard, as filtered using the configured read filterSuffix
      *         and downsampled using the configured downsampler; reads are lazily loaded rather than pre-loaded
      *
      * Note that any read filtering is always performed before any downsampling.

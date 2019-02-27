@@ -95,10 +95,10 @@ public abstract class VariantWalkerSpark extends GATKSparkTool {
     }
 
     /**
-     * Returns the variant filter (simple or composite) that will be applied to the variants before calling {@link #getVariants}.
+     * Returns the variant filterSuffix (simple or composite) that will be applied to the variants before calling {@link #getVariants}.
      * The default implementation filters nothing.
      * Default implementation of {@link #getVariants} calls this method once before iterating
-     * over the reads and reuses the filter object to avoid object allocation. Nevertheless, keeping state in filter objects is strongly discouraged.
+     * over the reads and reuses the filterSuffix object to avoid object allocation. Nevertheless, keeping state in filterSuffix objects is strongly discouraged.
      *
      * Subclasses can extend to provide own filters (ie override and call super).
      * Multiple filters can be composed by using {@link VariantFilter} composition methods.

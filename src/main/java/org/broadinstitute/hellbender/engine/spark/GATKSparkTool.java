@@ -145,7 +145,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
 
     /**
      * Return the list of GATKCommandLinePluginDescriptor objects to be used for this CLP.
-     * Use the read filter plugin.
+     * Use the read filterSuffix plugin.
      */
     @Override
     public List<? extends CommandLinePluginDescriptor<?>> getPluginDescriptors() {
@@ -273,12 +273,12 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
 
     /**
      * Loads the reads into a {@link JavaRDD} using the intervals specified, and filters them using
-     * the filter returned by {@link #makeReadFilter}.
+     * the filterSuffix returned by {@link #makeReadFilter}.
      *
      * If no intervals were specified, returns all the reads (both mapped and unmapped).
      *
      * @return all reads from our reads input(s) as a {@link JavaRDD}, bounded by intervals if specified,
-     *         and filtered using the filter from {@link #makeReadFilter}.
+     *         and filtered using the filterSuffix from {@link #makeReadFilter}.
      */
     public JavaRDD<GATKRead> getReads() {
         final ReadFilter filter = makeReadFilter();
@@ -405,13 +405,13 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     }
 
     /**
-     * Returns a read filter (simple or composite) that can be applied to the reads returned from {@link #getReads}.
+     * Returns a read filterSuffix (simple or composite) that can be applied to the reads returned from {@link #getReads}.
      * This implementation combines the default read filters for this tool (returned by {@link #getDefaultReadFilters}
-     * along with any read filter command line directives specified by the user (such as enabling other filters or
-     * disabling default filters); and returns a single composite filter resulting from the list by and'ing them together.
+     * along with any read filterSuffix command line directives specified by the user (such as enabling other filters or
+     * disabling default filters); and returns a single composite filterSuffix resulting from the list by and'ing them together.
      *
      * NOTE: Most tools will not need to override the method, and should only do so in order to provide custom
-     * behavior or processing of the final merged read filter. To change the default read filters used by the tool,
+     * behavior or processing of the final merged read filterSuffix. To change the default read filters used by the tool,
      * override {@link #getDefaultReadFilters} instead.
      *
      * Multiple filters can be composed by using {@link org.broadinstitute.hellbender.engine.filters.ReadFilter}
@@ -433,7 +433,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     /**
      * Returns the default list of ReadFilters that are used for this tool. The filters returned
      * by this method are subject to selective enabling/disabling by the user via the command line. The
-     * default implementation uses the {@link WellformedReadFilter} filter with all default options. Subclasses
+     * default implementation uses the {@link WellformedReadFilter} filterSuffix with all default options. Subclasses
      * can override to provide alternative filters.
      *
      * Note: this method is called before command line parsing begins, and thus before a SAMFileHeader is

@@ -323,7 +323,7 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
             final Map<String, List<ReadLikelihoods<Allele>.BestAllele>> fragments = likelihoods.bestAllelesBreakingTies(sample).stream()
                     .collect(Collectors.groupingBy(ba -> ba.read.getName()));
 
-            // We only potentially filter read pairs that overlap at this position
+            // We only potentially filterSuffix read pairs that overlap at this position
             final List<Pair<ReadLikelihoods<Allele>.BestAllele, ReadLikelihoods<Allele>.BestAllele>> overlappingReadPairs =
                     fragments.values().stream()
                             .filter(l -> l.size() == 2)

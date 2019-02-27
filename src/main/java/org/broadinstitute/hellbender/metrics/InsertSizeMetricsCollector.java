@@ -52,8 +52,8 @@ public final class InsertSizeMetricsCollector
     }
 
     /**
-     * Return the read filter for InsertSizeMetrics collector.
-     * @return ReadFilter to be used to filter records
+     * Return the read filterSuffix for InsertSizeMetrics collector.
+     * @return ReadFilter to be used to filterSuffix records
      */
     public List<ReadFilter> getDefaultReadFilters() {
         List<ReadFilter> readFilters = new ArrayList<>();

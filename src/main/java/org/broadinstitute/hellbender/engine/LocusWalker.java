@@ -104,7 +104,7 @@ public abstract class LocusWalker extends GATKTool {
     /**
      * Returns the default list of CommandLineReadFilters that are used for this tool. The filters returned
      * by this method are subject to selective enabling/disabling by the user via the command line. The
-     * default implementation uses the {@link WellformedReadFilter} and {@link ReadFilterLibrary.MappedReadFilter} filter
+     * default implementation uses the {@link WellformedReadFilter} and {@link ReadFilterLibrary.MappedReadFilter} filterSuffix
      * with all default options. Subclasses can override to provide alternative filters.
      *
      * Note: this method is called before command line parsing begins, and thus before a SAMFileHeader is
@@ -156,7 +156,7 @@ public abstract class LocusWalker extends GATKTool {
                                           .map(SAMReadGroupRecord::getSample)
                                           .collect(Collectors.toSet());
         final CountingReadFilter countedFilter = makeReadFilter();
-        // get the filter and transformed iterator
+        // get the filterSuffix and transformed iterator
         final Iterator<GATKRead> readIterator = getTransformedReadStream(countedFilter).iterator();
 
         final AlignmentContextIteratorBuilder alignmentContextIteratorBuilder = new AlignmentContextIteratorBuilder();

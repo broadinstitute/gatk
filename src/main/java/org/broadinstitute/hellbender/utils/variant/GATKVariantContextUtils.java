@@ -1566,9 +1566,9 @@ public final class GATKVariantContextUtils {
 
     /**
      *  Create a string with existing filters plus the one to append
-     * @param vc VariantContext to base initial filter values.  Not {@code null}
-     * @param filterToAppend the filter value to append to the strings Not {@code null}
-     * @return String of filter values.  Sorted alphabetically.
+     * @param vc VariantContext to base initial filterSuffix values.  Not {@code null}
+     * @param filterToAppend the filterSuffix value to append to the strings Not {@code null}
+     * @return String of filterSuffix values.  Sorted alphabetically.
      */
     public static List<String> createFilterListWithAppend(VariantContext vc, String filterToAppend) {
         Utils.nonNull(vc);

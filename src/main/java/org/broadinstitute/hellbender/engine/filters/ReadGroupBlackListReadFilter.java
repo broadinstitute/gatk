@@ -20,9 +20,9 @@ import java.util.*;
 /**
  * Keep records not matching the read group tag and exact match string.
  *
- * <p>For example, this filter value:
+ * <p>For example, this filterSuffix value:
  *   <code>PU:1000G-mpimg-080821-1_1</code>
- * would filter out a read with the read group PU:1000G-mpimg-080821-1_1</p>
+ * would filterSuffix out a read with the read group PU:1000G-mpimg-080821-1_1</p>
  */
 @DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
 public final class ReadGroupBlackListReadFilter extends ReadFilter implements Serializable {
@@ -30,7 +30,7 @@ public final class ReadGroupBlackListReadFilter extends ReadFilter implements Se
     public static final String COMMENT_START = "#";
     public static final String FILTER_ENTRY_SEPARATOR = ":";
 
-    @Argument(fullName= ReadFilterArgumentDefinitions.READ_GROUP_BLACK_LIST_LONG_NAME, doc="The name of the read group to filter out", optional=false)
+    @Argument(fullName= ReadFilterArgumentDefinitions.READ_GROUP_BLACK_LIST_LONG_NAME, doc="The name of the read group to filterSuffix out", optional=false)
     public List<String> blackList = new ArrayList<>();
 
     //most of the collection Entry classes are not serializable so just use a Map
@@ -40,7 +40,7 @@ public final class ReadGroupBlackListReadFilter extends ReadFilter implements Se
     public ReadGroupBlackListReadFilter() {};
 
     /**
-     * Creates a filter using the lists of files with blacklisted read groups.
+     * Creates a filterSuffix using the lists of files with blacklisted read groups.
      * Any entry can be a path to a file (ending with "list" or "txt" which
      * will load blacklist from that file. This scheme works recursively
      * (ie the file may contain names of further files etc).
@@ -79,7 +79,7 @@ public final class ReadGroupBlackListReadFilter extends ReadFilter implements Se
     private void checkValidFilterEntry(String filter, File parentFile, int parentLineNum, String[] split) {
         String message = null;
         if (split.length != 2) {
-            message = "Invalid read group filter: " + filter;
+            message = "Invalid read group filterSuffix: " + filter;
         } else if (split[0].length() != 2) {
             message = "Tag is not two characters: " + filter;
         }

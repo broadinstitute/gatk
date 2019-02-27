@@ -168,7 +168,7 @@ public abstract class GATKTool extends CommandLineProgram {
 
     /**
      * Return the list of GATKCommandLinePluginDescriptors to be used for this tool.
-     * Uses the read filter plugin.
+     * Uses the read filterSuffix plugin.
      */
     @Override
     public List<? extends CommandLinePluginDescriptor<?>> getPluginDescriptors() {
@@ -195,18 +195,18 @@ public abstract class GATKTool extends CommandLineProgram {
     }
 
     /**
-     * Returns a read filter (simple or composite) that can be applied to reads. This implementation combines
-     * the default read filters for this tool (returned by {@link #getDefaultReadFilters} along with any read filter
+     * Returns a read filterSuffix (simple or composite) that can be applied to reads. This implementation combines
+     * the default read filters for this tool (returned by {@link #getDefaultReadFilters} along with any read filterSuffix
      * command line directives specified by the user (such as enabling other filters or disabling default filters);
-     * wraps each filter in the resulting list with a CountingReadFilter; and returns a single composite filter
+     * wraps each filterSuffix in the resulting list with a CountingReadFilter; and returns a single composite filterSuffix
      * resulting from the list by and'ing them together.
      *
      * NOTE: Most tools will not need to override the method, and should only do so in order to provide custom
-     * behavior or processing of the final merged read filter. To change the default read filters used by the tool,
+     * behavior or processing of the final merged read filterSuffix. To change the default read filters used by the tool,
      * override {@link #getDefaultReadFilters} instead.
      *
      * Implementations of {@link #traverse()} should call this method once before iterating over the reads, in order to
-     * unnecessary avoid object allocation. Nevertheless, keeping state in filter objects is strongly discouraged.
+     * unnecessary avoid object allocation. Nevertheless, keeping state in filterSuffix objects is strongly discouraged.
      *
      * Multiple filters can be composed by using {@link org.broadinstitute.hellbender.engine.filters.ReadFilter}
      * composition methods.
@@ -278,7 +278,7 @@ public abstract class GATKTool extends CommandLineProgram {
     }
 
     /**
-     * Returns the pre-filter read transformer (simple or composite) that will be applied to the reads before filtering.
+     * Returns the pre-filterSuffix read transformer (simple or composite) that will be applied to the reads before filtering.
      * The default implementation uses the {@link ReadTransformer#identity()}.
      * Default implementation of {@link #traverse()} calls this method once before iterating over the reads and reuses
      * the transformer object to avoid object allocation.
@@ -291,7 +291,7 @@ public abstract class GATKTool extends CommandLineProgram {
     }
 
     /**
-     * Returns the post-filter read transformer (simple or composite) that will be applied to the reads after filtering.
+     * Returns the post-filterSuffix read transformer (simple or composite) that will be applied to the reads after filtering.
      * The default implementation uses the {@link ReadTransformer#identity()}.
      * Default implementation of {@link #traverse()} calls this method once before iterating over the reads and reuses
      * the transformer object to avoid object allocation.
@@ -308,10 +308,10 @@ public abstract class GATKTool extends CommandLineProgram {
      * Returns a stream over the reads, which are:
      *
      * 1. Transformed with {@link #makePreReadFilterTransformer()}.
-     * 2. Filtered with {@code filter}.
+     * 2. Filtered with {@code filterSuffix}.
      * 3. Transformed with {@link #makePostReadFilterTransformer()}.
      *
-     * Note: the filter is passed to keep the state of {@link CountingReadFilter}, obtained with {@link #makeReadFilter()}.
+     * Note: the filterSuffix is passed to keep the state of {@link CountingReadFilter}, obtained with {@link #makeReadFilter()}.
      */
     protected Stream<GATKRead> getTransformedReadStream(final ReadFilter filter) {
         // if has reads, return an transformed/filtered/transformed stream

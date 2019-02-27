@@ -170,7 +170,7 @@ public final class CreateReadCountPanelOfNormals extends SparkCommandLineProgram
     @Argument(
             doc = "Genomic intervals with a median (across samples) of fractional coverage (optionally corrected for GC bias) " +
                     "less than or equal to this percentile are filtered out.  " +
-                    "(This is the first filter applied.)",
+                    "(This is the first filterSuffix applied.)",
             fullName = MINIMUM_INTERVAL_MEDIAN_PERCENTILE_LONG_NAME,
             minValue = 0.,
             maxValue = 100.,
@@ -180,7 +180,7 @@ public final class CreateReadCountPanelOfNormals extends SparkCommandLineProgram
 
     @Argument(
             doc = "Samples with a fraction of zero-coverage genomic intervals above this percentage are filtered out.  " +
-                    "(This is the second filter applied.)",
+                    "(This is the second filterSuffix applied.)",
             fullName = MAXIMUM_ZEROS_IN_SAMPLE_PERCENTAGE_LONG_NAME,
             minValue = 0.,
             maxValue = 100.,
@@ -190,7 +190,7 @@ public final class CreateReadCountPanelOfNormals extends SparkCommandLineProgram
 
     @Argument(
             doc = "Genomic intervals with a fraction of zero-coverage samples above this percentage are filtered out.  " +
-                    "(This is the third filter applied.)",
+                    "(This is the third filterSuffix applied.)",
             fullName = MAXIMUM_ZEROS_IN_INTERVAL_PERCENTAGE_LONG_NAME,
             minValue = 0.,
             maxValue = 100.,
@@ -201,7 +201,7 @@ public final class CreateReadCountPanelOfNormals extends SparkCommandLineProgram
     @Argument(
             doc = "Samples with a median (across genomic intervals) of fractional coverage normalized by genomic-interval medians  " +
                     "below this percentile or above the complementary percentile are filtered out.  " +
-                    "(This is the fourth filter applied.)",
+                    "(This is the fourth filterSuffix applied.)",
             fullName = EXTREME_SAMPLE_MEDIAN_PERCENTILE_LONG_NAME,
             minValue = 0.,
             maxValue = 50.,

@@ -10,13 +10,13 @@ import java.util.stream.IntStream;
 
 /**
  * Wrapper/adapter for {@link VariantFilter} that counts the number of variants filtered,
- * and provides a filter count summary.
+ * and provides a filterSuffix count summary.
  * <p>
  * For filters with complex predicates that are composed of compound and/or operators, provides counts
  * by level for each component predicate. All counts reflect short-circuited evaluation of and/or operators
  * (ie., not all variant filters in a compound predicate will necessarily be evaluated every time). Also note
  * that the count for a compound predicate does not always equal the sum of the counts of it's component
- * predicates, i.e. an "or" filter will report a filter count of 1 in the case where both component predicates
+ * predicates, i.e. an "or" filterSuffix will report a filterSuffix count of 1 in the case where both component predicates
  * are evaluated and both fail, but the individual component filters will report a count of 1 at the next
  * level.
  */
@@ -27,7 +27,7 @@ public class CountingVariantFilter implements VariantFilter {
     @VisibleForTesting
     protected final VariantFilter delegateFilter;
 
-    // Number of variants filtered by this filter
+    // Number of variants filtered by this filterSuffix
     protected long filteredCount = 0;
 
     public CountingVariantFilter(final VariantFilter variantFilter) {
@@ -37,9 +37,9 @@ public class CountingVariantFilter implements VariantFilter {
     /**
      * Return a composite (and) {@code CountingVariantFilter} constructed from a list of
      * {@link org.broadinstitute.hellbender.engine.filters.VariantFilter}.
-     * The resulting filter honors the order of the input list
-     * and tests the filter conditions in the same order as the iteration order of the input list.
-     * @param variantFilters If null or empty, the ALLOW_ALL_VARIANTS variant filter will be returned
+     * The resulting filterSuffix honors the order of the input list
+     * and tests the filterSuffix conditions in the same order as the iteration order of the input list.
+     * @param variantFilters If null or empty, the ALLOW_ALL_VARIANTS variant filterSuffix will be returned
      * @return Composite CountingVariantFilter
      */
     public static CountingVariantFilter fromList(final List<VariantFilter> variantFilters) {
@@ -59,7 +59,7 @@ public class CountingVariantFilter implements VariantFilter {
         delegateFilter = null;
     }
 
-    // Return the number of variants filtered by this filter
+    // Return the number of variants filtered by this filterSuffix
     public long getFilteredCount() {
         return filteredCount;
     }
@@ -70,7 +70,7 @@ public class CountingVariantFilter implements VariantFilter {
 
     public String getName() {return delegateFilter.getClass().getSimpleName();}
 
-    // Returns a summary line with filter counts organized by level
+    // Returns a summary line with filterSuffix counts organized by level
     public String getSummaryLine() {return getSummaryLineForLevel(0);}
 
     protected String getSummaryLineForLevel(final int indentLevel) {
@@ -149,7 +149,7 @@ public class CountingVariantFilter implements VariantFilter {
 
     /**
      * Private class for Counting binary operator (and/or) filters; these keep track of how many variants are filtered at
-     * each level of filter nesting.
+     * each level of filterSuffix nesting.
      *
      * Subclasses must override the test method.
      */

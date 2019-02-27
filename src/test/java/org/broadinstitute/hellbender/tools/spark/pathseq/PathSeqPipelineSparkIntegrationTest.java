@@ -25,13 +25,13 @@ public class PathSeqPipelineSparkIntegrationTest extends CommandLineProgramTest 
                 {"pipeline_input.bam",
                  "pipeline_output.bam",
                  "pipeline_output.txt",
-                 "pipeline_output.filter.metrics",
+                 "pipeline_output.filterSuffix.metrics",
                  "pipeline_output.score.metrics",
                  false},
                 {"pipeline_input_aligned.bam",
                  "pipeline_output_aligned.bam",
                  "pipeline_output_aligned.txt",
-                 "pipeline_output_aligned.filter.metrics",
+                 "pipeline_output_aligned.filterSuffix.metrics",
                  "pipeline_output_aligned.score.metrics",
                  true}
         };
@@ -55,7 +55,7 @@ public class PathSeqPipelineSparkIntegrationTest extends CommandLineProgramTest 
 
         final File outputBamFile = createTempFile("pathseqPipelineTestOutput", ".bam");
         final File outputScoresFile = createTempFile("pathseqPipelineTestOutput", ".txt");
-        final File outputFilterMetricsFile = createTempFile("filter", ".metrics");
+        final File outputFilterMetricsFile = createTempFile("filterSuffix", ".metrics");
         final File outputScoreMetricsFile = createTempFile("score", ".metrics");
         final File pathogenBwaImage = getTestFile("e_coli_k12_mini.fa.img");
         final File pathogenFasta = getTestFile("e_coli_k12_mini.fa");

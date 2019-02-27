@@ -287,7 +287,7 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
         }
 
         if (somaticInput) {
-            //single-sample M2 variant filter status will get moved to genotype filter
+            //single-sample M2 variant filterSuffix status will get moved to genotype filterSuffix
             headerLines.add(VCFStandardHeaderLines.getFormatLine(VCFConstants.GENOTYPE_FILTER_KEY));
 
             if (!dropSomaticFilteringAnnotations) {

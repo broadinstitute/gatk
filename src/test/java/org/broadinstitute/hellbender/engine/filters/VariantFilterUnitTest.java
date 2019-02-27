@@ -18,7 +18,7 @@ import java.io.FileNotFoundException;
 import java.util.*;
 
 /**
- * Tests for the various VariantContext variant filter predicates
+ * Tests for the various VariantContext variant filterSuffix predicates
  */
 public class VariantFilterUnitTest extends GATKBaseTest {
 

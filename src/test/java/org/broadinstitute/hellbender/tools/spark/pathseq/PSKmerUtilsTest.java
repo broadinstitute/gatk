@@ -118,8 +118,8 @@ public class PSKmerUtilsTest extends CommandLineProgramTest {
             }
         }
         final double testFPR = falsePositives / (double) numTrials;
-        Assert.assertTrue(testFPR < fpp * 1.1, "New Bloom filter gave too many false positives");
-        Assert.assertTrue(testFPR > fpp * 0.5, "New Bloom filter gave too few false positives");
+        Assert.assertTrue(testFPR < fpp * 1.1, "New Bloom filterSuffix gave too many false positives");
+        Assert.assertTrue(testFPR > fpp * 0.5, "New Bloom filterSuffix gave too few false positives");
     }
 
     @SuppressWarnings("unchecked")
@@ -161,11 +161,11 @@ public class PSKmerUtilsTest extends CommandLineProgramTest {
         final PSKmerCollection bloomIn = PSKmerUtils.readKmerFilter(bfFile.getPath() + PSKmerUtils.BLOOM_FILTER_EXTENSION);
         hssIter = hssMasked.iterator();
         while (hssIter.hasNext()) {
-            Assert.assertTrue(bloomIn.contains(new SVKmerShort(hssIter.next())), "Bloom filter changed after writing/reading");
+            Assert.assertTrue(bloomIn.contains(new SVKmerShort(hssIter.next())), "Bloom filterSuffix changed after writing/reading");
         }
         for (int i = 0; i < 10000; i++) {
             final long val = rand.nextLong() >>> 2;
-            Assert.assertEquals(bloomIn.contains(new SVKmerShort(val)), bfOut.contains(PSKmerCollection.canonicalizeAndMask(new SVKmerShort(val), kSize, mask)), "Bloom filter changed after writing/reading");
+            Assert.assertEquals(bloomIn.contains(new SVKmerShort(val)), bfOut.contains(PSKmerCollection.canonicalizeAndMask(new SVKmerShort(val), kSize, mask)), "Bloom filterSuffix changed after writing/reading");
         }
     }
 

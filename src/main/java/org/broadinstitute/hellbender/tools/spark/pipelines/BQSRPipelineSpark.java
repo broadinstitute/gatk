@@ -107,7 +107,7 @@ public final class BQSRPipelineSpark extends GATKSparkTool {
         // The initial reads have already had the WellformedReadFilter applied to them, which
         // is all the filtering that ApplyBQSR wants. BQSR itself wants additional filtering
         // performed, so we do that here.
-        //NOTE: this filter doesn't honor enabled/disabled commandline filters
+        //NOTE: this filterSuffix doesn't honor enabled/disabled commandline filters
         final ReadFilter bqsrReadFilter = ReadFilter.fromList(BaseRecalibrator.getBQSRSpecificReadFilterList(), getHeaderForReads());
         final JavaRDD<GATKRead> filteredReadsForBQSR = initialReads.filter(read -> bqsrReadFilter.test(read));
 
