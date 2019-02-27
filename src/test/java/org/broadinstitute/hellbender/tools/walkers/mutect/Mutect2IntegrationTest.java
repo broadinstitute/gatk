@@ -1159,7 +1159,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final List<String> args = Arrays.asList(
                 "-I", "gs://fc-908984e1-32e4-4745-910f-1319506618ce/RCCBMS-00150-T.bam",
                 "-R", b37Reference,
-                "-L", "17:78165250",
+                "-L", "20:19867355",
                 "-ip", "200",
                 "-O", unfilteredVcf.getAbsolutePath());
         runCommandLine(args);
